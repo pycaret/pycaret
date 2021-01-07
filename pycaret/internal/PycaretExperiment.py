@@ -2353,6 +2353,7 @@ class _TabularExperiment(_PyCaretExperiment):
 
         display_format: str, default = None
             To display plots in [Streamlit](https://www.streamlit.io/), set this to 'streamlit'.
+            Currently, not all plots are supported.
 
         Returns
         -------
@@ -11389,6 +11390,7 @@ class RegressionExperiment(_SupervisedExperiment):
         groups: Optional[Union[str, Any]] = None,
         use_train_data: bool = False,
         verbose: bool = True,
+        display_format: Optional[str] = None,
     ) -> str:
 
         """
@@ -11461,6 +11463,11 @@ class RegressionExperiment(_SupervisedExperiment):
             When set to False, progress bar is not displayed.
 
 
+        display_format: str, default = None
+            To display plots in [Streamlit](https://www.streamlit.io/), set this to 'streamlit'.
+            Currently, not all plots are supported.
+
+
         Returns:
             None
 
@@ -11477,6 +11484,7 @@ class RegressionExperiment(_SupervisedExperiment):
             verbose=verbose,
             use_train_data=use_train_data,
             system=True,
+            display_format=display_format,
         )
 
     def evaluate_model(
@@ -13610,6 +13618,7 @@ class ClassificationExperiment(_SupervisedExperiment):
         groups: Optional[Union[str, Any]] = None,
         use_train_data: bool = False,
         verbose: bool = True,
+        display_format: Optional[str] = None,
     ) -> str:
 
         """
@@ -13689,6 +13698,11 @@ class ClassificationExperiment(_SupervisedExperiment):
             When set to False, progress bar is not displayed.
 
 
+        display_format: str, default = None
+            To display plots in [Streamlit](https://www.streamlit.io/), set this to 'streamlit'.
+            Currently, not all plots are supported.
+
+
         Returns:
             None
             
@@ -13717,6 +13731,7 @@ class ClassificationExperiment(_SupervisedExperiment):
             verbose=verbose,
             use_train_data=use_train_data,
             system=True,
+            display_format=display_format,
         )
 
     def evaluate_model(
