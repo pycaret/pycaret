@@ -170,7 +170,7 @@ def setup(
     pipeline to prepare the data for modeling and deployment. setup() must called before
     executing any other function in pycaret. It takes two mandatory parameters:
     data and name of the target column.
-    
+
     All other parameters are optional.
 
     """
@@ -279,12 +279,16 @@ def setup(
     logger.info("Checking Exceptions")
 
     # checking data type
-    if hasattr(data, "shape") is False:
-        raise TypeError("data passed must be of type pandas.DataFrame")
+    if not isinstance(data, pd.DataFrame):
+        raise TypeError(f"data passed must be of type pandas.DataFrame")
+    if data.shape[0] == 0:
+        raise ValueError(f"data passed must be a positive dataframe")
 
     # checking train size parameter
     if type(train_size) is not float:
         raise TypeError("train_size parameter only accepts float value.")
+    if train_size <= 0 or train_size > 1:
+        raise ValueError("train_size parameter has to be positive and not above 1.")
 
     possible_ml_usecases = ["classification", "regression", "clustering", "anomaly"]
     if ml_usecase not in possible_ml_usecases:
@@ -296,7 +300,9 @@ def setup(
 
     # checking target parameter
     if not _is_unsupervised(ml_usecase) and target not in data.columns:
-        raise ValueError("Target parameter doesnt exist in the data provided.")
+        raise ValueError(
+            f"Target parameter: {target} does not exist in the data provided."
+        )
 
     # checking session_id
     if session_id is not None:
@@ -328,23 +334,28 @@ def setup(
     # checking imputation type
     allowed_imputation_type = ["simple", "iterative"]
     if imputation_type not in allowed_imputation_type:
-        raise ValueError("imputation_type param only accepts 'simple' or 'iterative'")
+        raise ValueError(
+            "imputation_type parameter only accepts 'simple' or 'iterative'."
+        )
 
     if type(iterative_imputation_iters) is not int or iterative_imputation_iters <= 0:
-        raise TypeError("iterative_imputation_iters must be an integer greater than 0.")
+        raise TypeError(
+            "iterative_imputation_iters parameter must be an integer greater than 0."
+        )
 
     # checking categorical imputation
     allowed_categorical_imputation = ["constant", "mode"]
     if categorical_imputation not in allowed_categorical_imputation:
         raise ValueError(
-            "categorical_imputation param only accepts 'constant' or 'mode'"
+            f"categorical_imputation param only accepts {', '.join(allowed_categorical_imputation)}."
         )
 
     # ordinal_features
     if ordinal_features is not None:
         if type(ordinal_features) is not dict:
             raise TypeError(
-                "ordinal_features must be of type dictionary with column name as key and ordered values as list."
+                "ordinal_features must be of type dictionary with column name as key "
+                "and ordered values as list."
             )
 
     # ordinal features check
@@ -380,13 +391,12 @@ def setup(
             raise TypeError(
                 "high_cardinality_features param only accepts name of columns as a list."
             )
-
-    if high_cardinality_features is not None:
         data_cols = data.columns.drop(target, errors="ignore")
-        for i in high_cardinality_features:
-            if i not in data_cols:
+        for high_cardinality_feature in high_cardinality_features:
+            if high_cardinality_feature not in data_cols:
                 raise ValueError(
-                    "Column type forced is either target column or doesn't exist in the dataset."
+                    f"Item {high_cardinality_feature} in high_cardinality_features parameter is either target "
+                    f"column or doesn't exist in the dataset."
                 )
 
     # stratify
@@ -396,40 +406,40 @@ def setup(
             and type(data_split_stratify) is not bool
         ):
             raise TypeError(
-                "data_split_stratify param only accepts a bool or a list of strings."
+                "data_split_stratify parameter only accepts a bool or a list of strings."
             )
 
         if not data_split_shuffle:
             raise TypeError(
-                "data_split_stratify param requires data_split_shuffle to be set to True."
+                "data_split_stratify parameter requires data_split_shuffle to be set to True."
             )
 
     # high_cardinality_methods
     high_cardinality_allowed_methods = ["frequency", "clustering"]
     if high_cardinality_method not in high_cardinality_allowed_methods:
         raise ValueError(
-            "high_cardinality_method param only accepts 'frequency' or 'clustering'"
+            f"high_cardinality_method parameter only accepts {', '.join(high_cardinality_allowed_methods)}."
         )
 
     # checking numeric imputation
     allowed_numeric_imputation = ["mean", "median", "zero"]
     if numeric_imputation not in allowed_numeric_imputation:
         raise ValueError(
-            f"numeric_imputation param only accepts {', '.join(allowed_numeric_imputation)}."
+            f"numeric_imputation parameter only accepts {', '.join(allowed_numeric_imputation)}."
         )
 
     # checking normalize method
     allowed_normalize_method = ["zscore", "minmax", "maxabs", "robust"]
     if normalize_method not in allowed_normalize_method:
         raise ValueError(
-            f"normalize_method param only accepts {', '.join(allowed_normalize_method)}."
+            f"normalize_method parameter only accepts {', '.join(allowed_normalize_method)}."
         )
 
     # checking transformation method
     allowed_transformation_method = ["yeo-johnson", "quantile"]
     if transformation_method not in allowed_transformation_method:
         raise ValueError(
-            f"transformation_method param only accepts {', '.join(allowed_transformation_method)}."
+            f"transformation_method parameter only accepts {', '.join(allowed_transformation_method)}."
         )
 
     # handle unknown categorical
@@ -443,7 +453,7 @@ def setup(
 
     if unknown_categorical_method not in unknown_categorical_method_available:
         raise TypeError(
-            f"unknown_categorical_method only accepts {', '.join(unknown_categorical_method_available)}."
+            f"unknown_categorical_method parameter only accepts {', '.join(unknown_categorical_method_available)}."
         )
 
     # check pca
@@ -454,7 +464,7 @@ def setup(
     allowed_pca_methods = ["linear", "kernel", "incremental"]
     if pca_method not in allowed_pca_methods:
         raise ValueError(
-            f"pca method param only accepts {', '.join(allowed_pca_methods)}."
+            f"pca method parameter only accepts {', '.join(allowed_pca_methods)}."
         )
 
     # pca components check
@@ -494,15 +504,21 @@ def setup(
         raise TypeError("combine_rare_levels parameter only accepts True or False.")
 
     # check rare_level_threshold
-    if type(rare_level_threshold) is not float:
-        raise TypeError("rare_level_threshold must be a float between 0 and 1.")
+    if type(rare_level_threshold) is not float and \
+            rare_level_threshold < 0 or rare_level_threshold > 1:
+        raise TypeError("rare_level_threshold parameter must be a float between 0 and 1.")
 
     # bin numeric features
     if bin_numeric_features is not None:
-        for i in bin_numeric_features:
-            if i not in all_cols:
+        if type(bin_numeric_features) is not list:
+            raise TypeError("bin_numeric_features parameter must be a list.")
+        for bin_numeric_feature in bin_numeric_features:
+            if type(bin_numeric_feature) is not str:
+                raise TypeError("bin_numeric_features parameter item must be a string.")
+            if bin_numeric_feature not in all_cols:
                 raise ValueError(
-                    "Column type forced is either target column or doesn't exist in the dataset."
+                    f"bin_numeric_feature: {bin_numeric_feature} is either target column or "
+                    f"does not exist in the dataset."
                 )
 
     # remove_outliers
@@ -1771,10 +1787,10 @@ def compare_models(
 ) -> List[Any]:
 
     """
-    This function train all the models available in the model library and scores them 
-    using Cross Validation. The output prints a score grid with Accuracy, 
+    This function train all the models available in the model library and scores them
+    using Cross Validation. The output prints a score grid with Accuracy,
     AUC, Recall, Precision, F1, Kappa and MCC (averaged across folds).
-    
+
     This function returns all of the models compared, sorted by the value of the selected metric.
 
     When turbo is set to True ('rbfsvm', 'gpc' and 'mlp') are excluded due to longer
@@ -1785,37 +1801,37 @@ def compare_models(
     >>> from pycaret.datasets import get_data
     >>> juice = get_data('juice')
     >>> experiment_name = setup(data = juice,  target = 'Purchase')
-    >>> best_model = compare_models() 
+    >>> best_model = compare_models()
 
-    This will return the averaged score grid of all the models except 'rbfsvm', 'gpc' 
-    and 'mlp'. When turbo param is set to False, all models including 'rbfsvm', 'gpc' 
+    This will return the averaged score grid of all the models except 'rbfsvm', 'gpc'
+    and 'mlp'. When turbo param is set to False, all models including 'rbfsvm', 'gpc'
     and 'mlp' are used but this may result in longer training time.
-    
-    >>> best_model = compare_models( exclude = [ 'knn', 'gbc' ] , turbo = False) 
+
+    >>> best_model = compare_models( exclude = [ 'knn', 'gbc' ] , turbo = False)
 
     This will return a comparison of all models except K Nearest Neighbour and
     Gradient Boosting Classifier.
-    
-    >>> best_model = compare_models( exclude = [ 'knn', 'gbc' ] , turbo = True) 
 
-    This will return comparison of all models except K Nearest Neighbour, 
+    >>> best_model = compare_models( exclude = [ 'knn', 'gbc' ] , turbo = True)
+
+    This will return comparison of all models except K Nearest Neighbour,
     Gradient Boosting Classifier, SVM (RBF), Gaussian Process Classifier and
     Multi Level Perceptron.
-        
+
 
     >>> tuned_model = tune_model(create_model('lr'))
-    >>> best_model = compare_models( include = [ 'lr', tuned_model ]) 
+    >>> best_model = compare_models( include = [ 'lr', tuned_model ])
 
     This will compare a tuned Linear Regression model with an untuned one.
 
     Parameters
     ----------
     exclude: list of strings, default = None
-        In order to omit certain models from the comparison model ID's can be passed as 
-        a list of strings in exclude param. 
+        In order to omit certain models from the comparison model ID's can be passed as
+        a list of strings in exclude param.
 
     include: list of strings or objects, default = None
-        In order to run only certain models for the comparison, the model ID's can be 
+        In order to run only certain models for the comparison, the model ID's can be
         passed as a list of strings in include param. The list can also include estimator
         objects to be compared.
 
@@ -1826,7 +1842,7 @@ def compare_models(
 
     round: integer, default = 4
         Number of decimal places the metrics in the score grid will be rounded to.
-  
+
     cross_validation: bool, default = True
         When cross_validation set to False fold parameter is ignored and models are trained
         on entire training dataset, returning metrics calculated using the train (holdout) set.
@@ -1840,7 +1856,7 @@ def compare_models(
         for example, n_select = -3 means bottom 3 models.
 
     budget_time: int or float, default = None
-        If not 0 or None, will terminate execution of the function after budget_time 
+        If not 0 or None, will terminate execution of the function after budget_time
         minutes have passed and return results up to that point.
 
     turbo: bool, default = True
@@ -1863,13 +1879,13 @@ def compare_models(
 
     verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
-    
+
     Returns
     -------
     score_grid
-        A table containing the scores of the model across the kfolds. 
-        Scoring metrics used are Accuracy, AUC, Recall, Precision, F1, 
-        Kappa and MCC. Mean and standard deviation of the scores across 
+        A table containing the scores of the model across the kfolds.
+        Scoring metrics used are Accuracy, AUC, Recall, Precision, F1,
+        Kappa and MCC. Mean and standard deviation of the scores across
         the folds are also returned.
 
     list
@@ -1877,13 +1893,13 @@ def compare_models(
 
     Warnings
     --------
-    - compare_models() though attractive, might be time consuming with large 
+    - compare_models() though attractive, might be time consuming with large
       datasets. By default turbo is set to True, which excludes models that
-      have longer training times. Changing turbo parameter to False may result 
-      in very high training times with datasets where number of samples exceed 
+      have longer training times. Changing turbo parameter to False may result
+      in very high training times with datasets where number of samples exceed
       10,000.
 
-    - If target variable is multiclass (more than 2 classes), AUC will be 
+    - If target variable is multiclass (more than 2 classes), AUC will be
       returned as zero (0.0)
 
     - If cross_validation param is set to False, no models will be logged with MLFlow.
@@ -1967,9 +1983,9 @@ def compare_models(
             )
 
     """
-    
+
     ERROR HANDLING ENDS HERE
-    
+
     """
 
     fold = _get_cv_splitter(fold)
@@ -2349,14 +2365,14 @@ def create_model_unsupervised(
     **kwargs,
 ) -> Any:
 
-    """  
+    """
     This is an internal version of the create_model function.
 
-    This function creates a model and scores it using Cross Validation. 
-    The output prints a score grid that shows Accuracy, AUC, Recall, Precision, 
-    F1, Kappa and MCC by fold (default = 10 Fold). 
+    This function creates a model and scores it using Cross Validation.
+    The output prints a score grid that shows Accuracy, AUC, Recall, Precision,
+    F1, Kappa and MCC by fold (default = 10 Fold).
 
-    This function returns a trained model object. 
+    This function returns a trained model object.
 
     setup() function must be called before using create_model()
 
@@ -2372,8 +2388,8 @@ def create_model_unsupervised(
     Parameters
     ----------
     model : string / object, default = None
-        Enter ID of the models available in model library or pass an untrained model 
-        object consistent with fit / predict API to train and evaluate model. List of 
+        Enter ID of the models available in model library or pass an untrained model
+        object consistent with fit / predict API to train and evaluate model. List of
         models available in model library (ID - Model):
 
         * 'kmeans' - K-Means Clustering
@@ -2382,19 +2398,19 @@ def create_model_unsupervised(
         * 'sc' - Spectral Clustering
         * 'hclust' - Agglomerative Clustering
         * 'dbscan' - Density-Based Spatial Clustering
-        * 'optics' - OPTICS Clustering                               
-        * 'birch' - Birch Clustering                                 
-        * 'kmodes' - K-Modes Clustering                              
-    
+        * 'optics' - OPTICS Clustering
+        * 'birch' - Birch Clustering
+        * 'kmodes' - K-Modes Clustering
+
     num_clusters: int, default = 4
         Number of clusters to be generated with the dataset.
 
     ground_truth: string, default = None
-        When ground_truth is provided, Homogeneity Score, Rand Index, and 
+        When ground_truth is provided, Homogeneity Score, Rand Index, and
         Completeness Score is evaluated and printer along with other metrics.
 
     round: integer, default = 4
-        Number of decimal places the metrics in the score grid will be rounded to. 
+        Number of decimal places the metrics in the score grid will be rounded to.
 
     fit_kwargs: dict, default = {} (empty dict)
         Dictionary of arguments passed to the fit method of the model.
@@ -2406,14 +2422,14 @@ def create_model_unsupervised(
         Must remain True all times. Only to be changed by internal functions.
         If False, method will return a tuple of model and the model fit time.
 
-    **kwargs: 
+    **kwargs:
         Additional keyword arguments to pass to the estimator.
 
     Returns
     -------
     score_grid
-        A table containing the Silhouette, Calinski-Harabasz,  
-        Davies-Bouldin, Homogeneity Score, Rand Index, and 
+        A table containing the Silhouette, Calinski-Harabasz,
+        Davies-Bouldin, Homogeneity Score, Rand Index, and
         Completeness Score. Last 3 are only evaluated when
         ground_truth param is provided.
 
@@ -2422,18 +2438,18 @@ def create_model_unsupervised(
 
     Warnings
     --------
-    - num_clusters not required for Affinity Propagation ('ap'), Mean shift 
+    - num_clusters not required for Affinity Propagation ('ap'), Mean shift
       clustering ('meanshift'), Density-Based Spatial Clustering ('dbscan')
-      and OPTICS Clustering ('optics'). num_clusters param for these models 
+      and OPTICS Clustering ('optics'). num_clusters param for these models
       are automatically determined.
-      
-    - When fit doesn't converge in Affinity Propagation ('ap') model, all 
+
+    - When fit doesn't converge in Affinity Propagation ('ap') model, all
       datapoints are labelled as -1.
-      
-    - Noisy samples are given the label -1, when using Density-Based Spatial 
-      ('dbscan') or OPTICS Clustering ('optics'). 
-      
-    - OPTICS ('optics') clustering may take longer training times on large 
+
+    - Noisy samples are given the label -1, when using Density-Based Spatial
+      ('dbscan') or OPTICS Clustering ('optics').
+
+    - OPTICS ('optics') clustering may take longer training times on large
       datasets.
 
     """
@@ -2500,9 +2516,9 @@ def create_model_unsupervised(
             )
 
     """
-    
+
     ERROR HANDLING ENDS HERE
-    
+
     """
 
     if not display:
@@ -2724,14 +2740,14 @@ def create_model_supervised(
     **kwargs,
 ) -> Any:
 
-    """  
+    """
     This is an internal version of the create_model function.
 
-    This function creates a model and scores it using Cross Validation. 
-    The output prints a score grid that shows Accuracy, AUC, Recall, Precision, 
-    F1, Kappa and MCC by fold (default = 10 Fold). 
+    This function creates a model and scores it using Cross Validation.
+    The output prints a score grid that shows Accuracy, AUC, Recall, Precision,
+    F1, Kappa and MCC by fold (default = 10 Fold).
 
-    This function returns a trained model object. 
+    This function returns a trained model object.
 
     setup() function must be called before using create_model()
 
@@ -2747,29 +2763,29 @@ def create_model_supervised(
     Parameters
     ----------
     estimator : str / object, default = None
-        Enter ID of the estimators available in model library or pass an untrained model 
-        object consistent with fit / predict API to train and evaluate model. All 
-        estimators support binary or multiclass problem. List of estimators in model 
+        Enter ID of the estimators available in model library or pass an untrained model
+        object consistent with fit / predict API to train and evaluate model. All
+        estimators support binary or multiclass problem. List of estimators in model
         library (ID - Name):
 
-        * 'lr' - Logistic Regression             
-        * 'knn' - K Nearest Neighbour            
-        * 'nb' - Naive Bayes             
-        * 'dt' - Decision Tree Classifier                   
-        * 'svm' - SVM - Linear Kernel	            
-        * 'rbfsvm' - SVM - Radial Kernel               
-        * 'gpc' - Gaussian Process Classifier                  
-        * 'mlp' - Multi Level Perceptron                  
-        * 'ridge' - Ridge Classifier                
-        * 'rf' - Random Forest Classifier                   
-        * 'qda' - Quadratic Discriminant Analysis                  
-        * 'ada' - Ada Boost Classifier                 
-        * 'gbc' - Gradient Boosting Classifier                  
-        * 'lda' - Linear Discriminant Analysis                  
-        * 'et' - Extra Trees Classifier                   
-        * 'xgboost' - Extreme Gradient Boosting              
-        * 'lightgbm' - Light Gradient Boosting              
-        * 'catboost' - CatBoost Classifier             
+        * 'lr' - Logistic Regression
+        * 'knn' - K Nearest Neighbour
+        * 'nb' - Naive Bayes
+        * 'dt' - Decision Tree Classifier
+        * 'svm' - SVM - Linear Kernel
+        * 'rbfsvm' - SVM - Radial Kernel
+        * 'gpc' - Gaussian Process Classifier
+        * 'mlp' - Multi Level Perceptron
+        * 'ridge' - Ridge Classifier
+        * 'rf' - Random Forest Classifier
+        * 'qda' - Quadratic Discriminant Analysis
+        * 'ada' - Ada Boost Classifier
+        * 'gbc' - Gradient Boosting Classifier
+        * 'lda' - Linear Discriminant Analysis
+        * 'et' - Extra Trees Classifier
+        * 'xgboost' - Extreme Gradient Boosting
+        * 'lightgbm' - Light Gradient Boosting
+        * 'catboost' - CatBoost Classifier
 
     fold: integer or scikit-learn compatible CV generator, default = None
         Controls cross-validation. If None, will use the CV generator defined in setup().
@@ -2777,7 +2793,7 @@ def create_model_supervised(
         When cross_validation is False, this parameter is ignored.
 
     round: integer, default = 4
-        Number of decimal places the metrics in the score grid will be rounded to. 
+        Number of decimal places the metrics in the score grid will be rounded to.
 
     cross_validation: bool, default = True
         When cross_validation set to False fold parameter is ignored and model is trained
@@ -2813,15 +2829,15 @@ def create_model_supervised(
         If not None, will use this dataframe as training target.
         Intended to be only changed by internal functions.
 
-    **kwargs: 
+    **kwargs:
         Additional keyword arguments to pass to the estimator.
 
     Returns
     -------
     score_grid
-        A table containing the scores of the model across the kfolds. 
-        Scoring metrics used are Accuracy, AUC, Recall, Precision, F1, 
-        Kappa and MCC. Mean and standard deviation of the scores across 
+        A table containing the scores of the model across the kfolds.
+        Scoring metrics used are Accuracy, AUC, Recall, Precision, F1,
+        Kappa and MCC. Mean and standard deviation of the scores across
         the folds are highlighted in yellow.
 
     model
@@ -2831,12 +2847,12 @@ def create_model_supervised(
     --------
     - 'svm' and 'ridge' doesn't support predict_proba method. As such, AUC will be
       returned as zero (0.0)
-     
-    - If target variable is multiclass (more than 2 classes), AUC will be returned 
+
+    - If target variable is multiclass (more than 2 classes), AUC will be returned
       as zero (0.0)
 
-    - 'rbfsvm' and 'gpc' uses non-linear kernel and hence the fit time complexity is 
-      more than quadratic. These estimators are hard to scale on datasets with more 
+    - 'rbfsvm' and 'gpc' uses non-linear kernel and hence the fit time complexity is
+      more than quadratic. These estimators are hard to scale on datasets with more
       than 10,000 samples.
 
     - If cross_validation param is set to False, model will not be logged with MLFlow.
@@ -2902,9 +2918,9 @@ def create_model_supervised(
         )
 
     """
-    
+
     ERROR HANDLING ENDS HERE
-    
+
     """
 
     groups = _get_groups(groups)
@@ -3584,7 +3600,7 @@ def tune_model_supervised(
     >>> juice = get_data('juice')
     >>> experiment_name = setup(data = juice,  target = 'Purchase')
     >>> xgboost = create_model('xgboost')
-    >>> tuned_xgboost = tune_model(xgboost) 
+    >>> tuned_xgboost = tune_model(xgboost)
 
     This will tune the hyperparameters of Extreme Gradient Boosting Classifier.
 
@@ -3599,11 +3615,11 @@ def tune_model_supervised(
         When cross_validation is False, this parameter is ignored.
 
     round: integer, default = 4
-        Number of decimal places the metrics in the score grid will be rounded to. 
+        Number of decimal places the metrics in the score grid will be rounded to.
 
     n_iter: integer, default = 10
-        Number of iterations within the Random Grid Search. For every iteration, 
-        the model randomly selects one value from the pre-defined grid of 
+        Number of iterations within the Random Grid Search. For every iteration,
+        the model randomly selects one value from the pre-defined grid of
         hyperparameters.
 
     custom_grid: dictionary, default = None
@@ -3614,12 +3630,12 @@ def tune_model_supervised(
     optimize: str, default = 'Accuracy'
         Measure used to select the best model through hyperparameter tuning.
         Can be either a string representing a metric or a custom scorer object
-        created using sklearn.make_scorer. 
+        created using sklearn.make_scorer.
 
     custom_scorer: object, default = None
         Will be eventually depreciated.
         custom_scorer can be passed to tune hyperparameters of the model. It must be
-        created using sklearn.make_scorer. 
+        created using sklearn.make_scorer.
 
     search_library: str, default = 'scikit-learn'
         The search library used to tune hyperparameters.
@@ -3651,11 +3667,11 @@ def tune_model_supervised(
         - 'grid' - grid search
         - 'bayesian' - Bayesian search using scikit-optimize
           ``pip install scikit-optimize``
-        - 'hyperopt' - Tree-structured Parzen Estimator search using Hyperopt 
+        - 'hyperopt' - Tree-structured Parzen Estimator search using Hyperopt
           ``pip install hyperopt``
-        - 'optuna' - Tree-structured Parzen Estimator search using Optuina 
+        - 'optuna' - Tree-structured Parzen Estimator search using Optuna
           ``pip install optuna``
-        - 'bohb' - Bayesian search using HpBandSter 
+        - 'bohb' - Bayesian search using HpBandSter
           ``pip install hpbandster ConfigSpace``
 
         'optuna' possible values:
@@ -3664,7 +3680,7 @@ def tune_model_supervised(
         - 'tpe' - Tree-structured Parzen Estimator search (default)
 
     early_stopping: bool or str or object, default = False
-        Use early stopping to stop fitting to a hyperparameter configuration 
+        Use early stopping to stop fitting to a hyperparameter configuration
         if it performs poorly. Ignored if search_library is ``scikit-learn``, or
         if the estimator doesn't have partial_fit attribute.
         If False or None, early stopping will not be used.
@@ -3684,9 +3700,9 @@ def tune_model_supervised(
         Ignored if early_stopping is False or None.
 
     choose_better: bool, default = False
-        When set to set to True, base estimator is returned when the performance doesn't 
-        improve by tune_model. This gurantees the returned object would perform atleast 
-        equivalent to base estimator created using create_model or model returned by 
+        When set to set to True, base estimator is returned when the performance doesn't
+        improve by tune_model. This gurantees the returned object would perform atleast
+        equivalent to base estimator created using create_model or model returned by
         compare_models.
 
     fit_kwargs: dict, default = {} (empty dict)
@@ -3709,15 +3725,15 @@ def tune_model_supervised(
         If True or above 0, will print messages from the tuner. Higher values
         print more messages. Ignored if verbose param is False.
 
-    **kwargs: 
+    **kwargs:
         Additional keyword arguments to pass to the optimizer.
 
     Returns
     -------
     score_grid
-        A table containing the scores of the model across the kfolds. 
-        Scoring metrics used are Accuracy, AUC, Recall, Precision, F1, 
-        Kappa and MCC. Mean and standard deviation of the scores across 
+        A table containing the scores of the model across the kfolds.
+        Scoring metrics used are Accuracy, AUC, Recall, Precision, F1,
+        Kappa and MCC. Mean and standard deviation of the scores across
         the folds are also returned.
 
     model
@@ -3731,7 +3747,7 @@ def tune_model_supervised(
 
     - If a StackingClassifier is passed, the hyperparameters of the meta model (final_estimator)
       will be tuned.
-    
+
     - If a VotingClassifier is passed, the weights will be tuned.
 
     Warnings
@@ -3961,9 +3977,9 @@ def tune_model_supervised(
         tuner_verbose = 2
 
     """
-    
+
     ERROR HANDLING ENDS HERE
-    
+
     """
 
     fold = _get_cv_splitter(fold)
@@ -4522,11 +4538,11 @@ def ensemble_model(
     display: Optional[Display] = None,  # added in pycaret==2.2.0
 ) -> Any:
     """
-    This function ensembles the trained base estimator using the method defined in 
-    'method' param (default = 'Bagging'). The output prints a score grid that shows 
-    Accuracy, AUC, Recall, Precision, F1, Kappa and MCC by fold (default = 10 Fold). 
+    This function ensembles the trained base estimator using the method defined in
+    'method' param (default = 'Bagging'). The output prints a score grid that shows
+    Accuracy, AUC, Recall, Precision, F1, Kappa and MCC by fold (default = 10 Fold).
 
-    This function returns a trained model object.  
+    This function returns a trained model object.
 
     Model must be created using create_model() or tune_model().
 
@@ -4539,25 +4555,25 @@ def ensemble_model(
     >>> ensembled_dt = ensemble_model(dt)
 
     This will return an ensembled Decision Tree model using 'Bagging'.
-    
+
     Parameters
     ----------
     estimator : object, default = None
 
     method: str, default = 'Bagging'
-        Bagging method will create an ensemble meta-estimator that fits base 
+        Bagging method will create an ensemble meta-estimator that fits base
         classifiers each on random subsets of the original dataset. The other
         available method is 'Boosting' which will create a meta-estimators by
-        fitting a classifier on the original dataset and then fits additional 
-        copies of the classifier on the same dataset but where the weights of 
-        incorrectly classified instances are adjusted such that subsequent 
+        fitting a classifier on the original dataset and then fits additional
+        copies of the classifier on the same dataset but where the weights of
+        incorrectly classified instances are adjusted such that subsequent
         classifiers focus more on difficult cases.
-    
+
     fold: integer or scikit-learn compatible CV generator, default = None
         Controls cross-validation. If None, will use the CV generator defined in setup().
         If integer, will use KFold CV with that many folds.
         When cross_validation is False, this parameter is ignored.
-    
+
     n_estimators: integer, default = 10
         The number of base estimators in the ensemble.
         In case of perfect fit, the learning procedure is stopped early.
@@ -4566,15 +4582,15 @@ def ensemble_model(
         Number of decimal places the metrics in the score grid will be rounded to.
 
     choose_better: bool, default = False
-        When set to set to True, base estimator is returned when the metric doesn't 
-        improve by ensemble_model. This gurantees the returned object would perform 
-        atleast equivalent to base estimator created using create_model or model 
+        When set to set to True, base estimator is returned when the metric doesn't
+        improve by ensemble_model. This gurantees the returned object would perform
+        atleast equivalent to base estimator created using create_model or model
         returned by compare_models.
 
     optimize: str, default = 'Accuracy'
         Only used when choose_better is set to True. optimize parameter is used
-        to compare emsembled model with base estimator. Values accepted in 
-        optimize parameter are 'Accuracy', 'AUC', 'Recall', 'Precision', 'F1', 
+        to compare emsembled model with base estimator. Values accepted in
+        optimize parameter are 'Accuracy', 'AUC', 'Recall', 'Precision', 'F1',
         'Kappa', 'MCC'.
 
     fit_kwargs: dict, default = {} (empty dict)
@@ -4592,20 +4608,20 @@ def ensemble_model(
     Returns
     -------
     score_grid
-        A table containing the scores of the model across the kfolds. 
-        Scoring metrics used are Accuracy, AUC, Recall, Precision, F1, 
-        Kappa and MCC. Mean and standard deviation of the scores across 
+        A table containing the scores of the model across the kfolds.
+        Scoring metrics used are Accuracy, AUC, Recall, Precision, F1,
+        Kappa and MCC. Mean and standard deviation of the scores across
         the folds are also returned.
 
     model
         Trained ensembled model object.
 
     Warnings
-    --------  
-    - If target variable is multiclass (more than 2 classes), AUC will be returned 
+    --------
+    - If target variable is multiclass (more than 2 classes), AUC will be returned
       as zero (0.0).
-        
-    
+
+
     """
 
     function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
@@ -4689,9 +4705,9 @@ def ensemble_model(
             )
 
     """
-    
+
     ERROR HANDLING ENDS HERE
-    
+
     """
 
     fold = _get_cv_splitter(fold)
@@ -4869,11 +4885,11 @@ def blend_models(
 ) -> Any:
 
     """
-    This function creates a Soft Voting / Majority Rule classifier for all the 
-    estimators in the model library (excluding the few when turbo is True) or 
+    This function creates a Soft Voting / Majority Rule classifier for all the
+    estimators in the model library (excluding the few when turbo is True) or
     for specific trained estimators passed as a list in estimator_list param.
     It scores it using Cross Validation. The output prints a score
-    grid that shows Accuracy, AUC, Recall, Precision, F1, Kappa and MCC by 
+    grid that shows Accuracy, AUC, Recall, Precision, F1, Kappa and MCC by
     fold (default CV = 10 Folds).
 
     This function returns a trained model object.
@@ -4900,20 +4916,20 @@ def blend_models(
         Number of decimal places the metrics in the score grid will be rounded to.
 
     choose_better: bool, default = False
-        When set to set to True, base estimator is returned when the metric doesn't 
-        improve by ensemble_model. This gurantees the returned object would perform 
-        atleast equivalent to base estimator created using create_model or model 
+        When set to set to True, base estimator is returned when the metric doesn't
+        improve by ensemble_model. This gurantees the returned object would perform
+        atleast equivalent to base estimator created using create_model or model
         returned by compare_models.
 
     optimize: str, default = 'Accuracy'
         Only used when choose_better is set to True. optimize parameter is used
-        to compare emsembled model with base estimator. Values accepted in 
-        optimize parameter are 'Accuracy', 'AUC', 'Recall', 'Precision', 'F1', 
+        to compare emsembled model with base estimator. Values accepted in
+        optimize parameter are 'Accuracy', 'AUC', 'Recall', 'Precision', 'F1',
         'Kappa', 'MCC'.
 
     method: str, default = 'auto'
-        'hard' uses predicted class labels for majority rule voting. 'soft', predicts 
-        the class label based on the argmax of the sums of the predicted probabilities, 
+        'hard' uses predicted class labels for majority rule voting. 'soft', predicts
+        the class label based on the argmax of the sums of the predicted probabilities,
         which is recommended for an ensemble of well-calibrated classifiers. Default value,
         'auto', will try to use 'soft' and fall back to 'hard' if the former is not supported.
 
@@ -4936,29 +4952,29 @@ def blend_models(
     Returns
     -------
     score_grid
-        A table containing the scores of the model across the kfolds. 
-        Scoring metrics used are Accuracy, AUC, Recall, Precision, F1, 
-        Kappa and MCC. Mean and standard deviation of the scores across 
+        A table containing the scores of the model across the kfolds.
+        Scoring metrics used are Accuracy, AUC, Recall, Precision, F1,
+        Kappa and MCC. Mean and standard deviation of the scores across
         the folds are also returned.
 
     model
-        Trained Voting Classifier model object. 
+        Trained Voting Classifier model object.
 
     Warnings
     --------
     - When passing estimator_list with method set to 'soft'. All the models in the
       estimator_list must support predict_proba function. 'svm' and 'ridge' doesnt
       support the predict_proba and hence an exception will be raised.
-      
+
     - When estimator_list is set to 'All' and method is forced to 'soft', estimators
       that doesnt support the predict_proba function will be dropped from the estimator
       list.
-          
+
     - If target variable is multiclass (more than 2 classes), AUC will be returned as
       zero (0.0).
-        
-       
-  
+
+
+
     """
 
     function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
@@ -5046,9 +5062,9 @@ def blend_models(
             )
 
     """
-    
+
     ERROR HANDLING ENDS HERE
-    
+
     """
 
     fold = _get_cv_splitter(fold)
@@ -5217,15 +5233,15 @@ def stack_models(
 
     """
     This function trains a meta model and scores it using Cross Validation.
-    The predictions from the base level models as passed in the estimator_list param 
+    The predictions from the base level models as passed in the estimator_list param
     are used as input features for the meta model. The restacking parameter controls
     the ability to expose raw features to the meta model when set to True
     (default = False).
 
-    The output prints the score grid that shows Accuracy, AUC, Recall, Precision, 
-    F1, Kappa and MCC by fold (default = 10 Folds). 
-    
-    This function returns a trained model object. 
+    The output prints the score grid that shows Accuracy, AUC, Recall, Precision,
+    F1, Kappa and MCC by fold (default = 10 Folds).
+
+    This function returns a trained model object.
 
     Example
     -------
@@ -5239,8 +5255,8 @@ def stack_models(
     >>> knn = create_model('knn')
     >>> stacked_models = stack_models(estimator_list=[dt,rf,ada,ridge,knn])
 
-    This will create a meta model that will use the predictions of all the 
-    models provided in estimator_list param. By default, the meta model is 
+    This will create a meta model that will use the predictions of all the
+    models provided in estimator_list param. By default, the meta model is
     Logistic Regression but can be changed with meta_model param.
 
     Parameters
@@ -5259,9 +5275,9 @@ def stack_models(
         Number of decimal places the metrics in the score grid will be rounded to.
 
     method: string, default = 'auto'
-        - if ‘auto’, it will try to invoke, for each estimator, 'predict_proba', 
+        - if ‘auto’, it will try to invoke, for each estimator, 'predict_proba',
         'decision_function' or 'predict' in that order.
-        - otherwise, one of 'predict_proba', 'decision_function' or 'predict'. 
+        - otherwise, one of 'predict_proba', 'decision_function' or 'predict'.
         If the method is not implemented by the estimator, it will raise an error.
 
     restack: bool, default = True
@@ -5270,15 +5286,15 @@ def stack_models(
         probabilities is passed to meta model when making final predictions.
 
     choose_better: bool, default = False
-        When set to set to True, base estimator is returned when the metric doesn't 
-        improve by ensemble_model. This gurantees the returned object would perform 
-        atleast equivalent to base estimator created using create_model or model 
+        When set to set to True, base estimator is returned when the metric doesn't
+        improve by ensemble_model. This gurantees the returned object would perform
+        atleast equivalent to base estimator created using create_model or model
         returned by compare_models.
 
     optimize: str, default = 'Accuracy'
         Only used when choose_better is set to True. optimize parameter is used
-        to compare emsembled model with base estimator. Values accepted in 
-        optimize parameter are 'Accuracy', 'AUC', 'Recall', 'Precision', 'F1', 
+        to compare emsembled model with base estimator. Values accepted in
+        optimize parameter are 'Accuracy', 'AUC', 'Recall', 'Precision', 'F1',
         'Kappa', 'MCC'.
 
     fit_kwargs: dict, default = {} (empty dict)
@@ -5296,9 +5312,9 @@ def stack_models(
     Returns
     -------
     score_grid
-        A table containing the scores of the model across the kfolds. 
-        Scoring metrics used are Accuracy, AUC, Recall, Precision, F1, 
-        Kappa and MCC. Mean and standard deviation of the scores across 
+        A table containing the scores of the model across the kfolds.
+        Scoring metrics used are Accuracy, AUC, Recall, Precision, F1,
+        Kappa and MCC. Mean and standard deviation of the scores across
         the folds are also returned.
 
     model
@@ -5306,7 +5322,7 @@ def stack_models(
 
     Warnings
     --------
-    -  If target variable is multiclass (more than 2 classes), AUC will be returned 
+    -  If target variable is multiclass (more than 2 classes), AUC will be returned
        as zero (0.0).
 
     """
@@ -5378,9 +5394,9 @@ def stack_models(
             )
 
     """
-    
+
     ERROR HANDLING ENDS HERE
-    
+
     """
 
     fold = _get_cv_splitter(fold)
@@ -5570,8 +5586,8 @@ def plot_model(
     """
     This function takes a trained model object and returns a plot based on the
     test / hold-out set. The process may require the model to be re-trained in
-    certain cases. See list of plots supported below. 
-    
+    certain cases. See list of plots supported below.
+
     Model must be created using create_model() or tune_model().
 
     Example
@@ -5587,25 +5603,25 @@ def plot_model(
     Parameters
     ----------
     estimator : object, default = none
-        A trained model object should be passed as an estimator. 
+        A trained model object should be passed as an estimator.
 
     plot : str, default = auc
         Enter abbreviation of type of plot. The current list of plots supported are (Plot - Name):
 
-        * 'auc' - Area Under the Curve                 
-        * 'threshold' - Discrimination Threshold           
-        * 'pr' - Precision Recall Curve                  
-        * 'confusion_matrix' - Confusion Matrix    
-        * 'error' - Class Prediction Error                
-        * 'class_report' - Classification Report        
-        * 'boundary' - Decision Boundary            
-        * 'rfe' - Recursive Feature Selection                 
-        * 'learning' - Learning Curve             
-        * 'manifold' - Manifold Learning            
-        * 'calibration' - Calibration Curve         
-        * 'vc' - Validation Curve                  
-        * 'dimension' - Dimension Learning           
-        * 'feature' - Feature Importance              
+        * 'auc' - Area Under the Curve
+        * 'threshold' - Discrimination Threshold
+        * 'pr' - Precision Recall Curve
+        * 'confusion_matrix' - Confusion Matrix
+        * 'error' - Class Prediction Error
+        * 'class_report' - Classification Report
+        * 'boundary' - Decision Boundary
+        * 'rfe' - Recursive Feature Selection
+        * 'learning' - Learning Curve
+        * 'manifold' - Manifold Learning
+        * 'calibration' - Calibration Curve
+        * 'vc' - Validation Curve
+        * 'dimension' - Dimension Learning
+        * 'feature' - Feature Importance
         * 'feature_all' - Feature Importance (All)
         * 'parameter' - Model Hyperparameter
         * 'lift' - Lift Curve
@@ -5632,7 +5648,7 @@ def plot_model(
         If None, will use the value set in fold_groups param in setup().
 
     verbose: bool, default = True
-        Progress bar not shown when verbose set to False. 
+        Progress bar not shown when verbose set to False.
 
     system: bool, default = True
         Must remain True all times. Only to be changed by internal functions.
@@ -5643,21 +5659,21 @@ def plot_model(
     Returns
     -------
     Visual_Plot
-        Prints the visual plot. 
+        Prints the visual plot.
     str:
         If save param is True, will return the name of the saved file.
 
     Warnings
     --------
-    -  'svm' and 'ridge' doesn't support the predict_proba method. As such, AUC and 
+    -  'svm' and 'ridge' doesn't support the predict_proba method. As such, AUC and
         calibration plots are not available for these estimators.
-       
-    -   When the 'max_features' parameter of a trained model object is not equal to 
+
+    -   When the 'max_features' parameter of a trained model object is not equal to
         the number of samples in training set, the 'rfe' plot is not available.
-              
+
     -   'calibration', 'threshold', 'manifold' and 'rfe' plots are not available for
          multiclass problems.
-                
+
 
     """
 
@@ -5759,9 +5775,9 @@ def plot_model(
         raise ValueError("display_format can only be None or 'streamlit'.")
 
     """
-    
+
     ERROR HANDLING ENDS HERE
-    
+
     """
 
     cv = _get_cv_splitter(fold)
@@ -7183,9 +7199,9 @@ def evaluate_model(
 ):
 
     """
-    This function displays a user interface for all of the available plots for 
-    a given estimator. It internally uses the plot_model() function. 
-    
+    This function displays a user interface for all of the available plots for
+    a given estimator. It internally uses the plot_model() function.
+
     Example
     -------
     >>> from pycaret.datasets import get_data
@@ -7193,14 +7209,14 @@ def evaluate_model(
     >>> experiment_name = setup(data = juice,  target = 'Purchase')
     >>> lr = create_model('lr')
     >>> evaluate_model(lr)
-    
+
     This will display the User Interface for all of the plots for a given
     estimator.
 
     Parameters
     ----------
     estimator : object, default = none
-        A trained model object should be passed as an estimator. 
+        A trained model object should be passed as an estimator.
 
     fold: integer or scikit-learn compatible CV generator, default = None
         Controls cross-validation. If None, will use the CV generator defined in setup().
@@ -7278,11 +7294,11 @@ def interpret_model(
 ):
 
     """
-    This function takes a trained model object and returns an interpretation plot 
-    based on the test / hold-out set. It only supports tree based algorithms. 
+    This function takes a trained model object and returns an interpretation plot
+    based on the test / hold-out set. It only supports tree based algorithms.
 
     This function is implemented based on the SHAP (SHapley Additive exPlanations),
-    which is a unified approach to explain the output of any machine learning model. 
+    which is a unified approach to explain the output of any machine learning model.
     SHAP connects game theory with local explanations.
 
     For more information : https://shap.readthedocs.io/en/latest/
@@ -7300,27 +7316,27 @@ def interpret_model(
     Parameters
     ----------
     estimator : object, default = none
-        A trained tree based model object should be passed as an estimator. 
+        A trained tree based model object should be passed as an estimator.
 
     plot : str, default = 'summary'
         Other available options are 'correlation' and 'reason'.
 
     feature: str, default = None
-        This parameter is only needed when plot = 'correlation'. By default feature is 
-        set to None which means the first column of the dataset will be used as a 
+        This parameter is only needed when plot = 'correlation'. By default feature is
+        set to None which means the first column of the dataset will be used as a
         variable. A feature parameter must be passed to change this.
 
     observation: integer, default = None
-        This parameter only comes into effect when plot is set to 'reason'. If no 
-        observation number is provided, it will return an analysis of all observations 
-        with the option to select the feature on x and y axes through drop down 
+        This parameter only comes into effect when plot is set to 'reason'. If no
+        observation number is provided, it will return an analysis of all observations
+        with the option to select the feature on x and y axes through drop down
         interactivity. For analysis at the sample level, an observation parameter must
-        be passed with the index value of the observation in test / hold-out set. 
+        be passed with the index value of the observation in test / hold-out set.
 
     save: bool, default = False
         When set to True, Plot is saved as a 'png' file in current working directory.
 
-    **kwargs: 
+    **kwargs:
         Additional keyword arguments to pass to the plot.
 
     Returns
@@ -7330,7 +7346,7 @@ def interpret_model(
         Returns the interactive JS plot when plot = 'reason'.
 
     Warnings
-    -------- 
+    --------
     - interpret_model doesn't support multiclass problems.
 
     """
@@ -7380,7 +7396,7 @@ def interpret_model(
 
     """
     Error Checking Ends here
-    
+
     """
 
     # Storing X_train and y_train in data_X and data_y parameter
@@ -7553,15 +7569,15 @@ def calibrate_model(
 ) -> Any:
 
     """
-    This function takes the input of trained estimator and performs probability 
-    calibration with sigmoid or isotonic regression. The output prints a score 
-    grid that shows Accuracy, AUC, Recall, Precision, F1, Kappa and MCC by fold 
-    (default = 10 Fold). The ouput of the original estimator and the calibrated 
-    estimator (created using this function) might not differ much. In order 
-    to see the calibration differences, use 'calibration' plot in plot_model to 
+    This function takes the input of trained estimator and performs probability
+    calibration with sigmoid or isotonic regression. The output prints a score
+    grid that shows Accuracy, AUC, Recall, Precision, F1, Kappa and MCC by fold
+    (default = 10 Fold). The ouput of the original estimator and the calibrated
+    estimator (created using this function) might not differ much. In order
+    to see the calibration differences, use 'calibration' plot in plot_model to
     see the difference before and after.
 
-    This function returns a trained model object. 
+    This function returns a trained model object.
 
     Example
     -------
@@ -7576,9 +7592,9 @@ def calibrate_model(
     Parameters
     ----------
     estimator : object
-    
+
     method : str, default = 'sigmoid'
-        The method to use for calibration. Can be 'sigmoid' which corresponds to Platt's 
+        The method to use for calibration. Can be 'sigmoid' which corresponds to Platt's
         method or 'isotonic' which is a non-parametric approach. It is not advised to use
         isotonic calibration with too few calibration samples
 
@@ -7588,7 +7604,7 @@ def calibrate_model(
         When cross_validation is False, this parameter is ignored.
 
     round: integer, default = 4
-        Number of decimal places the metrics in the score grid will be rounded to. 
+        Number of decimal places the metrics in the score grid will be rounded to.
 
     fit_kwargs: dict, default = {} (empty dict)
         Dictionary of arguments passed to the fit method of the model.
@@ -7605,9 +7621,9 @@ def calibrate_model(
     Returns
     -------
     score_grid
-        A table containing the scores of the model across the kfolds. 
-        Scoring metrics used are Accuracy, AUC, Recall, Precision, F1, 
-        Kappa and MCC. Mean and standard deviation of the scores across 
+        A table containing the scores of the model across the kfolds.
+        Scoring metrics used are Accuracy, AUC, Recall, Precision, F1,
+        Kappa and MCC. Mean and standard deviation of the scores across
         the folds are also returned.
 
     model
@@ -7615,12 +7631,12 @@ def calibrate_model(
 
     Warnings
     --------
-    - Avoid isotonic calibration with too few calibration samples (<1000) since it 
+    - Avoid isotonic calibration with too few calibration samples (<1000) since it
       tends to overfit.
-      
+
     - calibration plot not available for multiclass problems.
-      
-  
+
+
     """
 
     function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
@@ -7653,9 +7669,9 @@ def calibrate_model(
         raise TypeError("Verbose parameter can only take argument as True or False.")
 
     """
-    
+
     ERROR HANDLING ENDS HERE
-    
+
     """
 
     fold = _get_cv_splitter(fold)
@@ -7796,9 +7812,9 @@ def optimize_threshold(
     This function optimizes probability threshold for a trained model using custom cost
     function that can be defined using combination of True Positives, True Negatives,
     False Positives (also known as Type I error), and False Negatives (Type II error).
-    
-    This function returns a plot of optimized cost as a function of probability 
-    threshold between 0 to 100. 
+
+    This function returns a plot of optimized cost as a function of probability
+    threshold between 0 to 100.
 
     Example
     -------
@@ -7813,31 +7829,31 @@ def optimize_threshold(
     Parameters
     ----------
     estimator : object
-        A trained model object should be passed as an estimator. 
-    
+        A trained model object should be passed as an estimator.
+
     true_positive : int, default = 0
-        Cost function or returns when prediction is true positive.  
-    
+        Cost function or returns when prediction is true positive.
+
     true_negative : int, default = 0
         Cost function or returns when prediction is true negative.
-    
+
     false_positive : int, default = 0
-        Cost function or returns when prediction is false positive.    
-    
+        Cost function or returns when prediction is false positive.
+
     false_negative : int, default = 0
-        Cost function or returns when prediction is false negative.       
-    
-    
+        Cost function or returns when prediction is false negative.
+
+
     Returns
     -------
     Visual_Plot
-        Prints the visual plot. 
+        Prints the visual plot.
 
     Warnings
     --------
     - This function is not supported for multiclass problems.
-      
-       
+
+
     """
 
     function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
@@ -8012,7 +8028,7 @@ def assign_model(
     This function assigns each of the data point in the dataset passed during setup
     stage to one of the clusters using trained model object passed as model param.
     create_model() function must be called before using assign_model().
-    
+
     This function returns a pandas.DataFrame.
 
     Example
@@ -8028,11 +8044,11 @@ def assign_model(
     Parameters
     ----------
     model: trained model object, default = None
-    
+
     transformation: bool, default = False
-        When set to True, assigned clusters are returned on transformed dataset instead 
+        When set to True, assigned clusters are returned on transformed dataset instead
         of original dataset passed during setup().
-    
+
     verbose: Boolean, default = True
         Status update is not printed when verbose is set to False.
 
@@ -8040,7 +8056,7 @@ def assign_model(
     -------
     pandas.DataFrame
         Returns a DataFrame with assigned clusters using a trained model.
-  
+
     """
 
     function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
@@ -8165,10 +8181,10 @@ def predict_model(
 
     """
     This function is used to predict label and probability score on the new dataset
-    using a trained estimator. New unseen data can be passed to data param as pandas 
-    Dataframe. If data is not passed, the test / hold-out set separated at the time of 
-    setup() is used to generate predictions. 
-    
+    using a trained estimator. New unseen data can be passed to data param as pandas
+    Dataframe. If data is not passed, the test / hold-out set separated at the time of
+    setup() is used to generate predictions.
+
     Example
     -------
     >>> from pycaret.datasets import get_data
@@ -8176,27 +8192,27 @@ def predict_model(
     >>> experiment_name = setup(data = juice,  target = 'Purchase')
     >>> lr = create_model('lr')
     >>> lr_predictions_holdout = predict_model(lr)
-        
+
     Parameters
     ----------
     estimator : object, default = none
-        A trained model object / pipeline should be passed as an estimator. 
-     
+        A trained model object / pipeline should be passed as an estimator.
+
     data : pandas.DataFrame
-        Shape (n_samples, n_features) where n_samples is the number of samples 
-        and n_features is the number of features. All features used during training 
+        Shape (n_samples, n_features) where n_samples is the number of samples
+        and n_features is the number of features. All features used during training
         must be present in the new dataset.
-    
+
     probability_threshold : float, default = None
-        Threshold used to convert probability values into binary outcome. By default 
-        the probability threshold for all binary classifiers is 0.5 (50%). This can be 
+        Threshold used to convert probability values into binary outcome. By default
+        the probability threshold for all binary classifiers is 0.5 (50%). This can be
         changed using probability_threshold param.
 
     encoded_labels: Boolean, default = False
         If True, will return labels encoded as an integer.
 
     round: integer, default = 4
-        Number of decimal places the metrics in the score grid will be rounded to. 
+        Number of decimal places the metrics in the score grid will be rounded to.
 
     verbose: bool, default = True
         Holdout score grid is not printed when verbose is set to False.
@@ -8213,11 +8229,11 @@ def predict_model(
     Warnings
     --------
     - The behavior of the predict_model is changed in version 2.1 without backward compatibility.
-    As such, the pipelines trained using the version (<= 2.0), may not work for inference 
+    As such, the pipelines trained using the version (<= 2.0), may not work for inference
     with version >= 2.1. You can either retrain your models with a newer version or downgrade
     the version for inference.
-    
-    
+
+
     """
 
     function_params_str = ", ".join(
@@ -8412,8 +8428,8 @@ def finalize_model(
     """
     This function fits the estimator onto the complete dataset passed during the
     setup() stage. The purpose of this function is to prepare for final model
-    deployment after experimentation. 
-    
+    deployment after experimentation.
+
     Example
     -------
     >>> from pycaret.datasets import get_data
@@ -8421,13 +8437,13 @@ def finalize_model(
     >>> experiment_name = setup(data = juice,  target = 'Purchase')
     >>> lr = create_model('lr')
     >>> final_lr = finalize_model(lr)
-    
-    This will return the final model object fitted to complete dataset. 
+
+    This will return the final model object fitted to complete dataset.
 
     Parameters
     ----------
     estimator : object, default = none
-        A trained model object should be passed as an estimator. 
+        A trained model object should be passed as an estimator.
 
     fit_kwargs: dict, default = {} (empty dict)
         Dictionary of arguments passed to the fit method of the model.
@@ -8439,7 +8455,7 @@ def finalize_model(
         If None, will use the value set in fold_groups param in setup().
 
     model_only : bool, default = True
-        When set to True, only trained model object is saved and all the 
+        When set to True, only trained model object is saved and all the
         transformations are ignored.
 
     Returns
@@ -8449,13 +8465,13 @@ def finalize_model(
 
     Warnings
     --------
-    - If the model returned by finalize_model(), is used on predict_model() without 
-      passing a new unseen dataset, then the information grid printed is misleading 
-      as the model is trained on the complete dataset including test / hold-out sample. 
+    - If the model returned by finalize_model(), is used on predict_model() without
+      passing a new unseen dataset, then the information grid printed is misleading
+      as the model is trained on the complete dataset including test / hold-out sample.
       Once finalize_model() is used, the model is considered ready for deployment and
       should be used on new unseens dataset only.
-       
-         
+
+
     """
 
     function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
@@ -8552,7 +8568,7 @@ def deploy_model(
     production use. The platform of deployment can be defined under the platform
     param along with the applicable authentication tokens which are passed as a
     dictionary to the authentication param.
-    
+
     Example
     -------
     >>> from pycaret.datasets import get_data
@@ -8560,16 +8576,16 @@ def deploy_model(
     >>> experiment_name = setup(data = juice,  target = 'Purchase')
     >>> lr = create_model('lr')
     >>> deploy_model(model = lr, model_name = 'deploy_lr', platform = 'aws', authentication = {'bucket' : 'pycaret-test'})
-    
+
     This will deploy the model on an AWS S3 account under bucket 'pycaret-test'
-    
+
     Notes
     -----
     For AWS users:
-    Before deploying a model to an AWS S3 ('aws'), environment variables must be 
-    configured using the command line interface. To configure AWS env. variables, 
+    Before deploying a model to an AWS S3 ('aws'), environment variables must be
+    configured using the command line interface. To configure AWS env. variables,
     type aws configure in your python command line. The following information is
-    required which can be generated using the Identity and Access Management (IAM) 
+    required which can be generated using the Identity and Access Management (IAM)
     portal of your amazon console account:
 
     - AWS Access Key ID
@@ -8579,10 +8595,10 @@ def deploy_model(
 
     For GCP users:
     --------------
-    Before deploying a model to Google Cloud Platform (GCP), project must be created 
-    either using command line or GCP console. Once project is created, you must create 
-    a service account and download the service account key as a JSON file, which is 
-    then used to set environment variable. 
+    Before deploying a model to Google Cloud Platform (GCP), project must be created
+    either using command line or GCP console. Once project is created, you must create
+    a service account and download the service account key as a JSON file, which is
+    then used to set environment variable.
 
     https://cloud.google.com/docs/authentication/production
 
@@ -8604,11 +8620,11 @@ def deploy_model(
     Parameters
     ----------
     model : object
-        A trained model object should be passed as an estimator. 
-    
+        A trained model object should be passed as an estimator.
+
     model_name : str
         Name of model to be passed as a str.
-    
+
     authentication : dict
         Dictionary of applicable authentication tokens.
 
@@ -8620,22 +8636,22 @@ def deploy_model(
 
         When platform = 'azure':
         {'container': 'pycaret-test'}
-    
+
     platform: str, default = 'aws'
         Name of platform for deployment. Current available options are: 'aws', 'gcp' and 'azure'
 
     Returns
     -------
     Success_Message
-    
+
     Warnings
     --------
-    - This function uses file storage services to deploy the model on cloud platform. 
-      As such, this is efficient for batch-use. Where the production objective is to 
-      obtain prediction at an instance level, this may not be the efficient choice as 
+    - This function uses file storage services to deploy the model on cloud platform.
+      As such, this is efficient for batch-use. Where the production objective is to
+      obtain prediction at an instance level, this may not be the efficient choice as
       it transmits the binary pickle file between your local python environment and
-      the platform. 
-    
+      the platform.
+
     """
     import pycaret.internal.persistence
 
@@ -8852,9 +8868,9 @@ def create_webservice(model, model_endopoint, api_key=True, pydantic_payload=Non
 def save_model(model, model_name: str, model_only: bool = False, verbose: bool = True):
 
     """
-    This function saves the transformation pipeline and trained model object 
-    into the current active directory as a pickle file for later use. 
-    
+    This function saves the transformation pipeline and trained model object
+    into the current active directory as a pickle file for later use.
+
     Example
     -------
     >>> from pycaret.datasets import get_data
@@ -8862,20 +8878,20 @@ def save_model(model, model_name: str, model_only: bool = False, verbose: bool =
     >>> experiment_name = setup(data = juice,  target = 'Purchase')
     >>> lr = create_model('lr')
     >>> save_model(lr, 'lr_model_23122019')
-    
+
     This will save the transformation pipeline and model as a binary pickle
-    file in the current active directory. 
+    file in the current active directory.
 
     Parameters
     ----------
     model : object, default = none
-        A trained model object should be passed as an estimator. 
-    
+        A trained model object should be passed as an estimator.
+
     model_name : str, default = none
         Name of pickle file to be passed as a string.
-    
+
     model_only : bool, default = False
-        When set to True, only trained model object is saved and all the 
+        When set to True, only trained model object is saved and all the
         transformations are ignored.
 
     verbose: bool, default = True
@@ -8884,8 +8900,8 @@ def save_model(model, model_name: str, model_only: bool = False, verbose: bool =
     Returns
     -------
     Success_Message
-    
-         
+
+
     """
 
     import pycaret.internal.persistence
@@ -8903,26 +8919,26 @@ def load_model(
 ):
 
     """
-    This function loads a previously saved transformation pipeline and model 
-    from the current active directory into the current python environment. 
+    This function loads a previously saved transformation pipeline and model
+    from the current active directory into the current python environment.
     Load object must be a pickle file.
-    
+
     Example
     -------
     >>> saved_lr = load_model('lr_model_23122019')
-    
-    This will load the previously saved model in saved_lr variable. The file 
+
+    This will load the previously saved model in saved_lr variable. The file
     must be in the current directory.
 
     Parameters
     ----------
     model_name : str, default = none
         Name of pickle file to be passed as a string.
-      
+
     platform: str, default = None
         Name of platform, if loading model from cloud. Current available options are:
         'aws', 'gcp' and 'azure'.
-    
+
     authentication : dict
         dictionary of applicable authentication tokens.
 
@@ -8934,7 +8950,7 @@ def load_model(
 
         When platform = 'azure':
         {'container': 'pycaret-test'}
-    
+
     verbose: bool, default = True
         Success message is not printed when verbose is set to False.
 
@@ -8954,8 +8970,8 @@ def load_model(
 def automl(optimize: str = "Accuracy", use_holdout: bool = False) -> Any:
 
     """
-    This function returns the best model out of all models created in 
-    current active environment based on metric defined in optimize parameter. 
+    This function returns the best model out of all models created in
+    current active environment based on metric defined in optimize parameter.
 
     Parameters
     ----------
@@ -9078,7 +9094,7 @@ def models(
     -------
     >>> _all_models = models()
 
-    This will return pandas dataframe with all available 
+    This will return pandas dataframe with all available
     models and their metadata.
 
     Parameters
@@ -9087,7 +9103,7 @@ def models(
         - linear : filters and only return linear models
         - tree : filters and only return tree based models
         - ensemble : filters and only return ensemble models
-    
+
     internal: bool, default = False
         If True, will return extra columns and rows used internally.
 
@@ -9183,7 +9199,7 @@ def get_metrics(
     -------
     >>> metrics = get_metrics()
 
-    This will return pandas dataframe with all available 
+    This will return pandas dataframe with all available
     metrics and their metadata.
 
     Parameters
@@ -9377,7 +9393,7 @@ def get_logs(experiment_name: Optional[str] = None, save: bool = False) -> pd.Da
 
     """
     Returns a table with experiment logs consisting
-    run details, parameter, metrics and tags. 
+    run details, parameter, metrics and tags.
 
     Example
     -------
@@ -9431,7 +9447,7 @@ def get_config(variable: str):
     Following variables can be accessed:
 
     - X: Transformed dataset (X)
-    - y: Transformed dataset (y)  
+    - y: Transformed dataset (y)
     - X_train: Transformed train dataset (X)
     - X_test: Transformed test/holdout dataset (X)
     - y_train: Transformed train dataset (y)
@@ -9456,7 +9472,7 @@ def get_config(variable: str):
 
     Example
     -------
-    >>> X_train = get_config('X_train') 
+    >>> X_train = get_config('X_train')
 
     This will return X_train transformed dataset.
 
@@ -9478,7 +9494,7 @@ def set_config(variable: str, value):
     Following variables can be accessed:
 
     - X: Transformed dataset (X)
-    - y: Transformed dataset (y)  
+    - y: Transformed dataset (y)
     - X_train: Transformed train dataset (X)
     - X_test: Transformed test/holdout dataset (X)
     - y_train: Transformed train dataset (y)
@@ -9501,7 +9517,7 @@ def set_config(variable: str, value):
 
     Example
     -------
-    >>> set_config('seed', 123) 
+    >>> set_config('seed', 123)
 
     This will set the global seed to '123'.
 
@@ -9520,7 +9536,7 @@ def save_config(file_name: str):
 
     Example
     -------
-    >>> save_config('myvars.pkl') 
+    >>> save_config('myvars.pkl')
 
     This will save all enviroment variables to 'myvars.pkl'.
 
@@ -9540,7 +9556,7 @@ def load_config(file_name: str):
 
     Example
     -------
-    >>> load_config('myvars.pkl') 
+    >>> load_config('myvars.pkl')
 
     This will load all enviroment variables from 'myvars.pkl'.
 
@@ -9624,8 +9640,8 @@ def _choose_better(
     """
     When choose_better is set to True, optimize metric in scoregrid is
     compared with base model created using create_model so that the
-    functions return the model with better score only. This will ensure 
-    model performance is at least equivalent to what is seen in compare_models 
+    functions return the model with better score only. This will ensure
+    model performance is at least equivalent to what is seen in compare_models
     """
 
     logger = get_logger()
