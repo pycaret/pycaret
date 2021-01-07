@@ -1,7 +1,7 @@
 ![alt text](https://github.com/pycaret/pycaret/blob/master/pycaret2.2.png)
 
 # PyCaret 2.2
-![pytest on push](https://github.com/pycaret/pycaret/workflows/pytest%20on%20push/badge.svg) [![Documentation Status](https://readthedocs.org/projects/pip/badge/?version=stable)](http://pip.pypa.io/en/stable/?badge=stable) [![PyPI version](https://badge.fury.io/py/pycaret.svg)](https://badge.fury.io/py/pycaret) [![License](https://img.shields.io/pypi/l/ansicolortags.svg)](https://img.shields.io/pypi/l/ansicolortags.svg) [![Git count](http://hits.dwyl.com/pycaret/pycaret/pycaret.svg)](http://hits.dwyl.com/pycaret/pycaret/pycaret)
+![pytest on push](https://github.com/pycaret/pycaret/workflows/pytest%20on%20push/badge.svg) [![Documentation Status](https://readthedocs.org/projects/pip/badge/?version=stable)](http://pip.pypa.io/en/stable/?badge=stable) [![PyPI version](https://badge.fury.io/py/pycaret.svg)](https://badge.fury.io/py/pycaret) [![License](https://img.shields.io/pypi/l/ansicolortags.svg)](https://img.shields.io/pypi/l/ansicolortags.svg) [![Git count](http://hits.dwyl.com/pycaret/pycaret/pycaret.svg)](http://hits.dwyl.com/pycaret/pycaret/pycaret) [![Slack](https://img.shields.io/badge/slack-chat-green.svg?logo=slack)](https://join.slack.com/t/pycaretworkspace/shared_invite/zt-kdoe7hee-yvNANPHXPM9VtK7R6Npx4Q)
 
 ## What is PyCaret?
 PyCaret is an open-source, low-code machine learning library in Python that automates machine learning workflows. It is an end-to-end machine learning and model management tool that speeds up the experiment cycle exponentially and makes you more productive.
@@ -71,6 +71,7 @@ cuML >= 0.15 cannot be installed on Google Colab. Instead use blazingSQL (https:
 - Other Resources: https://github.com/pycaret/pycaret/tree/master/resources 
 - Issue Logs: https://github.com/pycaret/pycaret/issues
 - Contribute: https://pycaret.readthedocs.io/en/latest/contribute.html
+- Join Slack Community: https://join.slack.com/t/pycaretworkspace/shared_invite/zt-kdoe7hee-yvNANPHXPM9VtK7R6Npx4Q  
 
 ## Who should use PyCaret?
 PyCaret is an open source library that anybody can use. In our view the ideal target audience of PyCaret is: <br />

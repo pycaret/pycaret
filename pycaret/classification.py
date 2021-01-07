@@ -1008,6 +1008,7 @@ def tune_model(
             - 'grid' : grid search
             - 'bayesian' : ``pip install scikit-optimize``
             - 'hyperopt' : ``pip install hyperopt``
+            - 'optuna' : ``pip install optuna``
             - 'bohb' : ``pip install hpbandster ConfigSpace``
 
         - 'optuna' possible values:
@@ -1432,6 +1433,7 @@ def plot_model(
     groups: Optional[Union[str, Any]] = None,
     use_train_data: bool = False,
     verbose: bool = True,
+    display_format = None
 ) -> str:
 
     """
@@ -1509,6 +1511,9 @@ def plot_model(
 
     verbose: bool, default = True
         When set to False, progress bar is not displayed.
+        
+    display_format: str, default = None
+        To display plots in [Streamlit](https://www.streamlit.io/), set this to 'streamlit'.
 
 
     Returns:
@@ -1539,6 +1544,7 @@ def plot_model(
         verbose=verbose,
         use_train_data=use_train_data,
         system=True,
+        display_format=display_format
     )
 
 
