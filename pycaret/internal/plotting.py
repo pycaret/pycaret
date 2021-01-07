@@ -6,6 +6,47 @@ from typing import Any, Optional
 from pycaret.internal.logging import get_logger
 from pycaret.internal.Display import Display
 import scikitplot as skplt
+import matplotlib.pyplot as plt
+
+def show_yellowbrick_in_streamlit(
+    visualizer, outpath=None, clear_figure=False, **kwargs
+):
+    """
+    Makes the magic happen and a visualizer appear! You can pass in a path to
+    save the figure to disk with various backends, or you can call it with no
+    arguments to show the figure either in a notebook or in a GUI window that
+    pops up on screen.
+
+    Parameters
+    ----------
+    outpath: string, default: None
+        path or None. Save figure to disk or if None show in window
+
+    clear_figure: boolean, default: False
+        When True, this flag clears the figure after saving to file or
+        showing on screen. This is useful when making consecutive plots.
+
+    kwargs: dict
+        generic keyword arguments.
+
+    Notes
+    -----
+    Developers of visualizers don't usually override show, as it is
+    primarily called by the user to render the visualization.
+    """
+    # Finalize the figure
+    visualizer.finalize()
+
+    if outpath is not None:
+        plt.savefig(outpath, **kwargs)
+    else:
+        plt.show()
+
+    if clear_figure:
+        visualizer.fig.clear()
+
+    # Return ax to ensure display in notebooks
+    return visualizer.ax
 
 
 def show_yellowbrick_plot(
