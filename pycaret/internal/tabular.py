@@ -5585,7 +5585,7 @@ def plot_model(
     verbose: bool = True,
     system: bool = True,
     display: Optional[Display] = None,  # added in pycaret==2.2.0
-    display_format=None,
+    display_format: Optional[str] = None,
 ) -> str:
 
     """

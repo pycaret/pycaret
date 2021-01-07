@@ -595,7 +595,7 @@ def plot_model(
     label: bool = False,
     scale: float = 1,
     save: bool = False,
-    display_format = None
+    display_format: Optional[str] = None
 ):
 
     """
