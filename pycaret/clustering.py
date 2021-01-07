@@ -595,6 +595,7 @@ def plot_model(
     label: bool = False,
     scale: float = 1,
     save: bool = False,
+    display_format = None
 ):
 
     """
@@ -645,6 +646,9 @@ def plot_model(
 
     save: bool, default = False
         When set to True, plot is saved in the current working directory.
+        
+    display_format: str, default = None
+        To display plots in [Streamlit](https://www.streamlit.io/), set this to 'streamlit'.
 
 
     Returns:
@@ -652,7 +656,7 @@ def plot_model(
 
     """
     return pycaret.internal.tabular.plot_model(
-        model, plot=plot, feature_name=feature, label=label, scale=scale, save=save
+        model, plot=plot, feature_name=feature, label=label, scale=scale, save=save, display_format=display_format
     )
 
 

@@ -5564,6 +5564,7 @@ def plot_model(
     verbose: bool = True,
     system: bool = True,
     display: Optional[Display] = None,  # added in pycaret==2.2.0
+    display_format=None
 ) -> str:
 
     """
@@ -5635,6 +5636,9 @@ def plot_model(
 
     system: bool, default = True
         Must remain True all times. Only to be changed by internal functions.
+        
+    display_format: str, default = None
+        To display plots in [Streamlit](https://www.streamlit.io/), set this to 'streamlit'.
 
     Returns
     -------
@@ -5747,6 +5751,12 @@ def plot_model(
         raise TypeError(
             "feature parameter must be string containing column name of dataset."
         )
+        
+    # checking display_format parameter
+    plot_formats = [None, "streamlit"]
+    
+    if display_format not in plot_formats:
+        raise ValueError("display_format can only be None or 'streamlit'.")
 
     """
     
@@ -5921,7 +5931,10 @@ def plot_model(
                         )
 
                     elif system:
-                        fig.show()
+                        if display_format=="streamlit":
+                            st.write(fig)
+                        else:
+                            fig.show()
 
                     logger.info("Visual Rendered Successfully")
                     return plot_filename
@@ -5983,7 +5996,10 @@ def plot_model(
                             f"Saving '{plot_filename}' in current active directory"
                         )
                     elif system:
-                        fig.show()
+                        if display_format=="streamlit":
+                            st.write(fig)
+                        else:
+                            fig.show()
 
                     logger.info("Visual Rendered Successfully")
                     return plot_filename
@@ -6065,7 +6081,10 @@ def plot_model(
                             f"Saving '{plot_filename}' in current active directory"
                         )
                     elif system:
-                        fig.show()
+                        if display_format=="streamlit":
+                            st.write(fig)
+                        else:
+                            fig.show()
 
                     logger.info("Visual Rendered Successfully")
                     return plot_filename
@@ -6163,7 +6182,10 @@ def plot_model(
                             f"Saving '{plot_filename}' in current active directory"
                         )
                     elif system:
-                        fig.show()
+                        if display_format=="streamlit":
+                            st.write(fig)
+                        else:
+                            fig.show()
 
                     logger.info("Visual Rendered Successfully")
                     return plot_filename
@@ -7241,6 +7263,7 @@ def evaluate_model(
         use_train_data=fixed(use_train_data),
         system=fixed(True),
         display=fixed(None),
+        display_format=fixed(None),
     )
 
 
