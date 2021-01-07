@@ -32,6 +32,7 @@ def test_sklearn_pipeline_simple_imputer():
     simple_imputer = pycaret.internal.preprocess.Simple_Imputer(
         numeric_strategy='mean',
         categorical_strategy='most frequent',
+        time_strategy='most frequent',
         target=target)
 
     # Apply the simple imputer to both the categorical and numeric features
@@ -66,12 +67,15 @@ def test_simple_imputer():
     """
 
     # Load an example dataset and set the features and target
-    data = pycaret.datasets.get_data("juice")
+    test_length = 6
+    data = pycaret.datasets.get_data("juice")[0:test_length]
     target = "Purchase"
 
     # Add columns for testing additional data types
-    data["time"] = pd.to_datetime('now')
-    data["time_delta"] = datetime.timedelta(days=10)
+    data["time"] = pd.date_range(datetime.datetime(2020, 12, 1), periods=test_length, freq='d')
+    data.loc[3:7, "time"] = pd.to_datetime(datetime.datetime(2020, 12, 30))
+    data["time_delta_day"] = datetime.timedelta(days=10)
+    data["time_delta_hour"] = datetime.timedelta(hours=10)
     data["missing_num_col"] = 100
     data["missing_num_col"] = data["missing_num_col"].astype("int32")
 
@@ -82,6 +86,7 @@ def test_simple_imputer():
     simple_imputer = pycaret.internal.preprocess.Simple_Imputer(
         numeric_strategy='mean',
         categorical_strategy='most frequent',
+        time_strategy='mean',
         target=target)
     result = simple_imputer.fit_transform(data)
 
@@ -93,8 +98,9 @@ def test_simple_imputer():
     assert result.isnull().sum().sum() == 0
 
     # Check if the missing values are imputed to the correct values
-    assert result.loc[0, "time"] == result.loc[1, "time"]
-    assert result.loc[0, "time_delta"] == datetime.timedelta(days=10)
+    assert result.loc[0, "time"] == pd.to_datetime(datetime.datetime(2020, 12, 19))
+    assert result.loc[0, "time_delta_day"] == datetime.timedelta(days=10)
+    assert result.loc[0, "time_delta_hour"] == datetime.timedelta(hours=10)
     assert result.loc[0, "missing_num_col"] == 100
 
 
