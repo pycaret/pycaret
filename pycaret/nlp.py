@@ -1861,7 +1861,7 @@ def assign_model(model, verbose=True):
     return bb_
 
 
-def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=True):
+def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=True, display_format = None):
 
     """
     This function takes a trained model object (optional) and returns a plot based 
@@ -1914,6 +1914,9 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
 
     system: bool, default = True
         Must remain True all times. Only to be changed by internal functions.
+        
+    display_format: str, default = None
+        To display plots in [Streamlit](https://www.streamlit.io/), set this to 'streamlit'.
 
 
     Returns:
@@ -2040,6 +2043,12 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
                 "(Type Error): Model not supported for plot = topic_model. Please see docstring for list of available models supported for topic_model."
             )
 
+    # checking display_format parameter
+    plot_formats = [None, "streamlit"]
+    
+    if display_format not in plot_formats:
+        raise ValueError("display_format can only be None or 'streamlit'.")
+            
     """
     error handling ends here
     """
@@ -2089,18 +2098,36 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
                 logger.warning("topic_num set to None. Plot generated at corpus level.")
                 common_words = get_top_n_words(data_[target_], n=100)
                 df2 = pd.DataFrame(common_words, columns=["Text", "count"])
-                df3 = (
-                    df2.groupby("Text")
-                    .sum()["count"]
-                    .sort_values(ascending=False)
-                    .iplot(
-                        kind="bar",
-                        yTitle="Count",
-                        linecolor="black",
-                        title="Top 100 words after removing stop words",
-                        asFigure=save_param,
+                
+                if display_format=="streamlit":
+                    df3 = (
+                        df2.groupby("Text")
+                        .sum()["count"]
+                        .sort_values(ascending=False)
+                        .iplot(
+                            kind="bar",
+                            yTitle="Count",
+                            linecolor="black",
+                            title="Top 100 words after removing stop words",
+                            asFigure=True # plotly obj needs to be returned for streamlit to interpret
+                        )
                     )
-                )
+                    
+                    st.write(df3)
+                    
+                else:
+                    df3 = (
+                        df2.groupby("Text")
+                        .sum()["count"]
+                        .sort_values(ascending=False)
+                        .iplot(
+                            kind="bar",
+                            yTitle="Count",
+                            linecolor="black",
+                            title="Top 100 words after removing stop words",
+                            asFigure=save_param,
+                        )
+                    )
 
             else:
                 title = (
@@ -2118,18 +2145,36 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
                 ]
                 common_words = get_top_n_words(filtered_df[target_], n=100)
                 df2 = pd.DataFrame(common_words, columns=["Text", "count"])
-                df3 = (
-                    df2.groupby("Text")
-                    .sum()["count"]
-                    .sort_values(ascending=False)
-                    .iplot(
-                        kind="bar",
-                        yTitle="Count",
-                        linecolor="black",
-                        title=title,
-                        asFigure=save_param,
+                
+                if display_format=="streamlit":
+                    df3 = (
+                        df2.groupby("Text")
+                        .sum()["count"]
+                        .sort_values(ascending=False)
+                        .iplot(
+                            kind="bar",
+                            yTitle="Count",
+                            linecolor="black",
+                            title=title,
+                            asFigure=True # plotly obj needs to be returned for streamlit to interpret
+                        )
                     )
-                )
+                    
+                    st.write(df3)
+                    
+                else:
+                    df3 = (
+                        df2.groupby("Text")
+                        .sum()["count"]
+                        .sort_values(ascending=False)
+                        .iplot(
+                            kind="bar",
+                            yTitle="Count",
+                            linecolor="black",
+                            title=title,
+                            asFigure=save_param,
+                        )
+                    )
 
             logger.info("Visual Rendered Successfully")
 
@@ -2154,15 +2199,30 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
                 b = data_[target_].apply(lambda x: len(str(x).split()))
                 b = pd.DataFrame(b)
                 logger.info("Rendering Visual")
-                b = b[target_].iplot(
-                    kind="hist",
-                    bins=100,
-                    xTitle="word count",
-                    linecolor="black",
-                    yTitle="count",
-                    title="Word Count Distribution",
-                    asFigure=save_param,
-                )
+                
+                if display_format=="streamlit":
+                    b = b[target_].iplot(
+                        kind="hist",
+                        bins=100,
+                        xTitle="word count",
+                        linecolor="black",
+                        yTitle="count",
+                        title="Word Count Distribution",
+                        asFigure=True # plotly obj needs to be returned for streamlit to interpret
+                    )
+                    
+                    st.write(b)
+                    
+                else:
+                    b = b[target_].iplot(
+                        kind="hist",
+                        bins=100,
+                        xTitle="word count",
+                        linecolor="black",
+                        yTitle="count",
+                        title="Word Count Distribution",
+                        asFigure=save_param
+                    )
 
             else:
                 title = str(topic_num) + ": " + "Word Count Distribution"
@@ -2180,15 +2240,30 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
                 b = filtered_df[target_].apply(lambda x: len(str(x).split()))
                 b = pd.DataFrame(b)
                 logger.info("Rendering Visual")
-                b = b[target_].iplot(
-                    kind="hist",
-                    bins=100,
-                    xTitle="word count",
-                    linecolor="black",
-                    yTitle="count",
-                    title=title,
-                    asFigure=save_param,
-                )
+                
+                if display_format=="streamlit":
+                    b = b[target_].iplot(
+                        kind="hist",
+                        bins=100,
+                        xTitle="word count",
+                        linecolor="black",
+                        yTitle="count",
+                        title=title,
+                        asFigure=True # plotly obj needs to be returned for streamlit to interpret
+                    )
+                    
+                    st.write(b)
+                    
+                else:
+                    b = b[target_].iplot(
+                        kind="hist",
+                        bins=100,
+                        xTitle="word count",
+                        linecolor="black",
+                        yTitle="count",
+                        title=title,
+                        asFigure=save_param
+                    )
 
             logger.info("Visual Rendered Successfully")
 
@@ -2226,18 +2301,36 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
                 common_words = get_top_n_bigram(data_[target_], 100)
                 df3 = pd.DataFrame(common_words, columns=["Text", "count"])
                 logger.info("Rendering Visual")
-                df3 = (
-                    df3.groupby("Text")
-                    .sum()["count"]
-                    .sort_values(ascending=False)
-                    .iplot(
-                        kind="bar",
-                        yTitle="Count",
-                        linecolor="black",
-                        title="Top 100 bigrams after removing stop words",
-                        asFigure=save_param,
+                
+                if display_format=="streamlit":
+                    df3 = (
+                        df3.groupby("Text")
+                        .sum()["count"]
+                        .sort_values(ascending=False)
+                        .iplot(
+                            kind="bar",
+                            yTitle="Count",
+                            linecolor="black",
+                            title="Top 100 bigrams after removing stop words",
+                            asFigure=True # plotly obj needs to be returned for streamlit to interpret
+                        )
                     )
-                )
+                    
+                    st.write(df3)
+                    
+                else:
+                    df3 = (
+                        df3.groupby("Text")
+                        .sum()["count"]
+                        .sort_values(ascending=False)
+                        .iplot(
+                            kind="bar",
+                            yTitle="Count",
+                            linecolor="black",
+                            title="Top 100 bigrams after removing stop words",
+                            asFigure=save_param
+                        )
+                    )
 
             else:
                 title = (
@@ -2256,18 +2349,36 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
                 common_words = get_top_n_bigram(filtered_df[target_], 100)
                 df3 = pd.DataFrame(common_words, columns=["Text", "count"])
                 logger.info("Rendering Visual")
-                df3 = (
-                    df3.groupby("Text")
-                    .sum()["count"]
-                    .sort_values(ascending=False)
-                    .iplot(
-                        kind="bar",
-                        yTitle="Count",
-                        linecolor="black",
-                        title=title,
-                        asFigure=save_param,
+                
+                if display_format=="streamlit":
+                    df3 = (
+                        df3.groupby("Text")
+                        .sum()["count"]
+                        .sort_values(ascending=False)
+                        .iplot(
+                            kind="bar",
+                            yTitle="Count",
+                            linecolor="black",
+                            title=title,
+                            asFigure=True # plotly obj needs to be returned for streamlit to interpret
+                        )
                     )
-                )
+                    
+                    st.write(df3)
+                    
+                else:
+                    df3 = (
+                        df3.groupby("Text")
+                        .sum()["count"]
+                        .sort_values(ascending=False)
+                        .iplot(
+                            kind="bar",
+                            yTitle="Count",
+                            linecolor="black",
+                            title=title,
+                            asFigure=save_param
+                        )
+                    )
 
             logger.info("Visual Rendered Successfully")
 
@@ -2305,19 +2416,37 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
                 common_words = get_top_n_trigram(data_[target_], 100)
                 df3 = pd.DataFrame(common_words, columns=["Text", "count"])
                 logger.info("Rendering Visual")
-                df3 = (
-                    df3.groupby("Text")
-                    .sum()["count"]
-                    .sort_values(ascending=False)
-                    .iplot(
-                        kind="bar",
-                        yTitle="Count",
-                        linecolor="black",
-                        title="Top 100 trigrams after removing stop words",
-                        asFigure=save_param,
+                
+                if display_format=="streamlit":
+                    df3 = (
+                        df3.groupby("Text")
+                        .sum()["count"]
+                        .sort_values(ascending=False)
+                        .iplot(
+                            kind="bar",
+                            yTitle="Count",
+                            linecolor="black",
+                            title="Top 100 trigrams after removing stop words",
+                            asFigure=True # plotly obj needs to be returned for streamlit to interpret
+                        )
                     )
-                )
-
+                    
+                    st.write(df3)
+                    
+                else:
+                    df3 = (
+                        df3.groupby("Text")
+                        .sum()["count"]
+                        .sort_values(ascending=False)
+                        .iplot(
+                            kind="bar",
+                            yTitle="Count",
+                            linecolor="black",
+                            title="Top 100 trigrams after removing stop words",
+                            asFigure=save_param
+                        )
+                    )
+                    
             else:
                 title = (
                     str(topic_num) + ": " + "Top 100 trigrams after removing stop words"
@@ -2335,19 +2464,37 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
                 common_words = get_top_n_trigram(filtered_df[target_], 100)
                 df3 = pd.DataFrame(common_words, columns=["Text", "count"])
                 logger.info("Rendering Visual")
-                df3 = (
-                    df3.groupby("Text")
-                    .sum()["count"]
-                    .sort_values(ascending=False)
-                    .iplot(
-                        kind="bar",
-                        yTitle="Count",
-                        linecolor="black",
-                        title=title,
-                        asFigure=save_param,
+                
+                if display_format=="streamlit":
+                    df3 = (
+                        df3.groupby("Text")
+                        .sum()["count"]
+                        .sort_values(ascending=False)
+                        .iplot(
+                            kind="bar",
+                            yTitle="Count",
+                            linecolor="black",
+                            title=title,
+                            asFigure=True # plotly obj needs to be returned for streamlit to interpret
+                        )
                     )
-                )
-
+                    
+                    st.write(df3)
+                    
+                else:
+                    df3 = (
+                        df3.groupby("Text")
+                        .sum()["count"]
+                        .sort_values(ascending=False)
+                        .iplot(
+                            kind="bar",
+                            yTitle="Count",
+                            linecolor="black",
+                            title=title,
+                            asFigure=save_param
+                        )
+                    )
+                    
             logger.info("Visual Rendered Successfully")
 
             if save:
@@ -2377,16 +2524,31 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
                 )
                 sentiments = pd.DataFrame(sentiments)
                 logger.info("Rendering Visual")
-                sentiments = sentiments[target_].iplot(
-                    kind="hist",
-                    bins=50,
-                    xTitle="polarity",
-                    linecolor="black",
-                    yTitle="count",
-                    title="Sentiment Polarity Distribution",
-                    asFigure=save_param,
-                )
-
+                
+                if display_format=="streamlit":
+                    sentiments = sentiments[target_].iplot(
+                        kind="hist",
+                        bins=50,
+                        xTitle="polarity",
+                        linecolor="black",
+                        yTitle="count",
+                        title="Sentiment Polarity Distribution",
+                        asFigure=True # plotly obj needs to be returned for streamlit to interpret
+                    )
+                    
+                    st.write(sentiments)
+                    
+                else:
+                    sentiments = sentiments[target_].iplot(
+                        kind="hist",
+                        bins=50,
+                        xTitle="polarity",
+                        linecolor="black",
+                        yTitle="count",
+                        title="Sentiment Polarity Distribution",
+                        asFigure=save_param
+                    )
+                    
             else:
                 title = str(topic_num) + ": " + "Sentiment Polarity Distribution"
                 logger.info(
@@ -2404,16 +2566,31 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
                 )
                 sentiments = pd.DataFrame(sentiments)
                 logger.info("Rendering Visual")
-                sentiments = sentiments[target_].iplot(
-                    kind="hist",
-                    bins=50,
-                    xTitle="polarity",
-                    linecolor="black",
-                    yTitle="count",
-                    title=title,
-                    asFigure=save_param,
-                )
-
+                
+                if display_format=="streamlit":
+                    sentiments = sentiments[target_].iplot(
+                        kind="hist",
+                        bins=50,
+                        xTitle="polarity",
+                        linecolor="black",
+                        yTitle="count",
+                        title=title,
+                        asFigure=True # plotly obj needs to be returned for streamlit to interpret
+                    )
+                    
+                    st.write(sentiments)
+                    
+                else:
+                    sentiments = sentiments[target_].iplot(
+                        kind="hist",
+                        bins=50,
+                        xTitle="polarity",
+                        linecolor="black",
+                        yTitle="count",
+                        title=title,
+                        asFigure=save_param
+                    )
+                    
             logger.info("Visual Rendered Successfully")
 
             if save:
@@ -2439,14 +2616,27 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
         pos_df = pos_df.loc[pos_df["pos"] != "POS"]
         pos_df = pos_df.pos.value_counts()[:20]
         logger.info("Rendering Visual")
-        pos_df = pos_df.iplot(
-            kind="bar",
-            xTitle="POS",
-            yTitle="count",
-            title="Top 20 Part-of-speech tagging for review corpus",
-            asFigure=save_param,
-        )
-
+        
+        if display_format=="streamlit":
+            pos_df = pos_df.iplot(
+                kind="bar",
+                xTitle="POS",
+                yTitle="count",
+                title="Top 20 Part-of-speech tagging for review corpus",
+                asFigure=True # plotly obj needs to be returned for streamlit to interpret
+            )
+            
+            st.write(pos_df)
+            
+        else:
+            pos_df = pos_df.iplot(
+                kind="bar",
+                xTitle="POS",
+                yTitle="count",
+                title="Top 20 Part-of-speech tagging for review corpus",
+                asFigure=save_param
+            )
+            
         logger.info("Visual Rendered Sucessfully")
 
         if save:
@@ -2498,7 +2688,10 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
         )
 
         if system:
-            fig.show()
+            if display_format=="streamlit":
+                st.write(fig)
+            else:
+                fig.show()
 
         logger.info("Visual Rendered Successfully")
 
@@ -2621,7 +2814,10 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
         )
 
         if system:
-            fig.show()
+            if display_format=="streamlit":
+                st.write(fig)
+            else:
+                fig.show()
 
         logger.info("Visual Rendered Successfully")
 
@@ -2683,7 +2879,10 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
                 logger.info("Saving 'Wordcloud.png' in current active directory")
 
             else:
-                plt.show()
+                if display_format=="streamlit":
+                    st.write(plt)
+                else:
+                    plt.show()
 
             logger.info("Visual Rendered Successfully")
 
@@ -2734,7 +2933,10 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
             logger.info("Saving 'UMAP.png' in current active directory")
 
         else:
-            umap.show()
+            if display_format=="streamlit":
+                st.write(umap)
+            else:
+                umap.show()
 
         logger.info("Visual Rendered Successfully")
 
@@ -4057,6 +4259,7 @@ def evaluate_model(model):
         topic_num=b,
         save=fixed(False),
         system=fixed(True),
+        display_format=fixed(None),
     )
 
 

@@ -10,22 +10,22 @@ def setup(data, transaction_id, item_id, ignore_items=None, session_id=None):
     """
     This function initializes the environment in pycaret. setup() must called before
     executing any other function in pycaret. It takes three mandatory parameters:
-    (i) data, (ii) transaction_id param identifying basket and (iii) item_id param 
-    used to create rules. These three params are normally found in any transactional 
-    dataset. pycaret will internally convert the pandas.DataFrame into a sparse matrix 
+    (i) data, (ii) transaction_id param identifying basket and (iii) item_id param
+    used to create rules. These three params are normally found in any transactional
+    dataset. pycaret will internally convert the pandas.DataFrame into a sparse matrix
     which is required for association rules mining.
 
-    
+
     Example
     -------
     >>> from pycaret.datasets import get_data
     >>> data = get_data('france')
     >>> from pycaret.arules import *
     >>> exp = setup(data = data, transaction_id = 'InvoiceNo', item_id = 'Description')
-        
+
 
     data: pandas.DataFrame
-        Shape (n_samples, n_features) where n_samples is the number of samples and 
+        Shape (n_samples, n_features) where n_samples is the number of samples and
         n_features is the number of features.
 
 
@@ -36,20 +36,20 @@ def setup(data, transaction_id, item_id, ignore_items=None, session_id=None):
     item_id: str
         Name of column used for creation of rules. Normally, this will be the variable of
         interest.
-    
+
 
     ignore_items: list, default = None
         List of strings to be ignored when considering rule mining.
 
 
     session_id: int, default = None
-        If None, a random seed is generated and returned in the Information grid. The 
-        unique number is then distributed as a seed in all functions used during the 
+        If None, a random seed is generated and returned in the Information grid. The
+        unique number is then distributed as a seed in all functions used during the
         experiment. This can be used for later reproducibility of the entire experiment.
 
 
     Returns:
-        Global variables. 
+        Global variables.
 
     """
 
@@ -118,8 +118,8 @@ def setup(data, transaction_id, item_id, ignore_items=None, session_id=None):
 def create_model(metric="confidence", threshold=0.5, min_support=0.05, round=4):
 
     """
-    This function creates an association rules model using data and identifiers 
-    passed at setup stage. This function internally transforms the data for 
+    This function creates an association rules model using data and identifiers
+    passed at setup stage. This function internally transforms the data for
     association rule mining.
 
 
@@ -133,8 +133,8 @@ def create_model(metric="confidence", threshold=0.5, min_support=0.05, round=4):
 
 
     metric: str, default = 'confidence'
-        Metric to evaluate if a rule is of interest. Default is set to confidence. 
-        Other available metrics include 'support', 'lift', 'leverage', 'conviction'. 
+        Metric to evaluate if a rule is of interest. Default is set to confidence.
+        Other available metrics include 'support', 'lift', 'leverage', 'conviction'.
         These metrics are computed as follows:
 
         * support(A->C) = support(A+C) [aka 'support'], range: [0, 1]
@@ -142,31 +142,31 @@ def create_model(metric="confidence", threshold=0.5, min_support=0.05, round=4):
         * lift(A->C) = confidence(A->C) / support(C), range: [0, inf]
         * leverage(A->C) = support(A->C) - support(A)*support(C), range: [-1, 1]
         * conviction = [1 - support(C)] / [1 - confidence(A->C)], range: [0, inf]
-    
+
 
     threshold: float, default = 0.5
         Minimal threshold for the evaluation metric, via the `metric` parameter,
         to decide whether a candidate rule is of interest.
-    
+
 
     min_support: float, default = 0.05
         A float between 0 and 1 for minumum support of the itemsets returned.
         The support is computed as the fraction `transactions_where_item(s)_occur /
         total_transactions`.
-    
+
 
     round: int, default = 4
-        Number of decimal places metrics in score grid will be rounded to. 
+        Number of decimal places metrics in score grid will be rounded to.
 
 
     Returns:
         pandas.DataFrame
-        
+
 
     Warnings
     --------
     - Setting low values for min_support may increase training time.
-  
+
     """
 
     # loading dependencies
@@ -214,12 +214,10 @@ def create_model(metric="confidence", threshold=0.5, min_support=0.05, round=4):
     return rules
 
 
-def plot_model(
-    model, plot="2d", scale=1,
-):
+def plot_model(model, plot="2d", scale=1, display_format=None):
 
     """
-    This function takes a model dataframe returned by create_model() function. 
+    This function takes a model dataframe returned by create_model() function.
     '2d' and '3d' plots are available.
 
 
@@ -238,7 +236,7 @@ def plot_model(
 
 
     plot: str, default = '2d'
-        Enter abbreviation of type of plot. The current list of plots supported are 
+        Enter abbreviation of type of plot. The current list of plots supported are
         (Name - Abbreviated String):
 
         * Support, Confidence and Lift (2d) - '2d'
@@ -248,9 +246,34 @@ def plot_model(
     scale: float, default = 1
         The resolution scale of the figure.
 
+    display_format: str, default = None
+        To display plots in [Streamlit](https://www.streamlit.io/), set this to 'streamlit'.
+
     Returns:
         None
-        
+
+    """
+
+    # error handling
+
+    # check if model is a pandas dataframe
+    if isinstance(model, pd.DataFrame) == False:
+        raise TypeError("Model needs to be a pandas.DataFrame object.")
+
+    # check plot parameter
+    plot_types = ["2d", "3d"]
+
+    if plot not in plot_types:
+        raise ValueError("Plots can only be '2d' or '3d'.")
+
+    # checking display_format parameter
+    plot_formats = [None, "streamlit"]
+
+    if display_format not in plot_formats:
+        raise ValueError("display_format can only be None or 'streamlit'.")
+
+    """
+    error handling ends here
     """
 
     # loading libraries
@@ -315,8 +338,6 @@ def plot_model(
             height=800 * scale, title_text="2D Plot of Support, Confidence and Lift"
         )
 
-        fig.show()
-
     if plot == "3d":
 
         fig = px.scatter_3d(
@@ -331,6 +352,10 @@ def plot_model(
             height=800 * scale,
             hover_data=["antecedents", "consequents"],
         )
+
+    if display_format == "streamlit":
+        st.write(fig)
+    else:
         fig.show()
 
 

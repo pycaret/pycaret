@@ -4,8 +4,6 @@
 
 from typing import Dict, Hashable, Optional
 
-from ray.tune.sample import LogUniform
-
 try:
     from collections.abc import Hashable
 except:
@@ -155,6 +153,7 @@ class IntUniformDistribution(Distribution):
     def get_tune(self):
         from ray import tune
         from ray.tune.sample import Integer
+        from ray.tune.sample import LogUniform
 
         class LogUniformInteger(Integer):
             class _LogUniform(LogUniform):

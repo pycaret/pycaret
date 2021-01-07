@@ -1399,6 +1399,7 @@ def plot_model(
     groups: Optional[Union[str, Any]] = None,
     use_train_data: bool = False,
     verbose: bool = True,
+    display_format = None
 ) -> str:
 
     """
@@ -1471,6 +1472,10 @@ def plot_model(
         When set to False, progress bar is not displayed.
 
 
+    display_format: str, default = None
+        To display plots in [Streamlit](https://www.streamlit.io/), set this to 'streamlit'.
+
+
     Returns:
         None
 
@@ -1486,6 +1491,7 @@ def plot_model(
         groups=groups,
         verbose=verbose,
         use_train_data=use_train_data,
+        display_format=display_format,
     )
 
 

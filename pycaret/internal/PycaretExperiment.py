@@ -921,7 +921,7 @@ class _TabularExperiment(_PyCaretExperiment):
             self.exp_name_log = experiment_name
             self.logger = create_logger(experiment_name)
         else:
-            # create exp_name_log param incase logging is False
+            # create exp_name_log parameter incase logging is False
             self.exp_name_log = "no_logging"
 
         self.logger.info(f"PyCaret {type(self).__name__}")
@@ -939,16 +939,22 @@ class _TabularExperiment(_PyCaretExperiment):
         self.logger.info("Checking Exceptions")
 
         # checking data type
-        if hasattr(data, "shape") is False:
+        if not isinstance(data, pd.DataFrame):
             raise TypeError("data passed must be of type pandas.DataFrame")
+        if data.shape[0] == 0:
+            raise ValueError("data passed must be a positive dataframe")
 
         # checking train size parameter
         if type(train_size) is not float:
             raise TypeError("train_size parameter only accepts float value.")
+        if train_size <= 0 or train_size > 1:
+            raise ValueError("train_size parameter has to be positive and not above 1.")
 
         # checking target parameter
         if not self._is_unsupervised() and target not in data.columns:
-            raise ValueError("Target parameter doesnt exist in the data provided.")
+            raise ValueError(
+                f"Target parameter: {target} does not exist in the data provided."
+            )
 
         # checking session_id
         if session_id is not None:
@@ -981,7 +987,7 @@ class _TabularExperiment(_PyCaretExperiment):
         allowed_imputation_type = ["simple", "iterative"]
         if imputation_type not in allowed_imputation_type:
             raise ValueError(
-                "imputation_type param only accepts 'simple' or 'iterative'"
+                f"imputation_type parameter only accepts {', '.join(allowed_imputation_type)}."
             )
 
         if (
@@ -996,7 +1002,7 @@ class _TabularExperiment(_PyCaretExperiment):
         allowed_categorical_imputation = ["constant", "mode"]
         if categorical_imputation not in allowed_categorical_imputation:
             raise ValueError(
-                "categorical_imputation param only accepts 'constant' or 'mode'"
+                f"categorical_imputation parameter only accepts {', '.join(allowed_categorical_imputation)}."
             )
 
         # ordinal_features
@@ -1015,13 +1021,13 @@ class _TabularExperiment(_PyCaretExperiment):
             for i in ord_keys:
                 if i not in data_cols:
                     raise ValueError(
-                        "Column name passed as a key in ordinal_features param doesnt exist."
+                        "Column name passed as a key in ordinal_features parameter doesnt exist."
                     )
 
             for k in ord_keys:
                 if data[k].nunique() != len(ordinal_features[k]):
                     raise ValueError(
-                        "Levels passed in ordinal_features param doesnt match with levels in data."
+                        "Levels passed in ordinal_features parameter doesnt match with levels in data."
                     )
 
             for i in ord_keys:
@@ -1037,15 +1043,15 @@ class _TabularExperiment(_PyCaretExperiment):
         if high_cardinality_features is not None:
             if type(high_cardinality_features) is not list:
                 raise TypeError(
-                    "high_cardinality_features param only accepts name of columns as a list."
+                    "high_cardinality_features parameter only accepts name of columns as a list."
                 )
 
         if high_cardinality_features is not None:
             data_cols = data.columns.drop(target, errors="ignore")
-            for i in high_cardinality_features:
-                if i not in data_cols:
+            for high_cardinality_feature in high_cardinality_features:
+                if high_cardinality_feature not in data_cols:
                     raise ValueError(
-                        "Column type forced is either target column or doesn't exist in the dataset."
+                        f"Item {high_cardinality_feature} in high_cardinality_features parameter is either target column or doesn't exist in the dataset."
                     )
 
         # stratify
@@ -1055,40 +1061,40 @@ class _TabularExperiment(_PyCaretExperiment):
                 and type(data_split_stratify) is not bool
             ):
                 raise TypeError(
-                    "data_split_stratify param only accepts a bool or a list of strings."
+                    "data_split_stratify parameter only accepts a bool or a list of strings."
                 )
 
             if not data_split_shuffle:
                 raise TypeError(
-                    "data_split_stratify param requires data_split_shuffle to be set to True."
+                    "data_split_stratify parameter requires data_split_shuffle to be set to True."
                 )
 
         # high_cardinality_methods
         high_cardinality_allowed_methods = ["frequency", "clustering"]
         if high_cardinality_method not in high_cardinality_allowed_methods:
             raise ValueError(
-                "high_cardinality_method param only accepts 'frequency' or 'clustering'"
+                f"high_cardinality_method parameter only accepts {', '.join(high_cardinality_allowed_methods)}."
             )
 
         # checking numeric imputation
         allowed_numeric_imputation = ["mean", "median", "zero"]
         if numeric_imputation not in allowed_numeric_imputation:
             raise ValueError(
-                f"numeric_imputation param only accepts {', '.join(allowed_numeric_imputation)}."
+                f"numeric_imputation parameter only accepts {', '.join(allowed_numeric_imputation)}."
             )
 
         # checking normalize method
         allowed_normalize_method = ["zscore", "minmax", "maxabs", "robust"]
         if normalize_method not in allowed_normalize_method:
             raise ValueError(
-                f"normalize_method param only accepts {', '.join(allowed_normalize_method)}."
+                f"normalize_method parameter only accepts {', '.join(allowed_normalize_method)}."
             )
 
         # checking transformation method
         allowed_transformation_method = ["yeo-johnson", "quantile"]
         if transformation_method not in allowed_transformation_method:
             raise ValueError(
-                f"transformation_method param only accepts {', '.join(allowed_transformation_method)}."
+                f"transformation_method parameter only accepts {', '.join(allowed_transformation_method)}."
             )
 
         # handle unknown categorical
@@ -1113,7 +1119,7 @@ class _TabularExperiment(_PyCaretExperiment):
         allowed_pca_methods = ["linear", "kernel", "incremental"]
         if pca_method not in allowed_pca_methods:
             raise ValueError(
-                f"pca method param only accepts {', '.join(allowed_pca_methods)}."
+                f"pca method parameter only accepts {', '.join(allowed_pca_methods)}."
             )
 
         # pca components check
@@ -1153,15 +1159,27 @@ class _TabularExperiment(_PyCaretExperiment):
             raise TypeError("combine_rare_levels parameter only accepts True or False.")
 
         # check rare_level_threshold
-        if type(rare_level_threshold) is not float:
-            raise TypeError("rare_level_threshold must be a float between 0 and 1.")
+        if (
+            type(rare_level_threshold) is not float
+            and rare_level_threshold < 0
+            or rare_level_threshold > 1
+        ):
+            raise TypeError(
+                "rare_level_threshold parameter must be a float between 0 and 1."
+            )
 
         # bin numeric features
         if bin_numeric_features is not None:
-            for i in bin_numeric_features:
-                if i not in all_cols:
+            if type(bin_numeric_features) is not list:
+                raise TypeError("bin_numeric_features parameter must be a list.")
+            for bin_numeric_feature in bin_numeric_features:
+                if type(bin_numeric_feature) is not str:
+                    raise TypeError(
+                        "bin_numeric_features parameter item must be a string."
+                    )
+                if bin_numeric_feature not in all_cols:
                     raise ValueError(
-                        "Column type forced is either target column or doesn't exist in the dataset."
+                        f"bin_numeric_feature: {bin_numeric_feature} is either target column or does not exist in the dataset."
                     )
 
         # remove_outliers
@@ -1384,7 +1402,7 @@ class _TabularExperiment(_PyCaretExperiment):
         allowed_transform_target_method = ["box-cox", "yeo-johnson"]
         if transform_target_method not in allowed_transform_target_method:
             raise ValueError(
-                f"transform_target_method param only accepts {', '.join(allowed_transform_target_method)}."
+                f"transform_target_method parameter only accepts {', '.join(allowed_transform_target_method)}."
             )
 
         # pandas option
@@ -1667,7 +1685,7 @@ class _TabularExperiment(_PyCaretExperiment):
                 or hasattr(self.imputation_regressor, "predict")
             ):
                 raise ValueError(
-                    f"numeric_iterative_imputer param must be either a scikit-learn estimator or a string - one of {', '.join(iterative_imputer_regression_models.keys())}."
+                    f"numeric_iterative_imputer parameter must be either a scikit-learn estimator or a string - one of {', '.join(iterative_imputer_regression_models.keys())}."
                 )
 
             if not (
@@ -1679,7 +1697,7 @@ class _TabularExperiment(_PyCaretExperiment):
                 or hasattr(self.imputation_classifier, "predict")
             ):
                 raise ValueError(
-                    f"categorical_iterative_imputer param must be either a scikit-learn estimator or a string - one of {', '.join(iterative_imputer_classification_models.keys())}."
+                    f"categorical_iterative_imputer parameter must be either a scikit-learn estimator or a string - one of {', '.join(iterative_imputer_classification_models.keys())}."
                 )
 
             if isinstance(self.imputation_regressor, str):
@@ -2260,6 +2278,7 @@ class _TabularExperiment(_PyCaretExperiment):
         verbose: bool = True,
         system: bool = True,
         display: Optional[Display] = None,  # added in pycaret==2.2.0
+        display_format: Optional[str] = None,
     ) -> str:
 
         """
@@ -2324,7 +2343,7 @@ class _TabularExperiment(_PyCaretExperiment):
             Optional Group labels for the samples used while splitting the dataset into train/test set.
             If string is passed, will use the data column with that name as the groups.
             Only used if a group based cross-validation generator is used (eg. GroupKFold).
-            If None, will use the value set in fold_groups param in setup().
+            If None, will use the value set in fold_groups parameter in setup().
 
         verbose: bool, default = True
             Progress bar not shown when verbose set to False. 
@@ -2332,12 +2351,15 @@ class _TabularExperiment(_PyCaretExperiment):
         system: bool, default = True
             Must remain True all times. Only to be changed by internal functions.
 
+        display_format: str, default = None
+            To display plots in [Streamlit](https://www.streamlit.io/), set this to 'streamlit'.
+
         Returns
         -------
         Visual_Plot
             Prints the visual plot. 
         str:
-            If save param is True, will return the name of the saved file.
+            If save parameter is True, will return the name of the saved file.
 
         Warnings
         --------
@@ -2367,6 +2389,12 @@ class _TabularExperiment(_PyCaretExperiment):
             raise ValueError(
                 "Plot Not Available. Please see docstring for list of available Plots."
             )
+
+        # checking display_format parameter
+        plot_formats = [None, "streamlit"]
+
+        if display_format not in plot_formats:
+            raise ValueError("display_format can only be None or 'streamlit'.")
 
         # multiclass plot exceptions:
         multiclass_not_available = ["calibration", "threshold", "manifold", "rfe"]
@@ -2434,10 +2462,10 @@ class _TabularExperiment(_PyCaretExperiment):
             )
 
         if type(label) is not bool:
-            raise TypeError("Label param only accepts True or False.")
+            raise TypeError("Label parameter only accepts True or False.")
 
         if type(use_train_data) is not bool:
-            raise TypeError("use_train_data param only accepts True or False.")
+            raise TypeError("use_train_data parameter only accepts True or False.")
 
         if feature_name is not None and type(feature_name) is not str:
             raise TypeError(
@@ -2621,7 +2649,10 @@ class _TabularExperiment(_PyCaretExperiment):
                             )
 
                         elif system:
-                            fig.show()
+                            if display_format == "streamlit":
+                                st.write(fig)
+                            else:
+                                fig.show()
 
                         self.logger.info("Visual Rendered Successfully")
                         return plot_filename
@@ -2683,7 +2714,10 @@ class _TabularExperiment(_PyCaretExperiment):
                                 f"Saving '{plot_filename}' in current active directory"
                             )
                         elif system:
-                            fig.show()
+                            if display_format == "streamlit":
+                                st.write(fig)
+                            else:
+                                fig.show()
 
                         self.logger.info("Visual Rendered Successfully")
                         return plot_filename
@@ -2767,7 +2801,10 @@ class _TabularExperiment(_PyCaretExperiment):
                                 f"Saving '{plot_filename}' in current active directory"
                             )
                         elif system:
-                            fig.show()
+                            if display_format == "streamlit":
+                                st.write(fig)
+                            else:
+                                fig.show()
 
                         self.logger.info("Visual Rendered Successfully")
                         return plot_filename
@@ -2867,7 +2904,10 @@ class _TabularExperiment(_PyCaretExperiment):
                                 f"Saving '{plot_filename}' in current active directory"
                             )
                         elif system:
-                            fig.show()
+                            if display_format == "streamlit":
+                                st.write(fig)
+                            else:
+                                fig.show()
 
                         self.logger.info("Visual Rendered Successfully")
                         return plot_filename
@@ -2937,7 +2977,10 @@ class _TabularExperiment(_PyCaretExperiment):
                                 f"Saving '{plot_filename}' in current active directory"
                             )
                         elif system:
-                            fig.show()
+                            if display_format == "streamlit":
+                                st.write(fig)
+                            else:
+                                fig.show()
 
                         self.logger.info("Visual Rendered Successfully")
                         return plot_filename
@@ -3956,7 +3999,7 @@ class _TabularExperiment(_PyCaretExperiment):
             Optional Group labels for the samples used while splitting the dataset into train/test set.
             If string is passed, will use the data column with that name as the groups.
             Only used if a group based cross-validation generator is used (eg. GroupKFold).
-            If None, will use the value set in fold_groups param in setup().
+            If None, will use the value set in fold_groups parameter in setup().
 
         Returns
         -------
@@ -4003,6 +4046,7 @@ class _TabularExperiment(_PyCaretExperiment):
             use_train_data=fixed(use_train_data),
             system=fixed(True),
             display=fixed(None),
+            display_format=fixed(None),
         )
 
     def predict_model(self, *args, **kwargs) -> pd.DataFrame:
@@ -4022,7 +4066,7 @@ class _TabularExperiment(_PyCaretExperiment):
         Parameters
         ----------
         optimize : str, default = 'Accuracy'
-            Other values you can pass in optimize param are 'AUC', 'Recall', 'Precision',
+            Other values you can pass in optimize parameter are 'AUC', 'Recall', 'Precision',
             'F1', 'Kappa', and 'MCC'.
 
         use_holdout: bool, default = False
@@ -4212,7 +4256,7 @@ class _TabularExperiment(_PyCaretExperiment):
 
         This function deploys the transformation pipeline and trained model object for
         production use. The platform of deployment can be defined under the platform
-        param along with the applicable authentication tokens which are passed as a
+        parameter along with the applicable authentication tokens which are passed as a
         dictionary to the authentication param.
         
         Example
@@ -4691,7 +4735,7 @@ class _SupervisedExperiment(_TabularExperiment):
         This function returns all of the models compared, sorted by the value of the selected metric.
 
         When turbo is set to True ('rbfsvm', 'gpc' and 'mlp') are excluded due to longer
-        training time. By default turbo param is set to True.
+        training time. By default turbo parameter is set to True.
 
         Example
         -------
@@ -4701,7 +4745,7 @@ class _SupervisedExperiment(_TabularExperiment):
         >>> best_model = compare_models() 
 
         This will return the averaged score grid of all the models except 'rbfsvm', 'gpc' 
-        and 'mlp'. When turbo param is set to False, all models including 'rbfsvm', 'gpc' 
+        and 'mlp'. When turbo parameter is set to False, all models including 'rbfsvm', 'gpc' 
         and 'mlp' are used but this may result in longer training time.
         
         >>> best_model = compare_models( exclude = [ 'knn', 'gbc' ] , turbo = False) 
@@ -4772,7 +4816,7 @@ class _SupervisedExperiment(_TabularExperiment):
             Optional Group labels for the samples used while splitting the dataset into train/test set.
             If string is passed, will use the data column with that name as the groups.
             Only used if a group based cross-validation generator is used (eg. GroupKFold).
-            If None, will use the value set in fold_groups param in setup().
+            If None, will use the value set in fold_groups parameter in setup().
 
         verbose: bool, default = True
             Score grid is not printed when verbose is set to False.
@@ -4799,7 +4843,7 @@ class _SupervisedExperiment(_TabularExperiment):
         - If target variable is multiclass (more than 2 classes), AUC will be 
         returned as zero (0.0)
 
-        - If cross_validation param is set to False, no models will be logged with MLFlow.
+        - If cross_validation parameter is set to False, no models will be logged with MLFlow.
 
         """
 
@@ -5363,7 +5407,7 @@ class _SupervisedExperiment(_TabularExperiment):
             Optional Group labels for the samples used while splitting the dataset into train/test set.
             If string is passed, will use the data column with that name as the groups.
             Only used if a group based cross-validation generator is used (eg. GroupKFold).
-            If None, will use the value set in fold_groups param in setup().
+            If None, will use the value set in fold_groups parameter in setup().
 
         refit: bool, default = True
             Whether to refit the model on the entire dataset after CV. Ignored if cross_validation == False.
@@ -5409,7 +5453,7 @@ class _SupervisedExperiment(_TabularExperiment):
         more than quadratic. These estimators are hard to scale on datasets with more 
         than 10,000 samples.
 
-        - If cross_validation param is set to False, model will not be logged with MLFlow.
+        - If cross_validation parameter is set to False, model will not be logged with MLFlow.
 
         """
 
@@ -5927,7 +5971,7 @@ class _SupervisedExperiment(_TabularExperiment):
             Optional Group labels for the samples used while splitting the dataset into train/test set.
             If string is passed, will use the data column with that name as the groups.
             Only used if a group based cross-validation generator is used (eg. GroupKFold).
-            If None, will use the value set in fold_groups param in setup().
+            If None, will use the value set in fold_groups parameter in setup().
 
         return_tuner: bool, default = False
             If True, will reutrn a tuple of (model, tuner_object). Otherwise,
@@ -5938,7 +5982,7 @@ class _SupervisedExperiment(_TabularExperiment):
 
         tuner_verbose: bool or in, default = True
             If True or above 0, will print messages from the tuner. Higher values
-            print more messages. Ignored if verbose param is False.
+            print more messages. Ignored if verbose parameter is False.
 
         **kwargs: 
             Additional keyword arguments to pass to the optimizer.
@@ -5955,7 +5999,7 @@ class _SupervisedExperiment(_TabularExperiment):
             Trained and tuned model object.
 
         tuner_object
-            Only if return_tuner param is True. The object used for tuning.
+            Only if return_tuner parameter is True. The object used for tuning.
 
         Notes
         -----
@@ -6518,14 +6562,14 @@ class _SupervisedExperiment(_TabularExperiment):
                             param_grid.pop("actual_estimator__n_estimators")
                         else:
                             raise ValueError(
-                                "Param grid cannot contain n_estimators or max_iter if early_stopping is True and the model is warm started. Use early_stopping_max_iters params to set the upper bound of n_estimators or max_iter."
+                                "parameter grid cannot contain n_estimators or max_iter if early_stopping is True and the model is warm started. Use early_stopping_max_iters params to set the upper bound of n_estimators or max_iter."
                             )
                     if "actual_estimator__max_iter" in param_grid:
                         if custom_grid is None:
                             param_grid.pop("actual_estimator__max_iter")
                         else:
                             raise ValueError(
-                                "Param grid cannot contain n_estimators or max_iter if early_stopping is True and the model is warm started. Use early_stopping_max_iters params to set the upper bound of n_estimators or max_iter."
+                                "parameter grid cannot contain n_estimators or max_iter if early_stopping is True and the model is warm started. Use early_stopping_max_iters params to set the upper bound of n_estimators or max_iter."
                             )
 
                 from tune_sklearn import TuneSearchCV, TuneGridSearchCV
@@ -6782,7 +6826,7 @@ class _SupervisedExperiment(_TabularExperiment):
     ) -> Any:
         """
         This function ensembles the trained base estimator using the method defined in 
-        'method' param (default = 'Bagging'). The output prints a score grid that shows 
+        'method' parameter (default = 'Bagging'). The output prints a score grid that shows 
         Accuracy, AUC, Recall, Precision, F1, Kappa and MCC by fold (default = 10 Fold). 
 
         This function returns a trained model object.  
@@ -6843,7 +6887,7 @@ class _SupervisedExperiment(_TabularExperiment):
             Optional Group labels for the samples used while splitting the dataset into train/test set.
             If string is passed, will use the data column with that name as the groups.
             Only used if a group based cross-validation generator is used (eg. GroupKFold).
-            If None, will use the value set in fold_groups param in setup().
+            If None, will use the value set in fold_groups parameter in setup().
 
         verbose: bool, default = True
             Score grid is not printed when verbose is set to False.
@@ -7196,7 +7240,7 @@ class _SupervisedExperiment(_TabularExperiment):
             Optional Group labels for the samples used while splitting the dataset into train/test set.
             If string is passed, will use the data column with that name as the groups.
             Only used if a group based cross-validation generator is used (eg. GroupKFold).
-            If None, will use the value set in fold_groups param in setup().
+            If None, will use the value set in fold_groups parameter in setup().
 
         verbose: bool, default = True
             Score grid is not printed when verbose is set to False.
@@ -7256,7 +7300,7 @@ class _SupervisedExperiment(_TabularExperiment):
                     f"Estimator {i} does not have the required fit() method."
                 )
             if self._ml_usecase == MLUsecase.CLASSIFICATION:
-                # checking method param with estimator list
+                # checking method parameter with estimator list
                 if method != "hard":
 
                     for i in estimator_list:
@@ -7496,7 +7540,7 @@ class _SupervisedExperiment(_TabularExperiment):
 
         """
         This function trains a meta model and scores it using Cross Validation.
-        The predictions from the base level models as passed in the estimator_list param 
+        The predictions from the base level models as passed in the estimator_list parameter 
         are used as input features for the meta model. The restacking parameter controls
         the ability to expose raw features to the meta model when set to True
         (default = False).
@@ -7567,7 +7611,7 @@ class _SupervisedExperiment(_TabularExperiment):
             Optional Group labels for the samples used while splitting the dataset into train/test set.
             If string is passed, will use the data column with that name as the groups.
             Only used if a group based cross-validation generator is used (eg. GroupKFold).
-            If None, will use the value set in fold_groups param in setup().
+            If None, will use the value set in fold_groups parameter in setup().
 
         verbose: bool, default = True
             Score grid is not printed when verbose is set to False.
@@ -8189,7 +8233,7 @@ class _SupervisedExperiment(_TabularExperiment):
         # Check if type is valid
         if type not in list(model_type) + [None]:
             raise ValueError(
-                f"type param only accepts {', '.join(list(model_type) + str(None))}."
+                f"type parameter only accepts {', '.join(list(model_type) + str(None))}."
             )
 
         self.logger.info(f"gpu_param set to {self.gpu_param}")
@@ -8411,7 +8455,7 @@ class _SupervisedExperiment(_TabularExperiment):
             Optional Group labels for the samples used while splitting the dataset into train/test set.
             If string is passed, will use the data column with that name as the groups.
             Only used if a group based cross-validation generator is used (eg. GroupKFold).
-            If None, will use the value set in fold_groups param in setup().
+            If None, will use the value set in fold_groups parameter in setup().
 
         model_only : bool, default = True
             When set to True, only trained model object is saved and all the 
@@ -8525,7 +8569,7 @@ class _SupervisedExperiment(_TabularExperiment):
 
         """
         This function is used to predict label and probability score on the new dataset
-        using a trained estimator. New unseen data can be passed to data param as pandas 
+        using a trained estimator. New unseen data can be passed to data parameter as pandas 
         Dataframe. If data is not passed, the test / hold-out set separated at the time of 
         setup() is used to generate predictions. 
         
@@ -9091,7 +9135,7 @@ class _UnsupervisedExperiment(_TabularExperiment):
             ml_usecase = MLUsecase.REGRESSION
         else:
             raise ValueError(
-                f"supervised_type param must be either 'classification' or 'regression'."
+                f"supervised_type parameter must be either 'classification' or 'regression'."
             )
 
         fold = self._get_cv_splitter(fold, ml_usecase)
@@ -9124,7 +9168,7 @@ class _UnsupervisedExperiment(_TabularExperiment):
             )
 
         if custom_grid is not None and not isinstance(custom_grid, list):
-            raise ValueError(f"custom_grid param must be a list.")
+            raise ValueError(f"custom_grid parameter must be a list.")
 
         # checking round parameter
         if type(round) is not int:
@@ -9212,7 +9256,7 @@ class _UnsupervisedExperiment(_TabularExperiment):
                     )
                 except ValueError:
                     raise ValueError(
-                        f"Model {model} cannot be used in this function as its number of clusters cannot be set (n_clusters param required)."
+                        f"Model {model} cannot be used in this function as its number of clusters cannot be set (n_clusters parameter required)."
                     )
             else:
                 new_model, _ = self.create_model(
@@ -9476,7 +9520,7 @@ class _UnsupervisedExperiment(_TabularExperiment):
         if transformation:
             data = self.X.copy()
             self.logger.info(
-                "Transformation param set to True. Assigned clusters are attached on transformed dataset."
+                "Transformation parameter set to True. Assigned clusters are attached on transformed dataset."
             )
         else:
             data = self.data_before_preprocess.copy()
@@ -9626,7 +9670,7 @@ class _UnsupervisedExperiment(_TabularExperiment):
             A table containing the Silhouette, Calinski-Harabasz,  
             Davies-Bouldin, Homogeneity Score, Rand Index, and 
             Completeness Score. Last 3 are only evaluated when
-            ground_truth param is provided.
+            ground_truth parameter is provided.
 
         model
             trained model object
@@ -9635,7 +9679,7 @@ class _UnsupervisedExperiment(_TabularExperiment):
         --------
         - num_clusters not required for Affinity Propagation ('ap'), Mean shift 
         clustering ('meanshift'), Density-Based Spatial Clustering ('dbscan')
-        and OPTICS Clustering ('optics'). num_clusters param for these models 
+        and OPTICS Clustering ('optics'). num_clusters parameter for these models 
         are automatically determined.
         
         - When fit doesn't converge in Affinity Propagation ('ap') model, all 
@@ -10096,8 +10140,8 @@ class RegressionExperiment(_SupervisedExperiment):
 
 
         categorical_features: list of str, default = None
-            If the inferred data types are not correct or the silent param is set to True,
-            categorical_features param can be used to overwrite or define the data types. 
+            If the inferred data types are not correct or the silent parameter is set to True,
+            categorical_features parameter can be used to overwrite or define the data types. 
             It takes a list of strings with column names that are categorical.
 
 
@@ -10133,8 +10177,8 @@ class RegressionExperiment(_SupervisedExperiment):
 
 
         numeric_features: list of str, default = None
-            If the inferred data types are not correct or the silent param is set to True,
-            numeric_features param can be used to overwrite or define the data types. 
+            If the inferred data types are not correct or the silent parameter is set to True,
+            numeric_features parameter can be used to overwrite or define the data types. 
             It takes a list of strings with column names that are numeric.
 
 
@@ -10149,13 +10193,13 @@ class RegressionExperiment(_SupervisedExperiment):
 
 
         date_features: list of str, default = None
-            If the inferred data types are not correct or the silent param is set to True,
-            date_features param can be used to overwrite or define the data types. It takes 
+            If the inferred data types are not correct or the silent parameter is set to True,
+            date_features parameter can be used to overwrite or define the data types. It takes 
             a list of strings with column names that are DateTime.
 
 
         ignore_features: list of str, default = None
-            ignore_features param can be used to ignore features during model training.
+            ignore_features parameter can be used to ignore features during model training.
             It takes a list of strings with column names that are to be ignored.
 
 
@@ -10992,7 +11036,7 @@ class RegressionExperiment(_SupervisedExperiment):
 
         tuner_verbose: bool or in, default = True
             If True or above 0, will print messages from the tuner. Higher values
-            print more messages. Ignored when ``verbose`` param is False.
+            print more messages. Ignored when ``verbose`` parameter is False.
 
 
         **kwargs: 
@@ -12299,8 +12343,8 @@ class ClassificationExperiment(_SupervisedExperiment):
 
 
         categorical_features: list of str, default = None
-            If the inferred data types are not correct or the silent param is set to True,
-            categorical_features param can be used to overwrite or define the data types. 
+            If the inferred data types are not correct or the silent parameter is set to True,
+            categorical_features parameter can be used to overwrite or define the data types. 
             It takes a list of strings with column names that are categorical.
 
 
@@ -12336,8 +12380,8 @@ class ClassificationExperiment(_SupervisedExperiment):
 
 
         numeric_features: list of str, default = None
-            If the inferred data types are not correct or the silent param is set to True,
-            numeric_features param can be used to overwrite or define the data types. 
+            If the inferred data types are not correct or the silent parameter is set to True,
+            numeric_features parameter can be used to overwrite or define the data types. 
             It takes a list of strings with column names that are numeric.
 
 
@@ -12352,13 +12396,13 @@ class ClassificationExperiment(_SupervisedExperiment):
 
 
         date_features: list of str, default = None
-            If the inferred data types are not correct or the silent param is set to True,
-            date_features param can be used to overwrite or define the data types. It takes 
+            If the inferred data types are not correct or the silent parameter is set to True,
+            date_features parameter can be used to overwrite or define the data types. It takes 
             a list of strings with column names that are DateTime.
 
 
         ignore_features: list of str, default = None
-            ignore_features param can be used to ignore features during model training.
+            ignore_features parameter can be used to ignore features during model training.
             It takes a list of strings with column names that are to be ignored.
 
 
@@ -13185,7 +13229,7 @@ class ClassificationExperiment(_SupervisedExperiment):
 
         tuner_verbose: bool or in, default = True
             If True or above 0, will print messages from the tuner. Higher values
-            print more messages. Ignored when ``verbose`` param is False.
+            print more messages. Ignored when ``verbose`` parameter is False.
 
 
         **kwargs: 
@@ -13860,7 +13904,7 @@ class ClassificationExperiment(_SupervisedExperiment):
             Optional Group labels for the samples used while splitting the dataset into train/test set.
             If string is passed, will use the data column with that name as the groups.
             Only used if a group based cross-validation generator is used (eg. GroupKFold).
-            If None, will use the value set in fold_groups param in setup().
+            If None, will use the value set in fold_groups parameter in setup().
 
         verbose: bool, default = True
             Score grid is not printed when verbose is set to False.
