@@ -34,13 +34,15 @@ def show_yellowbrick_in_streamlit(
     Developers of visualizers don't usually override show, as it is
     primarily called by the user to render the visualization.
     """
+    import streamlit as st
+
     # Finalize the figure
     visualizer.finalize()
 
     if outpath is not None:
         plt.savefig(outpath, **kwargs)
     else:
-        plt.show()
+        st.write(visualizer.fig)
 
     if clear_figure:
         visualizer.fig.clear()
@@ -63,6 +65,7 @@ def show_yellowbrick_plot(
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Any] = None,
     display: Optional[Display] = None,
+    display_format: Optional[str] = None,
     **kwargs,
 ):
     """
@@ -108,7 +111,10 @@ def show_yellowbrick_plot(
         logger.info(f"Saving '{name}.png' in current active directory")
         visualizer.show(outpath=f"{name}.png", clear_figure=True)
     else:
-        visualizer.show(clear_figure=True)
+        if display_format == "streamlit":
+            show_yellowbrick_in_streamlit(visualizer, clear_figure=True)
+        else:
+            visualizer.show(clear_figure=True)
 
     logger.info("Visual Rendered Successfully")
 
