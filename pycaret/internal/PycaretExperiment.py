@@ -2396,6 +2396,14 @@ class _TabularExperiment(_PyCaretExperiment):
         if display_format not in plot_formats:
             raise ValueError("display_format can only be None or 'streamlit'.")
 
+        if display_format == "streamlit":
+            try:
+                import streamlit as st
+            except ImportError:
+                raise ImportError(
+                    "It appears that streamlit is not installed. Do: pip install hpbandster ConfigSpace"
+                )
+
         # multiclass plot exceptions:
         multiclass_not_available = ["calibration", "threshold", "manifold", "rfe"]
         if self._is_multiclass():

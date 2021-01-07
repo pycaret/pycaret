@@ -550,7 +550,7 @@ def plot_model(
     label: bool = False,
     scale: float = 1,
     save: bool = False,
-    display_format=None,
+    display_format: Optional[str] = None
 ):
 
     """
@@ -598,6 +598,7 @@ def plot_model(
 
     display_format: str, default = None
         To display plots in [Streamlit](https://www.streamlit.io/), set this to 'streamlit'.
+        Currently, not all plots are supported.
 
 
     Returns:

@@ -1399,7 +1399,7 @@ def plot_model(
     groups: Optional[Union[str, Any]] = None,
     use_train_data: bool = False,
     verbose: bool = True,
-    display_format = None
+    display_format: Optional[str] = None
 ) -> str:
 
     """
@@ -1474,6 +1474,7 @@ def plot_model(
 
     display_format: str, default = None
         To display plots in [Streamlit](https://www.streamlit.io/), set this to 'streamlit'.
+        Currently, not all plots are supported.
 
 
     Returns:

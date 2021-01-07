@@ -1914,9 +1914,11 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
 
     system: bool, default = True
         Must remain True all times. Only to be changed by internal functions.
-        
+
+
     display_format: str, default = None
         To display plots in [Streamlit](https://www.streamlit.io/), set this to 'streamlit'.
+        Currently, not all plots are supported.
 
 
     Returns:
@@ -2048,7 +2050,15 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
     
     if display_format not in plot_formats:
         raise ValueError("display_format can only be None or 'streamlit'.")
-            
+
+    if display_format == "streamlit":
+        try:
+            import streamlit as st
+        except ImportError:
+            raise ImportError(
+                "It appears that streamlit is not installed. Do: pip install hpbandster ConfigSpace"
+            )
+
     """
     error handling ends here
     """
