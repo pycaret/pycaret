@@ -216,61 +216,27 @@ def setup(
         logger.info(f"Memory: {psutil.virtual_memory()}")
         logger.info(f"Physical Core: {psutil.cpu_count(logical=False)}")
         logger.info(f"Logical Core: {psutil.cpu_count(logical=True)}")
-    except:
+    except ImportError:
         logger.warning(
             "cannot find psutil installation. memory not traceable. Install psutil using pip to enable memory logging."
         )
 
     logger.info("Checking libraries")
 
-    try:
-        from pandas import __version__
+    for dep in [pandas, numpy, sklearn, xgboost, lightgbm, catboost]:
+        try:
+            from dep import __version__
+            logger.info(f"{dep}=={__version__}")
+        except ImportError:
+            logger.warning(f"{dep} not found")
 
-        logger.info(f"pd=={__version__}")
-    except:
-        logger.warning("pandas not found")
-
-    try:
-        from numpy import __version__
-
-        logger.info(f"numpy=={__version__}")
-    except:
-        logger.warning("numpy not found")
-
-    try:
-        from sklearn import __version__
-
-        logger.info(f"sklearn=={__version__}")
-    except:
-        logger.warning("sklearn not found")
-
-    try:
-        from xgboost import __version__
-
-        logger.info(f"xgboost=={__version__}")
-    except:
-        logger.warning("xgboost not found")
-
-    try:
-        from lightgbm import __version__
-
-        logger.info(f"lightgbm=={__version__}")
-    except:
-        logger.warning("lightgbm not found")
-
-    try:
-        from catboost import __version__
-
-        logger.info(f"catboost=={__version__}")
-    except:
-        logger.warning("catboost not found")
 
     try:
         from mlflow.version import VERSION
 
         warnings.filterwarnings("ignore")
         logger.info(f"mlflow=={VERSION}")
-    except:
+    except ImportError:
         logger.warning("mlflow not found")
 
     # run_time
