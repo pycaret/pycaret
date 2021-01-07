@@ -272,6 +272,14 @@ def plot_model(model, plot="2d", scale=1, display_format=None):
     if display_format not in plot_formats:
         raise ValueError("display_format can only be None or 'streamlit'.")
 
+    if display_format == "streamlit":
+        try:
+            import streamlit as st
+        except ImportError:
+            raise ImportError(
+                "It appears that streamlit is not installed. Do: pip install hpbandster ConfigSpace"
+            )
+
     """
     error handling ends here
     """
