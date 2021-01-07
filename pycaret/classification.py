@@ -1433,7 +1433,7 @@ def plot_model(
     groups: Optional[Union[str, Any]] = None,
     use_train_data: bool = False,
     verbose: bool = True,
-    display_format = None
+    display_format: Optional[str] = None
 ) -> str:
 
     """
