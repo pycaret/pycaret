@@ -3,7 +3,6 @@ import os, sys
 sys.path.insert(0, os.path.abspath(".."))
 
 import numpy as np
-import pandas as pd
 import pytest
 import pycaret.utils
 import pycaret.classification
