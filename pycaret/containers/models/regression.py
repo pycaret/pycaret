@@ -59,6 +59,9 @@ class RegressorContainer(ModelContainer):
         If None, will try to automatically determine.
     is_boosting_supported : bool, default = None
         If None, will try to automatically determine.
+    tunable : type, default = None
+        If a special tunable model is used for tuning, type of
+        that model, else None.
 
     Attributes
     ----------
@@ -89,6 +92,10 @@ class RegressorContainer(ModelContainer):
         If None, will try to automatically determine.
     is_boosting_supported : bool
         If None, will try to automatically determine.
+    tunable : type
+        If a special tunable model is used for tuning, type of
+        that model, else None.
+
     """
 
     def __init__(
@@ -105,6 +112,7 @@ class RegressorContainer(ModelContainer):
         tune_args: Dict[str, Any] = None,
         shap: Union[bool, str] = False,
         is_gpu_enabled: Optional[bool] = None,
+        tunable: Optional[type] = None,
     ) -> None:
 
         self.shap = shap
@@ -135,6 +143,7 @@ class RegressorContainer(ModelContainer):
         self.tune_grid = param_grid_to_lists(tune_grid)
         self.tune_distribution = tune_distribution
         self.tune_args = tune_args
+        self.tunable = tunable
 
         self.is_boosting_supported = True
         self.is_soft_voting_supported = True
@@ -178,6 +187,7 @@ class RegressorContainer(ModelContainer):
                 ("Tune Args", self.tune_args),
                 ("SHAP", self.shap),
                 ("GPU Enabled", self.is_gpu_enabled),
+                ("Tunable Class", self.tunable),
             ]
 
         return dict(d)
@@ -1333,7 +1343,8 @@ class MLPRegressorContainer(RegressorContainer):
         logger = get_logger()
         np.random.seed(globals_dict["seed"])
 
-        from pycaret.internal.tunable import TunableMLPRegressor as MLPRegressor
+        from sklearn.neural_network import MLPRegressor
+        from pycaret.internal.tunable import TunableMLPRegressor
 
         args = {"random_state": globals_dict["seed"], "max_iter": 500}
         tune_args = {}
@@ -1381,6 +1392,7 @@ class MLPRegressorContainer(RegressorContainer):
             tune_args=tune_args,
             is_turbo=False,
             shap=False,
+            tunable=TunableMLPRegressor,
         )
 
 
@@ -1717,7 +1729,8 @@ class VotingRegressorContainer(RegressorContainer):
     def __init__(self, globals_dict: dict) -> None:
         logger = get_logger()
         np.random.seed(globals_dict["seed"])
-        from pycaret.internal.tunable import TunableVotingRegressor as VotingRegressor
+        from sklearn.ensemble import VotingRegressor
+        from pycaret.internal.tunable import TunableVotingRegressor
 
         args = {}
         tune_args = {}
@@ -1740,6 +1753,7 @@ class VotingRegressorContainer(RegressorContainer):
             shap=False,
             is_special=True,
             is_gpu_enabled=False,
+            tunable=TunableVotingRegressor,
         )
 
 

@@ -63,6 +63,9 @@ class ClassifierContainer(ModelContainer):
         If None, will try to automatically determine.
     is_soft_voting_supported : bool, default = None
         If None, will try to automatically determine.
+    tunable : type, default = None
+        If a special tunable model is used for tuning, type of
+        that model, else None.
 
     Attributes
     ----------
@@ -95,7 +98,9 @@ class ClassifierContainer(ModelContainer):
         If None, will try to automatically determine.
     is_soft_voting_supported : bool
         If None, will try to automatically determine.
-
+    tunable : type
+        If a special tunable model is used for tuning, type of
+        that model, else None.
     """
 
     def __init__(
@@ -114,6 +119,7 @@ class ClassifierContainer(ModelContainer):
         is_gpu_enabled: Optional[bool] = None,
         is_boosting_supported: Optional[bool] = None,
         is_soft_voting_supported: Optional[bool] = None,
+        tunable: Optional[type] = None,
     ) -> None:
 
         self.shap = shap
@@ -144,6 +150,7 @@ class ClassifierContainer(ModelContainer):
         self.tune_grid = param_grid_to_lists(tune_grid)
         self.tune_distribution = tune_distribution
         self.tune_args = tune_args
+        self.tunable = tunable
 
         try:
             model_instance = class_def()
@@ -208,6 +215,7 @@ class ClassifierContainer(ModelContainer):
                 ("GPU Enabled", self.is_gpu_enabled),
                 ("Boosting Supported", self.is_boosting_supported),
                 ("Soft Voting", self.is_soft_voting_supported),
+                ("Tunable Class", self.tunable),
             ]
 
         return dict(d)
@@ -605,7 +613,8 @@ class MLPClassifierContainer(ClassifierContainer):
     def __init__(self, globals_dict: dict) -> None:
         logger = get_logger()
         np.random.seed(globals_dict["seed"])
-        from pycaret.internal.tunable import TunableMLPClassifier as MLPClassifier
+        from sklearn.neural_network import MLPClassifier
+        from pycaret.internal.tunable import TunableMLPClassifier
 
         args = {"random_state": globals_dict["seed"], "max_iter": 500}
         tune_args = {}
@@ -653,6 +662,7 @@ class MLPClassifierContainer(ClassifierContainer):
             tune_args=tune_args,
             shap=False,
             is_turbo=False,
+            tunable=TunableMLPClassifier,
         )
 
 
@@ -1364,7 +1374,8 @@ class VotingClassifierContainer(ClassifierContainer):
     def __init__(self, globals_dict: dict) -> None:
         logger = get_logger()
         np.random.seed(globals_dict["seed"])
-        from pycaret.internal.tunable import TunableVotingClassifier as VotingClassifier
+        from sklearn.ensemble import VotingClassifier
+        from pycaret.internal.tunable import TunableVotingClassifier
 
         args = {}
         tune_args = {}
@@ -1387,6 +1398,7 @@ class VotingClassifierContainer(ClassifierContainer):
             shap=False,
             is_special=True,
             is_gpu_enabled=False,
+            tunable=TunableVotingClassifier,
         )
 
 
