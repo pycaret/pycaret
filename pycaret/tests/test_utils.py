@@ -123,6 +123,10 @@ def test():
     assert isinstance(mape, float)
     assert mape >= 0
 
+    # Ensure metric is rounded to 2 decimals
+    mape = pycaret.utils.check_metric(actual, prediction, "MAPE", 2)
+    assert mape == 0.05
+
     # Metric does not exist
     with pytest.raises(ValueError, match="Couldn't find metric"):
         pycaret.utils.check_metric(actual, prediction, "INEXISTENTMETRIC")
