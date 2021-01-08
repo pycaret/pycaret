@@ -5,6 +5,7 @@
 # Last modified : 26/08/2020
 
 from enum import Enum, auto
+from importlib import import_module
 import math
 from pycaret.internal.meta_estimators import (
     PowerTransformedTargetRegressor,
@@ -223,10 +224,11 @@ def setup(
 
     logger.info("Checking libraries")
 
-    for dep in [pandas, numpy, sklearn, xgboost, lightgbm, catboost]:
+    for dep in ['pandas', 'numpy', 'sklearn', 'xgboost', 'lightgbm', 'catboost']:
         try:
-            from dep import __version__
-            logger.info(f"{dep}=={__version__}")
+            mod = import_module(dep)
+            version = getattr(mod, '__version__')
+            logger.info(f"{dep}=={version}")
         except ImportError:
             logger.warning(f"{dep} not found")
 
