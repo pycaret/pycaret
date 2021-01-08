@@ -27,7 +27,7 @@ def check_metric(actual: pd.Series, prediction: pd.Series, metric: str, round: i
 
     actual : pandas.Series
         Actual values of the target variable.
-    
+
 
     prediction : pandas.Series
         Predicted values of the target variable.
