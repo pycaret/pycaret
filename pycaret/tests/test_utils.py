@@ -127,6 +127,10 @@ def test():
     mape = pycaret.utils.check_metric(actual, prediction, "MAPE", 2)
     assert mape == 0.05
 
+    # Ensure metric is rounded to default value
+    mape = pycaret.utils.check_metric(actual, prediction, "MAPE")
+    assert mape == 0.0469
+
     # Metric does not exist
     with pytest.raises(ValueError, match="Couldn't find metric"):
         pycaret.utils.check_metric(actual, prediction, "INEXISTENTMETRIC")
