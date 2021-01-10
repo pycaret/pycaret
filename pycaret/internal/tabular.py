@@ -6653,7 +6653,7 @@ def plot_model(
                             logger.info(
                                 f"Saving '{plot_name}.png' in current active directory"
                             )
-                            plt.savefig(f"{plot_name}.png")
+                            plt.savefig(f"{plot_name}.png", bbox_inches='tight')
                         elif system:
                             plt.show()
                         plt.close()
@@ -6682,7 +6682,7 @@ def plot_model(
                             logger.info(
                                 f"Saving '{plot_name}.png' in current active directory"
                             )
-                            plt.savefig(f"{plot_name}.png")
+                            plt.savefig(f"{plot_name}.png", bbox_inches='tight')
                         elif system:
                             plt.show()
                         plt.close()
@@ -6884,7 +6884,7 @@ def plot_model(
                         logger.info(
                             f"Saving '{plot_name}.png' in current active directory"
                         )
-                        plt.savefig(f"{plot_name}.png")
+                        plt.savefig(f"{plot_name}.png", bbox_inches='tight')
                     elif system:
                         plt.show()
                     plt.close()
@@ -7162,7 +7162,7 @@ def plot_model(
                         logger.info(
                             f"Saving '{plot_name}.png' in current active directory"
                         )
-                        plt.savefig(f"{plot_name}.png")
+                        plt.savefig(f"{plot_name}.png", bbox_inches='tight')
                     elif system:
                         plt.show()
                     plt.close()
@@ -7438,7 +7438,7 @@ def interpret_model(
         shap_values = explainer.shap_values(test_X)
         shap_plot = shap.summary_plot(shap_values, test_X, show=show, **kwargs)
         if save:
-            plt.savefig(f"SHAP {plot}.png")
+            plt.savefig(f"SHAP {plot}.png", bbox_inches='tight')
         return shap_plot
 
     def correlation(show: bool = True):
@@ -7471,7 +7471,7 @@ def interpret_model(
             logger.info("model type detected: type 2")
             shap.dependence_plot(dependence, shap_values, test_X, show=show, **kwargs)
         if save:
-            plt.savefig(f"SHAP {plot}.png")
+            plt.savefig(f"SHAP {plot}.png", bbox_inches='tight')
         return None
 
     def reason(show: bool = True):
