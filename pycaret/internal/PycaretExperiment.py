@@ -3364,7 +3364,7 @@ class _TabularExperiment(_PyCaretExperiment):
                                 self.logger.info(
                                     f"Saving '{plot_name}.png' in current active directory"
                                 )
-                                plt.savefig(f"{plot_name}.png")
+                                plt.savefig(f"{plot_name}.png", bbox_inches='tight')
                             elif system:
                                 plt.show()
                             plt.close()
@@ -3401,7 +3401,7 @@ class _TabularExperiment(_PyCaretExperiment):
                                 self.logger.info(
                                     f"Saving '{plot_name}.png' in current active directory"
                                 )
-                                plt.savefig(f"{plot_name}.png")
+                                plt.savefig(f"{plot_name}.png", bbox_inches='tight')
                             elif system:
                                 plt.show()
                             plt.close()
@@ -3618,7 +3618,7 @@ class _TabularExperiment(_PyCaretExperiment):
                             self.logger.info(
                                 f"Saving '{plot_name}.png' in current active directory"
                             )
-                            plt.savefig(f"{plot_name}.png")
+                            plt.savefig(f"{plot_name}.png", bbox_inches='tight')
                         elif system:
                             plt.show()
                         plt.close()
@@ -3925,7 +3925,7 @@ class _TabularExperiment(_PyCaretExperiment):
                             self.logger.info(
                                 f"Saving '{plot_name}.png' in current active directory"
                             )
-                            plt.savefig(f"{plot_name}.png")
+                            plt.savefig(f"{plot_name}.png", bbox_inches='tight')
                         elif system:
                             plt.show()
                         plt.close()
@@ -8031,7 +8031,7 @@ class _SupervisedExperiment(_TabularExperiment):
             shap_values = explainer.shap_values(test_X)
             shap_plot = shap.summary_plot(shap_values, test_X, show=show, **kwargs)
             if save:
-                plt.savefig(f"SHAP {plot}.png")
+                plt.savefig(f"SHAP {plot}.png", bbox_inches='tight')
             return shap_plot
 
         def correlation(show: bool = True):
@@ -8066,7 +8066,7 @@ class _SupervisedExperiment(_TabularExperiment):
                     dependence, shap_values, test_X, show=show, **kwargs
                 )
             if save:
-                plt.savefig(f"SHAP {plot}.png")
+                plt.savefig(f"SHAP {plot}.png", bbox_inches='tight')
             return None
 
         def reason(show: bool = True):
