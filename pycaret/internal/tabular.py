@@ -5786,7 +5786,7 @@ def plot_model(
             import streamlit as st
         except ImportError:
             raise ImportError(
-                "It appears that streamlit is not installed. Do: pip install hpbandster ConfigSpace"
+                "It appears that streamlit is not installed. Do: pip install streamlit"
             )
 
     """
