@@ -3,6 +3,7 @@ This module contains methods that can be used in various plot modules and don't 
 """
 
 import numpy as np
+import scikitplot as skplt
 
 
 def leverage_statistic(x: np.ndarray):
@@ -109,3 +110,20 @@ def cooks_distance(standardized_residuals: np.ndarray, leverage_statistic: np.nd
     distance = np.multiply(np.power(standardized_residuals, 2) / (p + 1), multiplier)
     return distance
 
+
+class MatplotlibDefaultDPI(object):
+    def __init__(self, base_dpi: float = 100, scale_to_set: float = 1):
+        try:
+            self.default_skplt_dpit = skplt.metrics.plt.rcParams["figure.dpi"]
+            skplt.metrics.plt.rcParams["figure.dpi"] = base_dpi * scale_to_set
+        except:
+            pass
+
+    def __enter__(self) -> None:
+        return None
+
+    def __exit__(self, type, value, traceback):
+        try:
+            skplt.metrics.plt.rcParams["figure.dpi"] = self.default_skplt_dpit
+        except:
+            pass
