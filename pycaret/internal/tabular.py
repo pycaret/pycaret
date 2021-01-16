@@ -2447,9 +2447,17 @@ def tune_model_supervised(
         base_estimator = base_estimator.final_estimator
 
     estimator_id = _get_model_id(base_estimator)
-
-    estimator_definition = _all_models_internal[estimator_id]
-    estimator_name = estimator_definition.name
+    if estimator_id is None:
+        if custom_grid is None:
+            raise ValueError(
+                "When passing a model not in PyCaret's model library, the custom_grid parameter must be provided."
+            )
+        estimator_name = _get_model_name(model)
+        estimator_definition = None
+        logger.info("A custom model has been passed")
+    else:
+        estimator_definition = _all_models_internal[estimator_id]
+        estimator_name = estimator_definition.name
     logger.info(f"Base model : {estimator_name}")
 
     display.update_monitor(2, estimator_name)
@@ -2583,14 +2591,19 @@ def tune_model_supervised(
 
         param_grid = {f"{suffixes}__{k}": v for k, v in param_grid.items()}
 
-        search_kwargs = {**estimator_definition.tune_args, **kwargs}
+        if estimator_definition is not None:
+            search_kwargs = {**estimator_definition.tune_args, **kwargs}
+            n_jobs = (
+                _gpu_n_jobs_param
+                if estimator_definition.is_gpu_enabled
+                else n_jobs_param
+            )
+        else:
+            search_kwargs = {}
+            n_jobs = n_jobs_param
 
         if custom_grid is not None:
             logger.info(f"custom_grid: {param_grid}")
-
-        n_jobs = (
-            _gpu_n_jobs_param if estimator_definition.is_gpu_enabled else n_jobs_param
-        )
 
         from sklearn.gaussian_process import GaussianProcessClassifier
 
@@ -3163,8 +3176,13 @@ def ensemble_model(
 
     estimator_id = _get_model_id(estimator)
 
-    estimator_definition = _all_models_internal[estimator_id]
-    estimator_name = estimator_definition.name
+    if estimator_id is None:
+        estimator_name = _get_model_name(estimator)
+        logger.info("A custom model has been passed")
+    else:
+        estimator_definition = _all_models_internal[estimator_id]
+        estimator_name = estimator_definition.name
+
     logger.info(f"Base model : {estimator_name}")
 
     display.update_monitor(2, estimator_name)
@@ -4182,7 +4200,7 @@ def plot_model(
             import streamlit as st
         except ImportError:
             raise ImportError(
-                "It appears that streamlit is not installed. Do: pip install hpbandster ConfigSpace"
+                "It appears that streamlit is not installed. Do: pip install streamlit"
             )
 
     """
@@ -5049,7 +5067,7 @@ def plot_model(
                             logger.info(
                                 f"Saving '{plot_name}.png' in current active directory"
                             )
-                            plt.savefig(f"{plot_name}.png")
+                            plt.savefig(f"{plot_name}.png", bbox_inches="tight")
                         elif system:
                             plt.show()
                         plt.close()
@@ -5078,7 +5096,7 @@ def plot_model(
                             logger.info(
                                 f"Saving '{plot_name}.png' in current active directory"
                             )
-                            plt.savefig(f"{plot_name}.png")
+                            plt.savefig(f"{plot_name}.png", bbox_inches="tight")
                         elif system:
                             plt.show()
                         plt.close()
@@ -5280,7 +5298,7 @@ def plot_model(
                         logger.info(
                             f"Saving '{plot_name}.png' in current active directory"
                         )
-                        plt.savefig(f"{plot_name}.png")
+                        plt.savefig(f"{plot_name}.png", bbox_inches="tight")
                     elif system:
                         plt.show()
                     plt.close()
@@ -5558,7 +5576,7 @@ def plot_model(
                         logger.info(
                             f"Saving '{plot_name}.png' in current active directory"
                         )
-                        plt.savefig(f"{plot_name}.png")
+                        plt.savefig(f"{plot_name}.png", bbox_inches="tight")
                     elif system:
                         plt.show()
                     plt.close()
@@ -5834,7 +5852,7 @@ def interpret_model(
         shap_values = explainer.shap_values(test_X)
         shap_plot = shap.summary_plot(shap_values, test_X, show=show, **kwargs)
         if save:
-            plt.savefig(f"SHAP {plot}.png")
+            plt.savefig(f"SHAP {plot}.png", bbox_inches="tight")
         return shap_plot
 
     def correlation(show: bool = True):
@@ -5867,7 +5885,7 @@ def interpret_model(
             logger.info("model type detected: type 2")
             shap.dependence_plot(dependence, shap_values, test_X, show=show, **kwargs)
         if save:
-            plt.savefig(f"SHAP {plot}.png")
+            plt.savefig(f"SHAP {plot}.png", bbox_inches="tight")
         return None
 
     def reason(show: bool = True):
@@ -6584,6 +6602,7 @@ def predict_model(
     data: Optional[pd.DataFrame] = None,
     probability_threshold: Optional[float] = None,
     encoded_labels: bool = False,  # added in pycaret==2.1.0
+    raw_score: bool = False,
     round: int = 4,  # added in pycaret==2.2.0
     verbose: bool = True,
     ml_usecase: Optional[MLUsecase] = None,
@@ -6621,6 +6640,9 @@ def predict_model(
 
     encoded_labels: Boolean, default = False
         If True, will return labels encoded as an integer.
+
+    raw_score: bool, default = False
+        When set to True, scores for all labels will be returned.
 
     round: integer, default = 4
         Number of decimal places the metrics in the score grid will be rounded to.
@@ -6807,16 +6829,20 @@ def predict_model(
         X_test_["Label"] = label["Label"].values
 
     if score is not None:
-        d = []
-        for i in range(0, len(score)):
-            d.append(score[i][pred[i]])
-
-        score = d
+        if not raw_score:
+            score = [s[pred[i]] for i, s in enumerate(score)]
         try:
             score = pd.DataFrame(score)
-            score.columns = ["Score"]
+            if raw_score:
+                score_columns = pd.Series(range(score.shape[1]))
+                if not encoded_labels:
+                    replace_lables_in_column(score_columns)
+                score.columns = [f"Score_{label}" for label in score_columns]
+            else:
+                score.columns = ["Score"]
             score = score.round(round)
-            X_test_["Score"] = score["Score"].values
+            score.index = X_test_.index
+            X_test_ = pd.concat((X_test_, score), axis=1)
         except:
             pass
 
