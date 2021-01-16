@@ -375,14 +375,21 @@ def load_model(
     # cloud providers
     elif platform == "aws":
 
-        import boto3
+        import os, boto3
 
         bucketname = authentication.get("bucket")
         filename = f"{model_name}.pkl"
+        index = filename.rfind("/")
         s3 = boto3.resource("s3")
-        s3.Bucket(bucketname).download_file(filename, filename)
-        filename = str(model_name)
-        model = load_model(filename, verbose=False)
+
+        if index == -1:
+            s3.Bucket(bucketname).download_file(filename, filename)
+        else:
+            path, key = filename[:index+1], filename[index+1:]
+            if not os.path.exists(path):
+                os.makedirs(path)
+            s3.Bucket(bucketname).download_file(key, filename)
+
         model = load_model(filename, verbose=False)
 
         if verbose:
