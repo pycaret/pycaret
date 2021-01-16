@@ -8206,6 +8206,7 @@ def predict_model(
     data: Optional[pd.DataFrame] = None,
     probability_threshold: Optional[float] = None,
     encoded_labels: bool = False,  # added in pycaret==2.1.0
+    raw_score: bool = False,
     round: int = 4,  # added in pycaret==2.2.0
     verbose: bool = True,
     ml_usecase: Optional[MLUsecase] = None,
@@ -8243,6 +8244,9 @@ def predict_model(
 
     encoded_labels: Boolean, default = False
         If True, will return labels encoded as an integer.
+
+    raw_score: bool, default = False
+        When set to True, scores for all labels will be returned.
 
     round: integer, default = 4
         Number of decimal places the metrics in the score grid will be rounded to.
@@ -8429,16 +8433,20 @@ def predict_model(
         X_test_["Label"] = label["Label"].values
 
     if score is not None:
-        d = []
-        for i in range(0, len(score)):
-            d.append(score[i][pred[i]])
-
-        score = d
+        if not raw_score:
+            score = [s[pred[i]] for i, s in enumerate(score)]
         try:
             score = pd.DataFrame(score)
-            score.columns = ["Score"]
+            if raw_score:
+                score_columns = pd.Series(range(score.shape[1]))
+                if not encoded_labels:
+                    replace_lables_in_column(score_columns)
+                score.columns = [f"Score_{label}" for label in score_columns]
+            else:
+                score.columns = ["Score"]
             score = score.round(round)
-            X_test_["Score"] = score["Score"].values
+            score.index = X_test_.index
+            X_test_ = pd.concat((X_test_, score), axis=1)
         except:
             pass
 
