@@ -1625,7 +1625,12 @@ class Dummify(BaseEstimator, TransformerMixin):
             self.data_nonc = data.drop(
                 self.target, axis=1, errors="ignore"
             ).select_dtypes(exclude=("object"))
-            self.target_column = data[[self.target]]
+
+            if self.target in data.columns:
+                self.target_column = data[[self.target]]
+            else:
+                self.target_column = None
+
             # # plus we will only take object data types
             categorical_data = data.drop(
                 self.target, axis=1, errors="ignore"
@@ -3417,18 +3422,18 @@ def Preprocess_Path_One(
 
     """
     Follwoing preprocess steps are taken:
-      - 1) Auto infer data types 
+      - 1) Auto infer data types
       - 2) Impute (simple or with surrogate columns)
       - 3) Ordinal Encoder
       - 4) Drop categorical variables that have zero variance or near zero variance
       - 5) Club categorical variables levels togather as a new level (other_infrequent) that are rare / at the bottom 5% of the variable distribution
-      - 6) Club unseen levels in test dataset with most/least frequent levels in train dataset 
+      - 6) Club unseen levels in test dataset with most/least frequent levels in train dataset
       - 7) Reduce high cardinality in categorical features using clustering or counts
       - 8) Generate sub features from time feature such as 'month','weekday',is_month_end','is_month_start' & 'hour'
       - 9) Group features by calculating min, max, mean, median & sd of similar features
       -10) Make nonliner features (polynomial, sin , cos & tan)
       -11) Scales & Power Transform (zscore,minmax,yeo-johnson,quantile,maxabs,robust) , including option to transform target variable
-      -12) Apply binning to continious variable when numeric features are provided as a list 
+      -12) Apply binning to continious variable when numeric features are provided as a list
       -13) Detect & remove outliers using isolation forest, knn and PCA
       -14) Apply clusters to segment entire data
       -15) One Hot / Dummy encoding
@@ -3436,8 +3441,8 @@ def Preprocess_Path_One(
       -17) Feature Selection throuh Random Forest , LightGBM and Pearson Correlation / Boruta algorithm
       -18) Fix multicollinearity
       -19) Feature Interaction (DFS) , multiply , divided , add and substract features
-      -20) Apply diamension reduction techniques such as pca_liner, pca_kernal, incremental, tsne 
-          - except for pca_liner, all other method only takes number of component (as integer) i.e no variance explaination metohd available  
+      -20) Apply diamension reduction techniques such as pca_liner, pca_kernal, incremental, tsne
+          - except for pca_liner, all other method only takes number of component (as integer) i.e no variance explaination metohd available
   """
 
     # also make sure that all the column names are string
@@ -3729,7 +3734,384 @@ def Preprocess_Path_One(
     )
 
     return pipe
+def Preprocess_Path_One_Sklearn(
+    train_data,
+    target_variable,
+    ml_usecase=None,
+    test_data=None,
+    categorical_features=[],
+    numerical_features=[],
+    time_features=[],
+    features_todrop=[],
+    display_types=True,
+    imputation_type="simple",
+    numeric_imputation_strategy="mean",
+    categorical_imputation_strategy="not_available",
+    time_imputation_strategy="most_frequent",
+    imputation_classifier=None,
+    imputation_regressor=None,
+    imputation_max_iter=10,
+    imputation_warm_start=False,
+    imputation_order="ascending",
+    apply_zero_nearZero_variance=False,
+    club_rare_levels=False,
+    rara_level_threshold_percentage=0.05,
+    apply_untrained_levels_treatment=False,
+    untrained_levels_treatment_method="least frequent",
+    apply_ordinal_encoding=False,
+    ordinal_columns_and_categories={},
+    apply_cardinality_reduction=False,
+    cardinal_method="cluster",
+    cardinal_features=[],
+    apply_binning=False,
+    features_to_binn=[],
+    apply_grouping=False,
+    group_name=[],
+    features_to_group_ListofList=[[]],
+    apply_polynomial_trigonometry_features=False,
+    max_polynomial=2,
+    trigonometry_calculations=["sin", "cos", "tan"],
+    top_poly_trig_features_to_select_percentage=0.20,
+    scale_data=False,
+    scaling_method="zscore",
+    Power_transform_data=False,
+    Power_transform_method="quantile",
+    remove_outliers=False,
+    outlier_contamination_percentage=0.01,
+    outlier_methods=["pca", "iso", "knn"],
+    dummify_categoricals=True,
+    apply_feature_selection=False,
+    feature_selection_top_features_percentage=0.80,
+    feature_selection_method="classic",
+    remove_multicollinearity=False,
+    maximum_correlation_between_features=0.90,
+    remove_perfect_collinearity=False,
+    apply_feature_interactions=False,
+    feature_interactions_to_apply=["multiply", "divide", "add", "subtract"],
+    feature_interactions_top_features_to_select_percentage=0.01,
+    cluster_entire_data=False,
+    range_of_clusters_to_try=20,
+    apply_pca=False,
+    pca_method="pca_liner",
+    pca_variance_retained_or_number_of_components=0.99,
+    random_state=42,
+    n_jobs=-1,
+):
 
+    """
+    Follwoing preprocess steps are taken:
+      - 1) Auto infer data types
+      - 2) Impute (simple or with surrogate columns)
+      - 3) Ordinal Encoder
+      - 4) Drop categorical variables that have zero variance or near zero variance
+      - 5) Club categorical variables levels togather as a new level (other_infrequent) that are rare / at the bottom 5% of the variable distribution
+      - 6) Club unseen levels in test dataset with most/least frequent levels in train dataset
+      - 7) Reduce high cardinality in categorical features using clustering or counts
+      - 8) Generate sub features from time feature such as 'month','weekday',is_month_end','is_month_start' & 'hour'
+      - 9) Group features by calculating min, max, mean, median & sd of similar features
+      -10) Make nonliner features (polynomial, sin , cos & tan)
+      -11) Scales & Power Transform (zscore,minmax,yeo-johnson,quantile,maxabs,robust) , including option to transform target variable
+      -12) Apply binning to continious variable when numeric features are provided as a list
+      -13) Detect & remove outliers using isolation forest, knn and PCA
+      -14) Apply clusters to segment entire data
+      -15) One Hot / Dummy encoding
+      -16) Remove special characters from column names such as commas, square brackets etc to make it competible with jason dependednt models
+      -17) Feature Selection throuh Random Forest , LightGBM and Pearson Correlation / Boruta algorithm
+      -18) Fix multicollinearity
+      -19) Feature Interaction (DFS) , multiply , divided , add and substract features
+      -20) Apply diamension reduction techniques such as pca_liner, pca_kernal, incremental, tsne
+          - except for pca_liner, all other method only takes number of component (as integer) i.e no variance explaination metohd available
+  """
+
+    # also make sure that all the column names are string
+    train_data.columns = [str(i) for i in train_data.columns]
+    if test_data is not None:
+        test_data.columns = [str(i) for i in test_data.columns]
+
+    if target_variable is None:
+        ml_usecase = "regression"
+    else:
+        # WE NEED TO AUTO INFER the ml use case
+        inferred_ml_usecase, subcase = infer_ml_usecase(train_data[target_variable])
+        if ml_usecase is None:
+            ml_usecase = inferred_ml_usecase
+
+    dtypes = DataTypes_Auto_infer(
+        target=target_variable,
+        ml_usecase=ml_usecase,
+        categorical_features=categorical_features,
+        numerical_features=numerical_features,
+        time_features=time_features,
+        features_todrop=features_todrop,
+        display_types=display_types,
+        id_columns=find_id_columns(
+            train_data, target_variable, numerical_features=numerical_features
+        ),
+    )
+
+    # for imputation
+    # imputation_type = "A"
+    if imputation_type == "simple":
+        imputer = Simple_Imputer(
+            numeric_strategy=numeric_imputation_strategy,
+            target=target_variable,
+            categorical_strategy=categorical_imputation_strategy,
+            time_strategy=time_imputation_strategy
+        )
+    # elif imputation_type == "surrogate imputer":
+    #  imputer = Surrogate_Imputer(numeric_strategy=numeric_imputation_strategy,categorical_strategy=categorical_imputation_strategy,target_variable=target_variable)
+    else:
+        imputer = Iterative_Imputer(
+            classifier=imputation_classifier,
+            regressor=imputation_regressor,
+            target=target_variable,
+            initial_strategy_numeric=numeric_imputation_strategy,
+            max_iter=imputation_max_iter,
+            warm_start=imputation_warm_start,
+            imputation_order=imputation_order,
+            random_state=random_state,
+            ordinal_columns=ordinal_columns_and_categories.keys(),
+        )
+
+    # for zero_near_zero
+    if apply_zero_nearZero_variance == True:
+        znz = Zroe_NearZero_Variance(target=target_variable)
+    else:
+        znz = SKLEARN_EMPTY_STEP
+
+    # for rare levels clubbing:
+
+    if club_rare_levels == True:
+        club_R_L = Catagorical_variables_With_Rare_levels(
+            target=target_variable, threshold=rara_level_threshold_percentage
+        )
+    else:
+        club_R_L = SKLEARN_EMPTY_STEP
+
+    # untrained levels in test
+    if apply_untrained_levels_treatment == True:
+        new_levels = New_Catagorical_Levels_in_TestData(
+            target=target_variable,
+            replacement_strategy=untrained_levels_treatment_method,
+        )
+    else:
+        new_levels = SKLEARN_EMPTY_STEP
+
+    # untrained levels in test(ordinal specific)
+    if apply_untrained_levels_treatment == True:
+        new_levels1 = New_Catagorical_Levels_in_TestData(
+            target=target_variable,
+            replacement_strategy=untrained_levels_treatment_method,
+        )
+    else:
+        new_levels1 = SKLEARN_EMPTY_STEP
+
+    # cardinality:
+    if apply_cardinality_reduction == True and cardinal_method == "cluster":
+        cardinality = Reduce_Cardinality_with_Clustering(
+            target=target_variable,
+            catagorical_feature=cardinal_features,
+            check_clusters=50,
+            random_state=random_state,
+        )
+    elif apply_cardinality_reduction == True and cardinal_method == "count":
+        cardinality = Reduce_Cardinality_with_Counts(
+            catagorical_feature=cardinal_features
+        )
+    else:
+        cardinality = SKLEARN_EMPTY_STEP
+
+    # ordinal coding
+    if apply_ordinal_encoding == True:
+        # we need to make sure that if the columns chosen by user have NA & imputer strategy is not_availablle then we add that to the category first
+        for i in ordinal_columns_and_categories.keys():
+            if sum(train_data[i].isnull()) > 0:
+                if categorical_imputation_strategy == "not_available":
+                    lis = ["not_available"] + ordinal_columns_and_categories[i]
+                    ordinal_columns_and_categories.update({i: lis})
+
+        ordinal = Ordinal(info_as_dict=ordinal_columns_and_categories)
+    else:
+        ordinal = SKLEARN_EMPTY_STEP
+
+    # grouping
+    if apply_grouping == True:
+        group = Group_Similar_Features(
+            group_name=group_name, list_of_grouped_features=features_to_group_ListofList
+        )
+    else:
+        group = SKLEARN_EMPTY_STEP
+
+    # non_liner_features
+    if apply_polynomial_trigonometry_features == True:
+        nonliner = Make_NonLiner_Features(
+            target=target_variable,
+            ml_usecase=ml_usecase,
+            polynomial_degree=max_polynomial,
+            other_nonliner_features=trigonometry_calculations,
+            top_features_to_pick=top_poly_trig_features_to_select_percentage,
+            random_state=random_state,
+            subclass=subcase,
+        )
+    else:
+        nonliner = SKLEARN_EMPTY_STEP
+
+    # binning
+    if apply_binning == True:
+        binn = Binning(features_to_discretize=features_to_binn)
+    else:
+        binn = SKLEARN_EMPTY_STEP
+
+    # scaling & power transform
+    if scale_data == True:
+        scaling = Scaling_and_Power_transformation(
+            target=target_variable,
+            function_to_apply=scaling_method,
+            random_state_quantile=random_state,
+        )
+    else:
+        scaling = SKLEARN_EMPTY_STEP
+
+    if Power_transform_data == True:
+        P_transform = Scaling_and_Power_transformation(
+            target=target_variable,
+            function_to_apply=Power_transform_method,
+            random_state_quantile=random_state,
+        )
+    else:
+        P_transform = SKLEARN_EMPTY_STEP
+
+    # for Time Variables
+    feature_time = Make_Time_Features()
+
+    if dummify_categoricals == True:
+        dummy = Dummify(target_variable)
+    else:
+        dummy = SKLEARN_EMPTY_STEP
+
+    # remove putliers
+    if remove_outliers == True:
+        rem_outliers = Outlier(
+            target=target_variable,
+            contamination=outlier_contamination_percentage,
+            random_state=random_state,
+            methods=outlier_methods,
+        )
+    else:
+        rem_outliers = SKLEARN_EMPTY_STEP
+
+    # cluster all data:
+    if cluster_entire_data == True:
+        cluster_all = Cluster_Entire_Data(
+            target=target_variable,
+            check_clusters=range_of_clusters_to_try,
+            random_state=random_state,
+        )
+    else:
+        cluster_all = SKLEARN_EMPTY_STEP
+
+    # clean column names for special char
+    clean_names = Clean_Colum_Names()
+
+    # feature selection
+    if apply_feature_selection:
+        # TODO: add autoselect
+        if feature_selection_method == "boruta":
+            feature_select = Boruta_Feature_Selection(
+                target=target_variable,
+                ml_usecase=ml_usecase,
+                top_features_to_pick=feature_selection_top_features_percentage,
+                random_state=random_state,
+                subclass=subcase,
+            )
+        else:
+            feature_select = Advanced_Feature_Selection_Classic(
+                target=target_variable,
+                ml_usecase=ml_usecase,
+                top_features_to_pick=feature_selection_top_features_percentage,
+                random_state=random_state,
+                subclass=subcase,
+            )
+    else:
+        feature_select = SKLEARN_EMPTY_STEP
+
+    # removing multicollinearity
+    if remove_multicollinearity == True and subcase != "multi":
+        fix_multi = Fix_multicollinearity(
+            target_variable=target_variable,
+            threshold=maximum_correlation_between_features,
+        )
+    elif remove_multicollinearity == True and subcase == "multi":
+        fix_multi = Fix_multicollinearity(
+            target_variable=target_variable,
+            threshold=maximum_correlation_between_features,
+            correlation_with_target_preference=0.0,
+        )
+    else:
+        fix_multi = SKLEARN_EMPTY_STEP
+
+    # remove 100% collinearity
+    if remove_perfect_collinearity == True:
+        fix_perfect = Remove_100(target=target_variable)
+    else:
+        fix_perfect = SKLEARN_EMPTY_STEP
+
+    # apply dfs
+    if apply_feature_interactions == True:
+        dfs = DFS_Classic(
+            target=target_variable,
+            ml_usecase=ml_usecase,
+            interactions=feature_interactions_to_apply,
+            top_n_correlated=feature_interactions_top_features_to_select_percentage,
+            random_state=random_state,
+            subclass=subcase,
+        )
+    else:
+        dfs = SKLEARN_EMPTY_STEP
+
+    # apply pca
+    if apply_pca == True:
+        pca = Reduce_Dimensions_For_Supervised_Path(
+            target=target_variable,
+            method=pca_method,
+            variance_retained_or_number_of_components=pca_variance_retained_or_number_of_components,
+            random_state=random_state,
+        )
+    else:
+        pca = SKLEARN_EMPTY_STEP
+
+    pipe = Pipeline(
+        [
+            # ("dtypes", dtypes),
+            ("imputer", imputer),
+            (
+                "new_levels1",
+                new_levels1,
+            ),  # specifically used for ordinal, so that if a new level comes in a feature that was marked ordinal can be handled
+            # ("ordinal", ordinal),
+            # ("cardinality", cardinality),
+            # ("znz", znz),
+            # ("club_R_L", club_R_L),
+            # ("new_levels", new_levels),
+            # ("feature_time", feature_time),
+            # ("group", group),
+            # ("nonliner", nonliner),
+            # ("scaling", scaling),
+            # ("P_transform", P_transform),
+            # ("binn", binn),
+            # ("rem_outliers", rem_outliers),
+            # ("cluster_all", cluster_all),
+            ("dummy", dummy),
+            # ("fix_perfect", fix_perfect),
+            # ("clean_names", clean_names),
+            # ("feature_select", feature_select),
+            # ("fix_multi", fix_multi),
+            # ("dfs", dfs),
+            # ("pca", pca),
+        ]
+    )
+
+    return pipe
 
 # ______________________________________________________________________________________________________________________________________________________
 # preprocess_all_in_one_unsupervised
