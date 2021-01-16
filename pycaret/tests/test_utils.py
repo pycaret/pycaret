@@ -3,7 +3,6 @@ import os, sys
 sys.path.insert(0, os.path.abspath(".."))
 
 import numpy as np
-import pandas as pd
 import pytest
 import pycaret.utils
 import pycaret.classification
@@ -122,6 +121,18 @@ def test():
     mape = pycaret.utils.check_metric(actual, prediction, "MAPE")
     assert isinstance(mape, float)
     assert mape >= 0
+
+    # Ensure metric is rounded to 2 decimals
+    mape = pycaret.utils.check_metric(actual, prediction, "MAPE", 2)
+    assert mape == 0.05
+
+    # Ensure metric is rounded to default value
+    mape = pycaret.utils.check_metric(actual, prediction, "MAPE")
+    assert mape == 0.0469
+
+    # Metric does not exist
+    with pytest.raises(ValueError, match="Couldn't find metric"):
+        pycaret.utils.check_metric(actual, prediction, "INEXISTENTMETRIC")
 
     assert 1 == 1
 

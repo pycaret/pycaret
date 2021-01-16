@@ -3,6 +3,7 @@
 # License: MIT
 
 import logging
+import traceback
 
 
 def get_logger() -> logging.Logger:
@@ -21,7 +22,12 @@ def create_logger() -> logging.Logger:
     if logger.hasHandlers():
         logger.handlers.clear()
 
-    ch = logging.FileHandler("logs.log")
+    try:
+        ch = logging.FileHandler("logs.log")
+    except:
+        print("Could not attach a FileHandler to the logger! No logs will be saved.")
+        traceback.print_exc()
+        ch = logging.NullHandler()
     ch.setLevel(logging.DEBUG)
 
     # create formatter
