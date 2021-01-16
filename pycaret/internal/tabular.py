@@ -4725,6 +4725,7 @@ def plot_model(
                             fit_kwargs=fit_kwargs,
                             groups=groups,
                             display=display,
+                            display_format=display_format,
                         )
 
                     except:
@@ -4752,6 +4753,7 @@ def plot_model(
                             fit_kwargs=fit_kwargs,
                             groups=groups,
                             display=display,
+                            display_format=display_format,
                         )
                     except:
                         logger.error("Silhouette plot failed. Exception:")
@@ -4776,6 +4778,7 @@ def plot_model(
                             fit_kwargs=fit_kwargs,
                             groups=groups,
                             display=display,
+                            display_format=display_format,
                         )
                     except:
                         logger.error("Distance plot failed. Exception:")
@@ -4799,6 +4802,7 @@ def plot_model(
                         fit_kwargs=fit_kwargs,
                         groups=groups,
                         display=display,
+                        display_format=display_format,
                     )
 
                 def auc():
@@ -4818,6 +4822,7 @@ def plot_model(
                         fit_kwargs=fit_kwargs,
                         groups=groups,
                         display=display,
+                        display_format=display_format,
                     )
 
                 def threshold():
@@ -4839,6 +4844,7 @@ def plot_model(
                         fit_kwargs=fit_kwargs,
                         groups=groups,
                         display=display,
+                        display_format=display_format,
                     )
 
                 def pr():
@@ -4860,6 +4866,7 @@ def plot_model(
                         fit_kwargs=fit_kwargs,
                         groups=groups,
                         display=display,
+                        display_format=display_format,
                     )
 
                 def confusion_matrix():
@@ -4884,6 +4891,7 @@ def plot_model(
                         fit_kwargs=fit_kwargs,
                         groups=groups,
                         display=display,
+                        display_format=display_format,
                     )
 
                 def error():
@@ -4914,6 +4922,7 @@ def plot_model(
                         fit_kwargs=fit_kwargs,
                         groups=groups,
                         display=display,
+                        display_format=display_format,
                     )
 
                 def cooks():
@@ -4934,6 +4943,7 @@ def plot_model(
                         handle_test="",
                         groups=groups,
                         display=display,
+                        display_format=display_format,
                     )
 
                 def class_report():
@@ -4955,6 +4965,7 @@ def plot_model(
                         fit_kwargs=fit_kwargs,
                         groups=groups,
                         display=display,
+                        display_format=display_format,
                     )
 
                 def boundary():
@@ -4996,6 +5007,7 @@ def plot_model(
                         display=display,
                         features=["Feature One", "Feature Two"],
                         classes=["A", "B"],
+                        display_format=display_format,
                     )
 
                 def rfe():
@@ -5016,6 +5028,7 @@ def plot_model(
                         fit_kwargs=fit_kwargs,
                         groups=groups,
                         display=display,
+                        display_format=display_format,
                     )
 
                 def learning():
@@ -5043,6 +5056,7 @@ def plot_model(
                         fit_kwargs=fit_kwargs,
                         groups=groups,
                         display=display,
+                        display_format=display_format,
                     )
 
                 def lift():
@@ -5123,6 +5137,7 @@ def plot_model(
                         fit_kwargs=fit_kwargs,
                         groups=groups,
                         display=display,
+                        display_format=display_format,
                     )
 
                 def tree():
@@ -5487,6 +5502,7 @@ def plot_model(
                         fit_kwargs=fit_kwargs,
                         groups=groups,
                         display=display,
+                        display_format=display_format,
                     )
 
                 def dimension():
@@ -5526,6 +5542,7 @@ def plot_model(
                         fit_kwargs=fit_kwargs,
                         groups=groups,
                         display=display,
+                        display_format=display_format,
                     )
 
                 def feature():

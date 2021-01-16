@@ -3014,6 +3014,7 @@ class _TabularExperiment(_PyCaretExperiment):
                                 fit_kwargs=fit_kwargs,
                                 groups=groups,
                                 display=display,
+                                display_format=display_format,
                             )
 
                         except:
@@ -3041,6 +3042,7 @@ class _TabularExperiment(_PyCaretExperiment):
                                 fit_kwargs=fit_kwargs,
                                 groups=groups,
                                 display=display,
+                                display_format=display_format,
                             )
                         except:
                             self.logger.error("Silhouette plot failed. Exception:")
@@ -3065,6 +3067,7 @@ class _TabularExperiment(_PyCaretExperiment):
                                 fit_kwargs=fit_kwargs,
                                 groups=groups,
                                 display=display,
+                                display_format=display_format,
                             )
                         except:
                             self.logger.error("Distance plot failed. Exception:")
@@ -3088,6 +3091,7 @@ class _TabularExperiment(_PyCaretExperiment):
                             fit_kwargs=fit_kwargs,
                             groups=groups,
                             display=display,
+                            display_format=display_format,
                         )
 
                     def auc():
@@ -3107,6 +3111,7 @@ class _TabularExperiment(_PyCaretExperiment):
                             fit_kwargs=fit_kwargs,
                             groups=groups,
                             display=display,
+                            display_format=display_format,
                         )
 
                     def threshold():
@@ -3128,6 +3133,7 @@ class _TabularExperiment(_PyCaretExperiment):
                             fit_kwargs=fit_kwargs,
                             groups=groups,
                             display=display,
+                            display_format=display_format,
                         )
 
                     def pr():
@@ -3149,6 +3155,7 @@ class _TabularExperiment(_PyCaretExperiment):
                             fit_kwargs=fit_kwargs,
                             groups=groups,
                             display=display,
+                            display_format=display_format,
                         )
 
                     def confusion_matrix():
@@ -3173,6 +3180,7 @@ class _TabularExperiment(_PyCaretExperiment):
                             fit_kwargs=fit_kwargs,
                             groups=groups,
                             display=display,
+                            display_format=display_format,
                         )
 
                     def error():
@@ -3203,6 +3211,7 @@ class _TabularExperiment(_PyCaretExperiment):
                             fit_kwargs=fit_kwargs,
                             groups=groups,
                             display=display,
+                            display_format=display_format,
                         )
 
                     def cooks():
@@ -3223,6 +3232,7 @@ class _TabularExperiment(_PyCaretExperiment):
                             handle_test="",
                             groups=groups,
                             display=display,
+                            display_format=display_format,
                         )
 
                     def class_report():
@@ -3244,6 +3254,7 @@ class _TabularExperiment(_PyCaretExperiment):
                             fit_kwargs=fit_kwargs,
                             groups=groups,
                             display=display,
+                            display_format=display_format,
                         )
 
                     def boundary():
@@ -3285,6 +3296,7 @@ class _TabularExperiment(_PyCaretExperiment):
                             display=display,
                             features=["Feature One", "Feature Two"],
                             classes=["A", "B"],
+                            display_format=display_format,
                         )
 
                     def rfe():
@@ -3305,6 +3317,7 @@ class _TabularExperiment(_PyCaretExperiment):
                             fit_kwargs=fit_kwargs,
                             groups=groups,
                             display=display,
+                            display_format=display_format,
                         )
 
                     def learning():
@@ -3332,6 +3345,7 @@ class _TabularExperiment(_PyCaretExperiment):
                             fit_kwargs=fit_kwargs,
                             groups=groups,
                             display=display,
+                            display_format=display_format,
                         )
 
                     def lift():
@@ -3428,6 +3442,7 @@ class _TabularExperiment(_PyCaretExperiment):
                             fit_kwargs=fit_kwargs,
                             groups=groups,
                             display=display,
+                            display_format=display_format,
                         )
 
                     def tree():
@@ -3834,6 +3849,7 @@ class _TabularExperiment(_PyCaretExperiment):
                             fit_kwargs=fit_kwargs,
                             groups=groups,
                             display=display,
+                            display_format=display_format,
                         )
 
                     def dimension():
@@ -3873,6 +3889,7 @@ class _TabularExperiment(_PyCaretExperiment):
                             fit_kwargs=fit_kwargs,
                             groups=groups,
                             display=display,
+                            display_format=display_format,
                         )
 
                     def feature():
