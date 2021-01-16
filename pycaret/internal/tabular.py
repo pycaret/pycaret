@@ -13,10 +13,6 @@ from pycaret.internal.meta_estimators import (
     PowerTransformedTargetRegressor,
     get_estimator_from_meta_estimator,
 )
-from pycaret.internal.patches.tune_sklearn import (
-    get_tune_sklearn_tunegridsearchcv,
-    get_tune_sklearn_tunesearchcv,
-)
 from pycaret.internal.pipeline import (
     add_estimator_to_pipeline,
     get_pipeline_estimator_label,
@@ -2436,7 +2432,25 @@ def tune_model_supervised(
 
     logger.info("Checking base model")
 
-    model = clone(estimator)
+    estimator_id = _get_model_id(estimator)
+    if estimator_id is None:
+        if custom_grid is None:
+            raise ValueError(
+                "When passing a model not in PyCaret's model library, the custom_grid parameter must be provided."
+            )
+        estimator_name = _get_model_name(estimator)
+        estimator_definition = None
+        logger.info("A custom model has been passed")
+    else:
+        estimator_definition = _all_models_internal[estimator_id]
+        estimator_name = estimator_definition.name
+    logger.info(f"Base model : {estimator_name}")
+
+    if estimator_definition is None or estimator_definition.tunable is None:
+        model = clone(estimator)
+    else:
+        logger.info("Model has a special tunable class, using that")
+        model = clone(estimator_definition.tunable(**estimator.get_params()))
     is_stacked_model = False
 
     base_estimator = model
@@ -2445,20 +2459,6 @@ def tune_model_supervised(
         logger.info("Model is stacked, using the definition of the meta-model")
         is_stacked_model = True
         base_estimator = base_estimator.final_estimator
-
-    estimator_id = _get_model_id(base_estimator)
-    if estimator_id is None:
-        if custom_grid is None:
-            raise ValueError(
-                "When passing a model not in PyCaret's model library, the custom_grid parameter must be provided."
-            )
-        estimator_name = _get_model_name(model)
-        estimator_definition = None
-        logger.info("A custom model has been passed")
-    else:
-        estimator_definition = _all_models_internal[estimator_id]
-        estimator_name = estimator_definition.name
-    logger.info(f"Base model : {estimator_name}")
 
     display.update_monitor(2, estimator_name)
     display.display_monitor()
@@ -2867,7 +2867,16 @@ def tune_model_supervised(
 
     display.move_progress()
 
-    logger.info("Random search completed")
+    logger.info("Hyperparameter search completed")
+
+    if isinstance(model, TunableMixin):
+        logger.info("Getting base sklearn object from tunable")
+        best_params = {
+            k: v
+            for k, v in best_params.items()
+            if k in model.get_base_sklearn_params().keys()
+        }
+        model = model.get_base_sklearn_object()
 
     logger.info("SubProcess create_model() called ==================================")
     best_model, model_fit_time = create_model_supervised(

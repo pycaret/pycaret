@@ -29,6 +29,7 @@ from pycaret.internal.plotting import show_yellowbrick_plot, MatplotlibDefaultDP
 from pycaret.internal.Display import Display
 from pycaret.internal.distributions import *
 from pycaret.internal.validation import *
+from pycaret.internal.tunable import TunableMixin
 import pycaret.containers.metrics.classification
 import pycaret.containers.metrics.regression
 import pycaret.containers.metrics.clustering
@@ -6332,7 +6333,25 @@ class _SupervisedExperiment(_TabularExperiment):
 
         self.logger.info("Checking base model")
 
-        model = clone(estimator)
+        estimator_id = _get_model_id(estimator)
+        if estimator_id is None:
+            if custom_grid is None:
+                raise ValueError(
+                    "When passing a model not in PyCaret's model library, the custom_grid parameter must be provided."
+                )
+            estimator_name = self._get_model_name(estimator)
+            estimator_definition = None
+            self.logger.info("A custom model has been passed")
+        else:
+            estimator_definition = self._all_models_internal[estimator_id]
+            estimator_name = estimator_definition.name
+        self.logger.info(f"Base model : {estimator_name}")
+
+        if estimator_definition is None or estimator_definition.tunable is None:
+            model = clone(estimator)
+        else:
+            self.logger.info("Model has a special tunable class, using that")
+            model = clone(estimator_definition.tunable(**estimator.get_params()))
         is_stacked_model = False
 
         base_estimator = model
@@ -6341,21 +6360,6 @@ class _SupervisedExperiment(_TabularExperiment):
             self.logger.info("Model is stacked, using the definition of the meta-model")
             is_stacked_model = True
             base_estimator = base_estimator.final_estimator
-
-        estimator_id = self._get_model_id(base_estimator)
-        if estimator_id is None:
-            if custom_grid is None:
-                raise ValueError(
-                    "When passing a model not in PyCaret's model library, the custom_grid parameter must be provided."
-                )
-            estimator_name = self._get_model_name(model)
-            estimator_definition = None
-            self.logger.info("A custom model has been passed")
-        else:
-            estimator_definition = self._all_models_internal[estimator_id]
-            estimator_name = estimator_definition.name
-
-        self.logger.info(f"Base model : {estimator_name}")
 
         display.update_monitor(2, estimator_name)
         display.display_monitor()
@@ -6773,7 +6777,16 @@ class _SupervisedExperiment(_TabularExperiment):
 
         display.move_progress()
 
-        self.logger.info("Random search completed")
+        self.logger.info("Hyperparameter search completed")
+
+        if isinstance(model, TunableMixin):
+            self.logger.info("Getting base sklearn object from tunable")
+            best_params = {
+                k: v
+                for k, v in best_params.items()
+                if k in model.get_base_sklearn_params().keys()
+            }
+            model = model.get_base_sklearn_object()
 
         self.logger.info(
             "SubProcess create_model() called =================================="

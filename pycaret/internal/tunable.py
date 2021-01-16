@@ -4,8 +4,10 @@
 
 # Provides a VotingClassifier which weights can be tuned.
 
+from sklearn.base import clone
 from sklearn.ensemble import VotingClassifier, VotingRegressor
 from sklearn.neural_network import MLPClassifier, MLPRegressor
+import inspect
 
 try:
     from collections.abc import Iterable
@@ -13,7 +15,24 @@ except:
     from collections import Iterable
 
 
-class TunableMLPClassifier(MLPClassifier):
+class TunableMixin:
+    def get_base_sklearn_type(self):
+        return next(x for x in self.__class__.__bases__ if "sklearn." in str(x))
+
+    def get_base_sklearn_params(self):
+        sklearn_base = self.get_base_sklearn_type()
+        sklearn_signature = inspect.signature(sklearn_base.__init__).parameters
+        return {k: v for k, v in self.get_params().items() if k in sklearn_signature}
+
+    def get_base_sklearn_object(self):
+        """Returns a pure scikit-learn parent of the class. Will be unfitted."""
+        sklearn_base = self.get_base_sklearn_type()
+        params = self.get_base_sklearn_params()
+        sklearn_object = sklearn_base(**params)
+        return clone(sklearn_object)
+
+
+class TunableMLPClassifier(MLPClassifier, TunableMixin):
     """
     A MLPClassifier with hidden layer sizes being kwargs instead of a list/tuple, allowing
     for tuning.
@@ -444,7 +463,7 @@ class TunableMLPClassifier(MLPClassifier):
         return super()._partial_fit(X, y, classes=classes)
 
 
-class TunableMLPRegressor(MLPRegressor):
+class TunableMLPRegressor(MLPRegressor, TunableMixin):
     """
     A MLPRegressor with hidden layer sizes being kwargs instead of a list/tuple, allowing
     for tuning.
@@ -862,7 +881,7 @@ class TunableMLPRegressor(MLPRegressor):
         return super()._partial_fit(X, y)
 
 
-class TunableVotingClassifier(VotingClassifier):
+class TunableVotingClassifier(VotingClassifier, TunableMixin):
     """
     A VotingClassifier with weights being kwargs instead of a list, allowing
     for tuning.
@@ -1063,7 +1082,7 @@ class TunableVotingClassifier(VotingClassifier):
         return r
 
 
-class TunableVotingRegressor(VotingRegressor):
+class TunableVotingRegressor(VotingRegressor, TunableMixin):
     """
     A VotingRegressor with weights being kwargs instead of a list, allowing
     for tuning.
