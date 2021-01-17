@@ -1,11 +1,11 @@
 import pandas as pd
 import numpy as np
-import xgboost as xgb
 import datetime
 from scipy import stats
 from sklearn.compose import ColumnTransformer
 from sklearn.model_selection import RandomizedSearchCV
 from sklearn.pipeline import Pipeline
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import OneHotEncoder
 import pycaret.datasets
 import pycaret.internal.preprocess
@@ -49,7 +49,7 @@ def test_sklearn_pipeline_simple_imputer():
 
     # Append classifier to preprocessing pipeline. Now we have a full prediction pipeline.
     clf = Pipeline(steps=[('preprocessor', preprocessor),
-                          ('classifier', xgb.XGBClassifier())],
+                          ('classifier', RandomForestClassifier())],
                    verbose=True)
 
     # Test if the full pipeline works with sklearn's randomized search
@@ -124,7 +124,7 @@ def test_complete_sklearn_pipeline():
 
     # Append classifier to preprocessing pipeline. Now we have a full prediction pipeline.
     clf = Pipeline(steps=[('preprocessor', pycaret_preprocessor),
-                          ('classifier', xgb.XGBClassifier())],
+                          ('classifier', RandomForestClassifier())],
                    verbose=True)
 
     # Test if the full pipeline works with sklearn's randomized search
