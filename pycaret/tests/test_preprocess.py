@@ -1,11 +1,11 @@
 import pandas as pd
 import numpy as np
-import xgboost as xgb
 import datetime
 from scipy import stats
 from sklearn.compose import ColumnTransformer
 from sklearn.model_selection import RandomizedSearchCV
 from sklearn.pipeline import Pipeline
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import OneHotEncoder
 import pycaret.datasets
 import pycaret.internal.preprocess
@@ -49,7 +49,7 @@ def test_sklearn_pipeline_simple_imputer():
 
     # Append classifier to preprocessing pipeline. Now we have a full prediction pipeline.
     clf = Pipeline(steps=[('preprocessor', preprocessor),
-                          ('classifier', xgb.XGBClassifier())],
+                          ('classifier', RandomForestClassifier())],
                    verbose=True)
 
     # Test if the full pipeline works with sklearn's randomized search
@@ -102,6 +102,38 @@ def test_simple_imputer():
     assert result.loc[0, "time_delta_day"] == datetime.timedelta(days=10)
     assert result.loc[0, "time_delta_hour"] == datetime.timedelta(hours=10)
     assert result.loc[0, "missing_num_col"] == 100
+
+
+def test_complete_sklearn_pipeline():
+    """
+    Test if the simple imputer in pycaret works with sklearn's pipeline
+    """
+
+    # Load an example dataset and set the features and target
+    data = pycaret.datasets.get_data("juice")
+    target = "Purchase"
+    features = data.columns.tolist()
+    features.remove(target)
+    data_features = data[features]
+    data_target = data[target]
+
+    # Initiate a pycaret pipeline
+    pycaret_preprocessor = pycaret.internal.preprocess.Preprocess_Path_One_Sklearn(
+        train_data=data, target_variable=target, display_types=False
+    )
+
+    # Append classifier to preprocessing pipeline. Now we have a full prediction pipeline.
+    clf = Pipeline(steps=[('preprocessor', pycaret_preprocessor),
+                          ('classifier', RandomForestClassifier())],
+                   verbose=True)
+
+    # Test if the full pipeline works with sklearn's randomized search
+    param_dist = {'classifier__n_estimators': stats.randint(10, 20)}
+    search = RandomizedSearchCV(clf, param_distributions=param_dist)
+    search.fit(data_features, data_target)
+
+    # Check if the best parameter falls within the defined range
+    assert 10 <= search.best_params_['classifier__n_estimators'] <= 20
 
 
 def test():
