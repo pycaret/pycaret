@@ -2353,7 +2353,7 @@ class _TabularExperiment(_PyCaretExperiment):
             Must remain True all times. Only to be changed by internal functions.
 
         display_format: str, default = None
-            To display plots in [Streamlit](https://www.streamlit.io/), set this to 'streamlit'.
+            To display plots in Streamlit (https://www.streamlit.io/), set this to 'streamlit'.
             Currently, not all plots are supported.
 
         Returns
@@ -11519,7 +11519,7 @@ class RegressionExperiment(_SupervisedExperiment):
 
 
         display_format: str, default = None
-            To display plots in [Streamlit](https://www.streamlit.io/), set this to 'streamlit'.
+            To display plots in Streamlit (https://www.streamlit.io/), set this to 'streamlit'.
             Currently, not all plots are supported.
 
 
@@ -13754,7 +13754,7 @@ class ClassificationExperiment(_SupervisedExperiment):
 
 
         display_format: str, default = None
-            To display plots in [Streamlit](https://www.streamlit.io/), set this to 'streamlit'.
+            To display plots in Streamlit (https://www.streamlit.io/), set this to 'streamlit'.
             Currently, not all plots are supported.
 
 

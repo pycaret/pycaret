@@ -247,7 +247,7 @@ def plot_model(model, plot="2d", scale=1, display_format=None):
         The resolution scale of the figure.
 
     display_format: str, default = None
-        To display plots in [Streamlit](https://www.streamlit.io/), set this to 'streamlit'.
+        To display plots in Streamlit (https://www.streamlit.io/), set this to 'streamlit'.
 
     Returns:
         None
@@ -255,9 +255,10 @@ def plot_model(model, plot="2d", scale=1, display_format=None):
     """
 
     # error handling
+    import pandas as pd
 
     # check if model is a pandas dataframe
-    if isinstance(model, pd.DataFrame) == False:
+    if not isinstance(model, pd.DataFrame):
         raise TypeError("Model needs to be a pandas.DataFrame object.")
 
     # check plot parameter
