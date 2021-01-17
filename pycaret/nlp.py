@@ -1917,7 +1917,7 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
 
 
     display_format: str, default = None
-        To display plots in [Streamlit](https://www.streamlit.io/), set this to 'streamlit'.
+        To display plots in Streamlit (https://www.streamlit.io/), set this to 'streamlit'.
         Currently, not all plots are supported.
 
 

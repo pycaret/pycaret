@@ -249,7 +249,7 @@ def plot_model(model, plot="2d", scale=1, display_format=None):
         The resolution scale of the figure.
 
     display_format: str, default = None
-        To display plots in [Streamlit](https://www.streamlit.io/), set this to 'streamlit'.
+        To display plots in Streamlit (https://www.streamlit.io/), set this to 'streamlit'.
 
     Returns:
         None
