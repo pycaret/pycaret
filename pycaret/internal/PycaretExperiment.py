@@ -6333,7 +6333,7 @@ class _SupervisedExperiment(_TabularExperiment):
 
         self.logger.info("Checking base model")
 
-        estimator_id = _get_model_id(estimator)
+        estimator_id = self._get_model_id(estimator)
         if estimator_id is None:
             if custom_grid is None:
                 raise ValueError(
