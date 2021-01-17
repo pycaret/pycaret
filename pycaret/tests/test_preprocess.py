@@ -106,7 +106,7 @@ def test_simple_imputer():
 
 def test_complete_sklearn_pipeline():
     """
-    Test if the simple imputer in pycaret works with sklearn's pipeline
+    Test if the pycaret's pipeline works with sklearn's pipeline
     """
 
     # Load an example dataset and set the features and target
@@ -119,7 +119,8 @@ def test_complete_sklearn_pipeline():
 
     # Initiate a pycaret pipeline
     pycaret_preprocessor = pycaret.internal.preprocess.Preprocess_Path_One_Sklearn(
-        train_data=data, target_variable=target, display_types=False
+        train_data=data, target_variable=target, display_types=False,
+        apply_pca=True, pca_variance_retained_or_number_of_components=5, pca_method='incremental'
     )
 
     # Append classifier to preprocessing pipeline. Now we have a full prediction pipeline.
