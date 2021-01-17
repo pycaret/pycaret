@@ -4,6 +4,8 @@
 # Release: PyCaret 2.2.0
 # Last modified : 25/10/2020
 
+import pandas as pd
+
 
 def setup(data, transaction_id, item_id, ignore_items=None, session_id=None):
 
@@ -257,7 +259,7 @@ def plot_model(model, plot="2d", scale=1, display_format=None):
     # error handling
 
     # check if model is a pandas dataframe
-    if isinstance(model, pd.DataFrame) == False:
+    if not isinstance(model, pd.DataFrame):
         raise TypeError("Model needs to be a pandas.DataFrame object.")
 
     # check plot parameter
