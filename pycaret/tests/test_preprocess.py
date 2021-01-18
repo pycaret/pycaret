@@ -122,6 +122,9 @@ def test_complete_sklearn_pipeline():
         train_data=data, target_variable=target, display_types=False,
         apply_pca=True, pca_variance_retained_or_number_of_components=5, pca_method='incremental'
     )
+    transformed_data = pycaret_preprocessor.fit_transform(X=data_features, y=data_target)
+
+    assert isinstance(transformed_data, pd.DataFrame)
 
     # Append classifier to preprocessing pipeline. Now we have a full prediction pipeline.
     clf = Pipeline(steps=[('preprocessor', pycaret_preprocessor),

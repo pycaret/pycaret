@@ -3255,54 +3255,49 @@ class Reduce_Dimensions_For_Supervised_Path(BaseEstimator, TransformerMixin):
 
     def __init__(
         self,
-        target,
         method="pca_liner",
         variance_retained_or_number_of_components=0.99,
         random_state=42,
     ):
-        self.target = target
         self.variance_retained_or_number_of_components = variance_retained_or_number_of_components
         self.random_state = random_state
         self.method = method
 
-    def fit(self, data, y=None):
-        self.fit_transform(data, y=y)
+    def fit(self, X, y=None):
+        self.fit_transform(X, y=y)
         return self
 
-    def transform(self, dataset, y=None):
-        data = dataset
+    def transform(self, X, y=None):
+        data = X
         if self.method in [
             "pca_liner",
             "pca_kernal",
             "tsne",
             "incremental",
         ]:  # if self.method in ['pca_liner' , 'pca_kernal', 'tsne' , 'incremental','psa']
-            data = data.drop(self.target, axis=1, errors="ignore")
             data_pca = self.pca.transform(data)
             data_pca = pd.DataFrame(data_pca)
             data_pca.columns = [
                 "Component_" + str(i) for i in np.arange(1, len(data_pca.columns) + 1)
             ]
             data_pca.index = data.index
-            if self.target in dataset.columns:
-                data_pca[self.target] = dataset[self.target]
+
             return data_pca
         else:
-            return dataset
+            return X
 
-    def fit_transform(self, dataset, y=None):
-        data = dataset
+    def fit_transform(self, X, y=None):
+        data = X
         if self.method == "pca_liner":
             self.pca = PCA(self.variance_retained_or_number_of_components, random_state=self.random_state)
             # fit transform
-            data_pca = self.pca.fit_transform(data.drop(self.target, axis=1, errors='ignore'))
+            data_pca = self.pca.fit_transform(data)
             data_pca = pd.DataFrame(data_pca)
             data_pca.columns = [
                 "Component_" + str(i) for i in np.arange(1, len(data_pca.columns) + 1)
             ]
             data_pca.index = data.index
-            if self.target in data.columns:
-                data_pca[self.target] = data[self.target]
+
             return data_pca
         elif self.method == "pca_kernal":  # take number of components only
             self.pca = KernelPCA(
@@ -3312,14 +3307,13 @@ class Reduce_Dimensions_For_Supervised_Path(BaseEstimator, TransformerMixin):
                 n_jobs=-1,
             )
             # fit transform
-            data_pca = self.pca.fit_transform(data.drop(self.target, axis=1, errors='ignore'))
+            data_pca = self.pca.fit_transform(data)
             data_pca = pd.DataFrame(data_pca)
             data_pca.columns = [
                 "Component_" + str(i) for i in np.arange(1, len(data_pca.columns) + 1)
             ]
             data_pca.index = data.index
-            if self.target in data.columns:
-                data_pca[self.target] = data[self.target]
+
             return data_pca
         # elif self.method == 'pls': # take number of components only
         #   self.pca = PLSRegression(self.variance_retained,scale=False)
@@ -3333,29 +3327,27 @@ class Reduce_Dimensions_For_Supervised_Path(BaseEstimator, TransformerMixin):
         elif self.method == "tsne":  # take number of components only
             self.pca = TSNE(self.variance_retained_or_number_of_components, random_state=self.random_state)
             # fit transform
-            data_pca = self.pca.fit_transform(data.drop(self.target, axis=1, errors='ignore'))
+            data_pca = self.pca.fit_transform(data)
             data_pca = pd.DataFrame(data_pca)
             data_pca.columns = [
                 "Component_" + str(i) for i in np.arange(1, len(data_pca.columns) + 1)
             ]
             data_pca.index = data.index
-            if self.target in data.columns:
-                data_pca[self.target] = data[self.target]
+
             return data_pca
         elif self.method == "incremental":  # take number of components only
             self.pca = IncrementalPCA(self.variance_retained_or_number_of_components)
             # fit transform
-            data_pca = self.pca.fit_transform(data.drop(self.target, axis=1, errors='ignore'))
+            data_pca = self.pca.fit_transform(data)
             data_pca = pd.DataFrame(data_pca)
             data_pca.columns = [
                 "Component_" + str(i) for i in np.arange(1, len(data_pca.columns) + 1)
             ]
             data_pca.index = data.index
-            if self.target in data.columns:
-                data_pca[self.target] = data[self.target]
+
             return data_pca
         else:
-            return dataset
+            return X
 
 
 # ___________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________
@@ -4076,7 +4068,6 @@ def Preprocess_Path_One_Sklearn(
     # apply pca
     if apply_pca == True:
         pca = Reduce_Dimensions_For_Supervised_Path(
-            target=target_variable,
             method=pca_method,
             variance_retained_or_number_of_components=pca_variance_retained_or_number_of_components,
             random_state=random_state,
