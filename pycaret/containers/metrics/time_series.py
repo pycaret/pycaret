@@ -1,11 +1,11 @@
-# Module: containers.metrics.regression
+# Module: containers.metrics.time_series
 # Author: Antoni Baum (Yard1) <antoni.baum@protonmail.com>
 # License: MIT
 
-# The purpose of this module is to serve as a central repository of regression metrics. The `regression` module will
-# call `get_all_metrics_containers()`, which will return instances of all classes in this module that have `RegressionMetricContainer`
-# as a base (but not `RegressionMetricContainer` itself). In order to add a new model, you only need to create a new class that has
-# `RegressionMetricContainer` as a base, set all of the required parameters in the `__init__` and then call `super().__init__`
+# The purpose of this module is to serve as a central repository of time series metrics. The `time_series` module will
+# call `get_all_metrics_containers()`, which will return instances of all classes in this module that have `TimeSeriesMetricContainer`
+# as a base (but not `TimeSeriesMetricContainer` itself). In order to add a new model, you only need to create a new class that has
+# `TimeSeriesMetricContainer` as a base, set all of the required parameters in the `__init__` and then call `super().__init__`
 # to complete the process. Refer to the existing classes for examples.
 
 from typing import Optional, Union, Dict, Any
@@ -19,9 +19,9 @@ from sklearn.utils.validation import check_consistent_length
 from sklearn.metrics._regression import _check_reg_targets
 
 
-class RegressionMetricContainer(MetricContainer):
+class TimeSeriesMetricContainer(MetricContainer):
     """
-    Base regression metric container class, for easier definition of containers. Ensures consistent format
+    Base time series metric container class, for easier definition of containers. Ensures consistent format
     before being turned into a dataframe row.
 
     Parameters
@@ -147,112 +147,9 @@ class RegressionMetricContainer(MetricContainer):
         return d
 
 
-class MAEMetricContainer(RegressionMetricContainer):
-    def __init__(self, globals_dict: dict) -> None:
-        super().__init__(
-            id="mae",
-            name="MAE",
-            score_func=metrics.mean_absolute_error,
-            greater_is_better=False,
-            scorer="neg_mean_absolute_error",
-        )
-
-
-class MSEMetricContainer(RegressionMetricContainer):
-    def __init__(self, globals_dict: dict) -> None:
-        super().__init__(
-            id="mse",
-            name="MSE",
-            score_func=metrics.mean_squared_error,
-            greater_is_better=False,
-            scorer="neg_mean_squared_error",
-        )
-
-
-class RMSEMetricContainer(RegressionMetricContainer):
-    def __init__(self, globals_dict: dict) -> None:
-
-        super().__init__(
-            id="rmse",
-            name="RMSE",
-            score_func=metrics.mean_squared_error,
-            greater_is_better=False,
-            args={"squared": False},
-            scorer="neg_root_mean_squared_error",
-        )
-
-
-class R2MetricContainer(RegressionMetricContainer):
-    def __init__(self, globals_dict: dict) -> None:
-
-        super().__init__(
-            id="r2",
-            name="R2",
-            score_func=metrics.r2_score,
-            greater_is_better=True,
-            scorer="r2",
-        )
-
-
-class RMSLEMetricContainer(RegressionMetricContainer):
-    def __init__(self, globals_dict: dict) -> None:
-        def root_mean_squared_log_error(
-            y_true, y_pred, *, sample_weight=None, multioutput="uniform_average"
-        ):
-            return np.sqrt(
-                metrics.mean_squared_log_error(
-                    np.abs(y_true),
-                    np.abs(y_pred),
-                    sample_weight=sample_weight,
-                    multioutput=multioutput,
-                )
-            )
-
-        super().__init__(
-            id="rmsle",
-            name="RMSLE",
-            score_func=root_mean_squared_log_error,
-            scorer=pycaret.internal.metrics.make_scorer_with_error_score(
-                root_mean_squared_log_error, error_score=0.0, greater_is_better=False
-            ),
-            greater_is_better=False,
-        )
-
-
-class MAPEMetricContainer(RegressionMetricContainer):
-    def __init__(self, globals_dict: dict) -> None:
-        def mean_absolute_percentage_error(
-            y_true, y_pred, sample_weight=None, multioutput="uniform_average"
-        ):
-            y_type, y_true, y_pred, multioutput = _check_reg_targets(
-                y_true, y_pred, multioutput
-            )
-            check_consistent_length(y_true, y_pred, sample_weight)
-            mask = y_true != 0
-            y_true = y_true[mask]
-            y_pred = y_pred[mask]
-            mape = np.abs(y_pred - y_true) / np.abs(y_true)
-            output_errors = np.average(mape, weights=sample_weight, axis=0)
-            if isinstance(multioutput, str):
-                if multioutput == "raw_values":
-                    return output_errors
-                elif multioutput == "uniform_average":
-                    # pass None as weights to np.average: uniform mean
-                    multioutput = None
-
-            return np.average(output_errors, weights=multioutput)
-
-        super().__init__(
-            id="mape",
-            name="MAPE",
-            score_func=mean_absolute_percentage_error,
-            greater_is_better=False,
-        )
-
-
 def get_all_metric_containers(
     globals_dict: dict, raise_errors: bool = True
-) -> Dict[str, RegressionMetricContainer]:
+) -> Dict[str, TimeSeriesMetricContainer]:
     return pycaret.containers.base_container.get_all_containers(
-        globals(), globals_dict, RegressionMetricContainer, raise_errors
+        globals(), globals_dict, TimeSeriesMetricContainer, raise_errors
     )
