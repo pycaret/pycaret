@@ -276,7 +276,7 @@ class DataTypes_Auto_infer(BaseEstimator, TransformerMixin):
         data.dropna(axis=0, how="all", inplace=True)
         data.dropna(axis=1, how="all", inplace=True)
         # remove the row if target column has NA
-        data = data[~data[self.target].isnull()]
+        data.dropna(subset=[self.target], inplace=True)
 
         # self.training_columns = data.drop(self.target,axis=1).columns
 
@@ -365,6 +365,8 @@ class DataTypes_Auto_infer(BaseEstimator, TransformerMixin):
 
         # if there are inf or -inf then replace them with NaN
         data.replace([np.inf, -np.inf], np.NaN, inplace=True)
+
+        data.dropna(subset=[self.target], inplace=True)
 
         # remove sepcial char from column names
         # data.columns= data.columns.str.replace('[,]','')
