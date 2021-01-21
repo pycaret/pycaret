@@ -276,7 +276,8 @@ class DataTypes_Auto_infer(BaseEstimator, TransformerMixin):
         data.dropna(axis=0, how="all", inplace=True)
         data.dropna(axis=1, how="all", inplace=True)
         # remove the row if target column has NA
-        data.dropna(subset=[self.target], inplace=True)
+        if self.target in data.columns: #unsupervised check
+            data.dropna(subset=[self.target], inplace=True)
 
         # self.training_columns = data.drop(self.target,axis=1).columns
 
