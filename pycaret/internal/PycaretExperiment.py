@@ -6333,7 +6333,14 @@ class _SupervisedExperiment(_TabularExperiment):
 
         self.logger.info("Checking base model")
 
-        estimator_id = self._get_model_id(estimator)
+        is_stacked_model = False
+
+        if hasattr(estimator, "final_estimator"):
+            self.logger.info("Model is stacked, using the definition of the meta-model")
+            is_stacked_model = True
+            estimator_id = self._get_model_id(estimator.final_estimator)
+        else:
+            estimator_id = self._get_model_id(estimator)
         if estimator_id is None:
             if custom_grid is None:
                 raise ValueError(
@@ -6355,11 +6362,6 @@ class _SupervisedExperiment(_TabularExperiment):
         is_stacked_model = False
 
         base_estimator = model
-
-        if hasattr(base_estimator, "final_estimator"):
-            self.logger.info("Model is stacked, using the definition of the meta-model")
-            is_stacked_model = True
-            base_estimator = base_estimator.final_estimator
 
         display.update_monitor(2, estimator_name)
         display.display_monitor()
