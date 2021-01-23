@@ -119,19 +119,3 @@ def show_yellowbrick_plot(
     logger.info("Visual Rendered Successfully")
 
 
-class MatplotlibDefaultDPI(object):
-    def __init__(self, base_dpi: float = 100, scale_to_set: float = 1):
-        try:
-            self.default_skplt_dpit = skplt.metrics.plt.rcParams["figure.dpi"]
-            skplt.metrics.plt.rcParams["figure.dpi"] = base_dpi * scale_to_set
-        except:
-            pass
-
-    def __enter__(self) -> None:
-        return None
-
-    def __exit__(self, type, value, traceback):
-        try:
-            skplt.metrics.plt.rcParams["figure.dpi"] = self.default_skplt_dpit
-        except:
-            pass
