@@ -8,6 +8,7 @@ from pycaret.internal.Display import Display
 import scikitplot as skplt
 import matplotlib.pyplot as plt
 
+
 def show_yellowbrick_in_streamlit(
     visualizer, outpath=None, clear_figure=False, **kwargs
 ):
@@ -117,5 +118,4 @@ def show_yellowbrick_plot(
             visualizer.show(clear_figure=True)
 
     logger.info("Visual Rendered Successfully")
-
 

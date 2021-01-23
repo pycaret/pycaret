@@ -33,9 +33,7 @@ def leverage_statistic(x: np.ndarray):
 
 
 def calculate_standardized_residual(
-        predicted: np.ndarray,
-        expected: np.ndarray = None,
-        featuresize: int = None
+    predicted: np.ndarray, expected: np.ndarray = None, featuresize: int = None
 ) -> np.ndarray:
     """
     Calculates the standardized residuals $\tilde r_i$ of the predictions to the expectations.
@@ -72,12 +70,18 @@ def calculate_standardized_residual(
     if m is None:
         m = 1
     s2_hat = 1 / (n - m) * np.sum(residuals ** 2)
-    leverage = 1 / n + (expected - np.mean(expected)) / np.sum((expected - np.mean(expected)) ** 2)
+    leverage = 1 / n + (expected - np.mean(expected)) / np.sum(
+        (expected - np.mean(expected)) ** 2
+    )
     standardized_residuals = residuals / (np.sqrt(s2_hat) * (1 - leverage))
     return standardized_residuals
 
 
-def cooks_distance(standardized_residuals: np.ndarray, leverage_statistic: np.ndarray, n_model_params: int = None) -> np.array:
+def cooks_distance(
+    standardized_residuals: np.ndarray,
+    leverage_statistic: np.ndarray,
+    n_model_params: int = None,
+) -> np.array:
     """
     The Cook’s distance $d_i$ measures to which extent the predicted value $\hat y_i$ changes if the ith observation
     is removed. It can be efficiently calculated using the leverage statistics $h_i$, the standardized
@@ -106,7 +110,7 @@ def cooks_distance(standardized_residuals: np.ndarray, leverage_statistic: np.nd
 
     """
     p = n_model_params if n_model_params is not None and n_model_params >= 1 else 1
-    multiplier = [element / (1-element) for element in leverage_statistic]
+    multiplier = [element / (1 - element) for element in leverage_statistic]
     distance = np.multiply(np.power(standardized_residuals, 2) / (p + 1), multiplier)
     return distance
 

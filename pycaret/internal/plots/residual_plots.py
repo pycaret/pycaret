@@ -26,8 +26,14 @@ class QQPlotWidget(BaseFigureWidget):
     around the red straight line.
     """
 
-    def __init__(self, predicted: np.ndarray, expected: np.ndarray = None, featuresize: int = None,
-                 split_origin: np.array = None, **kwargs):
+    def __init__(
+        self,
+        predicted: np.ndarray,
+        expected: np.ndarray = None,
+        featuresize: int = None,
+        split_origin: np.array = None,
+        **kwargs,
+    ):
         """
         Instantiates a QQ plot
 
@@ -49,9 +55,7 @@ class QQPlotWidget(BaseFigureWidget):
 
         if expected is not None:
             std_res = helper.calculate_standardized_residual(
-                predicted,
-                expected=expected,
-                featuresize=featuresize
+                predicted, expected=expected, featuresize=featuresize
             )
         else:
             std_res = predicted
@@ -79,43 +83,63 @@ class QQPlotWidget(BaseFigureWidget):
 
         """
 
-        qq = stats.probplot(standardized_residuals, dist='norm', sparams=(1))
+        qq = stats.probplot(standardized_residuals, dist="norm", sparams=(1))
         return qq[0], qq[1][:2]
 
-    def __qq_plot(self, standardized_residuals: np.ndarray, split_origin: np.array = None) -> go.Figure:
-        (osm, osr), (slope, intercept) = self.__get_qq(standardized_residuals=standardized_residuals)
+    def __qq_plot(
+        self, standardized_residuals: np.ndarray, split_origin: np.array = None
+    ) -> go.Figure:
+        (osm, osr), (slope, intercept) = self.__get_qq(
+            standardized_residuals=standardized_residuals
+        )
         fig = go.Figure()
 
         if split_origin is not None:
             # calculate the sorted split origin list w.r.t to the standardized residuals
             # with this list we know which (theoretical quantile | empirical quantile) point belongs to which origin
             sorted_split_origin = np.array(
-                [origin for (_, origin) in sorted(enumerate(split_origin),
-                                                  key=lambda idx_value: standardized_residuals[idx_value[0]])])
+                [
+                    origin
+                    for (_, origin) in sorted(
+                        enumerate(split_origin),
+                        key=lambda idx_value: standardized_residuals[idx_value[0]],
+                    )
+                ]
+            )
             colors = sorted_split_origin.copy()
             colors[sorted_split_origin == "train"] = "blue"
             colors[sorted_split_origin == "test"] = "green"
-            fig.add_scatter(x=osm, y=osr, mode='markers', name='quantiles',
-                            marker=dict(color=colors), customdata=sorted_split_origin,
-                            hovertemplate="%{x},%{y} (%{customdata})",
-                            opacity=0.7)
+            fig.add_scatter(
+                x=osm,
+                y=osr,
+                mode="markers",
+                name="quantiles",
+                marker=dict(color=colors),
+                customdata=sorted_split_origin,
+                hovertemplate="%{x},%{y} (%{customdata})",
+                opacity=0.7,
+            )
         else:
-            fig.add_scatter(x=osm, y=osr, mode='markers', name='quantiles',
-                            opacity=0.7)
+            fig.add_scatter(x=osm, y=osr, mode="markers", name="quantiles", opacity=0.7)
 
         x = np.array([osm[0], osm[-1]])
-        fig.add_scatter(x=x, y=intercept + slope * x, mode='lines', name='OLS')
+        fig.add_scatter(x=x, y=intercept + slope * x, mode="lines", name="OLS")
         fig.layout.update(
             autosize=True,
             showlegend=False,
-            title='Normal QQ-Plot',
-            xaxis_title='Theoretical Quantiles',
-            yaxis_title='Standardized Residuals'
+            title="Normal QQ-Plot",
+            xaxis_title="Theoretical Quantiles",
+            yaxis_title="Standardized Residuals",
         )
         return fig
 
-    def update_values(self, predicted: np.ndarray, expected: np.ndarray = None, featuresize: int = None,
-                      split_origin: np.ndarray = None):
+    def update_values(
+        self,
+        predicted: np.ndarray,
+        expected: np.ndarray = None,
+        featuresize: int = None,
+        split_origin: np.ndarray = None,
+    ):
         """
         Update the QQ plot values
 
@@ -135,8 +159,10 @@ class QQPlotWidget(BaseFigureWidget):
             to denote from which split this observation originates.
         """
         plot = self.__qq_plot(
-            standardized_residuals=helper.calculate_standardized_residual(predicted, expected, featuresize),
-            split_origin=split_origin
+            standardized_residuals=helper.calculate_standardized_residual(
+                predicted, expected, featuresize
+            ),
+            split_origin=split_origin,
         )
         self.update({"data": plot.data}, overwrite=True)
         self.update_layout()
@@ -150,8 +176,13 @@ class ScaleLocationWidget(BaseFigureWidget):
     The fitted trend line should follow a straight line along the axis of predicted values.
     """
 
-    def __init__(self, predictions: np.ndarray, sqrt_abs_standardized_residuals: np.ndarray, split_origin: np.ndarray = None,
-                 **kwargs):
+    def __init__(
+        self,
+        predictions: np.ndarray,
+        sqrt_abs_standardized_residuals: np.ndarray,
+        split_origin: np.ndarray = None,
+        **kwargs,
+    ):
         """
         Instantiates a Scale Location plot
 
@@ -167,7 +198,9 @@ class ScaleLocationWidget(BaseFigureWidget):
             as the predictions and sqrt_abs_standardized_residuals array. Each entry in this array must be one of the strings ['train', 'test']
             to denote from which split this observation originates.
         """
-        plot = self.__scale_location_plot(predictions, sqrt_abs_standardized_residuals, split_origin)
+        plot = self.__scale_location_plot(
+            predictions, sqrt_abs_standardized_residuals, split_origin
+        )
         super(ScaleLocationWidget, self).__init__(plot, **kwargs)
 
     @staticmethod
@@ -176,18 +209,39 @@ class ScaleLocationWidget(BaseFigureWidget):
 
         if split_origin is not None:
             dataframe = pd.DataFrame(
-                {'Predictions': fitted, 'Split': split_origin,
-                 '$\sqrt{|Standardized Residuals|}$': sqrt_abs_standardized_residuals})
-            fig = px.scatter(dataframe, x="Predictions", y="$\sqrt{|Standardized Residuals|}$", trendline="lowess",
-                             color="Split", color_discrete_sequence=['blue', 'green'],
-                             title="Scale-Location Plot", opacity=0.3)
+                {
+                    "Predictions": fitted,
+                    "Split": split_origin,
+                    "$\sqrt{|Standardized Residuals|}$": sqrt_abs_standardized_residuals,
+                }
+            )
+            fig = px.scatter(
+                dataframe,
+                x="Predictions",
+                y="$\sqrt{|Standardized Residuals|}$",
+                trendline="lowess",
+                color="Split",
+                color_discrete_sequence=["blue", "green"],
+                title="Scale-Location Plot",
+                opacity=0.3,
+            )
 
             fig.update_layout(showlegend=False)
         else:
             dataframe = pd.DataFrame(
-                {'Predictions': fitted, '$\sqrt{|Standardized Residuals|}$': sqrt_abs_standardized_residuals})
-            fig = px.scatter(dataframe, x="Predictions", y="$\sqrt{|Standardized Residuals|}$", trendline="lowess",
-                             title="Scale-Location Plot", opacity=0.3)
+                {
+                    "Predictions": fitted,
+                    "$\sqrt{|Standardized Residuals|}$": sqrt_abs_standardized_residuals,
+                }
+            )
+            fig = px.scatter(
+                dataframe,
+                x="Predictions",
+                y="$\sqrt{|Standardized Residuals|}$",
+                trendline="lowess",
+                title="Scale-Location Plot",
+                opacity=0.3,
+            )
 
         abs_sq_norm_resid = sqrt_abs_standardized_residuals.sort_values(ascending=False)
         abs_sq_norm_resid_top_3 = abs_sq_norm_resid[:3]
@@ -195,19 +249,19 @@ class ScaleLocationWidget(BaseFigureWidget):
             fig.add_annotation(
                 x=fitted[i],
                 y=sqrt_abs_standardized_residuals[i],
-                text=f"$\sqrt{{|\\tilde r_{{{i}}}|}}$")
-        fig.update_annotations(dict(
-            xref="x",
-            yref="y",
-            showarrow=True,
-            arrowhead=7,
-            ax=0,
-            ay=-40
-        ))
+                text=f"$\sqrt{{|\\tilde r_{{{i}}}|}}$",
+            )
+        fig.update_annotations(
+            dict(xref="x", yref="y", showarrow=True, arrowhead=7, ax=0, ay=-40)
+        )
         return fig
 
-    def update_values(self, predicted: np.ndarray, sqrt_abs_standardized_residuals: np.ndarray,
-                      split_origin: np.ndarray = None):
+    def update_values(
+        self,
+        predicted: np.ndarray,
+        sqrt_abs_standardized_residuals: np.ndarray,
+        split_origin: np.ndarray = None,
+    ):
         """
         Update the Scale Location plot values
 
@@ -223,7 +277,9 @@ class ScaleLocationWidget(BaseFigureWidget):
             as the predictions and sqrt_abs_standardized_residuals array. Each entry in this array must be one of the strings ['train', 'test']
             to denote from which split this observation originates.
         """
-        plot = self.__scale_location_plot(predicted, sqrt_abs_standardized_residuals, split_origin)
+        plot = self.__scale_location_plot(
+            predicted, sqrt_abs_standardized_residuals, split_origin
+        )
         self.update({"data": plot.data}, overwrite=True)
         self.update_layout()
 
@@ -239,13 +295,13 @@ class CooksDistanceWidget(BaseFigureWidget):
     """
 
     def __init__(
-            self,
-            model_leverage: np.ndarray,
-            cooks_distances: np.ndarray,
-            standardized_residuals: np.ndarray,
-            n_model_params: int,
-            split_origin: np.ndarray = None,
-            **kwargs
+        self,
+        model_leverage: np.ndarray,
+        cooks_distances: np.ndarray,
+        standardized_residuals: np.ndarray,
+        n_model_params: int,
+        split_origin: np.ndarray = None,
+        **kwargs,
     ):
         """
         Instantiates the Cooks Distance widget w.r.t. some model and a dataset $X$ which has $n$ observations.
@@ -266,48 +322,77 @@ class CooksDistanceWidget(BaseFigureWidget):
             as the model_leverage and standardized_residuals array. Each entry in this array must be one of the
             strings ['train', 'test'] to denote from which split this observation originates.
         """
-        plot = self.__cooks_distance_plot(model_leverage, cooks_distances, standardized_residuals, n_model_params,
-                                          split_origin)
+        plot = self.__cooks_distance_plot(
+            model_leverage,
+            cooks_distances,
+            standardized_residuals,
+            n_model_params,
+            split_origin,
+        )
         super(CooksDistanceWidget, self).__init__(plot, **kwargs)
 
     @staticmethod
-    def __cooks_distance_plot(model_leverage, cooks_distances, standardized_residuals, n_model_params, split_origin):
+    def __cooks_distance_plot(
+        model_leverage,
+        cooks_distances,
+        standardized_residuals,
+        n_model_params,
+        split_origin,
+    ):
         cooks_distances = pd.Series(cooks_distances)
 
         if split_origin is not None:
             dataframe = pd.DataFrame(
-                {'Leverage': model_leverage, 'Standardized Residuals': standardized_residuals, "Split": split_origin})
-            fig = px.scatter(dataframe, x="Leverage", y="Standardized Residuals", trendline="lowess",
-                             color="Split", color_discrete_sequence=['blue', 'green'],
-                             title="Residuals vs Leverage", opacity=0.3)
+                {
+                    "Leverage": model_leverage,
+                    "Standardized Residuals": standardized_residuals,
+                    "Split": split_origin,
+                }
+            )
+            fig = px.scatter(
+                dataframe,
+                x="Leverage",
+                y="Standardized Residuals",
+                trendline="lowess",
+                color="Split",
+                color_discrete_sequence=["blue", "green"],
+                title="Residuals vs Leverage",
+                opacity=0.3,
+            )
 
             fig.update_layout(showlegend=False)
         else:
             dataframe = pd.DataFrame(
-                {'Leverage': model_leverage, 'Standardized Residuals': standardized_residuals})
-            fig = px.scatter(dataframe, x="Leverage", y="Standardized Residuals", trendline="lowess",
-                             title="Residuals vs Leverage", opacity=0.3)
+                {
+                    "Leverage": model_leverage,
+                    "Standardized Residuals": standardized_residuals,
+                }
+            )
+            fig = px.scatter(
+                dataframe,
+                x="Leverage",
+                y="Standardized Residuals",
+                trendline="lowess",
+                title="Residuals vs Leverage",
+                opacity=0.3,
+            )
 
         maxmo = max(model_leverage) * 1.05
         fig.update_xaxes(range=[0, maxmo])
         min_r = min(standardized_residuals)
         max_r = max(standardized_residuals)
-        fig.update_yaxes(range=[min_r - .05 * abs(min_r), max_r + 0.05 * abs(max_r)])
+        fig.update_yaxes(range=[min_r - 0.05 * abs(min_r), max_r + 0.05 * abs(max_r)])
         leverage_top_3 = cooks_distances.sort_values(ascending=False)[:3]
         for i in leverage_top_3.index:
             fig.add_annotation(
                 x=model_leverage[i],
                 y=standardized_residuals[i],
-                text=f"$\\tilde r_{{{i}}}$")
+                text=f"$\\tilde r_{{{i}}}$",
+            )
 
-        fig.update_annotations(dict(
-            xref="x",
-            yref="y",
-            showarrow=True,
-            arrowhead=7,
-            ax=0,
-            ay=-40
-        ))
+        fig.update_annotations(
+            dict(xref="x", yref="y", showarrow=True, arrowhead=7, ax=0, ay=-40)
+        )
 
         def graph(formula, x_range, label, c, text):
             x = x_range
@@ -318,36 +403,56 @@ class CooksDistanceWidget(BaseFigureWidget):
             text_list[(x_range.shape[0] // 4) * 3] = text
 
             fig.add_trace(
-                go.Scatter(x=x, y=y, name=label,
-                           line=dict(color=c, width=2, dash='dash'),
-                           mode="lines+text", textposition="bottom center",
-                           showlegend=False, text=text_list
-                           )
+                go.Scatter(
+                    x=x,
+                    y=y,
+                    name=label,
+                    line=dict(color=c, width=2, dash="dash"),
+                    mode="lines+text",
+                    textposition="bottom center",
+                    showlegend=False,
+                    text=text_list,
+                )
             )
 
             fig.add_trace(
-                go.Scatter(x=x, y=-y, name=label,
-                           line=dict(color=c, width=2, dash='dash'),
-                           mode="lines+text", textposition="top center",
-                           showlegend=False, text=text_list
-                           )
+                go.Scatter(
+                    x=x,
+                    y=-y,
+                    name=label,
+                    line=dict(color=c, width=2, dash="dash"),
+                    mode="lines+text",
+                    textposition="top center",
+                    showlegend=False,
+                    text=text_list,
+                )
             )
 
         p = n_model_params
-        graph(lambda x: np.sqrt(np.abs((0.5 * (p+1) * (1 - x)) / x)),
-              np.linspace(0.001, max(model_leverage), 50), 'Cook\'s distance = 0.5', 'coral', "0.5")
+        graph(
+            lambda x: np.sqrt(np.abs((0.5 * (p + 1) * (1 - x)) / x)),
+            np.linspace(0.001, max(model_leverage), 50),
+            "Cook's distance = 0.5",
+            "coral",
+            "0.5",
+        )
 
-        graph(lambda x: np.sqrt(np.abs((1 * (p+1) * (1 - x)) / x)),
-              np.linspace(0.001, max(model_leverage), 50), 'Cook\'s distance = 1', 'firebrick', "1")
+        graph(
+            lambda x: np.sqrt(np.abs((1 * (p + 1) * (1 - x)) / x)),
+            np.linspace(0.001, max(model_leverage), 50),
+            "Cook's distance = 1",
+            "firebrick",
+            "1",
+        )
         return fig
 
     def update_values(
-            self,
-            model_leverage: np.ndarray,
-            cooks_distances: np.ndarray,
-            standardized_residuals: np.ndarray,
-            n_model_params: int,
-            split_origin: np.ndarray = None
+        self,
+        model_leverage: np.ndarray,
+        cooks_distances: np.ndarray,
+        standardized_residuals: np.ndarray,
+        n_model_params: int,
+        split_origin: np.ndarray = None,
     ):
         """
         Update the Cooks Distance widget values
@@ -368,8 +473,13 @@ class CooksDistanceWidget(BaseFigureWidget):
             as the model_leverage and standardized_residuals array. Each entry in this array must be one of the
             strings ['train', 'test'] to denote from which split this observation originates.
         """
-        plot = self.__cooks_distance_plot(model_leverage, cooks_distances, standardized_residuals, n_model_params,
-                                          split_origin=split_origin)
+        plot = self.__cooks_distance_plot(
+            model_leverage,
+            cooks_distances,
+            standardized_residuals,
+            n_model_params,
+            split_origin=split_origin,
+        )
         self.update({"data": plot.data}, overwrite=True)
         self.update_layout()
 
@@ -382,8 +492,13 @@ class TukeyAnscombeWidget(BaseFigureWidget):
     residual axis.
     """
 
-    def __init__(self, predictions: np.ndarray, residuals: np.ndarray,
-                 split_origin: np.ndarray = None, **kwargs):
+    def __init__(
+        self,
+        predictions: np.ndarray,
+        residuals: np.ndarray,
+        split_origin: np.ndarray = None,
+        **kwargs,
+    ):
         """
         Instantiates the Tunkey Anscombe plot
 
@@ -406,44 +521,56 @@ class TukeyAnscombeWidget(BaseFigureWidget):
     @staticmethod
     def __tukey_anscombe_plot(predictions, residuals, split_origin):
         if split_origin is not None:
-            dataframe = pd.DataFrame({
-                'Predictions': predictions,
-                'Residuals': residuals,
-                'Split': split_origin})
+            dataframe = pd.DataFrame(
+                {
+                    "Predictions": predictions,
+                    "Residuals": residuals,
+                    "Split": split_origin,
+                }
+            )
 
-            fig = px.scatter(dataframe, x="Predictions", y="Residuals", trendline="lowess",
-                             color="Split",
-                             color_discrete_sequence=['blue', 'green'],
-                             title="Tukey-Anscombe Plot",
-                             opacity=0.3)
+            fig = px.scatter(
+                dataframe,
+                x="Predictions",
+                y="Residuals",
+                trendline="lowess",
+                color="Split",
+                color_discrete_sequence=["blue", "green"],
+                title="Tukey-Anscombe Plot",
+                opacity=0.3,
+            )
 
             fig.update_layout(showlegend=False)
         else:
-            dataframe = pd.DataFrame({'Predictions': predictions, 'Residuals': residuals})
+            dataframe = pd.DataFrame(
+                {"Predictions": predictions, "Residuals": residuals}
+            )
 
-            fig = px.scatter(dataframe, x="Predictions", y="Residuals", trendline="lowess",
-                             title="Tukey-Anscombe Plot",
-                             opacity=0.3)
+            fig = px.scatter(
+                dataframe,
+                x="Predictions",
+                y="Residuals",
+                trendline="lowess",
+                title="Tukey-Anscombe Plot",
+                opacity=0.3,
+            )
 
         model_abs_resid = pd.Series(np.abs(residuals))
         abs_resid = model_abs_resid.sort_values(ascending=False)
         abs_resid_top_3 = abs_resid[:3]
         for i in abs_resid_top_3.index:
-            fig.add_annotation(
-                x=predictions[i],
-                y=residuals[i],
-                text=f"$r_{{{i}}}$")
-        fig.update_annotations(dict(
-            xref="x",
-            yref="y",
-            showarrow=True,
-            arrowhead=7,
-            ax=0,
-            ay=-40
-        ))
+            fig.add_annotation(x=predictions[i], y=residuals[i], text=f"$r_{{{i}}}$")
+        fig.update_annotations(
+            dict(xref="x", yref="y", showarrow=True, arrowhead=7, ax=0, ay=-40)
+        )
         return fig
 
-    def update_values(self, predictions: np.ndarray, residuals: np.ndarray, split_origin: np.ndarray = None):
+    def update_values(
+        self,
+        predictions: np.ndarray,
+        residuals: np.ndarray,
+        split_origin: np.ndarray = None,
+    ):
         """
         Update the Tunkey Anscombe plot values
 
@@ -479,8 +606,15 @@ class InteractiveResidualsPlot:
     If those assumptions are not satisfied, the plausibility of the given model for the given data is to be questioned.
     """
 
-    def __init__(self, display: Display, model, x: np.ndarray, y: np.ndarray, x_test: np.ndarray = None,
-                 y_test: np.ndarray = None):
+    def __init__(
+        self,
+        display: Display,
+        model,
+        x: np.ndarray,
+        y: np.ndarray,
+        x_test: np.ndarray = None,
+        y_test: np.ndarray = None,
+    ):
         """
         Instantiates the interactive residual plots for the given data
 
@@ -521,14 +655,22 @@ class InteractiveResidualsPlot:
         """
 
         style = 'style="width: 50%; height: 50%; float:left;"'
-        html = f'<div {style}>{self.figures[0].to_html()}</div><div {style}>{self.figures[1].to_html()}</div>' \
-               f'<div {style}>{self.figures[2].to_html()}</div><div {style}>{self.figures[3].to_html()}</div>'
+        html = (
+            f"<div {style}>{self.figures[0].to_html()}</div><div {style}>{self.figures[1].to_html()}</div>"
+            f"<div {style}>{self.figures[2].to_html()}</div><div {style}>{self.figures[3].to_html()}</div>"
+        )
 
         with open(plot_filename, "w") as f:
             f.write(html)
 
-    def __create_resplots(self, model, x: np.ndarray, y: np.ndarray,
-                          x_test: np.ndarray = None, y_test: np.ndarray = None) -> widgets.VBox:
+    def __create_resplots(
+        self,
+        model,
+        x: np.ndarray,
+        y: np.ndarray,
+        x_test: np.ndarray = None,
+        y_test: np.ndarray = None,
+    ) -> widgets.VBox:
         logger = get_logger()
 
         if not is_fitted(model):
@@ -544,8 +686,8 @@ class InteractiveResidualsPlot:
             predictions = np.concatenate((fitted, pred))
             residuals = np.concatenate((fitted_residuals, prediction_residuals))
             split_origin = np.concatenate(
-                (np.repeat("train", fitted.shape[0]),
-                 np.repeat("test", pred.shape[0])))
+                (np.repeat("train", fitted.shape[0]), np.repeat("test", pred.shape[0]))
+            )
 
             x = np.concatenate((x, x_test))
             y = np.concatenate((y, y_test))
@@ -558,21 +700,27 @@ class InteractiveResidualsPlot:
         logger.info("Calculated model residuals")
         self.display.move_progress()
 
-        tukey_anscombe_widget = TukeyAnscombeWidget(predictions, residuals, split_origin=split_origin)
+        tukey_anscombe_widget = TukeyAnscombeWidget(
+            predictions, residuals, split_origin=split_origin
+        )
         logger.info("Calculated Tunkey-Anscombe Plot")
         self.figures.append(tukey_anscombe_widget)
         self.display.move_progress()
 
-        qq_plot_widget = QQPlotWidget(predictions, y, split_origin=split_origin, featuresize=x.shape[1])
+        qq_plot_widget = QQPlotWidget(
+            predictions, y, split_origin=split_origin, featuresize=x.shape[1]
+        )
         logger.info("Calculated Normal QQ Plot")
         self.figures.append(qq_plot_widget)
         self.display.move_progress()
 
-        standardized_residuals = \
-            helper.calculate_standardized_residual(predictions, y, None)
+        standardized_residuals = helper.calculate_standardized_residual(
+            predictions, y, None
+        )
         model_norm_residuals_abs_sqrt = np.sqrt(np.abs(standardized_residuals))
-        scale_location_widget = ScaleLocationWidget(predictions, model_norm_residuals_abs_sqrt,
-                                                    split_origin=split_origin)
+        scale_location_widget = ScaleLocationWidget(
+            predictions, model_norm_residuals_abs_sqrt, split_origin=split_origin
+        )
         logger.info("Calculated Scale-Location Plot")
         self.figures.append(scale_location_widget)
         self.display.move_progress()
@@ -580,14 +728,21 @@ class InteractiveResidualsPlot:
         leverage = helper.leverage_statistic(np.array(x))
 
         n_model_params = len(model.get_params())
-        distance = helper.cooks_distance(standardized_residuals, leverage, n_model_params=n_model_params)
-        cooks_distance_widget = CooksDistanceWidget(leverage, distance, standardized_residuals,
-                                                    n_model_params, split_origin=split_origin)
+        distance = helper.cooks_distance(
+            standardized_residuals, leverage, n_model_params=n_model_params
+        )
+        cooks_distance_widget = CooksDistanceWidget(
+            leverage,
+            distance,
+            standardized_residuals,
+            n_model_params,
+            split_origin=split_origin,
+        )
         logger.info("Calculated Residual vs Leverage Plot inc. Cook's distance")
         self.figures.append(cooks_distance_widget)
         self.display.move_progress()
 
-        items_layout = Layout(width='1000px')
+        items_layout = Layout(width="1000px")
         h0 = widgets.HBox(self.figures[:2], layout=items_layout)
         h1 = widgets.HBox(self.figures[2:], layout=items_layout)
         return widgets.VBox([h0, h1])
