@@ -29,7 +29,8 @@ from pycaret.internal.utils import (
 import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
 from pycaret.internal.logging import get_logger
-from pycaret.internal.plotting import show_yellowbrick_plot, MatplotlibDefaultDPI
+from pycaret.internal.plots.yellowbrick import show_yellowbrick_plot
+from pycaret.internal.plots.helper import MatplotlibDefaultDPI
 from pycaret.internal.Display import Display
 from pycaret.internal.distributions import *
 from pycaret.internal.validation import *
@@ -5655,20 +5656,22 @@ def plot_model(
     plot : str, default = auc
         Enter abbreviation of type of plot. The current list of plots supported are (Plot - Name):
 
+
+        * 'residuals_interactive' - Interactive Residual plots
         * 'auc' - Area Under the Curve
-        * 'threshold' - Discrimination Threshold
-        * 'pr' - Precision Recall Curve
-        * 'confusion_matrix' - Confusion Matrix
-        * 'error' - Class Prediction Error
-        * 'class_report' - Classification Report
-        * 'boundary' - Decision Boundary
-        * 'rfe' - Recursive Feature Selection
-        * 'learning' - Learning Curve
-        * 'manifold' - Manifold Learning
-        * 'calibration' - Calibration Curve
-        * 'vc' - Validation Curve
-        * 'dimension' - Dimension Learning
-        * 'feature' - Feature Importance
+        * 'threshold' - Discrimination Threshold           
+        * 'pr' - Precision Recall Curve                  
+        * 'confusion_matrix' - Confusion Matrix    
+        * 'error' - Class Prediction Error                
+        * 'class_report' - Classification Report        
+        * 'boundary' - Decision Boundary            
+        * 'rfe' - Recursive Feature Selection                 
+        * 'learning' - Learning Curve             
+        * 'manifold' - Manifold Learning            
+        * 'calibration' - Calibration Curve         
+        * 'vc' - Validation Curve                  
+        * 'dimension' - Dimension Learning           
+        * 'feature' - Feature Importance              
         * 'feature_all' - Feature Importance (All)
         * 'parameter' - Model Hyperparameter
         * 'lift' - Lift Curve
@@ -5737,6 +5740,11 @@ def plot_model(
 
     if not fit_kwargs:
         fit_kwargs = {}
+
+    if not hasattr(estimator, "fit"):
+        raise ValueError(
+            f"Estimator {estimator} does not have the required fit() method."
+        )
 
     if plot not in _available_plots:
         raise ValueError(
@@ -5914,6 +5922,26 @@ def plot_model(
                 fit_kwargs = _get_pipeline_fit_kwargs(pipeline_with_model, fit_kwargs)
 
                 _base_dpi = 100
+
+                def residuals_interactive():
+                    from pycaret.internal.plots.residual_plots import InteractiveResidualsPlot
+                    resplots = InteractiveResidualsPlot(x=data_X, y=data_y, x_test=test_X, y_test=test_y,
+                                                        model=pipeline_with_model, display=display)
+
+                    display.clear_output()
+                    if system:
+                        resplots.show()
+
+                    plot_filename = f"{plot_name}.html"
+
+                    if save:
+                        resplots.write_html(plot_filename)
+                        logger.info(
+                            f"Saving '{plot_filename}' in current active directory"
+                        )
+
+                    logger.info("Visual Rendered Successfully")
+                    return plot_filename
 
                 def cluster():
                     logger.info(
