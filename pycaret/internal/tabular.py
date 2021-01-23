@@ -5741,6 +5741,11 @@ def plot_model(
     if not fit_kwargs:
         fit_kwargs = {}
 
+    if not hasattr(estimator, "fit"):
+        raise ValueError(
+            f"Estimator {estimator} does not have the required fit() method."
+        )
+
     if plot not in _available_plots:
         raise ValueError(
             "Plot Not Available. Please see docstring for list of available Plots."

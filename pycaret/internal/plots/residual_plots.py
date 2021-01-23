@@ -16,6 +16,7 @@ import pycaret.internal.plots.helper as helper
 from pycaret.internal.validation import is_fitted
 from pycaret.internal.Display import Display
 from pycaret.internal.logging import get_logger
+from pycaret.internal.validation import fit_if_not_fitted
 
 
 class QQPlotWidget(BaseFigureWidget):
@@ -673,29 +674,27 @@ class InteractiveResidualsPlot:
     ) -> widgets.VBox:
         logger = get_logger()
 
-        if not is_fitted(model):
-            model.fit(x, y)
+        with fit_if_not_fitted(model, x, y) as fitted_model:
+            fitted = fitted_model.predict(x)
+            fitted_residuals = fitted - y
 
-        fitted = model.predict(x)
-        fitted_residuals = fitted - y
+            if x_test is not None and y_test is not None:
+                pred = fitted_model.predict(x_test)
+                prediction_residuals = pred - y_test
 
-        if x_test is not None and y_test is not None:
-            pred = model.predict(x_test)
-            prediction_residuals = pred - y_test
+                predictions = np.concatenate((fitted, pred))
+                residuals = np.concatenate((fitted_residuals, prediction_residuals))
+                split_origin = np.concatenate(
+                    (np.repeat("train", fitted.shape[0]), np.repeat("test", pred.shape[0]))
+                )
 
-            predictions = np.concatenate((fitted, pred))
-            residuals = np.concatenate((fitted_residuals, prediction_residuals))
-            split_origin = np.concatenate(
-                (np.repeat("train", fitted.shape[0]), np.repeat("test", pred.shape[0]))
-            )
+                x = np.concatenate((x, x_test))
+                y = np.concatenate((y, y_test))
 
-            x = np.concatenate((x, x_test))
-            y = np.concatenate((y, y_test))
-
-        else:
-            predictions = fitted
-            residuals = fitted_residuals
-            split_origin = None
+            else:
+                predictions = fitted
+                residuals = fitted_residuals
+                split_origin = None
 
         logger.info("Calculated model residuals")
         self.display.move_progress()
