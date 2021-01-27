@@ -4491,11 +4491,13 @@ def tune_model_supervised(
 
     if isinstance(model, TunableMixin):
         logger.info("Getting base sklearn object from tunable")
+        model.set_params(**best_params)
         best_params = {
             k: v
-            for k, v in best_params.items()
+            for k, v in model.get_params().items()
             if k in model.get_base_sklearn_params().keys()
         }
+        print(best_params)
         model = model.get_base_sklearn_object()
 
     logger.info("SubProcess create_model() called ==================================")
@@ -5924,9 +5926,18 @@ def plot_model(
                 _base_dpi = 100
 
                 def residuals_interactive():
-                    from pycaret.internal.plots.residual_plots import InteractiveResidualsPlot
-                    resplots = InteractiveResidualsPlot(x=data_X, y=data_y, x_test=test_X, y_test=test_y,
-                                                        model=pipeline_with_model, display=display)
+                    from pycaret.internal.plots.residual_plots import (
+                        InteractiveResidualsPlot,
+                    )
+
+                    resplots = InteractiveResidualsPlot(
+                        x=data_X,
+                        y=data_y,
+                        x_test=test_X,
+                        y_test=test_y,
+                        model=pipeline_with_model,
+                        display=display,
+                    )
 
                     display.clear_output()
                     if system:
