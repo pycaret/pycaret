@@ -2307,6 +2307,7 @@ class _TabularExperiment(_PyCaretExperiment):
         plot : str, default = auc
             Enter abbreviation of type of plot. The current list of plots supported are (Plot - Name):
 
+            * 'residuals_interactive' - Interactive Residual plots
             * 'auc' - Area Under the Curve                 
             * 'threshold' - Discrimination Threshold           
             * 'pr' - Precision Recall Curve                  
@@ -2386,6 +2387,11 @@ class _TabularExperiment(_PyCaretExperiment):
 
         if not fit_kwargs:
             fit_kwargs = {}
+
+        if not hasattr(estimator, "fit"):
+            raise ValueError(
+                f"Estimator {estimator} does not have the required fit() method."
+            )
 
         if plot not in self._available_plots:
             raise ValueError(
@@ -2569,6 +2575,35 @@ class _TabularExperiment(_PyCaretExperiment):
                     )
 
                     _base_dpi = 100
+
+                    def residuals_interactive():
+                        from pycaret.internal.plots.residual_plots import (
+                            InteractiveResidualsPlot,
+                        )
+
+                        resplots = InteractiveResidualsPlot(
+                            x=data_X,
+                            y=data_y,
+                            x_test=test_X,
+                            y_test=test_y,
+                            model=pipeline_with_model,
+                            display=display,
+                        )
+
+                        display.clear_output()
+                        if system:
+                            resplots.show()
+
+                        plot_filename = f"{plot_name}.html"
+
+                        if save:
+                            resplots.write_html(plot_filename)
+                            self.logger.info(
+                                f"Saving '{plot_filename}' in current active directory"
+                            )
+
+                        self.logger.info("Visual Rendered Successfully")
+                        return plot_filename
 
                     def cluster():
                         self.logger.info(
@@ -6785,7 +6820,7 @@ class _SupervisedExperiment(_TabularExperiment):
             self.logger.info("Getting base sklearn object from tunable")
             best_params = {
                 k: v
-                for k, v in best_params.items()
+                for k, v in model.get_params().items()
                 if k in model.get_base_sklearn_params().keys()
             }
             model = model.get_base_sklearn_object()
@@ -10057,6 +10092,7 @@ class RegressionExperiment(_SupervisedExperiment):
             "feature": "Feature Importance",
             "feature_all": "Feature Importance (All)",
             "tree": "Decision Tree",
+            "residuals_interactive": "Interactive Residuals",
         }
         return
 
@@ -13699,6 +13735,7 @@ class ClassificationExperiment(_SupervisedExperiment):
         plot: str, default = 'auc'
             List of available plots (ID - Name):
 
+            * 'residuals_interactive' - Interactive Residual plots
             * 'auc' - Area Under the Curve
             * 'threshold' - Discrimination Threshold
             * 'pr' - Precision Recall Curve
