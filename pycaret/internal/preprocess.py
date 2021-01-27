@@ -452,6 +452,7 @@ class DataTypes_Auto_infer(BaseEstimator, TransformerMixin):
 # _______________________________________________________________________________________________________________________
 # Imputation
 
+
 class Simple_Imputer(_BaseImputer):
     """
     Imputes all type of data (numerical,categorical & Time).
@@ -483,7 +484,7 @@ class Simple_Imputer(_BaseImputer):
     _time_strategies = {
         "mean": "mean",
         "median": "median",
-        "most frequent": "most_frequent"
+        "most frequent": "most_frequent",
     }
 
     def __init__(
@@ -545,9 +546,15 @@ class Simple_Imputer(_BaseImputer):
         except:
             data = dataset
 
-        self.numeric_columns = data.select_dtypes(include=["float32", "float64", "int32", "int64"]).columns
-        self.categorical_columns = data.select_dtypes(include=["object", "bool", "string", "category"]).columns
-        self.time_columns = data.select_dtypes(include=["datetime64[ns]", "timedelta64[ns]"]).columns
+        self.numeric_columns = data.select_dtypes(
+            include=["float32", "float64", "int32", "int64"]
+        ).columns
+        self.categorical_columns = data.select_dtypes(
+            include=["object", "bool", "string", "category"]
+        ).columns
+        self.time_columns = data.select_dtypes(
+            include=["datetime64[ns]", "timedelta64[ns]"]
+        ).columns
 
         statistics = []
 
@@ -563,9 +570,7 @@ class Simple_Imputer(_BaseImputer):
             for col in self.time_columns:
                 data[col] = data[col][data[col].notnull()].astype(np.int64)
             self.time_imputer.fit(data[self.time_columns])
-            statistics.append(
-                (self.time_imputer.statistics_, self.time_columns)
-            )
+            statistics.append((self.time_imputer.statistics_, self.time_columns))
 
         self.statistics_ = np.zeros(shape=len(data.columns), dtype=object)
         columns = list(data.columns)
@@ -610,7 +615,9 @@ class Simple_Imputer(_BaseImputer):
             timedata_copy = data[self.time_columns].copy()
 
             for col in self.time_columns:
-                timedata_copy[col] = timedata_copy[col][timedata_copy[col].notnull()].astype(np.int64)
+                timedata_copy[col] = timedata_copy[col][
+                    timedata_copy[col].notnull()
+                ].astype(np.int64)
 
             time_data = pd.DataFrame(
                 self.time_imputer.transform(timedata_copy),
@@ -816,7 +823,8 @@ class Iterative_Imputer(_BaseImputer):
         target=None,
         missing_values=np.nan,
         initial_strategy_numeric: str = "mean",
-        initial_strategy_categorical: str = "most_frequent",
+        initial_strategy_categorical: str = "most frequent",
+        initial_strategy_time: str = "most frequent",
         ordinal_columns: Optional[list] = None,
         max_iter: int = 10,
         warm_start: bool = False,
@@ -831,6 +839,7 @@ class Iterative_Imputer(_BaseImputer):
         self.classifier = classifier
         self.initial_strategy_numeric = initial_strategy_numeric
         self.initial_strategy_categorical = initial_strategy_categorical
+        self.initial_strategy_time = initial_strategy_time
         self.max_iter = max_iter
         self.warm_start = warm_start
         self.imputation_order = imputation_order
@@ -848,6 +857,7 @@ class Iterative_Imputer(_BaseImputer):
                 target="__TARGET__",  # dummy value, we don't actually want to drop anything
                 numeric_strategy=self.initial_strategy_numeric,
                 categorical_strategy=self.initial_strategy_categorical,
+                time_strategy=self.initial_strategy_time,
             )
             X_filled = self.initial_imputer_.fit_transform(X)
         else:
@@ -1917,11 +1927,7 @@ class Reduce_Cardinality_with_Clustering(BaseEstimator, TransformerMixin):
   """
 
     def __init__(
-        self,
-        target,
-        catagorical_feature=[],
-        check_clusters=30,
-        random_state=42,
+        self, target, catagorical_feature=[], check_clusters=30, random_state=42,
     ):
         self.target = target
         self.catagorical_feature = catagorical_feature
@@ -1944,7 +1950,9 @@ class Reduce_Cardinality_with_Clustering(BaseEstimator, TransformerMixin):
         # first convert to dummy
         if len(data.select_dtypes(include="object").columns) > 0:
             self.dummy = Dummify(self.target)
-            data_t = self.dummy.fit_transform(data.drop(self.catagorical_feature, axis=1))
+            data_t = self.dummy.fit_transform(
+                data.drop(self.catagorical_feature, axis=1)
+            )
             # data_t1 = data_t1.drop(self.target,axis=1)
         else:
             data_t = data.drop(self.catagorical_feature, axis=1)
@@ -3269,7 +3277,9 @@ class Reduce_Dimensions_For_Supervised_Path(BaseEstimator, TransformerMixin):
         random_state=42,
     ):
         self.target = target
-        self.variance_retained_or_number_of_components = variance_retained_or_number_of_components
+        self.variance_retained_or_number_of_components = (
+            variance_retained_or_number_of_components
+        )
         self.random_state = random_state
         self.method = method
 
@@ -3301,7 +3311,10 @@ class Reduce_Dimensions_For_Supervised_Path(BaseEstimator, TransformerMixin):
     def fit_transform(self, dataset, y=None):
         data = dataset
         if self.method == "pca_liner":
-            self.pca = PCA(self.variance_retained_or_number_of_components, random_state=self.random_state)
+            self.pca = PCA(
+                self.variance_retained_or_number_of_components,
+                random_state=self.random_state,
+            )
             # fit transform
             data_pca = self.pca.fit_transform(data.drop(self.target, axis=1))
             data_pca = pd.DataFrame(data_pca)
@@ -3337,7 +3350,10 @@ class Reduce_Dimensions_For_Supervised_Path(BaseEstimator, TransformerMixin):
         #   data_pca[self.target] = data[self.target]
         #   return(data_pca)
         elif self.method == "tsne":  # take number of components only
-            self.pca = TSNE(self.variance_retained_or_number_of_components, random_state=self.random_state)
+            self.pca = TSNE(
+                self.variance_retained_or_number_of_components,
+                random_state=self.random_state,
+            )
             # fit transform
             data_pca = self.pca.fit_transform(data.drop(self.target, axis=1))
             data_pca = pd.DataFrame(data_pca)
@@ -3486,7 +3502,7 @@ def Preprocess_Path_One(
             numeric_strategy=numeric_imputation_strategy,
             target=target_variable,
             categorical_strategy=categorical_imputation_strategy,
-            time_strategy=time_imputation_strategy
+            time_strategy=time_imputation_strategy,
         )
     # elif imputation_type == "surrogate imputer":
     #  imputer = Surrogate_Imputer(numeric_strategy=numeric_imputation_strategy,categorical_strategy=categorical_imputation_strategy,target_variable=target_variable)
@@ -3742,6 +3758,8 @@ def Preprocess_Path_One(
     )
 
     return pipe
+
+
 def Preprocess_Path_One_Sklearn(
     train_data,
     target_variable,
@@ -3864,7 +3882,7 @@ def Preprocess_Path_One_Sklearn(
             numeric_strategy=numeric_imputation_strategy,
             target=target_variable,
             categorical_strategy=categorical_imputation_strategy,
-            time_strategy=time_imputation_strategy
+            time_strategy=time_imputation_strategy,
         )
     # elif imputation_type == "surrogate imputer":
     #  imputer = Surrogate_Imputer(numeric_strategy=numeric_imputation_strategy,categorical_strategy=categorical_imputation_strategy,target_variable=target_variable)
@@ -4120,6 +4138,7 @@ def Preprocess_Path_One_Sklearn(
     )
 
     return pipe
+
 
 # ______________________________________________________________________________________________________________________________________________________
 # preprocess_all_in_one_unsupervised
