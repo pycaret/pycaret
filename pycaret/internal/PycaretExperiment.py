@@ -25,7 +25,8 @@ from pycaret.internal.utils import (
 import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
 from pycaret.internal.logging import get_logger, create_logger
-from pycaret.internal.plotting import show_yellowbrick_plot, MatplotlibDefaultDPI
+from pycaret.internal.plots.yellowbrick import show_yellowbrick_plot
+from pycaret.internal.plots.helper import MatplotlibDefaultDPI
 from pycaret.internal.Display import Display
 from pycaret.internal.distributions import *
 from pycaret.internal.validation import *
