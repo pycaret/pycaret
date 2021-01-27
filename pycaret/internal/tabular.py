@@ -4497,7 +4497,6 @@ def tune_model_supervised(
             for k, v in model.get_params().items()
             if k in model.get_base_sklearn_params().keys()
         }
-        print(best_params)
         model = model.get_base_sklearn_object()
 
     logger.info("SubProcess create_model() called ==================================")
