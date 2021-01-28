@@ -1227,14 +1227,14 @@ def setup(
         GroupKFold,
         TimeSeriesSplit,
     )
-
+    fold_seed = seed if fold_shuffle_param else None
     if fold_strategy == "kfold":
         fold_generator = KFold(
-            fold_param, random_state=seed, shuffle=fold_shuffle_param
+            fold_param, random_state=fold_seed, shuffle=fold_shuffle_param
         )
     elif fold_strategy == "stratifiedkfold":
         fold_generator = StratifiedKFold(
-            fold_param, random_state=seed, shuffle=fold_shuffle_param
+            fold_param, random_state=fold_seed, shuffle=fold_shuffle_param
         )
     elif fold_strategy == "groupkfold":
         fold_generator = GroupKFold(fold_param)

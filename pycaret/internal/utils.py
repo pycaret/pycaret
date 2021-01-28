@@ -451,10 +451,11 @@ def get_cv_splitter(
             except:
                 raise ValueError(f"Couldn't set 'n_splits' to {fold} for {default}.")
         else:
+            fold_seed = seed if shuffle else None
             if int_default == "kfold":
-                return KFold(fold, random_state=seed, shuffle=shuffle)
+                return KFold(fold, random_state=fold_seed, shuffle=shuffle)
             elif int_default == "stratifiedkfold":
-                return StratifiedKFold(fold, random_state=seed, shuffle=shuffle)
+                return StratifiedKFold(fold, random_state=fold_seed, shuffle=shuffle)
             else:
                 raise ValueError(
                     "Wrong value for int_default param. Needs to be either 'kfold' or 'stratifiedkfold'."
