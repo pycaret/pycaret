@@ -2432,7 +2432,14 @@ def tune_model_supervised(
 
     logger.info("Checking base model")
 
-    estimator_id = _get_model_id(estimator)
+    is_stacked_model = False
+
+    if hasattr(estimator, "final_estimator"):
+        logger.info("Model is stacked, using the definition of the meta-model")
+        is_stacked_model = True
+        estimator_id = _get_model_id(estimator.final_estimator)
+    else:
+        estimator_id = _get_model_id(estimator)
     if estimator_id is None:
         if custom_grid is None:
             raise ValueError(
@@ -2450,15 +2457,18 @@ def tune_model_supervised(
         model = clone(estimator)
     else:
         logger.info("Model has a special tunable class, using that")
-        model = clone(estimator_definition.tunable(**estimator.get_params()))
-    is_stacked_model = False
+        if is_stacked_model:
+            model = clone(estimator)
+            model.set_params(
+                final_estimator=estimator_definition.tunable(**estimator.get_params())
+            )
+        else:
+            model = clone(estimator_definition.tunable(**estimator.get_params()))
 
     base_estimator = model
 
-    if hasattr(base_estimator, "final_estimator"):
-        logger.info("Model is stacked, using the definition of the meta-model")
-        is_stacked_model = True
-        base_estimator = base_estimator.final_estimator
+    if is_stacked_model:
+        base_estimator = model.final_estimator
 
     display.update_monitor(2, estimator_name)
     display.display_monitor()
@@ -2871,9 +2881,10 @@ def tune_model_supervised(
 
     if isinstance(model, TunableMixin):
         logger.info("Getting base sklearn object from tunable")
+        model.set_params(**best_params)
         best_params = {
             k: v
-            for k, v in best_params.items()
+            for k, v in model.get_params().items()
             if k in model.get_base_sklearn_params().keys()
         }
         model = model.get_base_sklearn_object()
@@ -4036,20 +4047,22 @@ def plot_model(
     plot : str, default = auc
         Enter abbreviation of type of plot. The current list of plots supported are (Plot - Name):
 
+
+        * 'residuals_interactive' - Interactive Residual plots
         * 'auc' - Area Under the Curve
-        * 'threshold' - Discrimination Threshold
-        * 'pr' - Precision Recall Curve
-        * 'confusion_matrix' - Confusion Matrix
-        * 'error' - Class Prediction Error
-        * 'class_report' - Classification Report
-        * 'boundary' - Decision Boundary
-        * 'rfe' - Recursive Feature Selection
-        * 'learning' - Learning Curve
-        * 'manifold' - Manifold Learning
-        * 'calibration' - Calibration Curve
-        * 'vc' - Validation Curve
-        * 'dimension' - Dimension Learning
-        * 'feature' - Feature Importance
+        * 'threshold' - Discrimination Threshold           
+        * 'pr' - Precision Recall Curve                  
+        * 'confusion_matrix' - Confusion Matrix    
+        * 'error' - Class Prediction Error                
+        * 'class_report' - Classification Report        
+        * 'boundary' - Decision Boundary            
+        * 'rfe' - Recursive Feature Selection                 
+        * 'learning' - Learning Curve             
+        * 'manifold' - Manifold Learning            
+        * 'calibration' - Calibration Curve         
+        * 'vc' - Validation Curve                  
+        * 'dimension' - Dimension Learning           
+        * 'feature' - Feature Importance              
         * 'feature_all' - Feature Importance (All)
         * 'parameter' - Model Hyperparameter
         * 'lift' - Lift Curve
@@ -4118,6 +4131,11 @@ def plot_model(
 
     if not fit_kwargs:
         fit_kwargs = {}
+
+    if not hasattr(estimator, "fit"):
+        raise ValueError(
+            f"Estimator {estimator} does not have the required fit() method."
+        )
 
     if plot not in _available_plots:
         raise ValueError(
@@ -4295,6 +4313,35 @@ def plot_model(
                 fit_kwargs = _get_pipeline_fit_kwargs(pipeline_with_model, fit_kwargs)
 
                 _base_dpi = 100
+
+                def residuals_interactive():
+                    from pycaret.internal.plots.residual_plots import (
+                        InteractiveResidualsPlot,
+                    )
+
+                    resplots = InteractiveResidualsPlot(
+                        x=data_X,
+                        y=data_y,
+                        x_test=test_X,
+                        y_test=test_y,
+                        model=pipeline_with_model,
+                        display=display,
+                    )
+
+                    display.clear_output()
+                    if system:
+                        resplots.show()
+
+                    plot_filename = f"{plot_name}.html"
+
+                    if save:
+                        resplots.write_html(plot_filename)
+                        logger.info(
+                            f"Saving '{plot_filename}' in current active directory"
+                        )
+
+                    logger.info("Visual Rendered Successfully")
+                    return plot_filename
 
                 def cluster():
                     logger.info(
