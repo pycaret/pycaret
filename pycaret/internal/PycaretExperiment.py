@@ -801,7 +801,6 @@ class _TabularExperiment(_PyCaretExperiment):
     def _set_up_mlflow(
         self,
         functions,
-        functions_,
         runtime,
         log_profile,
         profile_kwargs,
@@ -2161,7 +2160,6 @@ class _TabularExperiment(_PyCaretExperiment):
 
         self._set_up_mlflow(
             functions,
-            functions.data,
             runtime,
             log_profile,
             profile_kwargs,
@@ -4614,13 +4612,16 @@ class _SupervisedExperiment(_TabularExperiment):
     def _set_up_mlflow(
         self,
         functions,
-        functions_,
         runtime,
         log_profile,
         profile_kwargs,
         log_data,
         display,
     ) -> None:
+        functions_styler = functions
+        if isinstance(functions, Styler):
+            functions = functions.data
+
         # log into experiment
         self.experiment__.append(("Setup Config", functions))
         self.experiment__.append(("X_training Set", self.X_train))
@@ -4692,7 +4693,7 @@ class _SupervisedExperiment(_TabularExperiment):
                     pf.to_file("Data Profile.html")
                     mlflow.log_artifact("Data Profile.html")
                     os.remove("Data Profile.html")
-                    display.display(functions_, clear=True)
+                    display.display(functions_styler, clear=True)
 
                 # Log training and testing set
                 if log_data:
@@ -9004,13 +9005,15 @@ class _UnsupervisedExperiment(_TabularExperiment):
     def _set_up_mlflow(
         self,
         functions,
-        functions_,
         runtime,
         log_profile,
         profile_kwargs,
         log_data,
         display,
     ) -> None:
+        functions_styler = functions
+        if isinstance(functions, Styler):
+            functions = functions.data
         # log into experiment
         self.experiment__.append(("Setup Config", functions))
         self.experiment__.append(("Transformed Data", self.X))
@@ -9078,7 +9081,7 @@ class _UnsupervisedExperiment(_TabularExperiment):
                     pf.to_file("Data Profile.html")
                     mlflow.log_artifact("Data Profile.html")
                     os.remove("Data Profile.html")
-                    display.display(functions_, clear=True)
+                    display.display(functions_styler, clear=True)
 
                 # Log training and testing set
                 if log_data:
