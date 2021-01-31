@@ -25,10 +25,12 @@ from pycaret.internal.utils import (
 import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
 from pycaret.internal.logging import get_logger, create_logger
-from pycaret.internal.plotting import show_yellowbrick_plot, MatplotlibDefaultDPI
+from pycaret.internal.plots.yellowbrick import show_yellowbrick_plot
+from pycaret.internal.plots.helper import MatplotlibDefaultDPI
 from pycaret.internal.Display import Display
 from pycaret.internal.distributions import *
 from pycaret.internal.validation import *
+from pycaret.internal.tunable import TunableMixin
 import pycaret.containers.metrics.classification
 import pycaret.containers.metrics.regression
 import pycaret.containers.metrics.clustering
@@ -2306,6 +2308,7 @@ class _TabularExperiment(_PyCaretExperiment):
         plot : str, default = auc
             Enter abbreviation of type of plot. The current list of plots supported are (Plot - Name):
 
+            * 'residuals_interactive' - Interactive Residual plots
             * 'auc' - Area Under the Curve                 
             * 'threshold' - Discrimination Threshold           
             * 'pr' - Precision Recall Curve                  
@@ -2352,7 +2355,7 @@ class _TabularExperiment(_PyCaretExperiment):
             Must remain True all times. Only to be changed by internal functions.
 
         display_format: str, default = None
-            To display plots in [Streamlit](https://www.streamlit.io/), set this to 'streamlit'.
+            To display plots in Streamlit (https://www.streamlit.io/), set this to 'streamlit'.
             Currently, not all plots are supported.
 
         Returns
@@ -2385,6 +2388,11 @@ class _TabularExperiment(_PyCaretExperiment):
 
         if not fit_kwargs:
             fit_kwargs = {}
+
+        if not hasattr(estimator, "fit"):
+            raise ValueError(
+                f"Estimator {estimator} does not have the required fit() method."
+            )
 
         if plot not in self._available_plots:
             raise ValueError(
@@ -2568,6 +2576,35 @@ class _TabularExperiment(_PyCaretExperiment):
                     )
 
                     _base_dpi = 100
+
+                    def residuals_interactive():
+                        from pycaret.internal.plots.residual_plots import (
+                            InteractiveResidualsPlot,
+                        )
+
+                        resplots = InteractiveResidualsPlot(
+                            x=data_X,
+                            y=data_y,
+                            x_test=test_X,
+                            y_test=test_y,
+                            model=pipeline_with_model,
+                            display=display,
+                        )
+
+                        display.clear_output()
+                        if system:
+                            resplots.show()
+
+                        plot_filename = f"{plot_name}.html"
+
+                        if save:
+                            resplots.write_html(plot_filename)
+                            self.logger.info(
+                                f"Saving '{plot_filename}' in current active directory"
+                            )
+
+                        self.logger.info("Visual Rendered Successfully")
+                        return plot_filename
 
                     def cluster():
                         self.logger.info(
@@ -3014,6 +3051,7 @@ class _TabularExperiment(_PyCaretExperiment):
                                 fit_kwargs=fit_kwargs,
                                 groups=groups,
                                 display=display,
+                                display_format=display_format,
                             )
 
                         except:
@@ -3041,6 +3079,7 @@ class _TabularExperiment(_PyCaretExperiment):
                                 fit_kwargs=fit_kwargs,
                                 groups=groups,
                                 display=display,
+                                display_format=display_format,
                             )
                         except:
                             self.logger.error("Silhouette plot failed. Exception:")
@@ -3065,6 +3104,7 @@ class _TabularExperiment(_PyCaretExperiment):
                                 fit_kwargs=fit_kwargs,
                                 groups=groups,
                                 display=display,
+                                display_format=display_format,
                             )
                         except:
                             self.logger.error("Distance plot failed. Exception:")
@@ -3088,6 +3128,7 @@ class _TabularExperiment(_PyCaretExperiment):
                             fit_kwargs=fit_kwargs,
                             groups=groups,
                             display=display,
+                            display_format=display_format,
                         )
 
                     def auc():
@@ -3107,6 +3148,7 @@ class _TabularExperiment(_PyCaretExperiment):
                             fit_kwargs=fit_kwargs,
                             groups=groups,
                             display=display,
+                            display_format=display_format,
                         )
 
                     def threshold():
@@ -3128,6 +3170,7 @@ class _TabularExperiment(_PyCaretExperiment):
                             fit_kwargs=fit_kwargs,
                             groups=groups,
                             display=display,
+                            display_format=display_format,
                         )
 
                     def pr():
@@ -3149,6 +3192,7 @@ class _TabularExperiment(_PyCaretExperiment):
                             fit_kwargs=fit_kwargs,
                             groups=groups,
                             display=display,
+                            display_format=display_format,
                         )
 
                     def confusion_matrix():
@@ -3173,6 +3217,7 @@ class _TabularExperiment(_PyCaretExperiment):
                             fit_kwargs=fit_kwargs,
                             groups=groups,
                             display=display,
+                            display_format=display_format,
                         )
 
                     def error():
@@ -3203,6 +3248,7 @@ class _TabularExperiment(_PyCaretExperiment):
                             fit_kwargs=fit_kwargs,
                             groups=groups,
                             display=display,
+                            display_format=display_format,
                         )
 
                     def cooks():
@@ -3223,6 +3269,7 @@ class _TabularExperiment(_PyCaretExperiment):
                             handle_test="",
                             groups=groups,
                             display=display,
+                            display_format=display_format,
                         )
 
                     def class_report():
@@ -3244,6 +3291,7 @@ class _TabularExperiment(_PyCaretExperiment):
                             fit_kwargs=fit_kwargs,
                             groups=groups,
                             display=display,
+                            display_format=display_format,
                         )
 
                     def boundary():
@@ -3285,6 +3333,7 @@ class _TabularExperiment(_PyCaretExperiment):
                             display=display,
                             features=["Feature One", "Feature Two"],
                             classes=["A", "B"],
+                            display_format=display_format,
                         )
 
                     def rfe():
@@ -3305,6 +3354,7 @@ class _TabularExperiment(_PyCaretExperiment):
                             fit_kwargs=fit_kwargs,
                             groups=groups,
                             display=display,
+                            display_format=display_format,
                         )
 
                     def learning():
@@ -3332,6 +3382,7 @@ class _TabularExperiment(_PyCaretExperiment):
                             fit_kwargs=fit_kwargs,
                             groups=groups,
                             display=display,
+                            display_format=display_format,
                         )
 
                     def lift():
@@ -3364,7 +3415,7 @@ class _TabularExperiment(_PyCaretExperiment):
                                 self.logger.info(
                                     f"Saving '{plot_name}.png' in current active directory"
                                 )
-                                plt.savefig(f"{plot_name}.png", bbox_inches='tight')
+                                plt.savefig(f"{plot_name}.png", bbox_inches="tight")
                             elif system:
                                 plt.show()
                             plt.close()
@@ -3401,7 +3452,7 @@ class _TabularExperiment(_PyCaretExperiment):
                                 self.logger.info(
                                     f"Saving '{plot_name}.png' in current active directory"
                                 )
-                                plt.savefig(f"{plot_name}.png", bbox_inches='tight')
+                                plt.savefig(f"{plot_name}.png", bbox_inches="tight")
                             elif system:
                                 plt.show()
                             plt.close()
@@ -3428,6 +3479,7 @@ class _TabularExperiment(_PyCaretExperiment):
                             fit_kwargs=fit_kwargs,
                             groups=groups,
                             display=display,
+                            display_format=display_format,
                         )
 
                     def tree():
@@ -3618,7 +3670,7 @@ class _TabularExperiment(_PyCaretExperiment):
                             self.logger.info(
                                 f"Saving '{plot_name}.png' in current active directory"
                             )
-                            plt.savefig(f"{plot_name}.png", bbox_inches='tight')
+                            plt.savefig(f"{plot_name}.png", bbox_inches="tight")
                         elif system:
                             plt.show()
                         plt.close()
@@ -3834,6 +3886,7 @@ class _TabularExperiment(_PyCaretExperiment):
                             fit_kwargs=fit_kwargs,
                             groups=groups,
                             display=display,
+                            display_format=display_format,
                         )
 
                     def dimension():
@@ -3873,6 +3926,7 @@ class _TabularExperiment(_PyCaretExperiment):
                             fit_kwargs=fit_kwargs,
                             groups=groups,
                             display=display,
+                            display_format=display_format,
                         )
 
                     def feature():
@@ -3925,7 +3979,7 @@ class _TabularExperiment(_PyCaretExperiment):
                             self.logger.info(
                                 f"Saving '{plot_name}.png' in current active directory"
                             )
-                            plt.savefig(f"{plot_name}.png", bbox_inches='tight')
+                            plt.savefig(f"{plot_name}.png", bbox_inches="tight")
                         elif system:
                             plt.show()
                         plt.close()
@@ -6315,21 +6369,35 @@ class _SupervisedExperiment(_TabularExperiment):
 
         self.logger.info("Checking base model")
 
-        model = clone(estimator)
+        is_stacked_model = False
+
+        if hasattr(estimator, "final_estimator"):
+            self.logger.info("Model is stacked, using the definition of the meta-model")
+            is_stacked_model = True
+            estimator_id = self._get_model_id(estimator.final_estimator)
+        else:
+            estimator_id = self._get_model_id(estimator)
+        if estimator_id is None:
+            if custom_grid is None:
+                raise ValueError(
+                    "When passing a model not in PyCaret's model library, the custom_grid parameter must be provided."
+                )
+            estimator_name = self._get_model_name(estimator)
+            estimator_definition = None
+            self.logger.info("A custom model has been passed")
+        else:
+            estimator_definition = self._all_models_internal[estimator_id]
+            estimator_name = estimator_definition.name
+        self.logger.info(f"Base model : {estimator_name}")
+
+        if estimator_definition is None or estimator_definition.tunable is None:
+            model = clone(estimator)
+        else:
+            self.logger.info("Model has a special tunable class, using that")
+            model = clone(estimator_definition.tunable(**estimator.get_params()))
         is_stacked_model = False
 
         base_estimator = model
-
-        if hasattr(base_estimator, "final_estimator"):
-            self.logger.info("Model is stacked, using the definition of the meta-model")
-            is_stacked_model = True
-            base_estimator = base_estimator.final_estimator
-
-        estimator_id = self._get_model_id(base_estimator)
-
-        estimator_definition = self._all_models_internal[estimator_id]
-        estimator_name = estimator_definition.name
-        self.logger.info(f"Base model : {estimator_name}")
 
         display.update_monitor(2, estimator_name)
         display.display_monitor()
@@ -6466,16 +6534,19 @@ class _SupervisedExperiment(_TabularExperiment):
 
             param_grid = {f"{suffixes}__{k}": v for k, v in param_grid.items()}
 
-            search_kwargs = {**estimator_definition.tune_args, **kwargs}
+            if estimator_definition is not None:
+                search_kwargs = {**estimator_definition.tune_args, **kwargs}
+                n_jobs = (
+                    self._gpu_n_jobs_param
+                    if estimator_definition.is_gpu_enabled
+                    else self.n_jobs_param
+                )
+            else:
+                search_kwargs = {}
+                n_jobs = self.n_jobs_param
 
             if custom_grid is not None:
                 self.logger.info(f"custom_grid: {param_grid}")
-
-            n_jobs = (
-                self._gpu_n_jobs_param
-                if estimator_definition.is_gpu_enabled
-                else self.n_jobs_param
-            )
 
             from sklearn.gaussian_process import GaussianProcessClassifier
 
@@ -6744,7 +6815,16 @@ class _SupervisedExperiment(_TabularExperiment):
 
         display.move_progress()
 
-        self.logger.info("Random search completed")
+        self.logger.info("Hyperparameter search completed")
+
+        if isinstance(model, TunableMixin):
+            self.logger.info("Getting base sklearn object from tunable")
+            best_params = {
+                k: v
+                for k, v in model.get_params().items()
+                if k in model.get_base_sklearn_params().keys()
+            }
+            model = model.get_base_sklearn_object()
 
         self.logger.info(
             "SubProcess create_model() called =================================="
@@ -7062,8 +7142,13 @@ class _SupervisedExperiment(_TabularExperiment):
 
         estimator_id = self._get_model_id(estimator)
 
-        estimator_definition = self._all_models_internal[estimator_id]
-        estimator_name = estimator_definition.name
+        if estimator_id is None:
+            estimator_name = self._get_model_name(estimator)
+            logger.info("A custom model has been passed")
+        else:
+            estimator_definition = self._all_models_internal[estimator_id]
+            estimator_name = estimator_definition.name
+
         self.logger.info(f"Base model : {estimator_name}")
 
         display.update_monitor(2, estimator_name)
@@ -8031,7 +8116,7 @@ class _SupervisedExperiment(_TabularExperiment):
             shap_values = explainer.shap_values(test_X)
             shap_plot = shap.summary_plot(shap_values, test_X, show=show, **kwargs)
             if save:
-                plt.savefig(f"SHAP {plot}.png", bbox_inches='tight')
+                plt.savefig(f"SHAP {plot}.png", bbox_inches="tight")
             return shap_plot
 
         def correlation(show: bool = True):
@@ -8066,7 +8151,7 @@ class _SupervisedExperiment(_TabularExperiment):
                     dependence, shap_values, test_X, show=show, **kwargs
                 )
             if save:
-                plt.savefig(f"SHAP {plot}.png", bbox_inches='tight')
+                plt.savefig(f"SHAP {plot}.png", bbox_inches="tight")
             return None
 
         def reason(show: bool = True):
@@ -8570,6 +8655,7 @@ class _SupervisedExperiment(_TabularExperiment):
         data: Optional[pd.DataFrame] = None,
         probability_threshold: Optional[float] = None,
         encoded_labels: bool = False,  # added in pycaret==2.1.0
+        raw_score: bool = False,
         round: int = 4,  # added in pycaret==2.2.0
         verbose: bool = True,
         ml_usecase: Optional[MLUsecase] = None,
@@ -8607,6 +8693,9 @@ class _SupervisedExperiment(_TabularExperiment):
 
         encoded_labels: Boolean, default = False
             If True, will return labels encoded as an integer.
+
+        raw_score: bool, default = False
+            When set to True, scores for all labels will be returned.
 
         round: integer, default = 4
             Number of decimal places the metrics in the score grid will be rounded to. 
@@ -8794,16 +8883,20 @@ class _SupervisedExperiment(_TabularExperiment):
             X_test_["Label"] = label["Label"].values
 
         if score is not None:
-            d = []
-            for i in range(0, len(score)):
-                d.append(score[i][pred[i]])
-
-            score = d
+            if not raw_score:
+                score = [s[pred[i]] for i, s in enumerate(score)]
             try:
                 score = pd.DataFrame(score)
-                score.columns = ["Score"]
+                if raw_score:
+                    score_columns = pd.Series(range(score.shape[1]))
+                    if not encoded_labels:
+                        replace_lables_in_column(score_columns)
+                    score.columns = [f"Score_{label}" for label in score_columns]
+                else:
+                    score.columns = ["Score"]
                 score = score.round(round)
-                X_test_["Score"] = score["Score"].values
+                score.index = X_test_.index
+                X_test_ = pd.concat((X_test_, score), axis=1)
             except:
                 pass
 
@@ -10000,6 +10093,7 @@ class RegressionExperiment(_SupervisedExperiment):
             "feature": "Feature Importance",
             "feature_all": "Feature Importance (All)",
             "tree": "Decision Tree",
+            "residuals_interactive": "Interactive Residuals",
         }
         return
 
@@ -11464,7 +11558,7 @@ class RegressionExperiment(_SupervisedExperiment):
 
 
         display_format: str, default = None
-            To display plots in [Streamlit](https://www.streamlit.io/), set this to 'streamlit'.
+            To display plots in Streamlit (https://www.streamlit.io/), set this to 'streamlit'.
             Currently, not all plots are supported.
 
 
@@ -13642,6 +13736,7 @@ class ClassificationExperiment(_SupervisedExperiment):
         plot: str, default = 'auc'
             List of available plots (ID - Name):
 
+            * 'residuals_interactive' - Interactive Residual plots
             * 'auc' - Area Under the Curve
             * 'threshold' - Discrimination Threshold
             * 'pr' - Precision Recall Curve
@@ -13699,7 +13794,7 @@ class ClassificationExperiment(_SupervisedExperiment):
 
 
         display_format: str, default = None
-            To display plots in [Streamlit](https://www.streamlit.io/), set this to 'streamlit'.
+            To display plots in Streamlit (https://www.streamlit.io/), set this to 'streamlit'.
             Currently, not all plots are supported.
 
 
@@ -14371,6 +14466,7 @@ class ClassificationExperiment(_SupervisedExperiment):
         data: Optional[pd.DataFrame] = None,
         probability_threshold: Optional[float] = None,
         encoded_labels: bool = False,
+        raw_score: bool = False,
         round: int = 4,
         verbose: bool = True,
     ) -> pd.DataFrame:
@@ -14411,6 +14507,10 @@ class ClassificationExperiment(_SupervisedExperiment):
             When set to True, will return labels encoded as an integer.
 
 
+        raw_score: bool, default = False
+            When set to True, scores for all labels will be returned.
+
+
         round: int, default = 4
             Number of decimal places the metrics in the score grid will be rounded to. 
 
@@ -14437,6 +14537,7 @@ class ClassificationExperiment(_SupervisedExperiment):
             data=data,
             probability_threshold=probability_threshold,
             encoded_labels=encoded_labels,
+            raw_score=raw_score,
             round=round,
             verbose=verbose,
             ml_usecase=MLUsecase.CLASSIFICATION,

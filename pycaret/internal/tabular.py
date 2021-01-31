@@ -13,10 +13,6 @@ from pycaret.internal.meta_estimators import (
     PowerTransformedTargetRegressor,
     get_estimator_from_meta_estimator,
 )
-from pycaret.internal.patches.tune_sklearn import (
-    get_tune_sklearn_tunegridsearchcv,
-    get_tune_sklearn_tunesearchcv,
-)
 from pycaret.internal.pipeline import (
     add_estimator_to_pipeline,
     get_pipeline_estimator_label,
@@ -2436,21 +2432,43 @@ def tune_model_supervised(
 
     logger.info("Checking base model")
 
-    model = clone(estimator)
     is_stacked_model = False
+
+    if hasattr(estimator, "final_estimator"):
+        logger.info("Model is stacked, using the definition of the meta-model")
+        is_stacked_model = True
+        estimator_id = _get_model_id(estimator.final_estimator)
+    else:
+        estimator_id = _get_model_id(estimator)
+    if estimator_id is None:
+        if custom_grid is None:
+            raise ValueError(
+                "When passing a model not in PyCaret's model library, the custom_grid parameter must be provided."
+            )
+        estimator_name = _get_model_name(estimator)
+        estimator_definition = None
+        logger.info("A custom model has been passed")
+    else:
+        estimator_definition = _all_models_internal[estimator_id]
+        estimator_name = estimator_definition.name
+    logger.info(f"Base model : {estimator_name}")
+
+    if estimator_definition is None or estimator_definition.tunable is None:
+        model = clone(estimator)
+    else:
+        logger.info("Model has a special tunable class, using that")
+        if is_stacked_model:
+            model = clone(estimator)
+            model.set_params(
+                final_estimator=estimator_definition.tunable(**estimator.get_params())
+            )
+        else:
+            model = clone(estimator_definition.tunable(**estimator.get_params()))
 
     base_estimator = model
 
-    if hasattr(base_estimator, "final_estimator"):
-        logger.info("Model is stacked, using the definition of the meta-model")
-        is_stacked_model = True
-        base_estimator = base_estimator.final_estimator
-
-    estimator_id = _get_model_id(base_estimator)
-
-    estimator_definition = _all_models_internal[estimator_id]
-    estimator_name = estimator_definition.name
-    logger.info(f"Base model : {estimator_name}")
+    if is_stacked_model:
+        base_estimator = model.final_estimator
 
     display.update_monitor(2, estimator_name)
     display.display_monitor()
@@ -2583,14 +2601,19 @@ def tune_model_supervised(
 
         param_grid = {f"{suffixes}__{k}": v for k, v in param_grid.items()}
 
-        search_kwargs = {**estimator_definition.tune_args, **kwargs}
+        if estimator_definition is not None:
+            search_kwargs = {**estimator_definition.tune_args, **kwargs}
+            n_jobs = (
+                _gpu_n_jobs_param
+                if estimator_definition.is_gpu_enabled
+                else n_jobs_param
+            )
+        else:
+            search_kwargs = {}
+            n_jobs = n_jobs_param
 
         if custom_grid is not None:
             logger.info(f"custom_grid: {param_grid}")
-
-        n_jobs = (
-            _gpu_n_jobs_param if estimator_definition.is_gpu_enabled else n_jobs_param
-        )
 
         from sklearn.gaussian_process import GaussianProcessClassifier
 
@@ -2854,7 +2877,17 @@ def tune_model_supervised(
 
     display.move_progress()
 
-    logger.info("Random search completed")
+    logger.info("Hyperparameter search completed")
+
+    if isinstance(model, TunableMixin):
+        logger.info("Getting base sklearn object from tunable")
+        model.set_params(**best_params)
+        best_params = {
+            k: v
+            for k, v in model.get_params().items()
+            if k in model.get_base_sklearn_params().keys()
+        }
+        model = model.get_base_sklearn_object()
 
     logger.info("SubProcess create_model() called ==================================")
     best_model, model_fit_time = create_model_supervised(
@@ -3163,8 +3196,13 @@ def ensemble_model(
 
     estimator_id = _get_model_id(estimator)
 
-    estimator_definition = _all_models_internal[estimator_id]
-    estimator_name = estimator_definition.name
+    if estimator_id is None:
+        estimator_name = _get_model_name(estimator)
+        logger.info("A custom model has been passed")
+    else:
+        estimator_definition = _all_models_internal[estimator_id]
+        estimator_name = estimator_definition.name
+
     logger.info(f"Base model : {estimator_name}")
 
     display.update_monitor(2, estimator_name)
@@ -4009,20 +4047,22 @@ def plot_model(
     plot : str, default = auc
         Enter abbreviation of type of plot. The current list of plots supported are (Plot - Name):
 
+
+        * 'residuals_interactive' - Interactive Residual plots
         * 'auc' - Area Under the Curve
-        * 'threshold' - Discrimination Threshold
-        * 'pr' - Precision Recall Curve
-        * 'confusion_matrix' - Confusion Matrix
-        * 'error' - Class Prediction Error
-        * 'class_report' - Classification Report
-        * 'boundary' - Decision Boundary
-        * 'rfe' - Recursive Feature Selection
-        * 'learning' - Learning Curve
-        * 'manifold' - Manifold Learning
-        * 'calibration' - Calibration Curve
-        * 'vc' - Validation Curve
-        * 'dimension' - Dimension Learning
-        * 'feature' - Feature Importance
+        * 'threshold' - Discrimination Threshold           
+        * 'pr' - Precision Recall Curve                  
+        * 'confusion_matrix' - Confusion Matrix    
+        * 'error' - Class Prediction Error                
+        * 'class_report' - Classification Report        
+        * 'boundary' - Decision Boundary            
+        * 'rfe' - Recursive Feature Selection                 
+        * 'learning' - Learning Curve             
+        * 'manifold' - Manifold Learning            
+        * 'calibration' - Calibration Curve         
+        * 'vc' - Validation Curve                  
+        * 'dimension' - Dimension Learning           
+        * 'feature' - Feature Importance              
         * 'feature_all' - Feature Importance (All)
         * 'parameter' - Model Hyperparameter
         * 'lift' - Lift Curve
@@ -4056,7 +4096,7 @@ def plot_model(
 
 
     display_format: str, default = None
-        To display plots in [Streamlit](https://www.streamlit.io/), set this to 'streamlit'.
+        To display plots in Streamlit (https://www.streamlit.io/), set this to 'streamlit'.
         Currently, not all plots are supported.
 
     Returns
@@ -4091,6 +4131,11 @@ def plot_model(
 
     if not fit_kwargs:
         fit_kwargs = {}
+
+    if not hasattr(estimator, "fit"):
+        raise ValueError(
+            f"Estimator {estimator} does not have the required fit() method."
+        )
 
     if plot not in _available_plots:
         raise ValueError(
@@ -4182,7 +4227,7 @@ def plot_model(
             import streamlit as st
         except ImportError:
             raise ImportError(
-                "It appears that streamlit is not installed. Do: pip install hpbandster ConfigSpace"
+                "It appears that streamlit is not installed. Do: pip install streamlit"
             )
 
     """
@@ -4268,6 +4313,35 @@ def plot_model(
                 fit_kwargs = _get_pipeline_fit_kwargs(pipeline_with_model, fit_kwargs)
 
                 _base_dpi = 100
+
+                def residuals_interactive():
+                    from pycaret.internal.plots.residual_plots import (
+                        InteractiveResidualsPlot,
+                    )
+
+                    resplots = InteractiveResidualsPlot(
+                        x=data_X,
+                        y=data_y,
+                        x_test=test_X,
+                        y_test=test_y,
+                        model=pipeline_with_model,
+                        display=display,
+                    )
+
+                    display.clear_output()
+                    if system:
+                        resplots.show()
+
+                    plot_filename = f"{plot_name}.html"
+
+                    if save:
+                        resplots.write_html(plot_filename)
+                        logger.info(
+                            f"Saving '{plot_filename}' in current active directory"
+                        )
+
+                    logger.info("Visual Rendered Successfully")
+                    return plot_filename
 
                 def cluster():
                     logger.info(
@@ -4707,6 +4781,7 @@ def plot_model(
                             fit_kwargs=fit_kwargs,
                             groups=groups,
                             display=display,
+                            display_format=display_format,
                         )
 
                     except:
@@ -4734,6 +4809,7 @@ def plot_model(
                             fit_kwargs=fit_kwargs,
                             groups=groups,
                             display=display,
+                            display_format=display_format,
                         )
                     except:
                         logger.error("Silhouette plot failed. Exception:")
@@ -4758,6 +4834,7 @@ def plot_model(
                             fit_kwargs=fit_kwargs,
                             groups=groups,
                             display=display,
+                            display_format=display_format,
                         )
                     except:
                         logger.error("Distance plot failed. Exception:")
@@ -4781,6 +4858,7 @@ def plot_model(
                         fit_kwargs=fit_kwargs,
                         groups=groups,
                         display=display,
+                        display_format=display_format,
                     )
 
                 def auc():
@@ -4800,6 +4878,7 @@ def plot_model(
                         fit_kwargs=fit_kwargs,
                         groups=groups,
                         display=display,
+                        display_format=display_format,
                     )
 
                 def threshold():
@@ -4821,6 +4900,7 @@ def plot_model(
                         fit_kwargs=fit_kwargs,
                         groups=groups,
                         display=display,
+                        display_format=display_format,
                     )
 
                 def pr():
@@ -4842,6 +4922,7 @@ def plot_model(
                         fit_kwargs=fit_kwargs,
                         groups=groups,
                         display=display,
+                        display_format=display_format,
                     )
 
                 def confusion_matrix():
@@ -4866,6 +4947,7 @@ def plot_model(
                         fit_kwargs=fit_kwargs,
                         groups=groups,
                         display=display,
+                        display_format=display_format,
                     )
 
                 def error():
@@ -4896,6 +4978,7 @@ def plot_model(
                         fit_kwargs=fit_kwargs,
                         groups=groups,
                         display=display,
+                        display_format=display_format,
                     )
 
                 def cooks():
@@ -4916,6 +4999,7 @@ def plot_model(
                         handle_test="",
                         groups=groups,
                         display=display,
+                        display_format=display_format,
                     )
 
                 def class_report():
@@ -4937,6 +5021,7 @@ def plot_model(
                         fit_kwargs=fit_kwargs,
                         groups=groups,
                         display=display,
+                        display_format=display_format,
                     )
 
                 def boundary():
@@ -4978,6 +5063,7 @@ def plot_model(
                         display=display,
                         features=["Feature One", "Feature Two"],
                         classes=["A", "B"],
+                        display_format=display_format,
                     )
 
                 def rfe():
@@ -4998,6 +5084,7 @@ def plot_model(
                         fit_kwargs=fit_kwargs,
                         groups=groups,
                         display=display,
+                        display_format=display_format,
                     )
 
                 def learning():
@@ -5025,6 +5112,7 @@ def plot_model(
                         fit_kwargs=fit_kwargs,
                         groups=groups,
                         display=display,
+                        display_format=display_format,
                     )
 
                 def lift():
@@ -5049,7 +5137,7 @@ def plot_model(
                             logger.info(
                                 f"Saving '{plot_name}.png' in current active directory"
                             )
-                            plt.savefig(f"{plot_name}.png")
+                            plt.savefig(f"{plot_name}.png", bbox_inches="tight")
                         elif system:
                             plt.show()
                         plt.close()
@@ -5078,7 +5166,7 @@ def plot_model(
                             logger.info(
                                 f"Saving '{plot_name}.png' in current active directory"
                             )
-                            plt.savefig(f"{plot_name}.png")
+                            plt.savefig(f"{plot_name}.png", bbox_inches="tight")
                         elif system:
                             plt.show()
                         plt.close()
@@ -5105,6 +5193,7 @@ def plot_model(
                         fit_kwargs=fit_kwargs,
                         groups=groups,
                         display=display,
+                        display_format=display_format,
                     )
 
                 def tree():
@@ -5280,7 +5369,7 @@ def plot_model(
                         logger.info(
                             f"Saving '{plot_name}.png' in current active directory"
                         )
-                        plt.savefig(f"{plot_name}.png")
+                        plt.savefig(f"{plot_name}.png", bbox_inches="tight")
                     elif system:
                         plt.show()
                     plt.close()
@@ -5469,6 +5558,7 @@ def plot_model(
                         fit_kwargs=fit_kwargs,
                         groups=groups,
                         display=display,
+                        display_format=display_format,
                     )
 
                 def dimension():
@@ -5508,6 +5598,7 @@ def plot_model(
                         fit_kwargs=fit_kwargs,
                         groups=groups,
                         display=display,
+                        display_format=display_format,
                     )
 
                 def feature():
@@ -5558,7 +5649,7 @@ def plot_model(
                         logger.info(
                             f"Saving '{plot_name}.png' in current active directory"
                         )
-                        plt.savefig(f"{plot_name}.png")
+                        plt.savefig(f"{plot_name}.png", bbox_inches="tight")
                     elif system:
                         plt.show()
                     plt.close()
@@ -5834,7 +5925,7 @@ def interpret_model(
         shap_values = explainer.shap_values(test_X)
         shap_plot = shap.summary_plot(shap_values, test_X, show=show, **kwargs)
         if save:
-            plt.savefig(f"SHAP {plot}.png")
+            plt.savefig(f"SHAP {plot}.png", bbox_inches="tight")
         return shap_plot
 
     def correlation(show: bool = True):
@@ -5867,7 +5958,7 @@ def interpret_model(
             logger.info("model type detected: type 2")
             shap.dependence_plot(dependence, shap_values, test_X, show=show, **kwargs)
         if save:
-            plt.savefig(f"SHAP {plot}.png")
+            plt.savefig(f"SHAP {plot}.png", bbox_inches="tight")
         return None
 
     def reason(show: bool = True):
@@ -6584,6 +6675,7 @@ def predict_model(
     data: Optional[pd.DataFrame] = None,
     probability_threshold: Optional[float] = None,
     encoded_labels: bool = False,  # added in pycaret==2.1.0
+    raw_score: bool = False,
     round: int = 4,  # added in pycaret==2.2.0
     verbose: bool = True,
     ml_usecase: Optional[MLUsecase] = None,
@@ -6621,6 +6713,9 @@ def predict_model(
 
     encoded_labels: Boolean, default = False
         If True, will return labels encoded as an integer.
+
+    raw_score: bool, default = False
+        When set to True, scores for all labels will be returned.
 
     round: integer, default = 4
         Number of decimal places the metrics in the score grid will be rounded to.
@@ -6807,16 +6902,20 @@ def predict_model(
         X_test_["Label"] = label["Label"].values
 
     if score is not None:
-        d = []
-        for i in range(0, len(score)):
-            d.append(score[i][pred[i]])
-
-        score = d
+        if not raw_score:
+            score = [s[pred[i]] for i, s in enumerate(score)]
         try:
             score = pd.DataFrame(score)
-            score.columns = ["Score"]
+            if raw_score:
+                score_columns = pd.Series(range(score.shape[1]))
+                if not encoded_labels:
+                    replace_lables_in_column(score_columns)
+                score.columns = [f"Score_{label}" for label in score_columns]
+            else:
+                score.columns = ["Score"]
             score = score.round(round)
-            X_test_["Score"] = score["Score"].values
+            score.index = X_test_.index
+            X_test_ = pd.concat((X_test_, score), axis=1)
         except:
             pass
 
