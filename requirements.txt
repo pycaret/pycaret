@@ -26,4 +26,5 @@ pandas-profiling>=2.8.0
 kmodes>=0.10.1
 mlflow
 imbalanced-learn>=0.7.0
-scikit-plot #for lift and gain charts
+scikit-plot  # for lift and gain charts
+dstoolbox==0.10.1  # for pipeline utilities
