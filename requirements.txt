@@ -1,6 +1,6 @@
 pandas
 scipy<=1.5.4
-numpy>=1.17
+numpy==1.19.5
 seaborn
 matplotlib
 IPython
