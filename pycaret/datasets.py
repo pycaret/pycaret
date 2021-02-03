@@ -8,7 +8,7 @@ def get_data(dataset, save_copy=False, profile=False, verbose=True):
     """
     This function loads sample datasets from git repository. List of available
     datasets can be checked using ``get_data('index')``.
-    
+
 
     Example
     -------
@@ -16,17 +16,17 @@ def get_data(dataset, save_copy=False, profile=False, verbose=True):
     >>> all_datasets = get_data('index')
     >>> juice = get_data('juice')
 
-        
+
     dataset: str
         Index value of dataset
-    
+
 
     save_copy: bool, default = False
         When set to true, it saves a copy in current working directory.
-    
+
 
     profile: bool, default = False
-        When set to true, an interactive EDA report is displayed. 
+        When set to true, an interactive EDA report is displayed.
 
 
     verbose: bool, default = True
@@ -35,12 +35,18 @@ def get_data(dataset, save_copy=False, profile=False, verbose=True):
 
     Returns:
         pandas.DataFrame
-        
+
 
     Warnings
     --------
     - Use of ``get_data`` requires internet connection.
-         
+
+
+    Raises
+    ------
+    ImportError
+        When trying to import time series datasets that require sktime,
+        but sktime has not been installed.
     """
 
     import pandas as pd
@@ -53,8 +59,21 @@ def get_data(dataset, save_copy=False, profile=False, verbose=True):
 
     complete_address = address + filename
 
+    sktime_datasets = ['airline']
+
     if os.path.isfile(filename):
         data = pd.read_csv(filename)
+    elif dataset in sktime_datasets:
+        try:
+            from sktime.datasets import load_airline
+        except ImportError as e:
+            print(e)
+            raise ImportError(f"Dataset '{dataset}' is meant for time series analysis and needs the sktime library to be installed.")
+
+        ts_dataset_mapping = {
+            'airline': load_airline
+        }
+        data = ts_dataset_mapping.get(dataset)()
     else:
         data = pd.read_csv(complete_address)
 
