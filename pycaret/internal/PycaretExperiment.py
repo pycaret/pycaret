@@ -8820,6 +8820,7 @@ class _SupervisedExperiment(_TabularExperiment):
             X_test_["Label"] = label["Label"].values
 
         if score is not None:
+            pred = pred.astype(int)
             if not raw_score:
                 score = [s[pred[i]] for i, s in enumerate(score)]
             try:
