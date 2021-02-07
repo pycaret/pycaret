@@ -8,5 +8,6 @@ psutil
 awscli
 azure-storage-blob
 google-cloud-storage
+sktime==0.5.2
 #hpbandster
 #ConfigSpace
