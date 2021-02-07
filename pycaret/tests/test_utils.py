@@ -148,7 +148,7 @@ def test():
     mape = pycaret.utils.check_metric(actual, prediction, "MAPE_ts")
     assert isinstance(mape, float)
     assert mape >= 0
-    mase = pycaret.utils.check_metric(test, prediction, "MASE", train)
+    mase = pycaret.utils.check_metric(test, prediction, "MASE", train=train)
     assert isinstance(mase, float)
     assert mase >= 0
     mae = pycaret.utils.check_metric(actual, prediction, "MAE_ts")
