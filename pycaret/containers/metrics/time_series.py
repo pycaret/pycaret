@@ -17,7 +17,10 @@ import numpy as np
 from sklearn import metrics
 from sklearn.utils.validation import check_consistent_length
 from sklearn.metrics._regression import _check_reg_targets
-
+from sktime.performance_metrics.forecasting._functions import (mase_loss,
+    smape_loss,
+    mape_loss
+)
 
 class TimeSeriesMetricContainer(MetricContainer):
     """
@@ -145,6 +148,59 @@ class TimeSeriesMetricContainer(MetricContainer):
         }
 
         return d
+
+
+class SMAPEMetricContainer(TimeSeriesMetricContainer):
+     def __init__(self, globals_dict: dict) -> None:
+        super().__init__(
+            id="smape",
+            name="SMAPE",
+            score_func=smape_loss,
+            greater_is_better=False,
+        )
+
+
+class MAPEMetricContainer(TimeSeriesMetricContainer):
+     def __init__(self, globals_dict: dict) -> None:
+        super().__init__(
+            id="mape_ts",
+            name="MAPE_ts",
+            score_func=mape_loss,
+            greater_is_better=False,
+        )
+
+
+class MASEMetricContainer(TimeSeriesMetricContainer):
+     def __init__(self, globals_dict: dict) -> None:
+        super().__init__(
+            id="mase",
+            name="MASE",
+            score_func=mase_loss,
+            greater_is_better=False
+        )
+
+
+class MAEMetricContainer(TimeSeriesMetricContainer):
+     def __init__(self, globals_dict: dict) -> None:
+        super().__init__(
+            id="mae_ts",
+            name="MAE_ts",
+            score_func=metrics.mean_absolute_error,
+            greater_is_better=False,
+            scorer="neg_mean_absolute_error"
+        )
+
+class RMSEMetricContainer(TimeSeriesMetricContainer):
+    def __init__(self, globals_dict: dict) -> None:
+
+        super().__init__(
+            id="rmse_ts",
+            name="RMSE_ts",
+            score_func=metrics.mean_squared_error,
+            greater_is_better=False,
+            args={"squared": False},
+            scorer="neg_root_mean_squared_error",
+        )
 
 
 def get_all_metric_containers(
