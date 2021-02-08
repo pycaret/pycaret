@@ -5844,7 +5844,7 @@ class _SupervisedExperiment(_TabularExperiment):
                 return (model, model_fit_time)
             return model
 
-        model, model_fit_time, model_results, avgs_dict = self.create_model_with_cv(
+        model, model_fit_time, model_results, avgs_dict = self._create_model_with_cv(
             model, data_X, data_y, fit_kwargs, cv, groups, metrics, refit, display
         )
 
