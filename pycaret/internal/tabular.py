@@ -1038,7 +1038,7 @@ def setup(
         target = "UNSUPERVISED_DUMMY_TARGET"
         train_data[target] = 2
         # just to add diversified values to target
-        train_data.loc[0:3, target] = 3
+        train_data[target][0:3] = 3
     X_before_preprocess = train_data.drop(target, axis=1)
     y_before_preprocess = train_data[target]
 
