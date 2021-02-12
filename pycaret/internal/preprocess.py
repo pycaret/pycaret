@@ -1080,7 +1080,7 @@ class New_Catagorical_Levels_in_TestData(BaseEstimator, TransformerMixin):
     -Ignores target variable 
       Args: 
         target: string , name of the target variable
-        replacement_strategy:string , 'least frequent' or 'most frequent' (default 'most frequent' )
+        replacement_strategy:string , 'raise exception', 'least frequent' or 'most frequent' (default 'most frequent' )
 
   """
 
@@ -1123,6 +1123,8 @@ class New_Catagorical_Levels_in_TestData(BaseEstimator, TransformerMixin):
             )
             # now if there is a difference , only then replace it
             if len(new) > 0:
+                if self.replacement_strategy == "raise exception":
+                    raise ValueError(f"Column '{i}' contains levels '{new}' which were not present in train data.")
                 data[i].replace(new, self.ph_train_level.loc[0, i][0], inplace=True)
 
         return data
@@ -3445,7 +3447,10 @@ def Preprocess_Path_One(
             replacement_strategy=untrained_levels_treatment_method,
         )
     else:
-        new_levels = SKLEARN_EMPTY_STEP
+        new_levels = New_Catagorical_Levels_in_TestData(
+            target=target_variable,
+            replacement_strategy="raise exception",
+        )
 
     # untrained levels in test(ordinal specific)
     if apply_untrained_levels_treatment == True:
@@ -3454,7 +3459,10 @@ def Preprocess_Path_One(
             replacement_strategy=untrained_levels_treatment_method,
         )
     else:
-        new_levels1 = SKLEARN_EMPTY_STEP
+        new_levels1 = New_Catagorical_Levels_in_TestData(
+            target=target_variable,
+            replacement_strategy="raise exception",
+        )
 
     # cardinality:
     if apply_cardinality_reduction == True and cardinal_method == "cluster":
