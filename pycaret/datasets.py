@@ -3,7 +3,7 @@
 # License: MIT
 
 
-def get_data(dataset, save_copy=False, profile=False, verbose=True):
+def get_data(dataset="index", save_copy=False, profile=False, verbose=True):
 
     """
     This function loads sample datasets from git repository. List of available
@@ -17,8 +17,8 @@ def get_data(dataset, save_copy=False, profile=False, verbose=True):
     >>> juice = get_data('juice')
 
         
-    dataset: str
-        Index value of dataset
+    dataset: str, default = 'index'
+        Index value of dataset.
     
 
     save_copy: bool, default = False
