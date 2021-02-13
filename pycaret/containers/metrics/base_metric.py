@@ -74,6 +74,10 @@ class MetricContainer(BaseContainer):
     def score_func(self):
         return self.class_def
 
+    @score_func.setter
+    def score_func(self, value):
+        self.class_def = value
+
     def get_dict(self, internal: bool = True) -> Dict[str, Any]:
         """
         Returns a dictionary of the model properties, to
