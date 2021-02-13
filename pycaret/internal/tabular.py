@@ -229,50 +229,50 @@ def setup(
         from pandas import __version__
 
         logger.info(f"pd=={__version__}")
-    except:
+    except ImportError:
         logger.warning("pandas not found")
 
     try:
         from numpy import __version__
 
         logger.info(f"numpy=={__version__}")
-    except:
+    except ImportError:
         logger.warning("numpy not found")
 
     try:
         from sklearn import __version__
 
         logger.info(f"sklearn=={__version__}")
-    except:
+    except ImportError:
         logger.warning("sklearn not found")
-
-    try:
-        from xgboost import __version__
-
-        logger.info(f"xgboost=={__version__}")
-    except:
-        logger.warning("xgboost not found")
 
     try:
         from lightgbm import __version__
 
         logger.info(f"lightgbm=={__version__}")
-    except:
+    except ImportError:
         logger.warning("lightgbm not found")
 
     try:
         from catboost import __version__
 
         logger.info(f"catboost=={__version__}")
-    except:
+    except ImportError:
         logger.warning("catboost not found")
+
+    try:
+        from xgboost import __version__
+
+        logger.info(f"xgboost=={__version__}")
+    except ImportError:
+        logger.warning("xgboost not found")
 
     try:
         from mlflow.version import VERSION
 
         warnings.filterwarnings("ignore")
         logger.info(f"mlflow=={VERSION}")
-    except:
+    except ImportError:
         logger.warning("mlflow not found")
 
     # run_time

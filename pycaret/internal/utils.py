@@ -626,12 +626,15 @@ def can_early_stop(
     else:
         can_warm_start = False
 
-    if consider_xgboost:
-        from xgboost.sklearn import XGBModel
+    is_xgboost = False
 
-        is_xgboost = isinstance(base_estimator, XGBModel)
-    else:
-        is_xgboost = False
+    try:
+        if consider_xgboost:
+            from xgboost.sklearn import XGBModel
+
+            is_xgboost = isinstance(base_estimator, XGBModel)
+    except ImportError:
+        pass
 
     logger.info(
         f"can_partial_fit: {can_partial_fit}, can_warm_start: {can_warm_start}, is_xgboost: {is_xgboost}"

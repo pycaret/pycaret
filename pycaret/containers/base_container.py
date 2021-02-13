@@ -50,6 +50,7 @@ class BaseContainer:
         if not args:
             args = {}
         self.args = args
+        self.active = True
 
     def get_class_name(self):
         return pycaret.internal.utils.get_class_name(self.class_def)
@@ -100,10 +101,14 @@ def get_all_containers(
 
     for obj in model_container_classes:
         if raise_errors:
-            model_containers.append(obj(globals_dict))
+            instance = obj(globals_dict)
+            if instance.active:
+                model_containers.append(instance)
         else:
             try:
-                model_containers.append(obj(globals_dict))
+                instance = obj(globals_dict)
+                if instance.active:
+                    model_containers.append(instance)
             except:
                 pass
 

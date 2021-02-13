@@ -1400,6 +1400,16 @@ class XGBRegressorContainer(RegressorContainer):
     def __init__(self, globals_dict: dict) -> None:
         logger = get_logger()
         np.random.seed(globals_dict["seed"])
+        try:
+            import xgboost
+        except ImportError:
+            logger.warning("Couldn't import xgboost.XGBRegressor")
+            self.active = False
+            return
+        
+        xgboost_version = tuple([int(x) for x in xgboost.__version__.split(".")])
+        if xgboost_version < (1, 1, 0):
+            raise ImportError(f"Wrong xgboost version. Expected xgboost>=1.1.0, got xgboost=={xgboost_version}")
 
         from xgboost import XGBRegressor
 
@@ -1611,6 +1621,17 @@ class CatBoostRegressorContainer(RegressorContainer):
     def __init__(self, globals_dict: dict) -> None:
         logger = get_logger()
         np.random.seed(globals_dict["seed"])
+        try:
+            import catboost
+        except ImportError:
+            logger.warning("Couldn't import catboost.CatBoostRegressor")
+            self.active = False
+            return
+        
+        catboost_version = tuple([int(x) for x in catboost.__version__.split(".")])
+        if catboost_version < (0, 23, 2):
+            raise ImportError(f"Wrong catboost version. Expected catboost>=0.23.2, got catboost=={catboost_version}")
+
         from catboost import CatBoostRegressor
 
         # suppress output
