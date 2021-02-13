@@ -2248,7 +2248,7 @@ class Advanced_Feature_Selection_Classic(BaseEstimator, TransformerMixin):
                 100,
                 max_depth=5,
                 max_features=max_fe,
-                n_jobs=-1,
+                n_jobs=1,
                 max_samples=max_sa,
                 random_state=self.random_state,
             )
@@ -2257,7 +2257,7 @@ class Advanced_Feature_Selection_Classic(BaseEstimator, TransformerMixin):
                 100,
                 max_depth=5,
                 max_features=max_fe,
-                n_jobs=-1,
+                n_jobs=1,
                 max_samples=max_sa,
                 random_state=self.random_state,
             )
@@ -2287,7 +2287,7 @@ class Advanced_Feature_Selection_Classic(BaseEstimator, TransformerMixin):
             m = lgbmc(
                 n_estimators=100,
                 max_depth=5,
-                n_jobs=-1,
+                n_jobs=1,
                 subsample=max_sa,
                 random_state=self.random_state,
             )
@@ -2295,7 +2295,7 @@ class Advanced_Feature_Selection_Classic(BaseEstimator, TransformerMixin):
             m = lgbmr(
                 n_estimators=100,
                 max_depth=5,
-                n_jobs=-1,
+                n_jobs=1,
                 subsample=max_sa,
                 random_state=self.random_state,
             )
