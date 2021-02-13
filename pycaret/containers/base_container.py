@@ -43,12 +43,15 @@ class BaseContainer:
     def __init__(
         self, id: str, name: str, class_def: type, args: Dict[str, Any] = None,
     ) -> None:
+        if not args:
+            args = {}
+        if not isinstance(args, dict):
+            raise TypeError("args needs to be a dictionary.")
+
         self.id = id
         self.name = name
         self.class_def = class_def
         self.reference = self.get_class_name()
-        if not args:
-            args = {}
         self.args = args
         self.active = True
 
