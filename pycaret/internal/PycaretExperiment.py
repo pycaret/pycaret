@@ -5382,6 +5382,139 @@ class _SupervisedExperiment(_TabularExperiment):
 
         return sorted_models
 
+    def _create_model_without_cv(
+        self, model, data_X, data_y, fit_kwargs, predict, system, display
+    ):
+        with estimator_pipeline(self._internal_pipeline, model) as pipeline_with_model:
+            fit_kwargs = get_pipeline_fit_kwargs(pipeline_with_model, fit_kwargs)
+            self.logger.info("Cross validation set to False")
+
+            self.logger.info("Fitting Model")
+            model_fit_start = time.time()
+            with io.capture_output():
+                pipeline_with_model.fit(data_X, data_y, **fit_kwargs)
+            model_fit_end = time.time()
+
+            model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
+
+            display.move_progress()
+
+            if predict:
+                self.predict_model(pipeline_with_model, verbose=False)
+                model_results = self.pull(pop=True).drop("Model", axis=1)
+
+                self.display_container.append(model_results)
+
+                display.display(
+                    model_results, clear=system, override=False if not system else None,
+                )
+
+                self.logger.info(f"display_container: {len(self.display_container)}")
+
+        return model, model_fit_time
+
+    def _create_model_with_cv(
+        self,
+        model,
+        data_X,
+        data_y,
+        fit_kwargs,
+        round,
+        cv,
+        groups,
+        metrics,
+        refit,
+        display,
+    ):
+        """
+        MONITOR UPDATE STARTS
+        """
+        display.update_monitor(
+            1,
+            f"Fitting {self._get_cv_n_folds(cv, data_X, y=data_y, groups=groups)} Folds",
+        )
+        display.display_monitor()
+        """
+        MONITOR UPDATE ENDS
+        """
+
+        from sklearn.model_selection import cross_validate
+
+        metrics_dict = dict([(k, v.scorer) for k, v in metrics.items()])
+
+        self.logger.info("Starting cross validation")
+
+        n_jobs = self._gpu_n_jobs_param
+        from sklearn.gaussian_process import (
+            GaussianProcessClassifier,
+            GaussianProcessRegressor,
+        )
+
+        # special case to prevent running out of memory
+        if isinstance(model, (GaussianProcessClassifier, GaussianProcessRegressor)):
+            n_jobs = 1
+
+        with estimator_pipeline(self._internal_pipeline, model) as pipeline_with_model:
+            fit_kwargs = get_pipeline_fit_kwargs(pipeline_with_model, fit_kwargs)
+            self.logger.info(f"Cross validating with {cv}, n_jobs={n_jobs}")
+
+            model_fit_start = time.time()
+            scores = cross_validate(
+                pipeline_with_model,
+                data_X,
+                data_y,
+                cv=cv,
+                groups=groups,
+                scoring=metrics_dict,
+                fit_params=fit_kwargs,
+                n_jobs=n_jobs,
+                return_train_score=False,
+                error_score=0,
+            )
+            model_fit_end = time.time()
+            model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
+
+            score_dict = {
+                v.display_name: scores[f"test_{k}"] * (1 if v.greater_is_better else -1)
+                for k, v in metrics.items()
+            }
+
+            self.logger.info("Calculating mean and std")
+
+            avgs_dict = {k: [np.mean(v), np.std(v)] for k, v in score_dict.items()}
+
+            display.move_progress()
+
+            self.logger.info("Creating metrics dataframe")
+
+            model_results = pd.DataFrame(score_dict)
+            model_avgs = pd.DataFrame(avgs_dict, index=["Mean", "SD"],)
+
+            model_results = model_results.append(model_avgs)
+            model_results = model_results.round(round)
+
+            # yellow the mean
+            model_results = color_df(model_results, "yellow", ["Mean"], axis=1)
+            model_results = model_results.set_precision(round)
+
+            if refit:
+                # refitting the model on complete X_train, y_train
+                display.update_monitor(1, "Finalizing Model")
+                display.display_monitor()
+                model_fit_start = time.time()
+                self.logger.info("Finalizing model")
+                with io.capture_output():
+                    pipeline_with_model.fit(data_X, data_y, **fit_kwargs)
+                model_fit_end = time.time()
+
+                model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
+            else:
+                model_fit_time /= self._get_cv_n_folds(
+                    cv, data_X, y=data_y, groups=groups
+                )
+
+        return model, model_fit_time, model_results, avgs_dict
+
     def create_model(
         self,
         estimator,
@@ -5704,37 +5837,9 @@ class _SupervisedExperiment(_TabularExperiment):
 
         if not cross_validation:
 
-            with estimator_pipeline(
-                self._internal_pipeline, model
-            ) as pipeline_with_model:
-                fit_kwargs = get_pipeline_fit_kwargs(pipeline_with_model, fit_kwargs)
-                self.logger.info("Cross validation set to False")
-
-                self.logger.info("Fitting Model")
-                model_fit_start = time.time()
-                with io.capture_output():
-                    pipeline_with_model.fit(data_X, data_y, **fit_kwargs)
-                model_fit_end = time.time()
-
-                model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
-
-                display.move_progress()
-
-                if predict:
-                    self.predict_model(pipeline_with_model, verbose=False)
-                    model_results = self.pull(pop=True).drop("Model", axis=1)
-
-                    self.display_container.append(model_results)
-
-                    display.display(
-                        model_results,
-                        clear=system,
-                        override=False if not system else None,
-                    )
-
-                    self.logger.info(
-                        f"display_container: {len(self.display_container)}"
-                    )
+            model, model_fit_time = self._create_model_without_cv(
+                model, data_X, data_y, fit_kwargs, predict, system, display
+            )
 
             display.move_progress()
 
@@ -5749,96 +5854,22 @@ class _SupervisedExperiment(_TabularExperiment):
                 return (model, model_fit_time)
             return model
 
-        """
-        MONITOR UPDATE STARTS
-        """
-        display.update_monitor(
-            1,
-            f"Fitting {self._get_cv_n_folds(fold, data_X, y=data_y, groups=groups)} Folds",
-        )
-        display.display_monitor()
-        """
-        MONITOR UPDATE ENDS
-        """
-
-        from sklearn.model_selection import cross_validate
-
-        metrics_dict = dict([(k, v.scorer) for k, v in metrics.items()])
-
-        self.logger.info("Starting cross validation")
-
-        n_jobs = self._gpu_n_jobs_param
-        from sklearn.gaussian_process import (
-            GaussianProcessClassifier,
-            GaussianProcessRegressor,
+        model, model_fit_time, model_results, avgs_dict = self._create_model_with_cv(
+            model,
+            data_X,
+            data_y,
+            fit_kwargs,
+            round,
+            cv,
+            groups,
+            metrics,
+            refit,
+            display,
         )
 
-        # special case to prevent running out of memory
-        if isinstance(model, (GaussianProcessClassifier, GaussianProcessRegressor)):
-            n_jobs = 1
-
-        with estimator_pipeline(self._internal_pipeline, model) as pipeline_with_model:
-            fit_kwargs = get_pipeline_fit_kwargs(pipeline_with_model, fit_kwargs)
-            self.logger.info(f"Cross validating with {cv}, n_jobs={n_jobs}")
-
-            model_fit_start = time.time()
-            scores = cross_validate(
-                pipeline_with_model,
-                data_X,
-                data_y,
-                cv=cv,
-                groups=groups,
-                scoring=metrics_dict,
-                fit_params=fit_kwargs,
-                n_jobs=n_jobs,
-                return_train_score=False,
-                error_score=0,
-            )
-            model_fit_end = time.time()
-            model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
-
-            score_dict = {
-                v.display_name: scores[f"test_{k}"] * (1 if v.greater_is_better else -1)
-                for k, v in metrics.items()
-            }
-
-            self.logger.info("Calculating mean and std")
-
-            avgs_dict = {k: [np.mean(v), np.std(v)] for k, v in score_dict.items()}
-
-            display.move_progress()
-
-            self.logger.info("Creating metrics dataframe")
-
-            model_results = pd.DataFrame(score_dict)
-            model_avgs = pd.DataFrame(avgs_dict, index=["Mean", "SD"],)
-
-            model_results = model_results.append(model_avgs)
-            model_results = model_results.round(round)
-
-            # yellow the mean
-            model_results = color_df(model_results, "yellow", ["Mean"], axis=1)
-            model_results = model_results.set_precision(round)
-
-            if refit:
-                # refitting the model on complete X_train, y_train
-                display.update_monitor(1, "Finalizing Model")
-                display.display_monitor()
-                model_fit_start = time.time()
-                self.logger.info("Finalizing model")
-                with io.capture_output():
-                    pipeline_with_model.fit(data_X, data_y, **fit_kwargs)
-                model_fit_end = time.time()
-
-                model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
-            else:
-                model_fit_time /= self._get_cv_n_folds(
-                    cv, data_X, y=data_y, groups=groups
-                )
-
-            # end runtime
-            runtime_end = time.time()
-            runtime = np.array(runtime_end - runtime_start).round(2)
+        # end runtime
+        runtime_end = time.time()
+        runtime = np.array(runtime_end - runtime_start).round(2)
 
         # mlflow logging
         if self.logging_param and system and refit:
@@ -7144,7 +7175,7 @@ class _SupervisedExperiment(_TabularExperiment):
 
         if estimator_id is None:
             estimator_name = self._get_model_name(estimator)
-            logger.info("A custom model has been passed")
+            self.logger.info("A custom model has been passed")
         else:
             estimator_definition = self._all_models_internal[estimator_id]
             estimator_name = estimator_definition.name
@@ -8883,6 +8914,7 @@ class _SupervisedExperiment(_TabularExperiment):
             X_test_["Label"] = label["Label"].values
 
         if score is not None:
+            pred = pred.astype(int)
             if not raw_score:
                 score = [s[pred[i]] for i, s in enumerate(score)]
             try:
