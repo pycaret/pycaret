@@ -1055,7 +1055,9 @@ class XGBClassifierContainer(ClassifierContainer):
         
         xgboost_version = tuple([int(x) for x in xgboost.__version__.split(".")])
         if xgboost_version < (1, 1, 0):
-            raise ImportError(f"Wrong xgboost version. Expected xgboost>=1.1.0, got xgboost=={xgboost_version}")
+            logger.warning(f"Wrong xgboost version. Expected xgboost>=1.1.0, got xgboost=={xgboost_version}")
+            self.active = False
+            return
 
         from xgboost import XGBClassifier
 
@@ -1276,7 +1278,9 @@ class CatBoostClassifierContainer(ClassifierContainer):
         
         catboost_version = tuple([int(x) for x in catboost.__version__.split(".")])
         if catboost_version < (0, 23, 2):
-            raise ImportError(f"Wrong catboost version. Expected catboost>=0.23.2, got catboost=={catboost_version}")
+            logger.warning(f"Wrong catboost version. Expected catboost>=0.23.2, got catboost=={catboost_version}")
+            self.active = False
+            return
 
         from catboost import CatBoostClassifier
 
