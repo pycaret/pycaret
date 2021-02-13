@@ -9,9 +9,10 @@ from sklearn.pipeline import Pipeline
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.metrics import accuracy_score
+from sklearn.utils.estimator_checks import check_estimator
 import pycaret.datasets
 import pycaret.internal.preprocess
-from dstoolbox.pipeline import PipelineY
+from pycaret.internal.preprocess import TransformedTargetClassifier
 
 
 def test_sklearn_pipeline_simple_imputer():
@@ -62,73 +63,6 @@ def test_sklearn_pipeline_simple_imputer():
 
     # Check if the best parameter falls within the defined range
     assert 10 <= search.best_params_['classifier__n_estimators'] <= 20
-
-
-def test_sklearn_pipelineY():
-    """
-    Test if the the target y can be inclulded in a sklearn pipeline
-    """
-
-    # Load an example dataset and set the features and target
-    data = pycaret.datasets.get_data("juice")
-    target = "Purchase"
-    features = data.columns.tolist()
-    features.remove(target)
-    data_features = data[features]
-    data_target = data[target]
-
-    # Set the numeric and categorical features
-    categorical_features = data_features.select_dtypes(include=['category', 'object']).columns
-    numeric_features = [x for x in features if x not in categorical_features]
-
-    # Initiate a pycaret simple imputer
-    simple_imputer = pycaret.internal.preprocess.Simple_Imputer(
-        numeric_strategy='mean',
-        categorical_strategy='most frequent',
-        time_strategy='most frequent',
-        target=target)
-
-    # Apply the simple imputer to both the categorical and numeric features
-    categorical_transformer = Pipeline(steps=[('imputer', simple_imputer),
-                                              ('encoder', OneHotEncoder(handle_unknown='ignore'))],
-                                       verbose=True)
-
-    # Numeric features don't require to be encoded for a ML model to work
-    numeric_transformer = Pipeline(steps=[('imputer', simple_imputer)], verbose=True)
-
-    # Obtain the full preprocessing pipeline
-    preprocessor_X = ColumnTransformer(transformers=[('num', numeric_transformer, numeric_features),
-                                                     ('cat', categorical_transformer, categorical_features)])
-
-    # Append classifier to preprocessing pipeline. Now we have a full prediction pipeline
-    preprocessor_y = PipelineY(
-        steps=[('preprocessor_X', preprocessor_X)],
-        y_transformer=LabelEncoder(),
-        verbose=True)
-
-    # The y_transformer has to be fitted first so that y can be encoded later in the hyper-param search
-    preprocessor_y.fit(data_features, data_target)
-
-    clf = Pipeline(steps=[('preprocessor_y', preprocessor_y),
-                          ('classifier', RandomForestClassifier())],
-                   verbose=True)
-
-    # Perform sklearn's randomized search and use the best estimator to predict
-    param_dist = {'classifier__n_estimators': stats.randint(10, 20)}
-    search = RandomizedSearchCV(clf, param_distributions=param_dist)
-    search.fit(data_features, preprocessor_y.y_transform(data_target))
-    predictions = search.best_estimator_.predict(data_features)
-
-    # Check if the predictions are label encoded. If not, the type will not be int
-    assert np.issubdtype(predictions.dtype.type, np.int)
-
-    # Check if the predictions are reasonably accurate, since we should be able to overfit the train set
-    assert accuracy_score(predictions, preprocessor_y.y_transform(data_target)) > 0.95
-
-    # Check if we can get the correct mapping between targets and their encoded values
-    prediction_strings = preprocessor_y.y_transformer.inverse_transform(predictions)
-    # Create a new LabelEncoder for comparison
-    assert (LabelEncoder().fit_transform(prediction_strings) == predictions).all()
 
 
 def test_simple_imputer():
@@ -208,6 +142,62 @@ def test_complete_sklearn_pipeline():
 
     # Check if the best parameter falls within the defined range
     assert 10 <= search.best_params_['classifier__n_estimators'] <= 20
+
+
+def test_target_transformer():
+    # Load an example dataset and set the features and target
+    data = pycaret.datasets.get_data("juice")
+    target = "Purchase"
+    features = data.columns.tolist()
+    features.remove(target)
+    data_features = data[features]
+    data_target = data[target]
+
+    # Set the numeric and categorical features
+    categorical_features = data_features.select_dtypes(include=['category', 'object']).columns
+    numeric_features = [x for x in features if x not in categorical_features]
+
+    # Initiate a pycaret simple imputer
+    simple_imputer = pycaret.internal.preprocess.Simple_Imputer(
+        numeric_strategy='mean',
+        categorical_strategy='most frequent',
+        time_strategy='most frequent',
+        target=target)
+
+    # Apply the simple imputer to both the categorical and numeric features
+    categorical_transformer = Pipeline(steps=[('imputer', simple_imputer),
+                                              ('encoder', OneHotEncoder(handle_unknown='ignore'))],
+                                       verbose=True)
+
+    # Numeric features don't require to be encoded for a ML model to work
+    numeric_transformer = Pipeline(steps=[('imputer', simple_imputer)], verbose=True)
+
+    # Obtain the full preprocessing pipeline
+    preprocessor_X = ColumnTransformer(transformers=[('num', numeric_transformer, numeric_features),
+                                                     ('cat', categorical_transformer, categorical_features)])
+
+    trans_target_classifier = TransformedTargetClassifier(classifier=RandomForestClassifier(), transformer=LabelEncoder())
+
+    clf = Pipeline(steps=[('preprocessor_x', preprocessor_X),
+                          ('trans_target_classifier', trans_target_classifier)],
+                   verbose=True)
+
+    # Make sure the complete pipeline works with sklearn's randomized search
+    param_dist = {'trans_target_classifier__classifier__n_estimators': stats.randint(10, 20)}
+    search = RandomizedSearchCV(clf, param_distributions=param_dist)
+    search.fit(data_features, data_target)
+    predictions = search.best_estimator_.predict(data_features)
+
+    # Check if the predictions are reasonably accurate, since we should be able to overfit the train set
+    assert accuracy_score(predictions, data_target) > 0.95
+
+    # Check if the encoded target is correct
+    clf.fit(data_features, data_target)
+    assert (clf.named_steps['trans_target_classifier'].transformer_.transform(data_target) ==
+           LabelEncoder().fit_transform(data_target)).all()
+
+    # Check if TransformedTargetClassifier is sklearn-compatible
+    check_estimator(TransformedTargetClassifier())  # This should pass
 
 
 def test():
