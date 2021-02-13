@@ -97,8 +97,11 @@ class RegressionMetricContainer(MetricContainer):
         scorer = (
             scorer
             if scorer
-            else metrics.make_scorer(
-                score_func, greater_is_better=greater_is_better, **args,
+            else pycaret.internal.metrics.make_scorer_with_error_score(
+                score_func,
+                greater_is_better=greater_is_better,
+                errors_score=0.0,
+                **args,
             )
         )
 
