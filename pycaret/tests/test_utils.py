@@ -3,6 +3,7 @@ import os, sys
 sys.path.insert(0, os.path.abspath(".."))
 
 import numpy as np
+import numpy.testing as npt
 import pandas as pd
 import pytest
 import pycaret.utils
@@ -125,11 +126,11 @@ def test():
 
     # Ensure metric is rounded to 2 decimals
     mape = pycaret.utils.check_metric(actual, prediction, "MAPE", 2)
-    assert mape == 0.05
+    npt.assert_almost_equal(mape, 0.05, decimal=2)
 
     # Ensure metric is rounded to default value
     mape = pycaret.utils.check_metric(actual, prediction, "MAPE")
-    assert mape == 0.0469
+    npt.assert_almost_equal(mape, 0.0469, decimal=4)
 
     # preparation (timeseries)
     data = pycaret.datasets.get_data("airline", verbose=False)
@@ -137,7 +138,6 @@ def test():
         data, train_size=0.8, random_state=1, shuffle=False
     )
 
-    # TO DO: call setup, create_model, finalize_model and predict_model
     prediction = pd.Series([100]*len(test), index=test.index)
     actual = test
 
@@ -160,11 +160,11 @@ def test():
 
     # Ensure metric is rounded to 2 decimals
     smape = pycaret.utils.check_metric(actual, prediction, "SMAPE", 2)
-    assert smape == 1.24
+    npt.assert_almost_equal(smape, 1.24, decimal=2)
 
     # Ensure metric is rounded to default value
     smape = pycaret.utils.check_metric(actual, prediction, "SMAPE")
-    assert smape == 1.2448
+    npt.assert_almost_equal(smape, 1.2448, decimal=4)
 
     # Metric does not exist
     with pytest.raises(ValueError, match="Couldn't find metric"):
