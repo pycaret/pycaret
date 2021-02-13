@@ -1619,6 +1619,7 @@ def setup(
                 ["Polynomial Threshold", polynomial_threshold_grid],
                 ["Group Features", group_features_grid],
                 ["Feature Selection", feature_selection],
+                ["Feature Selection Method", feature_selection_method],
                 ["Features Selection Threshold", feature_selection_threshold_grid],
                 ["Feature Interaction", feature_interaction],
                 ["Feature Ratio", feature_ratio],
