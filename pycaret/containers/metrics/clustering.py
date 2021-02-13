@@ -95,7 +95,7 @@ class ClusterMetricContainer(MetricContainer):
         is_custom: bool = False,
     ) -> None:
 
-        allowed_targets = ["pred", "pred_proba", "threshold"]
+        allowed_targets = ["pred"]
         if not target in allowed_targets:
             raise ValueError(f"Target must be one of {', '.join(allowed_targets)}.")
 
