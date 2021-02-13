@@ -64,16 +64,15 @@ class MetricContainer(BaseContainer):
         greater_is_better: bool = True,
         is_custom: bool = False,
     ) -> None:
-        self.id = id
-        self.name = name
-        self.score_func = score_func
+        super().__init__(id=id, name=name, class_def=score_func, args=args)
         self.scorer = scorer if scorer else make_scorer(score_func, **args)
         self.display_name = display_name if display_name else name
-        if not args:
-            args = {}
-        self.args = args
         self.greater_is_better = greater_is_better
         self.is_custom = is_custom
+
+    @property
+    def score_func(self):
+        return self.class_def
 
     def get_dict(self, internal: bool = True) -> Dict[str, Any]:
         """
