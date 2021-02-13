@@ -102,6 +102,11 @@ class ClassificationMetricContainer(MetricContainer):
         if not target in allowed_targets:
             raise ValueError(f"Target must be one of {', '.join(allowed_targets)}.")
 
+        if not args:
+            args = {}
+        if not isinstance(args, dict):
+            raise TypeError("args needs to be a dictionary.")    
+                             
         scorer = (
             scorer
             if scorer
