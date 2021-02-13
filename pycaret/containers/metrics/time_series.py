@@ -1,5 +1,5 @@
 # Module: containers.metrics.time_series
-# Author: Antoni Baum (Yard1) <antoni.baum@protonmail.com>
+# Author: Antoni Baum (Yard1) <antoni.baum@protonmail.com> and Miguel Trejo <amtrema@hotmail.com>
 # License: MIT
 
 # The purpose of this module is to serve as a central repository of time series metrics. The `time_series` module will

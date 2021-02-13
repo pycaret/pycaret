@@ -75,7 +75,7 @@ def check_metric(actual: pd.Series, prediction: pd.Series, metric: str, round: i
     if metric in metrics:
         try:
             result = metrics[metric](*input_params)
-        except: # TO DO: Which type of exception are you expecting ? 
+        except:
             from sklearn.preprocessing import LabelEncoder
 
             le = LabelEncoder()
