@@ -1163,7 +1163,7 @@ class New_Catagorical_Levels_in_TestData(BaseEstimator, TransformerMixin):
     -Ignores target variable 
       Args: 
         target: string , name of the target variable
-        replacement_strategy:string , 'least frequent' or 'most frequent' (default 'most frequent' )
+        replacement_strategy:string , 'raise exception', 'least frequent' or 'most frequent' (default 'most frequent' )
 
   """
 
@@ -1206,6 +1206,10 @@ class New_Catagorical_Levels_in_TestData(BaseEstimator, TransformerMixin):
             )
             # now if there is a difference , only then replace it
             if len(new) > 0:
+                if self.replacement_strategy == "raise exception":
+                    raise ValueError(
+                        f"Column '{i}' contains levels '{new}' which were not present in train data."
+                    )
                 data[i].replace(new, self.ph_train_level.loc[0, i][0], inplace=True)
 
         return data
@@ -2128,6 +2132,7 @@ class Make_NonLiner_Features(BaseEstimator, TransformerMixin):
         top_features_to_pick=0.20,
         random_state=42,
         subclass="ignore",
+        n_jobs=1,
     ):
         self.target = target
         self.polynomial_degree = polynomial_degree
@@ -2136,6 +2141,7 @@ class Make_NonLiner_Features(BaseEstimator, TransformerMixin):
         self.top_features_to_pick = top_features_to_pick
         self.random_state = random_state
         self.subclass = subclass
+        self.n_jobs = n_jobs
 
     def fit(self, data, y=None):
         self.fit_transform(data, y=y)
@@ -2274,6 +2280,7 @@ class Make_NonLiner_Features(BaseEstimator, TransformerMixin):
             top_features_to_pick=self.top_features_to_pick,
             random_state=self.random_state,
             subclass=self.subclass,
+            n_jobs=self.n_jobs,
         )
         dummy_all_t = afs.fit_transform(dummy_all)
 
@@ -2299,12 +2306,14 @@ class Advanced_Feature_Selection_Classic(BaseEstimator, TransformerMixin):
         top_features_to_pick=0.10,
         random_state=42,
         subclass="ignore",
+        n_jobs=1,
     ):
         self.target = target
         self.ml_usecase = ml_usecase
         self.top_features_to_pick = 1 - top_features_to_pick
         self.random_state = random_state
         self.subclass = subclass
+        self.n_jobs = n_jobs
 
     def fit(self, dataset, y=None):
         self.fit_transform(dataset, y=y)
@@ -2332,7 +2341,7 @@ class Advanced_Feature_Selection_Classic(BaseEstimator, TransformerMixin):
                 100,
                 max_depth=5,
                 max_features=max_fe,
-                n_jobs=-1,
+                n_jobs=self.n_jobs,
                 max_samples=max_sa,
                 random_state=self.random_state,
             )
@@ -2341,7 +2350,7 @@ class Advanced_Feature_Selection_Classic(BaseEstimator, TransformerMixin):
                 100,
                 max_depth=5,
                 max_features=max_fe,
-                n_jobs=-1,
+                n_jobs=self.n_jobs,
                 max_samples=max_sa,
                 random_state=self.random_state,
             )
@@ -2371,7 +2380,7 @@ class Advanced_Feature_Selection_Classic(BaseEstimator, TransformerMixin):
             m = lgbmc(
                 n_estimators=100,
                 max_depth=5,
-                n_jobs=-1,
+                n_jobs=self.n_jobs,
                 subsample=max_sa,
                 random_state=self.random_state,
             )
@@ -2379,7 +2388,7 @@ class Advanced_Feature_Selection_Classic(BaseEstimator, TransformerMixin):
             m = lgbmr(
                 n_estimators=100,
                 max_depth=5,
-                n_jobs=-1,
+                n_jobs=self.n_jobs,
                 subsample=max_sa,
                 random_state=self.random_state,
             )
@@ -2460,165 +2469,78 @@ class Boruta_Feature_Selection(BaseEstimator, TransformerMixin):
         self,
         target,
         ml_usecase="classification",
-        top_features_to_pick=0.10,
-        max_iteration=25,
+        top_features_to_pick=1.0,
+        max_iteration=200,
+        n_iter_no_change=25,
         alpha=0.05,
-        percentile=65,
         random_state=42,
         subclass="ignore",
+        n_jobs=1,
     ):
         self.target = target
         self.ml_usecase = ml_usecase
-        self.top_features_to_pick = 1 - top_features_to_pick
+        self.top_features_to_pick = top_features_to_pick
         self.random_state = random_state
         self.subclass = subclass
         self.max_iteration = max_iteration
+        self.n_iter_no_change = n_iter_no_change
         self.alpha = alpha
-        self.percentile = percentile
+        self.selected_columns_test = []
+        self.n_jobs = n_jobs
+
+    @property
+    def selected_columns(self):
+        return self.selected_columns_test + [self.target]
 
     def fit(self, dataset, y=None):
-        self.fit_transform(dataset, y=y)
+        from .patches.boruta_py import BorutaPyPatched
+
+        dummy_data = dataset
+        X, y = dummy_data.drop(self.target, axis=1), dummy_data[self.target].values
+        X_cols = X.columns
+        X = X.values
+
+        if self.ml_usecase == "classification":
+            m = rfc(
+                100,
+                max_depth=5,
+                n_jobs=self.n_jobs,
+                random_state=self.random_state,
+                class_weight="balanced",
+            )
+        else:
+            m = rfr(
+                100, max_depth=5, n_jobs=self.n_jobs, random_state=self.random_state,
+            )
+
+        feat_selector = BorutaPyPatched(
+            m,
+            n_estimators="auto",
+            perc=int(self.top_features_to_pick * 100),
+            max_iter=self.max_iteration,
+            random_state=self.random_state,
+            early_stopping=(self.n_iter_no_change > 0),
+            n_iter_no_change=self.n_iter_no_change,
+        )
+
+        try:
+            feat_selector.fit(X, y)
+            self.selected_columns_test = list(X_cols[feat_selector.support_])
+        except:
+            # boruta may errors out if all features are selected
+            self.selected_columns_test = list(X_cols)
+
         return self
 
     def transform(self, dataset, y=None):
-        # return the data with onlys specific columns
-        data = dataset
-        # self.selected_columns.remove(self.target)
-        data = data[self.selected_columns_test]
         if self.target in dataset.columns:
-            data[self.target] = dataset[self.target]
-        return data
+            return dataset[self.selected_columns]
+        else:
+            return dataset[self.selected_columns_test]
 
     def fit_transform(self, dataset, y=None):
-        dummy_data = dataset
-        X, y = dummy_data.drop(self.target, axis=1), dummy_data[self.target]
-        n_sample, n_feat = X.shape
-        _iter = 1
-        # holds the decision about each feature:
-        # 0  - default state = tentative in original code
-        # 1  - accepted in original code
-        # -1 - rejected in original code
-        dec_reg = np.zeros(n_feat, dtype=np.int)
-        # counts how many times a given feature was more important than
-        # the best of the shadow features
-        shadow_max = list()
-        hits = np.zeros(n_feat, dtype=np.int)
-        tent_hits = np.zeros(n_feat)
-        # make seed to get same results
-        np.random.seed(self.random_state)
-        while np.any(dec_reg == 0) and _iter < self.max_iteration:
-            # get tentative features
-            x_ind = self._get_idx(X, dec_reg)
-            X_tent = X.iloc[:, x_ind]
-            X_boruta = X_tent.copy()
-            # create boruta features
-            for col in X_tent.columns:
-                X_boruta["shadow_{}".format(col)] = np.random.permutation(X_tent[col])
-            # train imputator
-            feat_imp_X, feat_imp_shadow = self._inputator(X_boruta, X_tent, y, dec_reg)
-            # add shadow percentile to history
-            thresh = np.percentile(feat_imp_shadow, self.percentile)
-            shadow_max.append(thresh)
-            # confirm hits
-            cur_imp_no_nan = feat_imp_X
-            cur_imp_no_nan[np.isnan(cur_imp_no_nan)] = 0
-            h_ = np.where(cur_imp_no_nan > thresh)[0]
-            hits[h_] += 1
-            # add importance to tentative hits
-            tent_hits[x_ind] += feat_imp_X
-            # do statistical testsa
-            dec_reg = self._do_tests(dec_reg, hits, _iter)
-            if _iter < self.max_iteration:
-                _iter += 1
-
-        # fix tentative onse if exist
-        # print(dec_reg) #no print required
-        confirmed = np.where(dec_reg == 1)[0]
-
-        tentative = np.where(dec_reg == 0)[0]
-        if len(tentative) == 0:
-            confirmed_cols = X.columns[confirmed]
-        else:
-            median_tent = np.median(tent_hits[tentative])
-            tentative_confirmed = np.where(median_tent > np.median(shadow_max))[0]
-            tentative = tentative[tentative_confirmed]
-            confirmed_cols = X.columns[np.concatenate((confirmed, tentative), axis=0)]
-
-        self.confirmed_cols = confirmed_cols.tolist()
-        self.confirmed_cols.append(self.target)
-
-        self.selected_columns_test = (
-            dataset[self.confirmed_cols].drop(self.target, axis=1).columns
-        )
-
-        return dataset[self.confirmed_cols]
-
-    def _get_idx(self, X, dec_reg):
-        x_ind = np.where(dec_reg >= 0)[0]
-        # be sure that dataset have more than 5 columns
-        if len(x_ind) < 5 and X.shape[1] > 5:
-            additional = [i for i in range(X.shape[1]) if i not in x_ind]
-            length = 6 - len(x_ind)
-            x_ind = np.concatenate(
-                (x_ind, np.random.choice(additional, length, replace=False))
-            )
-            return x_ind
-        elif len(x_ind) < 5 and X.shape[1] < 5:
-            return x_ind
-        else:
-            return x_ind
-
-    def _inputator(self, X_boruta, X, y, dec_reg):
-        feat_imp_X = feat_imp_shadow = np.zeros(X.shape[1])
-        # Random Forest
-        max_fe = min(70, int(np.sqrt(len(X.columns))))
-        max_sa = min(1000, int(np.sqrt(len(X))))
-        if self.ml_usecase == "classification":
-            m = lgbmc(
-                n_estimators=100,
-                max_depth=5,
-                n_jobs=-1,
-                subsample=max_sa,
-                bagging_fraction=0.99,
-                random_state=self.random_state,
-            )
-        else:
-            m = lgbmr(
-                n_estimators=100,
-                max_depth=5,
-                n_jobs=-1,
-                subsample=max_sa,
-                bagging_fraction=0.99,
-                random_state=self.random_state,
-            )
-
-        m.fit(X_boruta, y)
-        ### store feature importance
-        feat_imp_X = m.feature_importances_[: len(X.columns)]
-        feat_imp_shadow = m.feature_importances_[len(X.columns) :]
-
-        return feat_imp_X, feat_imp_shadow
-
-    def _do_tests(self, dec_reg, hit_reg, _iter):
-        active_features = np.where(dec_reg >= 0)[0]
-        hits = hit_reg[active_features]
-        # get uncorrected p values based on hit_reg
-        to_accept_ps = stats.binom.sf(hits - 1, _iter, 0.5).flatten()
-        to_reject_ps = stats.binom.cdf(hits, _iter, 0.5).flatten()
-
-        # as in th original Boruta, we simply do bonferroni correction
-        # with the total n_feat in each iteration
-        to_accept = to_accept_ps <= self.alpha / float(len(dec_reg))
-        to_reject = to_reject_ps <= self.alpha / float(len(dec_reg))
-
-        # find features which are 0 and have been rejected or accepted
-        to_accept = np.where((dec_reg[active_features] == 0) * to_accept)[0]
-        to_reject = np.where((dec_reg[active_features] == 0) * to_reject)[0]
-
-        # updating dec_reg
-        dec_reg[active_features[to_accept]] = 1
-        dec_reg[active_features[to_reject]] = -1
-        return dec_reg
+        self.fit(dataset, y=y)
+        return self.transform(dataset, y=y)
 
 
 # _________________________________________________________________________________________________________________________________________
@@ -2946,6 +2868,7 @@ class DFS_Classic(BaseEstimator, TransformerMixin):
         top_n_correlated=0.05,
         random_state=42,
         subclass="ignore",
+        n_jobs=1,
     ):
         self.target = target
         self.interactions = interactions
@@ -2953,6 +2876,7 @@ class DFS_Classic(BaseEstimator, TransformerMixin):
         self.ml_usecase = ml_usecase
         self.random_state = random_state
         self.subclass = subclass
+        self.n_jobs = n_jobs
 
     def fit(self, data, y=None):
         self.fit_transform(data, y=y)
@@ -3223,6 +3147,7 @@ class DFS_Classic(BaseEstimator, TransformerMixin):
             top_features_to_pick=self.top_n_correlated,
             random_state=self.random_state,
             subclass=self.subclass,
+            n_jobs=self.n_jobs,
         )
         dummy_all_t = afs.fit_transform(dummy_all)
 
@@ -3541,7 +3466,9 @@ def Preprocess_Path_One(
             replacement_strategy=untrained_levels_treatment_method,
         )
     else:
-        new_levels = SKLEARN_EMPTY_STEP
+        new_levels = New_Catagorical_Levels_in_TestData(
+            target=target_variable, replacement_strategy="raise exception",
+        )
 
     # untrained levels in test(ordinal specific)
     if apply_untrained_levels_treatment == True:
@@ -3550,7 +3477,9 @@ def Preprocess_Path_One(
             replacement_strategy=untrained_levels_treatment_method,
         )
     else:
-        new_levels1 = SKLEARN_EMPTY_STEP
+        new_levels1 = New_Catagorical_Levels_in_TestData(
+            target=target_variable, replacement_strategy="raise exception",
+        )
 
     # cardinality:
     if apply_cardinality_reduction == True and cardinal_method == "cluster":
@@ -3598,6 +3527,7 @@ def Preprocess_Path_One(
             top_features_to_pick=top_poly_trig_features_to_select_percentage,
             random_state=random_state,
             subclass=subcase,
+            n_jobs=n_jobs,
         )
     else:
         nonliner = SKLEARN_EMPTY_STEP
@@ -3669,6 +3599,7 @@ def Preprocess_Path_One(
                 top_features_to_pick=feature_selection_top_features_percentage,
                 random_state=random_state,
                 subclass=subcase,
+                n_jobs=n_jobs,
             )
         else:
             feature_select = Advanced_Feature_Selection_Classic(
@@ -3677,6 +3608,7 @@ def Preprocess_Path_One(
                 top_features_to_pick=feature_selection_top_features_percentage,
                 random_state=random_state,
                 subclass=subcase,
+                n_jobs=n_jobs,
             )
     else:
         feature_select = SKLEARN_EMPTY_STEP
@@ -3711,6 +3643,7 @@ def Preprocess_Path_One(
             top_n_correlated=feature_interactions_top_features_to_select_percentage,
             random_state=random_state,
             subclass=subcase,
+            n_jobs=n_jobs,
         )
     else:
         dfs = SKLEARN_EMPTY_STEP

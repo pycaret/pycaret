@@ -9,5 +9,7 @@ awscli
 azure-storage-blob
 google-cloud-storage
 sktime==0.5.2
+catboost>=0.23.2
+xgboost>=1.1.0
 #hpbandster
 #ConfigSpace
