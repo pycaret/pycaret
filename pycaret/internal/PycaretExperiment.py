@@ -5439,10 +5439,10 @@ class _SupervisedExperiment(_TabularExperiment):
         if isinstance(model, (GaussianProcessClassifier, GaussianProcessRegressor)):
             n_jobs = 1
 
-        # Time Series models need fh to be set, else they give error when
-        # pulling object properties within PyCaret
-        if isinstance(self, pycaret.internal.PycaretExperiment.TimeSeriesExperiment):
-            model._set_fh(self.fh)
+        # # Time Series models need fh to be set, else they give error when
+        # # pulling object properties within PyCaret
+        # if isinstance(self, pycaret.internal.PycaretExperiment.TimeSeriesExperiment):
+        #     model._set_fh(self.fh)
 
         with estimator_pipeline(self._internal_pipeline, model) as pipeline_with_model:
             fit_kwargs = get_pipeline_fit_kwargs(pipeline_with_model, fit_kwargs)
@@ -5452,6 +5452,8 @@ class _SupervisedExperiment(_TabularExperiment):
             if isinstance(self, pycaret.internal.PycaretExperiment.TimeSeriesExperiment):
                 # Cross Validate time series
                 fit_kwargs.update({'actual_estimator__fh': self.fh})
+                # TODO: Temp for debug
+                n_jobs=1
                 scores = cross_validate(
                     pipeline_with_model,
                     data_X,
@@ -5766,12 +5768,21 @@ class _SupervisedExperiment(_TabularExperiment):
         self.logger.info("Copying training dataset")
 
         # Storing X_train and y_train in data_X and data_y parameter
-        data_X = self.X_train.copy() if X_train_data is None else X_train_data.copy()
-        data_y = self.y_train.copy() if y_train_data is None else y_train_data.copy()
+        if isinstance(self, pycaret.internal.PycaretExperiment.TimeSeriesExperiment):
+            # y and X are reversed for Time Series models since sktime used y, X format
+            # and (all) other sklearn compatible libraries use X, y format
+            data_y = self.X_train.copy() if X_train_data is None else X_train_data.copy()
+            data_X = self.y_train.copy() if y_train_data is None else y_train_data.copy()
+            # Replace Empty DataFrame with None as empty DataFrame causes issues
+            if (data_y.shape[0] == 0) or (data_y.shape[1] == 0):
+                data_y = None
+        else:
+            data_X = self.X_train.copy() if X_train_data is None else X_train_data.copy()
+            data_y = self.y_train.copy() if y_train_data is None else y_train_data.copy()
 
-        # reset index
-        data_X.reset_index(drop=True, inplace=True)
-        data_y.reset_index(drop=True, inplace=True)
+            # reset index
+            data_X.reset_index(drop=True, inplace=True)
+            data_y.reset_index(drop=True, inplace=True)
 
         if metrics is None:
             metrics = self._all_metrics
