@@ -27,8 +27,8 @@ import numpy as np
 
 class TimeSeriesContainer(ModelContainer):
     """
-    Base regression model container class, for easier definition of containers. Ensures consistent format
-    before being turned into a dataframe row.
+    Base time series model container class, for easier definition of containers.
+    Ensures consistent format before being turned into a dataframe row.
 
     Parameters
     ----------
@@ -183,9 +183,42 @@ class TimeSeriesContainer(ModelContainer):
         return dict(d)
 
 
+class ArimaContainer(TimeSeriesContainer):
+    def __init__(self, globals_dict: dict) -> None:
+        logger = get_logger()
+        np.random.seed(globals_dict["seed"])
+        gpu_imported = False
+
+        from sktime.forecasting.arima import ARIMA
+
+        args = {}
+        tune_args = {}
+        # tune_grid = {"fit_intercept": [True, False], "normalize": [True, False]}
+        tune_grid = {}
+        tune_distributions = {}
+
+        if not gpu_imported:
+            args["n_jobs"] = globals_dict["n_jobs_param"]
+
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+
+        super().__init__(
+            id="arima",
+            name="ARIMA",
+            class_def=ARIMA,
+            args=args,
+            tune_grid=tune_grid,
+            tune_distribution=tune_distributions,
+            tune_args=tune_args,
+            is_gpu_enabled=gpu_imported
+        )
+
+
 def get_all_model_containers(
     globals_dict: dict, raise_errors: bool = True
 ) -> Dict[str, TimeSeriesContainer]:
     return pycaret.containers.base_container.get_all_containers(
         globals(), globals_dict, TimeSeriesContainer, raise_errors
     )
+
+
