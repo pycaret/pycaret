@@ -5439,10 +5439,10 @@ class _SupervisedExperiment(_TabularExperiment):
         if isinstance(model, (GaussianProcessClassifier, GaussianProcessRegressor)):
             n_jobs = 1
 
-        # Time Series models need fh to be set, else they give error when
-        # pulling object properties within PyCaret
-        if isinstance(self, pycaret.internal.PycaretExperiment.TimeSeriesExperiment):
-            model._set_fh(self.fh)
+        # # Time Series models need fh to be set, else they give error when
+        # # pulling object properties within PyCaret
+        # if isinstance(self, pycaret.internal.PycaretExperiment.TimeSeriesExperiment):
+        #     model._set_fh(self.fh)
 
         with estimator_pipeline(self._internal_pipeline, model) as pipeline_with_model:
             fit_kwargs = get_pipeline_fit_kwargs(pipeline_with_model, fit_kwargs)
