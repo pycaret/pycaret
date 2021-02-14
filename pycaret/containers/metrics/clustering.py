@@ -95,32 +95,39 @@ class ClusterMetricContainer(MetricContainer):
         is_custom: bool = False,
     ) -> None:
 
-        if not args:
-            args = {}
-
-        if not isinstance(args, dict):
-            raise TypeError("args needs to be a dictionary.")
-
         allowed_targets = ["pred"]
         if not target in allowed_targets:
             raise ValueError(f"Target must be one of {', '.join(allowed_targets)}.")
 
-        self.id = id
-        self.name = name
-        self.score_func = score_func
-        self.target = target
-        self.scorer = (
+        if not args:
+            args = {}
+        if not isinstance(args, dict):
+            raise TypeError("args needs to be a dictionary.")
+
+        scorer = (
             scorer
             if scorer
-            else metrics.make_scorer(
-                score_func, greater_is_better=greater_is_better, **args,
+            else pycaret.internal.metrics.make_scorer_with_error_score(
+                score_func,
+                greater_is_better=greater_is_better,
+                error_score=0.0,
+                **args,
             )
         )
-        self.display_name = display_name if display_name else name
-        self.args = args
-        self.greater_is_better = greater_is_better
+
+        super().__init__(
+            id=id,
+            name=name,
+            score_func=score_func,
+            scorer=scorer,
+            args=args,
+            display_name=display_name,
+            greater_is_better=greater_is_better,
+            is_custom=is_custom,
+        )
+
+        self.target = target
         self.needs_ground_truth = needs_ground_truth
-        self.is_custom = is_custom
 
     def get_dict(self, internal: bool = True) -> Dict[str, Any]:
         """

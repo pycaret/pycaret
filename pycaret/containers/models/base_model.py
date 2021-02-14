@@ -56,16 +56,11 @@ class ModelContainer(BaseContainer):
         args: Dict[str, Any] = None,
         is_special: bool = False,
     ) -> None:
-        self.id = id
-        self.name = name
-        self.class_def = class_def
+        super().__init__(id=id, name=name, class_def=class_def, args=args)
         self.reference = self.get_class_name()
         if not eq_function:
             eq_function = lambda x: isinstance(x, self.class_def)
         self.eq_function = eq_function
-        if not args:
-            args = {}
-        self.args = args
         self.is_special = is_special
 
     def is_estimator_equal(self, estimator):
