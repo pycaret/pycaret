@@ -5384,11 +5384,6 @@ class _SupervisedExperiment(_TabularExperiment):
         if isinstance(model, (GaussianProcessClassifier, GaussianProcessRegressor)):
             n_jobs = 1
 
-        # # Time Series models need fh to be set, else they give error when
-        # # pulling object properties within PyCaret
-        # if isinstance(self, pycaret.internal.PycaretExperiment.TimeSeriesExperiment):
-        #     model._set_fh(self.fh)
-
         with estimator_pipeline(self._internal_pipeline, model) as pipeline_with_model:
             fit_kwargs = get_pipeline_fit_kwargs(pipeline_with_model, fit_kwargs)
             self.logger.info(f"Cross validating with {cv}, n_jobs={n_jobs}")
@@ -5396,34 +5391,23 @@ class _SupervisedExperiment(_TabularExperiment):
             model_fit_start = time.time()
             if isinstance(self, pycaret.internal.PycaretExperiment.TimeSeriesExperiment):
                 # Cross Validate time series
+                # Set the forecast horizon for the estimator
                 fit_kwargs.update({'actual_estimator__fh': self.fh})
-                # TODO: Temp for debug
+                # TODO: Temporarily disabling parallelization for debug (parallelization makes debugging harder)
                 n_jobs=1
-                scores = cross_validate(
-                    pipeline_with_model,
-                    data_X,
-                    data_y,
-                    cv=cv,
-                    groups=groups,
-                    scoring=metrics_dict,
-                    fit_params=fit_kwargs,
-                    n_jobs=n_jobs,
-                    return_train_score=False,
-                    error_score=0
-                )
-            else:
-                scores = cross_validate(
-                    pipeline_with_model,
-                    data_X,
-                    data_y,
-                    cv=cv,
-                    groups=groups,
-                    scoring=metrics_dict,
-                    fit_params=fit_kwargs,
-                    n_jobs=n_jobs,
-                    return_train_score=False,
-                    error_score=0,
-                )
+
+            scores = cross_validate(
+                pipeline_with_model,
+                data_X,
+                data_y,
+                cv=cv,
+                groups=groups,
+                scoring=metrics_dict,
+                fit_params=fit_kwargs,
+                n_jobs=n_jobs,
+                return_train_score=False,
+                error_score=0,
+            )
             model_fit_end = time.time()
             model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
 
@@ -5714,6 +5698,8 @@ class _SupervisedExperiment(_TabularExperiment):
 
         # Storing X_train and y_train in data_X and data_y parameter
         if isinstance(self, pycaret.internal.PycaretExperiment.TimeSeriesExperiment):
+            # TODO: This is a temporary hack which does not work completelely.
+            # @AntoniBaum is looking into making a decorator which will swap this X and y for sktime
             # y and X are reversed for Time Series models since sktime used y, X format
             # and (all) other sklearn compatible libraries use X, y format
             data_y = self.X_train.copy() if X_train_data is None else X_train_data.copy()
@@ -15699,11 +15685,19 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         return all_models, all_models_internal
 
     def _get_metrics(self, raise_errors: bool = True) -> dict:
-        # TODO: Temporary
-        # return pycaret.containers.metrics.time_series.get_all_metric_containers(
-        #     self.variables, raise_errors=raise_errors
-        # )
-        return pycaret.containers.metrics.regression.get_all_metric_containers(
+        """Gets the metrics for the Time Series Module
+
+        Parameters
+        ----------
+        raise_errors : bool, optional
+            [description], by default True
+
+        Returns
+        -------
+        dict
+            [description]
+        """
+        return pycaret.containers.metrics.time_series.get_all_metric_containers(
             self.variables, raise_errors=raise_errors
         )
 
