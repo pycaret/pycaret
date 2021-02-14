@@ -101,6 +101,10 @@ class TimeSeriesMetricContainer(MetricContainer):
         scorer = (
             scorer
             if scorer
+<<<<<<< HEAD
+=======
+            # else pycaret.internal.metrics.make_scorer(
+>>>>>>> fixes to time-series metrics for sktime
             else pycaret.internal.metrics.make_scorer_with_error_score(
                 score_func,
                 greater_is_better=greater_is_better,
