@@ -7,7 +7,7 @@ import numpy as np
 import ipywidgets as wg
 from IPython.display import display
 from ipywidgets import Layout
-from sklearn.base import BaseEstimator, TransformerMixin, clone
+from sklearn.base import BaseEstimator, TransformerMixin, ClassifierMixin, clone
 from sklearn.impute._base import _BaseImputer
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import StandardScaler
@@ -45,7 +45,12 @@ from typing import Optional, Union
 from pycaret.internal.logging import get_logger
 from pycaret.internal.utils import infer_ml_usecase
 
-from sklearn.utils.validation import check_is_fitted, check_random_state
+from sklearn.utils.validation import check_is_fitted, check_X_y, check_random_state
+from sklearn.utils.validation import _deprecate_positional_args
+from sklearn.utils import _safe_indexing
+from sklearn.exceptions import NotFittedError
+import warnings
+
 
 pd.set_option("display.max_columns", 500)
 pd.set_option("display.max_rows", 500)
@@ -84,6 +89,184 @@ def find_id_columns(data, target, numerical_features):
                     if sum(np.abs(increments - 1) < 1e-7) == len_samples - 1:
                         id_columns.append(i)
     return id_columns
+
+
+class TransformedTargetClassifier(ClassifierMixin, BaseEstimator):
+    """Meta-estimator to classify on a transformed target.
+
+    Parameters
+    ----------
+    classifier : object, default=None
+        Classifier object such as derived from ``ClassifierMixin``. This
+        classifier will automatically be cloned each time prior to fitting.
+
+    transformer : object, default=None
+        Estimator object such as derived from ``TransformerMixin``. Note that the
+        transformer will be cloned during fitting. Also, the transformer is
+        restricting ``y`` to be a numpy array.
+
+    check_inverse : bool, default=True
+        Whether to check that ``transform`` followed by ``inverse_transform``
+        leads to the original targets.
+
+    Attributes
+    ----------
+    classifier_ : object
+        Fitted classifier.
+
+    transformer_ : object
+        Transformer used in ``fit`` and ``predict``.
+
+    Notes
+    -----
+    This is a modification from TransformedTargetRegressor.
+
+    See :ref:`sklearn.compose.TransformedTargetRegressor
+
+    """
+    @_deprecate_positional_args
+    def __init__(self, classifier=None, *, transformer=None, check_inverse=True):
+        self.classifier = classifier
+        self.transformer = transformer
+        self.check_inverse = check_inverse
+
+    def _fit_transformer(self, y):
+        """Check transformer and fit transformer.
+
+        Create the default transformer, fit it and make additional inverse
+        check on a subset (optional).
+
+        Parameters
+        ----------
+        y : array-like of shape (n_samples,)
+            Target values.
+        """
+        if self.transformer is not None:
+            self.transformer_ = clone(self.transformer)
+        else:  # Just return the identity transformer
+            self.transformer_ = LabelEncoder()
+
+        self.transformer_.fit(y)
+        if self.check_inverse:
+            idx_selected = slice(None, None, max(1, y.shape[0] // 10))
+            y_sel = _safe_indexing(y, idx_selected)
+            y_sel_t = self.transformer_.transform(y_sel)
+
+            if (np.ravel(y_sel) != self.transformer_.inverse_transform(y_sel_t)).any():
+                warnings.warn("The provided functions or transformer are"
+                              " not strictly inverse of each other. If"
+                              " you are sure you want to proceed regardless"
+                              ", set 'check_inverse=False'", UserWarning)
+
+    def fit(self, X, y, **fit_params):
+        """Fit the model according to the given training data.
+
+        Parameters
+        ----------
+        X : {array-like, sparse matrix} of shape (n_samples, n_features)
+            Training vector, where n_samples is the number of samples and
+            n_features is the number of features.
+
+        y : array-like of shape (n_samples,)
+            Target values.
+
+        **fit_params : dict
+            Parameters passed to the ``fit`` method of the underlying
+            classifier.
+
+
+        Returns
+        -------
+        self : object
+        """
+        # Check that X and y have correct shape
+        X, y = check_X_y(X, y)
+
+        if isinstance(y, pd.DataFrame) or isinstance(y, pd.Series):
+            y = y.values
+
+        # y = check_array(y, accept_sparse=False, force_all_finite=True,
+        #                 ensure_2d=False, dtype=None)
+
+        # Store the classes seen during fit
+        self.classes_ = np.unique(y)
+
+        # store the number of dimension of the target to predict an array of
+        # similar shape at predict
+        self._training_dim = y.ndim
+
+        # transformers are designed to modify X which is 2d dimensional, we
+        # need to modify y accordingly.
+        if y.ndim == 1:
+            y_2d = y.reshape(-1, 1)
+        else:
+            y_2d = y
+        self._fit_transformer(y_2d)
+
+        # transform y and convert back to 1d array if needed
+        y_trans = self.transformer_.transform(y_2d)
+        # FIXME: a FunctionTransformer can return a 1D array even when validate
+        # is set to True. Therefore, we need to check the number of dimension
+        # first.
+        if y_trans.ndim == 2 and y_trans.shape[1] == 1:
+            y_trans = y_trans.squeeze(axis=1)
+
+        if self.classifier is None:
+            from sklearn.linear_model import LogisticRegression
+            self.classifier_ = LogisticRegression()
+        else:
+            self.classifier_ = clone(self.classifier)
+
+        self.classifier_.fit(X, y_trans, **fit_params)
+
+        return self
+
+    def predict(self, X):
+        """Predict using the base classifier, applying inverse.
+
+        The classifier is used to predict and the
+        ``inverse_transform`` is applied before returning the prediction.
+
+        Parameters
+        ----------
+        X : {array-like, sparse matrix} of shape (n_samples, n_features)
+            Samples.
+
+        Returns
+        -------
+        y_hat : ndarray of shape (n_samples,)
+            Predicted values.
+
+        """
+        check_is_fitted(self)
+        pred = self.classifier_.predict(X)
+        if pred.ndim == 1:
+            pred_trans = self.transformer_.inverse_transform(
+                pred.reshape(-1, 1))
+        else:
+            pred_trans = self.transformer_.inverse_transform(pred)
+        if (self._training_dim == 1 and
+                pred_trans.ndim == 2 and pred_trans.shape[1] == 1):
+            pred_trans = pred_trans.squeeze(axis=1)
+
+        return pred_trans
+
+    def _more_tags(self):
+        return {'poor_score': True, 'no_validation': True}
+
+    @property
+    def n_features_in_(self):
+        # For consistency with other estimators we raise a AttributeError so
+        # that hasattr() returns False the estimator isn't fitted.
+        try:
+            check_is_fitted(self)
+        except NotFittedError as nfe:
+            raise AttributeError(
+                "{} object has no n_features_in_ attribute."
+                .format(self.__class__.__name__)
+            ) from nfe
+
+        return self.classifier_.n_features_in_
 
 
 class DataTypes_Auto_infer(BaseEstimator, TransformerMixin):
@@ -530,21 +713,21 @@ class Simple_Imputer(_BaseImputer):
             strategy=self._time_strategies[self.time_strategy],
         )
 
-    def fit(self, dataset, y=None):
+    def fit(self, X, y=None):
         """
         Fit the imputer on dataset.
 
         Args:
-            dataset : pd.DataFrame, the dataset to be imputed
+            X : pd.DataFrame, the dataset to be imputed
 
         Returns:
             self : Simple_Imputer
 
         """
         try:
-            data = dataset.drop(self.target, axis=1)
+            data = X.drop(self.target, axis=1)
         except:
-            data = dataset
+            data = X
 
         self.numeric_columns = data.select_dtypes(
             include=["float32", "float64", "int32", "int64"]
@@ -580,17 +763,17 @@ class Simple_Imputer(_BaseImputer):
 
         return self
 
-    def transform(self, dataset, y=None):
+    def transform(self, X, y=None):
         """
         Impute all missing values in dataset.
 
         Args:
-            dataset: pd.DataFrame, the dataset to be imputed
+            X: pd.DataFrame, the dataset to be imputed
 
         Returns:
             data: pd.DataFrame, the imputed dataset
         """
-        data = dataset
+        data = X
         imputed_data = []
         if not self.numeric_columns.empty:
             numeric_data = pd.DataFrame(
@@ -636,22 +819,22 @@ class Simple_Imputer(_BaseImputer):
 
         if imputed_data:
             data.update(pd.concat(imputed_data, axis=1))
-        data.astype(dataset.dtypes)
+        data.astype(X.dtypes)
 
         return data
 
-    def fit_transform(self, dataset, y=None):
+    def fit_transform(self, X, y=None):
         """
         Fit and impute on dataset.
 
         Args:
-            dataset: pd.DataFrame, the dataset to be fitted and imputed
+            X: pd.DataFrame, the dataset to be fitted and imputed
 
         Returns:
             pd.DataFrame, the imputed dataset
 
         """
-        data = dataset
+        data = X
         self.fit(data)
         return self.transform(data)
 
@@ -1638,8 +1821,8 @@ class Dummify(BaseEstimator, TransformerMixin):
         # creat ohe object
         self.ohe = OneHotEncoder(handle_unknown="ignore", dtype=np.float32)
 
-    def fit(self, dataset, y=None):
-        data = dataset
+    def fit(self, X, y=None):
+        data = X
         # will only do this if there are categorical variables
         if len(data.select_dtypes(include=("object")).columns) > 0:
             # we need to learn the column names once the training data set is dummify
@@ -1657,14 +1840,14 @@ class Dummify(BaseEstimator, TransformerMixin):
             categorical_data = data.drop(
                 self.target, axis=1, errors="ignore"
             ).select_dtypes(include=("object"))
-            # # now fit the trainin column
+            # # now fit the training column
             self.ohe.fit(categorical_data)
             self.data_columns = self.ohe.get_feature_names(categorical_data.columns)
 
         return self
 
-    def transform(self, dataset, y=None):
-        data = dataset.copy()
+    def transform(self, X, y=None):
+        data = X.copy()
         # will only do this if there are categorical variables
         if len(data.select_dtypes(include=("object")).columns) > 0:
             # only for test data
@@ -3208,12 +3391,12 @@ class Reduce_Dimensions_For_Supervised_Path(BaseEstimator, TransformerMixin):
         self.random_state = random_state
         self.method = method
 
-    def fit(self, data, y=None):
-        self.fit_transform(data, y=y)
+    def fit(self, X, y=None):
+        self.fit_transform(X, y=y)
         return self
 
-    def transform(self, dataset, y=None):
-        data = dataset
+    def transform(self, X, y=None):
+        data = X
         if self.method in [
             "pca_liner",
             "pca_kernal",
@@ -3227,27 +3410,28 @@ class Reduce_Dimensions_For_Supervised_Path(BaseEstimator, TransformerMixin):
                 "Component_" + str(i) for i in np.arange(1, len(data_pca.columns) + 1)
             ]
             data_pca.index = data.index
-            if self.target in dataset.columns:
-                data_pca[self.target] = dataset[self.target]
+            if self.target in X.columns:
+                data_pca[self.target] = X[self.target]
             return data_pca
         else:
-            return dataset
+            return X
 
-    def fit_transform(self, dataset, y=None):
-        data = dataset
+    def fit_transform(self, X, y=None):
+        data = X
         if self.method == "pca_liner":
             self.pca = PCA(
                 self.variance_retained_or_number_of_components,
                 random_state=self.random_state,
             )
             # fit transform
-            data_pca = self.pca.fit_transform(data.drop(self.target, axis=1))
+            data_pca = self.pca.fit_transform(data.drop(self.target, axis=1, errors='ignore'))
             data_pca = pd.DataFrame(data_pca)
             data_pca.columns = [
                 "Component_" + str(i) for i in np.arange(1, len(data_pca.columns) + 1)
             ]
             data_pca.index = data.index
-            data_pca[self.target] = data[self.target]
+            if self.target in data.columns:
+                data_pca[self.target] = data[self.target]
             return data_pca
         elif self.method == "pca_kernal":  # take number of components only
             self.pca = KernelPCA(
@@ -3257,13 +3441,14 @@ class Reduce_Dimensions_For_Supervised_Path(BaseEstimator, TransformerMixin):
                 n_jobs=-1,
             )
             # fit transform
-            data_pca = self.pca.fit_transform(data.drop(self.target, axis=1))
+            data_pca = self.pca.fit_transform(data.drop(self.target, axis=1, errors='ignore'))
             data_pca = pd.DataFrame(data_pca)
             data_pca.columns = [
                 "Component_" + str(i) for i in np.arange(1, len(data_pca.columns) + 1)
             ]
             data_pca.index = data.index
-            data_pca[self.target] = data[self.target]
+            if self.target in data.columns:
+                data_pca[self.target] = data[self.target]
             return data_pca
         # elif self.method == 'pls': # take number of components only
         #   self.pca = PLSRegression(self.variance_retained,scale=False)
@@ -3280,27 +3465,29 @@ class Reduce_Dimensions_For_Supervised_Path(BaseEstimator, TransformerMixin):
                 random_state=self.random_state,
             )
             # fit transform
-            data_pca = self.pca.fit_transform(data.drop(self.target, axis=1))
+            data_pca = self.pca.fit_transform(data.drop(self.target, axis=1, errors='ignore'))
             data_pca = pd.DataFrame(data_pca)
             data_pca.columns = [
                 "Component_" + str(i) for i in np.arange(1, len(data_pca.columns) + 1)
             ]
             data_pca.index = data.index
-            data_pca[self.target] = data[self.target]
+            if self.target in data.columns:
+                data_pca[self.target] = data[self.target]
             return data_pca
         elif self.method == "incremental":  # take number of components only
             self.pca = IncrementalPCA(self.variance_retained_or_number_of_components)
             # fit transform
-            data_pca = self.pca.fit_transform(data.drop(self.target, axis=1))
+            data_pca = self.pca.fit_transform(data.drop(self.target, axis=1, errors='ignore'))
             data_pca = pd.DataFrame(data_pca)
             data_pca.columns = [
                 "Component_" + str(i) for i in np.arange(1, len(data_pca.columns) + 1)
             ]
             data_pca.index = data.index
-            data_pca[self.target] = data[self.target]
+            if self.target in data.columns:
+                data_pca[self.target] = data[self.target]
             return data_pca
         else:
-            return dataset
+            return X
 
 
 # ___________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________
@@ -4066,7 +4253,7 @@ def Preprocess_Path_One_Sklearn(
             # ("feature_select", feature_select),
             # ("fix_multi", fix_multi),
             # ("dfs", dfs),
-            # ("pca", pca),
+            ("pca", pca),
         ]
     )
 
