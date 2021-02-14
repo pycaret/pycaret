@@ -209,7 +209,7 @@ class TimeSeriesPipeline(Pipeline):
         return X, y, fit_params_steps[self.steps[-1][0]]
 
     @if_delegate_has_method(delegate="_final_estimator")
-    def score(self, y, X=None, **score_params):
+    def score(self, X=None, y=None, **score_params):
         Xt = X
         for _, name, transform in self._iter(with_final=False):
             Xt = transform.transform(Xt)
@@ -223,7 +223,7 @@ class TimeSeriesPipeline(Pipeline):
                 Xt = transform.transform(Xt)
         return self.steps[-1][-1].predict(fh=fh, X=Xt, **predict_params)
 
-    def fit(self, y, X=None, **fit_params):
+    def fit(self, X=None, y=None, **fit_params):
         if X is not None:
             Xt, yt, fit_params = self._fit(X, y, **fit_params)
         else:
@@ -235,7 +235,7 @@ class TimeSeriesPipeline(Pipeline):
         return self
 
     @if_delegate_has_method(delegate="_final_estimator")
-    def fit_predict(self, X, y=None, **fit_params):
+    def fit_predict(self, X=None, y=None, **fit_params):
         if X is not None:
             Xt, yt, fit_params = self._fit(X, y, **fit_params)
         else:
@@ -245,7 +245,7 @@ class TimeSeriesPipeline(Pipeline):
         self._carry_over_final_estimator_fit_vars()
         return y_pred
 
-    def fit_resample(self, X, y=None, **fit_params):
+    def fit_resample(self, X=None, y=None, **fit_params):
         last_step = self._final_estimator
         if X is not None:
             Xt, yt, fit_params = self._fit(X, y, **fit_params)
@@ -260,7 +260,7 @@ class TimeSeriesPipeline(Pipeline):
         self._carry_over_final_estimator_fit_vars()
         return result
 
-    def fit_transform(self, X, y=None, **fit_params):
+    def fit_transform(self, X=None, y=None, **fit_params):
         last_step = self._final_estimator
         if X is not None:
             Xt, yt, fit_params = self._fit(X, y, **fit_params)
