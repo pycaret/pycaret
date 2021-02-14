@@ -25,7 +25,7 @@ def get_config(variable: str, globals_d: dict):
 
     Example
     -------
-    >>> X_train = get_config('X_train') 
+    >>> X_train = get_config('X_train')
 
     This will return X_train transformed dataset.
 
@@ -66,7 +66,7 @@ def set_config(variable: str, value, globals_d: dict):
 
     Example
     -------
-    >>> set_config('seed', 123) 
+    >>> set_config('seed', 123)
 
     This will set the global seed to '123'.
 
@@ -108,7 +108,7 @@ def save_config(file_name: str, globals_d: dict):
 
     Example
     -------
-    >>> save_config('myvars.pkl') 
+    >>> save_config('myvars.pkl')
 
     This will save all enviroment variables to 'myvars.pkl'.
 
@@ -156,7 +156,7 @@ def load_config(file_name: str, globals_d: dict):
 
     Example
     -------
-    >>> load_config('myvars.pkl') 
+    >>> load_config('myvars.pkl')
 
     This will load all enviroment variables from 'myvars.pkl'.
 
@@ -561,10 +561,16 @@ def get_groups(
 def get_all_object_vars_and_properties(object):
     """
     Gets all class, static and dynamic attributes from an object.
-    
+
     Calling ``vars()`` would only return static attributes.
-    
+
     https://stackoverflow.com/a/59769926
+
+    # TODO: Do both:
+    # Option 1: Set fh before calling any model
+    "C:\ProgramData\Anaconda3\envs\pycaret_dev\lib\site-packages\sktime\forecasting\base\_sktime.py", line 187
+    def _set_fh(self, fh):
+    # Option 2: Ignore the exceptions
     """
     d = {}
     for k in object.__dir__():
@@ -587,12 +593,12 @@ def can_early_stop(
 ):
     """
     From https://github.com/ray-project/tune-sklearn/blob/master/tune_sklearn/tune_basesearch.py.
-    
+
     Helper method to determine if it is possible to do early stopping.
     Only sklearn estimators with ``partial_fit`` or ``warm_start`` can be early
     stopped. warm_start works by picking up training from the previous
     call to ``fit``.
-    
+
     Returns
     -------
         bool
