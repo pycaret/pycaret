@@ -154,42 +154,43 @@ class _PyCaretExperiment:
             from pandas import __version__
 
             self.logger.info(f"pd=={__version__}")
-        except:
+        except ImportError:
             self.logger.warning("pandas not found")
 
         try:
             from numpy import __version__
 
             self.logger.info(f"numpy=={__version__}")
-        except:
+        except ImportError:
             self.logger.warning("numpy not found")
 
         try:
             from sklearn import __version__
 
             self.logger.info(f"sklearn=={__version__}")
-        except:
+        except ImportError:
             self.logger.warning("sklearn not found")
-
-        try:
-            from xgboost import __version__
-
-            self.logger.info(f"xgboost=={__version__}")
-        except:
-            self.logger.warning("xgboost not found")
 
         try:
             from lightgbm import __version__
 
             self.logger.info(f"lightgbm=={__version__}")
-        except:
+        except ImportError:
             self.logger.warning("lightgbm not found")
+
+        try:
+            from xgboost import __version__
+
+            self.logger.info(f"xgboost=={__version__}")
+        except ImportError:
+            self.logger.warning("xgboost not found")
+
 
         try:
             from catboost import __version__
 
             self.logger.info(f"catboost=={__version__}")
-        except:
+        except ImportError:
             self.logger.warning("catboost not found")
 
         try:
@@ -197,7 +198,7 @@ class _PyCaretExperiment:
 
             warnings.filterwarnings("ignore")
             self.logger.info(f"mlflow=={VERSION}")
-        except:
+        except ImportError:
             self.logger.warning("mlflow not found")
 
     def setup(self) -> None:
@@ -1644,7 +1645,7 @@ class _TabularExperiment(_PyCaretExperiment):
             target = "UNSUPERVISED_DUMMY_TARGET"
             train_data[target] = 2
             # just to add diversified values to target
-            train_data.loc[0:3, target] = 3
+            train_data[target][0:3] = 3
         X_before_preprocess = train_data.drop(target, axis=1)
         y_before_preprocess = train_data[target]
 
@@ -2123,6 +2124,7 @@ class _TabularExperiment(_PyCaretExperiment):
             polynomial_threshold_grid=polynomial_threshold_grid,
             group_features_grid=group_features_grid,
             feature_selection=feature_selection,
+            feautre_selection_method=feature_selection_method,
             feature_selection_threshold_grid=feature_selection_threshold_grid,
             feature_interaction=feature_interaction,
             feature_ratio=feature_ratio,
@@ -8975,6 +8977,7 @@ class _UnsupervisedExperiment(_TabularExperiment):
                     ["Polynomial Threshold", kwargs["polynomial_threshold_grid"]],
                     ["Group Features", kwargs["group_features_grid"]],
                     ["Feature Selection", kwargs["feature_selection"]],
+                    ["Feature Selection Method", kwargs["feature_selection_method"]],
                     [
                         "Features Selection Threshold",
                         kwargs["feature_selection_threshold_grid"],
@@ -10279,6 +10282,7 @@ class RegressionExperiment(_SupervisedExperiment):
                     ["Polynomial Threshold", kwargs["polynomial_threshold_grid"]],
                     ["Group Features", kwargs["group_features_grid"]],
                     ["Feature Selection", kwargs["feature_selection"]],
+                    ["Feature Selection Method", kwargs["feature_selection_method"]],
                     [
                         "Features Selection Threshold",
                         kwargs["feature_selection_threshold_grid"],
@@ -12605,6 +12609,7 @@ class ClassificationExperiment(_SupervisedExperiment):
                     ["Polynomial Threshold", kwargs["polynomial_threshold_grid"]],
                     ["Group Features", kwargs["group_features_grid"]],
                     ["Feature Selection", kwargs["feature_selection"]],
+                    ["Feature Selection Method", kwargs["feature_selection_method"]],
                     [
                         "Features Selection Threshold",
                         kwargs["feature_selection_threshold_grid"],

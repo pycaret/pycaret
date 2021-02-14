@@ -1046,6 +1046,19 @@ class XGBClassifierContainer(ClassifierContainer):
     def __init__(self, globals_dict: dict) -> None:
         logger = get_logger()
         np.random.seed(globals_dict["seed"])
+        try:
+            import xgboost
+        except ImportError:
+            logger.warning("Couldn't import xgboost.XGBClassifier")
+            self.active = False
+            return
+        
+        xgboost_version = tuple([int(x) for x in xgboost.__version__.split(".")])
+        if xgboost_version < (1, 1, 0):
+            logger.warning(f"Wrong xgboost version. Expected xgboost>=1.1.0, got xgboost=={xgboost_version}")
+            self.active = False
+            return
+
         from xgboost import XGBClassifier
 
         args = {
@@ -1256,6 +1269,19 @@ class CatBoostClassifierContainer(ClassifierContainer):
     def __init__(self, globals_dict: dict) -> None:
         logger = get_logger()
         np.random.seed(globals_dict["seed"])
+        try:
+            import catboost
+        except ImportError:
+            logger.warning("Couldn't import catboost.CatBoostClassifier")
+            self.active = False
+            return
+        
+        catboost_version = tuple([int(x) for x in catboost.__version__.split(".")])
+        if catboost_version < (0, 23, 2):
+            logger.warning(f"Wrong catboost version. Expected catboost>=0.23.2, got catboost=={catboost_version}")
+            self.active = False
+            return
+
         from catboost import CatBoostClassifier
 
         # suppress output

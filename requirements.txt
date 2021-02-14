@@ -8,7 +8,6 @@ joblib
 scikit-learn==0.23.2
 ipywidgets
 yellowbrick>=1.0.1
-xgboost>=1.1.0
 lightgbm>=2.3.1
 plotly>=4.4.1
 wordcloud
@@ -21,9 +20,9 @@ spacy<2.4.0
 nltk
 mlxtend
 pyod
-catboost>=0.23.2
 pandas-profiling>=2.8.0
 kmodes>=0.10.1
 mlflow
 imbalanced-learn>=0.7.0
 scikit-plot #for lift and gain charts
+Boruta
