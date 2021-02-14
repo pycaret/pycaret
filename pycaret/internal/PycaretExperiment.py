@@ -2124,7 +2124,7 @@ class _TabularExperiment(_PyCaretExperiment):
             polynomial_threshold_grid=polynomial_threshold_grid,
             group_features_grid=group_features_grid,
             feature_selection=feature_selection,
-            feautre_selection_method=feature_selection_method,
+            feature_selection_method=feature_selection_method,
             feature_selection_threshold_grid=feature_selection_threshold_grid,
             feature_interaction=feature_interaction,
             feature_ratio=feature_ratio,
