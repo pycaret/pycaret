@@ -5439,6 +5439,11 @@ class _SupervisedExperiment(_TabularExperiment):
         if isinstance(model, (GaussianProcessClassifier, GaussianProcessRegressor)):
             n_jobs = 1
 
+        # Time Series models need fh to be set, else they give error when
+        # pulling object properties within PyCaret
+        if isinstance(self, pycaret.internal.PycaretExperiment.TimeSeriesExperiment):
+            model._set_fh(self.fh)
+
         with estimator_pipeline(self._internal_pipeline, model) as pipeline_with_model:
             fit_kwargs = get_pipeline_fit_kwargs(pipeline_with_model, fit_kwargs)
             self.logger.info(f"Cross validating with {cv}, n_jobs={n_jobs}")
@@ -15745,7 +15750,11 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         dict
             [description]
         """
-        return pycaret.containers.metrics.time_series.get_all_metric_containers(
+        # TODO: Temporary
+        # return pycaret.containers.metrics.time_series.get_all_metric_containers(
+        #     self.variables, raise_errors=raise_errors
+        # )
+        return pycaret.containers.metrics.regression.get_all_metric_containers(
             self.variables, raise_errors=raise_errors
         )
 
