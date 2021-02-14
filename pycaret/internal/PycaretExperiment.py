@@ -7,10 +7,11 @@ from pycaret.internal.meta_estimators import (
 from pycaret.internal.pipeline import (
     add_estimator_to_pipeline,
     get_pipeline_estimator_label,
-    make_internal_pipeline,
     estimator_pipeline,
     merge_pipelines,
+    get_pipeline_fit_kwargs,
     Pipeline as InternalPipeline,
+    TimeSeriesPipeline as InternalTimeSeriesPipeline,
 )
 from pycaret.internal.utils import (
     color_df,
@@ -43,7 +44,6 @@ import pycaret.containers.models.anomaly
 import pycaret.containers.models.time_series
 import pycaret.internal.preprocess
 import pycaret.internal.persistence
-from pycaret.internal.pipeline import get_pipeline_fit_kwargs
 import pandas as pd
 from pandas.io.formats.style import Styler
 import numpy as np
@@ -184,7 +184,6 @@ class _PyCaretExperiment:
             self.logger.info(f"xgboost=={__version__}")
         except ImportError:
             self.logger.warning("xgboost not found")
-
 
         try:
             from catboost import __version__
@@ -800,15 +799,18 @@ class _TabularExperiment(_PyCaretExperiment):
         return
 
     def _set_up_mlflow(
-        self,
-        functions,
-        runtime,
-        log_profile,
-        profile_kwargs,
-        log_data,
-        display,
+        self, functions, runtime, log_profile, profile_kwargs, log_data, display,
     ) -> None:
         return
+
+    def _make_internal_pipeline(
+        self, internal_pipeline_steps: list, memory=None
+    ) -> InternalPipeline:
+        if not internal_pipeline_steps:
+            memory = None
+            internal_pipeline_steps = [("empty_step", "passthrough")]
+
+        return InternalPipeline(internal_pipeline_steps, memory=memory)
 
     def setup(
         self,
@@ -1936,7 +1938,7 @@ class _TabularExperiment(_PyCaretExperiment):
             if x[0] in self.prep_pipe.named_steps:
                 raise ValueError(f"Step named {x[0]} already present in pipeline.")
 
-        self._internal_pipeline = make_internal_pipeline(self._internal_pipeline)
+        self._internal_pipeline = self._make_internal_pipeline(self._internal_pipeline)
 
         self.logger.info(f"Internal pipeline: {self._internal_pipeline}")
 
@@ -2161,12 +2163,7 @@ class _TabularExperiment(_PyCaretExperiment):
         runtime = np.array(runtime_end - runtime_start).round(2)
 
         self._set_up_mlflow(
-            functions,
-            runtime,
-            log_profile,
-            profile_kwargs,
-            log_data,
-            display,
+            functions, runtime, log_profile, profile_kwargs, log_data, display,
         )
 
         self._setup_ran = True
@@ -4612,13 +4609,7 @@ class _SupervisedExperiment(_TabularExperiment):
         return
 
     def _set_up_mlflow(
-        self,
-        functions,
-        runtime,
-        log_profile,
-        profile_kwargs,
-        log_data,
-        display,
+        self, functions, runtime, log_profile, profile_kwargs, log_data, display,
     ) -> None:
         functions_styler = functions
         if isinstance(functions, Styler):
@@ -9056,13 +9047,7 @@ class _UnsupervisedExperiment(_TabularExperiment):
         self.X_train = self.X
 
     def _set_up_mlflow(
-        self,
-        functions,
-        runtime,
-        log_profile,
-        profile_kwargs,
-        log_data,
-        display,
+        self, functions, runtime, log_profile, profile_kwargs, log_data, display,
     ) -> None:
         functions_styler = functions
         if isinstance(functions, Styler):
@@ -15646,6 +15631,15 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             }
         )
         return
+
+    def _make_internal_pipeline(
+        self, internal_pipeline_steps: list, memory=None
+    ) -> InternalTimeSeriesPipeline:
+        if not internal_pipeline_steps:
+            memory = None
+            internal_pipeline_steps = [("empty_step", "passthrough")]
+
+        return InternalTimeSeriesPipeline(internal_pipeline_steps, memory=memory)
 
     def _get_setup_display(self, **kwargs) -> Styler:
         # define highlight function for function grid to display

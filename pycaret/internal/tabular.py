@@ -16,7 +16,6 @@ from pycaret.internal.meta_estimators import (
 from pycaret.internal.pipeline import (
     add_estimator_to_pipeline,
     get_pipeline_estimator_label,
-    make_internal_pipeline,
     estimator_pipeline,
     merge_pipelines,
     Pipeline as InternalPipeline,
