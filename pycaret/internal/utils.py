@@ -572,14 +572,14 @@ def get_all_object_vars_and_properties(object):
     def _set_fh(self, fh):
     # Option 2: Ignore the exceptions
     """
-    d = {}
+    return_dict = {}
     for k in object.__dir__():
         try:
             if k[:2] != "__" and type(getattr(object, k, "")).__name__ != "method":
-                d[k] = getattr(object, k, "")
+                return_dict.update({k: getattr(object, k, "")})
         except:
             pass
-    return d
+    return return_dict
 
 
 def is_fit_var(key):
