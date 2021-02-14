@@ -107,7 +107,7 @@ class TimeSeriesMetricContainer(MetricContainer):
         scorer = (
             scorer
             if scorer
-            else pycaret.internal.metrics.metrics.make_scorer(
+            else pycaret.internal.metrics.make_scorer(
                 score_func,
                 greater_is_better=greater_is_better,
                 errors_score=0.0,
