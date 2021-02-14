@@ -12,7 +12,9 @@ from sklearn.preprocessing import LabelEncoder
 from .utils import TargetTransformerMixin
 
 
-class TransformedTargetClassifier(TargetTransformerMixin, ClassifierMixin, BaseEstimator):
+class TransformedTargetClassifier(
+    TargetTransformerMixin, ClassifierMixin, BaseEstimator
+):
     """Meta-estimator to classify on a transformed target.
 
     Parameters
@@ -145,7 +147,9 @@ class TransformedTargetClassifier(TargetTransformerMixin, ClassifierMixin, BaseE
 
         self.classifier_.fit(X, y_trans, **fit_params)
 
-        self._carry_over_estimator_fit_vars(self.classifier_)
+        self._carry_over_estimator_fit_vars(
+            self.classifier_, ignore=["classes_", "transformer_", "classifier_"]
+        )
 
         return self
 

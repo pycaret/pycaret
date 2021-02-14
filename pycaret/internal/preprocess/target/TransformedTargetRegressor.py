@@ -31,5 +31,7 @@ class TransformedTargetRegressor(TargetTransformerMixin, _TransformedTargetRegre
         y = y.astype("float64")
 
         r = super().fit(X, y, **fit_params)
-        self._carry_over_estimator_fit_vars(self.regressor_)
+        self._carry_over_estimator_fit_vars(
+            self.regressor_, ignore=["transformer_", "regressor_"]
+        )
         return r

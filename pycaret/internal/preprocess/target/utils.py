@@ -14,12 +14,16 @@ class TargetTransformerMixin:
             return self.classifier
         return self
 
-    def _carry_over_estimator_fit_vars(self, fitted_estimator):
+    def _carry_over_estimator_fit_vars(self, fitted_estimator, ignore: list = None):
+        if not ignore:
+            ignore = set()
+        else:
+            ignore = set(ignore)
         if not hasattr(self, "_fit_vars"):
             self._fit_vars = set()
         self._clear_estimator_fit_vars(fitted_estimator)
         for k, v in get_all_object_vars_and_properties(fitted_estimator).items():
-            if is_fit_var(k):
+            if is_fit_var(k) and k not in ignore:
                 try:
                     setattr(self, k, v)
                     self._fit_vars.add(k)
