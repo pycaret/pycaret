@@ -5389,7 +5389,7 @@ class _SupervisedExperiment(_TabularExperiment):
             self.logger.info(f"Cross validating with {cv}, n_jobs={n_jobs}")
 
             model_fit_start = time.time()
-            if isinstance(self, pycaret.internal.PycaretExperiment.TimeSeriesExperiment):
+            if self._ml_usecase == MLUsecase.TIME_SERIES:
                 # Cross Validate time series
                 # Set the forecast horizon for the estimator
                 fit_kwargs.update({'actual_estimator__fh': self.fh})
@@ -5697,23 +5697,16 @@ class _SupervisedExperiment(_TabularExperiment):
         self.logger.info("Copying training dataset")
 
         # Storing X_train and y_train in data_X and data_y parameter
-        if isinstance(self, pycaret.internal.PycaretExperiment.TimeSeriesExperiment):
-            # TODO: This is a temporary hack which does not work completelely.
-            # @AntoniBaum is looking into making a decorator which will swap this X and y for sktime
-            # y and X are reversed for Time Series models since sktime used y, X format
-            # and (all) other sklearn compatible libraries use X, y format
-            data_y = self.X_train.copy() if X_train_data is None else X_train_data.copy()
-            data_X = self.y_train.copy() if y_train_data is None else y_train_data.copy()
-            # Replace Empty DataFrame with None as empty DataFrame causes issues
-            if (data_y.shape[0] == 0) or (data_y.shape[1] == 0):
-                data_y = None
-        else:
-            data_X = self.X_train.copy() if X_train_data is None else X_train_data.copy()
-            data_y = self.y_train.copy() if y_train_data is None else y_train_data.copy()
-
+        data_X = self.X_train.copy() if X_train_data is None else X_train_data.copy()
+        data_y = self.y_train.copy() if y_train_data is None else y_train_data.copy()
+        if not self._ml_usecase == MLUsecase.TIME_SERIES:
             # reset index
             data_X.reset_index(drop=True, inplace=True)
             data_y.reset_index(drop=True, inplace=True)
+        else:
+            # Replace Empty DataFrame with None as empty DataFrame causes issues
+            if (data_X.shape[0] == 0) or (data_X.shape[1] == 0):
+                data_X = None
 
         if metrics is None:
             metrics = self._all_metrics
