@@ -3,6 +3,7 @@
 # License: MIT
 
 import pandas as pd
+from typing import Optional
 
 version_ = "2.2.3"
 nightly_version_ = "2.2.3"
@@ -18,10 +19,10 @@ def nightly_version():
     return nightly_version_
 
 
-def check_metric(actual: pd.Series, prediction: pd.Series, metric: str, round: int = 4):
+def check_metric(actual: pd.Series, prediction: pd.Series, metric: str, round: int = 4, train: Optional[pd.Series] = None):
 
     """
-    Function to evaluate classification and regression metrics.
+    Function to evaluate classification, regression and timeseries metrics.
 
 
     actual : pandas.Series
@@ -30,6 +31,10 @@ def check_metric(actual: pd.Series, prediction: pd.Series, metric: str, round: i
 
     prediction : pandas.Series
         Predicted values of the target variable.
+
+
+    train: pandas.Series
+        Train values of the target variable.
 
 
     metric : str
@@ -48,6 +53,7 @@ def check_metric(actual: pd.Series, prediction: pd.Series, metric: str, round: i
     # general dependencies
     import pycaret.containers.metrics.classification
     import pycaret.containers.metrics.regression
+    import pycaret.containers.metrics.time_series
 
     globals_dict = {"y": prediction}
     metric_containers = {
@@ -55,14 +61,20 @@ def check_metric(actual: pd.Series, prediction: pd.Series, metric: str, round: i
             globals_dict
         ),
         **pycaret.containers.metrics.regression.get_all_metric_containers(globals_dict),
+        **pycaret.containers.metrics.time_series.get_all_metric_containers(globals_dict)
     }
     metrics = {v.name: v.score_func for k, v in metric_containers.items()}
+
+    if isinstance(train, pd.Series):
+        input_params = [actual, prediction, train]
+    else:
+        input_params = [actual, prediction]
 
     # metric calculation starts here
 
     if metric in metrics:
         try:
-            result = metrics[metric](actual, prediction)
+            result = metrics[metric](*input_params)
         except:
             from sklearn.preprocessing import LabelEncoder
 

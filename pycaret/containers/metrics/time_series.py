@@ -1,5 +1,5 @@
 # Module: containers.metrics.time_series
-# Author: Antoni Baum (Yard1) <antoni.baum@protonmail.com>
+# Author: Antoni Baum (Yard1) <antoni.baum@protonmail.com> and Miguel Trejo <amtrema@hotmail.com>
 # License: MIT
 
 # The purpose of this module is to serve as a central repository of time series metrics. The `time_series` module will
@@ -17,6 +17,11 @@ import numpy as np
 from sklearn import metrics
 from sklearn.utils.validation import check_consistent_length
 from sklearn.metrics._regression import _check_reg_targets
+from sktime.performance_metrics.forecasting._functions import (
+    mase_loss,
+    smape_loss,
+    mape_loss,
+)
 
 
 class TimeSeriesMetricContainer(MetricContainer):
@@ -90,31 +95,38 @@ class TimeSeriesMetricContainer(MetricContainer):
         is_custom: bool = False,
     ) -> None:
 
-        if not args:
-            args = {}
-
-        if not isinstance(args, dict):
-            raise TypeError("args needs to be a dictionary.")
-
         allowed_targets = ["pred"]
         if not target in allowed_targets:
             raise ValueError(f"Target must be one of {', '.join(allowed_targets)}.")
 
-        self.id = id
-        self.name = name
-        self.score_func = score_func
-        self.target = target
-        self.scorer = (
+        if not args:
+            args = {}
+        if not isinstance(args, dict):
+            raise TypeError("args needs to be a dictionary.")
+
+        scorer = (
             scorer
             if scorer
-            else metrics.make_scorer(
-                score_func, greater_is_better=greater_is_better, **args,
+            else pycaret.internal.metrics.metrics.make_scorer(
+                score_func,
+                greater_is_better=greater_is_better,
+                errors_score=0.0,
+                **args,
             )
         )
-        self.display_name = display_name if display_name else name
-        self.args = args
-        self.greater_is_better = greater_is_better
-        self.is_custom = is_custom
+
+        super().__init__(
+            id=id,
+            name=name,
+            score_func=score_func,
+            scorer=scorer,
+            args=args,
+            display_name=display_name,
+            greater_is_better=greater_is_better,
+            is_custom=is_custom,
+        )
+
+        self.target = target
 
     def get_dict(self, internal: bool = True) -> Dict[str, Any]:
         """
@@ -145,6 +157,51 @@ class TimeSeriesMetricContainer(MetricContainer):
         }
 
         return d
+
+
+class SMAPEMetricContainer(TimeSeriesMetricContainer):
+    def __init__(self, globals_dict: dict) -> None:
+        super().__init__(
+            id="smape", name="SMAPE", score_func=smape_loss, greater_is_better=False,
+        )
+
+
+class MAPEMetricContainer(TimeSeriesMetricContainer):
+    def __init__(self, globals_dict: dict) -> None:
+        super().__init__(
+            id="mape_ts", name="MAPE_ts", score_func=mape_loss, greater_is_better=False,
+        )
+
+
+class MASEMetricContainer(TimeSeriesMetricContainer):
+    def __init__(self, globals_dict: dict) -> None:
+        super().__init__(
+            id="mase", name="MASE", score_func=mase_loss, greater_is_better=False
+        )
+
+
+class MAEMetricContainer(TimeSeriesMetricContainer):
+    def __init__(self, globals_dict: dict) -> None:
+        super().__init__(
+            id="mae_ts",
+            name="MAE_ts",
+            score_func=metrics.mean_absolute_error,
+            greater_is_better=False,
+            scorer="neg_mean_absolute_error",
+        )
+
+
+class RMSEMetricContainer(TimeSeriesMetricContainer):
+    def __init__(self, globals_dict: dict) -> None:
+
+        super().__init__(
+            id="rmse_ts",
+            name="RMSE_ts",
+            score_func=metrics.mean_squared_error,
+            greater_is_better=False,
+            args={"squared": False},
+            scorer="neg_root_mean_squared_error",
+        )
 
 
 def get_all_metric_containers(

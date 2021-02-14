@@ -3,6 +3,8 @@ import os, sys
 sys.path.insert(0, os.path.abspath(".."))
 
 import numpy as np
+import numpy.testing as npt
+import pandas as pd
 import pytest
 import pycaret.utils
 import pycaret.classification
@@ -124,11 +126,45 @@ def test():
 
     # Ensure metric is rounded to 2 decimals
     mape = pycaret.utils.check_metric(actual, prediction, "MAPE", 2)
-    assert mape == 0.05
+    npt.assert_almost_equal(mape, 0.05, decimal=2)
 
     # Ensure metric is rounded to default value
     mape = pycaret.utils.check_metric(actual, prediction, "MAPE")
-    assert mape == 0.0469
+    npt.assert_almost_equal(mape, 0.0469, decimal=4)
+
+    # preparation (timeseries)
+    data = pycaret.datasets.get_data("airline", verbose=False)
+    train, test = sklearn.model_selection.train_test_split(
+        data, train_size=0.8, random_state=1, shuffle=False
+    )
+
+    prediction = pd.Series([100]*len(test), index=test.index)
+    actual = test
+
+    # check metric(timeseries)
+    smape = pycaret.utils.check_metric(actual, prediction, "SMAPE")
+    assert isinstance(smape, float)
+    assert smape >= 0
+    mape = pycaret.utils.check_metric(actual, prediction, "MAPE_ts")
+    assert isinstance(mape, float)
+    assert mape >= 0
+    mase = pycaret.utils.check_metric(test, prediction, "MASE", train=train)
+    assert isinstance(mase, float)
+    assert mase >= 0
+    mae = pycaret.utils.check_metric(actual, prediction, "MAE_ts")
+    assert isinstance(mae, float)
+    assert mae >= 0
+    rmse = pycaret.utils.check_metric(actual, prediction, "RMSE_ts")
+    assert isinstance(rmse, float)
+    assert rmse >= 0
+
+    # Ensure metric is rounded to 2 decimals
+    smape = pycaret.utils.check_metric(actual, prediction, "SMAPE", 2)
+    npt.assert_almost_equal(smape, 1.24, decimal=2)
+
+    # Ensure metric is rounded to default value
+    smape = pycaret.utils.check_metric(actual, prediction, "SMAPE")
+    npt.assert_almost_equal(smape, 1.2448, decimal=4)
 
     # Metric does not exist
     with pytest.raises(ValueError, match="Couldn't find metric"):
