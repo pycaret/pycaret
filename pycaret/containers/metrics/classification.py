@@ -105,8 +105,8 @@ class ClassificationMetricContainer(MetricContainer):
         if not args:
             args = {}
         if not isinstance(args, dict):
-            raise TypeError("args needs to be a dictionary.")    
-                             
+            raise TypeError("args needs to be a dictionary.")
+
         scorer = (
             scorer
             if scorer

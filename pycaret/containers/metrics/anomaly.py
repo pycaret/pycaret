@@ -108,10 +108,13 @@ class AnomalyMetricContainer(MetricContainer):
             scorer
             if scorer
             else pycaret.internal.metrics.make_scorer(
-                score_func, greater_is_better=greater_is_better, **args,
+                score_func,
+                greater_is_better=greater_is_better,
+                error_score=0.0,
+                **args,
             )
         )
-                             
+
         super().__init__(
             id=id,
             name=name,
@@ -122,7 +125,7 @@ class AnomalyMetricContainer(MetricContainer):
             greater_is_better=greater_is_better,
             is_custom=is_custom,
         )
-                             
+
         self.target = target
         self.needs_ground_truth = needs_ground_truth
         self.is_custom = is_custom
