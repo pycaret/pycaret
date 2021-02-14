@@ -120,6 +120,7 @@ class Pipeline(imblearn.pipeline.Pipeline):
         self._carry_over_final_estimator_fit_vars()
         return result
 
+    @if_delegate_has_method(delegate="_final_estimator")
     def fit_predict(self, X, y=None, **fit_params):
         result = super().fit_predict(X, y=y, **fit_params)
 
@@ -132,7 +133,6 @@ class Pipeline(imblearn.pipeline.Pipeline):
         self._carry_over_final_estimator_fit_vars()
         return result
 
-    @if_delegate_has_method(delegate="_final_estimator")
     def fit_transform(self, X, y=None, **fit_params):
         result = super().fit_transform(X, y=y, **fit_params)
 
@@ -192,6 +192,92 @@ class Pipeline(imblearn.pipeline.Pipeline):
         return self
 
 
+class TimeSeriesPipeline(Pipeline):
+    def _get_fit_params(self, X, y, **fit_params):
+        fit_params_steps = {name: {} for name, step in self.steps if step is not None}
+        for pname, pval in fit_params.items():
+            if "__" not in pname:
+                raise ValueError(
+                    "Pipeline.fit does not accept the {} parameter. "
+                    "You can pass parameters to specific steps of your "
+                    "pipeline using the stepname__parameter format, e.g. "
+                    "`Pipeline.fit(X, y, logisticregression__sample_weight"
+                    "=sample_weight)`.".format(pname)
+                )
+            step, param = pname.split("__", 1)
+            fit_params_steps[step][param] = pval
+        return X, y, fit_params_steps[self.steps[-1][0]]
+
+    @if_delegate_has_method(delegate="_final_estimator")
+    def score(self, y, X=None, **score_params):
+        Xt = X
+        for _, name, transform in self._iter(with_final=False):
+            Xt = transform.transform(Xt)
+        result = self.steps[-1][-1].score(y=y, X=Xt, **score_params)
+        return result
+
+    def predict(self, X=None, fh=None, **predict_params):
+        Xt = X
+        if Xt is not None:
+            for _, name, transform in self._iter(with_final=False):
+                Xt = transform.transform(Xt)
+        return self.steps[-1][-1].predict(fh=fh, X=Xt, **predict_params)
+
+    def fit(self, y, X=None, **fit_params):
+        if X is not None:
+            Xt, yt, fit_params = self._fit(X, y, **fit_params)
+        else:
+            Xt, yt, fit_params = self._get_fit_params(X, y, **fit_params)
+        with _print_elapsed_time("Pipeline", self._log_message(len(self.steps) - 1)):
+            if self._final_estimator != "passthrough":
+                self._final_estimator.fit(y=yt, X=Xt, **fit_params)
+        self._carry_over_final_estimator_fit_vars()
+        return self
+
+    @if_delegate_has_method(delegate="_final_estimator")
+    def fit_predict(self, X, y=None, **fit_params):
+        if X is not None:
+            Xt, yt, fit_params = self._fit(X, y, **fit_params)
+        else:
+            Xt, yt, fit_params = self._get_fit_params(X, y, **fit_params)
+        with _print_elapsed_time("Pipeline", self._log_message(len(self.steps) - 1)):
+            y_pred = self.steps[-1][-1].fit_predict(y=yt, X=Xt, **fit_params)
+        self._carry_over_final_estimator_fit_vars()
+        return y_pred
+
+    def fit_resample(self, X, y=None, **fit_params):
+        last_step = self._final_estimator
+        if X is not None:
+            Xt, yt, fit_params = self._fit(X, y, **fit_params)
+        else:
+            Xt, yt, fit_params = self._get_fit_params(X, y, **fit_params)
+        result = None
+        with _print_elapsed_time("Pipeline", self._log_message(len(self.steps) - 1)):
+            if last_step == "passthrough":
+                result = Xt
+            elif hasattr(last_step, "fit_resample"):
+                result = last_step.fit_resample(y=yt, X=Xt, **fit_params)
+        self._carry_over_final_estimator_fit_vars()
+        return result
+
+    def fit_transform(self, X, y=None, **fit_params):
+        last_step = self._final_estimator
+        if X is not None:
+            Xt, yt, fit_params = self._fit(X, y, **fit_params)
+        else:
+            Xt, yt, fit_params = self._get_fit_params(X, y, **fit_params)
+        result = None
+        with _print_elapsed_time("Pipeline", self._log_message(len(self.steps) - 1)):
+            if last_step == "passthrough":
+                result = Xt
+            elif hasattr(last_step, "fit_transform"):
+                result = last_step.fit_transform(y=yt, X=Xt, **fit_params)
+            else:
+                result = last_step.fit(y=yt, X=Xt, **fit_params).transform(Xt)
+        self._carry_over_final_estimator_fit_vars()
+        return result
+
+
 class estimator_pipeline(object):
     """
     Context which adds an estimator to pipeline.
@@ -207,15 +293,6 @@ class estimator_pipeline(object):
 
     def __exit__(self, type, value, traceback):
         return
-
-
-def make_internal_pipeline(internal_pipeline_steps: list, memory=None) -> Pipeline:
-
-    if not internal_pipeline_steps:
-        memory = None
-        internal_pipeline_steps = [("empty_step", "passthrough")]
-
-    return Pipeline(internal_pipeline_steps, memory=memory)
 
 
 def add_estimator_to_pipeline(pipeline: Pipeline, estimator, name="actual_estimator"):

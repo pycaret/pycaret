@@ -685,5 +685,7 @@ def check_if_global_is_not_none(globals_d: dict, global_names: dict):
                 if globals_d[name] is None:
                     raise ValueError(message)
             return func(*args, **kwargs)
+
         return wrapper
+
     return decorator
