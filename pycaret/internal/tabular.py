@@ -1228,6 +1228,7 @@ def setup(
         GroupKFold,
         TimeSeriesSplit,
     )
+
     fold_seed = seed if fold_shuffle_param else None
     if fold_strategy == "kfold":
         fold_generator = KFold(
@@ -4335,76 +4336,79 @@ def tune_model_supervised(
                 pipeline_with_model
             ) if do_early_stop else nullcontext():
                 with set_n_jobs(pipeline_with_model, 1):
-                    if search_algorithm == "grid":
+                    with patch.dict(
+                        "os.environ", {"TUNE_GLOBAL_CHECKPOINT_S": "1000000"}
+                    ) if "TUNE_GLOBAL_CHECKPOINT_S" not in os.environ else nullcontext():
+                        if search_algorithm == "grid":
 
-                        logger.info("Initializing tune_sklearn.TuneGridSearchCV")
-                        model_grid = TuneGridSearchCV(
-                            estimator=pipeline_with_model,
-                            param_grid=param_grid,
-                            early_stopping=do_early_stop,
-                            scoring=optimize,
-                            cv=fold,
-                            max_iters=early_stopping_max_iters,
-                            n_jobs=n_jobs,
-                            use_gpu=gpu_param,
-                            refit=False,
-                            verbose=tuner_verbose,
-                            pipeline_auto_early_stop=True,
-                            **search_kwargs,
-                        )
-                    else:
-                        if search_algorithm == "hyperopt":
-                            try:
-                                param_grid = get_hyperopt_distributions(param_grid)
-                            except:
-                                logger.warning(
-                                    "Couldn't convert param_grid to specific library distributions. Exception:"
-                                )
-                                logger.warning(traceback.format_exc())
-                        elif search_algorithm == "bayesian":
-                            try:
-                                param_grid = get_skopt_distributions(param_grid)
-                            except:
-                                logger.warning(
-                                    "Couldn't convert param_grid to specific library distributions. Exception:"
-                                )
-                                logger.warning(traceback.format_exc())
-                        elif search_algorithm == "bohb":
-                            try:
-                                param_grid = get_CS_distributions(param_grid)
-                            except:
-                                logger.warning(
-                                    "Couldn't convert param_grid to specific library distributions. Exception:"
-                                )
-                                logger.warning(traceback.format_exc())
-                        elif search_algorithm != "random":
-                            try:
-                                param_grid = get_tune_distributions(param_grid)
-                            except:
-                                logger.warning(
-                                    "Couldn't convert param_grid to specific library distributions. Exception:"
-                                )
-                                logger.warning(traceback.format_exc())
-                        logger.info(
-                            f"Initializing tune_sklearn.TuneSearchCV, {search_algorithm}"
-                        )
-                        model_grid = TuneSearchCV(
-                            estimator=pipeline_with_model,
-                            search_optimization=search_algorithm,
-                            param_distributions=param_grid,
-                            n_trials=n_iter,
-                            early_stopping=do_early_stop,
-                            scoring=optimize,
-                            cv=fold,
-                            random_state=seed,
-                            max_iters=early_stopping_max_iters,
-                            n_jobs=n_jobs,
-                            use_gpu=gpu_param,
-                            refit=True,
-                            verbose=tuner_verbose,
-                            pipeline_auto_early_stop=True,
-                            **search_kwargs,
-                        )
+                            logger.info("Initializing tune_sklearn.TuneGridSearchCV")
+                            model_grid = TuneGridSearchCV(
+                                estimator=pipeline_with_model,
+                                param_grid=param_grid,
+                                early_stopping=do_early_stop,
+                                scoring=optimize,
+                                cv=fold,
+                                max_iters=early_stopping_max_iters,
+                                n_jobs=n_jobs,
+                                use_gpu=gpu_param,
+                                refit=False,
+                                verbose=tuner_verbose,
+                                pipeline_auto_early_stop=True,
+                                **search_kwargs,
+                            )
+                        else:
+                            if search_algorithm == "hyperopt":
+                                try:
+                                    param_grid = get_hyperopt_distributions(param_grid)
+                                except:
+                                    logger.warning(
+                                        "Couldn't convert param_grid to specific library distributions. Exception:"
+                                    )
+                                    logger.warning(traceback.format_exc())
+                            elif search_algorithm == "bayesian":
+                                try:
+                                    param_grid = get_skopt_distributions(param_grid)
+                                except:
+                                    logger.warning(
+                                        "Couldn't convert param_grid to specific library distributions. Exception:"
+                                    )
+                                    logger.warning(traceback.format_exc())
+                            elif search_algorithm == "bohb":
+                                try:
+                                    param_grid = get_CS_distributions(param_grid)
+                                except:
+                                    logger.warning(
+                                        "Couldn't convert param_grid to specific library distributions. Exception:"
+                                    )
+                                    logger.warning(traceback.format_exc())
+                            elif search_algorithm != "random":
+                                try:
+                                    param_grid = get_tune_distributions(param_grid)
+                                except:
+                                    logger.warning(
+                                        "Couldn't convert param_grid to specific library distributions. Exception:"
+                                    )
+                                    logger.warning(traceback.format_exc())
+                            logger.info(
+                                f"Initializing tune_sklearn.TuneSearchCV, {search_algorithm}"
+                            )
+                            model_grid = TuneSearchCV(
+                                estimator=pipeline_with_model,
+                                search_optimization=search_algorithm,
+                                param_distributions=param_grid,
+                                n_trials=n_iter,
+                                early_stopping=do_early_stop,
+                                scoring=optimize,
+                                cv=fold,
+                                random_state=seed,
+                                max_iters=early_stopping_max_iters,
+                                n_jobs=n_jobs,
+                                use_gpu=gpu_param,
+                                refit=True,
+                                verbose=tuner_verbose,
+                                pipeline_auto_early_stop=True,
+                                **search_kwargs,
+                            )
         elif search_library == "scikit-optimize":
             import skopt
 
