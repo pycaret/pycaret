@@ -249,17 +249,16 @@ class LogisticRegressionClassifierContainer(ClassifierContainer):
         tune_distributions = {}
 
         # common
-        tune_grid["penalty"] = ["l2", "none"]
-        tune_grid["C"] = np_list_arange(0, 10, 0.001, inclusive=True)
+        tune_grid["C"] = np_list_arange(0.001, 10, 0.001, inclusive=True)
 
         if gpu_imported:
-            tune_grid["penalty"] += ["l1"]
+            tune_grid["penalty"] = ["l2", "l1"]
         else:
             args["random_state"] = globals_dict["seed"]
 
             tune_grid["class_weight"] = ["balanced", {}]
 
-        tune_distributions["C"] = UniformDistribution(0, 10)
+        tune_distributions["C"] = UniformDistribution(0.001, 10)
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
         super().__init__(
@@ -1216,7 +1215,7 @@ class LGBMClassifierContainer(ClassifierContainer):
             ],
             "feature_fraction": np_list_arange(0.4, 1, 0.1, inclusive=True),
             "bagging_fraction": np_list_arange(0.4, 1, 0.1, inclusive=True),
-            "bagging_freq": [1, 2, 3, 4, 5, 6, 7],
+            "bagging_freq": [0, 1],
             "min_child_samples": np_list_arange(5, 100, 5, inclusive=True),
         }
         tune_distributions = {
@@ -1226,10 +1225,9 @@ class LGBMClassifierContainer(ClassifierContainer):
             "min_split_gain": UniformDistribution(0, 1),
             "reg_alpha": UniformDistribution(0.0000000001, 10, log=True),
             "reg_lambda": UniformDistribution(0.0000000001, 10, log=True),
-            "min_data_in_leaf": IntUniformDistribution(10, 10000),
             "feature_fraction": UniformDistribution(0.4, 1),
             "bagging_fraction": UniformDistribution(0.4, 1),
-            "bagging_freq": IntUniformDistribution(1, 7),
+            "bagging_freq": IntUniformDistribution(0, 1),
             "min_child_samples": IntUniformDistribution(5, 100),
         }
 

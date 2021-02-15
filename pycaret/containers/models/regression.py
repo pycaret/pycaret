@@ -1570,7 +1570,7 @@ class LGBMRegressorContainer(RegressorContainer):
             ],
             "feature_fraction": np_list_arange(0.4, 1, 0.1, inclusive=True),
             "bagging_fraction": np_list_arange(0.4, 1, 0.1, inclusive=True),
-            "bagging_freq": [1, 2, 3, 4, 5, 6, 7],
+            "bagging_freq": [0, 1],
             "min_child_samples": np_list_arange(5, 100, 5, inclusive=True),
         }
         tune_distributions = {
@@ -1580,10 +1580,9 @@ class LGBMRegressorContainer(RegressorContainer):
             "min_split_gain": UniformDistribution(0, 1),
             "reg_alpha": UniformDistribution(0.0000000001, 10, log=True),
             "reg_lambda": UniformDistribution(0.0000000001, 10, log=True),
-            "min_data_in_leaf": IntUniformDistribution(10, 10000),
             "feature_fraction": UniformDistribution(0.4, 1),
             "bagging_fraction": UniformDistribution(0.4, 1),
-            "bagging_freq": IntUniformDistribution(1, 7),
+            "bagging_freq": IntUniformDistribution(0, 1),
             "min_child_samples": IntUniformDistribution(5, 100),
         }
 
