@@ -641,7 +641,7 @@ class InteractiveResidualsPlot:
         """
         if self.display.enviroment == "google.colab":
             for figure in self.figures:
-                self.display.display(figure)
+                figure.show()
         else:
             self.display.display(self.plot)
 
