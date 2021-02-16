@@ -5637,6 +5637,7 @@ def plot_model(
     system: bool = True,
     display: Optional[Display] = None,  # added in pycaret==2.2.0
     display_format: Optional[str] = None,
+    is_in_evaluate: bool = False,
 ) -> str:
 
     """
@@ -5932,6 +5933,11 @@ def plot_model(
                 _base_dpi = 100
 
                 def residuals_interactive():
+                    if is_in_evaluate and display.enviroment == "google.colab":
+                        raise ValueError(
+                            "Interactive Residuals plot not available in evaluate_model() in Google Colab. Do plot_model(model, plot='residuals_interactive') instead."
+                        )
+
                     from pycaret.internal.plots.residual_plots import (
                         InteractiveResidualsPlot,
                     )
@@ -7399,6 +7405,7 @@ def evaluate_model(
         system=fixed(True),
         display=fixed(None),
         display_format=fixed(None),
+        is_in_evaluate=fixed(True),
     )
 
 
