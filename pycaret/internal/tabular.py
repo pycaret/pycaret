@@ -5817,6 +5817,11 @@ def plot_model(
             "Feature Importance and RFE plots not available for estimators that doesnt support coef_ or feature_importances_ attribute."
         )
 
+    if plot == "residuals_interactive" and is_in_evaluate and Display.is_in_colab():
+        raise ValueError(
+            "Interactive Residuals plot not available in evaluate_model() in Google Colab. Do plot_model(model, plot='residuals_interactive') instead."
+        )
+
     # checking fold parameter
     if fold is not None and not (type(fold) is int or is_sklearn_cv_generator(fold)):
         raise TypeError(
@@ -5864,11 +5869,6 @@ def plot_model(
             verbose=verbose, html_param=html_param, progress_args=progress_args
         )
         display.display_progress()
-
-    if plot == "residuals_interactive" and is_in_evaluate and display.enviroment == "google.colab":
-        raise ValueError(
-            "Interactive Residuals plot not available in evaluate_model() in Google Colab. Do plot_model(model, plot='residuals_interactive') instead."
-        )
 
     logger.info("Preloading libraries")
     # pre-load libraries

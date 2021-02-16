@@ -151,7 +151,7 @@ class Display:
         self.round = round
         try:
             self.enviroment = str(get_ipython())
-            self.enviroment = "google.colab" if is_in_colab() else self.enviroment
+            self.enviroment = "google.colab" if self.is_in_colab() else self.enviroment
         except:
             self.enviroment = ""
 
@@ -173,9 +173,9 @@ class Display:
                 monitor_rows, columns=[" " * i for i in range(len(monitor_rows[0]))],
             ).set_index("")
 
-
-def is_in_colab():
-    try:
-        return "google.colab" in str(get_ipython())
-    except:
-        return False
+    @staticmethod
+    def is_in_colab():
+        try:
+            return "google.colab" in str(get_ipython())
+        except:
+            return False
