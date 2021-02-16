@@ -5865,6 +5865,11 @@ def plot_model(
         )
         display.display_progress()
 
+    if plot == "residuals_interactive" and is_in_evaluate and display.enviroment == "google.colab":
+        raise ValueError(
+            "Interactive Residuals plot not available in evaluate_model() in Google Colab. Do plot_model(model, plot='residuals_interactive') instead."
+        )
+
     logger.info("Preloading libraries")
     # pre-load libraries
     import matplotlib.pyplot as plt
@@ -5933,11 +5938,6 @@ def plot_model(
                 _base_dpi = 100
 
                 def residuals_interactive():
-                    if is_in_evaluate and display.enviroment == "google.colab":
-                        raise ValueError(
-                            "Interactive Residuals plot not available in evaluate_model() in Google Colab. Do plot_model(model, plot='residuals_interactive') instead."
-                        )
-
                     from pycaret.internal.plots.residual_plots import (
                         InteractiveResidualsPlot,
                     )
