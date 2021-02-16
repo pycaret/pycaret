@@ -32,7 +32,7 @@ import pycaret.internal.patches.yellowbrick
 from pycaret.internal.logging import get_logger
 from pycaret.internal.plots.yellowbrick import show_yellowbrick_plot
 from pycaret.internal.plots.helper import MatplotlibDefaultDPI
-from pycaret.internal.Display import Display
+from pycaret.internal.Display import Display, is_in_colab
 from pycaret.internal.distributions import *
 from pycaret.internal.validation import *
 from pycaret.internal.tunable import TunableMixin
@@ -5817,7 +5817,7 @@ def plot_model(
             "Feature Importance and RFE plots not available for estimators that doesnt support coef_ or feature_importances_ attribute."
         )
 
-    if plot == "residuals_interactive" and is_in_evaluate and Display.is_in_colab():
+    if plot == "residuals_interactive" and is_in_evaluate and is_in_colab():
         raise ValueError(
             "Interactive Residuals plot not available in evaluate_model() in Google Colab. Do plot_model(model, plot='residuals_interactive') instead."
         )
