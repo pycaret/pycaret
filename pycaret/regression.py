@@ -1430,6 +1430,7 @@ def plot_model(
     plot: str, default = 'residual'
         List of available plots (ID - Name):
 
+        * 'residuals_interactive' - Interactive Residual plots
         * 'residuals' - Residuals Plot
         * 'error' - Prediction Error Plot
         * 'cooks' - Cooks Distance Plot
