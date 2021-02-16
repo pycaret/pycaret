@@ -1,16 +1,12 @@
 from typing import Any, Dict, Optional, Union, Sequence
 
-import re
 from scipy import stats
 import plotly.graph_objects as go
 import plotly.express as px
 from plotly.basewidget import BaseFigureWidget
-import statsmodels.api as sm
 import pandas as pd
 import numpy as np
 from ipywidgets import widgets, Layout
-from ipywidgets.embed import embed_snippet
-from IPython.display import display
 
 import pycaret.internal.plots.helper as helper
 from pycaret.internal.validation import is_fitted
@@ -60,8 +56,8 @@ class QQPlotWidget(BaseFigureWidget):
             )
         else:
             std_res = predicted
-        plot = self.__qq_plot(std_res, split_origin)
-        super(QQPlotWidget, self).__init__(plot, **kwargs)
+        self._plot = self.__qq_plot(std_res, split_origin)
+        super(QQPlotWidget, self).__init__(self._plot, **kwargs)
 
     @staticmethod
     def __get_qq(standardized_residuals: np.ndarray) -> np.ndarray:
@@ -159,13 +155,13 @@ class QQPlotWidget(BaseFigureWidget):
             as the predictions and expected array. Each entry in this array must be one of the strings ['train', 'test']
             to denote from which split this observation originates.
         """
-        plot = self.__qq_plot(
+        self._plot = self.__qq_plot(
             standardized_residuals=helper.calculate_standardized_residual(
                 predicted, expected, featuresize
             ),
             split_origin=split_origin,
         )
-        self.update({"data": plot.data}, overwrite=True)
+        self.update({"data": self._plot.data}, overwrite=True)
         self.update_layout()
 
 
@@ -199,10 +195,10 @@ class ScaleLocationWidget(BaseFigureWidget):
             as the predictions and sqrt_abs_standardized_residuals array. Each entry in this array must be one of the strings ['train', 'test']
             to denote from which split this observation originates.
         """
-        plot = self.__scale_location_plot(
+        self._plot = self.__scale_location_plot(
             predictions, sqrt_abs_standardized_residuals, split_origin
         )
-        super(ScaleLocationWidget, self).__init__(plot, **kwargs)
+        super(ScaleLocationWidget, self).__init__(self._plot, **kwargs)
 
     @staticmethod
     def __scale_location_plot(fitted, sqrt_abs_standardized_residuals, split_origin):
@@ -278,10 +274,10 @@ class ScaleLocationWidget(BaseFigureWidget):
             as the predictions and sqrt_abs_standardized_residuals array. Each entry in this array must be one of the strings ['train', 'test']
             to denote from which split this observation originates.
         """
-        plot = self.__scale_location_plot(
+        self._plot = self.__scale_location_plot(
             predicted, sqrt_abs_standardized_residuals, split_origin
         )
-        self.update({"data": plot.data}, overwrite=True)
+        self.update({"data": self._plot.data}, overwrite=True)
         self.update_layout()
 
 
@@ -323,14 +319,14 @@ class CooksDistanceWidget(BaseFigureWidget):
             as the model_leverage and standardized_residuals array. Each entry in this array must be one of the
             strings ['train', 'test'] to denote from which split this observation originates.
         """
-        plot = self.__cooks_distance_plot(
+        self._plot = self.__cooks_distance_plot(
             model_leverage,
             cooks_distances,
             standardized_residuals,
             n_model_params,
             split_origin,
         )
-        super(CooksDistanceWidget, self).__init__(plot, **kwargs)
+        super(CooksDistanceWidget, self).__init__(self._plot, **kwargs)
 
     @staticmethod
     def __cooks_distance_plot(
@@ -474,14 +470,14 @@ class CooksDistanceWidget(BaseFigureWidget):
             as the model_leverage and standardized_residuals array. Each entry in this array must be one of the
             strings ['train', 'test'] to denote from which split this observation originates.
         """
-        plot = self.__cooks_distance_plot(
+        self._plot = self.__cooks_distance_plot(
             model_leverage,
             cooks_distances,
             standardized_residuals,
             n_model_params,
             split_origin=split_origin,
         )
-        self.update({"data": plot.data}, overwrite=True)
+        self.update({"data": self._plot.data}, overwrite=True)
         self.update_layout()
 
 
@@ -516,8 +512,8 @@ class TukeyAnscombeWidget(BaseFigureWidget):
             to denote from which split this observation originates.
         """
 
-        plot = self.__tukey_anscombe_plot(predictions, residuals, split_origin)
-        super(TukeyAnscombeWidget, self).__init__(plot, **kwargs)
+        self._plot = self.__tukey_anscombe_plot(predictions, residuals, split_origin)
+        super(TukeyAnscombeWidget, self).__init__(self._plot, **kwargs)
 
     @staticmethod
     def __tukey_anscombe_plot(predictions, residuals, split_origin):
@@ -587,8 +583,8 @@ class TukeyAnscombeWidget(BaseFigureWidget):
             as the predictions and residuals array. Each entry in this array must be one of the strings ['train', 'test']
             to denote from which split this observation originates.
         """
-        plot = self.__tukey_anscombe_plot(predictions, residuals, split_origin)
-        self.update({"data": plot.data}, overwrite=True)
+        self._plot = self.__tukey_anscombe_plot(predictions, residuals, split_origin)
+        self.update({"data": self._plot.data}, overwrite=True)
         self.update_layout()
 
 
@@ -643,7 +639,23 @@ class InteractiveResidualsPlot:
         """
         Show the plots within the provided Display instance
         """
-        self.display.display(self.plot)
+        if self.display.enviroment == "google.colab":
+            for figure in self.figures:
+                self.display.display(figure)
+        else:
+            self.display.display(self.plot)
+
+    def get_html(self):
+        """
+        Get the HTML representation of the plot.
+        """
+        style = 'style="width: 50%; height: 50%; float:left;"'
+        html = (
+            f"<div {style}>{self.figures[0].to_html()}</div><div {style}>{self.figures[1].to_html()}</div>"
+            f"<div {style}>{self.figures[2].to_html()}</div><div {style}>{self.figures[3].to_html()}</div>"
+        )
+
+        return html
 
     def write_html(self, plot_filename):
         """
@@ -655,11 +667,7 @@ class InteractiveResidualsPlot:
             name of the file
         """
 
-        style = 'style="width: 50%; height: 50%; float:left;"'
-        html = (
-            f"<div {style}>{self.figures[0].to_html()}</div><div {style}>{self.figures[1].to_html()}</div>"
-            f"<div {style}>{self.figures[2].to_html()}</div><div {style}>{self.figures[3].to_html()}</div>"
-        )
+        html = self.get_html()
 
         with open(plot_filename, "w") as f:
             f.write(html)
@@ -685,7 +693,10 @@ class InteractiveResidualsPlot:
                 predictions = np.concatenate((fitted, pred))
                 residuals = np.concatenate((fitted_residuals, prediction_residuals))
                 split_origin = np.concatenate(
-                    (np.repeat("train", fitted.shape[0]), np.repeat("test", pred.shape[0]))
+                    (
+                        np.repeat("train", fitted.shape[0]),
+                        np.repeat("test", pred.shape[0]),
+                    )
                 )
 
                 x = np.concatenate((x, x_test))
