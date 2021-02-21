@@ -15614,14 +15614,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         )
         return
 
-    def _make_internal_pipeline(
-        self, internal_pipeline_steps: list, memory=None
-    ) -> InternalTimeSeriesPipeline:
-        if not internal_pipeline_steps:
-            memory = None
-            internal_pipeline_steps = [("empty_step", "passthrough")]
-
-        return InternalTimeSeriesPipeline(internal_pipeline_steps, memory=memory)
 
     def _get_setup_display(self, **kwargs) -> Styler:
         # define highlight function for function grid to display
