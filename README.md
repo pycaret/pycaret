@@ -1,6 +1,6 @@
 ![alt text](https://github.com/pycaret/pycaret/blob/master/pycaret2.2.png)
 
-# PyCaret 2.2
+# PyCaret 2.3
 ![Python](https://img.shields.io/badge/Python-3.6%20%7C%203.7%20%7C%203.8-blue) ![pytest on push](https://github.com/pycaret/pycaret/workflows/pytest%20on%20push/badge.svg) [![Documentation Status](https://readthedocs.org/projects/pip/badge/?version=stable)](http://pip.pypa.io/en/stable/?badge=stable) [![PyPI version](https://badge.fury.io/py/pycaret.svg)](https://badge.fury.io/py/pycaret) [![License](https://img.shields.io/pypi/l/ansicolortags.svg)](https://img.shields.io/pypi/l/ansicolortags.svg) [![Git count](http://hits.dwyl.com/pycaret/pycaret/pycaret.svg)](http://hits.dwyl.com/pycaret/pycaret/pycaret) [![Slack](https://img.shields.io/badge/slack-chat-green.svg?logo=slack)](https://join.slack.com/t/pycaretworkspace/shared_invite/zt-kdoe7hee-yvNANPHXPM9VtK7R6Npx4Q) 
 
 ## What is PyCaret?
@@ -18,7 +18,7 @@ PyCaret is a great library which not only simplifies the machine learning tasks 
 ![alt text](https://github.com/pycaret/pycaret/blob/master/pycaret2-features.png)
 
 ## Current Release
-PyCaret `2.2` is now available. See `2.2` release notes. The easiest way to install pycaret is using pip. 
+PyCaret `2.3` is now available. See `2.3` release notes. The easiest way to install pycaret is using pip. 
 
 ```python
 pip install pycaret
@@ -29,11 +29,6 @@ PyCaret's default installation is a slim version of pycaret which only installs 
 ```python
 pip install pycaret[full]
 ```
-
-### Minor Release
-- [December 22, 2020] `2.2.3` released fixing several bugs. Major compatibility issues of catboost, pyod (other impacts unknown as of now) with sklearn=0.24 (released on Dec 22, 2020). Temporary fix is requiring 0.23.2 specifically in the `requirements.txt`. [Click here](https://github.com/pycaret/pycaret/releases) to see release notes.
-- [November 25, 2020] `2.2.2` released fixing several bugs. [Click here](https://github.com/pycaret/pycaret/releases) to see release notes.
-- [November 9, 2020] `2.2.1` released fixing several bugs. [Click here](https://github.com/pycaret/pycaret/releases) to see release notes.
 
 ## PyCaret on GPU
 PyCaret >= 2.2 provides the option to use GPU for select model training and hyperparameter tuning. There is no change in the use of the API, however, in some cases, additional libraries have to be installed as they are not installed with the default slim version or the full version. The following estimators can be trained on GPU.
