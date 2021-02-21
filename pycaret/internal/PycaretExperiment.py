@@ -5389,13 +5389,25 @@ class _SupervisedExperiment(_TabularExperiment):
             self.logger.info(f"Cross validating with {cv}, n_jobs={n_jobs}")
 
             model_fit_start = time.time()
-            if self._ml_usecase == MLUsecase.TIME_SERIES:
-                # Cross Validate time series
-                # Set the forecast horizon for the estimator
-                fit_kwargs.update({'actual_estimator__fh': self.fh})
-                # TODO: Temporarily disabling parallelization for debug (parallelization makes debugging harder)
-                n_jobs=1
-
+            # if self._ml_usecase == MLUsecase.TIME_SERIES:
+            #     # Cross Validate time series
+            #     # Set the forecast horizon for the estimator
+            #     fit_kwargs.update({'actual_estimator__fh': self.fh})
+            #     # TODO: Temporarily disabling parallelization for debug (parallelization makes debugging harder)
+            #     n_jobs=1
+            #     scores = cross_validate_ts(
+            #         pipeline_with_model,
+            #         data_X,
+            #         data_y,
+            #         cv=cv,
+            #         groups=groups,
+            #         scoring=metrics_dict,
+            #         fit_params=fit_kwargs,
+            #         n_jobs=n_jobs,
+            #         return_train_score=False,
+            #         error_score=0
+            #     )
+            # else:
             scores = cross_validate(
                 pipeline_with_model,
                 data_X,
@@ -15877,7 +15889,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         # Forecast Horizon Checks
         if fh is None:
             raise ValueError(
-                    f"The forecast horizon `h` must be provided"
+                    f"The forecast horizon `fh` must be provided"
                 )
         if not isinstance(fh, np.ndarray):
             raise ValueError(
@@ -16191,6 +16203,105 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             verbose=verbose,
             **kwargs,
         )
+
+    def _create_model_with_cv(
+        self,
+        model,
+        data_X,
+        data_y,
+        fit_kwargs,
+        round,
+        cv,
+        groups,
+        metrics,
+        refit,
+        display,
+    ):
+        """
+        MONITOR UPDATE STARTS
+        """
+        display.update_monitor(
+            1,
+            f"Fitting {self._get_cv_n_folds(cv, data_X, y=data_y, groups=groups)} Folds",
+        )
+        display.display_monitor()
+        """
+        MONITOR UPDATE ENDS
+        """
+
+        metrics_dict = dict([(k, v.scorer) for k, v in metrics.items()])
+
+        self.logger.info("Starting cross validation")
+
+        n_jobs = self._gpu_n_jobs_param
+
+
+        # fit_kwargs = get_pipeline_fit_kwargs(pipeline_with_model, fit_kwargs)
+
+        self.logger.info(f"Cross validating with {cv}, n_jobs={n_jobs}")
+
+        model_fit_start = time.time()
+
+        # Cross Validate time series
+        # TODO: Temporarily disabling parallelization for debug (parallelization makes debugging harder)
+        fit_kwargs = {'fh': self.fh}
+        # fit_kwargs.update({'actual_estimator__fh': self.fh})
+        n_jobs=1
+        scores = cross_validate_ts(
+            forecaster=model,
+            y=data_y,
+            X=data_X,
+            cv=cv,
+            scoring=metrics_dict,
+            fit_params=fit_kwargs,
+            n_jobs=n_jobs,
+            return_train_score=False,
+            error_score=0
+        )
+
+        model_fit_end = time.time()
+        model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
+
+        score_dict = {
+            v.display_name: scores[f"test_{k}"] * (1 if v.greater_is_better else -1)
+            for k, v in metrics.items()
+        }
+
+        self.logger.info("Calculating mean and std")
+
+        avgs_dict = {k: [np.mean(v), np.std(v)] for k, v in score_dict.items()}
+
+        display.move_progress()
+
+        self.logger.info("Creating metrics dataframe")
+
+        model_results = pd.DataFrame(score_dict)
+        model_avgs = pd.DataFrame(avgs_dict, index=["Mean", "SD"],)
+
+        model_results = model_results.append(model_avgs)
+        model_results = model_results.round(round)
+
+        # yellow the mean
+        model_results = color_df(model_results, "yellow", ["Mean"], axis=1)
+        model_results = model_results.set_precision(round)
+
+        if refit:
+            # refitting the model on complete X_train, y_train
+            display.update_monitor(1, "Finalizing Model")
+            display.display_monitor()
+            model_fit_start = time.time()
+            self.logger.info("Finalizing model")
+            with io.capture_output():
+                model.fit(y=data_y, X=data_X, **fit_kwargs)
+            model_fit_end = time.time()
+
+            model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
+        else:
+            model_fit_time /= self._get_cv_n_folds(
+                cv, data_X, y=data_y, groups=groups
+            )
+
+        return model, model_fit_time, model_results, avgs_dict
 
     def tune_model(
         self,
@@ -17493,3 +17604,99 @@ def experiment_factory(usecase: MLUsecase):
         MLUsecase.ANOMALY: AnomalyExperiment,
     }
     return switch[usecase]()
+
+
+def cross_validate_ts(
+    forecaster,
+    y,
+    X,
+    cv,
+    scoring,
+    fit_params,
+    n_jobs,
+    return_train_score=False,
+    error_score=0
+):
+    if return_train_score:
+        raise NotImplementedError()
+
+    # TODO: Do outside before passing to cross_validate_ts
+    # # Fit params
+    # if parameters is not None:
+    #     forecaster.set_params(**parameters)
+
+    results = pd.DataFrame()
+
+    # TODO: Temp
+    scorer=scoring['smape']
+
+    # Split the data into train and test set
+    for i, (train, test) in enumerate(cv.split(y)):
+        result = _fit_and_score(
+            forecaster,
+            y,
+            X,
+            scorer,
+            train,
+            test,
+            verbose=0,
+            # parameters,
+            fit_params=fit_params,
+            return_parameters=False,
+            return_times=False,
+            return_train_score=False,
+            return_forecaster=False,
+            error_score=np.nan)
+    results.append(result, ignore_index=True)
+    return results
+
+def _fit_and_score(
+    forecaster,
+    y,
+    X,
+    scorer,
+    train,
+    test,
+    verbose,
+    # parameters,
+    fit_params,
+    return_parameters=False,
+    return_times=False,
+    return_train_score=False,
+    return_forecaster=False,
+    error_score=np.nan,
+):
+    # Based on https://github.com/alan-turing-institute/sktime/blob/master/sktime/forecasting/model_evaluation/_functions.py
+    from sktime.forecasting.base import ForecastingHorizon
+    # TODO: fit_params must have 'fh'
+    fh = fit_params['fh']
+    test = test[: len(fh)]
+    # create train/test data
+    y_train = y.iloc[train]
+    y_test = y.iloc[test]
+
+    X_train = X.iloc[train] if X else None
+    X_test = X.iloc[test] if X else None
+
+    # fit/update
+    start_fit = time.time()
+    forecaster.fit(y_train, X=X_train, fh=ForecastingHorizon(y_test.index, is_relative=False)) #**fit_params)
+    fit_time = time.time() - start_fit
+
+    # predict
+    start_pred = time.time()
+    y_pred = forecaster.predict(fh=ForecastingHorizon(y_test.index, is_relative=False), X=X_test)
+    pred_time = time.time() - start_pred
+
+    # save results
+    result = {
+        "test_" + scoring.__class__.__name__: scoring(y_pred, y_test),
+        "fit_time": fit_time,
+        "pred_time": pred_time,
+        "len_train_window": len(y_train),
+        "cutoff": forecaster.cutoff,
+        "y_train": y_train if return_data else np.nan,
+        "y_test": y_test if return_data else np.nan,
+        "y_pred": y_pred if return_data else np.nan,
+    }
+    return result
