@@ -1,2 +1,2 @@
-sktime>=0.5.2
+sktime>=0.5.3
 pmdarima>=1.8.0
