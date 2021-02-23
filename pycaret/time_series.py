@@ -34,6 +34,7 @@ def setup(
     #        transform_target_method: str = "box-cox",
     fold_strategy: Union[str, Any] = "timeseries",  # added in pycaret==2.2
     fold: int = 10,
+    forecast_horizon: int = 1,
     n_jobs: Optional[int] = -1,
     use_gpu: bool = False,
     custom_pipeline: Union[
@@ -93,9 +94,8 @@ def setup(
     fold_strategy: str or sklearn CV generator object, default = 'kfold'
         Choice of cross validation strategy. Possible values are:
 
-        * 'kfold'
-        * 'stratifiedkfold'
-        * 'groupkfold'
+        * 'expandingwindow'
+        * 'slidingwindow'
         * 'timeseries'
         * a custom CV generator object compatible with scikit-learn.
 
@@ -104,6 +104,10 @@ def setup(
         Number of folds to be used in cross validation. Must be at least 2. This is
         a global setting that can be over-written at function level by using ``fold``
         parameter. Ignored when ``fold_strategy`` is a custom object.
+
+    
+    forecast_horizon: int, default = 1
+        Number of steps ahead to take to evaluate forecast.
 
 
     n_jobs: int, default = -1
@@ -204,6 +208,7 @@ def setup(
         imputation_type=imputation_type,
         fold_strategy=fold_strategy,
         fold=fold,
+        forecast_horizon=forecast_horizon,
         n_jobs=n_jobs,
         use_gpu=use_gpu,
         custom_pipeline=custom_pipeline,
