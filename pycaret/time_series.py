@@ -60,9 +60,9 @@ def setup(
     Example
     -------
     >>> from pycaret.datasets import get_data
-    >>> boston = get_data('boston')
-    >>> from pycaret.time_series import *
-    >>> exp_name = setup(data = boston,  target = 'medv')
+    >>> airline = get_data('airline')
+    >>> from pycaret.time_series import setup
+    >>> exp_name = setup(data=airline, forecast_horizon=10)
 
 
     data : pandas.Series or pandas.DataFrame
