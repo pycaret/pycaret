@@ -1914,6 +1914,9 @@ class _TabularExperiment(_PyCaretExperiment):
 
                 window_length = y_size - window_length
 
+                if window_length < 1:
+                    raise ValueError(f"Not Enough Data Points, set a lower number of folds")
+
                 self.fold_generator = ExpandingWindowSplitter(
                     fh=fh,
                     step_length=fh,
@@ -1931,6 +1934,9 @@ class _TabularExperiment(_PyCaretExperiment):
                     raise TypeError("data parameter must be a pandas.Series or pandas.DataFrame.")
 
                 window_length = y_size - window_length
+
+                if window_length < 1:
+                    raise ValueError(f"Not Enough Data Points, set a lower number of folds")
 
                 self.fold_generator = SlidingWindowSplitter(
                     fh=fh,
