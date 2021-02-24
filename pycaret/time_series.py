@@ -34,7 +34,7 @@ def setup(
     #        transform_target_method: str = "box-cox",
     fold_strategy: Union[str, Any] = "timeseries",  # added in pycaret==2.2
     fold: int = 10,
-    forecast_horizon: int = 1,
+    fh: Union[List[int], int, np.ndarray] = 1,
     n_jobs: Optional[int] = -1,
     use_gpu: bool = False,
     custom_pipeline: Union[
@@ -62,7 +62,7 @@ def setup(
     >>> from pycaret.datasets import get_data
     >>> airline = get_data('airline')
     >>> from pycaret.time_series import setup
-    >>> exp_name = setup(data=airline, forecast_horizon=10)
+    >>> exp_name = setup(data=airline, fh=10)
 
 
     data : pandas.Series or pandas.DataFrame
@@ -106,7 +106,7 @@ def setup(
         parameter. Ignored when ``fold_strategy`` is a custom object.
 
     
-    forecast_horizon: int, default = 1
+    fh: int, list or np.array, default = 1
         Number of steps ahead to take to evaluate forecast.
 
 
@@ -208,7 +208,7 @@ def setup(
         imputation_type=imputation_type,
         fold_strategy=fold_strategy,
         fold=fold,
-        forecast_horizon=forecast_horizon,
+        fh=fh,
         n_jobs=n_jobs,
         use_gpu=use_gpu,
         custom_pipeline=custom_pipeline,

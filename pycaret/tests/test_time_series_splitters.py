@@ -21,8 +21,8 @@ parametrize_list = [
 ]
 
 
-@pytest.mark.parametrize("fold, forecast_horizon, fold_strategy", parametrize_list)
-def test_setup_initialization(fold, forecast_horizon, fold_strategy, load_data):
+@pytest.mark.parametrize("fold, fh, fold_strategy", parametrize_list)
+def test_setup_initialization(fold, fh, fold_strategy, load_data):
 
     from pycaret.time_series import setup
     from sktime.forecasting.model_selection._split import (
@@ -33,7 +33,7 @@ def test_setup_initialization(fold, forecast_horizon, fold_strategy, load_data):
     exp_name = setup(
         data=load_data,
         fold=fold,
-        forecast_horizon=forecast_horizon,
+        fh=fh,
         fold_strategy=fold_strategy,
     )
 
