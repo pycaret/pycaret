@@ -874,7 +874,7 @@ class _TabularExperiment(_PyCaretExperiment):
         data_split_stratify: Union[bool, List[str]] = False,  # added in pycaret==2.2
         fold_strategy: Union[str, Any] = "kfold",  # added in pycaret==2.2
         fold: int = 10,  # added in pycaret==2.2
-        forecast_horizon: int = 1,
+        forecast_horizon: Union[List[int], int, np.array] = 1,
         fold_shuffle: bool = False,
         fold_groups: Optional[Union[str, pd.DataFrame]] = None,
         n_jobs: Optional[int] = -1,
@@ -1371,8 +1371,8 @@ class _TabularExperiment(_PyCaretExperiment):
             raise TypeError("fold parameter only accepts integer value.")
 
         # checking forecast_horizon parameter
-        if not isinstance(forecast_horizon, int):
-            raise TypeError("forecast_horizon parameter only accepts integer value.")
+        if not isinstance(forecast_horizon, (int, list, np.ndarray)):
+            raise TypeError(f"forecast_horizon parameter accepts integer. list or np.array value. Provided values is {type(forecast_horizon)}")
 
         # fold_shuffle
         if type(fold_shuffle) is not bool:
@@ -1939,7 +1939,7 @@ class _TabularExperiment(_PyCaretExperiment):
                     window_length=window_length,
                     initial_window=window_length
                 )
-                
+
             else:
                 self.fold_generator = fold_strategy
 
@@ -15732,7 +15732,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         #        transform_target_method: str = "box-cox",
         fold_strategy: Union[str, Any] = "timeseries",  # added in pycaret==2.2
         fold: int = 10,
-        forecast_horizon: int = 1,
+        forecast_horizon: Union[List[int], int, np.array] = 1,
         n_jobs: Optional[int] = -1,
         use_gpu: bool = False,
         custom_pipeline: Union[
@@ -15803,7 +15803,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             parameter. Ignored when ``fold_strategy`` is a custom object.
 
 
-        forecast_horizon: int, default = 1
+        forecast_horizon: int, list or np.array, default = 1
             Number of steps ahead to take to evaluate forecast.
 
 
