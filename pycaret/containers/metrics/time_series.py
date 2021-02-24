@@ -158,9 +158,9 @@ def _mape_loss(y_true, y_pred):
     """Wrapper for sktime metrics"""
     return mape_loss(y_test=y_true, y_pred=y_pred)
 
-def _mase_loss(y_true, y_pred):
+def _mase_loss(y_true, y_pred, y_train):
     """Wrapper for sktime metrics"""
-    return mase_loss(y_test=y_true, y_pred=y_pred)
+    return mase_loss(y_test=y_true, y_pred=y_pred, y_train=y_train)
 
 
 class SMAPEMetricContainer(TimeSeriesMetricContainer):
