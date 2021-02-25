@@ -874,6 +874,7 @@ class _TabularExperiment(_PyCaretExperiment):
         data_split_stratify: Union[bool, List[str]] = False,  # added in pycaret==2.2
         fold_strategy: Union[str, Any] = "kfold",  # added in pycaret==2.2
         fold: int = 10,  # added in pycaret==2.2
+        fh: Union[List[int], int, np.array] = 1,
         fold_shuffle: bool = False,
         fold_groups: Optional[Union[str, pd.DataFrame]] = None,
         n_jobs: Optional[int] = -1,
@@ -1341,6 +1342,8 @@ class _TabularExperiment(_PyCaretExperiment):
             "stratifiedkfold",
             "groupkfold",
             "timeseries",
+            "expandingwindow",
+            "slidingwindow"
         ]
         if not (
             fold_strategy in possible_fold_strategy
@@ -1364,8 +1367,12 @@ class _TabularExperiment(_PyCaretExperiment):
                 )
 
         # checking fold parameter
-        if type(fold) is not int:
+        if not isinstance(fold, int):
             raise TypeError("fold parameter only accepts integer value.")
+
+        # checking fh parameter
+        if not isinstance(fh, (int, list, np.ndarray)):
+            raise TypeError(f"fh parameter accepts integer. list or np.array value. Provided values is {type(fh)}")
 
         # fold_shuffle
         if type(fold_shuffle) is not bool:
@@ -1872,7 +1879,13 @@ class _TabularExperiment(_PyCaretExperiment):
                 TimeSeriesSplit,
             )
 
+            from sktime.forecasting.model_selection import (
+                ExpandingWindowSplitter,
+                SlidingWindowSplitter,
+            )
+
             fold_random_state = self.seed if self.fold_shuffle_param else None
+            window_length = fh * (self.fold_param - 1)
 
             if fold_strategy == "kfold":
                 self.fold_generator = KFold(
@@ -1890,6 +1903,48 @@ class _TabularExperiment(_PyCaretExperiment):
                 self.fold_generator = GroupKFold(self.fold_param)
             elif fold_strategy == "timeseries":
                 self.fold_generator = TimeSeriesSplit(self.fold_param)
+            elif fold_strategy == "expandingwindow":
+               
+                if isinstance(self.data_before_preprocess, pd.DataFrame):
+                    y_size = self.data_before_preprocess.size
+                elif isinstance(self.data_before_preprocess, pd.Series):
+                    y_size = self.data_before_preprocess.size
+                else:
+                    raise TypeError("data parameter must be a pandas.Series or pandas.DataFrame.")
+
+                window_length = y_size - window_length
+
+                if window_length < 1:
+                    raise ValueError("Not Enough Data Points, set a lower number of folds or fh")
+
+                self.fold_generator = ExpandingWindowSplitter(
+                    fh=fh,
+                    step_length=fh,
+                    window_length=window_length,
+                    initial_window=window_length
+                )
+
+            elif fold_strategy == "slidingwindow":
+                
+                if isinstance(self.data_before_preprocess, pd.DataFrame):
+                    y_size = self.data_before_preprocess.size
+                elif isinstance(self.data_before_preprocess, pd.Series):
+                    y_size = self.data_before_preprocess.size
+                else:
+                    raise TypeError("data parameter must be a pandas.Series or pandas.DataFrame.")
+
+                window_length = y_size - window_length
+
+                if window_length < 1:
+                    raise ValueError("Not Enough Data Points, set a lower number of folds or fh")
+
+                self.fold_generator = SlidingWindowSplitter(
+                    fh=fh,
+                    step_length=fh,
+                    window_length=window_length,
+                    initial_window=window_length
+                )
+
             else:
                 self.fold_generator = fold_strategy
 
@@ -15682,6 +15737,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         #        transform_target_method: str = "box-cox",
         fold_strategy: Union[str, Any] = "timeseries",  # added in pycaret==2.2
         fold: int = 10,
+        fh: Union[List[int], int, np.array] = 1,
         n_jobs: Optional[int] = -1,
         use_gpu: bool = False,
         custom_pipeline: Union[
@@ -15741,17 +15797,19 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         fold_strategy: str or sklearn CV generator object, default = 'kfold'
             Choice of cross validation strategy. Possible values are:
 
-            * 'kfold'
-            * 'stratifiedkfold'
-            * 'groupkfold'
+            * 'expandingwindow'
+            * 'slidingwindow'
             * 'timeseries'
             * a custom CV generator object compatible with scikit-learn.
-
 
         fold: int, default = 10
             Number of folds to be used in cross validation. Must be at least 2. This is
             a global setting that can be over-written at function level by using ``fold``
             parameter. Ignored when ``fold_strategy`` is a custom object.
+
+
+        fh: int, list or np.array, default = 1
+            Number of steps ahead to take to evaluate forecast.
 
 
         n_jobs: int, default = -1
@@ -15901,6 +15959,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             data_split_stratify=False,
             fold_strategy=fold_strategy,
             fold=fold,
+            fh=fh,
             fold_shuffle=False,
             n_jobs=n_jobs,
             use_gpu=use_gpu,
