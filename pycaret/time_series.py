@@ -12,6 +12,9 @@ from pycaret.internal.utils import check_if_global_is_not_none
 
 from typing import List, Tuple, Any, Union, Optional, Dict
 import warnings
+import time
+
+from sktime.forecasting.base import ForecastingHorizon
 
 warnings.filterwarnings("ignore")
 
@@ -1942,3 +1945,54 @@ def set_current_experiment(experiment: TimeSeriesExperiment):
             f"experiment must be a PyCaret TimeSeriesExperiment object, got {type(experiment)}."
         )
     _CURRENT_EXPERIMENT = experiment
+
+
+def _fit_and_score(
+    forecaster,
+    y,
+    X,
+    scoring,
+    train,
+    test,
+    verbose,
+    # parameters,
+    fit_params,
+    return_parameters=False,
+    return_times=False,
+    return_train_score=False,
+    return_forecaster=False,
+    error_score=np.nan,
+):
+    # Based on https://github.com/alan-turing-institute/sktime/blob/master/sktime/forecasting/model_evaluation/_functions.py
+    # TODO: fit_params must have 'fh'
+    fh = fit_params['fh']
+    test = test[: len(fh)]
+    # create train/test data
+    y_train = y.iloc[train]
+    y_test = y.iloc[test]
+
+    X_train = X.iloc[train] if X else None
+    X_test = X.iloc[test] if X else None
+
+    # fit/update
+    start_fit = time.time()
+    forecaster.fit(y_train, X=X_train, fh=ForecastingHorizon(y_test.index, is_relative=False)) #**fit_params)
+    fit_time = time.time() - start_fit
+
+    # predict
+    start_pred = time.time()
+    y_pred = forecaster.predict(fh=ForecastingHorizon(y_test.index, is_relative=False), X=X_test)
+    pred_time = time.time() - start_pred
+
+    # save results
+    result = {
+        "test_" + scoring.__class__.__name__: scoring(y_pred, y_test),
+        "fit_time": fit_time,
+        "pred_time": pred_time,
+        "len_train_window": len(y_train),
+        "cutoff": forecaster.cutoff,
+        "y_train": y_train, # if return_data else np.nan,
+        "y_test": y_test, # if return_data else np.nan,
+        "y_pred": y_pred, # if return_data else np.nan,
+    }
+    return result
