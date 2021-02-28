@@ -10,7 +10,7 @@ def load_data():
 
     airline_data = get_data("airline")
 
-    airline_data.index = airline_data.index.astype("datetime64[ns]")
+    # airline_data.index = airline_data.index.astype("datetime64[ns]")
 
     return airline_data
 
@@ -18,7 +18,7 @@ def load_data():
 parametrize_list = [
     (randint(2, 5), randint(5, 10), "expandingwindow"),
     (randint(2, 5), randint(5, 10), "slidingwindow"),
-    (randint(2, 5), randint(5, 10), "timeseries"),
+    # (randint(2, 5), randint(5, 10), "timeseries"),  # Not supporting right now
 ]
 
 
@@ -43,8 +43,8 @@ def test_setup_initialization(fold, fh, fold_strategy, load_data):
         assert isinstance(exp_name.fold_generator, ExpandingWindowSplitter)
     elif fold_strategy == "slidingwindow":
         assert isinstance(exp_name.fold_generator, SlidingWindowSplitter)
-    elif fold_strategy == "timeseries":
-        assert isinstance(exp_name.fold_generator, TimeSeriesSplit)
+    # elif fold_strategy == "timeseries":
+    #     assert isinstance(exp_name.fold_generator, TimeSeriesSplit)
 
 
 setup_raises_list = [
@@ -59,7 +59,7 @@ def test_setup_raises(fold, fh, fold_strategy, load_data):
     from pycaret.time_series import setup
 
     with pytest.raises(ValueError) as errmsg:
-        exp_name = setup(
+        _ = setup(
             data=load_data,
             fold=fold,
             fh=fh,

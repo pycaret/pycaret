@@ -2056,7 +2056,7 @@ class _TabularExperiment(_PyCaretExperiment):
                 initial_window = y_size - (self.fold_param * window_length)
                 #window_length = y_size - window_length
 
-                if window_length < 1:
+                if initial_window < 1:
                     raise ValueError("Not Enough Data Points, set a lower number of folds or fh")
 
                 if fold_strategy == "expandingwindow":
@@ -16014,9 +16014,21 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             raise ValueError(
                     f"The forecast horizon `fh` must be provided"
                 )
-        if not isinstance(fh, np.ndarray):
+        if isinstance(fh, int):
+            if fh >= 1:
+                fh = np.arange(1, fh+1)
+            else:
+                raise ValueError(
+                    f"If Forecast Horizon `fh` is an integer, it must be >= 1. You provided fh = '{fh}'!"
+                )
+        elif isinstance(fh, List):
+            fh = np.array(fh)
+        elif isinstance(fh, np.ndarray):
+            # Good to go
+            pass
+        else:
             raise ValueError(
-                    f"Horizon `fh` must be a numpy array, got object of {type(fh)} type!"
+                    f"Horizon `fh` must be a of type int, list, or numpy array, got object of {type(fh)} type!"
                 )
         self.fh = fh
 
