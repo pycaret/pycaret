@@ -176,36 +176,40 @@ class MAPEMetricContainer(TimeSeriesMetricContainer):
             id="mape_ts", name="MAPE_ts", score_func=_mape_loss, greater_is_better=False,
         )
 
+# TODO: Disabling for now since need to determine how these special cases will
+# be handles in manually generated function cross_validate_ts
+# MASEMetricContainer: Special Case: Needs y_train
+# MAEMetricContainer: _scorer_func turns out to be a string instead of a func
 
-class MASEMetricContainer(TimeSeriesMetricContainer):
-    def __init__(self, globals_dict: dict) -> None:
-        super().__init__(
-            id="mase", name="MASE", score_func=_mase_loss, greater_is_better=False
-        )
-
-
-class MAEMetricContainer(TimeSeriesMetricContainer):
-    def __init__(self, globals_dict: dict) -> None:
-        super().__init__(
-            id="mae_ts",
-            name="MAE_ts",
-            score_func=metrics.mean_absolute_error,
-            greater_is_better=False,
-            scorer="neg_mean_absolute_error",
-        )
+# class MASEMetricContainer(TimeSeriesMetricContainer):
+#     def __init__(self, globals_dict: dict) -> None:
+#         super().__init__(
+#             id="mase", name="MASE", score_func=_mase_loss, greater_is_better=False
+#         )
 
 
-class RMSEMetricContainer(TimeSeriesMetricContainer):
-    def __init__(self, globals_dict: dict) -> None:
+# class MAEMetricContainer(TimeSeriesMetricContainer):
+#     def __init__(self, globals_dict: dict) -> None:
+#         super().__init__(
+#             id="mae_ts",
+#             name="MAE_ts",
+#             score_func=metrics.mean_absolute_error,
+#             greater_is_better=False,
+#             scorer="neg_mean_absolute_error",
+#         )
 
-        super().__init__(
-            id="rmse_ts",
-            name="RMSE_ts",
-            score_func=metrics.mean_squared_error,
-            greater_is_better=False,
-            args={"squared": False},
-            scorer="neg_root_mean_squared_error",
-        )
+
+# class RMSEMetricContainer(TimeSeriesMetricContainer):
+#     def __init__(self, globals_dict: dict) -> None:
+
+#         super().__init__(
+#             id="rmse_ts",
+#             name="RMSE_ts",
+#             score_func=metrics.mean_squared_error,
+#             greater_is_better=False,
+#             args={"squared": False},
+#             scorer="neg_root_mean_squared_error",
+#         )
 
 
 def get_all_metric_containers(

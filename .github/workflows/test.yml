@@ -24,6 +24,7 @@ jobs:
         python -m pip install codecov
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
         if [ -f requirements-optional.txt ]; then pip install -r requirements-optional.txt; fi
+        if [ -f requirements-ts.txt ]; then pip install -r requirements-ts.txt; fi
         python -m spacy download en
     - name: Remove tests
       run: |
@@ -55,6 +56,7 @@ jobs:
         python -m pip install codecov
         pip install -r requirements.txt
         pip install -r requirements-optional.txt
+        pip install -r requirements-ts.txt
         python -m spacy download en
     - name: Remove tests
       run: |
@@ -156,6 +158,7 @@ jobs:
         python -m pip install codecov
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
         if [ -f requirements-optional.txt ]; then pip install -r requirements-optional.txt; fi
+        if [ -f requirements-ts.txt ]; then pip install -r requirements-ts.txt; fi
         python -m spacy download en
     - name: Remove tests
       run: |
