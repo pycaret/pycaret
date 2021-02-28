@@ -148,15 +148,15 @@ def test():
     mape = pycaret.utils.check_metric(actual, prediction, "MAPE_ts")
     assert isinstance(mape, float)
     assert mape >= 0
-    mase = pycaret.utils.check_metric(test, prediction, "MASE", train=train)
-    assert isinstance(mase, float)
-    assert mase >= 0
-    mae = pycaret.utils.check_metric(actual, prediction, "MAE_ts")
-    assert isinstance(mae, float)
-    assert mae >= 0
-    rmse = pycaret.utils.check_metric(actual, prediction, "RMSE_ts")
-    assert isinstance(rmse, float)
-    assert rmse >= 0
+    # mase = pycaret.utils.check_metric(test, prediction, "MASE", train=train)
+    # assert isinstance(mase, float)
+    # assert mase >= 0
+    # mae = pycaret.utils.check_metric(actual, prediction, "MAE_ts")
+    # assert isinstance(mae, float)
+    # assert mae >= 0
+    # rmse = pycaret.utils.check_metric(actual, prediction, "RMSE_ts")
+    # assert isinstance(rmse, float)
+    # assert rmse >= 0
 
     # Ensure metric is rounded to 2 decimals
     smape = pycaret.utils.check_metric(actual, prediction, "SMAPE", 2)
