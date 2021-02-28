@@ -178,7 +178,7 @@ class MAPEMetricContainer(TimeSeriesMetricContainer):
 
 # TODO: Disabling for now since need to determine how these special cases will
 # be handles in manually generated function cross_validate_ts
-# MASEMetricContainer: Special Case: Needs y_train 
+# MASEMetricContainer: Special Case: Needs y_train
 # MAEMetricContainer: _scorer_func turns out to be a string instead of a func
 
 # class MASEMetricContainer(TimeSeriesMetricContainer):

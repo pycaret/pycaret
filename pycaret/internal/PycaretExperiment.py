@@ -5503,6 +5503,25 @@ class _SupervisedExperiment(_TabularExperiment):
             self.logger.info(f"Cross validating with {cv}, n_jobs={n_jobs}")
 
             model_fit_start = time.time()
+            # if self._ml_usecase == MLUsecase.TIME_SERIES:
+            #     # Cross Validate time series
+            #     # Set the forecast horizon for the estimator
+            #     fit_kwargs.update({'actual_estimator__fh': self.fh})
+            #     # TODO: Temporarily disabling parallelization for debug (parallelization makes debugging harder)
+            #     n_jobs=1
+            #     scores = cross_validate_ts(
+            #         pipeline_with_model,
+            #         data_X,
+            #         data_y,
+            #         cv=cv,
+            #         groups=groups,
+            #         scoring=metrics_dict,
+            #         fit_params=fit_kwargs,
+            #         n_jobs=n_jobs,
+            #         return_train_score=False,
+            #         error_score=0
+            #     )
+            # else:
             scores = cross_validate(
                 pipeline_with_model,
                 data_X,
@@ -16325,6 +16344,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         """
         MONITOR UPDATE STARTS
         """
+
         from pycaret.time_series import cross_validate_ts, _get_cv_n_folds
 
         display.update_monitor(
@@ -16372,22 +16392,26 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             return_train_score=False,
             error_score=0
         )
+
         model_fit_end = time.time()
         model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
 
         score_dict = scores
 
         self.logger.info("Calculating mean and std")
+
         avgs_dict = {k: [np.mean(v), np.std(v)] for k, v in score_dict.items()}
 
         display.move_progress()
 
         self.logger.info("Creating metrics dataframe")
+
         model_results = pd.DataFrame(score_dict)
         model_avgs = pd.DataFrame(avgs_dict, index=["Mean", "SD"],)
         model_results = model_results.append(model_avgs)
         # Round the results
         model_results = model_results.round(round)
+
         # yellow the mean
         model_results = color_df(model_results, "yellow", ["Mean"], axis=1)
         model_results = model_results.set_precision(round)
@@ -16401,23 +16425,13 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             with io.capture_output():
                 model.fit(y=data_y, X=data_X, **fit_kwargs)
             model_fit_end = time.time()
+
             model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
         else:
             model_fit_time /= _get_cv_n_folds(data_y, cv)
 
         # return model, model_fit_time, model_results, avgs_dict
-
-        if refit:
-            pass
-        else:
-            model_fit_time /= _get_cv_n_folds(
-                cv, data_X, y=data_y, groups=groups
-            )
-
         return model, model_fit_time, model_results, avgs_dict
-
-
-
 
 
     def tune_model(
@@ -17721,5 +17735,4 @@ def experiment_factory(usecase: MLUsecase):
         MLUsecase.ANOMALY: AnomalyExperiment,
     }
     return switch[usecase]()
-
 
