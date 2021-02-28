@@ -15,6 +15,27 @@ import pycaret.internal.preprocess
 from pycaret.internal.preprocess import TransformedTargetClassifier
 
 
+def test_target_remover():
+    """
+    Test if the target remover removes the target correctly
+    """
+    # Load an example dataset and set the features and target
+    data = pycaret.datasets.get_data("juice")
+    target = "Purchase"
+    features = data.columns.tolist()
+    features.remove(target)
+    data_features = data[features]
+
+    # Initiate a target generator
+    target_generator = pycaret.internal.preprocess.Target_Remover(target=target)
+
+    # Use the target remover to remove the target column from X
+    result = target_generator.fit_transform(X=data)
+
+    # Check if the result contains only X and is the same as the original data
+    pd.testing.assert_frame_equal(data_features.sort_index(axis=1), result.sort_index(axis=1))
+
+
 def test_sklearn_pipeline_simple_imputer():
     """
     Test if the simple imputer in pycaret works with sklearn's pipeline
@@ -145,6 +166,9 @@ def test_complete_sklearn_pipeline():
 
 
 def test_target_transformer():
+    """
+    Test if the target transformer for classifiers works correctly
+    """
     # Load an example dataset and set the features and target
     data = pycaret.datasets.get_data("juice")
     target = "Purchase"

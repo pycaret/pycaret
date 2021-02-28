@@ -89,6 +89,23 @@ def find_id_columns(data, target, numerical_features):
     return id_columns
 
 
+class Target_Remover(BaseEstimator, TransformerMixin):
+    """
+    Removes the target from the dataset if the target column exists in the dataset
+    """
+    def __init__(self, target):
+        self.target = target
+
+    def fit(self, X=None, y=None):  # Nothing to fit
+        return self
+
+    def transform(self, X, y=None):  # Just remove target from X
+        return X.drop(self.target, axis=1, errors='ignore')
+
+    def fit_transform(self, X, y=None):  # Same as transform
+        return self.transform(X)
+
+
 class DataTypes_Auto_infer(BaseEstimator, TransformerMixin):
     """
     - This will try to infer data types automatically, option to override learent data types is also available.
@@ -3666,6 +3683,9 @@ def Preprocess_Path_One(
     else:
         pca = SKLEARN_EMPTY_STEP
 
+    # Initiate a target remover
+    target_remover = Target_Remover(target=target_variable)
+
     pipe = Pipeline(
         [
             ("dtypes", dtypes),
@@ -3693,6 +3713,7 @@ def Preprocess_Path_One(
             ("feature_select", feature_select),
             ("fix_multi", fix_multi),
             ("dfs", dfs),
+            ("target_remover", target_remover),
             ("pca", pca),
         ]
     )

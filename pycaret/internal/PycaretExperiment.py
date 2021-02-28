@@ -4659,11 +4659,17 @@ class _SupervisedExperiment(_TabularExperiment):
         dtypes.final_training_columns.append(target)
         test_data = self.prep_pipe.transform(test_data)
 
-        self.X_train = train_data.drop(target, axis=1)
-        self.y_train = train_data[target]
-
-        self.X_test = test_data.drop(target, axis=1)
-        self.y_test = test_data[target]
+        if target in train_data.columns:
+            self.X_train = train_data.drop(target, axis=1)
+            self.X_test = test_data.drop(target, axis=1)
+            self.y_train = train_data[target]
+            self.y_test = test_data[target]
+        else:
+            # Need to set self.X_train because train_data is transformed
+            self.X_train = train_data
+            self.X_test = test_data
+            # No need to set self.y_train or y_test, as they are not transformed yet.
+            # Will apply target transformers later
 
         if self.fold_groups_param is not None:
             self.fold_groups_param = self.fold_groups_param[
@@ -4671,10 +4677,22 @@ class _SupervisedExperiment(_TabularExperiment):
             ]
 
         display.move_progress()
-        self._internal_pipeline.fit(train_data.drop(target, axis=1), train_data[target])
+
+        # self._internal_pipeline seems only related to fixing imbalance
+        if target in train_data.columns:
+            self._internal_pipeline.fit(train_data.drop(target, axis=1), train_data[target])
+        else:
+            self._internal_pipeline.fit(train_data, self.y_train)
+
+        # This transforms the entire dataset
         data = self.prep_pipe.transform(self.data_before_preprocess.copy())
-        self.X = data.drop(target, axis=1)
-        self.y = data[target]
+
+        if target in train_data.columns:
+            self.X = data.drop(target, axis=1)
+            self.y = data[target]
+        else:
+            self.X = data
+            self.y = self.data_before_preprocess[target]
         return
 
     def _set_up_mlflow(
