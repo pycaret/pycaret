@@ -108,7 +108,7 @@ def setup(
         a global setting that can be over-written at function level by using ``fold``
         parameter. Ignored when ``fold_strategy`` is a custom object.
 
-    
+
     fh: int, list or np.array, default = 1
         Number of steps ahead to take to evaluate forecast.
 
@@ -1947,52 +1947,62 @@ def set_current_experiment(experiment: TimeSeriesExperiment):
     _CURRENT_EXPERIMENT = experiment
 
 
-def _fit_and_score(
-    forecaster,
-    y,
-    X,
-    scoring,
-    train,
-    test,
-    verbose,
-    # parameters,
-    fit_params,
-    return_parameters=False,
-    return_times=False,
-    return_train_score=False,
-    return_forecaster=False,
-    error_score=np.nan,
-):
-    # Based on https://github.com/alan-turing-institute/sktime/blob/master/sktime/forecasting/model_evaluation/_functions.py
-    # TODO: fit_params must have 'fh'
-    fh = fit_params['fh']
-    test = test[: len(fh)]
-    # create train/test data
-    y_train = y.iloc[train]
-    y_test = y.iloc[test]
+def _get_cv_n_folds(y, cv) -> int:
+    """
+    Get the number of folds for time series
+    cv must be of type SlidingWindowSplitter or ExpandingWindowSplitter
+    """
+    n_folds = int((len(y) - cv.initial_window) / cv.step_length)
+    return n_folds
 
-    X_train = X.iloc[train] if X else None
-    X_test = X.iloc[test] if X else None
+def get_folds(cv, y) -> Tuple[pd.Series, pd.Series]:
+    """
+    Returns the train and test indices for the time series data
+    """
+    from sktime.forecasting.model_selection import (SlidingWindowSplitter)
+    n_folds = _get_cv_n_folds(y, cv)
+    for i in np.arange(n_folds):
+        if i == 0:
+            # Initial Split in sktime
+            train_initial, test_initial = cv.split_initial(y)
+            y_train_initial = y.iloc[train_initial]
+            y_test_initial = y.iloc[test_initial]  # Includes all entries after y_train
 
-    # fit/update
-    start_fit = time.time()
-    forecaster.fit(y_train, X=X_train, fh=ForecastingHorizon(y_test.index, is_relative=False)) #**fit_params)
-    fit_time = time.time() - start_fit
+            rolling_y_train = y_train_initial.copy(deep=True)
+            y_test = y_test_initial.iloc[np.arange(len(cv.fh))]  # filter to only what is needed
+        else:
+            # Subsequent Splits in sktime
+            for j, (train, test) in enumerate(cv.split(y_test_initial)):
+                if j == i-1:
+                    y_train = y_test_initial.iloc[train]
+                    y_test = y_test_initial.iloc[test]
 
-    # predict
-    start_pred = time.time()
-    y_pred = forecaster.predict(fh=ForecastingHorizon(y_test.index, is_relative=False), X=X_test)
-    pred_time = time.time() - start_pred
+                    rolling_y_train = pd.concat([rolling_y_train, y_train])
+                    rolling_y_train = rolling_y_train[~rolling_y_train.index.duplicated(keep='first')]
 
-    # save results
-    result = {
-        "test_" + scoring.__class__.__name__: scoring(y_pred, y_test),
-        "fit_time": fit_time,
-        "pred_time": pred_time,
-        "len_train_window": len(y_train),
-        "cutoff": forecaster.cutoff,
-        "y_train": y_train, # if return_data else np.nan,
-        "y_test": y_test, # if return_data else np.nan,
-        "y_pred": y_pred, # if return_data else np.nan,
-    }
-    return result
+                    if isinstance(cv, SlidingWindowSplitter):
+                        rolling_y_train = rolling_y_train.iloc[-cv.initial_window:]
+        yield rolling_y_train.index, y_test.index
+
+def cross_validate_ts(forecaster, y, X, cv, scoring, fit_params, n_jobs, return_train_score, error_score=0):
+    from pycaret.time_series import get_folds
+    scores = {f"test_{scorer_name}": [] for scorer_name, _ in scoring.items()}
+    for i, (train_index, test_index) in enumerate(get_folds(cv, y)):
+        y_train, y_test = y[train_index], y[test_index]
+        X_train = None if X is None else X[train_index]
+        X_test = None if X is None else X[test_index]
+
+        forecaster.fit(y_train, X_train, **fit_params)
+        y_pred = forecaster.predict(X_test)
+        if (y_test.index.values != y_pred.index.values).any() or (len(y_test) != len(cv.fh)) or ((len(y_pred) != len(cv.fh))):
+            print(f"\t y_train: {y_train.index.values}, \n\t y_test: {y_test.index.values}")
+            print(f"\t y_pred: {y_pred.index.values}")
+            raise ValueError("y_test indices do not match y_pred_indices or split/prediction length does not match forecast horizon.")
+
+        for scorer_name, scorer_container in scoring.items():
+            metric = scorer_container.scorer._score_func(y_true=y_test, y_pred=y_pred)
+            # print(f"test_{scorer_name}, Fold: {i} Metric: {metric}")
+            scores[f"test_{scorer_name}"].append(metric)
+
+    return scores
+

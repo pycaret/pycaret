@@ -55,5 +55,5 @@ fh=np.arange(1,13)
 from pycaret.internal.PycaretExperiment import TimeSeriesExperiment
 
 exp = TimeSeriesExperiment()
-exp.setup(data=y, fh=fh, fold=2)
+exp.setup(data=y, fh=fh, fold=2, fold_strategy='expandingwindow')
 exp.create_model("arima")

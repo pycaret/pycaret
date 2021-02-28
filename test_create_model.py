@@ -26,8 +26,6 @@ from sktime.forecasting.theta import ThetaForecaster
 from sktime.forecasting.trend import PolynomialTrendForecaster
 from sktime.transformations.series.detrend import Deseasonalizer, Detrender
 
-from pycaret.time_series import _fit_and_score
-
 # %%
 y = get_data('airline', verbose=False)
 
@@ -207,7 +205,12 @@ def eval_wrapper(forecaster, y):
 # y_small = y[:72]
 y_small = y
 
-forecaster = ARIMA()
+# forecaster = ARIMA()
+forecaster = ARIMA(maxiter=50, method='lbfgs', order=(1, 0, 0), out_of_sample_size=0,
+      scoring='mse', scoring_args=None, seasonal_order=(0, 0, 0, 0),
+      start_params=None, suppress_warnings=False, trend=None,
+      with_intercept=True)
+
 eval_wrapper(forecaster, y_small)
 
 forecaster = ExponentialSmoothing()
