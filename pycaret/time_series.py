@@ -14,7 +14,12 @@ from typing import List, Tuple, Any, Union, Optional, Dict
 import warnings
 import time
 
-from sktime.forecasting.base import ForecastingHorizon
+from sklearn.base import clone
+from sklearn.model_selection._validation import _aggregate_score_dicts
+
+from joblib import Parallel
+from joblib import delayed
+from joblib.externals.loky.process_executor import TerminatedWorkerError
 
 warnings.filterwarnings("ignore")
 
@@ -2056,26 +2061,25 @@ def cross_validate_ts(forecaster, y, X, cv, scoring, fit_params, n_jobs, return_
     ValueError
         [description]
     """
-    scores = {f"test_{scorer_name}": [] for scorer_name, _ in scoring.items()}
-    for i, (train_index, test_index) in enumerate(get_folds(cv, y)):
-        results = _fit_and_score(
-            forecaster=forecaster,
+    try:
+        parallel = Parallel(n_jobs=n_jobs)
+        results = parallel(delayed(_fit_and_score)(
+            forecaster=clone(forecaster),
             y=y, X=X,
             scoring=scoring,
-            train=train_index,
-            test=test_index,
+            train=train,
+            test=test,
             parameters=None,
             fit_params=fit_params,
             return_train_score=return_train_score,
-            error_score=error_score
-        )
+            error_score=error_score)
+            for train, test in get_folds(cv, y))
+    # raise key exceptions
+    except (TerminatedWorkerError, KeyboardInterrupt, SystemExit):
+        raise
 
-        for scorer_name, _ in scoring.items():
-            metric = results[f"test_{scorer_name}"]
-            # print(f"test_{scorer_name}, Fold: {i} Metric: {metric}")
-            scores[f"test_{scorer_name}"].append(metric)
-
-    return scores
+    results = _aggregate_score_dicts(results)
+    return results
 
 
 def _fit_and_score(forecaster, y, X, scoring, train, test, parameters, fit_params, return_train_score, error_score=0):
