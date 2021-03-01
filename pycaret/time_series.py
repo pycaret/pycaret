@@ -2009,30 +2009,127 @@ def get_folds(cv, y) -> Tuple[pd.Series, pd.Series]:
 
 
 def cross_validate_ts(forecaster, y, X, cv, scoring, fit_params, n_jobs, return_train_score, error_score=0):
-    from pycaret.time_series import get_folds
+    """Similar to _fit_and_score from sktime
+    Ref: https://github.com/alan-turing-institute/sktime/blob/v0.5.3/sktime/forecasting/model_selection/_tune.py#L95
 
+    Also similar to sklearn _fit_and_score, but sklearn does this on a single fold only,
+    whereas sktime does this on all cv folds.
+    https://github.com/scikit-learn/scikit-learn/blob/0.24.1/sklearn/model_selection/_validation.py#L449
+
+    TODO: Modularize this and create _fit_and_score which works on only 1 fold similar to what sklearn is doing
+    TODO: Parallelize this similar to what skoptimize is doing (calls sklearn's _fit_and_score function)
+      - https://github.com/scikit-optimize/scikit-optimize/blob/v0.8.1/skopt/searchcv.py#L410
+      - sklearn's BaseSearchCV also does this:
+      - https://github.com/scikit-learn/scikit-learn/blob/0.24.1/sklearn/model_selection/_search.py#L795
+      - You can also parallelize only splits for cross_validate_ts like this:
+        https://github.com/scikit-learn/scikit-learn/blob/0.24.1/sklearn/model_selection/_validation.py#L246
+    TODO: Add argument for parameters so they can be set inside this function for various candidate parameters
+
+    Parameters
+    ----------
+    forecaster : [type]
+        [description]
+    y : [type]
+        [description]
+    X : [type]
+        [description]
+    cv : [type]
+        [description]
+    scoring : [type]
+        [description]
+    fit_params : [type]
+        [description]
+    n_jobs : [type]
+        [description]
+    return_train_score : [type]
+        [description]
+    error_score : int, optional
+        [description], by default 0
+
+    Returns
+    -------
+    [type]
+        [description]
+
+    Raises
+    ------
+    ValueError
+        [description]
+    """
     scores = {f"test_{scorer_name}": [] for scorer_name, _ in scoring.items()}
     for i, (train_index, test_index) in enumerate(get_folds(cv, y)):
-        y_train, y_test = y[train_index], y[test_index]
-        X_train = None if X is None else X[train_index]
-        X_test = None if X is None else X[test_index]
+        results = _fit_and_score(
+            forecaster=forecaster,
+            y=y, X=X,
+            scoring=scoring,
+            train=train_index,
+            test=test_index,
+            parameters=None,
+            fit_params=fit_params,
+            return_train_score=return_train_score,
+            error_score=error_score
+        )
 
-        forecaster.fit(y_train, X_train, **fit_params)
-        y_pred = forecaster.predict(X_test)
-        if (
-            (y_test.index.values != y_pred.index.values).any()
-            or (len(y_test) != len(cv.fh))
-            or ((len(y_pred) != len(cv.fh)))
-        ):
-            print(f"\t y_train: {y_train.index.values}, \n\t y_test: {y_test.index.values}")
-            print(f"\t y_pred: {y_pred.index.values}")
-            raise ValueError(
-                "y_test indices do not match y_pred_indices or split/prediction length does not match forecast horizon."
-            )
-
-        for scorer_name, scorer_container in scoring.items():
-            metric = scorer_container.scorer._score_func(y_true=y_test, y_pred=y_pred)
+        for scorer_name, _ in scoring.items():
+            metric = results[f"test_{scorer_name}"]
             # print(f"test_{scorer_name}, Fold: {i} Metric: {metric}")
             scores[f"test_{scorer_name}"].append(metric)
 
     return scores
+
+
+def _fit_and_score(forecaster, y, X, scoring, train, test, parameters, fit_params, return_train_score, error_score=0):
+    """ Fits the forecaster on a single train split and scores on the test split
+    Ref: Based on sklearn's _fit_and_score function
+    https://github.com/scikit-learn/scikit-learn/blob/0.24.1/sklearn/model_selection/_validation.py#L449
+
+
+    Parameters
+    ----------
+    forecaster : [type]
+        [description]
+    y : [type]
+        [description]
+    X : [type]
+        [description]
+    scoring : [type]
+        [description]
+    train : [type]
+        Indices of training samples.
+    test : [type]
+        Indices of test samples.
+    parameters : [type]
+        [description]
+    fit_params : [type]
+        [description]
+    return_train_score : [type]
+        [description]
+    error_score : int, optional
+        [description], by default 0
+
+    Raises
+    ------
+    ValueError
+        [description]
+    """
+    if parameters is not None:
+        forecaster.set_params(**parameters)
+
+    y_train, y_test = y[train], y[test]
+    X_train = None if X is None else X[train]
+    X_test = None if X is None else X[test]
+
+    forecaster.fit(y_train, X_train, **fit_params)
+    y_pred = forecaster.predict(X_test)
+    if (y_test.index.values != y_pred.index.values).any():
+        print(f"\t y_train: {y_train.index.values}, \n\t y_test: {y_test.index.values}")
+        print(f"\t y_pred: {y_pred.index.values}")
+        raise ValueError("y_test indices do not match y_pred_indices or split/prediction length does not match forecast horizon.")
+
+    fold_scores = {}
+    for scorer_name, scorer_container in scoring.items():
+        metric = scorer_container.scorer._score_func(y_true=y_test, y_pred=y_pred)
+        # print(f"test_{scorer_name}, Fold: {i} Metric: {metric}")
+        fold_scores[f"test_{scorer_name}"] = metric
+
+    return fold_scores
