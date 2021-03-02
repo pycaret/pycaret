@@ -59,15 +59,15 @@ from sklearn.base import clone
 from sklearn.exceptions import NotFittedError
 from sklearn.compose import TransformedTargetRegressor
 from sklearn.preprocessing import LabelEncoder
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, BaseCrossValidator
 from typing import List, Tuple, Any, Union, Optional, Dict
 import warnings
 from IPython.utils import io
-import traceback
 from unittest.mock import patch
 import plotly.express as px
 import plotly.graph_objects as go
 import scikitplot as skplt
+
 
 warnings.filterwarnings("ignore")
 LOGGER = get_logger()
@@ -530,7 +530,9 @@ class _TabularExperiment(_PyCaretExperiment):
             groups, self.X_train, self.fold_groups_param
         )
 
-    def _get_cv_splitter(self, fold, ml_usecase: Optional[MLUsecase] = None):
+    def _get_cv_splitter(self, fold, ml_usecase: Optional[MLUsecase] = None) ->  BaseCrossValidator:
+        """Returns the cross validator object used to perform cross validation
+        """
         if not ml_usecase:
             ml_usecase = self._ml_usecase
 
@@ -16516,14 +16518,14 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         Example
         -------
         >>> from pycaret.datasets import get_data
-        >>> boston = get_data('boston')
-        >>> from pycaret.regression import *
-        >>> exp_name = setup(data = boston,  target = 'medv')
-        >>> lr = create_model('lr')
-        >>> tuned_lr = tune_model(lr)
+        >>> y = get_data('airline', verbose=False)
+        >>> exp = TimeSeriesExperiment()
+        >>> exp.setup(data=y, fh=12 fold_strategy='expandingwindow')
+        >>> exp.create_model("arima")
+        >>> tuned_arima = tune_model('arima')
 
 
-        estimator: scikit-learn compatible object
+        estimator: sktime compatible object
             Trained model object
 
 
