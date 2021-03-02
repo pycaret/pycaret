@@ -182,6 +182,66 @@ class TimeSeriesContainer(ModelContainer):
 
         return dict(d)
 
+class NaiveContainer(TimeSeriesContainer):
+    def __init__(self, globals_dict: dict) -> None:
+        logger = get_logger()
+        np.random.seed(globals_dict["seed"])
+        gpu_imported = False
+
+        from sktime.forecasting.naive import NaiveForecaster
+
+        args = {}
+        tune_args = {}
+        # tune_grid = {"fit_intercept": [True, False], "normalize": [True, False]}
+        tune_grid = {}
+        tune_distributions = {}
+
+        # if not gpu_imported:
+        #     args["n_jobs"] = globals_dict["n_jobs_param"]
+
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+
+        super().__init__(
+            id="naive",
+            name="Naive",
+            class_def=NaiveForecaster,
+            args=args,
+            tune_grid=tune_grid,
+            tune_distribution=tune_distributions,
+            tune_args=tune_args,
+            is_gpu_enabled=gpu_imported
+        )
+        
+
+class PolyTrendContainer(TimeSeriesContainer):
+    def __init__(self, globals_dict: dict) -> None:
+        logger = get_logger()
+        np.random.seed(globals_dict["seed"])
+        gpu_imported = False
+
+        from sktime.forecasting.trend import PolynomialTrendForecaster
+
+        args = {}
+        tune_args = {}
+        # tune_grid = {"fit_intercept": [True, False], "normalize": [True, False]}
+        tune_grid = {}
+        tune_distributions = {}
+
+        # if not gpu_imported:
+        #     args["n_jobs"] = globals_dict["n_jobs_param"]
+
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+
+        super().__init__(
+            id="poly_trend",
+            name="PolyTrend",
+            class_def=PolynomialTrendForecaster,
+            args=args,
+            tune_grid=tune_grid,
+            tune_distribution=tune_distributions,
+            tune_args=tune_args,
+            is_gpu_enabled=gpu_imported
+        )
 
 class ArimaContainer(TimeSeriesContainer):
     def __init__(self, globals_dict: dict) -> None:
@@ -212,6 +272,146 @@ class ArimaContainer(TimeSeriesContainer):
             tune_args=tune_args,
             is_gpu_enabled=gpu_imported
         )
+
+
+class ExponentialSmoothingContainer(TimeSeriesContainer):
+    def __init__(self, globals_dict: dict) -> None:
+        logger = get_logger()
+        np.random.seed(globals_dict["seed"])
+        gpu_imported = False
+
+        from sktime.forecasting.exp_smoothing import ExponentialSmoothing
+
+        args = {}
+        tune_args = {}
+        # tune_grid = {"fit_intercept": [True, False], "normalize": [True, False]}
+        tune_grid = {}
+        tune_distributions = {}
+
+        # if not gpu_imported:
+        #     args["n_jobs"] = globals_dict["n_jobs_param"]
+
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+
+        super().__init__(
+            id="exp_smooth",
+            name="ExponentialSmoothing",
+            class_def=ExponentialSmoothing,
+            args=args,
+            tune_grid=tune_grid,
+            tune_distribution=tune_distributions,
+            tune_args=tune_args,
+            is_gpu_enabled=gpu_imported
+        )
+
+
+# class AutoETSContainer(TimeSeriesContainer):
+#     def __init__(self, globals_dict: dict) -> None:
+#         logger = get_logger()
+#         np.random.seed(globals_dict["seed"])
+#         gpu_imported = False
+
+#         from sktime.forecasting.ets import AutoETS
+
+#         args = {}
+#         tune_args = {}
+#         # tune_grid = {"fit_intercept": [True, False], "normalize": [True, False]}
+#         tune_grid = {}
+#         tune_distributions = {}
+
+#         # if not gpu_imported:
+#         #     args["n_jobs"] = globals_dict["n_jobs_param"]
+
+#         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+
+#         super().__init__(
+#             id="auto_ets",
+#             name="AutoETS",
+#             class_def=AutoETS,
+#             args=args,
+#             tune_grid=tune_grid,
+#             tune_distribution=tune_distributions,
+#             tune_args=tune_args,
+#             is_gpu_enabled=gpu_imported
+#         )
+
+class ThetaContainer(TimeSeriesContainer):
+    def __init__(self, globals_dict: dict) -> None:
+        logger = get_logger()
+        np.random.seed(globals_dict["seed"])
+        gpu_imported = False
+
+        from sktime.forecasting.theta import ThetaForecaster
+
+        args = {}
+        tune_args = {}
+        # tune_grid = {"fit_intercept": [True, False], "normalize": [True, False]}
+        tune_grid = {}
+        tune_distributions = {}
+
+        # if not gpu_imported:
+        #     args["n_jobs"] = globals_dict["n_jobs_param"]
+
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+
+        super().__init__(
+            id="theta",
+            name="Theta",
+            class_def=ThetaForecaster,
+            args=args,
+            tune_grid=tune_grid,
+            tune_distribution=tune_distributions,
+            tune_args=tune_args,
+            is_gpu_enabled=gpu_imported
+        )
+
+# # Does not work
+# class RandomForestDTSContainer(TimeSeriesContainer):
+#     def __init__(self, globals_dict: dict) -> None:
+#         logger = get_logger()
+#         np.random.seed(globals_dict["seed"])
+#         gpu_imported = False
+
+#         from sktime.forecasting.compose import ReducedForecaster, TransformedTargetForecaster
+#         from sktime.forecasting.trend import PolynomialTrendForecaster
+#         from sktime.transformations.series.detrend import Deseasonalizer, Detrender
+#         from sklearn.ensemble import RandomForestRegressor
+
+#         args = {}
+#         tune_args = {}
+#         # tune_grid = {"fit_intercept": [True, False], "normalize": [True, False]}
+#         tune_grid = {}
+#         tune_distributions = {}
+
+#         if not gpu_imported:
+#             args["n_jobs"] = globals_dict["n_jobs_param"]
+
+#         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+
+#         regressor = RandomForestRegressor()
+#         forecaster = TransformedTargetForecaster(
+#             [
+#                 ("deseasonalise", Deseasonalizer(model="multiplicative", sp=12)),
+#                 ("detrend", Detrender(forecaster=PolynomialTrendForecaster(degree=1))),
+#                 (
+#                     "forecast",
+#                     ReducedForecaster(
+#                         regressor=regressor, scitype='regressor', window_length=12, strategy="recursive"
+#                     ),
+#                 ),
+#             ]
+#         )
+
+#         super().__init__(
+#             id="rf_dts",
+#             name="RandomForestDTS",
+#             class_def=forecaster,
+#             args=args,
+#             tune_grid=tune_grid,
+#             tune_distribution=tune_distributions,
+#             tune_args=tune_args,
+#             is_gpu_enabled=gpu_imported
+#         )
 
 
 def get_all_model_containers(

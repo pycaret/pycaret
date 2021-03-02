@@ -1,17 +1,13 @@
 import pytest
 
 from random import choice, randint
-
+import numpy as np
 
 @pytest.fixture(scope="session", name="load_data")
 def load_data():
     """Load Pycaret Airline dataset."""
     from pycaret.datasets import get_data
-
     airline_data = get_data("airline")
-
-    # airline_data.index = airline_data.index.astype("datetime64[ns]")
-
     return airline_data
 
 
@@ -32,17 +28,25 @@ def test_setup_initialization(fold, fh, fold_strategy, load_data):
     )
     from sklearn.model_selection import TimeSeriesSplit
 
+    train_size = 0.7
     exp_name = setup(
         data=load_data,
         fold=fold,
         fh=fh,
         fold_strategy=fold_strategy,
+        train_size=train_size
     )
 
-    if fold_strategy == "expandingwindow":
-        assert isinstance(exp_name.fold_generator, ExpandingWindowSplitter)
-    elif fold_strategy == "slidingwindow":
-        assert isinstance(exp_name.fold_generator, SlidingWindowSplitter)
+    if (fold_strategy == "expandingwindow") or (fold_strategy == "slidingwindow"):
+        if fold_strategy == "expandingwindow":
+            assert isinstance(exp_name.fold_generator, ExpandingWindowSplitter)
+        elif fold_strategy == "slidingwindow":
+            assert isinstance(exp_name.fold_generator, SlidingWindowSplitter)
+
+        expected = int(len(load_data)*train_size) - fold * fh  # Since fh is an int
+        assert exp_name.fold_generator.initial_window == expected
+        assert np.all(exp_name.fold_generator.fh == np.arange(1, fh+1))
+        assert exp_name.fold_generator.step_length == fh  # Since fh is an int
     # elif fold_strategy == "timeseries":
     #     assert isinstance(exp_name.fold_generator, TimeSeriesSplit)
 
