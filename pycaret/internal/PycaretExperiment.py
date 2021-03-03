@@ -7482,37 +7482,38 @@ class _SupervisedExperiment(_TabularExperiment):
             fit_kwargs = {}
 
         # checking method parameter
-        available_method = ["auto", "soft", "hard"]
+        available_method = ["auto", "soft", "hard", "mean"]
         if method not in available_method:
             raise ValueError(
-                "Method parameter only accepts 'auto', 'soft' or 'hard' as a parameter. See Docstring for details."
+                "Method parameter only accepts 'auto', 'soft', 'hard' or 'mean' as a parameter. See Docstring for details."
             )
 
-        # checking error for estimator_list
-        for i in estimator_list:
-            if not hasattr(i, "fit"):
-                raise ValueError(
-                    f"Estimator {i} does not have the required fit() method."
-                )
-            if self._ml_usecase == MLUsecase.CLASSIFICATION:
-                # checking method parameter with estimator list
-                if method != "hard":
+        # checking error for estimator_list (skip for timeseries)
+        if not self._ml_usecase == MLUsecase.TIME_SERIES:
+            for i in estimator_list:
+                if not hasattr(i, "fit"):
+                    raise ValueError(
+                        f"Estimator {i} does not have the required fit() method."
+                    )
+                if self._ml_usecase == MLUsecase.CLASSIFICATION:
+                    # checking method parameter with estimator list
+                    if method != "hard":
 
-                    for i in estimator_list:
-                        if not hasattr(i, "predict_proba"):
-                            if method != "auto":
-                                raise TypeError(
-                                    f"Estimator list contains estimator {i} that doesn't support probabilities and method is forced to 'soft'. Either change the method or drop the estimator."
-                                )
-                            else:
-                                self.logger.info(
-                                    f"Estimator {i} doesn't support probabilities, falling back to 'hard'."
-                                )
-                                method = "hard"
-                                break
+                        for i in estimator_list:
+                            if not hasattr(i, "predict_proba"):
+                                if method != "auto":
+                                    raise TypeError(
+                                        f"Estimator list contains estimator {i} that doesn't support probabilities and method is forced to 'soft'. Either change the method or drop the estimator."
+                                    )
+                                else:
+                                    self.logger.info(
+                                        f"Estimator {i} doesn't support probabilities, falling back to 'hard'."
+                                    )
+                                    method = "hard"
+                                    break
 
-                    if method == "auto":
-                        method = "soft"
+                        if method == "auto":
+                            method = "soft"
 
         # checking fold parameter
         if fold is not None and not (
@@ -7561,8 +7562,10 @@ class _SupervisedExperiment(_TabularExperiment):
         ERROR HANDLING ENDS HERE
 
         """
-
-        fold = self._get_cv_splitter(fold)
+        if self._ml_usecase == MLUsecase.TIME_SERIES:
+            fold = self.fold_generator
+        else:
+            fold = self._get_cv_splitter(fold)
 
         groups = self._get_groups(groups)
 
@@ -7630,13 +7633,21 @@ class _SupervisedExperiment(_TabularExperiment):
                 name = f"{original_name}_{suffix}"
                 suffix += 1
             estimator_dict[name] = x
-
+            
         estimator_list = list(estimator_dict.items())
 
-        voting_model_definition = self._all_models_internal["Voting"]
+        if self._ml_usecase == MLUsecase.TIME_SERIES:
+            voting_model_definition = self._all_models_internal["ensemble_forecaster"]
+        else:
+            voting_model_definition = self._all_models_internal["Voting"]
+        
         if self._ml_usecase == MLUsecase.CLASSIFICATION:
             model = voting_model_definition.class_def(
                 estimators=estimator_list, voting=method, n_jobs=self._gpu_n_jobs_param
+            )
+        elif self._ml_usecase == MLUsecase.TIME_SERIES:
+            model = voting_model_definition.class_def(
+                forecasters=estimator_list, n_jobs=self._gpu_n_jobs_param
             )
         else:
             model = voting_model_definition.class_def(
@@ -16281,6 +16292,10 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             in the model library (ID - Name):
 
             * 'arima' - ARIMA
+            * 'naive' - Naive
+            * 'poly_trend' - PolyTrend
+            * 'exp_smooth' - ExponentialSmoothing
+            * 'theta' - Theta
 
 
         fold: int or scikit-learn compatible CV generator, default = None
