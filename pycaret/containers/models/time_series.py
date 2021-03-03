@@ -365,6 +365,36 @@ class ThetaContainer(TimeSeriesContainer):
             is_gpu_enabled=gpu_imported
         )
 
+
+class EnsembleTimeSeriesContainer(TimeSeriesContainer):
+    def __init__(self, globals_dict: dict) -> None:
+        logger = get_logger()
+        np.random.seed(globals_dict["seed"])
+        gpu_imported = False
+
+        from sktime.forecasting.compose import EnsembleForecaster
+
+        args = {}
+        tune_args = {}
+        tune_grid = {}
+        tune_distributions = {}
+
+        # if not gpu_imported:
+        #     args["n_jobs"] = globals_dict["n_jobs_param"]
+
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+
+        super().__init__(
+            id="ensemble_forecaster",
+            name="EnsembleForecaster",
+            class_def=EnsembleForecaster,
+            args=args,
+            tune_grid=tune_grid,
+            tune_distribution=tune_distributions,
+            tune_args=tune_args,
+            is_gpu_enabled=gpu_imported
+        )
+
 # # Does not work
 # class RandomForestDTSContainer(TimeSeriesContainer):
 #     def __init__(self, globals_dict: dict) -> None:
