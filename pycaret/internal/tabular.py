@@ -9611,7 +9611,7 @@ def load_config(file_name: str):
 
     """
 
-    global _all_models, _all_models_internal, _all_metrics, X_train
+    global _all_models, _all_models_internal, _all_metrics, X_train, create_model_container, master_model_container, display_container
 
     import pycaret.internal.utils
 
@@ -9675,6 +9675,11 @@ def load_config(file_name: str):
             globals(), raise_errors=True
         )
         X_train = X
+
+    create_model_container = []
+    master_model_container = []
+    display_container = []
+
     return r
 
 
