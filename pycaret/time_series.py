@@ -397,6 +397,10 @@ def create_model(
         in the model library (ID - Name):
 
         * 'arima' - ARIMA
+        * 'naive' - Naive
+        * 'poly_trend' - PolyTrend
+        * 'exp_smooth' - ExponentialSmoothing
+        * 'theta' - Theta
 
 
     fold: int or scikit-learn compatible CV generator, default = None
@@ -768,7 +772,7 @@ def blend_models(
     fold: Optional[Union[int, Any]] = None,
     round: int = 4,
     choose_better: bool = False,
-    optimize: str = "R2",
+    optimize: str = "MAPE_ts",
     weights: Optional[List[float]] = None,
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
@@ -776,7 +780,7 @@ def blend_models(
 ):
 
     """
-    This function trains a Voting Regressor for select models passed in the
+    This function trains a EnsembleForecaster for select models passed in the
     ``estimator_list`` param. The output of this function is a score grid with
     CV scores by fold. Metrics evaluated during CV can be accessed using the
     ``get_metrics`` function. Custom metrics can be added or removed using
@@ -786,15 +790,20 @@ def blend_models(
     Example
     --------
     >>> from pycaret.datasets import get_data
-    >>> boston = get_data('boston')
-    >>> from pycaret.regression import *
-    >>> exp_name = setup(data = boston,  target = 'medv')
-    >>> top3 = compare_models(n_select = 3)
-    >>> blender = blend_models(top3)
+    >>> from pycaret.internal.PycaretExperiment import TimeSeriesExperiment
+    >>> import numpy as np
+    >>> airline_data = get_data('airline', verbose=False)
+    >>> fh = np.arange(1,13)
+    >>> fold = 3
+    >>> exp = TimeSeriesExperiment()
+    >>> exp.setup(data=y, fh=fh, fold=fold)
+    >>> arima_model = exp.create_model("arima")
+    >>> naive_model = exp.create_model("naive")
+    >>> ts_blender = exp.blend_models([arima_model, naive_model], optimize='MAPE_ts')
 
 
-    estimator_list: list of scikit-learn compatible objects
-        List of trained model objects
+    estimator_list: list of sktime compatible estiimators
+        List of model objects
 
 
     fold: int or scikit-learn compatible CV generator, default = None
@@ -813,7 +822,7 @@ def blend_models(
         metric used for comparison is defined by the ``optimize`` parameter.
 
 
-    optimize: str, default = 'R2'
+    optimize: str, default = 'MAPE_ts'
         Metric to compare for model selection when ``choose_better`` is True.
 
 
