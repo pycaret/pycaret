@@ -372,7 +372,7 @@ class EnsembleTimeSeriesContainer(TimeSeriesContainer):
         np.random.seed(globals_dict["seed"])
         gpu_imported = False
 
-        from sktime.forecasting.compose import EnsembleForecaster
+        from pycaret.internal.ensemble import _EnsembleForecasterWithVoting
 
         args = {}
         tune_args = {}
@@ -387,7 +387,7 @@ class EnsembleTimeSeriesContainer(TimeSeriesContainer):
         super().__init__(
             id="ensemble_forecaster",
             name="EnsembleForecaster",
-            class_def=EnsembleForecaster,
+            class_def=_EnsembleForecasterWithVoting,
             args=args,
             tune_grid=tune_grid,
             tune_distribution=tune_distributions,
@@ -395,6 +395,7 @@ class EnsembleTimeSeriesContainer(TimeSeriesContainer):
             is_gpu_enabled=gpu_imported
         )
 
+   
 # # Does not work
 # class RandomForestDTSContainer(TimeSeriesContainer):
 #     def __init__(self, globals_dict: dict) -> None:
