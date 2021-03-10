@@ -769,6 +769,7 @@ def ensemble_model(
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def blend_models(
     estimator_list: list,
+    method: str = 'mean',
     fold: Optional[Union[int, Any]] = None,
     round: int = 4,
     choose_better: bool = False,
@@ -804,6 +805,15 @@ def blend_models(
 
     estimator_list: list of sktime compatible estiimators
         List of model objects
+
+
+    method: str, default = 'mean'
+        Method to average the individual predictions to form a final prediction.   
+        Available Methods:
+        
+        * 'mean' - Mean of individual predictions
+        * 'median' - Median of individual predictions
+        * 'voting' - Vote individual predictions based on the provided weights.
 
 
     fold: int or scikit-learn compatible CV generator, default = None
