@@ -7482,10 +7482,10 @@ class _SupervisedExperiment(_TabularExperiment):
             fit_kwargs = {}
 
         # checking method parameter
-        available_method = ["auto", "soft", "hard", "mean"]
+        available_method = ["auto", "soft", "hard", "mean", "median", "voting"]
         if method not in available_method:
             raise ValueError(
-                "Method parameter only accepts 'auto', 'soft', 'hard' or 'mean' as a parameter. See Docstring for details."
+                "Method parameter only accepts 'auto', 'soft', 'hard', 'mean', 'median' or 'voting' as a parameter. See Docstring for details."
             )
 
         # checking error for estimator_list (skip for timeseries)
@@ -7647,7 +7647,7 @@ class _SupervisedExperiment(_TabularExperiment):
             )
         elif self._ml_usecase == MLUsecase.TIME_SERIES:
             model = voting_model_definition.class_def(
-                forecasters=estimator_list, n_jobs=self._gpu_n_jobs_param
+                forecasters=estimator_list, method=method, weights=weights, n_jobs=self._gpu_n_jobs_param
             )
         else:
             model = voting_model_definition.class_def(
@@ -7671,6 +7671,7 @@ class _SupervisedExperiment(_TabularExperiment):
             fit_kwargs=fit_kwargs,
             groups=groups,
         )
+
         model_results = self.pull()
         self.logger.info(
             "SubProcess create_model() end =================================="
@@ -16043,22 +16044,39 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 )
         self.fh = fh
 
-        if not isinstance(data, pd.Series):
+        # if not isinstance(data, pd.Series):
+        #     if isinstance(data, pd.DataFrame):
+        #         if data.shape[1] != 1:
+        #             raise ValueError(
+        #                 f"data must be a pandas Series or DataFrame with one column, got {data.shape[1]} columns!"
+        #             )
+        #     else:
+        #         raise ValueError(
+        #             f"data must be a pandas Series or DataFrame with one column, got object of {type(data)} type!"
+        #         )
+        # else:
+        #     data = pd.DataFrame(data)
+
+
+        if isinstance(data, (pd.Series, pd.DataFrame)):
             if isinstance(data, pd.DataFrame):
                 if data.shape[1] != 1:
                     raise ValueError(
                         f"data must be a pandas Series or DataFrame with one column, got {data.shape[1]} columns!"
                     )
             else:
-                raise ValueError(
-                    f"data must be a pandas Series or DataFrame with one column, got object of {type(data)} type!"
-                )
+                data = pd.DataFrame(data) # Force convertion to DataFrame
         else:
-            data = pd.DataFrame(data)
+            raise ValueError(
+                f"data must be a pandas Series or DataFrame, got object of {type(data)} type!"
+            )
+
+        
         if not np.issubdtype(data[data.columns[0]].dtype, np.number):
             raise TypeError(
                 f"Data must be of 'numpy.number' subtype, got {data[data.columns[0]].dtype}!"
             )
+        
         index_type_check = False
         # if np.issubdtype(data.index.dtype, np.datetime64):
         #     index_type_check = True
@@ -16766,6 +16784,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
     def blend_models(
         self,
         estimator_list: list,
+        method: str = 'mean',
         fold: Optional[Union[int, Any]] = None,
         round: int = 4,
         choose_better: bool = False,
@@ -16801,6 +16820,15 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         estimator_list: list of scikit-learn compatible objects
             List of trained model objects
+
+
+        method: str, default = 'mean'
+            Method to average the individual predictions to form a final prediction.   
+            Available Methods:
+            
+            * 'mean' - Mean of individual predictions
+            * 'median' - Median of individual predictions
+            * 'voting' - Vote individual predictions based on the provided weights.
 
 
         fold: int or scikit-learn compatible CV generator, default = None
@@ -16856,7 +16884,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             round=round,
             choose_better=choose_better,
             optimize=optimize,
-            method="auto",
+            method=method,
             weights=weights,
             fit_kwargs=fit_kwargs,
             groups=groups,
