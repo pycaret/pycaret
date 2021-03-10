@@ -2,7 +2,8 @@
 """
 import pytest
 
-from random import choice, randint
+from random import choice, uniform
+from pycaret.internal.ensemble import _ENSEMBLE_METHODS
 import numpy as np
 import pandas as pd
 
@@ -27,7 +28,7 @@ def load_setup(load_data):
     fold = 3
 
     return ts_experiment.setup(
-        data=load_data, fh=fh, fold=fold, fold_strategy="expandingwindow"
+        data=load_data, fh=fh, fold=fold, fold_strategy="expandingwindow", verbose=False
     )
 
 
@@ -42,7 +43,7 @@ def load_ts_models(load_setup):
     ts_estimators = []
 
     for key in ts_models.keys():
-        if not key.startswith(("ensemble", 'poly')):
+        if not key.startswith(("ensemble", "poly")):
             ts_estimators.append(ts_experiment.create_model(key))
 
     return ts_estimators
@@ -58,7 +59,9 @@ def test_create_model(model, load_data):
     from pycaret.internal.PycaretExperiment import TimeSeriesExperiment
 
     exp = TimeSeriesExperiment()
-    exp.setup(data=load_data, fold=3, fh=12, fold_strategy="expandingwindow")
+    exp.setup(
+        data=load_data, fold=3, fh=12, fold_strategy="expandingwindow", verbose=False
+    )
 
     model_obj = exp.create_model(model)
     y_pred = model_obj.predict()
@@ -84,14 +87,18 @@ def test_create_model(model, load_data):
     assert np.all(y_pred.index == expected)
 
 
-def test_blend_model(load_setup, load_models):
+@pytest.mark.parametrize("method", _ENSEMBLE_METHODS)
+def test_blend_model(load_setup, load_models, method):
 
     from pycaret.internal.ensemble import _EnsembleForecasterWithVoting
 
     ts_experiment = load_setup
     ts_models = load_models
+    ts_weights = [uniform(0, 1) for _ in range(len(load_models))]
 
-    blender = ts_experiment.blend_models(ts_models, optimize="MAPE_ts")
+    blender = ts_experiment.blend_models(
+        ts_models, method=method, weights=ts_weights, optimize="MAPE_ts", verbose=False
+    )
 
     assert isinstance(blender, _EnsembleForecasterWithVoting)
 

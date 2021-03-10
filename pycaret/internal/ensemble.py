@@ -13,6 +13,7 @@ from sktime.forecasting.base._base import DEFAULT_ALPHA
 from sktime.forecasting.base._meta import _HeterogenousEnsembleForecaster
 from sktime.forecasting.base._sktime import _OptionalForecastingHorizonMixin
 
+_ENSEMBLE_METHODS = ["voting", "mean", "median"]
 
 class _EnsembleForecasterWithVoting(
     _OptionalForecastingHorizonMixin, _HeterogenousEnsembleForecaster
@@ -64,8 +65,8 @@ class _EnsembleForecasterWithVoting(
             self._set_weights_none
         elif self.method not in self._available_methods:
             raise ValueError(
-            f"Method {self.method} is not supported. Avaible methods are {', '.join(self._available_methods)}"
-        )
+                f"Method {self.method} is not supported. Avaible methods are {', '.join(self._available_methods)}"
+            )
 
     def fit(self, y, X=None, fh=None):
         """Fit to training data.
@@ -101,20 +102,20 @@ class _EnsembleForecasterWithVoting(
         """
         self.check_is_fitted()
         self._update_y_X(y, X)
-        
+
         for forecaster in self.forecasters_:
             forecaster.update(y, X, update_params=update_params)
-        
+
         return self
 
     def _predict(self, fh, X=None, return_pred_int=False, alpha=DEFAULT_ALPHA):
         if return_pred_int:
             raise NotImplementedError()
-        
+
         self._check_method()
 
         pred_forecasters = pd.concat(self._predict_forecasters(fh, X), axis=1)
-        
+
         if self.method == "median":
             return pred_forecasters.median(axis=1)
         elif self.method in self._required_weights:

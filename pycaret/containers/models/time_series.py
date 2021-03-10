@@ -182,6 +182,7 @@ class TimeSeriesContainer(ModelContainer):
 
         return dict(d)
 
+
 class NaiveContainer(TimeSeriesContainer):
     def __init__(self, globals_dict: dict) -> None:
         logger = get_logger()
@@ -209,9 +210,9 @@ class NaiveContainer(TimeSeriesContainer):
             tune_grid=tune_grid,
             tune_distribution=tune_distributions,
             tune_args=tune_args,
-            is_gpu_enabled=gpu_imported
+            is_gpu_enabled=gpu_imported,
         )
-        
+
 
 class PolyTrendContainer(TimeSeriesContainer):
     def __init__(self, globals_dict: dict) -> None:
@@ -240,8 +241,9 @@ class PolyTrendContainer(TimeSeriesContainer):
             tune_grid=tune_grid,
             tune_distribution=tune_distributions,
             tune_args=tune_args,
-            is_gpu_enabled=gpu_imported
+            is_gpu_enabled=gpu_imported,
         )
+
 
 class ArimaContainer(TimeSeriesContainer):
     def __init__(self, globals_dict: dict) -> None:
@@ -270,7 +272,7 @@ class ArimaContainer(TimeSeriesContainer):
             tune_grid=tune_grid,
             tune_distribution=tune_distributions,
             tune_args=tune_args,
-            is_gpu_enabled=gpu_imported
+            is_gpu_enabled=gpu_imported,
         )
 
 
@@ -301,7 +303,7 @@ class ExponentialSmoothingContainer(TimeSeriesContainer):
             tune_grid=tune_grid,
             tune_distribution=tune_distributions,
             tune_args=tune_args,
-            is_gpu_enabled=gpu_imported
+            is_gpu_enabled=gpu_imported,
         )
 
 
@@ -335,6 +337,7 @@ class ExponentialSmoothingContainer(TimeSeriesContainer):
 #             is_gpu_enabled=gpu_imported
 #         )
 
+
 class ThetaContainer(TimeSeriesContainer):
     def __init__(self, globals_dict: dict) -> None:
         logger = get_logger()
@@ -362,7 +365,7 @@ class ThetaContainer(TimeSeriesContainer):
             tune_grid=tune_grid,
             tune_distribution=tune_distributions,
             tune_args=tune_args,
-            is_gpu_enabled=gpu_imported
+            is_gpu_enabled=gpu_imported,
         )
 
 
@@ -392,10 +395,10 @@ class EnsembleTimeSeriesContainer(TimeSeriesContainer):
             tune_grid=tune_grid,
             tune_distribution=tune_distributions,
             tune_args=tune_args,
-            is_gpu_enabled=gpu_imported
+            is_gpu_enabled=gpu_imported,
         )
 
-   
+
 # # Does not work
 # class RandomForestDTSContainer(TimeSeriesContainer):
 #     def __init__(self, globals_dict: dict) -> None:
@@ -451,4 +454,3 @@ def get_all_model_containers(
     return pycaret.containers.base_container.get_all_containers(
         globals(), globals_dict, TimeSeriesContainer, raise_errors
     )
-
