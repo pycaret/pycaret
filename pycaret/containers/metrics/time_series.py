@@ -13,6 +13,7 @@ from pycaret.containers.metrics.base_metric import MetricContainer
 from sklearn.metrics._scorer import _BaseScorer
 import pycaret.containers.base_container
 import pycaret.internal.metrics
+from pandas import Series
 from sklearn import metrics
 from sktime.performance_metrics.forecasting._functions import (
     mase_loss,
@@ -152,15 +153,26 @@ class TimeSeriesMetricContainer(MetricContainer):
 
 def _smape_loss(y_true, y_pred):
     """Wrapper for sktime metrics"""
-    return smape_loss(y_test=y_true, y_pred=y_pred)
+    return smape_loss(y_test=_check_series(y_true), y_pred=_check_series(y_pred))
 
 def _mape_loss(y_true, y_pred):
     """Wrapper for sktime metrics"""
-    return mape_loss(y_test=y_true, y_pred=y_pred)
+    return mape_loss(y_test=_check_series(y_true), y_pred=_check_series(y_pred))
 
 def _mase_loss(y_true, y_pred, y_train):
     """Wrapper for sktime metrics"""
-    return mase_loss(y_test=y_true, y_pred=y_pred, y_train=y_train)
+    return mase_loss(y_test=_check_series(y_true), y_pred=_check_series(y_pred), y_train=_check_series(y_train))
+
+
+def _check_series(y):
+    if isinstance(y, Series):
+        return y
+    else:
+        return _set_y_as_series(y)
+
+
+def _set_y_as_series(y):
+    return Series(y.iloc[:, 0]) 
 
 
 class SMAPEMetricContainer(TimeSeriesMetricContainer):

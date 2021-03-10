@@ -62,7 +62,7 @@ class _EnsembleForecasterWithVoting(
                 "Unused 'weights' argument. When method='mean' or method='median', 'weights' argument is not provided. Setting weights to `None`"
             )
             self._set_weights_none
-        else:
+        elif self.method not in self._available_methods:
             raise ValueError(
             f"Method {self.method} is not supported. Avaible methods are {', '.join(self._available_methods)}"
         )

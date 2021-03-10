@@ -86,14 +86,14 @@ def test_create_model(model, load_data):
 
 def test_blend_model(load_setup, load_models):
 
-    from sktime.forecasting.compose._ensemble import EnsembleForecaster
+    from pycaret.internal.ensemble import _EnsembleForecasterWithVoting
 
     ts_experiment = load_setup
     ts_models = load_models
 
     blender = ts_experiment.blend_models(ts_models, optimize="MAPE_ts")
 
-    assert isinstance(blender, EnsembleForecaster)
+    assert isinstance(blender, _EnsembleForecasterWithVoting)
 
     # Test input models are available
     blender_forecasters = blender.forecasters_
