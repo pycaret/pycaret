@@ -5516,25 +5516,6 @@ class _SupervisedExperiment(_TabularExperiment):
             self.logger.info(f"Cross validating with {cv}, n_jobs={n_jobs}")
 
             model_fit_start = time.time()
-            # if self._ml_usecase == MLUsecase.TIME_SERIES:
-            #     # Cross Validate time series
-            #     # Set the forecast horizon for the estimator
-            #     fit_kwargs.update({'actual_estimator__fh': self.fh})
-            #     # TODO: Temporarily disabling parallelization for debug (parallelization makes debugging harder)
-            #     n_jobs=1
-            #     scores = cross_validate_ts(
-            #         pipeline_with_model,
-            #         data_X,
-            #         data_y,
-            #         cv=cv,
-            #         groups=groups,
-            #         scoring=metrics_dict,
-            #         fit_params=fit_kwargs,
-            #         n_jobs=n_jobs,
-            #         return_train_score=False,
-            #         error_score=0
-            #     )
-            # else:
             scores = cross_validate(
                 pipeline_with_model,
                 data_X,
@@ -6551,11 +6532,6 @@ class _SupervisedExperiment(_TabularExperiment):
                     nc *= len(v)
             return nc
 
-        def get_ccp_alphas(estimator):
-            path = estimator.cost_complexity_pruning_path(data_X, data_y)
-            ccp_alphas, _ = path.ccp_alphas, path.impurities
-            return list(ccp_alphas[:-1])
-
         if custom_grid is not None:
             if not isinstance(custom_grid, dict):
                 raise TypeError(f"custom_grid must be a dict, got {type(custom_grid)}.")
@@ -6589,11 +6565,6 @@ class _SupervisedExperiment(_TabularExperiment):
                     f"weight_{i}": np.arange(0.01, 1, 0.01)
                     for i, e in enumerate(base_estimator.estimators)
                 }
-            # if hasattr(base_estimator, "cost_complexity_pruning_path"):
-            #     # special case for Tree-based models
-            #     param_grid["ccp_alpha"] = get_ccp_alphas(base_estimator)
-            #     if "min_impurity_decrease" in param_grid:
-            #         param_grid.pop("min_impurity_decrease")
 
             if search_algorithm != "grid":
                 tc = total_combintaions_in_grid(param_grid)
@@ -6612,13 +6583,6 @@ class _SupervisedExperiment(_TabularExperiment):
                     f"weight_{i}": UniformDistribution(0.000000001, 1)
                     for i, e in enumerate(base_estimator.estimators)
                 }
-            # if hasattr(base_estimator, "cost_complexity_pruning_path"):
-            #     # special case for Tree-based models
-            #     param_grid["ccp_alpha"] = CategoricalDistribution(
-            #         get_ccp_alphas(base_estimator)
-            #     )
-            #     if "min_impurity_decrease" in param_grid:
-            #         param_grid.pop("min_impurity_decrease")
 
         if not param_grid:
             raise ValueError(
@@ -16429,7 +16393,8 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         else:
             fit_kwargs.update(fh_param)
         # fit_kwargs.update({'actual_estimator__fh': self.fh})
-        n_jobs = 1
+        # TODO: Check why n_jobs is set to 1
+        n_jobs=1
 
         model_fit_start = time.time()
 
@@ -16437,10 +16402,11 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             forecaster=clone(model),
             y=data_y,
             X=data_X,
-            cv=cv,
             scoring=metrics,
-            fit_params=fit_kwargs,
+            cv=cv,
             n_jobs=n_jobs,
+            verbose=0,
+            fit_params=fit_kwargs,
             return_train_score=False,
             error_score=0,
         )
@@ -16492,9 +16458,9 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         round: int = 4,
         n_iter: int = 10,
         custom_grid: Optional[Union[Dict[str, list], Any]] = None,
-        optimize: str = "R2",
+        optimize: str = "smape",
         custom_scorer=None,
-        search_library: str = "scikit-learn",
+        search_library: str = "pycaret",
         search_algorithm: Optional[str] = None,
         early_stopping: Any = False,
         early_stopping_max_iters: int = 10,
@@ -16504,6 +16470,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         return_tuner: bool = False,
         verbose: bool = True,
         tuner_verbose: Union[int, bool] = True,
+        display: Optional[Display] = None,
         **kwargs,
     ):
 
@@ -16669,26 +16636,434 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         """
 
-        return super().tune_model(
-            estimator=estimator,
+        # return super().tune_model(
+        #     estimator=estimator,
+        #     fold=fold,
+        #     round=round,
+        #     n_iter=n_iter,
+        #     custom_grid=custom_grid,
+        #     optimize=optimize,
+        #     custom_scorer=custom_scorer,
+        #     search_library=search_library,
+        #     search_algorithm=search_algorithm,
+        #     early_stopping=early_stopping,
+        #     early_stopping_max_iters=early_stopping_max_iters,
+        #     choose_better=choose_better,
+        #     fit_kwargs=fit_kwargs,
+        #     groups=groups,
+        #     return_tuner=return_tuner,
+        #     verbose=verbose,
+        #     tuner_verbose=tuner_verbose,
+        #     **kwargs,
+        # )
+
+        function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
+
+        self.logger.info("Initializing tune_model()")
+        self.logger.info(f"tune_model({function_params_str})")
+
+        self.logger.info("Checking exceptions")
+
+        # run_time
+        runtime_start = time.time()
+
+        if not fit_kwargs:
+            fit_kwargs = {}
+
+        # checking estimator if string
+        if type(estimator) is str:
+            raise TypeError(
+                "The behavior of tune_model in version 1.0.1 is changed. Please pass trained model object."
+            )
+
+        # Check for estimator
+        if not hasattr(estimator, "fit"):
+            raise ValueError(
+                f"Estimator {estimator} does not have the required fit() method."
+            )
+
+        # checking fold parameter
+        if fold is not None and not (
+            type(fold) is int or is_sklearn_cv_generator(fold)
+        ):
+            raise TypeError(
+                "fold parameter must be either None, an integer or a scikit-learn compatible CV generator object."
+            )
+
+        # checking round parameter
+        if type(round) is not int:
+            raise TypeError("Round parameter only accepts integer value.")
+
+        # checking n_iter parameter
+        if type(n_iter) is not int:
+            raise TypeError("n_iter parameter only accepts integer value.")
+
+
+        if isinstance(optimize, str):
+            # checking optimize parameter
+            # TODO: Changed with reference to other ML Usecases. Check with Antoni
+            # optimize = self._get_metric_by_name_or_id(optimize)
+            # if optimize is None:
+            #     raise ValueError(
+            #         "Optimize method not supported. See docstring for list of available parameters."
+            #     )
+            optimize_container = self._get_metric_by_name_or_id(optimize)
+            if optimize_container is None:
+                raise ValueError(
+                    "Optimize method not supported. See docstring for list of available parameters."
+                )
+
+        else:
+            self.logger.info(f"optimize set to user defined function {optimize}")
+
+        # checking verbose parameter
+        if type(verbose) is not bool:
+            raise TypeError(
+                "verbose parameter can only take argument as True or False."
+            )
+
+        # checking verbose parameter
+        if type(return_tuner) is not bool:
+            raise TypeError(
+                "return_tuner parameter can only take argument as True or False."
+            )
+
+        if not verbose:
+            tuner_verbose = 0
+
+        if type(tuner_verbose) not in (bool, int):
+            raise TypeError("tuner_verbose parameter must be a bool or an int.")
+
+        tuner_verbose = int(tuner_verbose)
+
+        if tuner_verbose < 0:
+            tuner_verbose = 0
+        elif tuner_verbose > 2:
+            tuner_verbose = 2
+
+        """
+
+        ERROR HANDLING ENDS HERE
+
+        """
+
+        # cross validation setup starts here
+        cv = self.fold_generator
+
+        if not display:
+            progress_args = {"max": 3 + 4}
+            master_display_columns = [
+                v.display_name for k, v in self._all_metrics.items()
+            ]
+            timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
+            monitor_rows = [
+                ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
+                [
+                    "Status",
+                    ". . . . . . . . . . . . . . . . . .",
+                    "Loading Dependencies",
+                ],
+                [
+                    "Estimator",
+                    ". . . . . . . . . . . . . . . . . .",
+                    "Compiling Library",
+                ],
+            ]
+            display = Display(
+                verbose=verbose,
+                html_param=self.html_param,
+                progress_args=progress_args,
+                master_display_columns=master_display_columns,
+                monitor_rows=monitor_rows,
+            )
+
+            display.display_progress()
+            display.display_monitor()
+            display.display_master_display()
+
+        # ignore warnings
+
+        warnings.filterwarnings("ignore")
+
+        import logging
+
+        np.random.seed(self.seed)
+
+        self.logger.info("Copying training dataset")
+        # Storing X_train and y_train in data_X and data_y parameter
+        data_X = self.X_train.copy()
+        data_y = self.y_train.copy()
+
+        # Replace Empty DataFrame with None as empty DataFrame causes issues
+        if (data_X.shape[0] == 0) or (data_X.shape[1] == 0):
+            data_X = None
+
+        display.move_progress()
+
+        # setting optimize parameter
+
+        # TODO: Changed compared to other PyCaret UseCases (Check with Antoni)
+        # optimize = optimize.scorer
+        compare_dimension = optimize_container.display_name
+        optimize = {optimize: optimize_container}
+
+        # convert trained estimator into string name for grids
+
+        self.logger.info("Checking base model")
+
+        is_stacked_model = False
+
+        if hasattr(estimator, "final_estimator"):
+            self.logger.info("Model is stacked, using the definition of the meta-model")
+            is_stacked_model = True
+            estimator_id = self._get_model_id(estimator.final_estimator)
+        else:
+            estimator_id = self._get_model_id(estimator)
+        if estimator_id is None:
+            if custom_grid is None:
+                raise ValueError(
+                    "When passing a model not in PyCaret's model library, the custom_grid parameter must be provided."
+                )
+            estimator_name = self._get_model_name(estimator)
+            estimator_definition = None
+            self.logger.info("A custom model has been passed")
+        else:
+            estimator_definition = self._all_models_internal[estimator_id]
+            estimator_name = estimator_definition.name
+        self.logger.info(f"Base model : {estimator_name}")
+
+        if estimator_definition is None or estimator_definition.tunable is None:
+            model = clone(estimator)
+        else:
+            self.logger.info("Model has a special tunable class, using that")
+            model = clone(estimator_definition.tunable(**estimator.get_params()))
+        is_stacked_model = False
+
+        base_estimator = model
+
+        display.update_monitor(2, estimator_name)
+        display.display_monitor()
+
+        display.move_progress()
+
+        self.logger.info("Declaring metric variables")
+
+        """
+        MONITOR UPDATE STARTS
+        """
+
+        display.update_monitor(1, "Searching Hyperparameters")
+        display.display_monitor()
+
+        """
+        MONITOR UPDATE ENDS
+        """
+
+        self.logger.info("Defining Hyperparameters")
+
+        # TODO: Replace with time series specific code
+        def total_combintaions_in_grid(grid):
+            nc = 1
+
+            def get_iter(x):
+                if isinstance(x, dict):
+                    return x.values()
+                return x
+
+            for v in get_iter(grid):
+                if isinstance(v, dict):
+                    for v2 in get_iter(v):
+                        nc *= len(v2)
+                else:
+                    nc *= len(v)
+            return nc
+
+        if search_algorithm is None:
+            search_algorithm = 'grid'
+
+        if search_algorithm == 'grid':
+            param_grid = estimator_definition.tune_grid
+        elif search_algorithm == 'random':
+            param_grid = estimator_definition.tune_distribution
+
+        if not param_grid:
+            raise ValueError(
+                "parameter grid for tuning is empty. If passing custom_grid, make sure that it is not empty. If not passing custom_grid, the passed estimator does not have a built-in tuning grid."
+            )
+
+        suffixes = []
+
+        if is_stacked_model:
+            self.logger.info(
+                "Stacked model passed, will tune meta model hyperparameters"
+            )
+            suffixes.append("final_estimator")
+
+        gc.collect()
+
+        # with estimator_pipeline(self._internal_pipeline, model) as pipeline_with_model:
+        if True:
+
+            # fit_kwargs = get_pipeline_fit_kwargs(pipeline_with_model, fit_kwargs)
+            fh_param = {'fh': cv.fh}
+            if fit_kwargs is None:
+                fit_kwargs = fh_param
+            else:
+                fit_kwargs.update(fh_param)
+
+            # actual_estimator_label = get_pipeline_estimator_label(pipeline_with_model)
+            actual_estimator_label = ""
+
+            # suffixes.append(actual_estimator_label)
+
+            # suffixes = "__".join(reversed(suffixes))
+
+            # param_grid = {f"{suffixes}__{k}": v for k, v in param_grid.items()}
+
+            if estimator_definition is not None:
+                search_kwargs = {**estimator_definition.tune_args, **kwargs}
+                n_jobs = (
+                    self._gpu_n_jobs_param
+                    if estimator_definition.is_gpu_enabled
+                    else self.n_jobs_param
+                )
+            else:
+                search_kwargs = {}
+                n_jobs = self.n_jobs_param
+
+            # # TODO: Setting for now for debugging
+            # n_jobs = 1
+
+            if custom_grid is not None:
+                self.logger.info(f"custom_grid: {param_grid}")
+
+            self.logger.info(f"Tuning with n_jobs={n_jobs}")
+
+            if search_library == "pycaret":
+                if search_algorithm == "grid":
+                    self.logger.info("Initializing ForecastingGridSearchCV")
+                    from pycaret.time_series import ForecastingGridSearchCV
+                    model_grid = ForecastingGridSearchCV(
+                        forecaster=model,
+                        cv=cv,
+                        param_grid=param_grid,
+                        scoring=optimize, #metrics
+                        n_jobs=n_jobs,
+                        verbose=tuner_verbose,
+                        **search_kwargs
+                    )
+                else:
+                    self.logger.info(
+                        "Initializing RandomizedForecastingGridSearchCV"
+                    )
+                    raise NotImplementedError(
+                        "RandomizedForecastingGridSearchCV has not been implemented"
+                    )
+
+            model_grid.fit(y=data_y, X=data_X, **fit_kwargs)
+
+            best_params = model_grid.best_params_
+            self.logger.info(f"best_params: {best_params}")
+            best_params = {**best_params}
+            best_params = {
+                k.replace(f"{actual_estimator_label}__", ""): v
+                for k, v in best_params.items()
+            }
+            cv_results = None
+            try:
+                cv_results = model_grid.cv_results_
+            except:
+                self.logger.warning(
+                    "Couldn't get cv_results from model_grid. Exception:"
+                )
+                self.logger.warning(traceback.format_exc())
+
+        display.move_progress()
+
+        self.logger.info("Hyperparameter search completed")
+
+        if isinstance(model, TunableMixin):
+            self.logger.info("Getting base sklearn object from tunable")
+            best_params = {
+                k: v
+                for k, v in model.get_params().items()
+                if k in model.get_base_sklearn_params().keys()
+            }
+            model = model.get_base_sklearn_object()
+
+        self.logger.info(
+            "SubProcess create_model() called =================================="
+        )
+        best_model, model_fit_time = self.create_model(
+            estimator=model,
+            system=False,
+            display=display,
             fold=fold,
             round=round,
-            n_iter=n_iter,
-            custom_grid=custom_grid,
-            optimize=optimize,
-            custom_scorer=custom_scorer,
-            search_library=search_library,
-            search_algorithm=search_algorithm,
-            early_stopping=early_stopping,
-            early_stopping_max_iters=early_stopping_max_iters,
-            choose_better=choose_better,
-            fit_kwargs=fit_kwargs,
             groups=groups,
-            return_tuner=return_tuner,
-            verbose=verbose,
-            tuner_verbose=tuner_verbose,
-            **kwargs,
+            fit_kwargs=fit_kwargs,
+            **best_params,
         )
+        model_results = self.pull()
+        self.logger.info(
+            "SubProcess create_model() end =================================="
+        )
+
+        if choose_better:
+            best_model = self._choose_better(
+                [estimator, (best_model, model_results)],
+                compare_dimension,
+                fold,
+                groups=groups,
+                fit_kwargs=fit_kwargs,
+                display=display,
+            )
+
+        # end runtime
+        runtime_end = time.time()
+        runtime = np.array(runtime_end - runtime_start).round(2)
+
+        # mlflow logging
+        if self.logging_param:
+
+            avgs_dict_log = {k: v for k, v in model_results.loc["Mean"].items()}
+
+            try:
+                self._mlflow_log_model(
+                    model=best_model,
+                    model_results=model_results,
+                    score_dict=avgs_dict_log,
+                    source="tune_model",
+                    runtime=runtime,
+                    model_fit_time=model_fit_time,
+                    _prep_pipe=self.prep_pipe,
+                    log_plots=self.log_plots_param,
+                    tune_cv_results=cv_results,
+                    display=display,
+                )
+            except:
+                self.logger.error(
+                    f"_mlflow_log_model() for {best_model} raised an exception:"
+                )
+                self.logger.error(traceback.format_exc())
+
+        model_results = color_df(model_results, "yellow", ["Mean"], axis=1)
+        model_results = model_results.set_precision(round)
+        display.display(model_results, clear=True)
+
+        self.logger.info(f"master_model_container: {len(self.master_model_container)}")
+        self.logger.info(f"display_container: {len(self.display_container)}")
+
+        self.logger.info(str(best_model))
+        self.logger.info(
+            "tune_model() succesfully completed......................................"
+        )
+
+        gc.collect()
+        if return_tuner:
+            return (best_model, model_grid)
+        return best_model
+
 
     def ensemble_model(
         self,

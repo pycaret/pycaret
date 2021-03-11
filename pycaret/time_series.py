@@ -4,8 +4,13 @@
 # Release: PyCaret 2.2.0
 # Last modified : 25/10/2020
 
-import pandas as pd
+import time
+from collections import defaultdict
+from functools import partial
+
 import numpy as np
+import pandas as pd
+from scipy.stats import rankdata
 
 from pycaret.internal.PycaretExperiment import TimeSeriesExperiment
 from pycaret.internal.utils import check_if_global_is_not_none
@@ -16,10 +21,15 @@ import time
 
 from sklearn.base import clone
 from sklearn.model_selection._validation import _aggregate_score_dicts
+from sklearn.model_selection import check_cv, ParameterGrid, ParameterSampler
+from sklearn.model_selection._search import _check_param_grid
 
 from joblib import Parallel
 from joblib import delayed
 from joblib.externals.loky.process_executor import TerminatedWorkerError
+
+from sktime.utils.validation.forecasting import check_scoring
+from sktime.utils.validation.forecasting import check_y_X
 
 warnings.filterwarnings("ignore")
 
@@ -1977,6 +1987,10 @@ def _get_cv_n_folds(y, cv) -> int:
     """
     Get the number of folds for time series
     cv must be of type SlidingWindowSplitter or ExpandingWindowSplitter
+    TODO: Fix this inside sktime and replace this with sktime method [1]
+
+    Ref:
+    [1] https://github.com/alan-turing-institute/sktime/issues/632
     """
     n_folds = int((len(y) - cv.initial_window) / cv.step_length)
     return n_folds
@@ -2013,22 +2027,13 @@ def get_folds(cv, y) -> Tuple[pd.Series, pd.Series]:
         yield rolling_y_train.index, y_test.index
 
 
-def cross_validate_ts(forecaster, y, X, cv, scoring, fit_params, n_jobs, return_train_score, error_score=0):
-    """Similar to _fit_and_score from sktime
-    Ref: https://github.com/alan-turing-institute/sktime/blob/v0.5.3/sktime/forecasting/model_selection/_tune.py#L95
+def cross_validate_ts(forecaster, y, X, scoring, cv, n_jobs, verbose, fit_params, return_train_score, error_score=0):
+    """Performs Cross Validation on time series data
 
-    Also similar to sklearn _fit_and_score, but sklearn does this on a single fold only,
-    whereas sktime does this on all cv folds.
-    https://github.com/scikit-learn/scikit-learn/blob/0.24.1/sklearn/model_selection/_validation.py#L449
+    Parallelization is based on `sklearn` cross_validate function [1]
+    Ref:
+    [1] https://github.com/scikit-learn/scikit-learn/blob/0.24.1/sklearn/model_selection/_validation.py#L246
 
-    TODO: Modularize this and create _fit_and_score which works on only 1 fold similar to what sklearn is doing
-    TODO: Parallelize this similar to what skoptimize is doing (calls sklearn's _fit_and_score function)
-      - https://github.com/scikit-optimize/scikit-optimize/blob/v0.8.1/skopt/searchcv.py#L410
-      - sklearn's BaseSearchCV also does this:
-      - https://github.com/scikit-learn/scikit-learn/blob/0.24.1/sklearn/model_selection/_search.py#L795
-      - You can also parallelize only splits for cross_validate_ts like this:
-        https://github.com/scikit-learn/scikit-learn/blob/0.24.1/sklearn/model_selection/_validation.py#L246
-    TODO: Add argument for parameters so they can be set inside this function for various candidate parameters
 
     Parameters
     ----------
@@ -2063,7 +2068,7 @@ def cross_validate_ts(forecaster, y, X, cv, scoring, fit_params, n_jobs, return_
     """
     try:
         parallel = Parallel(n_jobs=n_jobs)
-        results = parallel(delayed(_fit_and_score)(
+        out = parallel(delayed(_fit_and_score)(
             forecaster=clone(forecaster),
             y=y, X=X,
             scoring=scoring,
@@ -2078,15 +2083,20 @@ def cross_validate_ts(forecaster, y, X, cv, scoring, fit_params, n_jobs, return_
     except (TerminatedWorkerError, KeyboardInterrupt, SystemExit):
         raise
 
-    results = _aggregate_score_dicts(results)
-    return results
+    # Similar to parts of _format_results in BaseGridSearch
+    (test_scores_dict, fit_time, score_time) = zip(*out)
+    test_scores = _aggregate_score_dicts(test_scores_dict)
+
+    return test_scores
 
 
 def _fit_and_score(forecaster, y, X, scoring, train, test, parameters, fit_params, return_train_score, error_score=0):
     """ Fits the forecaster on a single train split and scores on the test split
-    Ref: Based on sklearn's _fit_and_score function
-    https://github.com/scikit-learn/scikit-learn/blob/0.24.1/sklearn/model_selection/_validation.py#L449
-
+    Similar to _fit_and_score from `skleran` [1] (and to some extent `sktime` [2]).
+    Difference is that [1] operates on a single fold only, whereas [2] operates on all cv folds.
+    Ref:
+    [1] https://github.com/scikit-learn/scikit-learn/blob/0.24.1/sklearn/model_selection/_validation.py#L449
+    [2] https://github.com/alan-turing-institute/sktime/blob/v0.5.3/sktime/forecasting/model_selection/_tune.py#L95
 
     Parameters
     ----------
@@ -2123,7 +2133,10 @@ def _fit_and_score(forecaster, y, X, scoring, train, test, parameters, fit_param
     X_train = None if X is None else X[train]
     X_test = None if X is None else X[test]
 
+    start = time.time()
     forecaster.fit(y_train, X_train, **fit_params)
+    fit_time = time.time() - start
+
     y_pred = forecaster.predict(X_test)
     if (y_test.index.values != y_pred.index.values).any():
         print(f"\t y_train: {y_train.index.values}, \n\t y_test: {y_test.index.values}")
@@ -2131,9 +2144,289 @@ def _fit_and_score(forecaster, y, X, scoring, train, test, parameters, fit_param
         raise ValueError("y_test indices do not match y_pred_indices or split/prediction length does not match forecast horizon.")
 
     fold_scores = {}
+    start = time.time()
     for scorer_name, scorer_container in scoring.items():
         metric = scorer_container.scorer._score_func(y_true=y_test, y_pred=y_pred)
-        # print(f"test_{scorer_name}, Fold: {i} Metric: {metric}")
-        fold_scores[f"test_{scorer_name}"] = metric
+        # fold_scores[f"test_{scorer_name}"] = metric
+        fold_scores[scorer_name] = metric
+    score_time = time.time() - start
 
-    return fold_scores
+    return fold_scores, fit_time, score_time
+
+
+class BaseGridSearch():
+    """
+    Parallization is based predominantly on [1]. Also similar to [2]
+
+    Ref:
+    [1] https://github.com/scikit-learn/scikit-learn/blob/0.24.1/sklearn/model_selection/_search.py#L795
+    [2] https://github.com/scikit-optimize/scikit-optimize/blob/v0.8.1/skopt/searchcv.py#L410
+    """
+    def __init__(
+        self,
+        forecaster,
+        cv,
+        n_jobs=None,
+        pre_dispatch=None,
+        refit=False,
+        scoring=None,
+        verbose=0,
+        error_score=None,
+        return_train_score=None,
+    ):
+        self.forecaster = forecaster
+        self.cv = cv
+        self.n_jobs = n_jobs
+        self.pre_dispatch = pre_dispatch
+        self.refit = refit
+        self.scoring = scoring
+        self.verbose = verbose
+        self.error_score = error_score
+        self.return_train_score = return_train_score
+
+        self.best_params_= {}
+        self.cv_results_ = {}
+
+
+    def fit(self, y, X=None, **fit_params):
+        y, X = check_y_X(y, X)
+
+        # validate cross-validator
+        cv = check_cv(self.cv)
+        base_forecaster = clone(self.forecaster)
+
+        # This checker is sktime specific and only support 1 metric
+        # Removing for now since we can have multiple metrics
+        # TODO: Add back later if it supports multiple metrics
+        # scoring = check_scoring(self.scoring)
+        scorers = self.scoring  # Multiple metrics supported
+        refit_metric = 'smape' 
+
+        results = {}
+        all_candidate_params = []
+        all_out = []
+
+        def evaluate_candidates(candidate_params):
+            candidate_params = list(candidate_params)
+            n_candidates = len(candidate_params)
+            n_splits = _get_cv_n_folds(y, cv)
+
+            if self.verbose > 0:
+                print(  # noqa
+                    f"Fitting {n_splits} folds for each of {n_candidates} "
+                    f"candidates, totalling {n_candidates * n_splits} fits"
+                )
+
+            parallel = Parallel(
+                n_jobs=self.n_jobs,
+                verbose=self.verbose,
+                pre_dispatch=self.pre_dispatch
+            )
+            out = parallel(delayed(_fit_and_score)(
+                    forecaster=clone(base_forecaster),
+                    y=y, X=X,
+                    scoring=scorers,
+                    train=train,
+                    test=test,
+                    parameters=parameters,
+                    fit_params=fit_params,
+                    return_train_score=self.return_train_score,
+                    error_score=self.error_score
+                )
+                for parameters in candidate_params
+                for train, test in get_folds(cv, y)
+            )
+
+            if len(out) < 1:
+                raise ValueError(
+                    "No fits were performed. "
+                    "Was the CV iterator empty? "
+                    "Were there no candidates?"
+                )
+
+            all_candidate_params.extend(candidate_params)
+            all_out.extend(out)
+
+            nonlocal results
+            results = self._format_results(
+                all_candidate_params,
+                scorers,
+                all_out,
+                n_splits
+            )
+            return results
+
+        self._run_search(evaluate_candidates)
+
+        self.best_index_ = results["rank_test_%s" % refit_metric].argmin()
+        self.best_score_ = results["mean_test_%s" % refit_metric][
+            self.best_index_
+        ]
+        self.best_params_ = results["params"][self.best_index_]
+
+        self.best_forecaster_ = clone(base_forecaster).set_params(
+            **self.best_params_
+        )
+
+        if self.refit:
+            refit_start_time = time.time()
+            self.best_forecaster_.fit(y, X, **fit_params)
+            self.refit_time_ = time.time() - refit_start_time
+
+        # Store the only scorer not as a dict for single metric evaluation
+        self.scorer_ = scorers
+
+        self.cv_results_ = results
+        self.n_splits_ = _get_cv_n_folds(y, cv)
+
+        self._is_fitted = True
+        return self
+
+    @staticmethod
+    def _format_results(candidate_params, scorers, out, n_splits):
+        """ From sktime
+        # TODO: This combines all folds and parameters into 1 list.
+        # TODO: See sklearn implementation and reconcile
+        """
+        n_candidates = len(candidate_params)
+        (test_scores_dict, fit_time, score_time) = zip(*out)
+        test_scores_dict = _aggregate_score_dicts(test_scores_dict)
+
+        results = {}
+
+        # # From sktime
+        # def _store_sktime(
+        #     key_name, array, rank=False, greater_is_better=False
+        # ):
+        #     """A small helper to store the scores/times to the cv_results_"""
+        #     # When iterated first by splits, then by parameters
+        #     # We want `array` to have `n_candidates` rows and `n_splits` cols.
+        #     array = np.array(array, dtype=np.float64)
+
+        #     results["mean_%s" % key_name] = array
+
+        #     if rank:
+        #         array = -array if greater_is_better else array
+        #         results["rank_%s" % key_name] = np.asarray(
+        #             rankdata(array, method="min"), dtype=np.int32
+        #         )
+
+        # From sklearn (with the addition of greater_is_better from sktime)
+        # INFO: For some reason, sklearn func does not work with sktime metrics
+        # without passing greater_is_better (as done in sktime) and processing
+        # it as such.
+        def _store(
+            key_name, array, weights=None,
+            splits=False, rank=False, greater_is_better=False
+        ):
+            """A small helper to store the scores/times to the cv_results_"""
+            # When iterated first by splits, then by parameters
+            # We want `array` to have `n_candidates` rows and `n_splits` cols.
+            array = np.array(array, dtype=np.float64).reshape(n_candidates,
+                                                              n_splits)
+            if splits:
+                for split_idx in range(n_splits):
+                    # Uses closure to alter the results
+                    results["split%d_%s"
+                            % (split_idx, key_name)] = array[:, split_idx]
+
+            array_means = np.average(array, axis=1, weights=weights)
+            results['mean_%s' % key_name] = array_means
+
+            if (key_name.startswith(("train_", "test_")) and
+                    np.any(~np.isfinite(array_means))):
+                warnings.warn(
+                    f"One or more of the {key_name.split('_')[0]} scores "
+                    f"are non-finite: {array_means}",
+                    category=UserWarning
+                )
+
+            # Weighted std is not directly available in numpy
+            array_stds = np.sqrt(np.average((array -
+                                             array_means[:, np.newaxis]) ** 2,
+                                            axis=1, weights=weights))
+            results['std_%s' % key_name] = array_stds
+
+            if rank:
+                # This section is taken from sktime
+                array_means = -array_means if greater_is_better else array_means
+                results["rank_%s" % key_name] = np.asarray(
+                    rankdata(array_means, method="min"), dtype=np.int32
+                )
+
+        _store("fit_time", fit_time)
+        _store("score_time", score_time)
+        # Use one MaskedArray and mask all the places where the param is not
+        # applicable for that candidate. Use defaultdict as each candidate may
+        # not contain all the params
+        param_results = defaultdict(
+            partial(
+                np.ma.MaskedArray,
+                np.empty(
+                    n_candidates,
+                ),
+                mask=True,
+                dtype=object,
+            )
+        )
+        for cand_i, params in enumerate(candidate_params):
+            for name, value in params.items():
+                # An all masked empty array gets created for the key
+                # `"param_%s" % name` at the first occurrence of `name`.
+                # Setting the value at an index also unmasks that index
+                param_results["param_%s" % name][cand_i] = value
+
+        results.update(param_results)
+        # Store a list of param dicts at the key "params"
+        results["params"] = candidate_params
+
+        for scorer_name, scorer in scorers.items():
+            # Computed the (weighted) mean and std for test scores alone
+            # _store_sktime(
+            #     "test_%s" % scorer_name,
+            #     test_scores_dict[scorer_name],
+            #     rank=True,
+            #     greater_is_better=scorer.greater_is_better,
+            # )
+            _store(
+                'test_%s' % scorer_name,
+                test_scores_dict[scorer_name],
+                splits=True,
+                rank=True,
+                weights=None,
+                greater_is_better=scorer.greater_is_better
+            )
+
+        return results
+
+class ForecastingGridSearchCV(BaseGridSearch):
+    def __init__(
+        self,
+        forecaster,
+        cv,
+        param_grid,
+        scoring=None,
+        n_jobs=None,
+        refit=True,
+        verbose=0,
+        pre_dispatch="2*n_jobs",
+        error_score=np.nan,
+        return_train_score=False,
+    ):
+        super(ForecastingGridSearchCV, self).__init__(
+            forecaster=forecaster,
+            scoring=scoring,
+            n_jobs=n_jobs,
+            refit=refit,
+            cv=cv,
+            verbose=verbose,
+            pre_dispatch=pre_dispatch,
+            error_score=error_score,
+            return_train_score=return_train_score,
+        )
+        self.param_grid = param_grid
+        _check_param_grid(param_grid)
+
+    def _run_search(self, evaluate_candidates):
+        """Search all candidates in param_grid"""
+        evaluate_candidates(ParameterGrid(self.param_grid))

@@ -255,8 +255,11 @@ class ArimaContainer(TimeSeriesContainer):
 
         args = {}
         tune_args = {}
-        # tune_grid = {"fit_intercept": [True, False], "normalize": [True, False]}
-        tune_grid = {}
+        # TODO: Temporary placeholder
+        # (will need to define properly later with seasonality parameters, etc.)
+        tune_grid = {
+            "seasonal_order": [(0,0,0,0), (0,1,0,12)]
+        }
         tune_distributions = {}
 
         if not gpu_imported:
