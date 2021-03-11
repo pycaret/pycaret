@@ -52,6 +52,11 @@ def load_ts_models(load_setup):
 models = ["naive", "poly_trend", "arima", "exp_smooth", "theta"]
 parametrize_list = [(choice(models))]
 
+models_small = ['naive', 'arima', 'exp_smooth']
+parametrize_list_small = [
+    (choice(models_small))
+]
+
 
 @pytest.mark.parametrize("model", parametrize_list)
 def test_create_model(model, load_data):
@@ -133,3 +138,29 @@ def test_blend_model_predict(load_setup, load_models):
     assert mean_median_equal == False
     assert mean_voting_equal == False
     assert median_voting_equal == False
+@pytest.mark.parametrize("model", parametrize_list_small)
+def test_tune_model(model, load_data):
+
+    from pycaret.internal.PycaretExperiment import TimeSeriesExperiment
+    exp = TimeSeriesExperiment()
+
+    exp.setup(
+        data=load_data,
+        fold=3,
+        fh=12,
+        fold_strategy="expandingwindow"
+    )
+
+    model_obj = exp.create_model(model)
+    tuned_model_obj = exp.tune_model(model_obj)
+    y_pred = tuned_model_obj.predict()
+    assert isinstance(y_pred, pd.Series)
+    expected = pd.core.indexes.period.PeriodIndex(
+        [
+            '1957-05', '1957-06', '1957-07', '1957-08', '1957-09', '1957-10',
+            '1957-11', '1957-12', '1958-01', '1958-02', '1958-03', '1958-04'
+        ],
+        dtype='period[M]',
+        freq='M'
+    )
+    assert np.all(y_pred.index == expected)
