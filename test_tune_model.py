@@ -100,15 +100,54 @@ grid_obj.fit(y=y, X=X, **fit_kwargs)
 print("STANDALONE DONE TEST")
 
 
-# %% 
+# %%
 from pycaret.internal.PycaretExperiment import TimeSeriesExperiment
 fh = np.arange(1,13)
 fold = 3
 
 exp = TimeSeriesExperiment()
 exp.setup(data=y, fh=fh, fold=fold, fold_strategy='expandingwindow')
-arima = exp.create_model("arima")
-tuned_arima = exp.tune_model(arima)
-print(tuned_arima)
+
+# # Works
+# naive = exp.create_model("naive")
+# tuned_naive = exp.tune_model(naive)
+# print(tuned_naive)
+
+# # Works
+# arima = exp.create_model("arima")
+# tuned_arima = exp.tune_model(arima)
+# print(tuned_arima)
+
+# # Works
+# exp_smooth = exp.create_model("exp_smooth")
+# tuned_exp_smooth = exp.tune_model(exp_smooth)
+# print(tuned_exp_smooth)
+
+# Gives error due to internal pipeline
+# Inside get_model_id --> get_estimator_from_meta_estimator
+# e.regressor_ equal to
+# Pipeline(memory=None,
+#          steps=[('polynomialfeatures',
+#                  PolynomialFeatures(degree=1, include_bias=True,
+#                                     interaction_only=False, order='C')),
+#                 ('linearregression',
+#                  LinearRegression(copy_X=True, fit_intercept=False, n_jobs=None,
+#                                   normalize=False))],
+#          verbose=False)
+
+# poly_trend = exp.create_model("poly_trend")
+# tuned_poly_trend = exp.tune_model(poly_trend)
+# print(tuned_poly_trend)
+
+
+# Gives an error since Theta Forecaster is calling ExponentialSmoothing internally.
+# So, estimator =
+# ThetaForecaster(deseasonalize=True, initial_level=None, sp=1)
+# But estimator_definition =
+# <pycaret.containers.models.time_series.ExponentialSmoothingContainer object at 0x000001DCCBD00648>
+
+# theta = exp.create_model("theta")
+# tuned_theta = exp.tune_model(theta)
+# print(tuned_theta)
 
 print("TUNE TEST DONE")

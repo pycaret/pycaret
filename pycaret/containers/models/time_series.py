@@ -194,7 +194,9 @@ class NaiveContainer(TimeSeriesContainer):
         args = {}
         tune_args = {}
         # tune_grid = {"fit_intercept": [True, False], "normalize": [True, False]}
-        tune_grid = {}
+        tune_grid = {
+            "strategy": ['last', 'mean', 'drift']
+        }
         tune_distributions = {}
 
         # if not gpu_imported:
@@ -224,8 +226,10 @@ class PolyTrendContainer(TimeSeriesContainer):
 
         args = {}
         tune_args = {}
-        # tune_grid = {"fit_intercept": [True, False], "normalize": [True, False]}
-        tune_grid = {}
+        tune_grid = {
+            "degree": [1,2,3,4,5],
+            "with_intercept": [True, False]
+        }
         tune_distributions = {}
 
         # if not gpu_imported:
@@ -290,7 +294,11 @@ class ExponentialSmoothingContainer(TimeSeriesContainer):
         args = {}
         tune_args = {}
         # tune_grid = {"fit_intercept": [True, False], "normalize": [True, False]}
-        tune_grid = {}
+        tune_grid = {
+            "trend": ["add", "mul", "additive", "multiplicative", None],
+            # "damped_trend": [True, False],
+            "seasonal": ["add", "mul", "additive", "multiplicative", None]
+        }
         tune_distributions = {}
 
         # if not gpu_imported:
@@ -352,7 +360,10 @@ class ThetaContainer(TimeSeriesContainer):
         args = {}
         tune_args = {}
         # tune_grid = {"fit_intercept": [True, False], "normalize": [True, False]}
-        tune_grid = {}
+        tune_grid = {
+            "initial_level": [0.1, 0.5, 0.9],
+            "deseasonalize": [True, False]
+        }
         tune_distributions = {}
 
         # if not gpu_imported:

@@ -2200,7 +2200,7 @@ class BaseGridSearch():
         # TODO: Add back later if it supports multiple metrics
         # scoring = check_scoring(self.scoring)
         scorers = self.scoring  # Multiple metrics supported
-        refit_metric = 'smape' 
+        refit_metric = 'smape'
 
         results = {}
         all_candidate_params = []
