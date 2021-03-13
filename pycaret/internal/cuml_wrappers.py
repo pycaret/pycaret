@@ -415,8 +415,10 @@ def get_ridge_classifier():
 
             super().fit(X, Y, convert_dtype=True)
             self.coef_ = np.expand_dims(self.coef_.to_output("numpy"), axis=0)
-            if self.intercept_ != 0:
+            try:
                 self.intercept_ = self.intercept_.to_output("numpy")
+            except AttributeError:
+                pass
             return self
 
         def _check_n_features(self, X, reset):
