@@ -2,6 +2,14 @@ import numpy as np
 from sklearn.utils.metaestimators import if_delegate_has_method
 from pycaret.internal.utils import get_all_object_vars_and_properties, is_fit_var
 from sklearn.multiclass import OneVsRestClassifier
+from scipy import sparse
+from sklearn.linear_model._base import LinearClassifierMixin
+from sklearn.multiclass import OneVsRestClassifier
+from sklearn.utils import check_array
+from sklearn.utils import column_or_1d
+from sklearn.utils.validation import check_X_y
+from sklearn.utils.validation import _deprecate_positional_args
+from sklearn.preprocessing import LabelBinarizer
 
 try:
     from cuml.cluster import DBSCAN as cuMLDBSCAN
@@ -139,15 +147,6 @@ except ImportError:
 def get_svc_classifier():
     return SVC
 
-
-from scipy import sparse
-from sklearn.linear_model._base import LinearClassifierMixin
-from sklearn.multiclass import OneVsRestClassifier
-from sklearn.utils import check_array
-from sklearn.utils import column_or_1d
-from sklearn.utils.validation import check_X_y
-from sklearn.utils.validation import _deprecate_positional_args
-from sklearn.preprocessing import LabelBinarizer
 
 try:
     from cuml.linear_model import Ridge
