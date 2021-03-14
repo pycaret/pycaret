@@ -19,12 +19,8 @@ from sktime.forecasting.base import ForecastingHorizon
 warnings.filterwarnings("ignore")
 
 _CURRENT_EXPERIMENT = None
-_CURRENT_EXPERIMENT_EXCEPTION = (
-    "_CURRENT_EXPERIMENT global variable is not set. Please run setup() first."
-)
-_CURRENT_EXPERIMENT_DECORATOR_DICT = {
-    "_CURRENT_EXPERIMENT": _CURRENT_EXPERIMENT_EXCEPTION
-}
+_CURRENT_EXPERIMENT_EXCEPTION = "_CURRENT_EXPERIMENT global variable is not set. Please run setup() first."
+_CURRENT_EXPERIMENT_DECORATOR_DICT = {"_CURRENT_EXPERIMENT": _CURRENT_EXPERIMENT_EXCEPTION}
 
 
 def setup(
@@ -40,9 +36,7 @@ def setup(
     fh: Union[List[int], int, np.ndarray] = 1,
     n_jobs: Optional[int] = -1,
     use_gpu: bool = False,
-    custom_pipeline: Union[
-        Any, Tuple[str, Any], List[Any], List[Tuple[str, Any]]
-    ] = None,
+    custom_pipeline: Union[Any, Tuple[str, Any], List[Any], List[Tuple[str, Any]]] = None,
     html: bool = True,
     session_id: Optional[int] = None,
     log_experiment: bool = False,
@@ -683,72 +677,72 @@ def ensemble_model(
 ) -> Any:
 
     """
-     This function ensembles a given estimator. The output of this function is
-     a score grid with CV scores by fold. Metrics evaluated during CV can be
-     accessed using the ``get_metrics`` function. Custom metrics can be added
-     or removed using ``add_metric`` and ``remove_metric`` function.
+    This function ensembles a given estimator. The output of this function is
+    a score grid with CV scores by fold. Metrics evaluated during CV can be
+    accessed using the ``get_metrics`` function. Custom metrics can be added
+    or removed using ``add_metric`` and ``remove_metric`` function.
 
 
-     Example
-     --------
-     >>> from pycaret.datasets import get_data
-     >>> boston = get_data('boston')
-     >>> from pycaret.regression import *
-     >>> exp_name = setup(data = boston,  target = 'medv')
-     >>> dt = create_model('dt')
-     >>> bagged_dt = ensemble_model(dt, method = 'Bagging')
+    Example
+    --------
+    >>> from pycaret.datasets import get_data
+    >>> boston = get_data('boston')
+    >>> from pycaret.regression import *
+    >>> exp_name = setup(data = boston,  target = 'medv')
+    >>> dt = create_model('dt')
+    >>> bagged_dt = ensemble_model(dt, method = 'Bagging')
 
 
     estimator: scikit-learn compatible object
-         Trained model object
+        Trained model object
 
 
-     method: str, default = 'Bagging'
-         Method for ensembling base estimator. It can be 'Bagging' or 'Boosting'.
+    method: str, default = 'Bagging'
+        Method for ensembling base estimator. It can be 'Bagging' or 'Boosting'.
 
 
-     fold: int or scikit-learn compatible CV generator, default = None
-         Controls cross-validation. If None, the CV generator in the ``fold_strategy``
-         parameter of the ``setup`` function is used. When an integer is passed,
-         it is interpreted as the 'n_splits' parameter of the CV generator in the
-         ``setup`` function.
+    fold: int or scikit-learn compatible CV generator, default = None
+        Controls cross-validation. If None, the CV generator in the ``fold_strategy``
+        parameter of the ``setup`` function is used. When an integer is passed,
+        it is interpreted as the 'n_splits' parameter of the CV generator in the
+        ``setup`` function.
 
 
-     n_estimators: int, default = 10
-         The number of base estimators in the ensemble. In case of perfect fit, the
-         learning procedure is stopped early.
+    n_estimators: int, default = 10
+        The number of base estimators in the ensemble. In case of perfect fit, the
+        learning procedure is stopped early.
 
 
-     round: int, default = 4
-         Number of decimal places the metrics in the score grid will be rounded to.
+    round: int, default = 4
+        Number of decimal places the metrics in the score grid will be rounded to.
 
 
-     choose_better: bool, default = False
-         When set to True, the returned object is always better performing. The
-         metric used for comparison is defined by the ``optimize`` parameter.
+    choose_better: bool, default = False
+        When set to True, the returned object is always better performing. The
+        metric used for comparison is defined by the ``optimize`` parameter.
 
 
-     optimize: str, default = 'R2'
-         Metric to compare for model selection when ``choose_better`` is True.
+    optimize: str, default = 'R2'
+        Metric to compare for model selection when ``choose_better`` is True.
 
 
-     fit_kwargs: dict, default = {} (empty dict)
-         Dictionary of arguments passed to the fit method of the model.
+    fit_kwargs: dict, default = {} (empty dict)
+        Dictionary of arguments passed to the fit method of the model.
 
 
-     groups: str or array-like, with shape (n_samples,), default = None
-         Optional group labels when GroupKFold is used for the cross validation.
-         It takes an array with shape (n_samples, ) where n_samples is the number
-         of rows in training dataset. When string is passed, it is interpreted as
-         the column name in the dataset containing group labels.
+    groups: str or array-like, with shape (n_samples,), default = None
+        Optional group labels when GroupKFold is used for the cross validation.
+        It takes an array with shape (n_samples, ) where n_samples is the number
+        of rows in training dataset. When string is passed, it is interpreted as
+        the column name in the dataset containing group labels.
 
 
-     verbose: bool, default = True
-         Score grid is not printed when verbose is set to False.
+    verbose: bool, default = True
+        Score grid is not printed when verbose is set to False.
 
 
-     Returns:
-         Trained Model
+    Returns:
+        Trained Model
 
     """
 
@@ -1477,9 +1471,7 @@ def save_model(model, model_name: str, model_only: bool = False, verbose: bool =
 
     """
 
-    return _CURRENT_EXPERIMENT.save_model(
-        model=model, model_name=model_name, model_only=model_only, verbose=verbose
-    )
+    return _CURRENT_EXPERIMENT.save_model(model=model, model_name=model_name, model_only=model_only, verbose=verbose)
 
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
@@ -1582,9 +1574,7 @@ def automl(optimize: str = "R2", use_holdout: bool = False, turbo: bool = True) 
 
     """
 
-    return _CURRENT_EXPERIMENT.automl(
-        optimize=optimize, use_holdout=use_holdout, turbo=turbo
-    )
+    return _CURRENT_EXPERIMENT.automl(optimize=optimize, use_holdout=use_holdout, turbo=turbo)
 
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
@@ -1644,9 +1634,7 @@ def models(
         pandas.DataFrame
 
     """
-    return _CURRENT_EXPERIMENT.models(
-        type=type, internal=internal, raise_errors=raise_errors
-    )
+    return _CURRENT_EXPERIMENT.models(type=type, internal=internal, raise_errors=raise_errors)
 
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
@@ -1976,9 +1964,7 @@ def set_current_experiment(experiment: TimeSeriesExperiment):
     global _CURRENT_EXPERIMENT
 
     if not isinstance(experiment, TimeSeriesExperiment):
-        raise TypeError(
-            f"experiment must be a PyCaret TimeSeriesExperiment object, got {type(experiment)}."
-        )
+        raise TypeError(f"experiment must be a PyCaret TimeSeriesExperiment object, got {type(experiment)}.")
     _CURRENT_EXPERIMENT = experiment
 
 
@@ -2006,9 +1992,7 @@ def get_folds(cv, y) -> Tuple[pd.Series, pd.Series]:
             y_test_initial = y.iloc[test_initial]  # Includes all entries after y_train
 
             rolling_y_train = y_train_initial.copy(deep=True)
-            y_test = y_test_initial.iloc[
-                np.arange(len(cv.fh))
-            ]  # filter to only what is needed
+            y_test = y_test_initial.iloc[np.arange(len(cv.fh))]  # filter to only what is needed
         else:
             # Subsequent Splits in sktime
             for j, (train, test) in enumerate(cv.split(y_test_initial)):
@@ -2017,18 +2001,14 @@ def get_folds(cv, y) -> Tuple[pd.Series, pd.Series]:
                     y_test = y_test_initial.iloc[test]
 
                     rolling_y_train = pd.concat([rolling_y_train, y_train])
-                    rolling_y_train = rolling_y_train[
-                        ~rolling_y_train.index.duplicated(keep="first")
-                    ]
+                    rolling_y_train = rolling_y_train[~rolling_y_train.index.duplicated(keep="first")]
 
                     if isinstance(cv, SlidingWindowSplitter):
                         rolling_y_train = rolling_y_train.iloc[-cv.initial_window :]
         yield rolling_y_train.index, y_test.index
 
 
-def cross_validate_ts(
-    forecaster, y, X, cv, scoring, fit_params, n_jobs, return_train_score, error_score=0
-):
+def cross_validate_ts(forecaster, y, X, cv, scoring, fit_params, n_jobs, return_train_score, error_score=0):
     from pycaret.time_series import get_folds
 
     scores = {f"test_{scorer_name}": [] for scorer_name, _ in scoring.items()}
@@ -2044,9 +2024,7 @@ def cross_validate_ts(
             or (len(y_test) != len(cv.fh))
             or ((len(y_pred) != len(cv.fh)))
         ):
-            print(
-                f"\t y_train: {y_train.index.values}, \n\t y_test: {y_test.index.values}"
-            )
+            print(f"\t y_train: {y_train.index.values}, \n\t y_test: {y_test.index.values}")
             print(f"\t y_pred: {y_pred.index.values}")
             raise ValueError(
                 "y_test indices do not match y_pred_indices or split/prediction length does not match forecast horizon."

@@ -171,6 +171,10 @@ def _mase_loss(y_true, y_pred, y_train):
 
 
 def _check_series(y):
+    """
+    Check wheter or not y is pandas.Series. Pycaret Experiment
+    internally converts data to pandas.DataFrame.
+    """
     if isinstance(y, Series):
         return y
     elif isinstance(y, DataFrame):
@@ -178,6 +182,7 @@ def _check_series(y):
 
 
 def _set_y_as_series(y):
+    """Set first column of a DataFrame as pandas.Series"""
     return Series(y.iloc[:, 0])
 
 
@@ -237,9 +242,7 @@ class MAPEMetricContainer(TimeSeriesMetricContainer):
 #         )
 
 
-def get_all_metric_containers(
-    globals_dict: dict, raise_errors: bool = True
-) -> Dict[str, TimeSeriesMetricContainer]:
+def get_all_metric_containers(globals_dict: dict, raise_errors: bool = True) -> Dict[str, TimeSeriesMetricContainer]:
     return pycaret.containers.base_container.get_all_containers(
         globals(), globals_dict, TimeSeriesMetricContainer, raise_errors
     )
