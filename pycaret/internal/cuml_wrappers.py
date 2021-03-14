@@ -3,8 +3,7 @@ from sklearn.utils.metaestimators import if_delegate_has_method
 from pycaret.internal.utils import get_all_object_vars_and_properties, is_fit_var
 from sklearn.multiclass import OneVsRestClassifier
 
-
-def get_dbscan():
+try:
     from cuml.cluster import DBSCAN as cuMLDBSCAN
 
     class DBSCAN(cuMLDBSCAN):
@@ -14,10 +13,16 @@ def get_dbscan():
         def fit_predict(self, X, y=None, out_dtype="int32"):
             return super().fit_predict(X, out_dtype=out_dtype)
 
+
+except ImportError:
+    DBSCAN = None
+
+
+def get_dbscan():
     return DBSCAN
 
 
-def get_kmeans():
+try:
     from cuml.cluster import KMeans as cuMLKMeans
 
     class KMeans(cuMLKMeans):
@@ -27,19 +32,17 @@ def get_kmeans():
         def fit_predict(self, X, y=None, sample_weight=None):
             return super().fit_predict(X, sample_weight=sample_weight)
 
+
+except ImportError:
+    KMeans = None
+
+
+def get_kmeans():
+
     return KMeans
 
 
-def get_svc_classifier():
-    from scipy import sparse
-
-    from sklearn.linear_model._base import LinearClassifierMixin
-    from sklearn.utils import check_array
-    from sklearn.utils import column_or_1d
-    from sklearn.utils.validation import check_X_y
-    from sklearn.utils.validation import _deprecate_positional_args
-    from sklearn.preprocessing import LabelBinarizer
-
+try:
     from cuml.svm import SVC as cuMLSVC
 
     class SVC(OneVsRestClassifier):
@@ -128,20 +131,25 @@ def get_svc_classifier():
 
             return self
 
+
+except ImportError:
+    SVC = None
+
+
+def get_svc_classifier():
     return SVC
 
 
-def get_ridge_classifier():
-    from scipy import sparse
+from scipy import sparse
+from sklearn.linear_model._base import LinearClassifierMixin
+from sklearn.multiclass import OneVsRestClassifier
+from sklearn.utils import check_array
+from sklearn.utils import column_or_1d
+from sklearn.utils.validation import check_X_y
+from sklearn.utils.validation import _deprecate_positional_args
+from sklearn.preprocessing import LabelBinarizer
 
-    from sklearn.linear_model._base import LinearClassifierMixin
-    from sklearn.multiclass import OneVsRestClassifier
-    from sklearn.utils import check_array
-    from sklearn.utils import column_or_1d
-    from sklearn.utils.validation import check_X_y
-    from sklearn.utils.validation import _deprecate_positional_args
-    from sklearn.preprocessing import LabelBinarizer
-
+try:
     from cuml.linear_model import Ridge
 
     class RidgeClassifier(OneVsRestClassifier):
@@ -512,6 +520,13 @@ def get_ridge_classifier():
         @property
         def classes_(self):
             return self._label_binarizer.classes_
+
+
+except ImportError:
+    RidgeClassifier = None
+
+
+def get_ridge_classifier():
 
     return RidgeClassifier
 
