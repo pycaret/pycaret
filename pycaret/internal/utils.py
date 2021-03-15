@@ -568,11 +568,14 @@ def get_all_object_vars_and_properties(object):
     
     https://stackoverflow.com/a/59769926
     """
-    return {
-        k: getattr(object, k, "")
-        for k in object.__dir__()
-        if k[:2] != "__" and type(getattr(object, k, "")).__name__ != "method"
-    }
+    d = {}
+    for k in object.__dir__():
+        try:
+            if k[:2] != "__" and type(getattr(object, k, "")).__name__ != "method":
+                d[k] = getattr(object, k, "")
+        except:
+            pass
+    return d
 
 
 def is_fit_var(key):
