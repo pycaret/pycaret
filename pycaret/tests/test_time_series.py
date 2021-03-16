@@ -107,3 +107,29 @@ def test_blend_model(load_setup, load_models, method):
     blender_forecasters_class = [f.__class__ for f in blender_forecasters]
     ts_models_class = [f.__class__ for f in ts_models]
     assert blender_forecasters_class == ts_models_class
+
+
+def test_blend_model_predict(load_setup, load_models):
+
+    from pycaret.internal.ensemble import _EnsembleForecasterWithVoting
+
+    ts_experiment = load_setup
+    ts_models = load_models
+    ts_weights = [uniform(0, 1) for _ in range(len(load_models))]
+    fh = ts_experiment.fh
+
+    mean_blender = ts_experiment.blend_models(ts_models, method='mean', optimize='MAPE_ts')
+    median_blender = ts_experiment.blend_models(ts_models, method='median', optimize='MAPE_ts')
+    voting_blender = ts_experiment.blend_models(ts_models, method='voting', weights=ts_weights, optimize='MAPE_ts')
+
+    mean_blender_pred = mean_blender.predict(fh=fh)
+    median_blender_pred = median_blender.predict(fh=fh)
+    voting_blender_pred = voting_blender.predict(fh=fh)
+
+    mean_median_equal = np.array_equal(mean_blender_pred, median_blender_pred)
+    mean_voting_equal = np.array_equal(mean_blender_pred, voting_blender_pred)
+    median_voting_equal = np.array_equal(median_blender_pred, voting_blender_pred)
+
+    assert mean_median_equal == False
+    assert mean_voting_equal == False
+    assert median_voting_equal == False
