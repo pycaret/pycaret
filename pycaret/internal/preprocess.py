@@ -3372,6 +3372,7 @@ def Preprocess_Path_One(
     pca_variance_retained_or_number_of_components=0.99,
     random_state=42,
     n_jobs=-1,
+    float_dtype="float32",
 ):
 
     """
@@ -3423,6 +3424,7 @@ def Preprocess_Path_One(
         id_columns=find_id_columns(
             train_data, target_variable, numerical_features=numerical_features
         ),
+        float_dtype=float_dtype,
     )
 
     # for imputation
@@ -3496,7 +3498,7 @@ def Preprocess_Path_One(
         )
     elif apply_cardinality_reduction == True and cardinal_method == "count":
         cardinality = Reduce_Cardinality_with_Counts(
-            catagorical_feature=cardinal_features
+            catagorical_feature=cardinal_features, float_dtype=float_dtype,
         )
     else:
         cardinality = SKLEARN_EMPTY_STEP
@@ -3533,6 +3535,7 @@ def Preprocess_Path_One(
             random_state=random_state,
             subclass=subcase,
             n_jobs=n_jobs,
+            float_dtype=float_dtype,
         )
     else:
         nonliner = SKLEARN_EMPTY_STEP
