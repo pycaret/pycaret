@@ -10,6 +10,15 @@
 
 import logging
 from typing import Union, Dict, Any, Optional
+
+
+from sktime.forecasting.base._sktime import _SktimeForecaster
+from sktime.forecasting.compose import ReducedForecaster, TransformedTargetForecaster
+from sktime.forecasting.trend import PolynomialTrendForecaster
+from sktime.transformations.series.detrend import Deseasonalizer, Detrender
+from sklearn.ensemble import RandomForestRegressor
+
+
 from pycaret.containers.models.base_model import (
     ModelContainer,
     leftover_parameters_to_categorical_distributions,
@@ -426,52 +435,33 @@ class EnsembleTimeSeriesContainer(TimeSeriesContainer):
 
 
 # # TODO: Does not work
-# class RandomForestDTSContainer(TimeSeriesContainer):
-#     def __init__(self, globals_dict: dict) -> None:
-#         logger = get_logger()
-#         np.random.seed(globals_dict["seed"])
-#         gpu_imported = False
+class RandomForestDTSContainer(TimeSeriesContainer):
+    def __init__(self, globals_dict: dict) -> None:
+        logger = get_logger()
+        np.random.seed(globals_dict["seed"])
+        gpu_imported = False
 
-#         from sktime.forecasting.compose import ReducedForecaster, TransformedTargetForecaster
-#         from sktime.forecasting.trend import PolynomialTrendForecaster
-#         from sktime.transformations.series.detrend import Deseasonalizer, Detrender
-#         from sklearn.ensemble import RandomForestRegressor
+        args = {}
+        tune_args = {}
+        # tune_grid = {"fit_intercept": [True, False], "normalize": [True, False]}
+        tune_grid = {}
+        tune_distributions = {}
 
-#         args = {}
-#         tune_args = {}
-#         # tune_grid = {"fit_intercept": [True, False], "normalize": [True, False]}
-#         tune_grid = {}
-#         tune_distributions = {}
+        # if not gpu_imported:
+        #     args["n_jobs"] = globals_dict["n_jobs_param"]
 
-#         if not gpu_imported:
-#             args["n_jobs"] = globals_dict["n_jobs_param"]
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
-#         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
-
-#         regressor = RandomForestRegressor()
-#         forecaster = TransformedTargetForecaster(
-#             [
-#                 ("deseasonalise", Deseasonalizer(model="multiplicative", sp=12)),
-#                 ("detrend", Detrender(forecaster=PolynomialTrendForecaster(degree=1))),
-#                 (
-#                     "forecast",
-#                     ReducedForecaster(
-#                         regressor=regressor, scitype='regressor', window_length=12, strategy="recursive"
-#                     ),
-#                 ),
-#             ]
-#         )
-
-#         super().__init__(
-#             id="rf_dts",
-#             name="RandomForestDTS",
-#             class_def=forecaster,
-#             args=args,
-#             tune_grid=tune_grid,
-#             tune_distribution=tune_distributions,
-#             tune_args=tune_args,
-#             is_gpu_enabled=gpu_imported
-#         )
+        super().__init__(
+            id="rf_dts",
+            name="RandomForestDTS",
+            class_def=RandomForestDTS,
+            args=args,
+            tune_grid=tune_grid,
+            tune_distribution=tune_distributions,
+            tune_args=tune_args,
+            is_gpu_enabled=gpu_imported
+        )
 
 
 def get_all_model_containers(
@@ -480,3 +470,69 @@ def get_all_model_containers(
     return pycaret.containers.base_container.get_all_containers(
         globals(), globals_dict, TimeSeriesContainer, raise_errors
     )
+
+
+class BaseDTS(_SktimeForecaster):
+    def __init__(self, regressor, sp=1, model='additive', degree=1, window_length=10):
+        """Base Class for time series using scikit models which includes
+        Deseasonalizing and Detrending
+
+        Parameters
+        ----------
+        regressor : [type]
+            [description]
+        sp : int, optional
+            Seasonality period used to deseasonalize, by default 1
+        model : str, optional
+            model used to deseasonalize, 'multiplicative' or 'additive', by default 'additive'
+        degree : int, optional
+            degree of detrender, by default 1
+        window_length : int, optional
+            Window Length used for the Reduced Forecaster, by default 10
+        """
+        self.regressor = regressor
+        self.sp = sp
+        self.model = model
+        self.degree = degree
+        self.window_length = window_length
+
+    def fit(self, y, X=None, fh=None):
+        self.forecaster = TransformedTargetForecaster(
+            [
+                (
+                    "deseasonalise",
+                    Deseasonalizer(model=self.model, sp=self.sp)
+                ),
+                (
+                    "detrend",
+                    Detrender(
+                        forecaster=PolynomialTrendForecaster(degree=self.degree)
+                    )
+                ),
+                (
+                    "forecast",
+                    ReducedForecaster(
+                        regressor=self.regressor,
+                        scitype='regressor',
+                        window_length=self.window_length,
+                        strategy="recursive"
+                    ),
+                ),
+            ]
+        )
+        self.forecaster.fit(y=y, X=X, fh=fh)
+        return self
+
+    def predict(self, X=None):
+        return self.forecaster.predict(X=X)
+
+class RandomForestDTS(BaseDTS):
+    def __init__(self, sp=1, model='additive', degree=1, window_length=10):
+        regressor = RandomForestRegressor()
+        super(RandomForestDTS, self).__init__(
+            regressor=regressor,
+            sp=sp,
+            model=model,
+            degree=degree,
+            window_length=window_length
+        )
