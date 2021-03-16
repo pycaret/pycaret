@@ -52,12 +52,6 @@ def load_ts_models(load_setup):
 models = ["naive", "poly_trend", "arima", "exp_smooth", "theta"]
 parametrize_list = [(choice(models))]
 
-models_small = ['naive', 'arima', 'exp_smooth']
-parametrize_list_small = [
-    (choice(models_small))
-]
-
-
 @pytest.mark.parametrize("model", parametrize_list)
 def test_create_model(model, load_data):
 
@@ -138,7 +132,8 @@ def test_blend_model_predict(load_setup, load_models):
     assert mean_median_equal == False
     assert mean_voting_equal == False
     assert median_voting_equal == False
-@pytest.mark.parametrize("model", parametrize_list_small)
+
+@pytest.mark.parametrize("model", parametrize_list)
 def test_tune_model(model, load_data):
 
     from pycaret.internal.PycaretExperiment import TimeSeriesExperiment

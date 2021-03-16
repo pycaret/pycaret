@@ -15810,10 +15810,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         return pycaret.containers.metrics.time_series.get_all_metric_containers(
             self.variables, raise_errors=raise_errors
         )
-        # TODO: Temporary
-        # return pycaret.containers.metrics.regression.get_all_metric_containers(
-        #     self.variables, raise_errors=raise_errors
-        # )
 
     def setup(
         self,
@@ -16064,7 +16060,8 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         # data.index = data.index.astype("datetime64[ns]")
         if len(data.index) != len(set(data.index)):
             raise ValueError("Index may not have duplicate values!")
-        data[data.columns[0]] = data[data.columns[0]].astype("float32")
+        # TODO: Check with @Miguel: Why is this needed (float32 causes issues with scipy optimize)
+        # data[data.columns[0]] = data[data.columns[0]].astype("float32")
         return super().setup(
             data=data,
             target=data.columns[0],
@@ -16373,8 +16370,10 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         """
         MONITOR UPDATE ENDS
         """
-
+        # TODO: pass metrics dict to cross_validate_ts instead of metrics (also update cross_validate_ts to use scorers directly)
+        # Also change to dict comprehension (for efficiency)
         metrics_dict = dict([(k, v.scorer) for k, v in metrics.items()])
+        # metrics_dict = {k, v.scorer for k, v in metrics.items()}
 
         self.logger.info("Starting cross validation")
 
@@ -16385,16 +16384,14 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         self.logger.info(f"Cross validating with {cv}, n_jobs={n_jobs}")
 
         # Cross Validate time series
-        # TODO: Temporarily disabling parallelization for debug (parallelization makes debugging harder)
-        # fit_kwargs = {'fh': self.fh}
-        fh_param = {"fh": cv.fh}
+        fh_param = {'fh': cv.fh}
         if fit_kwargs is None:
             fit_kwargs = fh_param
         else:
             fit_kwargs.update(fh_param)
         # fit_kwargs.update({'actual_estimator__fh': self.fh})
-        # TODO: Check why n_jobs is set to 1
-        n_jobs=1
+        # # TODO: Temporarily disabling parallelization for debug (parallelization makes debugging harder)
+        # n_jobs=1
 
         model_fit_start = time.time()
 
@@ -16828,12 +16825,14 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             estimator_definition = None
             self.logger.info("A custom model has been passed")
         else:
-            estimator_definition = self._all_models_internal[estimator_id]
+            estimator_definition = self._all_models_internal[estimator_id]  # Container
             estimator_name = estimator_definition.name
         self.logger.info(f"Base model : {estimator_name}")
 
+        # If no special tunable class is defined inside PyCaret then just clone the estimator
         if estimator_definition is None or estimator_definition.tunable is None:
             model = clone(estimator)
+        # If special tunable class is defined, then use that instead
         else:
             self.logger.info("Model has a special tunable class, using that")
             model = clone(estimator_definition.tunable(**estimator.get_params()))

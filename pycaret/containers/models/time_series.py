@@ -306,6 +306,8 @@ class ExponentialSmoothingContainer(TimeSeriesContainer):
 
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
+        eq_function = lambda x: type(x) is ExponentialSmoothing
+
         super().__init__(
             id="exp_smooth",
             name="ExponentialSmoothing",
@@ -315,9 +317,11 @@ class ExponentialSmoothingContainer(TimeSeriesContainer):
             tune_distribution=tune_distributions,
             tune_args=tune_args,
             is_gpu_enabled=gpu_imported,
+            eq_function=eq_function  # Added to differentiate between ExponentialSmoothing and Theta which are of same parent class
         )
 
 
+# # TODO: Does not work
 # class AutoETSContainer(TimeSeriesContainer):
 #     def __init__(self, globals_dict: dict) -> None:
 #         logger = get_logger()
@@ -359,9 +363,11 @@ class ThetaContainer(TimeSeriesContainer):
 
         args = {}
         tune_args = {}
-        # tune_grid = {"fit_intercept": [True, False], "normalize": [True, False]}
+        # TODO; Update after Bug is fixed in sktime
+        # https://github.com/alan-turing-institute/sktime/issues/692
+        # ThetaForecaster does not work with "initial_level" different from None
         tune_grid = {
-            "initial_level": [0.1, 0.5, 0.9],
+            # "initial_level": [0.1, 0.5, 0.9],
             "deseasonalize": [True, False]
         }
         tune_distributions = {}
@@ -370,6 +376,8 @@ class ThetaContainer(TimeSeriesContainer):
         #     args["n_jobs"] = globals_dict["n_jobs_param"]
 
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+
+        eq_function = lambda x: type(x) is ThetaForecaster
 
         super().__init__(
             id="theta",
@@ -380,6 +388,7 @@ class ThetaContainer(TimeSeriesContainer):
             tune_distribution=tune_distributions,
             tune_args=tune_args,
             is_gpu_enabled=gpu_imported,
+            eq_function=eq_function  # Added to differentiate between ExponentialSmoothing and Theta which are of same parent class
         )
 
 
@@ -413,7 +422,10 @@ class EnsembleTimeSeriesContainer(TimeSeriesContainer):
         )
 
 
-# # Does not work
+
+
+
+# # TODO: Does not work
 # class RandomForestDTSContainer(TimeSeriesContainer):
 #     def __init__(self, globals_dict: dict) -> None:
 #         logger = get_logger()

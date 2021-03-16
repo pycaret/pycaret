@@ -1,5 +1,6 @@
 import sklearn.compose
 from sklearn.preprocessing import PowerTransformer
+from sklearn.compose import TransformedTargetRegressor
 
 from pycaret.internal.utils import get_all_object_vars_and_properties, is_fit_var
 
@@ -142,6 +143,11 @@ def get_estimator_from_meta_estimator(estimator):
     Otherwise return ``estimator``. Will try to return the fitted
     estimator first.
     """
+    # If estimator is not of type Meta Estimator, return as is
+    if not isinstance(estimator, TransformedTargetRegressor):
+        return estimator
+
+    # Else, returning the actual estimator from inside the meta estimator
     try:
         return estimator.regressor_
     except:
