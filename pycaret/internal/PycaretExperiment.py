@@ -1343,7 +1343,7 @@ class _TabularExperiment(_PyCaretExperiment):
             "groupkfold",
             "timeseries",
             "expandingwindow",
-            "slidingwindow"
+            "slidingwindow",
         ]
         if not (
             fold_strategy in possible_fold_strategy
@@ -1372,7 +1372,9 @@ class _TabularExperiment(_PyCaretExperiment):
 
         # checking fh parameter
         if not isinstance(fh, (int, list, np.ndarray)):
-            raise TypeError(f"fh parameter accepts integer. list or np.array value. Provided values is {type(fh)}")
+            raise TypeError(
+                f"fh parameter accepts integer. list or np.array value. Provided values is {type(fh)}"
+            )
 
         # fold_shuffle
         if type(fold_shuffle) is not bool:
@@ -1789,6 +1791,9 @@ class _TabularExperiment(_PyCaretExperiment):
             feature_interactions_top_features_to_select_percentage=interaction_threshold,
             display_types=display_dtypes_pass,  # this is for inferred input box
             random_state=self.seed,
+            float_dtype="float64"
+            if self._ml_usecase == MLUsecase.TIME_SERIES
+            else "float32",
         )
 
         dtypes = self.prep_pipe.named_steps["dtypes"]
@@ -2042,22 +2047,28 @@ class _TabularExperiment(_PyCaretExperiment):
                 self.fold_generator = GroupKFold(self.fold_param)
             elif fold_strategy == "timeseries":
                 self.fold_generator = TimeSeriesSplit(self.fold_param)
-            elif (fold_strategy == "expandingwindow") or (fold_strategy == "slidingwindow"):
+            elif (fold_strategy == "expandingwindow") or (
+                fold_strategy == "slidingwindow"
+            ):
                 if isinstance(self.data_before_preprocess, pd.DataFrame):
-                    y_size = len(self.y_train) # self.data_before_preprocess.size
+                    y_size = len(self.y_train)  # self.data_before_preprocess.size
                 elif isinstance(self.data_before_preprocess, pd.Series):
-                    y_size = len(self.y_train) # self.data_before_preprocess.size
+                    y_size = len(self.y_train)  # self.data_before_preprocess.size
                 else:
-                    raise TypeError("data parameter must be a pandas.Series or pandas.DataFrame.")
+                    raise TypeError(
+                        "data parameter must be a pandas.Series or pandas.DataFrame."
+                    )
 
                 # window_length = fh * (self.fold_param - 1)
                 window_length = len(fh)
                 step_length = len(fh)
                 initial_window = y_size - (self.fold_param * window_length)
-                #window_length = y_size - window_length
+                # window_length = y_size - window_length
 
                 if initial_window < 1:
-                    raise ValueError("Not Enough Data Points, set a lower number of folds or fh")
+                    raise ValueError(
+                        "Not Enough Data Points, set a lower number of folds or fh"
+                    )
 
                 if fold_strategy == "expandingwindow":
                     self.fold_generator = ExpandingWindowSplitter(
@@ -2065,7 +2076,7 @@ class _TabularExperiment(_PyCaretExperiment):
                         step_length=step_length,
                         window_length=window_length,
                         fh=fh,
-                        start_with_window=True
+                        start_with_window=True,
                     )
 
                 if fold_strategy == "slidingwindow":
@@ -2074,7 +2085,7 @@ class _TabularExperiment(_PyCaretExperiment):
                         step_length=step_length,
                         window_length=window_length,
                         fh=fh,
-                        start_with_window=True
+                        start_with_window=True,
                     )
             else:
                 self.fold_generator = fold_strategy
@@ -15754,7 +15765,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         )
         return
 
-
     def _get_setup_display(self, **kwargs) -> Styler:
         # define highlight function for function grid to display
 
@@ -16011,12 +16021,10 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         # Forecast Horizon Checks
         if fh is None:
-            raise ValueError(
-                    f"The forecast horizon `fh` must be provided"
-                )
+            raise ValueError(f"The forecast horizon `fh` must be provided")
         if isinstance(fh, int):
             if fh >= 1:
-                fh = np.arange(1, fh+1)
+                fh = np.arange(1, fh + 1)
             else:
                 raise ValueError(
                     f"If Forecast Horizon `fh` is an integer, it must be >= 1. You provided fh = '{fh}'!"
@@ -16028,8 +16036,8 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             pass
         else:
             raise ValueError(
-                    f"Horizon `fh` must be a of type int, list, or numpy array, got object of {type(fh)} type!"
-                )
+                f"Horizon `fh` must be a of type int, list, or numpy array, got object of {type(fh)} type!"
+            )
         self.fh = fh
 
         if not isinstance(data, pd.Series):
@@ -16051,7 +16059,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         index_type_check = False
         # if np.issubdtype(data.index.dtype, np.datetime64):
         #     index_type_check = True
-        allowed_index_types = (pd.core.indexes.period.PeriodIndex)
+        allowed_index_types = pd.core.indexes.period.PeriodIndex
         if isinstance(data.index, allowed_index_types):
             index_type_check = True
         if index_type_check is False:
@@ -16360,8 +16368,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         from pycaret.time_series import cross_validate_ts, _get_cv_n_folds
 
         display.update_monitor(
-            1,
-            f"Fitting {_get_cv_n_folds(data_y, cv)} Folds",
+            1, f"Fitting {_get_cv_n_folds(data_y, cv)} Folds",
         )
         display.display_monitor()
         """
@@ -16374,22 +16381,20 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         n_jobs = self._gpu_n_jobs_param
 
-
         # fit_kwargs = get_pipeline_fit_kwargs(pipeline_with_model, fit_kwargs)
 
         self.logger.info(f"Cross validating with {cv}, n_jobs={n_jobs}")
 
-
         # Cross Validate time series
         # TODO: Temporarily disabling parallelization for debug (parallelization makes debugging harder)
         # fit_kwargs = {'fh': self.fh}
-        fh_param = {'fh': cv.fh}
+        fh_param = {"fh": cv.fh}
         if fit_kwargs is None:
             fit_kwargs = fh_param
         else:
             fit_kwargs.update(fh_param)
         # fit_kwargs.update({'actual_estimator__fh': self.fh})
-        n_jobs=1
+        n_jobs = 1
 
         model_fit_start = time.time()
 
@@ -16402,7 +16407,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             fit_params=fit_kwargs,
             n_jobs=n_jobs,
             return_train_score=False,
-            error_score=0
+            error_score=0,
         )
 
         model_fit_end = time.time()
@@ -16444,7 +16449,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         # return model, model_fit_time, model_results, avgs_dict
         return model, model_fit_time, model_results, avgs_dict
-
 
     def tune_model(
         self,

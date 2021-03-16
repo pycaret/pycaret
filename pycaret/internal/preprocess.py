@@ -103,6 +103,7 @@ class DataTypes_Auto_infer(BaseEstimator, TransformerMixin):
         features_todrop=[],
         id_columns=[],
         display_types=True,
+        float_dtype="float32",
     ):  # nothing to define
         """
     User to define the target (y) variable
@@ -126,6 +127,7 @@ class DataTypes_Auto_infer(BaseEstimator, TransformerMixin):
         self.time_features = [x for x in time_features if x not in self.features_todrop]
         self.display_types = display_types
         self.id_columns = id_columns
+        self.float_dtype = float_dtype
 
     def fit(self, dataset, y=None):  # learning data types of all the columns
         """
@@ -186,7 +188,7 @@ class DataTypes_Auto_infer(BaseEstimator, TransformerMixin):
         # wiith csv , if we have any null in  a colum that was int , panda will read it as float.
         # so first we need to convert any such floats that have NaN and unique values are lower than 20
         for i in data.select_dtypes(include=["float64"]).columns:
-            data[i] = data[i].astype("float32")
+            data[i] = data[i].astype(self.float_dtype)
             # count how many Nas are there
             na_count = sum(data[i].isnull())
             # count how many digits are there that have decimiles
@@ -219,11 +221,11 @@ class DataTypes_Auto_infer(BaseEstimator, TransformerMixin):
             if data[i].nunique() <= 20:  # hard coded
                 data[i] = data[i].apply(str_if_not_null)
             else:
-                data[i] = data[i].astype("float32")
+                data[i] = data[i].astype(self.float_dtype)
 
         # # if colum is objfloat  and only have two unique counts , this is probabaly one hot encoded
         # # make it object
-        for i in data.select_dtypes(include=["float32"]).columns:
+        for i in data.select_dtypes(include=[self.float_dtype]).columns:
             if data[i].nunique() == 2:
                 data[i] = data[i].apply(str_if_not_null)
 
@@ -239,9 +241,9 @@ class DataTypes_Auto_infer(BaseEstimator, TransformerMixin):
 
         for i in self.numerical_features:
             try:
-                data[i] = data[i].astype("float32")
+                data[i] = data[i].astype(self.float_dtype)
             except:
-                data[i] = dataset[i].astype("float32")
+                data[i] = dataset[i].astype(self.float_dtype)
 
         for i in self.time_features:
             try:
@@ -307,7 +309,7 @@ class DataTypes_Auto_infer(BaseEstimator, TransformerMixin):
                         dt_print_out.loc[i, "Data Type"] = "ID Column"
                     elif dt_print_out.loc[i, "Feature_Type"] == "object":
                         dt_print_out.loc[i, "Data Type"] = "Categorical"
-                    elif dt_print_out.loc[i, "Feature_Type"] == "float32":
+                    elif dt_print_out.loc[i, "Feature_Type"] == self.float_dtype:
                         dt_print_out.loc[i, "Data Type"] = "Numeric"
                     elif dt_print_out.loc[i, "Feature_Type"] == "datetime64[ns]":
                         dt_print_out.loc[i, "Data Type"] = "Date"
@@ -691,25 +693,25 @@ class Surrogate_Imputer(_BaseImputer):
         if self.numeric_strategy == "mean":
             self.numeric_stats = (
                 data.drop(self.target, axis=1)
-                .select_dtypes(include=["float32", "int64"])
+                .select_dtypes(include=["float32", "float64", "int64"])
                 .apply(np.nanmean)
             )
         elif self.numeric_strategy == "median":
             self.numeric_stats = (
                 data.drop(self.target, axis=1)
-                .select_dtypes(include=["float32", "int64"])
+                .select_dtypes(include=["float32", "float64", "int64"])
                 .apply(np.nanmedian)
             )
         else:
             self.numeric_stats = (
                 data.drop(self.target, axis=1)
-                .select_dtypes(include=["float32", "int64"])
+                .select_dtypes(include=["float32", "float64", "int64"])
                 .apply(zeros)
             )
 
         self.numeric_columns = (
             data.drop(self.target, axis=1)
-            .select_dtypes(include=["float32", "int64"])
+            .select_dtypes(include=["float32", "float64", "int64"])
             .columns
         )
         # also need to learn if any columns had NA in training
@@ -1372,7 +1374,7 @@ class Scaling_and_Power_transformation(BaseEstimator, TransformerMixin):
         # we only want to apply if there are numeric columns
         self.numeric_features = (
             data.drop(self.target, axis=1, errors="ignore")
-            .select_dtypes(include=["float32", "int64"])
+            .select_dtypes(include=["float32", "float64", "int64"])
             .columns
         )
         if len(self.numeric_features) > 0:
@@ -2070,8 +2072,9 @@ class Reduce_Cardinality_with_Counts(BaseEstimator, TransformerMixin):
           catagorical_feature: list of features on which clustering is to be applied
   """
 
-    def __init__(self, catagorical_feature=[]):
+    def __init__(self, catagorical_feature=[], float_dtype="float32"):
         self.catagorical_feature = catagorical_feature
+        self.float_dtype = float_dtype
 
     def fit(self, data, y=None):
         self.fit_transform(data, y=y)
@@ -2082,7 +2085,7 @@ class Reduce_Cardinality_with_Counts(BaseEstimator, TransformerMixin):
         # we already know level counts
         for i, z, k in zip(self.catagorical_feature, self.ph_data, self.ph_u):
             data[i] = data[i].replace(k, z["counts"])
-            data[i] = data[i].astype("float32")
+            data[i] = data[i].astype(self.float_dtype)
 
         return data
 
@@ -2101,7 +2104,7 @@ class Reduce_Cardinality_with_Counts(BaseEstimator, TransformerMixin):
             u = data[i].unique()
             # replace levels with counts
             data[i].replace(u, data_t1["counts"], inplace=True)
-            data[i] = data[i].astype("float32")
+            data[i] = data[i].astype(self.float_dtype)
             self.ph_data.append(data_t1)
             self.ph_u.append(u)
 
@@ -2133,6 +2136,7 @@ class Make_NonLiner_Features(BaseEstimator, TransformerMixin):
         random_state=42,
         subclass="ignore",
         n_jobs=1,
+        float_dtype="float32",
     ):
         self.target = target
         self.polynomial_degree = polynomial_degree
@@ -2142,6 +2146,7 @@ class Make_NonLiner_Features(BaseEstimator, TransformerMixin):
         self.random_state = random_state
         self.subclass = subclass
         self.n_jobs = n_jobs
+        self.float_dtype = float_dtype
 
     def fit(self, data, y=None):
         self.fit_transform(data, y=y)
@@ -2152,7 +2157,7 @@ class Make_NonLiner_Features(BaseEstimator, TransformerMixin):
 
         self.numeric_columns = (
             data.drop(self.target, axis=1, errors="ignore")
-            .select_dtypes(include="float32")
+            .select_dtypes(include=self.float_dtype)
             .columns
         )
         if self.polynomial_degree >= 2:  # dont run anything if powr is les than 2
@@ -2219,7 +2224,7 @@ class Make_NonLiner_Features(BaseEstimator, TransformerMixin):
 
         self.numeric_columns = (
             data.drop(self.target, axis=1, errors="ignore")
-            .select_dtypes(include="float32")
+            .select_dtypes(include=self.float_dtype)
             .columns
         )
         if self.polynomial_degree >= 2:  # dont run anything if powr is les than 2
@@ -3755,6 +3760,7 @@ def Preprocess_Path_One_Sklearn(
     pca_variance_retained_or_number_of_components=0.99,
     random_state=42,
     n_jobs=-1,
+    float_dtype="float32",
 ):
 
     """
@@ -3806,6 +3812,7 @@ def Preprocess_Path_One_Sklearn(
         id_columns=find_id_columns(
             train_data, target_variable, numerical_features=numerical_features
         ),
+        float_dtype=float_dtype,
     )
 
     # for imputation
@@ -3875,7 +3882,7 @@ def Preprocess_Path_One_Sklearn(
         )
     elif apply_cardinality_reduction == True and cardinal_method == "count":
         cardinality = Reduce_Cardinality_with_Counts(
-            catagorical_feature=cardinal_features
+            catagorical_feature=cardinal_features, float_dtype=float_dtype
         )
     else:
         cardinality = SKLEARN_EMPTY_STEP
@@ -3911,6 +3918,7 @@ def Preprocess_Path_One_Sklearn(
             top_features_to_pick=top_poly_trig_features_to_select_percentage,
             random_state=random_state,
             subclass=subcase,
+            float_dtype=float_dtype,
         )
     else:
         nonliner = SKLEARN_EMPTY_STEP
@@ -4122,6 +4130,7 @@ def Preprocess_Path_Two(
     pca_variance_retained_or_number_of_components=0.99,
     random_state=42,
     n_jobs=-1,
+    float_dtype="float32",
 ):
 
     """
@@ -4194,6 +4203,7 @@ def Preprocess_Path_Two(
         pca_variance_retained_or_number_of_components=pca_variance_retained_or_number_of_components,
         random_state=random_state,
         n_jobs=n_jobs,
+        float_dtype=float_dtype,
     )
 
 
