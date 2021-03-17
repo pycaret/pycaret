@@ -2067,6 +2067,9 @@ def cross_validate_ts(forecaster, y, X, scoring, cv, n_jobs, verbose, fit_params
         [description]
     """
     try:
+        # # For Debug
+        # n_jobs = 1
+
         parallel = Parallel(n_jobs=n_jobs)
         out = parallel(delayed(_fit_and_score)(
             forecaster=clone(forecaster),

@@ -7610,14 +7610,14 @@ class _SupervisedExperiment(_TabularExperiment):
                 name = f"{original_name}_{suffix}"
                 suffix += 1
             estimator_dict[name] = x
-            
+
         estimator_list = list(estimator_dict.items())
 
         if self._ml_usecase == MLUsecase.TIME_SERIES:
             voting_model_definition = self._all_models_internal["ensemble_forecaster"]
         else:
             voting_model_definition = self._all_models_internal["Voting"]
-        
+
         if self._ml_usecase == MLUsecase.CLASSIFICATION:
             model = voting_model_definition.class_def(
                 estimators=estimator_list, voting=method, n_jobs=self._gpu_n_jobs_param
@@ -16041,12 +16041,12 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 f"data must be a pandas Series or DataFrame, got object of {type(data)} type!"
             )
 
-        
+
         if not np.issubdtype(data[data.columns[0]].dtype, np.number):
             raise TypeError(
                 f"Data must be of 'numpy.number' subtype, got {data[data.columns[0]].dtype}!"
             )
-        
+
         index_type_check = False
         # if np.issubdtype(data.index.dtype, np.datetime64):
         #     index_type_check = True
@@ -17203,9 +17203,9 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
 
         method: str, default = 'mean'
-            Method to average the individual predictions to form a final prediction.   
+            Method to average the individual predictions to form a final prediction.
             Available Methods:
-            
+
             * 'mean' - Mean of individual predictions
             * 'median' - Median of individual predictions
             * 'voting' - Vote individual predictions based on the provided weights.

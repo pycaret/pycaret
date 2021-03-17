@@ -16,6 +16,7 @@ from sktime.forecasting.base._sktime import _SktimeForecaster
 from sktime.forecasting.compose import ReducedForecaster, TransformedTargetForecaster
 from sktime.forecasting.trend import PolynomialTrendForecaster
 from sktime.transformations.series.detrend import Deseasonalizer, Detrender
+from sktime.forecasting.base._sktime import DEFAULT_ALPHA
 from sklearn.ensemble import RandomForestRegressor
 
 
@@ -401,6 +402,61 @@ class ThetaContainer(TimeSeriesContainer):
         )
 
 
+# TODO: Does not work with blending of models
+
+# pycaret\time_series.py:2140: in _fit_and_score
+#     forecaster.fit(y_train, X_train, **fit_params)
+# pycaret\internal\ensemble.py:88: in fit
+#     self._fit_forecasters(forecasters, y, X, fh)
+# ..\..\..\..\AppData\Roaming\Python\Python37\site-packages\sktime\forecasting\base\_meta.py:65: in _fit_forecasters
+#     for forecaster in forecasters
+# C:\ProgramData\Anaconda3\envs\pycaret_dev\lib\site-packages\joblib\parallel.py:1054: in __call__
+#     self.retrieve()
+# C:\ProgramData\Anaconda3\envs\pycaret_dev\lib\site-packages\joblib\parallel.py:933: in retrieve
+#     self._output.extend(job.get(timeout=self.timeout))
+# C:\ProgramData\Anaconda3\envs\pycaret_dev\lib\site-packages\joblib\_parallel_backends.py:542: in wrap_future_result
+#     return future.result(timeout=timeout)
+# C:\ProgramData\Anaconda3\envs\pycaret_dev\lib\concurrent\futures\_base.py:435: in result
+#     return self.__get_result()
+# _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+# self = <Future at 0x23485de8108 state=finished raised BrokenProcessPool>
+
+#     def __get_result(self):
+#         if self._exception:
+# >           raise self._exception
+# E           joblib.externals.loky.process_executor.BrokenProcessPool: A task has failed to un-serialize. Please ensure that the arguments of the function are all picklable.
+
+# class RandomForestDTSContainer(TimeSeriesContainer):
+#     def __init__(self, globals_dict: dict) -> None:
+#         logger = get_logger()
+#         np.random.seed(globals_dict["seed"])
+#         gpu_imported = False
+
+#         args = {}
+#         tune_args = {}
+#         # tune_grid = {"fit_intercept": [True, False], "normalize": [True, False]}
+#         tune_grid = {}
+#         tune_distributions = {}
+
+#         # if not gpu_imported:
+#         #     args["n_jobs"] = globals_dict["n_jobs_param"]
+
+#         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+
+#         super().__init__(
+#             id="rf_dts",
+#             name="RandomForestDTS",
+#             class_def=RandomForestDTS,
+#             args=args,
+#             tune_grid=tune_grid,
+#             tune_distribution=tune_distributions,
+#             tune_args=tune_args,
+#             is_gpu_enabled=gpu_imported
+#         )
+
+
+
 class EnsembleTimeSeriesContainer(TimeSeriesContainer):
     def __init__(self, globals_dict: dict) -> None:
         logger = get_logger()
@@ -430,38 +486,6 @@ class EnsembleTimeSeriesContainer(TimeSeriesContainer):
             is_gpu_enabled=gpu_imported,
         )
 
-
-
-
-
-# # TODO: Does not work
-class RandomForestDTSContainer(TimeSeriesContainer):
-    def __init__(self, globals_dict: dict) -> None:
-        logger = get_logger()
-        np.random.seed(globals_dict["seed"])
-        gpu_imported = False
-
-        args = {}
-        tune_args = {}
-        # tune_grid = {"fit_intercept": [True, False], "normalize": [True, False]}
-        tune_grid = {}
-        tune_distributions = {}
-
-        # if not gpu_imported:
-        #     args["n_jobs"] = globals_dict["n_jobs_param"]
-
-        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
-
-        super().__init__(
-            id="rf_dts",
-            name="RandomForestDTS",
-            class_def=RandomForestDTS,
-            args=args,
-            tune_grid=tune_grid,
-            tune_distribution=tune_distributions,
-            tune_args=tune_args,
-            is_gpu_enabled=gpu_imported
-        )
 
 
 def get_all_model_containers(
@@ -523,8 +547,12 @@ class BaseDTS(_SktimeForecaster):
         self.forecaster.fit(y=y, X=X, fh=fh)
         return self
 
-    def predict(self, X=None):
-        return self.forecaster.predict(X=X)
+    # def predict(self, X=None):
+    #     return self.forecaster.predict(X=X)
+
+    def predict(self, fh=None, X=None, return_pred_int=False, alpha=DEFAULT_ALPHA):
+        return self.forecaster.predict(fh=fh, X=X, return_pred_int=return_pred_int, alpha=alpha)
+
 
 class RandomForestDTS(BaseDTS):
     def __init__(self, sp=1, model='additive', degree=1, window_length=10):
