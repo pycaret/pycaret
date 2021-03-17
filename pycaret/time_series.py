@@ -19,12 +19,8 @@ from sktime.forecasting.base import ForecastingHorizon
 warnings.filterwarnings("ignore")
 
 _CURRENT_EXPERIMENT = None
-_CURRENT_EXPERIMENT_EXCEPTION = (
-    "_CURRENT_EXPERIMENT global variable is not set. Please run setup() first."
-)
-_CURRENT_EXPERIMENT_DECORATOR_DICT = {
-    "_CURRENT_EXPERIMENT": _CURRENT_EXPERIMENT_EXCEPTION
-}
+_CURRENT_EXPERIMENT_EXCEPTION = "_CURRENT_EXPERIMENT global variable is not set. Please run setup() first."
+_CURRENT_EXPERIMENT_DECORATOR_DICT = {"_CURRENT_EXPERIMENT": _CURRENT_EXPERIMENT_EXCEPTION}
 
 
 def setup(
@@ -40,9 +36,7 @@ def setup(
     fh: Union[List[int], int, np.ndarray] = 1,
     n_jobs: Optional[int] = -1,
     use_gpu: bool = False,
-    custom_pipeline: Union[
-        Any, Tuple[str, Any], List[Any], List[Tuple[str, Any]]
-    ] = None,
+    custom_pipeline: Union[Any, Tuple[str, Any], List[Any], List[Tuple[str, Any]]] = None,
     html: bool = True,
     session_id: Optional[int] = None,
     log_experiment: bool = False,
@@ -397,6 +391,10 @@ def create_model(
         in the model library (ID - Name):
 
         * 'arima' - ARIMA
+        * 'naive' - Naive
+        * 'poly_trend' - PolyTrend
+        * 'exp_smooth' - ExponentialSmoothing
+        * 'theta' - Theta
 
 
     fold: int or scikit-learn compatible CV generator, default = None
@@ -695,7 +693,7 @@ def ensemble_model(
     >>> bagged_dt = ensemble_model(dt, method = 'Bagging')
 
 
-   estimator: scikit-learn compatible object
+    estimator: scikit-learn compatible object
         Trained model object
 
 
@@ -765,10 +763,11 @@ def ensemble_model(
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def blend_models(
     estimator_list: list,
+    method: str = "mean",
     fold: Optional[Union[int, Any]] = None,
     round: int = 4,
     choose_better: bool = False,
-    optimize: str = "R2",
+    optimize: str = "MAPE_ts",
     weights: Optional[List[float]] = None,
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
@@ -776,7 +775,7 @@ def blend_models(
 ):
 
     """
-    This function trains a Voting Regressor for select models passed in the
+    This function trains a EnsembleForecaster for select models passed in the
     ``estimator_list`` param. The output of this function is a score grid with
     CV scores by fold. Metrics evaluated during CV can be accessed using the
     ``get_metrics`` function. Custom metrics can be added or removed using
@@ -786,15 +785,29 @@ def blend_models(
     Example
     --------
     >>> from pycaret.datasets import get_data
-    >>> boston = get_data('boston')
-    >>> from pycaret.regression import *
-    >>> exp_name = setup(data = boston,  target = 'medv')
-    >>> top3 = compare_models(n_select = 3)
-    >>> blender = blend_models(top3)
+    >>> from pycaret.internal.PycaretExperiment import TimeSeriesExperiment
+    >>> import numpy as np
+    >>> airline_data = get_data('airline', verbose=False)
+    >>> fh = np.arange(1,13)
+    >>> fold = 3
+    >>> exp = TimeSeriesExperiment()
+    >>> exp.setup(data=y, fh=fh, fold=fold)
+    >>> arima_model = exp.create_model("arima")
+    >>> naive_model = exp.create_model("naive")
+    >>> ts_blender = exp.blend_models([arima_model, naive_model], optimize='MAPE_ts')
 
 
-    estimator_list: list of scikit-learn compatible objects
-        List of trained model objects
+    estimator_list: list of sktime compatible estiimators
+        List of model objects
+
+
+    method: str, default = 'mean'
+        Method to average the individual predictions to form a final prediction.
+        Available Methods:
+
+        * 'mean' - Mean of individual predictions
+        * 'median' - Median of individual predictions
+        * 'voting' - Vote individual predictions based on the provided weights.
 
 
     fold: int or scikit-learn compatible CV generator, default = None
@@ -813,7 +826,7 @@ def blend_models(
         metric used for comparison is defined by the ``optimize`` parameter.
 
 
-    optimize: str, default = 'R2'
+    optimize: str, default = 'MAPE_ts'
         Metric to compare for model selection when ``choose_better`` is True.
 
 
@@ -968,7 +981,7 @@ def plot_model(
     groups: Optional[Union[str, Any]] = None,
     use_train_data: bool = False,
     verbose: bool = True,
-    display_format: Optional[str] = None
+    display_format: Optional[str] = None,
 ) -> str:
 
     """
@@ -1265,7 +1278,10 @@ def predict_model(
     """
 
     return _CURRENT_EXPERIMENT.predict_model(
-        estimator=estimator, data=data, round=round, verbose=verbose,
+        estimator=estimator,
+        data=data,
+        round=round,
+        verbose=verbose,
     )
 
 
@@ -1328,7 +1344,10 @@ def finalize_model(
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def deploy_model(
-    model, model_name: str, authentication: dict, platform: str = "aws",
+    model,
+    model_name: str,
+    authentication: dict,
+    platform: str = "aws",
 ):
 
     """
@@ -1452,9 +1471,7 @@ def save_model(model, model_name: str, model_only: bool = False, verbose: bool =
 
     """
 
-    return _CURRENT_EXPERIMENT.save_model(
-        model=model, model_name=model_name, model_only=model_only, verbose=verbose
-    )
+    return _CURRENT_EXPERIMENT.save_model(model=model, model_name=model_name, model_only=model_only, verbose=verbose)
 
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
@@ -1557,9 +1574,7 @@ def automl(optimize: str = "R2", use_holdout: bool = False, turbo: bool = True) 
 
     """
 
-    return _CURRENT_EXPERIMENT.automl(
-        optimize=optimize, use_holdout=use_holdout, turbo=turbo
-    )
+    return _CURRENT_EXPERIMENT.automl(optimize=optimize, use_holdout=use_holdout, turbo=turbo)
 
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
@@ -1583,7 +1598,9 @@ def pull(pop: bool = False) -> pd.DataFrame:
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def models(
-    type: Optional[str] = None, internal: bool = False, raise_errors: bool = True,
+    type: Optional[str] = None,
+    internal: bool = False,
+    raise_errors: bool = True,
 ) -> pd.DataFrame:
 
     """
@@ -1617,14 +1634,14 @@ def models(
         pandas.DataFrame
 
     """
-    return _CURRENT_EXPERIMENT.models(
-        type=type, internal=internal, raise_errors=raise_errors
-    )
+    return _CURRENT_EXPERIMENT.models(type=type, internal=internal, raise_errors=raise_errors)
 
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def get_metrics(
-    reset: bool = False, include_custom: bool = True, raise_errors: bool = True,
+    reset: bool = False,
+    include_custom: bool = True,
+    raise_errors: bool = True,
 ) -> pd.DataFrame:
 
     """
@@ -1660,13 +1677,19 @@ def get_metrics(
     """
 
     return _CURRENT_EXPERIMENT.get_metrics(
-        reset=reset, include_custom=include_custom, raise_errors=raise_errors,
+        reset=reset,
+        include_custom=include_custom,
+        raise_errors=raise_errors,
     )
 
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def add_metric(
-    id: str, name: str, score_func: type, greater_is_better: bool = True, **kwargs,
+    id: str,
+    name: str,
+    score_func: type,
+    greater_is_better: bool = True,
+    **kwargs,
 ) -> pd.Series:
 
     """
@@ -1941,9 +1964,7 @@ def set_current_experiment(experiment: TimeSeriesExperiment):
     global _CURRENT_EXPERIMENT
 
     if not isinstance(experiment, TimeSeriesExperiment):
-        raise TypeError(
-            f"experiment must be a PyCaret TimeSeriesExperiment object, got {type(experiment)}."
-        )
+        raise TypeError(f"experiment must be a PyCaret TimeSeriesExperiment object, got {type(experiment)}.")
     _CURRENT_EXPERIMENT = experiment
 
 
@@ -1955,11 +1976,13 @@ def _get_cv_n_folds(y, cv) -> int:
     n_folds = int((len(y) - cv.initial_window) / cv.step_length)
     return n_folds
 
+
 def get_folds(cv, y) -> Tuple[pd.Series, pd.Series]:
     """
     Returns the train and test indices for the time series data
     """
-    from sktime.forecasting.model_selection import (SlidingWindowSplitter)
+    from sktime.forecasting.model_selection import SlidingWindowSplitter
+
     n_folds = _get_cv_n_folds(y, cv)
     for i in np.arange(n_folds):
         if i == 0:
@@ -1973,19 +1996,21 @@ def get_folds(cv, y) -> Tuple[pd.Series, pd.Series]:
         else:
             # Subsequent Splits in sktime
             for j, (train, test) in enumerate(cv.split(y_test_initial)):
-                if j == i-1:
+                if j == i - 1:
                     y_train = y_test_initial.iloc[train]
                     y_test = y_test_initial.iloc[test]
 
                     rolling_y_train = pd.concat([rolling_y_train, y_train])
-                    rolling_y_train = rolling_y_train[~rolling_y_train.index.duplicated(keep='first')]
+                    rolling_y_train = rolling_y_train[~rolling_y_train.index.duplicated(keep="first")]
 
                     if isinstance(cv, SlidingWindowSplitter):
-                        rolling_y_train = rolling_y_train.iloc[-cv.initial_window:]
+                        rolling_y_train = rolling_y_train.iloc[-cv.initial_window :]
         yield rolling_y_train.index, y_test.index
+
 
 def cross_validate_ts(forecaster, y, X, cv, scoring, fit_params, n_jobs, return_train_score, error_score=0):
     from pycaret.time_series import get_folds
+
     scores = {f"test_{scorer_name}": [] for scorer_name, _ in scoring.items()}
     for i, (train_index, test_index) in enumerate(get_folds(cv, y)):
         y_train, y_test = y[train_index], y[test_index]
@@ -1994,10 +2019,16 @@ def cross_validate_ts(forecaster, y, X, cv, scoring, fit_params, n_jobs, return_
 
         forecaster.fit(y_train, X_train, **fit_params)
         y_pred = forecaster.predict(X_test)
-        if (y_test.index.values != y_pred.index.values).any() or (len(y_test) != len(cv.fh)) or ((len(y_pred) != len(cv.fh))):
+        if (
+            (y_test.index.values != y_pred.index.values).any()
+            or (len(y_test) != len(cv.fh))
+            or ((len(y_pred) != len(cv.fh)))
+        ):
             print(f"\t y_train: {y_train.index.values}, \n\t y_test: {y_test.index.values}")
             print(f"\t y_pred: {y_pred.index.values}")
-            raise ValueError("y_test indices do not match y_pred_indices or split/prediction length does not match forecast horizon.")
+            raise ValueError(
+                "y_test indices do not match y_pred_indices or split/prediction length does not match forecast horizon."
+            )
 
         for scorer_name, scorer_container in scoring.items():
             metric = scorer_container.scorer._score_func(y_true=y_test, y_pred=y_pred)
@@ -2005,4 +2036,3 @@ def cross_validate_ts(forecaster, y, X, cv, scoring, fit_params, n_jobs, return_
             scores[f"test_{scorer_name}"].append(metric)
 
     return scores
-

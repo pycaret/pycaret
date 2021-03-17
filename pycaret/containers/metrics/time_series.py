@@ -13,6 +13,7 @@ from pycaret.containers.metrics.base_metric import MetricContainer
 from sklearn.metrics._scorer import _BaseScorer
 import pycaret.containers.base_container
 import pycaret.internal.metrics
+from pandas import DataFrame, Series
 from sklearn import metrics
 from sktime.performance_metrics.forecasting._functions import (
     mase_loss,
@@ -152,29 +153,58 @@ class TimeSeriesMetricContainer(MetricContainer):
 
 def _smape_loss(y_true, y_pred):
     """Wrapper for sktime metrics"""
-    return smape_loss(y_test=y_true, y_pred=y_pred)
+    return smape_loss(y_test=_check_series(y_true), y_pred=_check_series(y_pred))
+
 
 def _mape_loss(y_true, y_pred):
     """Wrapper for sktime metrics"""
-    return mape_loss(y_test=y_true, y_pred=y_pred)
+    return mape_loss(y_test=_check_series(y_true), y_pred=_check_series(y_pred))
+
 
 def _mase_loss(y_true, y_pred, y_train):
     """Wrapper for sktime metrics"""
-    return mase_loss(y_test=y_true, y_pred=y_pred, y_train=y_train)
+    return mase_loss(
+        y_test=_check_series(y_true),
+        y_pred=_check_series(y_pred),
+        y_train=_check_series(y_train),
+    )
+
+
+def _check_series(y):
+    """
+    Check wheter or not y is pandas.Series. Pycaret Experiment
+    internally converts data to pandas.DataFrame.
+    """
+    if isinstance(y, Series):
+        return y
+    elif isinstance(y, DataFrame):
+        return _set_y_as_series(y)
+
+
+def _set_y_as_series(y):
+    """Set first column of a DataFrame as pandas.Series"""
+    return Series(y.iloc[:, 0])
 
 
 class SMAPEMetricContainer(TimeSeriesMetricContainer):
     def __init__(self, globals_dict: dict) -> None:
         super().__init__(
-            id="smape", name="SMAPE", score_func=_smape_loss, greater_is_better=False,
+            id="smape",
+            name="SMAPE",
+            score_func=_smape_loss,
+            greater_is_better=False,
         )
 
 
 class MAPEMetricContainer(TimeSeriesMetricContainer):
     def __init__(self, globals_dict: dict) -> None:
         super().__init__(
-            id="mape_ts", name="MAPE_ts", score_func=_mape_loss, greater_is_better=False,
+            id="mape_ts",
+            name="MAPE_ts",
+            score_func=_mape_loss,
+            greater_is_better=False,
         )
+
 
 # TODO: Disabling for now since need to determine how these special cases will
 # be handles in manually generated function cross_validate_ts
@@ -212,9 +242,7 @@ class MAPEMetricContainer(TimeSeriesMetricContainer):
 #         )
 
 
-def get_all_metric_containers(
-    globals_dict: dict, raise_errors: bool = True
-) -> Dict[str, TimeSeriesMetricContainer]:
+def get_all_metric_containers(globals_dict: dict, raise_errors: bool = True) -> Dict[str, TimeSeriesMetricContainer]:
     return pycaret.containers.base_container.get_all_containers(
         globals(), globals_dict, TimeSeriesMetricContainer, raise_errors
     )

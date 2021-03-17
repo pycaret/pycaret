@@ -7493,37 +7493,38 @@ class _SupervisedExperiment(_TabularExperiment):
             fit_kwargs = {}
 
         # checking method parameter
-        available_method = ["auto", "soft", "hard"]
+        available_method = ["auto", "soft", "hard", "mean", "median", "voting"]
         if method not in available_method:
             raise ValueError(
-                "Method parameter only accepts 'auto', 'soft' or 'hard' as a parameter. See Docstring for details."
+                "Method parameter only accepts 'auto', 'soft', 'hard', 'mean', 'median' or 'voting' as a parameter. See Docstring for details."
             )
 
-        # checking error for estimator_list
-        for i in estimator_list:
-            if not hasattr(i, "fit"):
-                raise ValueError(
-                    f"Estimator {i} does not have the required fit() method."
-                )
-            if self._ml_usecase == MLUsecase.CLASSIFICATION:
-                # checking method parameter with estimator list
-                if method != "hard":
+        # checking error for estimator_list (skip for timeseries)
+        if not self._ml_usecase == MLUsecase.TIME_SERIES:
+            for i in estimator_list:
+                if not hasattr(i, "fit"):
+                    raise ValueError(
+                        f"Estimator {i} does not have the required fit() method."
+                    )
+                if self._ml_usecase == MLUsecase.CLASSIFICATION:
+                    # checking method parameter with estimator list
+                    if method != "hard":
 
-                    for i in estimator_list:
-                        if not hasattr(i, "predict_proba"):
-                            if method != "auto":
-                                raise TypeError(
-                                    f"Estimator list contains estimator {i} that doesn't support probabilities and method is forced to 'soft'. Either change the method or drop the estimator."
-                                )
-                            else:
-                                self.logger.info(
-                                    f"Estimator {i} doesn't support probabilities, falling back to 'hard'."
-                                )
-                                method = "hard"
-                                break
+                        for i in estimator_list:
+                            if not hasattr(i, "predict_proba"):
+                                if method != "auto":
+                                    raise TypeError(
+                                        f"Estimator list contains estimator {i} that doesn't support probabilities and method is forced to 'soft'. Either change the method or drop the estimator."
+                                    )
+                                else:
+                                    self.logger.info(
+                                        f"Estimator {i} doesn't support probabilities, falling back to 'hard'."
+                                    )
+                                    method = "hard"
+                                    break
 
-                    if method == "auto":
-                        method = "soft"
+                        if method == "auto":
+                            method = "soft"
 
         # checking fold parameter
         if fold is not None and not (
@@ -7572,8 +7573,10 @@ class _SupervisedExperiment(_TabularExperiment):
         ERROR HANDLING ENDS HERE
 
         """
-
-        fold = self._get_cv_splitter(fold)
+        if self._ml_usecase == MLUsecase.TIME_SERIES:
+            fold = self.fold_generator
+        else:
+            fold = self._get_cv_splitter(fold)
 
         groups = self._get_groups(groups)
 
@@ -7641,13 +7644,21 @@ class _SupervisedExperiment(_TabularExperiment):
                 name = f"{original_name}_{suffix}"
                 suffix += 1
             estimator_dict[name] = x
-
+            
         estimator_list = list(estimator_dict.items())
 
-        voting_model_definition = self._all_models_internal["Voting"]
+        if self._ml_usecase == MLUsecase.TIME_SERIES:
+            voting_model_definition = self._all_models_internal["ensemble_forecaster"]
+        else:
+            voting_model_definition = self._all_models_internal["Voting"]
+        
         if self._ml_usecase == MLUsecase.CLASSIFICATION:
             model = voting_model_definition.class_def(
                 estimators=estimator_list, voting=method, n_jobs=self._gpu_n_jobs_param
+            )
+        elif self._ml_usecase == MLUsecase.TIME_SERIES:
+            model = voting_model_definition.class_def(
+                forecasters=estimator_list, method=method, weights=weights, n_jobs=self._gpu_n_jobs_param
             )
         else:
             model = voting_model_definition.class_def(
@@ -7671,6 +7682,7 @@ class _SupervisedExperiment(_TabularExperiment):
             fit_kwargs=fit_kwargs,
             groups=groups,
         )
+
         model_results = self.pull()
         self.logger.info(
             "SubProcess create_model() end =================================="
@@ -16040,22 +16052,39 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             )
         self.fh = fh
 
-        if not isinstance(data, pd.Series):
+        # if not isinstance(data, pd.Series):
+        #     if isinstance(data, pd.DataFrame):
+        #         if data.shape[1] != 1:
+        #             raise ValueError(
+        #                 f"data must be a pandas Series or DataFrame with one column, got {data.shape[1]} columns!"
+        #             )
+        #     else:
+        #         raise ValueError(
+        #             f"data must be a pandas Series or DataFrame with one column, got object of {type(data)} type!"
+        #         )
+        # else:
+        #     data = pd.DataFrame(data)
+
+
+        if isinstance(data, (pd.Series, pd.DataFrame)):
             if isinstance(data, pd.DataFrame):
                 if data.shape[1] != 1:
                     raise ValueError(
                         f"data must be a pandas Series or DataFrame with one column, got {data.shape[1]} columns!"
                     )
             else:
-                raise ValueError(
-                    f"data must be a pandas Series or DataFrame with one column, got object of {type(data)} type!"
-                )
+                data = pd.DataFrame(data) # Force convertion to DataFrame
         else:
-            data = pd.DataFrame(data)
+            raise ValueError(
+                f"data must be a pandas Series or DataFrame, got object of {type(data)} type!"
+            )
+
+        
         if not np.issubdtype(data[data.columns[0]].dtype, np.number):
             raise TypeError(
                 f"Data must be of 'numpy.number' subtype, got {data[data.columns[0]].dtype}!"
             )
+        
         index_type_check = False
         # if np.issubdtype(data.index.dtype, np.datetime64):
         #     index_type_check = True
@@ -16289,6 +16318,10 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             in the model library (ID - Name):
 
             * 'arima' - ARIMA
+            * 'naive' - Naive
+            * 'poly_trend' - PolyTrend
+            * 'exp_smooth' - ExponentialSmoothing
+            * 'theta' - Theta
 
 
         fold: int or scikit-learn compatible CV generator, default = None
@@ -16755,6 +16788,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
     def blend_models(
         self,
         estimator_list: list,
+        method: str = 'mean',
         fold: Optional[Union[int, Any]] = None,
         round: int = 4,
         choose_better: bool = False,
@@ -16766,7 +16800,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
     ):
 
         """
-        This function trains a Voting Regressor for select models passed in the
+        This function trains a EnsembleForecaster for select models passed in the
         ``estimator_list`` param. The output of this function is a score grid with
         CV scores by fold. Metrics evaluated during CV can be accessed using the
         ``get_metrics`` function. Custom metrics can be added or removed using
@@ -16776,15 +16810,29 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         Example
         --------
         >>> from pycaret.datasets import get_data
-        >>> boston = get_data('boston')
-        >>> from pycaret.regression import *
-        >>> exp_name = setup(data = boston,  target = 'medv')
-        >>> top3 = compare_models(n_select = 3)
-        >>> blender = blend_models(top3)
+        >>> from pycaret.internal.PycaretExperiment import TimeSeriesExperiment
+        >>> import numpy as np
+        >>> airline_data = get_data('airline', verbose=False)
+        >>> fh = np.arange(1,13)
+        >>> fold = 3
+        >>> exp = TimeSeriesExperiment()
+        >>> exp.setup(data=y, fh=fh, fold=fold)
+        >>> arima_model = exp.create_model("arima")
+        >>> naive_model = exp.create_model("naive")
+        >>> ts_blender = exp.blend_models([arima_model, naive_model], optimize='MAPE_ts')
 
 
         estimator_list: list of scikit-learn compatible objects
             List of trained model objects
+
+
+        method: str, default = 'mean'
+            Method to average the individual predictions to form a final prediction.   
+            Available Methods:
+            
+            * 'mean' - Mean of individual predictions
+            * 'median' - Median of individual predictions
+            * 'voting' - Vote individual predictions based on the provided weights.
 
 
         fold: int or scikit-learn compatible CV generator, default = None
@@ -16803,7 +16851,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             metric used for comparison is defined by the ``optimize`` parameter.
 
 
-        optimize: str, default = 'R2'
+        optimize: str, default = 'MAPE_ts'
             Metric to compare for model selection when ``choose_better`` is True.
 
 
@@ -16840,7 +16888,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             round=round,
             choose_better=choose_better,
             optimize=optimize,
-            method="auto",
+            method=method,
             weights=weights,
             fit_kwargs=fit_kwargs,
             groups=groups,
