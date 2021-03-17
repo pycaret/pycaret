@@ -63,6 +63,7 @@ from sklearn.model_selection import train_test_split, BaseCrossValidator
 from typing import List, Tuple, Any, Union, Optional, Dict
 import warnings
 from IPython.utils import io
+import traceback
 from unittest.mock import patch
 import plotly.express as px
 import plotly.graph_objects as go
