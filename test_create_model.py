@@ -237,9 +237,9 @@ fold = 3
 exp = TimeSeriesExperiment()
 exp.setup(data=y, fh=fh, fold=fold, fold_strategy='expandingwindow')
 
-model = exp.create_model("rf_dts")
-pred = model.predict()
-print(pred)
+# model = exp.create_model("rf_dts")
+# pred = model.predict()
+# print(pred)
 
 # model = exp.create_model("auto_ets")
 # pred = model.predict()
