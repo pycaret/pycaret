@@ -233,7 +233,7 @@ def deploy_model(
     gc.collect()
 
 
-def save_model(model, model_name: str, prep_pipe_=None, verbose: bool = True):
+def save_model(model, model_name: str, prep_pipe_=None, verbose: bool = True, **kwargs):
 
     """
     This generic function saves the transformation pipeline and trained model object 
@@ -249,6 +249,9 @@ def save_model(model, model_name: str, prep_pipe_=None, verbose: bool = True):
     
     prep_pipe_ : Pipeline, default = None
         If not None, will save the entire Pipeline in addition to model.
+
+    **kwargs: 
+        Additional keyword arguments to pass to joblib.dump().
 
     verbose: bool, default = True
         Success message is not printed when verbose is set to False.
@@ -289,7 +292,7 @@ def save_model(model, model_name: str, prep_pipe_=None, verbose: bool = True):
     import joblib
 
     model_name = f"{model_name}.pkl"
-    joblib.dump(model_, model_name)
+    joblib.dump(model_, model_name, **kwargs)
     if verbose:
         print("Transformation Pipeline and Model Succesfully Saved")
 
@@ -385,7 +388,7 @@ def load_model(
         if index == -1:
             s3.Bucket(bucketname).download_file(filename, filename)
         else:
-            path, key = filename[:index+1], filename[index+1:]
+            path, key = filename[: index + 1], filename[index + 1 :]
             if not os.path.exists(path):
                 os.makedirs(path)
             s3.Bucket(bucketname).download_file(key, filename)

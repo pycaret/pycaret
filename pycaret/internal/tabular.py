@@ -8914,7 +8914,9 @@ def create_webservice(model, model_endopoint, api_key=True, pydantic_payload=Non
     return {key: app}
 
 
-def save_model(model, model_name: str, model_only: bool = False, verbose: bool = True):
+def save_model(
+    model, model_name: str, model_only: bool = False, verbose: bool = True, **kwargs
+):
 
     """
     This function saves the transformation pipeline and trained model object
@@ -8943,6 +8945,9 @@ def save_model(model, model_name: str, model_only: bool = False, verbose: bool =
         When set to True, only trained model object is saved and all the
         transformations are ignored.
 
+    **kwargs: 
+        Additional keyword arguments to pass to joblib.dump().
+
     verbose: bool, default = True
         Success message is not printed when verbose is set to False.
 
@@ -8956,7 +8961,7 @@ def save_model(model, model_name: str, model_only: bool = False, verbose: bool =
     import pycaret.internal.persistence
 
     return pycaret.internal.persistence.save_model(
-        model, model_name, None if model_only else prep_pipe, verbose
+        model, model_name, None if model_only else prep_pipe, verbose, **kwargs
     )
 
 

@@ -562,7 +562,7 @@ def plot_model(
     label: bool = False,
     scale: float = 1,
     save: bool = False,
-    display_format: Optional[str] = None
+    display_format: Optional[str] = None,
 ):
 
     """
@@ -618,7 +618,13 @@ def plot_model(
 
     """
     return pycaret.internal.tabular.plot_model(
-        model, plot=plot, feature_name=feature, label=label, scale=scale, save=save, display_format=display_format
+        model,
+        plot=plot,
+        feature_name=feature,
+        label=label,
+        scale=scale,
+        save=save,
+        display_format=display_format,
     )
 
 
@@ -951,7 +957,9 @@ def deploy_model(
     )
 
 
-def save_model(model, model_name: str, model_only: bool = False, verbose: bool = True):
+def save_model(
+    model, model_name: str, model_only: bool = False, verbose: bool = True, **kwargs
+):
 
     """
     This function saves the transformation pipeline and trained model object 
@@ -985,13 +993,21 @@ def save_model(model, model_name: str, model_only: bool = False, verbose: bool =
         Success message is not printed when verbose is set to False.
 
 
+    **kwargs: 
+        Additional keyword arguments to pass to joblib.dump().
+
+
     Returns:
         Tuple of the model object and the filename.
 
     """
 
     return pycaret.internal.tabular.save_model(
-        model=model, model_name=model_name, model_only=model_only, verbose=verbose
+        model=model,
+        model_name=model_name,
+        model_only=model_only,
+        verbose=verbose,
+        **kwargs,
     )
 
 
