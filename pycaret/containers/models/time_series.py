@@ -10,6 +10,16 @@
 
 import logging
 from typing import Union, Dict, Any, Optional
+
+
+from sktime.forecasting.base._sktime import _SktimeForecaster
+from sktime.forecasting.compose import ReducedForecaster, TransformedTargetForecaster
+from sktime.forecasting.trend import PolynomialTrendForecaster
+from sktime.transformations.series.detrend import Deseasonalizer, Detrender
+from sktime.forecasting.base._sktime import DEFAULT_ALPHA
+from sklearn.ensemble import RandomForestRegressor
+
+
 from pycaret.containers.models.base_model import (
     ModelContainer,
     leftover_parameters_to_categorical_distributions,
@@ -194,7 +204,9 @@ class NaiveContainer(TimeSeriesContainer):
         args = {}
         tune_args = {}
         # tune_grid = {"fit_intercept": [True, False], "normalize": [True, False]}
-        tune_grid = {}
+        tune_grid = {
+            "strategy": ['last', 'mean', 'drift']
+        }
         tune_distributions = {}
 
         # if not gpu_imported:
@@ -224,8 +236,10 @@ class PolyTrendContainer(TimeSeriesContainer):
 
         args = {}
         tune_args = {}
-        # tune_grid = {"fit_intercept": [True, False], "normalize": [True, False]}
-        tune_grid = {}
+        tune_grid = {
+            "degree": [1,2,3,4,5],
+            "with_intercept": [True, False]
+        }
         tune_distributions = {}
 
         # if not gpu_imported:
@@ -255,8 +269,11 @@ class ArimaContainer(TimeSeriesContainer):
 
         args = {}
         tune_args = {}
-        # tune_grid = {"fit_intercept": [True, False], "normalize": [True, False]}
-        tune_grid = {}
+        # TODO: Temporary placeholder
+        # (will need to define properly later with seasonality parameters, etc.)
+        tune_grid = {
+            "seasonal_order": [(0,0,0,0), (0,1,0,12)]
+        }
         tune_distributions = {}
 
         if not gpu_imported:
@@ -287,13 +304,19 @@ class ExponentialSmoothingContainer(TimeSeriesContainer):
         args = {}
         tune_args = {}
         # tune_grid = {"fit_intercept": [True, False], "normalize": [True, False]}
-        tune_grid = {}
+        tune_grid = {
+            "trend": ["add", "mul", "additive", "multiplicative", None],
+            # "damped_trend": [True, False],
+            "seasonal": ["add", "mul", "additive", "multiplicative", None]
+        }
         tune_distributions = {}
 
         # if not gpu_imported:
         #     args["n_jobs"] = globals_dict["n_jobs_param"]
 
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+
+        eq_function = lambda x: type(x) is ExponentialSmoothing
 
         super().__init__(
             id="exp_smooth",
@@ -304,9 +327,11 @@ class ExponentialSmoothingContainer(TimeSeriesContainer):
             tune_distribution=tune_distributions,
             tune_args=tune_args,
             is_gpu_enabled=gpu_imported,
+            eq_function=eq_function  # Added to differentiate between ExponentialSmoothing and Theta which are of same parent class
         )
 
 
+# # TODO: Does not work
 # class AutoETSContainer(TimeSeriesContainer):
 #     def __init__(self, globals_dict: dict) -> None:
 #         logger = get_logger()
@@ -348,14 +373,21 @@ class ThetaContainer(TimeSeriesContainer):
 
         args = {}
         tune_args = {}
-        # tune_grid = {"fit_intercept": [True, False], "normalize": [True, False]}
-        tune_grid = {}
+        # TODO; Update after Bug is fixed in sktime
+        # https://github.com/alan-turing-institute/sktime/issues/692
+        # ThetaForecaster does not work with "initial_level" different from None
+        tune_grid = {
+            # "initial_level": [0.1, 0.5, 0.9],
+            "deseasonalize": [True, False]
+        }
         tune_distributions = {}
 
         # if not gpu_imported:
         #     args["n_jobs"] = globals_dict["n_jobs_param"]
 
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+
+        eq_function = lambda x: type(x) is ThetaForecaster
 
         super().__init__(
             id="theta",
@@ -366,7 +398,63 @@ class ThetaContainer(TimeSeriesContainer):
             tune_distribution=tune_distributions,
             tune_args=tune_args,
             is_gpu_enabled=gpu_imported,
+            eq_function=eq_function  # Added to differentiate between ExponentialSmoothing and Theta which are of same parent class
         )
+
+
+# TODO: Does not work with blending of models
+
+# pycaret\time_series.py:2140: in _fit_and_score
+#     forecaster.fit(y_train, X_train, **fit_params)
+# pycaret\internal\ensemble.py:88: in fit
+#     self._fit_forecasters(forecasters, y, X, fh)
+# ..\..\..\..\AppData\Roaming\Python\Python37\site-packages\sktime\forecasting\base\_meta.py:65: in _fit_forecasters
+#     for forecaster in forecasters
+# C:\ProgramData\Anaconda3\envs\pycaret_dev\lib\site-packages\joblib\parallel.py:1054: in __call__
+#     self.retrieve()
+# C:\ProgramData\Anaconda3\envs\pycaret_dev\lib\site-packages\joblib\parallel.py:933: in retrieve
+#     self._output.extend(job.get(timeout=self.timeout))
+# C:\ProgramData\Anaconda3\envs\pycaret_dev\lib\site-packages\joblib\_parallel_backends.py:542: in wrap_future_result
+#     return future.result(timeout=timeout)
+# C:\ProgramData\Anaconda3\envs\pycaret_dev\lib\concurrent\futures\_base.py:435: in result
+#     return self.__get_result()
+# _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+# self = <Future at 0x23485de8108 state=finished raised BrokenProcessPool>
+
+#     def __get_result(self):
+#         if self._exception:
+# >           raise self._exception
+# E           joblib.externals.loky.process_executor.BrokenProcessPool: A task has failed to un-serialize. Please ensure that the arguments of the function are all picklable.
+
+# class RandomForestDTSContainer(TimeSeriesContainer):
+#     def __init__(self, globals_dict: dict) -> None:
+#         logger = get_logger()
+#         np.random.seed(globals_dict["seed"])
+#         gpu_imported = False
+
+#         args = {}
+#         tune_args = {}
+#         # tune_grid = {"fit_intercept": [True, False], "normalize": [True, False]}
+#         tune_grid = {}
+#         tune_distributions = {}
+
+#         # if not gpu_imported:
+#         #     args["n_jobs"] = globals_dict["n_jobs_param"]
+
+#         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+
+#         super().__init__(
+#             id="rf_dts",
+#             name="RandomForestDTS",
+#             class_def=RandomForestDTS,
+#             args=args,
+#             tune_grid=tune_grid,
+#             tune_distribution=tune_distributions,
+#             tune_args=tune_args,
+#             is_gpu_enabled=gpu_imported
+#         )
+
 
 
 class EnsembleTimeSeriesContainer(TimeSeriesContainer):
@@ -399,54 +487,6 @@ class EnsembleTimeSeriesContainer(TimeSeriesContainer):
         )
 
 
-# # Does not work
-# class RandomForestDTSContainer(TimeSeriesContainer):
-#     def __init__(self, globals_dict: dict) -> None:
-#         logger = get_logger()
-#         np.random.seed(globals_dict["seed"])
-#         gpu_imported = False
-
-#         from sktime.forecasting.compose import ReducedForecaster, TransformedTargetForecaster
-#         from sktime.forecasting.trend import PolynomialTrendForecaster
-#         from sktime.transformations.series.detrend import Deseasonalizer, Detrender
-#         from sklearn.ensemble import RandomForestRegressor
-
-#         args = {}
-#         tune_args = {}
-#         # tune_grid = {"fit_intercept": [True, False], "normalize": [True, False]}
-#         tune_grid = {}
-#         tune_distributions = {}
-
-#         if not gpu_imported:
-#             args["n_jobs"] = globals_dict["n_jobs_param"]
-
-#         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
-
-#         regressor = RandomForestRegressor()
-#         forecaster = TransformedTargetForecaster(
-#             [
-#                 ("deseasonalise", Deseasonalizer(model="multiplicative", sp=12)),
-#                 ("detrend", Detrender(forecaster=PolynomialTrendForecaster(degree=1))),
-#                 (
-#                     "forecast",
-#                     ReducedForecaster(
-#                         regressor=regressor, scitype='regressor', window_length=12, strategy="recursive"
-#                     ),
-#                 ),
-#             ]
-#         )
-
-#         super().__init__(
-#             id="rf_dts",
-#             name="RandomForestDTS",
-#             class_def=forecaster,
-#             args=args,
-#             tune_grid=tune_grid,
-#             tune_distribution=tune_distributions,
-#             tune_args=tune_args,
-#             is_gpu_enabled=gpu_imported
-#         )
-
 
 def get_all_model_containers(
     globals_dict: dict, raise_errors: bool = True
@@ -454,3 +494,73 @@ def get_all_model_containers(
     return pycaret.containers.base_container.get_all_containers(
         globals(), globals_dict, TimeSeriesContainer, raise_errors
     )
+
+
+class BaseDTS(_SktimeForecaster):
+    def __init__(self, regressor, sp=1, model='additive', degree=1, window_length=10):
+        """Base Class for time series using scikit models which includes
+        Deseasonalizing and Detrending
+
+        Parameters
+        ----------
+        regressor : [type]
+            [description]
+        sp : int, optional
+            Seasonality period used to deseasonalize, by default 1
+        model : str, optional
+            model used to deseasonalize, 'multiplicative' or 'additive', by default 'additive'
+        degree : int, optional
+            degree of detrender, by default 1
+        window_length : int, optional
+            Window Length used for the Reduced Forecaster, by default 10
+        """
+        self.regressor = regressor
+        self.sp = sp
+        self.model = model
+        self.degree = degree
+        self.window_length = window_length
+
+    def fit(self, y, X=None, fh=None):
+        self.forecaster = TransformedTargetForecaster(
+            [
+                (
+                    "deseasonalise",
+                    Deseasonalizer(model=self.model, sp=self.sp)
+                ),
+                (
+                    "detrend",
+                    Detrender(
+                        forecaster=PolynomialTrendForecaster(degree=self.degree)
+                    )
+                ),
+                (
+                    "forecast",
+                    ReducedForecaster(
+                        regressor=self.regressor,
+                        scitype='regressor',
+                        window_length=self.window_length,
+                        strategy="recursive"
+                    ),
+                ),
+            ]
+        )
+        self.forecaster.fit(y=y, X=X, fh=fh)
+        return self
+
+    # def predict(self, X=None):
+    #     return self.forecaster.predict(X=X)
+
+    def predict(self, fh=None, X=None, return_pred_int=False, alpha=DEFAULT_ALPHA):
+        return self.forecaster.predict(fh=fh, X=X, return_pred_int=return_pred_int, alpha=alpha)
+
+
+class RandomForestDTS(BaseDTS):
+    def __init__(self, sp=1, model='additive', degree=1, window_length=10):
+        regressor = RandomForestRegressor()
+        super(RandomForestDTS, self).__init__(
+            regressor=regressor,
+            sp=sp,
+            model=model,
+            degree=degree,
+            window_length=window_length
+        )

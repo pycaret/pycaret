@@ -432,6 +432,37 @@ def get_cv_splitter(
     shuffle: bool,
     int_default: str = "kfold",
 ) -> BaseCrossValidator:
+    """Returns the cross validator object used to perform cross validation.
+
+    Parameters
+    ----------
+    fold : Optional[Union[int, BaseCrossValidator]]
+        [description]
+    default : BaseCrossValidator
+        [description]
+    seed : int
+        [description]
+    shuffle : bool
+        [description]
+    int_default : str, optional
+        [description], by default "kfold"
+
+    Returns
+    -------
+    BaseCrossValidator
+        [description]
+
+    Raises
+    ------
+    ValueError
+        [description]
+    ValueError
+        [description]
+    ValueError
+        [description]
+    TypeError
+        [description]
+    """
     if not fold:
         return default
     if is_sklearn_cv_generator(fold):
@@ -468,6 +499,26 @@ def get_cv_splitter(
 def get_cv_n_folds(
     fold: Optional[Union[int, BaseCrossValidator]], default, X, y=None, groups=None
 ) -> int:
+    """Returns the number of folds to use for cross validation
+
+    Parameters
+    ----------
+    fold : Optional[Union[int, BaseCrossValidator]]
+        [description]
+    default : [type]
+        [description]
+    X : [type]
+        [description]
+    y : [type], optional
+        [description], by default None
+    groups : [type], optional
+        [description], by default None
+
+    Returns
+    -------
+    int
+        [description]
+    """
     if not fold:
         fold = default
     if isinstance(fold, int):

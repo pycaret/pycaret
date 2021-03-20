@@ -205,25 +205,45 @@ def eval_wrapper(forecaster, y):
 # y_small = y[:72]
 y_small = y
 
-forecaster = ARIMA()
-eval_wrapper(forecaster, y_small)
+# %% Testing Standalone (without PyCaret Integration)
+# forecaster = ARIMA()
+# eval_wrapper(forecaster, y_small)
 
-forecaster = ExponentialSmoothing()
-eval_wrapper(forecaster, y_small)
+# forecaster = ExponentialSmoothing()
+# eval_wrapper(forecaster, y_small)
 
-regressor = RandomForestRegressor()
-forecaster = TransformedTargetForecaster(
-    [
-        ("deseasonalise", Deseasonalizer(model="multiplicative", sp=12)),
-        ("detrend", Detrender(forecaster=PolynomialTrendForecaster(degree=1))),
-        (
-            "forecast",
-            ReducedForecaster(
-                regressor=regressor, scitype='regressor', window_length=12, strategy="recursive"
-            ),
-        ),
-    ]
-)
-eval_wrapper(forecaster, y_small)
+# regressor = RandomForestRegressor()
+# forecaster = TransformedTargetForecaster(
+#     [
+#         ("deseasonalise", Deseasonalizer(model="multiplicative", sp=12)),
+#         ("detrend", Detrender(forecaster=PolynomialTrendForecaster(degree=1))),
+#         (
+#             "forecast",
+#             ReducedForecaster(
+#                 regressor=regressor, scitype='regressor', window_length=12, strategy="recursive"
+#             ),
+#         ),
+#     ]
+# )
+# eval_wrapper(forecaster, y_small)
+
+
+# %% Testing with PyCaret Integration
+
+from pycaret.internal.PycaretExperiment import TimeSeriesExperiment
+fh = np.arange(1,13)
+fold = 3
+
+exp = TimeSeriesExperiment()
+exp.setup(data=y, fh=fh, fold=fold, fold_strategy='expandingwindow')
+
+# model = exp.create_model("rf_dts")
+# pred = model.predict()
+# print(pred)
+
+# model = exp.create_model("auto_ets")
+# pred = model.predict()
+# print(pred)
+
 
 print("DONE TEST")
