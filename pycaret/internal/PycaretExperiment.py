@@ -17169,7 +17169,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         fold: Optional[Union[int, Any]] = None,
         round: int = 4,
         choose_better: bool = False,
-        optimize: str = "R2",
+        optimize: str = "SMAPE",
         weights: Optional[List[float]] = None,
         fit_kwargs: Optional[dict] = None,
         groups: Optional[Union[str, Any]] = None,

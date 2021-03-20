@@ -199,8 +199,8 @@ class SMAPEMetricContainer(TimeSeriesMetricContainer):
 class MAPEMetricContainer(TimeSeriesMetricContainer):
     def __init__(self, globals_dict: dict) -> None:
         super().__init__(
-            id="mape_ts",
-            name="MAPE_ts",
+            id="mape",
+            name="MAPE",
             score_func=_mape_loss,
             greater_is_better=False,
         )
