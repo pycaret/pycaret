@@ -10,12 +10,13 @@
 
 from typing import Optional, Union, Dict, Any
 from pycaret.containers.metrics.base_metric import MetricContainer
-from sklearn.metrics._scorer import _BaseScorer
-import pycaret.containers.base_container
+from sklearn.metrics._scorer import _BaseScorer  # type: ignore
+# import pycaret.containers.base_container
+from pycaret.containers.base_container import BaseContainer
 import pycaret.internal.metrics
-from pandas import DataFrame, Series
-from sklearn import metrics
-from sktime.performance_metrics.forecasting._functions import (
+from pandas import DataFrame, Series  # type: ignore
+from sklearn import metrics  # type: ignore
+from sktime.performance_metrics.forecasting._functions import ( # type: ignore
     mase_loss,
     smape_loss,
     mape_loss,
@@ -24,8 +25,8 @@ from sktime.performance_metrics.forecasting._functions import (
 
 class TimeSeriesMetricContainer(MetricContainer):
     """
-    Base time series metric container class, for easier definition of containers. Ensures consistent format
-    before being turned into a dataframe row.
+    Base time series metric container class, for easier definition of containers.
+    Ensures consistent format before being turned into a dataframe row.
     Parameters
     ----------
     id : str
@@ -172,7 +173,7 @@ def _mase_loss(y_true, y_pred, y_train):
 
 def _check_series(y):
     """
-    Check wheter or not y is pandas.Series. Pycaret Experiment
+    Check whether or not y is pandas.Series. Pycaret Experiment
     internally converts data to pandas.DataFrame.
     """
     if isinstance(y, Series):
@@ -218,31 +219,33 @@ class MAPEMetricContainer(TimeSeriesMetricContainer):
 #         )
 
 
-# class MAEMetricContainer(TimeSeriesMetricContainer):
-#     def __init__(self, globals_dict: dict) -> None:
-#         super().__init__(
-#             id="mae_ts",
-#             name="MAE_ts",
-#             score_func=metrics.mean_absolute_error,
-#             greater_is_better=False,
-#             scorer="neg_mean_absolute_error",
-#         )
+class MAEMetricContainer(TimeSeriesMetricContainer):
+    def __init__(self, globals_dict: dict) -> None:
+        super().__init__(
+            id="mae",
+            name="MAE",
+            score_func=metrics.mean_absolute_error,
+            greater_is_better=False,
+            scorer="neg_mean_absolute_error",
+        )
 
 
-# class RMSEMetricContainer(TimeSeriesMetricContainer):
-#     def __init__(self, globals_dict: dict) -> None:
+class RMSEMetricContainer(TimeSeriesMetricContainer):
+    def __init__(self, globals_dict: dict) -> None:
 
-#         super().__init__(
-#             id="rmse_ts",
-#             name="RMSE_ts",
-#             score_func=metrics.mean_squared_error,
-#             greater_is_better=False,
-#             args={"squared": False},
-#             scorer="neg_root_mean_squared_error",
-#         )
+        super().__init__(
+            id="rmse",
+            name="RMSE",
+            score_func=metrics.mean_squared_error,
+            greater_is_better=False,
+            args={"squared": False},
+            scorer="neg_root_mean_squared_error",
+        )
 
 
-def get_all_metric_containers(globals_dict: dict, raise_errors: bool = True) -> Dict[str, TimeSeriesMetricContainer]:
+def get_all_metric_containers(
+    globals_dict: dict, raise_errors: bool = True
+    ) -> Dict[str, BaseContainer]:
     return pycaret.containers.base_container.get_all_containers(
         globals(), globals_dict, TimeSeriesMetricContainer, raise_errors
     )

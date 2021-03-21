@@ -71,9 +71,11 @@ fh = np.arange(1, 13) # [1,2,3,4,5,6,7,8,9,10,11,12]
 initial_window = 108
 step_length = len(fh)
 window_length = len(fh)
-# metrics = {'smape': sMAPE() , 'mape': mape_loss}  # Change this to the Metrics container
 metrics = get_all_metric_containers(globals_dict={})
-print(metrics)
+metrics_dict = dict([(k, v.scorer) for k, v in metrics.items()])
+print(metrics_dict)
+
+
 
 forecaster_param_grid = {"seasonal_order": [(0,0,0,0), (0,1,0,12)]}
 
@@ -90,7 +92,7 @@ grid_obj = ForecastingGridSearchCV(
     forecaster=forecaster,
     cv=cv,
     param_grid=forecaster_param_grid,
-    scoring=metrics
+    scoring=metrics_dict
 )
 grid_obj.fit(y=y, X=X, **fit_kwargs)
 

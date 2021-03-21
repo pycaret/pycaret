@@ -8,28 +8,27 @@ import time
 from collections import defaultdict
 from functools import partial
 
-import numpy as np
-import pandas as pd
-from scipy.stats import rankdata
+import numpy as np  # type: ignore
+import pandas as pd  # type: ignore
+from scipy.stats import rankdata  # type: ignore
 
 from pycaret.internal.PycaretExperiment import TimeSeriesExperiment
 from pycaret.internal.utils import check_if_global_is_not_none
 
-from typing import List, Tuple, Any, Union, Optional, Dict
+from typing import List, Tuple, Any, Union, Optional, Dict, Generator
 import warnings
 import time
 
-from sklearn.base import clone
-from sklearn.model_selection._validation import _aggregate_score_dicts
-from sklearn.model_selection import check_cv, ParameterGrid, ParameterSampler
-from sklearn.model_selection._search import _check_param_grid
+from sklearn.base import clone  # type: ignore
+from sklearn.model_selection._validation import _aggregate_score_dicts  # type: ignore
+from sklearn.model_selection import check_cv, ParameterGrid, ParameterSampler  # type: ignore
+from sklearn.model_selection._search import _check_param_grid  # type: ignore
+from sklearn.metrics._scorer import get_scorer, _PredictScorer  # type: ignore
 
-from joblib import Parallel
-from joblib import delayed
-from joblib.externals.loky.process_executor import TerminatedWorkerError
+from joblib import Parallel, delayed  # type: ignore
 
-from sktime.utils.validation.forecasting import check_scoring
-from sktime.utils.validation.forecasting import check_y_X
+from sktime.utils.validation.forecasting import check_y_X  # type: ignore
+from sktime.forecasting.model_selection import SlidingWindowSplitter  # type: ignore
 
 warnings.filterwarnings("ignore")
 
@@ -812,7 +811,7 @@ def blend_models(
     >>> ts_blender = exp.blend_models([arima_model, naive_model], optimize='MAPE_ts')
 
 
-    estimator_list: list of sktime compatible estiimators
+    estimator_list: list of sktime compatible estimators
         List of model objects
 
 
@@ -1996,12 +1995,10 @@ def _get_cv_n_folds(y, cv) -> int:
     return n_folds
 
 
-def get_folds(cv, y) -> Tuple[pd.Series, pd.Series]:
+def get_folds(cv, y) -> Generator[Tuple[pd.Series, pd.Series], None, None]:
     """
     Returns the train and test indices for the time series data
     """
-    from sktime.forecasting.model_selection import SlidingWindowSplitter
-
     n_folds = _get_cv_n_folds(y, cv)
     for i in np.arange(n_folds):
         if i == 0:
@@ -2027,7 +2024,18 @@ def get_folds(cv, y) -> Tuple[pd.Series, pd.Series]:
         yield rolling_y_train.index, y_test.index
 
 
-def cross_validate_ts(forecaster, y, X, scoring, cv, n_jobs, verbose, fit_params, return_train_score, error_score=0):
+def cross_validate_ts(
+    forecaster,
+    y: pd.Series,
+    X: Optional[Union[pd.Series, pd.DataFrame]],
+    cv,
+    scoring: Dict[str, Union[str, _PredictScorer]],
+    fit_params,
+    n_jobs,
+    return_train_score,
+    error_score=0,
+    verbose: int=0
+    ) -> Dict[str, np.array]:
     """Performs Cross Validation on time series data
 
     Parallelization is based on `sklearn` cross_validate function [1]
@@ -2038,23 +2046,26 @@ def cross_validate_ts(forecaster, y, X, scoring, cv, n_jobs, verbose, fit_params
     Parameters
     ----------
     forecaster : [type]
-        [description]
-    y : [type]
-        [description]
-    X : [type]
-        [description]
+        Time Series Forecaster that is compatible with sktime
+    y : pd.Series
+        The variable of interest for forecasting
+    X : Optional[Union[pd.Series, pd.DataFrame]]
+        Exogenous Variables
     cv : [type]
         [description]
-    scoring : [type]
-        [description]
+    scoring : Dict[str, Union[str, _PredictScorer]]
+        Scoring Dictionary. Values can be valid strings that can be converted to
+        callable metrics or the callable metrics directly
     fit_params : [type]
-        [description]
+        Fit parameters to be used when training
     n_jobs : [type]
-        [description]
+        Number of cores to use to parallelize. Refer to sklearn for details
     return_train_score : [type]
-        [description]
+        Should the training scores be returned. Unused for now.
     error_score : int, optional
-        [description], by default 0
+        Unused for now, by default 0
+    verbose : int
+        Sets the verbosity level. Unused for now
 
     Returns
     -------
@@ -2063,13 +2074,13 @@ def cross_validate_ts(forecaster, y, X, scoring, cv, n_jobs, verbose, fit_params
 
     Raises
     ------
-    ValueError
-        [description]
+    Error
+        If fit and score raises any exceptions
     """
     try:
         # # For Debug
         # n_jobs = 1
-
+        scoring = _get_metrics_dict_ts(scoring)
         parallel = Parallel(n_jobs=n_jobs)
         out = parallel(delayed(_fit_and_score)(
             forecaster=clone(forecaster),
@@ -2083,7 +2094,7 @@ def cross_validate_ts(forecaster, y, X, scoring, cv, n_jobs, verbose, fit_params
             error_score=error_score)
             for train, test in get_folds(cv, y))
     # raise key exceptions
-    except (TerminatedWorkerError, KeyboardInterrupt, SystemExit):
+    except Exception:
         raise
 
     # Similar to parts of _format_results in BaseGridSearch
@@ -2092,10 +2103,41 @@ def cross_validate_ts(forecaster, y, X, scoring, cv, n_jobs, verbose, fit_params
 
     return test_scores
 
+def _get_metrics_dict_ts(
+    metrics_dict: Dict[str, Union[str, _PredictScorer]]
+    ) -> Dict[str, _PredictScorer]:
+    """Returns a metrics dictionary in which all values are callables
+    of type _PredictScorer
 
-def _fit_and_score(forecaster, y, X, scoring, train, test, parameters, fit_params, return_train_score, error_score=0):
+    Parameters
+    ----------
+    metrics_dict : A metrics dictionary in which some values can be strings.
+        If the value is a string, the corresponding callable metric is returned
+        e.g. Dictionary Value of 'neg_mean_absolute_error' will return
+        make_scorer(mean_absolute_error, greater_is_better=False)
+    """
+    return_metrics_dict = {}
+    for k, v in metrics_dict.items():
+        if isinstance(v, str):
+            return_metrics_dict[k] = get_scorer(v)
+        else:
+            return_metrics_dict[k] = v
+    return return_metrics_dict
+
+
+def _fit_and_score(
+    forecaster,
+    y: pd.Series,
+    X: Optional[Union[pd.Series, pd.DataFrame]],
+    scoring: Dict[str, Union[str, _PredictScorer]],
+    train,
+    test,
+    parameters,
+    fit_params,
+    return_train_score,
+    error_score=0):
     """ Fits the forecaster on a single train split and scores on the test split
-    Similar to _fit_and_score from `skleran` [1] (and to some extent `sktime` [2]).
+    Similar to _fit_and_score from `sklearn` [1] (and to some extent `sktime` [2]).
     Difference is that [1] operates on a single fold only, whereas [2] operates on all cv folds.
     Ref:
     [1] https://github.com/scikit-learn/scikit-learn/blob/0.24.1/sklearn/model_selection/_validation.py#L449
@@ -2104,30 +2146,32 @@ def _fit_and_score(forecaster, y, X, scoring, train, test, parameters, fit_param
     Parameters
     ----------
     forecaster : [type]
-        [description]
-    y : [type]
-        [description]
-    X : [type]
-        [description]
-    scoring : [type]
-        [description]
+        Time Series Forecaster that is compatible with sktime
+    y : pd.Series
+        The variable of interest for forecasting
+    X : Optional[Union[pd.Series, pd.DataFrame]]
+        Exogenous Variables
+    scoring : Dict[str, Union[str, _PredictScorer]]
+        Scoring Dictionary. Values can be valid strings that can be converted to
+        callable metrics or the callable metrics directly
     train : [type]
         Indices of training samples.
     test : [type]
         Indices of test samples.
     parameters : [type]
-        [description]
+        Parameter to set for the forecaster
     fit_params : [type]
-        [description]
+        Fit parameters to be used when training
     return_train_score : [type]
-        [description]
+        Should the training scores be returned. Unused for now.
     error_score : int, optional
-        [description], by default 0
+        Unused for now, by default 0
 
     Raises
     ------
     ValueError
-        [description]
+        When test indices do not match predicted indices. This is only for
+        for internal checks and should not be raised when used by external users
     """
     if parameters is not None:
         forecaster.set_params(**parameters)
@@ -2144,13 +2188,16 @@ def _fit_and_score(forecaster, y, X, scoring, train, test, parameters, fit_param
     if (y_test.index.values != y_pred.index.values).any():
         print(f"\t y_train: {y_train.index.values}, \n\t y_test: {y_test.index.values}")
         print(f"\t y_pred: {y_pred.index.values}")
-        raise ValueError("y_test indices do not match y_pred_indices or split/prediction length does not match forecast horizon.")
+        raise ValueError(
+            "y_test indices do not match y_pred_indices or split/prediction length does not match forecast horizon."
+        )
 
     fold_scores = {}
     start = time.time()
-    for scorer_name, scorer_container in scoring.items():
-        metric = scorer_container.scorer._score_func(y_true=y_test, y_pred=y_pred)
-        # fold_scores[f"test_{scorer_name}"] = metric
+
+    scoring = _get_metrics_dict_ts(scoring)
+    for scorer_name, scorer in scoring.items():
+        metric = scorer._score_func(y_true=y_test, y_pred=y_pred)
         fold_scores[scorer_name] = metric
     score_time = time.time() - start
 
@@ -2159,7 +2206,7 @@ def _fit_and_score(forecaster, y, X, scoring, train, test, parameters, fit_param
 
 class BaseGridSearch():
     """
-    Parallization is based predominantly on [1]. Also similar to [2]
+    Parallelization is based predominantly on [1]. Also similar to [2]
 
     Ref:
     [1] https://github.com/scikit-learn/scikit-learn/blob/0.24.1/sklearn/model_selection/_search.py#L795
@@ -2171,7 +2218,8 @@ class BaseGridSearch():
         cv,
         n_jobs=None,
         pre_dispatch=None,
-        refit=False,
+        refit: bool=False,
+        refit_metric: str='smape',
         scoring=None,
         verbose=0,
         error_score=None,
@@ -2182,12 +2230,13 @@ class BaseGridSearch():
         self.n_jobs = n_jobs
         self.pre_dispatch = pre_dispatch
         self.refit = refit
+        self.refit_metric=refit_metric
         self.scoring = scoring
         self.verbose = verbose
         self.error_score = error_score
         self.return_train_score = return_train_score
 
-        self.best_params_= {}
+        self.best_params_ = {}
         self.cv_results_ = {}
 
 
@@ -2202,8 +2251,15 @@ class BaseGridSearch():
         # Removing for now since we can have multiple metrics
         # TODO: Add back later if it supports multiple metrics
         # scoring = check_scoring(self.scoring)
-        scorers = self.scoring  # Multiple metrics supported
-        refit_metric = 'smape'
+        # Multiple metrics supported
+        scorers = self.scoring  # Dict[str, Union[str, scorer]]  Not metrics container
+        scorers = _get_metrics_dict_ts(scorers)
+        refit_metric = self.refit_metric
+        if refit_metric not in list(scorers.keys()):
+            raise ValueError(
+                f"Refit Metric: '{refit_metric}' is not available. ",
+                f"Available Values are: {list(scorers.keys())}"
+            )
 
         results = {}
         all_candidate_params = []
@@ -2287,32 +2343,13 @@ class BaseGridSearch():
 
     @staticmethod
     def _format_results(candidate_params, scorers, out, n_splits):
-        """ From sktime
-        # TODO: This combines all folds and parameters into 1 list.
-        # TODO: See sklearn implementation and reconcile
+        """ From sklearn and sktime
         """
         n_candidates = len(candidate_params)
         (test_scores_dict, fit_time, score_time) = zip(*out)
         test_scores_dict = _aggregate_score_dicts(test_scores_dict)
 
         results = {}
-
-        # # From sktime
-        # def _store_sktime(
-        #     key_name, array, rank=False, greater_is_better=False
-        # ):
-        #     """A small helper to store the scores/times to the cv_results_"""
-        #     # When iterated first by splits, then by parameters
-        #     # We want `array` to have `n_candidates` rows and `n_splits` cols.
-        #     array = np.array(array, dtype=np.float64)
-
-        #     results["mean_%s" % key_name] = array
-
-        #     if rank:
-        #         array = -array if greater_is_better else array
-        #         results["rank_%s" % key_name] = np.asarray(
-        #             rankdata(array, method="min"), dtype=np.int32
-        #         )
 
         # From sklearn (with the addition of greater_is_better from sktime)
         # INFO: For some reason, sklearn func does not work with sktime metrics
@@ -2385,19 +2422,13 @@ class BaseGridSearch():
 
         for scorer_name, scorer in scorers.items():
             # Computed the (weighted) mean and std for test scores alone
-            # _store_sktime(
-            #     "test_%s" % scorer_name,
-            #     test_scores_dict[scorer_name],
-            #     rank=True,
-            #     greater_is_better=scorer.greater_is_better,
-            # )
             _store(
                 'test_%s' % scorer_name,
                 test_scores_dict[scorer_name],
                 splits=True,
                 rank=True,
                 weights=None,
-                greater_is_better=scorer.greater_is_better
+                greater_is_better=True if scorer._sign == 1 else False
             )
 
         return results
@@ -2411,6 +2442,7 @@ class ForecastingGridSearchCV(BaseGridSearch):
         scoring=None,
         n_jobs=None,
         refit=True,
+        refit_metric: str='smape',
         verbose=0,
         pre_dispatch="2*n_jobs",
         error_score=np.nan,
@@ -2418,12 +2450,13 @@ class ForecastingGridSearchCV(BaseGridSearch):
     ):
         super(ForecastingGridSearchCV, self).__init__(
             forecaster=forecaster,
-            scoring=scoring,
-            n_jobs=n_jobs,
-            refit=refit,
             cv=cv,
-            verbose=verbose,
+            n_jobs=n_jobs,
             pre_dispatch=pre_dispatch,
+            refit=refit,
+            refit_metric=refit_metric,
+            scoring=scoring,
+            verbose=verbose,
             error_score=error_score,
             return_train_score=return_train_score,
         )
