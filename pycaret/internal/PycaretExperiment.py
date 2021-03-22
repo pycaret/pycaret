@@ -16042,9 +16042,16 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 'Y': 1 #year
             }
 
+            valid_freq = list(freq_to_sp.keys())
             index_freq = data.index.freqstr
             index_freq = index_freq.split('-')[0] or index_freq
-            sp = freq_to_sp.get(index_freq, None)
+
+            if index_freq in valid_freq:
+                sp = freq_to_sp.get(index_freq, None)
+            else:
+                raise ValueError(
+                f"Unsupported Period frequency: {index_freq}, valid Period frequencies: {', '.join(valid_freq)}"
+            )
 
         if isinstance(data, (pd.Series, pd.DataFrame)):
             if isinstance(data, pd.DataFrame):
