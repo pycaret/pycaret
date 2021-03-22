@@ -96,7 +96,7 @@ def test_blend_model(load_setup, load_models, method):
     ts_weights = [uniform(0, 1) for _ in range(len(load_models))]
 
     blender = ts_experiment.blend_models(
-        ts_models, method=method, weights=ts_weights, optimize="MAPE_ts", verbose=False
+        ts_models, method=method, weights=ts_weights, verbose=False
     )
 
     assert isinstance(blender, _EnsembleForecasterWithVoting)
@@ -110,16 +110,14 @@ def test_blend_model(load_setup, load_models, method):
 
 def test_blend_model_predict(load_setup, load_models):
 
-    from pycaret.internal.ensemble import _EnsembleForecasterWithVoting
-
     ts_experiment = load_setup
     ts_models = load_models
     ts_weights = [uniform(0, 1) for _ in range(len(load_models))]
     fh = ts_experiment.fh
 
-    mean_blender = ts_experiment.blend_models(ts_models, method='mean', optimize='MAPE_ts')
-    median_blender = ts_experiment.blend_models(ts_models, method='median', optimize='MAPE_ts')
-    voting_blender = ts_experiment.blend_models(ts_models, method='voting', weights=ts_weights, optimize='MAPE_ts')
+    mean_blender = ts_experiment.blend_models(ts_models, method='mean') #, optimize='MAPE')
+    median_blender = ts_experiment.blend_models(ts_models, method='median') #), optimize='MAPE')
+    voting_blender = ts_experiment.blend_models(ts_models, method='voting', weights=ts_weights) #, optimize='MAPE')
 
     mean_blender_pred = mean_blender.predict(fh=fh)
     median_blender_pred = median_blender.predict(fh=fh)

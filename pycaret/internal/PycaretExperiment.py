@@ -1,5 +1,4 @@
 from enum import Enum, auto
-import math
 from pycaret.internal.meta_estimators import (
     PowerTransformedTargetRegressor,
     get_estimator_from_meta_estimator,
@@ -10,8 +9,7 @@ from pycaret.internal.pipeline import (
     estimator_pipeline,
     merge_pipelines,
     get_pipeline_fit_kwargs,
-    Pipeline as InternalPipeline,
-    TimeSeriesPipeline as InternalTimeSeriesPipeline,
+    Pipeline as InternalPipeline
 )
 from pycaret.internal.utils import (
     color_df,
@@ -44,19 +42,17 @@ import pycaret.containers.models.anomaly
 import pycaret.containers.models.time_series
 import pycaret.internal.preprocess
 import pycaret.internal.persistence
-import pandas as pd
+import pandas as pd  # type ignore
 from pandas.io.formats.style import Styler
-import numpy as np
+import numpy as np  # type: ignore
 import os
 import sys
 import datetime
 import time
 import random
 import gc
-import multiprocessing
 from copy import deepcopy
 from sklearn.base import clone
-from sklearn.exceptions import NotFittedError
 from sklearn.compose import TransformedTargetRegressor
 from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split, BaseCrossValidator
@@ -65,8 +61,8 @@ import warnings
 from IPython.utils import io
 import traceback
 from unittest.mock import patch
-import plotly.express as px
-import plotly.graph_objects as go
+import plotly.express as px  # type: ignore
+import plotly.graph_objects as go  # type: ignore
 import scikitplot as skplt
 
 
@@ -16400,7 +16396,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             forecaster=clone(model),
             y=data_y,
             X=data_X,
-            scoring=metrics,
+            scoring=metrics_dict, # metrics,
             cv=cv,
             n_jobs=n_jobs,
             verbose=0,
@@ -16803,7 +16799,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         # TODO: Changed compared to other PyCaret UseCases (Check with Antoni)
         # optimize = optimize.scorer
         compare_dimension = optimize_container.display_name
-        optimize = {optimize: optimize_container}
+        optimize_dict = {optimize: optimize_container.scorer}
 
         # convert trained estimator into string name for grids
 
@@ -16947,7 +16943,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                         forecaster=model,
                         cv=cv,
                         param_grid=param_grid,
-                        scoring=optimize, #metrics
+                        scoring=optimize_dict, #metrics
                         n_jobs=n_jobs,
                         verbose=tuner_verbose,
                         **search_kwargs
@@ -17169,7 +17165,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         fold: Optional[Union[int, Any]] = None,
         round: int = 4,
         choose_better: bool = False,
-        optimize: str = "R2",
+        optimize: str = "SMAPE",
         weights: Optional[List[float]] = None,
         fit_kwargs: Optional[dict] = None,
         groups: Optional[Union[str, Any]] = None,
