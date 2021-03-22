@@ -889,6 +889,7 @@ class _TabularExperiment(_PyCaretExperiment):
         log_profile: bool = False,
         log_data: bool = False,
         silent: bool = False,
+        sp: Optional[int] = None,
         verbose: bool = True,
         profile: bool = False,
         profile_kwargs: Dict[str, Any] = None,
@@ -15820,6 +15821,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         fold_strategy: Union[str, Any] = "timeseries",  # added in pycaret==2.2
         fold: int = 10,
         fh: Union[List[int], int, np.array] = 1,
+        sp: Optional[int] = None,
         n_jobs: Optional[int] = -1,
         use_gpu: bool = False,
         custom_pipeline: Union[
@@ -15898,6 +15900,21 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         fh: int, list or np.array, default = 1
             Number of steps ahead to take to evaluate forecast.
+
+
+        sp: int, default = None
+            Seasonal periods in timeseries data. If not provided the frequency of the data
+            index is map to a seasonal period as follows:
+
+            * "S": 60
+            * "T": 60
+            * 'H': 24
+            * 'D': 7
+            * 'W': 52
+            * 'M': 12
+            * 'Q': 4
+            * 'A': 1
+            * 'Y': 1
 
 
         n_jobs: int, default = -1
@@ -16011,19 +16028,23 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             )
         self.fh = fh
 
-        # if not isinstance(data, pd.Series):
-        #     if isinstance(data, pd.DataFrame):
-        #         if data.shape[1] != 1:
-        #             raise ValueError(
-        #                 f"data must be a pandas Series or DataFrame with one column, got {data.shape[1]} columns!"
-        #             )
-        #     else:
-        #         raise ValueError(
-        #             f"data must be a pandas Series or DataFrame with one column, got object of {type(data)} type!"
-        #         )
-        # else:
-        #     data = pd.DataFrame(data)
+        if sp is None:
 
+            freq_to_sp = {
+                "S": 60, # second
+                "T": 60, # minute
+                'H': 24, # hour
+                'D': 7, # day
+                'W': 52, # week
+                'M': 12, # month
+                'Q': 4, # quarter
+                'A': 1, #year
+                'Y': 1 #year
+            }
+
+            index_freq = data.index.freqstr
+            index_freq = index_freq.split('-')[0] or index_freq
+            sp = freq_to_sp.get(index_freq, None)
 
         if isinstance(data, (pd.Series, pd.DataFrame)):
             if isinstance(data, pd.DataFrame):
@@ -16038,27 +16059,35 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 f"data must be a pandas Series or DataFrame, got object of {type(data)} type!"
             )
 
-
         if not np.issubdtype(data[data.columns[0]].dtype, np.number):
             raise TypeError(
                 f"Data must be of 'numpy.number' subtype, got {data[data.columns[0]].dtype}!"
             )
 
-        index_type_check = False
+        #index_type_check = False
         # if np.issubdtype(data.index.dtype, np.datetime64):
         #     index_type_check = True
+        #allowed_index_types = pd.core.indexes.period.PeriodIndex
+        #if isinstance(data.index, allowed_index_types):
+        #    index_type_check = True
+        #if index_type_check is False:
+        #    raise TypeError(
+        #        f"Index must be of 'numpy.datetime64' or 'pandas.core.indexes.period.PeriodIndex' subtype, got {data.index.dtype}!"
+        #    )
+
         allowed_index_types = pd.core.indexes.period.PeriodIndex
-        if isinstance(data.index, allowed_index_types):
-            index_type_check = True
-        if index_type_check is False:
+
+        if not isinstance(data.index, allowed_index_types):
             raise TypeError(
-                f"Index must be of 'numpy.datetime64' or 'pandas.core.indexes.period.PeriodIndex' subtype, got {data.index.dtype}!"
+                f"Index must be 'pandas.core.indexes.period.PeriodIndex' subtype, got {data.index.dtype}!"
             )
+
         # data.index = data.index.astype("datetime64[ns]")
         if len(data.index) != len(set(data.index)):
             raise ValueError("Index may not have duplicate values!")
         # TODO: Check with @Miguel: Why is this needed (float32 causes issues with scipy optimize)
         # data[data.columns[0]] = data[data.columns[0]].astype("float32")
+        
         return super().setup(
             data=data,
             target=data.columns[0],
@@ -16094,6 +16123,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             fold_strategy=fold_strategy,
             fold=fold,
             fh=fh,
+            sp=sp,
             fold_shuffle=False,
             n_jobs=n_jobs,
             use_gpu=use_gpu,
