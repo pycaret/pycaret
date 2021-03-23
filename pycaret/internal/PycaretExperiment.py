@@ -2014,6 +2014,7 @@ class _TabularExperiment(_PyCaretExperiment):
             data_split_shuffle,
             dtypes,
             display,
+            fh
         )
 
         if not self._is_unsupervised():
@@ -4694,21 +4695,40 @@ class _SupervisedExperiment(_TabularExperiment):
         data_split_shuffle,
         dtypes,
         display: Display,
+        fh
     ) -> None:
         _stratify_columns = get_columns_to_stratify_by(
             X_before_preprocess, y_before_preprocess, self.stratify_param, target
         )
         if test_data is None:
-            self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(
-                X_before_preprocess,
-                y_before_preprocess,
-                test_size=1 - train_size,
-                stratify=_stratify_columns,
-                random_state=self.seed,
-                shuffle=data_split_shuffle,
-            )
-            train_data = pd.concat([self.X_train, self.y_train], axis=1)
-            test_data = pd.concat([self.X_test, self.y_test], axis=1)
+
+            if self._ml_usecase == MLUsecase.TIME_SERIES:
+
+                from sktime.forecasting.model_selection import temporal_train_test_split # sktime is an optional dependency
+
+                train_data, test_data = temporal_train_test_split(
+                    y=y_before_preprocess,
+                    X=None,
+                    #train_size=train_size, # change to forecast horizon instead of 30%
+                    fh=fh, # if fh is provided it splits by it
+                )
+
+                train_data, test_data = pd.DataFrame(train_data), pd.DataFrame(test_data)
+
+                self.y_train = train_data
+                self.y_test = test_data
+
+            else:
+                self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(
+                    X_before_preprocess,
+                    y_before_preprocess,
+                    test_size=1-train_size,
+                    stratify=_stratify_columns,
+                    random_state=self.seed,
+                    shuffle=data_split_shuffle,
+                )
+                train_data = pd.concat([self.X_train, self.y_train], axis=1)
+                test_data = pd.concat([self.X_test, self.y_test], axis=1)
 
         train_data = self.prep_pipe.fit_transform(train_data)
         # workaround to also transform target
@@ -15866,7 +15886,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             ignored. test_data must be labelled and the shape of data and test_data must
             match.
 
-        h: np.array, default = None
+        fh: np.array, default = None
             The forecast horizon to be used for forecasting. User must specify a value.
             The values of the array must be integers specifying the lookahead points that
             must be forecasted. e.g. np.array([2, 5]) will forecast 2 and 5 points ahead.
@@ -16050,8 +16070,8 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 sp = freq_to_sp.get(index_freq, None)
             else:
                 raise ValueError(
-                f"Unsupported Period frequency: {index_freq}, valid Period frequencies: {', '.join(valid_freq)}"
-            )
+                    f"Unsupported Period frequency: {index_freq}, valid Period frequencies: {', '.join(valid_freq)}"
+                )
 
         if isinstance(data, (pd.Series, pd.DataFrame)):
             if isinstance(data, pd.DataFrame):
