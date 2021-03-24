@@ -393,7 +393,7 @@ def load_model(
                 os.makedirs(path)
             s3.Bucket(bucketname).download_file(key, filename)
 
-        model = load_model(filename, verbose=False)
+        model = load_model(model_name, verbose=False)
 
         if verbose:
             print("Transformation Pipeline and Model Successfully Loaded")
