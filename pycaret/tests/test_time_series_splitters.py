@@ -43,10 +43,12 @@ def test_setup_initialization(fold, fh, fold_strategy, load_data):
         elif fold_strategy == "slidingwindow":
             assert isinstance(exp_name.fold_generator, SlidingWindowSplitter)
 
-        expected = int(len(load_data)*train_size) - fold * fh  # Since fh is an int
+        #expected = int(len(load_data)*train_size) - fold * fh  # Since fh is an int, if train_size splits original data
+        expected = int(len(load_data) - fh) - fold * fh # if fh splits original data
         assert exp_name.fold_generator.initial_window == expected
         assert np.all(exp_name.fold_generator.fh == np.arange(1, fh+1))
         assert exp_name.fold_generator.step_length == fh  # Since fh is an int
+    
     # elif fold_strategy == "timeseries":
     #     assert isinstance(exp_name.fold_generator, TimeSeriesSplit)
 

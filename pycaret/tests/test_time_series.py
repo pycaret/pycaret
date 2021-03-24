@@ -2,11 +2,19 @@
 """
 import pytest
 
-from random import choice, uniform
+from random import choice, uniform, randint
 from pycaret.internal.ensemble import _ENSEMBLE_METHODS
 import numpy as np
 import pandas as pd
 
+_all_models = ["naive", "poly_trend", "arima", "exp_smooth", "theta"]
+_parametrize_create_model = [
+    (randint(5, 10), "naive"),
+    (randint(5, 10), "poly_trend"),
+    (np.arange(1, randint(5, 10)), "arima"),
+    (np.arange(1, randint(5, 10)), "exp_smooth"),
+    (np.arange(1, randint(5, 10)), "theta"),
+]
 
 @pytest.fixture(scope="session", name="load_data")
 def load_data():
@@ -49,41 +57,25 @@ def load_ts_models(load_setup):
     return ts_estimators
 
 
-models = ["naive", "poly_trend", "arima", "exp_smooth", "theta"]
-parametrize_list = [(choice(models))]
-
-@pytest.mark.parametrize("model", parametrize_list)
-def test_create_model(model, load_data):
+@pytest.mark.parametrize("fh, model", _parametrize_create_model)
+def test_create_model(fh, model, load_data):
 
     from pycaret.internal.PycaretExperiment import TimeSeriesExperiment
 
     exp = TimeSeriesExperiment()
+    
     exp.setup(
-        data=load_data, fold=3, fh=12, fold_strategy="expandingwindow", verbose=False
+        data=load_data, fold=3, fh=fh, fold_strategy="expandingwindow", verbose=False
     )
 
     model_obj = exp.create_model(model)
+    
     y_pred = model_obj.predict()
     assert isinstance(y_pred, pd.Series)
-    expected = pd.core.indexes.period.PeriodIndex(
-        [
-            "1957-05",
-            "1957-06",
-            "1957-07",
-            "1957-08",
-            "1957-09",
-            "1957-10",
-            "1957-11",
-            "1957-12",
-            "1958-01",
-            "1958-02",
-            "1958-03",
-            "1958-04",
-        ],
-        dtype="period[M]",
-        freq="M",
-    )
-    assert np.all(y_pred.index == expected)
+    
+    fh_index = fh if isinstance(fh, int) else fh[-1]
+    expected_period_index = load_data.iloc[-fh_index:].index
+    assert np.all(y_pred.index == expected_period_index)
 
 
 @pytest.mark.parametrize("method", _ENSEMBLE_METHODS)
@@ -131,16 +123,18 @@ def test_blend_model_predict(load_setup, load_models):
     assert mean_voting_equal == False
     assert median_voting_equal == False
 
-@pytest.mark.parametrize("model", parametrize_list)
+
+@pytest.mark.parametrize("model", _all_models)
 def test_tune_model(model, load_data):
 
     from pycaret.internal.PycaretExperiment import TimeSeriesExperiment
     exp = TimeSeriesExperiment()
+    fh = 12
 
     exp.setup(
         data=load_data,
         fold=3,
-        fh=12,
+        fh=fh,
         fold_strategy="expandingwindow"
     )
 
@@ -148,12 +142,6 @@ def test_tune_model(model, load_data):
     tuned_model_obj = exp.tune_model(model_obj)
     y_pred = tuned_model_obj.predict()
     assert isinstance(y_pred, pd.Series)
-    expected = pd.core.indexes.period.PeriodIndex(
-        [
-            '1957-05', '1957-06', '1957-07', '1957-08', '1957-09', '1957-10',
-            '1957-11', '1957-12', '1958-01', '1958-02', '1958-03', '1958-04'
-        ],
-        dtype='period[M]',
-        freq='M'
-    )
-    assert np.all(y_pred.index == expected)
+
+    expected_period_index = load_data.iloc[-fh:].index
+    assert np.all(y_pred.index == expected_period_index)

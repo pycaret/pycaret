@@ -4709,8 +4709,8 @@ class _SupervisedExperiment(_TabularExperiment):
                 train_data, test_data = temporal_train_test_split(
                     y=y_before_preprocess,
                     X=None,
-                    #train_size=train_size, # change to forecast horizon instead of 30%
                     fh=fh, # if fh is provided it splits by it
+                    #train_size=train_size, # original split by train size
                 )
 
                 train_data, test_data = pd.DataFrame(train_data), pd.DataFrame(test_data)
