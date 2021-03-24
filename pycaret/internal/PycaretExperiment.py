@@ -9170,6 +9170,7 @@ class _UnsupervisedExperiment(_TabularExperiment):
         data_split_shuffle,
         dtypes,
         display: Display,
+        fh=None
     ) -> None:
         display.move_progress()
         self.X = self.prep_pipe.fit_transform(train_data).drop(target, axis=1)
