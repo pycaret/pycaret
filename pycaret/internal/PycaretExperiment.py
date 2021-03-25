@@ -4706,11 +4706,11 @@ class _SupervisedExperiment(_TabularExperiment):
 
                 from sktime.forecasting.model_selection import temporal_train_test_split # sktime is an optional dependency
 
-                train_data, test_data = temporal_train_test_split(
+
+                train_data, test_data, self.X_train, self.X_test = temporal_train_test_split(
                     y=y_before_preprocess,
-                    X=None,
-                    fh=fh, # if fh is provided it splits by it
-                    #train_size=train_size, # original split by train size
+                    X=X_before_preprocess,
+                    fh=fh # if fh is provided it splits by it
                 )
 
                 train_data, test_data = pd.DataFrame(train_data), pd.DataFrame(test_data)
