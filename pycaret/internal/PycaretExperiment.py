@@ -4695,7 +4695,7 @@ class _SupervisedExperiment(_TabularExperiment):
         data_split_shuffle,
         dtypes,
         display: Display,
-        fh
+        fh=None
     ) -> None:
         _stratify_columns = get_columns_to_stratify_by(
             X_before_preprocess, y_before_preprocess, self.stratify_param, target
