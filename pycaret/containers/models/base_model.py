@@ -99,5 +99,5 @@ def leftover_parameters_to_categorical_distributions(
     tune_grid: dict, tune_distributions: dict
 ) -> None:
     for k, v in tune_grid.items():
-        if not k in tune_distributions:
+        if not k in tune_distributions and not callable(v):
             tune_distributions[k] = CategoricalDistribution(v)
