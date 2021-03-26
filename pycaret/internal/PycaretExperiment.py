@@ -6586,6 +6586,12 @@ class _SupervisedExperiment(_TabularExperiment):
                 "parameter grid for tuning is empty. If passing custom_grid, make sure that it is not empty. If not passing custom_grid, the passed estimator does not have a built-in tuning grid."
             )
 
+        # getting values of dynamic hyperparameters. TODO change the special
+        # cases above to use this
+        param_grid = {
+            k: (v() if callable(v) else v) for k, v in param_grid.items()
+        }
+
         suffixes = []
 
         if is_stacked_model:

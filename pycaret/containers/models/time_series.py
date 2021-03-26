@@ -269,10 +269,20 @@ class ArimaContainer(TimeSeriesContainer):
 
         args = {}
         tune_args = {}
-        # TODO: Temporary placeholder
-        # (will need to define properly later with seasonality parameters, etc.)
+
+        # function definitions can be passed in tune_grid
+        # and tune_distributions like this, provided
+        # they have the same signature as this one
+        # and return expected type of values:
+        # - a list for tune_grid
+        # - a PyCaret distribution for tune_distributions
+        #
+        # use globals_dict to get access to X, y, etc.
+        def get_seasonal_order_grid() -> list:
+            return [(0,0,0,0), (0,1,0,12)]
+
         tune_grid = {
-            "seasonal_order": [(0,0,0,0), (0,1,0,12)]
+            "seasonal_order": get_seasonal_order_grid
         }
         tune_distributions = {}
 
