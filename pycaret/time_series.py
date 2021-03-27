@@ -39,7 +39,7 @@ _CURRENT_EXPERIMENT_DECORATOR_DICT = {"_CURRENT_EXPERIMENT": _CURRENT_EXPERIMENT
 
 def setup(
     data: Union[pd.Series, pd.DataFrame],
-    train_size: float = 0.7,
+    #train_size: float = 0.7,
     test_data: Optional[pd.DataFrame] = None,
     preprocess: bool = True,
     imputation_type: str = "simple",
@@ -48,7 +48,7 @@ def setup(
     fold_strategy: Union[str, Any] = "timeseries",  # added in pycaret==2.2
     fold: int = 10,
     fh: Union[List[int], int, np.ndarray] = 1,
-    sp: Optional[Union[int, str]] = None,
+    seasonal_parameter: Optional[Union[int, str]] = None,
     n_jobs: Optional[int] = -1,
     use_gpu: bool = False,
     custom_pipeline: Union[Any, Tuple[str, Any], List[Any], List[Tuple[str, Any]]] = None,
@@ -79,11 +79,6 @@ def setup(
 
     data : pandas.Series or pandas.DataFrame
         Shape (n_samples, 1), where n_samples is the number of samples.
-
-
-    train_size: float, default = 0.7
-        Proportion of the dataset to be used for training and validation. Should be
-        between 0.0 and 1.0.
 
 
     test_data: pandas.DataFrame, default = None
@@ -122,7 +117,7 @@ def setup(
         Number of steps ahead to take to evaluate forecast.
 
 
-    sp: int or str, default = None
+    seasonal_parameter: int or str, default = None
         Seasonal periods in timeseries data. If not provided the frequency of the data
         index is map to a seasonal period as follows:
 
@@ -135,6 +130,8 @@ def setup(
         * 'Q': 4
         * 'A': 1
         * 'Y': 1
+
+        Alternatively you can provide a custom seasonal parameter by passing it as an integer.
 
 
     n_jobs: int, default = -1
@@ -229,14 +226,14 @@ def setup(
     set_current_experiment(exp)
     return exp.setup(
         data=data,
-        train_size=train_size,
+        #train_size=train_size,
         test_data=test_data,
         preprocess=preprocess,
         imputation_type=imputation_type,
         fold_strategy=fold_strategy,
         fold=fold,
         fh=fh,
-        sp=sp,
+        seasonal_parameter=seasonal_parameter,
         n_jobs=n_jobs,
         use_gpu=use_gpu,
         custom_pipeline=custom_pipeline,

@@ -890,7 +890,7 @@ class _TabularExperiment(_PyCaretExperiment):
         log_profile: bool = False,
         log_data: bool = False,
         silent: bool = False,
-        sp: Optional[int] = None,
+        seasonal_parameter: Optional[int] = None,
         verbose: bool = True,
         profile: bool = False,
         profile_kwargs: Dict[str, Any] = None,
@@ -15834,7 +15834,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
     def setup(
         self,
         data: Union[pd.Series, pd.DataFrame],
-        train_size: float = 0.7,
+        #train_size: float = 0.7,
         test_data: Optional[pd.DataFrame] = None,
         preprocess: bool = True,
         imputation_type: str = "simple",
@@ -15843,7 +15843,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         fold_strategy: Union[str, Any] = "timeseries",  # added in pycaret==2.2
         fold: int = 10,
         fh: Union[List[int], int, np.array] = 1,
-        sp: Optional[Union[int, str]] = None,
+        seasonal_parameter: Optional[Union[int, str]] = None,
         n_jobs: Optional[int] = -1,
         use_gpu: bool = False,
         custom_pipeline: Union[
@@ -15878,15 +15878,11 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             Shape (n_samples, 1), where n_samples is the number of samples.
 
 
-        train_size: float, default = 0.7
-            Proportion of the dataset to be used for training and validation. Should be
-            between 0.0 and 1.0.
-
-
         test_data: pandas.DataFrame, default = None
             If not None, test_data is used as a hold-out set and ``train_size`` parameter is
             ignored. test_data must be labelled and the shape of data and test_data must
             match.
+
 
         fh: np.array, default = None
             The forecast horizon to be used for forecasting. User must specify a value.
@@ -15924,7 +15920,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             Number of steps ahead to take to evaluate forecast.
 
 
-        sp: int or str, default = None
+        seasonal_parameter: int or str, default = None
             Seasonal periods in timeseries data. If not provided the frequency of the data
             index is map to a seasonal period as follows:
 
@@ -15937,6 +15933,8 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             * 'Q': 4
             * 'A': 1
             * 'Y': 1
+
+            Alternatively you can provide a custom seasonal parameter by passing it as an integer.
 
 
         n_jobs: int, default = -1
@@ -16050,31 +16048,31 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             )
         self.fh = fh
 
-        if sp is None:
+        if seasonal_parameter is None:
 
             index_freq = data.index.freqstr
             index_freq = index_freq.split('-')[0] or index_freq
 
             if index_freq in SeasonalParameter.__members__:
-                sp = SeasonalParameter[index_freq].value
+                seasonal_parameter = SeasonalParameter[index_freq].value
             else:
                 raise ValueError(
-                    f"Unsupported Period frequency: {index_freq}, valid Period frequencies: {', '.join(valid_freq)}"
+                    f"Unsupported Period frequency: {index_freq}, valid Period frequencies: {', '.join(SeasonalParameter.__members__.keys())}"
                 )
 
         else:
 
-            if not isinstance(sp, (int, str)):
+            if not isinstance(seasonal_parameter, (int, str)):
                 raise ValueError(
-                    f"sp parameter must be an int or str, got {type(sp)}"
+                    f"seasonal_parameter parameter must be an int or str, got {type(seasonal_parameter)}"
                 )
 
-            if isinstance(sp, str):
+            if isinstance(seasonal_parameter, str):
                 try:
-                    sp = SeasonalParameter[sp]
+                    seasonal_parameter = SeasonalParameter[seasonal_parameter]
                 except KeyError:
                     raise ValueError(
-                        f"Unsupported Period frequency: {sp}, valid Period frequencies: {', '.join(valid_freq)}"
+                        f"Unsupported Period frequency: {seasonal_parameter}, valid Period frequencies: {', '.join(SeasonalParameter.__members__.keys())}"
                     )
 
 
@@ -16123,7 +16121,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         return super().setup(
             data=data,
             target=data.columns[0],
-            train_size=train_size,
+            #train_size=train_size,
             test_data=test_data,
             preprocess=preprocess,
             imputation_type=imputation_type,
@@ -16155,7 +16153,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             fold_strategy=fold_strategy,
             fold=fold,
             fh=fh,
-            sp=sp,
+            seasonal_parameter=seasonal_parameter,
             fold_shuffle=False,
             n_jobs=n_jobs,
             use_gpu=use_gpu,

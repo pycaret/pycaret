@@ -28,13 +28,13 @@ def test_setup_initialization(fold, fh, fold_strategy, load_data):
     )
     from sklearn.model_selection import TimeSeriesSplit
 
-    train_size = 0.7
+    #train_size = 0.7
     exp_name = setup(
         data=load_data,
         fold=fold,
         fh=fh,
         fold_strategy=fold_strategy,
-        train_size=train_size
+        #train_size=train_size
     )
 
     if (fold_strategy == "expandingwindow") or (fold_strategy == "slidingwindow"):
