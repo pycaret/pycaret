@@ -265,7 +265,7 @@ def get_package_name(class_var: Any) -> str:
 def param_grid_to_lists(param_grid: dict) -> dict:
     if param_grid:
         for k, v in param_grid.items():
-            if not isinstance(v, np.ndarray):
+            if not isinstance(v, np.ndarray) and not callable(v):
                 v = list(v)
             param_grid[k] = v
     return param_grid
