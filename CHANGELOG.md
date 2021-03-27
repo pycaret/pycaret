@@ -1,6 +1,34 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+### Release: PyCaret 2.3.0 | Release Date: February 21, 2021
+
+- **Modules Impacted:** `pycaret.classification` `pycaret.regression` `pycaret.clustering` `pycaret.anomaly` `pycaret.arules`
+
+## Summary of Changes
+
+- Added new interactive residual plots in `pycaret.regression` module. You can now generate interactive residual plots by using `residuals_interactive` in the `plot_model` function.
+- Added plot rendering support for streamlit applications. A new parameter `display_format` is added in the `plot_model` function. To render plot in streamlit app, set this to `streamlit`. 
+- Revamped Boruta feature selection algorithm. (give it a try!).
+- `tune_model` in `pycaret.classification` and `pycaret.regression` is now compatible with custom models. 
+- Added low_memory and max_len support to association rules module (https://github.com/pycaret/pycaret/pull/1008).
+- Increased robustness of DataFrame checks (https://github.com/pycaret/pycaret/pull/1005).
+- Improved loading of models from AWS (https://github.com/pycaret/pycaret/pull/1005).
+- Catboost and XGBoost are now optional dependencies. They are not automatically installed with default slim installation. To install optional dependencies use `pip install pycaret[full]`.
+- Added `raw_score` argument in the `predict_model` function for `pycaret.classification` module. When set to True, scores for each class will be returned separately.
+- PyCaret now returns base scikit-learn objects, whenever possible.
+- When `handle_unknown_categorical` is set to False in the `setup` function, an exception will be raised during prediction if the data contains unknown levels in categorical features.
+- `predict_model` for multiclass classification now returns labels as an integer. 
+- Fixed an edge case where an IndexError would be raised in `pycaret.clustering` and `pycaret.anomaly`.
+- Fixed text formatting for certain plots in `pycaret.classification` and `pycaret.regression`.
+- If a `logs.log` file cannot be created when `setup` is initialized, no exception will be raised now (support for more configurable logging to come in future).
+- User added metrics will not raise exceptions now and instead return 0.0.
+- Compatibility with tune-sklearn>=0.2.0.
+- Fixed an edge case for dropping NaNs in target column.
+- Fixed stacked models not being tuned correctly.
+- Fixed an exception with KFold when fold_shuffle=False.
+<br/><br/><br/>
+
 #### Release: PyCaret 2.2.3 | Release Date: December 22, 2020 (SEVERAL BUGS FIX | CRITICAL COMPATIBILITY FIX)
 
 - Fixed exceptions with the `predict_model` function when data columns had non-string characters.

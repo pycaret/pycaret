@@ -176,7 +176,6 @@ class _PyCaretExperiment:
         except ImportError:
             self.logger.warning("xgboost not found")
 
-
         try:
             from catboost import __version__
 
@@ -205,7 +204,12 @@ class _PyCaretExperiment:
         return None
 
     def save_model(
-        self, model, model_name: str, model_only: bool = False, verbose: bool = True
+        self,
+        model,
+        model_name: str,
+        model_only: bool = False,
+        verbose: bool = True,
+        **kwargs,
     ):
         return None
 
@@ -4413,7 +4417,12 @@ class _TabularExperiment(_PyCaretExperiment):
         )
 
     def save_model(
-        self, model, model_name: str, model_only: bool = False, verbose: bool = True
+        self,
+        model,
+        model_name: str,
+        model_only: bool = False,
+        verbose: bool = True,
+        **kwargs,
     ) -> None:
         """
         This function saves the transformation pipeline and trained model object 
@@ -4451,7 +4460,7 @@ class _TabularExperiment(_PyCaretExperiment):
 
         """
         return pycaret.internal.persistence.save_model(
-            model, model_name, None if model_only else self.prep_pipe, verbose
+            model, model_name, None if model_only else self.prep_pipe, verbose, **kwargs
         )
 
     def load_model(
@@ -11958,7 +11967,12 @@ class RegressionExperiment(_SupervisedExperiment):
         )
 
     def save_model(
-        self, model, model_name: str, model_only: bool = False, verbose: bool = True
+        self,
+        model,
+        model_name: str,
+        model_only: bool = False,
+        verbose: bool = True,
+        **kwargs,
     ):
 
         """
@@ -11998,7 +12012,11 @@ class RegressionExperiment(_SupervisedExperiment):
         """
 
         return super().save_model(
-            model=model, model_name=model_name, model_only=model_only, verbose=verbose
+            model=model,
+            model_name=model_name,
+            model_only=model_only,
+            verbose=verbose,
+            **kwargs,
         )
 
     def load_model(
@@ -14718,7 +14736,12 @@ class ClassificationExperiment(_SupervisedExperiment):
         )
 
     def save_model(
-        self, model, model_name: str, model_only: bool = False, verbose: bool = True
+        self,
+        model,
+        model_name: str,
+        model_only: bool = False,
+        verbose: bool = True,
+        **kwargs,
     ):
 
         """
@@ -14758,7 +14781,11 @@ class ClassificationExperiment(_SupervisedExperiment):
         """
 
         return super().save_model(
-            model=model, model_name=model_name, model_only=model_only, verbose=verbose
+            model=model,
+            model_name=model_name,
+            model_only=model_only,
+            verbose=verbose,
+            **kwargs,
         )
 
     def load_model(

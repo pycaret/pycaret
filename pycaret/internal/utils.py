@@ -476,14 +476,15 @@ def get_cv_n_folds(
         return fold.get_n_splits(X, y=y, groups=groups)
 
 
-class none_n_jobs(object):
+class set_n_jobs(object):
     """
     Context which sets `n_jobs` or `thread_count` to None for passed model.
     """
 
-    def __init__(self, model):
+    def __init__(self, model, n_jobs=None):
         self.params = {}
         self.model = model
+        self.n_jobs = n_jobs
         try:
             self.params = {
                 k: v
@@ -495,7 +496,7 @@ class none_n_jobs(object):
 
     def __enter__(self):
         if self.params:
-            self.model.set_params(**{k: None for k, v in self.params.items()})
+            self.model.set_params(**{k: self.n_jobs for k, v in self.params.items()})
 
     def __exit__(self, type, value, traceback):
         if self.params:
@@ -566,11 +567,14 @@ def get_all_object_vars_and_properties(object):
     
     https://stackoverflow.com/a/59769926
     """
-    return {
-        k: getattr(object, k, "")
-        for k in object.__dir__()
-        if k[:2] != "__" and type(getattr(object, k, "")).__name__ != "method"
-    }
+    d = {}
+    for k in object.__dir__():
+        try:
+            if k[:2] != "__" and type(getattr(object, k, "")).__name__ != "method":
+                d[k] = getattr(object, k, "")
+        except:
+            pass
+    return d
 
 
 def is_fit_var(key):

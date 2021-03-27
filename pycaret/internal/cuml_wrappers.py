@@ -2,9 +2,16 @@ import numpy as np
 from sklearn.utils.metaestimators import if_delegate_has_method
 from pycaret.internal.utils import get_all_object_vars_and_properties, is_fit_var
 from sklearn.multiclass import OneVsRestClassifier
+from scipy import sparse
+from sklearn.linear_model._base import LinearClassifierMixin
+from sklearn.multiclass import OneVsRestClassifier
+from sklearn.utils import check_array
+from sklearn.utils import column_or_1d
+from sklearn.utils.validation import check_X_y
+from sklearn.utils.validation import _deprecate_positional_args
+from sklearn.preprocessing import LabelBinarizer
 
-
-def get_dbscan():
+try:
     from cuml.cluster import DBSCAN as cuMLDBSCAN
 
     class DBSCAN(cuMLDBSCAN):
@@ -14,10 +21,16 @@ def get_dbscan():
         def fit_predict(self, X, y=None, out_dtype="int32"):
             return super().fit_predict(X, out_dtype=out_dtype)
 
+
+except ImportError:
+    DBSCAN = None
+
+
+def get_dbscan():
     return DBSCAN
 
 
-def get_kmeans():
+try:
     from cuml.cluster import KMeans as cuMLKMeans
 
     class KMeans(cuMLKMeans):
@@ -27,19 +40,17 @@ def get_kmeans():
         def fit_predict(self, X, y=None, sample_weight=None):
             return super().fit_predict(X, sample_weight=sample_weight)
 
+
+except ImportError:
+    KMeans = None
+
+
+def get_kmeans():
+
     return KMeans
 
 
-def get_svc_classifier():
-    from scipy import sparse
-
-    from sklearn.linear_model._base import LinearClassifierMixin
-    from sklearn.utils import check_array
-    from sklearn.utils import column_or_1d
-    from sklearn.utils.validation import check_X_y
-    from sklearn.utils.validation import _deprecate_positional_args
-    from sklearn.preprocessing import LabelBinarizer
-
+try:
     from cuml.svm import SVC as cuMLSVC
 
     class SVC(OneVsRestClassifier):
@@ -128,20 +139,16 @@ def get_svc_classifier():
 
             return self
 
+
+except ImportError:
+    SVC = None
+
+
+def get_svc_classifier():
     return SVC
 
 
-def get_ridge_classifier():
-    from scipy import sparse
-
-    from sklearn.linear_model._base import LinearClassifierMixin
-    from sklearn.multiclass import OneVsRestClassifier
-    from sklearn.utils import check_array
-    from sklearn.utils import column_or_1d
-    from sklearn.utils.validation import check_X_y
-    from sklearn.utils.validation import _deprecate_positional_args
-    from sklearn.preprocessing import LabelBinarizer
-
+try:
     from cuml.linear_model import Ridge
 
     class RidgeClassifier(OneVsRestClassifier):
@@ -357,7 +364,7 @@ def get_ridge_classifier():
             class_weight=None,
             solver="eig",
             handle=None,
-            output_type=None,
+            output_type="numpy",
             verbose=False,
         ):
             if class_weight:
@@ -414,7 +421,11 @@ def get_ridge_classifier():
                 )
 
             super().fit(X, Y, convert_dtype=True)
-            self.coef_ = np.expand_dims(self.coef_, axis=0)
+            self.coef_ = np.expand_dims(self.coef_.to_output("numpy"), axis=0)
+            try:
+                self.intercept_ = self.intercept_.to_output("numpy")
+            except AttributeError:
+                pass
             return self
 
         def _check_n_features(self, X, reset):
@@ -509,202 +520,23 @@ def get_ridge_classifier():
         def classes_(self):
             return self._label_binarizer.classes_
 
+
+except ImportError:
+    RidgeClassifier = None
+
+
+def get_ridge_classifier():
+
     return RidgeClassifier
 
 
 def get_random_forest_classifier():
     from cuml.ensemble import RandomForestClassifier as cuMLRandomForestClassifier
 
-    class RandomForestClassifier(cuMLRandomForestClassifier):
-        """
-        This is a wrapper to convert data on the fly to float32.
-        When cuML updates to allow float64 for Random Forest, this
-        can be safely removed.
-
-        Warnings
-        --------
-        The conversion from float64 to float32 may result in loss
-        of precision. It should not be an issue in majority of cases.
-
-        See Also
-        --------
-        cuml.ensemble.RandomForestClassifier : description of the underlying class
-        """
-
-        def fit(self, X, y, convert_dtype=True):
-            X = X.astype(np.float32)
-            y = y.astype(np.int32)
-            return super().fit(X, y, convert_dtype=convert_dtype)
-
-        def predict(
-            self,
-            X,
-            predict_model="GPU",
-            output_class=True,
-            threshold=0.5,
-            algo="auto",
-            num_classes=None,
-            convert_dtype=True,
-            fil_sparse_format="auto",
-        ):
-            X = X.astype(np.float32)
-            return (
-                super()
-                .predict(
-                    X,
-                    predict_model=predict_model,
-                    output_class=output_class,
-                    threshold=threshold,
-                    algo=algo,
-                    num_classes=num_classes,
-                    convert_dtype=convert_dtype,
-                    fil_sparse_format=fil_sparse_format,
-                )
-                .astype(int)
-            )
-
-        def predict_proba(
-            self,
-            X,
-            output_class=True,
-            threshold=0.5,
-            algo="auto",
-            num_classes=None,
-            convert_dtype=True,
-            fil_sparse_format="auto",
-        ):
-            X = X.astype(np.float32)
-            return super().predict_proba(
-                X,
-                output_class=output_class,
-                threshold=threshold,
-                algo=algo,
-                num_classes=num_classes,
-                convert_dtype=convert_dtype,
-                fil_sparse_format=fil_sparse_format,
-            )
-
-        def score(
-            self,
-            X,
-            y,
-            threshold=0.5,
-            algo="auto",
-            num_classes=None,
-            predict_model="GPU",
-            convert_dtype=True,
-            fil_sparse_format="auto",
-        ):
-            X = X.astype(np.float32)
-            y = y.astype(np.int32)
-            return super().score(
-                X,
-                y,
-                threshold=threshold,
-                algo=algo,
-                num_classes=num_classes,
-                predict_model=predict_model,
-                convert_dtype=convert_dtype,
-                fil_sparse_format=fil_sparse_format,
-            )
-
-        def __repr__(self):
-            def quote_strs(x: str) -> str:
-                return x if not isinstance(x, str) else f"'{x}'"
-
-            args = ", ".join(
-                [f"{k}={quote_strs(v)}" for k, v in self.get_params().items()]
-                + [f"handle={self.handle}", f"output_type='{self.output_type}'"]
-            )
-            return f"RandomForestClassifier({args})"
-
-    return RandomForestClassifier
+    return cuMLRandomForestClassifier
 
 
 def get_random_forest_regressor():
     from cuml.ensemble import RandomForestRegressor as cuMLRandomForestRegressor
 
-    class RandomForestRegressor(cuMLRandomForestRegressor):
-        """
-        This is a wrapper to convert data on the fly to float32.
-        When cuML updates to allow float64 for Random Forest, this
-        can be safely removed.
-
-        Warnings
-        --------
-        The conversion from float64 to float32 may result in loss
-        of precision. It should not be an issue in majority of cases.
-
-        See Also
-        --------
-        cuml.ensemble.RandomForestRegressor : description of the underlying class
-        """
-
-        def fit(self, X, y, convert_dtype=True):
-            X = X.astype(np.float32)
-            y = y.astype(np.float32)
-            return super().fit(X, y, convert_dtype=convert_dtype)
-
-        def predict(
-            self,
-            X,
-            predict_model="GPU",
-            algo="auto",
-            convert_dtype=True,
-            fil_sparse_format="auto",
-        ):
-            X = X.astype(np.float32)
-            return (
-                super()
-                .predict(
-                    X,
-                    predict_model=predict_model,
-                    algo=algo,
-                    convert_dtype=convert_dtype,
-                    fil_sparse_format=fil_sparse_format,
-                )
-                .astype(int)
-            )
-
-        def predict_proba(
-            self, X, algo="auto", convert_dtype=True, fil_sparse_format="auto",
-        ):
-            X = X.astype(np.float32)
-            return super().predict_proba(
-                X,
-                algo=algo,
-                convert_dtype=convert_dtype,
-                fil_sparse_format=fil_sparse_format,
-            )
-
-        def score(
-            self,
-            X,
-            y,
-            algo="auto",
-            predict_model="GPU",
-            convert_dtype=True,
-            fil_sparse_format="auto",
-        ):
-            X = X.astype(np.float32)
-            y = y.astype(np.float32)
-            return super().score(
-                X,
-                y,
-                algo=algo,
-                predict_model=predict_model,
-                convert_dtype=convert_dtype,
-                fil_sparse_format=fil_sparse_format,
-            )
-
-        def __repr__(self):
-            def quote_strs(x: str) -> str:
-                return x if not isinstance(x, str) else f"'{x}'"
-
-            args = ", ".join(
-                [f"{k}={quote_strs(v)}" for k, v in self.get_params().items()]
-                + [f"handle={self.handle}", f"output_type='{self.output_type}'"]
-            )
-            return f"RandomForestRegressor({args})"
-
-    return RandomForestRegressor
+    return cuMLRandomForestRegressor

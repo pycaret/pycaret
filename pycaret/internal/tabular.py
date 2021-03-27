@@ -2719,9 +2719,13 @@ def tune_model_supervised(
 
             from tune_sklearn import TuneSearchCV, TuneGridSearchCV
 
-            with true_warm_start(
-                pipeline_with_model
-            ) if do_early_stop else nullcontext():
+            with (
+                true_warm_start(pipeline_with_model) if do_early_stop else nullcontext()
+            ), set_n_jobs(pipeline_with_model, 1), (
+                patch.dict("os.environ", {"TUNE_GLOBAL_CHECKPOINT_S": "1000000"})
+                if "TUNE_GLOBAL_CHECKPOINT_S" not in os.environ
+                else nullcontext()
+            ):
                 if search_algorithm == "grid":
 
                     logger.info("Initializing tune_sklearn.TuneGridSearchCV")
@@ -2732,7 +2736,7 @@ def tune_model_supervised(
                         scoring=optimize,
                         cv=fold,
                         max_iters=early_stopping_max_iters,
-                        n_jobs=1,  # inteded
+                        n_jobs=n_jobs,
                         use_gpu=gpu_param,
                         refit=False,
                         verbose=tuner_verbose,
@@ -2785,7 +2789,7 @@ def tune_model_supervised(
                         cv=fold,
                         random_state=seed,
                         max_iters=early_stopping_max_iters,
-                        n_jobs=1,  # inteded
+                        n_jobs=n_jobs,
                         use_gpu=gpu_param,
                         refit=True,
                         verbose=tuner_verbose,
@@ -2853,12 +2857,11 @@ def tune_model_supervised(
             with patch(
                 "sklearn.model_selection._search.sample_without_replacement",
                 pycaret.internal.patches.sklearn._mp_sample_without_replacement,
+            ), patch(
+                "sklearn.model_selection._search.ParameterGrid.__getitem__",
+                pycaret.internal.patches.sklearn._mp_ParameterGrid_getitem,
             ):
-                with patch(
-                    "sklearn.model_selection._search.ParameterGrid.__getitem__",
-                    pycaret.internal.patches.sklearn._mp_ParameterGrid_getitem,
-                ):
-                    model_grid.fit(X_train, y_train, groups=groups, **fit_kwargs)
+                model_grid.fit(X_train, y_train, groups=groups, **fit_kwargs)
         else:
             model_grid.fit(X_train, y_train, groups=groups, **fit_kwargs)
         best_params = model_grid.best_params_
@@ -4020,6 +4023,7 @@ def plot_model(
     system: bool = True,
     display: Optional[Display] = None,  # added in pycaret==2.2.0
     display_format: Optional[str] = None,
+    is_in_evaluate: bool = False,
 ) -> str:
 
     """
@@ -4199,6 +4203,11 @@ def plot_model(
             "Feature Importance and RFE plots not available for estimators that doesnt support coef_ or feature_importances_ attribute."
         )
 
+    if plot == "residuals_interactive" and is_in_evaluate and is_in_colab():
+        raise ValueError(
+            "Interactive Residuals plot not available in evaluate_model() in Google Colab. Do plot_model(model, plot='residuals_interactive') instead."
+        )
+
     # checking fold parameter
     if fold is not None and not (type(fold) is int or is_sklearn_cv_generator(fold)):
         raise TypeError(
@@ -4304,1382 +4313,1297 @@ def plot_model(
     with patch(
         "yellowbrick.utils.types.is_estimator",
         pycaret.internal.patches.yellowbrick.is_estimator,
-    ):
-        with patch(
-            "yellowbrick.utils.helpers.is_estimator",
-            pycaret.internal.patches.yellowbrick.is_estimator,
-        ):
-            with estimator_pipeline(_internal_pipeline, model) as pipeline_with_model:
-                fit_kwargs = _get_pipeline_fit_kwargs(pipeline_with_model, fit_kwargs)
-
-                _base_dpi = 100
-
-                def residuals_interactive():
-                    from pycaret.internal.plots.residual_plots import (
-                        InteractiveResidualsPlot,
-                    )
-
-                    resplots = InteractiveResidualsPlot(
-                        x=data_X,
-                        y=data_y,
-                        x_test=test_X,
-                        y_test=test_y,
-                        model=pipeline_with_model,
-                        display=display,
-                    )
-
-                    display.clear_output()
-                    if system:
-                        resplots.show()
-
-                    plot_filename = f"{plot_name}.html"
-
-                    if save:
-                        resplots.write_html(plot_filename)
-                        logger.info(
-                            f"Saving '{plot_filename}' in current active directory"
-                        )
-
-                    logger.info("Visual Rendered Successfully")
-                    return plot_filename
-
-                def cluster():
-                    logger.info(
-                        "SubProcess assign_model() called =================================="
-                    )
-                    b = assign_model(
-                        pipeline_with_model, verbose=False, transformation=True
-                    ).reset_index(drop=True)
-                    logger.info(
-                        "SubProcess assign_model() end =================================="
-                    )
-                    cluster = b["Cluster"].values
-                    b.drop("Cluster", axis=1, inplace=True)
-                    b = pd.get_dummies(b)  # casting categorical variable
-
-                    from sklearn.decomposition import PCA
-
-                    pca = PCA(n_components=2, random_state=seed)
-                    logger.info("Fitting PCA()")
-                    pca_ = pca.fit_transform(b)
-                    pca_ = pd.DataFrame(pca_)
-                    pca_ = pca_.rename(columns={0: "PCA1", 1: "PCA2"})
-                    pca_["Cluster"] = cluster
-
-                    if feature_name is not None:
-                        pca_["Feature"] = data_before_preprocess[feature_name]
-                    else:
-                        pca_["Feature"] = data_before_preprocess[
-                            data_before_preprocess.columns[0]
-                        ]
-
-                    if label:
-                        pca_["Label"] = pca_["Feature"]
-
-                    """
-                    sorting
-                    """
-
-                    logger.info("Sorting dataframe")
-
-                    print(pca_["Cluster"])
-
-                    clus_num = [int(i.split()[1]) for i in pca_["Cluster"]]
-
-                    pca_["cnum"] = clus_num
-                    pca_.sort_values(by="cnum", inplace=True)
-
-                    """
-                    sorting ends
-                    """
-
-                    display.clear_output()
-
-                    logger.info("Rendering Visual")
-
-                    if label:
-                        fig = px.scatter(
-                            pca_,
-                            x="PCA1",
-                            y="PCA2",
-                            text="Label",
-                            color="Cluster",
-                            opacity=0.5,
-                        )
-                    else:
-                        fig = px.scatter(
-                            pca_,
-                            x="PCA1",
-                            y="PCA2",
-                            hover_data=["Feature"],
-                            color="Cluster",
-                            opacity=0.5,
-                        )
-
-                    fig.update_traces(textposition="top center")
-                    fig.update_layout(plot_bgcolor="rgb(240,240,240)")
-
-                    fig.update_layout(
-                        height=600 * scale, title_text="2D Cluster PCA Plot"
-                    )
-
-                    plot_filename = f"{plot_name}.html"
-
-                    if save:
-                        fig.write_html(plot_filename)
-                        logger.info(
-                            f"Saving '{plot_filename}' in current active directory"
-                        )
-
-                    elif system:
-                        if display_format == "streamlit":
-                            st.write(fig)
-                        else:
-                            fig.show()
-
-                    logger.info("Visual Rendered Successfully")
-                    return plot_filename
-
-                def umap():
-                    logger.info(
-                        "SubProcess assign_model() called =================================="
-                    )
-                    b = assign_model(
-                        model, verbose=False, transformation=True, score=False
-                    ).reset_index(drop=True)
-                    logger.info(
-                        "SubProcess assign_model() end =================================="
-                    )
-
-                    label = pd.DataFrame(b["Anomaly"])
-                    b.dropna(axis=0, inplace=True)  # droping rows with NA's
-                    b.drop(["Anomaly"], axis=1, inplace=True)
-
-                    import umap
-
-                    reducer = umap.UMAP()
-                    logger.info("Fitting UMAP()")
-                    embedding = reducer.fit_transform(b)
-                    X = pd.DataFrame(embedding)
-
-                    import plotly.express as px
-
-                    df = X
-                    df["Anomaly"] = label
-
-                    if feature_name is not None:
-                        df["Feature"] = data_before_preprocess[feature_name]
-                    else:
-                        df["Feature"] = data_before_preprocess[
-                            data_before_preprocess.columns[0]
-                        ]
-
-                    display.clear_output()
-
-                    logger.info("Rendering Visual")
-
-                    fig = px.scatter(
-                        df,
-                        x=0,
-                        y=1,
-                        color="Anomaly",
-                        title="uMAP Plot for Outliers",
-                        hover_data=["Feature"],
-                        opacity=0.7,
-                        width=900 * scale,
-                        height=800 * scale,
-                    )
-                    plot_filename = f"{plot_name}.html"
-
-                    if save:
-                        fig.write_html(f"{plot_filename}")
-                        logger.info(
-                            f"Saving '{plot_filename}' in current active directory"
-                        )
-                    elif system:
-                        if display_format == "streamlit":
-                            st.write(fig)
-                        else:
-                            fig.show()
-
-                    logger.info("Visual Rendered Successfully")
-                    return plot_filename
-
-                def tsne():
-                    if _ml_usecase == MLUsecase.CLUSTERING:
-                        return _tsne_clustering()
-                    else:
-                        return _tsne_anomaly()
-
-                def _tsne_anomaly():
-                    logger.info(
-                        "SubProcess assign_model() called =================================="
-                    )
-                    b = assign_model(
-                        model, verbose=False, transformation=True, score=False
-                    ).reset_index(drop=True)
-                    logger.info(
-                        "SubProcess assign_model() end =================================="
-                    )
-                    cluster = b["Anomaly"].values
-                    b.dropna(axis=0, inplace=True)  # droping rows with NA's
-                    b.drop("Anomaly", axis=1, inplace=True)
-
-                    logger.info("Getting dummies to cast categorical variables")
-
-                    from sklearn.manifold import TSNE
-
-                    logger.info("Fitting TSNE()")
-                    X_embedded = TSNE(n_components=3).fit_transform(b)
-
-                    X = pd.DataFrame(X_embedded)
-                    X["Anomaly"] = cluster
-                    if feature_name is not None:
-                        X["Feature"] = data_before_preprocess[feature_name]
-                    else:
-                        X["Feature"] = data_before_preprocess[
-                            data_before_preprocess.columns[0]
-                        ]
-
-                    df = X
-
-                    display.clear_output()
-
-                    logger.info("Rendering Visual")
-
-                    if label:
-                        fig = px.scatter_3d(
-                            df,
-                            x=0,
-                            y=1,
-                            z=2,
-                            text="Feature",
-                            color="Anomaly",
-                            title="3d TSNE Plot for Outliers",
-                            opacity=0.7,
-                            width=900 * scale,
-                            height=800 * scale,
-                        )
-                    else:
-                        fig = px.scatter_3d(
-                            df,
-                            x=0,
-                            y=1,
-                            z=2,
-                            hover_data=["Feature"],
-                            color="Anomaly",
-                            title="3d TSNE Plot for Outliers",
-                            opacity=0.7,
-                            width=900 * scale,
-                            height=800 * scale,
-                        )
-
-                    plot_filename = f"{plot_name}.html"
-
-                    if save:
-                        fig.write_html(f"{plot_filename}")
-                        logger.info(
-                            f"Saving '{plot_filename}' in current active directory"
-                        )
-                    elif system:
-                        if display_format == "streamlit":
-                            st.write(fig)
-                        else:
-                            fig.show()
-
-                    logger.info("Visual Rendered Successfully")
-                    return plot_filename
-
-                def _tsne_clustering():
-                    logger.info(
-                        "SubProcess assign_model() called =================================="
-                    )
-                    b = assign_model(
-                        pipeline_with_model,
-                        verbose=False,
-                        score=False,
-                        transformation=True,
-                    ).reset_index(drop=True)
-                    logger.info(
-                        "SubProcess assign_model() end =================================="
-                    )
-
-                    cluster = b["Cluster"].values
-                    b.drop("Cluster", axis=1, inplace=True)
-
-                    from sklearn.manifold import TSNE
-
-                    logger.info("Fitting TSNE()")
-                    X_embedded = TSNE(n_components=3, random_state=seed).fit_transform(
-                        b
-                    )
-                    X_embedded = pd.DataFrame(X_embedded)
-                    X_embedded["Cluster"] = cluster
-
-                    if feature_name is not None:
-                        X_embedded["Feature"] = data_before_preprocess[feature_name]
-                    else:
-                        X_embedded["Feature"] = data_before_preprocess[
-                            data_X.columns[0]
-                        ]
-
-                    if label:
-                        X_embedded["Label"] = X_embedded["Feature"]
-
-                    """
-                    sorting
-                    """
-                    logger.info("Sorting dataframe")
-
-                    clus_num = [int(i.split()[1]) for i in X_embedded["Cluster"]]
-
-                    X_embedded["cnum"] = clus_num
-                    X_embedded.sort_values(by="cnum", inplace=True)
-
-                    """
-                    sorting ends
-                    """
-
-                    df = X_embedded
-
-                    display.clear_output()
-
-                    logger.info("Rendering Visual")
-
-                    if label:
-
-                        fig = px.scatter_3d(
-                            df,
-                            x=0,
-                            y=1,
-                            z=2,
-                            color="Cluster",
-                            title="3d TSNE Plot for Clusters",
-                            text="Label",
-                            opacity=0.7,
-                            width=900 * scale,
-                            height=800 * scale,
-                        )
-
-                    else:
-                        fig = px.scatter_3d(
-                            df,
-                            x=0,
-                            y=1,
-                            z=2,
-                            color="Cluster",
-                            title="3d TSNE Plot for Clusters",
-                            hover_data=["Feature"],
-                            opacity=0.7,
-                            width=900 * scale,
-                            height=800 * scale,
-                        )
-
-                    plot_filename = f"{plot_name}.html"
-
-                    if save:
-                        fig.write_html(f"{plot_filename}")
-                        logger.info(
-                            f"Saving '{plot_filename}' in current active directory"
-                        )
-                    elif system:
-                        if display_format == "streamlit":
-                            st.write(fig)
-                        else:
-                            fig.show()
-
-                    logger.info("Visual Rendered Successfully")
-                    return plot_filename
-
-                def distribution():
-                    logger.info(
-                        "SubProcess assign_model() called =================================="
-                    )
-                    d = assign_model(pipeline_with_model, verbose=False).reset_index(
-                        drop=True
-                    )
-                    logger.info(
-                        "SubProcess assign_model() end =================================="
-                    )
-
-                    """
-                    sorting
-                    """
-                    logger.info("Sorting dataframe")
-
-                    clus_num = []
-                    for i in d.Cluster:
-                        a = int(i.split()[1])
-                        clus_num.append(a)
-
-                    d["cnum"] = clus_num
-                    d.sort_values(by="cnum", inplace=True)
-                    d.reset_index(inplace=True, drop=True)
-
-                    clus_label = []
-                    for i in d.cnum:
-                        a = "Cluster " + str(i)
-                        clus_label.append(a)
-
-                    d.drop(["Cluster", "cnum"], inplace=True, axis=1)
-                    d["Cluster"] = clus_label
-
-                    """
-                    sorting ends
-                    """
-
-                    if feature_name is None:
-                        x_col = "Cluster"
-                    else:
-                        x_col = feature_name
-
-                    display.clear_output()
-
-                    logger.info("Rendering Visual")
-
-                    fig = px.histogram(
-                        d,
-                        x=x_col,
-                        color="Cluster",
-                        marginal="box",
-                        opacity=0.7,
-                        hover_data=d.columns,
-                    )
-
-                    fig.update_layout(height=600 * scale,)
-
-                    plot_filename = f"{plot_name}.html"
-
-                    if save:
-                        fig.write_html(f"{plot_filename}")
-                        logger.info(
-                            f"Saving '{plot_filename}' in current active directory"
-                        )
-                    elif system:
-                        fig.show()
-
-                    logger.info("Visual Rendered Successfully")
-                    return plot_filename
-
-                def elbow():
-                    try:
-                        from yellowbrick.cluster import KElbowVisualizer
-
-                        visualizer = KElbowVisualizer(
-                            pipeline_with_model, timings=False
-                        )
-                        show_yellowbrick_plot(
-                            visualizer=visualizer,
-                            X_train=data_X,
-                            y_train=None,
-                            X_test=None,
-                            y_test=None,
-                            name=plot_name,
-                            handle_test="",
-                            scale=scale,
-                            save=save,
-                            fit_kwargs=fit_kwargs,
-                            groups=groups,
-                            display=display,
-                            display_format=display_format,
-                        )
-
-                    except:
-                        logger.error("Elbow plot failed. Exception:")
-                        logger.error(traceback.format_exc())
-                        raise TypeError("Plot Type not supported for this model.")
-
-                def silhouette():
-                    from yellowbrick.cluster import SilhouetteVisualizer
-
-                    try:
-                        visualizer = SilhouetteVisualizer(
-                            pipeline_with_model, colors="yellowbrick"
-                        )
-                        show_yellowbrick_plot(
-                            visualizer=visualizer,
-                            X_train=data_X,
-                            y_train=None,
-                            X_test=None,
-                            y_test=None,
-                            name=plot_name,
-                            handle_test="",
-                            scale=scale,
-                            save=save,
-                            fit_kwargs=fit_kwargs,
-                            groups=groups,
-                            display=display,
-                            display_format=display_format,
-                        )
-                    except:
-                        logger.error("Silhouette plot failed. Exception:")
-                        logger.error(traceback.format_exc())
-                        raise TypeError("Plot Type not supported for this model.")
-
-                def distance():
-                    from yellowbrick.cluster import InterclusterDistance
-
-                    try:
-                        visualizer = InterclusterDistance(pipeline_with_model)
-                        show_yellowbrick_plot(
-                            visualizer=visualizer,
-                            X_train=data_X,
-                            y_train=None,
-                            X_test=None,
-                            y_test=None,
-                            name=plot_name,
-                            handle_test="",
-                            scale=scale,
-                            save=save,
-                            fit_kwargs=fit_kwargs,
-                            groups=groups,
-                            display=display,
-                            display_format=display_format,
-                        )
-                    except:
-                        logger.error("Distance plot failed. Exception:")
-                        logger.error(traceback.format_exc())
-                        raise TypeError("Plot Type not supported for this model.")
-
-                def residuals():
-
-                    from yellowbrick.regressor import ResidualsPlot
-
-                    visualizer = ResidualsPlot(pipeline_with_model)
-                    show_yellowbrick_plot(
-                        visualizer=visualizer,
-                        X_train=data_X,
-                        y_train=data_y,
-                        X_test=test_X,
-                        y_test=test_y,
-                        name=plot_name,
-                        scale=scale,
-                        save=save,
-                        fit_kwargs=fit_kwargs,
-                        groups=groups,
-                        display=display,
-                        display_format=display_format,
-                    )
-
-                def auc():
-
-                    from yellowbrick.classifier import ROCAUC
-
-                    visualizer = ROCAUC(pipeline_with_model)
-                    show_yellowbrick_plot(
-                        visualizer=visualizer,
-                        X_train=data_X,
-                        y_train=data_y,
-                        X_test=test_X,
-                        y_test=test_y,
-                        name=plot_name,
-                        scale=scale,
-                        save=save,
-                        fit_kwargs=fit_kwargs,
-                        groups=groups,
-                        display=display,
-                        display_format=display_format,
-                    )
-
-                def threshold():
-
-                    from yellowbrick.classifier import DiscriminationThreshold
-
-                    visualizer = DiscriminationThreshold(
-                        pipeline_with_model, random_state=seed
-                    )
-                    show_yellowbrick_plot(
-                        visualizer=visualizer,
-                        X_train=data_X,
-                        y_train=data_y,
-                        X_test=test_X,
-                        y_test=test_y,
-                        name=plot_name,
-                        scale=scale,
-                        save=save,
-                        fit_kwargs=fit_kwargs,
-                        groups=groups,
-                        display=display,
-                        display_format=display_format,
-                    )
-
-                def pr():
-
-                    from yellowbrick.classifier import PrecisionRecallCurve
-
-                    visualizer = PrecisionRecallCurve(
-                        pipeline_with_model, random_state=seed
-                    )
-                    show_yellowbrick_plot(
-                        visualizer=visualizer,
-                        X_train=data_X,
-                        y_train=data_y,
-                        X_test=test_X,
-                        y_test=test_y,
-                        name=plot_name,
-                        scale=scale,
-                        save=save,
-                        fit_kwargs=fit_kwargs,
-                        groups=groups,
-                        display=display,
-                        display_format=display_format,
-                    )
-
-                def confusion_matrix():
-
-                    from yellowbrick.classifier import ConfusionMatrix
-
-                    visualizer = ConfusionMatrix(
-                        pipeline_with_model,
-                        random_state=seed,
-                        fontsize=15,
-                        cmap="Greens",
-                    )
-                    show_yellowbrick_plot(
-                        visualizer=visualizer,
-                        X_train=data_X,
-                        y_train=data_y,
-                        X_test=test_X,
-                        y_test=test_y,
-                        name=plot_name,
-                        scale=scale,
-                        save=save,
-                        fit_kwargs=fit_kwargs,
-                        groups=groups,
-                        display=display,
-                        display_format=display_format,
-                    )
-
-                def error():
-
+    ), patch(
+        "yellowbrick.utils.helpers.is_estimator",
+        pycaret.internal.patches.yellowbrick.is_estimator,
+    ), estimator_pipeline(
+        _internal_pipeline, model
+    ) as pipeline_with_model:
+        fit_kwargs = _get_pipeline_fit_kwargs(pipeline_with_model, fit_kwargs)
+
+        _base_dpi = 100
+
+        def residuals_interactive():
+            from pycaret.internal.plots.residual_plots import InteractiveResidualsPlot
+
+            resplots = InteractiveResidualsPlot(
+                x=data_X,
+                y=data_y,
+                x_test=test_X,
+                y_test=test_y,
+                model=pipeline_with_model,
+                display=display,
+            )
+
+            display.clear_output()
+            if system:
+                resplots.show()
+
+            plot_filename = f"{plot_name}.html"
+
+            if save:
+                resplots.write_html(plot_filename)
+                logger.info(f"Saving '{plot_filename}' in current active directory")
+
+            logger.info("Visual Rendered Successfully")
+            return plot_filename
+
+        def cluster():
+            logger.info(
+                "SubProcess assign_model() called =================================="
+            )
+            b = assign_model(
+                pipeline_with_model, verbose=False, transformation=True
+            ).reset_index(drop=True)
+            logger.info(
+                "SubProcess assign_model() end =================================="
+            )
+            cluster = b["Cluster"].values
+            b.drop("Cluster", axis=1, inplace=True)
+            b = pd.get_dummies(b)  # casting categorical variable
+
+            from sklearn.decomposition import PCA
+
+            pca = PCA(n_components=2, random_state=seed)
+            logger.info("Fitting PCA()")
+            pca_ = pca.fit_transform(b)
+            pca_ = pd.DataFrame(pca_)
+            pca_ = pca_.rename(columns={0: "PCA1", 1: "PCA2"})
+            pca_["Cluster"] = cluster
+
+            if feature_name is not None:
+                pca_["Feature"] = data_before_preprocess[feature_name]
+            else:
+                pca_["Feature"] = data_before_preprocess[
+                    data_before_preprocess.columns[0]
+                ]
+
+            if label:
+                pca_["Label"] = pca_["Feature"]
+
+            """
+            sorting
+            """
+
+            logger.info("Sorting dataframe")
+
+            print(pca_["Cluster"])
+
+            clus_num = [int(i.split()[1]) for i in pca_["Cluster"]]
+
+            pca_["cnum"] = clus_num
+            pca_.sort_values(by="cnum", inplace=True)
+
+            """
+            sorting ends
+            """
+
+            display.clear_output()
+
+            logger.info("Rendering Visual")
+
+            if label:
+                fig = px.scatter(
+                    pca_,
+                    x="PCA1",
+                    y="PCA2",
+                    text="Label",
+                    color="Cluster",
+                    opacity=0.5,
+                )
+            else:
+                fig = px.scatter(
+                    pca_,
+                    x="PCA1",
+                    y="PCA2",
+                    hover_data=["Feature"],
+                    color="Cluster",
+                    opacity=0.5,
+                )
+
+            fig.update_traces(textposition="top center")
+            fig.update_layout(plot_bgcolor="rgb(240,240,240)")
+
+            fig.update_layout(height=600 * scale, title_text="2D Cluster PCA Plot")
+
+            plot_filename = f"{plot_name}.html"
+
+            if save:
+                fig.write_html(plot_filename)
+                logger.info(f"Saving '{plot_filename}' in current active directory")
+
+            elif system:
+                if display_format == "streamlit":
+                    st.write(fig)
+                else:
+                    fig.show()
+
+            logger.info("Visual Rendered Successfully")
+            return plot_filename
+
+        def umap():
+            logger.info(
+                "SubProcess assign_model() called =================================="
+            )
+            b = assign_model(
+                model, verbose=False, transformation=True, score=False
+            ).reset_index(drop=True)
+            logger.info(
+                "SubProcess assign_model() end =================================="
+            )
+
+            label = pd.DataFrame(b["Anomaly"])
+            b.dropna(axis=0, inplace=True)  # droping rows with NA's
+            b.drop(["Anomaly"], axis=1, inplace=True)
+
+            import umap
+
+            reducer = umap.UMAP()
+            logger.info("Fitting UMAP()")
+            embedding = reducer.fit_transform(b)
+            X = pd.DataFrame(embedding)
+
+            import plotly.express as px
+
+            df = X
+            df["Anomaly"] = label
+
+            if feature_name is not None:
+                df["Feature"] = data_before_preprocess[feature_name]
+            else:
+                df["Feature"] = data_before_preprocess[
+                    data_before_preprocess.columns[0]
+                ]
+
+            display.clear_output()
+
+            logger.info("Rendering Visual")
+
+            fig = px.scatter(
+                df,
+                x=0,
+                y=1,
+                color="Anomaly",
+                title="uMAP Plot for Outliers",
+                hover_data=["Feature"],
+                opacity=0.7,
+                width=900 * scale,
+                height=800 * scale,
+            )
+            plot_filename = f"{plot_name}.html"
+
+            if save:
+                fig.write_html(f"{plot_filename}")
+                logger.info(f"Saving '{plot_filename}' in current active directory")
+            elif system:
+                if display_format == "streamlit":
+                    st.write(fig)
+                else:
+                    fig.show()
+
+            logger.info("Visual Rendered Successfully")
+            return plot_filename
+
+        def tsne():
+            if _ml_usecase == MLUsecase.CLUSTERING:
+                return _tsne_clustering()
+            else:
+                return _tsne_anomaly()
+
+        def _tsne_anomaly():
+            logger.info(
+                "SubProcess assign_model() called =================================="
+            )
+            b = assign_model(
+                model, verbose=False, transformation=True, score=False
+            ).reset_index(drop=True)
+            logger.info(
+                "SubProcess assign_model() end =================================="
+            )
+            cluster = b["Anomaly"].values
+            b.dropna(axis=0, inplace=True)  # droping rows with NA's
+            b.drop("Anomaly", axis=1, inplace=True)
+
+            logger.info("Getting dummies to cast categorical variables")
+
+            from sklearn.manifold import TSNE
+
+            logger.info("Fitting TSNE()")
+            X_embedded = TSNE(n_components=3).fit_transform(b)
+
+            X = pd.DataFrame(X_embedded)
+            X["Anomaly"] = cluster
+            if feature_name is not None:
+                X["Feature"] = data_before_preprocess[feature_name]
+            else:
+                X["Feature"] = data_before_preprocess[data_before_preprocess.columns[0]]
+
+            df = X
+
+            display.clear_output()
+
+            logger.info("Rendering Visual")
+
+            if label:
+                fig = px.scatter_3d(
+                    df,
+                    x=0,
+                    y=1,
+                    z=2,
+                    text="Feature",
+                    color="Anomaly",
+                    title="3d TSNE Plot for Outliers",
+                    opacity=0.7,
+                    width=900 * scale,
+                    height=800 * scale,
+                )
+            else:
+                fig = px.scatter_3d(
+                    df,
+                    x=0,
+                    y=1,
+                    z=2,
+                    hover_data=["Feature"],
+                    color="Anomaly",
+                    title="3d TSNE Plot for Outliers",
+                    opacity=0.7,
+                    width=900 * scale,
+                    height=800 * scale,
+                )
+
+            plot_filename = f"{plot_name}.html"
+
+            if save:
+                fig.write_html(f"{plot_filename}")
+                logger.info(f"Saving '{plot_filename}' in current active directory")
+            elif system:
+                if display_format == "streamlit":
+                    st.write(fig)
+                else:
+                    fig.show()
+
+            logger.info("Visual Rendered Successfully")
+            return plot_filename
+
+        def _tsne_clustering():
+            logger.info(
+                "SubProcess assign_model() called =================================="
+            )
+            b = assign_model(
+                pipeline_with_model, verbose=False, score=False, transformation=True,
+            ).reset_index(drop=True)
+            logger.info(
+                "SubProcess assign_model() end =================================="
+            )
+
+            cluster = b["Cluster"].values
+            b.drop("Cluster", axis=1, inplace=True)
+
+            from sklearn.manifold import TSNE
+
+            logger.info("Fitting TSNE()")
+            X_embedded = TSNE(n_components=3, random_state=seed).fit_transform(b)
+            X_embedded = pd.DataFrame(X_embedded)
+            X_embedded["Cluster"] = cluster
+
+            if feature_name is not None:
+                X_embedded["Feature"] = data_before_preprocess[feature_name]
+            else:
+                X_embedded["Feature"] = data_before_preprocess[data_X.columns[0]]
+
+            if label:
+                X_embedded["Label"] = X_embedded["Feature"]
+
+            """
+            sorting
+            """
+            logger.info("Sorting dataframe")
+
+            clus_num = [int(i.split()[1]) for i in X_embedded["Cluster"]]
+
+            X_embedded["cnum"] = clus_num
+            X_embedded.sort_values(by="cnum", inplace=True)
+
+            """
+            sorting ends
+            """
+
+            df = X_embedded
+
+            display.clear_output()
+
+            logger.info("Rendering Visual")
+
+            if label:
+
+                fig = px.scatter_3d(
+                    df,
+                    x=0,
+                    y=1,
+                    z=2,
+                    color="Cluster",
+                    title="3d TSNE Plot for Clusters",
+                    text="Label",
+                    opacity=0.7,
+                    width=900 * scale,
+                    height=800 * scale,
+                )
+
+            else:
+                fig = px.scatter_3d(
+                    df,
+                    x=0,
+                    y=1,
+                    z=2,
+                    color="Cluster",
+                    title="3d TSNE Plot for Clusters",
+                    hover_data=["Feature"],
+                    opacity=0.7,
+                    width=900 * scale,
+                    height=800 * scale,
+                )
+
+            plot_filename = f"{plot_name}.html"
+
+            if save:
+                fig.write_html(f"{plot_filename}")
+                logger.info(f"Saving '{plot_filename}' in current active directory")
+            elif system:
+                if display_format == "streamlit":
+                    st.write(fig)
+                else:
+                    fig.show()
+
+            logger.info("Visual Rendered Successfully")
+            return plot_filename
+
+        def distribution():
+            logger.info(
+                "SubProcess assign_model() called =================================="
+            )
+            d = assign_model(pipeline_with_model, verbose=False).reset_index(drop=True)
+            logger.info(
+                "SubProcess assign_model() end =================================="
+            )
+
+            """
+            sorting
+            """
+            logger.info("Sorting dataframe")
+
+            clus_num = []
+            for i in d.Cluster:
+                a = int(i.split()[1])
+                clus_num.append(a)
+
+            d["cnum"] = clus_num
+            d.sort_values(by="cnum", inplace=True)
+            d.reset_index(inplace=True, drop=True)
+
+            clus_label = []
+            for i in d.cnum:
+                a = "Cluster " + str(i)
+                clus_label.append(a)
+
+            d.drop(["Cluster", "cnum"], inplace=True, axis=1)
+            d["Cluster"] = clus_label
+
+            """
+            sorting ends
+            """
+
+            if feature_name is None:
+                x_col = "Cluster"
+            else:
+                x_col = feature_name
+
+            display.clear_output()
+
+            logger.info("Rendering Visual")
+
+            fig = px.histogram(
+                d,
+                x=x_col,
+                color="Cluster",
+                marginal="box",
+                opacity=0.7,
+                hover_data=d.columns,
+            )
+
+            fig.update_layout(height=600 * scale,)
+
+            plot_filename = f"{plot_name}.html"
+
+            if save:
+                fig.write_html(f"{plot_filename}")
+                logger.info(f"Saving '{plot_filename}' in current active directory")
+            elif system:
+                fig.show()
+
+            logger.info("Visual Rendered Successfully")
+            return plot_filename
+
+        def elbow():
+            try:
+                from yellowbrick.cluster import KElbowVisualizer
+
+                visualizer = KElbowVisualizer(pipeline_with_model, timings=False)
+                show_yellowbrick_plot(
+                    visualizer=visualizer,
+                    X_train=data_X,
+                    y_train=None,
+                    X_test=None,
+                    y_test=None,
+                    name=plot_name,
+                    handle_test="",
+                    scale=scale,
+                    save=save,
+                    fit_kwargs=fit_kwargs,
+                    groups=groups,
+                    display=display,
+                    display_format=display_format,
+                )
+
+            except:
+                logger.error("Elbow plot failed. Exception:")
+                logger.error(traceback.format_exc())
+                raise TypeError("Plot Type not supported for this model.")
+
+        def silhouette():
+            from yellowbrick.cluster import SilhouetteVisualizer
+
+            try:
+                visualizer = SilhouetteVisualizer(
+                    pipeline_with_model, colors="yellowbrick"
+                )
+                show_yellowbrick_plot(
+                    visualizer=visualizer,
+                    X_train=data_X,
+                    y_train=None,
+                    X_test=None,
+                    y_test=None,
+                    name=plot_name,
+                    handle_test="",
+                    scale=scale,
+                    save=save,
+                    fit_kwargs=fit_kwargs,
+                    groups=groups,
+                    display=display,
+                    display_format=display_format,
+                )
+            except:
+                logger.error("Silhouette plot failed. Exception:")
+                logger.error(traceback.format_exc())
+                raise TypeError("Plot Type not supported for this model.")
+
+        def distance():
+            from yellowbrick.cluster import InterclusterDistance
+
+            try:
+                visualizer = InterclusterDistance(pipeline_with_model)
+                show_yellowbrick_plot(
+                    visualizer=visualizer,
+                    X_train=data_X,
+                    y_train=None,
+                    X_test=None,
+                    y_test=None,
+                    name=plot_name,
+                    handle_test="",
+                    scale=scale,
+                    save=save,
+                    fit_kwargs=fit_kwargs,
+                    groups=groups,
+                    display=display,
+                    display_format=display_format,
+                )
+            except:
+                logger.error("Distance plot failed. Exception:")
+                logger.error(traceback.format_exc())
+                raise TypeError("Plot Type not supported for this model.")
+
+        def residuals():
+
+            from yellowbrick.regressor import ResidualsPlot
+
+            visualizer = ResidualsPlot(pipeline_with_model)
+            show_yellowbrick_plot(
+                visualizer=visualizer,
+                X_train=data_X,
+                y_train=data_y,
+                X_test=test_X,
+                y_test=test_y,
+                name=plot_name,
+                scale=scale,
+                save=save,
+                fit_kwargs=fit_kwargs,
+                groups=groups,
+                display=display,
+                display_format=display_format,
+            )
+
+        def auc():
+
+            from yellowbrick.classifier import ROCAUC
+
+            visualizer = ROCAUC(pipeline_with_model)
+            show_yellowbrick_plot(
+                visualizer=visualizer,
+                X_train=data_X,
+                y_train=data_y,
+                X_test=test_X,
+                y_test=test_y,
+                name=plot_name,
+                scale=scale,
+                save=save,
+                fit_kwargs=fit_kwargs,
+                groups=groups,
+                display=display,
+                display_format=display_format,
+            )
+
+        def threshold():
+
+            from yellowbrick.classifier import DiscriminationThreshold
+
+            visualizer = DiscriminationThreshold(pipeline_with_model, random_state=seed)
+            show_yellowbrick_plot(
+                visualizer=visualizer,
+                X_train=data_X,
+                y_train=data_y,
+                X_test=test_X,
+                y_test=test_y,
+                name=plot_name,
+                scale=scale,
+                save=save,
+                fit_kwargs=fit_kwargs,
+                groups=groups,
+                display=display,
+                display_format=display_format,
+            )
+
+        def pr():
+
+            from yellowbrick.classifier import PrecisionRecallCurve
+
+            visualizer = PrecisionRecallCurve(pipeline_with_model, random_state=seed)
+            show_yellowbrick_plot(
+                visualizer=visualizer,
+                X_train=data_X,
+                y_train=data_y,
+                X_test=test_X,
+                y_test=test_y,
+                name=plot_name,
+                scale=scale,
+                save=save,
+                fit_kwargs=fit_kwargs,
+                groups=groups,
+                display=display,
+                display_format=display_format,
+            )
+
+        def confusion_matrix():
+
+            from yellowbrick.classifier import ConfusionMatrix
+
+            visualizer = ConfusionMatrix(
+                pipeline_with_model, random_state=seed, fontsize=15, cmap="Greens",
+            )
+            show_yellowbrick_plot(
+                visualizer=visualizer,
+                X_train=data_X,
+                y_train=data_y,
+                X_test=test_X,
+                y_test=test_y,
+                name=plot_name,
+                scale=scale,
+                save=save,
+                fit_kwargs=fit_kwargs,
+                groups=groups,
+                display=display,
+                display_format=display_format,
+            )
+
+        def error():
+
+            if _ml_usecase == MLUsecase.CLASSIFICATION:
+                from yellowbrick.classifier import ClassPredictionError
+
+                visualizer = ClassPredictionError(
+                    pipeline_with_model, random_state=seed
+                )
+
+            elif _ml_usecase == MLUsecase.REGRESSION:
+                from yellowbrick.regressor import PredictionError
+
+                visualizer = PredictionError(pipeline_with_model, random_state=seed)
+
+            show_yellowbrick_plot(
+                visualizer=visualizer,
+                X_train=data_X,
+                y_train=data_y,
+                X_test=test_X,
+                y_test=test_y,
+                name=plot_name,
+                scale=scale,
+                save=save,
+                fit_kwargs=fit_kwargs,
+                groups=groups,
+                display=display,
+                display_format=display_format,
+            )
+
+        def cooks():
+
+            from yellowbrick.regressor import CooksDistance
+
+            visualizer = CooksDistance()
+            show_yellowbrick_plot(
+                visualizer=visualizer,
+                X_train=X,
+                y_train=y,
+                X_test=test_X,
+                y_test=test_y,
+                name=plot_name,
+                scale=scale,
+                save=save,
+                fit_kwargs=fit_kwargs,
+                handle_test="",
+                groups=groups,
+                display=display,
+                display_format=display_format,
+            )
+
+        def class_report():
+
+            from yellowbrick.classifier import ClassificationReport
+
+            visualizer = ClassificationReport(
+                pipeline_with_model, random_state=seed, support=True
+            )
+            show_yellowbrick_plot(
+                visualizer=visualizer,
+                X_train=data_X,
+                y_train=data_y,
+                X_test=test_X,
+                y_test=test_y,
+                name=plot_name,
+                scale=scale,
+                save=save,
+                fit_kwargs=fit_kwargs,
+                groups=groups,
+                display=display,
+                display_format=display_format,
+            )
+
+        def boundary():
+
+            from sklearn.preprocessing import StandardScaler
+            from sklearn.decomposition import PCA
+            from yellowbrick.contrib.classifier import DecisionViz
+
+            data_X_transformed = data_X.select_dtypes(include="float32")
+            test_X_transformed = test_X.select_dtypes(include="float32")
+            logger.info("Fitting StandardScaler()")
+            data_X_transformed = StandardScaler().fit_transform(data_X_transformed)
+            test_X_transformed = StandardScaler().fit_transform(test_X_transformed)
+            pca = PCA(n_components=2, random_state=seed)
+            logger.info("Fitting PCA()")
+            data_X_transformed = pca.fit_transform(data_X_transformed)
+            test_X_transformed = pca.fit_transform(test_X_transformed)
+
+            data_y_transformed = np.array(data_y)
+            test_y_transformed = np.array(test_y)
+
+            viz_ = DecisionViz(pipeline_with_model)
+            show_yellowbrick_plot(
+                visualizer=viz_,
+                X_train=data_X_transformed,
+                y_train=data_y_transformed,
+                X_test=test_X_transformed,
+                y_test=test_y_transformed,
+                name=plot_name,
+                scale=scale,
+                handle_test="draw",
+                save=save,
+                fit_kwargs=fit_kwargs,
+                groups=groups,
+                display=display,
+                features=["Feature One", "Feature Two"],
+                classes=["A", "B"],
+                display_format=display_format,
+            )
+
+        def rfe():
+
+            from yellowbrick.model_selection import RFECV
+
+            visualizer = RFECV(pipeline_with_model, cv=cv)
+            show_yellowbrick_plot(
+                visualizer=visualizer,
+                X_train=data_X,
+                y_train=data_y,
+                X_test=test_X,
+                y_test=test_y,
+                handle_test="",
+                name=plot_name,
+                scale=scale,
+                save=save,
+                fit_kwargs=fit_kwargs,
+                groups=groups,
+                display=display,
+                display_format=display_format,
+            )
+
+        def learning():
+
+            from yellowbrick.model_selection import LearningCurve
+
+            sizes = np.linspace(0.3, 1.0, 10)
+            visualizer = LearningCurve(
+                pipeline_with_model,
+                cv=cv,
+                train_sizes=sizes,
+                n_jobs=_gpu_n_jobs_param,
+                random_state=seed,
+            )
+            show_yellowbrick_plot(
+                visualizer=visualizer,
+                X_train=data_X,
+                y_train=data_y,
+                X_test=test_X,
+                y_test=test_y,
+                handle_test="",
+                name=plot_name,
+                scale=scale,
+                save=save,
+                fit_kwargs=fit_kwargs,
+                groups=groups,
+                display=display,
+                display_format=display_format,
+            )
+
+        def lift():
+
+            display.move_progress()
+            logger.info("Generating predictions / predict_proba on X_test")
+            with fit_if_not_fitted(
+                pipeline_with_model, data_X, data_y, groups=groups, **fit_kwargs
+            ) as fitted_pipeline_with_model:
+                y_test__ = fitted_pipeline_with_model.predict(X_test)
+                predict_proba__ = fitted_pipeline_with_model.predict_proba(X_test)
+            display.move_progress()
+            display.move_progress()
+            display.clear_output()
+            with MatplotlibDefaultDPI(base_dpi=_base_dpi, scale_to_set=scale):
+                fig = skplt.metrics.plot_lift_curve(
+                    y_test__, predict_proba__, figsize=(10, 6)
+                )
+                if save:
+                    logger.info(f"Saving '{plot_name}.png' in current active directory")
+                    plt.savefig(f"{plot_name}.png", bbox_inches="tight")
+                elif system:
+                    plt.show()
+                plt.close()
+
+            logger.info("Visual Rendered Successfully")
+
+        def gain():
+
+            display.move_progress()
+            logger.info("Generating predictions / predict_proba on X_test")
+            with fit_if_not_fitted(
+                pipeline_with_model, data_X, data_y, groups=groups, **fit_kwargs
+            ) as fitted_pipeline_with_model:
+                y_test__ = fitted_pipeline_with_model.predict(X_test)
+                predict_proba__ = fitted_pipeline_with_model.predict_proba(X_test)
+            display.move_progress()
+            display.move_progress()
+            display.clear_output()
+            with MatplotlibDefaultDPI(base_dpi=_base_dpi, scale_to_set=scale):
+                fig = skplt.metrics.plot_cumulative_gain(
+                    y_test__, predict_proba__, figsize=(10, 6)
+                )
+                if save:
+                    logger.info(f"Saving '{plot_name}.png' in current active directory")
+                    plt.savefig(f"{plot_name}.png", bbox_inches="tight")
+                elif system:
+                    plt.show()
+                plt.close()
+
+            logger.info("Visual Rendered Successfully")
+
+        def manifold():
+
+            from yellowbrick.features import Manifold
+
+            data_X_transformed = data_X.select_dtypes(include="float32")
+            visualizer = Manifold(manifold="tsne", random_state=seed)
+            show_yellowbrick_plot(
+                visualizer=visualizer,
+                X_train=data_X_transformed,
+                y_train=data_y,
+                X_test=test_X,
+                y_test=test_y,
+                handle_train="fit_transform",
+                handle_test="",
+                name=plot_name,
+                scale=scale,
+                save=save,
+                fit_kwargs=fit_kwargs,
+                groups=groups,
+                display=display,
+                display_format=display_format,
+            )
+
+        def tree():
+
+            from sklearn.tree import plot_tree
+            from sklearn.base import is_classifier
+            from sklearn.model_selection import check_cv
+
+            is_stacked_model = False
+            is_ensemble_of_forests = False
+
+            tree_estimator = pipeline_with_model.steps[-1][1]
+
+            if "final_estimator" in tree_estimator.get_params():
+                tree_estimator = tree_estimator.final_estimator
+                is_stacked_model = True
+
+            if (
+                "base_estimator" in tree_estimator.get_params()
+                and "n_estimators" in tree_estimator.base_estimator.get_params()
+            ):
+                n_estimators = (
+                    tree_estimator.get_params()["n_estimators"]
+                    * tree_estimator.base_estimator.get_params()["n_estimators"]
+                )
+                is_ensemble_of_forests = True
+            elif "n_estimators" in tree_estimator.get_params():
+                n_estimators = tree_estimator.get_params()["n_estimators"]
+            else:
+                n_estimators = 1
+            if n_estimators > 10:
+                rows = (n_estimators // 10) + 1
+                cols = 10
+            else:
+                rows = 1
+                cols = n_estimators
+            figsize = (cols * 20, rows * 16)
+            fig, axes = plt.subplots(
+                nrows=rows,
+                ncols=cols,
+                figsize=figsize,
+                dpi=_base_dpi * scale,
+                squeeze=False,
+            )
+            axes = list(axes.flatten())
+
+            fig.suptitle("Decision Trees")
+
+            display.move_progress()
+            logger.info("Plotting decision trees")
+            with fit_if_not_fitted(
+                pipeline_with_model, data_X, data_y, groups=groups, **fit_kwargs
+            ) as fitted_pipeline_with_model:
+                trees = []
+                feature_names = list(data_X.columns)
+                if _ml_usecase == MLUsecase.CLASSIFICATION:
+                    class_names = {
+                        v: k
+                        for k, v in prep_pipe.named_steps["dtypes"].replacement.items()
+                    }
+                else:
+                    class_names = None
+                fitted_tree_estimator = fitted_pipeline_with_model.steps[-1][1]
+                if is_stacked_model:
+                    stacked_feature_names = []
                     if _ml_usecase == MLUsecase.CLASSIFICATION:
-                        from yellowbrick.classifier import ClassPredictionError
-
-                        visualizer = ClassPredictionError(
-                            pipeline_with_model, random_state=seed
-                        )
-
-                    elif _ml_usecase == MLUsecase.REGRESSION:
-                        from yellowbrick.regressor import PredictionError
-
-                        visualizer = PredictionError(
-                            pipeline_with_model, random_state=seed
-                        )
-
-                    show_yellowbrick_plot(
-                        visualizer=visualizer,
-                        X_train=data_X,
-                        y_train=data_y,
-                        X_test=test_X,
-                        y_test=test_y,
-                        name=plot_name,
-                        scale=scale,
-                        save=save,
-                        fit_kwargs=fit_kwargs,
-                        groups=groups,
-                        display=display,
-                        display_format=display_format,
-                    )
-
-                def cooks():
-
-                    from yellowbrick.regressor import CooksDistance
-
-                    visualizer = CooksDistance()
-                    show_yellowbrick_plot(
-                        visualizer=visualizer,
-                        X_train=X,
-                        y_train=y,
-                        X_test=test_X,
-                        y_test=test_y,
-                        name=plot_name,
-                        scale=scale,
-                        save=save,
-                        fit_kwargs=fit_kwargs,
-                        handle_test="",
-                        groups=groups,
-                        display=display,
-                        display_format=display_format,
-                    )
-
-                def class_report():
-
-                    from yellowbrick.classifier import ClassificationReport
-
-                    visualizer = ClassificationReport(
-                        pipeline_with_model, random_state=seed, support=True
-                    )
-                    show_yellowbrick_plot(
-                        visualizer=visualizer,
-                        X_train=data_X,
-                        y_train=data_y,
-                        X_test=test_X,
-                        y_test=test_y,
-                        name=plot_name,
-                        scale=scale,
-                        save=save,
-                        fit_kwargs=fit_kwargs,
-                        groups=groups,
-                        display=display,
-                        display_format=display_format,
-                    )
-
-                def boundary():
-
-                    from sklearn.preprocessing import StandardScaler
-                    from sklearn.decomposition import PCA
-                    from yellowbrick.contrib.classifier import DecisionViz
-
-                    data_X_transformed = data_X.select_dtypes(include="float32")
-                    test_X_transformed = test_X.select_dtypes(include="float32")
-                    logger.info("Fitting StandardScaler()")
-                    data_X_transformed = StandardScaler().fit_transform(
-                        data_X_transformed
-                    )
-                    test_X_transformed = StandardScaler().fit_transform(
-                        test_X_transformed
-                    )
-                    pca = PCA(n_components=2, random_state=seed)
-                    logger.info("Fitting PCA()")
-                    data_X_transformed = pca.fit_transform(data_X_transformed)
-                    test_X_transformed = pca.fit_transform(test_X_transformed)
-
-                    data_y_transformed = np.array(data_y)
-                    test_y_transformed = np.array(test_y)
-
-                    viz_ = DecisionViz(pipeline_with_model)
-                    show_yellowbrick_plot(
-                        visualizer=viz_,
-                        X_train=data_X_transformed,
-                        y_train=data_y_transformed,
-                        X_test=test_X_transformed,
-                        y_test=test_y_transformed,
-                        name=plot_name,
-                        scale=scale,
-                        handle_test="draw",
-                        save=save,
-                        fit_kwargs=fit_kwargs,
-                        groups=groups,
-                        display=display,
-                        features=["Feature One", "Feature Two"],
-                        classes=["A", "B"],
-                        display_format=display_format,
-                    )
-
-                def rfe():
-
-                    from yellowbrick.model_selection import RFECV
-
-                    visualizer = RFECV(pipeline_with_model, cv=cv)
-                    show_yellowbrick_plot(
-                        visualizer=visualizer,
-                        X_train=data_X,
-                        y_train=data_y,
-                        X_test=test_X,
-                        y_test=test_y,
-                        handle_test="",
-                        name=plot_name,
-                        scale=scale,
-                        save=save,
-                        fit_kwargs=fit_kwargs,
-                        groups=groups,
-                        display=display,
-                        display_format=display_format,
-                    )
-
-                def learning():
-
-                    from yellowbrick.model_selection import LearningCurve
-
-                    sizes = np.linspace(0.3, 1.0, 10)
-                    visualizer = LearningCurve(
-                        pipeline_with_model,
-                        cv=cv,
-                        train_sizes=sizes,
-                        n_jobs=_gpu_n_jobs_param,
-                        random_state=seed,
-                    )
-                    show_yellowbrick_plot(
-                        visualizer=visualizer,
-                        X_train=data_X,
-                        y_train=data_y,
-                        X_test=test_X,
-                        y_test=test_y,
-                        handle_test="",
-                        name=plot_name,
-                        scale=scale,
-                        save=save,
-                        fit_kwargs=fit_kwargs,
-                        groups=groups,
-                        display=display,
-                        display_format=display_format,
-                    )
-
-                def lift():
-
-                    display.move_progress()
-                    logger.info("Generating predictions / predict_proba on X_test")
-                    with fit_if_not_fitted(
-                        pipeline_with_model, data_X, data_y, groups=groups, **fit_kwargs
-                    ) as fitted_pipeline_with_model:
-                        y_test__ = fitted_pipeline_with_model.predict(X_test)
-                        predict_proba__ = fitted_pipeline_with_model.predict_proba(
-                            X_test
-                        )
-                    display.move_progress()
-                    display.move_progress()
-                    display.clear_output()
-                    with MatplotlibDefaultDPI(base_dpi=_base_dpi, scale_to_set=scale):
-                        fig = skplt.metrics.plot_lift_curve(
-                            y_test__, predict_proba__, figsize=(10, 6)
-                        )
-                        if save:
-                            logger.info(
-                                f"Saving '{plot_name}.png' in current active directory"
+                        classes = list(data_y.unique())
+                        if len(classes) == 2:
+                            classes.pop()
+                        for c in classes:
+                            stacked_feature_names.extend(
+                                [
+                                    f"{k}_{class_names[c]}"
+                                    for k, v in fitted_tree_estimator.estimators
+                                ]
                             )
-                            plt.savefig(f"{plot_name}.png", bbox_inches="tight")
-                        elif system:
-                            plt.show()
-                        plt.close()
-
-                    logger.info("Visual Rendered Successfully")
-
-                def gain():
-
-                    display.move_progress()
-                    logger.info("Generating predictions / predict_proba on X_test")
-                    with fit_if_not_fitted(
-                        pipeline_with_model, data_X, data_y, groups=groups, **fit_kwargs
-                    ) as fitted_pipeline_with_model:
-                        y_test__ = fitted_pipeline_with_model.predict(X_test)
-                        predict_proba__ = fitted_pipeline_with_model.predict_proba(
-                            X_test
-                        )
-                    display.move_progress()
-                    display.move_progress()
-                    display.clear_output()
-                    with MatplotlibDefaultDPI(base_dpi=_base_dpi, scale_to_set=scale):
-                        fig = skplt.metrics.plot_cumulative_gain(
-                            y_test__, predict_proba__, figsize=(10, 6)
-                        )
-                        if save:
-                            logger.info(
-                                f"Saving '{plot_name}.png' in current active directory"
-                            )
-                            plt.savefig(f"{plot_name}.png", bbox_inches="tight")
-                        elif system:
-                            plt.show()
-                        plt.close()
-
-                    logger.info("Visual Rendered Successfully")
-
-                def manifold():
-
-                    from yellowbrick.features import Manifold
-
-                    data_X_transformed = data_X.select_dtypes(include="float32")
-                    visualizer = Manifold(manifold="tsne", random_state=seed)
-                    show_yellowbrick_plot(
-                        visualizer=visualizer,
-                        X_train=data_X_transformed,
-                        y_train=data_y,
-                        X_test=test_X,
-                        y_test=test_y,
-                        handle_train="fit_transform",
-                        handle_test="",
-                        name=plot_name,
-                        scale=scale,
-                        save=save,
-                        fit_kwargs=fit_kwargs,
-                        groups=groups,
-                        display=display,
-                        display_format=display_format,
-                    )
-
-                def tree():
-
-                    from sklearn.tree import plot_tree
-                    from sklearn.base import is_classifier
-                    from sklearn.model_selection import check_cv
-
-                    is_stacked_model = False
-                    is_ensemble_of_forests = False
-
-                    tree_estimator = pipeline_with_model.steps[-1][1]
-
-                    if "final_estimator" in tree_estimator.get_params():
-                        tree_estimator = tree_estimator.final_estimator
-                        is_stacked_model = True
-
-                    if (
-                        "base_estimator" in tree_estimator.get_params()
-                        and "n_estimators" in tree_estimator.base_estimator.get_params()
-                    ):
-                        n_estimators = (
-                            tree_estimator.get_params()["n_estimators"]
-                            * tree_estimator.base_estimator.get_params()["n_estimators"]
-                        )
-                        is_ensemble_of_forests = True
-                    elif "n_estimators" in tree_estimator.get_params():
-                        n_estimators = tree_estimator.get_params()["n_estimators"]
                     else:
-                        n_estimators = 1
-                    if n_estimators > 10:
-                        rows = (n_estimators // 10) + 1
-                        cols = 10
+                        stacked_feature_names.extend(
+                            [f"{k}" for k, v in fitted_tree_estimator.estimators]
+                        )
+                    if not fitted_tree_estimator.passthrough:
+                        feature_names = stacked_feature_names
                     else:
-                        rows = 1
-                        cols = n_estimators
-                    figsize = (cols * 20, rows * 16)
-                    fig, axes = plt.subplots(
-                        nrows=rows,
-                        ncols=cols,
-                        figsize=figsize,
-                        dpi=_base_dpi * scale,
-                        squeeze=False,
-                    )
-                    axes = list(axes.flatten())
-
-                    fig.suptitle("Decision Trees")
-
-                    display.move_progress()
-                    logger.info("Plotting decision trees")
-                    with fit_if_not_fitted(
-                        pipeline_with_model, data_X, data_y, groups=groups, **fit_kwargs
-                    ) as fitted_pipeline_with_model:
-                        trees = []
-                        feature_names = list(data_X.columns)
-                        if _ml_usecase == MLUsecase.CLASSIFICATION:
-                            class_names = {
-                                v: k
-                                for k, v in prep_pipe.named_steps[
-                                    "dtypes"
-                                ].replacement.items()
-                            }
-                        else:
-                            class_names = None
-                        fitted_tree_estimator = fitted_pipeline_with_model.steps[-1][1]
-                        if is_stacked_model:
-                            stacked_feature_names = []
-                            if _ml_usecase == MLUsecase.CLASSIFICATION:
-                                classes = list(data_y.unique())
-                                if len(classes) == 2:
-                                    classes.pop()
-                                for c in classes:
-                                    stacked_feature_names.extend(
-                                        [
-                                            f"{k}_{class_names[c]}"
-                                            for k, v in fitted_tree_estimator.estimators
-                                        ]
-                                    )
-                            else:
-                                stacked_feature_names.extend(
-                                    [
-                                        f"{k}"
-                                        for k, v in fitted_tree_estimator.estimators
-                                    ]
-                                )
-                            if not fitted_tree_estimator.passthrough:
-                                feature_names = stacked_feature_names
-                            else:
-                                feature_names = stacked_feature_names + feature_names
-                            fitted_tree_estimator = (
-                                fitted_tree_estimator.final_estimator_
-                            )
-                        if is_ensemble_of_forests:
-                            for estimator in fitted_tree_estimator.estimators_:
-                                trees.extend(estimator.estimators_)
-                        else:
-                            try:
-                                trees = fitted_tree_estimator.estimators_
-                            except:
-                                trees = [fitted_tree_estimator]
-                        if _ml_usecase == MLUsecase.CLASSIFICATION:
-                            class_names = list(class_names.values())
-                        for i, tree in enumerate(trees):
-                            logger.info(f"Plotting tree {i}")
-                            plot_tree(
-                                tree,
-                                feature_names=feature_names,
-                                class_names=class_names,
-                                filled=True,
-                                rounded=True,
-                                precision=4,
-                                ax=axes[i],
-                            )
-                            axes[i].set_title(f"Tree {i}")
-                    for i in range(len(trees), len(axes)):
-                        axes[i].set_visible(False)
-                    display.move_progress()
-
-                    display.move_progress()
-                    display.clear_output()
-                    if save:
-                        logger.info(
-                            f"Saving '{plot_name}.png' in current active directory"
-                        )
-                        plt.savefig(f"{plot_name}.png", bbox_inches="tight")
-                    elif system:
-                        plt.show()
-                    plt.close()
-
-                    logger.info("Visual Rendered Successfully")
-
-                def calibration():
-
-                    from sklearn.calibration import calibration_curve
-
-                    plt.figure(figsize=(7, 6), dpi=_base_dpi * scale)
-                    ax1 = plt.subplot2grid((3, 1), (0, 0), rowspan=2)
-
-                    ax1.plot([0, 1], [0, 1], "k:", label="Perfectly calibrated")
-                    display.move_progress()
-                    logger.info("Scoring test/hold-out set")
-                    with fit_if_not_fitted(
-                        pipeline_with_model, data_X, data_y, groups=groups, **fit_kwargs
-                    ) as fitted_pipeline_with_model:
-                        prob_pos = fitted_pipeline_with_model.predict_proba(test_X)[
-                            :, 1
-                        ]
-                    prob_pos = (prob_pos - prob_pos.min()) / (
-                        prob_pos.max() - prob_pos.min()
-                    )
-                    fraction_of_positives, mean_predicted_value = calibration_curve(
-                        test_y, prob_pos, n_bins=10
-                    )
-                    display.move_progress()
-                    ax1.plot(
-                        mean_predicted_value,
-                        fraction_of_positives,
-                        "s-",
-                        label=f"{model_name}",
-                    )
-
-                    ax1.set_ylabel("Fraction of positives")
-                    ax1.set_ylim([0, 1])
-                    ax1.set_xlim([0, 1])
-                    ax1.legend(loc="lower right")
-                    ax1.set_title("Calibration plots (reliability curve)")
-                    ax1.set_facecolor("white")
-                    ax1.grid(b=True, color="grey", linewidth=0.5, linestyle="-")
-                    plt.tight_layout()
-                    display.move_progress()
-                    display.clear_output()
-                    if save:
-                        logger.info(
-                            f"Saving '{plot_name}.png' in current active directory"
-                        )
-                        plt.savefig(f"{plot_name}.png", bbox_inches="tight")
-                    elif system:
-                        plt.show()
-                    plt.close()
-
-                    logger.info("Visual Rendered Successfully")
-
-                def vc():
-
-                    logger.info("Determining param_name")
-
-                    actual_estimator_label = get_pipeline_estimator_label(
-                        pipeline_with_model
-                    )
-                    actual_estimator = pipeline_with_model.named_steps[
-                        actual_estimator_label
-                    ]
-
+                        feature_names = stacked_feature_names + feature_names
+                    fitted_tree_estimator = fitted_tree_estimator.final_estimator_
+                if is_ensemble_of_forests:
+                    for estimator in fitted_tree_estimator.estimators_:
+                        trees.extend(estimator.estimators_)
+                else:
                     try:
-                        try:
-                            # catboost special case
-                            model_params = actual_estimator.get_all_params()
-                        except:
-                            model_params = pipeline_with_model.get_params()
+                        trees = fitted_tree_estimator.estimators_
                     except:
-                        display.clear_output()
-                        logger.error("VC plot failed. Exception:")
-                        logger.error(traceback.format_exc())
-                        raise TypeError(
-                            "Plot not supported for this estimator. Try different estimator."
-                        )
-
-                    if _ml_usecase == MLUsecase.CLASSIFICATION:
-
-                        # Catboost
-                        if "depth" in model_params:
-                            param_name = f"{actual_estimator_label}__depth"
-                            param_range = np.arange(1, 8 if gpu_param else 11)
-
-                        # SGD Classifier
-                        elif f"{actual_estimator_label}__l1_ratio" in model_params:
-                            param_name = f"{actual_estimator_label}__l1_ratio"
-                            param_range = np.arange(0, 1, 0.01)
-
-                        # tree based models
-                        elif f"{actual_estimator_label}__max_depth" in model_params:
-                            param_name = f"{actual_estimator_label}__max_depth"
-                            param_range = np.arange(1, 11)
-
-                        # knn
-                        elif f"{actual_estimator_label}__n_neighbors" in model_params:
-                            param_name = f"{actual_estimator_label}__n_neighbors"
-                            param_range = np.arange(1, 11)
-
-                        # MLP / Ridge
-                        elif f"{actual_estimator_label}__alpha" in model_params:
-                            param_name = f"{actual_estimator_label}__alpha"
-                            param_range = np.arange(0, 1, 0.1)
-
-                        # Logistic Regression
-                        elif f"{actual_estimator_label}__C" in model_params:
-                            param_name = f"{actual_estimator_label}__C"
-                            param_range = np.arange(1, 11)
-
-                        # Bagging / Boosting
-                        elif f"{actual_estimator_label}__n_estimators" in model_params:
-                            param_name = f"{actual_estimator_label}__n_estimators"
-                            param_range = np.arange(1, 1000, 10)
-
-                        # Naive Bayes
-                        elif f"{actual_estimator_label}__var_smoothing" in model_params:
-                            param_name = f"{actual_estimator_label}__var_smoothing"
-                            param_range = np.arange(0.1, 1, 0.01)
-
-                        # QDA
-                        elif f"{actual_estimator_label}__reg_param" in model_params:
-                            param_name = f"{actual_estimator_label}__reg_param"
-                            param_range = np.arange(0, 1, 0.1)
-
-                        # GPC
-                        elif (
-                            f"{actual_estimator_label}__max_iter_predict"
-                            in model_params
-                        ):
-                            param_name = f"{actual_estimator_label}__max_iter_predict"
-                            param_range = np.arange(100, 1000, 100)
-
-                        else:
-                            display.clear_output()
-                            raise TypeError(
-                                "Plot not supported for this estimator. Try different estimator."
-                            )
-
-                    elif _ml_usecase == MLUsecase.REGRESSION:
-
-                        # Catboost
-                        if "depth" in model_params:
-                            param_name = f"{actual_estimator_label}__depth"
-                            param_range = np.arange(1, 8 if gpu_param else 11)
-
-                        # lasso/ridge/en/llar/huber/kr/mlp/br/ard
-                        elif f"{actual_estimator_label}__alpha" in model_params:
-                            param_name = f"{actual_estimator_label}__alpha"
-                            param_range = np.arange(0, 1, 0.1)
-
-                        elif f"{actual_estimator_label}__alpha_1" in model_params:
-                            param_name = f"{actual_estimator_label}__alpha_1"
-                            param_range = np.arange(0, 1, 0.1)
-
-                        # par/svm
-                        elif f"{actual_estimator_label}__C" in model_params:
-                            param_name = f"{actual_estimator_label}__C"
-                            param_range = np.arange(1, 11)
-
-                        # tree based models (dt/rf/et)
-                        elif f"{actual_estimator_label}__max_depth" in model_params:
-                            param_name = f"{actual_estimator_label}__max_depth"
-                            param_range = np.arange(1, 11)
-
-                        # knn
-                        elif f"{actual_estimator_label}__n_neighbors" in model_params:
-                            param_name = f"{actual_estimator_label}__n_neighbors"
-                            param_range = np.arange(1, 11)
-
-                        # Bagging / Boosting (ada/gbr)
-                        elif f"{actual_estimator_label}__n_estimators" in model_params:
-                            param_name = f"{actual_estimator_label}__n_estimators"
-                            param_range = np.arange(1, 1000, 10)
-
-                        # Bagging / Boosting (ada/gbr)
-                        elif (
-                            f"{actual_estimator_label}__n_nonzero_coefs" in model_params
-                        ):
-                            param_name = f"{actual_estimator_label}__n_nonzero_coefs"
-                            if len(X_train.columns) >= 10:
-                                param_max = 11
-                            else:
-                                param_max = len(X_train.columns) + 1
-                            param_range = np.arange(1, param_max, 1)
-
-                        elif f"{actual_estimator_label}__eps" in model_params:
-                            param_name = f"{actual_estimator_label}__eps"
-                            param_range = np.arange(0, 1, 0.1)
-
-                        elif (
-                            f"{actual_estimator_label}__max_subpopulation"
-                            in model_params
-                        ):
-                            param_name = f"{actual_estimator_label}__max_subpopulation"
-                            param_range = np.arange(1000, 100000, 2000)
-
-                        elif f"{actual_estimator_label}__min_samples" in model_params:
-                            param_name = f"{actual_estimator_label}__max_subpopulation"
-                            param_range = np.arange(0.01, 1, 0.1)
-
-                        else:
-                            display.clear_output()
-                            raise TypeError(
-                                "Plot not supported for this estimator. Try different estimator."
-                            )
-
-                    logger.info(f"param_name: {param_name}")
-
-                    display.move_progress()
-
-                    from yellowbrick.model_selection import ValidationCurve
-
-                    viz = ValidationCurve(
-                        pipeline_with_model,
-                        param_name=param_name,
-                        param_range=param_range,
-                        cv=cv,
-                        random_state=seed,
-                        n_jobs=_gpu_n_jobs_param,
+                        trees = [fitted_tree_estimator]
+                if _ml_usecase == MLUsecase.CLASSIFICATION:
+                    class_names = list(class_names.values())
+                for i, tree in enumerate(trees):
+                    logger.info(f"Plotting tree {i}")
+                    plot_tree(
+                        tree,
+                        feature_names=feature_names,
+                        class_names=class_names,
+                        filled=True,
+                        rounded=True,
+                        precision=4,
+                        ax=axes[i],
                     )
-                    show_yellowbrick_plot(
-                        visualizer=viz,
-                        X_train=data_X,
-                        y_train=data_y,
-                        X_test=test_X,
-                        y_test=test_y,
-                        handle_train="fit",
-                        handle_test="",
-                        name=plot_name,
-                        scale=scale,
-                        save=save,
-                        fit_kwargs=fit_kwargs,
-                        groups=groups,
-                        display=display,
-                        display_format=display_format,
-                    )
+                    axes[i].set_title(f"Tree {i}")
+            for i in range(len(trees), len(axes)):
+                axes[i].set_visible(False)
+            display.move_progress()
 
-                def dimension():
+            display.move_progress()
+            display.clear_output()
+            if save:
+                logger.info(f"Saving '{plot_name}.png' in current active directory")
+                plt.savefig(f"{plot_name}.png", bbox_inches="tight")
+            elif system:
+                plt.show()
+            plt.close()
 
-                    from yellowbrick.features import RadViz
-                    from sklearn.preprocessing import StandardScaler
-                    from sklearn.decomposition import PCA
+            logger.info("Visual Rendered Successfully")
 
-                    data_X_transformed = data_X.select_dtypes(include="float32")
-                    logger.info("Fitting StandardScaler()")
-                    data_X_transformed = StandardScaler().fit_transform(
-                        data_X_transformed
-                    )
-                    data_y_transformed = np.array(data_y)
+        def calibration():
 
-                    features = min(round(len(data_X.columns) * 0.3, 0), 5)
-                    features = int(features)
+            from sklearn.calibration import calibration_curve
 
-                    pca = PCA(n_components=features, random_state=seed)
-                    logger.info("Fitting PCA()")
-                    data_X_transformed = pca.fit_transform(data_X_transformed)
-                    display.move_progress()
-                    classes = data_y.unique().tolist()
-                    visualizer = RadViz(classes=classes, alpha=0.25)
+            plt.figure(figsize=(7, 6), dpi=_base_dpi * scale)
+            ax1 = plt.subplot2grid((3, 1), (0, 0), rowspan=2)
 
-                    show_yellowbrick_plot(
-                        visualizer=visualizer,
-                        X_train=data_X_transformed,
-                        y_train=data_y_transformed,
-                        X_test=test_X,
-                        y_test=test_y,
-                        handle_train="fit_transform",
-                        handle_test="",
-                        name=plot_name,
-                        scale=scale,
-                        save=save,
-                        fit_kwargs=fit_kwargs,
-                        groups=groups,
-                        display=display,
-                        display_format=display_format,
-                    )
+            ax1.plot([0, 1], [0, 1], "k:", label="Perfectly calibrated")
+            display.move_progress()
+            logger.info("Scoring test/hold-out set")
+            with fit_if_not_fitted(
+                pipeline_with_model, data_X, data_y, groups=groups, **fit_kwargs
+            ) as fitted_pipeline_with_model:
+                prob_pos = fitted_pipeline_with_model.predict_proba(test_X)[:, 1]
+            prob_pos = (prob_pos - prob_pos.min()) / (prob_pos.max() - prob_pos.min())
+            fraction_of_positives, mean_predicted_value = calibration_curve(
+                test_y, prob_pos, n_bins=10
+            )
+            display.move_progress()
+            ax1.plot(
+                mean_predicted_value,
+                fraction_of_positives,
+                "s-",
+                label=f"{model_name}",
+            )
 
-                def feature():
-                    _feature(10)
+            ax1.set_ylabel("Fraction of positives")
+            ax1.set_ylim([0, 1])
+            ax1.set_xlim([0, 1])
+            ax1.legend(loc="lower right")
+            ax1.set_title("Calibration plots (reliability curve)")
+            ax1.set_facecolor("white")
+            ax1.grid(b=True, color="grey", linewidth=0.5, linestyle="-")
+            plt.tight_layout()
+            display.move_progress()
+            display.clear_output()
+            if save:
+                logger.info(f"Saving '{plot_name}.png' in current active directory")
+                plt.savefig(f"{plot_name}.png", bbox_inches="tight")
+            elif system:
+                plt.show()
+            plt.close()
 
-                def feature_all():
-                    _feature(len(data_X.columns))
+            logger.info("Visual Rendered Successfully")
 
-                def _feature(n: int):
-                    variables = None
-                    temp_model = pipeline_with_model
-                    if hasattr(pipeline_with_model, "steps"):
-                        temp_model = pipeline_with_model.steps[-1][1]
-                    if hasattr(temp_model, "coef_"):
-                        try:
-                            coef = temp_model.coef_.flatten()
-                            if len(coef) > len(data_X.columns):
-                                coef = coef[: len(data_X.columns)]
-                            variables = abs(coef)
-                        except:
-                            pass
-                    if variables is None:
-                        logger.warning("No coef_ found. Trying feature_importances_")
-                        variables = abs(temp_model.feature_importances_)
-                    coef_df = pd.DataFrame(
-                        {"Variable": data_X.columns, "Value": variables}
-                    )
-                    sorted_df = (
-                        coef_df.sort_values(by="Value", ascending=False)
-                        .head(n)
-                        .sort_values(by="Value")
-                    )
-                    my_range = range(1, len(sorted_df.index) + 1)
-                    display.move_progress()
-                    plt.figure(figsize=(8, 5 * (n // 10)), dpi=_base_dpi * scale)
-                    plt.hlines(
-                        y=my_range, xmin=0, xmax=sorted_df["Value"], color="skyblue"
-                    )
-                    plt.plot(sorted_df["Value"], my_range, "o")
-                    display.move_progress()
-                    plt.yticks(my_range, sorted_df["Variable"])
-                    plt.title("Feature Importance Plot")
-                    plt.xlabel("Variable Importance")
-                    plt.ylabel("Features")
-                    display.move_progress()
-                    display.clear_output()
-                    if save:
-                        logger.info(
-                            f"Saving '{plot_name}.png' in current active directory"
-                        )
-                        plt.savefig(f"{plot_name}.png", bbox_inches="tight")
-                    elif system:
-                        plt.show()
-                    plt.close()
+        def vc():
 
-                    logger.info("Visual Rendered Successfully")
+            logger.info("Determining param_name")
 
-                def parameter():
+            actual_estimator_label = get_pipeline_estimator_label(pipeline_with_model)
+            actual_estimator = pipeline_with_model.named_steps[actual_estimator_label]
 
-                    try:
-                        params = estimator.get_all_params()
-                    except:
-                        params = estimator.get_params(deep=False)
-
-                    param_df = pd.DataFrame.from_dict(
-                        {str(k): str(v) for k, v in params.items()},
-                        orient="index",
-                        columns=["Parameters"],
-                    )
-                    display.display(param_df, clear=True)
-                    logger.info("Visual Rendered Successfully")
-
-                # execute the plot method
-                ret = locals()[plot]()
-                if ret:
-                    plot_filename = ret
-
+            try:
                 try:
-                    plt.close()
+                    # catboost special case
+                    model_params = actual_estimator.get_all_params()
+                except:
+                    model_params = pipeline_with_model.get_params()
+            except:
+                display.clear_output()
+                logger.error("VC plot failed. Exception:")
+                logger.error(traceback.format_exc())
+                raise TypeError(
+                    "Plot not supported for this estimator. Try different estimator."
+                )
+
+            if _ml_usecase == MLUsecase.CLASSIFICATION:
+
+                # Catboost
+                if "depth" in model_params:
+                    param_name = f"{actual_estimator_label}__depth"
+                    param_range = np.arange(1, 8 if gpu_param else 11)
+
+                # SGD Classifier
+                elif f"{actual_estimator_label}__l1_ratio" in model_params:
+                    param_name = f"{actual_estimator_label}__l1_ratio"
+                    param_range = np.arange(0, 1, 0.01)
+
+                # tree based models
+                elif f"{actual_estimator_label}__max_depth" in model_params:
+                    param_name = f"{actual_estimator_label}__max_depth"
+                    param_range = np.arange(1, 11)
+
+                # knn
+                elif f"{actual_estimator_label}__n_neighbors" in model_params:
+                    param_name = f"{actual_estimator_label}__n_neighbors"
+                    param_range = np.arange(1, 11)
+
+                # MLP / Ridge
+                elif f"{actual_estimator_label}__alpha" in model_params:
+                    param_name = f"{actual_estimator_label}__alpha"
+                    param_range = np.arange(0, 1, 0.1)
+
+                # Logistic Regression
+                elif f"{actual_estimator_label}__C" in model_params:
+                    param_name = f"{actual_estimator_label}__C"
+                    param_range = np.arange(1, 11)
+
+                # Bagging / Boosting
+                elif f"{actual_estimator_label}__n_estimators" in model_params:
+                    param_name = f"{actual_estimator_label}__n_estimators"
+                    param_range = np.arange(1, 1000, 10)
+
+                # Naive Bayes
+                elif f"{actual_estimator_label}__var_smoothing" in model_params:
+                    param_name = f"{actual_estimator_label}__var_smoothing"
+                    param_range = np.arange(0.1, 1, 0.01)
+
+                # QDA
+                elif f"{actual_estimator_label}__reg_param" in model_params:
+                    param_name = f"{actual_estimator_label}__reg_param"
+                    param_range = np.arange(0, 1, 0.1)
+
+                # GPC
+                elif f"{actual_estimator_label}__max_iter_predict" in model_params:
+                    param_name = f"{actual_estimator_label}__max_iter_predict"
+                    param_range = np.arange(100, 1000, 100)
+
+                else:
+                    display.clear_output()
+                    raise TypeError(
+                        "Plot not supported for this estimator. Try different estimator."
+                    )
+
+            elif _ml_usecase == MLUsecase.REGRESSION:
+
+                # Catboost
+                if "depth" in model_params:
+                    param_name = f"{actual_estimator_label}__depth"
+                    param_range = np.arange(1, 8 if gpu_param else 11)
+
+                # lasso/ridge/en/llar/huber/kr/mlp/br/ard
+                elif f"{actual_estimator_label}__alpha" in model_params:
+                    param_name = f"{actual_estimator_label}__alpha"
+                    param_range = np.arange(0, 1, 0.1)
+
+                elif f"{actual_estimator_label}__alpha_1" in model_params:
+                    param_name = f"{actual_estimator_label}__alpha_1"
+                    param_range = np.arange(0, 1, 0.1)
+
+                # par/svm
+                elif f"{actual_estimator_label}__C" in model_params:
+                    param_name = f"{actual_estimator_label}__C"
+                    param_range = np.arange(1, 11)
+
+                # tree based models (dt/rf/et)
+                elif f"{actual_estimator_label}__max_depth" in model_params:
+                    param_name = f"{actual_estimator_label}__max_depth"
+                    param_range = np.arange(1, 11)
+
+                # knn
+                elif f"{actual_estimator_label}__n_neighbors" in model_params:
+                    param_name = f"{actual_estimator_label}__n_neighbors"
+                    param_range = np.arange(1, 11)
+
+                # Bagging / Boosting (ada/gbr)
+                elif f"{actual_estimator_label}__n_estimators" in model_params:
+                    param_name = f"{actual_estimator_label}__n_estimators"
+                    param_range = np.arange(1, 1000, 10)
+
+                # Bagging / Boosting (ada/gbr)
+                elif f"{actual_estimator_label}__n_nonzero_coefs" in model_params:
+                    param_name = f"{actual_estimator_label}__n_nonzero_coefs"
+                    if len(X_train.columns) >= 10:
+                        param_max = 11
+                    else:
+                        param_max = len(X_train.columns) + 1
+                    param_range = np.arange(1, param_max, 1)
+
+                elif f"{actual_estimator_label}__eps" in model_params:
+                    param_name = f"{actual_estimator_label}__eps"
+                    param_range = np.arange(0, 1, 0.1)
+
+                elif f"{actual_estimator_label}__max_subpopulation" in model_params:
+                    param_name = f"{actual_estimator_label}__max_subpopulation"
+                    param_range = np.arange(1000, 100000, 2000)
+
+                elif f"{actual_estimator_label}__min_samples" in model_params:
+                    param_name = f"{actual_estimator_label}__max_subpopulation"
+                    param_range = np.arange(0.01, 1, 0.1)
+
+                else:
+                    display.clear_output()
+                    raise TypeError(
+                        "Plot not supported for this estimator. Try different estimator."
+                    )
+
+            logger.info(f"param_name: {param_name}")
+
+            display.move_progress()
+
+            from yellowbrick.model_selection import ValidationCurve
+
+            viz = ValidationCurve(
+                pipeline_with_model,
+                param_name=param_name,
+                param_range=param_range,
+                cv=cv,
+                random_state=seed,
+                n_jobs=_gpu_n_jobs_param,
+            )
+            show_yellowbrick_plot(
+                visualizer=viz,
+                X_train=data_X,
+                y_train=data_y,
+                X_test=test_X,
+                y_test=test_y,
+                handle_train="fit",
+                handle_test="",
+                name=plot_name,
+                scale=scale,
+                save=save,
+                fit_kwargs=fit_kwargs,
+                groups=groups,
+                display=display,
+                display_format=display_format,
+            )
+
+        def dimension():
+
+            from yellowbrick.features import RadViz
+            from sklearn.preprocessing import StandardScaler
+            from sklearn.decomposition import PCA
+
+            data_X_transformed = data_X.select_dtypes(include="float32")
+            logger.info("Fitting StandardScaler()")
+            data_X_transformed = StandardScaler().fit_transform(data_X_transformed)
+            data_y_transformed = np.array(data_y)
+
+            features = min(round(len(data_X.columns) * 0.3, 0), 5)
+            features = int(features)
+
+            pca = PCA(n_components=features, random_state=seed)
+            logger.info("Fitting PCA()")
+            data_X_transformed = pca.fit_transform(data_X_transformed)
+            display.move_progress()
+            classes = data_y.unique().tolist()
+            visualizer = RadViz(classes=classes, alpha=0.25)
+
+            show_yellowbrick_plot(
+                visualizer=visualizer,
+                X_train=data_X_transformed,
+                y_train=data_y_transformed,
+                X_test=test_X,
+                y_test=test_y,
+                handle_train="fit_transform",
+                handle_test="",
+                name=plot_name,
+                scale=scale,
+                save=save,
+                fit_kwargs=fit_kwargs,
+                groups=groups,
+                display=display,
+                display_format=display_format,
+            )
+
+        def feature():
+            _feature(10)
+
+        def feature_all():
+            _feature(len(data_X.columns))
+
+        def _feature(n: int):
+            variables = None
+            temp_model = pipeline_with_model
+            if hasattr(pipeline_with_model, "steps"):
+                temp_model = pipeline_with_model.steps[-1][1]
+            if hasattr(temp_model, "coef_"):
+                try:
+                    coef = temp_model.coef_.flatten()
+                    if len(coef) > len(data_X.columns):
+                        coef = coef[: len(data_X.columns)]
+                    variables = abs(coef)
                 except:
                     pass
+            if variables is None:
+                logger.warning("No coef_ found. Trying feature_importances_")
+                variables = abs(temp_model.feature_importances_)
+            coef_df = pd.DataFrame({"Variable": data_X.columns, "Value": variables})
+            sorted_df = (
+                coef_df.sort_values(by="Value", ascending=False)
+                .head(n)
+                .sort_values(by="Value")
+            )
+            my_range = range(1, len(sorted_df.index) + 1)
+            display.move_progress()
+            plt.figure(figsize=(8, 5 * (n // 10)), dpi=_base_dpi * scale)
+            plt.hlines(y=my_range, xmin=0, xmax=sorted_df["Value"], color="skyblue")
+            plt.plot(sorted_df["Value"], my_range, "o")
+            display.move_progress()
+            plt.yticks(my_range, sorted_df["Variable"])
+            plt.title("Feature Importance Plot")
+            plt.xlabel("Variable Importance")
+            plt.ylabel("Features")
+            display.move_progress()
+            display.clear_output()
+            if save:
+                logger.info(f"Saving '{plot_name}.png' in current active directory")
+                plt.savefig(f"{plot_name}.png", bbox_inches="tight")
+            elif system:
+                plt.show()
+            plt.close()
+
+            logger.info("Visual Rendered Successfully")
+
+        def parameter():
+
+            try:
+                params = estimator.get_all_params()
+            except:
+                params = estimator.get_params(deep=False)
+
+            param_df = pd.DataFrame.from_dict(
+                {str(k): str(v) for k, v in params.items()},
+                orient="index",
+                columns=["Parameters"],
+            )
+            display.display(param_df, clear=True)
+            logger.info("Visual Rendered Successfully")
+
+        # execute the plot method
+        ret = locals()[plot]()
+        if ret:
+            plot_filename = ret
+
+        try:
+            plt.close()
+        except:
+            pass
 
     gc.collect()
 
@@ -5782,6 +5706,7 @@ def evaluate_model(
         system=fixed(True),
         display=fixed(None),
         display_format=fixed(None),
+        is_in_evaluate=fixed(True),
     )
 
 
@@ -7376,7 +7301,9 @@ def create_webservice(model, model_endopoint, api_key=True, pydantic_payload=Non
     return {key: app}
 
 
-def save_model(model, model_name: str, model_only: bool = False, verbose: bool = True):
+def save_model(
+    model, model_name: str, model_only: bool = False, verbose: bool = True, **kwargs
+):
 
     """
     This function saves the transformation pipeline and trained model object
@@ -7405,6 +7332,9 @@ def save_model(model, model_name: str, model_only: bool = False, verbose: bool =
         When set to True, only trained model object is saved and all the
         transformations are ignored.
 
+    **kwargs: 
+        Additional keyword arguments to pass to joblib.dump().
+
     verbose: bool, default = True
         Success message is not printed when verbose is set to False.
 
@@ -7417,7 +7347,7 @@ def save_model(model, model_name: str, model_only: bool = False, verbose: bool =
     import pycaret.internal.persistence
 
     return pycaret.internal.persistence.save_model(
-        model, model_name, None if model_only else prep_pipe, verbose
+        model, model_name, None if model_only else prep_pipe, verbose, **kwargs
     )
 
 
@@ -8072,7 +8002,7 @@ def load_config(file_name: str):
 
     """
 
-    global _all_models, _all_models_internal, _all_metrics, X_train
+    global _all_models, _all_models_internal, _all_metrics, X_train, create_model_container, master_model_container, display_container
 
     import pycaret.internal.utils
 
@@ -8136,6 +8066,11 @@ def load_config(file_name: str):
             globals(), raise_errors=True
         )
         X_train = X
+
+    create_model_container = []
+    master_model_container = []
+    display_container = []
+
     return r
 
 

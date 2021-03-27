@@ -18,11 +18,11 @@ pyLDAvis
 gensim
 spacy<2.4.0
 nltk
-mlxtend
+mlxtend>=0.17.0
 pyod
 pandas-profiling>=2.8.0
 kmodes>=0.10.1
 mlflow
-imbalanced-learn>=0.7.0
-scikit-plot  # for lift and gain charts
+imbalanced-learn==0.7.0
+scikit-plot #for lift and gain charts
 Boruta
