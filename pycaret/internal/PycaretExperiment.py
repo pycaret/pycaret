@@ -21,6 +21,7 @@ from pycaret.internal.utils import (
     get_columns_to_stratify_by,
     get_model_name,
 )
+from pycaret.internal.utils import SeasonalParameter
 import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
 from pycaret.internal.logging import get_logger, create_logger
@@ -894,6 +895,7 @@ class _TabularExperiment(_PyCaretExperiment):
         log_profile: bool = False,
         log_data: bool = False,
         silent: bool = False,
+        seasonal_parameter: Optional[int] = None,
         verbose: bool = True,
         profile: bool = False,
         profile_kwargs: Dict[str, Any] = None,
@@ -2018,6 +2020,7 @@ class _TabularExperiment(_PyCaretExperiment):
             data_split_shuffle,
             dtypes,
             display,
+            fh
         )
 
         if not self._is_unsupervised():
@@ -4703,21 +4706,40 @@ class _SupervisedExperiment(_TabularExperiment):
         data_split_shuffle,
         dtypes,
         display: Display,
+        fh=None
     ) -> None:
         _stratify_columns = get_columns_to_stratify_by(
             X_before_preprocess, y_before_preprocess, self.stratify_param, target
         )
         if test_data is None:
-            self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(
-                X_before_preprocess,
-                y_before_preprocess,
-                test_size=1 - train_size,
-                stratify=_stratify_columns,
-                random_state=self.seed,
-                shuffle=data_split_shuffle,
-            )
-            train_data = pd.concat([self.X_train, self.y_train], axis=1)
-            test_data = pd.concat([self.X_test, self.y_test], axis=1)
+
+            if self._ml_usecase == MLUsecase.TIME_SERIES:
+
+                from sktime.forecasting.model_selection import temporal_train_test_split # sktime is an optional dependency
+
+
+                train_data, test_data, self.X_train, self.X_test = temporal_train_test_split(
+                    y=y_before_preprocess,
+                    X=X_before_preprocess,
+                    fh=fh # if fh is provided it splits by it
+                )
+
+                train_data, test_data = pd.DataFrame(train_data), pd.DataFrame(test_data)
+
+                self.y_train = train_data
+                self.y_test = test_data
+
+            else:
+                self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(
+                    X_before_preprocess,
+                    y_before_preprocess,
+                    test_size=1-train_size,
+                    stratify=_stratify_columns,
+                    random_state=self.seed,
+                    shuffle=data_split_shuffle,
+                )
+                train_data = pd.concat([self.X_train, self.y_train], axis=1)
+                test_data = pd.concat([self.X_test, self.y_test], axis=1)
 
         train_data = self.prep_pipe.fit_transform(train_data)
         # workaround to also transform target
@@ -9159,6 +9181,7 @@ class _UnsupervisedExperiment(_TabularExperiment):
         data_split_shuffle,
         dtypes,
         display: Display,
+        fh=None
     ) -> None:
         display.move_progress()
         self.X = self.prep_pipe.fit_transform(train_data).drop(target, axis=1)
@@ -15839,7 +15862,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
     def setup(
         self,
         data: Union[pd.Series, pd.DataFrame],
-        train_size: float = 0.7,
+        #train_size: float = 0.7,
         test_data: Optional[pd.DataFrame] = None,
         preprocess: bool = True,
         imputation_type: str = "simple",
@@ -15848,6 +15871,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         fold_strategy: Union[str, Any] = "timeseries",  # added in pycaret==2.2
         fold: int = 10,
         fh: Union[List[int], int, np.array] = 1,
+        seasonal_parameter: Optional[Union[int, str]] = None,
         n_jobs: Optional[int] = -1,
         use_gpu: bool = False,
         custom_pipeline: Union[
@@ -15882,17 +15906,13 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             Shape (n_samples, 1), where n_samples is the number of samples.
 
 
-        train_size: float, default = 0.7
-            Proportion of the dataset to be used for training and validation. Should be
-            between 0.0 and 1.0.
-
-
         test_data: pandas.DataFrame, default = None
             If not None, test_data is used as a hold-out set and ``train_size`` parameter is
             ignored. test_data must be labelled and the shape of data and test_data must
             match.
 
-        h: np.array, default = None
+
+        fh: np.array, default = None
             The forecast horizon to be used for forecasting. User must specify a value.
             The values of the array must be integers specifying the lookahead points that
             must be forecasted. e.g. np.array([2, 5]) will forecast 2 and 5 points ahead.
@@ -15926,6 +15946,23 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         fh: int, list or np.array, default = 1
             Number of steps ahead to take to evaluate forecast.
+
+
+        seasonal_parameter: int or str, default = None
+            Seasonal periods in timeseries data. If not provided the frequency of the data
+            index is map to a seasonal period as follows:
+
+            * "S": 60
+            * "T": 60
+            * 'H': 24
+            * 'D': 7
+            * 'W': 52
+            * 'M': 12
+            * 'Q': 4
+            * 'A': 1
+            * 'Y': 1
+
+            Alternatively you can provide a custom seasonal parameter by passing it as an integer.
 
 
         n_jobs: int, default = -1
@@ -16039,18 +16076,32 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             )
         self.fh = fh
 
-        # if not isinstance(data, pd.Series):
-        #     if isinstance(data, pd.DataFrame):
-        #         if data.shape[1] != 1:
-        #             raise ValueError(
-        #                 f"data must be a pandas Series or DataFrame with one column, got {data.shape[1]} columns!"
-        #             )
-        #     else:
-        #         raise ValueError(
-        #             f"data must be a pandas Series or DataFrame with one column, got object of {type(data)} type!"
-        #         )
-        # else:
-        #     data = pd.DataFrame(data)
+        if seasonal_parameter is None:
+
+            index_freq = data.index.freqstr
+            index_freq = index_freq.split('-')[0] or index_freq
+
+            if index_freq in SeasonalParameter.__members__:
+                seasonal_parameter = SeasonalParameter[index_freq].value
+            else:
+                raise ValueError(
+                    f"Unsupported Period frequency: {index_freq}, valid Period frequencies: {', '.join(SeasonalParameter.__members__.keys())}"
+                )
+
+        else:
+
+            if not isinstance(seasonal_parameter, (int, str)):
+                raise ValueError(
+                    f"seasonal_parameter parameter must be an int or str, got {type(seasonal_parameter)}"
+                )
+
+            if isinstance(seasonal_parameter, str):
+                try:
+                    seasonal_parameter = SeasonalParameter[seasonal_parameter]
+                except KeyError:
+                    raise ValueError(
+                        f"Unsupported Period frequency: {seasonal_parameter}, valid Period frequencies: {', '.join(SeasonalParameter.__members__.keys())}"
+                    )
 
 
         if isinstance(data, (pd.Series, pd.DataFrame)):
@@ -16066,31 +16117,39 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 f"data must be a pandas Series or DataFrame, got object of {type(data)} type!"
             )
 
-
         if not np.issubdtype(data[data.columns[0]].dtype, np.number):
             raise TypeError(
                 f"Data must be of 'numpy.number' subtype, got {data[data.columns[0]].dtype}!"
             )
 
-        index_type_check = False
+        #index_type_check = False
         # if np.issubdtype(data.index.dtype, np.datetime64):
         #     index_type_check = True
+        #allowed_index_types = pd.core.indexes.period.PeriodIndex
+        #if isinstance(data.index, allowed_index_types):
+        #    index_type_check = True
+        #if index_type_check is False:
+        #    raise TypeError(
+        #        f"Index must be of 'numpy.datetime64' or 'pandas.core.indexes.period.PeriodIndex' subtype, got {data.index.dtype}!"
+        #    )
+
         allowed_index_types = pd.core.indexes.period.PeriodIndex
-        if isinstance(data.index, allowed_index_types):
-            index_type_check = True
-        if index_type_check is False:
+
+        if not isinstance(data.index, allowed_index_types):
             raise TypeError(
-                f"Index must be of 'numpy.datetime64' or 'pandas.core.indexes.period.PeriodIndex' subtype, got {data.index.dtype}!"
+                f"Index must be 'pandas.core.indexes.period.PeriodIndex' subtype, got {data.index.dtype}!"
             )
+
         # data.index = data.index.astype("datetime64[ns]")
         if len(data.index) != len(set(data.index)):
             raise ValueError("Index may not have duplicate values!")
         # TODO: Check with @Miguel: Why is this needed (float32 causes issues with scipy optimize)
         # data[data.columns[0]] = data[data.columns[0]].astype("float32")
+        
         return super().setup(
             data=data,
             target=data.columns[0],
-            train_size=train_size,
+            #train_size=train_size,
             test_data=test_data,
             preprocess=preprocess,
             imputation_type=imputation_type,
@@ -16122,6 +16181,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             fold_strategy=fold_strategy,
             fold=fold,
             fh=fh,
+            seasonal_parameter=seasonal_parameter,
             fold_shuffle=False,
             n_jobs=n_jobs,
             use_gpu=use_gpu,
