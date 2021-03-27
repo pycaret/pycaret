@@ -21,6 +21,7 @@ from pycaret.internal.utils import (
     get_columns_to_stratify_by,
     get_model_name,
 )
+from pycaret.internal.utils import SeasonalParameter
 import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
 from pycaret.internal.logging import get_logger, create_logger
@@ -15842,7 +15843,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         fold_strategy: Union[str, Any] = "timeseries",  # added in pycaret==2.2
         fold: int = 10,
         fh: Union[List[int], int, np.array] = 1,
-        sp: Optional[int] = None,
+        sp: Optional[Union[int, str]] = None,
         n_jobs: Optional[int] = -1,
         use_gpu: bool = False,
         custom_pipeline: Union[
@@ -15923,7 +15924,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             Number of steps ahead to take to evaluate forecast.
 
 
-        sp: int, default = None
+        sp: int or str, default = None
             Seasonal periods in timeseries data. If not provided the frequency of the data
             index is map to a seasonal period as follows:
 
@@ -16051,28 +16052,31 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         if sp is None:
 
-            freq_to_sp = {
-                "S": 60, # second
-                "T": 60, # minute
-                'H': 24, # hour
-                'D': 7, # day
-                'W': 52, # week
-                'M': 12, # month
-                'Q': 4, # quarter
-                'A': 1, #year
-                'Y': 1 #year
-            }
-
-            valid_freq = list(freq_to_sp.keys())
             index_freq = data.index.freqstr
             index_freq = index_freq.split('-')[0] or index_freq
 
-            if index_freq in valid_freq:
-                sp = freq_to_sp.get(index_freq, None)
+            if index_freq in SeasonalParameter.__members__:
+                sp = SeasonalParameter[index_freq].value
             else:
                 raise ValueError(
                     f"Unsupported Period frequency: {index_freq}, valid Period frequencies: {', '.join(valid_freq)}"
                 )
+
+        else:
+
+            if not isinstance(sp, (int, str)):
+                raise ValueError(
+                    f"sp parameter must be an int or str, got {type(sp)}"
+                )
+
+            if isinstance(sp, str):
+                try:
+                    sp = SeasonalParameter[sp]
+                except KeyError:
+                    raise ValueError(
+                        f"Unsupported Period frequency: {sp}, valid Period frequencies: {', '.join(valid_freq)}"
+                    )
+
 
         if isinstance(data, (pd.Series, pd.DataFrame)):
             if isinstance(data, pd.DataFrame):

@@ -48,7 +48,7 @@ def setup(
     fold_strategy: Union[str, Any] = "timeseries",  # added in pycaret==2.2
     fold: int = 10,
     fh: Union[List[int], int, np.ndarray] = 1,
-    sp: Optional[int] = None,
+    sp: Optional[Union[int, str]] = None,
     n_jobs: Optional[int] = -1,
     use_gpu: bool = False,
     custom_pipeline: Union[Any, Tuple[str, Any], List[Any], List[Tuple[str, Any]]] = None,
@@ -122,7 +122,7 @@ def setup(
         Number of steps ahead to take to evaluate forecast.
 
 
-    sp: int, default = None
+    sp: int or str, default = None
         Seasonal periods in timeseries data. If not provided the frequency of the data
         index is map to a seasonal period as follows:
 

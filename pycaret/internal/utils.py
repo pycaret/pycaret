@@ -16,8 +16,21 @@ from typing import Any, List, Optional, Dict, Tuple, Union
 from sklearn import clone
 from sklearn.model_selection import KFold, StratifiedKFold, BaseCrossValidator
 from sklearn.model_selection._split import _BaseKFold
+from enum import IntEnum
 
 
+class SeasonalParameter(IntEnum):
+    S = 60 # second
+    T = 60 # minute
+    H = 24 # hour
+    D = 7 # day
+    W = 52 # week
+    M = 12 # month
+    Q = 4 # quarter
+    A = 1 #year
+    Y = 1 #year
+
+    
 def get_config(variable: str, globals_d: dict):
 
     """
