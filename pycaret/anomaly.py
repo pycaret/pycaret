@@ -550,7 +550,7 @@ def plot_model(
     label: bool = False,
     scale: float = 1,
     save: bool = False,
-    display_format: Optional[str] = None
+    display_format: Optional[str] = None,
 ):
 
     """
@@ -948,7 +948,9 @@ def deploy_model(
 
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
-def save_model(model, model_name: str, model_only: bool = False, verbose: bool = True):
+def save_model(
+    model, model_name: str, model_only: bool = False, verbose: bool = True, **kwargs
+):
 
     """
     This function saves the transformation pipeline and trained model object 
@@ -982,13 +984,21 @@ def save_model(model, model_name: str, model_only: bool = False, verbose: bool =
         Success message is not printed when verbose is set to False.
 
 
+    **kwargs: 
+        Additional keyword arguments to pass to joblib.dump().
+
+
     Returns:
         Tuple of the model object and the filename.
 
     """
 
     return _CURRENT_EXPERIMENT.save_model(
-        model=model, model_name=model_name, model_only=model_only, verbose=verbose
+        model=model,
+        model_name=model_name,
+        model_only=model_only,
+        verbose=verbose,
+        **kwargs,
     )
 
 

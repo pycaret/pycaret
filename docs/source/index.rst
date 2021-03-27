@@ -7,7 +7,7 @@ In comparison with the other open-source machine learning libraries, PyCaret is 
 
 The design and simplicity of PyCaret is inspired by the emerging role of citizen data scientists, a term first used by Gartner. Citizen Data Scientists are power users who can perform both simple and moderately sophisticated analytical tasks that would previously have required more expertise. Seasoned data scientists are often difficult to find and expensive to hire but citizen data scientists can be an effective way to mitigate this gap and address data-related challenges in the business setting.
 
-.. image:: https://github.com/pycaret/pycaret/blob/master/pycaret2.2.png?raw=true
+.. image:: https://github.com/pycaret/pycaret/blob/master/pycaret2.3.png?raw=true
 
 **Citing PyCaret**\ :
 
@@ -22,7 +22,7 @@ A formatted version of the citation would look like this::
       title   = {PyCaret: An open source, low-code machine learning library in Python},
       year    = {2020},
       month   = {April},
-      note    = {PyCaret version 2.2},
+      note    = {PyCaret version 2.3},
       url     = {https://www.pycaret.org}
     }
 

@@ -1,1 +1,1 @@
-__version__ = "2.2.0"
+from pycaret.utils import __version__

@@ -89,11 +89,11 @@ class Display:
             self.monitor.iloc[row_idx, 1:] = str(message)
             self.display_monitor()
 
-    def display(self, df, clear=False, override=None):
+    def display(self, df, clear=False, override=None, **kwargs):
         if self.can_display(override):
             if clear:
                 self.clear_output(override=True)
-            self._display(df)
+            self._display(df, **kwargs)
 
     def clear_output(self, override: bool = False):
         if self.html_param and (self.verbose or override):

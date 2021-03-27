@@ -4273,7 +4273,7 @@ def evaluate_model(model):
     )
 
 
-def save_model(model, model_name, verbose=True):
+def save_model(model, model_name, verbose=True, **kwargs):
 
     """
     This function saves the trained model object into the current active 
@@ -4299,6 +4299,10 @@ def save_model(model, model_name, verbose=True):
 
     verbose: bool, default = True
         When set to False, success message is not printed.
+
+
+    **kwargs: 
+        Additional keyword arguments to pass to joblib.dump().
 
 
     Returns:
@@ -4339,7 +4343,7 @@ def save_model(model, model_name, verbose=True):
     import joblib
 
     model_name = model_name + ".pkl"
-    joblib.dump(model, model_name)
+    joblib.dump(model, model_name, **kwargs)
     if verbose:
         print("Model Succesfully Saved")
 
