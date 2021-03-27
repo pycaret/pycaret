@@ -15,7 +15,7 @@ textblob
 cufflinks>=0.17.0
 umap-learn
 pyLDAvis
-gensim
+gensim<4.0.0
 spacy<2.4.0
 nltk
 mlxtend>=0.17.0
