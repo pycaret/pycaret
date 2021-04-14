@@ -11,6 +11,7 @@
 import logging
 from typing import Union, Dict, Any, Optional
 
+from scipy.stats import uniform, randint
 
 from sktime.forecasting.base._sktime import _SktimeForecaster
 from sktime.forecasting.compose import ReducedForecaster, TransformedTargetForecaster
@@ -203,11 +204,15 @@ class NaiveContainer(TimeSeriesContainer):
 
         args = {}
         tune_args = {}
-        # tune_grid = {"fit_intercept": [True, False], "normalize": [True, False]}
+
         tune_grid = {
             "strategy": ['last', 'mean', 'drift']
         }
-        tune_distributions = {}
+        tune_distributions = {
+            "strategy": ['last', 'mean', 'drift'],
+            # "sp": xxx,
+            # "window_length" : xxx
+        }
 
         # if not gpu_imported:
         #     args["n_jobs"] = globals_dict["n_jobs_param"]
@@ -240,7 +245,10 @@ class PolyTrendContainer(TimeSeriesContainer):
             "degree": [1,2,3,4,5],
             "with_intercept": [True, False]
         }
-        tune_distributions = {}
+        tune_distributions = {
+            "degree": randint(low=1, high=10),
+            "with_intercept": [True, False]
+        }
 
         # if not gpu_imported:
         #     args["n_jobs"] = globals_dict["n_jobs_param"]
@@ -274,7 +282,10 @@ class ArimaContainer(TimeSeriesContainer):
         tune_grid = {
             "seasonal_order": [(0,0,0,0), (0,1,0,12)]
         }
-        tune_distributions = {}
+        tune_distributions = {
+            "seasonal_order": [(0,0,0,0), (0,1,0,12)],
+            "with_intercept": [True, False]
+        }
 
         if not gpu_imported:
             args["n_jobs"] = globals_dict["n_jobs_param"]
@@ -309,7 +320,15 @@ class ExponentialSmoothingContainer(TimeSeriesContainer):
             # "damped_trend": [True, False],
             "seasonal": ["add", "mul", "additive", "multiplicative", None]
         }
-        tune_distributions = {}
+        tune_distributions = {
+            "trend": ["add", "mul", "additive", "multiplicative", None],
+            # "damped_trend": [True, False],
+            "seasonal": ["add", "mul", "additive", "multiplicative", None],
+            # "initial_level": uniform(0, 1),  # ValueError: initialization method is estimated but initial_level has been set.
+            # "initial_trend": uniform(0, 1),  # ValueError: initialization method is estimated but initial_trend has been set.
+            # "initial_seasonal": uniform(0, 1), # ValueError: initialization method is estimated but initial_seasonal has been set.
+            "use_boxcox": [True, False]  # 'log', float
+        }
 
         # if not gpu_imported:
         #     args["n_jobs"] = globals_dict["n_jobs_param"]
@@ -380,7 +399,11 @@ class ThetaContainer(TimeSeriesContainer):
             # "initial_level": [0.1, 0.5, 0.9],
             "deseasonalize": [True, False]
         }
-        tune_distributions = {}
+        tune_distributions = {
+            # "initial_level": uniform(0, 1),  # ValueError: initialization method is estimated but initial_level has been set.
+            "deseasonalize": [True, False],
+            #"sp": xxx
+        }
 
         # if not gpu_imported:
         #     args["n_jobs"] = globals_dict["n_jobs_param"]
