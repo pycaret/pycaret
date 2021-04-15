@@ -98,6 +98,21 @@ class ModelContainer(BaseContainer):
 def leftover_parameters_to_categorical_distributions(
     tune_grid: dict, tune_distributions: dict
 ) -> None:
+    """If a key is present in tune_grid but not in tune_distribution,
+    then this function will add those values as a CategoricalDistribution
+    to tune_distribution (inplace operation).
+
+    This is mainly a helper function that prevents the need to redefine some
+    hyperparameters in tune_distribution again if they have already been
+    defined in tune_grid.
+
+    Parameters
+    ----------
+    tune_grid : dict
+        Dictionary of parameters and values (fixed)
+    tune_distributions : dict
+        Dictionary of PyCaret Distributions
+    """
     for k, v in tune_grid.items():
         if not k in tune_distributions:
             tune_distributions[k] = CategoricalDistribution(v)
