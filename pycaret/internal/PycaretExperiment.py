@@ -17024,6 +17024,16 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             self.logger.info(f"Tuning with n_jobs={n_jobs}")
 
             if search_library == "pycaret":
+                if search_algorithm == "random":
+                    try:
+                        param_grid = get_base_distributions(param_grid)
+                    except:
+                        self.logger.warning(
+                            "Couldn't convert param_grid to specific library distributions. Exception:"
+                        )
+                        self.logger.warning(traceback.format_exc())
+
+            if search_library == "pycaret":
                 if search_algorithm == "grid":
                     self.logger.info("Initializing ForecastingGridSearchCV")
                     from pycaret.time_series import ForecastingGridSearchCV
@@ -17046,6 +17056,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                         scoring=optimize_dict, #metrics
                         n_jobs=n_jobs,
                         verbose=tuner_verbose,
+                        random_state=self.seed,
                         **search_kwargs
                     )
                 else:

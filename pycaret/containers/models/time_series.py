@@ -11,7 +11,7 @@
 import logging
 from typing import Union, Dict, Any, Optional
 
-from scipy.stats import uniform, randint
+import numpy as np
 
 from sktime.forecasting.base._sktime import _SktimeForecaster
 from sktime.forecasting.compose import ReducedForecaster, TransformedTargetForecaster
@@ -19,7 +19,6 @@ from sktime.forecasting.trend import PolynomialTrendForecaster
 from sktime.transformations.series.detrend import Deseasonalizer, Detrender
 from sktime.forecasting.base._sktime import DEFAULT_ALPHA
 from sklearn.ensemble import RandomForestRegressor
-
 
 from pycaret.containers.models.base_model import (
     ModelContainer,
@@ -31,9 +30,13 @@ from pycaret.internal.utils import (
     get_class_name,
     np_list_arange,
 )
-from pycaret.internal.distributions import *
+from pycaret.internal.distributions import (
+    Distribution,
+    UniformDistribution,
+    IntUniformDistribution,
+    CategoricalDistribution
+)
 import pycaret.containers.base_container
-import numpy as np
 
 
 class TimeSeriesContainer(ModelContainer):
@@ -209,7 +212,7 @@ class NaiveContainer(TimeSeriesContainer):
             "strategy": ['last', 'mean', 'drift']
         }
         tune_distributions = {
-            "strategy": ['last', 'mean', 'drift'],
+            "strategy": CategoricalDistribution(values=['last', 'mean', 'drift']),
             # "sp": xxx,
             # "window_length" : xxx
         }
@@ -246,8 +249,8 @@ class PolyTrendContainer(TimeSeriesContainer):
             "with_intercept": [True, False]
         }
         tune_distributions = {
-            "degree": randint(low=1, high=10),
-            "with_intercept": [True, False]
+            "degree": IntUniformDistribution(lower=1, upper=10),
+            "with_intercept": CategoricalDistribution(values=[True, False])
         }
 
         # if not gpu_imported:
@@ -283,8 +286,8 @@ class ArimaContainer(TimeSeriesContainer):
             "seasonal_order": [(0,0,0,0), (0,1,0,12)]
         }
         tune_distributions = {
-            "seasonal_order": [(0,0,0,0), (0,1,0,12)],
-            "with_intercept": [True, False]
+            "seasonal_order": CategoricalDistribution(values=[(0,0,0,0), (0,1,0,12)]),
+            "with_intercept": CategoricalDistribution(values=[True, False])
         }
 
         if not gpu_imported:
@@ -316,18 +319,18 @@ class ExponentialSmoothingContainer(TimeSeriesContainer):
         tune_args = {}
         # tune_grid = {"fit_intercept": [True, False], "normalize": [True, False]}
         tune_grid = {
-            "trend": ["add", "mul", "additive", "multiplicative", None],
+            "trend": ["add", "mul", "additive", "multiplicative", None],   # TODO: Check if add and additive are doing the same thing
             # "damped_trend": [True, False],
             "seasonal": ["add", "mul", "additive", "multiplicative", None]
         }
         tune_distributions = {
-            "trend": ["add", "mul", "additive", "multiplicative", None],
+            "trend": CategoricalDistribution(values=["add", "mul", "additive", "multiplicative", None]),
             # "damped_trend": [True, False],
-            "seasonal": ["add", "mul", "additive", "multiplicative", None],
-            # "initial_level": uniform(0, 1),  # ValueError: initialization method is estimated but initial_level has been set.
-            # "initial_trend": uniform(0, 1),  # ValueError: initialization method is estimated but initial_trend has been set.
-            # "initial_seasonal": uniform(0, 1), # ValueError: initialization method is estimated but initial_seasonal has been set.
-            "use_boxcox": [True, False]  # 'log', float
+            "seasonal": CategoricalDistribution(values=["add", "mul", "additive", "multiplicative", None]),
+            # "initial_level": UniformDistribution(lower=0, upper=1),  # ValueError: initialization method is estimated but initial_level has been set.
+            # "initial_trend": UniformDistribution(lower=0, upper=1),  # ValueError: initialization method is estimated but initial_trend has been set.
+            # "initial_seasonal": UniformDistribution(lower=0, upper=1), # ValueError: initialization method is estimated but initial_seasonal has been set.
+            "use_boxcox": CategoricalDistribution(values=[True, False])  # 'log', float
         }
 
         # if not gpu_imported:
@@ -400,8 +403,8 @@ class ThetaContainer(TimeSeriesContainer):
             "deseasonalize": [True, False]
         }
         tune_distributions = {
-            # "initial_level": uniform(0, 1),  # ValueError: initialization method is estimated but initial_level has been set.
-            "deseasonalize": [True, False],
+            # "initial_level": UniformDistribution(lower=0, upper=1),  # ValueError: initialization method is estimated but initial_level has been set.
+            "deseasonalize": CategoricalDistribution(values=[True, False]),
             #"sp": xxx
         }
 
