@@ -5937,6 +5937,10 @@ class _SupervisedExperiment(_TabularExperiment):
 
         if not cross_validation:
 
+            # TO DO: for time series exp data_X is None, switch places
+            if self._ml_usecase == MLUsecase.TIME_SERIES:
+                data_X, data_y = data_y, data_X
+
             model, model_fit_time = self._create_model_without_cv(
                 model, data_X, data_y, fit_kwargs, predict, system, display
             )
