@@ -5151,7 +5151,8 @@ class _SupervisedExperiment(_TabularExperiment):
 
         if not (isinstance(sort, str) and (sort == "TT" or sort == "TT (Sec)")):
             sort_ascending = not sort.greater_is_better
-            sort = sort.display_name
+            # pull() method retrieves metrics id to column the results
+            sort = sort.id if self._ml_usecase == MLUsecase.TIME_SERIES else sort.display_name
         else:
             sort_ascending = True
             sort = "TT (Sec)"
@@ -5171,12 +5172,18 @@ class _SupervisedExperiment(_TabularExperiment):
             model_library = include
         else:
             if turbo:
-                model_library = self._all_models
                 model_library = [k for k, v in self._all_models.items() if v.is_turbo]
             else:
                 model_library = list(self._all_models.keys())
             if exclude:
                 model_library = [x for x in model_library if x not in exclude]
+
+        if self._ml_usecase == MLUsecase.TIME_SERIES:
+            if 'ensemble_forecaster' in model_library:
+                warnings.warn(
+                    'Unsupported estimator `ensemble_forecaster` for method `compare_models()`, removing from model_library'
+                    )
+            model_library.remove('ensemble_forecaster')
 
         display.move_progress()
 
