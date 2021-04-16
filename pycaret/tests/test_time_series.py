@@ -63,16 +63,16 @@ def test_create_model(fh, model, load_data):
     from pycaret.internal.PycaretExperiment import TimeSeriesExperiment
 
     exp = TimeSeriesExperiment()
-    
+
     exp.setup(
         data=load_data, fold=3, fh=fh, fold_strategy="expandingwindow", verbose=False
     )
 
     model_obj = exp.create_model(model)
-    
+
     y_pred = model_obj.predict()
     assert isinstance(y_pred, pd.Series)
-    
+
     fh_index = fh if isinstance(fh, int) else fh[-1]
     expected_period_index = load_data.iloc[-fh_index:].index
     assert np.all(y_pred.index == expected_period_index)
@@ -125,7 +125,7 @@ def test_blend_model_predict(load_setup, load_models):
 
 
 @pytest.mark.parametrize("model", _all_models)
-def test_tune_model(model, load_data):
+def test_tune_model_grid(model, load_data):
 
     from pycaret.internal.PycaretExperiment import TimeSeriesExperiment
     exp = TimeSeriesExperiment()
@@ -140,6 +140,29 @@ def test_tune_model(model, load_data):
 
     model_obj = exp.create_model(model)
     tuned_model_obj = exp.tune_model(model_obj)
+    y_pred = tuned_model_obj.predict()
+    assert isinstance(y_pred, pd.Series)
+
+    expected_period_index = load_data.iloc[-fh:].index
+    assert np.all(y_pred.index == expected_period_index)
+
+
+@pytest.mark.parametrize("model", _all_models)
+def test_tune_model_random(model, load_data):
+
+    from pycaret.internal.PycaretExperiment import TimeSeriesExperiment
+    exp = TimeSeriesExperiment()
+    fh = 12
+
+    exp.setup(
+        data=load_data,
+        fold=3,
+        fh=fh,
+        fold_strategy="expandingwindow"
+    )
+
+    model_obj = exp.create_model(model)
+    tuned_model_obj = exp.tune_model(model_obj, search_algorithm="random")
     y_pred = tuned_model_obj.predict()
     assert isinstance(y_pred, pd.Series)
 

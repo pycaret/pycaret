@@ -2480,3 +2480,46 @@ class ForecastingGridSearchCV(BaseGridSearch):
     def _run_search(self, evaluate_candidates):
         """Search all candidates in param_grid"""
         evaluate_candidates(ParameterGrid(self.param_grid))
+
+class ForecastingRandomizedSearchCV(BaseGridSearch):
+    def __init__(
+        self,
+        forecaster,
+        cv,
+        param_distributions,
+        n_iter=10,
+        scoring=None,
+        n_jobs=None,
+        refit=True,
+        refit_metric: str='smape',
+        verbose=0,
+        random_state=None,
+        pre_dispatch="2*n_jobs",
+        error_score=np.nan,
+        return_train_score=False
+    ):
+        super(ForecastingRandomizedSearchCV, self).__init__(
+            forecaster=forecaster,
+            cv=cv,
+            n_jobs=n_jobs,
+            pre_dispatch=pre_dispatch,
+            refit=refit,
+            refit_metric=refit_metric,
+            scoring=scoring,
+            verbose=verbose,
+            error_score=error_score,
+            return_train_score=return_train_score
+        )
+        self.param_distributions = param_distributions
+        self.n_iter = n_iter
+        self.random_state = random_state
+
+    def _run_search(self, evaluate_candidates):
+        """Search n_iter candidates from param_distributions"""
+        return evaluate_candidates(
+            ParameterSampler(
+                self.param_distributions,
+                self.n_iter,
+                random_state=self.random_state
+            )
+        )

@@ -18,6 +18,7 @@ catboost_info
 /pycaret.egg-info
 /dist
 .vscode/settings.json
+*code-workspace
 /logs.log
 pycaret/__pycache__/
 pycaret/tests/__pycache__/

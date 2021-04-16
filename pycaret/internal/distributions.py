@@ -3,6 +3,7 @@
 # License: MIT
 
 from typing import Dict, Hashable, Optional
+from scipy.stats import uniform, loguniform, randint
 
 try:
     from collections.abc import Hashable
@@ -15,6 +16,9 @@ from copy import copy
 
 class Distribution:
     def __init__(self):
+        raise NotImplementedError("This is an abstract class.")
+
+    def get_base(self):
         raise NotImplementedError("This is an abstract class.")
 
     def get_skopt(self):
@@ -51,6 +55,13 @@ class UniformDistribution(Distribution):
         self.lower = lower
         self.upper = upper
         self.log = log
+
+    def get_base(self):
+        """get distributions from base libraries such as scipy, numpy, etc.
+        """
+        if self.log:
+            return loguniform(self.lower, self.upper)
+        return uniform(self.lower, self.upper)  # log = False
 
     def get_skopt(self):
         import skopt.space
@@ -113,6 +124,13 @@ class IntUniformDistribution(Distribution):
         self.lower = lower
         self.upper = upper
         self.log = log
+
+    def get_base(self):
+        """get distributions from base libraries such as scipy, numpy, etc.
+        """
+        if self.log:
+            raise NotImplementedError("integer log sampling for base library has not been implemented yet.")
+        return randint(self.lower, self.upper)  # log = False
 
     def get_skopt(self):
         import skopt.space
@@ -222,6 +240,11 @@ class DiscreteUniformDistribution(Distribution):
         self.upper = upper
         self.q = q
 
+    def get_base(self):
+        """get distributions from base libraries such as scipy, numpy, etc.
+        """
+        raise NotImplementedError("DiscreteUniformDistribution for base library has not been implemented yet.")
+
     def get_skopt(self):
         import skopt.space
 
@@ -273,6 +296,11 @@ class CategoricalDistribution(Distribution):
     def __init__(self, values):
         self.values = list(values)
 
+    def get_base(self):
+        """get distributions from base libraries such as scipy, numpy, etc.
+        """
+        return self.values
+
     def get_skopt(self):
         import skopt.space
 
@@ -305,6 +333,13 @@ class CategoricalDistribution(Distribution):
 
     def __repr__(self):
         return f"CategoricalDistribution(values={self.values})"
+
+
+def get_base_distributions(distributions: Dict[str, Distribution]) -> dict:
+    """Returns the distributions from the base libraries.
+    Distributions are of types that can be used with scikit-learn `ParamSampler`
+    """
+    return {k: v.get_base() for k, v in distributions.items()}
 
 
 def get_skopt_distributions(distributions: Dict[str, Distribution]) -> dict:
