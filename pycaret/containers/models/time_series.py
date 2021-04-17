@@ -329,11 +329,11 @@ class ArimaContainer(TimeSeriesContainer):
         n_samples_grid = 2  # 2 for 'order', 2 for 'seasonal_order', 2 for intercept will give 8 combinations
         seasonal_max_multiplier = 1 # Use sp value directly (user can specify 0 if needed)
         p_start=0
-        p_end=sp-1  # slow run times with higher values, maybe add turbo option
+        p_end=2 # sp-1  # slow run times with higher values, maybe add turbo option
         d_start=0
         d_end=1
         q_start=0
-        q_end=sp-1  # slow run times with higher values, maybe add turbo option
+        q_end=2 # sp-1  # slow run times with higher values, maybe add turbo option
         P_start=0
         P_end=2
         D_start=0
