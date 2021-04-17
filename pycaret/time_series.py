@@ -257,7 +257,7 @@ def compare_models(
     fold: Optional[Union[int, Any]] = None,
     round: int = 4,
     cross_validation: bool = True,
-    sort: str = "mape",
+    sort: str = "smape",
     n_select: int = 1,
     budget_time: Optional[float] = None,
     turbo: bool = True,
@@ -314,7 +314,7 @@ def compare_models(
         is ignored when cross_validation is set to False.
 
 
-    sort: str, default = 'mape'
+    sort: str, default = 'smape'
         The sort order of the score grid. It also accepts custom metrics that are
         added through the ``add_metric`` function.
 
