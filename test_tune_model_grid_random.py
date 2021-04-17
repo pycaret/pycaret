@@ -74,7 +74,7 @@ grid_obj = ForecastingRandomizedSearchCV(
 grid_obj.fit(y=y, X=X, **fit_kwargs)
 
 # print(grid_obj.cv_results_)
-print(pd.DataFrame(grid_obj.cv_results_))
+# print(pd.DataFrame(grid_obj.cv_results_))
 
 print("STANDALONE DONE TEST")
 
@@ -85,7 +85,7 @@ fh = np.arange(1,13)
 fold = 3
 
 exp = TimeSeriesExperiment()
-exp.setup(data=y, fh=fh, fold=fold, fold_strategy='expandingwindow')
+exp.setup(data=y, fh=fh, fold=fold, fold_strategy='expandingwindow') # , n_jobs=1) # Set jobs to 1 for debug
 
 # Works
 naive = exp.create_model("naive")
@@ -94,8 +94,17 @@ print(naive)
 print(tuned_naive)
 
 # Works
+poly_trend = exp.create_model("poly_trend")
+tuned_poly_trend = exp.tune_model(poly_trend, search_algorithm="random")
+print(poly_trend)
+print(tuned_poly_trend)
+
+# Works
 arima = exp.create_model("arima")
-tuned_arima = exp.tune_model(arima, search_algorithm="random")
+start = time.time()
+tuned_arima = exp.tune_model(arima) #), search_algorithm="random") # , n_iter=3)
+end = time.time()
+print(f"Tuning Time for ARIMA: {end-start}")
 print(arima)
 print(tuned_arima)
 
@@ -104,13 +113,6 @@ exp_smooth = exp.create_model("exp_smooth")
 tuned_exp_smooth = exp.tune_model(exp_smooth, search_algorithm="random")
 print(exp_smooth)
 print(tuned_exp_smooth)
-
-# Works
-poly_trend = exp.create_model("poly_trend")
-tuned_poly_trend = exp.tune_model(poly_trend, search_algorithm="random")
-print(poly_trend)
-print(tuned_poly_trend)
-
 
 # Works
 theta = exp.create_model("theta")

@@ -7,13 +7,15 @@ from pycaret.internal.ensemble import _ENSEMBLE_METHODS
 import numpy as np
 import pandas as pd
 
-_all_models = ["naive", "poly_trend", "arima", "exp_smooth", "theta"]
+_all_models = ["naive", "poly_trend", "arima", "exp_smooth", "theta" , "auto_ets", "rf_dts"]
 _parametrize_create_model = [
     (randint(5, 10), "naive"),
     (randint(5, 10), "poly_trend"),
     (np.arange(1, randint(5, 10)), "arima"),
     (np.arange(1, randint(5, 10)), "exp_smooth"),
     (np.arange(1, randint(5, 10)), "theta"),
+    (np.arange(1, randint(5, 10)), "auto_ets"),
+    (np.arange(1, randint(5, 10)), "rf_dts"),
 ]
 
 @pytest.fixture(scope="session", name="load_data")
@@ -51,7 +53,7 @@ def load_ts_models(load_setup):
     ts_estimators = []
 
     for key in ts_models.keys():
-        if not key.startswith(("ensemble", "poly")):
+        if not key.startswith(("ensemble")): # , "poly")):
             ts_estimators.append(ts_experiment.create_model(key))
 
     return ts_estimators
