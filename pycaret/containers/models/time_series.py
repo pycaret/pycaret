@@ -9,16 +9,17 @@
 # to complete the process. Refer to the existing classes for examples.
 
 import logging
-from typing import Union, Dict, Any, Optional
+from typing import Union, Dict, List, Tuple, Any, Optional
 
-import numpy as np
+import numpy as np  # type: ignore
+import random
 
-from sktime.forecasting.base._sktime import _SktimeForecaster
-from sktime.forecasting.compose import ReducedForecaster, TransformedTargetForecaster
-from sktime.forecasting.trend import PolynomialTrendForecaster
-from sktime.transformations.series.detrend import Deseasonalizer, Detrender
-from sktime.forecasting.base._sktime import DEFAULT_ALPHA
-from sklearn.ensemble import RandomForestRegressor
+from sktime.forecasting.base._sktime import _SktimeForecaster  # type: ignore
+from sktime.forecasting.compose import ReducedForecaster, TransformedTargetForecaster  # type: ignore
+from sktime.forecasting.trend import PolynomialTrendForecaster  # type: ignore
+from sktime.transformations.series.detrend import Deseasonalizer, Detrender  # type: ignore
+from sktime.forecasting.base._sktime import DEFAULT_ALPHA  # type: ignore
+from sklearn.ensemble import RandomForestRegressor  # type: ignore
 
 from pycaret.containers.models.base_model import (
     ModelContainer,
@@ -203,18 +204,21 @@ class NaiveContainer(TimeSeriesContainer):
         np.random.seed(globals_dict["seed"])
         gpu_imported = False
 
-        from sktime.forecasting.naive import NaiveForecaster
+        from sktime.forecasting.naive import NaiveForecaster  # type: ignore
 
         args = {}
         tune_args = {}
+        sp = globals_dict["seasonal_parameter"]
+        # fh = globals_dict["fh"]
 
         tune_grid = {
-            "strategy": ['last', 'mean', 'drift']
+            "strategy": ['last', 'mean', 'drift'],
+            "sp": [1, sp, 2*sp],
+            # Removing fh for now since it can be less than sp which causes an error
+            # Will need to add checks for it later if we want to incorporate it
+            "window_length": [None] # , len(fh)]
         }
         tune_distributions = {
-            "strategy": CategoricalDistribution(values=['last', 'mean', 'drift']),
-            # "sp": xxx,
-            # "window_length" : xxx
         }
 
         # if not gpu_imported:
@@ -273,6 +277,7 @@ class PolyTrendContainer(TimeSeriesContainer):
 class ArimaContainer(TimeSeriesContainer):
     def __init__(self, globals_dict: dict) -> None:
         logger = get_logger()
+        random.seed(globals_dict["seed"])
         np.random.seed(globals_dict["seed"])
         gpu_imported = False
 
@@ -280,13 +285,95 @@ class ArimaContainer(TimeSeriesContainer):
 
         args = {}
         tune_args = {}
-        # TODO: Temporary placeholder
-        # (will need to define properly later with seasonality parameters, etc.)
+        sp = globals_dict["seasonal_parameter"]
+
+        def return_order_related_params(
+            n_samples: int,
+            p_start: int, p_end: int,
+            d_start: int, d_end: int,
+            q_start: int, q_end: int,
+            P_start: int, P_end: int,
+            D_start: int, D_end: int,
+            Q_start: int, Q_end: int,
+            sp: int, seasonal_max_multiplier: int
+        ) -> Tuple[List[Tuple[int, int, int]], List[Tuple[int, int, int, int]]]:
+
+            random.seed(globals_dict["seed"])
+            np.random.seed(globals_dict["seed"])
+            p_values = [random.randint(p_start, p_end) for _ in range(n_samples)]
+            q_values = [random.randint(q_start, q_end) for _ in range(n_samples)]
+            d_values = [random.randint(d_start, d_end) for _ in range(n_samples)]
+            orders = list(zip(p_values, d_values, q_values))
+
+            # SP values can be 0 (removed) or sp or 2 * sp.
+            # 0 was removed --> gives the following error
+            # "ValueError: Must include nonzero seasonal periodicity if including seasonal AR, MA, or differencing."
+            sp_values_ = [sp * seasonal_multiplier for seasonal_multiplier in range(1, seasonal_max_multiplier+1)]
+            P_values = [random.randint(P_start, P_end) for _ in range(n_samples)]
+            Q_values = [random.randint(Q_start, Q_end) for _ in range(n_samples)]
+            D_values = [random.randint(D_start, D_end) for _ in range(n_samples)]
+            SP_values = [random.choice(sp_values_) for _ in range(n_samples)]
+            seasonal_orders = list(zip(P_values, D_values, Q_values, SP_values))
+
+            return orders, seasonal_orders
+
+        # TODO: With larger values of p, q, we run into the following issues
+        # Issue 1: Run Time
+        # Issue 2: LinAlgError: LU decomposition error.
+        #     - Comes from statsmodels
+        #     - https://github.com/statsmodels/statsmodels/issues/5459
+        #     - https://stackoverflow.com/questions/54136280/sarimax-python-np-linalg-linalg-linalgerror-lu-decomposition-error
+        # Issue 3: ValueError: Input contains NaN, infinity or a value too large for dtype('float64').
+        #     - Comes from sktime validation after prediction
+        # Need to look into this further 
+        n_samples_grid = 2  # 2 for 'order', 2 for 'seasonal_order', 2 for intercept will give 8 combinations
+        seasonal_max_multiplier = 1 # Use sp value directly (user can specify 0 if needed)
+        p_start=0
+        p_end=2 # sp-1  # slow run times with higher values, maybe add turbo option
+        d_start=0
+        d_end=1
+        q_start=0
+        q_end=2 # sp-1  # slow run times with higher values, maybe add turbo option
+        P_start=0
+        P_end=2
+        D_start=0
+        D_end=1
+        Q_start=0
+        Q_end=2
+
+        # Technically this is random as well but since there are so many hyperparameter options,
+        # this seemed the most reasonable choice rather than manually listing values
+        orders, seasonal_orders = return_order_related_params(
+            n_samples=n_samples_grid,
+            p_start=p_start, p_end=p_end,
+            d_start=d_start, d_end=d_end,
+            q_start=q_start, q_end=q_end,
+            P_start=P_start, P_end=P_end,
+            D_start=D_start, D_end=D_end,
+            Q_start=Q_start, Q_end=Q_end,
+            sp=sp, seasonal_max_multiplier=seasonal_max_multiplier
+        )
         tune_grid = {
-            "seasonal_order": [(0,0,0,0), (0,1,0,12)]
+            "order": orders,
+            "seasonal_order": seasonal_orders,
+            "with_intercept": [True, False]
         }
+
+        n_samples_random = 100
+        seasonal_max_multiplier = 2
+        orders, seasonal_orders = return_order_related_params(
+            n_samples=n_samples_random,
+            p_start=p_start, p_end=p_end,
+            d_start=d_start, d_end=d_end,
+            q_start=q_start, q_end=q_end,
+            P_start=P_start, P_end=P_end,
+            D_start=D_start, D_end=D_end,
+            Q_start=Q_start, Q_end=Q_end,
+            sp=sp, seasonal_max_multiplier=seasonal_max_multiplier
+        )
         tune_distributions = {
-            "seasonal_order": CategoricalDistribution(values=[(0,0,0,0), (0,1,0,12)]),
+            "order": CategoricalDistribution(values=orders),
+            "seasonal_order": CategoricalDistribution(values=seasonal_orders),
             "with_intercept": CategoricalDistribution(values=[True, False])
         }
 
@@ -317,11 +404,15 @@ class ExponentialSmoothingContainer(TimeSeriesContainer):
 
         args = {}
         tune_args = {}
+        sp = globals_dict["seasonal_parameter"]
+
         # tune_grid = {"fit_intercept": [True, False], "normalize": [True, False]}
         tune_grid = {
             "trend": ["add", "mul", "additive", "multiplicative", None],   # TODO: Check if add and additive are doing the same thing
             # "damped_trend": [True, False],
-            "seasonal": ["add", "mul", "additive", "multiplicative", None]
+            "seasonal": ["add", "mul", "additive", "multiplicative", None],
+            "use_boxcox": [True, False],
+            "sp": [sp]
         }
         tune_distributions = {
             "trend": CategoricalDistribution(values=["add", "mul", "additive", "multiplicative", None]),
@@ -330,7 +421,8 @@ class ExponentialSmoothingContainer(TimeSeriesContainer):
             # "initial_level": UniformDistribution(lower=0, upper=1),  # ValueError: initialization method is estimated but initial_level has been set.
             # "initial_trend": UniformDistribution(lower=0, upper=1),  # ValueError: initialization method is estimated but initial_trend has been set.
             # "initial_seasonal": UniformDistribution(lower=0, upper=1), # ValueError: initialization method is estimated but initial_seasonal has been set.
-            "use_boxcox": CategoricalDistribution(values=[True, False])  # 'log', float
+            "use_boxcox": CategoricalDistribution(values=[True, False]),  # 'log', float
+            "sp": CategoricalDistribution(values=[None, sp, 2*sp])
         }
 
         # if not gpu_imported:
@@ -395,17 +487,17 @@ class ThetaContainer(TimeSeriesContainer):
 
         args = {}
         tune_args = {}
+        sp = globals_dict["seasonal_parameter"]
         # TODO; Update after Bug is fixed in sktime
         # https://github.com/alan-turing-institute/sktime/issues/692
         # ThetaForecaster does not work with "initial_level" different from None
         tune_grid = {
             # "initial_level": [0.1, 0.5, 0.9],
-            "deseasonalize": [True, False]
+            "deseasonalize": [True, False],
+            "sp": [1, sp, 2*sp]
         }
         tune_distributions = {
             # "initial_level": UniformDistribution(lower=0, upper=1),  # ValueError: initialization method is estimated but initial_level has been set.
-            "deseasonalize": CategoricalDistribution(values=[True, False]),
-            #"sp": xxx
         }
 
         # if not gpu_imported:
