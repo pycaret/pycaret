@@ -448,36 +448,43 @@ class ExponentialSmoothingContainer(TimeSeriesContainer):
         )
 
 
-# # TODO: Does not work
-# class AutoETSContainer(TimeSeriesContainer):
-#     def __init__(self, globals_dict: dict) -> None:
-#         logger = get_logger()
-#         np.random.seed(globals_dict["seed"])
-#         gpu_imported = False
+# TODO: Does not work
+class AutoETSContainer(TimeSeriesContainer):
+    def __init__(self, globals_dict: dict) -> None:
+        logger = get_logger()
+        np.random.seed(globals_dict["seed"])
+        gpu_imported = False
 
-#         from sktime.forecasting.ets import AutoETS
+        from sktime.forecasting.ets import AutoETS
 
-#         args = {}
-#         tune_args = {}
-#         # tune_grid = {"fit_intercept": [True, False], "normalize": [True, False]}
-#         tune_grid = {}
-#         tune_distributions = {}
+        args = {}
+        tune_args = {}
+        sp = globals_dict.get("seasonal_parameter")
+        sp = sp if sp is not None else 1
+        tune_grid = {
+            "error": ["add", "mul"],
+            "trend": ["add", "mul", None],
+            # "damped_trend": [True, False],
+            "seasonal": ["add", "mul", None],
+            "sp": [sp]
+        }
+        tune_distributions = {}
 
-#         # if not gpu_imported:
-#         #     args["n_jobs"] = globals_dict["n_jobs_param"]
+        # if not gpu_imported:
+        #     args["n_jobs"] = globals_dict["n_jobs_param"]
 
-#         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
-#         super().__init__(
-#             id="auto_ets",
-#             name="AutoETS",
-#             class_def=AutoETS,
-#             args=args,
-#             tune_grid=tune_grid,
-#             tune_distribution=tune_distributions,
-#             tune_args=tune_args,
-#             is_gpu_enabled=gpu_imported
-#         )
+        super().__init__(
+            id="auto_ets",
+            name="AutoETS",
+            class_def=AutoETS,
+            args=args,
+            tune_grid=tune_grid,
+            tune_distribution=tune_distributions,
+            tune_args=tune_args,
+            is_gpu_enabled=gpu_imported
+        )
 
 
 class ThetaContainer(TimeSeriesContainer):
@@ -549,33 +556,39 @@ class ThetaContainer(TimeSeriesContainer):
 # >           raise self._exception
 # E           joblib.externals.loky.process_executor.BrokenProcessPool: A task has failed to un-serialize. Please ensure that the arguments of the function are all picklable.
 
-# class RandomForestDTSContainer(TimeSeriesContainer):
-#     def __init__(self, globals_dict: dict) -> None:
-#         logger = get_logger()
-#         np.random.seed(globals_dict["seed"])
-#         gpu_imported = False
+class RandomForestDTSContainer(TimeSeriesContainer):
+    def __init__(self, globals_dict: dict) -> None:
+        logger = get_logger()
+        np.random.seed(globals_dict["seed"])
+        gpu_imported = False
 
-#         args = {}
-#         tune_args = {}
-#         # tune_grid = {"fit_intercept": [True, False], "normalize": [True, False]}
-#         tune_grid = {}
-#         tune_distributions = {}
+        args = {}
+        tune_args = {}
+        sp = globals_dict.get("seasonal_parameter")
+        sp = sp if sp is not None else 1
+        tune_grid = {
+            "sp": [sp],
+            "model": ['additive'],
+            "degree": [1],
+            "window_length": [10]
+        }
+        tune_distributions = {}
 
-#         # if not gpu_imported:
-#         #     args["n_jobs"] = globals_dict["n_jobs_param"]
+        # if not gpu_imported:
+        #     args["n_jobs"] = globals_dict["n_jobs_param"]
 
-#         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
-#         super().__init__(
-#             id="rf_dts",
-#             name="RandomForestDTS",
-#             class_def=RandomForestDTS,
-#             args=args,
-#             tune_grid=tune_grid,
-#             tune_distribution=tune_distributions,
-#             tune_args=tune_args,
-#             is_gpu_enabled=gpu_imported
-#         )
+        super().__init__(
+            id="rf_dts",
+            name="RandomForestDTS",
+            class_def=RandomForestDTS,
+            args=args,
+            tune_grid=tune_grid,
+            tune_distribution=tune_distributions,
+            tune_args=tune_args,
+            is_gpu_enabled=gpu_imported
+        )
 
 
 
