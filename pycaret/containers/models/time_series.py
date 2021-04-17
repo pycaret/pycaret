@@ -208,7 +208,8 @@ class NaiveContainer(TimeSeriesContainer):
 
         args = {}
         tune_args = {}
-        sp = globals_dict["seasonal_parameter"]
+        sp = globals_dict.get("seasonal_parameter")
+        sp = sp if sp is not None else 1
         # fh = globals_dict["fh"]
 
         tune_grid = {
@@ -285,7 +286,8 @@ class ArimaContainer(TimeSeriesContainer):
 
         args = {}
         tune_args = {}
-        sp = globals_dict["seasonal_parameter"]
+        sp = globals_dict.get("seasonal_parameter")
+        sp = sp if sp is not None else 1
 
         def return_order_related_params(
             n_samples: int,
@@ -404,7 +406,8 @@ class ExponentialSmoothingContainer(TimeSeriesContainer):
 
         args = {}
         tune_args = {}
-        sp = globals_dict["seasonal_parameter"]
+        sp = globals_dict.get("seasonal_parameter")
+        sp = sp if sp is not None else 1
 
         # tune_grid = {"fit_intercept": [True, False], "normalize": [True, False]}
         tune_grid = {
@@ -487,7 +490,8 @@ class ThetaContainer(TimeSeriesContainer):
 
         args = {}
         tune_args = {}
-        sp = globals_dict["seasonal_parameter"]
+        sp = globals_dict.get("seasonal_parameter")
+        sp = sp if sp is not None else 1
         # TODO; Update after Bug is fixed in sktime
         # https://github.com/alan-turing-institute/sktime/issues/692
         # ThetaForecaster does not work with "initial_level" different from None
