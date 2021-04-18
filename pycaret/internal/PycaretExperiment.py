@@ -21,7 +21,7 @@ from pycaret.internal.utils import (
     get_columns_to_stratify_by,
     get_model_name,
 )
-from pycaret.internal.utils import SeasonalParameter
+from pycaret.internal.utils import SeasonalParameter, id_or_display_name
 import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
 from pycaret.internal.logging import get_logger, create_logger
@@ -5136,8 +5136,11 @@ class _SupervisedExperiment(_TabularExperiment):
             display.display_monitor()
             display.display_master_display()
 
+        input_ml_usecase = self._ml_usecase
+        target_ml_usecase = MLUsecase.TIME_SERIES
+
         greater_is_worse_columns = {
-            v.display_name
+            id_or_display_name(v, input_ml_usecase, target_ml_usecase)
             for k, v in self._all_metrics.items()
             if not v.greater_is_better
         }
@@ -5151,7 +5154,7 @@ class _SupervisedExperiment(_TabularExperiment):
 
         if not (isinstance(sort, str) and (sort == "TT" or sort == "TT (Sec)")):
             sort_ascending = not sort.greater_is_better
-            sort = sort.display_name
+            sort = id_or_display_name(sort, input_ml_usecase, target_ml_usecase)
         else:
             sort_ascending = True
             sort = "TT (Sec)"
@@ -5171,12 +5174,18 @@ class _SupervisedExperiment(_TabularExperiment):
             model_library = include
         else:
             if turbo:
-                model_library = self._all_models
                 model_library = [k for k, v in self._all_models.items() if v.is_turbo]
             else:
                 model_library = list(self._all_models.keys())
             if exclude:
                 model_library = [x for x in model_library if x not in exclude]
+
+        if self._ml_usecase == MLUsecase.TIME_SERIES:
+            if 'ensemble_forecaster' in model_library:
+                warnings.warn(
+                    'Unsupported estimator `ensemble_forecaster` for method `compare_models()`, removing from model_library'
+                    )
+            model_library.remove('ensemble_forecaster')
 
         display.move_progress()
 
@@ -16213,7 +16222,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         fold: Optional[Union[int, Any]] = None,
         round: int = 4,
         cross_validation: bool = True,
-        sort: str = "R2",
+        sort: str = "smape",
         n_select: int = 1,
         budget_time: Optional[float] = None,
         turbo: bool = True,
@@ -16234,10 +16243,12 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         Example
         --------
         >>> from pycaret.datasets import get_data
-        >>> boston = get_data('boston')
-        >>> from pycaret.regression import *
-        >>> exp_name = setup(data = boston,  target = 'medv')
-        >>> best_model = compare_models()
+        >>> from pycaret.internal.PycaretExperiment import TimeSeriesExperiment
+        >>> airline = get_data('airline', verbose=False)
+        >>> fh, fold = np.arange(1,13), 3
+        >>> exp = TimeSeriesExperiment()
+        >>> exp.setup(data=airline, fh=fh, fold=fold)
+        >>> master_display_exp = exp.compare_models(fold=fold, sort='mape')
 
 
         include: list of str or scikit-learn compatible object, default = None
@@ -16268,7 +16279,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             is ignored when cross_validation is set to False.
 
 
-        sort: str, default = 'R2'
+        sort: str, default = 'smape'
             The sort order of the score grid. It also accepts custom metrics that are
             added through the ``add_metric`` function.
 
@@ -16435,6 +16446,43 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             verbose=verbose,
             **kwargs,
         )
+
+
+    def _create_model_without_cv(
+        self, model, data_X, data_y, fit_kwargs, predict, system, display
+    ):
+        with estimator_pipeline(self._internal_pipeline, model) as pipeline_with_model:
+
+            self.logger.info("Support for Exogenous variables not yet supported. Switching X, y order")
+            data_X, data_y = data_y, data_X
+
+            fit_kwargs = get_pipeline_fit_kwargs(pipeline_with_model, fit_kwargs)
+            self.logger.info("Cross validation set to False")
+
+            self.logger.info("Fitting Model")
+            model_fit_start = time.time()
+            with io.capture_output():
+                pipeline_with_model.fit(data_X, data_y, **fit_kwargs)
+            model_fit_end = time.time()
+
+            model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
+
+            display.move_progress()
+
+            if predict:
+                self.predict_model(pipeline_with_model, verbose=False)
+                model_results = self.pull(pop=True).drop("Model", axis=1)
+
+                self.display_container.append(model_results)
+
+                display.display(
+                    model_results, clear=system, override=False if not system else None,
+                )
+
+                self.logger.info(f"display_container: {len(self.display_container)}")
+
+        return model, model_fit_time
+
 
     def _create_model_with_cv(
         self,

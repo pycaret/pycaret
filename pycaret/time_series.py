@@ -257,7 +257,7 @@ def compare_models(
     fold: Optional[Union[int, Any]] = None,
     round: int = 4,
     cross_validation: bool = True,
-    sort: str = "R2",
+    sort: str = "smape",
     n_select: int = 1,
     budget_time: Optional[float] = None,
     turbo: bool = True,
@@ -278,10 +278,12 @@ def compare_models(
     Example
     --------
     >>> from pycaret.datasets import get_data
-    >>> boston = get_data('boston')
-    >>> from pycaret.regression import *
-    >>> exp_name = setup(data = boston,  target = 'medv')
-    >>> best_model = compare_models()
+    >>> from pycaret.internal.PycaretExperiment import TimeSeriesExperiment
+    >>> airline = get_data('airline', verbose=False)
+    >>> fh, fold = np.arange(1,13), 3
+    >>> exp = TimeSeriesExperiment()
+    >>> exp.setup(data=airline, fh=fh, fold=fold)
+    >>> master_display_exp = exp.compare_models(fold=fold, sort='mape')
 
 
     include: list of str or scikit-learn compatible object, default = None
@@ -312,7 +314,7 @@ def compare_models(
         is ignored when cross_validation is set to False.
 
 
-    sort: str, default = 'R2'
+    sort: str, default = 'smape'
         The sort order of the score grid. It also accepts custom metrics that are
         added through the ``add_metric`` function.
 

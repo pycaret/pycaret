@@ -30,7 +30,21 @@ class SeasonalParameter(IntEnum):
     A = 1 #year
     Y = 1 #year
 
-    
+
+def id_or_display_name(metric, input_ml_usecase, target_ml_usecase):
+    """
+    Get id or display_name attribute from metric. In time series experiment
+    the pull() method retrieves the metrics idto name the columns of the results
+    """
+
+    if input_ml_usecase == target_ml_usecase:
+        output = metric.id
+    else:
+        output = metric.display_name
+
+    return output
+
+
 def get_config(variable: str, globals_d: dict):
 
     """
