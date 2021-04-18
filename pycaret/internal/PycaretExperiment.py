@@ -21,7 +21,7 @@ from pycaret.internal.utils import (
     get_columns_to_stratify_by,
     get_model_name,
 )
-from pycaret.internal.utils import SeasonalParameter
+from pycaret.internal.utils import SeasonalParameter, id_or_display_name
 import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
 from pycaret.internal.logging import get_logger, create_logger
@@ -5136,11 +5136,11 @@ class _SupervisedExperiment(_TabularExperiment):
             display.display_monitor()
             display.display_master_display()
 
-        # pull() method retrieves metrics id to column the results
-        id_or_display_name = lambda x: x.id if self._ml_usecase == MLUsecase.TIME_SERIES else x.display_name
+        input_ml_usecase = self._ml_usecase
+        target_ml_usecase = MLUsecase.TIME_SERIES
 
         greater_is_worse_columns = {
-            id_or_display_name(v)
+            id_or_display_name(v, input_ml_usecase, target_ml_usecase)
             for k, v in self._all_metrics.items()
             if not v.greater_is_better
         }
@@ -5154,7 +5154,7 @@ class _SupervisedExperiment(_TabularExperiment):
 
         if not (isinstance(sort, str) and (sort == "TT" or sort == "TT (Sec)")):
             sort_ascending = not sort.greater_is_better
-            sort = id_or_display_name(sort)
+            sort = id_or_display_name(sort, input_ml_usecase, target_ml_usecase)
         else:
             sort_ascending = True
             sort = "TT (Sec)"
