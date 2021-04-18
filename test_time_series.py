@@ -52,7 +52,7 @@ fh=np.arange(1,13)
 
 #%% NEW PyCaret Method (Class Based)
 
-from pycaret.internal.PycaretExperiment import TimeSeriesExperiment
+from pycaret.internal.pycaret_experiment import TimeSeriesExperiment
 
 exp = TimeSeriesExperiment()
 exp.setup(data=y, fh=fh, fold=2, fold_strategy='expandingwindow')

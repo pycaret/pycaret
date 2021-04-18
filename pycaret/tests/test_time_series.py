@@ -29,7 +29,7 @@ def load_data():
 @pytest.fixture(scope="session", name="load_setup")
 def load_setup(load_data):
     """Create a TimeSeriesExperiment to test module functionalities"""
-    from pycaret.internal.PycaretExperiment import TimeSeriesExperiment
+    from pycaret.internal.pycaret_experiment import TimeSeriesExperiment
     import numpy as np
 
     ts_experiment = TimeSeriesExperiment()
@@ -62,7 +62,7 @@ def load_ts_models(load_setup):
 @pytest.mark.parametrize("fh, model", _parametrize_create_model)
 def test_create_model(fh, model, load_data):
 
-    from pycaret.internal.PycaretExperiment import TimeSeriesExperiment
+    from pycaret.internal.pycaret_experiment import TimeSeriesExperiment
 
     exp = TimeSeriesExperiment()
 
@@ -129,7 +129,7 @@ def test_blend_model_predict(load_setup, load_models):
 @pytest.mark.parametrize("model", _all_models)
 def test_tune_model_grid(model, load_data):
 
-    from pycaret.internal.PycaretExperiment import TimeSeriesExperiment
+    from pycaret.internal.pycaret_experiment import TimeSeriesExperiment
     exp = TimeSeriesExperiment()
     fh = 12
 
@@ -152,7 +152,7 @@ def test_tune_model_grid(model, load_data):
 @pytest.mark.parametrize("model", _all_models)
 def test_tune_model_random(model, load_data):
 
-    from pycaret.internal.PycaretExperiment import TimeSeriesExperiment
+    from pycaret.internal.pycaret_experiment import TimeSeriesExperiment
     exp = TimeSeriesExperiment()
     fh = 12
 

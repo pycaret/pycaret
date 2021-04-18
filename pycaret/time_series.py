@@ -12,7 +12,7 @@ import numpy as np  # type: ignore
 import pandas as pd  # type: ignore
 from scipy.stats import rankdata  # type: ignore
 
-from pycaret.internal.PycaretExperiment import TimeSeriesExperiment
+from pycaret.internal.pycaret_experiment import TimeSeriesExperiment
 from pycaret.internal.utils import check_if_global_is_not_none
 
 from typing import List, Tuple, Any, Union, Optional, Dict, Generator
@@ -278,7 +278,7 @@ def compare_models(
     Example
     --------
     >>> from pycaret.datasets import get_data
-    >>> from pycaret.internal.PycaretExperiment import TimeSeriesExperiment
+    >>> from pycaret.internal.pycaret_experiment import TimeSeriesExperiment
     >>> airline = get_data('airline', verbose=False)
     >>> fh, fold = np.arange(1,13), 3
     >>> exp = TimeSeriesExperiment()
@@ -815,7 +815,7 @@ def blend_models(
     Example
     --------
     >>> from pycaret.datasets import get_data
-    >>> from pycaret.internal.PycaretExperiment import TimeSeriesExperiment
+    >>> from pycaret.internal.pycaret_experiment import TimeSeriesExperiment
     >>> import numpy as np
     >>> airline_data = get_data('airline', verbose=False)
     >>> fh = np.arange(1,13)
