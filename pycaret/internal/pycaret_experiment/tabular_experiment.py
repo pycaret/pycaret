@@ -19,16 +19,6 @@ from pycaret.internal.plots.helper import MatplotlibDefaultDPI
 from pycaret.internal.Display import Display
 from pycaret.internal.distributions import *
 from pycaret.internal.validation import *
-import pycaret.containers.metrics.classification
-import pycaret.containers.metrics.regression
-import pycaret.containers.metrics.clustering
-import pycaret.containers.metrics.anomaly
-import pycaret.containers.metrics.time_series
-import pycaret.containers.models.classification
-import pycaret.containers.models.regression
-import pycaret.containers.models.clustering
-import pycaret.containers.models.anomaly
-import pycaret.containers.models.time_series
 import pycaret.internal.preprocess
 import pycaret.internal.persistence
 import pandas as pd  # type ignore
