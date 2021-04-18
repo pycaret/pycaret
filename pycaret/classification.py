@@ -7,7 +7,7 @@
 import pandas as pd
 import numpy as np
 
-from pycaret.internal.PycaretExperiment import ClassificationExperiment
+from pycaret.internal.pycaret_experiment import ClassificationExperiment
 from pycaret.internal.utils import check_if_global_is_not_none
 
 from typing import List, Tuple, Any, Union, Optional, Dict

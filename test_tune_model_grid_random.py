@@ -80,7 +80,7 @@ print("STANDALONE DONE TEST")
 
 
 # %%
-from pycaret.internal.PycaretExperiment import TimeSeriesExperiment
+from pycaret.internal.pycaret_experiment import TimeSeriesExperiment
 fh = np.arange(1,13)
 fold = 3
 
