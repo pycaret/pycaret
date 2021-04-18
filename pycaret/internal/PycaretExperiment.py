@@ -53,8 +53,8 @@ import time
 import random
 import gc
 from copy import deepcopy
-from sklearn.base import clone
-from sklearn.compose import TransformedTargetRegressor
+from sklearn.base import clone  # type: ignore
+from sklearn.compose import TransformedTargetRegressor  # type: ignore
 from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split, BaseCrossValidator
 from typing import List, Tuple, Any, Union, Optional, Dict
@@ -15784,6 +15784,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         self._ml_usecase = MLUsecase.TIME_SERIES
         self.exp_name_log = "ts-default-name"
         self._available_plots = {}
+        # Values in variable_keys are accessible in globals
         self.variable_keys = self.variable_keys.difference(
             {
                 "X",
@@ -15796,6 +15797,12 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 "fold_shuffle_param",
                 "stratify_param",
                 "fold_groups_param",
+            }
+        )
+        self.variable_keys = self.variable_keys.union(
+            {
+                "fh",
+                "seasonal_parameter",
             }
         )
         return
@@ -16091,7 +16098,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             index_freq = index_freq.split('-')[0] or index_freq
 
             if index_freq in SeasonalParameter.__members__:
-                seasonal_parameter = SeasonalParameter[index_freq].value
+                self.seasonal_parameter = SeasonalParameter[index_freq].value
             else:
                 raise ValueError(
                     f"Unsupported Period frequency: {index_freq}, valid Period frequencies: {', '.join(SeasonalParameter.__members__.keys())}"
@@ -17063,9 +17070,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 search_kwargs = {}
                 n_jobs = self.n_jobs_param
 
-            # # TODO: Setting for now for debugging
-            # n_jobs = 1
-
             if custom_grid is not None:
                 self.logger.info(f"custom_grid: {param_grid}")
 
@@ -17101,6 +17105,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                         forecaster=model,
                         cv=cv,
                         param_distributions=param_grid,
+                        n_iter=n_iter,
                         scoring=optimize_dict, #metrics
                         n_jobs=n_jobs,
                         verbose=tuner_verbose,
