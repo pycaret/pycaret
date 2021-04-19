@@ -11,8 +11,6 @@
 from typing import Optional, Union, Dict, Any
 from pycaret.containers.metrics.base_metric import MetricContainer
 from sklearn.metrics._scorer import _BaseScorer  # type: ignore
-# import pycaret.containers.base_container
-from pycaret.containers.base_container import BaseContainer
 import pycaret.internal.metrics
 from pandas import DataFrame, Series  # type: ignore
 from sklearn import metrics  # type: ignore
@@ -245,7 +243,7 @@ class RMSEMetricContainer(TimeSeriesMetricContainer):
 
 def get_all_metric_containers(
     globals_dict: dict, raise_errors: bool = True
-    ) -> Dict[str, BaseContainer]:
+    ) -> Dict[str, TimeSeriesMetricContainer]:
     return pycaret.containers.base_container.get_all_containers(
         globals(), globals_dict, TimeSeriesMetricContainer, raise_errors
     )

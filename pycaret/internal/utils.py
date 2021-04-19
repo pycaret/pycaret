@@ -4,8 +4,8 @@
 
 import os
 import numpy as np
-from pycaret.containers.metrics.base_metric import MetricContainer
-from pycaret.containers.models.base_model import ModelContainer
+# from pycaret.containers.metrics.base_metric import MetricContainer  # Removed due to circular import
+# from pycaret.containers.models.base_model import ModelContainer  # Removed due to circular import
 import pandas as pd
 import pandas.io.formats.style
 import ipywidgets as ipw
@@ -225,7 +225,7 @@ def color_df(
     )
 
 
-def get_model_id(e, all_models: Dict[str, ModelContainer]) -> str:
+def get_model_id(e, all_models: Dict[str, "pycaret.containers.models.base_model.ModelContainer"]) -> str:
     from pycaret.internal.meta_estimators import get_estimator_from_meta_estimator
 
     return next(
@@ -238,7 +238,7 @@ def get_model_id(e, all_models: Dict[str, ModelContainer]) -> str:
     )
 
 
-def get_model_name(e, all_models: Dict[str, ModelContainer], deep: bool = True) -> str:
+def get_model_name(e, all_models: Dict[str, "pycaret.containers.models.base_model.ModelContainer"], deep: bool = True) -> str:
     old_e = e
     if isinstance(e, str) and e in all_models:
         model_id = e
@@ -272,7 +272,7 @@ def get_model_name(e, all_models: Dict[str, ModelContainer], deep: bool = True) 
     return name
 
 
-def is_special_model(e, all_models: Dict[str, ModelContainer]) -> bool:
+def is_special_model(e, all_models: Dict[str, "pycaret.containers.models.base_model.ModelContainer"]) -> bool:
     try:
         return all_models[get_model_id(e, all_models)].is_special
     except:
@@ -330,7 +330,7 @@ def np_list_arange(
 
 
 def calculate_unsupervised_metrics(
-    metrics: Dict[str, MetricContainer],
+    metrics: Dict[str, "pycaret.containers.metrics.base_metric.MetricContainer"],
     X,
     labels,
     ground_truth: Optional[Any] = None,
@@ -368,7 +368,7 @@ def _calculate_unsupervised_metric(
 
 
 def calculate_metrics(
-    metrics: Dict[str, MetricContainer],
+    metrics: Dict[str, "pycaret.containers.metrics.base_metric.MetricContainer"],
     y_test,
     pred,
     pred_proba: Optional[float] = None,

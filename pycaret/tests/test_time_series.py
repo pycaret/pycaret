@@ -4,49 +4,69 @@ import pytest
 
 from random import choice, uniform, randint
 from pycaret.internal.ensemble import _ENSEMBLE_METHODS
-import numpy as np
-import pandas as pd
+import numpy as np  # type: ignore
+import pandas as pd  # type: ignore
 
+from pycaret.datasets import get_data
+from pycaret.internal.pycaret_experiment import TimeSeriesExperiment
+from pycaret.containers.models.time_series import get_all_model_containers
+
+#############################
+#### Fixtures Start Here ####
+#############################
+
+# TODO: Eventually remove this and use automatically sourced model names
 _all_models = ["naive", "poly_trend", "arima", "exp_smooth", "theta" , "auto_ets", "rf_dts"]
-_parametrize_create_model = [
-    (randint(5, 10), "naive"),
-    (randint(5, 10), "poly_trend"),
-    (np.arange(1, randint(5, 10)), "arima"),
-    (np.arange(1, randint(5, 10)), "exp_smooth"),
-    (np.arange(1, randint(5, 10)), "theta"),
-    (np.arange(1, randint(5, 10)), "auto_ets"),
-    (np.arange(1, randint(5, 10)), "rf_dts"),
-]
 
 @pytest.fixture(scope="session", name="load_data")
 def load_data():
     """Load Pycaret Airline dataset."""
-    from pycaret.datasets import get_data
-
     return get_data("airline")
 
 
 @pytest.fixture(scope="session", name="load_setup")
 def load_setup(load_data):
     """Create a TimeSeriesExperiment to test module functionalities"""
-    from pycaret.internal.pycaret_experiment import TimeSeriesExperiment
-    import numpy as np
-
-    ts_experiment = TimeSeriesExperiment()
+    exp = TimeSeriesExperiment()
 
     fh = np.arange(1, 13)
     fold = 3
 
-    return ts_experiment.setup(
+    return exp.setup(
         data=load_data, fh=fh, fold=fold, fold_strategy="expandingwindow", verbose=False
     )
+
+
+@pytest.fixture(scope="session", name="model_names")
+def model_names():
+    """Return all model names."""
+    globals_dict = {"seed": 0, "n_jobs_param": -1}
+    model_containers = get_all_model_containers(globals_dict)
+
+    model_names_ = []
+    for model_name in model_containers.keys():
+        if not model_name.startswith(("ensemble")):
+            model_names_.append(model_name)
+
+    return model_names_
+
+
+@pytest.fixture(scope="session", name="model_parameters")
+def model_parameters(model_names):
+    """Parameterize individual models.
+    Returns the model names and the corresponding forecast horizons.
+    Horizons are alternately picked to be either integers or numpy arrays
+    """
+    parameters = [
+        (name, np.arange(1, randint(6, 24)) if i%2==0  else randint(6, 24))
+        for i, name in enumerate(model_names)
+    ]
+    return parameters
 
 
 @pytest.fixture(scope="session", name="load_models")
 def load_ts_models(load_setup):
     """Load all time series module models"""
-    from pycaret.containers.models.time_series import get_all_model_containers
-
     globals_dict = {"seed": 0, "n_jobs_param": -1}
     ts_models = get_all_model_containers(globals_dict)
     ts_experiment = load_setup
@@ -59,25 +79,31 @@ def load_ts_models(load_setup):
     return ts_estimators
 
 
-@pytest.mark.parametrize("fh, model", _parametrize_create_model)
-def test_create_model(fh, model, load_data):
+###########################
+#### Fixtures End Here ####
+###########################
 
-    from pycaret.internal.pycaret_experiment import TimeSeriesExperiment
+##########################
+#### Tests Start Here ####
+##########################
 
+def test_create_model(load_setup, model_parameters, load_data):
+    """test create_model functionality
+    """
     exp = TimeSeriesExperiment()
+    for name, fh in model_parameters:
+        # Need to create individual setup for each model since the `fh` will be different for all models
+        exp.setup(
+            data=load_data, fold=3, fh=fh, fold_strategy="expandingwindow", verbose=False
+        )
+        model_obj = exp.create_model(name)
 
-    exp.setup(
-        data=load_data, fold=3, fh=fh, fold_strategy="expandingwindow", verbose=False
-    )
+        y_pred = model_obj.predict()
+        assert isinstance(y_pred, pd.Series)
 
-    model_obj = exp.create_model(model)
-
-    y_pred = model_obj.predict()
-    assert isinstance(y_pred, pd.Series)
-
-    fh_index = fh if isinstance(fh, int) else fh[-1]
-    expected_period_index = load_data.iloc[-fh_index:].index
-    assert np.all(y_pred.index == expected_period_index)
+        fh_index = fh if isinstance(fh, int) else fh[-1]
+        expected_period_index = load_data.iloc[-fh_index:].index
+        assert np.all(y_pred.index == expected_period_index)
 
 
 @pytest.mark.parametrize("method", _ENSEMBLE_METHODS)
@@ -128,8 +154,6 @@ def test_blend_model_predict(load_setup, load_models):
 
 @pytest.mark.parametrize("model", _all_models)
 def test_tune_model_grid(model, load_data):
-
-    from pycaret.internal.pycaret_experiment import TimeSeriesExperiment
     exp = TimeSeriesExperiment()
     fh = 12
 
@@ -151,8 +175,6 @@ def test_tune_model_grid(model, load_data):
 
 @pytest.mark.parametrize("model", _all_models)
 def test_tune_model_random(model, load_data):
-
-    from pycaret.internal.pycaret_experiment import TimeSeriesExperiment
     exp = TimeSeriesExperiment()
     fh = 12
 
