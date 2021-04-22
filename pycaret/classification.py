@@ -1625,6 +1625,7 @@ def interpret_model(
     feature: Optional[str] = None,
     observation: Optional[int] = None,
     use_train_data: bool = False,
+    X_new_sample: Optional[pd.DataFrame] = None,
     save: bool = False,
     **kwargs,
 ):
@@ -1668,6 +1669,12 @@ def interpret_model(
         of test data.
 
 
+    X_new_sample: pd.DataFrame, default = None
+        Row from an out-of-sample dataframe (neither train nor test data) to be plotted.
+        The sample must have the same columns as the raw input data, and it is transformed
+        by the preprocessing pipeline automatically before plotting.
+
+
     save: bool, default = False
         When set to True, Plot is saved as a 'png' file in current working directory.
 
@@ -1687,6 +1694,7 @@ def interpret_model(
         feature=feature,
         observation=observation,
         use_train_data=use_train_data,
+        X_new_sample=X_new_sample,
         save=save,
         **kwargs,
     )
