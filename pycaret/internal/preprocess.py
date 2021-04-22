@@ -2244,7 +2244,8 @@ class Advanced_Feature_Selection_Classic(BaseEstimator, TransformerMixin):
 
     def fit_transform(self, dataset, y=None):
 
-        dummy_all = dataset
+        dummy_all = dataset.copy()
+        dummy_all[self.target] = dummy_all[self.target].astype("float32")
 
         # Random Forest
         max_fe = min(70, int(np.sqrt(len(dummy_all.columns))))
@@ -2411,6 +2412,7 @@ class Boruta_Feature_Selection(BaseEstimator, TransformerMixin):
 
         dummy_data = dataset
         X, y = dummy_data.drop(self.target, axis=1), dummy_data[self.target].values
+        y = y.astype("float32")
         X_cols = X.columns
         X = X.values
 
