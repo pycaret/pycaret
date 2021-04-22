@@ -5,6 +5,7 @@ from sklearn.metrics._scorer import _ProbaScorer, _ThresholdScorer, _PredictScor
 class BinaryMulticlassScoreFunc:
     def __init__(self, score_func):
         self.score_func = score_func
+        self.__name__ = score_func.__name__
 
     def __call__(self, y_true, y_pred, **kwargs):
         if "average" in kwargs:
