@@ -2244,8 +2244,8 @@ class Advanced_Feature_Selection_Classic(BaseEstimator, TransformerMixin):
 
     def fit_transform(self, dataset, y=None):
 
-        dummy_all = dataset
-        float_target = dummy_all[self.target].astype("float32")
+        dummy_all = dataset.copy()
+        dummy_all[self.target] = dummy_all[self.target].astype("float32")
 
         # Random Forest
         max_fe = min(70, int(np.sqrt(len(dummy_all.columns))))
@@ -2270,7 +2270,7 @@ class Advanced_Feature_Selection_Classic(BaseEstimator, TransformerMixin):
                 random_state=self.random_state,
             )
 
-        m.fit(dummy_all.drop(self.target, axis=1), float_target)
+        m.fit(dummy_all.drop(self.target, axis=1), dummy_all[self.target])
         # self.fe_imp_table= pd.DataFrame(m.feature_importances_,columns=['Importance'],index=dummy_all.drop(self.target,axis=1).columns).sort_values(by='Importance',ascending= False)
         self.fe_imp_table = pd.DataFrame(
             m.feature_importances_,
@@ -2307,7 +2307,7 @@ class Advanced_Feature_Selection_Classic(BaseEstimator, TransformerMixin):
                 subsample=max_sa,
                 random_state=self.random_state,
             )
-        m.fit(dummy_all.drop(self.target, axis=1), float_target)
+        m.fit(dummy_all.drop(self.target, axis=1), dummy_all[self.target])
         # self.fe_imp_table= pd.DataFrame(m.feature_importances_,columns=['Importance'],index=dummy_all.drop(self.target,axis=1).columns).sort_values(by='Importance',ascending= False)
         self.fe_imp_table = pd.DataFrame(
             m.feature_importances_,
@@ -2412,6 +2412,7 @@ class Boruta_Feature_Selection(BaseEstimator, TransformerMixin):
 
         dummy_data = dataset
         X, y = dummy_data.drop(self.target, axis=1), dummy_data[self.target].values
+        y = y.astype("float32")
         X_cols = X.columns
         X = X.values
 
