@@ -644,7 +644,7 @@ def get_all_model_containers(
         globals(), globals_dict, TimeSeriesContainer, raise_errors
     )
 
-from sklearn.validation import check_is_fitted
+from sklearn.utils.validation import check_is_fitted
 
 class BaseDTS(_SktimeForecaster):
     def __init__(self, regressor, sp=1, model="additive", degree=1, window_length=10):
