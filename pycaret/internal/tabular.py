@@ -10061,8 +10061,8 @@ def _mlflow_log_model(
             prep_pipe_temp,
             "model",
             conda_env=default_conda_env,
-            signature=signature,
-            input_example=input_example,
+            #signature=signature,
+            #input_example=input_example,
         )
         del prep_pipe_temp
     gc.collect()
