@@ -2413,10 +2413,11 @@ class _SupervisedExperiment(_TabularExperiment):
             best_params = model_grid.best_params_
             self.logger.info(f"best_params: {best_params}")
             best_params = {**best_params, **extra_params}
-            best_params = {
-                k.replace(f"{actual_estimator_label}__", ""): v
-                for k, v in best_params.items()
-            }
+            if actual_estimator_label:
+                best_params = {
+                    k.replace(f"{actual_estimator_label}__", ""): v
+                    for k, v in best_params.items()
+                }
             cv_results = None
             try:
                 cv_results = model_grid.cv_results_

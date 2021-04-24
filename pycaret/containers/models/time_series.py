@@ -535,9 +535,14 @@ class RandomForestDTSContainer(TimeSeriesContainer):
     def __init__(self, globals_dict: dict) -> None:
         logger = get_logger()
         np.random.seed(globals_dict["seed"])
+
+        from sklearn.ensemble import RandomForestRegressor
+
+        # TODO add GPU support
+
         gpu_imported = False
 
-        args = (
+        regressor_args = (
             {
                 "random_state": globals_dict["seed"],
                 "n_jobs": globals_dict["n_jobs_param"],
@@ -545,30 +550,37 @@ class RandomForestDTSContainer(TimeSeriesContainer):
             if not gpu_imported
             else {"seed": globals_dict["seed"]}
         )
+        regressor = RandomForestRegressor(**regressor_args)
+
+        args = {"regressor": regressor}
         tune_args = {}
         sp = globals_dict.get("seasonal_parameter")
         sp = sp if sp is not None else 1
         tune_grid = {
             "sp": [sp],
-            "model": ['additive'],
+            "model": ["additive"],
             "degree": [1],
             "window_length": [10],
-            "n_estimators": np_list_arange(10, 300, 100, inclusive=True),
-            "max_depth": np_list_arange(1, 10, 5, inclusive=True),
-            "min_impurity_decrease": [0.1, 0.5],
-            "max_features": [1.0, "sqrt", "log2"],
-            "bootstrap": [True, False],
+            "regressor__n_estimators": np_list_arange(10, 300, 100, inclusive=True),
+            "regressor__max_depth": np_list_arange(1, 10, 5, inclusive=True),
+            "regressor__min_impurity_decrease": [0.1, 0.5],
+            "regressor__max_features": [1.0, "sqrt", "log2"],
+            "regressor__bootstrap": [True, False],
         }
         tune_distributions = {
-            "sp": CategoricalDistribution(values=[sp, 2*sp]),  # TODO: 'None' errors out here
-            "model": CategoricalDistribution(values=['additive', 'multiplicative']),
+            "sp": CategoricalDistribution(
+                values=[sp, 2 * sp]
+            ),  # TODO: 'None' errors out here
+            "model": CategoricalDistribution(values=["additive", "multiplicative"]),
             "degree": IntUniformDistribution(lower=1, upper=10),
-            "window_length": IntUniformDistribution(lower=sp, upper=2*sp),
-            "n_estimators": IntUniformDistribution(lower=10, upper=300),
-            "max_depth": IntUniformDistribution(lower=1, upper=10),
-            "min_impurity_decrease": UniformDistribution(lower=0, upper=0.5),
-            "max_features": CategoricalDistribution(values=[1.0, "sqrt", "log2"]),
-            "bootstrap": CategoricalDistribution(values=[True, False]),
+            "window_length": IntUniformDistribution(lower=sp, upper=2 * sp),
+            "regressor__n_estimators": IntUniformDistribution(lower=10, upper=300),
+            "regressor__max_depth": IntUniformDistribution(lower=1, upper=10),
+            "regressor__min_impurity_decrease": UniformDistribution(lower=0, upper=0.5),
+            "regressor__max_features": CategoricalDistribution(
+                values=[1.0, "sqrt", "log2"]
+            ),
+            "regressor__bootstrap": CategoricalDistribution(values=[True, False]),
         }
 
         # if not gpu_imported:
@@ -576,15 +588,20 @@ class RandomForestDTSContainer(TimeSeriesContainer):
 
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
+        eq_function = (
+            lambda x: type(x) is BaseDTS and type(x.regressor) is RandomForestRegressor
+        )
+
         super().__init__(
             id="rf_dts",
             name="RandomForestDTS",
-            class_def=RandomForestDTS,
+            class_def=BaseDTS,
             args=args,
             tune_grid=tune_grid,
             tune_distribution=tune_distributions,
             tune_args=tune_args,
-            is_gpu_enabled=gpu_imported
+            is_gpu_enabled=gpu_imported,
+            eq_function=eq_function,
         )
 
 
@@ -627,9 +644,10 @@ def get_all_model_containers(
         globals(), globals_dict, TimeSeriesContainer, raise_errors
     )
 
+from sklearn.utils.validation import check_is_fitted
 
 class BaseDTS(_SktimeForecaster):
-    def __init__(self, regressor, sp=1, model='additive', degree=1, window_length=10):
+    def __init__(self, regressor, sp=1, model="additive", degree=1, window_length=10):
         """Base Class for time series using scikit models which includes
         Deseasonalizing and Detrending
 
@@ -653,76 +671,32 @@ class BaseDTS(_SktimeForecaster):
         self.window_length = window_length
 
     def fit(self, y, X=None, fh=None):
-        self.forecaster = TransformedTargetForecaster(
+        self.forecaster_ = TransformedTargetForecaster(
             [
-                (
-                    "deseasonalise",
-                    Deseasonalizer(model=self.model, sp=self.sp)
-                ),
+                ("deseasonalise", Deseasonalizer(model=self.model, sp=self.sp)),
                 (
                     "detrend",
-                    Detrender(
-                        forecaster=PolynomialTrendForecaster(degree=self.degree)
-                    )
+                    Detrender(forecaster=PolynomialTrendForecaster(degree=self.degree)),
                 ),
                 (
                     "forecast",
                     ReducedForecaster(
                         regressor=self.regressor,
-                        scitype='regressor',
+                        scitype="regressor",
                         window_length=self.window_length,
-                        strategy="recursive"
+                        strategy="recursive",
                     ),
                 ),
             ]
         )
-        self.forecaster.fit(y=y, X=X, fh=fh)
+        self.forecaster_.fit(y=y, X=X, fh=fh)
         return self
 
     # def predict(self, X=None):
     #     return self.forecaster.predict(X=X)
 
     def predict(self, fh=None, X=None, return_pred_int=False, alpha=DEFAULT_ALPHA):
-        return self.forecaster.predict(fh=fh, X=X, return_pred_int=return_pred_int, alpha=alpha)
-
-
-class RandomForestDTS(BaseDTS):
-    def __init__(
-        self,
-        sp=1,
-        model='additive',
-        degree=1,
-        window_length=10,
-        n_estimators: int=100,
-        max_depth: Optional[int] = None,
-        min_samples_split: Union[int, float] = 2,
-        min_samples_leaf: Union[int, float] = 1,
-        min_impurity_decrease: float = 0,
-        max_features: Union[str, int, float] = "auto",
-        bootstrap: bool = True,
-        **kwargs
-    ):
-        self.n_estimators = n_estimators
-        self.max_depth = max_depth
-        self.min_samples_split = min_samples_split
-        self.min_samples_leaf = min_samples_leaf
-        self.min_impurity_decrease = min_impurity_decrease
-        self.max_features = max_features
-        self.bootstrap = bootstrap
-        regressor = RandomForestRegressor(
-            n_estimators=n_estimators,
-            max_depth=max_depth,
-            min_samples_split=min_samples_split,
-            min_samples_leaf=min_samples_leaf,
-            min_impurity_decrease=min_impurity_decrease,
-            max_features=max_features,
-            bootstrap=bootstrap,
-            **kwargs
-        )
-        super(RandomForestDTS, self).__init__(
-            regressor=regressor,
-            sp=sp,
-            model=model,
-            degree=degree,
-            window_length=window_length
+        check_is_fitted(self)
+        return self.forecaster_.predict(
+            fh=fh, X=X, return_pred_int=return_pred_int, alpha=alpha
         )
