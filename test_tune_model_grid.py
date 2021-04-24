@@ -99,7 +99,7 @@ grid_obj.fit(y=y, X=X, **fit_kwargs)
 # print(grid_obj.cv_results_)
 # print(pd.DataFrame(grid_obj.cv_results_))
 
-print("STANDALONE DONE TEST")
+# print("STANDALONE DONE TEST")
 
 
 # %%
@@ -140,5 +140,16 @@ theta = exp.create_model("theta")
 tuned_theta = exp.tune_model(theta)
 print(theta)
 print(tuned_theta)
+
+# from pycaret.containers.models.time_series import RandomForestDTS
+# obj = RandomForestDTS()
+# print(obj.get_params().keys())
+
+
+rf_dts = exp.create_model("rf_dts")
+tuned_rf_dts = exp.tune_model(rf_dts)
+print(rf_dts)
+print(tuned_rf_dts)
+
 
 print("TUNE TEST DONE")

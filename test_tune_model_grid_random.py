@@ -85,7 +85,7 @@ fh = np.arange(1,13)
 fold = 3
 
 exp = TimeSeriesExperiment()
-exp.setup(data=y, fh=fh, fold=fold, fold_strategy='expandingwindow') # , n_jobs=1) # Set jobs to 1 for debug
+exp.setup(data=y, fh=fh, fold=fold, fold_strategy='expandingwindow') # ), n_jobs=1) # Set n_jobs to 1 for debug
 
 # Works
 naive = exp.create_model("naive")
@@ -119,5 +119,11 @@ theta = exp.create_model("theta")
 tuned_theta = exp.tune_model(theta, search_algorithm="random")
 print(theta)
 print(tuned_theta)
+
+# Works
+rf_dts = exp.create_model("rf_dts")
+tuned_rf_dts = exp.tune_model(rf_dts, search_algorithm="random")
+print(rf_dts)
+print(tuned_rf_dts)
 
 print("TUNE TEST DONE")

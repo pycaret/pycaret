@@ -327,7 +327,7 @@ class ArimaContainer(TimeSeriesContainer):
         #     - https://stackoverflow.com/questions/54136280/sarimax-python-np-linalg-linalg-linalgerror-lu-decomposition-error
         # Issue 3: ValueError: Input contains NaN, infinity or a value too large for dtype('float64').
         #     - Comes from sktime validation after prediction
-        # Need to look into this further 
+        # Need to look into this further
         n_samples_grid = 2  # 2 for 'order', 2 for 'seasonal_order', 2 for intercept will give 8 combinations
         seasonal_max_multiplier = 1 # Use sp value directly (user can specify 0 if needed)
         p_start=0
@@ -531,38 +531,20 @@ class ThetaContainer(TimeSeriesContainer):
         )
 
 
-# TODO: Does not work with blending of models
-
-# pycaret\time_series.py:2140: in _fit_and_score
-#     forecaster.fit(y_train, X_train, **fit_params)
-# pycaret\internal\ensemble.py:88: in fit
-#     self._fit_forecasters(forecasters, y, X, fh)
-# ..\..\..\..\AppData\Roaming\Python\Python37\site-packages\sktime\forecasting\base\_meta.py:65: in _fit_forecasters
-#     for forecaster in forecasters
-# C:\ProgramData\Anaconda3\envs\pycaret_dev\lib\site-packages\joblib\parallel.py:1054: in __call__
-#     self.retrieve()
-# C:\ProgramData\Anaconda3\envs\pycaret_dev\lib\site-packages\joblib\parallel.py:933: in retrieve
-#     self._output.extend(job.get(timeout=self.timeout))
-# C:\ProgramData\Anaconda3\envs\pycaret_dev\lib\site-packages\joblib\_parallel_backends.py:542: in wrap_future_result
-#     return future.result(timeout=timeout)
-# C:\ProgramData\Anaconda3\envs\pycaret_dev\lib\concurrent\futures\_base.py:435: in result
-#     return self.__get_result()
-# _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-
-# self = <Future at 0x23485de8108 state=finished raised BrokenProcessPool>
-
-#     def __get_result(self):
-#         if self._exception:
-# >           raise self._exception
-# E           joblib.externals.loky.process_executor.BrokenProcessPool: A task has failed to un-serialize. Please ensure that the arguments of the function are all picklable.
-
 class RandomForestDTSContainer(TimeSeriesContainer):
     def __init__(self, globals_dict: dict) -> None:
         logger = get_logger()
         np.random.seed(globals_dict["seed"])
         gpu_imported = False
 
-        args = {}
+        args = (
+            {
+                "random_state": globals_dict["seed"],
+                "n_jobs": globals_dict["n_jobs_param"],
+            }
+            if not gpu_imported
+            else {"seed": globals_dict["seed"]}
+        )
         tune_args = {}
         sp = globals_dict.get("seasonal_parameter")
         sp = sp if sp is not None else 1
@@ -570,9 +552,24 @@ class RandomForestDTSContainer(TimeSeriesContainer):
             "sp": [sp],
             "model": ['additive'],
             "degree": [1],
-            "window_length": [10]
+            "window_length": [10],
+            "n_estimators": np_list_arange(10, 300, 100, inclusive=True),
+            "max_depth": np_list_arange(1, 10, 5, inclusive=True),
+            "min_impurity_decrease": [0.1, 0.5],
+            "max_features": [1.0, "sqrt", "log2"],
+            "bootstrap": [True, False],
         }
-        tune_distributions = {}
+        tune_distributions = {
+            "sp": CategoricalDistribution(values=[sp, 2*sp]),  # TODO: 'None' errors out here
+            "model": CategoricalDistribution(values=['additive', 'multiplicative']),
+            "degree": IntUniformDistribution(lower=1, upper=10),
+            "window_length": IntUniformDistribution(lower=sp, upper=2*sp),
+            "n_estimators": IntUniformDistribution(lower=10, upper=300),
+            "max_depth": IntUniformDistribution(lower=1, upper=10),
+            "min_impurity_decrease": UniformDistribution(lower=0, upper=0.5),
+            "max_features": CategoricalDistribution(values=[1.0, "sqrt", "log2"]),
+            "bootstrap": CategoricalDistribution(values=[True, False]),
+        }
 
         # if not gpu_imported:
         #     args["n_jobs"] = globals_dict["n_jobs_param"]
@@ -690,8 +687,38 @@ class BaseDTS(_SktimeForecaster):
 
 
 class RandomForestDTS(BaseDTS):
-    def __init__(self, sp=1, model='additive', degree=1, window_length=10):
-        regressor = RandomForestRegressor()
+    def __init__(
+        self,
+        sp=1,
+        model='additive',
+        degree=1,
+        window_length=10,
+        n_estimators: int=100,
+        max_depth: Optional[int] = None,
+        min_samples_split: Union[int, float] = 2,
+        min_samples_leaf: Union[int, float] = 1,
+        min_impurity_decrease: float = 0,
+        max_features: Union[str, int, float] = "auto",
+        bootstrap: bool = True,
+        **kwargs
+    ):
+        self.n_estimators = n_estimators
+        self.max_depth = max_depth
+        self.min_samples_split = min_samples_split
+        self.min_samples_leaf = min_samples_leaf
+        self.min_impurity_decrease = min_impurity_decrease
+        self.max_features = max_features
+        self.bootstrap = bootstrap
+        regressor = RandomForestRegressor(
+            n_estimators=n_estimators,
+            max_depth=max_depth,
+            min_samples_split=min_samples_split,
+            min_samples_leaf=min_samples_leaf,
+            min_impurity_decrease=min_impurity_decrease,
+            max_features=max_features,
+            bootstrap=bootstrap,
+            **kwargs
+        )
         super(RandomForestDTS, self).__init__(
             regressor=regressor,
             sp=sp,
