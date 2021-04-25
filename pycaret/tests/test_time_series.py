@@ -87,6 +87,28 @@ def load_ts_models(load_setup):
 #### Tests Start Here ####
 ##########################
 
+def test_set_up_valid_seasonality(load_data):
+
+    seasonal_parameter = 30
+    fh = np.arange(1,13)
+    fold = 3
+    
+    exp = TimeSeriesExperiment()
+    
+    with pytest.raises(ValueError) as errmsg:
+        _ = exp.setup(
+            data=load_data, 
+            fh=fh, 
+            fold=fold, 
+            fold_strategy='slidingwindow', 
+            seasonal_parameter=seasonal_parameter
+        )
+
+    exceptionmsg = errmsg.value.args[0]
+
+    assert exceptionmsg == f"Autocorrelation Seasonality test failed: Invalid Seasonality Period {seasonal_parameter}"
+
+
 def test_create_model(load_setup, model_parameters, load_data):
     """test create_model functionality
     """
@@ -156,10 +178,11 @@ def test_blend_model_predict(load_setup, load_models):
 def test_tune_model_grid(model, load_data):
     exp = TimeSeriesExperiment()
     fh = 12
+    fold = 3
 
     exp.setup(
         data=load_data,
-        fold=3,
+        fold=fold,
         fh=fh,
         fold_strategy="expandingwindow"
     )
@@ -177,10 +200,11 @@ def test_tune_model_grid(model, load_data):
 def test_tune_model_random(model, load_data):
     exp = TimeSeriesExperiment()
     fh = 12
+    fold = 3
 
     exp.setup(
         data=load_data,
-        fold=3,
+        fold=fold,
         fh=fh,
         fold_strategy="expandingwindow"
     )
