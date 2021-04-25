@@ -2315,7 +2315,7 @@ class BaseGridSearch:
                     f"Fitting {n_splits} folds for each of {n_candidates} "
                     f"candidates, totalling {n_candidates * n_splits} fits"
                 )
-                print(f"Candidate Params: {candidate_params}")
+                # print(f"Candidate Params: {candidate_params}")
 
             parallel = Parallel(
                 n_jobs=self.n_jobs, verbose=self.verbose, pre_dispatch=self.pre_dispatch

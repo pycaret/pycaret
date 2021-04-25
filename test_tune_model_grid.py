@@ -167,9 +167,16 @@ exp.setup(data=y, fh=fh, fold=fold, fold_strategy="expandingwindow", session_id=
 # print(xgboost_cds_dt)
 # print(tuned_xgboost_cds_dt)
 
-lightgbm_cds_dt = exp.create_model("lightgbm_cds_dt")
-tuned_lightgbm_cds_dt = exp.tune_model(lightgbm_cds_dt)
-print(lightgbm_cds_dt)
-print(tuned_lightgbm_cds_dt)
+# # Works
+# lightgbm_cds_dt = exp.create_model("lightgbm_cds_dt")
+# tuned_lightgbm_cds_dt = exp.tune_model(lightgbm_cds_dt)
+# print(lightgbm_cds_dt)
+# print(tuned_lightgbm_cds_dt)
+
+# Works
+model = exp.create_model("gbr_cds_dt")
+tuned_model = exp.tune_model(model)
+print(model)
+print(tuned_model)
 
 print("TUNE TEST DONE")

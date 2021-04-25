@@ -723,6 +723,82 @@ class ExtraTreesCdsDtContainer(TimeSeriesContainer):
         )
 
 
+class GradientBoostingCdsDtContainer(TimeSeriesContainer):
+    def __init__(self, globals_dict: dict) -> None:
+        logger = get_logger()
+        np.random.seed(globals_dict["seed"])
+
+        from sklearn.ensemble import GradientBoostingRegressor
+
+        # TODO add GPU support
+
+        gpu_imported = False
+
+        regressor_args = {"random_state": globals_dict["seed"]}
+        regressor = GradientBoostingRegressor(**regressor_args)
+
+        args = {"regressor": regressor}
+        tune_args = {}
+        sp = globals_dict.get("seasonal_parameter")
+        sp = sp if sp is not None else 1
+        tune_grid = {
+            "sp": [sp],
+            "deseasonal_model": ["additive"],
+            "degree": [1],
+            "window_length": [10],
+            "regressor__n_estimators": np_list_arange(10, 300, 150, inclusive=True),
+            "regressor__learning_rate": [0.0001, 0.001, 0.01, 0.1],
+            "regressor__subsample": [0.5, 1],
+            "regressor__max_depth": np_list_arange(1, 10, 10, inclusive=True),
+            "regressor__min_impurity_decrease": [0.1, 0.5],
+            "regressor__max_features": [1.0, "sqrt", "log2"],
+            # "regressor__min_samples_split": [2, 5, 7, 9, 10],  # Too many combinations
+            # "regressor__min_samples_leaf": [2, 3, 4, 5, 6],  # Too many combinations
+        }
+        tune_distributions = {
+            "sp": CategoricalDistribution(
+                values=[sp, 2 * sp]
+            ),  # TODO: 'None' errors out here
+            "deseasonal_model": CategoricalDistribution(
+                values=["additive", "multiplicative"]
+            ),
+            "degree": IntUniformDistribution(lower=1, upper=10),
+            "window_length": IntUniformDistribution(lower=sp, upper=2 * sp),
+            "regressor__n_estimators": IntUniformDistribution(10, 300),
+            "regressor__learning_rate": UniformDistribution(0.000001, 0.5, log=True),
+            # "regressor__subsample": UniformDistribution(0.2, 1),  # TODO: Adding this eventually samples outside this range - strange!
+            "regressor__min_samples_split": IntUniformDistribution(2, 10),
+            "regressor__min_samples_leaf": IntUniformDistribution(1, 5),
+            "regressor__max_depth": IntUniformDistribution(1, 11),
+            # "regressor__max_features": UniformDistribution(0.4, 1),  # TODO: Adding this eventually samples outside this range - strange!
+            "regressor__min_impurity_decrease": UniformDistribution(
+                0.000000001, 0.5, log=True
+            ),
+        }
+
+        # if not gpu_imported:
+        #     args["n_jobs"] = globals_dict["n_jobs_param"]
+
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+
+        eq_function = (
+            lambda x: type(x) is BaseCdsDt
+            and type(x.regressor) is GradientBoostingRegressor
+        )
+
+        super().__init__(
+            id="gbr_cds_dt",
+            name="Gradient Boosting w/ Cond. Deseasonalize & Detrending",
+            class_def=BaseCdsDt,
+            args=args,
+            tune_grid=tune_grid,
+            tune_distribution=tune_distributions,
+            tune_args=tune_args,
+            is_gpu_enabled=gpu_imported,
+            eq_function=eq_function,
+        )
+
+
 class XGBCdsDtContainer(TimeSeriesContainer):
     def __init__(self, globals_dict: dict) -> None:
         logger = get_logger()

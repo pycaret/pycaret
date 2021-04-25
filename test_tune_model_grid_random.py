@@ -147,10 +147,16 @@ exp.setup(
 # print(xgboost_cds_dt)
 # print(tuned_xgboost_cds_dt)
 
+# # Works
+# lightgbm_cds_dt = exp.create_model("lightgbm_cds_dt")
+# tuned_lightgbm_cds_dt = exp.tune_model(lightgbm_cds_dt, search_algorithm="random")
+# print(lightgbm_cds_dt)
+# print(tuned_lightgbm_cds_dt)
+
 # Works
-lightgbm_cds_dt = exp.create_model("lightgbm_cds_dt")
-tuned_lightgbm_cds_dt = exp.tune_model(lightgbm_cds_dt, search_algorithm="random")
-print(lightgbm_cds_dt)
-print(tuned_lightgbm_cds_dt)
+model = exp.create_model("gbr_cds_dt")
+tuned_model = exp.tune_model(model, search_algorithm="random")
+print(model)
+print(tuned_model)
 
 print("TUNE TEST DONE")
