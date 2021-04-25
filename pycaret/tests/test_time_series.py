@@ -51,16 +51,33 @@ def model_names():
     return model_names_
 
 
-@pytest.fixture(scope="session", name="model_parameters")
-def model_parameters(model_names):
-    """Parameterize individual models.
-    Returns the model names and the corresponding forecast horizons.
-    Horizons are alternately picked to be either integers or numpy arrays
-    """
+# @pytest.fixture(scope="session", name="model_parameters")
+# def model_parameters(model_names):
+#     """Parameterize individual models.
+#     Returns the model names and the corresponding forecast horizons.
+#     Horizons are alternately picked to be either integers or numpy arrays
+#     """
+#     parameters = [
+#         (name, np.arange(1, randint(6, 24)) if i%2==0  else randint(6, 24))
+#         for i, name in enumerate(model_names)
+#     ]
+#     return parameters
+
+def model_parameters():
+
+    globals_dict = {"seed": 0, "n_jobs_param": -1}
+    model_containers = get_all_model_containers(globals_dict)
+
+    model_names_ = []
+    for model_name in model_containers.keys():
+        if not model_name.startswith(("ensemble")):
+            model_names_.append(model_name)
+
     parameters = [
         (name, np.arange(1, randint(6, 24)) if i%2==0  else randint(6, 24))
-        for i, name in enumerate(model_names)
+        for i, name in enumerate(model_names_)
     ]
+
     return parameters
 
 
@@ -109,23 +126,24 @@ def test_set_up_valid_seasonality(load_data):
     assert exceptionmsg == f"Autocorrelation Seasonality test failed: Invalid Seasonality Period {seasonal_parameter}"
 
 
-def test_create_model(load_setup, model_parameters, load_data):
+@pytest.mark.parametrize("model_parameter", model_parameters())
+def test_create_model(load_setup, model_parameter, load_data):
     """test create_model functionality
     """
     exp = TimeSeriesExperiment()
-    for name, fh in model_parameters:
-        # Need to create individual setup for each model since the `fh` will be different for all models
-        exp.setup(
-            data=load_data, fold=3, fh=fh, fold_strategy="expandingwindow", verbose=False
-        )
-        model_obj = exp.create_model(name)
+    name, fh = model_parameter
+    # Need to create individual setup for each model since the `fh` will be different for all models
+    exp.setup(
+        data=load_data, fold=3, fh=fh, fold_strategy="expandingwindow", verbose=False
+    )
+    model_obj = exp.create_model(name)
 
-        y_pred = model_obj.predict()
-        assert isinstance(y_pred, pd.Series)
+    y_pred = model_obj.predict()
+    assert isinstance(y_pred, pd.Series)
 
-        fh_index = fh if isinstance(fh, int) else fh[-1]
-        expected_period_index = load_data.iloc[-fh_index:].index
-        assert np.all(y_pred.index == expected_period_index)
+    fh_index = fh if isinstance(fh, int) else fh[-1]
+    expected_period_index = load_data.iloc[-fh_index:].index
+    assert np.all(y_pred.index == expected_period_index)
 
 
 @pytest.mark.parametrize("method", _ENSEMBLE_METHODS)
