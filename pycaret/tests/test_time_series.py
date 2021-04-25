@@ -15,6 +15,7 @@ from pycaret.containers.models.time_series import get_all_model_containers
 #### Fixtures Start Here ####
 #############################
 
+
 @pytest.fixture(scope="session", name="load_data")
 def load_data():
     """Load Pycaret Airline dataset."""
@@ -48,7 +49,7 @@ def load_ts_models(load_setup):
     ts_estimators = []
 
     for key in ts_models.keys():
-        if not key.startswith(("ensemble")):  # , "poly")):
+        if not key.startswith(("ensemble")):
             ts_estimators.append(ts_experiment.create_model(key))
 
     return ts_estimators
@@ -70,7 +71,7 @@ def load_ts_models(load_setup):
 
 def return_model_names():
     """Return all model names."""
-    globals_dict = {"seed": 0, "n_jobs_param": -1}
+    globals_dict = {"seed": 0, "n_jobs_param": -1, "gpu_param": False}
     model_containers = get_all_model_containers(globals_dict)
 
     model_names_ = []

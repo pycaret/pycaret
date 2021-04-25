@@ -129,16 +129,22 @@ exp.setup(
 # print(theta)
 # print(tuned_theta)
 
-# Works
-rf_cds_dt = exp.create_model("rf_cds_dt")
-tuned_rf_cds_dt = exp.tune_model(rf_cds_dt, search_algorithm="random")
-print(rf_cds_dt)
-print(tuned_rf_cds_dt)
+# # Works
+# rf_cds_dt = exp.create_model("rf_cds_dt")
+# tuned_rf_cds_dt = exp.tune_model(rf_cds_dt, search_algorithm="random")
+# print(rf_cds_dt)
+# print(tuned_rf_cds_dt)
+
+# # Works
+# et_cds_dt = exp.create_model("et_cds_dt")
+# tuned_et_cds_dt = exp.tune_model(et_cds_dt, search_algorithm="random")
+# print(et_cds_dt)
+# print(tuned_et_cds_dt)
 
 # Works
-et_cds_dt = exp.create_model("et_cds_dt")
-tuned_et_cds_dt = exp.tune_model(et_cds_dt, search_algorithm="random")
-print(et_cds_dt)
-print(tuned_et_cds_dt)
+xgboost_cds_dt = exp.create_model("xgboost_cds_dt")
+tuned_xgboost_cds_dt = exp.tune_model(xgboost_cds_dt, search_algorithm="random")
+print(xgboost_cds_dt)
+print(tuned_xgboost_cds_dt)
 
 print("TUNE TEST DONE")
