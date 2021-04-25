@@ -17,9 +17,9 @@ import random
 from sktime.forecasting.base._sktime import _SktimeForecaster  # type: ignore
 from sktime.forecasting.compose import ReducedForecaster, TransformedTargetForecaster  # type: ignore
 from sktime.forecasting.trend import PolynomialTrendForecaster  # type: ignore
-from sktime.transformations.series.detrend import Deseasonalizer, Detrender  # type: ignore
+from sktime.transformations.series.detrend import ConditionalDeseasonalizer, Deseasonalizer, Detrender  # type: ignore
 from sktime.forecasting.base._sktime import DEFAULT_ALPHA  # type: ignore
-from sklearn.ensemble import RandomForestRegressor  # type: ignore
+from sklearn.utils.validation import check_is_fitted  # type: ignore
 
 from pycaret.containers.models.base_model import (
     ModelContainer,
@@ -35,7 +35,7 @@ from pycaret.internal.distributions import (
     Distribution,
     UniformDistribution,
     IntUniformDistribution,
-    CategoricalDistribution
+    CategoricalDistribution,
 )
 import pycaret.containers.base_container
 
@@ -119,7 +119,7 @@ class TimeSeriesContainer(ModelContainer):
         args: Dict[str, Any] = None,
         is_special: bool = False,
         tune_grid: Dict[str, list] = None,
-        tune_distribution: Dict[str, Distribution] = None,
+        tune_distribution: Dict[str, Union[List[Any], Distribution]] = None,
         tune_args: Dict[str, Any] = None,
         is_gpu_enabled: Optional[bool] = None,
         tunable: Optional[type] = None,
@@ -206,21 +206,20 @@ class NaiveContainer(TimeSeriesContainer):
 
         from sktime.forecasting.naive import NaiveForecaster  # type: ignore
 
-        args = {}
-        tune_args = {}
+        args: Dict[str, Any] = {}
+        tune_args: Dict[str, Any] = {}
         sp = globals_dict.get("seasonal_parameter")
         sp = sp if sp is not None else 1
         # fh = globals_dict["fh"]
 
         tune_grid = {
-            "strategy": ['last', 'mean', 'drift'],
-            "sp": [1, sp, 2*sp],
+            "strategy": ["last", "mean", "drift"],
+            "sp": [1, sp, 2 * sp],
             # Removing fh for now since it can be less than sp which causes an error
             # Will need to add checks for it later if we want to incorporate it
-            "window_length": [None] # , len(fh)]
+            "window_length": [None],  # , len(fh)]
         }
-        tune_distributions = {
-        }
+        tune_distributions: Dict[str, List[Any]] = {}
 
         # if not gpu_imported:
         #     args["n_jobs"] = globals_dict["n_jobs_param"]
@@ -245,17 +244,14 @@ class PolyTrendContainer(TimeSeriesContainer):
         np.random.seed(globals_dict["seed"])
         gpu_imported = False
 
-        from sktime.forecasting.trend import PolynomialTrendForecaster
+        from sktime.forecasting.trend import PolynomialTrendForecaster  # type: ignore
 
         args = {}
         tune_args = {}
-        tune_grid = {
-            "degree": [1,2,3,4,5],
-            "with_intercept": [True, False]
-        }
+        tune_grid = {"degree": [1, 2, 3, 4, 5], "with_intercept": [True, False]}
         tune_distributions = {
             "degree": IntUniformDistribution(lower=1, upper=10),
-            "with_intercept": CategoricalDistribution(values=[True, False])
+            "with_intercept": CategoricalDistribution(values=[True, False]),
         }
 
         # if not gpu_imported:
@@ -282,7 +278,7 @@ class ArimaContainer(TimeSeriesContainer):
         np.random.seed(globals_dict["seed"])
         gpu_imported = False
 
-        from sktime.forecasting.arima import ARIMA
+        from sktime.forecasting.arima import ARIMA  # type: ignore
 
         args = {}
         tune_args = {}
@@ -291,13 +287,20 @@ class ArimaContainer(TimeSeriesContainer):
 
         def return_order_related_params(
             n_samples: int,
-            p_start: int, p_end: int,
-            d_start: int, d_end: int,
-            q_start: int, q_end: int,
-            P_start: int, P_end: int,
-            D_start: int, D_end: int,
-            Q_start: int, Q_end: int,
-            sp: int, seasonal_max_multiplier: int
+            p_start: int,
+            p_end: int,
+            d_start: int,
+            d_end: int,
+            q_start: int,
+            q_end: int,
+            P_start: int,
+            P_end: int,
+            D_start: int,
+            D_end: int,
+            Q_start: int,
+            Q_end: int,
+            sp: int,
+            seasonal_max_multiplier: int,
         ) -> Tuple[List[Tuple[int, int, int]], List[Tuple[int, int, int, int]]]:
 
             random.seed(globals_dict["seed"])
@@ -310,7 +313,10 @@ class ArimaContainer(TimeSeriesContainer):
             # SP values can be 0 (removed) or sp or 2 * sp.
             # 0 was removed --> gives the following error
             # "ValueError: Must include nonzero seasonal periodicity if including seasonal AR, MA, or differencing."
-            sp_values_ = [sp * seasonal_multiplier for seasonal_multiplier in range(1, seasonal_max_multiplier+1)]
+            sp_values_ = [
+                sp * seasonal_multiplier
+                for seasonal_multiplier in range(1, seasonal_max_multiplier + 1)
+            ]
             P_values = [random.randint(P_start, P_end) for _ in range(n_samples)]
             Q_values = [random.randint(Q_start, Q_end) for _ in range(n_samples)]
             D_values = [random.randint(D_start, D_end) for _ in range(n_samples)]
@@ -329,54 +335,70 @@ class ArimaContainer(TimeSeriesContainer):
         #     - Comes from sktime validation after prediction
         # Need to look into this further
         n_samples_grid = 2  # 2 for 'order', 2 for 'seasonal_order', 2 for intercept will give 8 combinations
-        seasonal_max_multiplier = 1 # Use sp value directly (user can specify 0 if needed)
-        p_start=0
-        p_end=1 # sp-1  # slow run times with higher values, maybe add turbo option
-        d_start=0
-        d_end=1
-        q_start=0
-        q_end=1 # sp-1  # slow run times with higher values, maybe add turbo option
-        P_start=0
-        P_end=1
-        D_start=0
-        D_end=1
-        Q_start=0
-        Q_end=1
+        seasonal_max_multiplier = (
+            1  # Use sp value directly (user can specify 0 if needed)
+        )
+        p_start = 0
+        p_end = 1  # sp-1  # slow run times with higher values, maybe add turbo option
+        d_start = 0
+        d_end = 1
+        q_start = 0
+        q_end = 1  # sp-1  # slow run times with higher values, maybe add turbo option
+        P_start = 0
+        P_end = 1
+        D_start = 0
+        D_end = 1
+        Q_start = 0
+        Q_end = 1
 
         # Technically this is random as well but since there are so many hyperparameter options,
         # this seemed the most reasonable choice rather than manually listing values
         orders, seasonal_orders = return_order_related_params(
             n_samples=n_samples_grid,
-            p_start=p_start, p_end=p_end,
-            d_start=d_start, d_end=d_end,
-            q_start=q_start, q_end=q_end,
-            P_start=P_start, P_end=P_end,
-            D_start=D_start, D_end=D_end,
-            Q_start=Q_start, Q_end=Q_end,
-            sp=sp, seasonal_max_multiplier=seasonal_max_multiplier
+            p_start=p_start,
+            p_end=p_end,
+            d_start=d_start,
+            d_end=d_end,
+            q_start=q_start,
+            q_end=q_end,
+            P_start=P_start,
+            P_end=P_end,
+            D_start=D_start,
+            D_end=D_end,
+            Q_start=Q_start,
+            Q_end=Q_end,
+            sp=sp,
+            seasonal_max_multiplier=seasonal_max_multiplier,
         )
         tune_grid = {
             "order": orders,
             "seasonal_order": seasonal_orders,
-            "with_intercept": [True, False]
+            "with_intercept": [True, False],
         }
 
         n_samples_random = 100
         seasonal_max_multiplier = 2
         orders, seasonal_orders = return_order_related_params(
             n_samples=n_samples_random,
-            p_start=p_start, p_end=p_end,
-            d_start=d_start, d_end=d_end,
-            q_start=q_start, q_end=q_end,
-            P_start=P_start, P_end=P_end,
-            D_start=D_start, D_end=D_end,
-            Q_start=Q_start, Q_end=Q_end,
-            sp=sp, seasonal_max_multiplier=seasonal_max_multiplier
+            p_start=p_start,
+            p_end=p_end,
+            d_start=d_start,
+            d_end=d_end,
+            q_start=q_start,
+            q_end=q_end,
+            P_start=P_start,
+            P_end=P_end,
+            D_start=D_start,
+            D_end=D_end,
+            Q_start=Q_start,
+            Q_end=Q_end,
+            sp=sp,
+            seasonal_max_multiplier=seasonal_max_multiplier,
         )
         tune_distributions = {
             "order": CategoricalDistribution(values=orders),
             "seasonal_order": CategoricalDistribution(values=seasonal_orders),
-            "with_intercept": CategoricalDistribution(values=[True, False])
+            "with_intercept": CategoricalDistribution(values=[True, False]),
         }
 
         if not gpu_imported:
@@ -402,7 +424,7 @@ class ExponentialSmoothingContainer(TimeSeriesContainer):
         np.random.seed(globals_dict["seed"])
         gpu_imported = False
 
-        from sktime.forecasting.exp_smoothing import ExponentialSmoothing
+        from sktime.forecasting.exp_smoothing import ExponentialSmoothing  # type: ignore
 
         args = {}
         tune_args = {}
@@ -411,21 +433,31 @@ class ExponentialSmoothingContainer(TimeSeriesContainer):
 
         # tune_grid = {"fit_intercept": [True, False], "normalize": [True, False]}
         tune_grid = {
-            "trend": ["add", "mul", "additive", "multiplicative", None],   # TODO: Check if add and additive are doing the same thing
+            "trend": [
+                "add",
+                "mul",
+                "additive",
+                "multiplicative",
+                None,
+            ],  # TODO: Check if add and additive are doing the same thing
             # "damped_trend": [True, False],
             "seasonal": ["add", "mul", "additive", "multiplicative", None],
             "use_boxcox": [True, False],
-            "sp": [sp]
+            "sp": [sp],
         }
         tune_distributions = {
-            "trend": CategoricalDistribution(values=["add", "mul", "additive", "multiplicative", None]),
+            "trend": CategoricalDistribution(
+                values=["add", "mul", "additive", "multiplicative", None]
+            ),
             # "damped_trend": [True, False],
-            "seasonal": CategoricalDistribution(values=["add", "mul", "additive", "multiplicative", None]),
+            "seasonal": CategoricalDistribution(
+                values=["add", "mul", "additive", "multiplicative", None]
+            ),
             # "initial_level": UniformDistribution(lower=0, upper=1),  # ValueError: initialization method is estimated but initial_level has been set.
             # "initial_trend": UniformDistribution(lower=0, upper=1),  # ValueError: initialization method is estimated but initial_trend has been set.
             # "initial_seasonal": UniformDistribution(lower=0, upper=1), # ValueError: initialization method is estimated but initial_seasonal has been set.
             "use_boxcox": CategoricalDistribution(values=[True, False]),  # 'log', float
-            "sp": CategoricalDistribution(values=[None, sp, 2*sp])
+            "sp": CategoricalDistribution(values=[None, sp, 2 * sp]),
         }
 
         # if not gpu_imported:
@@ -444,18 +476,17 @@ class ExponentialSmoothingContainer(TimeSeriesContainer):
             tune_distribution=tune_distributions,
             tune_args=tune_args,
             is_gpu_enabled=gpu_imported,
-            eq_function=eq_function  # Added to differentiate between ExponentialSmoothing and Theta which are of same parent class
+            eq_function=eq_function,  # Added to differentiate between ExponentialSmoothing and Theta which are of same parent class
         )
 
 
-# TODO: Does not work
 class AutoETSContainer(TimeSeriesContainer):
     def __init__(self, globals_dict: dict) -> None:
         logger = get_logger()
         np.random.seed(globals_dict["seed"])
         gpu_imported = False
 
-        from sktime.forecasting.ets import AutoETS
+        from sktime.forecasting.ets import AutoETS  # type: ignore
 
         args = {}
         tune_args = {}
@@ -466,7 +497,7 @@ class AutoETSContainer(TimeSeriesContainer):
             "trend": ["add", "mul", None],
             # "damped_trend": [True, False],
             "seasonal": ["add", "mul", None],
-            "sp": [sp]
+            "sp": [sp],
         }
         tune_distributions = {}
 
@@ -483,7 +514,7 @@ class AutoETSContainer(TimeSeriesContainer):
             tune_grid=tune_grid,
             tune_distribution=tune_distributions,
             tune_args=tune_args,
-            is_gpu_enabled=gpu_imported
+            is_gpu_enabled=gpu_imported,
         )
 
 
@@ -493,7 +524,7 @@ class ThetaContainer(TimeSeriesContainer):
         np.random.seed(globals_dict["seed"])
         gpu_imported = False
 
-        from sktime.forecasting.theta import ThetaForecaster
+        from sktime.forecasting.theta import ThetaForecaster  # type: ignore
 
         args = {}
         tune_args = {}
@@ -505,7 +536,7 @@ class ThetaContainer(TimeSeriesContainer):
         tune_grid = {
             # "initial_level": [0.1, 0.5, 0.9],
             "deseasonalize": [True, False],
-            "sp": [1, sp, 2*sp]
+            "sp": [1, sp, 2 * sp],
         }
         tune_distributions = {
             # "initial_level": UniformDistribution(lower=0, upper=1),  # ValueError: initialization method is estimated but initial_level has been set.
@@ -527,11 +558,11 @@ class ThetaContainer(TimeSeriesContainer):
             tune_distribution=tune_distributions,
             tune_args=tune_args,
             is_gpu_enabled=gpu_imported,
-            eq_function=eq_function  # Added to differentiate between ExponentialSmoothing and Theta which are of same parent class
+            eq_function=eq_function,  # Added to differentiate between ExponentialSmoothing and Theta which are of same parent class
         )
 
 
-class RandomForestDTSContainer(TimeSeriesContainer):
+class RandomForestCdsDtContainer(TimeSeriesContainer):
     def __init__(self, globals_dict: dict) -> None:
         logger = get_logger()
         np.random.seed(globals_dict["seed"])
@@ -558,11 +589,11 @@ class RandomForestDTSContainer(TimeSeriesContainer):
         sp = sp if sp is not None else 1
         tune_grid = {
             "sp": [sp],
-            "model": ["additive"],
+            "deseasonal_model": ["additive"],
             "degree": [1],
             "window_length": [10],
-            "regressor__n_estimators": np_list_arange(10, 300, 100, inclusive=True),
-            "regressor__max_depth": np_list_arange(1, 10, 5, inclusive=True),
+            "regressor__n_estimators": np_list_arange(10, 300, 150, inclusive=True),
+            "regressor__max_depth": np_list_arange(1, 10, 10, inclusive=True),
             "regressor__min_impurity_decrease": [0.1, 0.5],
             "regressor__max_features": [1.0, "sqrt", "log2"],
             "regressor__bootstrap": [True, False],
@@ -571,7 +602,9 @@ class RandomForestDTSContainer(TimeSeriesContainer):
             "sp": CategoricalDistribution(
                 values=[sp, 2 * sp]
             ),  # TODO: 'None' errors out here
-            "model": CategoricalDistribution(values=["additive", "multiplicative"]),
+            "deseasonal_model": CategoricalDistribution(
+                values=["additive", "multiplicative"]
+            ),
             "degree": IntUniformDistribution(lower=1, upper=10),
             "window_length": IntUniformDistribution(lower=sp, upper=2 * sp),
             "regressor__n_estimators": IntUniformDistribution(lower=10, upper=300),
@@ -589,13 +622,14 @@ class RandomForestDTSContainer(TimeSeriesContainer):
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
         eq_function = (
-            lambda x: type(x) is BaseDTS and type(x.regressor) is RandomForestRegressor
+            lambda x: type(x) is BaseCdsDt
+            and type(x.regressor) is RandomForestRegressor
         )
 
         super().__init__(
-            id="rf_dts",
-            name="RandomForestDTS",
-            class_def=BaseDTS,
+            id="rf_cds_dt",
+            name="Random Forest Regressor w/ Cond. Deseasonalize & Detrending",
+            class_def=BaseCdsDt,
             args=args,
             tune_grid=tune_grid,
             tune_distribution=tune_distributions,
@@ -604,6 +638,150 @@ class RandomForestDTSContainer(TimeSeriesContainer):
             eq_function=eq_function,
         )
 
+
+class ExtraTreesCdsDtContainer(TimeSeriesContainer):
+    def __init__(self, globals_dict: dict) -> None:
+        logger = get_logger()
+        np.random.seed(globals_dict["seed"])
+
+        from sklearn.ensemble import ExtraTreesRegressor
+
+        # TODO add GPU support
+
+        gpu_imported = False
+
+        regressor_args = (
+            {
+                "random_state": globals_dict["seed"],
+                "n_jobs": globals_dict["n_jobs_param"],
+            }
+            if not gpu_imported
+            else {"seed": globals_dict["seed"]}
+        )
+        regressor = ExtraTreesRegressor(**regressor_args)
+
+        args = {"regressor": regressor}
+        tune_args = {}
+        sp = globals_dict.get("seasonal_parameter")
+        sp = sp if sp is not None else 1
+        tune_grid = {
+            "sp": [sp],
+            "deseasonal_model": ["additive"],
+            "degree": [1],
+            "window_length": [10],
+            "regressor__n_estimators": np_list_arange(10, 300, 150, inclusive=True),
+            # "regressor__criterion": ["mse", "mae"],  # Too many combinations
+            "regressor__max_depth": np_list_arange(1, 10, 10, inclusive=True),
+            "regressor__min_impurity_decrease": [0.1, 0.5],
+            "regressor__max_features": [1.0, "sqrt", "log2"],
+            "regressor__bootstrap": [True, False],
+            # "regressor__min_samples_split": [2, 5, 7, 9, 10],  # Too many combinations
+            # "regressor__min_samples_leaf": [2, 3, 4, 5, 6],  # Too many combinations
+        }
+        tune_distributions = {
+            "sp": CategoricalDistribution(
+                values=[sp, 2 * sp]
+            ),  # TODO: 'None' errors out here
+            "deseasonal_model": CategoricalDistribution(
+                values=["additive", "multiplicative"]
+            ),
+            "degree": IntUniformDistribution(lower=1, upper=10),
+            "window_length": IntUniformDistribution(lower=sp, upper=2 * sp),
+            "regressor__n_estimators": IntUniformDistribution(lower=10, upper=300),
+            "regressor__criterion": CategoricalDistribution(values=["mse", "mae"]),
+            "regressor__max_depth": IntUniformDistribution(lower=1, upper=11),
+            "regressor__min_impurity_decrease": UniformDistribution(
+                0.000000001, 0.5, log=True
+            ),
+            "regressor__max_features": CategoricalDistribution(
+                values=[0.4, 1.0, "sqrt", "log2"]
+            ),
+            "regressor__bootstrap": CategoricalDistribution(values=[True, False]),
+            "regressor__min_samples_split": IntUniformDistribution(lower=2, upper=10),
+            "regressor__min_samples_leaf": IntUniformDistribution(lower=1, upper=5),
+        }
+
+        # if not gpu_imported:
+        #     args["n_jobs"] = globals_dict["n_jobs_param"]
+
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+
+        eq_function = (
+            lambda x: type(x) is BaseCdsDt and type(x.regressor) is ExtraTreesRegressor
+        )
+
+        super().__init__(
+            id="et_cds_dt",
+            name="Extra Trees Regressor w/ Cond. Deseasonalize & Detrending",
+            class_def=BaseCdsDt,
+            args=args,
+            tune_grid=tune_grid,
+            tune_distribution=tune_distributions,
+            tune_args=tune_args,
+            is_gpu_enabled=gpu_imported,
+            eq_function=eq_function,
+        )
+
+
+class BaseCdsDt(_SktimeForecaster):
+    def __init__(
+        self, regressor, sp=1, deseasonal_model="additive", degree=1, window_length=10
+    ):
+        """Base Class for time series using scikit models which includes
+        Conditional Deseasonalizing and Detrending
+
+        Parameters
+        ----------
+        regressor : [type]
+            [description]
+        sp : int, optional
+            Seasonality period used to deseasonalize, by default 1
+        deseasonal_model : str, optional
+            model used to deseasonalize, 'multiplicative' or 'additive', by default 'additive'
+        degree : int, optional
+            degree of detrender, by default 1
+        window_length : int, optional
+            Window Length used for the Reduced Forecaster, by default 10
+        """
+        self.regressor = regressor
+        self.sp = sp
+        self.deseasonal_model = deseasonal_model
+        self.degree = degree
+        self.window_length = window_length
+
+    def fit(self, y, X=None, fh=None):
+        self.forecaster_ = TransformedTargetForecaster(
+            [
+                (
+                    "conditional_deseasonalise",
+                    ConditionalDeseasonalizer(model=self.deseasonal_model, sp=self.sp),
+                ),
+                (
+                    "detrend",
+                    Detrender(forecaster=PolynomialTrendForecaster(degree=self.degree)),
+                ),
+                (
+                    "forecast",
+                    ReducedForecaster(
+                        regressor=self.regressor,
+                        scitype="regressor",
+                        window_length=self.window_length,
+                        strategy="recursive",
+                    ),
+                ),
+            ]
+        )
+        self.forecaster_.fit(y=y, X=X, fh=fh)
+        return self
+
+    # def predict(self, X=None):
+    #     return self.forecaster.predict(X=X)
+
+    def predict(self, fh=None, X=None, return_pred_int=False, alpha=DEFAULT_ALPHA):
+        check_is_fitted(self)
+        return self.forecaster_.predict(
+            fh=fh, X=X, return_pred_int=return_pred_int, alpha=alpha
+        )
 
 
 class EnsembleTimeSeriesContainer(TimeSeriesContainer):
@@ -636,67 +814,9 @@ class EnsembleTimeSeriesContainer(TimeSeriesContainer):
         )
 
 
-
 def get_all_model_containers(
     globals_dict: dict, raise_errors: bool = True
 ) -> Dict[str, TimeSeriesContainer]:
     return pycaret.containers.base_container.get_all_containers(
         globals(), globals_dict, TimeSeriesContainer, raise_errors
     )
-
-from sklearn.utils.validation import check_is_fitted
-
-class BaseDTS(_SktimeForecaster):
-    def __init__(self, regressor, sp=1, model="additive", degree=1, window_length=10):
-        """Base Class for time series using scikit models which includes
-        Deseasonalizing and Detrending
-
-        Parameters
-        ----------
-        regressor : [type]
-            [description]
-        sp : int, optional
-            Seasonality period used to deseasonalize, by default 1
-        model : str, optional
-            model used to deseasonalize, 'multiplicative' or 'additive', by default 'additive'
-        degree : int, optional
-            degree of detrender, by default 1
-        window_length : int, optional
-            Window Length used for the Reduced Forecaster, by default 10
-        """
-        self.regressor = regressor
-        self.sp = sp
-        self.model = model
-        self.degree = degree
-        self.window_length = window_length
-
-    def fit(self, y, X=None, fh=None):
-        self.forecaster_ = TransformedTargetForecaster(
-            [
-                ("deseasonalise", Deseasonalizer(model=self.model, sp=self.sp)),
-                (
-                    "detrend",
-                    Detrender(forecaster=PolynomialTrendForecaster(degree=self.degree)),
-                ),
-                (
-                    "forecast",
-                    ReducedForecaster(
-                        regressor=self.regressor,
-                        scitype="regressor",
-                        window_length=self.window_length,
-                        strategy="recursive",
-                    ),
-                ),
-            ]
-        )
-        self.forecaster_.fit(y=y, X=X, fh=fh)
-        return self
-
-    # def predict(self, X=None):
-    #     return self.forecaster.predict(X=X)
-
-    def predict(self, fh=None, X=None, return_pred_int=False, alpha=DEFAULT_ALPHA):
-        check_is_fitted(self)
-        return self.forecaster_.predict(
-            fh=fh, X=X, return_pred_int=return_pred_int, alpha=alpha
-        )

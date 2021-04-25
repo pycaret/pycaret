@@ -16,7 +16,17 @@ from pycaret.containers.models.time_series import get_all_model_containers
 #############################
 
 # TODO: Eventually remove this and use automatically sourced model names
-_all_models = ["naive", "poly_trend", "arima", "exp_smooth", "theta" , "auto_ets", "rf_dts"]
+_all_models = [
+    "naive",
+    "poly_trend",
+    "arima",
+    "exp_smooth",
+    "theta",
+    "auto_ets",
+    "rf_cds_dt",
+    "et_cds_dt",
+]
+
 
 @pytest.fixture(scope="session", name="load_data")
 def load_data():
@@ -33,7 +43,12 @@ def load_setup(load_data):
     fold = 3
 
     return exp.setup(
-        data=load_data, fh=fh, fold=fold, fold_strategy="expandingwindow", verbose=False
+        data=load_data,
+        fh=fh,
+        fold=fold,
+        fold_strategy="expandingwindow",
+        verbose=False,
+        session_id=42,
     )
 
 
@@ -58,7 +73,7 @@ def model_parameters(model_names):
     Horizons are alternately picked to be either integers or numpy arrays
     """
     parameters = [
-        (name, np.arange(1, randint(6, 24)) if i%2==0  else randint(6, 24))
+        (name, np.arange(1, randint(6, 24)) if i % 2 == 0 else randint(6, 24))
         for i, name in enumerate(model_names)
     ]
     return parameters
@@ -73,7 +88,7 @@ def load_ts_models(load_setup):
     ts_estimators = []
 
     for key in ts_models.keys():
-        if not key.startswith(("ensemble")): # , "poly")):
+        if not key.startswith(("ensemble")):  # , "poly")):
             ts_estimators.append(ts_experiment.create_model(key))
 
     return ts_estimators
@@ -87,14 +102,18 @@ def load_ts_models(load_setup):
 #### Tests Start Here ####
 ##########################
 
+
 def test_create_model(load_setup, model_parameters, load_data):
-    """test create_model functionality
-    """
+    """test create_model functionality"""
     exp = TimeSeriesExperiment()
     for name, fh in model_parameters:
         # Need to create individual setup for each model since the `fh` will be different for all models
         exp.setup(
-            data=load_data, fold=3, fh=fh, fold_strategy="expandingwindow", verbose=False
+            data=load_data,
+            fold=3,
+            fh=fh,
+            fold_strategy="expandingwindow",
+            verbose=False,
         )
         model_obj = exp.create_model(name)
 
@@ -135,9 +154,15 @@ def test_blend_model_predict(load_setup, load_models):
     ts_weights = [uniform(0, 1) for _ in range(len(load_models))]
     fh = ts_experiment.fh
 
-    mean_blender = ts_experiment.blend_models(ts_models, method='mean') #, optimize='MAPE')
-    median_blender = ts_experiment.blend_models(ts_models, method='median') #), optimize='MAPE')
-    voting_blender = ts_experiment.blend_models(ts_models, method='voting', weights=ts_weights) #, optimize='MAPE')
+    mean_blender = ts_experiment.blend_models(
+        ts_models, method="mean"
+    )  # , optimize='MAPE')
+    median_blender = ts_experiment.blend_models(
+        ts_models, method="median"
+    )  # ), optimize='MAPE')
+    voting_blender = ts_experiment.blend_models(
+        ts_models, method="voting", weights=ts_weights
+    )  # , optimize='MAPE')
 
     mean_blender_pred = mean_blender.predict(fh=fh)
     median_blender_pred = median_blender.predict(fh=fh)
@@ -157,12 +182,7 @@ def test_tune_model_grid(model, load_data):
     exp = TimeSeriesExperiment()
     fh = 12
 
-    exp.setup(
-        data=load_data,
-        fold=3,
-        fh=fh,
-        fold_strategy="expandingwindow"
-    )
+    exp.setup(data=load_data, fold=3, fh=fh, fold_strategy="expandingwindow")
 
     model_obj = exp.create_model(model)
     tuned_model_obj = exp.tune_model(model_obj)
@@ -178,12 +198,7 @@ def test_tune_model_random(model, load_data):
     exp = TimeSeriesExperiment()
     fh = 12
 
-    exp.setup(
-        data=load_data,
-        fold=3,
-        fh=fh,
-        fold_strategy="expandingwindow"
-    )
+    exp.setup(data=load_data, fold=3, fh=fh, fold_strategy="expandingwindow")
 
     model_obj = exp.create_model(model)
     tuned_model_obj = exp.tune_model(model_obj, search_algorithm="random")

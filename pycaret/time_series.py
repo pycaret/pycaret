@@ -33,13 +33,17 @@ from sktime.forecasting.model_selection import SlidingWindowSplitter  # type: ig
 warnings.filterwarnings("ignore")
 
 _CURRENT_EXPERIMENT = None
-_CURRENT_EXPERIMENT_EXCEPTION = "_CURRENT_EXPERIMENT global variable is not set. Please run setup() first."
-_CURRENT_EXPERIMENT_DECORATOR_DICT = {"_CURRENT_EXPERIMENT": _CURRENT_EXPERIMENT_EXCEPTION}
+_CURRENT_EXPERIMENT_EXCEPTION = (
+    "_CURRENT_EXPERIMENT global variable is not set. Please run setup() first."
+)
+_CURRENT_EXPERIMENT_DECORATOR_DICT = {
+    "_CURRENT_EXPERIMENT": _CURRENT_EXPERIMENT_EXCEPTION
+}
 
 
 def setup(
     data: Union[pd.Series, pd.DataFrame],
-    #train_size: float = 0.7,
+    # train_size: float = 0.7,
     test_data: Optional[pd.DataFrame] = None,
     preprocess: bool = True,
     imputation_type: str = "simple",
@@ -51,7 +55,9 @@ def setup(
     seasonal_parameter: Optional[Union[int, str]] = None,
     n_jobs: Optional[int] = -1,
     use_gpu: bool = False,
-    custom_pipeline: Union[Any, Tuple[str, Any], List[Any], List[Tuple[str, Any]]] = None,
+    custom_pipeline: Union[
+        Any, Tuple[str, Any], List[Any], List[Tuple[str, Any]]
+    ] = None,
     html: bool = True,
     session_id: Optional[int] = None,
     log_experiment: bool = False,
@@ -226,7 +232,7 @@ def setup(
     set_current_experiment(exp)
     return exp.setup(
         data=data,
-        #train_size=train_size,
+        # train_size=train_size,
         test_data=test_data,
         preprocess=preprocess,
         imputation_type=imputation_type,
@@ -1501,7 +1507,9 @@ def save_model(model, model_name: str, model_only: bool = False, verbose: bool =
 
     """
 
-    return _CURRENT_EXPERIMENT.save_model(model=model, model_name=model_name, model_only=model_only, verbose=verbose)
+    return _CURRENT_EXPERIMENT.save_model(
+        model=model, model_name=model_name, model_only=model_only, verbose=verbose
+    )
 
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
@@ -1604,7 +1612,9 @@ def automl(optimize: str = "R2", use_holdout: bool = False, turbo: bool = True) 
 
     """
 
-    return _CURRENT_EXPERIMENT.automl(optimize=optimize, use_holdout=use_holdout, turbo=turbo)
+    return _CURRENT_EXPERIMENT.automl(
+        optimize=optimize, use_holdout=use_holdout, turbo=turbo
+    )
 
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
@@ -1664,7 +1674,9 @@ def models(
         pandas.DataFrame
 
     """
-    return _CURRENT_EXPERIMENT.models(type=type, internal=internal, raise_errors=raise_errors)
+    return _CURRENT_EXPERIMENT.models(
+        type=type, internal=internal, raise_errors=raise_errors
+    )
 
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
@@ -1994,7 +2006,9 @@ def set_current_experiment(experiment: TimeSeriesExperiment):
     global _CURRENT_EXPERIMENT
 
     if not isinstance(experiment, TimeSeriesExperiment):
-        raise TypeError(f"experiment must be a PyCaret TimeSeriesExperiment object, got {type(experiment)}.")
+        raise TypeError(
+            f"experiment must be a PyCaret TimeSeriesExperiment object, got {type(experiment)}."
+        )
     _CURRENT_EXPERIMENT = experiment
 
 
@@ -2024,7 +2038,9 @@ def get_folds(cv, y) -> Generator[Tuple[pd.Series, pd.Series], None, None]:
             y_test_initial = y.iloc[test_initial]  # Includes all entries after y_train
 
             rolling_y_train = y_train_initial.copy(deep=True)
-            y_test = y_test_initial.iloc[np.arange(len(cv.fh))]  # filter to only what is needed
+            y_test = y_test_initial.iloc[
+                np.arange(len(cv.fh))
+            ]  # filter to only what is needed
         else:
             # Subsequent Splits in sktime
             for j, (train, test) in enumerate(cv.split(y_test_initial)):
@@ -2033,7 +2049,9 @@ def get_folds(cv, y) -> Generator[Tuple[pd.Series, pd.Series], None, None]:
                     y_test = y_test_initial.iloc[test]
 
                     rolling_y_train = pd.concat([rolling_y_train, y_train])
-                    rolling_y_train = rolling_y_train[~rolling_y_train.index.duplicated(keep="first")]
+                    rolling_y_train = rolling_y_train[
+                        ~rolling_y_train.index.duplicated(keep="first")
+                    ]
 
                     if isinstance(cv, SlidingWindowSplitter):
                         rolling_y_train = rolling_y_train.iloc[-cv.initial_window :]
@@ -2050,8 +2068,8 @@ def cross_validate_ts(
     n_jobs,
     return_train_score,
     error_score=0,
-    verbose: int=0
-    ) -> Dict[str, np.array]:
+    verbose: int = 0,
+) -> Dict[str, np.array]:
     """Performs Cross Validation on time series data
 
     Parallelization is based on `sklearn` cross_validate function [1]
@@ -2098,17 +2116,21 @@ def cross_validate_ts(
         # n_jobs = 1
         scoring = _get_metrics_dict_ts(scoring)
         parallel = Parallel(n_jobs=n_jobs)
-        out = parallel(delayed(_fit_and_score)(
-            forecaster=clone(forecaster),
-            y=y, X=X,
-            scoring=scoring,
-            train=train,
-            test=test,
-            parameters=None,
-            fit_params=fit_params,
-            return_train_score=return_train_score,
-            error_score=error_score)
-            for train, test in get_folds(cv, y))
+        out = parallel(
+            delayed(_fit_and_score)(
+                forecaster=clone(forecaster),
+                y=y,
+                X=X,
+                scoring=scoring,
+                train=train,
+                test=test,
+                parameters=None,
+                fit_params=fit_params,
+                return_train_score=return_train_score,
+                error_score=error_score,
+            )
+            for train, test in get_folds(cv, y)
+        )
     # raise key exceptions
     except Exception:
         raise
@@ -2119,9 +2141,10 @@ def cross_validate_ts(
 
     return test_scores
 
+
 def _get_metrics_dict_ts(
     metrics_dict: Dict[str, Union[str, _PredictScorer]]
-    ) -> Dict[str, _PredictScorer]:
+) -> Dict[str, _PredictScorer]:
     """Returns a metrics dictionary in which all values are callables
     of type _PredictScorer
 
@@ -2151,8 +2174,9 @@ def _fit_and_score(
     parameters,
     fit_params,
     return_train_score,
-    error_score=0):
-    """ Fits the forecaster on a single train split and scores on the test split
+    error_score=0,
+):
+    """Fits the forecaster on a single train split and scores on the test split
     Similar to _fit_and_score from `sklearn` [1] (and to some extent `sktime` [2]).
     Difference is that [1] operates on a single fold only, whereas [2] operates on all cv folds.
     Ref:
@@ -2220,7 +2244,7 @@ def _fit_and_score(
     return fold_scores, fit_time, score_time
 
 
-class BaseGridSearch():
+class BaseGridSearch:
     """
     Parallelization is based predominantly on [1]. Also similar to [2]
 
@@ -2228,14 +2252,15 @@ class BaseGridSearch():
     [1] https://github.com/scikit-learn/scikit-learn/blob/0.24.1/sklearn/model_selection/_search.py#L795
     [2] https://github.com/scikit-optimize/scikit-optimize/blob/v0.8.1/skopt/searchcv.py#L410
     """
+
     def __init__(
         self,
         forecaster,
         cv,
         n_jobs=None,
         pre_dispatch=None,
-        refit: bool=False,
-        refit_metric: str='smape',
+        refit: bool = False,
+        refit_metric: str = "smape",
         scoring=None,
         verbose=0,
         error_score=None,
@@ -2246,7 +2271,7 @@ class BaseGridSearch():
         self.n_jobs = n_jobs
         self.pre_dispatch = pre_dispatch
         self.refit = refit
-        self.refit_metric=refit_metric
+        self.refit_metric = refit_metric
         self.scoring = scoring
         self.verbose = verbose
         self.error_score = error_score
@@ -2254,7 +2279,6 @@ class BaseGridSearch():
 
         self.best_params_ = {}
         self.cv_results_ = {}
-
 
     def fit(self, y, X=None, **fit_params):
         y, X = check_y_X(y, X)
@@ -2274,7 +2298,7 @@ class BaseGridSearch():
         if refit_metric not in list(scorers.keys()):
             raise ValueError(
                 f"Refit Metric: '{refit_metric}' is not available. ",
-                f"Available Values are: {list(scorers.keys())}"
+                f"Available Values are: {list(scorers.keys())}",
             )
 
         results = {}
@@ -2291,23 +2315,23 @@ class BaseGridSearch():
                     f"Fitting {n_splits} folds for each of {n_candidates} "
                     f"candidates, totalling {n_candidates * n_splits} fits"
                 )
-                print(f"Candidate Params: {candidate_params}")
+                # print(f"Candidate Params: {candidate_params}")
 
             parallel = Parallel(
-                n_jobs=self.n_jobs,
-                verbose=self.verbose,
-                pre_dispatch=self.pre_dispatch
+                n_jobs=self.n_jobs, verbose=self.verbose, pre_dispatch=self.pre_dispatch
             )
-            out = parallel(delayed(_fit_and_score)(
+            out = parallel(
+                delayed(_fit_and_score)(
                     forecaster=clone(base_forecaster),
-                    y=y, X=X,
+                    y=y,
+                    X=X,
                     scoring=scorers,
                     train=train,
                     test=test,
                     parameters=parameters,
                     fit_params=fit_params,
                     return_train_score=self.return_train_score,
-                    error_score=self.error_score
+                    error_score=self.error_score,
                 )
                 for parameters in candidate_params
                 for train, test in get_folds(cv, y)
@@ -2325,24 +2349,17 @@ class BaseGridSearch():
 
             nonlocal results
             results = self._format_results(
-                all_candidate_params,
-                scorers,
-                all_out,
-                n_splits
+                all_candidate_params, scorers, all_out, n_splits
             )
             return results
 
         self._run_search(evaluate_candidates)
 
         self.best_index_ = results["rank_test_%s" % refit_metric].argmin()
-        self.best_score_ = results["mean_test_%s" % refit_metric][
-            self.best_index_
-        ]
+        self.best_score_ = results["mean_test_%s" % refit_metric][self.best_index_]
         self.best_params_ = results["params"][self.best_index_]
 
-        self.best_forecaster_ = clone(base_forecaster).set_params(
-            **self.best_params_
-        )
+        self.best_forecaster_ = clone(base_forecaster).set_params(**self.best_params_)
 
         if self.refit:
             refit_start_time = time.time()
@@ -2360,8 +2377,7 @@ class BaseGridSearch():
 
     @staticmethod
     def _format_results(candidate_params, scorers, out, n_splits):
-        """ From sklearn and sktime
-        """
+        """From sklearn and sktime"""
         n_candidates = len(candidate_params)
         (test_scores_dict, fit_time, score_time) = zip(*out)
         test_scores_dict = _aggregate_score_dicts(test_scores_dict)
@@ -2373,36 +2389,41 @@ class BaseGridSearch():
         # without passing greater_is_better (as done in sktime) and processing
         # it as such.
         def _store(
-            key_name, array, weights=None,
-            splits=False, rank=False, greater_is_better=False
+            key_name,
+            array,
+            weights=None,
+            splits=False,
+            rank=False,
+            greater_is_better=False,
         ):
             """A small helper to store the scores/times to the cv_results_"""
             # When iterated first by splits, then by parameters
             # We want `array` to have `n_candidates` rows and `n_splits` cols.
-            array = np.array(array, dtype=np.float64).reshape(n_candidates,
-                                                              n_splits)
+            array = np.array(array, dtype=np.float64).reshape(n_candidates, n_splits)
             if splits:
                 for split_idx in range(n_splits):
                     # Uses closure to alter the results
-                    results["split%d_%s"
-                            % (split_idx, key_name)] = array[:, split_idx]
+                    results["split%d_%s" % (split_idx, key_name)] = array[:, split_idx]
 
             array_means = np.average(array, axis=1, weights=weights)
-            results['mean_%s' % key_name] = array_means
+            results["mean_%s" % key_name] = array_means
 
-            if (key_name.startswith(("train_", "test_")) and
-                    np.any(~np.isfinite(array_means))):
+            if key_name.startswith(("train_", "test_")) and np.any(
+                ~np.isfinite(array_means)
+            ):
                 warnings.warn(
                     f"One or more of the {key_name.split('_')[0]} scores "
                     f"are non-finite: {array_means}",
-                    category=UserWarning
+                    category=UserWarning,
                 )
 
             # Weighted std is not directly available in numpy
-            array_stds = np.sqrt(np.average((array -
-                                             array_means[:, np.newaxis]) ** 2,
-                                            axis=1, weights=weights))
-            results['std_%s' % key_name] = array_stds
+            array_stds = np.sqrt(
+                np.average(
+                    (array - array_means[:, np.newaxis]) ** 2, axis=1, weights=weights
+                )
+            )
+            results["std_%s" % key_name] = array_stds
 
             if rank:
                 # This section is taken from sktime
@@ -2440,15 +2461,16 @@ class BaseGridSearch():
         for scorer_name, scorer in scorers.items():
             # Computed the (weighted) mean and std for test scores alone
             _store(
-                'test_%s' % scorer_name,
+                "test_%s" % scorer_name,
                 test_scores_dict[scorer_name],
                 splits=True,
                 rank=True,
                 weights=None,
-                greater_is_better=True if scorer._sign == 1 else False
+                greater_is_better=True if scorer._sign == 1 else False,
             )
 
         return results
+
 
 class ForecastingGridSearchCV(BaseGridSearch):
     def __init__(
@@ -2459,7 +2481,7 @@ class ForecastingGridSearchCV(BaseGridSearch):
         scoring=None,
         n_jobs=None,
         refit=True,
-        refit_metric: str='smape',
+        refit_metric: str = "smape",
         verbose=0,
         pre_dispatch="2*n_jobs",
         error_score=np.nan,
@@ -2484,6 +2506,7 @@ class ForecastingGridSearchCV(BaseGridSearch):
         """Search all candidates in param_grid"""
         evaluate_candidates(ParameterGrid(self.param_grid))
 
+
 class ForecastingRandomizedSearchCV(BaseGridSearch):
     def __init__(
         self,
@@ -2494,12 +2517,12 @@ class ForecastingRandomizedSearchCV(BaseGridSearch):
         scoring=None,
         n_jobs=None,
         refit=True,
-        refit_metric: str='smape',
+        refit_metric: str = "smape",
         verbose=0,
         random_state=None,
         pre_dispatch="2*n_jobs",
         error_score=np.nan,
-        return_train_score=False
+        return_train_score=False,
     ):
         super(ForecastingRandomizedSearchCV, self).__init__(
             forecaster=forecaster,
@@ -2511,7 +2534,7 @@ class ForecastingRandomizedSearchCV(BaseGridSearch):
             scoring=scoring,
             verbose=verbose,
             error_score=error_score,
-            return_train_score=return_train_score
+            return_train_score=return_train_score,
         )
         self.param_distributions = param_distributions
         self.n_iter = n_iter
@@ -2521,8 +2544,6 @@ class ForecastingRandomizedSearchCV(BaseGridSearch):
         """Search n_iter candidates from param_distributions"""
         return evaluate_candidates(
             ParameterSampler(
-                self.param_distributions,
-                self.n_iter,
-                random_state=self.random_state
+                self.param_distributions, self.n_iter, random_state=self.random_state
             )
         )
