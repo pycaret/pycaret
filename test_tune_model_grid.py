@@ -161,10 +161,15 @@ exp.setup(data=y, fh=fh, fold=fold, fold_strategy="expandingwindow", session_id=
 # print(et_cds_dt)
 # print(tuned_et_cds_dt)
 
-# Works
-xgboost_cds_dt = exp.create_model("xgboost_cds_dt")
-tuned_xgboost_cds_dt = exp.tune_model(xgboost_cds_dt)
-print(xgboost_cds_dt)
-print(tuned_xgboost_cds_dt)
+# # Works
+# xgboost_cds_dt = exp.create_model("xgboost_cds_dt")
+# tuned_xgboost_cds_dt = exp.tune_model(xgboost_cds_dt)
+# print(xgboost_cds_dt)
+# print(tuned_xgboost_cds_dt)
+
+lightgbm_cds_dt = exp.create_model("lightgbm_cds_dt")
+tuned_lightgbm_cds_dt = exp.tune_model(lightgbm_cds_dt)
+print(lightgbm_cds_dt)
+print(tuned_lightgbm_cds_dt)
 
 print("TUNE TEST DONE")
