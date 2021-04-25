@@ -938,8 +938,8 @@ class LGBMCdsDtContainer(TimeSeriesContainer):
             "regressor__n_estimators": IntUniformDistribution(10, 300),
             "regressor__learning_rate": UniformDistribution(0.000001, 0.5, log=True),
             "regressor__max_depth": IntUniformDistribution(1, 10),
-            "regressor__subsample": UniformDistribution(0, 1),
-            "regressor__colsample_bytree": UniformDistribution(0, 1),
+            # "regressor__subsample": UniformDistribution(0, 1),  # TODO: Potentially lightgbm.basic.LightGBMError: Check failed: (num_data) > (0)
+            # "regressor__colsample_bytree": UniformDistribution(0, 1),  # TODO: Potentially lightgbm.basic.LightGBMError: Check failed: (num_data) > (0)
             # "regressor__min_split_gain": UniformDistribution(0, 1),  # TODO: lightgbm.basic.LightGBMError: Check failed: (num_data) > (0)
             "regressor__reg_alpha": UniformDistribution(0.0000000001, 10, log=True),
             "regressor__reg_lambda": UniformDistribution(0.0000000001, 10, log=True),
