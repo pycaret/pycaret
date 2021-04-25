@@ -48,7 +48,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         self.variable_keys = self.variable_keys.difference(
             {
                 "X",
-                "X_train",
+                # "X_train",
                 "X_test",
                 "target_param",
                 "iterative_imputation_iters_param",
@@ -59,7 +59,12 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 "fold_groups_param",
             }
         )
-        self.variable_keys = self.variable_keys.union({"fh", "seasonal_parameter",})
+        self.variable_keys = self.variable_keys.union(
+            {
+                "fh",
+                "seasonal_parameter",
+            }
+        )
         return
 
     def _get_setup_display(self, **kwargs) -> Styler:
@@ -86,7 +91,9 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 ]
             )
             + (
-                [["Imputation Type", kwargs["imputation_type"]],]
+                [
+                    ["Imputation Type", kwargs["imputation_type"]],
+                ]
                 if self.preprocess
                 else []
             ),
@@ -108,8 +115,10 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             ).items()
             if not v.is_special
         }
-        all_models_internal = pycaret.containers.models.time_series.get_all_model_containers(
-            self.variables, raise_errors=raise_errors
+        all_models_internal = (
+            pycaret.containers.models.time_series.get_all_model_containers(
+                self.variables, raise_errors=raise_errors
+            )
         )
         return all_models, all_models_internal
 
@@ -731,7 +740,9 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 self.display_container.append(model_results)
 
                 display.display(
-                    model_results, clear=system, override=False if not system else None,
+                    model_results,
+                    clear=system,
+                    override=False if not system else None,
                 )
 
                 self.logger.info(f"display_container: {len(self.display_container)}")
@@ -758,7 +769,8 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         from pycaret.time_series import cross_validate_ts, _get_cv_n_folds
 
         display.update_monitor(
-            1, f"Fitting {_get_cv_n_folds(data_y, cv)} Folds",
+            1,
+            f"Fitting {_get_cv_n_folds(data_y, cv)} Folds",
         )
         display.display_monitor()
         """
@@ -816,7 +828,10 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         self.logger.info("Creating metrics dataframe")
 
         model_results = pd.DataFrame(score_dict)
-        model_avgs = pd.DataFrame(avgs_dict, index=["Mean", "SD"],)
+        model_avgs = pd.DataFrame(
+            avgs_dict,
+            index=["Mean", "SD"],
+        )
         model_results = model_results.append(model_avgs)
         # Round the results
         model_results = model_results.round(round)
@@ -1492,72 +1507,72 @@ class TimeSeriesExperiment(_SupervisedExperiment):
     ) -> Any:
 
         """
-        This function ensembles a given estimator. The output of this function is
-        a score grid with CV scores by fold. Metrics evaluated during CV can be
-        accessed using the ``get_metrics`` function. Custom metrics can be added
-        or removed using ``add_metric`` and ``remove_metric`` function.
+            This function ensembles a given estimator. The output of this function is
+            a score grid with CV scores by fold. Metrics evaluated during CV can be
+            accessed using the ``get_metrics`` function. Custom metrics can be added
+            or removed using ``add_metric`` and ``remove_metric`` function.
 
 
-        Example
-        --------
-        >>> from pycaret.datasets import get_data
-        >>> boston = get_data('boston')
-        >>> from pycaret.regression import *
-        >>> exp_name = setup(data = boston,  target = 'medv')
-        >>> dt = create_model('dt')
-        >>> bagged_dt = ensemble_model(dt, method = 'Bagging')
+            Example
+            --------
+            >>> from pycaret.datasets import get_data
+            >>> boston = get_data('boston')
+            >>> from pycaret.regression import *
+            >>> exp_name = setup(data = boston,  target = 'medv')
+            >>> dt = create_model('dt')
+            >>> bagged_dt = ensemble_model(dt, method = 'Bagging')
 
 
-    estimator: scikit-learn compatible object
-            Trained model object
+        estimator: scikit-learn compatible object
+                Trained model object
 
 
-        method: str, default = 'Bagging'
-            Method for ensembling base estimator. It can be 'Bagging' or 'Boosting'.
+            method: str, default = 'Bagging'
+                Method for ensembling base estimator. It can be 'Bagging' or 'Boosting'.
 
 
-        fold: int or scikit-learn compatible CV generator, default = None
-            Controls cross-validation. If None, the CV generator in the ``fold_strategy``
-            parameter of the ``setup`` function is used. When an integer is passed,
-            it is interpreted as the 'n_splits' parameter of the CV generator in the
-            ``setup`` function.
+            fold: int or scikit-learn compatible CV generator, default = None
+                Controls cross-validation. If None, the CV generator in the ``fold_strategy``
+                parameter of the ``setup`` function is used. When an integer is passed,
+                it is interpreted as the 'n_splits' parameter of the CV generator in the
+                ``setup`` function.
 
 
-        n_estimators: int, default = 10
-            The number of base estimators in the ensemble. In case of perfect fit, the
-            learning procedure is stopped early.
+            n_estimators: int, default = 10
+                The number of base estimators in the ensemble. In case of perfect fit, the
+                learning procedure is stopped early.
 
 
-        round: int, default = 4
-            Number of decimal places the metrics in the score grid will be rounded to.
+            round: int, default = 4
+                Number of decimal places the metrics in the score grid will be rounded to.
 
 
-        choose_better: bool, default = False
-            When set to True, the returned object is always better performing. The
-            metric used for comparison is defined by the ``optimize`` parameter.
+            choose_better: bool, default = False
+                When set to True, the returned object is always better performing. The
+                metric used for comparison is defined by the ``optimize`` parameter.
 
 
-        optimize: str, default = 'R2'
-            Metric to compare for model selection when ``choose_better`` is True.
+            optimize: str, default = 'R2'
+                Metric to compare for model selection when ``choose_better`` is True.
 
 
-        fit_kwargs: dict, default = {} (empty dict)
-            Dictionary of arguments passed to the fit method of the model.
+            fit_kwargs: dict, default = {} (empty dict)
+                Dictionary of arguments passed to the fit method of the model.
 
 
-        groups: str or array-like, with shape (n_samples,), default = None
-            Optional group labels when GroupKFold is used for the cross validation.
-            It takes an array with shape (n_samples, ) where n_samples is the number
-            of rows in training dataset. When string is passed, it is interpreted as
-            the column name in the dataset containing group labels.
+            groups: str or array-like, with shape (n_samples,), default = None
+                Optional group labels when GroupKFold is used for the cross validation.
+                It takes an array with shape (n_samples, ) where n_samples is the number
+                of rows in training dataset. When string is passed, it is interpreted as
+                the column name in the dataset containing group labels.
 
 
-        verbose: bool, default = True
-            Score grid is not printed when verbose is set to False.
+            verbose: bool, default = True
+                Score grid is not printed when verbose is set to False.
 
 
-        Returns:
-            Trained Model
+            Returns:
+                Trained Model
 
         """
 
@@ -2150,7 +2165,11 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         )
 
     def deploy_model(
-        self, model, model_name: str, authentication: dict, platform: str = "aws",
+        self,
+        model,
+        model_name: str,
+        authentication: dict,
+        platform: str = "aws",
     ):
 
         """
@@ -2460,7 +2479,9 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         """
 
         return super().get_metrics(
-            reset=reset, include_custom=include_custom, raise_errors=raise_errors,
+            reset=reset,
+            include_custom=include_custom,
+            raise_errors=raise_errors,
         )
 
     def add_metric(
@@ -2578,4 +2599,3 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         """
 
         return super().get_logs(experiment_name=experiment_name, save=save)
-
