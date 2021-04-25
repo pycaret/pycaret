@@ -15,8 +15,6 @@ from pycaret.containers.models.time_series import get_all_model_containers
 #### Fixtures Start Here ####
 #############################
 
-# TODO: Eventually remove this and use automatically sourced model names
-_all_models = ["naive", "poly_trend", "arima", "exp_smooth", "theta" , "auto_ets", "rf_dts"]
 
 @pytest.fixture(scope="session", name="load_data")
 def load_data():
@@ -33,14 +31,47 @@ def load_setup(load_data):
     fold = 3
 
     return exp.setup(
-        data=load_data, fh=fh, fold=fold, fold_strategy="expandingwindow", verbose=False
+        data=load_data,
+        fh=fh,
+        fold=fold,
+        fold_strategy="expandingwindow",
+        verbose=False,
+        session_id=42,
     )
 
 
-@pytest.fixture(scope="session", name="model_names")
-def model_names():
+@pytest.fixture(scope="session", name="load_models")
+def load_ts_models(load_setup):
+    """Load all time series module models"""
+    globals_dict = {"seed": 0, "n_jobs_param": -1, "gpu_param": False}
+    ts_models = get_all_model_containers(globals_dict)
+    ts_experiment = load_setup
+    ts_estimators = []
+
+    for key in ts_models.keys():
+        if not key.startswith(("ensemble")):
+            ts_estimators.append(ts_experiment.create_model(key))
+
+    return ts_estimators
+
+
+###########################
+#### Fixtures End Here ####
+###########################
+
+##############################
+#### Functions Start Here ####
+##############################
+
+# NOTE: Fixtures can not be used to parameterize tests
+# https://stackoverflow.com/questions/52764279/pytest-how-to-parametrize-a-test-with-a-list-that-is-returned-from-a-fixture
+# Hence, we have to create functions and create the parameterized list first
+# (must happen during collect phase) before passing it to mark.parameterize.
+
+
+def return_model_names():
     """Return all model names."""
-    globals_dict = {"seed": 0, "n_jobs_param": -1}
+    globals_dict = {"seed": 0, "n_jobs_param": -1, "gpu_param": False}
     model_containers = get_all_model_containers(globals_dict)
 
     model_names_ = []
@@ -51,54 +82,27 @@ def model_names():
     return model_names_
 
 
-# @pytest.fixture(scope="session", name="model_parameters")
-# def model_parameters(model_names):
-#     """Parameterize individual models.
-#     Returns the model names and the corresponding forecast horizons.
-#     Horizons are alternately picked to be either integers or numpy arrays
-#     """
-#     parameters = [
-#         (name, np.arange(1, randint(6, 24)) if i%2==0  else randint(6, 24))
-#         for i, name in enumerate(model_names)
-#     ]
-#     return parameters
-
-def model_parameters():
-
-    globals_dict = {"seed": 0, "n_jobs_param": -1}
-    model_containers = get_all_model_containers(globals_dict)
-
-    model_names_ = []
-    for model_name in model_containers.keys():
-        if not model_name.startswith(("ensemble")):
-            model_names_.append(model_name)
-
+def return_model_parameters():
+    """Parameterize individual models.
+    Returns the model names and the corresponding forecast horizons.
+    Horizons are alternately picked to be either integers or numpy arrays
+    """
+    model_names = return_model_names()
     parameters = [
-        (name, np.arange(1, randint(6, 24)) if i%2==0  else randint(6, 24))
-        for i, name in enumerate(model_names_)
+        (name, np.arange(1, randint(6, 24)) if i % 2 == 0 else randint(6, 24))
+        for i, name in enumerate(model_names)
     ]
 
     return parameters
 
 
-@pytest.fixture(scope="session", name="load_models")
-def load_ts_models(load_setup):
-    """Load all time series module models"""
-    globals_dict = {"seed": 0, "n_jobs_param": -1}
-    ts_models = get_all_model_containers(globals_dict)
-    ts_experiment = load_setup
-    ts_estimators = []
+_model_names = return_model_names()
+_model_parameters = return_model_parameters()
 
-    for key in ts_models.keys():
-        if not key.startswith(("ensemble")): # , "poly")):
-            ts_estimators.append(ts_experiment.create_model(key))
+############################
+#### Functions End Here ####
+############################
 
-    return ts_estimators
-
-
-###########################
-#### Fixtures End Here ####
-###########################
 
 ##########################
 #### Tests Start Here ####
@@ -126,15 +130,16 @@ def test_set_up_valid_seasonality(load_data):
     assert exceptionmsg == f"Autocorrelation Seasonality test failed: Invalid Seasonality Period {seasonal_parameter}"
 
 
-@pytest.mark.parametrize("model_parameter", model_parameters())
-def test_create_model(load_setup, model_parameter, load_data):
-    """test create_model functionality
-    """
+@pytest.mark.parametrize("name, fh", _model_parameters)
+def test_create_model(name, fh, load_data):
+    """test create_model functionality"""
     exp = TimeSeriesExperiment()
-    name, fh = model_parameter
-    # Need to create individual setup for each model since the `fh` will be different for all models
     exp.setup(
-        data=load_data, fold=3, fh=fh, fold_strategy="expandingwindow", verbose=False
+        data=load_data,
+        fold=3,
+        fh=fh,
+        fold_strategy="expandingwindow",
+        verbose=False,
     )
     model_obj = exp.create_model(name)
 
@@ -175,9 +180,15 @@ def test_blend_model_predict(load_setup, load_models):
     ts_weights = [uniform(0, 1) for _ in range(len(load_models))]
     fh = ts_experiment.fh
 
-    mean_blender = ts_experiment.blend_models(ts_models, method='mean') #, optimize='MAPE')
-    median_blender = ts_experiment.blend_models(ts_models, method='median') #), optimize='MAPE')
-    voting_blender = ts_experiment.blend_models(ts_models, method='voting', weights=ts_weights) #, optimize='MAPE')
+    mean_blender = ts_experiment.blend_models(
+        ts_models, method="mean"
+    )  # , optimize='MAPE')
+    median_blender = ts_experiment.blend_models(
+        ts_models, method="median"
+    )  # ), optimize='MAPE')
+    voting_blender = ts_experiment.blend_models(
+        ts_models, method="voting", weights=ts_weights
+    )  # , optimize='MAPE')
 
     mean_blender_pred = mean_blender.predict(fh=fh)
     median_blender_pred = median_blender.predict(fh=fh)
@@ -192,7 +203,7 @@ def test_blend_model_predict(load_setup, load_models):
     assert median_voting_equal == False
 
 
-@pytest.mark.parametrize("model", _all_models)
+@pytest.mark.parametrize("model", _model_names)
 def test_tune_model_grid(model, load_data):
     exp = TimeSeriesExperiment()
     fh = 12
@@ -214,7 +225,7 @@ def test_tune_model_grid(model, load_data):
     assert np.all(y_pred.index == expected_period_index)
 
 
-@pytest.mark.parametrize("model", _all_models)
+@pytest.mark.parametrize("model", _model_names)
 def test_tune_model_random(model, load_data):
     exp = TimeSeriesExperiment()
     fh = 12
