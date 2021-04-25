@@ -43,7 +43,7 @@ def load_setup(load_data):
 @pytest.fixture(scope="session", name="load_models")
 def load_ts_models(load_setup):
     """Load all time series module models"""
-    globals_dict = {"seed": 0, "n_jobs_param": -1}
+    globals_dict = {"seed": 0, "n_jobs_param": -1, "gpu_param": False}
     ts_models = get_all_model_containers(globals_dict)
     ts_experiment = load_setup
     ts_estimators = []
