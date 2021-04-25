@@ -15,19 +15,6 @@ from pycaret.containers.models.time_series import get_all_model_containers
 #### Fixtures Start Here ####
 #############################
 
-# TODO: Eventually remove this and use automatically sourced model names
-_all_models = [
-    "naive",
-    "poly_trend",
-    "arima",
-    "exp_smooth",
-    "theta",
-    "auto_ets",
-    "rf_cds_dt",
-    "et_cds_dt",
-]
-
-
 @pytest.fixture(scope="session", name="load_data")
 def load_data():
     """Load Pycaret Airline dataset."""
@@ -52,33 +39,6 @@ def load_setup(load_data):
     )
 
 
-@pytest.fixture(scope="session", name="model_names")
-def model_names():
-    """Return all model names."""
-    globals_dict = {"seed": 0, "n_jobs_param": -1}
-    model_containers = get_all_model_containers(globals_dict)
-
-    model_names_ = []
-    for model_name in model_containers.keys():
-        if not model_name.startswith(("ensemble")):
-            model_names_.append(model_name)
-
-    return model_names_
-
-
-@pytest.fixture(scope="session", name="model_parameters")
-def model_parameters(model_names):
-    """Parameterize individual models.
-    Returns the model names and the corresponding forecast horizons.
-    Horizons are alternately picked to be either integers or numpy arrays
-    """
-    parameters = [
-        (name, np.arange(1, randint(6, 24)) if i % 2 == 0 else randint(6, 24))
-        for i, name in enumerate(model_names)
-    ]
-    return parameters
-
-
 @pytest.fixture(scope="session", name="load_models")
 def load_ts_models(load_setup):
     """Load all time series module models"""
@@ -98,31 +58,74 @@ def load_ts_models(load_setup):
 #### Fixtures End Here ####
 ###########################
 
+##############################
+#### Functions Start Here ####
+##############################
+
+# NOTE: Fixtures can not be used to parameterize tests
+# https://stackoverflow.com/questions/52764279/pytest-how-to-parametrize-a-test-with-a-list-that-is-returned-from-a-fixture
+# Hence, we have to create functions and create the parameterized list first
+# (must happen during collect phase) before passing it to mark.parameterize.
+
+
+def return_model_names():
+    """Return all model names."""
+    globals_dict = {"seed": 0, "n_jobs_param": -1}
+    model_containers = get_all_model_containers(globals_dict)
+
+    model_names_ = []
+    for model_name in model_containers.keys():
+        if not model_name.startswith(("ensemble")):
+            model_names_.append(model_name)
+
+    return model_names_
+
+
+def return_model_parameters():
+    """Parameterize individual models.
+    Returns the model names and the corresponding forecast horizons.
+    Horizons are alternately picked to be either integers or numpy arrays
+    """
+    model_names = return_model_names()
+    parameters = [
+        (name, np.arange(1, randint(6, 24)) if i % 2 == 0 else randint(6, 24))
+        for i, name in enumerate(model_names)
+    ]
+    return parameters
+
+
+_model_names = return_model_names()
+_model_parameters = return_model_parameters()
+
+############################
+#### Functions End Here ####
+############################
+
+
 ##########################
 #### Tests Start Here ####
 ##########################
 
 
-def test_create_model(load_setup, model_parameters, load_data):
+@pytest.mark.parametrize("name, fh", _model_parameters)
+def test_create_model(name, fh, load_data):
     """test create_model functionality"""
     exp = TimeSeriesExperiment()
-    for name, fh in model_parameters:
-        # Need to create individual setup for each model since the `fh` will be different for all models
-        exp.setup(
-            data=load_data,
-            fold=3,
-            fh=fh,
-            fold_strategy="expandingwindow",
-            verbose=False,
-        )
-        model_obj = exp.create_model(name)
+    exp.setup(
+        data=load_data,
+        fold=3,
+        fh=fh,
+        fold_strategy="expandingwindow",
+        verbose=False,
+    )
+    model_obj = exp.create_model(name)
 
-        y_pred = model_obj.predict()
-        assert isinstance(y_pred, pd.Series)
+    y_pred = model_obj.predict()
+    assert isinstance(y_pred, pd.Series)
 
-        fh_index = fh if isinstance(fh, int) else fh[-1]
-        expected_period_index = load_data.iloc[-fh_index:].index
-        assert np.all(y_pred.index == expected_period_index)
+    fh_index = fh if isinstance(fh, int) else fh[-1]
+    expected_period_index = load_data.iloc[-fh_index:].index
+    assert np.all(y_pred.index == expected_period_index)
 
 
 @pytest.mark.parametrize("method", _ENSEMBLE_METHODS)
@@ -177,7 +180,7 @@ def test_blend_model_predict(load_setup, load_models):
     assert median_voting_equal == False
 
 
-@pytest.mark.parametrize("model", _all_models)
+@pytest.mark.parametrize("model", _model_names)
 def test_tune_model_grid(model, load_data):
     exp = TimeSeriesExperiment()
     fh = 12
@@ -193,7 +196,7 @@ def test_tune_model_grid(model, load_data):
     assert np.all(y_pred.index == expected_period_index)
 
 
-@pytest.mark.parametrize("model", _all_models)
+@pytest.mark.parametrize("model", _model_names)
 def test_tune_model_random(model, load_data):
     exp = TimeSeriesExperiment()
     fh = 12
