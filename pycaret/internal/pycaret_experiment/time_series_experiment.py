@@ -355,7 +355,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             index_freq = index_freq.split("-")[0] or index_freq
 
             if index_freq in SeasonalParameter.__members__:
-                seasonal_parameter = SeasonalParameter[index_freq].value
+                self.seasonal_parameter = SeasonalParameter[index_freq].value
             else:
                 raise ValueError(
                     f"Unsupported Period frequency: {index_freq}, valid Period frequencies: {', '.join(SeasonalParameter.__members__.keys())}"
@@ -370,11 +370,13 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
             if isinstance(seasonal_parameter, str):
                 try:
-                    seasonal_parameter = SeasonalParameter[seasonal_parameter]
+                    self.seasonal_parameter = SeasonalParameter[seasonal_parameter]
                 except KeyError:
                     raise ValueError(
                         f"Unsupported Period frequency: {seasonal_parameter}, valid Period frequencies: {', '.join(SeasonalParameter.__members__.keys())}"
                     )
+
+            self.seasonal_parameter = seasonal_parameter
 
         if isinstance(data, (pd.Series, pd.DataFrame)):
             if isinstance(data, pd.DataFrame):
@@ -419,10 +421,10 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         # data[data.columns[0]] = data[data.columns[0]].astype("float32")
 
         # check valid seasonal parameter
-        valid_seasonality = autocorrelation_seasonality_test(data[data.columns[0]], seasonal_parameter)
+        valid_seasonality = autocorrelation_seasonality_test(data[data.columns[0]], self.seasonal_parameter)
 
         if not valid_seasonality:
-            raise ValueError(f"Autocorrelation Seasonality test failed: Invalid Seasonality Period {seasonal_parameter}")
+            LOGGER.warning(f"Autocorrelation Seasonality test failed: Invalid Seasonality Period {self.seasonal_parameter}")
 
         return super().setup(
             data=data,
