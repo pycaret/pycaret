@@ -423,8 +423,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         # check valid seasonal parameter
         valid_seasonality = autocorrelation_seasonality_test(data[data.columns[0]], self.seasonal_parameter)
 
-        if not valid_seasonality:
-            LOGGER.warning(f"Autocorrelation Seasonality test failed: Invalid Seasonality Period {self.seasonal_parameter}")
+        self.seasonality_present = True if valid_seasonality else False
 
         return super().setup(
             data=data,
