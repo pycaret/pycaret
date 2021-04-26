@@ -198,6 +198,11 @@ class TimeSeriesContainer(ModelContainer):
         return dict(d)
 
 
+#########################
+#### BASELINE MODELS ####
+#########################
+
+
 class NaiveContainer(TimeSeriesContainer):
     def __init__(self, globals_dict: dict) -> None:
         logger = get_logger()
@@ -269,6 +274,11 @@ class PolyTrendContainer(TimeSeriesContainer):
             tune_args=tune_args,
             is_gpu_enabled=gpu_imported,
         )
+
+
+######################################
+#### CLASSICAL STATISTICAL MODELS ####
+######################################
 
 
 class ArimaContainer(TimeSeriesContainer):
@@ -562,26 +572,43 @@ class ThetaContainer(TimeSeriesContainer):
         )
 
 
-class RandomForestCdsDtContainer(TimeSeriesContainer):
+#################################
+#### REGRESSION BASED MODELS ####
+#################################
+
+# ===============#
+# LINEAR MODELS #
+# ===============#
+
+
+class LinearCdsDtContainer(TimeSeriesContainer):
     def __init__(self, globals_dict: dict) -> None:
         logger = get_logger()
         np.random.seed(globals_dict["seed"])
 
-        from sklearn.ensemble import RandomForestRegressor
+        from sklearn.linear_model import LinearRegression
 
         # TODO add GPU support
-
         gpu_imported = False
 
-        regressor_args = (
-            {
-                "random_state": globals_dict["seed"],
-                "n_jobs": globals_dict["n_jobs_param"],
-            }
-            if not gpu_imported
-            else {"seed": globals_dict["seed"]}
-        )
-        regressor = RandomForestRegressor(**regressor_args)
+        if globals_dict["gpu_param"] == "force":
+            from cuml.linear_model import LinearRegression
+
+            logger.info("Imported cuml.linear_model.LinearRegression")
+            gpu_imported = True
+        elif globals_dict["gpu_param"]:
+            try:
+                from cuml.linear_model import LinearRegression
+
+                logger.info("Imported cuml.linear_model.LinearRegression")
+                gpu_imported = True
+            except ImportError:
+                logger.warning("Couldn't import cuml.linear_model.LinearRegression")
+
+        regressor_args = {}
+        if not gpu_imported:
+            regressor_args["n_jobs"] = globals_dict["n_jobs_param"]
+        regressor = LinearRegression(**regressor_args)
 
         args = {"regressor": regressor}
         tune_args = {}
@@ -592,11 +619,8 @@ class RandomForestCdsDtContainer(TimeSeriesContainer):
             "deseasonal_model": ["additive"],
             "degree": [1],
             "window_length": [10],
-            "regressor__n_estimators": np_list_arange(10, 300, 150, inclusive=True),
-            "regressor__max_depth": np_list_arange(1, 10, 10, inclusive=True),
-            "regressor__min_impurity_decrease": [0.1, 0.5],
-            "regressor__max_features": [1.0, "sqrt", "log2"],
-            "regressor__bootstrap": [True, False],
+            "regressor__fit_intercept": [True, False],
+            "regressor__normalize": [True, False],
         }
         tune_distributions = {
             "sp": CategoricalDistribution(
@@ -607,28 +631,17 @@ class RandomForestCdsDtContainer(TimeSeriesContainer):
             ),
             "degree": IntUniformDistribution(lower=1, upper=10),
             "window_length": IntUniformDistribution(lower=sp, upper=2 * sp),
-            "regressor__n_estimators": IntUniformDistribution(lower=10, upper=300),
-            "regressor__max_depth": IntUniformDistribution(lower=1, upper=10),
-            "regressor__min_impurity_decrease": UniformDistribution(lower=0, upper=0.5),
-            "regressor__max_features": CategoricalDistribution(
-                values=[1.0, "sqrt", "log2"]
-            ),
-            "regressor__bootstrap": CategoricalDistribution(values=[True, False]),
         }
-
-        # if not gpu_imported:
-        #     args["n_jobs"] = globals_dict["n_jobs_param"]
 
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
         eq_function = (
-            lambda x: type(x) is BaseCdsDt
-            and type(x.regressor) is RandomForestRegressor
+            lambda x: type(x) is BaseCdsDt and type(x.regressor) is LinearRegression
         )
 
         super().__init__(
-            id="rf_cds_dt",
-            name="Random Forest w/ Cond. Deseasonalize & Detrending",
+            id="lr_cds_dt",
+            name="Linear w/ Cond. Deseasonalize & Detrending",
             class_def=BaseCdsDt,
             args=args,
             tune_grid=tune_grid,
@@ -639,26 +652,34 @@ class RandomForestCdsDtContainer(TimeSeriesContainer):
         )
 
 
-class ExtraTreesCdsDtContainer(TimeSeriesContainer):
+class ElasticNetCdsDtContainer(TimeSeriesContainer):
     def __init__(self, globals_dict: dict) -> None:
         logger = get_logger()
         np.random.seed(globals_dict["seed"])
 
-        from sklearn.ensemble import ExtraTreesRegressor
+        from sklearn.linear_model import ElasticNet
 
         # TODO add GPU support
-
         gpu_imported = False
 
-        regressor_args = (
-            {
-                "random_state": globals_dict["seed"],
-                "n_jobs": globals_dict["n_jobs_param"],
-            }
-            if not gpu_imported
-            else {"seed": globals_dict["seed"]}
-        )
-        regressor = ExtraTreesRegressor(**regressor_args)
+        if globals_dict["gpu_param"] == "force":
+            from cuml.linear_model import ElasticNet
+
+            logger.info("Imported cuml.linear_model.ElasticNet")
+            gpu_imported = True
+        elif globals_dict["gpu_param"]:
+            try:
+                from cuml.linear_model import ElasticNet
+
+                logger.info("Imported cuml.linear_model.ElasticNet")
+                gpu_imported = True
+            except ImportError:
+                logger.warning("Couldn't import cuml.linear_model.ElasticNet")
+
+        regressor_args = {}
+        if not gpu_imported:
+            regressor_args["random_state"] = globals_dict["seed"]
+        regressor = ElasticNet(**regressor_args)
 
         args = {"regressor": regressor}
         tune_args = {}
@@ -669,14 +690,10 @@ class ExtraTreesCdsDtContainer(TimeSeriesContainer):
             "deseasonal_model": ["additive"],
             "degree": [1],
             "window_length": [10],
-            "regressor__n_estimators": np_list_arange(10, 300, 150, inclusive=True),
-            # "regressor__criterion": ["mse", "mae"],  # Too many combinations
-            "regressor__max_depth": np_list_arange(1, 10, 10, inclusive=True),
-            "regressor__min_impurity_decrease": [0.1, 0.5],
-            "regressor__max_features": [1.0, "sqrt", "log2"],
-            "regressor__bootstrap": [True, False],
-            # "regressor__min_samples_split": [2, 5, 7, 9, 10],  # Too many combinations
-            # "regressor__min_samples_leaf": [2, 3, 4, 5, 6],  # Too many combinations
+            "regressor__alpha": [0.01, 0.1, 1, 10],
+            "regressor__l1_ratio": [0.01, 0.1, 0.5, 1.0],
+            "regressor__fit_intercept": [True, False],
+            "regressor__normalize": [True, False],
         }
         tune_distributions = {
             "sp": CategoricalDistribution(
@@ -687,103 +704,17 @@ class ExtraTreesCdsDtContainer(TimeSeriesContainer):
             ),
             "degree": IntUniformDistribution(lower=1, upper=10),
             "window_length": IntUniformDistribution(lower=sp, upper=2 * sp),
-            "regressor__n_estimators": IntUniformDistribution(lower=10, upper=300),
-            "regressor__criterion": CategoricalDistribution(values=["mse", "mae"]),
-            "regressor__max_depth": IntUniformDistribution(lower=1, upper=11),
-            "regressor__min_impurity_decrease": UniformDistribution(
-                0.000000001, 0.5, log=True
-            ),
-            "regressor__max_features": CategoricalDistribution(
-                values=[0.4, 1.0, "sqrt", "log2"]
-            ),
-            "regressor__bootstrap": CategoricalDistribution(values=[True, False]),
-            "regressor__min_samples_split": IntUniformDistribution(lower=2, upper=10),
-            "regressor__min_samples_leaf": IntUniformDistribution(lower=1, upper=5),
+            "regressor__alpha": UniformDistribution(0, 1),
+            "regressor__l1_ratio": UniformDistribution(0.01, 0.9999999999),
         }
-
-        # if not gpu_imported:
-        #     args["n_jobs"] = globals_dict["n_jobs_param"]
 
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
-        eq_function = (
-            lambda x: type(x) is BaseCdsDt and type(x.regressor) is ExtraTreesRegressor
-        )
+        eq_function = lambda x: type(x) is BaseCdsDt and type(x.regressor) is ElasticNet
 
         super().__init__(
-            id="et_cds_dt",
-            name="Extra Trees w/ Cond. Deseasonalize & Detrending",
-            class_def=BaseCdsDt,
-            args=args,
-            tune_grid=tune_grid,
-            tune_distribution=tune_distributions,
-            tune_args=tune_args,
-            is_gpu_enabled=gpu_imported,
-            eq_function=eq_function,
-        )
-
-
-class DecisionTreeCdsDtContainer(TimeSeriesContainer):
-    def __init__(self, globals_dict: dict) -> None:
-        logger = get_logger()
-        np.random.seed(globals_dict["seed"])
-
-        from sklearn.tree import DecisionTreeRegressor
-
-        # TODO add GPU support
-
-        gpu_imported = False
-
-        regressor_args = {"random_state": globals_dict["seed"]}
-        regressor = DecisionTreeRegressor(**regressor_args)
-
-        args = {"regressor": regressor}
-        tune_args = {}
-        sp = globals_dict.get("seasonal_parameter")
-        sp = sp if sp is not None else 1
-        tune_grid = {
-            "sp": [sp],
-            "deseasonal_model": ["additive"],
-            "degree": [1],
-            "window_length": [10],
-            "regressor__max_depth": np_list_arange(1, 10, 10, inclusive=True),
-            "regressor__max_features": [1.0, "sqrt", "log2"],
-            "regressor__min_impurity_decrease": [0.1, 0.5],
-            "regressor__min_samples_leaf": [2, 6],
-            "regressor__min_samples_split": [2, 10],
-            "regressor__criterion": ["mse", "mae", "friedman_mse"],
-        }
-        tune_distributions = {
-            "sp": CategoricalDistribution(
-                values=[sp, 2 * sp]
-            ),  # TODO: 'None' errors out here
-            "deseasonal_model": CategoricalDistribution(
-                values=["additive", "multiplicative"]
-            ),
-            "degree": IntUniformDistribution(lower=1, upper=10),
-            "window_length": IntUniformDistribution(lower=sp, upper=2 * sp),
-            "regressor__max_depth": IntUniformDistribution(lower=1, upper=10),
-            "regressor__min_impurity_decrease": UniformDistribution(
-                lower=0.000000001, upper=0.5, log=True
-            ),
-            # "regressor__max_features": UniformDistribution(0.4, 1.0),  # TODO: Adding this eventually samples outside this range - strange!
-            "regressor__min_samples_leaf": IntUniformDistribution(2, 6),
-            "regressor__min_samples_split": IntUniformDistribution(2, 10),
-        }
-
-        # if not gpu_imported:
-        #     args["n_jobs"] = globals_dict["n_jobs_param"]
-
-        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
-
-        eq_function = (
-            lambda x: type(x) is BaseCdsDt
-            and type(x.regressor) is DecisionTreeRegressor
-        )
-
-        super().__init__(
-            id="dt_cds_dt",
-            name="Decision Tree w/ Cond. Deseasonalize & Detrending",
+            id="en_cds_dt",
+            name="Elastic Net w/ Cond. Deseasonalize & Detrending",
             class_def=BaseCdsDt,
             args=args,
             tune_grid=tune_grid,
@@ -1140,77 +1071,6 @@ class BayesianRidgeCdsDtContainer(TimeSeriesContainer):
         )
 
 
-class LinearCdsDtContainer(TimeSeriesContainer):
-    def __init__(self, globals_dict: dict) -> None:
-        logger = get_logger()
-        np.random.seed(globals_dict["seed"])
-
-        from sklearn.linear_model import LinearRegression
-
-        # TODO add GPU support
-        gpu_imported = False
-
-        if globals_dict["gpu_param"] == "force":
-            from cuml.linear_model import LinearRegression
-
-            logger.info("Imported cuml.linear_model.LinearRegression")
-            gpu_imported = True
-        elif globals_dict["gpu_param"]:
-            try:
-                from cuml.linear_model import LinearRegression
-
-                logger.info("Imported cuml.linear_model.LinearRegression")
-                gpu_imported = True
-            except ImportError:
-                logger.warning("Couldn't import cuml.linear_model.LinearRegression")
-
-        regressor_args = {}
-        if not gpu_imported:
-            regressor_args["n_jobs"] = globals_dict["n_jobs_param"]
-        regressor = LinearRegression(**regressor_args)
-
-        args = {"regressor": regressor}
-        tune_args = {}
-        sp = globals_dict.get("seasonal_parameter")
-        sp = sp if sp is not None else 1
-        tune_grid = {
-            "sp": [sp],
-            "deseasonal_model": ["additive"],
-            "degree": [1],
-            "window_length": [10],
-            "regressor__fit_intercept": [True, False],
-            "regressor__normalize": [True, False],
-        }
-        tune_distributions = {
-            "sp": CategoricalDistribution(
-                values=[sp, 2 * sp]
-            ),  # TODO: 'None' errors out here
-            "deseasonal_model": CategoricalDistribution(
-                values=["additive", "multiplicative"]
-            ),
-            "degree": IntUniformDistribution(lower=1, upper=10),
-            "window_length": IntUniformDistribution(lower=sp, upper=2 * sp),
-        }
-
-        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
-
-        eq_function = (
-            lambda x: type(x) is BaseCdsDt and type(x.regressor) is LinearRegression
-        )
-
-        super().__init__(
-            id="lr_cds_dt",
-            name="Linear w/ Cond. Deseasonalize & Detrending",
-            class_def=BaseCdsDt,
-            args=args,
-            tune_grid=tune_grid,
-            tune_distribution=tune_distributions,
-            tune_args=tune_args,
-            is_gpu_enabled=gpu_imported,
-            eq_function=eq_function,
-        )
-
-
 class HuberCdsDtContainer(TimeSeriesContainer):
     def __init__(self, globals_dict: dict) -> None:
         logger = get_logger()
@@ -1397,34 +1257,100 @@ class OrthogonalMatchingPursuitCdsDtContainer(TimeSeriesContainer):
         )
 
 
-class ElasticNetCdsDtContainer(TimeSeriesContainer):
+# =======================#
+# NEIGHBORS BASED MODELS #
+# =======================#
+
+
+class KNeighborsCdsDtContainer(TimeSeriesContainer):
     def __init__(self, globals_dict: dict) -> None:
         logger = get_logger()
         np.random.seed(globals_dict["seed"])
 
-        from sklearn.linear_model import ElasticNet
+        from sklearn.neighbors import KNeighborsRegressor
 
         # TODO add GPU support
         gpu_imported = False
 
         if globals_dict["gpu_param"] == "force":
-            from cuml.linear_model import ElasticNet
+            from cuml.neighbors import KNeighborsRegressor
 
-            logger.info("Imported cuml.linear_model.ElasticNet")
+            logger.info("Imported cuml.neighbors.KNeighborsRegressor")
             gpu_imported = True
         elif globals_dict["gpu_param"]:
             try:
-                from cuml.linear_model import ElasticNet
+                from cuml.neighbors import KNeighborsRegressor
 
-                logger.info("Imported cuml.linear_model.ElasticNet")
+                logger.info("Imported cuml.neighbors.KNeighborsRegressor")
                 gpu_imported = True
             except ImportError:
-                logger.warning("Couldn't import cuml.linear_model.ElasticNet")
+                logger.warning("Couldn't import cuml.neighbors.KNeighborsRegressor")
 
         regressor_args = {}
         if not gpu_imported:
-            regressor_args["random_state"] = globals_dict["seed"]
-        regressor = ElasticNet(**regressor_args)
+            regressor_args["n_jobs"] = globals_dict["n_jobs_param"]
+        regressor = KNeighborsRegressor(**regressor_args)
+
+        args = {"regressor": regressor}
+        tune_args = {}
+        sp = globals_dict.get("seasonal_parameter")
+        sp = sp if sp is not None else 1
+
+        tune_args = {}
+        tune_grid = {}
+        tune_distributions = {}
+
+        # common
+        tune_grid["sp"] = [sp]
+        tune_grid["deseasonal_model"] = ["additive"]
+        tune_grid["degree"] = [1]
+        tune_grid["window_length"] = [10]
+        tune_grid["regressor__n_neighbors"] = range(1, 51, 10)
+        tune_grid["regressor__weights"] = ["uniform"]
+        tune_grid["regressor__metric"] = ["minkowski", "euclidean", "manhattan"]
+
+        if not gpu_imported:
+            tune_grid["regressor__weights"] += ["distance"]
+
+        tune_distributions["regressor__n_neighbors"] = IntUniformDistribution(1, 51)
+
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+
+        eq_function = (
+            lambda x: type(x) is BaseCdsDt and type(x.regressor) is KNeighborsRegressor
+        )
+
+        super().__init__(
+            id="knn_cds_dt",
+            name="K Neighbors w/ Cond. Deseasonalize & Detrending",
+            class_def=BaseCdsDt,
+            args=args,
+            tune_grid=tune_grid,
+            tune_distribution=tune_distributions,
+            tune_args=tune_args,
+            is_gpu_enabled=gpu_imported,
+            eq_function=eq_function,
+        )
+
+
+# ===================#
+# TREE BASED MODELS #
+# ===================#
+
+
+class DecisionTreeCdsDtContainer(TimeSeriesContainer):
+    def __init__(self, globals_dict: dict) -> None:
+        logger = get_logger()
+        np.random.seed(globals_dict["seed"])
+
+        from sklearn.tree import DecisionTreeRegressor
+
+        # TODO add GPU support
+
+        gpu_imported = False
+
+        regressor_args = {"random_state": globals_dict["seed"]}
+        regressor = DecisionTreeRegressor(**regressor_args)
 
         args = {"regressor": regressor}
         tune_args = {}
@@ -1435,10 +1361,12 @@ class ElasticNetCdsDtContainer(TimeSeriesContainer):
             "deseasonal_model": ["additive"],
             "degree": [1],
             "window_length": [10],
-            "regressor__alpha": [0.01, 0.1, 1, 10],
-            "regressor__l1_ratio": [0.01, 0.1, 0.5, 1.0],
-            "regressor__fit_intercept": [True, False],
-            "regressor__normalize": [True, False],
+            "regressor__max_depth": np_list_arange(1, 10, 10, inclusive=True),
+            "regressor__max_features": [1.0, "sqrt", "log2"],
+            "regressor__min_impurity_decrease": [0.1, 0.5],
+            "regressor__min_samples_leaf": [2, 6],
+            "regressor__min_samples_split": [2, 10],
+            "regressor__criterion": ["mse", "mae", "friedman_mse"],
         }
         tune_distributions = {
             "sp": CategoricalDistribution(
@@ -1449,17 +1377,28 @@ class ElasticNetCdsDtContainer(TimeSeriesContainer):
             ),
             "degree": IntUniformDistribution(lower=1, upper=10),
             "window_length": IntUniformDistribution(lower=sp, upper=2 * sp),
-            "regressor__alpha": UniformDistribution(0, 1),
-            "regressor__l1_ratio": UniformDistribution(0.01, 0.9999999999),
+            "regressor__max_depth": IntUniformDistribution(lower=1, upper=10),
+            "regressor__min_impurity_decrease": UniformDistribution(
+                lower=0.000000001, upper=0.5, log=True
+            ),
+            # "regressor__max_features": UniformDistribution(0.4, 1.0),  # TODO: Adding this eventually samples outside this range - strange!
+            "regressor__min_samples_leaf": IntUniformDistribution(2, 6),
+            "regressor__min_samples_split": IntUniformDistribution(2, 10),
         }
+
+        # if not gpu_imported:
+        #     args["n_jobs"] = globals_dict["n_jobs_param"]
 
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
-        eq_function = lambda x: type(x) is BaseCdsDt and type(x.regressor) is ElasticNet
+        eq_function = (
+            lambda x: type(x) is BaseCdsDt
+            and type(x.regressor) is DecisionTreeRegressor
+        )
 
         super().__init__(
-            id="en_cds_dt",
-            name="Elastic Net w/ Cond. Deseasonalize & Detrending",
+            id="dt_cds_dt",
+            name="Decision Tree w/ Cond. Deseasonalize & Detrending",
             class_def=BaseCdsDt,
             args=args,
             tune_grid=tune_grid,
@@ -1468,6 +1407,172 @@ class ElasticNetCdsDtContainer(TimeSeriesContainer):
             is_gpu_enabled=gpu_imported,
             eq_function=eq_function,
         )
+
+
+class RandomForestCdsDtContainer(TimeSeriesContainer):
+    def __init__(self, globals_dict: dict) -> None:
+        logger = get_logger()
+        np.random.seed(globals_dict["seed"])
+
+        from sklearn.ensemble import RandomForestRegressor
+
+        # TODO add GPU support
+
+        gpu_imported = False
+
+        regressor_args = (
+            {
+                "random_state": globals_dict["seed"],
+                "n_jobs": globals_dict["n_jobs_param"],
+            }
+            if not gpu_imported
+            else {"seed": globals_dict["seed"]}
+        )
+        regressor = RandomForestRegressor(**regressor_args)
+
+        args = {"regressor": regressor}
+        tune_args = {}
+        sp = globals_dict.get("seasonal_parameter")
+        sp = sp if sp is not None else 1
+        tune_grid = {
+            "sp": [sp],
+            "deseasonal_model": ["additive"],
+            "degree": [1],
+            "window_length": [10],
+            "regressor__n_estimators": np_list_arange(10, 300, 150, inclusive=True),
+            "regressor__max_depth": np_list_arange(1, 10, 10, inclusive=True),
+            "regressor__min_impurity_decrease": [0.1, 0.5],
+            "regressor__max_features": [1.0, "sqrt", "log2"],
+            "regressor__bootstrap": [True, False],
+        }
+        tune_distributions = {
+            "sp": CategoricalDistribution(
+                values=[sp, 2 * sp]
+            ),  # TODO: 'None' errors out here
+            "deseasonal_model": CategoricalDistribution(
+                values=["additive", "multiplicative"]
+            ),
+            "degree": IntUniformDistribution(lower=1, upper=10),
+            "window_length": IntUniformDistribution(lower=sp, upper=2 * sp),
+            "regressor__n_estimators": IntUniformDistribution(lower=10, upper=300),
+            "regressor__max_depth": IntUniformDistribution(lower=1, upper=10),
+            "regressor__min_impurity_decrease": UniformDistribution(lower=0, upper=0.5),
+            "regressor__max_features": CategoricalDistribution(
+                values=[1.0, "sqrt", "log2"]
+            ),
+            "regressor__bootstrap": CategoricalDistribution(values=[True, False]),
+        }
+
+        # if not gpu_imported:
+        #     args["n_jobs"] = globals_dict["n_jobs_param"]
+
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+
+        eq_function = (
+            lambda x: type(x) is BaseCdsDt
+            and type(x.regressor) is RandomForestRegressor
+        )
+
+        super().__init__(
+            id="rf_cds_dt",
+            name="Random Forest w/ Cond. Deseasonalize & Detrending",
+            class_def=BaseCdsDt,
+            args=args,
+            tune_grid=tune_grid,
+            tune_distribution=tune_distributions,
+            tune_args=tune_args,
+            is_gpu_enabled=gpu_imported,
+            eq_function=eq_function,
+        )
+
+
+class ExtraTreesCdsDtContainer(TimeSeriesContainer):
+    def __init__(self, globals_dict: dict) -> None:
+        logger = get_logger()
+        np.random.seed(globals_dict["seed"])
+
+        from sklearn.ensemble import ExtraTreesRegressor
+
+        # TODO add GPU support
+
+        gpu_imported = False
+
+        regressor_args = (
+            {
+                "random_state": globals_dict["seed"],
+                "n_jobs": globals_dict["n_jobs_param"],
+            }
+            if not gpu_imported
+            else {"seed": globals_dict["seed"]}
+        )
+        regressor = ExtraTreesRegressor(**regressor_args)
+
+        args = {"regressor": regressor}
+        tune_args = {}
+        sp = globals_dict.get("seasonal_parameter")
+        sp = sp if sp is not None else 1
+        tune_grid = {
+            "sp": [sp],
+            "deseasonal_model": ["additive"],
+            "degree": [1],
+            "window_length": [10],
+            "regressor__n_estimators": np_list_arange(10, 300, 150, inclusive=True),
+            # "regressor__criterion": ["mse", "mae"],  # Too many combinations
+            "regressor__max_depth": np_list_arange(1, 10, 10, inclusive=True),
+            "regressor__min_impurity_decrease": [0.1, 0.5],
+            "regressor__max_features": [1.0, "sqrt", "log2"],
+            "regressor__bootstrap": [True, False],
+            # "regressor__min_samples_split": [2, 5, 7, 9, 10],  # Too many combinations
+            # "regressor__min_samples_leaf": [2, 3, 4, 5, 6],  # Too many combinations
+        }
+        tune_distributions = {
+            "sp": CategoricalDistribution(
+                values=[sp, 2 * sp]
+            ),  # TODO: 'None' errors out here
+            "deseasonal_model": CategoricalDistribution(
+                values=["additive", "multiplicative"]
+            ),
+            "degree": IntUniformDistribution(lower=1, upper=10),
+            "window_length": IntUniformDistribution(lower=sp, upper=2 * sp),
+            "regressor__n_estimators": IntUniformDistribution(lower=10, upper=300),
+            "regressor__criterion": CategoricalDistribution(values=["mse", "mae"]),
+            "regressor__max_depth": IntUniformDistribution(lower=1, upper=11),
+            "regressor__min_impurity_decrease": UniformDistribution(
+                0.000000001, 0.5, log=True
+            ),
+            "regressor__max_features": CategoricalDistribution(
+                values=[0.4, 1.0, "sqrt", "log2"]
+            ),
+            "regressor__bootstrap": CategoricalDistribution(values=[True, False]),
+            "regressor__min_samples_split": IntUniformDistribution(lower=2, upper=10),
+            "regressor__min_samples_leaf": IntUniformDistribution(lower=1, upper=5),
+        }
+
+        # if not gpu_imported:
+        #     args["n_jobs"] = globals_dict["n_jobs_param"]
+
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+
+        eq_function = (
+            lambda x: type(x) is BaseCdsDt and type(x.regressor) is ExtraTreesRegressor
+        )
+
+        super().__init__(
+            id="et_cds_dt",
+            name="Extra Trees w/ Cond. Deseasonalize & Detrending",
+            class_def=BaseCdsDt,
+            args=args,
+            tune_grid=tune_grid,
+            tune_distribution=tune_distributions,
+            tune_args=tune_args,
+            is_gpu_enabled=gpu_imported,
+            eq_function=eq_function,
+        )
+
+
+# =========================#
+# GRADIENT BOOSTED MODELS #
+# =========================#
 
 
 class GradientBoostingCdsDtContainer(TimeSeriesContainer):
@@ -1690,77 +1795,6 @@ class XGBCdsDtContainer(TimeSeriesContainer):
         super().__init__(
             id="xgboost_cds_dt",
             name="Extreme Gradient Boosting w/ Cond. Deseasonalize & Detrending",
-            class_def=BaseCdsDt,
-            args=args,
-            tune_grid=tune_grid,
-            tune_distribution=tune_distributions,
-            tune_args=tune_args,
-            is_gpu_enabled=gpu_imported,
-            eq_function=eq_function,
-        )
-
-
-class KNeighborsCdsDtContainer(TimeSeriesContainer):
-    def __init__(self, globals_dict: dict) -> None:
-        logger = get_logger()
-        np.random.seed(globals_dict["seed"])
-
-        from sklearn.neighbors import KNeighborsRegressor
-
-        # TODO add GPU support
-        gpu_imported = False
-
-        if globals_dict["gpu_param"] == "force":
-            from cuml.neighbors import KNeighborsRegressor
-
-            logger.info("Imported cuml.neighbors.KNeighborsRegressor")
-            gpu_imported = True
-        elif globals_dict["gpu_param"]:
-            try:
-                from cuml.neighbors import KNeighborsRegressor
-
-                logger.info("Imported cuml.neighbors.KNeighborsRegressor")
-                gpu_imported = True
-            except ImportError:
-                logger.warning("Couldn't import cuml.neighbors.KNeighborsRegressor")
-
-        regressor_args = {}
-        if not gpu_imported:
-            regressor_args["n_jobs"] = globals_dict["n_jobs_param"]
-        regressor = KNeighborsRegressor(**regressor_args)
-
-        args = {"regressor": regressor}
-        tune_args = {}
-        sp = globals_dict.get("seasonal_parameter")
-        sp = sp if sp is not None else 1
-
-        tune_args = {}
-        tune_grid = {}
-        tune_distributions = {}
-
-        # common
-        tune_grid["sp"] = [sp]
-        tune_grid["deseasonal_model"] = ["additive"]
-        tune_grid["degree"] = [1]
-        tune_grid["window_length"] = [10]
-        tune_grid["regressor__n_neighbors"] = range(1, 51, 10)
-        tune_grid["regressor__weights"] = ["uniform"]
-        tune_grid["regressor__metric"] = ["minkowski", "euclidean", "manhattan"]
-
-        if not gpu_imported:
-            tune_grid["regressor__weights"] += ["distance"]
-
-        tune_distributions["regressor__n_neighbors"] = IntUniformDistribution(1, 51)
-
-        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
-
-        eq_function = (
-            lambda x: type(x) is BaseCdsDt and type(x.regressor) is KNeighborsRegressor
-        )
-
-        super().__init__(
-            id="knn_cds_dt",
-            name="K Neighbors w/ Cond. Deseasonalize & Detrending",
             class_def=BaseCdsDt,
             args=args,
             tune_grid=tune_grid,
