@@ -108,27 +108,6 @@ _model_parameters = return_model_parameters()
 #### Tests Start Here ####
 ##########################
 
-# def test_set_up_valid_seasonality(load_data):
-
-#     seasonal_parameter = 30
-#     fh = np.arange(1,13)
-#     fold = 3
-    
-#     exp = TimeSeriesExperiment()
-    
-#     with pytest.raises(ValueError) as errmsg:
-#         _ = exp.setup(
-#             data=load_data, 
-#             fh=fh, 
-#             fold=fold, 
-#             fold_strategy='slidingwindow', 
-#             seasonal_parameter=seasonal_parameter
-#         )
-
-#     exceptionmsg = errmsg.value.args[0]
-
-#     assert exceptionmsg == f"Autocorrelation Seasonality test failed: Invalid Seasonality Period {seasonal_parameter}"
-
 
 @pytest.mark.parametrize("name, fh", _model_parameters)
 def test_create_model(name, fh, load_data):
