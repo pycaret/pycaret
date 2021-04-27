@@ -755,7 +755,7 @@ def setup(
 
     # declaring global variables to be accessed by other functions
     logger.info("Declaring global variables")
-    global _ml_usecase, USI, html_param, X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, experiment__, fold_shuffle_param, n_jobs_param, _gpu_n_jobs_param, create_model_container, master_model_container, display_container, exp_name_log, logging_param, log_plots_param, fix_imbalance_param, fix_imbalance_method_param, transform_target_param, transform_target_method_param, data_before_preprocess, target_param, gpu_param, _all_models, _all_models_internal, _all_metrics, _internal_pipeline, stratify_param, fold_generator, fold_param, fold_groups_param, imputation_regressor, imputation_classifier, iterative_imputation_iters_param
+    global _ml_usecase, USI, html_param, X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, experiment__, fold_shuffle_param, n_jobs_param, _gpu_n_jobs_param, create_model_container, master_model_container, display_container, exp_name_log, logging_param, log_plots_param, fix_imbalance_param, fix_imbalance_method_param, transform_target_param, transform_target_method_param, data_before_preprocess, target_param, gpu_param, _all_models, _all_models_internal, _all_metrics, _internal_pipeline, stratify_param, fold_generator, fold_param, fold_groups_param, fold_groups_param_full, imputation_regressor, imputation_classifier, iterative_imputation_iters_param
 
     USI = secrets.token_hex(nbytes=2)
     logger.info(f"USI: {USI}")
@@ -807,6 +807,7 @@ def setup(
         "fold_generator",
         "fold_param",
         "fold_groups_param",
+        "fold_groups_param_full",
     }
     if not _is_unsupervised(_ml_usecase):
         pycaret_globals = common_globals.union(supervised_globals)
@@ -1338,6 +1339,7 @@ def setup(
         y_test = test_data[target]
 
         if fold_groups_param is not None:
+            fold_groups_param_full = fold_groups_param.copy()
             fold_groups_param = fold_groups_param[
                 fold_groups_param.index.isin(X_train.index)
             ]
@@ -2933,7 +2935,7 @@ def create_model_supervised(
 
     """
 
-    groups = _get_groups(groups)
+    groups = _get_groups(groups, data=X_train_data)
 
     if not display:
         progress_args = {"max": 4}
@@ -8548,7 +8550,7 @@ def finalize_model(
     if not fit_kwargs:
         fit_kwargs = {}
 
-    groups = _get_groups(groups)
+    groups = _get_groups(groups, data=X, fold_groups=fold_groups_param_full)
 
     if not display:
         display = Display(verbose=False, html_param=html_param,)
@@ -8565,7 +8567,6 @@ def finalize_model(
         y_train_data=y,
         fit_kwargs=fit_kwargs,
         groups=groups,
-        cross_validation=False,
     )
     model_results = pull(pop=True)
 
@@ -10062,8 +10063,8 @@ def _mlflow_log_model(
             prep_pipe_temp,
             "model",
             conda_env=default_conda_env,
-            #signature=signature,
-            #input_example=input_example,
+            # signature=signature,
+            # input_example=input_example,
         )
         del prep_pipe_temp
     gc.collect()
@@ -10116,7 +10117,15 @@ def _get_pipeline_fit_kwargs(pipeline, fit_kwargs: dict) -> dict:
     return pycaret.internal.pipeline.get_pipeline_fit_kwargs(pipeline, fit_kwargs)
 
 
-def _get_groups(groups, ml_usecase: Optional[MLUsecase] = None):
+def _get_groups(
+    groups,
+    data: Optional[pd.DataFrame] = None,
+    fold_groups=None,
+    ml_usecase: Optional[MLUsecase] = None,
+):
     import pycaret.internal.utils
 
-    return pycaret.internal.utils.get_groups(groups, X_train, fold_groups_param)
+    data = data if data is not None else X_train
+    fold_groups = fold_groups if fold_groups is not None else fold_groups_param
+
+    return pycaret.internal.utils.get_groups(groups, data, fold_groups)
