@@ -8565,6 +8565,7 @@ def finalize_model(
         y_train_data=y,
         fit_kwargs=fit_kwargs,
         groups=groups,
+        cross_validation=False,
     )
     model_results = pull(pop=True)
 
