@@ -1,5 +1,24 @@
 # Changelog
 All notable changes to this project will be documented in this file.
+<br/><br/>
+
+#### Release: PyCaret 2.3.1 | Release Date: April 28, 2021 (SEVERAL BUGS FIXED)
+ 
+- Fixed an exception with missing variables (display_container etc.) during load_config()
+- Fixed exceptions when using Ridge and RF estimators with cuML (GPU mode)
+- Fixed PyCaret's cuML wrappers not being pickleable
+- Added an extra check to get_all_object_vars_and_properties internal method, fixing exceptions with certain estimators
+- save_model()  now supports kwargs, which will be passed to joblib.dump()
+- Fixed an issue with load_model() from AWS (duplicate .pkl extension) - thanks to markgrujic (https://github.com/pycaret/pycaret/pull/1128)
+- Fixed a typo in documentation - thanks to koorukuroo (https://github.com/pycaret/pycaret/pull/1149)
+- Optimized Fix_multicollinearity transformer, drastically reducing the size of saved pipeline
+- interpret_model() now supports data passed as an argument - thanks to jbechtel (https://github.com/pycaret/pycaret/pull/1184)
+- Removed `infer_signature` from MLflow logging when `log_experiment=True`. 
+- Fixed a rare issue where binary_multiclass_score_func was not pickleable
+- Fixed edge case exceptions in feature selection
+- Fixed an exception with `finalize_model` when using GroupKFold CV
+- Pinned `mlxtend>=0.17.0`, `imbalanced-learn==0.7.0`, and `gensim<4.0.0`
+<br/><br/><br/>
 
 ### Release: PyCaret 2.3.0 | Release Date: February 21, 2021
 
