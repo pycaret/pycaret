@@ -375,8 +375,8 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                     raise ValueError(
                         f"Unsupported Period frequency: {seasonal_parameter}, valid Period frequencies: {', '.join(SeasonalParameter.__members__.keys())}"
                     )
-
-            self.seasonal_parameter = seasonal_parameter
+            else:
+                self.seasonal_parameter = seasonal_parameter
 
         if isinstance(data, (pd.Series, pd.DataFrame)):
             if isinstance(data, pd.DataFrame):
