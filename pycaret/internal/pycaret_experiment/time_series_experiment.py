@@ -332,6 +332,8 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             Global variables that can be changed using the ``set_config`` function.
 
         """
+        from sktime.utils.seasonality import autocorrelation_seasonality_test # only needed in setup
+
         # if log_plots == True:
         #    log_plots = ["residuals", "error", "feature"]
 
@@ -377,11 +379,13 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
             if isinstance(seasonal_parameter, str):
                 try:
-                    seasonal_parameter = SeasonalParameter[seasonal_parameter]
+                    self.seasonal_parameter = SeasonalParameter[seasonal_parameter]
                 except KeyError:
                     raise ValueError(
                         f"Unsupported Period frequency: {seasonal_parameter}, valid Period frequencies: {', '.join(SeasonalParameter.__members__.keys())}"
                     )
+            else:
+                self.seasonal_parameter = seasonal_parameter
 
         if isinstance(data, (pd.Series, pd.DataFrame)):
             if isinstance(data, pd.DataFrame):
@@ -424,6 +428,11 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             raise ValueError("Index may not have duplicate values!")
         # TODO: Check with @Miguel: Why is this needed (float32 causes issues with scipy optimize)
         # data[data.columns[0]] = data[data.columns[0]].astype("float32")
+
+        # check valid seasonal parameter
+        valid_seasonality = autocorrelation_seasonality_test(data[data.columns[0]], self.seasonal_parameter)
+
+        self.seasonality_present = True if valid_seasonality else False
 
         return super().setup(
             data=data,
