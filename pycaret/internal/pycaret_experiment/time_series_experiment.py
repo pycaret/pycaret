@@ -60,10 +60,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             }
         )
         self.variable_keys = self.variable_keys.union(
-            {
-                "fh",
-                "seasonal_parameter",
-            }
+            {"fh", "seasonal_parameter", "seasonality_present"}
         )
         return
 
@@ -332,7 +329,9 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             Global variables that can be changed using the ``set_config`` function.
 
         """
-        from sktime.utils.seasonality import autocorrelation_seasonality_test # only needed in setup
+        from sktime.utils.seasonality import (
+            autocorrelation_seasonality_test,
+        )  # only needed in setup
 
         # if log_plots == True:
         #    log_plots = ["residuals", "error", "feature"]
@@ -430,7 +429,9 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         # data[data.columns[0]] = data[data.columns[0]].astype("float32")
 
         # check valid seasonal parameter
-        valid_seasonality = autocorrelation_seasonality_test(data[data.columns[0]], self.seasonal_parameter)
+        valid_seasonality = autocorrelation_seasonality_test(
+            data[data.columns[0]], self.seasonal_parameter
+        )
 
         self.seasonality_present = True if valid_seasonality else False
 
