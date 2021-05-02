@@ -212,22 +212,17 @@ class NaiveContainer(TimeSeriesContainer):
         from sktime.forecasting.naive import NaiveForecaster  # type: ignore
 
         seasonality_present = globals_dict.get("seasonality_present")
-        if seasonality_present:
-            sp = globals_dict.get("seasonal_parameter")
-            sp = sp if sp is not None else 1
-            args = {"sp": sp}
-        else:
-            args = {}
-
-        tune_args: Dict[str, Any] = {}
-        sp = globals_dict.get("seasonal_parameter")
+        sp = globals_dict.get("seasonal_period")
         sp = sp if sp is not None else 1
-        # fh = globals_dict["fh"]
 
+        args = {"sp": sp} if seasonality_present else {}
+        tune_args: Dict[str, Any] = {}
+
+        # fh = globals_dict["fh"]
         if seasonality_present:
             tune_grid = {
                 "strategy": ["last", "mean", "drift"],
-                "sp": [1, sp, 2 * sp],
+                "sp": [sp, 2 * sp],
                 # Removing fh for now since it can be less than sp which causes an error
                 # Will need to add checks for it later if we want to incorporate it
                 "window_length": [None],  # , len(fh)]
@@ -308,14 +303,10 @@ class ArimaContainer(TimeSeriesContainer):
         from sktime.forecasting.arima import ARIMA  # type: ignore
 
         seasonality_present = globals_dict.get("seasonality_present")
-        sp = globals_dict.get("seasonal_parameter")
-        if seasonality_present:
-            sp = sp if sp is not None else 1
-            seasonal_order = (0, 0, 0, sp)
-            args = {"seasonal_order": seasonal_order}
-        else:
-            args = {}
+        sp = globals_dict.get("seasonal_period")
+        sp = sp if sp is not None else 1
 
+        args = {"seasonal_order": (0, 0, 0, sp)} if seasonality_present else {}
         tune_args = {}
 
         def return_order_related_params(
@@ -460,12 +451,10 @@ class ExponentialSmoothingContainer(TimeSeriesContainer):
         from sktime.forecasting.exp_smoothing import ExponentialSmoothing  # type: ignore
 
         seasonality_present = globals_dict.get("seasonality_present")
-        sp = globals_dict.get("seasonal_parameter")
-        if seasonality_present:
-            args = {"sp": sp, "seasonal": "add"} if sp is not None else {}
-        else:
-            args = {}
+        sp = globals_dict.get("seasonal_period")
+        sp = sp if sp is not None else 1
 
+        args = {"sp": sp, "seasonal": "add"} if seasonality_present else {}
         tune_args = {}
 
         # tune_grid = {"fit_intercept": [True, False], "normalize": [True, False]}
@@ -497,9 +486,6 @@ class ExponentialSmoothingContainer(TimeSeriesContainer):
             "sp": CategoricalDistribution(values=[None, sp, 2 * sp]),
         }
 
-        # if not gpu_imported:
-        #     args["n_jobs"] = globals_dict["n_jobs_param"]
-
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
         eq_function = lambda x: type(x) is ExponentialSmoothing
@@ -526,15 +512,12 @@ class AutoETSContainer(TimeSeriesContainer):
         from sktime.forecasting.ets import AutoETS  # type: ignore
 
         seasonality_present = globals_dict.get("seasonality_present")
-        sp = globals_dict.get("seasonal_parameter")
-        if seasonality_present:
-            args = {"sp": sp, "seasonal": "add"} if sp is not None else {}
-        else:
-            args = {}
-
-        tune_args = {}
-        sp = globals_dict.get("seasonal_parameter")
+        sp = globals_dict.get("seasonal_period")
         sp = sp if sp is not None else 1
+
+        args = {"sp": sp, "seasonal": "add"} if seasonality_present else {}
+        tune_args = {}
+
         tune_grid = {
             "error": ["add", "mul"],
             "trend": ["add", "mul", None],
@@ -543,9 +526,6 @@ class AutoETSContainer(TimeSeriesContainer):
             "sp": [sp],
         }
         tune_distributions = {}
-
-        # if not gpu_imported:
-        #     args["n_jobs"] = globals_dict["n_jobs_param"]
 
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
@@ -570,14 +550,12 @@ class ThetaContainer(TimeSeriesContainer):
         from sktime.forecasting.theta import ThetaForecaster  # type: ignore
 
         seasonality_present = globals_dict.get("seasonality_present")
-        sp = globals_dict.get("seasonal_parameter")
-        if seasonality_present:
-            args = {"sp": sp, "deseasonalize": True} if sp is not None else {}
-        else:
-            args = {}
-        tune_args = {}
-        sp = globals_dict.get("seasonal_parameter")
+        sp = globals_dict.get("seasonal_period")
         sp = sp if sp is not None else 1
+
+        args = {"sp": sp, "deseasonalize": True} if seasonality_present else {}
+        tune_args = {}
+
         # TODO; Update after Bug is fixed in sktime
         # https://github.com/alan-turing-institute/sktime/issues/692
         # ThetaForecaster does not work with "initial_level" different from None
@@ -650,7 +628,7 @@ class LinearCdsDtContainer(TimeSeriesContainer):
 
         args = {"regressor": regressor}
         tune_args = {}
-        sp = globals_dict.get("seasonal_parameter")
+        sp = globals_dict.get("seasonal_period")
         sp = sp if sp is not None else 1
         tune_grid = {
             "sp": [sp],
@@ -721,7 +699,7 @@ class ElasticNetCdsDtContainer(TimeSeriesContainer):
 
         args = {"regressor": regressor}
         tune_args = {}
-        sp = globals_dict.get("seasonal_parameter")
+        sp = globals_dict.get("seasonal_period")
         sp = sp if sp is not None else 1
         tune_grid = {
             "sp": [sp],
@@ -794,7 +772,7 @@ class RidgeCdsDtContainer(TimeSeriesContainer):
 
         args = {"regressor": regressor}
         tune_args = {}
-        sp = globals_dict.get("seasonal_parameter")
+        sp = globals_dict.get("seasonal_period")
         sp = sp if sp is not None else 1
         tune_grid = {
             "sp": [sp],
@@ -870,7 +848,7 @@ class LassoCdsDtContainer(TimeSeriesContainer):
 
         args = {"regressor": regressor}
         tune_args = {}
-        sp = globals_dict.get("seasonal_parameter")
+        sp = globals_dict.get("seasonal_period")
         sp = sp if sp is not None else 1
         tune_grid = {
             "sp": [sp],
@@ -930,7 +908,7 @@ class LarsCdsDtContainer(TimeSeriesContainer):
 
         args = {"regressor": regressor}
         tune_args = {}
-        sp = globals_dict.get("seasonal_parameter")
+        sp = globals_dict.get("seasonal_period")
         sp = sp if sp is not None else 1
         tune_grid = {
             "sp": [sp],
@@ -990,7 +968,7 @@ class LassoLarsCdsDtContainer(TimeSeriesContainer):
 
         args = {"regressor": regressor}
         tune_args = {}
-        sp = globals_dict.get("seasonal_parameter")
+        sp = globals_dict.get("seasonal_period")
         sp = sp if sp is not None else 1
         tune_grid = {
             "sp": [sp],
@@ -1052,7 +1030,7 @@ class BayesianRidgeCdsDtContainer(TimeSeriesContainer):
 
         args = {"regressor": regressor}
         tune_args = {}
-        sp = globals_dict.get("seasonal_parameter")
+        sp = globals_dict.get("seasonal_period")
         sp = sp if sp is not None else 1
         tune_grid = {
             "sp": [sp],
@@ -1124,7 +1102,7 @@ class HuberCdsDtContainer(TimeSeriesContainer):
 
         args = {"regressor": regressor}
         tune_args = {}
-        sp = globals_dict.get("seasonal_parameter")
+        sp = globals_dict.get("seasonal_period")
         sp = sp if sp is not None else 1
         tune_grid = {
             "sp": [sp],
@@ -1190,7 +1168,7 @@ class PassiveAggressiveCdsDtContainer(TimeSeriesContainer):
 
         args = {"regressor": regressor}
         tune_args = {}
-        sp = globals_dict.get("seasonal_parameter")
+        sp = globals_dict.get("seasonal_period")
         sp = sp if sp is not None else 1
         tune_grid = {
             "sp": [sp],
@@ -1251,7 +1229,7 @@ class OrthogonalMatchingPursuitCdsDtContainer(TimeSeriesContainer):
 
         args = {"regressor": regressor}
         tune_args = {}
-        sp = globals_dict.get("seasonal_parameter")
+        sp = globals_dict.get("seasonal_period")
         sp = sp if sp is not None else 1
         tune_grid = {
             "sp": [sp],
@@ -1331,7 +1309,7 @@ class KNeighborsCdsDtContainer(TimeSeriesContainer):
 
         args = {"regressor": regressor}
         tune_args = {}
-        sp = globals_dict.get("seasonal_parameter")
+        sp = globals_dict.get("seasonal_period")
         sp = sp if sp is not None else 1
 
         tune_args = {}
@@ -1392,7 +1370,7 @@ class DecisionTreeCdsDtContainer(TimeSeriesContainer):
 
         args = {"regressor": regressor}
         tune_args = {}
-        sp = globals_dict.get("seasonal_parameter")
+        sp = globals_dict.get("seasonal_period")
         sp = sp if sp is not None else 1
         tune_grid = {
             "sp": [sp],
@@ -1470,7 +1448,7 @@ class RandomForestCdsDtContainer(TimeSeriesContainer):
 
         args = {"regressor": regressor}
         tune_args = {}
-        sp = globals_dict.get("seasonal_parameter")
+        sp = globals_dict.get("seasonal_period")
         sp = sp if sp is not None else 1
         tune_grid = {
             "sp": [sp],
@@ -1547,7 +1525,7 @@ class ExtraTreesCdsDtContainer(TimeSeriesContainer):
 
         args = {"regressor": regressor}
         tune_args = {}
-        sp = globals_dict.get("seasonal_parameter")
+        sp = globals_dict.get("seasonal_period")
         sp = sp if sp is not None else 1
         tune_grid = {
             "sp": [sp],
@@ -1629,7 +1607,7 @@ class GradientBoostingCdsDtContainer(TimeSeriesContainer):
 
         args = {"regressor": regressor}
         tune_args = {}
-        sp = globals_dict.get("seasonal_parameter")
+        sp = globals_dict.get("seasonal_period")
         sp = sp if sp is not None else 1
         tune_grid = {
             "sp": [sp],
@@ -1705,7 +1683,7 @@ class AdaBoostCdsDtContainer(TimeSeriesContainer):
 
         args = {"regressor": regressor}
         tune_args = {}
-        sp = globals_dict.get("seasonal_parameter")
+        sp = globals_dict.get("seasonal_period")
         sp = sp if sp is not None else 1
         tune_grid = {
             "sp": [sp],
@@ -1787,7 +1765,7 @@ class XGBCdsDtContainer(TimeSeriesContainer):
 
         args = {"regressor": regressor}
         tune_args = {}
-        sp = globals_dict.get("seasonal_parameter")
+        sp = globals_dict.get("seasonal_period")
         sp = sp if sp is not None else 1
         tune_grid = {
             "sp": [sp],
@@ -1861,7 +1839,7 @@ class LGBMCdsDtContainer(TimeSeriesContainer):
 
         args = {"regressor": regressor}
         tune_args = {}
-        sp = globals_dict.get("seasonal_parameter")
+        sp = globals_dict.get("seasonal_period")
         sp = sp if sp is not None else 1
         tune_grid = {
             "sp": [sp],

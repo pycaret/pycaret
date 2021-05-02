@@ -453,7 +453,7 @@ class _TabularExperiment(_PyCaretExperiment):
         log_profile: bool = False,
         log_data: bool = False,
         silent: bool = False,
-        seasonal_parameter: Optional[int] = None,
+        seasonal_period: Optional[int] = None,
         verbose: bool = True,
         profile: bool = False,
         profile_kwargs: Dict[str, Any] = None,

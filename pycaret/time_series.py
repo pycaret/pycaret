@@ -239,7 +239,7 @@ def setup(
         fold_strategy=fold_strategy,
         fold=fold,
         fh=fh,
-        seasonal_parameter=seasonal_parameter,
+        seasonal_period=seasonal_parameter,
         n_jobs=n_jobs,
         use_gpu=use_gpu,
         custom_pipeline=custom_pipeline,

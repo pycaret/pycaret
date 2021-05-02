@@ -73,9 +73,12 @@ def load_ts_models(load_setup):
 # Hence, we have to create functions and create the parameterized list first
 # (must happen during collect phase) before passing it to mark.parameterize.
 
+
 def _get_seasonal_values():
-    from pycaret.internal.utils import SeasonalParameter
-    return [(k, v.value) for k, v in SeasonalParameter.__members__.items()]
+    from pycaret.internal.utils import SeasonalPeriod
+
+    return [(k, v.value) for k, v in SeasonalPeriod.__members__.items()]
+
 
 def _return_model_names():
     """Return all model names."""
@@ -121,8 +124,9 @@ _model_parameters = _return_model_parameters()
 #### Tests Start Here ####
 ##########################
 
-@pytest.mark.parametrize("seasonal_parameter, seasonal_value", _get_seasonal_values())
-def test_setup_seasonal_parameter_str(load_data, seasonal_parameter, seasonal_value):
+
+@pytest.mark.parametrize("seasonal_period, seasonal_value", _get_seasonal_values())
+def test_setup_seasonal_period_str(load_data, seasonal_period, seasonal_value):
 
     exp = TimeSeriesExperiment()
 
@@ -137,31 +141,31 @@ def test_setup_seasonal_parameter_str(load_data, seasonal_parameter, seasonal_va
         fold_strategy="expandingwindow",
         verbose=False,
         session_id=42,
-        seasonal_parameter=seasonal_parameter
+        seasonal_period=seasonal_period,
     )
 
-    assert exp.seasonal_parameter == seasonal_value
+    assert exp.seasonal_period == seasonal_value
 
 
 @pytest.mark.parametrize("seasonal_key, seasonal_value", _get_seasonal_values())
-def test_setup_seasonal_parameter_int(load_data, seasonal_key, seasonal_value):
+def test_setup_seasonal_period_int(load_data, seasonal_key, seasonal_value):
 
     exp = TimeSeriesExperiment()
 
     fh = np.arange(1, 13)
     fold = 3
     data = load_data
-    
+
     exp.setup(
         data=data,
         fh=fh,
         fold=fold,
         fold_strategy="expandingwindow",
         verbose=False,
-        seasonal_parameter=seasonal_value
+        seasonal_period=seasonal_value,
     )
 
-    assert exp.seasonal_parameter == seasonal_value
+    assert exp.seasonal_period == seasonal_value
 
 
 @pytest.mark.parametrize("name, fh", _model_parameters)
@@ -243,12 +247,7 @@ def test_tune_model_grid(model, load_data):
     fh = 12
     fold = 3
 
-    exp.setup(
-        data=load_data,
-        fold=fold,
-        fh=fh,
-        fold_strategy="expandingwindow"
-    )
+    exp.setup(data=load_data, fold=fold, fh=fh, fold_strategy="expandingwindow")
 
     model_obj = exp.create_model(model)
     tuned_model_obj = exp.tune_model(model_obj)
@@ -265,12 +264,7 @@ def test_tune_model_random(model, load_data):
     fh = 12
     fold = 3
 
-    exp.setup(
-        data=load_data,
-        fold=fold,
-        fh=fh,
-        fold_strategy="expandingwindow"
-    )
+    exp.setup(data=load_data, fold=fold, fh=fh, fold_strategy="expandingwindow")
 
     model_obj = exp.create_model(model)
     tuned_model_obj = exp.tune_model(model_obj, search_algorithm="random")

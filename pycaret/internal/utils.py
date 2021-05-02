@@ -19,7 +19,7 @@ from sklearn.model_selection._split import _BaseKFold
 from enum import IntEnum
 
 
-class SeasonalParameter(IntEnum):
+class SeasonalPeriod(IntEnum):
     S = 60 # second
     T = 60 # minute
     H = 24 # hour
