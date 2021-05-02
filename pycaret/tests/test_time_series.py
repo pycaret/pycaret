@@ -43,7 +43,12 @@ def load_setup(load_data):
 @pytest.fixture(scope="session", name="load_models")
 def load_ts_models(load_setup):
     """Load all time series module models"""
-    globals_dict = {"seed": 0, "n_jobs_param": -1, "gpu_param": False}
+    globals_dict = {
+        "seed": 0,
+        "n_jobs_param": -1,
+        "gpu_param": False,
+        "X_train": pd.DataFrame(get_data("airline")),
+    }
     ts_models = get_all_model_containers(globals_dict)
     ts_experiment = load_setup
     ts_estimators = []
@@ -74,7 +79,12 @@ def _get_seasonal_values():
 
 def _return_model_names():
     """Return all model names."""
-    globals_dict = {"seed": 0, "n_jobs_param": -1, "gpu_param": False}
+    globals_dict = {
+        "seed": 0,
+        "n_jobs_param": -1,
+        "gpu_param": False,
+        "X_train": pd.DataFrame(get_data("airline")),
+    }
     model_containers = get_all_model_containers(globals_dict)
 
     model_names_ = []
