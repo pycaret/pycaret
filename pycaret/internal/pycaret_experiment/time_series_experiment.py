@@ -7,7 +7,7 @@ from pycaret.internal.pipeline import (
     get_pipeline_fit_kwargs,
 )
 from pycaret.internal.utils import color_df
-from pycaret.internal.utils import SeasonalParameter
+from pycaret.internal.utils import SeasonalPeriod
 import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
 from pycaret.internal.logging import get_logger
@@ -60,10 +60,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             }
         )
         self.variable_keys = self.variable_keys.union(
-            {
-                "fh",
-                "seasonal_parameter",
-            }
+            {"fh", "seasonal_period", "seasonality_present"}
         )
         return
 
@@ -151,7 +148,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         fold_strategy: Union[str, Any] = "timeseries",  # added in pycaret==2.2
         fold: int = 10,
         fh: Union[List[int], int, np.array] = 1,
-        seasonal_parameter: Optional[Union[int, str]] = None,
+        seasonal_period: Optional[Union[int, str]] = None,
         n_jobs: Optional[int] = -1,
         use_gpu: bool = False,
         custom_pipeline: Union[
@@ -228,7 +225,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             Number of steps ahead to take to evaluate forecast.
 
 
-        seasonal_parameter: int or str, default = None
+        seasonal_period: int or str, default = None
             Seasonal periods in timeseries data. If not provided the frequency of the data
             index is map to a seasonal period as follows:
 
@@ -332,7 +329,9 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             Global variables that can be changed using the ``set_config`` function.
 
         """
-        from sktime.utils.seasonality import autocorrelation_seasonality_test # only needed in setup
+        from sktime.utils.seasonality import (
+            autocorrelation_seasonality_test,
+        )  # only needed in setup
 
         # if log_plots == True:
         #    log_plots = ["residuals", "error", "feature"]
@@ -358,34 +357,34 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             )
         self.fh = fh
 
-        if seasonal_parameter is None:
+        if seasonal_period is None:
 
             index_freq = data.index.freqstr
             index_freq = index_freq.split("-")[0] or index_freq
 
-            if index_freq in SeasonalParameter.__members__:
-                self.seasonal_parameter = SeasonalParameter[index_freq].value
+            if index_freq in SeasonalPeriod.__members__:
+                self.seasonal_period = SeasonalPeriod[index_freq].value
             else:
                 raise ValueError(
-                    f"Unsupported Period frequency: {index_freq}, valid Period frequencies: {', '.join(SeasonalParameter.__members__.keys())}"
+                    f"Unsupported Period frequency: {index_freq}, valid Period frequencies: {', '.join(SeasonalPeriod.__members__.keys())}"
                 )
 
         else:
 
-            if not isinstance(seasonal_parameter, (int, str)):
+            if not isinstance(seasonal_period, (int, str)):
                 raise ValueError(
-                    f"seasonal_parameter parameter must be an int or str, got {type(seasonal_parameter)}"
+                    f"seasonal_period parameter must be an int or str, got {type(seasonal_period)}"
                 )
 
-            if isinstance(seasonal_parameter, str):
+            if isinstance(seasonal_period, str):
                 try:
-                    self.seasonal_parameter = SeasonalParameter[seasonal_parameter]
+                    self.seasonal_period = SeasonalPeriod[seasonal_period]
                 except KeyError:
                     raise ValueError(
-                        f"Unsupported Period frequency: {seasonal_parameter}, valid Period frequencies: {', '.join(SeasonalParameter.__members__.keys())}"
+                        f"Unsupported Period frequency: {seasonal_period}, valid Period frequencies: {', '.join(SeasonalPeriod.__members__.keys())}"
                     )
             else:
-                self.seasonal_parameter = seasonal_parameter
+                self.seasonal_period = seasonal_period
 
         if isinstance(data, (pd.Series, pd.DataFrame)):
             if isinstance(data, pd.DataFrame):
@@ -430,7 +429,9 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         # data[data.columns[0]] = data[data.columns[0]].astype("float32")
 
         # check valid seasonal parameter
-        valid_seasonality = autocorrelation_seasonality_test(data[data.columns[0]], self.seasonal_parameter)
+        valid_seasonality = autocorrelation_seasonality_test(
+            data[data.columns[0]], self.seasonal_period
+        )
 
         self.seasonality_present = True if valid_seasonality else False
 
@@ -469,7 +470,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             fold_strategy=fold_strategy,
             fold=fold,
             fh=fh,
-            seasonal_parameter=seasonal_parameter,
+            seasonal_period=seasonal_period,
             fold_shuffle=False,
             n_jobs=n_jobs,
             use_gpu=use_gpu,
