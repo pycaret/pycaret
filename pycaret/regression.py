@@ -257,7 +257,7 @@ def setup(
     pca_method: str, default = 'linear'
         The 'linear' method performs uses Singular Value  Decomposition. Other options are:
         
-        - kernel: dimensionality reduction through the use of RVF kernel.
+        - kernel: dimensionality reduction through the use of RBF kernel.
         - incremental: replacement for 'linear' pca when the dataset is too large.
 
 
