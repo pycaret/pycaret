@@ -1,0 +1,49 @@
+.rst-content dl:not(.docutils) dt:first-child {
+  margin-top: 0;
+}
+
+.rst-content dl:not(.docutils) dl dt {
+  margin-bottom: 4px;
+  border: none;
+  border-left: solid 3px #ccc;
+  background: #f0f0f0;
+  color: #555;
+}
+
+.rst-content dl table,
+.rst-content dl ul,
+.rst-content dl ol,
+.rst-content dl p {
+  margin-bottom: 8px !important;
+}
+
+.rst-content dl:not(.docutils) dt {
+  display: table;
+  margin: 6px 0;
+  font-size: 90%;
+  line-height: normal;
+  background: #e7f2fa;
+  color: #2980b9;
+  border-top: solid 3px #6ab0de;
+  padding: 6px;
+  position: relative;
+}
+
+html.writer-html5 .rst-content dl.field-list {
+  display: initial;
+}
+
+html.writer-html5 .rst-content dl.field-list > dd,
+html.writer-html5 .rst-content dl.field-list > dt {
+  margin-bottom: 4px;
+  padding-left: 6px;
+}
+
+p {
+  line-height: 20px;
+  font-size: 14px;
+}
+
+html.writer-html5 .rst-content dl.field-list > dt:after {
+  content: initial;
+}

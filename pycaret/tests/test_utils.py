@@ -1,8 +1,8 @@
 import os, sys
+
 sys.path.insert(0, os.path.abspath(".."))
 
-import numpy  as np
-import pandas as pd
+import numpy as np
 import pytest
 import pycaret.utils
 import pycaret.classification
@@ -18,7 +18,7 @@ def test():
     assert isinstance(version, str)
     nightly_version = pycaret.utils.nightly_version()
     assert isinstance(nightly_version, str)
-    version = pycaret.utils.__version__()
+    version = pycaret.utils.__version__
     assert isinstance(version, str)
 
     # preparation(classification)
@@ -27,15 +27,19 @@ def test():
     le = sklearn.preprocessing.LabelEncoder()
     le = le.fit(data[target])
     data[target] = le.transform(data[target])
-    train, test = sklearn.model_selection.train_test_split(data, train_size=0.8, random_state=1)
-    clf1 = pycaret.classification.setup(train, target=target,silent=True, html=False, session_id=123)
+    train, test = sklearn.model_selection.train_test_split(
+        data, train_size=0.8, random_state=1
+    )
+    clf1 = pycaret.classification.setup(
+        train, target=target, silent=True, html=False, session_id=123, n_jobs=1,
+    )
     model = pycaret.classification.create_model("lightgbm")
     data_unseen = test.drop(columns=target)
     final_model = pycaret.classification.finalize_model(model)
-    result = pycaret.classification.predict_model(final_model, data = data_unseen)
+    result = pycaret.classification.predict_model(final_model, data=data_unseen)
     actual = test[target]
     prediction = result["Label"]
-    
+
     # provisional support
     actual = actual.dropna(axis=0, how="any")
     actual = actual.reset_index()
@@ -77,22 +81,26 @@ def test():
     # preparation(regression)
     data = pycaret.datasets.get_data("boston")
     target = "medv"
-    train, test = sklearn.model_selection.train_test_split(data, train_size=0.8, random_state=1)
-    reg1 = pycaret.regression.setup(data, target="medv", silent=True, html=False, session_id=123)
+    train, test = sklearn.model_selection.train_test_split(
+        data, train_size=0.8, random_state=1
+    )
+    reg1 = pycaret.regression.setup(
+        data, target="medv", silent=True, html=False, session_id=123, n_jobs=1,
+    )
     model = pycaret.regression.create_model("lightgbm")
     data_unseen = test.drop(columns=target)
     final_model = pycaret.regression.finalize_model(model)
     result = pycaret.regression.predict_model(final_model, data=data_unseen)
     actual = test[target]
     prediction = result["Label"]
-    
+
     # provisional support
     actual = actual.dropna(axis=0, how="any")
     actual = actual.reset_index()
-    actual=actual.drop("index", axis=1)
+    actual = actual.drop("index", axis=1)
     prediction = prediction.dropna(axis=0, how="any")
     prediction = prediction.reset_index()
-    prediction=prediction.drop("index", axis=1)
+    prediction = prediction.drop("index", axis=1)
 
     # check metric(regression)
     mae = pycaret.utils.check_metric(actual, prediction, "MAE")
@@ -114,7 +122,20 @@ def test():
     assert isinstance(mape, float)
     assert mape >= 0
 
+    # Ensure metric is rounded to 2 decimals
+    mape = pycaret.utils.check_metric(actual, prediction, "MAPE", 2)
+    assert mape == 0.05
+
+    # Ensure metric is rounded to default value
+    mape = pycaret.utils.check_metric(actual, prediction, "MAPE")
+    assert mape == 0.0469
+
+    # Metric does not exist
+    with pytest.raises(ValueError, match="Couldn't find metric"):
+        pycaret.utils.check_metric(actual, prediction, "INEXISTENTMETRIC")
+
     assert 1 == 1
+
 
 if __name__ == "__main__":
     test()

@@ -2,110 +2,96 @@
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
 
-version_ = "2.1.2"
-nightly_version_ = "2.2"
+import pandas as pd
+
+version_ = "2.3.1"
+nightly_version_ = "2.3.1"
+
+__version__ = version_
+
 
 def version():
     return version_
 
+
 def nightly_version():
     return nightly_version_
 
-def __version__():
-    return version_
 
-def check_metric(actual, prediction, metric, round=4):
-    
+def check_metric(actual: pd.Series, prediction: pd.Series, metric: str, round: int = 4):
+
     """
     Function to evaluate classification and regression metrics.
+
+
+    actual : pandas.Series
+        Actual values of the target variable.
+
+
+    prediction : pandas.Series
+        Predicted values of the target variable.
+
+
+    metric : str
+        Metric to use.
+
+
+    round: integer, default = 4
+        Number of decimal places the metrics will be rounded to.
+
+
+    Returns:
+        float
+
     """
-    
-    #general dependencies
-    import numpy as np
-    from sklearn import metrics
 
-    #metric calculation starts here
-    
-    if metric == 'Accuracy':
-        
-        result = metrics.accuracy_score(actual,prediction)
-        result = result.round(round)
-        
-    elif metric == 'Recall':
-        
-        result = metrics.recall_score(actual,prediction)
-        result = result.round(round)
-        
-    elif metric == 'Precision':
-        
-        result = metrics.precision_score(actual,prediction)
-        result = result.round(round)
-        
-    elif metric == 'F1':
-        
-        result = metrics.f1_score(actual,prediction)
-        result = result.round(round)
-        
-    elif metric == 'Kappa':
-        
-        result = metrics.cohen_kappa_score(actual,prediction)
-        result = result.round(round)
-       
-    elif metric == 'AUC':
-        
-        result = metrics.roc_auc_score(actual,prediction)
-        result = result.round(round)
-        
-    elif metric == 'MCC':
-        
-        result = metrics.matthews_corrcoef(actual,prediction)
-        result = result.round(round)
+    # general dependencies
+    import pycaret.containers.metrics.classification
+    import pycaret.containers.metrics.regression
 
-    elif metric == 'MAE':
+    globals_dict = {"y": prediction}
+    metric_containers = {
+        **pycaret.containers.metrics.classification.get_all_metric_containers(
+            globals_dict
+        ),
+        **pycaret.containers.metrics.regression.get_all_metric_containers(globals_dict),
+    }
+    metrics = {v.name: v.score_func for k, v in metric_containers.items()}
 
-        result = metrics.mean_absolute_error(actual,prediction)
+    # metric calculation starts here
+
+    if metric in metrics:
+        try:
+            result = metrics[metric](actual, prediction)
+        except:
+            from sklearn.preprocessing import LabelEncoder
+
+            le = LabelEncoder()
+            actual = le.fit_transform(actual)
+            prediction = le.transform(prediction)
+            result = metrics[metric](actual, prediction)
         result = result.round(round)
-        
-    elif metric == 'MSE':
-
-        result = metrics.mean_squared_error(actual,prediction)
-        result = result.round(round)        
-        
-    elif metric == 'RMSE':
-
-        result = metrics.mean_squared_error(actual,prediction)
-        result = np.sqrt(result)
-        result = result.round(round)     
-        
-    elif metric == 'R2':
-
-        result = metrics.r2_score(actual,prediction)
-        result = result.round(round)    
-        
-    elif metric == 'RMSLE':
-
-        result = np.sqrt(np.mean(np.power(np.log(np.array(abs(prediction))+1) - np.log(np.array(abs(actual))+1), 2)))
-        result = result.round(round)
-
-    elif metric == 'MAPE':
-
-        mask = actual.iloc[:,0] != 0
-        result = (np.fabs(actual.iloc[:,0] - prediction.iloc[:,0])/actual.iloc[:,0])[mask].mean()
-        result = result.round(round)
-       
-    return float(result)
+        return float(result)
+    else:
+        raise ValueError(
+            f"Couldn't find metric '{metric}' Possible metrics are: {', '.join(metrics.keys())}."
+        )
 
 
 def enable_colab():
-    
+    from IPython.display import display, HTML, clear_output, update_display
+
     """
     Function to render plotly visuals in colab.
     """
-    
+
     def configure_plotly_browser_state():
-        
+
         import IPython
-        display(IPython.core.display.HTML('''
+
+        display(
+            IPython.core.display.HTML(
+                """
             <script src="/static/components/requirejs/require.js"></script>
             <script>
               requirejs.config({
@@ -115,8 +101,30 @@ def enable_colab():
                 },
               });
             </script>
-            '''))
-  
+            """
+            )
+        )
+
     import IPython
-    IPython.get_ipython().events.register('pre_run_cell', configure_plotly_browser_state)
-    print('Colab mode activated.')
+
+    IPython.get_ipython().events.register(
+        "pre_run_cell", configure_plotly_browser_state
+    )
+    print("Colab mode enabled.")
+
+
+def get_system_logs():
+
+    """
+    Read and print 'logs.log' file from current active directory
+    """
+
+    with open("logs.log", "r") as file:
+        lines = file.read().splitlines()
+
+    for line in lines:
+        if not line:
+            continue
+
+        columns = [col.strip() for col in line.split(":") if col]
+        print(columns)

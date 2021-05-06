@@ -1,0 +1,14 @@
+shap
+tune-sklearn>=0.2.1
+ray[tune]>=1.0.0
+hyperopt
+optuna
+scikit-optimize>=0.8.1
+psutil
+awscli
+azure-storage-blob
+google-cloud-storage
+catboost>=0.23.2
+xgboost>=1.1.0
+#hpbandster
+#ConfigSpace

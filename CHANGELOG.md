@@ -1,11 +1,462 @@
 # Changelog
 All notable changes to this project will be documented in this file.
+<br/><br/>
+
+#### Release: PyCaret 2.3.1 | Release Date: April 28, 2021 (SEVERAL BUGS FIXED)
+ 
+- Fixed an exception with missing variables (display_container etc.) during load_config()
+- Fixed exceptions when using Ridge and RF estimators with cuML (GPU mode)
+- Fixed PyCaret's cuML wrappers not being pickleable
+- Added an extra check to get_all_object_vars_and_properties internal method, fixing exceptions with certain estimators
+- save_model()  now supports kwargs, which will be passed to joblib.dump()
+- Fixed an issue with load_model() from AWS (duplicate .pkl extension) - thanks to markgrujic (https://github.com/pycaret/pycaret/pull/1128)
+- Fixed a typo in documentation - thanks to koorukuroo (https://github.com/pycaret/pycaret/pull/1149)
+- Optimized Fix_multicollinearity transformer, drastically reducing the size of saved pipeline
+- interpret_model() now supports data passed as an argument - thanks to jbechtel (https://github.com/pycaret/pycaret/pull/1184)
+- Removed `infer_signature` from MLflow logging when `log_experiment=True`. 
+- Fixed a rare issue where binary_multiclass_score_func was not pickleable
+- Fixed edge case exceptions in feature selection
+- Fixed an exception with `finalize_model` when using GroupKFold CV
+- Pinned `mlxtend>=0.17.0`, `imbalanced-learn==0.7.0`, and `gensim<4.0.0`
+<br/><br/><br/>
+
+### Release: PyCaret 2.3.0 | Release Date: February 21, 2021
+
+- **Modules Impacted:** `pycaret.classification` `pycaret.regression` `pycaret.clustering` `pycaret.anomaly` `pycaret.arules`
+
+## Summary of Changes
+
+- Added new interactive residual plots in `pycaret.regression` module. You can now generate interactive residual plots by using `residuals_interactive` in the `plot_model` function.
+- Added plot rendering support for streamlit applications. A new parameter `display_format` is added in the `plot_model` function. To render plot in streamlit app, set this to `streamlit`. 
+- Revamped Boruta feature selection algorithm. (give it a try!).
+- `tune_model` in `pycaret.classification` and `pycaret.regression` is now compatible with custom models. 
+- Added low_memory and max_len support to association rules module (https://github.com/pycaret/pycaret/pull/1008).
+- Increased robustness of DataFrame checks (https://github.com/pycaret/pycaret/pull/1005).
+- Improved loading of models from AWS (https://github.com/pycaret/pycaret/pull/1005).
+- Catboost and XGBoost are now optional dependencies. They are not automatically installed with default slim installation. To install optional dependencies use `pip install pycaret[full]`.
+- Added `raw_score` argument in the `predict_model` function for `pycaret.classification` module. When set to True, scores for each class will be returned separately.
+- PyCaret now returns base scikit-learn objects, whenever possible.
+- When `handle_unknown_categorical` is set to False in the `setup` function, an exception will be raised during prediction if the data contains unknown levels in categorical features.
+- `predict_model` for multiclass classification now returns labels as an integer. 
+- Fixed an edge case where an IndexError would be raised in `pycaret.clustering` and `pycaret.anomaly`.
+- Fixed text formatting for certain plots in `pycaret.classification` and `pycaret.regression`.
+- If a `logs.log` file cannot be created when `setup` is initialized, no exception will be raised now (support for more configurable logging to come in future).
+- User added metrics will not raise exceptions now and instead return 0.0.
+- Compatibility with tune-sklearn>=0.2.0.
+- Fixed an edge case for dropping NaNs in target column.
+- Fixed stacked models not being tuned correctly.
+- Fixed an exception with KFold when fold_shuffle=False.
+<br/><br/><br/>
+
+#### Release: PyCaret 2.2.3 | Release Date: December 22, 2020 (SEVERAL BUGS FIX | CRITICAL COMPATIBILITY FIX)
+
+- Fixed exceptions with the `predict_model` function when data columns had non-string characters.
+- Fixed a rare exception with the `remove_multicollinearity` parameter in the `setup` function`. 
+- Improved performance and robustness of conversion of date features to categoricals.
+- Fixed an exception with the `models` function when the `type` parameter was passed.
+- The data frame displayed after setup can now be accessed with the `pull` function.
+- Fixed an exception with save_config
+- Fixed a rare case where the target column would be treated as an ID column and thus dropped.
+- SHAP plots can now be saved (pass save parameter as True)
+- **| CRITICAL |** Compatibility broke for catboost, pyod (other impacts unknown as of now) with sklearn=0.24 (released on Dec 22, 2020). A temporary fix is requiring 0.23.2 specifically in the `requirements.txt`.
+<br/><br/><br/>
+
+#### Release: PyCaret 2.2.2 | Release Date: November 25, 2020 (SEVERAL BUGS FIX)
+- Fixed an issue with the `optimize_threshold` function the `pycaret.classification` module. It now returns a float instead of an array.
+- Fixed issue with the `predict_model` function. It now uses original data frame to append the predictions. As such any extra columns given at the time of inference are not removed when returning the predictions. Instead they are internally ignored at the time of predictions.
+- Fixed edge case exceptions for the `create_model` function in `pycaret.clustering`.
+- Fixed exceptions when column names are not string. 
+- Fixed exceptions in `pycaret.regression` when `transform_target` is True in the `setup` function.
+- Fixed an exception in the `models` function if the `type` parameter is specified. 
+<br/><br/><br/>
+
+#### Release: PyCaret 2.2.1 | Release Date: November 09, 2020 (SEVERAL BUGS FIX)
+Post-release `2.2`, the following issues have been fixed:
+- Fixed `plot_model = 'tree'` exceptions.
+- Fixed issue with `predict_model` causing errors with non-contiguous indices. 
+- Fixed issue with `remove_outliers` parameter in the `setup` function. It was introducing extra columns in training data. The issue has been fixed now. 
+- Fixed issue with `plot_model` in `pycaret.clustering` causing errors with non-contiguous indices. 
+- Fixed an exception when the model was saved or logged when `imputation_type` is set to 'iterative' in the `setup` function.
+- `compare_models` now prints intermediate output when `html=False`.
+-  Metrics in `pycaret.classification` for binary classification are now calculated with `average='binary'`. Before they were a weighted average of positive and negative class, now they are just calculated for positive class. For multiclass classification `average='weighted'`.
+- `optimize_threshold` now returns optimized probability threshold value as numpy object.
+- Fixed issue with certain exceptions in `compare_models`.
+- Added `profile_kwargs` argument in the `setup` function to pass keyword arguments to Pandas Profiler.
+- `plot_model`, `interpret_model`, and `evaluate_model` now accepts a new parameter `use_train_data` which when set to True, generates plot on train data instead of test data. 
+<br/><br/><br/>
+
+### Release: PyCaret 2.2 | Release Date: October 28, 2020
+
+## Summary of Changes
+
+- **Modules Impacted:** `pycaret.classification` `pycaret.regression` `pycaret.clustering` `pycaret.anomaly` 
+
+- **Separate Train and Test Set:** New parameter `test_data` has been added in the `setup` function of `pycaret.classification` and `pycaret.regression`. When a DataFrame is passed into the `test_data`, it is used as a holdout set and the `train_size` parameter is ignored. `test_data` must be labeled and the shape of `test_data` must match with the shape of `data`. 
+     
+- **Disable Default Preprocessing:** A new parameter `preprocess` has been added into the `setup` function. When `preprocess` is set to `False`, no transformations are applied except for `train_test_split` and custom transformations passed in the `custom_pipeline` param.  Data must be ready for modeling (no missing values, no dates, categorical data encoding) when preprocess is set to False.
+
+- **Custom Metrics:** New functions `get_metric`, `add_metric` and `remove_metric` is now added in `pycaret.classification`, `pycaret.regression`, and `pycaret.clustering`, that can be used to add / remove metrics used in model evaluation.
+
+- **Custom Transformations:** A new parameter `custom_pipeline` has been added into the `setup` function. It takes a tuple of `(str, transformer)` or a list of tuples. When passed, it will append the custom transformers in the preprocessing pipeline and are applied on each CV fold separately and on the final fit. All the custom transformations are applied after `train_test_split` and before pycaret's internal transformations. 
+
+- **GPU enabled Training:** To use GPU for training `use_gpu` parameter in the `setup` function can be set to `True` or `force`. When set to True, it will use GPU with algorithms that support it and fall back on CPU for remaining. When set to `force` it will only use GPU-enabled algorithms and raise exceptions if they are unavailable for use. The following algorithms are supported on GPU:
+
+  - Extreme Gradient Boosting `pycaret.classification` `pycaret.regression`
+  - LightGBM `pycaret.classification` `pycaret.regression`
+  - CatBoost `pycaret.classification` `pycaret.regression`
+  - Random Forest `pycaret.classification` `pycaret.regression`
+  - K-Nearest Neighbors `pycaret.classification` `pycaret.regression`
+  - Support Vector Machine `pycaret.classification` `pycaret.regression`
+  - Logistic Regression `pycaret.classification`
+  - Ridge Classifier `pycaret.classification`
+  - Linear Regression `pycaret.regression`
+  - Lasso Regression `pycaret.regression`
+  - Ridge Regression `pycaret.regression`
+  - Elastic Net (Regression) `pycaret.regression`
+  - K-Means `pycaret.clustering`
+  - Density-Based Spatial Clustering `pycaret.clustering`
+
+- **Hyperparameter Tuning:** New methods for hyperparameter tuning has been added in the `tune_model` function for `pycaret.classification` and `pycaret.regression`. New parameter `search_library` and `search_algorithm` in the `tune_model` function is added. `search_library` can be `scikit-learn`, `scikit-optimize`, `tune-sklearn`, and `optuna`. The `search_algorithm` param can take the following values based on its `search_library`:
+
+  - scikit-learn: `random` `grid`
+  - scikit-optimize: `bayesian`
+  - tune-sklearn: `random` `grid` `bayesian` `hyperopt` `bohb`
+  - optuna: `random` `tpe`
+
+  Except for `scikit-learn`, all the other search libraries are not hard dependencies of pycaret and must be installed separately. 
+
+- **Early Stopping:** Early stopping now supported for hyperparameter tuning. A new parameter `early_stopping` is added in the `tune_model` function for `pycaret.classification` and `pycaret.regression`. It is ignored when `search_library` is ``scikit-learn``, or if the estimator doesn't have a 'partial_fit' attribute. It can be either an object accepted by the search library or one of the following:
+
+  - `asha` for Asynchronous Successive Halving Algorithm
+  - `hyperband` for Hyperband
+  - `median` for median stopping rule
+  - When `False` or `None`, early stopping will not be used.
+
+- **Iterative Imputation:** Iterative imputation type for numeric and categorical missing values is now implemented. New parameters `imputation_type`, `iterative_imptutation_iters`, `categorical_iterative_imputer`, and `numeric_iterative_imputer` added in the `setup` function. Read the blog post for more details: https://www.linkedin.com/pulse/iterative-imputation-pycaret-22-antoni-baum/?trackingId=Shg1zF%2F%2FR5BE7XFpzfTHkA%3D%3D
+
+- **New Plots:** Following new plots have been added:
+  - lift `pycaret.classification`
+  - gain `pycaret.classification`
+  - tree `pycaret.classification` `pycaret.regression`
+  - feature_all `pycaret.classification` `pycaret.regression`
+
+- **CatBoost Compatibility:** `CatBoostClassifier` and `CatBoostRegressor` is now compatible with `plot_model`. It requires `catboost>=0.23.2`. 
+
+- **Log Plots in MLFlow Server:** You can now log any plot in the `MLFlow` tracking server that is available in the `plot_model` function. To log specific plots, pass a list containing plot IDs in the `log_plots` parameter. Check the documentation of the `plot_model` to see all available plots.
+
+- **Data Split Stratification:** A new parameter `data_split_stratify` is added in the `setup` function of `pycaret.classification` and `pycaret.regression`. It controls stratification during `train_test_split`. When set to True, will stratify by target column. To stratify on any other columns, pass a list of column names.
+
+- **Fold Strategy:** A new parameter `fold_strategy` is added in the `setup` function for `pycaret.classification` and `pycaret.regression`. By default, it is 'stratifiedkfold' for `pycaret.classification` and 'kfold' for `pycaret.regression`. Possible values are:
+
+  - `kfold` for KFold CV;
+  - `stratifiedkfold` for Stratified KFold CV;
+  - `groupkfold` for Group KFold CV;
+  - `timeseries` for TimeSeriesSplit CV; or
+  - a custom CV generator object compatible with scikit-learn.
+
+- **Global Fold Parameter:** A new parameter `fold` has been added in the `setup` function for `pycaret.classification` and `pycaret.regression`. It controls the number of folds to be used in cross validation. This is a global setting that can be over-written at function level by using `fold` parameter within each function. Ignored when ``fold_strategy`` is a custom object.
+
+- **Fold Groups:** Optional Group labels when `fold_strategy` is `groupkfold`. It takes an array with shape (n_samples, ) where n_samples is the number of rows in the training dataset. When a string is passed, it is interpreted as the column name in the dataset containing the group label.
+
+- **Transformation Pipeline:** All transformations are now applied after `train_test_split`. 
+
+- **Data Type Handling:** All data types handling internally has been changed from `int64` and `float64` to `int32` and `float32` respectively in order to improve memory usage and performance, as well as for better compatibility with GPU-based algorithms.
+
+- **AutoML Behavior Change:** `automl` function in `pycaret.classification` and `pycaret.regression` is no more re-fitting the model on the entire dataset. As such, if the model needs to be fitted on the entire dataset including the holdout set, `finalize_model` must be explicitly used.
+
+- **Default Tuning Grid:** Default hyperparameter tuning grid for `RandomForest`, `XGBoost`, `CatBoost`, and `LightGBM` has been amended to remove extreme values for `max_depth` and other training intense parameters to speed up the tuning process.
+
+- **Random Forest Default Values:** Default value of `n_estimators` for `RandomForestClassifier` and `RandomForestRegressor` has been changed from `10` to `100` to make it consistent with the default behavior of `scikit-learn`.
+
+- **AUC for Multiclass Classification:** AUC for Multiclass target is now available in the metric evaluation. 
+
+- **Google Colab Display:** All output printed on screen (information grid, score grids) is now format compatible with Google Colab resulting in semantic improvements.
+
+- **Sampling Parameter Removed:** `sampling` parameter is now removed from the `setup` function of `pycaret.classification` and `pycaret.regression`. 
+
+- **Type Hinting:** In order to make both the usage and development easier, type hints have been added to all updated pycaret functions, in accordance with best practices. Users can leverage those by using an IDE with support for type hints.
+
+- **Documentation:** All Modules documentation on the website is now retired. Updated documentation is available here: https://pycaret.readthedocs.io/en/latest/
+
+## Function Level Changes
+
+### New Functions Introduced in PyCaret 2.2
+
+- **get_metrics:** Returns table of available metrics used for CV. 
+`pycaret.classification` `pycaret.regression` `pycaret.clustering`
+
+- **add_metric:** Adds a custom metric for model evaluation.
+`pycaret.classification` `pycaret.regression` `pycaret.clustering`
+
+- **remove_metric:** Remove custom metrics.
+`pycaret.classification` `pycaret.regression` `pycaret.clustering`
+
+- **save_config:** save all global variables to a pickle file, allowing to later resume without rerunning the `setup` function.
+`pycaret.classification` `pycaret.regression` `pycaret.clustering` `pycaret.anomaly`
+
+- **load_config:** Load global variables from pickle file into Python environment.
+`pycaret.classification` `pycaret.regression` `pycaret.clustering` `pycaret.anomaly`
+
+### setup
+`pycaret.classification` `pycaret.regression` `pycaret.clustering` `pycaret.anomaly`
+
+Following new parameters have been added:
+
+- **test_data: pandas.DataFrame, default = None**
+If not None, test_data is used as a hold-out set, and the ``train_size`` parameter is ignored. test_data must be labeled and the shape of data and test_data must match. 
+
+- **preprocess: bool, default = True**
+When set to False, no transformations are applied except for `train_test_split` and custom transformations passed in `custom_pipeline` param. Data must be ready for modeling (no missing values, no dates, categorical data encoding) when `preprocess` is set to False. 
+
+- **imputation_type: str, default = 'simple'**
+The type of imputation to use. Can be either 'simple' or 'iterative'.
+
+- **iterative_imputation_iters: int, default = 5**
+The number of iterations. Ignored when ``imputation_type`` is not 'iterative'.
+
+- **categorical_iterative_imputer: str, default = 'lightgbm'**
+Estimator for iterative imputation of missing values in categorical features. Ignored when ``imputation_type`` is not 'iterative'. 
+
+- **numeric_iterative_imputer: str, default = 'lightgbm'**
+Estimator for iterative imputation of missing values in numeric features. Ignored when ``imputation_type`` is set to 'simple'. 
+
+- **data_split_stratify: bool or list, default = False**
+Controls stratification during 'train_test_split'. When set to True, will stratify by target column. To stratify on any other columns, pass a list of column names. Ignored when ``data_split_shuffle`` is False.
+
+- **fold_strategy: str or sklearn CV generator object, default = 'stratifiedkfold' / 'kfold'**
+Choice of cross validation strategy. Possible values are:
+   * 'kfold'
+   * 'stratifiedkfold'
+   * 'groupkfold'
+   * 'timeseries'
+   * a custom CV generator object compatible with scikit-learn.
+
+- **fold: int, default = 10**
+The number of folds to be used in cross-validation. Must be at least 2. This is a global setting that can be over-written at the function level by using the ``fold`` parameter. Ignored when ``fold_strategy`` is a custom object.
+
+- **fold_shuffle: bool, default = False**
+Controls the shuffle parameter of CV. Only applicable when ``fold_strategy`` is 'kfold' or 'stratifiedkfold'. Ignored when ``fold_strategy`` is a custom object.
+
+- **fold_groups: str or array-like, with shape (n_samples,), default = None**
+Optional group labels when 'GroupKFold' is used for the cross-validation. It takes an array with shape (n_samples, ) where n_samples is the number of rows in the training dataset. When a string is passed, it is interpreted as the column name in the dataset containing group labels.
+
+- **use_gpu: str or bool, default = False**
+When set to 'force', will try to use GPU with all algorithms that support it, and raise exceptions if they are unavailable. When set to True, will use GPU with algorithms that support it, and fall back to CPU if they are unavailable. When False, all algorithms are trained using CPU only.
+
+- *custom_pipeline: transformer or list of transformers or tuple, default = None**
+When passed, will append the custom transformers in the preprocessing pipeline and are applied on each CV fold separately and on the final fit. All the custom transformations are applied after 'train_test_split' and before pycaret's internal transformations. 
+
+### compare_models 
+`pycaret.classification` `pycaret.regression`
+
+Following new parameters have been added:
+
+- **cross_validation: bool = True**
+When set to False, metrics are evaluated on holdout set. ``fold`` param is ignored when cross_validation is set to False.
+
+- **errors: str = "ignore"**
+When set to 'ignore', will skip the model with exceptions and continue. If 'raise', will stop the function when exceptions are raised.
+
+- **fit_kwargs: Optional[dict] = None**
+Dictionary of arguments passed to the fit method of the model.
+
+- **groups: Optional[Union[str, Any]] = None**
+Optional group labels when 'GroupKFold' is used for the cross-validation. It takes an array with shape (n_samples, ) where n_samples is the number of rows in the training dataset. When a string is passed, it is interpreted as the column name in the dataset containing group labels.
+
+### create_model
+`pycaret.classification` `pycaret.regression`
+
+Following new parameters have been added:
+
+- **cross_validation: bool = True**
+When set to False, metrics are evaluated on holdout set. ``fold`` param is ignored when cross_validation is set to False.
+
+- **fit_kwargs: Optional[dict] = None**
+Dictionary of arguments passed to the fit method of the model.
+
+- **groups: Optional[Union[str, Any]] = None**
+Optional group labels when 'GroupKFold' is used for the cross-validation. It takes an array with shape (n_samples, ) where n_samples is the number of rows in the training dataset. When a string is passed, it is interpreted as the column name in the dataset containing group labels.
+
+Following parameters have been removed:
+
+- **ensemble** - Deprecated - use `ensemble_model` function directly.
+- **method** - Deprecated - use `ensemble_model` function directly.
+- **system** - Moved to private API.
+
+### tune_model
+`pycaret.classification` `pycaret.regression`
+
+Following new parameters have been added:
+
+- **search_library: str, default = 'scikit-learn'**
+The search library used for tuning hyperparameters. Possible values:
+
+   'scikit-learn' - default, requires no further installation
+   https://github.com/scikit-learn/scikit-learn
+
+   'scikit-optimize' - `pip install scikit-optimize`
+   https://scikit-optimize.github.io/stable/
+
+   'tune-sklearn' - `pip install tune-sklearn ray[tune]`
+   https://github.com/ray-project/tune-sklearn
+
+   'optuna' - `pip install optuna`
+   https://optuna.org/
+
+- **search_algorithm: str, default = None**
+The search algorithm depends on the `search_library` parameter. Some search algorithms require additional libraries to be installed. When None, will use the search library-specific default algorithm.
+
+   `scikit-learn` possible values:
+         - random (default)
+         - grid
+
+   `scikit-optimize` possible values:
+         - bayesian (default)
+
+   `tune-sklearn` possible values:
+         - random (default)
+         - grid 
+         - bayesian `pip install scikit-optimize`
+         - hyperopt  `pip install hyperopt`
+         - bohb `pip install hpbandster ConfigSpace`
+
+   `optuna` possible values:
+          - tpe (default)
+          - random
+
+- **early_stopping: bool or str or object, default = False**
+Use early stopping to stop fitting to a hyperparameter configuration if it performs poorly. Ignored when ``search_library`` is scikit-learn, or if the estimator does not have 'partial_fit' attribute. If False or None, early stopping will not be used. Can be either an object accepted by the search library or one of the following:
+
+   - 'asha' for Asynchronous Successive Halving Algorithm
+   - 'hyperband' for Hyperband
+   - 'median' for Median Stopping Rule
+   - If False or None, early stopping will not be used.
+
+- **early_stopping_max_iters: int, default = 10**
+The maximum number of epochs to run for each sampled configuration. Ignored if `early_stopping` is False or None.
+
+- **fit_kwargs: Optional[dict] = None**
+Dictionary of arguments passed to the fit method of the model.
+
+- **groups: Optional[Union[str, Any]] = None**
+Optional group labels when 'GroupKFold' is used for the cross-validation. It takes an array with shape (n_samples, ) where n_samples is the number of rows in the training dataset. When a string is passed, it is interpreted as the column name in the dataset containing group labels.
+
+- **return_tuner: bool, default = False**
+When set to True, will return a tuple of (model, tuner_object). 
+
+- **tuner_verbose: bool or in, default = True**
+If True or above 0, will print messages from the tuner. Higher values print more messages. Ignored when ``verbose`` param is False.
+
+### ensemble_model
+`pycaret.classification` `pycaret.regression`
+
+Following new parameters have been added:
+
+- **fit_kwargs: Optional[dict] = None**
+Dictionary of arguments passed to the fit method of the model.
+
+- **groups: Optional[Union[str, Any]] = None**
+Optional group labels when 'GroupKFold' is used for the cross-validation. It takes an array with shape (n_samples, ) where n_samples is the number of rows in the training dataset. When a string is passed, it is interpreted as the column name in the dataset containing group labels.
+
+## blend_models
+`pycaret.classification` `pycaret.regression`
+
+Following new parameters have been added:
+
+- **fit_kwargs: Optional[dict] = None**
+Dictionary of arguments passed to the fit method of the model.
+
+- **groups: Optional[Union[str, Any]] = None**
+Optional group labels when 'GroupKFold' is used for the cross-validation. It takes an array with shape (n_samples, ) where n_samples is the number of rows in the training dataset. When a string is passed, it is interpreted as the column name in the dataset containing group labels.
+
+- **weights: list, default = None**
+Sequence of weights (float or int) to weight the occurrences of predicted class labels (hard voting) or class probabilities before averaging (soft voting). Uses uniform weights when None.
+
+- The default value for the `method` parameter has been changed from `hard` to `auto`.
+
+## stack_models
+`pycaret.classification` `pycaret.regression`
+
+Following new parameters have been added:
+
+- **fit_kwargs: Optional[dict] = None**
+Dictionary of arguments passed to the fit method of the model.
+
+- **groups: Optional[Union[str, Any]] = None**
+Optional group labels when 'GroupKFold' is used for the cross-validation. It takes an array with shape (n_samples, ) where n_samples is the number of rows in the training dataset. When a string is passed, it is interpreted as the column name in the dataset containing group labels.
+
+## calibrate_model
+`pycaret.classification`
+
+Following new parameters have been added:
+
+- **fit_kwargs: Optional[dict] = None**
+Dictionary of arguments passed to the fit method of the model.
+
+- **groups: Optional[Union[str, Any]] = None**
+Optional group labels when 'GroupKFold' is used for the cross-validation. It takes an array with shape (n_samples, ) where n_samples is the number of rows in the training dataset. When a string is passed, it is interpreted as the column name in the dataset containing group labels.
+
+## plot_model
+`pycaret.classification` `pycaret.regression`
+
+Following new parameters have been added:
+
+- **fold: int or scikit-learn compatible CV generator, default = None**
+Controls cross-validation. If None, the CV generator in the ``fold_strategy`` parameter of the ``setup`` function is used. When an integer is passed, it is interpreted as the 'n_splits' parameter of the CV generator in the  ``setup`` function.
+
+- **fit_kwargs: Optional[dict] = None**
+Dictionary of arguments passed to the fit method of the model.
+
+- **groups: Optional[Union[str, Any]] = None**
+Optional group labels when 'GroupKFold' is used for the cross-validation. It takes an array with shape (n_samples, ) where n_samples is the number of rows in the training dataset. When a string is passed, it is interpreted as the column name in the dataset containing group labels.
+
+## evaluate_model
+`pycaret.classification` `pycaret.regression`
+
+Following new parameters have been added:
+
+- **fold: int or scikit-learn compatible CV generator, default = None**
+Controls cross-validation. If None, the CV generator in the ``fold_strategy`` parameter of the ``setup`` function is used. When an integer is passed, it is interpreted as the 'n_splits' parameter of the CV generator in the  ``setup`` function.
+
+- **fit_kwargs: Optional[dict] = None**
+Dictionary of arguments passed to the fit method of the model.
+
+- **groups: Optional[Union[str, Any]] = None**
+Optional group labels when 'GroupKFold' is used for the cross-validation. It takes an array with shape (n_samples, ) where n_samples is the number of rows in the training dataset. When a string is passed, it is interpreted as the column name in the dataset containing group labels.
+
+## finalize_model
+`pycaret.classification` `pycaret.regression`
+
+Following new parameters have been added:
+
+- **fit_kwargs: Optional[dict] = None**
+Dictionary of arguments passed to the fit method of the model.
+
+- **groups: Optional[Union[str, Any]] = None**
+Optional group labels when 'GroupKFold' is used for the cross-validation. It takes an array with shape (n_samples, ) where n_samples is the number of rows in the training dataset. When a string is passed, it is interpreted as the column name in the dataset containing group labels.
+
+- **model_only: bool, default = True**
+When set to False, only the model object is re-trained and all the transformations in Pipeline are ignored.
+
+## models
+`pycaret.classification` `pycaret.regression` `pycaret.clustering` `pycaret.anomaly`
+
+Following new parameters have been added:
+
+- **internal: bool, default = False**
+When True, will return extra columns and rows used internally.
+
+- **raise_errors: bool, default = True**
+When False, will suppress all exceptions, ignoring models that couldn't be created.
+<br/><br/><br/>
 
 #### Release: PyCaret 2.1.2 | Release Date: August 31, 2020 (BUG FIX)
 - Post-release `2.1` a bug has been reported preventing `predict_model` function to work in `regression` module in a new notebook session, when `transform_target` was set to `False` during model training. This issue has been fixed in PyCaret release `2.1.2`. To learn more about the issue: https://github.com/pycaret/pycaret/issues/525
+<br/><br/><br/>
 
 #### Release: PyCaret 2.1.1 | Release Date: August 30, 2020 (BUG FIX)
 - Post-release `2.1` a bug has been identified in MLFlow back-end. The error is only caused when `log_experiment` in the `setup` function is set to True and is applicable to all the modules. The cause of the error has been identified and an issue is opened with `MLFlow`. The error is caused by `infer_signature` function in `mlflow.sklearn.log_model` and is only raised when there are missing values in the dataset. This issue has been fixed in PyCaret release `2.1.1` by skipping the signature in cases where `MLFlow` raises exception.
+<br/><br/><br/>
 
 #### Release: PyCaret 2.1 | Release Date: August 28, 2020
 ### Summary of Changes
@@ -33,7 +484,7 @@ All notable changes to this project will be documented in this file.
 - **Tutorials** All tutorials are now updated using `pycaret==2.0`. https://github.com/pycaret/pycaret/tree/master/tutorials
 - **Resources** New resources added under `/pycaret/resources/` https://github.com/pycaret/pycaret/tree/master/resources
 - **Example Notebook** Many example notebooks added under `/pycaret/examples/` https://github.com/pycaret/pycaret/tree/master/examples
-___
+<br/><br/><br/>
 
 
 #### Release: PyCaret 2.0 | Release Date: July 31, 2020
