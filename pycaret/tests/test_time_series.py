@@ -195,8 +195,8 @@ def test_blend_model(load_setup, load_models, method):
     from pycaret.internal.ensemble import _EnsembleForecasterWithVoting
 
     ts_experiment = load_setup
-    ts_models = load_models
-    ts_weights = [uniform(0, 1) for _ in range(len(load_models))]
+    ts_models = list(np.random.choice(load_models, 10))
+    ts_weights = [uniform(0, 1) for _ in range(len(ts_models))]
 
     blender = ts_experiment.blend_models(
         ts_models, method=method, weights=ts_weights, verbose=False
@@ -214,8 +214,8 @@ def test_blend_model(load_setup, load_models, method):
 def test_blend_model_predict(load_setup, load_models):
 
     ts_experiment = load_setup
-    ts_models = np.random.choice(load_models, 5)
-    ts_weights = [uniform(0, 1) for _ in range(len(load_models))]
+    ts_models = list(np.random.choice(load_models, 5))
+    ts_weights = [uniform(0, 1) for _ in range(len(ts_models))]
     fh = ts_experiment.fh
 
     mean_blender = ts_experiment.blend_models(
