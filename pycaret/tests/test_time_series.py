@@ -214,7 +214,7 @@ def test_blend_model(load_setup, load_models, method):
 def test_blend_model_predict(load_setup, load_models):
 
     ts_experiment = load_setup
-    ts_models = load_models
+    ts_models = np.random.choice(load_models, 5)
     ts_weights = [uniform(0, 1) for _ in range(len(load_models))]
     fh = ts_experiment.fh
 
