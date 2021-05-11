@@ -82,7 +82,7 @@ def check_metric(actual: pd.Series, prediction: pd.Series, metric: str, round: i
             actual = le.fit_transform(actual)
             prediction = le.transform(prediction)
             result = metrics[metric](actual, prediction)
-        result = result.round(round)
+        result = np.around(result, round)
         return float(result)
     else:
         raise ValueError(

@@ -34,7 +34,7 @@ jobs:
         rm pycaret/tests/test_regression_tuning.py
     - name: Test with pytest
       run: |
-        pytest -p no:warnings
+        pytest
 
   test_windows:
 
@@ -63,7 +63,7 @@ jobs:
         remove-item pycaret/tests/* -Include @('test_classification_tuning.py','test_classification_plots.py','test_regression_plots.py', 'test_regression_tuning.py')
     - name: Test with pytest
       run: |
-        pytest -p no:warnings
+        pytest
 
   # test_tuning:
 

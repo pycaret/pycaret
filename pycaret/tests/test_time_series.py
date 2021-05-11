@@ -10,7 +10,6 @@ import pandas as pd  # type: ignore
 from pycaret.datasets import get_data
 from pycaret.internal.pycaret_experiment import TimeSeriesExperiment
 from pycaret.containers.models.time_series import get_all_model_containers
-from statsmodels.tools.sm_exceptions import ConvergenceWarning
 
 pytestmark = pytest.mark.filterwarnings('ignore::UserWarning')
 
@@ -191,7 +190,7 @@ def test_create_model(name, fh, load_data):
     expected_period_index = load_data.iloc[-fh_index:].index
     assert np.all(y_pred.index == expected_period_index)
 
-@pytest.mark.filterwarnings('ignore::ConvergenceWarning')
+@pytest.mark.filterwarnings('ignore::statsmodels.tools.sm_exceptions.ConvergenceWarning')
 @pytest.mark.parametrize("method", _ENSEMBLE_METHODS)
 def test_blend_model(load_setup, load_models, method):
 
@@ -213,7 +212,7 @@ def test_blend_model(load_setup, load_models, method):
     ts_models_class = [f.__class__ for f in ts_models]
     assert blender_forecasters_class == ts_models_class
 
-@pytest.mark.filterwarnings('ignore::ConvergenceWarning')
+@pytest.mark.filterwarnings('ignore::statsmodels.tools.sm_exceptions.ConvergenceWarning')
 def test_blend_model_predict(load_setup, load_models):
 
     ts_experiment = load_setup
