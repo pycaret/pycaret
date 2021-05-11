@@ -622,7 +622,7 @@ class TBATSContainer(TimeSeriesContainer):
 
     @property
     def _set_args(self) -> dict:
-        args = {"sp": self.sp} if self.seasonality_present else {}
+        args = {"sp": self.sp, "use_box_cox": True, "show_warnings ": False} if self.seasonality_present else {}
         return args
 
 
@@ -633,9 +633,7 @@ class TBATSContainer(TimeSeriesContainer):
     
     @property
     def _set_tune_grid(self) -> dict:
-        tune_grid = { 
-            "box_cox_bounds": [(0, 1)],
-            "use_box_cox": [True, False],
+        tune_grid = {
             "use_damped_trend": [True, False],
             "use_trend": [True, False],
             "use_arma_errors": [True, False],
@@ -683,7 +681,7 @@ class BATSContainer(TimeSeriesContainer):
 
     @property
     def _set_args(self) -> dict:
-        args = {"sp": self.sp} if self.seasonality_present else {}
+        args = {"sp": self.sp, "use_box_cox": True, "show_warnings ": False} if self.seasonality_present else {}
         return args
 
 
@@ -694,9 +692,7 @@ class BATSContainer(TimeSeriesContainer):
     
     @property
     def _set_tune_grid(self) -> dict:
-        tune_grid = { 
-            "box_cox_bounds": [(0, 1)],
-            "use_box_cox": [True, False],
+        tune_grid = {
             "use_damped_trend": [True, False],
             "use_trend": [True, False],
             "use_arma_errors": [True, False],
