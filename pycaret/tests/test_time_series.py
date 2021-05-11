@@ -10,6 +10,10 @@ import pandas as pd  # type: ignore
 from pycaret.datasets import get_data
 from pycaret.internal.pycaret_experiment import TimeSeriesExperiment
 from pycaret.containers.models.time_series import get_all_model_containers
+from warnings import simplefilter
+from statsmodels.tools.sm_exceptions import ConvergenceWarning
+
+simplefilter('ignore', ConvergenceWarning)
 
 #############################
 #### Fixtures Start Here ####

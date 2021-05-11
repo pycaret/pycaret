@@ -337,10 +337,7 @@ class ArimaContainer(TimeSeriesContainer):
             # SP values can be 0 (removed) or sp or 2 * sp.
             # 0 was removed --> gives the following error
             # "ValueError: Must include nonzero seasonal periodicity if including seasonal AR, MA, or differencing."
-            sp_values_ = [
-                sp * seasonal_multiplier
-                for seasonal_multiplier in range(1, seasonal_max_multiplier + 1)
-            ]
+            sp_values_ = [sp * seasonal_multiplier for seasonal_multiplier in range(1, seasonal_max_multiplier + 1)]
             P_values = [random.randint(P_start, P_end) for _ in range(n_samples)]
             Q_values = [random.randint(Q_start, Q_end) for _ in range(n_samples)]
             D_values = [random.randint(D_start, D_end) for _ in range(n_samples)]
@@ -359,9 +356,7 @@ class ArimaContainer(TimeSeriesContainer):
         #     - Comes from sktime validation after prediction
         # Need to look into this further
         n_samples_grid = 2  # 2 for 'order', 2 for 'seasonal_order', 2 for intercept will give 8 combinations
-        seasonal_max_multiplier = (
-            1  # Use sp value directly (user can specify 0 if needed)
-        )
+        seasonal_max_multiplier = 1  # Use sp value directly (user can specify 0 if needed)
         p_start = 0
         p_end = 1  # sp-1  # slow run times with higher values, maybe add turbo option
         d_start = 0
@@ -472,13 +467,9 @@ class ExponentialSmoothingContainer(TimeSeriesContainer):
             "sp": [sp],
         }
         tune_distributions = {
-            "trend": CategoricalDistribution(
-                values=["add", "mul", "additive", "multiplicative", None]
-            ),
+            "trend": CategoricalDistribution(values=["add", "mul", "additive", "multiplicative", None]),
             # "damped_trend": [True, False],
-            "seasonal": CategoricalDistribution(
-                values=["add", "mul", "additive", "multiplicative", None]
-            ),
+            "seasonal": CategoricalDistribution(values=["add", "mul", "additive", "multiplicative", None]),
             # "initial_level": UniformDistribution(lower=0, upper=1),  # ValueError: initialization method is estimated but initial_level has been set.
             # "initial_trend": UniformDistribution(lower=0, upper=1),  # ValueError: initialization method is estimated but initial_trend has been set.
             # "initial_seasonal": UniformDistribution(lower=0, upper=1), # ValueError: initialization method is estimated but initial_seasonal has been set.
@@ -619,28 +610,27 @@ class TBATSContainer(TimeSeriesContainer):
             is_gpu_enabled=gpu_imported,
         )
 
-
     @property
     def _set_args(self) -> dict:
-        args = {"sp": self.sp, "use_box_cox": True, "show_warnings": False} if self.seasonality_present else {}
+        args = (
+            {"sp": self.sp, "use_box_cox": True, "use_arma_errors": True, "show_warnings": False}
+            if self.seasonality_present
+            else {}
+        )
         return args
-
 
     @property
     def _set_tune_args(self) -> dict:
         return {}
 
-    
     @property
     def _set_tune_grid(self) -> dict:
         tune_grid = {
             "use_damped_trend": [True, False],
             "use_trend": [True, False],
-            "use_arma_errors": [True, False],
             "sp": [self.sp],
         }
         return tune_grid
-
 
     @property
     def _set_tune_distributions(self) -> dict:
@@ -678,33 +668,31 @@ class BATSContainer(TimeSeriesContainer):
             is_gpu_enabled=gpu_imported,
         )
 
-
     @property
     def _set_args(self) -> dict:
-        args = {"sp": self.sp, "use_box_cox": True, "show_warnings": False} if self.seasonality_present else {}
+        args = (
+            {"sp": self.sp, "use_box_cox": True, "use_arma_errors": True, "show_warnings": False}
+            if self.seasonality_present
+            else {}
+        )
         return args
-
 
     @property
     def _set_tune_args(self) -> dict:
         return {}
 
-    
     @property
     def _set_tune_grid(self) -> dict:
         tune_grid = {
             "use_damped_trend": [True, False],
             "use_trend": [True, False],
-            "use_arma_errors": [True, False],
             "sp": [self.sp],
         }
         return tune_grid
 
-
     @property
     def _set_tune_distributions(self) -> dict:
         return {}
-
 
 
 #################################
@@ -758,21 +746,15 @@ class LinearCdsDtContainer(TimeSeriesContainer):
             "regressor__normalize": [True, False],
         }
         tune_distributions = {
-            "sp": CategoricalDistribution(
-                values=[sp, 2 * sp]
-            ),  # TODO: 'None' errors out here
-            "deseasonal_model": CategoricalDistribution(
-                values=["additive", "multiplicative"]
-            ),
+            "sp": CategoricalDistribution(values=[sp, 2 * sp]),  # TODO: 'None' errors out here
+            "deseasonal_model": CategoricalDistribution(values=["additive", "multiplicative"]),
             "degree": IntUniformDistribution(lower=1, upper=10),
             "window_length": IntUniformDistribution(lower=sp, upper=2 * sp),
         }
 
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
-        eq_function = (
-            lambda x: type(x) is BaseCdsDt and type(x.regressor) is LinearRegression
-        )
+        eq_function = lambda x: type(x) is BaseCdsDt and type(x.regressor) is LinearRegression
 
         super().__init__(
             id="lr_cds_dt",
@@ -831,12 +813,8 @@ class ElasticNetCdsDtContainer(TimeSeriesContainer):
             "regressor__normalize": [True, False],
         }
         tune_distributions = {
-            "sp": CategoricalDistribution(
-                values=[sp, 2 * sp]
-            ),  # TODO: 'None' errors out here
-            "deseasonal_model": CategoricalDistribution(
-                values=["additive", "multiplicative"]
-            ),
+            "sp": CategoricalDistribution(values=[sp, 2 * sp]),  # TODO: 'None' errors out here
+            "deseasonal_model": CategoricalDistribution(values=["additive", "multiplicative"]),
             "degree": IntUniformDistribution(lower=1, upper=10),
             "window_length": IntUniformDistribution(lower=sp, upper=2 * sp),
             "regressor__alpha": UniformDistribution(0, 1),
@@ -903,12 +881,8 @@ class RidgeCdsDtContainer(TimeSeriesContainer):
             "regressor__normalize": [True, False],
         }
         tune_distributions = {
-            "sp": CategoricalDistribution(
-                values=[sp, 2 * sp]
-            ),  # TODO: 'None' errors out here
-            "deseasonal_model": CategoricalDistribution(
-                values=["additive", "multiplicative"]
-            ),
+            "sp": CategoricalDistribution(values=[sp, 2 * sp]),  # TODO: 'None' errors out here
+            "deseasonal_model": CategoricalDistribution(values=["additive", "multiplicative"]),
             "degree": IntUniformDistribution(lower=1, upper=10),
             "window_length": IntUniformDistribution(lower=sp, upper=2 * sp),
             "regressor__alpha": UniformDistribution(0.001, 10),
@@ -979,12 +953,8 @@ class LassoCdsDtContainer(TimeSeriesContainer):
             "regressor__normalize": [True, False],
         }
         tune_distributions = {
-            "sp": CategoricalDistribution(
-                values=[sp, 2 * sp]
-            ),  # TODO: 'None' errors out here
-            "deseasonal_model": CategoricalDistribution(
-                values=["additive", "multiplicative"]
-            ),
+            "sp": CategoricalDistribution(values=[sp, 2 * sp]),  # TODO: 'None' errors out here
+            "deseasonal_model": CategoricalDistribution(values=["additive", "multiplicative"]),
             "degree": IntUniformDistribution(lower=1, upper=10),
             "window_length": IntUniformDistribution(lower=sp, upper=2 * sp),
             "regressor__alpha": UniformDistribution(0.001, 10),
@@ -1039,12 +1009,8 @@ class LarsCdsDtContainer(TimeSeriesContainer):
             "regressor__normalize": [True, False],
         }
         tune_distributions = {
-            "sp": CategoricalDistribution(
-                values=[sp, 2 * sp]
-            ),  # TODO: 'None' errors out here
-            "deseasonal_model": CategoricalDistribution(
-                values=["additive", "multiplicative"]
-            ),
+            "sp": CategoricalDistribution(values=[sp, 2 * sp]),  # TODO: 'None' errors out here
+            "deseasonal_model": CategoricalDistribution(values=["additive", "multiplicative"]),
             "degree": IntUniformDistribution(lower=1, upper=10),
             "window_length": IntUniformDistribution(lower=sp, upper=2 * sp),
             "regressor__eps": UniformDistribution(0.00001, 0.1, log=True),
@@ -1100,12 +1066,8 @@ class LassoLarsCdsDtContainer(TimeSeriesContainer):
             "regressor__normalize": [True, False],
         }
         tune_distributions = {
-            "sp": CategoricalDistribution(
-                values=[sp, 2 * sp]
-            ),  # TODO: 'None' errors out here
-            "deseasonal_model": CategoricalDistribution(
-                values=["additive", "multiplicative"]
-            ),
+            "sp": CategoricalDistribution(values=[sp, 2 * sp]),  # TODO: 'None' errors out here
+            "deseasonal_model": CategoricalDistribution(values=["additive", "multiplicative"]),
             "degree": IntUniformDistribution(lower=1, upper=10),
             "window_length": IntUniformDistribution(lower=sp, upper=2 * sp),
             "regressor__alpha": UniformDistribution(0.0000001, 1, log=True),
@@ -1165,33 +1127,19 @@ class BayesianRidgeCdsDtContainer(TimeSeriesContainer):
             "regressor__normalize": [True, False],
         }
         tune_distributions = {
-            "sp": CategoricalDistribution(
-                values=[sp, 2 * sp]
-            ),  # TODO: 'None' errors out here
-            "deseasonal_model": CategoricalDistribution(
-                values=["additive", "multiplicative"]
-            ),
+            "sp": CategoricalDistribution(values=[sp, 2 * sp]),  # TODO: 'None' errors out here
+            "deseasonal_model": CategoricalDistribution(values=["additive", "multiplicative"]),
             "degree": IntUniformDistribution(lower=1, upper=10),
             "window_length": IntUniformDistribution(lower=sp, upper=2 * sp),
-            "regressor__alpha_1": UniformDistribution(
-                0.0000000001, 0.9999999999, log=True
-            ),
-            "regressor__alpha_2": UniformDistribution(
-                0.0000000001, 0.9999999999, log=True
-            ),
-            "regressor__lambda_1": UniformDistribution(
-                0.0000000001, 0.9999999999, log=True
-            ),
-            "regressor__lambda_2": UniformDistribution(
-                0.0000000001, 0.9999999999, log=True
-            ),
+            "regressor__alpha_1": UniformDistribution(0.0000000001, 0.9999999999, log=True),
+            "regressor__alpha_2": UniformDistribution(0.0000000001, 0.9999999999, log=True),
+            "regressor__lambda_1": UniformDistribution(0.0000000001, 0.9999999999, log=True),
+            "regressor__lambda_2": UniformDistribution(0.0000000001, 0.9999999999, log=True),
         }
 
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
-        eq_function = (
-            lambda x: type(x) is BaseCdsDt and type(x.regressor) is BayesianRidge
-        )
+        eq_function = lambda x: type(x) is BaseCdsDt and type(x.regressor) is BayesianRidge
 
         super().__init__(
             id="br_cds_dt",
@@ -1241,12 +1189,8 @@ class HuberCdsDtContainer(TimeSeriesContainer):
             ],
         }
         tune_distributions = {
-            "sp": CategoricalDistribution(
-                values=[sp, 2 * sp]
-            ),  # TODO: 'None' errors out here
-            "deseasonal_model": CategoricalDistribution(
-                values=["additive", "multiplicative"]
-            ),
+            "sp": CategoricalDistribution(values=[sp, 2 * sp]),  # TODO: 'None' errors out here
+            "deseasonal_model": CategoricalDistribution(values=["additive", "multiplicative"]),
             "degree": IntUniformDistribution(lower=1, upper=10),
             "window_length": IntUniformDistribution(lower=sp, upper=2 * sp),
             "regressor__epsilon": UniformDistribution(1, 2),
@@ -1255,9 +1199,7 @@ class HuberCdsDtContainer(TimeSeriesContainer):
 
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
-        eq_function = (
-            lambda x: type(x) is BaseCdsDt and type(x.regressor) is HuberRegressor
-        )
+        eq_function = lambda x: type(x) is BaseCdsDt and type(x.regressor) is HuberRegressor
 
         super().__init__(
             id="huber_cds_dt",
@@ -1301,12 +1243,8 @@ class PassiveAggressiveCdsDtContainer(TimeSeriesContainer):
             "regressor__shuffle": [True, False],
         }
         tune_distributions = {
-            "sp": CategoricalDistribution(
-                values=[sp, 2 * sp]
-            ),  # TODO: 'None' errors out here
-            "deseasonal_model": CategoricalDistribution(
-                values=["additive", "multiplicative"]
-            ),
+            "sp": CategoricalDistribution(values=[sp, 2 * sp]),  # TODO: 'None' errors out here
+            "deseasonal_model": CategoricalDistribution(values=["additive", "multiplicative"]),
             "degree": IntUniformDistribution(lower=1, upper=10),
             "window_length": IntUniformDistribution(lower=sp, upper=2 * sp),
             "regressor__C": UniformDistribution(0, 10),
@@ -1315,10 +1253,7 @@ class PassiveAggressiveCdsDtContainer(TimeSeriesContainer):
 
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
-        eq_function = (
-            lambda x: type(x) is BaseCdsDt
-            and type(x.regressor) is PassiveAggressiveRegressor
-        )
+        eq_function = lambda x: type(x) is BaseCdsDt and type(x.regressor) is PassiveAggressiveRegressor
 
         super().__init__(
             id="par_cds_dt",
@@ -1362,22 +1297,15 @@ class OrthogonalMatchingPursuitCdsDtContainer(TimeSeriesContainer):
             "regressor__normalize": [True, False],
         }
         tune_distributions = {
-            "sp": CategoricalDistribution(
-                values=[sp, 2 * sp]
-            ),  # TODO: 'None' errors out here
-            "deseasonal_model": CategoricalDistribution(
-                values=["additive", "multiplicative"]
-            ),
+            "sp": CategoricalDistribution(values=[sp, 2 * sp]),  # TODO: 'None' errors out here
+            "deseasonal_model": CategoricalDistribution(values=["additive", "multiplicative"]),
             "degree": IntUniformDistribution(lower=1, upper=10),
             "window_length": IntUniformDistribution(lower=sp, upper=2 * sp),
         }
 
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
-        eq_function = (
-            lambda x: type(x) is BaseCdsDt
-            and type(x.regressor) is OrthogonalMatchingPursuit
-        )
+        eq_function = lambda x: type(x) is BaseCdsDt and type(x.regressor) is OrthogonalMatchingPursuit
 
         super().__init__(
             id="omp_cds_dt",
@@ -1451,9 +1379,7 @@ class KNeighborsCdsDtContainer(TimeSeriesContainer):
 
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
-        eq_function = (
-            lambda x: type(x) is BaseCdsDt and type(x.regressor) is KNeighborsRegressor
-        )
+        eq_function = lambda x: type(x) is BaseCdsDt and type(x.regressor) is KNeighborsRegressor
 
         super().__init__(
             id="knn_cds_dt",
@@ -1504,18 +1430,12 @@ class DecisionTreeCdsDtContainer(TimeSeriesContainer):
             "regressor__criterion": ["mse", "mae", "friedman_mse"],
         }
         tune_distributions = {
-            "sp": CategoricalDistribution(
-                values=[sp, 2 * sp]
-            ),  # TODO: 'None' errors out here
-            "deseasonal_model": CategoricalDistribution(
-                values=["additive", "multiplicative"]
-            ),
+            "sp": CategoricalDistribution(values=[sp, 2 * sp]),  # TODO: 'None' errors out here
+            "deseasonal_model": CategoricalDistribution(values=["additive", "multiplicative"]),
             "degree": IntUniformDistribution(lower=1, upper=10),
             "window_length": IntUniformDistribution(lower=sp, upper=2 * sp),
             "regressor__max_depth": IntUniformDistribution(lower=1, upper=10),
-            "regressor__min_impurity_decrease": UniformDistribution(
-                lower=0.000000001, upper=0.5, log=True
-            ),
+            "regressor__min_impurity_decrease": UniformDistribution(lower=0.000000001, upper=0.5, log=True),
             # "regressor__max_features": UniformDistribution(0.4, 1.0),  # TODO: Adding this eventually samples outside this range - strange!
             "regressor__min_samples_leaf": IntUniformDistribution(2, 6),
             "regressor__min_samples_split": IntUniformDistribution(2, 10),
@@ -1526,10 +1446,7 @@ class DecisionTreeCdsDtContainer(TimeSeriesContainer):
 
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
-        eq_function = (
-            lambda x: type(x) is BaseCdsDt
-            and type(x.regressor) is DecisionTreeRegressor
-        )
+        eq_function = lambda x: type(x) is BaseCdsDt and type(x.regressor) is DecisionTreeRegressor
 
         super().__init__(
             id="dt_cds_dt",
@@ -1581,20 +1498,14 @@ class RandomForestCdsDtContainer(TimeSeriesContainer):
             "regressor__bootstrap": [True, False],
         }
         tune_distributions = {
-            "sp": CategoricalDistribution(
-                values=[sp, 2 * sp]
-            ),  # TODO: 'None' errors out here
-            "deseasonal_model": CategoricalDistribution(
-                values=["additive", "multiplicative"]
-            ),
+            "sp": CategoricalDistribution(values=[sp, 2 * sp]),  # TODO: 'None' errors out here
+            "deseasonal_model": CategoricalDistribution(values=["additive", "multiplicative"]),
             "degree": IntUniformDistribution(lower=1, upper=10),
             "window_length": IntUniformDistribution(lower=sp, upper=2 * sp),
             "regressor__n_estimators": IntUniformDistribution(lower=10, upper=300),
             "regressor__max_depth": IntUniformDistribution(lower=1, upper=10),
             "regressor__min_impurity_decrease": UniformDistribution(lower=0, upper=0.5),
-            "regressor__max_features": CategoricalDistribution(
-                values=[1.0, "sqrt", "log2"]
-            ),
+            "regressor__max_features": CategoricalDistribution(values=[1.0, "sqrt", "log2"]),
             "regressor__bootstrap": CategoricalDistribution(values=[True, False]),
         }
 
@@ -1603,10 +1514,7 @@ class RandomForestCdsDtContainer(TimeSeriesContainer):
 
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
-        eq_function = (
-            lambda x: type(x) is BaseCdsDt
-            and type(x.regressor) is RandomForestRegressor
-        )
+        eq_function = lambda x: type(x) is BaseCdsDt and type(x.regressor) is RandomForestRegressor
 
         super().__init__(
             id="rf_cds_dt",
@@ -1661,23 +1569,15 @@ class ExtraTreesCdsDtContainer(TimeSeriesContainer):
             # "regressor__min_samples_leaf": [2, 3, 4, 5, 6],  # Too many combinations
         }
         tune_distributions = {
-            "sp": CategoricalDistribution(
-                values=[sp, 2 * sp]
-            ),  # TODO: 'None' errors out here
-            "deseasonal_model": CategoricalDistribution(
-                values=["additive", "multiplicative"]
-            ),
+            "sp": CategoricalDistribution(values=[sp, 2 * sp]),  # TODO: 'None' errors out here
+            "deseasonal_model": CategoricalDistribution(values=["additive", "multiplicative"]),
             "degree": IntUniformDistribution(lower=1, upper=10),
             "window_length": IntUniformDistribution(lower=sp, upper=2 * sp),
             "regressor__n_estimators": IntUniformDistribution(lower=10, upper=300),
             "regressor__criterion": CategoricalDistribution(values=["mse", "mae"]),
             "regressor__max_depth": IntUniformDistribution(lower=1, upper=11),
-            "regressor__min_impurity_decrease": UniformDistribution(
-                0.000000001, 0.5, log=True
-            ),
-            "regressor__max_features": CategoricalDistribution(
-                values=[0.4, 1.0, "sqrt", "log2"]
-            ),
+            "regressor__min_impurity_decrease": UniformDistribution(0.000000001, 0.5, log=True),
+            "regressor__max_features": CategoricalDistribution(values=[0.4, 1.0, "sqrt", "log2"]),
             "regressor__bootstrap": CategoricalDistribution(values=[True, False]),
             "regressor__min_samples_split": IntUniformDistribution(lower=2, upper=10),
             "regressor__min_samples_leaf": IntUniformDistribution(lower=1, upper=5),
@@ -1688,9 +1588,7 @@ class ExtraTreesCdsDtContainer(TimeSeriesContainer):
 
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
-        eq_function = (
-            lambda x: type(x) is BaseCdsDt and type(x.regressor) is ExtraTreesRegressor
-        )
+        eq_function = lambda x: type(x) is BaseCdsDt and type(x.regressor) is ExtraTreesRegressor
 
         super().__init__(
             id="et_cds_dt",
@@ -1743,12 +1641,8 @@ class GradientBoostingCdsDtContainer(TimeSeriesContainer):
             # "regressor__min_samples_leaf": [2, 3, 4, 5, 6],  # Too many combinations
         }
         tune_distributions = {
-            "sp": CategoricalDistribution(
-                values=[sp, 2 * sp]
-            ),  # TODO: 'None' errors out here
-            "deseasonal_model": CategoricalDistribution(
-                values=["additive", "multiplicative"]
-            ),
+            "sp": CategoricalDistribution(values=[sp, 2 * sp]),  # TODO: 'None' errors out here
+            "deseasonal_model": CategoricalDistribution(values=["additive", "multiplicative"]),
             "degree": IntUniformDistribution(lower=1, upper=10),
             "window_length": IntUniformDistribution(lower=sp, upper=2 * sp),
             "regressor__n_estimators": IntUniformDistribution(10, 300),
@@ -1758,9 +1652,7 @@ class GradientBoostingCdsDtContainer(TimeSeriesContainer):
             "regressor__min_samples_leaf": IntUniformDistribution(1, 5),
             "regressor__max_depth": IntUniformDistribution(1, 11),
             # "regressor__max_features": UniformDistribution(0.4, 1.0),  # TODO: Adding this eventually samples outside this range - strange!
-            "regressor__min_impurity_decrease": UniformDistribution(
-                0.000000001, 0.5, log=True
-            ),
+            "regressor__min_impurity_decrease": UniformDistribution(0.000000001, 0.5, log=True),
         }
 
         # if not gpu_imported:
@@ -1768,10 +1660,7 @@ class GradientBoostingCdsDtContainer(TimeSeriesContainer):
 
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
-        eq_function = (
-            lambda x: type(x) is BaseCdsDt
-            and type(x.regressor) is GradientBoostingRegressor
-        )
+        eq_function = lambda x: type(x) is BaseCdsDt and type(x.regressor) is GradientBoostingRegressor
 
         super().__init__(
             id="gbr_cds_dt",
@@ -1814,12 +1703,8 @@ class AdaBoostCdsDtContainer(TimeSeriesContainer):
             "regressor__loss": ["linear", "square", "exponential"],
         }
         tune_distributions = {
-            "sp": CategoricalDistribution(
-                values=[sp, 2 * sp]
-            ),  # TODO: 'None' errors out here
-            "deseasonal_model": CategoricalDistribution(
-                values=["additive", "multiplicative"]
-            ),
+            "sp": CategoricalDistribution(values=[sp, 2 * sp]),  # TODO: 'None' errors out here
+            "deseasonal_model": CategoricalDistribution(values=["additive", "multiplicative"]),
             "degree": IntUniformDistribution(lower=1, upper=10),
             "window_length": IntUniformDistribution(lower=sp, upper=2 * sp),
             "regressor__n_estimators": IntUniformDistribution(10, 300),
@@ -1831,9 +1716,7 @@ class AdaBoostCdsDtContainer(TimeSeriesContainer):
 
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
-        eq_function = (
-            lambda x: type(x) is BaseCdsDt and type(x.regressor) is AdaBoostRegressor
-        )
+        eq_function = lambda x: type(x) is BaseCdsDt and type(x.regressor) is AdaBoostRegressor
 
         super().__init__(
             id="ada_cds_dt",
@@ -1861,9 +1744,7 @@ class XGBCdsDtContainer(TimeSeriesContainer):
 
         xgboost_version = tuple([int(x) for x in xgboost.__version__.split(".")])
         if xgboost_version < (1, 1, 0):
-            logger.warning(
-                f"Wrong xgboost version. Expected xgboost>=1.1.0, got xgboost=={xgboost_version}"
-            )
+            logger.warning(f"Wrong xgboost version. Expected xgboost>=1.1.0, got xgboost=={xgboost_version}")
             self.active = False
             return
 
@@ -1898,12 +1779,8 @@ class XGBCdsDtContainer(TimeSeriesContainer):
             "regressor__colsample_bytree": [0.5, 1],
         }
         tune_distributions = {
-            "sp": CategoricalDistribution(
-                values=[sp, 2 * sp]
-            ),  # TODO: 'None' errors out here
-            "deseasonal_model": CategoricalDistribution(
-                values=["additive", "multiplicative"]
-            ),
+            "sp": CategoricalDistribution(values=[sp, 2 * sp]),  # TODO: 'None' errors out here
+            "deseasonal_model": CategoricalDistribution(values=["additive", "multiplicative"]),
             "degree": IntUniformDistribution(lower=1, upper=10),
             "window_length": IntUniformDistribution(lower=sp, upper=2 * sp),
             "regressor__learning_rate": UniformDistribution(0.000001, 0.5, log=True),
@@ -1922,9 +1799,7 @@ class XGBCdsDtContainer(TimeSeriesContainer):
 
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
-        eq_function = (
-            lambda x: type(x) is BaseCdsDt and type(x.regressor) is XGBRegressor
-        )
+        eq_function = lambda x: type(x) is BaseCdsDt and type(x.regressor) is XGBRegressor
 
         super().__init__(
             id="xgboost_cds_dt",
@@ -1974,12 +1849,8 @@ class LGBMCdsDtContainer(TimeSeriesContainer):
             "regressor__colsample_bytree": [0.5, 1],
         }
         tune_distributions = {
-            "sp": CategoricalDistribution(
-                values=[sp, 2 * sp]
-            ),  # TODO: 'None' errors out here
-            "deseasonal_model": CategoricalDistribution(
-                values=["additive", "multiplicative"]
-            ),
+            "sp": CategoricalDistribution(values=[sp, 2 * sp]),  # TODO: 'None' errors out here
+            "deseasonal_model": CategoricalDistribution(values=["additive", "multiplicative"]),
             "degree": IntUniformDistribution(lower=1, upper=10),
             "window_length": IntUniformDistribution(lower=sp, upper=2 * sp),
             "regressor__num_leaves": IntUniformDistribution(2, 256),
@@ -2002,9 +1873,7 @@ class LGBMCdsDtContainer(TimeSeriesContainer):
 
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
-        eq_function = (
-            lambda x: type(x) is BaseCdsDt and type(x.regressor) is LGBMRegressor
-        )
+        eq_function = lambda x: type(x) is BaseCdsDt and type(x.regressor) is LGBMRegressor
 
         is_gpu_enabled = False
         if globals_dict["gpu_param"]:
@@ -2037,9 +1906,7 @@ class LGBMCdsDtContainer(TimeSeriesContainer):
 
 
 class BaseCdsDt(_SktimeForecaster):
-    def __init__(
-        self, regressor, sp=1, deseasonal_model="additive", degree=1, window_length=10
-    ):
+    def __init__(self, regressor, sp=1, deseasonal_model="additive", degree=1, window_length=10):
         """Base Class for time series using scikit models which includes
         Conditional Deseasonalizing and Detrending
 
@@ -2092,9 +1959,7 @@ class BaseCdsDt(_SktimeForecaster):
 
     def predict(self, fh=None, X=None, return_pred_int=False, alpha=DEFAULT_ALPHA):
         check_is_fitted(self)
-        return self.forecaster_.predict(
-            fh=fh, X=X, return_pred_int=return_pred_int, alpha=alpha
-        )
+        return self.forecaster_.predict(fh=fh, X=X, return_pred_int=return_pred_int, alpha=alpha)
 
 
 class EnsembleTimeSeriesContainer(TimeSeriesContainer):
@@ -2127,9 +1992,7 @@ class EnsembleTimeSeriesContainer(TimeSeriesContainer):
         )
 
 
-def get_all_model_containers(
-    globals_dict: dict, raise_errors: bool = True
-) -> Dict[str, TimeSeriesContainer]:
+def get_all_model_containers(globals_dict: dict, raise_errors: bool = True) -> Dict[str, TimeSeriesContainer]:
     return pycaret.containers.base_container.get_all_containers(
         globals(), globals_dict, TimeSeriesContainer, raise_errors
     )
