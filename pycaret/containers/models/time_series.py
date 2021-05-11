@@ -622,7 +622,7 @@ class TBATSContainer(TimeSeriesContainer):
 
     @property
     def _set_args(self) -> dict:
-        args = {"sp": self.sp, "use_box_cox": True, "show_warnings ": False} if self.seasonality_present else {}
+        args = {"sp": self.sp, "use_box_cox": True, "show_warnings": False} if self.seasonality_present else {}
         return args
 
 
@@ -681,7 +681,7 @@ class BATSContainer(TimeSeriesContainer):
 
     @property
     def _set_args(self) -> dict:
-        args = {"sp": self.sp, "use_box_cox": True, "show_warnings ": False} if self.seasonality_present else {}
+        args = {"sp": self.sp, "use_box_cox": True, "show_warnings": False} if self.seasonality_present else {}
         return args
 
 
