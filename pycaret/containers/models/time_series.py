@@ -306,7 +306,10 @@ class ArimaContainer(TimeSeriesContainer):
         sp = globals_dict.get("seasonal_period")
         sp = sp if sp is not None else 1
 
-        args = {"seasonal_order": (0, 0, 0, sp)} if seasonality_present else {}
+        args = {"seasonal_order": (0, 1, 0, sp)} if seasonality_present else {}
+        # # Add irrespective of whether seasonality is present or not
+        # args.update({"trend": "add"})
+        
         tune_args = {}
 
         def return_order_related_params(
@@ -454,37 +457,61 @@ class ExponentialSmoothingContainer(TimeSeriesContainer):
         sp = globals_dict.get("seasonal_period")
         sp = sp if sp is not None else 1
 
-        args = {"sp": sp, "seasonal": "add"} if seasonality_present else {}
+        # TODO: Check if there is a formal test for type of seasonality
+        args = {"sp": sp, "seasonal": "mul"} if seasonality_present else {}
+        # Add irrespective of whether seasonality is present or not
+        args.update({"trend": "add"})
         tune_args = {}
 
         # tune_grid = {"fit_intercept": [True, False], "normalize": [True, False]}
-        tune_grid = {
-            "trend": [
-                "add",
-                "mul",
-                "additive",
-                "multiplicative",
-                None,
-            ],  # TODO: Check if add and additive are doing the same thing
-            # "damped_trend": [True, False],
-            "seasonal": ["add", "mul", "additive", "multiplicative", None],
-            "use_boxcox": [True, False],
-            "sp": [sp],
-        }
-        tune_distributions = {
-            "trend": CategoricalDistribution(
-                values=["add", "mul", "additive", "multiplicative", None]
-            ),
-            # "damped_trend": [True, False],
-            "seasonal": CategoricalDistribution(
-                values=["add", "mul", "additive", "multiplicative", None]
-            ),
-            # "initial_level": UniformDistribution(lower=0, upper=1),  # ValueError: initialization method is estimated but initial_level has been set.
-            # "initial_trend": UniformDistribution(lower=0, upper=1),  # ValueError: initialization method is estimated but initial_trend has been set.
-            # "initial_seasonal": UniformDistribution(lower=0, upper=1), # ValueError: initialization method is estimated but initial_seasonal has been set.
-            "use_boxcox": CategoricalDistribution(values=[True, False]),  # 'log', float
-            "sp": CategoricalDistribution(values=[None, sp, 2 * sp]),
-        }
+        if seasonality_present:
+            tune_grid = {
+                # TODO: Check if add and additive are doing the same thing
+                "trend": ["add", "mul", "additive", "multiplicative", None],
+                # "damped_trend": [True, False],
+                "seasonal": ["add", "mul", "additive", "multiplicative"],
+                "use_boxcox": [True, False],
+                "sp": [sp],
+            }
+            tune_distributions = {
+                "trend": CategoricalDistribution(
+                    values=["add", "mul", "additive", "multiplicative", None]
+                ),
+                # "damped_trend": [True, False],
+                "seasonal": CategoricalDistribution(
+                    values=["add", "mul", "additive", "multiplicative"]
+                ),
+                # "initial_level": UniformDistribution(lower=0, upper=1),  # ValueError: initialization method is estimated but initial_level has been set.
+                # "initial_trend": UniformDistribution(lower=0, upper=1),  # ValueError: initialization method is estimated but initial_trend has been set.
+                # "initial_seasonal": UniformDistribution(lower=0, upper=1), # ValueError: initialization method is estimated but initial_seasonal has been set.
+                "use_boxcox": CategoricalDistribution(
+                    values=[True, False]
+                ),  # 'log', float
+                "sp": CategoricalDistribution(values=[sp, 2 * sp]),
+            }
+        else:
+            tune_grid = {
+                # TODO: Check if add and additive are doing the same thing
+                "trend": ["add", "mul", "additive", "multiplicative", None],
+                # "damped_trend": [True, False],
+                "seasonal": [None],
+                "use_boxcox": [True, False],
+                "sp": [None],
+            }
+            tune_distributions = {
+                "trend": CategoricalDistribution(
+                    values=["add", "mul", "additive", "multiplicative", None]
+                ),
+                # "damped_trend": [True, False],
+                "seasonal": CategoricalDistribution(values=[None]),
+                # "initial_level": UniformDistribution(lower=0, upper=1),  # ValueError: initialization method is estimated but initial_level has been set.
+                # "initial_trend": UniformDistribution(lower=0, upper=1),  # ValueError: initialization method is estimated but initial_trend has been set.
+                # "initial_seasonal": UniformDistribution(lower=0, upper=1), # ValueError: initialization method is estimated but initial_seasonal has been set.
+                "use_boxcox": CategoricalDistribution(
+                    values=[True, False]
+                ),  # 'log', float
+                "sp": CategoricalDistribution(values=[None]),
+            }
 
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
@@ -515,17 +542,30 @@ class AutoETSContainer(TimeSeriesContainer):
         sp = globals_dict.get("seasonal_period")
         sp = sp if sp is not None else 1
 
-        args = {"sp": sp, "seasonal": "add"} if seasonality_present else {}
+        # TODO: Check if there is a formal test for type of seasonality
+        args = {"sp": sp, "seasonal": "mul"} if seasonality_present else {}
+        # Add irrespective of whether seasonality is present or not
+        args.update({"trend": "add"})
         tune_args = {}
 
-        tune_grid = {
-            "error": ["add", "mul"],
-            "trend": ["add", "mul", None],
-            # "damped_trend": [True, False],
-            "seasonal": ["add", "mul", None],
-            "sp": [sp],
-        }
-        tune_distributions = {}
+        if seasonality_present:
+            tune_grid = {
+                "error": ["add", "mul"],
+                "trend": ["add", "mul", None],
+                # "damped_trend": [True, False],
+                "seasonal": ["add", "mul"],
+                "sp": [sp],
+            }
+            tune_distributions = {}
+        else:
+            tune_grid = {
+                "error": ["add", "mul"],
+                "trend": ["add", "mul", None],
+                # "damped_trend": [True, False],
+                "seasonal": [None],
+                "sp": [1],
+            }
+            tune_distributions = {}
 
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
@@ -559,14 +599,24 @@ class ThetaContainer(TimeSeriesContainer):
         # TODO; Update after Bug is fixed in sktime
         # https://github.com/alan-turing-institute/sktime/issues/692
         # ThetaForecaster does not work with "initial_level" different from None
-        tune_grid = {
-            # "initial_level": [0.1, 0.5, 0.9],
-            "deseasonalize": [True, False],
-            "sp": [1, sp, 2 * sp],
-        }
-        tune_distributions = {
-            # "initial_level": UniformDistribution(lower=0, upper=1),  # ValueError: initialization method is estimated but initial_level has been set.
-        }
+        if seasonality_present:
+            tune_grid = {
+                # "initial_level": [0.1, 0.5, 0.9],
+                "deseasonalize": [True],
+                "sp": [sp, 2 * sp],
+            }
+            tune_distributions = {
+                # "initial_level": UniformDistribution(lower=0, upper=1),  # ValueError: initialization method is estimated but initial_level has been set.
+            }
+        else:
+            tune_grid = {
+                # "initial_level": [0.1, 0.5, 0.9],
+                "deseasonalize": [False],
+                "sp": [1],
+            }
+            tune_distributions = {
+                # "initial_level": UniformDistribution(lower=0, upper=1),  # ValueError: initialization method is estimated but initial_level has been set.
+            }
 
         # if not gpu_imported:
         #     args["n_jobs"] = globals_dict["n_jobs_param"]
