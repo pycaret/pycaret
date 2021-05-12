@@ -11,7 +11,19 @@ from pycaret.datasets import get_data
 from pycaret.internal.pycaret_experiment import TimeSeriesExperiment
 from pycaret.containers.models.time_series import get_all_model_containers
 
-pytestmark = pytest.mark.filterwarnings('ignore::UserWarning')
+pytestmark = pytest.mark.filterwarnings("ignore::UserWarning")
+
+_BLEND_TEST_MODELS = [
+    'naive',
+    'poly_trend',
+    'arima'
+    'auto_ets',
+    'lr_cds_dt',
+    'en_cds_dt',
+    'knn_cds_dt',
+    'dt_cds_dt',
+    'lightgbm_cds_dt'
+] # Test blend model functionality only in these models
 
 #############################
 #### Fixtures Start Here ####
@@ -41,6 +53,12 @@ def load_setup(load_data):
         session_id=42,
     )
 
+globals_dict = {
+    "seed": 0,
+    "n_jobs_param": -1,
+    "gpu_param": False,
+    "X_train": pd.DataFrame(get_data("airline")),
+}
 
 @pytest.fixture(scope="session", name="load_models")
 def load_ts_models(load_setup):
@@ -190,14 +208,17 @@ def test_create_model(name, fh, load_data):
     expected_period_index = load_data.iloc[-fh_index:].index
     assert np.all(y_pred.index == expected_period_index)
 
-@pytest.mark.filterwarnings('ignore::statsmodels.tools.sm_exceptions.ConvergenceWarning')
+
+@pytest.mark.filterwarnings(
+    "ignore::ConvergenceWarning:statsmodels"
+)
 @pytest.mark.parametrize("method", _ENSEMBLE_METHODS)
 def test_blend_model(load_setup, load_models, method):
 
     from pycaret.internal.ensemble import _EnsembleForecasterWithVoting
 
     ts_experiment = load_setup
-    ts_models = list(np.random.choice(load_models, 10))
+    ts_models = [mdl for mdl in load_models if mdl in _BLEND_TEST_MODELS]
     ts_weights = [uniform(0, 1) for _ in range(len(ts_models))]
 
     blender = ts_experiment.blend_models(
@@ -212,11 +233,14 @@ def test_blend_model(load_setup, load_models, method):
     ts_models_class = [f.__class__ for f in ts_models]
     assert blender_forecasters_class == ts_models_class
 
-@pytest.mark.filterwarnings('ignore::statsmodels.tools.sm_exceptions.ConvergenceWarning')
+
+@pytest.mark.filterwarnings(
+    "ignore::ConvergenceWarning:statsmodels"
+)
 def test_blend_model_predict(load_setup, load_models):
 
     ts_experiment = load_setup
-    ts_models = list(np.random.choice(load_models, 5))
+    ts_models = [mdl for mdl in load_models if mdl in _BLEND_TEST_MODELS]
     ts_weights = [uniform(0, 1) for _ in range(len(ts_models))]
     fh = ts_experiment.fh
 
