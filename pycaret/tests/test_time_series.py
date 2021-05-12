@@ -53,12 +53,6 @@ def load_setup(load_data):
         session_id=42,
     )
 
-globals_dict = {
-    "seed": 0,
-    "n_jobs_param": -1,
-    "gpu_param": False,
-    "X_train": pd.DataFrame(get_data("airline")),
-}
 
 @pytest.fixture(scope="session", name="load_models")
 def load_ts_models(load_setup):
@@ -71,11 +65,9 @@ def load_ts_models(load_setup):
     }
     ts_models = get_all_model_containers(globals_dict)
     ts_experiment = load_setup
-    ts_estimators = []
-
-    for key in ts_models.keys():
-        if not key.startswith(("ensemble")):
-            ts_estimators.append(ts_experiment.create_model(key))
+    ts_estimators = [
+        ts_experiment.create_model(key) for key in ts_models.keys() if key in _BLEND_TEST_MODELS
+    ]
 
     return ts_estimators
 
@@ -210,7 +202,7 @@ def test_create_model(name, fh, load_data):
 
 
 @pytest.mark.filterwarnings(
-    "ignore::ConvergenceWarning:statsmodels"
+    "ignore::statsmodels.tools.sm_exceptions.ConvergenceWarning:statsmodels"
 )
 @pytest.mark.parametrize("method", _ENSEMBLE_METHODS)
 def test_blend_model(load_setup, load_models, method):
@@ -218,7 +210,7 @@ def test_blend_model(load_setup, load_models, method):
     from pycaret.internal.ensemble import _EnsembleForecasterWithVoting
 
     ts_experiment = load_setup
-    ts_models = [mdl for mdl in load_models if mdl in _BLEND_TEST_MODELS]
+    ts_models = load_models
     ts_weights = [uniform(0, 1) for _ in range(len(ts_models))]
 
     blender = ts_experiment.blend_models(
@@ -235,24 +227,24 @@ def test_blend_model(load_setup, load_models, method):
 
 
 @pytest.mark.filterwarnings(
-    "ignore::ConvergenceWarning:statsmodels"
+    "ignore::statsmodels.tools.sm_exceptions.ConvergenceWarning:statsmodels"
 )
 def test_blend_model_predict(load_setup, load_models):
 
     ts_experiment = load_setup
-    ts_models = [mdl for mdl in load_models if mdl in _BLEND_TEST_MODELS]
+    ts_models = load_models
     ts_weights = [uniform(0, 1) for _ in range(len(ts_models))]
     fh = ts_experiment.fh
 
     mean_blender = ts_experiment.blend_models(
         ts_models, method="mean"
-    )  # , optimize='MAPE')
+    )
     median_blender = ts_experiment.blend_models(
         ts_models, method="median"
-    )  # ), optimize='MAPE')
+    )
     voting_blender = ts_experiment.blend_models(
         ts_models, method="voting", weights=ts_weights
-    )  # , optimize='MAPE')
+    )
 
     mean_blender_pred = mean_blender.predict(fh=fh)
     median_blender_pred = median_blender.predict(fh=fh)
