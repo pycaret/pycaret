@@ -3,6 +3,7 @@
 # License: MIT
 
 import pandas as pd
+import numpy as np
 from typing import Optional
 
 version_ = "2.3.0"
