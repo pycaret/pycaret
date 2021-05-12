@@ -588,6 +588,132 @@ class ThetaContainer(TimeSeriesContainer):
         )
 
 
+class TBATSContainer(TimeSeriesContainer):
+    def __init__(self, globals_dict: dict) -> None:
+        logger = get_logger()
+        np.random.seed(globals_dict["seed"])
+        gpu_imported = False
+
+        from sktime.forecasting.tbats import TBATS  # type: ignore
+
+        sp = globals_dict.get("seasonal_period")
+        self.sp = sp if sp is not None else 1
+
+        self.seasonality_present = globals_dict.get("seasonality_present")
+
+        args = self._set_args
+        tune_args = self._set_tune_args
+        tune_grid = self._set_tune_grid
+        tune_distributions = self._set_tune_distributions
+
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+
+        super().__init__(
+            id="tbats",
+            name="TBATS",
+            class_def=TBATS,
+            args=args,
+            tune_grid=tune_grid,
+            tune_distribution=tune_distributions,
+            tune_args=tune_args,
+            is_gpu_enabled=gpu_imported,
+        )
+
+    @property
+    def _set_args(self) -> dict:
+        args = (
+            {
+                "sp": self.sp,
+                "use_box_cox": True,
+                "use_arma_errors": True,
+                "show_warnings": False,
+            }
+            if self.seasonality_present
+            else {}
+        )
+        return args
+
+    @property
+    def _set_tune_args(self) -> dict:
+        return {}
+
+    @property
+    def _set_tune_grid(self) -> dict:
+        tune_grid = {
+            "use_damped_trend": [True, False],
+            "use_trend": [True, False],
+            "sp": [self.sp],
+        }
+        return tune_grid
+
+    @property
+    def _set_tune_distributions(self) -> dict:
+        return {}
+
+
+class BATSContainer(TimeSeriesContainer):
+    def __init__(self, globals_dict: dict) -> None:
+        logger = get_logger()
+        np.random.seed(globals_dict["seed"])
+        gpu_imported = False
+
+        from sktime.forecasting.bats import BATS  # type: ignore
+
+        sp = globals_dict.get("seasonal_period")
+        self.sp = sp if sp is not None else 1
+
+        self.seasonality_present = globals_dict.get("seasonality_present")
+
+        args = self._set_args
+        tune_args = self._set_tune_args
+        tune_grid = self._set_tune_grid
+        tune_distributions = self._set_tune_distributions
+
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+
+        super().__init__(
+            id="bats",
+            name="BATS",
+            class_def=BATS,
+            args=args,
+            tune_grid=tune_grid,
+            tune_distribution=tune_distributions,
+            tune_args=tune_args,
+            is_gpu_enabled=gpu_imported,
+        )
+
+    @property
+    def _set_args(self) -> dict:
+        args = (
+            {
+                "sp": self.sp,
+                "use_box_cox": True,
+                "use_arma_errors": True,
+                "show_warnings": False,
+            }
+            if self.seasonality_present
+            else {}
+        )
+        return args
+
+    @property
+    def _set_tune_args(self) -> dict:
+        return {}
+
+    @property
+    def _set_tune_grid(self) -> dict:
+        tune_grid = {
+            "use_damped_trend": [True, False],
+            "use_trend": [True, False],
+            "sp": [self.sp],
+        }
+        return tune_grid
+
+    @property
+    def _set_tune_distributions(self) -> dict:
+        return {}
+
+
 #################################
 #### REGRESSION BASED MODELS ####
 #################################

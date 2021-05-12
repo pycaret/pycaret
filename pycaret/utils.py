@@ -3,6 +3,7 @@
 # License: MIT
 
 import pandas as pd
+import numpy as np
 from typing import Optional
 
 version_ = "2.3.0"
@@ -82,7 +83,7 @@ def check_metric(actual: pd.Series, prediction: pd.Series, metric: str, round: i
             actual = le.fit_transform(actual)
             prediction = le.transform(prediction)
             result = metrics[metric](actual, prediction)
-        result = result.round(round)
+        result = np.around(result, round)
         return float(result)
     else:
         raise ValueError(
