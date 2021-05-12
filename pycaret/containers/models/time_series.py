@@ -1,14 +1,13 @@
-# Module: containers.models.time_series
-# Author: Moez Ali <moez.ali@queensu.ca> and Antoni Baum (Yard1) <antoni.baum@protonmail.com>
-# License: MIT
+"""
+The purpose of this module is to serve as a central repository of time series models.
+The `time_series` module will call `get_all_model_containers()`, which will return
+instances of all classes in this module that have `TimeSeriesContainer` as a base
+(but not `TimeSeriesContainer` itself). In order to add a new model, you only need
+to create a new class that has `TimeSeriesContainer` as a base, set all of the
+required parameters in the `__init__` and then call `super().__init__` to complete
+the process. Refer to the existing classes for examples.
+"""
 
-# The purpose of this module is to serve as a central repository of time series models. The `time_series` module will
-# call `get_all_model_containers()`, which will return instances of all classes in this module that have `TimeSeriesContainer`
-# as a base (but not `TimeSeriesContainer` itself). In order to add a new model, you only need to create a new class that has
-# `TimeSeriesContainer` as a base, set all of the required parameters in the `__init__` and then call `super().__init__`
-# to complete the process. Refer to the existing classes for examples.
-
-import logging
 from typing import Union, Dict, List, Tuple, Any, Optional
 
 import numpy as np  # type: ignore
@@ -17,7 +16,7 @@ import random
 from sktime.forecasting.base._sktime import _SktimeForecaster  # type: ignore
 from sktime.forecasting.compose import ReducedForecaster, TransformedTargetForecaster  # type: ignore
 from sktime.forecasting.trend import PolynomialTrendForecaster  # type: ignore
-from sktime.transformations.series.detrend import ConditionalDeseasonalizer, Deseasonalizer, Detrender  # type: ignore
+from sktime.transformations.series.detrend import ConditionalDeseasonalizer, Detrender  # type: ignore
 from sktime.forecasting.base._sktime import DEFAULT_ALPHA  # type: ignore
 from sklearn.utils.validation import check_is_fitted  # type: ignore
 
@@ -28,7 +27,6 @@ from pycaret.containers.models.base_model import (
 from pycaret.internal.utils import (
     param_grid_to_lists,
     get_logger,
-    get_class_name,
     np_list_arange,
 )
 from pycaret.internal.distributions import (
@@ -307,9 +305,6 @@ class ArimaContainer(TimeSeriesContainer):
         sp = sp if sp is not None else 1
 
         args = {"seasonal_order": (0, 1, 0, sp)} if seasonality_present else {}
-        # # Add irrespective of whether seasonality is present or not
-        # args.update({"trend": "add"})
-        
         tune_args = {}
 
         def return_order_related_params(
@@ -460,7 +455,7 @@ class ExponentialSmoothingContainer(TimeSeriesContainer):
         # TODO: Check if there is a formal test for type of seasonality
         args = {"sp": sp, "seasonal": "mul"} if seasonality_present else {}
         # Add irrespective of whether seasonality is present or not
-        args.update({"trend": "add"})
+        args["trend"] = "add"
         tune_args = {}
 
         # tune_grid = {"fit_intercept": [True, False], "normalize": [True, False]}
@@ -545,7 +540,7 @@ class AutoETSContainer(TimeSeriesContainer):
         # TODO: Check if there is a formal test for type of seasonality
         args = {"sp": sp, "seasonal": "mul"} if seasonality_present else {}
         # Add irrespective of whether seasonality is present or not
-        args.update({"trend": "add"})
+        args["trend"] = "add"
         tune_args = {}
 
         if seasonality_present:
@@ -636,6 +631,132 @@ class ThetaContainer(TimeSeriesContainer):
             is_gpu_enabled=gpu_imported,
             eq_function=eq_function,  # Added to differentiate between ExponentialSmoothing and Theta which are of same parent class
         )
+
+
+class TBATSContainer(TimeSeriesContainer):
+    def __init__(self, globals_dict: dict) -> None:
+        logger = get_logger()
+        np.random.seed(globals_dict["seed"])
+        gpu_imported = False
+
+        from sktime.forecasting.tbats import TBATS  # type: ignore
+
+        sp = globals_dict.get("seasonal_period")
+        self.sp = sp if sp is not None else 1
+
+        self.seasonality_present = globals_dict.get("seasonality_present")
+
+        args = self._set_args
+        tune_args = self._set_tune_args
+        tune_grid = self._set_tune_grid
+        tune_distributions = self._set_tune_distributions
+
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+
+        super().__init__(
+            id="tbats",
+            name="TBATS",
+            class_def=TBATS,
+            args=args,
+            tune_grid=tune_grid,
+            tune_distribution=tune_distributions,
+            tune_args=tune_args,
+            is_gpu_enabled=gpu_imported,
+        )
+
+    @property
+    def _set_args(self) -> dict:
+        args = (
+            {
+                "sp": self.sp,
+                "use_box_cox": True,
+                "use_arma_errors": True,
+                "show_warnings": False,
+            }
+            if self.seasonality_present
+            else {}
+        )
+        return args
+
+    @property
+    def _set_tune_args(self) -> dict:
+        return {}
+
+    @property
+    def _set_tune_grid(self) -> dict:
+        tune_grid = {
+            "use_damped_trend": [True, False],
+            "use_trend": [True, False],
+            "sp": [self.sp],
+        }
+        return tune_grid
+
+    @property
+    def _set_tune_distributions(self) -> dict:
+        return {}
+
+
+class BATSContainer(TimeSeriesContainer):
+    def __init__(self, globals_dict: dict) -> None:
+        logger = get_logger()
+        np.random.seed(globals_dict["seed"])
+        gpu_imported = False
+
+        from sktime.forecasting.bats import BATS  # type: ignore
+
+        sp = globals_dict.get("seasonal_period")
+        self.sp = sp if sp is not None else 1
+
+        self.seasonality_present = globals_dict.get("seasonality_present")
+
+        args = self._set_args
+        tune_args = self._set_tune_args
+        tune_grid = self._set_tune_grid
+        tune_distributions = self._set_tune_distributions
+
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+
+        super().__init__(
+            id="bats",
+            name="BATS",
+            class_def=BATS,
+            args=args,
+            tune_grid=tune_grid,
+            tune_distribution=tune_distributions,
+            tune_args=tune_args,
+            is_gpu_enabled=gpu_imported,
+        )
+
+    @property
+    def _set_args(self) -> dict:
+        args = (
+            {
+                "sp": self.sp,
+                "use_box_cox": True,
+                "use_arma_errors": True,
+                "show_warnings": False,
+            }
+            if self.seasonality_present
+            else {}
+        )
+        return args
+
+    @property
+    def _set_tune_args(self) -> dict:
+        return {}
+
+    @property
+    def _set_tune_grid(self) -> dict:
+        tune_grid = {
+            "use_damped_trend": [True, False],
+            "use_trend": [True, False],
+            "sp": [self.sp],
+        }
+        return tune_grid
+
+    @property
+    def _set_tune_distributions(self) -> dict:
+        return {}
 
 
 #################################

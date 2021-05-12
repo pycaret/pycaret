@@ -11,6 +11,20 @@ from pycaret.datasets import get_data
 from pycaret.internal.pycaret_experiment import TimeSeriesExperiment
 from pycaret.containers.models.time_series import get_all_model_containers
 
+pytestmark = pytest.mark.filterwarnings("ignore::UserWarning")
+
+_BLEND_TEST_MODELS = [
+    'naive',
+    'poly_trend',
+    'arima'
+    'auto_ets',
+    'lr_cds_dt',
+    'en_cds_dt',
+    'knn_cds_dt',
+    'dt_cds_dt',
+    'lightgbm_cds_dt'
+] # Test blend model functionality only in these models
+
 #############################
 #### Fixtures Start Here ####
 #############################
@@ -51,11 +65,9 @@ def load_ts_models(load_setup):
     }
     ts_models = get_all_model_containers(globals_dict)
     ts_experiment = load_setup
-    ts_estimators = []
-
-    for key in ts_models.keys():
-        if not key.startswith(("ensemble")):
-            ts_estimators.append(ts_experiment.create_model(key))
+    ts_estimators = [
+        ts_experiment.create_model(key) for key in ts_models.keys() if key in _BLEND_TEST_MODELS
+    ]
 
     return ts_estimators
 
@@ -189,6 +201,9 @@ def test_create_model(name, fh, load_data):
     assert np.all(y_pred.index == expected_period_index)
 
 
+@pytest.mark.filterwarnings(
+    "ignore::statsmodels.tools.sm_exceptions.ConvergenceWarning:statsmodels"
+)
 @pytest.mark.parametrize("method", _ENSEMBLE_METHODS)
 def test_blend_model(load_setup, load_models, method):
 
@@ -196,7 +211,7 @@ def test_blend_model(load_setup, load_models, method):
 
     ts_experiment = load_setup
     ts_models = load_models
-    ts_weights = [uniform(0, 1) for _ in range(len(load_models))]
+    ts_weights = [uniform(0, 1) for _ in range(len(ts_models))]
 
     blender = ts_experiment.blend_models(
         ts_models, method=method, weights=ts_weights, verbose=False
@@ -211,22 +226,25 @@ def test_blend_model(load_setup, load_models, method):
     assert blender_forecasters_class == ts_models_class
 
 
+@pytest.mark.filterwarnings(
+    "ignore::statsmodels.tools.sm_exceptions.ConvergenceWarning:statsmodels"
+)
 def test_blend_model_predict(load_setup, load_models):
 
     ts_experiment = load_setup
     ts_models = load_models
-    ts_weights = [uniform(0, 1) for _ in range(len(load_models))]
+    ts_weights = [uniform(0, 1) for _ in range(len(ts_models))]
     fh = ts_experiment.fh
 
     mean_blender = ts_experiment.blend_models(
         ts_models, method="mean"
-    )  # , optimize='MAPE')
+    )
     median_blender = ts_experiment.blend_models(
         ts_models, method="median"
-    )  # ), optimize='MAPE')
+    )
     voting_blender = ts_experiment.blend_models(
         ts_models, method="voting", weights=ts_weights
-    )  # , optimize='MAPE')
+    )
 
     mean_blender_pred = mean_blender.predict(fh=fh)
     median_blender_pred = median_blender.predict(fh=fh)
