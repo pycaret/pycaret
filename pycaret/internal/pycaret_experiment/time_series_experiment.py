@@ -369,7 +369,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             and seasonal_period is None
         ):
             raise ValueError(
-                f"The index of your 'data' is of type '{data.index}'. "
+                f"The index of your 'data' is of type '{type(data.index)}'. "
                 f"If the 'data' index is not of one of the following types: {allowed_freq_index_types}, "
                 "then 'seasonal_period' must be provided. Refer to docstring for options."
             )
