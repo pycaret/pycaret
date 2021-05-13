@@ -417,10 +417,10 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         allowed_index_types = pd.core.indexes.period.PeriodIndex
 
-        if not isinstance(data.index, allowed_index_types):
-            raise TypeError(
-                f"Index must be 'pandas.core.indexes.period.PeriodIndex' subtype, got {data.index.dtype}!"
-            )
+        # if not isinstance(data.index, allowed_index_types):
+        #     raise TypeError(
+        #         f"Index must be 'pandas.core.indexes.period.PeriodIndex' subtype, got {data.index.dtype}!"
+        #     )
 
         # data.index = data.index.astype("datetime64[ns]")
         if len(data.index) != len(set(data.index)):
