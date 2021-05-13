@@ -16,10 +16,10 @@ def get_data(dataset="index", save_copy=False, profile=False, verbose=True):
     >>> all_datasets = get_data('index')
     >>> juice = get_data('juice')
 
-        
+
     dataset: str, default = 'index'
         Index value of dataset.
-    
+
 
     save_copy: bool, default = False
         When set to true, it saves a copy in current working directory.
@@ -59,21 +59,27 @@ def get_data(dataset="index", save_copy=False, profile=False, verbose=True):
 
     complete_address = address + filename
 
-    sktime_datasets = ['airline']
+    sktime_datasets = ["airline", "lynx", "uschange"]
 
     if os.path.isfile(filename):
         data = pd.read_csv(filename)
     elif dataset in sktime_datasets:
         try:
-            from sktime.datasets import load_airline
+            from sktime.datasets import load_airline, load_lynx, load_uschange
         except ImportError as e:
             print(e)
-            raise ImportError(f"Dataset '{dataset}' is meant for time series analysis and needs the sktime library to be installed.")
+            raise ImportError(
+                f"Dataset '{dataset}' is meant for time series analysis and needs the sktime library to be installed."
+            )
 
         ts_dataset_mapping = {
-            'airline': load_airline
+            "airline": load_airline,
+            "lynx": load_lynx,
+            "uschange": load_uschange,
         }
         data = ts_dataset_mapping.get(dataset)()
+        if isinstance(data, tuple):
+            data = data[0]  # ignoring X for now (univariate only)
     else:
         data = pd.read_csv(complete_address)
 
