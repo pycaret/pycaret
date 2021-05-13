@@ -239,7 +239,13 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             * 'A': 1
             * 'Y': 1
 
-            Alternatively you can provide a custom seasonal parameter by passing it as an integer.
+            Alternatively you can provide a custom `seasonal_parameter` by passing
+            it as an integer.
+
+            NOTE: If data index is not of type pd.core.indexes.period.PeriodIndex,
+            then seasonal_period MUST be passed. Refer to the mapping above for
+            a guide of what values to use depending on the frequency of the data.
+            If your data does not have any seasonality, then set seasonal_period = 1.
 
 
         n_jobs: int, default = -1
@@ -357,6 +363,17 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             )
         self.fh = fh
 
+        allowed_freq_index_types = (pd.core.indexes.period.PeriodIndex, )
+        if (
+            not isinstance(data.index, allowed_freq_index_types)
+            and seasonal_period is None
+        ):
+            raise ValueError(
+                f"The index of your 'data' is of type '{type(data.index)}'. "
+                f"If the 'data' index is not of one of the following types: {', '.join(allowed_freq_index_types)}, "
+                "then 'seasonal_period' must be provided. Refer to docstring for options."
+            )
+
         if seasonal_period is None:
 
             index_freq = data.index.freqstr
@@ -392,6 +409,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                     raise ValueError(
                         f"data must be a pandas Series or DataFrame with one column, got {data.shape[1]} columns!"
                     )
+                data = data.copy()
             else:
                 data = pd.DataFrame(data)  # Force convertion to DataFrame
         else:
@@ -399,34 +417,15 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 f"data must be a pandas Series or DataFrame, got object of {type(data)} type!"
             )
 
+        data.columns = [str(x) for x in data.columns]
+
         if not np.issubdtype(data[data.columns[0]].dtype, np.number):
             raise TypeError(
                 f"Data must be of 'numpy.number' subtype, got {data[data.columns[0]].dtype}!"
             )
 
-        # index_type_check = False
-        # if np.issubdtype(data.index.dtype, np.datetime64):
-        #     index_type_check = True
-        # allowed_index_types = pd.core.indexes.period.PeriodIndex
-        # if isinstance(data.index, allowed_index_types):
-        #    index_type_check = True
-        # if index_type_check is False:
-        #    raise TypeError(
-        #        f"Index must be of 'numpy.datetime64' or 'pandas.core.indexes.period.PeriodIndex' subtype, got {data.index.dtype}!"
-        #    )
-
-        allowed_index_types = pd.core.indexes.period.PeriodIndex
-
-        if not isinstance(data.index, allowed_index_types):
-            raise TypeError(
-                f"Index must be 'pandas.core.indexes.period.PeriodIndex' subtype, got {data.index.dtype}!"
-            )
-
-        # data.index = data.index.astype("datetime64[ns]")
         if len(data.index) != len(set(data.index)):
             raise ValueError("Index may not have duplicate values!")
-        # TODO: Check with @Miguel: Why is this needed (float32 causes issues with scipy optimize)
-        # data[data.columns[0]] = data[data.columns[0]].astype("float32")
 
         # check valid seasonal parameter
         valid_seasonality = autocorrelation_seasonality_test(
