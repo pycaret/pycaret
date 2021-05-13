@@ -409,12 +409,15 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                     raise ValueError(
                         f"data must be a pandas Series or DataFrame with one column, got {data.shape[1]} columns!"
                     )
+                data = data.copy()
             else:
                 data = pd.DataFrame(data)  # Force convertion to DataFrame
         else:
             raise ValueError(
                 f"data must be a pandas Series or DataFrame, got object of {type(data)} type!"
             )
+
+        data.columns = [str(x) for x in data.columns]
 
         if not np.issubdtype(data[data.columns[0]].dtype, np.number):
             raise TypeError(
