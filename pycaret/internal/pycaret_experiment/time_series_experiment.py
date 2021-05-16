@@ -139,14 +139,12 @@ class TimeSeriesExperiment(_SupervisedExperiment):
     def setup(
         self,
         data: Union[pd.Series, pd.DataFrame],
-        # train_size: float = 0.7,
-        test_data: Optional[pd.DataFrame] = None,
         preprocess: bool = True,
         imputation_type: str = "simple",
         #        transform_target: bool = False,
         #        transform_target_method: str = "box-cox",
-        fold_strategy: Union[str, Any] = "timeseries",  # added in pycaret==2.2
-        fold: int = 10,
+        fold_strategy: Union[str, Any] = "expanding",
+        fold: int = 3,
         fh: Union[List[int], int, np.array] = 1,
         seasonal_period: Optional[Union[int, str]] = None,
         n_jobs: Optional[int] = -1,
@@ -183,12 +181,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             Shape (n_samples, 1), where n_samples is the number of samples.
 
 
-        test_data: pandas.DataFrame, default = None
-            If not None, test_data is used as a hold-out set and ``train_size`` parameter is
-            ignored. test_data must be labelled and the shape of data and test_data must
-            match.
-
-
         fh: np.array, default = None
             The forecast horizon to be used for forecasting. User must specify a value.
             The values of the array must be integers specifying the lookahead points that
@@ -210,12 +202,12 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         fold_strategy: str or sklearn CV generator object, default = 'kfold'
             Choice of cross validation strategy. Possible values are:
 
-            * 'expandingwindow'
-            * 'slidingwindow'
-            * 'timeseries'
-            * a custom CV generator object compatible with scikit-learn.
+            * 'expanding'
+            * 'rolling' (same as/aliased to 'expanding')
+            * 'sliding'
 
-        fold: int, default = 10
+
+        fold: int, default = 3
             Number of folds to be used in cross validation. Must be at least 2. This is
             a global setting that can be over-written at function level by using ``fold``
             parameter. Ignored when ``fold_strategy`` is a custom object.
@@ -342,6 +334,13 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         # if log_plots == True:
         #    log_plots = ["residuals", "error", "feature"]
 
+        allowed_fold_strategies = ["expanding", "rolling", "sliding"]
+        if fold_strategy not in allowed_fold_strategies:
+            raise ValueError(
+                f"fold_strategy must be one of '{', '.join(allowed_fold_strategies)}'. "
+                f"You provided fold_strategy = '{fold_strategy}'!"
+            )
+
         # Forecast Horizon Checks
         if fh is None:
             raise ValueError(f"The forecast horizon `fh` must be provided")
@@ -363,7 +362,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             )
         self.fh = fh
 
-        allowed_freq_index_types = (pd.core.indexes.period.PeriodIndex, )
+        allowed_freq_index_types = (pd.core.indexes.period.PeriodIndex,)
         if (
             not isinstance(data.index, allowed_freq_index_types)
             and seasonal_period is None
@@ -437,8 +436,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         return super().setup(
             data=data,
             target=data.columns[0],
-            # train_size=train_size,
-            test_data=test_data,
+            test_data=None,
             preprocess=preprocess,
             imputation_type=imputation_type,
             categorical_features=None,
