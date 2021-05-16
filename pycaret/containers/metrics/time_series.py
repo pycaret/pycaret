@@ -14,7 +14,7 @@ from sklearn.metrics._scorer import _BaseScorer  # type: ignore
 import pycaret.internal.metrics
 from pandas import DataFrame, Series  # type: ignore
 from sklearn import metrics  # type: ignore
-from sktime.performance_metrics.forecasting._functions import ( # type: ignore
+from sktime.performance_metrics.forecasting._functions import (  # type: ignore
     mase_loss,
     smape_loss,
     mape_loss,
@@ -185,26 +185,6 @@ def _set_y_as_series(y):
     return Series(y.iloc[:, 0])
 
 
-class SMAPEMetricContainer(TimeSeriesMetricContainer):
-    def __init__(self, globals_dict: dict) -> None:
-        super().__init__(
-            id="smape",
-            name="SMAPE",
-            score_func=_smape_loss,
-            greater_is_better=False,
-        )
-
-
-class MAPEMetricContainer(TimeSeriesMetricContainer):
-    def __init__(self, globals_dict: dict) -> None:
-        super().__init__(
-            id="mape",
-            name="MAPE",
-            score_func=_mape_loss,
-            greater_is_better=False,
-        )
-
-
 # TODO: Disabling for now since need to determine how these special cases will
 # be handles in manually generated function cross_validate_ts
 # MASEMetricContainer: Special Case: Needs y_train
@@ -241,9 +221,29 @@ class RMSEMetricContainer(TimeSeriesMetricContainer):
         )
 
 
+class MAPEMetricContainer(TimeSeriesMetricContainer):
+    def __init__(self, globals_dict: dict) -> None:
+        super().__init__(
+            id="mape",
+            name="MAPE",
+            score_func=_mape_loss,
+            greater_is_better=False,
+        )
+
+
+class SMAPEMetricContainer(TimeSeriesMetricContainer):
+    def __init__(self, globals_dict: dict) -> None:
+        super().__init__(
+            id="smape",
+            name="SMAPE",
+            score_func=_smape_loss,
+            greater_is_better=False,
+        )
+
+
 def get_all_metric_containers(
     globals_dict: dict, raise_errors: bool = True
-    ) -> Dict[str, TimeSeriesMetricContainer]:
+) -> Dict[str, TimeSeriesMetricContainer]:
     return pycaret.containers.base_container.get_all_containers(
         globals(), globals_dict, TimeSeriesMetricContainer, raise_errors
     )
