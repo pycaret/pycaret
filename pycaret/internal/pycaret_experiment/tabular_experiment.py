@@ -906,8 +906,9 @@ class _TabularExperiment(_PyCaretExperiment):
             "stratifiedkfold",
             "groupkfold",
             "timeseries",
-            "expandingwindow",
-            "slidingwindow",
+            "expanding",
+            "rolling",
+            "sliding",
         ]
         if not (
             fold_strategy in possible_fold_strategy
@@ -1440,73 +1441,6 @@ class _TabularExperiment(_PyCaretExperiment):
                 raise ValueError(f"fold_groups cannot contain NaNs.")
         self.fold_shuffle_param = fold_shuffle
 
-        # if not self._is_unsupervised():
-        #     from sklearn.model_selection import (
-        #         StratifiedKFold,
-        #         KFold,
-        #         GroupKFold,
-        #         TimeSeriesSplit,
-        #     )
-
-        #     from sktime.forecasting.model_selection import (
-        #         ExpandingWindowSplitter,
-        #         SlidingWindowSplitter,
-        #     )
-
-        #     fold_random_state = self.seed if self.fold_shuffle_param else None
-
-        #     if fold_strategy == "kfold":
-        #         self.fold_generator = KFold(
-        #             self.fold_param,
-        #             random_state=fold_random_state,
-        #             shuffle=self.fold_shuffle_param,
-        #         )
-        #     elif fold_strategy == "stratifiedkfold":
-        #         self.fold_generator = StratifiedKFold(
-        #             self.fold_param,
-        #             random_state=fold_random_state,
-        #             shuffle=self.fold_shuffle_param,
-        #         )
-        #     elif fold_strategy == "groupkfold":
-        #         self.fold_generator = GroupKFold(self.fold_param)
-        #     elif fold_strategy == "timeseries":
-        #         self.fold_generator = TimeSeriesSplit(self.fold_param)
-        #     elif (fold_strategy == "expandingwindow") or (fold_strategy == "slidingwindow"):
-        #         if isinstance(self.data_before_preprocess, pd.DataFrame):
-        #             y_size = self.data_before_preprocess.size # len(self.y_train) # self.data_before_preprocess.size
-        #         elif isinstance(self.data_before_preprocess, pd.Series):
-        #             y_size = self.data_before_preprocess.size # len(self.y_train) # self.data_before_preprocess.size
-        #         else:
-        #             raise TypeError("data parameter must be a pandas.Series or pandas.DataFrame.")
-
-        #         # window_length = fh * (self.fold_param - 1)
-        #         window_length = len(fh)
-        #         step_length = len(fh)
-        #         initial_window = y_size - (self.fold_param * window_length)
-        #         #window_length = y_size - window_length
-
-        #         if window_length < 1:
-        #             raise ValueError("Not Enough Data Points, set a lower number of folds or fh")
-
-        #         if fold_strategy == "expandingwindow":
-        #             self.fold_generator = ExpandingWindowSplitter(
-        #                 initial_window=initial_window,
-        #                 step_length=step_length,
-        #                 window_length=window_length,
-        #                 fh=fh,
-        #                 start_with_window=True
-        #             )
-
-        #         if fold_strategy == "slidingwindow":
-        #             self.fold_generator = SlidingWindowSplitter(
-        #                 initial_window=initial_window,
-        #                 step_length=step_length,
-        #                 window_length=window_length,
-        #                 fh=fh,
-        #                 start_with_window=True
-        #             )
-        #     else:
-        #         self.fold_generator = fold_strategy
 
         # create master_model_container
         self.master_model_container = []
@@ -1595,6 +1529,7 @@ class _TabularExperiment(_PyCaretExperiment):
             )
 
             fold_random_state = self.seed if self.fold_shuffle_param else None
+            time_series_fold_strategies = ['expanding', 'sliding', 'rolling']
 
             if fold_strategy == "kfold":
                 self.fold_generator = KFold(
@@ -1612,9 +1547,7 @@ class _TabularExperiment(_PyCaretExperiment):
                 self.fold_generator = GroupKFold(self.fold_param)
             elif fold_strategy == "timeseries":
                 self.fold_generator = TimeSeriesSplit(self.fold_param)
-            elif (fold_strategy == "expandingwindow") or (
-                fold_strategy == "slidingwindow"
-            ):
+            elif fold_strategy in time_series_fold_strategies:
                 if isinstance(self.data_before_preprocess, pd.DataFrame):
                     y_size = len(self.y_train)  # self.data_before_preprocess.size
                 elif isinstance(self.data_before_preprocess, pd.Series):
@@ -1628,14 +1561,13 @@ class _TabularExperiment(_PyCaretExperiment):
                 window_length = len(fh)
                 step_length = len(fh)
                 initial_window = y_size - (self.fold_param * window_length)
-                # window_length = y_size - window_length
 
                 if initial_window < 1:
                     raise ValueError(
                         "Not Enough Data Points, set a lower number of folds or fh"
                     )
 
-                if fold_strategy == "expandingwindow":
+                if (fold_strategy == "expanding") or ((fold_strategy == "rolling")):
                     self.fold_generator = ExpandingWindowSplitter(
                         initial_window=initial_window,
                         step_length=step_length,
@@ -1644,7 +1576,7 @@ class _TabularExperiment(_PyCaretExperiment):
                         start_with_window=True,
                     )
 
-                if fold_strategy == "slidingwindow":
+                if fold_strategy == "sliding":
                     self.fold_generator = SlidingWindowSplitter(
                         initial_window=initial_window,
                         step_length=step_length,
