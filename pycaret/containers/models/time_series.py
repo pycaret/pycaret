@@ -243,7 +243,7 @@ class NaiveContainer(TimeSeriesContainer):
 
         super().__init__(
             id="naive",
-            name="Naive",
+            name="Naive Forcaster",
             class_def=NaiveForecaster,
             args=args,
             tune_grid=tune_grid,
@@ -275,8 +275,8 @@ class PolyTrendContainer(TimeSeriesContainer):
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
         super().__init__(
-            id="poly_trend",
-            name="PolyTrend",
+            id="polytrend",
+            name="Polynomial Trend Forecaster",
             class_def=PolynomialTrendForecaster,
             args=args,
             tune_grid=tune_grid,
@@ -622,7 +622,7 @@ class ThetaContainer(TimeSeriesContainer):
 
         super().__init__(
             id="theta",
-            name="Theta",
+            name="Theta Forecaster",
             class_def=ThetaForecaster,
             args=args,
             tune_grid=tune_grid,
@@ -662,6 +662,7 @@ class TBATSContainer(TimeSeriesContainer):
             tune_distribution=tune_distributions,
             tune_args=tune_args,
             is_gpu_enabled=gpu_imported,
+            is_turbo=False,
         )
 
     @property
@@ -725,6 +726,7 @@ class BATSContainer(TimeSeriesContainer):
             tune_distribution=tune_distributions,
             tune_args=tune_args,
             is_gpu_enabled=gpu_imported,
+            is_turbo=False,
         )
 
     @property
