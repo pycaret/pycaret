@@ -74,7 +74,11 @@ class _SupervisedExperiment(_TabularExperiment):
         return
 
     def _calculate_metrics(
-        self, y_test, pred, pred_prob, weights: Optional[list] = None,
+        self,
+        y_test,
+        pred,
+        pred_prob,
+        weights: Optional[list] = None,
     ) -> dict:
         """
         Calculate all metrics in _all_metrics.
@@ -92,12 +96,16 @@ class _SupervisedExperiment(_TabularExperiment):
         except Exception:
             ml_usecase = get_ml_task(y_test)
             if ml_usecase == MLUsecase.CLASSIFICATION:
-                metrics = pycaret.containers.metrics.classification.get_all_metric_containers(
-                    self.variables, True
+                metrics = (
+                    pycaret.containers.metrics.classification.get_all_metric_containers(
+                        self.variables, True
+                    )
                 )
             elif ml_usecase == MLUsecase.REGRESSION:
-                metrics = pycaret.containers.metrics.regression.get_all_metric_containers(
-                    self.variables, True
+                metrics = (
+                    pycaret.containers.metrics.regression.get_all_metric_containers(
+                        self.variables, True
+                    )
                 )
             return calculate_metrics(
                 metrics=metrics,  # type: ignore
@@ -262,7 +270,13 @@ class _SupervisedExperiment(_TabularExperiment):
         return
 
     def _set_up_mlflow(
-        self, functions, runtime, log_profile, profile_kwargs, log_data, display,
+        self,
+        functions,
+        runtime,
+        log_profile,
+        profile_kwargs,
+        log_data,
+        display,
     ) -> None:
         functions_styler = functions
         if isinstance(functions, Styler):
@@ -998,7 +1012,9 @@ class _SupervisedExperiment(_TabularExperiment):
                 self.display_container.append(model_results)
 
                 display.display(
-                    model_results, clear=system, override=False if not system else None,
+                    model_results,
+                    clear=system,
+                    override=False if not system else None,
                 )
 
                 self.logger.info(f"display_container: {len(self.display_container)}")
@@ -1080,7 +1096,10 @@ class _SupervisedExperiment(_TabularExperiment):
             self.logger.info("Creating metrics dataframe")
 
             model_results = pd.DataFrame(score_dict)
-            model_avgs = pd.DataFrame(avgs_dict, index=["Mean", "SD"],)
+            model_avgs = pd.DataFrame(
+                avgs_dict,
+                index=["Mean", "SD"],
+            )
 
             model_results = model_results.append(model_avgs)
             model_results = model_results.round(round)
@@ -1417,7 +1436,7 @@ class _SupervisedExperiment(_TabularExperiment):
                 power_transformer_method=self.transform_target_method_param,
             )
 
-        self.logger.info(f"{full_name} Imported succesfully")
+        self.logger.info(f"{full_name} Imported successfully")
 
         display.move_progress()
 
@@ -1444,7 +1463,7 @@ class _SupervisedExperiment(_TabularExperiment):
 
             self.logger.info(str(model))
             self.logger.info(
-                "create_models() succesfully completed......................................"
+                "create_models() successfully completed......................................"
             )
 
             gc.collect()
@@ -1515,7 +1534,7 @@ class _SupervisedExperiment(_TabularExperiment):
 
         self.logger.info(str(model))
         self.logger.info(
-            "create_model() succesfully completed......................................"
+            "create_model() successfully completed......................................"
         )
         gc.collect()
 
@@ -4080,26 +4099,30 @@ class _SupervisedExperiment(_TabularExperiment):
             raise ValueError("id already present in metrics dataframe.")
 
         if self._ml_usecase == MLUsecase.CLASSIFICATION:
-            new_metric = pycaret.containers.metrics.classification.ClassificationMetricContainer(
-                id=id,
-                name=name,
-                score_func=score_func,
-                target=target,
-                args=kwargs,
-                display_name=name,
-                greater_is_better=greater_is_better,
-                is_multiclass=bool(multiclass),
-                is_custom=True,
+            new_metric = (
+                pycaret.containers.metrics.classification.ClassificationMetricContainer(
+                    id=id,
+                    name=name,
+                    score_func=score_func,
+                    target=target,
+                    args=kwargs,
+                    display_name=name,
+                    greater_is_better=greater_is_better,
+                    is_multiclass=bool(multiclass),
+                    is_custom=True,
+                )
             )
         else:
-            new_metric = pycaret.containers.metrics.regression.RegressionMetricContainer(
-                id=id,
-                name=name,
-                score_func=score_func,
-                args=kwargs,
-                display_name=name,
-                greater_is_better=greater_is_better,
-                is_custom=True,
+            new_metric = (
+                pycaret.containers.metrics.regression.RegressionMetricContainer(
+                    id=id,
+                    name=name,
+                    score_func=score_func,
+                    args=kwargs,
+                    display_name=name,
+                    greater_is_better=greater_is_better,
+                    is_custom=True,
+                )
             )
 
         self._all_metrics[id] = new_metric
@@ -4214,7 +4237,10 @@ class _SupervisedExperiment(_TabularExperiment):
         groups = self._get_groups(groups)
 
         if not display:
-            display = Display(verbose=False, html_param=self.html_param,)
+            display = Display(
+                verbose=False,
+                html_param=self.html_param,
+            )
 
         np.random.seed(self.seed)
 
@@ -4402,9 +4428,15 @@ class _SupervisedExperiment(_TabularExperiment):
         try:
             np.random.seed(self.seed)
             if not display:
-                display = Display(verbose=verbose, html_param=self.html_param,)
+                display = Display(
+                    verbose=verbose,
+                    html_param=self.html_param,
+                )
         except:
-            display = Display(verbose=False, html_param=False,)
+            display = Display(
+                verbose=False,
+                html_param=False,
+            )
 
         dtypes = None
 
@@ -4536,4 +4568,3 @@ class _SupervisedExperiment(_TabularExperiment):
 
         gc.collect()
         return X_test_
-

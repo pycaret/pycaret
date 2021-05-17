@@ -43,14 +43,12 @@ _CURRENT_EXPERIMENT_DECORATOR_DICT = {
 
 def setup(
     data: Union[pd.Series, pd.DataFrame],
-    # train_size: float = 0.7,
-    test_data: Optional[pd.DataFrame] = None,
     preprocess: bool = True,
     imputation_type: str = "simple",
     #        transform_target: bool = False,
     #        transform_target_method: str = "box-cox",
     fold_strategy: Union[str, Any] = "timeseries",  # added in pycaret==2.2
-    fold: int = 10,
+    fold: int = 3,
     fh: Union[List[int], int, np.ndarray] = 1,
     seasonal_parameter: Optional[Union[int, str]] = None,
     n_jobs: Optional[int] = -1,
@@ -80,17 +78,11 @@ def setup(
     >>> from pycaret.datasets import get_data
     >>> airline = get_data('airline')
     >>> from pycaret.time_series import setup
-    >>> exp_name = setup(data=airline, fh=10)
+    >>> exp_name = setup(data=airline, fh=12)
 
 
     data : pandas.Series or pandas.DataFrame
         Shape (n_samples, 1), where n_samples is the number of samples.
-
-
-    test_data: pandas.DataFrame, default = None
-        If not None, test_data is used as a hold-out set and ``train_size`` parameter is
-        ignored. test_data must be labelled and the shape of data and test_data must
-        match.
 
 
     preprocess: bool, default = True
@@ -107,13 +99,12 @@ def setup(
     fold_strategy: str or sklearn CV generator object, default = 'kfold'
         Choice of cross validation strategy. Possible values are:
 
-        * 'expandingwindow'
-        * 'slidingwindow'
-        * 'timeseries'
-        * a custom CV generator object compatible with scikit-learn.
+        * 'expanding'
+        * 'rolling'
+        * 'sliding'
 
 
-    fold: int, default = 10
+    fold: int, default = 3
         Number of folds to be used in cross validation. Must be at least 2. This is
         a global setting that can be over-written at function level by using ``fold``
         parameter. Ignored when ``fold_strategy`` is a custom object.
@@ -232,8 +223,6 @@ def setup(
     set_current_experiment(exp)
     return exp.setup(
         data=data,
-        # train_size=train_size,
-        test_data=test_data,
         preprocess=preprocess,
         imputation_type=imputation_type,
         fold_strategy=fold_strategy,
@@ -397,7 +386,6 @@ def create_model(
     round: int = 4,
     cross_validation: bool = True,
     fit_kwargs: Optional[dict] = None,
-    groups: Optional[Union[str, Any]] = None,
     verbose: bool = True,
     **kwargs,
 ):
@@ -413,14 +401,14 @@ def create_model(
 
     Example
     -------
-    TODO: Update
     >>> from pycaret.datasets import get_data
-    >>> boston = get_data('boston')
-    >>> from pycaret.regression import *
-    >>> exp_name = setup(data = boston,  target = 'medv')
-    >>> lr = create_model('lr')
+    >>> airline = get_data('airline')
+    >>> from pycaret.internal.pycaret_experiment import TimeSeriesExperiment
+    >>> exp = TimeSeriesExperiment()
+    >>> exp.setup(data=airline, fh=12)
+    >>> model = exp.create_model("naive")
 
-
+    TODO: Update
     estimator: str or scikit-learn compatible object
         ID of an estimator available in model library or pass an untrained
         model object consistent with scikit-learn API. Estimators available
@@ -453,13 +441,6 @@ def create_model(
         Dictionary of arguments passed to the fit method of the model.
 
 
-    groups: str or array-like, with shape (n_samples,), default = None
-        Optional group labels when GroupKFold is used for the cross validation.
-        It takes an array with shape (n_samples, ) where n_samples is the number
-        of rows in training dataset. When string is passed, it is interpreted as
-        the column name in the dataset containing group labels.
-
-
     verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
 
@@ -485,7 +466,7 @@ def create_model(
         round=round,
         cross_validation=cross_validation,
         fit_kwargs=fit_kwargs,
-        groups=groups,
+        groups=None,
         verbose=verbose,
         **kwargs,
     )
@@ -506,7 +487,6 @@ def tune_model(
     early_stopping_max_iters: int = 10,
     choose_better: bool = False,
     fit_kwargs: Optional[dict] = None,
-    groups: Optional[Union[str, Any]] = None,
     return_tuner: bool = False,
     verbose: bool = True,
     tuner_verbose: Union[int, bool] = True,
@@ -636,13 +616,6 @@ def tune_model(
 
     fit_kwargs: dict, default = {} (empty dict)
         Dictionary of arguments passed to the fit method of the tuner.
-
-
-    groups: str or array-like, with shape (n_samples,), default = None
-        Optional group labels when GroupKFold is used for the cross validation.
-        It takes an array with shape (n_samples, ) where n_samples is the number
-        of rows in training dataset. When string is passed, it is interpreted as
-        the column name in the dataset containing group labels.
 
 
     return_tuner: bool, default = False

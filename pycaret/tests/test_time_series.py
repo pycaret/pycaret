@@ -14,16 +14,15 @@ from pycaret.containers.models.time_series import get_all_model_containers
 pytestmark = pytest.mark.filterwarnings("ignore::UserWarning")
 
 _BLEND_TEST_MODELS = [
-    'naive',
-    'poly_trend',
-    'arima'
-    'auto_ets',
-    'lr_cds_dt',
-    'en_cds_dt',
-    'knn_cds_dt',
-    'dt_cds_dt',
-    'lightgbm_cds_dt'
-] # Test blend model functionality only in these models
+    "naive",
+    "poly_trend",
+    "arima" "auto_ets",
+    "lr_cds_dt",
+    "en_cds_dt",
+    "knn_cds_dt",
+    "dt_cds_dt",
+    "lightgbm_cds_dt",
+]  # Test blend model functionality only in these models
 
 #############################
 #### Fixtures Start Here ####
@@ -48,7 +47,7 @@ def load_setup(load_data):
         data=load_data,
         fh=fh,
         fold=fold,
-        fold_strategy="expandingwindow",
+        fold_strategy="expanding",
         verbose=False,
         session_id=42,
     )
@@ -66,7 +65,9 @@ def load_ts_models(load_setup):
     ts_models = get_all_model_containers(globals_dict)
     ts_experiment = load_setup
     ts_estimators = [
-        ts_experiment.create_model(key) for key in ts_models.keys() if key in _BLEND_TEST_MODELS
+        ts_experiment.create_model(key)
+        for key in ts_models.keys()
+        if key in _BLEND_TEST_MODELS
     ]
 
     return ts_estimators
@@ -150,7 +151,7 @@ def test_setup_seasonal_period_str(load_data, seasonal_period, seasonal_value):
         data=data,
         fh=fh,
         fold=fold,
-        fold_strategy="expandingwindow",
+        fold_strategy="expanding",
         verbose=False,
         session_id=42,
         seasonal_period=seasonal_period,
@@ -172,7 +173,7 @@ def test_setup_seasonal_period_int(load_data, seasonal_key, seasonal_value):
         data=data,
         fh=fh,
         fold=fold,
-        fold_strategy="expandingwindow",
+        fold_strategy="expanding",
         verbose=False,
         seasonal_period=seasonal_value,
     )
@@ -188,7 +189,7 @@ def test_create_model(name, fh, load_data):
         data=load_data,
         fold=3,
         fh=fh,
-        fold_strategy="expandingwindow",
+        fold_strategy="expanding",
         verbose=False,
     )
     model_obj = exp.create_model(name)
@@ -236,12 +237,8 @@ def test_blend_model_predict(load_setup, load_models):
     ts_weights = [uniform(0, 1) for _ in range(len(ts_models))]
     fh = ts_experiment.fh
 
-    mean_blender = ts_experiment.blend_models(
-        ts_models, method="mean"
-    )
-    median_blender = ts_experiment.blend_models(
-        ts_models, method="median"
-    )
+    mean_blender = ts_experiment.blend_models(ts_models, method="mean")
+    median_blender = ts_experiment.blend_models(ts_models, method="median")
     voting_blender = ts_experiment.blend_models(
         ts_models, method="voting", weights=ts_weights
     )
@@ -265,7 +262,7 @@ def test_tune_model_grid(model, load_data):
     fh = 12
     fold = 3
 
-    exp.setup(data=load_data, fold=fold, fh=fh, fold_strategy="expandingwindow")
+    exp.setup(data=load_data, fold=fold, fh=fh, fold_strategy="expanding")
 
     model_obj = exp.create_model(model)
     tuned_model_obj = exp.tune_model(model_obj)
@@ -282,7 +279,7 @@ def test_tune_model_random(model, load_data):
     fh = 12
     fold = 3
 
-    exp.setup(data=load_data, fold=fold, fh=fh, fold_strategy="expandingwindow")
+    exp.setup(data=load_data, fold=fold, fh=fh, fold_strategy="expanding")
 
     model_obj = exp.create_model(model)
     tuned_model_obj = exp.tune_model(model_obj, search_algorithm="random")
