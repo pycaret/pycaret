@@ -308,8 +308,8 @@ def setup(
     remove_multicollinearity: bool, default = False
         When set to True, features with the inter-correlations higher than the defined 
         threshold are removed. When two features are highly correlated with each other, 
-        the feature that is less correlated with the target variable is removed. 
-
+        the feature that is less correlated with the target variable is removed. Only
+        considers numeric features.
 
     multicollinearity_threshold: float, default = 0.9
         Threshold for correlated features. Ignored when ``remove_multicollinearity``

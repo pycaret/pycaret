@@ -2500,7 +2500,7 @@ class Fix_multicollinearity(BaseEstimator, TransformerMixin):
     """
 
         # global data1
-        data1 = data
+        data1 = data.select_dtypes(include=["int64", "float64", "float32"])
         # try:
         #   self.data1 = self.data1.astype('float16')
         # except:
