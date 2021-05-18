@@ -217,8 +217,8 @@ try:
 
         def __init__(
             self,
-            alpha=1.0,
             *,
+            alpha=1.0,
             fit_intercept=True,
             normalize=False,
             copy_X=True,
@@ -356,8 +356,8 @@ try:
         @_deprecate_positional_args
         def __init__(
             self,
-            alpha=1.0,
             *,
+            alpha=1.0,
             fit_intercept=True,
             normalize=False,
             copy_X=True,
