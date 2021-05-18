@@ -213,7 +213,7 @@ def make_internal_pipeline(internal_pipeline_steps: list, memory=None) -> Pipeli
 
     if not internal_pipeline_steps:
         memory = None
-        internal_pipeline_steps = [("empty_step", "passthrough")]
+        internal_pipeline_steps = [("empty_step", None)]
 
     return Pipeline(internal_pipeline_steps, memory=memory)
 
