@@ -851,15 +851,15 @@ class Iterative_Imputer(_BaseImputer):
                 X_test[col] = pd.Categorical(
                     X_test[col], ordered=column in self.ordinal_columns
                 )
-        X_test = self._column_cleaner.fit_transform(X_test)
         result = estimator.predict(X_test)
         if le:
             result = le.inverse_transform(result)
 
-        if is_classification:
-            self.classifiers_[column] = (time, dummy, le, estimator)
-        else:
-            self.regressors_[column] = (time, dummy, le, estimator)
+        if fit:
+            if is_classification:
+                self.classifiers_[column] = (time, dummy, le, estimator)
+            else:
+                self.regressors_[column] = (time, dummy, le, estimator)
 
         X_test[column] = result
         X.update(X_test[column])
@@ -874,6 +874,13 @@ class Iterative_Imputer(_BaseImputer):
             X = X.drop(self.target, axis=1)
         else:
             target_column = None
+
+        original_columns = X.columns
+        original_index = X.index
+
+        X = X.reset_index(drop=True)
+        X = self._column_cleaner.fit_transform(X)
+
         self.imputation_sequence_ = (
             X.isnull().sum().sort_values(ascending=self.imputation_order == "ascending")
         )
@@ -891,6 +898,9 @@ class Iterative_Imputer(_BaseImputer):
             for feature in self.imputation_sequence_:
                 get_logger().info(f"Iterative Imputation: {i+1} cycle | {feature}")
                 X_imputed = self._impute_one_feature(X_imputed, feature, X_na_mask, fit)
+
+        X_imputed.columns = original_columns
+        X_imputed.index = original_index
 
         if target_column is not None:
             X_imputed[self.target] = target_column
