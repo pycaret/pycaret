@@ -887,7 +887,7 @@ class Iterative_Imputer(_BaseImputer):
 
         X_imputed = self._initial_imputation(X.copy())
 
-        for i in range(self.max_iter):
+        for i in range(self.max_iter if fit else 1):
             for feature in self.imputation_sequence_:
                 get_logger().info(f"Iterative Imputation: {i+1} cycle | {feature}")
                 X_imputed = self._impute_one_feature(X_imputed, feature, X_na_mask, fit)
