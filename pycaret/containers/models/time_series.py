@@ -917,6 +917,9 @@ class BATSContainer(TimeSeriesContainer):
 
 class CdsDtContainer(TimeSeriesContainer):
     def __init__(self, globals_dict: dict) -> None:
+        # abstract container
+        self.active = False
+
         self.logger = get_logger()
         np.random.seed(globals_dict["seed"])
 
@@ -1019,6 +1022,7 @@ class LinearCdsDtContainer(CdsDtContainer):
 
     def __init__(self, globals_dict: dict) -> None:
         super().__init__(globals_dict=globals_dict)
+        self.active = True
 
     def return_model_class(self):
         from sklearn.linear_model import LinearRegression
