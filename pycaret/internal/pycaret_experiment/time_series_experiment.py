@@ -2112,7 +2112,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             encoded_labels=True,
             round=round,
             verbose=verbose,
-            ml_usecase=MLUsecase.REGRESSION,
         )
 
     def finalize_model(
