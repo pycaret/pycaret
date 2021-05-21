@@ -155,7 +155,7 @@ class MLFlowLogger(ExperimentLogger):
 
         # log into experiment
         experiment.experiment__.append(("Setup Config", functions))
-        experiment.experiment__.append(("Transformed Data", self.X))
+        experiment.experiment__.append(("Transformed Data", experiment.X))
 
         if experiment.logging_param:
 
