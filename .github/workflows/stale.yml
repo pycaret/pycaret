@@ -20,3 +20,4 @@ jobs:
         stale-pr-message: 'Stale pull request message: This PR will be automatically closed by GitHub Actions in 1 week if there is no further activity.'
         stale-issue-label: 'no-issue-activity'
         stale-pr-label: 'no-pr-activity'
+        exempt-issue-labels: 'bug,enhancement'
