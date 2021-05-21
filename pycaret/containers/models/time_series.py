@@ -9,9 +9,10 @@ the process. Refer to the existing classes for examples.
 """
 
 from typing import Union, Dict, List, Tuple, Any, Optional
-
-import numpy as np  # type: ignore
+from abc import abstractmethod
 import random
+import numpy as np  # type: ignore
+
 
 from sktime.forecasting.base._sktime import _SktimeForecaster  # type: ignore
 from sktime.forecasting.compose import ReducedForecaster, TransformedTargetForecaster  # type: ignore
@@ -913,43 +914,23 @@ class BATSContainer(TimeSeriesContainer):
 #### REGRESSION BASED MODELS ####
 #################################
 
-# ===============#
-# LINEAR MODELS #
-# ===============#
 
-
-class LinearCdsDtContainer(TimeSeriesContainer):
+class CdsDtContainer(TimeSeriesContainer):
     def __init__(self, globals_dict: dict) -> None:
-        logger = get_logger()
+        self.logger = get_logger()
         np.random.seed(globals_dict["seed"])
 
-        from sklearn.linear_model import LinearRegression
-
-        # TODO add GPU support
+        # Import the right regressor
         self.gpu_imported = False
+        self.gpu_param = globals_dict["gpu_param"]
+        self.n_jobs_param = globals_dict["n_jobs_param"]
+        model_class = self.return_model_class()  # e.g. LinearRegression
+        regressor_args = self._set_regressor_args
+        self.regressor = model_class(**regressor_args)
 
-        if globals_dict["gpu_param"] == "force":
-            from cuml.linear_model import LinearRegression  # type: ignore
-
-            logger.info("Imported cuml.linear_model.LinearRegression")
-            self.gpu_imported = True
-        elif globals_dict["gpu_param"]:
-            try:
-                from cuml.linear_model import LinearRegression  # type: ignore
-
-                logger.info("Imported cuml.linear_model.LinearRegression")
-                self.gpu_imported = True
-            except ImportError:
-                logger.warning("Couldn't import cuml.linear_model.LinearRegression")
-
-        regressor_args = {}
-        if not self.gpu_imported:
-            regressor_args["n_jobs"] = globals_dict["n_jobs_param"]
-        self.regressor = LinearRegression(**regressor_args)
-
+        # Set the model hyperparameters
         sp = globals_dict.get("seasonal_period")
         self.sp = sp if sp is not None else 1
-
         args = self._set_args
         tune_args = self._set_tune_args
         tune_grid = self._set_tune_grid
@@ -957,12 +938,12 @@ class LinearCdsDtContainer(TimeSeriesContainer):
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
         eq_function = (
-            lambda x: type(x) is BaseCdsDt and type(x.regressor) is LinearRegression
+            lambda x: type(x) is BaseCdsDt and type(x.regressor) is model_class
         )
 
         super().__init__(
-            id="lr_cds_dt",
-            name="Linear w/ Cond. Deseasonalize & Detrending",
+            id=self.id,
+            name=self.name,
             class_def=BaseCdsDt,
             args=args,
             tune_grid=tune_grid,
@@ -973,14 +954,98 @@ class LinearCdsDtContainer(TimeSeriesContainer):
         )
 
     @property
+    @abstractmethod
+    def id(self) -> str:
+        """Model ID
+
+        Returns
+        -------
+        str
+            The model id that is used to reference this model
+        """
+        pass
+
+    @property
+    @abstractmethod
+    def name(self) -> str:
+        """Model Name
+
+        Returns
+        -------
+        str
+            The detailed name of the model used for display purposes
+        """
+        pass
+
+    @abstractmethod
+    def return_model_class(self):
+        """Returns the Class of the model"""
+        pass
+
+    @property
+    def _set_regressor_args(self) -> Dict[str, Any]:
+        regressor_args: Dict[str, Any] = {}
+        return regressor_args
+
+    @property
     def _set_args(self) -> Dict[str, Any]:
-        args = {"regressor": self.regressor}
+        args: Dict[str, Any] = {"regressor": self.regressor}
         return args
 
     @property
     def _set_tune_args(self) -> Dict[str, Any]:
         tune_args: Dict[str, Any] = {}
         return tune_args
+
+    @property
+    def _set_tune_grid(self) -> Dict[str, List[Any]]:
+        tune_grid: Dict[str, List[Any]] = {}
+        return tune_grid
+
+    @property
+    def _set_tune_distributions(self) -> Dict[str, List[Any]]:
+        tune_distributions: Dict[str, List[Any]] = {}
+        return tune_distributions
+
+
+# ===============#
+# LINEAR MODELS #
+# ===============#
+
+
+class LinearCdsDtContainer(CdsDtContainer):
+    id = "lr_cds_dt"
+    name = "Linear w/ Cond. Deseasonalize & Detrending"
+
+    def __init__(self, globals_dict: dict) -> None:
+        super().__init__(globals_dict=globals_dict)
+
+    def return_model_class(self):
+        from sklearn.linear_model import LinearRegression
+
+        if self.gpu_param == "force":
+            from cuml.linear_model import LinearRegression  # type: ignore
+
+            self.logger.info("Imported cuml.linear_model.LinearRegression")
+            self.gpu_imported = True
+        elif self.gpu_param:
+            try:
+                from cuml.linear_model import LinearRegression  # type: ignore
+
+                self.logger.info("Imported cuml.linear_model.LinearRegression")
+                self.gpu_imported = True
+            except ImportError:
+                self.logger.warning(
+                    "Couldn't import cuml.linear_model.LinearRegression"
+                )
+        return LinearRegression
+
+    @property
+    def _set_regressor_args(self) -> Dict[str, Any]:
+        regressor_args = {}
+        if not self.gpu_imported:
+            regressor_args["n_jobs"] = self.n_jobs_param
+        return regressor_args
 
     @property
     def _set_tune_grid(self) -> Dict[str, List[Any]]:
