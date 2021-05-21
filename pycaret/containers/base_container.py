@@ -104,11 +104,15 @@ def get_all_containers(
 
     for obj in model_container_classes:
         if raise_errors:
+            if hasattr(obj, "active") and not obj.active:
+                continue
             instance = obj(globals_dict)
             if instance.active:
                 model_containers.append(instance)
         else:
             try:
+                if hasattr(obj, "active") and not obj.active:
+                    continue
                 instance = obj(globals_dict)
                 if instance.active:
                     model_containers.append(instance)
