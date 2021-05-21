@@ -1092,11 +1092,14 @@ def models(internal: bool = False, raise_errors: bool = True,) -> pd.DataFrame:
 
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
-def get_logs(experiment_name: Optional[str] = None, save: bool = False) -> pd.DataFrame:
-
+def get_logs(
+    logger_id: Optional[str] = None, save: bool = False
+) -> Union[pd.DataFrame, Dict[str, pd.DataFrame]]:
     """
-    Returns a table of experiment logs. Only works when ``log_experiment``
-    is True when initializing the ``setup`` function.
+    Returns tables with experiment logs consisting
+    run details, parameter, metrics and tags based on logger data.
+    Only works when ``log_experiment`` is True when initializing
+    the ``setup`` function.
 
 
     Example
@@ -1109,20 +1112,21 @@ def get_logs(experiment_name: Optional[str] = None, save: bool = False) -> pd.Da
     >>> exp_logs = get_logs()
 
 
-    experiment_name: str, default = None
-        When None current active run is used.
+    logger_id : str, default = None
+        When set to None, a dictionary of all logger ids and dataframes is returned.
+        Otherwise, a single dataframe corresponding to the logger id is returned.
 
 
-    save: bool, default = False
-        When set to True, csv file is saved in current working directory.
+    save : bool, default = False
+        When set to True, csv files are saved in current directory.
 
 
     Returns:
-        pandas.DataFrame
+        pandas.DataFrame or dict of [logger id, pandas.DataFrame]
 
     """
 
-    return _CURRENT_EXPERIMENT.get_logs(experiment_name=experiment_name, save=save)
+    return _CURRENT_EXPERIMENT.get_logs(logger_id=logger_id, save=save)
 
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)

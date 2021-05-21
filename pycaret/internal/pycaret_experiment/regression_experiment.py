@@ -2315,38 +2315,3 @@ class RegressionExperiment(_SupervisedExperiment):
 
         """
         return super().remove_metric(name_or_id=name_or_id)
-
-    def get_logs(
-        self, experiment_name: Optional[str] = None, save: bool = False
-    ) -> pd.DataFrame:
-
-        """
-        Returns a table of experiment logs. Only works when ``log_experiment``
-        is True when initializing the ``setup`` function.
-
-
-        Example
-        -------
-        >>> from pycaret.datasets import get_data
-        >>> boston = get_data('boston')
-        >>> from pycaret.regression import *
-        >>> exp_name = setup(data = boston,  target = 'medv', log_experiment = True)
-        >>> best = compare_models()
-        >>> exp_logs = get_logs()
-
-
-        experiment_name: str, default = None
-            When None current active run is used.
-
-
-        save: bool, default = False
-            When set to True, csv file is saved in current working directory.
-
-
-        Returns:
-            pandas.DataFrame
-
-        """
-
-        return super().get_logs(experiment_name=experiment_name, save=save)
-

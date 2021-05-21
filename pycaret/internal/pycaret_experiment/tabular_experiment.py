@@ -3917,14 +3917,16 @@ class _TabularExperiment(_PyCaretExperiment):
     ) -> Union[pd.DataFrame, Dict[str, pd.DataFrame]]:
 
         """
-        Returns a table with experiment logs consisting
-        run details, parameter, metrics and tags.
+        Returns tables with experiment logs consisting
+        run details, parameter, metrics and tags based on logger data.
+        Only works when ``log_experiment`` is True when initializing
+        the ``setup`` function.
 
         Example
         -------
         >>> logs = get_logs()
 
-        This will return pandas dataframe.
+        This will return a dict of [logger id, pandas.DataFrame].
 
         Parameters
         ----------
@@ -3937,7 +3939,7 @@ class _TabularExperiment(_PyCaretExperiment):
 
         Returns
         -------
-        pandas.DataFrame or list of pandas.DataFrames
+        pandas.DataFrame or dict of [logger id, pandas.DataFrame]
 
         """
 
