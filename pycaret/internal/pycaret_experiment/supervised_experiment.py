@@ -269,102 +269,6 @@ class _SupervisedExperiment(_TabularExperiment):
         self.y = data[target]
         return
 
-    def _set_up_mlflow(
-        self,
-        functions,
-        runtime,
-        log_profile,
-        profile_kwargs,
-        log_data,
-        display,
-    ) -> None:
-        functions_styler = functions
-        if isinstance(functions, Styler):
-            functions = functions.data
-
-        # log into experiment
-        self.experiment__.append(("Setup Config", functions))
-        self.experiment__.append(("X_training Set", self.X_train))
-        self.experiment__.append(("y_training Set", self.y_train))
-        self.experiment__.append(("X_test Set", self.X_test))
-        self.experiment__.append(("y_test Set", self.y_test))
-        self.experiment__.append(("Transformation Pipeline", self.prep_pipe))
-
-        if self.logging_param:
-
-            self.logger.info("Logging experiment in MLFlow")
-
-            import mlflow
-
-            try:
-                self.exp_id = mlflow.create_experiment(self.exp_name_log)
-            except Exception:
-                self.exp_id = None
-                self.logger.warning("Couldn't create mlflow experiment. Exception:")
-                self.logger.warning(traceback.format_exc())
-
-            # mlflow logging
-            mlflow.set_experiment(self.exp_name_log)
-
-            run_name_ = f"Session Initialized {self.USI}"
-
-            with mlflow.start_run(run_name=run_name_) as run:
-
-                # Get active run to log as tag
-                RunID = mlflow.active_run().info.run_id
-
-                k = functions.copy()
-                k.set_index("Description", drop=True, inplace=True)
-                kdict = k.to_dict()
-                params = kdict.get("Value")
-                mlflow.log_params(params)
-
-                # set tag of compare_models
-                mlflow.set_tag("Source", "setup")
-
-                import secrets
-
-                URI = secrets.token_hex(nbytes=4)
-                mlflow.set_tag("URI", URI)
-                mlflow.set_tag("USI", self.USI)
-                mlflow.set_tag("Run Time", runtime)
-                mlflow.set_tag("Run ID", RunID)
-
-                # Log the transformation pipeline
-                self.logger.info(
-                    "SubProcess save_model() called =================================="
-                )
-                self.save_model(
-                    self.prep_pipe, "Transformation Pipeline", verbose=False
-                )
-                self.logger.info(
-                    "SubProcess save_model() end =================================="
-                )
-                mlflow.log_artifact("Transformation Pipeline.pkl")
-                os.remove("Transformation Pipeline.pkl")
-
-                # Log pandas profile
-                if log_profile:
-                    import pandas_profiling
-
-                    pf = pandas_profiling.ProfileReport(
-                        self.data_before_preprocess, **profile_kwargs
-                    )
-                    pf.to_file("Data Profile.html")
-                    mlflow.log_artifact("Data Profile.html")
-                    os.remove("Data Profile.html")
-                    display.display(functions_styler, clear=True)
-
-                # Log training and testing set
-                if log_data:
-                    self.X_train.join(self.y_train).to_csv("Train.csv")
-                    self.X_test.join(self.y_test).to_csv("Test.csv")
-                    mlflow.log_artifact("Train.csv")
-                    mlflow.log_artifact("Test.csv")
-                    os.remove("Train.csv")
-                    os.remove("Test.csv")
-        return
-
     def compare_models(
         self,
         include: Optional[
@@ -948,25 +852,19 @@ class _SupervisedExperiment(_TabularExperiment):
 
                 if self.logging_param and cross_validation:
 
-                    try:
-                        self._mlflow_log_model(
-                            model=model,
-                            model_results=results,
-                            score_dict=avgs_dict_log,
-                            source="compare_models",
-                            runtime=row["runtime"],
-                            model_fit_time=row["TT (Sec)"],
-                            _prep_pipe=self.prep_pipe,
-                            log_plots=self.log_plots_param if full_logging else False,
-                            log_holdout=full_logging,
-                            URI=URI,
-                            display=display,
-                        )
-                    except Exception:
-                        self.logger.error(
-                            f"_mlflow_log_model() for {model} raised an exception:"
-                        )
-                        self.logger.error(traceback.format_exc())
+                    self._log_model(
+                        model=model,
+                        model_results=results,
+                        score_dict=avgs_dict_log,
+                        source="compare_models",
+                        runtime=row["runtime"],
+                        model_fit_time=row["TT (Sec)"],
+                        _prep_pipe=self.prep_pipe,
+                        log_plots=self.log_plots_param if full_logging else False,
+                        log_holdout=full_logging,
+                        URI=URI,
+                        display=display,
+                    )
 
         if len(sorted_models) == 1:
             sorted_models = sorted_models[0]
@@ -1495,23 +1393,17 @@ class _SupervisedExperiment(_TabularExperiment):
             avgs_dict_log = avgs_dict.copy()
             avgs_dict_log = {k: v[0] for k, v in avgs_dict_log.items()}
 
-            try:
-                self._mlflow_log_model(
-                    model=model,
-                    model_results=model_results,
-                    score_dict=avgs_dict_log,
-                    source="create_model",
-                    runtime=runtime,
-                    model_fit_time=model_fit_time,
-                    _prep_pipe=self.prep_pipe,
-                    log_plots=self.log_plots_param,
-                    display=display,
-                )
-            except:
-                self.logger.error(
-                    f"_mlflow_log_model() for {model} raised an exception:"
-                )
-                self.logger.error(traceback.format_exc())
+            self._log_model(
+                model=model,
+                model_results=model_results,
+                score_dict=avgs_dict_log,
+                source="create_model",
+                runtime=runtime,
+                model_fit_time=model_fit_time,
+                _prep_pipe=self.prep_pipe,
+                log_plots=self.log_plots_param,
+                display=display,
+            )
 
         display.move_progress()
 
@@ -2496,24 +2388,18 @@ class _SupervisedExperiment(_TabularExperiment):
 
             avgs_dict_log = {k: v for k, v in model_results.loc["Mean"].items()}
 
-            try:
-                self._mlflow_log_model(
-                    model=best_model,
-                    model_results=model_results,
-                    score_dict=avgs_dict_log,
-                    source="tune_model",
-                    runtime=runtime,
-                    model_fit_time=model_fit_time,
-                    _prep_pipe=self.prep_pipe,
-                    log_plots=self.log_plots_param,
-                    tune_cv_results=cv_results,
-                    display=display,
-                )
-            except:
-                self.logger.error(
-                    f"_mlflow_log_model() for {best_model} raised an exception:"
-                )
-                self.logger.error(traceback.format_exc())
+            self._log_model(
+                model=best_model,
+                model_results=model_results,
+                score_dict=avgs_dict_log,
+                source="tune_model",
+                runtime=runtime,
+                model_fit_time=model_fit_time,
+                _prep_pipe=self.prep_pipe,
+                log_plots=self.log_plots_param,
+                tune_cv_results=cv_results,
+                display=display,
+            )
 
         model_results = color_df(model_results, "yellow", ["Mean"], axis=1)
         model_results = model_results.set_precision(round)
@@ -2849,23 +2735,17 @@ class _SupervisedExperiment(_TabularExperiment):
 
             avgs_dict_log = {k: v for k, v in model_results.loc["Mean"].items()}
 
-            try:
-                self._mlflow_log_model(
-                    model=best_model,
-                    model_results=model_results,
-                    score_dict=avgs_dict_log,
-                    source="ensemble_model",
-                    runtime=runtime,
-                    model_fit_time=model_fit_time,
-                    _prep_pipe=self.prep_pipe,
-                    log_plots=self.log_plots_param,
-                    display=display,
-                )
-            except:
-                self.logger.error(
-                    f"_mlflow_log_model() for {best_model} raised an exception:"
-                )
-                self.logger.error(traceback.format_exc())
+            self._log_model(
+                model=best_model,
+                model_results=model_results,
+                score_dict=avgs_dict_log,
+                source="ensemble_model",
+                runtime=runtime,
+                model_fit_time=model_fit_time,
+                _prep_pipe=self.prep_pipe,
+                log_plots=self.log_plots_param,
+                display=display,
+            )
 
         if choose_better:
             model = self._choose_better(
@@ -3221,23 +3101,17 @@ class _SupervisedExperiment(_TabularExperiment):
 
             avgs_dict_log = {k: v for k, v in model_results.loc["Mean"].items()}
 
-            try:
-                self._mlflow_log_model(
-                    model=model,
-                    model_results=model_results,
-                    score_dict=avgs_dict_log,
-                    source="blend_models",
-                    runtime=runtime,
-                    model_fit_time=model_fit_time,
-                    _prep_pipe=self.prep_pipe,
-                    log_plots=self.log_plots_param,
-                    display=display,
-                )
-            except:
-                self.logger.error(
-                    f"_mlflow_log_model() for {model} raised an exception:"
-                )
-                self.logger.error(traceback.format_exc())
+            self._log_model(
+                model=model,
+                model_results=model_results,
+                score_dict=avgs_dict_log,
+                source="blend_models",
+                runtime=runtime,
+                model_fit_time=model_fit_time,
+                _prep_pipe=self.prep_pipe,
+                log_plots=self.log_plots_param,
+                display=display,
+            )
 
         if choose_better:
             model = self._choose_better(
@@ -3582,23 +3456,17 @@ class _SupervisedExperiment(_TabularExperiment):
 
             avgs_dict_log = {k: v for k, v in model_results.loc["Mean"].items()}
 
-            try:
-                self._mlflow_log_model(
-                    model=model,
-                    model_results=model_results,
-                    score_dict=avgs_dict_log,
-                    source="stack_models",
-                    runtime=runtime,
-                    model_fit_time=model_fit_time,
-                    _prep_pipe=self.prep_pipe,
-                    log_plots=self.log_plots_param,
-                    display=display,
-                )
-            except:
-                self.logger.error(
-                    f"_mlflow_log_model() for {model} raised an exception:"
-                )
-                self.logger.error(traceback.format_exc())
+            self._log_model(
+                model=model,
+                model_results=model_results,
+                score_dict=avgs_dict_log,
+                source="stack_models",
+                runtime=runtime,
+                model_fit_time=model_fit_time,
+                _prep_pipe=self.prep_pipe,
+                log_plots=self.log_plots_param,
+                display=display,
+            )
 
         if choose_better:
             model = self._choose_better(
@@ -4266,23 +4134,17 @@ class _SupervisedExperiment(_TabularExperiment):
 
             avgs_dict_log = {k: v for k, v in model_results.loc["Mean"].items()}
 
-            try:
-                self._mlflow_log_model(
-                    model=model_final,
-                    model_results=model_results,
-                    score_dict=avgs_dict_log,
-                    source="finalize_model",
-                    runtime=runtime,
-                    model_fit_time=model_fit_time,
-                    _prep_pipe=self.prep_pipe,
-                    log_plots=self.log_plots_param,
-                    display=display,
-                )
-            except:
-                self.logger.error(
-                    f"_mlflow_log_model() for {model_final} raised an exception:"
-                )
-                self.logger.error(traceback.format_exc())
+            self._log_model(
+                model=model_final,
+                model_results=model_results,
+                score_dict=avgs_dict_log,
+                source="finalize_model",
+                runtime=runtime,
+                model_fit_time=model_fit_time,
+                _prep_pipe=self.prep_pipe,
+                log_plots=self.log_plots_param,
+                display=display,
+            )
 
         model_results = color_df(model_results, "yellow", ["Mean"], axis=1)
         model_results = model_results.set_precision(round)

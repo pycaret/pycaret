@@ -1,6 +1,7 @@
 from pycaret.internal.pycaret_experiment.utils import MLUsecase
 from pycaret.internal.pycaret_experiment.pycaret_experiment import _PyCaretExperiment
 from pycaret.internal.meta_estimators import get_estimator_from_meta_estimator
+from pycaret.internal.experiment_logger import MLFlowLogger
 from pycaret.internal.pipeline import (
     get_pipeline_estimator_label,
     estimator_pipeline,
@@ -63,8 +64,8 @@ class _TabularExperiment(_PyCaretExperiment):
                 "master_model_container",
                 "display_container",
                 "exp_name_log",
-                "exp_id",
                 "logging_param",
+                "loggers",
                 "log_plots_param",
                 "data_before_preprocess",
                 "gpu_param",
@@ -153,7 +154,7 @@ class _TabularExperiment(_PyCaretExperiment):
 
         return get_model_name(e, models, deep=deep)
 
-    def _mlflow_log_model(
+    def _log_model(
         self,
         model,
         model_results,
@@ -168,178 +169,22 @@ class _TabularExperiment(_PyCaretExperiment):
         URI=None,
         display: Optional[Display] = None,
     ):
-        self.logger.info("Creating MLFlow logs")
-
-        # Creating Logs message monitor
-        if display:
-            display.update_monitor(1, "Creating Logs")
-            display.display_monitor()
-
-        # import mlflow
-        import mlflow
-        import mlflow.sklearn
-
-        mlflow.set_experiment(self.exp_name_log)
-
-        full_name = self._get_model_name(model)
-        self.logger.info(f"Model: {full_name}")
-
-        with mlflow.start_run(run_name=full_name) as run:
-
-            # Get active run to log as tag
-            RunID = mlflow.active_run().info.run_id
-
-            # Log model parameters
-            pipeline_estimator_name = get_pipeline_estimator_label(model)
-            if pipeline_estimator_name:
-                params = model.named_steps[pipeline_estimator_name]
-            else:
-                params = model
-
-            # get regressor from meta estimator
-            params = get_estimator_from_meta_estimator(params)
-
-            try:
-                try:
-                    params = params.get_all_params()
-                except Exception:
-                    params = params.get_params()
-            except Exception:
-                self.logger.warning("Couldn't get params for model. Exception:")
-                self.logger.warning(traceback.format_exc())
-                params = {}
-
-            for i in list(params):
-                v = params.get(i)
-                if len(str(v)) > 250:
-                    params.pop(i)
-
-            self.logger.info(f"logged params: {params}")
-            mlflow.log_params(params)
-
-            # Log metrics
-            mlflow.log_metrics(score_dict)
-
-            # set tag of compare_models
-            mlflow.set_tag("Source", source)
-
-            if not URI:
-                import secrets
-
-                URI = secrets.token_hex(nbytes=4)
-            mlflow.set_tag("URI", URI)
-            mlflow.set_tag("USI", self.USI)
-            mlflow.set_tag("Run Time", runtime)
-            mlflow.set_tag("Run ID", RunID)
-
-            # Log training time in seconds
-            mlflow.log_metric("TT", model_fit_time)
-
-            # Log the CV results as model_results.html artifact
-            if not self._is_unsupervised():
-                try:
-                    model_results.data.to_html(
-                        "Results.html", col_space=65, justify="left"
-                    )
-                except Exception:
-                    model_results.to_html("Results.html", col_space=65, justify="left")
-                mlflow.log_artifact("Results.html")
-                os.remove("Results.html")
-
-                if log_holdout:
-                    # Generate hold-out predictions and save as html
-                    try:
-                        holdout = self.predict_model(model, verbose=False)  # type: ignore
-                        holdout_score = self.pull(pop=True)
-                        del holdout
-                        holdout_score.to_html(
-                            "Holdout.html", col_space=65, justify="left"
-                        )
-                        mlflow.log_artifact("Holdout.html")
-                        os.remove("Holdout.html")
-                    except Exception:
-                        self.logger.warning(
-                            "Couldn't create holdout prediction for model, exception below:"
-                        )
-                        self.logger.warning(traceback.format_exc())
-
-            # Log AUC and Confusion Matrix plot
-
-            if log_plots:
-
-                self.logger.info(
-                    "SubProcess plot_model() called =================================="
-                )
-
-                def _log_plot(plot):
-                    try:
-                        plot_name = self.plot_model(
-                            model, plot=plot, verbose=False, save=True, system=False
-                        )
-                        mlflow.log_artifact(plot_name)
-                        os.remove(plot_name)
-                    except Exception as e:
-                        self.logger.warning(e)
-
-                for plot in log_plots:
-                    _log_plot(plot)
-
-                self.logger.info(
-                    "SubProcess plot_model() end =================================="
-                )
-
-            # Log hyperparameter tuning grid
-            if tune_cv_results:
-                d1 = tune_cv_results.get("params")
-                dd = pd.DataFrame.from_dict(d1)
-                dd["Score"] = tune_cv_results.get("mean_test_score")
-                dd.to_html("Iterations.html", col_space=75, justify="left")
-                mlflow.log_artifact("Iterations.html")
-                os.remove("Iterations.html")
-
-            # get default conda env
-            from mlflow.sklearn import get_default_conda_env
-
-            default_conda_env = get_default_conda_env()
-            default_conda_env["name"] = f"{self.exp_name_log}-env"
-            default_conda_env.get("dependencies").pop(-3)
-            dependencies = default_conda_env.get("dependencies")[-1]
-            from pycaret.utils import __version__
-
-            dep = f"pycaret=={__version__}"
-            dependencies["pip"] = [dep]
-
-            # define model signature
-            from mlflow.models.signature import infer_signature
-
-            try:
-                signature = infer_signature(
-                    self.data_before_preprocess.drop([self.target_param], axis=1)
-                )
-            except Exception:
-                self.logger.warning("Couldn't infer MLFlow signature.")
-                signature = None
-            if not self._is_unsupervised():
-                input_example = (
-                    self.data_before_preprocess.drop([self.target_param], axis=1)
-                    .iloc[0]
-                    .to_dict()
-                )
-            else:
-                input_example = self.data_before_preprocess.iloc[0].to_dict()
-
-            # log model as sklearn flavor
-            prep_pipe_temp = deepcopy(_prep_pipe)
-            prep_pipe_temp.steps.append(["trained_model", model])
-            mlflow.sklearn.log_model(
-                prep_pipe_temp,
-                "model",
-                conda_env=default_conda_env,
-                signature=signature,
-                input_example=input_example,
+        for logger in self.loggers.values():
+            logger.log_model(
+                experiment=self,
+                model=model,
+                model_results=model_results,
+                score_dict=score_dict,
+                source=source,
+                runtime=runtime,
+                model_fit_time=model_fit_time,
+                _prep_pipe=_prep_pipe,
+                log_holdout=log_holdout,
+                log_plots=log_plots,
+                tune_cv_results=tune_cv_results,
+                URI=URI,
+                display=display,
             )
-            del prep_pipe_temp
-        gc.collect()
 
     def _split_data(
         self,
@@ -361,10 +206,25 @@ class _TabularExperiment(_PyCaretExperiment):
         self.y_test = None
         return
 
-    def _set_up_mlflow(
-        self, functions, runtime, log_profile, profile_kwargs, log_data, display,
+    def _setup_loggers(
+        self,
+        functions: Union[pd.DataFrame, Styler],
+        runtime: float,
+        log_profile: bool,
+        profile_kwargs: dict,
+        log_data: bool,
+        display: Optional[Display],
     ) -> None:
-        return
+        for logger in self.loggers.values():
+            logger.setup_logging(
+                self,
+                functions=functions,
+                runtime=runtime,
+                log_profile=log_profile,
+                profile_kwargs=profile_kwargs,
+                log_data=log_data,
+                display=display,
+            )
 
     def _make_internal_pipeline(
         self, internal_pipeline_steps: list, memory=None
@@ -489,10 +349,8 @@ class _TabularExperiment(_PyCaretExperiment):
 
         if experiment_name:
             self.exp_name_log = experiment_name
-        self.logger = create_logger(experiment_name)
-        #else:
-        #    # create exp_name_log parameter incase logging is False
-        #    self.exp_name_log = "no_logging"
+
+        self.logger = create_logger(self.exp_name_log)
 
         self.logger.info(f"PyCaret {type(self).__name__}")
         self.logger.info(f"Logging name: {self.exp_name_log}")
@@ -1441,7 +1299,6 @@ class _TabularExperiment(_PyCaretExperiment):
                 raise ValueError(f"fold_groups cannot contain NaNs.")
         self.fold_shuffle_param = fold_shuffle
 
-
         # create master_model_container
         self.master_model_container = []
 
@@ -1450,6 +1307,8 @@ class _TabularExperiment(_PyCaretExperiment):
 
         # create logging parameter
         self.logging_param = log_experiment
+        self.loggers = [MLFlowLogger()] if self.logging_param else []
+        self.loggers = {logger.id: logger for logger in self.loggers}
 
         # create an empty log_plots_param
         if not log_plots:
@@ -1529,7 +1388,7 @@ class _TabularExperiment(_PyCaretExperiment):
             )
 
             fold_random_state = self.seed if self.fold_shuffle_param else None
-            time_series_fold_strategies = ['expanding', 'sliding', 'rolling']
+            time_series_fold_strategies = ["expanding", "sliding", "rolling"]
 
             if fold_strategy == "kfold":
                 self.fold_generator = KFold(
@@ -1784,7 +1643,7 @@ class _TabularExperiment(_PyCaretExperiment):
         runtime_end = time.time()
         runtime = np.array(runtime_end - runtime_start).round(2)
 
-        self._set_up_mlflow(
+        self._setup_loggers(
             functions, runtime, log_profile, profile_kwargs, log_data, display,
         )
 
@@ -1952,7 +1811,7 @@ class _TabularExperiment(_PyCaretExperiment):
                 import streamlit as st
             except ImportError:
                 raise ImportError(
-                    "It appears that streamlit is not installed. Do: pip install hpbandster ConfigSpace"
+                    "It appears that streamlit is not installed. Do: pip install streamlit"
                 )
 
         # multiclass plot exceptions:
@@ -4053,3 +3912,50 @@ class _TabularExperiment(_PyCaretExperiment):
             model_name, platform, authentication, verbose
         )
 
+    def get_logs(
+        self, logger_id: Optional[str] = None, save: bool = False
+    ) -> Union[pd.DataFrame, Dict[str, pd.DataFrame]]:
+
+        """
+        Returns a table with experiment logs consisting
+        run details, parameter, metrics and tags.
+
+        Example
+        -------
+        >>> logs = get_logs()
+
+        This will return pandas dataframe.
+
+        Parameters
+        ----------
+        logger_id : str, default = None
+            When set to None, a dictionary of all logger ids and dataframes is returned.
+            Otherwise, a single dataframe corresponding to the logger id is returned.
+
+        save : bool, default = False
+            When set to True, csv files are saved in current directory.
+
+        Returns
+        -------
+        pandas.DataFrame or list of pandas.DataFrames
+
+        """
+
+        if logger_id is None:
+            for id, logger in self.loggers.items():
+                runs = {id: logger.get_logs(self)}
+        else:
+            try:
+                logger = self.loggers[logger_id]
+            except KeyError:
+                raise KeyError(
+                    f"No logger with id '{logger_id}' found. Loggers used for experiment: {', '.join(self.loggers.keys())}"
+                )
+            runs = {logger_id: logger.get_logs(self)}
+
+        if save:
+            for id, run in runs.items():
+                file_name = f"{id}_{self.exp_name_log}_logs.csv"
+                run.to_csv(file_name, index=False)
+
+        return runs if logger_id is None else runs[logger_id]

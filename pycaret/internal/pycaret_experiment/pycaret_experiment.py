@@ -11,20 +11,20 @@ from typing import List, Tuple, Any, Union, Optional, Dict
 import warnings
 import plotly.express as px  # type: ignore
 import plotly.graph_objects as go  # type: ignore
+from abc import ABC
 
 
 warnings.filterwarnings("ignore")
 LOGGER = get_logger()
 
 
-class _PyCaretExperiment:
+class _PyCaretExperiment(ABC):
     def __init__(self) -> None:
         self._ml_usecase = None
         self._available_plots = {}
         self.variable_keys = set()
         self._setup_ran = False
         self.display_container = []
-        self.exp_id = None
         self.gpu_param = False
         self.n_jobs_param = -1
         self.logger = LOGGER
@@ -195,66 +195,6 @@ class _PyCaretExperiment:
         return pycaret.internal.persistence.load_model(
             model_name, platform, authentication, verbose
         )
-
-    def get_logs(
-        self, experiment_name: Optional[str] = None, save: bool = False
-    ) -> pd.DataFrame:
-
-        """
-        Returns a table with experiment logs consisting
-        run details, parameter, metrics and tags.
-
-        Example
-        -------
-        >>> logs = get_logs()
-
-        This will return pandas dataframe.
-
-        Parameters
-        ----------
-        experiment_name : str, default = None
-            When set to None current active run is used.
-
-        save : bool, default = False
-            When set to True, csv file is saved in current directory.
-
-        Returns
-        -------
-        pandas.DataFrame
-
-        """
-
-        import mlflow
-        from mlflow.tracking import MlflowClient
-
-        client = MlflowClient()
-
-        if experiment_name is None:
-            exp_id = self.exp_id
-            experiment = client.get_experiment(exp_id)
-            if experiment is None:
-                raise ValueError(
-                    "No active run found. Check logging parameter in setup or to get logs for inactive run pass experiment_name."
-                )
-
-            exp_name_log_ = experiment.name
-        else:
-            exp_name_log_ = experiment_name
-            experiment = client.get_experiment_by_name(exp_name_log_)
-            if experiment is None:
-                raise ValueError(
-                    "No active run found. Check logging parameter in setup or to get logs for inactive run pass experiment_name."
-                )
-
-            exp_id = client.get_experiment_by_name(exp_name_log_).experiment_id
-
-        runs = mlflow.search_runs(exp_id)
-
-        if save:
-            file_name = f"{exp_name_log_}_logs.csv"
-            runs.to_csv(file_name, index=False)
-
-        return runs
 
     def get_config(self, variable: str) -> Any:
         """

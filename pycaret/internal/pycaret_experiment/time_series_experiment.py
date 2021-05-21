@@ -1463,24 +1463,18 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
             avgs_dict_log = {k: v for k, v in model_results.loc["Mean"].items()}
 
-            try:
-                self._mlflow_log_model(
-                    model=best_model,
-                    model_results=model_results,
-                    score_dict=avgs_dict_log,
-                    source="tune_model",
-                    runtime=runtime,
-                    model_fit_time=model_fit_time,
-                    _prep_pipe=self.prep_pipe,
-                    log_plots=self.log_plots_param,
-                    tune_cv_results=cv_results,
-                    display=display,
-                )
-            except:
-                self.logger.error(
-                    f"_mlflow_log_model() for {best_model} raised an exception:"
-                )
-                self.logger.error(traceback.format_exc())
+            self._log_model(
+                model=best_model,
+                model_results=model_results,
+                score_dict=avgs_dict_log,
+                source="tune_model",
+                runtime=runtime,
+                model_fit_time=model_fit_time,
+                _prep_pipe=self.prep_pipe,
+                log_plots=self.log_plots_param,
+                tune_cv_results=cv_results,
+                display=display,
+            )
 
         model_results = color_df(model_results, "yellow", ["Mean"], axis=1)
         model_results = model_results.set_precision(round)
