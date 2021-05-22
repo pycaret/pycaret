@@ -10,7 +10,9 @@ azure-storage-blob
 google-cloud-storage
 catboost>=0.23.2
 xgboost>=1.1.0
-convertdate
+LunarCalendar>=0.0.9
+convertdate>=2.1.2
+holidays>=0.10.2
 pystan~=2.19.1.1
 #hpbandster
 #ConfigSpace
