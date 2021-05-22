@@ -822,8 +822,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             error_score=0,
         )
 
-        #return scores
-
         model_fit_end = time.time()
         model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
 
