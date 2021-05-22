@@ -796,7 +796,7 @@ class ProphetContainer(TimeSeriesContainer):
 
     @property
     def _set_args(self) -> dict:
-        return {}
+        return {} 
 
     @property
     def _set_tune_args(self) -> dict:
@@ -805,16 +805,18 @@ class ProphetContainer(TimeSeriesContainer):
     @property
     def _set_tune_grid(self) -> dict:
         tune_grid = {
-            "seasonality_model": ['additive', 'multiplicative'],
-            "growth": ['linear', 'logistic']
+            "seasonality_mode": ['additive', 'multiplicative'],
+            "seasonality_prior_scale": [1.0, 5.0],
+            "growth": ['linear'] # 'logistic', cap column should be provided. https://stackoverflow.com/questions/48925255/fbprophet-giving-error-when-growth-logistic-python
         }
         return tune_grid
 
     @property
     def _set_tune_distributions(self) -> dict:
-        return {
-            "seasonality_prior_scale": IntUniformDistribution(lower=1, upper=20)
-        } if self.seasonality_present else {}
+        return {}
+        #{
+        #    "seasonality_prior_scale": UniformDistribution(lower=1, upper=20)
+        #} if self.seasonality_present else {}
 
 
 #################################
