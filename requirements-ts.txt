@@ -1,4 +1,5 @@
 sktime==0.5.3
 tbats==1.1.0
+pystan>=2.14,<3.0
 fbprophet>=0.7.1
 pmdarima>=1.8.0
