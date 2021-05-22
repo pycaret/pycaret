@@ -41,7 +41,11 @@ class BaseContainer:
     """
 
     def __init__(
-        self, id: str, name: str, class_def: type, args: Dict[str, Any] = None,
+        self,
+        id: str,
+        name: str,
+        class_def: type,
+        args: Dict[str, Any] = None,
     ) -> None:
         if not args:
             args = {}
@@ -94,10 +98,15 @@ def get_all_containers(
     type_var: type,
     raise_errors: bool = True,
 ) -> Dict[str, BaseContainer]:
+    # https://stackoverflow.com/a/1401900/8925915
     model_container_classes = [
         obj
-        for name, obj in container_globals.items()
-        if inspect.isclass(obj) and type_var in obj.__bases__
+        for _, obj in container_globals.items()
+        if inspect.isclass(obj)
+        # Get all parent class types excluding the object class type
+        # If this is not excluded, then containers like TimeSeriesContainer
+        # also shows up in model_container_classes
+        and type_var in tuple(x for x in inspect.getmro(obj) if x != obj)
     ]
 
     model_containers = []

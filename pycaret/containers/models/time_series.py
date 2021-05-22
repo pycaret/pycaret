@@ -916,12 +916,16 @@ class BATSContainer(TimeSeriesContainer):
 
 
 class CdsDtContainer(TimeSeriesContainer):
-    # abstract container
+    """Abstract container for sktime  reduced regression forecaster with
+    conditional deseasonalizing and detrending.
+    """
+
     active = False
 
     def __init__(self, globals_dict: dict) -> None:
         self.logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+        self.seed = globals_dict["seed"]
+        np.random.seed(self.seed)
 
         # Import the right regressor
         self.gpu_imported = False
@@ -988,6 +992,12 @@ class CdsDtContainer(TimeSeriesContainer):
     @property
     def _set_regressor_args(self) -> Dict[str, Any]:
         regressor_args: Dict[str, Any] = {}
+        if hasattr(self.return_model_class()(), "n_jobs"):
+            regressor_args["n_jobs"] = self.n_jobs_param
+        if hasattr(self.return_model_class()(), "random_state"):
+            regressor_args["random_state"] = self.seed
+        if hasattr(self.return_model_class()(), "seed"):
+            regressor_args["seed"] = self.seed
         return regressor_args
 
     @property
@@ -1019,12 +1029,7 @@ class CdsDtContainer(TimeSeriesContainer):
 class LinearCdsDtContainer(CdsDtContainer):
     id = "lr_cds_dt"
     name = "Linear w/ Cond. Deseasonalize & Detrending"
-
-    # set back to True as the parent has False
-    active = True
-
-    def __init__(self, globals_dict: dict) -> None:
-        super().__init__(globals_dict=globals_dict)
+    active = True  # set back to True as the parent has False
 
     def return_model_class(self):
         from sklearn.linear_model import LinearRegression
@@ -1045,13 +1050,6 @@ class LinearCdsDtContainer(CdsDtContainer):
                     "Couldn't import cuml.linear_model.LinearRegression"
                 )
         return LinearRegression
-
-    @property
-    def _set_regressor_args(self) -> Dict[str, Any]:
-        regressor_args = {}
-        if not self.gpu_imported:
-            regressor_args["n_jobs"] = self.n_jobs_param
-        return regressor_args
 
     @property
     def _set_tune_grid(self) -> Dict[str, List[Any]]:
@@ -1080,67 +1078,28 @@ class LinearCdsDtContainer(CdsDtContainer):
         return tune_distributions
 
 
-class ElasticNetCdsDtContainer(TimeSeriesContainer):
-    def __init__(self, globals_dict: dict) -> None:
-        logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+class ElasticNetCdsDtContainer(CdsDtContainer):
+    id = "en_cds_dt"
+    name = "Elastic Net w/ Cond. Deseasonalize & Detrending"
+    active = True  # set back to True as the parent has False
 
+    def return_model_class(self):
         from sklearn.linear_model import ElasticNet
 
-        # TODO add GPU support
-        self.gpu_imported = False
-
-        if globals_dict["gpu_param"] == "force":
+        if self.gpu_param == "force":
             from cuml.linear_model import ElasticNet  # type: ignore
 
-            logger.info("Imported cuml.linear_model.ElasticNet")
+            self.logger.info("Imported cuml.linear_model.ElasticNet")
             self.gpu_imported = True
-        elif globals_dict["gpu_param"]:
+        elif self.gpu_param:
             try:
                 from cuml.linear_model import ElasticNet  # type: ignore
 
-                logger.info("Imported cuml.linear_model.ElasticNet")
+                self.logger.info("Imported cuml.linear_model.ElasticNet")
                 self.gpu_imported = True
             except ImportError:
-                logger.warning("Couldn't import cuml.linear_model.ElasticNet")
-
-        regressor_args = {}
-        if not self.gpu_imported:
-            regressor_args["random_state"] = globals_dict["seed"]
-        self.regressor = ElasticNet(**regressor_args)
-
-        sp = globals_dict.get("seasonal_period")
-        self.sp = sp if sp is not None else 1
-
-        args = self._set_args
-        tune_args = self._set_tune_args
-        tune_grid = self._set_tune_grid
-        tune_distributions = self._set_tune_distributions
-        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
-
-        eq_function = lambda x: type(x) is BaseCdsDt and type(x.regressor) is ElasticNet
-
-        super().__init__(
-            id="en_cds_dt",
-            name="Elastic Net w/ Cond. Deseasonalize & Detrending",
-            class_def=BaseCdsDt,
-            args=args,
-            tune_grid=tune_grid,
-            tune_distribution=tune_distributions,
-            tune_args=tune_args,
-            is_gpu_enabled=self.gpu_imported,
-            eq_function=eq_function,
-        )
-
-    @property
-    def _set_args(self) -> Dict[str, Any]:
-        args = {"regressor": self.regressor}
-        return args
-
-    @property
-    def _set_tune_args(self) -> Dict[str, Any]:
-        tune_args: Dict[str, Any] = {}
-        return tune_args
+                self.logger.warning("Couldn't import cuml.linear_model.ElasticNet")
+        return ElasticNet
 
     @property
     def _set_tune_grid(self) -> Dict[str, List[Any]]:
@@ -1173,69 +1132,28 @@ class ElasticNetCdsDtContainer(TimeSeriesContainer):
         return tune_distributions
 
 
-class RidgeCdsDtContainer(TimeSeriesContainer):
-    def __init__(self, globals_dict: dict) -> None:
-        logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+class RidgeCdsDtContainer(CdsDtContainer):
+    id = "ridge_cds_dt"
+    name = "Ridge w/ Cond. Deseasonalize & Detrending"
+    active = True  # set back to True as the parent has False
 
+    def return_model_class(self):
         from sklearn.linear_model import Ridge
 
-        # TODO add GPU support
-        self.gpu_imported = False
-
-        if globals_dict["gpu_param"] == "force":
+        if self.gpu_param == "force":
             from cuml.linear_model import Ridge  # type: ignore
 
-            logger.info("Imported cuml.linear_model.Ridge")
+            self.logger.info("Imported cuml.linear_model.Ridge")
             self.gpu_imported = True
-        elif globals_dict["gpu_param"]:
+        elif self.gpu_param:
             try:
                 from cuml.linear_model import Ridge  # type: ignore
 
-                logger.info("Imported cuml.linear_model.Ridge")
+                self.logger.info("Imported cuml.linear_model.Ridge")
                 self.gpu_imported = True
             except ImportError:
-                logger.warning("Couldn't import cuml.linear_model.Ridge")
-
-        regressor_args = {}
-        if not self.gpu_imported:
-            regressor_args["random_state"] = globals_dict["seed"]
-        self.regressor = Ridge(**regressor_args)
-
-        sp = globals_dict.get("seasonal_period")
-        self.sp = sp if sp is not None else 1
-
-        args = self._set_args
-        tune_args = self._set_tune_args
-        tune_grid = self._set_tune_grid
-        tune_distributions = self._set_tune_distributions
-        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
-
-        eq_function = lambda x: type(x) is BaseCdsDt and type(x.regressor) is Ridge
-
-        super().__init__(
-            id="ridge_cds_dt",
-            name="Ridge w/ Cond. Deseasonalize & Detrending",
-            class_def=BaseCdsDt,
-            args=args,
-            tune_grid=tune_grid,
-            tune_distribution=tune_distributions,
-            tune_args=tune_args,
-            is_gpu_enabled=self.gpu_imported,
-            eq_function=eq_function,
-        )
-
-    @property
-    def _set_args(self) -> Dict[str, Any]:
-        args = {"regressor": self.regressor}
-        # if not self.gpu_imported:
-        #     args["n_jobs"] = globals_dict["n_jobs_param"]
-        return args
-
-    @property
-    def _set_tune_args(self) -> Dict[str, Any]:
-        tune_args: Dict[str, Any] = {}
-        return tune_args
+                self.logger.warning("Couldn't import cuml.linear_model.Ridge")
+        return Ridge
 
     @property
     def _set_tune_grid(self) -> Dict[str, List[Any]]:
@@ -1268,69 +1186,28 @@ class RidgeCdsDtContainer(TimeSeriesContainer):
         return tune_distributions
 
 
-class LassoCdsDtContainer(TimeSeriesContainer):
-    def __init__(self, globals_dict: dict) -> None:
-        logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+class LassoCdsDtContainer(CdsDtContainer):
+    id = "lasso_cds_dt"
+    name = "Lasso w/ Cond. Deseasonalize & Detrending"
+    active = True  # set back to True as the parent has False
 
+    def return_model_class(self):
         from sklearn.linear_model import Lasso
 
-        # TODO add GPU support
-        self.gpu_imported = False
-
-        if globals_dict["gpu_param"] == "force":
+        if self.gpu_param == "force":
             from cuml.linear_model import Lasso  # type: ignore
 
-            logger.info("Imported cuml.linear_model.Lasso")
+            self.logger.info("Imported cuml.linear_model.Lasso")
             self.gpu_imported = True
-        elif globals_dict["gpu_param"]:
+        elif self.gpu_param:
             try:
                 from cuml.linear_model import Lasso  # type: ignore
 
-                logger.info("Imported cuml.linear_model.Lasso")
+                self.logger.info("Imported cuml.linear_model.Lasso")
                 self.gpu_imported = True
             except ImportError:
-                logger.warning("Couldn't import cuml.linear_model.Lasso")
-
-        regressor_args = {}
-        if not self.gpu_imported:
-            regressor_args["random_state"] = globals_dict["seed"]
-        self.regressor = Lasso(**regressor_args)
-
-        sp = globals_dict.get("seasonal_period")
-        self.sp = sp if sp is not None else 1
-
-        args = self._set_args
-        tune_args = self._set_tune_args
-        tune_grid = self._set_tune_grid
-        tune_distributions = self._set_tune_distributions
-        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
-
-        eq_function = lambda x: type(x) is BaseCdsDt and type(x.regressor) is Lasso
-
-        super().__init__(
-            id="lasso_cds_dt",
-            name="Lasso w/ Cond. Deseasonalize & Detrending",
-            class_def=BaseCdsDt,
-            args=args,
-            tune_grid=tune_grid,
-            tune_distribution=tune_distributions,
-            tune_args=tune_args,
-            is_gpu_enabled=self.gpu_imported,
-            eq_function=eq_function,
-        )
-
-    @property
-    def _set_args(self) -> Dict[str, Any]:
-        args = {"regressor": self.regressor}
-        # if not self.gpu_imported:
-        #     args["n_jobs"] = globals_dict["n_jobs_param"]
-        return args
-
-    @property
-    def _set_tune_args(self) -> Dict[str, Any]:
-        tune_args: Dict[str, Any] = {}
-        return tune_args
+                self.logger.warning("Couldn't import cuml.linear_model.Lasso")
+        return Lasso
 
     @property
     def _set_tune_grid(self) -> Dict[str, List[Any]]:
@@ -1363,53 +1240,15 @@ class LassoCdsDtContainer(TimeSeriesContainer):
         return tune_distributions
 
 
-class LarsCdsDtContainer(TimeSeriesContainer):
-    def __init__(self, globals_dict: dict) -> None:
-        logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+class LarsCdsDtContainer(CdsDtContainer):
+    id = "lar_cds_dt"
+    name = "Least Angular Regressor w/ Cond. Deseasonalize & Detrending"
+    active = True  # set back to True as the parent has False
 
+    def return_model_class(self):
         from sklearn.linear_model import Lars
 
-        # TODO add GPU support
-        self.gpu_imported = False
-
-        regressor_args = {"random_state": globals_dict["seed"]}
-        self.regressor = Lars(**regressor_args)
-
-        sp = globals_dict.get("seasonal_period")
-        self.sp = sp if sp is not None else 1
-
-        args = self._set_args
-        tune_args = self._set_tune_args
-        tune_grid = self._set_tune_grid
-        tune_distributions = self._set_tune_distributions
-        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
-
-        eq_function = lambda x: type(x) is BaseCdsDt and type(x.regressor) is Lars
-
-        super().__init__(
-            id="lar_cds_dt",
-            name="Least Angular Regressor w/ Cond. Deseasonalize & Detrending",
-            class_def=BaseCdsDt,
-            args=args,
-            tune_grid=tune_grid,
-            tune_distribution=tune_distributions,
-            tune_args=tune_args,
-            is_gpu_enabled=self.gpu_imported,
-            eq_function=eq_function,
-        )
-
-    @property
-    def _set_args(self) -> Dict[str, Any]:
-        args = {"regressor": self.regressor}
-        # if not self.gpu_imported:
-        #     args["n_jobs"] = globals_dict["n_jobs_param"]
-        return args
-
-    @property
-    def _set_tune_args(self) -> Dict[str, Any]:
-        tune_args: Dict[str, Any] = {}
-        return tune_args
+        return Lars
 
     @property
     def _set_tune_grid(self) -> Dict[str, List[Any]]:
@@ -1442,53 +1281,15 @@ class LarsCdsDtContainer(TimeSeriesContainer):
         return tune_distributions
 
 
-class LassoLarsCdsDtContainer(TimeSeriesContainer):
-    def __init__(self, globals_dict: dict) -> None:
-        logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+class LassoLarsCdsDtContainer(CdsDtContainer):
+    id = "llar_cds_dt"
+    name = "Lasso Least Angular Regressor w/ Cond. Deseasonalize & Detrending"
+    active = True  # set back to True as the parent has False
 
+    def return_model_class(self):
         from sklearn.linear_model import LassoLars
 
-        # TODO add GPU support
-        self.gpu_imported = False
-
-        regressor_args = {"random_state": globals_dict["seed"]}
-        self.regressor = LassoLars(**regressor_args)
-
-        sp = globals_dict.get("seasonal_period")
-        self.sp = sp if sp is not None else 1
-
-        args = self._set_args
-        tune_args = self._set_tune_args
-        tune_grid = self._set_tune_grid
-        tune_distributions = self._set_tune_distributions
-        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
-
-        eq_function = lambda x: type(x) is BaseCdsDt and type(x.regressor) is LassoLars
-
-        super().__init__(
-            id="llar_cds_dt",
-            name="Lasso Least Angular Regressor w/ Cond. Deseasonalize & Detrending",
-            class_def=BaseCdsDt,
-            args=args,
-            tune_grid=tune_grid,
-            tune_distribution=tune_distributions,
-            tune_args=tune_args,
-            is_gpu_enabled=self.gpu_imported,
-            eq_function=eq_function,
-        )
-
-    @property
-    def _set_args(self) -> Dict[str, Any]:
-        args = {"regressor": self.regressor}
-        # if not self.gpu_imported:
-        #     args["n_jobs"] = globals_dict["n_jobs_param"]
-        return args
-
-    @property
-    def _set_tune_args(self) -> Dict[str, Any]:
-        tune_args: Dict[str, Any] = {}
-        return tune_args
+        return LassoLars
 
     @property
     def _set_tune_grid(self) -> Dict[str, List[Any]]:
@@ -1523,53 +1324,15 @@ class LassoLarsCdsDtContainer(TimeSeriesContainer):
         return tune_distributions
 
 
-class BayesianRidgeCdsDtContainer(TimeSeriesContainer):
-    def __init__(self, globals_dict: dict) -> None:
-        logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+class BayesianRidgeCdsDtContainer(CdsDtContainer):
+    id = "br_cds_dt"
+    name = "Bayesian Ridge w/ Cond. Deseasonalize & Detrending"
+    active = True  # set back to True as the parent has False
 
+    def return_model_class(self):
         from sklearn.linear_model import BayesianRidge
 
-        # TODO add GPU support
-        self.gpu_imported = False
-
-        regressor_args = {}
-        self.regressor = BayesianRidge(**regressor_args)
-
-        sp = globals_dict.get("seasonal_period")
-        self.sp = sp if sp is not None else 1
-
-        args = self._set_args
-        tune_args = self._set_tune_args
-        tune_grid = self._set_tune_grid
-        tune_distributions = self._set_tune_distributions
-        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
-
-        eq_function = (
-            lambda x: type(x) is BaseCdsDt and type(x.regressor) is BayesianRidge
-        )
-
-        super().__init__(
-            id="br_cds_dt",
-            name="Bayesian Ridge w/ Cond. Deseasonalize & Detrending",
-            class_def=BaseCdsDt,
-            args=args,
-            tune_grid=tune_grid,
-            tune_distribution=tune_distributions,
-            tune_args=tune_args,
-            is_gpu_enabled=self.gpu_imported,
-            eq_function=eq_function,
-        )
-
-    @property
-    def _set_args(self) -> Dict[str, Any]:
-        args = {"regressor": self.regressor}
-        return args
-
-    @property
-    def _set_tune_args(self) -> Dict[str, Any]:
-        tune_args: Dict[str, Any] = {}
-        return tune_args
+        return BayesianRidge
 
     @property
     def _set_tune_grid(self) -> Dict[str, List[Any]]:
@@ -1615,53 +1378,15 @@ class BayesianRidgeCdsDtContainer(TimeSeriesContainer):
         return tune_distributions
 
 
-class HuberCdsDtContainer(TimeSeriesContainer):
-    def __init__(self, globals_dict: dict) -> None:
-        logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+class HuberCdsDtContainer(CdsDtContainer):
+    id = "huber_cds_dt"
+    name = "Huber w/ Cond. Deseasonalize & Detrending"
+    active = True  # set back to True as the parent has False
 
+    def return_model_class(self):
         from sklearn.linear_model import HuberRegressor
 
-        # TODO add GPU support
-        self.gpu_imported = False
-
-        regressor_args = {}
-        self.regressor = HuberRegressor(**regressor_args)
-
-        sp = globals_dict.get("seasonal_period")
-        self.sp = sp if sp is not None else 1
-
-        args = self._set_args
-        tune_args = self._set_tune_args
-        tune_grid = self._set_tune_grid
-        tune_distributions = self._set_tune_distributions
-        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
-
-        eq_function = (
-            lambda x: type(x) is BaseCdsDt and type(x.regressor) is HuberRegressor
-        )
-
-        super().__init__(
-            id="huber_cds_dt",
-            name="Huber w/ Cond. Deseasonalize & Detrending",
-            class_def=BaseCdsDt,
-            args=args,
-            tune_grid=tune_grid,
-            tune_distribution=tune_distributions,
-            tune_args=tune_args,
-            is_gpu_enabled=self.gpu_imported,
-            eq_function=eq_function,
-        )
-
-    @property
-    def _set_args(self) -> Dict[str, Any]:
-        args = {"regressor": self.regressor}
-        return args
-
-    @property
-    def _set_tune_args(self) -> Dict[str, Any]:
-        tune_args: Dict[str, Any] = {}
-        return tune_args
+        return HuberRegressor
 
     @property
     def _set_tune_grid(self) -> Dict[str, List[Any]]:
@@ -1701,54 +1426,15 @@ class HuberCdsDtContainer(TimeSeriesContainer):
         return tune_distributions
 
 
-class PassiveAggressiveCdsDtContainer(TimeSeriesContainer):
-    def __init__(self, globals_dict: dict) -> None:
-        logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+class PassiveAggressiveCdsDtContainer(CdsDtContainer):
+    id = "par_cds_dt"
+    name = "Passive Aggressive w/ Cond. Deseasonalize & Detrending"
+    active = True  # set back to True as the parent has False
 
+    def return_model_class(self):
         from sklearn.linear_model import PassiveAggressiveRegressor
 
-        # TODO add GPU support
-        self.gpu_imported = False
-
-        regressor_args = {"random_state": globals_dict["seed"]}
-        self.regressor = PassiveAggressiveRegressor(**regressor_args)
-
-        sp = globals_dict.get("seasonal_period")
-        self.sp = sp if sp is not None else 1
-
-        args = self._set_args
-        tune_args = self._set_tune_args
-        tune_grid = self._set_tune_grid
-        tune_distributions = self._set_tune_distributions
-        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
-
-        eq_function = (
-            lambda x: type(x) is BaseCdsDt
-            and type(x.regressor) is PassiveAggressiveRegressor
-        )
-
-        super().__init__(
-            id="par_cds_dt",
-            name="Passive Aggressive w/ Cond. Deseasonalize & Detrending",
-            class_def=BaseCdsDt,
-            args=args,
-            tune_grid=tune_grid,
-            tune_distribution=tune_distributions,
-            tune_args=tune_args,
-            is_gpu_enabled=self.gpu_imported,
-            eq_function=eq_function,
-        )
-
-    @property
-    def _set_args(self) -> Dict[str, Any]:
-        args = {"regressor": self.regressor}
-        return args
-
-    @property
-    def _set_tune_args(self) -> Dict[str, Any]:
-        tune_args: Dict[str, Any] = {}
-        return tune_args
+        return PassiveAggressiveRegressor
 
     @property
     def _set_tune_grid(self) -> Dict[str, List[Any]]:
@@ -1782,56 +1468,19 @@ class PassiveAggressiveCdsDtContainer(TimeSeriesContainer):
         return tune_distributions
 
 
-class OrthogonalMatchingPursuitCdsDtContainer(TimeSeriesContainer):
-    def __init__(self, globals_dict: dict) -> None:
-        logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+class OrthogonalMatchingPursuitCdsDtContainer(CdsDtContainer):
+    id = "omp_cds_dt"
+    name = "Orthogonal Matching Pursuit w/ Cond. Deseasonalize & Detrending"
+    active = True  # set back to True as the parent has False
 
+    def __init__(self, globals_dict: dict) -> None:
+        self.num_features = len(globals_dict["X_train"].columns)
+        super().__init__(globals_dict=globals_dict)
+
+    def return_model_class(self):
         from sklearn.linear_model import OrthogonalMatchingPursuit
 
-        # TODO add GPU support
-        self.gpu_imported = False
-
-        regressor_args = {}
-        self.regressor = OrthogonalMatchingPursuit(**regressor_args)
-
-        self.num_features = len(globals_dict["X_train"].columns)
-
-        sp = globals_dict.get("seasonal_period")
-        self.sp = sp if sp is not None else 1
-
-        args = self._set_args
-        tune_args = self._set_tune_args
-        tune_grid = self._set_tune_grid
-        tune_distributions = self._set_tune_distributions
-        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
-
-        eq_function = (
-            lambda x: type(x) is BaseCdsDt
-            and type(x.regressor) is OrthogonalMatchingPursuit
-        )
-
-        super().__init__(
-            id="omp_cds_dt",
-            name="Orthogonal Matching Pursuit w/ Cond. Deseasonalize & Detrending",
-            class_def=BaseCdsDt,
-            args=args,
-            tune_grid=tune_grid,
-            tune_distribution=tune_distributions,
-            tune_args=tune_args,
-            is_gpu_enabled=self.gpu_imported,
-            eq_function=eq_function,
-        )
-
-    @property
-    def _set_args(self) -> Dict[str, Any]:
-        args = {"regressor": self.regressor}
-        return args
-
-    @property
-    def _set_tune_args(self) -> Dict[str, Any]:
-        tune_args: Dict[str, Any] = {}
-        return tune_args
+        return OrthogonalMatchingPursuit
 
     @property
     def _set_tune_grid(self) -> Dict[str, List[Any]]:
@@ -1868,69 +1517,34 @@ class OrthogonalMatchingPursuitCdsDtContainer(TimeSeriesContainer):
 # =======================#
 
 
-class KNeighborsCdsDtContainer(TimeSeriesContainer):
-    def __init__(self, globals_dict: dict) -> None:
-        logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+class KNeighborsCdsDtContainer(CdsDtContainer):
+    id = "knn_cds_dt"
+    name = "K Neighbors w/ Cond. Deseasonalize & Detrending"
+    active = True  # set back to True as the parent has False
 
+    def __init__(self, globals_dict: dict) -> None:
+        self.num_features = len(globals_dict["X_train"].columns)
+        super().__init__(globals_dict=globals_dict)
+
+    def return_model_class(self):
         from sklearn.neighbors import KNeighborsRegressor
 
-        # TODO add GPU support
-        self.gpu_imported = False
-
-        if globals_dict["gpu_param"] == "force":
+        if self.gpu_param == "force":
             from cuml.neighbors import KNeighborsRegressor  # type: ignore
 
-            logger.info("Imported cuml.neighbors.KNeighborsRegressor")
+            self.logger.info("Imported cuml.neighbors.KNeighborsRegressor")
             self.gpu_imported = True
-        elif globals_dict["gpu_param"]:
+        elif self.gpu_param:
             try:
                 from cuml.neighbors import KNeighborsRegressor  # type: ignore
 
-                logger.info("Imported cuml.neighbors.KNeighborsRegressor")
+                self.logger.info("Imported cuml.neighbors.KNeighborsRegressor")
                 self.gpu_imported = True
             except ImportError:
-                logger.warning("Couldn't import cuml.neighbors.KNeighborsRegressor")
-
-        regressor_args = {}
-        if not self.gpu_imported:
-            regressor_args["n_jobs"] = globals_dict["n_jobs_param"]
-        self.regressor = KNeighborsRegressor(**regressor_args)
-
-        sp = globals_dict.get("seasonal_period")
-        self.sp = sp if sp is not None else 1
-
-        args = self._set_args
-        tune_args = self._set_tune_args
-        tune_grid = self._set_tune_grid
-        tune_distributions = self._set_tune_distributions
-        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
-
-        eq_function = (
-            lambda x: type(x) is BaseCdsDt and type(x.regressor) is KNeighborsRegressor
-        )
-
-        super().__init__(
-            id="knn_cds_dt",
-            name="K Neighbors w/ Cond. Deseasonalize & Detrending",
-            class_def=BaseCdsDt,
-            args=args,
-            tune_grid=tune_grid,
-            tune_distribution=tune_distributions,
-            tune_args=tune_args,
-            is_gpu_enabled=self.gpu_imported,
-            eq_function=eq_function,
-        )
-
-    @property
-    def _set_args(self) -> Dict[str, Any]:
-        args = {"regressor": self.regressor}
-        return args
-
-    @property
-    def _set_tune_args(self) -> Dict[str, Any]:
-        tune_args: Dict[str, Any] = {}
-        return tune_args
+                self.logger.warning(
+                    "Couldn't import cuml.neighbors.KNeighborsRegressor"
+                )
+        return KNeighborsRegressor
 
     @property
     def _set_tune_grid(self) -> Dict[str, List[Any]]:
@@ -1961,57 +1575,15 @@ class KNeighborsCdsDtContainer(TimeSeriesContainer):
 # ==================#
 
 
-class DecisionTreeCdsDtContainer(TimeSeriesContainer):
-    def __init__(self, globals_dict: dict) -> None:
-        logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+class DecisionTreeCdsDtContainer(CdsDtContainer):
+    id = "dt_cds_dt"
+    name = "Decision Tree w/ Cond. Deseasonalize & Detrending"
+    active = True  # set back to True as the parent has False
 
+    def return_model_class(self):
         from sklearn.tree import DecisionTreeRegressor
 
-        # TODO add GPU support
-
-        self.gpu_imported = False
-
-        regressor_args = {"random_state": globals_dict["seed"]}
-        self.regressor = DecisionTreeRegressor(**regressor_args)
-
-        sp = globals_dict.get("seasonal_period")
-        self.sp = sp if sp is not None else 1
-
-        args = self._set_args
-        tune_args = self._set_tune_args
-        tune_grid = self._set_tune_grid
-        tune_distributions = self._set_tune_distributions
-        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
-
-        eq_function = (
-            lambda x: type(x) is BaseCdsDt
-            and type(x.regressor) is DecisionTreeRegressor
-        )
-
-        super().__init__(
-            id="dt_cds_dt",
-            name="Decision Tree w/ Cond. Deseasonalize & Detrending",
-            class_def=BaseCdsDt,
-            args=args,
-            tune_grid=tune_grid,
-            tune_distribution=tune_distributions,
-            tune_args=tune_args,
-            is_gpu_enabled=self.gpu_imported,
-            eq_function=eq_function,
-        )
-
-    @property
-    def _set_args(self) -> Dict[str, Any]:
-        args = {"regressor": self.regressor}
-        # if not self.gpu_imported:
-        #     args["n_jobs"] = globals_dict["n_jobs_param"]
-        return args
-
-    @property
-    def _set_tune_args(self) -> Dict[str, Any]:
-        tune_args: Dict[str, Any] = {}
-        return tune_args
+        return DecisionTreeRegressor
 
     @property
     def _set_tune_grid(self) -> Dict[str, List[Any]]:
@@ -2051,64 +1623,15 @@ class DecisionTreeCdsDtContainer(TimeSeriesContainer):
         return tune_distributions
 
 
-class RandomForestCdsDtContainer(TimeSeriesContainer):
-    def __init__(self, globals_dict: dict) -> None:
-        logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+class RandomForestCdsDtContainer(CdsDtContainer):
+    id = "rf_cds_dt"
+    name = "Random Forest w/ Cond. Deseasonalize & Detrending"
+    active = True  # set back to True as the parent has False
 
+    def return_model_class(self):
         from sklearn.ensemble import RandomForestRegressor
 
-        # TODO add GPU support
-
-        self.gpu_imported = False
-
-        regressor_args = (
-            {
-                "random_state": globals_dict["seed"],
-                "n_jobs": globals_dict["n_jobs_param"],
-            }
-            if not self.gpu_imported
-            else {"seed": globals_dict["seed"]}
-        )
-        self.regressor = RandomForestRegressor(**regressor_args)
-
-        sp = globals_dict.get("seasonal_period")
-        self.sp = sp if sp is not None else 1
-
-        args = self._set_args
-        tune_args = self._set_tune_args
-        tune_grid = self._set_tune_grid
-        tune_distributions = self._set_tune_distributions
-        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
-
-        eq_function = (
-            lambda x: type(x) is BaseCdsDt
-            and type(x.regressor) is RandomForestRegressor
-        )
-
-        super().__init__(
-            id="rf_cds_dt",
-            name="Random Forest w/ Cond. Deseasonalize & Detrending",
-            class_def=BaseCdsDt,
-            args=args,
-            tune_grid=tune_grid,
-            tune_distribution=tune_distributions,
-            tune_args=tune_args,
-            is_gpu_enabled=self.gpu_imported,
-            eq_function=eq_function,
-        )
-
-    @property
-    def _set_args(self) -> Dict[str, Any]:
-        args = {"regressor": self.regressor}
-        # if not self.gpu_imported:
-        #     args["n_jobs"] = globals_dict["n_jobs_param"]
-        return args
-
-    @property
-    def _set_tune_args(self) -> Dict[str, Any]:
-        tune_args: Dict[str, Any] = {}
-        return tune_args
+        return RandomForestRegressor
 
     @property
     def _set_tune_grid(self) -> Dict[str, List[Any]]:
@@ -2147,63 +1670,15 @@ class RandomForestCdsDtContainer(TimeSeriesContainer):
         return tune_distributions
 
 
-class ExtraTreesCdsDtContainer(TimeSeriesContainer):
-    def __init__(self, globals_dict: dict) -> None:
-        logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+class ExtraTreesCdsDtContainer(CdsDtContainer):
+    id = "et_cds_dt"
+    name = "Extra Trees w/ Cond. Deseasonalize & Detrending"
+    active = True  # set back to True as the parent has False
 
+    def return_model_class(self):
         from sklearn.ensemble import ExtraTreesRegressor
 
-        # TODO add GPU support
-
-        self.gpu_imported = False
-
-        regressor_args = (
-            {
-                "random_state": globals_dict["seed"],
-                "n_jobs": globals_dict["n_jobs_param"],
-            }
-            if not self.gpu_imported
-            else {"seed": globals_dict["seed"]}
-        )
-        self.regressor = ExtraTreesRegressor(**regressor_args)
-
-        sp = globals_dict.get("seasonal_period")
-        self.sp = sp if sp is not None else 1
-
-        args = self._set_args
-        tune_args = self._set_tune_args
-        tune_grid = self._set_tune_grid
-        tune_distributions = self._set_tune_distributions
-        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
-
-        eq_function = (
-            lambda x: type(x) is BaseCdsDt and type(x.regressor) is ExtraTreesRegressor
-        )
-
-        super().__init__(
-            id="et_cds_dt",
-            name="Extra Trees w/ Cond. Deseasonalize & Detrending",
-            class_def=BaseCdsDt,
-            args=args,
-            tune_grid=tune_grid,
-            tune_distribution=tune_distributions,
-            tune_args=tune_args,
-            is_gpu_enabled=self.gpu_imported,
-            eq_function=eq_function,
-        )
-
-    @property
-    def _set_args(self) -> Dict[str, Any]:
-        args = {"regressor": self.regressor}
-        # if not self.gpu_imported:
-        #     args["n_jobs"] = globals_dict["n_jobs_param"]
-        return args
-
-    @property
-    def _set_tune_args(self) -> Dict[str, Any]:
-        tune_args: Dict[str, Any] = {}
-        return tune_args
+        return ExtraTreesRegressor
 
     @property
     def _set_tune_grid(self) -> Dict[str, List[Any]]:
@@ -2250,62 +1725,20 @@ class ExtraTreesCdsDtContainer(TimeSeriesContainer):
         return tune_distributions
 
 
-# =========================#
+# ========================#
 # GRADIENT BOOSTED MODELS #
-# =========================#
+# ========================#
 
 
-class GradientBoostingCdsDtContainer(TimeSeriesContainer):
-    def __init__(self, globals_dict: dict) -> None:
-        logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+class GradientBoostingCdsDtContainer(CdsDtContainer):
+    id = "gbr_cds_dt"
+    name = "Gradient Boosting w/ Cond. Deseasonalize & Detrending"
+    active = True  # set back to True as the parent has False
 
+    def return_model_class(self):
         from sklearn.ensemble import GradientBoostingRegressor
 
-        # TODO add GPU support
-
-        self.gpu_imported = False
-
-        regressor_args = {"random_state": globals_dict["seed"]}
-        self.regressor = GradientBoostingRegressor(**regressor_args)
-
-        sp = globals_dict.get("seasonal_period")
-        self.sp = sp if sp is not None else 1
-
-        args = self._set_args
-        tune_args = self._set_tune_args
-        tune_grid = self._set_tune_grid
-        tune_distributions = self._set_tune_distributions
-        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
-
-        eq_function = (
-            lambda x: type(x) is BaseCdsDt
-            and type(x.regressor) is GradientBoostingRegressor
-        )
-
-        super().__init__(
-            id="gbr_cds_dt",
-            name="Gradient Boosting w/ Cond. Deseasonalize & Detrending",
-            class_def=BaseCdsDt,
-            args=args,
-            tune_grid=tune_grid,
-            tune_distribution=tune_distributions,
-            tune_args=tune_args,
-            is_gpu_enabled=self.gpu_imported,
-            eq_function=eq_function,
-        )
-
-    @property
-    def _set_args(self) -> Dict[str, Any]:
-        args = {"regressor": self.regressor}
-        # if not self.gpu_imported:
-        #     args["n_jobs"] = globals_dict["n_jobs_param"]
-        return args
-
-    @property
-    def _set_tune_args(self) -> Dict[str, Any]:
-        tune_args: Dict[str, Any] = {}
-        return tune_args
+        return GradientBoostingRegressor
 
     @property
     def _set_tune_grid(self) -> Dict[str, List[Any]]:
@@ -2350,56 +1783,15 @@ class GradientBoostingCdsDtContainer(TimeSeriesContainer):
         return tune_distributions
 
 
-class AdaBoostCdsDtContainer(TimeSeriesContainer):
-    def __init__(self, globals_dict: dict) -> None:
-        logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+class AdaBoostCdsDtContainer(CdsDtContainer):
+    id = "ada_cds_dt"
+    name = "AdaBoost w/ Cond. Deseasonalize & Detrending"
+    active = True  # set back to True as the parent has False
 
+    def return_model_class(self):
         from sklearn.ensemble import AdaBoostRegressor
 
-        # TODO add GPU support
-
-        self.gpu_imported = False
-
-        regressor_args = {"random_state": globals_dict["seed"]}
-        self.regressor = AdaBoostRegressor(**regressor_args)
-
-        sp = globals_dict.get("seasonal_period")
-        self.sp = sp if sp is not None else 1
-
-        args = self._set_args
-        tune_args = self._set_tune_args
-        tune_grid = self._set_tune_grid
-        tune_distributions = self._set_tune_distributions
-        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
-
-        eq_function = (
-            lambda x: type(x) is BaseCdsDt and type(x.regressor) is AdaBoostRegressor
-        )
-
-        super().__init__(
-            id="ada_cds_dt",
-            name="AdaBoost w/ Cond. Deseasonalize & Detrending",
-            class_def=BaseCdsDt,
-            args=args,
-            tune_grid=tune_grid,
-            tune_distribution=tune_distributions,
-            tune_args=tune_args,
-            is_gpu_enabled=self.gpu_imported,
-            eq_function=eq_function,
-        )
-
-    @property
-    def _set_args(self) -> Dict[str, Any]:
-        args = {"regressor": self.regressor}
-        # if not self.gpu_imported:
-        #     args["n_jobs"] = globals_dict["n_jobs_param"]
-        return args
-
-    @property
-    def _set_tune_args(self) -> Dict[str, Any]:
-        tune_args: Dict[str, Any] = {}
-        return tune_args
+        return AdaBoostRegressor
 
     @property
     def _set_tune_grid(self) -> Dict[str, List[Any]]:
@@ -2431,20 +1823,22 @@ class AdaBoostCdsDtContainer(TimeSeriesContainer):
         return tune_distributions
 
 
-class XGBCdsDtContainer(TimeSeriesContainer):
-    def __init__(self, globals_dict: dict) -> None:
-        logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+class XGBCdsDtContainer(CdsDtContainer):
+    id = "xgboost_cds_dt"
+    name = "Extreme Gradient Boosting w/ Cond. Deseasonalize & Detrending"
+    active = True  # set back to True as the parent has False
+
+    def return_model_class(self):
         try:
             import xgboost
         except ImportError:
-            logger.warning("Couldn't import xgboost.XGBRegressor")
+            self.logger.warning("Couldn't import xgboost.XGBRegressor")
             self.active = False
             return
 
         xgboost_version = tuple([int(x) for x in xgboost.__version__.split(".")])
         if xgboost_version < (1, 1, 0):
-            logger.warning(
+            self.logger.warning(
                 f"Wrong xgboost version. Expected xgboost>=1.1.0, got xgboost=={xgboost_version}"
             )
             self.active = False
@@ -2452,55 +1846,15 @@ class XGBCdsDtContainer(TimeSeriesContainer):
 
         from xgboost import XGBRegressor
 
-        # TODO add GPU support
-
-        self.gpu_imported = False
-
-        regressor_args = {
-            "random_state": globals_dict["seed"],
-            "n_jobs": globals_dict["n_jobs_param"],
-            "verbosity": 0,
-            "booster": "gbtree",
-            "tree_method": "gpu_hist" if globals_dict["gpu_param"] else "auto",
-        }
-        self.regressor = XGBRegressor(**regressor_args)
-
-        sp = globals_dict.get("seasonal_period")
-        self.sp = sp if sp is not None else 1
-
-        args = self._set_args
-        tune_args = self._set_tune_args
-        tune_grid = self._set_tune_grid
-        tune_distributions = self._set_tune_distributions
-        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
-
-        eq_function = (
-            lambda x: type(x) is BaseCdsDt and type(x.regressor) is XGBRegressor
-        )
-
-        super().__init__(
-            id="xgboost_cds_dt",
-            name="Extreme Gradient Boosting w/ Cond. Deseasonalize & Detrending",
-            class_def=BaseCdsDt,
-            args=args,
-            tune_grid=tune_grid,
-            tune_distribution=tune_distributions,
-            tune_args=tune_args,
-            is_gpu_enabled=self.gpu_imported,
-            eq_function=eq_function,
-        )
+        return XGBRegressor
 
     @property
-    def _set_args(self) -> Dict[str, Any]:
-        args = {"regressor": self.regressor}
-        # if not self.gpu_imported:
-        #     args["n_jobs"] = globals_dict["n_jobs_param"]
-        return args
-
-    @property
-    def _set_tune_args(self) -> Dict[str, Any]:
-        tune_args: Dict[str, Any] = {}
-        return tune_args
+    def _set_regressor_args(self) -> Dict[str, Any]:
+        regressor_args = super()._set_regressor_args
+        regressor_args["verbosity"] = 0
+        regressor_args["booster"] = "gbtree"
+        regressor_args["tree_method"] = "gpu_hist" if self.gpu_param else "auto"
+        return regressor_args
 
     @property
     def _set_tune_grid(self) -> Dict[str, List[Any]]:
@@ -2541,76 +1895,37 @@ class XGBCdsDtContainer(TimeSeriesContainer):
         return tune_distributions
 
 
-class LGBMCdsDtContainer(TimeSeriesContainer):
-    def __init__(self, globals_dict: dict) -> None:
-        logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+class LGBMCdsDtContainer(CdsDtContainer):
+    id = "lightgbm_cds_dt"
+    name = "Light Gradient Boosting w/ Cond. Deseasonalize & Detrending"
+    active = True  # set back to True as the parent has False
+
+    def return_model_class(self):
         from lightgbm import LGBMRegressor
         from lightgbm.basic import LightGBMError
 
-        # TODO add GPU support
-
-        self.gpu_imported = False
-
-        regressor_args = {
-            "random_state": globals_dict["seed"],
-            "n_jobs": globals_dict["n_jobs_param"],
-        }
-        self.regressor = LGBMRegressor(**regressor_args)
-
-        sp = globals_dict.get("seasonal_period")
-        self.sp = sp if sp is not None else 1
-
-        args = self._set_args
-        tune_args = self._set_tune_args
-        tune_grid = self._set_tune_grid
-        tune_distributions = self._set_tune_distributions
-        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
-
-        eq_function = (
-            lambda x: type(x) is BaseCdsDt and type(x.regressor) is LGBMRegressor
-        )
-
-        is_gpu_enabled = False
-        if globals_dict["gpu_param"]:
+        self.is_gpu_enabled = False
+        if self.gpu_param:
             try:
                 lgb = LGBMRegressor(device="gpu")
                 lgb.fit(np.zeros((2, 2)), [0, 1])
-                is_gpu_enabled = True
+                self.is_gpu_enabled = True
                 del lgb
             except LightGBMError:
-                is_gpu_enabled = False
-                if globals_dict["gpu_param"] == "force":
+                self.is_gpu_enabled = False
+                if self.gpu_param == "force":
                     raise RuntimeError(
                         f"LightGBM GPU mode not available. Consult https://lightgbm.readthedocs.io/en/latest/GPU-Tutorial.html."
                     )
 
-        if is_gpu_enabled:
-            args["device"] = "gpu"
-
-        super().__init__(
-            id="lightgbm_cds_dt",
-            name="Light Gradient Boosting w/ Cond. Deseasonalize & Detrending",
-            class_def=BaseCdsDt,
-            args=args,
-            tune_grid=tune_grid,
-            tune_distribution=tune_distributions,
-            tune_args=tune_args,
-            is_gpu_enabled=self.gpu_imported,
-            eq_function=eq_function,
-        )
+        return LGBMRegressor
 
     @property
-    def _set_args(self) -> Dict[str, Any]:
-        args = {"regressor": self.regressor}
-        # if not self.gpu_imported:
-        #     args["n_jobs"] = globals_dict["n_jobs_param"]
-        return args
-
-    @property
-    def _set_tune_args(self) -> Dict[str, Any]:
-        tune_args: Dict[str, Any] = {}
-        return tune_args
+    def _set_regressor_args(self) -> Dict[str, Any]:
+        regressor_args = super()._set_regressor_args
+        if self.is_gpu_enabled:
+            regressor_args["device"] = "gpu"
+        return regressor_args
 
     @property
     def _set_tune_grid(self) -> Dict[str, List[Any]]:
@@ -2655,6 +1970,11 @@ class LGBMCdsDtContainer(TimeSeriesContainer):
             "regressor__min_child_samples": IntUniformDistribution(1, 100),
         }
         return tune_distributions
+
+
+# ===================================#
+# TODO: MODELS TO BE SEPARATED LATER #
+# ===================================#
 
 
 class BaseCdsDt(_SktimeForecaster):
