@@ -10,5 +10,7 @@ azure-storage-blob
 google-cloud-storage
 catboost>=0.23.2
 xgboost>=1.1.0
+convertdate
+pystan~=2.19.1.1
 #hpbandster
 #ConfigSpace
