@@ -761,6 +761,62 @@ class BATSContainer(TimeSeriesContainer):
         return {}
 
 
+class ProphetContainer(TimeSeriesContainer):
+    def __init__(self, globals_dict: dict) -> None:
+        logger = get_logger()
+        np.random.seed(globals_dict["seed"])
+        gpu_imported = False
+
+        from sktime.forecasting.fbprophet import Prophet  # type: ignore
+
+        sp = globals_dict.get("seasonal_period")
+        self.sp = sp if sp is not None else 1
+
+        self.seasonality_present = globals_dict.get("seasonality_present")
+        self.freq = globals_dict.get("freq")
+
+        args = self._set_args
+        tune_args = self._set_tune_args
+        tune_grid = self._set_tune_grid
+        tune_distributions = self._set_tune_distributions
+
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+
+        super().__init__(
+            id="prophet",
+            name="Prophet",
+            class_def=Prophet,
+            args=args,
+            tune_grid=tune_grid,
+            tune_distribution=tune_distributions,
+            tune_args=tune_args,
+            is_gpu_enabled=gpu_imported,
+            is_turbo=False,
+        )
+
+    @property
+    def _set_args(self) -> dict:
+        return {}
+
+    @property
+    def _set_tune_args(self) -> dict:
+        return {}
+
+    @property
+    def _set_tune_grid(self) -> dict:
+        tune_grid = {
+            "seasonality_model": ['additive', 'multiplicative'],
+            "growth": ['linear', 'logistic']
+        }
+        return tune_grid
+
+    @property
+    def _set_tune_distributions(self) -> dict:
+        return {
+            "seasonality_prior_scale": IntUniformDistribution(lower=1, upper=20)
+        } if self.seasonality_present else {}
+
+
 #################################
 #### REGRESSION BASED MODELS ####
 #################################

@@ -2026,6 +2026,10 @@ def get_folds(cv, y) -> Generator[Tuple[pd.Series, pd.Series], None, None]:
                         ~rolling_y_train.index.duplicated(keep="first")
                     ]
 
+                    rolling_y_train = rolling_y_train.asfreq(y_train.index.freqstr) # Ensure freq value is preserved, otherwise when predicting raise error
+
+                    #print(f'Rolling y_train index: {rolling_y_train.index}')
+
                     if isinstance(cv, SlidingWindowSplitter):
                         rolling_y_train = rolling_y_train.iloc[-cv.initial_window :]
         yield rolling_y_train.index, y_test.index
@@ -2089,6 +2093,37 @@ def cross_validate_ts(
         # n_jobs = 1
         scoring = _get_metrics_dict_ts(scoring)
         parallel = Parallel(n_jobs=n_jobs)
+
+        # for train, test in get_folds(cv, y):
+        #     print(f'Y train index: {y[train].index}')
+        #     print('--------------------------------\n')
+        #     print(f'Y test index: {y[test].index}')
+        #     print('--------------------------------\n')
+
+        #     #return clone(forecaster), y, X, scoring, train, test, fit_params, return_train_score, error_score
+
+        #     try:
+        #         a1, a2, a3 = _fit_and_score(
+        #             forecaster=clone(forecaster),
+        #             y=y,
+        #             X=X,
+        #             scoring=scoring,
+        #             train=train,
+        #             test=test,
+        #             parameters=None,
+        #             fit_params=fit_params,
+        #             return_train_score=return_train_score,
+        #             error_score=error_score,
+        #         )
+        #     except Exception as e:
+        #         print(e)
+        #         return clone(forecaster), y, X, scoring, train, test, fit_params, return_train_score, error_score
+        #     else:
+        #         print(f'Results: {a1}, {a2}, {a3}')
+        #         print('--------------------------------\n')
+
+        #     time.sleep(10)
+        
         out = parallel(
             delayed(_fit_and_score)(
                 forecaster=clone(forecaster),
@@ -2196,6 +2231,8 @@ def _fit_and_score(
     start = time.time()
     forecaster.fit(y_train, X_train, **fit_params)
     fit_time = time.time() - start
+
+    #print(f'FORECASTER CUTOFF FREQSTR: {forecaster.cutoff.freqstr}')
 
     y_pred = forecaster.predict(X_test)
     if (y_test.index.values != y_pred.index.values).any():

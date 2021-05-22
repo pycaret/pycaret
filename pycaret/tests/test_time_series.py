@@ -125,6 +125,14 @@ def _return_model_parameters():
     return parameters
 
 
+def _check_data_for_prophet(mdl_name, data):
+    """Convert data index to DatetimeIndex"""
+    if mdl_name == 'prophet':
+        data = data.to_timestamp(freq='M')
+
+    return data
+
+
 _model_names = _return_model_names()
 _model_parameters = _return_model_parameters()
 
@@ -185,8 +193,10 @@ def test_setup_seasonal_period_int(load_data, seasonal_key, seasonal_value):
 def test_create_model(name, fh, load_data):
     """test create_model functionality"""
     exp = TimeSeriesExperiment()
+    data = _check_data_for_prophet(name, load_data)
+
     exp.setup(
-        data=load_data,
+        data=data,
         fold=3,
         fh=fh,
         fold_strategy="expanding",
@@ -198,7 +208,7 @@ def test_create_model(name, fh, load_data):
     assert isinstance(y_pred, pd.Series)
 
     fh_index = fh if isinstance(fh, int) else fh[-1]
-    expected_period_index = load_data.iloc[-fh_index:].index
+    expected_period_index = data.iloc[-fh_index:].index
     assert np.all(y_pred.index == expected_period_index)
 
 
@@ -261,15 +271,16 @@ def test_tune_model_grid(model, load_data):
     exp = TimeSeriesExperiment()
     fh = 12
     fold = 3
+    data = _check_data_for_prophet(model, load_data)
 
-    exp.setup(data=load_data, fold=fold, fh=fh, fold_strategy="expanding")
+    exp.setup(data=data, fold=fold, fh=fh, fold_strategy="expanding")
 
     model_obj = exp.create_model(model)
     tuned_model_obj = exp.tune_model(model_obj)
     y_pred = tuned_model_obj.predict()
     assert isinstance(y_pred, pd.Series)
 
-    expected_period_index = load_data.iloc[-fh:].index
+    expected_period_index = data.iloc[-fh:].index
     assert np.all(y_pred.index == expected_period_index)
 
 
@@ -278,13 +289,14 @@ def test_tune_model_random(model, load_data):
     exp = TimeSeriesExperiment()
     fh = 12
     fold = 3
+    data = _check_data_for_prophet(model, load_data)
 
-    exp.setup(data=load_data, fold=fold, fh=fh, fold_strategy="expanding")
+    exp.setup(data=data, fold=fold, fh=fh, fold_strategy="expanding")
 
     model_obj = exp.create_model(model)
     tuned_model_obj = exp.tune_model(model_obj, search_algorithm="random")
     y_pred = tuned_model_obj.predict()
     assert isinstance(y_pred, pd.Series)
 
-    expected_period_index = load_data.iloc[-fh:].index
+    expected_period_index = data.iloc[-fh:].index
     assert np.all(y_pred.index == expected_period_index)

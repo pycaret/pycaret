@@ -362,7 +362,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             )
         self.fh = fh
 
-        allowed_freq_index_types = (pd.core.indexes.period.PeriodIndex,)
+        allowed_freq_index_types = (pd.PeriodIndex, pd.DatetimeIndex)
         if (
             not isinstance(data.index, allowed_freq_index_types)
             and seasonal_period is None
@@ -432,6 +432,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         )
 
         self.seasonality_present = True if valid_seasonality else False
+        self.freq = data.index.freqstr
 
         return super().setup(
             data=data,
@@ -820,6 +821,8 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             return_train_score=False,
             error_score=0,
         )
+
+        #return scores
 
         model_fit_end = time.time()
         model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
