@@ -1,1 +1,2 @@
+pystan~=2.19.1.1
 sktime[all_extras]==0.5.3
