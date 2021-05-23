@@ -199,12 +199,17 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             The type of imputation to use. Can be either 'simple' or 'iterative'.
 
 
-        fold_strategy: str or sklearn CV generator object, default = 'kfold'
+        fold_strategy: str or sklearn CV generator object, default = 'expanding'
             Choice of cross validation strategy. Possible values are:
 
             * 'expanding'
             * 'rolling' (same as/aliased to 'expanding')
             * 'sliding'
+
+            You can also pass an sktime compatible cross validation object such
+            as SlidingWindowSplitter or ExpandingWindowSplitter. In this case,
+            the `fold` and `fh` parameters will be ignored and these values will
+            be extracted from the fold_strategy object directly.
 
 
         fold: int, default = 3
