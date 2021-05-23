@@ -21,7 +21,8 @@ parametrize_list = [
 
 
 @pytest.mark.parametrize("fold, fh, fold_strategy", parametrize_list)
-def test_setup_initialization(fold, fh, fold_strategy, load_data):
+def test_splitter_using_fold_and_fh(fold, fh, fold_strategy, load_data):
+    """Tests the splitter creation using fold, fh and a string value for fold_strategy."""
 
     from pycaret.time_series import setup
     from sktime.forecasting.model_selection._split import (
@@ -43,11 +44,48 @@ def test_setup_initialization(fold, fh, fold_strategy, load_data):
         elif fold_strategy == "sliding":
             assert isinstance(exp_name.fold_generator, SlidingWindowSplitter)
 
-        # expected = int(len(load_data)*train_size) - fold * fh  # Since fh is an int, if train_size splits original data
         expected = int(len(load_data) - fh) - fold * fh  # if fh splits original data
         assert exp_name.fold_generator.initial_window == expected
         assert np.all(exp_name.fold_generator.fh == np.arange(1, fh + 1))
         assert exp_name.fold_generator.step_length == fh  # Since fh is an int
+
+
+def test_splitter_pass_cv_object(load_data):
+    """Tests the passing of a cv splitter to fold_strategy"""
+
+    from pycaret.time_series import setup
+    from sktime.forecasting.model_selection._split import (
+        ExpandingWindowSplitter,
+        SlidingWindowSplitter,
+    )
+
+    fold = 3
+    fh = np.arange(1, 13)  # regular horizon of 12 months
+    fh_extended = np.arange(1, 25)  # extended horizon of 24 months
+    fold_strategy = ExpandingWindowSplitter(
+        initial_window=72,
+        step_length=12,
+        window_length=12,
+        fh=fh,
+        start_with_window=True,
+    )
+
+    exp_name = setup(
+        data=load_data,
+        fold=fold,  # should be ignored since we are passing explicit fold_strategy
+        fh=fh_extended,  # should be ignored since we are passing explicit fold_strategy
+        fold_strategy=fold_strategy,
+    )
+
+    assert exp_name.fold_generator.initial_window == fold_strategy.initial_window
+    assert np.all(exp_name.fold_generator.fh == fold_strategy.fh)
+    assert exp_name.fold_generator.step_length == fold_strategy.step_length
+    num_folds = exp_name.get_config("fold_param")
+    expected = int(
+        ((len(load_data) - len(fh)) - fold_strategy.initial_window)
+        / fold_strategy.step_length
+    )
+    assert num_folds == expected
 
 
 setup_raises_list = [
@@ -59,6 +97,7 @@ setup_raises_list = [
 
 @pytest.mark.parametrize("fold, fh, fold_strategy", setup_raises_list)
 def test_setup_raises(fold, fh, fold_strategy, load_data):
+    """Tests conditions that raise an error due to lack of data"""
 
     from pycaret.time_series import setup
 
