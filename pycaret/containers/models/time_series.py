@@ -2050,11 +2050,13 @@ class CatBoostCdsDtContainer(CdsDtContainer):
             ),
             "degree": IntUniformDistribution(lower=1, upper=10),
             "window_length": IntUniformDistribution(lower=self.sp, upper=2 * self.sp),
-            "regressor__eta": UniformDistribution(0.000001, 0.5, log=True),
-            "regressor__depth": IntUniformDistribution(1, 11),
-            "regressor__n_estimators": IntUniformDistribution(10, 300),
-            "regressor__random_strength": UniformDistribution(0, 0.8),
-            "regressor__l2_leaf_reg": IntUniformDistribution(1, 200, log=True),
+            # # TODO: Including any of these regressor parameters results in error
+            # TypeError: Parameter value is not iterable or distribution (key='sp', value=CategoricalDistribution(values=[12, 24]))
+            # "regressor__eta": UniformDistribution(0.000001, 0.5, log=True),
+            # "regressor__depth": IntUniformDistribution(1, 11),
+            # "regressor__n_estimators": IntUniformDistribution(10, 300),
+            # "regressor__random_strength": UniformDistribution(0, 0.8),
+            # "regressor__l2_leaf_reg": IntUniformDistribution(1, 200, log=True),
         }
         if self.use_gpu:
             tune_distributions["regressor__depth"] = IntUniformDistribution(1, 8)
