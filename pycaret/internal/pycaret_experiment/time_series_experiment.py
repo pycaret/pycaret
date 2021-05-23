@@ -331,19 +331,24 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             autocorrelation_seasonality_test,
         )  # only needed in setup
 
-        # if log_plots == True:
-        #    log_plots = ["residuals", "error", "feature"]
-
-        allowed_fold_strategies = ["expanding", "rolling", "sliding"]
-        if fold_strategy not in allowed_fold_strategies:
+        # Forecast Horizon Checks
+        if fh is None and isinstance(fold_strategy, str):
             raise ValueError(
-                f"fold_strategy must be one of '{', '.join(allowed_fold_strategies)}'. "
-                f"You provided fold_strategy = '{fold_strategy}'!"
+                f"The forecast horizon `fh` must be provided when fold_strategy is of type 'string'"
             )
 
-        # Forecast Horizon Checks
-        if fh is None:
-            raise ValueError(f"The forecast horizon `fh` must be provided")
+        if not isinstance(fold_strategy, str):
+            self.logger.info(
+                f"fh parameter {fh} will be ignored since fold_strategy has been provided. "
+                f"fh from fold_strategy will be used instead."
+            )
+            fh = fold_strategy.fh
+            self.logger.info(
+                f"fold parameter {fold} will be ignored since fold_strategy has been provided. "
+                f"fold based on fold_strategy will be used instead."
+            )
+            # fold value will be reset after the data is split in the parent class setup
+
         if isinstance(fh, int):
             if fh >= 1:
                 fh = np.arange(1, fh + 1)

@@ -31,14 +31,14 @@ import time
 import random
 import gc
 from copy import deepcopy
-from sklearn.model_selection import BaseCrossValidator
+from sklearn.model_selection import BaseCrossValidator  # type: ignore
 from typing import List, Tuple, Any, Union, Optional, Dict
 import warnings
 import traceback
 from unittest.mock import patch
 import plotly.express as px  # type: ignore
 import plotly.graph_objects as go  # type: ignore
-import scikitplot as skplt
+import scikitplot as skplt  # type: ignore
 
 
 warnings.filterwarnings("ignore")
@@ -92,8 +92,7 @@ class _TabularExperiment(_PyCaretExperiment):
     def _get_cv_splitter(
         self, fold, ml_usecase: Optional[MLUsecase] = None
     ) -> BaseCrossValidator:
-        """Returns the cross validator object used to perform cross validation
-        """
+        """Returns the cross validator object used to perform cross validation"""
         if not ml_usecase:
             ml_usecase = self._ml_usecase
 
@@ -362,7 +361,13 @@ class _TabularExperiment(_PyCaretExperiment):
         return
 
     def _set_up_mlflow(
-        self, functions, runtime, log_profile, profile_kwargs, log_data, display,
+        self,
+        functions,
+        runtime,
+        log_profile,
+        profile_kwargs,
+        log_data,
+        display,
     ) -> None:
         return
 
@@ -490,7 +495,7 @@ class _TabularExperiment(_PyCaretExperiment):
         if experiment_name:
             self.exp_name_log = experiment_name
         self.logger = create_logger(experiment_name)
-        #else:
+        # else:
         #    # create exp_name_log parameter incase logging is False
         #    self.exp_name_log = "no_logging"
 
@@ -906,17 +911,25 @@ class _TabularExperiment(_PyCaretExperiment):
             "stratifiedkfold",
             "groupkfold",
             "timeseries",
-            "expanding",
-            "rolling",
-            "sliding",
         ]
-        if not (
-            fold_strategy in possible_fold_strategy
-            or is_sklearn_cv_generator(fold_strategy)
-        ):
-            raise TypeError(
-                f"fold_strategy parameter must be either a scikit-learn compatible CV generator object or one of {', '.join(possible_fold_strategy)}."
-            )
+        possible_time_series_fold_strategies = ["expanding", "sliding", "rolling"]
+
+        if self._ml_usecase != MLUsecase.TIME_SERIES:
+            if not (
+                fold_strategy in possible_fold_strategy
+                or is_sklearn_cv_generator(fold_strategy)
+            ):
+                raise TypeError(
+                    f"fold_strategy parameter must be either a scikit-learn compatible CV generator object or one of {', '.join(possible_fold_strategy)}."
+                )
+        elif self._ml_usecase == MLUsecase.TIME_SERIES:
+            if not (
+                fold_strategy in possible_time_series_fold_strategies
+                or is_sklearn_cv_generator(fold_strategy)
+            ):
+                raise TypeError(
+                    f"fold_strategy parameter must be either a sktime compatible CV generator object or one of {', '.join(possible_time_series_fold_strategies)}."
+                )
 
         if fold_strategy == "groupkfold" and (
             fold_groups is None or len(fold_groups) == 0
@@ -1441,7 +1454,6 @@ class _TabularExperiment(_PyCaretExperiment):
                 raise ValueError(f"fold_groups cannot contain NaNs.")
         self.fold_shuffle_param = fold_shuffle
 
-
         # create master_model_container
         self.master_model_container = []
 
@@ -1529,63 +1541,75 @@ class _TabularExperiment(_PyCaretExperiment):
             )
 
             fold_random_state = self.seed if self.fold_shuffle_param else None
-            time_series_fold_strategies = ['expanding', 'sliding', 'rolling']
 
-            if fold_strategy == "kfold":
-                self.fold_generator = KFold(
-                    self.fold_param,
-                    random_state=fold_random_state,
-                    shuffle=self.fold_shuffle_param,
-                )
-            elif fold_strategy == "stratifiedkfold":
-                self.fold_generator = StratifiedKFold(
-                    self.fold_param,
-                    random_state=fold_random_state,
-                    shuffle=self.fold_shuffle_param,
-                )
-            elif fold_strategy == "groupkfold":
-                self.fold_generator = GroupKFold(self.fold_param)
-            elif fold_strategy == "timeseries":
-                self.fold_generator = TimeSeriesSplit(self.fold_param)
-            elif fold_strategy in time_series_fold_strategies:
-                if isinstance(self.data_before_preprocess, pd.DataFrame):
-                    y_size = len(self.y_train)  # self.data_before_preprocess.size
-                elif isinstance(self.data_before_preprocess, pd.Series):
-                    y_size = len(self.y_train)  # self.data_before_preprocess.size
+            if self._ml_usecase != MLUsecase.TIME_SERIES:
+                if fold_strategy == "kfold":
+                    self.fold_generator = KFold(
+                        self.fold_param,
+                        random_state=fold_random_state,
+                        shuffle=self.fold_shuffle_param,
+                    )
+                elif fold_strategy == "stratifiedkfold":
+                    self.fold_generator = StratifiedKFold(
+                        self.fold_param,
+                        random_state=fold_random_state,
+                        shuffle=self.fold_shuffle_param,
+                    )
+                elif fold_strategy == "groupkfold":
+                    self.fold_generator = GroupKFold(self.fold_param)
+                elif fold_strategy == "timeseries":
+                    self.fold_generator = TimeSeriesSplit(self.fold_param)
                 else:
-                    raise TypeError(
-                        "data parameter must be a pandas.Series or pandas.DataFrame."
-                    )
+                    self.fold_generator = fold_strategy
 
-                # window_length = fh * (self.fold_param - 1)
-                window_length = len(fh)
-                step_length = len(fh)
-                initial_window = y_size - (self.fold_param * window_length)
+            elif self._ml_usecase == MLUsecase.TIME_SERIES:
+                y_size = len(self.y_train)
+                # Set splitter
+                if fold_strategy in possible_time_series_fold_strategies:
+                    window_length = len(fh)
+                    step_length = len(fh)
+                    initial_window = y_size - (self.fold_param * window_length)
 
-                if initial_window < 1:
-                    raise ValueError(
-                        "Not Enough Data Points, set a lower number of folds or fh"
-                    )
+                    if initial_window < 1:
+                        raise ValueError(
+                            "Not Enough Data Points, set a lower number of folds or fh"
+                        )
 
-                if (fold_strategy == "expanding") or ((fold_strategy == "rolling")):
-                    self.fold_generator = ExpandingWindowSplitter(
-                        initial_window=initial_window,
-                        step_length=step_length,
-                        window_length=window_length,
-                        fh=fh,
-                        start_with_window=True,
-                    )
+                    if (fold_strategy == "expanding") or ((fold_strategy == "rolling")):
+                        self.fold_generator = ExpandingWindowSplitter(
+                            initial_window=initial_window,
+                            step_length=step_length,
+                            window_length=window_length,
+                            fh=fh,
+                            start_with_window=True,
+                        )
 
-                if fold_strategy == "sliding":
-                    self.fold_generator = SlidingWindowSplitter(
-                        initial_window=initial_window,
-                        step_length=step_length,
-                        window_length=window_length,
-                        fh=fh,
-                        start_with_window=True,
-                    )
-            else:
-                self.fold_generator = fold_strategy
+                    if fold_strategy == "sliding":
+                        self.fold_generator = SlidingWindowSplitter(
+                            initial_window=initial_window,
+                            step_length=step_length,
+                            window_length=window_length,
+                            fh=fh,
+                            start_with_window=True,
+                        )
+                else:
+                    self.fold_generator = fold_strategy
+                    # fh = fold_strategy.fh  # Already reset in child class
+
+                    def _get_cv_n_folds(y, cv) -> int:
+                        """
+                        Get the number of folds for time series
+                        cv must be of type SlidingWindowSplitter or ExpandingWindowSplitter
+                        TODO: Fix this inside sktime and replace this with sktime method [1]
+
+                        Ref:
+                        [1] https://github.com/alan-turing-institute/sktime/issues/632
+                        """
+                        n_folds = int((len(y) - cv.initial_window) / cv.step_length)
+                        return n_folds
+
+                    fold = _get_cv_n_folds(y=self.y_train, cv=fold_strategy)
+                    self.fold_param = fold
 
         # we do just the fitting so that it will be fitted when saved/deployed,
         # but we don't want to modify the data
@@ -1700,10 +1724,10 @@ class _TabularExperiment(_PyCaretExperiment):
                 float_type += 1
 
         if profile:
-            print("Setup Succesfully Completed! Loading Profile Now... Please Wait!")
+            print("Setup Successfully Completed! Loading Profile Now... Please Wait!")
         else:
             if verbose:
-                print("Setup Succesfully Completed!")
+                print("Setup Successfully Completed!")
 
         self.preprocess = preprocess
         functions = self._get_setup_display(
@@ -1785,7 +1809,12 @@ class _TabularExperiment(_PyCaretExperiment):
         runtime = np.array(runtime_end - runtime_start).round(2)
 
         self._set_up_mlflow(
-            functions, runtime, log_profile, profile_kwargs, log_data, display,
+            functions,
+            runtime,
+            log_profile,
+            profile_kwargs,
+            log_data,
+            display,
         )
 
         self._setup_ran = True
@@ -1797,7 +1826,7 @@ class _TabularExperiment(_PyCaretExperiment):
 
         self.logger.info(str(self.prep_pipe))
         self.logger.info(
-            "setup() succesfully completed......................................"
+            "setup() successfully completed......................................"
         )
 
         gc.collect()
@@ -2555,7 +2584,9 @@ class _TabularExperiment(_PyCaretExperiment):
                             hover_data=d.columns,
                         )
 
-                        fig.update_layout(height=600 * scale,)
+                        fig.update_layout(
+                            height=600 * scale,
+                        )
 
                         plot_filename = f"{plot_name}.html"
 
@@ -3556,7 +3587,7 @@ class _TabularExperiment(_PyCaretExperiment):
         gc.collect()
 
         self.logger.info(
-            "plot_model() succesfully completed......................................"
+            "plot_model() successfully completed......................................"
         )
 
         if save:
@@ -3785,7 +3816,7 @@ class _TabularExperiment(_PyCaretExperiment):
 
         self.logger.info(str(automl_model))
         self.logger.info(
-            "automl() succesfully completed......................................"
+            "automl() successfully completed......................................"
         )
 
         return automl_model
@@ -4052,4 +4083,3 @@ class _TabularExperiment(_PyCaretExperiment):
         return pycaret.internal.persistence.load_model(
             model_name, platform, authentication, verbose
         )
-

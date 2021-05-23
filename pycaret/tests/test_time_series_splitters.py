@@ -50,6 +50,43 @@ def test_setup_initialization(fold, fh, fold_strategy, load_data):
         assert exp_name.fold_generator.step_length == fh  # Since fh is an int
 
 
+def test_setup_pass_cv_object(load_data):
+
+    from pycaret.time_series import setup
+    from sktime.forecasting.model_selection._split import (
+        ExpandingWindowSplitter,
+        SlidingWindowSplitter,
+    )
+
+    fold = 3
+    fh = np.arange(1, 13)  # regular horizon of 12 months
+    fh_extended = np.arange(1, 25)  # extended horizon of 24 months
+    fold_strategy = ExpandingWindowSplitter(
+        initial_window=72,
+        step_length=12,
+        window_length=12,
+        fh=fh,
+        start_with_window=True,
+    )
+
+    exp_name = setup(
+        data=load_data,
+        fold=fold,  # should be ignored since we are passing explicit fold_strategy
+        fh=fh_extended,  # should be ignored since we are passing explicit fold_strategy
+        fold_strategy=fold_strategy,
+    )
+
+    assert exp_name.fold_generator.initial_window == fold_strategy.initial_window
+    assert np.all(exp_name.fold_generator.fh == fold_strategy.fh)
+    assert exp_name.fold_generator.step_length == fold_strategy.step_length
+    num_folds = exp_name.get_config("fold_param")
+    expected = int(
+        ((len(load_data) - len(fh)) - fold_strategy.initial_window)
+        / fold_strategy.step_length
+    )
+    assert num_folds == expected
+
+
 setup_raises_list = [
     (randint(50, 100), randint(10, 20), "expanding"),
     (randint(50, 100), randint(10, 20), "rolling"),
