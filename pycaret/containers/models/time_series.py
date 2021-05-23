@@ -765,7 +765,7 @@ class ProphetContainer(TimeSeriesContainer):
     def __init__(self, globals_dict: dict) -> None:
         logger = get_logger()
         np.random.seed(globals_dict["seed"])
-        gpu_imported = False
+        self.gpu_imported = False
 
         from sktime.forecasting.fbprophet import Prophet  # type: ignore
 
