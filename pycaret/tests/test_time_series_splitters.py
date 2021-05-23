@@ -21,7 +21,8 @@ parametrize_list = [
 
 
 @pytest.mark.parametrize("fold, fh, fold_strategy", parametrize_list)
-def test_setup_initialization(fold, fh, fold_strategy, load_data):
+def test_splitter_using_fold_and_fh(fold, fh, fold_strategy, load_data):
+    """Tests the splitter creation using fold, fh and a string value for fold_strategy."""
 
     from pycaret.time_series import setup
     from sktime.forecasting.model_selection._split import (
@@ -43,14 +44,14 @@ def test_setup_initialization(fold, fh, fold_strategy, load_data):
         elif fold_strategy == "sliding":
             assert isinstance(exp_name.fold_generator, SlidingWindowSplitter)
 
-        # expected = int(len(load_data)*train_size) - fold * fh  # Since fh is an int, if train_size splits original data
         expected = int(len(load_data) - fh) - fold * fh  # if fh splits original data
         assert exp_name.fold_generator.initial_window == expected
         assert np.all(exp_name.fold_generator.fh == np.arange(1, fh + 1))
         assert exp_name.fold_generator.step_length == fh  # Since fh is an int
 
 
-def test_setup_pass_cv_object(load_data):
+def test_splitter_pass_cv_object(load_data):
+    """Tests the passing of a cv splitter to fold_strategy"""
 
     from pycaret.time_series import setup
     from sktime.forecasting.model_selection._split import (
@@ -96,6 +97,7 @@ setup_raises_list = [
 
 @pytest.mark.parametrize("fold, fh, fold_strategy", setup_raises_list)
 def test_setup_raises(fold, fh, fold_strategy, load_data):
+    """Tests conditions that raise an error due to lack of data"""
 
     from pycaret.time_series import setup
 
