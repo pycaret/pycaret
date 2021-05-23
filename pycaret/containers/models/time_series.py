@@ -12,7 +12,7 @@ from typing import Union, Dict, List, Tuple, Any, Optional
 from abc import abstractmethod
 import random
 import numpy as np  # type: ignore
-
+import logging
 
 from sktime.forecasting.base._sktime import _SktimeForecaster  # type: ignore
 from sktime.forecasting.compose import ReducedForecaster, TransformedTargetForecaster  # type: ignore
@@ -1969,6 +1969,95 @@ class LGBMCdsDtContainer(CdsDtContainer):
             "regressor__bagging_freq": IntUniformDistribution(0, 7),
             "regressor__min_child_samples": IntUniformDistribution(1, 100),
         }
+        return tune_distributions
+
+
+class CatBoostCdsDtContainer(CdsDtContainer):
+    id = "catboost_cds_dt"
+    name = "CatBoost Regressor w/ Cond. Deseasonalize & Detrending"
+    active = True  # set back to True as the parent has False
+
+    def __init__(self, globals_dict: dict) -> None:
+        # suppress output
+        logging.getLogger("catboost").setLevel(logging.ERROR)
+
+        self.use_gpu = globals_dict["gpu_param"] == "force" or (
+            globals_dict["gpu_param"] and len(globals_dict["X_train"]) >= 50000
+        )
+
+        super().__init__(globals_dict=globals_dict)
+
+    def return_model_class(self):
+        try:
+            import catboost
+        except ImportError:
+            self.logger.warning("Couldn't import catboost.CatBoostRegressor")
+            self.active = False
+            return
+
+        catboost_version = tuple([int(x) for x in catboost.__version__.split(".")])
+        if catboost_version < (0, 23, 2):
+            self.logger.warning(
+                f"Wrong catboost version. Expected catboost>=0.23.2, got catboost=={catboost_version}"
+            )
+            self.active = False
+            return
+
+        from catboost import CatBoostRegressor
+
+        return CatBoostRegressor
+
+    @property
+    def _set_regressor_args(self) -> Dict[str, Any]:
+        regressor_args = super()._set_regressor_args
+        regressor_args["verbose"] = False
+        regressor_args["thread_count"] = self.n_jobs_param
+        regressor_args["task_type"] = "GPU" if self.use_gpu else "CPU"
+        regressor_args["border_count"] = 32 if self.use_gpu else 254
+        return regressor_args
+
+    @property
+    def _set_tune_grid(self) -> Dict[str, List[Any]]:
+        tune_grid = {
+            "sp": [self.sp],
+            "deseasonal_model": ["additive"],
+            "degree": [1],
+            "window_length": [10],
+            "regressor__eta": [
+                0.00001,
+                0.01,
+                0.5,
+            ],  # too low values leads to learning rate errors (Learning rate should be non-zero)
+            "regressor__depth": [1, 6, 12],
+            "regressor__n_estimators": np_list_arange(10, 100, 100, inclusive=True),
+            "regressor__random_strength": np_list_arange(
+                0.01, 0.8, 0.8, inclusive=True
+            ),
+            "regressor__l2_leaf_reg": [1, 30, 200],
+        }
+        if self.use_gpu:
+            tune_grid["regressor__depth"] = [1, 5, 9]
+        return tune_grid
+
+    @property
+    def _set_tune_distributions(self) -> Dict[str, List[Any]]:
+        tune_distributions = {
+            "sp": CategoricalDistribution(
+                values=[self.sp, 2 * self.sp]
+            ),  # TODO: 'None' errors out here
+            "deseasonal_model": CategoricalDistribution(
+                values=["additive", "multiplicative"]
+            ),
+            "degree": IntUniformDistribution(lower=1, upper=10),
+            "window_length": IntUniformDistribution(lower=self.sp, upper=2 * self.sp),
+            "regressor__eta": UniformDistribution(0.000001, 0.5, log=True),
+            "regressor__depth": IntUniformDistribution(1, 11),
+            "regressor__n_estimators": IntUniformDistribution(10, 300),
+            "regressor__random_strength": UniformDistribution(0, 0.8),
+            "regressor__l2_leaf_reg": IntUniformDistribution(1, 200, log=True),
+        }
+        if self.use_gpu:
+            tune_distributions["regressor__depth"] = IntUniformDistribution(1, 8)
         return tune_distributions
 
 
