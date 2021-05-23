@@ -93,6 +93,16 @@ def _get_seasonal_values():
     return [(k, v.value) for k, v in SeasonalPeriod.__members__.items()]
 
 
+def _check_windows():
+    """Check the system where tests are running."""
+    import sys
+
+    platform = sys.platform
+    is_windows = True if platform.startswith("win") else False
+
+    return is_windows
+
+
 def _return_model_names():
     """Return all model names."""
     globals_dict = {
@@ -103,9 +113,16 @@ def _return_model_names():
     }
     model_containers = get_all_model_containers(globals_dict)
 
+    models_to_ignore = (
+        ["prophet", "ensemble_forecaster"]
+        if _check_windows()
+        else ["ensemble_forecaster"]
+    )
+
     model_names_ = []
     for model_name in model_containers.keys():
-        if not model_name.startswith(("ensemble")):
+
+        if model_name not in models_to_ignore:
             model_names_.append(model_name)
 
     return model_names_
@@ -127,8 +144,8 @@ def _return_model_parameters():
 
 def _check_data_for_prophet(mdl_name, data):
     """Convert data index to DatetimeIndex"""
-    if mdl_name == 'prophet':
-        data = data.to_timestamp(freq='M')
+    if mdl_name == "prophet":
+        data = data.to_timestamp(freq="M")
 
     return data
 
