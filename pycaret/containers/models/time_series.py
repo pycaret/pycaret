@@ -9,9 +9,10 @@ the process. Refer to the existing classes for examples.
 """
 
 from typing import Union, Dict, List, Tuple, Any, Optional
-
-import numpy as np  # type: ignore
+from abc import abstractmethod
 import random
+import numpy as np  # type: ignore
+
 
 from sktime.forecasting.base._sktime import _SktimeForecaster  # type: ignore
 from sktime.forecasting.compose import ReducedForecaster, TransformedTargetForecaster  # type: ignore
@@ -205,40 +206,18 @@ class NaiveContainer(TimeSeriesContainer):
     def __init__(self, globals_dict: dict) -> None:
         logger = get_logger()
         np.random.seed(globals_dict["seed"])
-        gpu_imported = False
+        self.gpu_imported = False
 
         from sktime.forecasting.naive import NaiveForecaster  # type: ignore
 
-        seasonality_present = globals_dict.get("seasonality_present")
+        self.seasonality_present = globals_dict.get("seasonality_present")
         sp = globals_dict.get("seasonal_period")
-        sp = sp if sp is not None else 1
+        self.sp = sp if sp is not None else 1
 
-        args = {"sp": sp} if seasonality_present else {}
-        tune_args: Dict[str, Any] = {}
-
-        # fh = globals_dict["fh"]
-        if seasonality_present:
-            tune_grid = {
-                "strategy": ["last", "mean", "drift"],
-                "sp": [sp, 2 * sp],
-                # Removing fh for now since it can be less than sp which causes an error
-                # Will need to add checks for it later if we want to incorporate it
-                "window_length": [None],  # , len(fh)]
-            }
-            tune_distributions: Dict[str, List[Any]] = {}
-        else:
-            tune_grid = {
-                "strategy": ["last", "mean", "drift"],
-                "sp": [1],
-                # Removing fh for now since it can be less than sp which causes an error
-                # Will need to add checks for it later if we want to incorporate it
-                "window_length": [None],  # , len(fh)]
-            }
-            tune_distributions: Dict[str, List[Any]] = {}
-
-        # if not gpu_imported:
-        #     args["n_jobs"] = globals_dict["n_jobs_param"]
-
+        args = self._set_args
+        tune_args = self._set_tune_args
+        tune_grid = self._set_tune_grid
+        tune_distributions = self._set_tune_distributions
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
         super().__init__(
@@ -249,29 +228,113 @@ class NaiveContainer(TimeSeriesContainer):
             tune_grid=tune_grid,
             tune_distribution=tune_distributions,
             tune_args=tune_args,
-            is_gpu_enabled=gpu_imported,
+            is_gpu_enabled=self.gpu_imported,
         )
+
+    @property
+    def _set_args(self) -> Dict[str, Any]:
+        args: Dict[str, Any] = {}
+        return args
+
+    @property
+    def _set_tune_args(self) -> Dict[str, Any]:
+        tune_args: Dict[str, Any] = {}
+        return tune_args
+
+    @property
+    def _set_tune_grid(self) -> Dict[str, List[Any]]:
+        tune_grid = {
+            "strategy": ["last", "mean", "drift"],
+            "sp": [1],
+            # Removing fh for now since it can be less than sp which causes an error
+            # Will need to add checks for it later if we want to incorporate it
+            "window_length": [None],  # , len(fh)]
+        }
+        return tune_grid
+
+    @property
+    def _set_tune_distributions(self) -> Dict[str, List[Any]]:
+        tune_distributions: Dict[str, List[Any]] = {}
+        return tune_distributions
+
+
+class SeasonalNaiveContainer(TimeSeriesContainer):
+    def __init__(self, globals_dict: dict) -> None:
+        logger = get_logger()
+        np.random.seed(globals_dict["seed"])
+        self.gpu_imported = False
+
+        from sktime.forecasting.naive import NaiveForecaster  # type: ignore
+
+        self.seasonality_present = globals_dict.get("seasonality_present")
+        sp = globals_dict.get("seasonal_period")
+        self.sp = sp if sp is not None else 1
+
+        args = self._set_args
+        tune_args = self._set_tune_args
+        tune_grid = self._set_tune_grid
+        tune_distributions = self._set_tune_distributions
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+
+        super().__init__(
+            id="snaive",
+            name="Seasonal Naive Forcaster",
+            class_def=NaiveForecaster,
+            args=args,
+            tune_grid=tune_grid,
+            tune_distribution=tune_distributions,
+            tune_args=tune_args,
+            is_gpu_enabled=self.gpu_imported,
+        )
+
+    @property
+    def _set_args(self) -> Dict[str, Any]:
+        args = {"sp": self.sp} if self.seasonality_present else {}
+        return args
+
+    @property
+    def _set_tune_args(self) -> Dict[str, Any]:
+        tune_args: Dict[str, Any] = {}
+        return tune_args
+
+    @property
+    def _set_tune_grid(self) -> Dict[str, List[Any]]:
+        if self.seasonality_present:
+            tune_grid = {
+                "strategy": ["last", "mean", "drift"],
+                "sp": [self.sp, 2 * self.sp],
+                # Removing fh for now since it can be less than sp which causes an error
+                # Will need to add checks for it later if we want to incorporate it
+                "window_length": [None],  # , len(fh)]
+            }
+        else:
+            tune_grid = {
+                "strategy": ["last", "mean", "drift"],
+                "sp": [1],
+                # Removing fh for now since it can be less than sp which causes an error
+                # Will need to add checks for it later if we want to incorporate it
+                "window_length": [None],  # , len(fh)]
+            }
+        return tune_grid
+
+    @property
+    def _set_tune_distributions(self) -> Dict[str, List[Any]]:
+        tune_distributions: Dict[str, List[Any]] = {}
+        return tune_distributions
 
 
 class PolyTrendContainer(TimeSeriesContainer):
     def __init__(self, globals_dict: dict) -> None:
         logger = get_logger()
         np.random.seed(globals_dict["seed"])
-        gpu_imported = False
+        self.gpu_imported = False
 
         from sktime.forecasting.trend import PolynomialTrendForecaster  # type: ignore
 
-        args = {}
-        tune_args = {}
-        tune_grid = {"degree": [1, 2, 3, 4, 5], "with_intercept": [True, False]}
-        tune_distributions = {
-            "degree": IntUniformDistribution(lower=1, upper=10),
-            "with_intercept": CategoricalDistribution(values=[True, False]),
-        }
-
-        # if not gpu_imported:
-        #     args["n_jobs"] = globals_dict["n_jobs_param"]
-
+        args = self._set_args
+        tune_args = self._set_tune_args
+        tune_grid = self._set_tune_grid
+        tune_distributions = self._set_tune_distributions
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
         super().__init__(
@@ -282,8 +345,31 @@ class PolyTrendContainer(TimeSeriesContainer):
             tune_grid=tune_grid,
             tune_distribution=tune_distributions,
             tune_args=tune_args,
-            is_gpu_enabled=gpu_imported,
+            is_gpu_enabled=self.gpu_imported,
         )
+
+    @property
+    def _set_args(self) -> Dict[str, Any]:
+        args: Dict[str, Any] = {}
+        return args
+
+    @property
+    def _set_tune_args(self) -> Dict[str, Any]:
+        tune_args: Dict[str, Any] = {}
+        return tune_args
+
+    @property
+    def _set_tune_grid(self) -> Dict[str, List[Any]]:
+        tune_grid = {"degree": [1, 2, 3, 4, 5], "with_intercept": [True, False]}
+        return tune_grid
+
+    @property
+    def _set_tune_distributions(self) -> Dict[str, List[Any]]:
+        tune_distributions = {
+            "degree": IntUniformDistribution(lower=1, upper=10),
+            "with_intercept": CategoricalDistribution(values=[True, False]),
+        }
+        return tune_distributions
 
 
 ######################################
@@ -296,13 +382,18 @@ class ArimaContainer(TimeSeriesContainer):
         logger = get_logger()
         random.seed(globals_dict["seed"])
         np.random.seed(globals_dict["seed"])
-        gpu_imported = False
+        self.gpu_imported = False
 
         from sktime.forecasting.arima import ARIMA  # type: ignore
 
         seasonality_present = globals_dict.get("seasonality_present")
         sp = globals_dict.get("seasonal_period")
         sp = sp if sp is not None else 1
+
+        # args = self._set_args
+        # tune_args = self._set_tune_args
+        # tune_grid = self._set_tune_grid
+        # tune_distributions = self._set_tune_distributions
 
         args = {"seasonal_order": (0, 1, 0, sp)} if seasonality_present else {}
         tune_args = {}
@@ -423,7 +514,7 @@ class ArimaContainer(TimeSeriesContainer):
             "with_intercept": CategoricalDistribution(values=[True, False]),
         }
 
-        if not gpu_imported:
+        if not self.gpu_imported:
             args["n_jobs"] = globals_dict["n_jobs_param"]
 
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
@@ -436,7 +527,7 @@ class ArimaContainer(TimeSeriesContainer):
             tune_grid=tune_grid,
             tune_distribution=tune_distributions,
             tune_args=tune_args,
-            is_gpu_enabled=gpu_imported,
+            is_gpu_enabled=self.gpu_imported,
         )
 
 
@@ -444,30 +535,72 @@ class ExponentialSmoothingContainer(TimeSeriesContainer):
     def __init__(self, globals_dict: dict) -> None:
         logger = get_logger()
         np.random.seed(globals_dict["seed"])
-        gpu_imported = False
+        self.gpu_imported = False
 
         from sktime.forecasting.exp_smoothing import ExponentialSmoothing  # type: ignore
 
-        seasonality_present = globals_dict.get("seasonality_present")
+        self.seasonality_present = globals_dict.get("seasonality_present")
         sp = globals_dict.get("seasonal_period")
-        sp = sp if sp is not None else 1
+        self.sp = sp if sp is not None else 1
 
+        args = self._set_args
+        tune_args = self._set_tune_args
+        tune_grid = self._set_tune_grid
+        tune_distributions = self._set_tune_distributions
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+
+        eq_function = lambda x: type(x) is ExponentialSmoothing
+
+        super().__init__(
+            id="exp_smooth",
+            name="Exponential Smoothing",
+            class_def=ExponentialSmoothing,
+            args=args,
+            tune_grid=tune_grid,
+            tune_distribution=tune_distributions,
+            tune_args=tune_args,
+            is_gpu_enabled=self.gpu_imported,
+            eq_function=eq_function,  # Added to differentiate between ExponentialSmoothing and Theta which are of same parent class
+        )
+
+    @property
+    def _set_args(self) -> Dict[str, Any]:
         # TODO: Check if there is a formal test for type of seasonality
-        args = {"sp": sp, "seasonal": "mul"} if seasonality_present else {}
+        args = {"sp": self.sp, "seasonal": "mul"} if self.seasonality_present else {}
         # Add irrespective of whether seasonality is present or not
         args["trend"] = "add"
-        tune_args = {}
+        return args
 
-        # tune_grid = {"fit_intercept": [True, False], "normalize": [True, False]}
-        if seasonality_present:
+    @property
+    def _set_tune_args(self) -> Dict[str, Any]:
+        tune_args: Dict[str, Any] = {}
+        return tune_args
+
+    @property
+    def _set_tune_grid(self) -> Dict[str, List[Any]]:
+        if self.seasonality_present:
             tune_grid = {
                 # TODO: Check if add and additive are doing the same thing
                 "trend": ["add", "mul", "additive", "multiplicative", None],
                 # "damped_trend": [True, False],
                 "seasonal": ["add", "mul", "additive", "multiplicative"],
                 "use_boxcox": [True, False],
-                "sp": [sp],
+                "sp": [self.sp],
             }
+        else:
+            tune_grid = {
+                # TODO: Check if add and additive are doing the same thing
+                "trend": ["add", "mul", "additive", "multiplicative", None],
+                # "damped_trend": [True, False],
+                "seasonal": [None],
+                "use_boxcox": [True, False],
+                "sp": [None],
+            }
+        return tune_grid
+
+    @property
+    def _set_tune_distributions(self) -> Dict[str, List[Any]]:
+        if self.seasonality_present:
             tune_distributions = {
                 "trend": CategoricalDistribution(
                     values=["add", "mul", "additive", "multiplicative", None]
@@ -482,17 +615,9 @@ class ExponentialSmoothingContainer(TimeSeriesContainer):
                 "use_boxcox": CategoricalDistribution(
                     values=[True, False]
                 ),  # 'log', float
-                "sp": CategoricalDistribution(values=[sp, 2 * sp]),
+                "sp": CategoricalDistribution(values=[self.sp, 2 * self.sp]),
             }
         else:
-            tune_grid = {
-                # TODO: Check if add and additive are doing the same thing
-                "trend": ["add", "mul", "additive", "multiplicative", None],
-                # "damped_trend": [True, False],
-                "seasonal": [None],
-                "use_boxcox": [True, False],
-                "sp": [None],
-            }
             tune_distributions = {
                 "trend": CategoricalDistribution(
                     values=["add", "mul", "additive", "multiplicative", None]
@@ -507,51 +632,61 @@ class ExponentialSmoothingContainer(TimeSeriesContainer):
                 ),  # 'log', float
                 "sp": CategoricalDistribution(values=[None]),
             }
+        return tune_distributions
 
+
+class ETSContainer(TimeSeriesContainer):
+    def __init__(self, globals_dict: dict) -> None:
+        logger = get_logger()
+        np.random.seed(globals_dict["seed"])
+        self.gpu_imported = False
+
+        from sktime.forecasting.ets import AutoETS  # type: ignore
+
+        self.seasonality_present = globals_dict.get("seasonality_present")
+        sp = globals_dict.get("seasonal_period")
+        self.sp = sp if sp is not None else 1
+
+        args = self._set_args
+        tune_args = self._set_tune_args
+        tune_grid = self._set_tune_grid
+        tune_distributions = self._set_tune_distributions
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
-        eq_function = lambda x: type(x) is ExponentialSmoothing
-
         super().__init__(
-            id="exp_smooth",
-            name="ExponentialSmoothing",
-            class_def=ExponentialSmoothing,
+            id="ets",
+            name="ETS",
+            class_def=AutoETS,
             args=args,
             tune_grid=tune_grid,
             tune_distribution=tune_distributions,
             tune_args=tune_args,
-            is_gpu_enabled=gpu_imported,
-            eq_function=eq_function,  # Added to differentiate between ExponentialSmoothing and Theta which are of same parent class
+            is_gpu_enabled=self.gpu_imported,
         )
 
-
-class AutoETSContainer(TimeSeriesContainer):
-    def __init__(self, globals_dict: dict) -> None:
-        logger = get_logger()
-        np.random.seed(globals_dict["seed"])
-        gpu_imported = False
-
-        from sktime.forecasting.ets import AutoETS  # type: ignore
-
-        seasonality_present = globals_dict.get("seasonality_present")
-        sp = globals_dict.get("seasonal_period")
-        sp = sp if sp is not None else 1
-
+    @property
+    def _set_args(self) -> Dict[str, Any]:
         # TODO: Check if there is a formal test for type of seasonality
-        args = {"sp": sp, "seasonal": "mul"} if seasonality_present else {}
+        args = {"sp": self.sp, "seasonal": "mul"} if self.seasonality_present else {}
         # Add irrespective of whether seasonality is present or not
         args["trend"] = "add"
-        tune_args = {}
+        return args
 
-        if seasonality_present:
+    @property
+    def _set_tune_args(self) -> Dict[str, Any]:
+        tune_args: Dict[str, Any] = {}
+        return tune_args
+
+    @property
+    def _set_tune_grid(self) -> Dict[str, List[Any]]:
+        if self.seasonality_present:
             tune_grid = {
                 "error": ["add", "mul"],
                 "trend": ["add", "mul", None],
                 # "damped_trend": [True, False],
                 "seasonal": ["add", "mul"],
-                "sp": [sp],
+                "sp": [self.sp],
             }
-            tune_distributions = {}
         else:
             tune_grid = {
                 "error": ["add", "mul"],
@@ -560,62 +695,30 @@ class AutoETSContainer(TimeSeriesContainer):
                 "seasonal": [None],
                 "sp": [1],
             }
-            tune_distributions = {}
+        return tune_grid
 
-        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
-
-        super().__init__(
-            id="auto_ets",
-            name="AutoETS",
-            class_def=AutoETS,
-            args=args,
-            tune_grid=tune_grid,
-            tune_distribution=tune_distributions,
-            tune_args=tune_args,
-            is_gpu_enabled=gpu_imported,
-        )
+    @property
+    def _set_tune_distributions(self) -> Dict[str, List[Any]]:
+        tune_distributions: Dict[str, List[Any]] = {}
+        return tune_distributions
 
 
 class ThetaContainer(TimeSeriesContainer):
     def __init__(self, globals_dict: dict) -> None:
         logger = get_logger()
         np.random.seed(globals_dict["seed"])
-        gpu_imported = False
+        self.gpu_imported = False
 
         from sktime.forecasting.theta import ThetaForecaster  # type: ignore
 
-        seasonality_present = globals_dict.get("seasonality_present")
+        self.seasonality_present = globals_dict.get("seasonality_present")
         sp = globals_dict.get("seasonal_period")
-        sp = sp if sp is not None else 1
+        self.sp = sp if sp is not None else 1
 
-        args = {"sp": sp, "deseasonalize": True} if seasonality_present else {}
-        tune_args = {}
-
-        # TODO; Update after Bug is fixed in sktime
-        # https://github.com/alan-turing-institute/sktime/issues/692
-        # ThetaForecaster does not work with "initial_level" different from None
-        if seasonality_present:
-            tune_grid = {
-                # "initial_level": [0.1, 0.5, 0.9],
-                "deseasonalize": [True],
-                "sp": [sp, 2 * sp],
-            }
-            tune_distributions = {
-                # "initial_level": UniformDistribution(lower=0, upper=1),  # ValueError: initialization method is estimated but initial_level has been set.
-            }
-        else:
-            tune_grid = {
-                # "initial_level": [0.1, 0.5, 0.9],
-                "deseasonalize": [False],
-                "sp": [1],
-            }
-            tune_distributions = {
-                # "initial_level": UniformDistribution(lower=0, upper=1),  # ValueError: initialization method is estimated but initial_level has been set.
-            }
-
-        # if not gpu_imported:
-        #     args["n_jobs"] = globals_dict["n_jobs_param"]
-
+        args = self._set_args
+        tune_args = self._set_tune_args
+        tune_grid = self._set_tune_grid
+        tune_distributions = self._set_tune_distributions
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
         eq_function = lambda x: type(x) is ThetaForecaster
@@ -628,16 +731,62 @@ class ThetaContainer(TimeSeriesContainer):
             tune_grid=tune_grid,
             tune_distribution=tune_distributions,
             tune_args=tune_args,
-            is_gpu_enabled=gpu_imported,
+            is_gpu_enabled=self.gpu_imported,
             eq_function=eq_function,  # Added to differentiate between ExponentialSmoothing and Theta which are of same parent class
         )
+
+    @property
+    def _set_args(self) -> Dict[str, Any]:
+        args = (
+            {"sp": self.sp, "deseasonalize": True} if self.seasonality_present else {}
+        )
+        return args
+
+    @property
+    def _set_tune_args(self) -> Dict[str, Any]:
+        tune_args: Dict[str, Any] = {}
+        return tune_args
+
+    @property
+    def _set_tune_grid(self) -> Dict[str, List[Any]]:
+        # TODO; Update after Bug is fixed in sktime
+        # https://github.com/alan-turing-institute/sktime/issues/692
+        # ThetaForecaster does not work with "initial_level" different from None
+        if self.seasonality_present:
+            tune_grid = {
+                # "initial_level": [0.1, 0.5, 0.9],
+                "deseasonalize": [True],
+                "sp": [self.sp, 2 * self.sp],
+            }
+        else:
+            tune_grid = {
+                # "initial_level": [0.1, 0.5, 0.9],
+                "deseasonalize": [False],
+                "sp": [1],
+            }
+        return tune_grid
+
+    @property
+    def _set_tune_distributions(self) -> Dict[str, List[Any]]:
+        # TODO; Update after Bug is fixed in sktime
+        # https://github.com/alan-turing-institute/sktime/issues/692
+        # ThetaForecaster does not work with "initial_level" different from None
+        if self.seasonality_present:
+            tune_distributions = {
+                # "initial_level": UniformDistribution(lower=0, upper=1),  # ValueError: initialization method is estimated but initial_level has been set.
+            }
+        else:
+            tune_distributions = {
+                # "initial_level": UniformDistribution(lower=0, upper=1),  # ValueError: initialization method is estimated but initial_level has been set.
+            }
+        return tune_distributions
 
 
 class TBATSContainer(TimeSeriesContainer):
     def __init__(self, globals_dict: dict) -> None:
         logger = get_logger()
         np.random.seed(globals_dict["seed"])
-        gpu_imported = False
+        self.gpu_imported = False
 
         from sktime.forecasting.tbats import TBATS  # type: ignore
 
@@ -661,7 +810,7 @@ class TBATSContainer(TimeSeriesContainer):
             tune_grid=tune_grid,
             tune_distribution=tune_distributions,
             tune_args=tune_args,
-            is_gpu_enabled=gpu_imported,
+            is_gpu_enabled=self.gpu_imported,
             is_turbo=False,
         )
 
@@ -701,7 +850,7 @@ class BATSContainer(TimeSeriesContainer):
     def __init__(self, globals_dict: dict) -> None:
         logger = get_logger()
         np.random.seed(globals_dict["seed"])
-        gpu_imported = False
+        self.gpu_imported = False
 
         from sktime.forecasting.bats import BATS  # type: ignore
 
@@ -725,7 +874,7 @@ class BATSContainer(TimeSeriesContainer):
             tune_grid=tune_grid,
             tune_distribution=tune_distributions,
             tune_args=tune_args,
-            is_gpu_enabled=gpu_imported,
+            is_gpu_enabled=self.gpu_imported,
             is_turbo=False,
         )
 
@@ -823,117 +972,197 @@ class ProphetContainer(TimeSeriesContainer):
 #### REGRESSION BASED MODELS ####
 #################################
 
+
+class CdsDtContainer(TimeSeriesContainer):
+    """Abstract container for sktime  reduced regression forecaster with
+    conditional deseasonalizing and detrending.
+    """
+
+    active = False
+
+    def __init__(self, globals_dict: dict) -> None:
+        self.logger = get_logger()
+        self.seed = globals_dict["seed"]
+        np.random.seed(self.seed)
+
+        # Import the right regressor
+        self.gpu_imported = False
+        self.gpu_param = globals_dict["gpu_param"]
+        self.n_jobs_param = globals_dict["n_jobs_param"]
+        model_class = self.return_model_class()  # e.g. LinearRegression
+        regressor_args = self._set_regressor_args
+        self.regressor = model_class(**regressor_args)
+
+        # Set the model hyperparameters
+        sp = globals_dict.get("seasonal_period")
+        self.sp = sp if sp is not None else 1
+        args = self._set_args
+        tune_args = self._set_tune_args
+        tune_grid = self._set_tune_grid
+        tune_distributions = self._set_tune_distributions
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+
+        eq_function = (
+            lambda x: type(x) is BaseCdsDt and type(x.regressor) is model_class
+        )
+
+        super().__init__(
+            id=self.id,
+            name=self.name,
+            class_def=BaseCdsDt,
+            args=args,
+            tune_grid=tune_grid,
+            tune_distribution=tune_distributions,
+            tune_args=tune_args,
+            is_gpu_enabled=self.gpu_imported,
+            eq_function=eq_function,
+        )
+
+    @property
+    @abstractmethod
+    def id(self) -> str:
+        """Model ID
+
+        Returns
+        -------
+        str
+            The model id that is used to reference this model
+        """
+        pass
+
+    @property
+    @abstractmethod
+    def name(self) -> str:
+        """Model Name
+
+        Returns
+        -------
+        str
+            The detailed name of the model used for display purposes
+        """
+        pass
+
+    @abstractmethod
+    def return_model_class(self):
+        """Returns the Class of the model"""
+        pass
+
+    @property
+    def _set_regressor_args(self) -> Dict[str, Any]:
+        regressor_args: Dict[str, Any] = {}
+        if hasattr(self.return_model_class()(), "n_jobs"):
+            regressor_args["n_jobs"] = self.n_jobs_param
+        if hasattr(self.return_model_class()(), "random_state"):
+            regressor_args["random_state"] = self.seed
+        if hasattr(self.return_model_class()(), "seed"):
+            regressor_args["seed"] = self.seed
+        return regressor_args
+
+    @property
+    def _set_args(self) -> Dict[str, Any]:
+        args: Dict[str, Any] = {"regressor": self.regressor}
+        return args
+
+    @property
+    def _set_tune_args(self) -> Dict[str, Any]:
+        tune_args: Dict[str, Any] = {}
+        return tune_args
+
+    @property
+    def _set_tune_grid(self) -> Dict[str, List[Any]]:
+        tune_grid: Dict[str, List[Any]] = {}
+        return tune_grid
+
+    @property
+    def _set_tune_distributions(self) -> Dict[str, List[Any]]:
+        tune_distributions: Dict[str, List[Any]] = {}
+        return tune_distributions
+
+
 # ===============#
 # LINEAR MODELS #
 # ===============#
 
 
-class LinearCdsDtContainer(TimeSeriesContainer):
-    def __init__(self, globals_dict: dict) -> None:
-        logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+class LinearCdsDtContainer(CdsDtContainer):
+    id = "lr_cds_dt"
+    name = "Linear w/ Cond. Deseasonalize & Detrending"
+    active = True  # set back to True as the parent has False
 
+    def return_model_class(self):
         from sklearn.linear_model import LinearRegression
 
-        # TODO add GPU support
-        gpu_imported = False
-
-        if globals_dict["gpu_param"] == "force":
+        if self.gpu_param == "force":
             from cuml.linear_model import LinearRegression  # type: ignore
 
-            logger.info("Imported cuml.linear_model.LinearRegression")
-            gpu_imported = True
-        elif globals_dict["gpu_param"]:
+            self.logger.info("Imported cuml.linear_model.LinearRegression")
+            self.gpu_imported = True
+        elif self.gpu_param:
             try:
                 from cuml.linear_model import LinearRegression  # type: ignore
 
-                logger.info("Imported cuml.linear_model.LinearRegression")
-                gpu_imported = True
+                self.logger.info("Imported cuml.linear_model.LinearRegression")
+                self.gpu_imported = True
             except ImportError:
-                logger.warning("Couldn't import cuml.linear_model.LinearRegression")
+                self.logger.warning(
+                    "Couldn't import cuml.linear_model.LinearRegression"
+                )
+        return LinearRegression
 
-        regressor_args = {}
-        if not gpu_imported:
-            regressor_args["n_jobs"] = globals_dict["n_jobs_param"]
-        regressor = LinearRegression(**regressor_args)
-
-        args = {"regressor": regressor}
-        tune_args = {}
-        sp = globals_dict.get("seasonal_period")
-        sp = sp if sp is not None else 1
+    @property
+    def _set_tune_grid(self) -> Dict[str, List[Any]]:
         tune_grid = {
-            "sp": [sp],
+            "sp": [self.sp],
             "deseasonal_model": ["additive"],
             "degree": [1],
             "window_length": [10],
             "regressor__fit_intercept": [True, False],
             "regressor__normalize": [True, False],
         }
+        return tune_grid
+
+    @property
+    def _set_tune_distributions(self) -> Dict[str, List[Any]]:
         tune_distributions = {
             "sp": CategoricalDistribution(
-                values=[sp, 2 * sp]
+                values=[self.sp, 2 * self.sp]
             ),  # TODO: 'None' errors out here
             "deseasonal_model": CategoricalDistribution(
                 values=["additive", "multiplicative"]
             ),
             "degree": IntUniformDistribution(lower=1, upper=10),
-            "window_length": IntUniformDistribution(lower=sp, upper=2 * sp),
+            "window_length": IntUniformDistribution(lower=self.sp, upper=2 * self.sp),
         }
-
-        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
-
-        eq_function = (
-            lambda x: type(x) is BaseCdsDt and type(x.regressor) is LinearRegression
-        )
-
-        super().__init__(
-            id="lr_cds_dt",
-            name="Linear w/ Cond. Deseasonalize & Detrending",
-            class_def=BaseCdsDt,
-            args=args,
-            tune_grid=tune_grid,
-            tune_distribution=tune_distributions,
-            tune_args=tune_args,
-            is_gpu_enabled=gpu_imported,
-            eq_function=eq_function,
-        )
+        return tune_distributions
 
 
-class ElasticNetCdsDtContainer(TimeSeriesContainer):
-    def __init__(self, globals_dict: dict) -> None:
-        logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+class ElasticNetCdsDtContainer(CdsDtContainer):
+    id = "en_cds_dt"
+    name = "Elastic Net w/ Cond. Deseasonalize & Detrending"
+    active = True  # set back to True as the parent has False
 
+    def return_model_class(self):
         from sklearn.linear_model import ElasticNet
 
-        # TODO add GPU support
-        gpu_imported = False
-
-        if globals_dict["gpu_param"] == "force":
+        if self.gpu_param == "force":
             from cuml.linear_model import ElasticNet  # type: ignore
 
-            logger.info("Imported cuml.linear_model.ElasticNet")
-            gpu_imported = True
-        elif globals_dict["gpu_param"]:
+            self.logger.info("Imported cuml.linear_model.ElasticNet")
+            self.gpu_imported = True
+        elif self.gpu_param:
             try:
                 from cuml.linear_model import ElasticNet  # type: ignore
 
-                logger.info("Imported cuml.linear_model.ElasticNet")
-                gpu_imported = True
+                self.logger.info("Imported cuml.linear_model.ElasticNet")
+                self.gpu_imported = True
             except ImportError:
-                logger.warning("Couldn't import cuml.linear_model.ElasticNet")
+                self.logger.warning("Couldn't import cuml.linear_model.ElasticNet")
+        return ElasticNet
 
-        regressor_args = {}
-        if not gpu_imported:
-            regressor_args["random_state"] = globals_dict["seed"]
-        regressor = ElasticNet(**regressor_args)
-
-        args = {"regressor": regressor}
-        tune_args = {}
-        sp = globals_dict.get("seasonal_period")
-        sp = sp if sp is not None else 1
+    @property
+    def _set_tune_grid(self) -> Dict[str, List[Any]]:
         tune_grid = {
-            "sp": [sp],
+            "sp": [self.sp],
             "deseasonal_model": ["additive"],
             "degree": [1],
             "window_length": [10],
@@ -942,71 +1171,52 @@ class ElasticNetCdsDtContainer(TimeSeriesContainer):
             "regressor__fit_intercept": [True, False],
             "regressor__normalize": [True, False],
         }
+        return tune_grid
+
+    @property
+    def _set_tune_distributions(self) -> Dict[str, List[Any]]:
         tune_distributions = {
             "sp": CategoricalDistribution(
-                values=[sp, 2 * sp]
+                values=[self.sp, 2 * self.sp]
             ),  # TODO: 'None' errors out here
             "deseasonal_model": CategoricalDistribution(
                 values=["additive", "multiplicative"]
             ),
             "degree": IntUniformDistribution(lower=1, upper=10),
-            "window_length": IntUniformDistribution(lower=sp, upper=2 * sp),
+            "window_length": IntUniformDistribution(lower=self.sp, upper=2 * self.sp),
             "regressor__alpha": UniformDistribution(0, 1),
             "regressor__l1_ratio": UniformDistribution(0.01, 0.9999999999),
         }
-
-        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
-
-        eq_function = lambda x: type(x) is BaseCdsDt and type(x.regressor) is ElasticNet
-
-        super().__init__(
-            id="en_cds_dt",
-            name="Elastic Net w/ Cond. Deseasonalize & Detrending",
-            class_def=BaseCdsDt,
-            args=args,
-            tune_grid=tune_grid,
-            tune_distribution=tune_distributions,
-            tune_args=tune_args,
-            is_gpu_enabled=gpu_imported,
-            eq_function=eq_function,
-        )
+        return tune_distributions
 
 
-class RidgeCdsDtContainer(TimeSeriesContainer):
-    def __init__(self, globals_dict: dict) -> None:
-        logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+class RidgeCdsDtContainer(CdsDtContainer):
+    id = "ridge_cds_dt"
+    name = "Ridge w/ Cond. Deseasonalize & Detrending"
+    active = True  # set back to True as the parent has False
 
+    def return_model_class(self):
         from sklearn.linear_model import Ridge
 
-        # TODO add GPU support
-        gpu_imported = False
-
-        if globals_dict["gpu_param"] == "force":
+        if self.gpu_param == "force":
             from cuml.linear_model import Ridge  # type: ignore
 
-            logger.info("Imported cuml.linear_model.Ridge")
-            gpu_imported = True
-        elif globals_dict["gpu_param"]:
+            self.logger.info("Imported cuml.linear_model.Ridge")
+            self.gpu_imported = True
+        elif self.gpu_param:
             try:
                 from cuml.linear_model import Ridge  # type: ignore
 
-                logger.info("Imported cuml.linear_model.Ridge")
-                gpu_imported = True
+                self.logger.info("Imported cuml.linear_model.Ridge")
+                self.gpu_imported = True
             except ImportError:
-                logger.warning("Couldn't import cuml.linear_model.Ridge")
+                self.logger.warning("Couldn't import cuml.linear_model.Ridge")
+        return Ridge
 
-        regressor_args = {}
-        if not gpu_imported:
-            regressor_args["random_state"] = globals_dict["seed"]
-        regressor = Ridge(**regressor_args)
-
-        args = {"regressor": regressor}
-        tune_args = {}
-        sp = globals_dict.get("seasonal_period")
-        sp = sp if sp is not None else 1
+    @property
+    def _set_tune_grid(self) -> Dict[str, List[Any]]:
         tune_grid = {
-            "sp": [sp],
+            "sp": [self.sp],
             "deseasonal_model": ["additive"],
             "degree": [1],
             "window_length": [10],
@@ -1014,75 +1224,53 @@ class RidgeCdsDtContainer(TimeSeriesContainer):
             "regressor__fit_intercept": [True, False],
             "regressor__normalize": [True, False],
         }
+        return tune_grid
+
+    @property
+    def _set_tune_distributions(self) -> Dict[str, List[Any]]:
         tune_distributions = {
             "sp": CategoricalDistribution(
-                values=[sp, 2 * sp]
+                values=[self.sp, 2 * self.sp]
             ),  # TODO: 'None' errors out here
             "deseasonal_model": CategoricalDistribution(
                 values=["additive", "multiplicative"]
             ),
             "degree": IntUniformDistribution(lower=1, upper=10),
-            "window_length": IntUniformDistribution(lower=sp, upper=2 * sp),
+            "window_length": IntUniformDistribution(lower=self.sp, upper=2 * self.sp),
             "regressor__alpha": UniformDistribution(0.001, 10),
             "regressor__fit_intercept": CategoricalDistribution(values=[True, False]),
             "regressor__normalize": CategoricalDistribution(values=[True, False]),
         }
-
-        # if not gpu_imported:
-        #     args["n_jobs"] = globals_dict["n_jobs_param"]
-
-        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
-
-        eq_function = lambda x: type(x) is BaseCdsDt and type(x.regressor) is Ridge
-
-        super().__init__(
-            id="ridge_cds_dt",
-            name="Ridge w/ Cond. Deseasonalize & Detrending",
-            class_def=BaseCdsDt,
-            args=args,
-            tune_grid=tune_grid,
-            tune_distribution=tune_distributions,
-            tune_args=tune_args,
-            is_gpu_enabled=gpu_imported,
-            eq_function=eq_function,
-        )
+        return tune_distributions
 
 
-class LassoCdsDtContainer(TimeSeriesContainer):
-    def __init__(self, globals_dict: dict) -> None:
-        logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+class LassoCdsDtContainer(CdsDtContainer):
+    id = "lasso_cds_dt"
+    name = "Lasso w/ Cond. Deseasonalize & Detrending"
+    active = True  # set back to True as the parent has False
 
+    def return_model_class(self):
         from sklearn.linear_model import Lasso
 
-        # TODO add GPU support
-        gpu_imported = False
-
-        if globals_dict["gpu_param"] == "force":
+        if self.gpu_param == "force":
             from cuml.linear_model import Lasso  # type: ignore
 
-            logger.info("Imported cuml.linear_model.Lasso")
-            gpu_imported = True
-        elif globals_dict["gpu_param"]:
+            self.logger.info("Imported cuml.linear_model.Lasso")
+            self.gpu_imported = True
+        elif self.gpu_param:
             try:
                 from cuml.linear_model import Lasso  # type: ignore
 
-                logger.info("Imported cuml.linear_model.Lasso")
-                gpu_imported = True
+                self.logger.info("Imported cuml.linear_model.Lasso")
+                self.gpu_imported = True
             except ImportError:
-                logger.warning("Couldn't import cuml.linear_model.Lasso")
+                self.logger.warning("Couldn't import cuml.linear_model.Lasso")
+        return Lasso
 
-        regressor_args = {}
-        if not gpu_imported:
-            regressor_args["random_state"] = globals_dict["seed"]
-        regressor = Lasso(**regressor_args)
-
-        args = {"regressor": regressor}
-        tune_args = {}
-        sp = globals_dict.get("seasonal_period")
-        sp = sp if sp is not None else 1
+    @property
+    def _set_tune_grid(self) -> Dict[str, List[Any]]:
         tune_grid = {
-            "sp": [sp],
+            "sp": [self.sp],
             "deseasonal_model": ["additive"],
             "degree": [1],
             "window_length": [10],
@@ -1090,59 +1278,40 @@ class LassoCdsDtContainer(TimeSeriesContainer):
             "regressor__fit_intercept": [True, False],
             "regressor__normalize": [True, False],
         }
+        return tune_grid
+
+    @property
+    def _set_tune_distributions(self) -> Dict[str, List[Any]]:
         tune_distributions = {
             "sp": CategoricalDistribution(
-                values=[sp, 2 * sp]
+                values=[self.sp, 2 * self.sp]
             ),  # TODO: 'None' errors out here
             "deseasonal_model": CategoricalDistribution(
                 values=["additive", "multiplicative"]
             ),
             "degree": IntUniformDistribution(lower=1, upper=10),
-            "window_length": IntUniformDistribution(lower=sp, upper=2 * sp),
+            "window_length": IntUniformDistribution(lower=self.sp, upper=2 * self.sp),
             "regressor__alpha": UniformDistribution(0.001, 10),
             "regressor__fit_intercept": CategoricalDistribution(values=[True, False]),
             "regressor__normalize": CategoricalDistribution(values=[True, False]),
         }
-
-        # if not gpu_imported:
-        #     args["n_jobs"] = globals_dict["n_jobs_param"]
-
-        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
-
-        eq_function = lambda x: type(x) is BaseCdsDt and type(x.regressor) is Lasso
-
-        super().__init__(
-            id="lasso_cds_dt",
-            name="Lasso w/ Cond. Deseasonalize & Detrending",
-            class_def=BaseCdsDt,
-            args=args,
-            tune_grid=tune_grid,
-            tune_distribution=tune_distributions,
-            tune_args=tune_args,
-            is_gpu_enabled=gpu_imported,
-            eq_function=eq_function,
-        )
+        return tune_distributions
 
 
-class LarsCdsDtContainer(TimeSeriesContainer):
-    def __init__(self, globals_dict: dict) -> None:
-        logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+class LarsCdsDtContainer(CdsDtContainer):
+    id = "lar_cds_dt"
+    name = "Least Angular Regressor w/ Cond. Deseasonalize & Detrending"
+    active = True  # set back to True as the parent has False
 
+    def return_model_class(self):
         from sklearn.linear_model import Lars
 
-        # TODO add GPU support
-        gpu_imported = False
+        return Lars
 
-        regressor_args = {"random_state": globals_dict["seed"]}
-        regressor = Lars(**regressor_args)
-
-        args = {"regressor": regressor}
-        tune_args = {}
-        sp = globals_dict.get("seasonal_period")
-        sp = sp if sp is not None else 1
+    @property
+    def _set_tune_grid(self) -> Dict[str, List[Any]]:
         tune_grid = {
-            "sp": [sp],
+            "sp": [self.sp],
             "deseasonal_model": ["additive"],
             "degree": [1],
             "window_length": [10],
@@ -1150,59 +1319,40 @@ class LarsCdsDtContainer(TimeSeriesContainer):
             "regressor__fit_intercept": [True, False],
             "regressor__normalize": [True, False],
         }
+        return tune_grid
+
+    @property
+    def _set_tune_distributions(self) -> Dict[str, List[Any]]:
         tune_distributions = {
             "sp": CategoricalDistribution(
-                values=[sp, 2 * sp]
+                values=[self.sp, 2 * self.sp]
             ),  # TODO: 'None' errors out here
             "deseasonal_model": CategoricalDistribution(
                 values=["additive", "multiplicative"]
             ),
             "degree": IntUniformDistribution(lower=1, upper=10),
-            "window_length": IntUniformDistribution(lower=sp, upper=2 * sp),
+            "window_length": IntUniformDistribution(lower=self.sp, upper=2 * self.sp),
             "regressor__eps": UniformDistribution(0.00001, 0.1, log=True),
             "regressor__fit_intercept": CategoricalDistribution(values=[True, False]),
             "regressor__normalize": CategoricalDistribution(values=[True, False]),
         }
-
-        # if not gpu_imported:
-        #     args["n_jobs"] = globals_dict["n_jobs_param"]
-
-        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
-
-        eq_function = lambda x: type(x) is BaseCdsDt and type(x.regressor) is Lars
-
-        super().__init__(
-            id="lar_cds_dt",
-            name="Least Angular Regressor w/ Cond. Deseasonalize & Detrending",
-            class_def=BaseCdsDt,
-            args=args,
-            tune_grid=tune_grid,
-            tune_distribution=tune_distributions,
-            tune_args=tune_args,
-            is_gpu_enabled=gpu_imported,
-            eq_function=eq_function,
-        )
+        return tune_distributions
 
 
-class LassoLarsCdsDtContainer(TimeSeriesContainer):
-    def __init__(self, globals_dict: dict) -> None:
-        logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+class LassoLarsCdsDtContainer(CdsDtContainer):
+    id = "llar_cds_dt"
+    name = "Lasso Least Angular Regressor w/ Cond. Deseasonalize & Detrending"
+    active = True  # set back to True as the parent has False
 
+    def return_model_class(self):
         from sklearn.linear_model import LassoLars
 
-        # TODO add GPU support
-        gpu_imported = False
+        return LassoLars
 
-        regressor_args = {"random_state": globals_dict["seed"]}
-        regressor = LassoLars(**regressor_args)
-
-        args = {"regressor": regressor}
-        tune_args = {}
-        sp = globals_dict.get("seasonal_period")
-        sp = sp if sp is not None else 1
+    @property
+    def _set_tune_grid(self) -> Dict[str, List[Any]]:
         tune_grid = {
-            "sp": [sp],
+            "sp": [self.sp],
             "deseasonal_model": ["additive"],
             "degree": [1],
             "window_length": [10],
@@ -1211,60 +1361,41 @@ class LassoLarsCdsDtContainer(TimeSeriesContainer):
             "regressor__fit_intercept": [True, False],
             "regressor__normalize": [True, False],
         }
+        return tune_grid
+
+    @property
+    def _set_tune_distributions(self) -> Dict[str, List[Any]]:
         tune_distributions = {
             "sp": CategoricalDistribution(
-                values=[sp, 2 * sp]
+                values=[self.sp, 2 * self.sp]
             ),  # TODO: 'None' errors out here
             "deseasonal_model": CategoricalDistribution(
                 values=["additive", "multiplicative"]
             ),
             "degree": IntUniformDistribution(lower=1, upper=10),
-            "window_length": IntUniformDistribution(lower=sp, upper=2 * sp),
+            "window_length": IntUniformDistribution(lower=self.sp, upper=2 * self.sp),
             "regressor__alpha": UniformDistribution(0.0000001, 1, log=True),
             "regressor__eps": UniformDistribution(0.00001, 0.1, log=True),
             "regressor__fit_intercept": CategoricalDistribution(values=[True, False]),
             "regressor__normalize": CategoricalDistribution(values=[True, False]),
         }
-
-        # if not gpu_imported:
-        #     args["n_jobs"] = globals_dict["n_jobs_param"]
-
-        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
-
-        eq_function = lambda x: type(x) is BaseCdsDt and type(x.regressor) is LassoLars
-
-        super().__init__(
-            id="llar_cds_dt",
-            name="Lasso Least Angular Regressor w/ Cond. Deseasonalize & Detrending",
-            class_def=BaseCdsDt,
-            args=args,
-            tune_grid=tune_grid,
-            tune_distribution=tune_distributions,
-            tune_args=tune_args,
-            is_gpu_enabled=gpu_imported,
-            eq_function=eq_function,
-        )
+        return tune_distributions
 
 
-class BayesianRidgeCdsDtContainer(TimeSeriesContainer):
-    def __init__(self, globals_dict: dict) -> None:
-        logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+class BayesianRidgeCdsDtContainer(CdsDtContainer):
+    id = "br_cds_dt"
+    name = "Bayesian Ridge w/ Cond. Deseasonalize & Detrending"
+    active = True  # set back to True as the parent has False
 
+    def return_model_class(self):
         from sklearn.linear_model import BayesianRidge
 
-        # TODO add GPU support
-        gpu_imported = False
+        return BayesianRidge
 
-        regressor_args = {}
-        regressor = BayesianRidge(**regressor_args)
-
-        args = {"regressor": regressor}
-        tune_args = {}
-        sp = globals_dict.get("seasonal_period")
-        sp = sp if sp is not None else 1
+    @property
+    def _set_tune_grid(self) -> Dict[str, List[Any]]:
         tune_grid = {
-            "sp": [sp],
+            "sp": [self.sp],
             "deseasonal_model": ["additive"],
             "degree": [1],
             "window_length": [10],
@@ -1276,15 +1407,19 @@ class BayesianRidgeCdsDtContainer(TimeSeriesContainer):
             "regressor__fit_intercept": [True, False],
             "regressor__normalize": [True, False],
         }
+        return tune_grid
+
+    @property
+    def _set_tune_distributions(self) -> Dict[str, List[Any]]:
         tune_distributions = {
             "sp": CategoricalDistribution(
-                values=[sp, 2 * sp]
+                values=[self.sp, 2 * self.sp]
             ),  # TODO: 'None' errors out here
             "deseasonal_model": CategoricalDistribution(
                 values=["additive", "multiplicative"]
             ),
             "degree": IntUniformDistribution(lower=1, upper=10),
-            "window_length": IntUniformDistribution(lower=sp, upper=2 * sp),
+            "window_length": IntUniformDistribution(lower=self.sp, upper=2 * self.sp),
             "regressor__alpha_1": UniformDistribution(
                 0.0000000001, 0.9999999999, log=True
             ),
@@ -1298,45 +1433,23 @@ class BayesianRidgeCdsDtContainer(TimeSeriesContainer):
                 0.0000000001, 0.9999999999, log=True
             ),
         }
-
-        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
-
-        eq_function = (
-            lambda x: type(x) is BaseCdsDt and type(x.regressor) is BayesianRidge
-        )
-
-        super().__init__(
-            id="br_cds_dt",
-            name="Bayesian Ridge w/ Cond. Deseasonalize & Detrending",
-            class_def=BaseCdsDt,
-            args=args,
-            tune_grid=tune_grid,
-            tune_distribution=tune_distributions,
-            tune_args=tune_args,
-            is_gpu_enabled=gpu_imported,
-            eq_function=eq_function,
-        )
+        return tune_distributions
 
 
-class HuberCdsDtContainer(TimeSeriesContainer):
-    def __init__(self, globals_dict: dict) -> None:
-        logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+class HuberCdsDtContainer(CdsDtContainer):
+    id = "huber_cds_dt"
+    name = "Huber w/ Cond. Deseasonalize & Detrending"
+    active = True  # set back to True as the parent has False
 
+    def return_model_class(self):
         from sklearn.linear_model import HuberRegressor
 
-        # TODO add GPU support
-        gpu_imported = False
+        return HuberRegressor
 
-        regressor_args = {}
-        regressor = HuberRegressor(**regressor_args)
-
-        args = {"regressor": regressor}
-        tune_args = {}
-        sp = globals_dict.get("seasonal_period")
-        sp = sp if sp is not None else 1
+    @property
+    def _set_tune_grid(self) -> Dict[str, List[Any]]:
         tune_grid = {
-            "sp": [sp],
+            "sp": [self.sp],
             "deseasonal_model": ["additive"],
             "degree": [1],
             "window_length": [10],
@@ -1352,57 +1465,39 @@ class HuberCdsDtContainer(TimeSeriesContainer):
                 0.9,
             ],
         }
+        return tune_grid
+
+    @property
+    def _set_tune_distributions(self) -> Dict[str, List[Any]]:
         tune_distributions = {
             "sp": CategoricalDistribution(
-                values=[sp, 2 * sp]
+                values=[self.sp, 2 * self.sp]
             ),  # TODO: 'None' errors out here
             "deseasonal_model": CategoricalDistribution(
                 values=["additive", "multiplicative"]
             ),
             "degree": IntUniformDistribution(lower=1, upper=10),
-            "window_length": IntUniformDistribution(lower=sp, upper=2 * sp),
+            "window_length": IntUniformDistribution(lower=self.sp, upper=2 * self.sp),
             "regressor__epsilon": UniformDistribution(1, 2),
             "regressor__alpha": UniformDistribution(0.0000000001, 0.9999999999),
         }
-
-        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
-
-        eq_function = (
-            lambda x: type(x) is BaseCdsDt and type(x.regressor) is HuberRegressor
-        )
-
-        super().__init__(
-            id="huber_cds_dt",
-            name="Huber w/ Cond. Deseasonalize & Detrending",
-            class_def=BaseCdsDt,
-            args=args,
-            tune_grid=tune_grid,
-            tune_distribution=tune_distributions,
-            tune_args=tune_args,
-            is_gpu_enabled=gpu_imported,
-            eq_function=eq_function,
-        )
+        return tune_distributions
 
 
-class PassiveAggressiveCdsDtContainer(TimeSeriesContainer):
-    def __init__(self, globals_dict: dict) -> None:
-        logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+class PassiveAggressiveCdsDtContainer(CdsDtContainer):
+    id = "par_cds_dt"
+    name = "Passive Aggressive w/ Cond. Deseasonalize & Detrending"
+    active = True  # set back to True as the parent has False
 
+    def return_model_class(self):
         from sklearn.linear_model import PassiveAggressiveRegressor
 
-        # TODO add GPU support
-        gpu_imported = False
+        return PassiveAggressiveRegressor
 
-        regressor_args = {"random_state": globals_dict["seed"]}
-        regressor = PassiveAggressiveRegressor(**regressor_args)
-
-        args = {"regressor": regressor}
-        tune_args = {}
-        sp = globals_dict.get("seasonal_period")
-        sp = sp if sp is not None else 1
+    @property
+    def _set_tune_grid(self) -> Dict[str, List[Any]]:
         tune_grid = {
-            "sp": [sp],
+            "sp": [self.sp],
             "deseasonal_model": ["additive"],
             "degree": [1],
             "window_length": [10],
@@ -1412,96 +1507,67 @@ class PassiveAggressiveCdsDtContainer(TimeSeriesContainer):
             "regressor__loss": ["epsilon_insensitive", "squared_epsilon_insensitive"],
             "regressor__shuffle": [True, False],
         }
+        return tune_grid
+
+    @property
+    def _set_tune_distributions(self) -> Dict[str, List[Any]]:
         tune_distributions = {
             "sp": CategoricalDistribution(
-                values=[sp, 2 * sp]
+                values=[self.sp, 2 * self.sp]
             ),  # TODO: 'None' errors out here
             "deseasonal_model": CategoricalDistribution(
                 values=["additive", "multiplicative"]
             ),
             "degree": IntUniformDistribution(lower=1, upper=10),
-            "window_length": IntUniformDistribution(lower=sp, upper=2 * sp),
+            "window_length": IntUniformDistribution(lower=self.sp, upper=2 * self.sp),
             "regressor__C": UniformDistribution(0, 10),
             "regressor__epsilon": UniformDistribution(0.0000000001, 0.9999999999),
         }
-
-        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
-
-        eq_function = (
-            lambda x: type(x) is BaseCdsDt
-            and type(x.regressor) is PassiveAggressiveRegressor
-        )
-
-        super().__init__(
-            id="par_cds_dt",
-            name="Passive Aggressive w/ Cond. Deseasonalize & Detrending",
-            class_def=BaseCdsDt,
-            args=args,
-            tune_grid=tune_grid,
-            tune_distribution=tune_distributions,
-            tune_args=tune_args,
-            is_gpu_enabled=gpu_imported,
-            eq_function=eq_function,
-        )
+        return tune_distributions
 
 
-class OrthogonalMatchingPursuitCdsDtContainer(TimeSeriesContainer):
+class OrthogonalMatchingPursuitCdsDtContainer(CdsDtContainer):
+    id = "omp_cds_dt"
+    name = "Orthogonal Matching Pursuit w/ Cond. Deseasonalize & Detrending"
+    active = True  # set back to True as the parent has False
+
     def __init__(self, globals_dict: dict) -> None:
-        logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+        self.num_features = len(globals_dict["X_train"].columns)
+        super().__init__(globals_dict=globals_dict)
 
+    def return_model_class(self):
         from sklearn.linear_model import OrthogonalMatchingPursuit
 
-        # TODO add GPU support
-        gpu_imported = False
+        return OrthogonalMatchingPursuit
 
-        regressor_args = {}
-        regressor = OrthogonalMatchingPursuit(**regressor_args)
-
-        args = {"regressor": regressor}
-        tune_args = {}
-        sp = globals_dict.get("seasonal_period")
-        sp = sp if sp is not None else 1
+    @property
+    def _set_tune_grid(self) -> Dict[str, List[Any]]:
         tune_grid = {
-            "sp": [sp],
+            "sp": [self.sp],
             "deseasonal_model": ["additive"],
             "degree": [1],
             "window_length": [10],
             "regressor__n_nonzero_coefs": np_list_arange(
-                1, len(globals_dict["X_train"].columns) + 1, 1, inclusive=True
+                1, self.num_features + 1, 1, inclusive=True
             ),
             "regressor__fit_intercept": [True, False],
             "regressor__normalize": [True, False],
         }
+        return tune_grid
+
+    @property
+    def _set_tune_distributions(self) -> Dict[str, List[Any]]:
         tune_distributions = {
             "sp": CategoricalDistribution(
-                values=[sp, 2 * sp]
+                values=[self.sp, 2 * self.sp]
             ),  # TODO: 'None' errors out here
             "deseasonal_model": CategoricalDistribution(
                 values=["additive", "multiplicative"]
             ),
             "degree": IntUniformDistribution(lower=1, upper=10),
-            "window_length": IntUniformDistribution(lower=sp, upper=2 * sp),
+            "window_length": IntUniformDistribution(lower=self.sp, upper=2 * self.sp),
         }
-
-        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
-
-        eq_function = (
-            lambda x: type(x) is BaseCdsDt
-            and type(x.regressor) is OrthogonalMatchingPursuit
-        )
-
-        super().__init__(
-            id="omp_cds_dt",
-            name="Orthogonal Matching Pursuit w/ Cond. Deseasonalize & Detrending",
-            class_def=BaseCdsDt,
-            args=args,
-            tune_grid=tune_grid,
-            tune_distribution=tune_distributions,
-            tune_args=tune_args,
-            is_gpu_enabled=gpu_imported,
-            eq_function=eq_function,
-        )
+        return tune_distributions
 
 
 # =======================#
@@ -1509,46 +1575,41 @@ class OrthogonalMatchingPursuitCdsDtContainer(TimeSeriesContainer):
 # =======================#
 
 
-class KNeighborsCdsDtContainer(TimeSeriesContainer):
-    def __init__(self, globals_dict: dict) -> None:
-        logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+class KNeighborsCdsDtContainer(CdsDtContainer):
+    id = "knn_cds_dt"
+    name = "K Neighbors w/ Cond. Deseasonalize & Detrending"
+    active = True  # set back to True as the parent has False
 
+    def __init__(self, globals_dict: dict) -> None:
+        self.num_features = len(globals_dict["X_train"].columns)
+        super().__init__(globals_dict=globals_dict)
+
+    def return_model_class(self):
         from sklearn.neighbors import KNeighborsRegressor
 
-        # TODO add GPU support
-        gpu_imported = False
-
-        if globals_dict["gpu_param"] == "force":
+        if self.gpu_param == "force":
             from cuml.neighbors import KNeighborsRegressor  # type: ignore
 
-            logger.info("Imported cuml.neighbors.KNeighborsRegressor")
-            gpu_imported = True
-        elif globals_dict["gpu_param"]:
+            self.logger.info("Imported cuml.neighbors.KNeighborsRegressor")
+            self.gpu_imported = True
+        elif self.gpu_param:
             try:
                 from cuml.neighbors import KNeighborsRegressor  # type: ignore
 
-                logger.info("Imported cuml.neighbors.KNeighborsRegressor")
-                gpu_imported = True
+                self.logger.info("Imported cuml.neighbors.KNeighborsRegressor")
+                self.gpu_imported = True
             except ImportError:
-                logger.warning("Couldn't import cuml.neighbors.KNeighborsRegressor")
+                self.logger.warning(
+                    "Couldn't import cuml.neighbors.KNeighborsRegressor"
+                )
+        return KNeighborsRegressor
 
-        regressor_args = {}
-        if not gpu_imported:
-            regressor_args["n_jobs"] = globals_dict["n_jobs_param"]
-        regressor = KNeighborsRegressor(**regressor_args)
-
-        args = {"regressor": regressor}
-        tune_args = {}
-        sp = globals_dict.get("seasonal_period")
-        sp = sp if sp is not None else 1
-
-        tune_args = {}
+    @property
+    def _set_tune_grid(self) -> Dict[str, List[Any]]:
         tune_grid = {}
-        tune_distributions = {}
 
         # common
-        tune_grid["sp"] = [sp]
+        tune_grid["sp"] = [self.sp]
         tune_grid["deseasonal_model"] = ["additive"]
         tune_grid["degree"] = [1]
         tune_grid["window_length"] = [10]
@@ -1556,55 +1617,36 @@ class KNeighborsCdsDtContainer(TimeSeriesContainer):
         tune_grid["regressor__weights"] = ["uniform"]
         tune_grid["regressor__metric"] = ["minkowski", "euclidean", "manhattan"]
 
-        if not gpu_imported:
+        if not self.gpu_imported:
             tune_grid["regressor__weights"] += ["distance"]
+        return tune_grid
 
+    @property
+    def _set_tune_distributions(self) -> Dict[str, List[Any]]:
+        tune_distributions = {}
         tune_distributions["regressor__n_neighbors"] = IntUniformDistribution(1, 51)
-
-        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
-
-        eq_function = (
-            lambda x: type(x) is BaseCdsDt and type(x.regressor) is KNeighborsRegressor
-        )
-
-        super().__init__(
-            id="knn_cds_dt",
-            name="K Neighbors w/ Cond. Deseasonalize & Detrending",
-            class_def=BaseCdsDt,
-            args=args,
-            tune_grid=tune_grid,
-            tune_distribution=tune_distributions,
-            tune_args=tune_args,
-            is_gpu_enabled=gpu_imported,
-            eq_function=eq_function,
-        )
+        return tune_distributions
 
 
-# ===================#
+# ==================#
 # TREE BASED MODELS #
-# ===================#
+# ==================#
 
 
-class DecisionTreeCdsDtContainer(TimeSeriesContainer):
-    def __init__(self, globals_dict: dict) -> None:
-        logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+class DecisionTreeCdsDtContainer(CdsDtContainer):
+    id = "dt_cds_dt"
+    name = "Decision Tree w/ Cond. Deseasonalize & Detrending"
+    active = True  # set back to True as the parent has False
 
+    def return_model_class(self):
         from sklearn.tree import DecisionTreeRegressor
 
-        # TODO add GPU support
+        return DecisionTreeRegressor
 
-        gpu_imported = False
-
-        regressor_args = {"random_state": globals_dict["seed"]}
-        regressor = DecisionTreeRegressor(**regressor_args)
-
-        args = {"regressor": regressor}
-        tune_args = {}
-        sp = globals_dict.get("seasonal_period")
-        sp = sp if sp is not None else 1
+    @property
+    def _set_tune_grid(self) -> Dict[str, List[Any]]:
         tune_grid = {
-            "sp": [sp],
+            "sp": [self.sp],
             "deseasonal_model": ["additive"],
             "degree": [1],
             "window_length": [10],
@@ -1615,15 +1657,19 @@ class DecisionTreeCdsDtContainer(TimeSeriesContainer):
             "regressor__min_samples_split": [2, 10],
             "regressor__criterion": ["mse", "mae", "friedman_mse"],
         }
+        return tune_grid
+
+    @property
+    def _set_tune_distributions(self) -> Dict[str, List[Any]]:
         tune_distributions = {
             "sp": CategoricalDistribution(
-                values=[sp, 2 * sp]
+                values=[self.sp, 2 * self.sp]
             ),  # TODO: 'None' errors out here
             "deseasonal_model": CategoricalDistribution(
                 values=["additive", "multiplicative"]
             ),
             "degree": IntUniformDistribution(lower=1, upper=10),
-            "window_length": IntUniformDistribution(lower=sp, upper=2 * sp),
+            "window_length": IntUniformDistribution(lower=self.sp, upper=2 * self.sp),
             "regressor__max_depth": IntUniformDistribution(lower=1, upper=10),
             "regressor__min_impurity_decrease": UniformDistribution(
                 lower=0.000000001, upper=0.5, log=True
@@ -1632,57 +1678,23 @@ class DecisionTreeCdsDtContainer(TimeSeriesContainer):
             "regressor__min_samples_leaf": IntUniformDistribution(2, 6),
             "regressor__min_samples_split": IntUniformDistribution(2, 10),
         }
-
-        # if not gpu_imported:
-        #     args["n_jobs"] = globals_dict["n_jobs_param"]
-
-        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
-
-        eq_function = (
-            lambda x: type(x) is BaseCdsDt
-            and type(x.regressor) is DecisionTreeRegressor
-        )
-
-        super().__init__(
-            id="dt_cds_dt",
-            name="Decision Tree w/ Cond. Deseasonalize & Detrending",
-            class_def=BaseCdsDt,
-            args=args,
-            tune_grid=tune_grid,
-            tune_distribution=tune_distributions,
-            tune_args=tune_args,
-            is_gpu_enabled=gpu_imported,
-            eq_function=eq_function,
-        )
+        return tune_distributions
 
 
-class RandomForestCdsDtContainer(TimeSeriesContainer):
-    def __init__(self, globals_dict: dict) -> None:
-        logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+class RandomForestCdsDtContainer(CdsDtContainer):
+    id = "rf_cds_dt"
+    name = "Random Forest w/ Cond. Deseasonalize & Detrending"
+    active = True  # set back to True as the parent has False
 
+    def return_model_class(self):
         from sklearn.ensemble import RandomForestRegressor
 
-        # TODO add GPU support
+        return RandomForestRegressor
 
-        gpu_imported = False
-
-        regressor_args = (
-            {
-                "random_state": globals_dict["seed"],
-                "n_jobs": globals_dict["n_jobs_param"],
-            }
-            if not gpu_imported
-            else {"seed": globals_dict["seed"]}
-        )
-        regressor = RandomForestRegressor(**regressor_args)
-
-        args = {"regressor": regressor}
-        tune_args = {}
-        sp = globals_dict.get("seasonal_period")
-        sp = sp if sp is not None else 1
+    @property
+    def _set_tune_grid(self) -> Dict[str, List[Any]]:
         tune_grid = {
-            "sp": [sp],
+            "sp": [self.sp],
             "deseasonal_model": ["additive"],
             "degree": [1],
             "window_length": [10],
@@ -1692,15 +1704,19 @@ class RandomForestCdsDtContainer(TimeSeriesContainer):
             "regressor__max_features": [1.0, "sqrt", "log2"],
             "regressor__bootstrap": [True, False],
         }
+        return tune_grid
+
+    @property
+    def _set_tune_distributions(self) -> Dict[str, List[Any]]:
         tune_distributions = {
             "sp": CategoricalDistribution(
-                values=[sp, 2 * sp]
+                values=[self.sp, 2 * self.sp]
             ),  # TODO: 'None' errors out here
             "deseasonal_model": CategoricalDistribution(
                 values=["additive", "multiplicative"]
             ),
             "degree": IntUniformDistribution(lower=1, upper=10),
-            "window_length": IntUniformDistribution(lower=sp, upper=2 * sp),
+            "window_length": IntUniformDistribution(lower=self.sp, upper=2 * self.sp),
             "regressor__n_estimators": IntUniformDistribution(lower=10, upper=300),
             "regressor__max_depth": IntUniformDistribution(lower=1, upper=10),
             "regressor__min_impurity_decrease": UniformDistribution(lower=0, upper=0.5),
@@ -1709,57 +1725,23 @@ class RandomForestCdsDtContainer(TimeSeriesContainer):
             ),
             "regressor__bootstrap": CategoricalDistribution(values=[True, False]),
         }
-
-        # if not gpu_imported:
-        #     args["n_jobs"] = globals_dict["n_jobs_param"]
-
-        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
-
-        eq_function = (
-            lambda x: type(x) is BaseCdsDt
-            and type(x.regressor) is RandomForestRegressor
-        )
-
-        super().__init__(
-            id="rf_cds_dt",
-            name="Random Forest w/ Cond. Deseasonalize & Detrending",
-            class_def=BaseCdsDt,
-            args=args,
-            tune_grid=tune_grid,
-            tune_distribution=tune_distributions,
-            tune_args=tune_args,
-            is_gpu_enabled=gpu_imported,
-            eq_function=eq_function,
-        )
+        return tune_distributions
 
 
-class ExtraTreesCdsDtContainer(TimeSeriesContainer):
-    def __init__(self, globals_dict: dict) -> None:
-        logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+class ExtraTreesCdsDtContainer(CdsDtContainer):
+    id = "et_cds_dt"
+    name = "Extra Trees w/ Cond. Deseasonalize & Detrending"
+    active = True  # set back to True as the parent has False
 
+    def return_model_class(self):
         from sklearn.ensemble import ExtraTreesRegressor
 
-        # TODO add GPU support
+        return ExtraTreesRegressor
 
-        gpu_imported = False
-
-        regressor_args = (
-            {
-                "random_state": globals_dict["seed"],
-                "n_jobs": globals_dict["n_jobs_param"],
-            }
-            if not gpu_imported
-            else {"seed": globals_dict["seed"]}
-        )
-        regressor = ExtraTreesRegressor(**regressor_args)
-
-        args = {"regressor": regressor}
-        tune_args = {}
-        sp = globals_dict.get("seasonal_period")
-        sp = sp if sp is not None else 1
+    @property
+    def _set_tune_grid(self) -> Dict[str, List[Any]]:
         tune_grid = {
-            "sp": [sp],
+            "sp": [self.sp],
             "deseasonal_model": ["additive"],
             "degree": [1],
             "window_length": [10],
@@ -1772,15 +1754,19 @@ class ExtraTreesCdsDtContainer(TimeSeriesContainer):
             # "regressor__min_samples_split": [2, 5, 7, 9, 10],  # Too many combinations
             # "regressor__min_samples_leaf": [2, 3, 4, 5, 6],  # Too many combinations
         }
+        return tune_grid
+
+    @property
+    def _set_tune_distributions(self) -> Dict[str, List[Any]]:
         tune_distributions = {
             "sp": CategoricalDistribution(
-                values=[sp, 2 * sp]
+                values=[self.sp, 2 * self.sp]
             ),  # TODO: 'None' errors out here
             "deseasonal_model": CategoricalDistribution(
                 values=["additive", "multiplicative"]
             ),
             "degree": IntUniformDistribution(lower=1, upper=10),
-            "window_length": IntUniformDistribution(lower=sp, upper=2 * sp),
+            "window_length": IntUniformDistribution(lower=self.sp, upper=2 * self.sp),
             "regressor__n_estimators": IntUniformDistribution(lower=10, upper=300),
             "regressor__criterion": CategoricalDistribution(values=["mse", "mae"]),
             "regressor__max_depth": IntUniformDistribution(lower=1, upper=11),
@@ -1794,54 +1780,28 @@ class ExtraTreesCdsDtContainer(TimeSeriesContainer):
             "regressor__min_samples_split": IntUniformDistribution(lower=2, upper=10),
             "regressor__min_samples_leaf": IntUniformDistribution(lower=1, upper=5),
         }
-
-        # if not gpu_imported:
-        #     args["n_jobs"] = globals_dict["n_jobs_param"]
-
-        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
-
-        eq_function = (
-            lambda x: type(x) is BaseCdsDt and type(x.regressor) is ExtraTreesRegressor
-        )
-
-        super().__init__(
-            id="et_cds_dt",
-            name="Extra Trees w/ Cond. Deseasonalize & Detrending",
-            class_def=BaseCdsDt,
-            args=args,
-            tune_grid=tune_grid,
-            tune_distribution=tune_distributions,
-            tune_args=tune_args,
-            is_gpu_enabled=gpu_imported,
-            eq_function=eq_function,
-        )
+        return tune_distributions
 
 
-# =========================#
+# ========================#
 # GRADIENT BOOSTED MODELS #
-# =========================#
+# ========================#
 
 
-class GradientBoostingCdsDtContainer(TimeSeriesContainer):
-    def __init__(self, globals_dict: dict) -> None:
-        logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+class GradientBoostingCdsDtContainer(CdsDtContainer):
+    id = "gbr_cds_dt"
+    name = "Gradient Boosting w/ Cond. Deseasonalize & Detrending"
+    active = True  # set back to True as the parent has False
 
+    def return_model_class(self):
         from sklearn.ensemble import GradientBoostingRegressor
 
-        # TODO add GPU support
+        return GradientBoostingRegressor
 
-        gpu_imported = False
-
-        regressor_args = {"random_state": globals_dict["seed"]}
-        regressor = GradientBoostingRegressor(**regressor_args)
-
-        args = {"regressor": regressor}
-        tune_args = {}
-        sp = globals_dict.get("seasonal_period")
-        sp = sp if sp is not None else 1
+    @property
+    def _set_tune_grid(self) -> Dict[str, List[Any]]:
         tune_grid = {
-            "sp": [sp],
+            "sp": [self.sp],
             "deseasonal_model": ["additive"],
             "degree": [1],
             "window_length": [10],
@@ -1854,15 +1814,19 @@ class GradientBoostingCdsDtContainer(TimeSeriesContainer):
             # "regressor__min_samples_split": [2, 5, 7, 9, 10],  # Too many combinations
             # "regressor__min_samples_leaf": [2, 3, 4, 5, 6],  # Too many combinations
         }
+        return tune_grid
+
+    @property
+    def _set_tune_distributions(self) -> Dict[str, List[Any]]:
         tune_distributions = {
             "sp": CategoricalDistribution(
-                values=[sp, 2 * sp]
+                values=[self.sp, 2 * self.sp]
             ),  # TODO: 'None' errors out here
             "deseasonal_model": CategoricalDistribution(
                 values=["additive", "multiplicative"]
             ),
             "degree": IntUniformDistribution(lower=1, upper=10),
-            "window_length": IntUniformDistribution(lower=sp, upper=2 * sp),
+            "window_length": IntUniformDistribution(lower=self.sp, upper=2 * self.sp),
             "regressor__n_estimators": IntUniformDistribution(10, 300),
             "regressor__learning_rate": UniformDistribution(0.000001, 0.5, log=True),
             # "regressor__subsample": UniformDistribution(0.2, 1),  # TODO: Adding this eventually samples outside this range - strange!
@@ -1874,50 +1838,23 @@ class GradientBoostingCdsDtContainer(TimeSeriesContainer):
                 0.000000001, 0.5, log=True
             ),
         }
-
-        # if not gpu_imported:
-        #     args["n_jobs"] = globals_dict["n_jobs_param"]
-
-        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
-
-        eq_function = (
-            lambda x: type(x) is BaseCdsDt
-            and type(x.regressor) is GradientBoostingRegressor
-        )
-
-        super().__init__(
-            id="gbr_cds_dt",
-            name="Gradient Boosting w/ Cond. Deseasonalize & Detrending",
-            class_def=BaseCdsDt,
-            args=args,
-            tune_grid=tune_grid,
-            tune_distribution=tune_distributions,
-            tune_args=tune_args,
-            is_gpu_enabled=gpu_imported,
-            eq_function=eq_function,
-        )
+        return tune_distributions
 
 
-class AdaBoostCdsDtContainer(TimeSeriesContainer):
-    def __init__(self, globals_dict: dict) -> None:
-        logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+class AdaBoostCdsDtContainer(CdsDtContainer):
+    id = "ada_cds_dt"
+    name = "AdaBoost w/ Cond. Deseasonalize & Detrending"
+    active = True  # set back to True as the parent has False
 
+    def return_model_class(self):
         from sklearn.ensemble import AdaBoostRegressor
 
-        # TODO add GPU support
+        return AdaBoostRegressor
 
-        gpu_imported = False
-
-        regressor_args = {"random_state": globals_dict["seed"]}
-        regressor = AdaBoostRegressor(**regressor_args)
-
-        args = {"regressor": regressor}
-        tune_args = {}
-        sp = globals_dict.get("seasonal_period")
-        sp = sp if sp is not None else 1
+    @property
+    def _set_tune_grid(self) -> Dict[str, List[Any]]:
         tune_grid = {
-            "sp": [sp],
+            "sp": [self.sp],
             "deseasonal_model": ["additive"],
             "degree": [1],
             "window_length": [10],
@@ -1925,55 +1862,41 @@ class AdaBoostCdsDtContainer(TimeSeriesContainer):
             "regressor__learning_rate": [0.0001, 0.001, 0.01, 0.1],
             "regressor__loss": ["linear", "square", "exponential"],
         }
+        return tune_grid
+
+    @property
+    def _set_tune_distributions(self) -> Dict[str, List[Any]]:
         tune_distributions = {
             "sp": CategoricalDistribution(
-                values=[sp, 2 * sp]
+                values=[self.sp, 2 * self.sp]
             ),  # TODO: 'None' errors out here
             "deseasonal_model": CategoricalDistribution(
                 values=["additive", "multiplicative"]
             ),
             "degree": IntUniformDistribution(lower=1, upper=10),
-            "window_length": IntUniformDistribution(lower=sp, upper=2 * sp),
+            "window_length": IntUniformDistribution(lower=self.sp, upper=2 * self.sp),
             "regressor__n_estimators": IntUniformDistribution(10, 300),
             "regressor__learning_rate": UniformDistribution(0.000001, 0.5, log=True),
         }
-
-        # if not gpu_imported:
-        #     args["n_jobs"] = globals_dict["n_jobs_param"]
-
-        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
-
-        eq_function = (
-            lambda x: type(x) is BaseCdsDt and type(x.regressor) is AdaBoostRegressor
-        )
-
-        super().__init__(
-            id="ada_cds_dt",
-            name="AdaBoost w/ Cond. Deseasonalize & Detrending",
-            class_def=BaseCdsDt,
-            args=args,
-            tune_grid=tune_grid,
-            tune_distribution=tune_distributions,
-            tune_args=tune_args,
-            is_gpu_enabled=gpu_imported,
-            eq_function=eq_function,
-        )
+        return tune_distributions
 
 
-class XGBCdsDtContainer(TimeSeriesContainer):
-    def __init__(self, globals_dict: dict) -> None:
-        logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+class XGBCdsDtContainer(CdsDtContainer):
+    id = "xgboost_cds_dt"
+    name = "Extreme Gradient Boosting w/ Cond. Deseasonalize & Detrending"
+    active = True  # set back to True as the parent has False
+
+    def return_model_class(self):
         try:
             import xgboost
         except ImportError:
-            logger.warning("Couldn't import xgboost.XGBRegressor")
+            self.logger.warning("Couldn't import xgboost.XGBRegressor")
             self.active = False
             return
 
         xgboost_version = tuple([int(x) for x in xgboost.__version__.split(".")])
         if xgboost_version < (1, 1, 0):
-            logger.warning(
+            self.logger.warning(
                 f"Wrong xgboost version. Expected xgboost>=1.1.0, got xgboost=={xgboost_version}"
             )
             self.active = False
@@ -1981,25 +1904,20 @@ class XGBCdsDtContainer(TimeSeriesContainer):
 
         from xgboost import XGBRegressor
 
-        # TODO add GPU support
+        return XGBRegressor
 
-        gpu_imported = False
+    @property
+    def _set_regressor_args(self) -> Dict[str, Any]:
+        regressor_args = super()._set_regressor_args
+        regressor_args["verbosity"] = 0
+        regressor_args["booster"] = "gbtree"
+        regressor_args["tree_method"] = "gpu_hist" if self.gpu_param else "auto"
+        return regressor_args
 
-        regressor_args = {
-            "random_state": globals_dict["seed"],
-            "n_jobs": globals_dict["n_jobs_param"],
-            "verbosity": 0,
-            "booster": "gbtree",
-            "tree_method": "gpu_hist" if globals_dict["gpu_param"] else "auto",
-        }
-        regressor = XGBRegressor(**regressor_args)
-
-        args = {"regressor": regressor}
-        tune_args = {}
-        sp = globals_dict.get("seasonal_period")
-        sp = sp if sp is not None else 1
+    @property
+    def _set_tune_grid(self) -> Dict[str, List[Any]]:
         tune_grid = {
-            "sp": [sp],
+            "sp": [self.sp],
             "deseasonal_model": ["additive"],
             "degree": [1],
             "window_length": [10],
@@ -2009,15 +1927,19 @@ class XGBCdsDtContainer(TimeSeriesContainer):
             "regressor__subsample": [0.5, 1],
             "regressor__colsample_bytree": [0.5, 1],
         }
+        return tune_grid
+
+    @property
+    def _set_tune_distributions(self) -> Dict[str, List[Any]]:
         tune_distributions = {
             "sp": CategoricalDistribution(
-                values=[sp, 2 * sp]
+                values=[self.sp, 2 * self.sp]
             ),  # TODO: 'None' errors out here
             "deseasonal_model": CategoricalDistribution(
                 values=["additive", "multiplicative"]
             ),
             "degree": IntUniformDistribution(lower=1, upper=10),
-            "window_length": IntUniformDistribution(lower=sp, upper=2 * sp),
+            "window_length": IntUniformDistribution(lower=self.sp, upper=2 * self.sp),
             "regressor__learning_rate": UniformDistribution(0.000001, 0.5, log=True),
             "regressor__n_estimators": IntUniformDistribution(10, 300),
             "regressor__max_depth": IntUniformDistribution(1, 10),
@@ -2028,52 +1950,45 @@ class XGBCdsDtContainer(TimeSeriesContainer):
             "regressor__reg_lambda": UniformDistribution(0.0000000001, 10, log=True),
             "regressor__scale_pos_weight": UniformDistribution(1, 50),
         }
-
-        # if not gpu_imported:
-        #     args["n_jobs"] = globals_dict["n_jobs_param"]
-
-        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
-
-        eq_function = (
-            lambda x: type(x) is BaseCdsDt and type(x.regressor) is XGBRegressor
-        )
-
-        super().__init__(
-            id="xgboost_cds_dt",
-            name="Extreme Gradient Boosting w/ Cond. Deseasonalize & Detrending",
-            class_def=BaseCdsDt,
-            args=args,
-            tune_grid=tune_grid,
-            tune_distribution=tune_distributions,
-            tune_args=tune_args,
-            is_gpu_enabled=gpu_imported,
-            eq_function=eq_function,
-        )
+        return tune_distributions
 
 
-class LGBMCdsDtContainer(TimeSeriesContainer):
-    def __init__(self, globals_dict: dict) -> None:
-        logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+class LGBMCdsDtContainer(CdsDtContainer):
+    id = "lightgbm_cds_dt"
+    name = "Light Gradient Boosting w/ Cond. Deseasonalize & Detrending"
+    active = True  # set back to True as the parent has False
+
+    def return_model_class(self):
         from lightgbm import LGBMRegressor
         from lightgbm.basic import LightGBMError
 
-        # TODO add GPU support
+        self.is_gpu_enabled = False
+        if self.gpu_param:
+            try:
+                lgb = LGBMRegressor(device="gpu")
+                lgb.fit(np.zeros((2, 2)), [0, 1])
+                self.is_gpu_enabled = True
+                del lgb
+            except LightGBMError:
+                self.is_gpu_enabled = False
+                if self.gpu_param == "force":
+                    raise RuntimeError(
+                        f"LightGBM GPU mode not available. Consult https://lightgbm.readthedocs.io/en/latest/GPU-Tutorial.html."
+                    )
 
-        gpu_imported = False
+        return LGBMRegressor
 
-        regressor_args = {
-            "random_state": globals_dict["seed"],
-            "n_jobs": globals_dict["n_jobs_param"],
-        }
-        regressor = LGBMRegressor(**regressor_args)
+    @property
+    def _set_regressor_args(self) -> Dict[str, Any]:
+        regressor_args = super()._set_regressor_args
+        if self.is_gpu_enabled:
+            regressor_args["device"] = "gpu"
+        return regressor_args
 
-        args = {"regressor": regressor}
-        tune_args = {}
-        sp = globals_dict.get("seasonal_period")
-        sp = sp if sp is not None else 1
+    @property
+    def _set_tune_grid(self) -> Dict[str, List[Any]]:
         tune_grid = {
-            "sp": [sp],
+            "sp": [self.sp],
             "deseasonal_model": ["additive"],
             "degree": [1],
             "window_length": [10],
@@ -2085,15 +2000,19 @@ class LGBMCdsDtContainer(TimeSeriesContainer):
             "regressor__subsample": [0.5, 1],
             "regressor__colsample_bytree": [0.5, 1],
         }
+        return tune_grid
+
+    @property
+    def _set_tune_distributions(self) -> Dict[str, List[Any]]:
         tune_distributions = {
             "sp": CategoricalDistribution(
-                values=[sp, 2 * sp]
+                values=[self.sp, 2 * self.sp]
             ),  # TODO: 'None' errors out here
             "deseasonal_model": CategoricalDistribution(
                 values=["additive", "multiplicative"]
             ),
             "degree": IntUniformDistribution(lower=1, upper=10),
-            "window_length": IntUniformDistribution(lower=sp, upper=2 * sp),
+            "window_length": IntUniformDistribution(lower=self.sp, upper=2 * self.sp),
             "regressor__num_leaves": IntUniformDistribution(2, 256),
             "regressor__n_estimators": IntUniformDistribution(10, 300),
             "regressor__learning_rate": UniformDistribution(0.000001, 0.5, log=True),
@@ -2108,44 +2027,12 @@ class LGBMCdsDtContainer(TimeSeriesContainer):
             "regressor__bagging_freq": IntUniformDistribution(0, 7),
             "regressor__min_child_samples": IntUniformDistribution(1, 100),
         }
+        return tune_distributions
 
-        # if not gpu_imported:
-        #     args["n_jobs"] = globals_dict["n_jobs_param"]
 
-        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
-
-        eq_function = (
-            lambda x: type(x) is BaseCdsDt and type(x.regressor) is LGBMRegressor
-        )
-
-        is_gpu_enabled = False
-        if globals_dict["gpu_param"]:
-            try:
-                lgb = LGBMRegressor(device="gpu")
-                lgb.fit(np.zeros((2, 2)), [0, 1])
-                is_gpu_enabled = True
-                del lgb
-            except LightGBMError:
-                is_gpu_enabled = False
-                if globals_dict["gpu_param"] == "force":
-                    raise RuntimeError(
-                        f"LightGBM GPU mode not available. Consult https://lightgbm.readthedocs.io/en/latest/GPU-Tutorial.html."
-                    )
-
-        if is_gpu_enabled:
-            args["device"] = "gpu"
-
-        super().__init__(
-            id="lightgbm_cds_dt",
-            name="Light Gradient Boosting w/ Cond. Deseasonalize & Detrending",
-            class_def=BaseCdsDt,
-            args=args,
-            tune_grid=tune_grid,
-            tune_distribution=tune_distributions,
-            tune_args=tune_args,
-            is_gpu_enabled=gpu_imported,
-            eq_function=eq_function,
-        )
+# ===================================#
+# TODO: MODELS TO BE SEPARATED LATER #
+# ===================================#
 
 
 class BaseCdsDt(_SktimeForecaster):
@@ -2199,9 +2086,6 @@ class BaseCdsDt(_SktimeForecaster):
         self.forecaster_.fit(y=y, X=X, fh=fh)
         return self
 
-    # def predict(self, X=None):
-    #     return self.forecaster.predict(X=X)
-
     def predict(self, fh=None, X=None, return_pred_int=False, alpha=DEFAULT_ALPHA):
         check_is_fitted(self)
         return self.forecaster_.predict(
@@ -2213,7 +2097,7 @@ class EnsembleTimeSeriesContainer(TimeSeriesContainer):
     def __init__(self, globals_dict: dict) -> None:
         logger = get_logger()
         np.random.seed(globals_dict["seed"])
-        gpu_imported = False
+        self.gpu_imported = False
 
         from pycaret.internal.ensemble import _EnsembleForecasterWithVoting
 
@@ -2222,7 +2106,7 @@ class EnsembleTimeSeriesContainer(TimeSeriesContainer):
         tune_grid = {}
         tune_distributions = {}
 
-        # if not gpu_imported:
+        # if not self.gpu_imported:
         #     args["n_jobs"] = globals_dict["n_jobs_param"]
 
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
@@ -2235,7 +2119,7 @@ class EnsembleTimeSeriesContainer(TimeSeriesContainer):
             tune_grid=tune_grid,
             tune_distribution=tune_distributions,
             tune_args=tune_args,
-            is_gpu_enabled=gpu_imported,
+            is_gpu_enabled=self.gpu_imported,
         )
 
 

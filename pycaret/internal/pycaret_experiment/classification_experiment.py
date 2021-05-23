@@ -2428,7 +2428,6 @@ class ClassificationExperiment(_SupervisedExperiment):
             raw_score=raw_score,
             round=round,
             verbose=verbose,
-            ml_usecase=MLUsecase.CLASSIFICATION,
         )
 
     def finalize_model(
