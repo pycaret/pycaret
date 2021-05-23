@@ -790,7 +790,7 @@ class ProphetContainer(TimeSeriesContainer):
             tune_grid=tune_grid,
             tune_distribution=tune_distributions,
             tune_args=tune_args,
-            is_gpu_enabled=gpu_imported,
+            is_gpu_enabled=self.gpu_imported,
             is_turbo=False,
         )
 
