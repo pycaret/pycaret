@@ -47,10 +47,10 @@ def setup(
     imputation_type: str = "simple",
     #        transform_target: bool = False,
     #        transform_target_method: str = "box-cox",
-    fold_strategy: Union[str, Any] = "timeseries",  # added in pycaret==2.2
+    fold_strategy: Union[str, Any] = "expanding",
     fold: int = 3,
-    fh: Union[List[int], int, np.ndarray] = 1,
-    seasonal_parameter: Optional[Union[int, str]] = None,
+    fh: Union[List[int], int, np.array] = 1,
+    seasonal_period: Optional[Union[int, str]] = None,
     n_jobs: Optional[int] = -1,
     use_gpu: bool = False,
     custom_pipeline: Union[
@@ -76,13 +76,20 @@ def setup(
     Example
     -------
     >>> from pycaret.datasets import get_data
-    >>> airline = get_data('airline')
-    >>> from pycaret.time_series import setup
-    >>> exp_name = setup(data=airline, fh=12)
+    >>> boston = get_data('boston')
+    >>> from pycaret.time_series import *
+    >>> exp_name = setup(data = boston,  target = 'medv')
 
 
     data : pandas.Series or pandas.DataFrame
         Shape (n_samples, 1), where n_samples is the number of samples.
+
+
+    fh: np.array, default = None
+        The forecast horizon to be used for forecasting. User must specify a value.
+        The values of the array must be integers specifying the lookahead points that
+        must be forecasted. e.g. np.array([2, 5]) will forecast 2 and 5 points ahead.
+        Default value of None will result in an error.
 
 
     preprocess: bool, default = True
@@ -96,12 +103,17 @@ def setup(
         The type of imputation to use. Can be either 'simple' or 'iterative'.
 
 
-    fold_strategy: str or sklearn CV generator object, default = 'kfold'
+    fold_strategy: str or sklearn CV generator object, default = 'expanding'
         Choice of cross validation strategy. Possible values are:
 
         * 'expanding'
-        * 'rolling'
+        * 'rolling' (same as/aliased to 'expanding')
         * 'sliding'
+
+        You can also pass an sktime compatible cross validation object such
+        as SlidingWindowSplitter or ExpandingWindowSplitter. In this case,
+        the `fold` and `fh` parameters will be ignored and these values will
+        be extracted from the fold_strategy object directly.
 
 
     fold: int, default = 3
@@ -114,7 +126,7 @@ def setup(
         Number of steps ahead to take to evaluate forecast.
 
 
-    seasonal_parameter: int or str, default = None
+    seasonal_period: int or str, default = None
         Seasonal periods in timeseries data. If not provided the frequency of the data
         index is map to a seasonal period as follows:
 
@@ -128,7 +140,13 @@ def setup(
         * 'A': 1
         * 'Y': 1
 
-        Alternatively you can provide a custom seasonal parameter by passing it as an integer.
+        Alternatively you can provide a custom `seasonal_parameter` by passing
+        it as an integer.
+
+        NOTE: If data index is not of type pd.core.indexes.period.PeriodIndex,
+        then seasonal_period MUST be passed. Refer to the mapping above for
+        a guide of what values to use depending on the frequency of the data.
+        If your data does not have any seasonality, then set seasonal_period = 1.
 
 
     n_jobs: int, default = -1
@@ -228,7 +246,7 @@ def setup(
         fold_strategy=fold_strategy,
         fold=fold,
         fh=fh,
-        seasonal_period=seasonal_parameter,
+        seasonal_period=seasonal_period,
         n_jobs=n_jobs,
         use_gpu=use_gpu,
         custom_pipeline=custom_pipeline,
@@ -479,14 +497,15 @@ def tune_model(
     round: int = 4,
     n_iter: int = 10,
     custom_grid: Optional[Union[Dict[str, list], Any]] = None,
-    optimize: str = "R2",
+    optimize: str = "smape",
     custom_scorer=None,
-    search_library: str = "scikit-learn",
+    search_library: str = "pycaret",
     search_algorithm: Optional[str] = None,
     early_stopping: Any = False,
     early_stopping_max_iters: int = 10,
     choose_better: bool = False,
     fit_kwargs: Optional[dict] = None,
+    groups: Optional[Union[str, Any]] = None,
     return_tuner: bool = False,
     verbose: bool = True,
     tuner_verbose: Union[int, bool] = True,
