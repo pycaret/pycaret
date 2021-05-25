@@ -787,8 +787,13 @@ class TBATSContainer(TimeSeriesContainer):
         logger = get_logger()
         np.random.seed(globals_dict["seed"])
         self.gpu_imported = False
-
-        from sktime.forecasting.tbats import TBATS  # type: ignore
+        
+        try:
+            from sktime.forecasting.tbats import TBATS  # type: ignore
+        except ImportError:
+            logger.warning("Couldn't import sktime.forecasting.bats")
+            self.active = False
+            return
 
         sp = globals_dict.get("seasonal_period")
         self.sp = sp if sp is not None else 1
@@ -852,7 +857,12 @@ class BATSContainer(TimeSeriesContainer):
         np.random.seed(globals_dict["seed"])
         self.gpu_imported = False
 
-        from sktime.forecasting.bats import BATS  # type: ignore
+        try:
+            from sktime.forecasting.bats import BATS  # type: ignore
+        except ImportError:
+            logger.warning("Couldn't import sktime.forecasting.bats")
+            self.active = False
+            return
 
         sp = globals_dict.get("seasonal_period")
         self.sp = sp if sp is not None else 1
