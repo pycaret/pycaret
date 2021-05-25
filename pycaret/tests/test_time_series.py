@@ -94,7 +94,7 @@ def _get_seasonal_values():
 
 
 def _check_windows():
-    """Check the system where tests are running."""
+    """Check if the system is Windows."""
     import sys
 
     platform = sys.platform

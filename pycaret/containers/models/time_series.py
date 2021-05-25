@@ -916,7 +916,12 @@ class ProphetContainer(TimeSeriesContainer):
         np.random.seed(globals_dict["seed"])
         self.gpu_imported = False
 
-        from sktime.forecasting.fbprophet import Prophet  # type: ignore
+        try:
+            from sktime.forecasting.fbprophet import Prophet  # type: ignore
+        except ImportError:
+            logger.warning("Couldn't import sktime.forecasting.fbprophet")
+            self.active = False
+            return
 
         sp = globals_dict.get("seasonal_period")
         self.sp = sp if sp is not None else 1
