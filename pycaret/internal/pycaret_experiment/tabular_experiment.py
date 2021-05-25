@@ -928,7 +928,7 @@ class _TabularExperiment(_PyCaretExperiment):
                 or is_sklearn_cv_generator(fold_strategy)
             ):
                 raise TypeError(
-                    f"fold_strategy parameter must be either a sktime compatible CV generator object or one of {', '.join(possible_time_series_fold_strategies)}."
+                    f"fold_strategy parameter must be either a sktime compatible CV generator object or one of '{', '.join(possible_time_series_fold_strategies)}'."
                 )
 
         if fold_strategy == "groupkfold" and (
