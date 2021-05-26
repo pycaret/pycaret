@@ -196,6 +196,26 @@ class TimeSeriesContainer(ModelContainer):
 
         return dict(d)
 
+    @property
+    def _set_args(self) -> Dict[str, Any]:
+        args: Dict[str, Any] = {}
+        return args
+
+    @property
+    def _set_tune_args(self) -> Dict[str, Any]:
+        tune_args: Dict[str, Any] = {}
+        return tune_args
+
+    @property
+    def _set_tune_grid(self) -> Dict[str, List[Any]]:
+        tune_grid: Dict[str, List[Any]] = {}
+        return tune_grid
+
+    @property
+    def _set_tune_distributions(self) -> Dict[str, List[Any]]:
+        tune_distributions: Dict[str, List[Any]] = {}
+        return tune_distributions
+
 
 #########################
 #### BASELINE MODELS ####
@@ -232,16 +252,6 @@ class NaiveContainer(TimeSeriesContainer):
         )
 
     @property
-    def _set_args(self) -> Dict[str, Any]:
-        args: Dict[str, Any] = {}
-        return args
-
-    @property
-    def _set_tune_args(self) -> Dict[str, Any]:
-        tune_args: Dict[str, Any] = {}
-        return tune_args
-
-    @property
     def _set_tune_grid(self) -> Dict[str, List[Any]]:
         tune_grid = {
             "strategy": ["last", "mean", "drift"],
@@ -251,11 +261,6 @@ class NaiveContainer(TimeSeriesContainer):
             "window_length": [None],  # , len(fh)]
         }
         return tune_grid
-
-    @property
-    def _set_tune_distributions(self) -> Dict[str, List[Any]]:
-        tune_distributions: Dict[str, List[Any]] = {}
-        return tune_distributions
 
 
 class SeasonalNaiveContainer(TimeSeriesContainer):
@@ -293,11 +298,6 @@ class SeasonalNaiveContainer(TimeSeriesContainer):
         return args
 
     @property
-    def _set_tune_args(self) -> Dict[str, Any]:
-        tune_args: Dict[str, Any] = {}
-        return tune_args
-
-    @property
     def _set_tune_grid(self) -> Dict[str, List[Any]]:
         if self.seasonality_present:
             tune_grid = {
@@ -316,11 +316,6 @@ class SeasonalNaiveContainer(TimeSeriesContainer):
                 "window_length": [None],  # , len(fh)]
             }
         return tune_grid
-
-    @property
-    def _set_tune_distributions(self) -> Dict[str, List[Any]]:
-        tune_distributions: Dict[str, List[Any]] = {}
-        return tune_distributions
 
 
 class PolyTrendContainer(TimeSeriesContainer):
@@ -347,16 +342,6 @@ class PolyTrendContainer(TimeSeriesContainer):
             tune_args=tune_args,
             is_gpu_enabled=self.gpu_imported,
         )
-
-    @property
-    def _set_args(self) -> Dict[str, Any]:
-        args: Dict[str, Any] = {}
-        return args
-
-    @property
-    def _set_tune_args(self) -> Dict[str, Any]:
-        tune_args: Dict[str, Any] = {}
-        return tune_args
 
     @property
     def _set_tune_grid(self) -> Dict[str, List[Any]]:
@@ -531,6 +516,70 @@ class ArimaContainer(TimeSeriesContainer):
         )
 
 
+class AutoArimaContainer(TimeSeriesContainer):
+    def __init__(self, globals_dict: dict) -> None:
+        logger = get_logger()
+        self.seed = globals_dict["seed"]
+        np.random.seed(self.seed)
+        self.gpu_imported = False
+
+        from sktime.forecasting.arima import AutoARIMA  # type: ignore
+
+        self.seasonality_present = globals_dict.get("seasonality_present")
+        sp = globals_dict.get("seasonal_period")
+        self.sp = sp if sp is not None else 1
+
+        args = self._set_args
+        tune_args = self._set_tune_args
+        tune_grid = self._set_tune_grid
+        tune_distributions = self._set_tune_distributions
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+
+        super().__init__(
+            id="auto_arima",
+            name="Auto Arima",
+            class_def=AutoARIMA,
+            args=args,
+            tune_grid=tune_grid,
+            tune_distribution=tune_distributions,
+            tune_args=tune_args,
+            is_gpu_enabled=self.gpu_imported,
+        )
+
+    @property
+    def _set_args(self) -> Dict[str, Any]:
+        # TODO: Check if there is a formal test for type of seasonality
+        args = {"sp": self.sp} if self.seasonality_present else {}
+        # Add irrespective of whether seasonality is present or not
+        args["random_state"] = self.seed
+        args["suppress_warnings"] = True
+        return args
+
+    @property
+    def _set_tune_grid(self) -> Dict[str, List[Any]]:
+        if self.seasonality_present:
+            # Allow search of p and q till `sp` value
+            tune_grid = {
+                "max_p": [self.sp],
+                "max_q": [self.sp],
+            }
+        else:
+            tune_grid = {}
+        tune_grid["max_order"] = [None]  # don't limit the order of params
+        return tune_grid
+
+    @property
+    def _set_tune_distributions(self) -> Dict[str, List[Any]]:
+        if self.seasonality_present:
+            tune_distributions = {
+                # Auto ARIMA is slow, consider removing 2 * sp
+                "sp": CategoricalDistribution(values=[self.sp, 2 * self.sp]),
+            }
+        else:
+            tune_distributions = {}
+        return tune_distributions
+
+
 class ExponentialSmoothingContainer(TimeSeriesContainer):
     def __init__(self, globals_dict: dict) -> None:
         logger = get_logger()
@@ -570,11 +619,6 @@ class ExponentialSmoothingContainer(TimeSeriesContainer):
         # Add irrespective of whether seasonality is present or not
         args["trend"] = "add"
         return args
-
-    @property
-    def _set_tune_args(self) -> Dict[str, Any]:
-        tune_args: Dict[str, Any] = {}
-        return tune_args
 
     @property
     def _set_tune_grid(self) -> Dict[str, List[Any]]:
@@ -673,11 +717,6 @@ class ETSContainer(TimeSeriesContainer):
         return args
 
     @property
-    def _set_tune_args(self) -> Dict[str, Any]:
-        tune_args: Dict[str, Any] = {}
-        return tune_args
-
-    @property
     def _set_tune_grid(self) -> Dict[str, List[Any]]:
         if self.seasonality_present:
             tune_grid = {
@@ -696,11 +735,6 @@ class ETSContainer(TimeSeriesContainer):
                 "sp": [1],
             }
         return tune_grid
-
-    @property
-    def _set_tune_distributions(self) -> Dict[str, List[Any]]:
-        tune_distributions: Dict[str, List[Any]] = {}
-        return tune_distributions
 
 
 class ThetaContainer(TimeSeriesContainer):
@@ -741,11 +775,6 @@ class ThetaContainer(TimeSeriesContainer):
             {"sp": self.sp, "deseasonalize": True} if self.seasonality_present else {}
         )
         return args
-
-    @property
-    def _set_tune_args(self) -> Dict[str, Any]:
-        tune_args: Dict[str, Any] = {}
-        return tune_args
 
     @property
     def _set_tune_grid(self) -> Dict[str, List[Any]]:
@@ -829,10 +858,6 @@ class TBATSContainer(TimeSeriesContainer):
         return args
 
     @property
-    def _set_tune_args(self) -> dict:
-        return {}
-
-    @property
     def _set_tune_grid(self) -> dict:
         tune_grid = {
             "use_damped_trend": [True, False],
@@ -840,10 +865,6 @@ class TBATSContainer(TimeSeriesContainer):
             "sp": [self.sp],
         }
         return tune_grid
-
-    @property
-    def _set_tune_distributions(self) -> dict:
-        return {}
 
 
 class BATSContainer(TimeSeriesContainer):
@@ -893,10 +914,6 @@ class BATSContainer(TimeSeriesContainer):
         return args
 
     @property
-    def _set_tune_args(self) -> dict:
-        return {}
-
-    @property
     def _set_tune_grid(self) -> dict:
         tune_grid = {
             "use_damped_trend": [True, False],
@@ -904,10 +921,6 @@ class BATSContainer(TimeSeriesContainer):
             "sp": [self.sp],
         }
         return tune_grid
-
-    @property
-    def _set_tune_distributions(self) -> dict:
-        return {}
 
 
 #################################
@@ -1004,21 +1017,6 @@ class CdsDtContainer(TimeSeriesContainer):
     def _set_args(self) -> Dict[str, Any]:
         args: Dict[str, Any] = {"regressor": self.regressor}
         return args
-
-    @property
-    def _set_tune_args(self) -> Dict[str, Any]:
-        tune_args: Dict[str, Any] = {}
-        return tune_args
-
-    @property
-    def _set_tune_grid(self) -> Dict[str, List[Any]]:
-        tune_grid: Dict[str, List[Any]] = {}
-        return tune_grid
-
-    @property
-    def _set_tune_distributions(self) -> Dict[str, List[Any]]:
-        tune_distributions: Dict[str, List[Any]] = {}
-        return tune_distributions
 
 
 # ===============#
