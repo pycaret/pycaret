@@ -6705,7 +6705,7 @@ def plot_model(
             with fit_if_not_fitted(
                 pipeline_with_model, data_X, data_y, groups=groups, **fit_kwargs
             ) as fitted_pipeline_with_model:
-                y_test__ = fitted_pipeline_with_model.predict(X_test)
+                y_test__ = test_y #fitted_pipeline_with_model.predict(X_test)
                 predict_proba__ = fitted_pipeline_with_model.predict_proba(X_test)
             display.move_progress()
             display.move_progress()
@@ -6730,7 +6730,7 @@ def plot_model(
             with fit_if_not_fitted(
                 pipeline_with_model, data_X, data_y, groups=groups, **fit_kwargs
             ) as fitted_pipeline_with_model:
-                y_test__ = fitted_pipeline_with_model.predict(X_test)
+                y_test__ = test_y #fitted_pipeline_with_model.predict(X_test)
                 predict_proba__ = fitted_pipeline_with_model.predict_proba(X_test)
             display.move_progress()
             display.move_progress()
