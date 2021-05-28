@@ -62,7 +62,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         self.variable_keys = self.variable_keys.union(
             {"fh", "seasonal_period", "seasonality_present"}
         )
-        return
 
     def _get_setup_display(self, **kwargs) -> Styler:
         # define highlight function for function grid to display
@@ -793,10 +792,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         """
         MONITOR UPDATE ENDS
         """
-        # TODO: pass metrics dict to cross_validate_ts instead of metrics (also update cross_validate_ts to use scorers directly)
-        # Also change to dict comprehension (for efficiency)
         metrics_dict = dict([(k, v.scorer) for k, v in metrics.items()])
-        # metrics_dict = {k, v.scorer for k, v in metrics.items()}
 
         self.logger.info("Starting cross validation")
 
@@ -812,9 +808,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             fit_kwargs = fh_param
         else:
             fit_kwargs.update(fh_param)
-        # fit_kwargs.update({'actual_estimator__fh': self.fh})
-        # # TODO: Temporarily disabling parallelization for debug (parallelization makes debugging harder)
-        # n_jobs=1
 
         model_fit_start = time.time()
 
@@ -822,7 +815,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             forecaster=clone(model),
             y=data_y,
             X=data_X,
-            scoring=metrics_dict,  # metrics,
+            scoring=metrics_dict,
             cv=cv,
             n_jobs=n_jobs,
             verbose=0,
@@ -834,7 +827,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         model_fit_end = time.time()
         model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
 
-        score_dict = scores
+        score_dict = {v.display_name: scores[f"{k}"] for k, v in metrics.items()}
 
         self.logger.info("Calculating mean and std")
 
@@ -883,10 +876,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         custom_grid: Optional[Union[Dict[str, list], Any]] = None,
         optimize: str = "smape",
         custom_scorer=None,
-        search_library: str = "pycaret",
         search_algorithm: Optional[str] = None,
-        early_stopping: Any = False,
-        early_stopping_max_iters: int = 10,
         choose_better: bool = False,
         fit_kwargs: Optional[dict] = None,
         groups: Optional[Union[str, Any]] = None,
@@ -953,64 +943,10 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             custom metric in the ``optimize`` parameter.
             Will be deprecated in future.
 
-
-        search_library: str, default = 'scikit-learn'
-            The search library used for tuning hyperparameters. Possible values:
-
-            - 'scikit-learn' - default, requires no further installation
-                https://github.com/scikit-learn/scikit-learn
-
-            - 'scikit-optimize' - ``pip install scikit-optimize``
-                https://scikit-optimize.github.io/stable/
-
-            - 'tune-sklearn' - ``pip install tune-sklearn ray[tune]``
-                https://github.com/ray-project/tune-sklearn
-
-            - 'optuna' - ``pip install optuna``
-                https://optuna.org/
-
-
-        search_algorithm: str, default = None
-            The search algorithm depends on the ``search_library`` parameter.
-            Some search algorithms require additional libraries to be installed.
-            If None, will use search library-specific default algorithm.
-
-            - 'scikit-learn' possible values:
+        search_algorithm: str, default = None (defaults to 'random')
+            possible values:
                 - 'random' : random grid search (default)
                 - 'grid' : grid search
-
-            - 'scikit-optimize' possible values:
-                - 'bayesian' : Bayesian search (default)
-
-            - 'tune-sklearn' possible values:
-                - 'random' : random grid search (default)
-                - 'grid' : grid search
-                - 'bayesian' : ``pip install scikit-optimize``
-                - 'hyperopt' : ``pip install hyperopt``
-                - 'bohb' : ``pip install hpbandster ConfigSpace``
-
-            - 'optuna' possible values:
-                - 'random' : randomized search
-                - 'tpe' : Tree-structured Parzen Estimator search (default)
-
-
-        early_stopping: bool or str or object, default = False
-            Use early stopping to stop fitting to a hyperparameter configuration
-            if it performs poorly. Ignored when ``search_library`` is scikit-learn,
-            or if the estimator does not have 'partial_fit' attribute. If False or
-            None, early stopping will not be used. Can be either an object accepted
-            by the search library or one of the following:
-
-            - 'asha' for Asynchronous Successive Halving Algorithm
-            - 'hyperband' for Hyperband
-            - 'median' for Median Stopping Rule
-            - If False or None, early stopping will not be used.
-
-
-        early_stopping_max_iters: int, default = 10
-            Maximum number of epochs to run for each sampled configuration.
-            Ignored if ``early_stopping`` is False or None.
-
 
         choose_better: bool, default = False
             When set to True, the returned object is always better performing. The
@@ -1055,8 +991,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         Only recommended with smaller search spaces that can be defined in the
         ``custom_grid`` parameter.
 
-        - ``search_library`` 'tune-sklearn' does not support GPU models.
-
         """
 
         # return super().tune_model(
@@ -1079,6 +1013,8 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         #     tuner_verbose=tuner_verbose,
         #     **kwargs,
         # )
+
+        search_library = "pycaret"  # only 1 library supported right now
 
         function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
 
@@ -1303,7 +1239,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             return nc
 
         if search_algorithm is None:
-            search_algorithm = "grid"
+            search_algorithm = "random"  # Defaults to Random
 
         if search_algorithm == "grid":
             param_grid = estimator_definition.tune_grid
@@ -1312,7 +1248,9 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         if not param_grid:
             raise ValueError(
-                "parameter grid for tuning is empty. If passing custom_grid, make sure that it is not empty. If not passing custom_grid, the passed estimator does not have a built-in tuning grid."
+                "parameter grid for tuning is empty. If passing custom_grid, "
+                "make sure that it is not empty. If not passing custom_grid, "
+                "the passed estimator does not have a built-in tuning grid."
             )
 
         suffixes = []
@@ -1356,6 +1294,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 n_jobs = self.n_jobs_param
 
             if custom_grid is not None:
+                param_grid = custom_grid
                 self.logger.info(f"custom_grid: {param_grid}")
 
             self.logger.info(f"Tuning with n_jobs={n_jobs}")
