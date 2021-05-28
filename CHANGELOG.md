@@ -2,6 +2,10 @@
 All notable changes to this project will be documented in this file.
 <br/><br/>
 
+#### Release: PyCaret 2.3.2 | Release Date: XX XX, 2021 (SEVERAL BUGS FIXED)
+- `gain` and `lift` plot fixed in `pycaret.classification` module. Previously `y_pred` was passed instead of `y_true`. 
+<br/><br/><br/>
+
 #### Release: PyCaret 2.3.1 | Release Date: April 28, 2021 (SEVERAL BUGS FIXED)
  
 - Fixed an exception with missing variables (display_container etc.) during load_config()
