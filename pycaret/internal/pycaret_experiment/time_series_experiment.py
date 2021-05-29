@@ -442,7 +442,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         )
 
         self.seasonality_present = True if valid_seasonality else False
-        self.freq = data.index.freqstr
 
         return super().setup(
             data=data,
@@ -1440,6 +1439,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         self.logger.info(
             "SubProcess create_model() called =================================="
         )
+
         best_model, model_fit_time = self.create_model(
             estimator=model,
             system=False,

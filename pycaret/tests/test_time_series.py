@@ -146,7 +146,6 @@ def _check_data_for_prophet(mdl_name, data):
     """Convert data index to DatetimeIndex"""
     if mdl_name == "prophet":
         data = data.to_timestamp(freq="M")
-
     return data
 
 
