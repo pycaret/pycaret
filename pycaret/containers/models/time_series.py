@@ -968,20 +968,15 @@ class ProphetContainer(TimeSeriesContainer):
 
     @property
     def _set_tune_grid(self) -> dict:
-        tune_grid = {
-            "seasonality_mode": ['additive', 'multiplicative'],
-            "growth": ['linear'] # 'logistic', cap column should be provided. https://stackoverflow.com/questions/48925255/fbprophet-giving-error-when-growth-logistic-python
-        }
-        return tune_grid
-
+        return {}
     @property
     def _set_tune_distributions(self) -> dict:
         return {
             # Based on https://facebook.github.io/prophet/docs/diagnostics.html#hyperparameter-tuning
-            # Gives a RunTimeError: Cannot clone object Prophet
-            #'changepoint_prior_scale': UniformDistribution(lower=0.01, upper=0.5, log=True),
-            #'seasonality_prior_scale': IntUniformDistribution(lower=1, upper=10),
-            #'holidays_prior_scale': UniformDistribution(lower=0.01, upper=10, log=True)
+            "seasonality_mode": CategoricalDistribution(['additive', 'multiplicative']),
+            'changepoint_prior_scale': UniformDistribution(lower=0.001, upper=0.5, log=True),
+            'seasonality_prior_scale': UniformDistribution(lower=0.01, upper=10, log=True),
+            'holidays_prior_scale': UniformDistribution(lower=0.01, upper=10, log=True)
         }
 
 
