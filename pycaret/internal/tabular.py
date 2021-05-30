@@ -7477,12 +7477,10 @@ def interpret_model(
         logger.info("Compiling shap values")
         shap_values = explainer.shap_values(test_X)
 
-        if len(shap_values) == 2:
-            try:
-                shap_plot = shap.summary_plot(shap_values[1], test_X, show=show, **kwargs)
-            except:
-                shap_plot = shap.summary_plot(shap_values, test_X, show=show, **kwargs)
-        else:
+        try:
+            assert len(shap_values) == 2
+            shap_plot = shap.summary_plot(shap_values[1], test_X, show=show, **kwargs)
+        except Exception:
             shap_plot = shap.summary_plot(shap_values, test_X, show=show, **kwargs)
         
         if save:
