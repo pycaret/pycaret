@@ -7476,7 +7476,13 @@ def interpret_model(
         explainer = shap.TreeExplainer(model)
         logger.info("Compiling shap values")
         shap_values = explainer.shap_values(test_X)
-        shap_plot = shap.summary_plot(shap_values, test_X, show=show, **kwargs)
+
+        try:
+            assert len(shap_values) == 2
+            shap_plot = shap.summary_plot(shap_values[1], test_X, show=show, **kwargs)
+        except Exception:
+            shap_plot = shap.summary_plot(shap_values, test_X, show=show, **kwargs)
+        
         if save:
             plt.savefig(f"SHAP {plot}.png", bbox_inches="tight")
         return shap_plot
