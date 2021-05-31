@@ -968,7 +968,10 @@ class ProphetContainer(TimeSeriesContainer):
 
     @property
     def _set_tune_grid(self) -> dict:
-        return {}
+        return {
+            'growth': ['linear'] # param_grid must not be empty
+        }
+    
     @property
     def _set_tune_distributions(self) -> dict:
         return {
