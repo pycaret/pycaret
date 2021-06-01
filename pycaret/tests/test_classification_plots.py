@@ -56,7 +56,7 @@ def test():
         pycaret.classification.create_model("xgboost"),
     ]
 
-    available_shap = ["summary", "correlation", "reason"]
+    available_shap = ["summary", "correlation", "reason", "pdp"]
 
     for model in models:
         for plot in available_shap:

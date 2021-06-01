@@ -1585,9 +1585,9 @@ def interpret_model(
 ):
 
     """
-    This function analyzes the predictions generated from a tree-based model. It is
-    implemented based on the SHAP (SHapley Additive exPlanations). For more info on
-    this, please see https://shap.readthedocs.io/en/latest/
+    This function analyzes the predictions generated from a trained model. Most plots
+    in this function are implemented based on the SHAP (SHapley Additive exPlanations).
+    For more info on this, please see https://shap.readthedocs.io/en/latest/
 
 
     Example
@@ -1605,13 +1605,18 @@ def interpret_model(
 
 
     plot: str, default = 'summary'
-        Type of plot. Available options are: 'summary', 'correlation', and 'reason'.
+        List of available plots (ID - Name):
+
+        * 'summary' - Summary Plot using SHAP
+        * 'correlation' - Dependence Plot using SHAP
+        * 'reason' - Force Plot using SHAP           
+        * 'pdp' - Partial Dependence Plot
 
 
     feature: str, default = None
         Feature to check correlation with. This parameter is only required when ``plot``
-        type is 'correlation'. When set to None, it uses the first column in the train
-        dataset.
+        type is 'correlation' or 'pdp'. When set to None, it uses the first column from 
+        the dataset.
 
 
     observation: int, default = None

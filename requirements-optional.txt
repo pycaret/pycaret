@@ -1,4 +1,5 @@
 shap
+pdpbox
 tune-sklearn>=0.2.1
 ray[tune]>=1.0.0
 hyperopt
