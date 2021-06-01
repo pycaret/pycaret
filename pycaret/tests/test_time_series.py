@@ -41,13 +41,13 @@ def load_setup(load_data):
     exp = TimeSeriesExperiment()
 
     fh = np.arange(1, 13)
-    fold = 3
+    fold = 2
 
     return exp.setup(
         data=load_data,
         fh=fh,
         fold=fold,
-        fold_strategy="expanding",
+        fold_strategy="sliding",
         verbose=False,
         session_id=42,
     )
@@ -144,14 +144,14 @@ def test_setup_seasonal_period_str(load_data, seasonal_period, seasonal_value):
     exp = TimeSeriesExperiment()
 
     fh = np.arange(1, 13)
-    fold = 3
+    fold = 2
     data = load_data
 
     exp.setup(
         data=data,
         fh=fh,
         fold=fold,
-        fold_strategy="expanding",
+        fold_strategy="sliding",
         verbose=False,
         session_id=42,
         seasonal_period=seasonal_period,
@@ -166,14 +166,14 @@ def test_setup_seasonal_period_int(load_data, seasonal_key, seasonal_value):
     exp = TimeSeriesExperiment()
 
     fh = np.arange(1, 13)
-    fold = 3
+    fold = 2
     data = load_data
 
     exp.setup(
         data=data,
         fh=fh,
         fold=fold,
-        fold_strategy="expanding",
+        fold_strategy="sliding",
         verbose=False,
         seasonal_period=seasonal_value,
     )
@@ -187,9 +187,9 @@ def test_create_model(name, fh, load_data):
     exp = TimeSeriesExperiment()
     exp.setup(
         data=load_data,
-        fold=3,
+        fold=2,
         fh=fh,
-        fold_strategy="expanding",
+        fold_strategy="sliding",
         verbose=False,
     )
     model_obj = exp.create_model(name)
@@ -260,12 +260,12 @@ def test_blend_model_predict(load_setup, load_models):
 def test_tune_model_grid(model, load_data):
     exp = TimeSeriesExperiment()
     fh = 12
-    fold = 3
+    fold = 2
 
-    exp.setup(data=load_data, fold=fold, fh=fh, fold_strategy="expanding")
+    exp.setup(data=load_data, fold=fold, fh=fh, fold_strategy="sliding")
 
     model_obj = exp.create_model(model)
-    tuned_model_obj = exp.tune_model(model_obj)
+    tuned_model_obj = exp.tune_model(model_obj, search_algorithm="grid")
     y_pred = tuned_model_obj.predict()
     assert isinstance(y_pred, pd.Series)
 
@@ -277,14 +277,84 @@ def test_tune_model_grid(model, load_data):
 def test_tune_model_random(model, load_data):
     exp = TimeSeriesExperiment()
     fh = 12
-    fold = 3
+    fold = 2
 
-    exp.setup(data=load_data, fold=fold, fh=fh, fold_strategy="expanding")
+    exp.setup(data=load_data, fold=fold, fh=fh, fold_strategy="sliding")
 
     model_obj = exp.create_model(model)
-    tuned_model_obj = exp.tune_model(model_obj, search_algorithm="random")
+    tuned_model_obj = exp.tune_model(model_obj)  # default search_algorithm = "random"
     y_pred = tuned_model_obj.predict()
     assert isinstance(y_pred, pd.Series)
 
     expected_period_index = load_data.iloc[-fh:].index
     assert np.all(y_pred.index == expected_period_index)
+
+
+def test_tune_custom_grid_and_choose_better(load_data):
+    """Tests
+    (1) passing a custom grid to tune_model, and
+    (2) choose_better=True
+    """
+
+    exp = TimeSeriesExperiment()
+
+    fh = np.arange(1, 13)
+    fold = 2
+    data = load_data
+
+    exp.setup(
+        data=data,
+        fh=fh,
+        fold=fold,
+        fold_strategy="expanding",
+        verbose=False,
+        session_id=42,
+    )
+
+    model = exp.create_model("naive")
+
+    # Custom Grid
+    only_strategy = "mean"
+    custom_grid = {"strategy": [only_strategy]}
+    tuned_model1 = exp.tune_model(model, custom_grid=custom_grid)
+
+    # Choose Better
+    tuned_model2 = exp.tune_model(model, custom_grid=custom_grid, choose_better=True)
+
+    # Different strategy should be picked since grid is limited (verified manually)
+    assert tuned_model1.strategy != model.strategy
+    # should pick only value in custom grid
+    assert tuned_model1.strategy == only_strategy
+    # tuned model does improve score (verified manually), so pick original
+    assert tuned_model2.strategy == model.strategy
+
+
+def test_tune_model_raises(load_data):
+    """Tests conditions that raise an error due to lack of data"""
+
+    exp = TimeSeriesExperiment()
+
+    fh = np.arange(1, 13)
+    fold = 2
+    data = load_data
+
+    exp.setup(
+        data=data,
+        fh=fh,
+        fold=fold,
+        fold_strategy="expanding",
+        verbose=False,
+        session_id=42,
+    )
+
+    model = exp.create_model("naive")
+    with pytest.raises(ValueError) as errmsg:
+        search_algorithm = "wrong_algorithm"
+        _ = exp.tune_model(model, search_algorithm=search_algorithm)
+
+    exceptionmsg = errmsg.value.args[0]
+
+    assert (
+        exceptionmsg
+        == f"`search_algorithm` must be one of 'None, random, grid'. You passed '{search_algorithm}'."
+    )

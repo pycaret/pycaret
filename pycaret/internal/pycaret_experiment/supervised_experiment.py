@@ -135,8 +135,9 @@ class _SupervisedExperiment(_TabularExperiment):
         """
 
         self.logger.info("choose_better activated")
-        display.update_monitor(1, "Compiling Final Results")
-        display.display_monitor()
+        if display is not None:
+            display.update_monitor(1, "Compiling Final Results")
+            display.display_monitor()
 
         if not fit_kwargs:
             fit_kwargs = {}
@@ -147,7 +148,7 @@ class _SupervisedExperiment(_TabularExperiment):
             elif isinstance(x[0], str):
                 models_and_results[i] = (x[1], None)
             elif len(x) != 2:
-                raise ValueError(f"{x} must have lenght 2 but has {len(x)}")
+                raise ValueError(f"{x} must have length 2 but has {len(x)}")
 
         metric = self._get_metric_by_name_or_id(compare_dimension)
 
