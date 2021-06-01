@@ -993,28 +993,17 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         """
 
-        # return super().tune_model(
-        #     estimator=estimator,
-        #     fold=fold,
-        #     round=round,
-        #     n_iter=n_iter,
-        #     custom_grid=custom_grid,
-        #     optimize=optimize,
-        #     custom_scorer=custom_scorer,
-        #     search_library=search_library,
-        #     search_algorithm=search_algorithm,
-        #     early_stopping=early_stopping,
-        #     early_stopping_max_iters=early_stopping_max_iters,
-        #     choose_better=choose_better,
-        #     fit_kwargs=fit_kwargs,
-        #     groups=groups,
-        #     return_tuner=return_tuner,
-        #     verbose=verbose,
-        #     tuner_verbose=tuner_verbose,
-        #     **kwargs,
-        # )
-
         search_library = "pycaret"  # only 1 library supported right now
+
+        _allowed_search_algorithms = []
+        if search_library == "pycaret":
+            _allowed_search_algorithms = [None, "random", "grid"]
+            if search_algorithm not in _allowed_search_algorithms:
+                raise ValueError(
+                    "`search_algorithm` must be one of "
+                    f"'{', '.join(str(allowed_type) for allowed_type in _allowed_search_algorithms)}'. "
+                    f"You passed '{search_algorithm}'."
+                )
 
         function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
 
@@ -1241,10 +1230,12 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         if search_algorithm is None:
             search_algorithm = "random"  # Defaults to Random
 
-        if search_algorithm == "grid":
-            param_grid = estimator_definition.tune_grid
-        elif search_algorithm == "random":
-            param_grid = estimator_definition.tune_distribution
+        param_grid = None
+        if search_library == "pycaret":
+            if search_algorithm == "grid":
+                param_grid = estimator_definition.tune_grid
+            elif search_algorithm == "random":
+                param_grid = estimator_definition.tune_distribution
 
         if not param_grid:
             raise ValueError(
@@ -1318,9 +1309,10 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                         forecaster=model,
                         cv=cv,
                         param_grid=param_grid,
-                        scoring=optimize_dict,  # metrics
+                        scoring=optimize_dict,
                         n_jobs=n_jobs,
                         verbose=tuner_verbose,
+                        refit=False,  # since we will refit afterwards anyway
                         **search_kwargs,
                     )
                 elif search_algorithm == "random":
@@ -1332,10 +1324,11 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                         cv=cv,
                         param_distributions=param_grid,
                         n_iter=n_iter,
-                        scoring=optimize_dict,  # metrics
+                        scoring=optimize_dict,
                         n_jobs=n_jobs,
                         verbose=tuner_verbose,
                         random_state=self.seed,
+                        refit=False,  # since we will refit afterwards anyway
                         **search_kwargs,
                     )
                 else:

@@ -327,3 +327,34 @@ def test_tune_custom_grid_and_choose_better(load_data):
     assert tuned_model1.strategy == only_strategy
     # tuned model does improve score (verified manually), so pick original
     assert tuned_model2.strategy == model.strategy
+
+
+def test_tune_model_raises(load_data):
+    """Tests conditions that raise an error due to lack of data"""
+
+    exp = TimeSeriesExperiment()
+
+    fh = np.arange(1, 13)
+    fold = 2
+    data = load_data
+
+    exp.setup(
+        data=data,
+        fh=fh,
+        fold=fold,
+        fold_strategy="expanding",
+        verbose=False,
+        session_id=42,
+    )
+
+    model = exp.create_model("naive")
+    with pytest.raises(ValueError) as errmsg:
+        search_algorithm = "wrong_algorithm"
+        _ = exp.tune_model(model, search_algorithm=search_algorithm)
+
+    exceptionmsg = errmsg.value.args[0]
+
+    assert (
+        exceptionmsg
+        == f"`search_algorithm` must be one of 'None, random, grid'. You passed '{search_algorithm}'."
+    )
