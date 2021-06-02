@@ -7640,7 +7640,7 @@ def interpret_model(
 
         else:
 
-            logger.warning(
+            logger.info(
                 f"feature value passed. Feature used for correlation plot: {feature}"
             )
             pdp_feature = feature
