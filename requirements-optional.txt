@@ -12,3 +12,4 @@ catboost>=0.23.2
 xgboost>=1.1.0
 #hpbandster
 #ConfigSpace
+#pdpbox

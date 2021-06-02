@@ -7338,15 +7338,15 @@ def interpret_model(
 ):
 
     """
-    This function takes a trained model object and returns an interpretation plot
-    based on the test / hold-out set. It only supports tree based algorithms.
-
-    This function is implemented based on the SHAP (SHapley Additive exPlanations),
-    which is a unified approach to explain the output of any machine learning model.
-    SHAP connects game theory with local explanations.
+    This function takes a trained model object and returns an interpretation plot.
+    Most plots in this function are implemented based on the SHAP (SHapley Additive 
+    exPlanations), which is a unified approach to explain the output of any machine 
+    learning model. SHAP connects game theory with local explanations.
 
     For more information : https://shap.readthedocs.io/en/latest/
 
+    For Partial Dependence Plot : https://github.com/SauceCat/PDPbox
+     
     Example
     -------
     >>> from pycaret.datasets import get_data
@@ -7360,15 +7360,24 @@ def interpret_model(
     Parameters
     ----------
     estimator : object, default = none
-        A trained tree based model object should be passed as an estimator.
+        A trained model object to be passed as an estimator. Only tree-based
+        models are accepted when plot type is 'summary', 'correlation', or 
+        'reason'. 'pdp' plot is model agnostic.   
 
     plot : str, default = 'summary'
-        Other available options are 'correlation' and 'reason'.
+        Enter abbreviation of type of plot. The current list of plots supported 
+        are (Plot - Name):
+
+        * 'summary' - Summary Plot using SHAP
+        * 'correlation' - Dependence Plot using SHAP
+        * 'reason' - Force Plot using SHAP           
+        * 'pdp' - Partial Dependence Plot                
 
     feature: str, default = None
-        This parameter is only needed when plot = 'correlation'. By default feature is
-        set to None which means the first column of the dataset will be used as a
-        variable. A feature parameter must be passed to change this.
+        This parameter is only needed when plot = 'correlation' or 'pdp'. 
+        By default feature is set to None which means the first column of the 
+        dataset will be used as a variable. A feature parameter must be passed 
+        to change this.
 
     observation: integer, default = None
         This parameter only comes into effect when plot is set to 'reason'. If no
@@ -7412,15 +7421,28 @@ def interpret_model(
     import matplotlib.pyplot as plt
 
     # checking if shap available
-    try:
-        import shap
-    except ImportError:
-        logger.error(
-            "shap library not found. pip install shap to use interpret_model function."
-        )
-        raise ImportError(
-            "shap library not found. pip install shap to use interpret_model function."
-        )
+    if plot in ['summary','correlation','reason']:
+        try:
+            import shap
+        except ImportError:
+            logger.error(
+                "shap library not found. pip install shap to use interpret_model function."
+            )
+            raise ImportError(
+                "shap library not found. pip install shap to use interpret_model function."
+            )
+
+    # checking if pdpbox is available
+    if plot == 'pdp':
+        try:
+            import pdpbox
+        except ImportError:
+            logger.error(
+                "pdpbox library not found. pip install pdpbox to generate pdp plot in interpret_model function."
+            )
+            raise ImportError(
+                "pdpbox library not found. pip install pdpbox to generate pdp plot in interpret_model function."
+            )
 
     # get estimator from meta estimator
     estimator = get_estimator_from_meta_estimator(estimator)
@@ -7431,16 +7453,16 @@ def interpret_model(
     shap_models = {k: v for k, v in _all_models_internal.items() if v.shap}
     shap_models_ids = set(shap_models.keys())
 
-    if model_id not in shap_models_ids:
+    if plot in ['summary', 'correlation', 'reason'] and (model_id not in shap_models_ids):
         raise TypeError(
             f"This function only supports tree based models for binary classification: {', '.join(shap_models_ids)}."
         )
 
     # plot type
-    allowed_types = ["summary", "correlation", "reason"]
+    allowed_types = ["summary", "correlation", "reason", "pdp"]
     if plot not in allowed_types:
         raise ValueError(
-            "type parameter only accepts 'summary', 'correlation' or 'reason'."
+            "type parameter only accepts 'summary', 'correlation', 'reason' or 'pdp'."
         )
 
     if X_new_sample is not None and (observation is not None or use_train_data):
@@ -7499,7 +7521,7 @@ def interpret_model(
         else:
 
             logger.warning(
-                f"feature value passed. Feature used for correlation plot: {test_X.columns[0]}"
+                f"feature value passed. Feature used for correlation plot: {feature}"
             )
             dependence = feature
 
@@ -7606,6 +7628,33 @@ def interpret_model(
             shap.save_html(f"SHAP {plot}.html", shap_plot)
         return shap_plot
 
+    def pdp(show: bool = True):
+
+        logger.info("Checking feature parameter passed")
+        if feature == None:
+
+            logger.warning(
+                f"No feature passed. Default value of feature used for pdp : {X_train.columns[0]}"
+            )
+            pdp_feature = X_train.columns[0]
+
+        else:
+
+            logger.info(
+                f"feature value passed. Feature used for correlation plot: {feature}"
+            )
+            pdp_feature = feature
+
+        logger.info("Importing pdf from pdpbox")
+        from pdpbox import pdp
+        logger.info("Creating PDPIsolate Object")
+        pdp_ = pdp.pdp_isolate(model=model, dataset=X_train, model_features=X_train.columns, feature=pdp_feature)
+        logger.info("Creating PDP Plot")
+        fig, axes = pdp.pdp_plot(pdp_, pdp_feature, plot_lines=True, frac_to_plot=100, x_quantile=True, show_percentile=True)
+        
+        if save:
+            plt.savefig(f"PDP {plot}.png", bbox_inches="tight")
+            
     shap_plot = locals()[plot](show=not save)
 
     logger.info("Visual Rendered Successfully")
