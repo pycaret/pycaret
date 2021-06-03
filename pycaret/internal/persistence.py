@@ -140,7 +140,7 @@ def deploy_model(
         # checking if boto3 is available
         try:
             import boto3
-        except:
+        except ModuleNotFoundError:
             logger.error(
                 "boto3 library not found. pip install boto3 to use deploy_model function."
             )
@@ -156,8 +156,8 @@ def deploy_model(
         bucket_name = authentication.get("bucket")
 
         if bucket_name is None:
-            logger.error('S3 bucket name missing. Provide `bucket` as part of authentication parameter')
-            raise ValueError('S3 bucket name missing. Provide `bucket` name as part of authentication parameter')
+            logger.error('S3 bucket name missing. Provide `bucket` as part of authentication parameter.')
+            raise ValueError('S3 bucket name missing. Provide `bucket` name as part of authentication parameter.')
 
         import botocore.exceptions
         try:
@@ -165,7 +165,9 @@ def deploy_model(
         except botocore.exceptions.NoCredentialsError:
             logger.error('Boto3 credentials not configured. Refer boto3 documentation '
                          '(https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html)')
-            raise botocore.exceptions.NoCredentialsError
+            logger.error('Model deployment to AWS S3 failed.')
+            raise ValueError('Boto3 credentials not configured. Refer boto3 documentation '
+                             '(https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html)')
         clear_output()
         os.remove(filename)
         print("Model Successfully Deployed on AWS S3")
@@ -178,7 +180,8 @@ def deploy_model(
 
         try:
             import google.cloud
-        except:
+
+        except ModuleNotFoundError:
             logger.error(
                 "google-cloud-storage library not found. pip install google-cloud-storage to use deploy_model function with GCP."
             )
@@ -212,7 +215,7 @@ def deploy_model(
 
         try:
             import azure.storage.blob
-        except:
+        except ModuleNotFoundError:
             logger.error(
                 "azure-storage-blob library not found. pip install azure-storage-blob to use deploy_model function with Azure."
             )
@@ -397,7 +400,7 @@ def load_model(
         # checking if boto3 is available
         try:
             import boto3
-        except:
+        except ModuleNotFoundError:
             logger.error(
                 "boto3 library not found. pip install boto3 to use deploy_model function."
             )
