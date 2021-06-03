@@ -504,7 +504,14 @@ def _create_bucket_gcp(project_name: str, bucket_name: str):
     # bucket_name = "your-new-bucket-name"
     from google.cloud import storage
 
-    storage_client = storage.Client(project_name)
+    import google.auth.exceptions
+    try:
+        storage_client = storage.Client(project_name)
+    except google.auth.exceptions.DefaultCredentialsError:
+        logger.error('Environment variable GOOGLE_APPLICATION_CREDENTIALS not set. For more information,'
+                     ' please see https://cloud.google.com/docs/authentication/getting-started')
+        raise ValueError('Environment variable GOOGLE_APPLICATION_CREDENTIALS not set. For more information,'
+                         ' please see https://cloud.google.com/docs/authentication/getting-started')
 
     buckets = storage_client.list_buckets()
 
@@ -555,7 +562,15 @@ def _upload_blob_gcp(
     # destination_blob_name = "storage-object-name"
     from google.cloud import storage
 
-    storage_client = storage.Client(project_name)
+    import google.auth.exceptions
+    try:
+        storage_client = storage.Client(project_name)
+    except google.auth.exceptions.DefaultCredentialsError:
+        logger.error('Environment variable GOOGLE_APPLICATION_CREDENTIALS not set. For more information,'
+                     ' please see https://cloud.google.com/docs/authentication/getting-started')
+        raise ValueError('Environment variable GOOGLE_APPLICATION_CREDENTIALS not set. For more information,'
+                         ' please see https://cloud.google.com/docs/authentication/getting-started')
+
     bucket = storage_client.bucket(bucket_name)
     blob = bucket.blob(destination_blob_name)
 
@@ -605,8 +620,15 @@ def _download_blob_gcp(
     # source_blob_name = "storage-object-name"
     # destination_file_name = "local/path/to/file"
     from google.cloud import storage
+    import google.auth.exceptions
 
-    storage_client = storage.Client(project_name)
+    try:
+        storage_client = storage.Client(project_name)
+    except google.auth.exceptions.DefaultCredentialsError:
+        logger.error('Environment variable GOOGLE_APPLICATION_CREDENTIALS not set. For more information,'
+                     ' please see https://cloud.google.com/docs/authentication/getting-started')
+        raise ValueError('Environment variable GOOGLE_APPLICATION_CREDENTIALS not set. For more information,'
+                         ' please see https://cloud.google.com/docs/authentication/getting-started')
 
     bucket = storage_client.bucket(bucket_name)
     blob = bucket.blob(source_blob_name)
