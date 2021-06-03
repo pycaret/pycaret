@@ -141,15 +141,15 @@ def deploy_model(
 
         logger.info("Platform : AWS S3")
 
-        # checking if awscli available
+        # checking if boto3 is available
         try:
-            import awscli
+            import boto3
         except:
             logger.error(
                 "awscli library not found. pip install awscli to use deploy_model function."
             )
             raise ImportError(
-                "awscli library not found. pip install awscli to use deploy_model function."
+                "boto3 library not found. pip install boto3 to use deploy_model function."
             )
 
         import boto3
