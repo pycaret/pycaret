@@ -1796,20 +1796,22 @@ def deploy_model(
     >>> from pycaret.regression import *
     >>> exp_name = setup(data = boston,  target = 'medv')
     >>> lr = create_model('lr')
+    >>> # sets appropriate credentials for the platform as environment variables
+    >>> import os
+    >>> os.environ["AWS_ACCESS_KEY_ID"] = str("foo")
+    >>> os.environ["AWS_SECRET_ACCESS_KEY"] = str("bar")
     >>> deploy_model(model = lr, model_name = 'lr-for-deployment', platform = 'aws', authentication = {'bucket' : 'S3-bucket-name'})
         
 
     Amazon Web Service (AWS) users:
-        To deploy a model on AWS S3 ('aws'), environment variables must be set in your
-        local environment. To configure AWS environment variables, type ``aws configure`` 
-        in the command line. Following information from the IAM portal of amazon console 
-        account is required:
+        To deploy a model on AWS S3 ('aws'), the credentials have to be passed. The easiest way is to use environment
+        variables in your local environment. Following information from the IAM portal of amazon console account
+        are required:
 
         - AWS Access Key ID
         - AWS Secret Key Access
-        - Default Region Name (can be seen under Global settings on your AWS console)
 
-        More info: https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-envvars.html
+        More info: https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html#environment-variables
 
 
     Google Cloud Platform (GCP) users:
@@ -1824,7 +1826,9 @@ def deploy_model(
     Microsoft Azure (Azure) users:
         To deploy a model on Microsoft Azure ('azure'), environment variables for connection
         string must be set in your local environment. Go to settings of storage account on
-        Azure portal to access the connection string required. 
+        Azure portal to access the connection string required.
+
+        - AZURE_STORAGE_CONNECTION_STRING (required as environment variable)
 
         More info: https://docs.microsoft.com/en-us/azure/storage/blobs/storage-quickstart-blobs-python?toc=%2Fpython%2Fazure%2FTOC.json
 

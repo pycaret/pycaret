@@ -4,98 +4,93 @@
 # Release: PyCaret 2.2.0
 # Last modified : 25/10/2020
 
+import warnings
+from typing import List, Tuple, Any, Union, Optional, Dict
+
 import pandas as pd
-import numpy as np
 
 import pycaret.internal.tabular
-from pycaret.internal.Display import Display, is_in_colab, enable_colab
-from typing import List, Tuple, Any, Union, Optional, Dict
-import warnings
-from IPython.utils import io
-import traceback
-
 from pycaret.internal.tabular import MLUsecase
 
 warnings.filterwarnings("ignore")
 
 
 def setup(
-    data: pd.DataFrame,
-    target: str,
-    train_size: float = 0.7,
-    test_data: Optional[pd.DataFrame] = None,
-    preprocess: bool = True,
-    imputation_type: str = "simple",
-    iterative_imputation_iters: int = 5,
-    categorical_features: Optional[List[str]] = None,
-    categorical_imputation: str = "constant",
-    categorical_iterative_imputer: Union[str, Any] = "lightgbm",
-    ordinal_features: Optional[Dict[str, list]] = None,
-    high_cardinality_features: Optional[List[str]] = None,
-    high_cardinality_method: str = "frequency",
-    numeric_features: Optional[List[str]] = None,
-    numeric_imputation: str = "mean",
-    numeric_iterative_imputer: Union[str, Any] = "lightgbm",
-    date_features: Optional[List[str]] = None,
-    ignore_features: Optional[List[str]] = None,
-    normalize: bool = False,
-    normalize_method: str = "zscore",
-    transformation: bool = False,
-    transformation_method: str = "yeo-johnson",
-    handle_unknown_categorical: bool = True,
-    unknown_categorical_method: str = "least_frequent",
-    pca: bool = False,
-    pca_method: str = "linear",
-    pca_components: Optional[float] = None,
-    ignore_low_variance: bool = False,
-    combine_rare_levels: bool = False,
-    rare_level_threshold: float = 0.10,
-    bin_numeric_features: Optional[List[str]] = None,
-    remove_outliers: bool = False,
-    outliers_threshold: float = 0.05,
-    remove_multicollinearity: bool = False,
-    multicollinearity_threshold: float = 0.9,
-    remove_perfect_collinearity: bool = True,
-    create_clusters: bool = False,
-    cluster_iter: int = 20,
-    polynomial_features: bool = False,
-    polynomial_degree: int = 2,
-    trigonometry_features: bool = False,
-    polynomial_threshold: float = 0.1,
-    group_features: Optional[List[str]] = None,
-    group_names: Optional[List[str]] = None,
-    feature_selection: bool = False,
-    feature_selection_threshold: float = 0.8,
-    feature_selection_method: str = "classic",
-    feature_interaction: bool = False,
-    feature_ratio: bool = False,
-    interaction_threshold: float = 0.01,
-    fix_imbalance: bool = False,
-    fix_imbalance_method: Optional[Any] = None,
-    data_split_shuffle: bool = True,
-    data_split_stratify: Union[bool, List[str]] = False,
-    fold_strategy: Union[str, Any] = "stratifiedkfold",
-    fold: int = 10,
-    fold_shuffle: bool = False,
-    fold_groups: Optional[Union[str, pd.DataFrame]] = None,
-    n_jobs: Optional[int] = -1,
-    use_gpu: bool = False,
-    custom_pipeline: Union[
-        Any, Tuple[str, Any], List[Any], List[Tuple[str, Any]]
-    ] = None,
-    html: bool = True,
-    session_id: Optional[int] = None,
-    log_experiment: bool = False,
-    experiment_name: Optional[str] = None,
-    log_plots: Union[bool, list] = False,
-    log_profile: bool = False,
-    log_data: bool = False,
-    silent: bool = False,
-    verbose: bool = True,
-    profile: bool = False,
-    profile_kwargs: Dict[str, Any] = None,
+        data: pd.DataFrame,
+        target: str,
+        train_size: float = 0.7,
+        test_data: Optional[pd.DataFrame] = None,
+        preprocess: bool = True,
+        imputation_type: str = "simple",
+        iterative_imputation_iters: int = 5,
+        categorical_features: Optional[List[str]] = None,
+        categorical_imputation: str = "constant",
+        categorical_iterative_imputer: Union[str, Any] = "lightgbm",
+        ordinal_features: Optional[Dict[str, list]] = None,
+        high_cardinality_features: Optional[List[str]] = None,
+        high_cardinality_method: str = "frequency",
+        numeric_features: Optional[List[str]] = None,
+        numeric_imputation: str = "mean",
+        numeric_iterative_imputer: Union[str, Any] = "lightgbm",
+        date_features: Optional[List[str]] = None,
+        ignore_features: Optional[List[str]] = None,
+        normalize: bool = False,
+        normalize_method: str = "zscore",
+        transformation: bool = False,
+        transformation_method: str = "yeo-johnson",
+        handle_unknown_categorical: bool = True,
+        unknown_categorical_method: str = "least_frequent",
+        pca: bool = False,
+        pca_method: str = "linear",
+        pca_components: Optional[float] = None,
+        ignore_low_variance: bool = False,
+        combine_rare_levels: bool = False,
+        rare_level_threshold: float = 0.10,
+        bin_numeric_features: Optional[List[str]] = None,
+        remove_outliers: bool = False,
+        outliers_threshold: float = 0.05,
+        remove_multicollinearity: bool = False,
+        multicollinearity_threshold: float = 0.9,
+        remove_perfect_collinearity: bool = True,
+        create_clusters: bool = False,
+        cluster_iter: int = 20,
+        polynomial_features: bool = False,
+        polynomial_degree: int = 2,
+        trigonometry_features: bool = False,
+        polynomial_threshold: float = 0.1,
+        group_features: Optional[List[str]] = None,
+        group_names: Optional[List[str]] = None,
+        feature_selection: bool = False,
+        feature_selection_threshold: float = 0.8,
+        feature_selection_method: str = "classic",
+        feature_interaction: bool = False,
+        feature_ratio: bool = False,
+        interaction_threshold: float = 0.01,
+        fix_imbalance: bool = False,
+        fix_imbalance_method: Optional[Any] = None,
+        data_split_shuffle: bool = True,
+        data_split_stratify: Union[bool, List[str]] = False,
+        fold_strategy: Union[str, Any] = "stratifiedkfold",
+        fold: int = 10,
+        fold_shuffle: bool = False,
+        fold_groups: Optional[Union[str, pd.DataFrame]] = None,
+        n_jobs: Optional[int] = -1,
+        use_gpu: bool = False,
+        custom_pipeline: Union[
+            Any, Tuple[str, Any], List[Any], List[Tuple[str, Any]]
+        ] = None,
+        html: bool = True,
+        session_id: Optional[int] = None,
+        log_experiment: bool = False,
+        experiment_name: Optional[str] = None,
+        log_plots: Union[bool, list] = False,
+        log_profile: bool = False,
+        log_data: bool = False,
+        silent: bool = False,
+        verbose: bool = True,
+        profile: bool = False,
+        profile_kwargs: Dict[str, Any] = None,
 ):
-
     """
     This function initializes the training environment and creates the transformation 
     pipeline. Setup function must be called before executing any other function. It takes 
@@ -656,21 +651,20 @@ def setup(
 
 
 def compare_models(
-    include: Optional[List[Union[str, Any]]] = None,
-    exclude: Optional[List[str]] = None,
-    fold: Optional[Union[int, Any]] = None,
-    round: int = 4,
-    cross_validation: bool = True,
-    sort: str = "Accuracy",
-    n_select: int = 1,
-    budget_time: Optional[float] = None,
-    turbo: bool = True,
-    errors: str = "ignore",
-    fit_kwargs: Optional[dict] = None,
-    groups: Optional[Union[str, Any]] = None,
-    verbose: bool = True,
+        include: Optional[List[Union[str, Any]]] = None,
+        exclude: Optional[List[str]] = None,
+        fold: Optional[Union[int, Any]] = None,
+        round: int = 4,
+        cross_validation: bool = True,
+        sort: str = "Accuracy",
+        n_select: int = 1,
+        budget_time: Optional[float] = None,
+        turbo: bool = True,
+        errors: str = "ignore",
+        fit_kwargs: Optional[dict] = None,
+        groups: Optional[Union[str, Any]] = None,
+        verbose: bool = True,
 ) -> Union[Any, List[Any]]:
-
     """
     This function trains and evaluates performance of all estimators available in the 
     model library using cross validation. The output of this function is a score grid 
@@ -786,17 +780,16 @@ def compare_models(
 
 
 def create_model(
-    estimator: Union[str, Any],
-    fold: Optional[Union[int, Any]] = None,
-    round: int = 4,
-    cross_validation: bool = True,
-    fit_kwargs: Optional[dict] = None,
-    groups: Optional[Union[str, Any]] = None,
-    verbose: bool = True,
-    **kwargs,
+        estimator: Union[str, Any],
+        fold: Optional[Union[int, Any]] = None,
+        round: int = 4,
+        cross_validation: bool = True,
+        fit_kwargs: Optional[dict] = None,
+        groups: Optional[Union[str, Any]] = None,
+        verbose: bool = True,
+        **kwargs,
 ) -> Any:
-
-    """  
+    """
     This function trains and evaluates the performance of a given estimator 
     using cross validation. The output of this function is a score grid with 
     CV scores by fold. Metrics evaluated during CV can be accessed using the 
@@ -899,26 +892,25 @@ def create_model(
 
 
 def tune_model(
-    estimator,
-    fold: Optional[Union[int, Any]] = None,
-    round: int = 4,
-    n_iter: int = 10,
-    custom_grid: Optional[Union[Dict[str, list], Any]] = None,
-    optimize: str = "Accuracy",
-    custom_scorer=None,
-    search_library: str = "scikit-learn",
-    search_algorithm: Optional[str] = None,
-    early_stopping: Any = False,
-    early_stopping_max_iters: int = 10,
-    choose_better: bool = False,
-    fit_kwargs: Optional[dict] = None,
-    groups: Optional[Union[str, Any]] = None,
-    return_tuner: bool = False,
-    verbose: bool = True,
-    tuner_verbose: Union[int, bool] = True,
-    **kwargs,
+        estimator,
+        fold: Optional[Union[int, Any]] = None,
+        round: int = 4,
+        n_iter: int = 10,
+        custom_grid: Optional[Union[Dict[str, list], Any]] = None,
+        optimize: str = "Accuracy",
+        custom_scorer=None,
+        search_library: str = "scikit-learn",
+        search_algorithm: Optional[str] = None,
+        early_stopping: Any = False,
+        early_stopping_max_iters: int = 10,
+        choose_better: bool = False,
+        fit_kwargs: Optional[dict] = None,
+        groups: Optional[Union[str, Any]] = None,
+        return_tuner: bool = False,
+        verbose: bool = True,
+        tuner_verbose: Union[int, bool] = True,
+        **kwargs,
 ) -> Any:
-
     """
     This function tunes the hyperparameters of a given estimator. The output of
     this function is a score grid with CV scores by fold of the best selected 
@@ -1104,19 +1096,18 @@ def tune_model(
 
 
 def ensemble_model(
-    estimator,
-    method: str = "Bagging",
-    fold: Optional[Union[int, Any]] = None,
-    n_estimators: int = 10,
-    round: int = 4,
-    choose_better: bool = False,
-    optimize: str = "Accuracy",
-    fit_kwargs: Optional[dict] = None,
-    groups: Optional[Union[str, Any]] = None,
-    verbose: bool = True,
+        estimator,
+        method: str = "Bagging",
+        fold: Optional[Union[int, Any]] = None,
+        n_estimators: int = 10,
+        round: int = 4,
+        choose_better: bool = False,
+        optimize: str = "Accuracy",
+        fit_kwargs: Optional[dict] = None,
+        groups: Optional[Union[str, Any]] = None,
+        verbose: bool = True,
 ) -> Any:
-
-    """  
+    """
     This function ensembles a given estimator. The output of this function is 
     a score grid with CV scores by fold. Metrics evaluated during CV can be 
     accessed using the ``get_metrics`` function. Custom metrics can be added
@@ -1207,18 +1198,17 @@ def ensemble_model(
 
 
 def blend_models(
-    estimator_list: list,
-    fold: Optional[Union[int, Any]] = None,
-    round: int = 4,
-    choose_better: bool = False,
-    optimize: str = "Accuracy",
-    method: str = "auto",
-    weights: Optional[List[float]] = None,
-    fit_kwargs: Optional[dict] = None,
-    groups: Optional[Union[str, Any]] = None,
-    verbose: bool = True,
+        estimator_list: list,
+        fold: Optional[Union[int, Any]] = None,
+        round: int = 4,
+        choose_better: bool = False,
+        optimize: str = "Accuracy",
+        method: str = "auto",
+        weights: Optional[List[float]] = None,
+        fit_kwargs: Optional[dict] = None,
+        groups: Optional[Union[str, Any]] = None,
+        verbose: bool = True,
 ) -> Any:
-
     """
     This function trains a Soft Voting / Majority Rule classifier for select
     models passed in the ``estimator_list`` param. The output of this function 
@@ -1310,19 +1300,18 @@ def blend_models(
 
 
 def stack_models(
-    estimator_list: list,
-    meta_model=None,
-    fold: Optional[Union[int, Any]] = None,
-    round: int = 4,
-    method: str = "auto",
-    restack: bool = True,
-    choose_better: bool = False,
-    optimize: str = "Accuracy",
-    fit_kwargs: Optional[dict] = None,
-    groups: Optional[Union[str, Any]] = None,
-    verbose: bool = True,
+        estimator_list: list,
+        meta_model=None,
+        fold: Optional[Union[int, Any]] = None,
+        round: int = 4,
+        method: str = "auto",
+        restack: bool = True,
+        choose_better: bool = False,
+        optimize: str = "Accuracy",
+        fit_kwargs: Optional[dict] = None,
+        groups: Optional[Union[str, Any]] = None,
+        verbose: bool = True,
 ) -> Any:
-
     """
     This function trains a meta model over select estimators passed in 
     the ``estimator_list`` parameter. The output of this function is a 
@@ -1424,18 +1413,17 @@ def stack_models(
 
 
 def plot_model(
-    estimator,
-    plot: str = "auc",
-    scale: float = 1,
-    save: bool = False,
-    fold: Optional[Union[int, Any]] = None,
-    fit_kwargs: Optional[dict] = None,
-    groups: Optional[Union[str, Any]] = None,
-    use_train_data: bool = False,
-    verbose: bool = True,
-    display_format: Optional[str] = None,
+        estimator,
+        plot: str = "auc",
+        scale: float = 1,
+        save: bool = False,
+        fold: Optional[Union[int, Any]] = None,
+        fit_kwargs: Optional[dict] = None,
+        groups: Optional[Union[str, Any]] = None,
+        use_train_data: bool = False,
+        verbose: bool = True,
+        display_format: Optional[str] = None,
 ) -> str:
-
     """
     This function analyzes the performance of a trained model on holdout set. 
     It may require re-training the model in certain cases.
@@ -1551,13 +1539,12 @@ def plot_model(
 
 
 def evaluate_model(
-    estimator,
-    fold: Optional[Union[int, Any]] = None,
-    fit_kwargs: Optional[dict] = None,
-    groups: Optional[Union[str, Any]] = None,
-    use_train_data: bool = False,
+        estimator,
+        fold: Optional[Union[int, Any]] = None,
+        fit_kwargs: Optional[dict] = None,
+        groups: Optional[Union[str, Any]] = None,
+        use_train_data: bool = False,
 ):
-
     """
     This function displays a user interface for analyzing performance of a trained
     model. It calls the ``plot_model`` function internally. 
@@ -1620,17 +1607,16 @@ def evaluate_model(
 
 
 def interpret_model(
-    estimator,
-    plot: str = "summary",
-    feature: Optional[str] = None,
-    observation: Optional[int] = None,
-    use_train_data: bool = False,
-    X_new_sample: Optional[pd.DataFrame] = None,
-    save: bool = False,
-    **kwargs,
+        estimator,
+        plot: str = "summary",
+        feature: Optional[str] = None,
+        observation: Optional[int] = None,
+        use_train_data: bool = False,
+        X_new_sample: Optional[pd.DataFrame] = None,
+        save: bool = False,
+        **kwargs,
 ):
-
-    """ 
+    """
     This function analyzes the predictions generated from a trained model. Most plots
     in this function are implemented based on the SHAP (SHapley Additive exPlanations).
     For more info on this, please see https://shap.readthedocs.io/en/latest/
@@ -1707,16 +1693,15 @@ def interpret_model(
 
 
 def calibrate_model(
-    estimator,
-    method: str = "sigmoid",
-    fold: Optional[Union[int, Any]] = None,
-    round: int = 4,
-    fit_kwargs: Optional[dict] = None,
-    groups: Optional[Union[str, Any]] = None,
-    verbose: bool = True,
+        estimator,
+        method: str = "sigmoid",
+        fold: Optional[Union[int, Any]] = None,
+        round: int = 4,
+        fit_kwargs: Optional[dict] = None,
+        groups: Optional[Union[str, Any]] = None,
+        verbose: bool = True,
 ) -> Any:
-
-    """  
+    """
     This function calibrates the probability of a given estimator using isotonic
     or logistic regression. The output of this function is a score grid with CV 
     scores by fold. Metrics evaluated during CV can be accessed using the 
@@ -1792,13 +1777,12 @@ def calibrate_model(
 
 
 def optimize_threshold(
-    estimator,
-    true_positive: int = 0,
-    true_negative: int = 0,
-    false_positive: int = 0,
-    false_negative: int = 0,
+        estimator,
+        true_positive: int = 0,
+        true_negative: int = 0,
+        false_positive: int = 0,
+        false_negative: int = 0,
 ):
-
     """
     This function optimizes probability threshold for a given estimator using 
     custom cost function. The function displays a plot of optimized cost as a
@@ -1856,15 +1840,14 @@ def optimize_threshold(
 
 
 def predict_model(
-    estimator,
-    data: Optional[pd.DataFrame] = None,
-    probability_threshold: Optional[float] = None,
-    encoded_labels: bool = False,
-    raw_score: bool = False,
-    round: int = 4,
-    verbose: bool = True,
+        estimator,
+        data: Optional[pd.DataFrame] = None,
+        probability_threshold: Optional[float] = None,
+        encoded_labels: bool = False,
+        raw_score: bool = False,
+        round: int = 4,
+        verbose: bool = True,
 ) -> pd.DataFrame:
-
     """
     This function predicts ``Label`` and ``Score`` (probability of predicted 
     class) using a trained model. When ``data`` is None, it predicts label and 
@@ -1939,12 +1922,11 @@ def predict_model(
 
 
 def finalize_model(
-    estimator,
-    fit_kwargs: Optional[dict] = None,
-    groups: Optional[Union[str, Any]] = None,
-    model_only: bool = True,
+        estimator,
+        fit_kwargs: Optional[dict] = None,
+        groups: Optional[Union[str, Any]] = None,
+        model_only: bool = True,
 ) -> Any:
-
     """
     This function trains a given estimator on the entire dataset including the 
     holdout set. 
@@ -1994,9 +1976,8 @@ def finalize_model(
 
 
 def deploy_model(
-    model, model_name: str, authentication: dict, platform: str = "aws",
+        model, model_name: str, authentication: dict, platform: str = "aws",
 ):
-
     """
     This function deploys the transformation pipeline and trained model on cloud.
     
@@ -2008,46 +1989,50 @@ def deploy_model(
     >>> from pycaret.classification import *
     >>> exp_name = setup(data = juice,  target = 'Purchase')
     >>> lr = create_model('lr')
+    >>> # sets appropriate credentials for the platform as environment variables
+    >>> import os
+    >>> os.environ["AWS_ACCESS_KEY_ID"] = str("foo")
+    >>> os.environ["AWS_SECRET_ACCESS_KEY"] = str("bar")
     >>> deploy_model(model = lr, model_name = 'lr-for-deployment', platform = 'aws', authentication = {'bucket' : 'S3-bucket-name'})
         
 
     Amazon Web Service (AWS) users:
-        To deploy a model on AWS S3 ('aws'), environment variables must be set in your
-        local environment. To configure AWS environment variables, type ``aws configure`` 
-        in the command line. Following information from the IAM portal of amazon console 
-        account is required:
+        To deploy a model on AWS S3 ('aws'), the credentials have to be passed. The easiest way is to use environment
+        variables in your local environment. Following information from the IAM portal of amazon console account
+        are required:
 
         - AWS Access Key ID
         - AWS Secret Key Access
-        - Default Region Name (can be seen under Global settings on your AWS console)
 
-        More info: https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-envvars.html
+        More info: https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html#environment-variables
 
 
     Google Cloud Platform (GCP) users:
-        To deploy a model on Google Cloud Platform ('gcp'), project must be created 
-        using command line or GCP console. Once project is created, you must create 
-        a service account and download the service account key as a JSON file to set 
-        environment variables in your local environment. 
+        To deploy a model on Google Cloud Platform ('gcp'), project must be created
+        using command line or GCP console. Once project is created, you must create
+        a service account and download the service account key as a JSON file to set
+        environment variables in your local environment.
 
         More info: https://cloud.google.com/docs/authentication/production
 
-    
+
     Microsoft Azure (Azure) users:
         To deploy a model on Microsoft Azure ('azure'), environment variables for connection
         string must be set in your local environment. Go to settings of storage account on
-        Azure portal to access the connection string required. 
+        Azure portal to access the connection string required.
+
+        - AZURE_STORAGE_CONNECTION_STRING (required as environment variable)
 
         More info: https://docs.microsoft.com/en-us/azure/storage/blobs/storage-quickstart-blobs-python?toc=%2Fpython%2Fazure%2FTOC.json
 
 
     model: scikit-learn compatible object
         Trained model object
-    
+
 
     model_name: str
         Name of model.
-    
+
 
     authentication: dict
         Dictionary of applicable authentication tokens.
@@ -2060,11 +2045,11 @@ def deploy_model(
 
         When platform = 'azure':
         {'container': 'azure-container-name'}
-    
+
 
     platform: str, default = 'aws'
-        Name of the cloud platform. Currently supported platforms: 'aws', 'gcp' and 'azure'.
-    
+        Name of the platform. Currently supported platforms: 'aws', 'gcp' and 'azure'.
+
 
     Returns:
         None
@@ -2080,9 +2065,8 @@ def deploy_model(
 
 
 def save_model(
-    model, model_name: str, model_only: bool = False, verbose: bool = True, **kwargs
+        model, model_name: str, model_only: bool = False, verbose: bool = True, **kwargs
 ):
-
     """
     This function saves the transformation pipeline and trained model object 
     into the current working directory as a pickle file for later use. 
@@ -2133,12 +2117,11 @@ def save_model(
 
 
 def load_model(
-    model_name,
-    platform: Optional[str] = None,
-    authentication: Optional[Dict[str, str]] = None,
-    verbose: bool = True,
+        model_name,
+        platform: Optional[str] = None,
+        authentication: Optional[Dict[str, str]] = None,
+        verbose: bool = True,
 ):
-
     """
     This function loads a previously saved pipeline.
     
@@ -2189,8 +2172,7 @@ def load_model(
 
 
 def automl(optimize: str = "Accuracy", use_holdout: bool = False) -> Any:
-
-    """ 
+    """
     This function returns the best model out of all trained models in
     current session based on the ``optimize`` parameter. Metrics
     evaluated can be accessed using the ``get_metrics`` function. 
@@ -2226,8 +2208,7 @@ def automl(optimize: str = "Accuracy", use_holdout: bool = False) -> Any:
 
 
 def pull(pop: bool = False) -> pd.DataFrame:
-
-    """  
+    """
     Returns last printed score grid. Use ``pull`` function after
     any training function to store the score grid in pandas.DataFrame.
 
@@ -2245,9 +2226,8 @@ def pull(pop: bool = False) -> pd.DataFrame:
 
 
 def models(
-    type: Optional[str] = None, internal: bool = False, raise_errors: bool = True,
+        type: Optional[str] = None, internal: bool = False, raise_errors: bool = True,
 ) -> pd.DataFrame:
-
     """
     Returns table of models available in the model library.
 
@@ -2285,9 +2265,8 @@ def models(
 
 
 def get_metrics(
-    reset: bool = False, include_custom: bool = True, raise_errors: bool = True,
+        reset: bool = False, include_custom: bool = True, raise_errors: bool = True,
 ) -> pd.DataFrame:
-
     """
     Returns table of available metrics used for CV.
 
@@ -2326,16 +2305,15 @@ def get_metrics(
 
 
 def add_metric(
-    id: str,
-    name: str,
-    score_func: type,
-    target: str = "pred",
-    greater_is_better: bool = True,
-    multiclass: bool = True,
-    **kwargs,
+        id: str,
+        name: str,
+        score_func: type,
+        target: str = "pred",
+        greater_is_better: bool = True,
+        multiclass: bool = True,
+        **kwargs,
 ) -> pd.Series:
-
-    """ 
+    """
     Adds a custom metric to be used for CV.
 
 
@@ -2398,8 +2376,7 @@ def add_metric(
 
 
 def remove_metric(name_or_id: str):
-
-    """  
+    """
     Removes a metric from CV.
 
 
@@ -2424,7 +2401,6 @@ def remove_metric(name_or_id: str):
 
 
 def get_logs(experiment_name: Optional[str] = None, save: bool = False) -> pd.DataFrame:
-
     """
     Returns a table of experiment logs. Only works when ``log_experiment``
     is True when initializing the ``setup`` function.
@@ -2457,7 +2433,6 @@ def get_logs(experiment_name: Optional[str] = None, save: bool = False) -> pd.Da
 
 
 def get_config(variable: str):
-
     """
     This function retrieves the global variables created when initializing the 
     ``setup`` function. Following variables are accessible:
@@ -2509,7 +2484,6 @@ def get_config(variable: str):
 
 
 def set_config(variable: str, value):
-
     """
     This function resets the global variables. Following variables are 
     accessible:
@@ -2560,7 +2534,6 @@ def set_config(variable: str, value):
 
 
 def save_config(file_name: str):
-
     """
     This function save all global variables to a pickle file, allowing to
     later resume without rerunning the ``setup``.
@@ -2584,7 +2557,6 @@ def save_config(file_name: str):
 
 
 def load_config(file_name: str):
-
     """
     This function loads global variables from a pickle file into Python
     environment.
