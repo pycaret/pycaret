@@ -38,16 +38,16 @@ def deploy_model(
     For GCP users:
     --------------
     Before deploying a model to Google Cloud Platform (GCP), user has to create Project
-    on the platform from consol. To do that, user must have google cloud account or
-    create new one. After creating a service account, down the JSON authetication file
+    on the platform from console. To do that, user must have google cloud account or
+    create new one. After creating a service account, down the JSON authentication file
     and configure  GOOGLE_APPLICATION_CREDENTIALS= <path-to-json> from command line. If
-    using google-colab then authetication can be done using `google.colab` auth method.
+    using google-colab then authentication can be done using `google.colab` auth method.
     Read below link for more details.
 
     https://cloud.google.com/docs/authentication/production
 
     - Google Cloud Project
-    - Service Account Authetication
+    - Service Account Authentication
 
     For Azure users:
     ---------------
@@ -163,8 +163,8 @@ def deploy_model(
         s3.upload_file(filename, bucket_name, key)
         clear_output()
         os.remove(filename)
-        print("Model Succesfully Deployed on AWS S3")
-        logger.info("Model Succesfully Deployed on AWS S3")
+        print("Model Successfully Deployed on AWS S3")
+        logger.info("Model Successfully Deployed on AWS S3")
         logger.info(str(model))
 
     elif platform == "gcp":
@@ -192,8 +192,8 @@ def deploy_model(
         except:
             _upload_blob_gcp(project_name, bucket_name, filename, key)
         os.remove(filename)
-        print("Model Succesfully Deployed on GCP")
-        logger.info("Model Succesfully Deployed on GCP")
+        print("Model Successfully Deployed on GCP")
+        logger.info("Model Successfully Deployed on GCP")
         logger.info(str(model))
 
     elif platform == "azure":
@@ -223,12 +223,12 @@ def deploy_model(
 
         os.remove(filename)
 
-        print("Model Succesfully Deployed on Azure Storage Blob")
-        logger.info("Model Succesfully Deployed on Azure Storage Blob")
+        print("Model Successfully Deployed on Azure Storage Blob")
+        logger.info("Model Successfully Deployed on Azure Storage Blob")
         logger.info(str(model))
 
     logger.info(
-        "deploy_model() succesfully completed......................................"
+        "deploy_model() successfully completed......................................"
     )
     gc.collect()
 
@@ -294,12 +294,12 @@ def save_model(model, model_name: str, prep_pipe_=None, verbose: bool = True, **
     model_name = f"{model_name}.pkl"
     joblib.dump(model_, model_name, **kwargs)
     if verbose:
-        print("Transformation Pipeline and Model Succesfully Saved")
+        print("Transformation Pipeline and Model Successfully Saved")
 
     logger.info(f"{model_name} saved in current working directory")
     logger.info(str(model_))
     logger.info(
-        "save_model() succesfully completed......................................"
+        "save_model() successfully completed......................................"
     )
     gc.collect()
     return (model_, model_name)
