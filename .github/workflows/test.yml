@@ -24,7 +24,7 @@ jobs:
         python -m pip install codecov
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
         if [ -f requirements-optional.txt ]; then pip install -r requirements-optional.txt; fi
-        python -m spacy download en
+        python -m spacy download en_core_web_sm
     - name: Remove tests
       run: |
         rm pycaret/tests/test_classification_tuning.py
@@ -55,7 +55,7 @@ jobs:
         python -m pip install codecov
         pip install -r requirements.txt
         pip install -r requirements-optional.txt
-        python -m spacy download en
+        python -m spacy download en_core_web_sm
     - name: Remove tests
       run: |
         remove-item pycaret/tests/* -Include @('test_classification_tuning.py','test_classification_plots.py','test_regression_plots.py', 'test_regression_tuning.py')
@@ -156,7 +156,7 @@ jobs:
         python -m pip install codecov
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
         if [ -f requirements-optional.txt ]; then pip install -r requirements-optional.txt; fi
-        python -m spacy download en
+        python -m spacy download en_core_web_sm
     - name: Remove tests
       run: |
         find pycaret/tests -type f -not -name '__init__.py' -not -name 'test_classification_plots.py' -not -name 'test_regression_plots.py' -delete
