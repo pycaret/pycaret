@@ -499,10 +499,7 @@ def tune_model(
     custom_grid: Optional[Union[Dict[str, list], Any]] = None,
     optimize: str = "smape",
     custom_scorer=None,
-    search_library: str = "pycaret",
     search_algorithm: Optional[str] = None,
-    early_stopping: Any = False,
-    early_stopping_max_iters: int = 10,
     choose_better: bool = False,
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
@@ -569,22 +566,6 @@ def tune_model(
         Will be deprecated in future.
 
 
-    search_library: str, default = 'scikit-learn'
-        The search library used for tuning hyperparameters. Possible values:
-
-        - 'scikit-learn' - default, requires no further installation
-            https://github.com/scikit-learn/scikit-learn
-
-        - 'scikit-optimize' - ``pip install scikit-optimize``
-            https://scikit-optimize.github.io/stable/
-
-        - 'tune-sklearn' - ``pip install tune-sklearn ray[tune]``
-            https://github.com/ray-project/tune-sklearn
-
-        - 'optuna' - ``pip install optuna``
-            https://optuna.org/
-
-
     search_algorithm: str, default = None
         The search algorithm depends on the ``search_library`` parameter.
         Some search algorithms require additional libraries to be installed.
@@ -608,24 +589,6 @@ def tune_model(
         - 'optuna' possible values:
             - 'random' : randomized search
             - 'tpe' : Tree-structured Parzen Estimator search (default)
-
-
-    early_stopping: bool or str or object, default = False
-        Use early stopping to stop fitting to a hyperparameter configuration
-        if it performs poorly. Ignored when ``search_library`` is scikit-learn,
-        or if the estimator does not have 'partial_fit' attribute. If False or
-        None, early stopping will not be used. Can be either an object accepted
-        by the search library or one of the following:
-
-        - 'asha' for Asynchronous Successive Halving Algorithm
-        - 'hyperband' for Hyperband
-        - 'median' for Median Stopping Rule
-        - If False or None, early stopping will not be used.
-
-
-    early_stopping_max_iters: int, default = 10
-        Maximum number of epochs to run for each sampled configuration.
-        Ignored if ``early_stopping`` is False or None.
 
 
     choose_better: bool, default = False
@@ -676,10 +639,7 @@ def tune_model(
         custom_grid=custom_grid,
         optimize=optimize,
         custom_scorer=custom_scorer,
-        search_library=search_library,
         search_algorithm=search_algorithm,
-        early_stopping=early_stopping,
-        early_stopping_max_iters=early_stopping_max_iters,
         choose_better=choose_better,
         fit_kwargs=fit_kwargs,
         groups=groups,
