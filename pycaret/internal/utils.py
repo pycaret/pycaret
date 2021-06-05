@@ -17,6 +17,7 @@ from sklearn import clone
 from sklearn.model_selection import KFold, StratifiedKFold, BaseCrossValidator
 from sklearn.model_selection._split import _BaseKFold
 from enum import IntEnum
+import functools
 
 
 class SeasonalPeriod(IntEnum):
@@ -765,6 +766,7 @@ def get_columns_to_stratify_by(
 
 def check_if_global_is_not_none(globals_d: dict, global_names: dict):
     def decorator(func):
+        @functools.wraps(func)
         def wrapper(*args, **kwargs):
             for name, message in global_names.items():
                 if globals_d[name] is None:
