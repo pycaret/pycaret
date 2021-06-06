@@ -1214,6 +1214,9 @@ def interpret_model(
 def predict_model(
     estimator,
     data: Optional[pd.DataFrame] = None,
+    fh = None,
+    return_pred_int=False,
+    alpha=0.05,
     round: int = 4,
     verbose: bool = True,
 ) -> pd.DataFrame:
@@ -1268,6 +1271,9 @@ def predict_model(
     return _CURRENT_EXPERIMENT.predict_model(
         estimator=estimator,
         data=data,
+        fh = None,
+        return_pred_int=False,
+        alpha=0.05,
         round=round,
         verbose=verbose,
     )

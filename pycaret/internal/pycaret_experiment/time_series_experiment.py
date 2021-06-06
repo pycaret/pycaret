@@ -1996,6 +1996,9 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         self,
         estimator,
         data: Optional[pd.DataFrame] = None,
+        fh=None,
+        return_pred_int=False,
+        alpha=0.05,
         round: int = 4,
         verbose: bool = True,
     ) -> pd.DataFrame:
@@ -2047,14 +2050,45 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         """
 
-        return super().predict_model(
-            estimator=estimator,
-            data=data,
-            probability_threshold=None,
-            encoded_labels=True,
-            round=round,
-            verbose=verbose,
-        )
+        # return super().predict_model(
+        #     estimator=estimator,
+        #     data=data,
+        #     probability_threshold=None,
+        #     encoded_labels=True,
+        #     round=round,
+        #     verbose=verbose,
+        # )
+
+        if fh is None:
+            fh = self.fh
+
+        try:
+            return_vals = estimator.predict(
+                X=data, fh=fh, return_pred_int=return_pred_int, alpha=alpha
+            )
+        except NotImplementedError:
+            # Most likely prediction interval has not been implemented.
+            # Hence try by explicitly setting it to False
+            return_vals = estimator.predict(
+                X=data, fh=fh, return_pred_int=False, alpha=alpha
+            )
+        if isinstance(return_vals, tuple):
+            # Prediction Interval is returned
+            #   First Value is a series of predictions
+            #   Second Value is a dataframe of lower and upper bounds
+            result = pd.DataFrame(return_vals[0], columns=["y_pred"])
+            result = result.join(return_vals[1])
+        else:
+            # Prediction interval is not returned (not implemented)
+            if return_pred_int:
+                result = pd.DataFrame(return_vals, columns=["y_pred"])
+                result["lower"] = np.nan
+                result["upper"] = np.nan
+            else:
+                # Leave as series
+                result = return_vals
+        result = result.round(round)
+        return result
 
     def finalize_model(
         self,

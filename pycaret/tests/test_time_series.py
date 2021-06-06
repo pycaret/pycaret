@@ -194,7 +194,7 @@ def test_create_model(name, fh, load_data):
     )
     model_obj = exp.create_model(name)
 
-    y_pred = model_obj.predict()
+    y_pred = exp.predict_model(model_obj)
     assert isinstance(y_pred, pd.Series)
 
     fh_index = fh if isinstance(fh, int) else fh[-1]
@@ -243,9 +243,9 @@ def test_blend_model_predict(load_setup, load_models):
         ts_models, method="voting", weights=ts_weights
     )
 
-    mean_blender_pred = mean_blender.predict(fh=fh)
-    median_blender_pred = median_blender.predict(fh=fh)
-    voting_blender_pred = voting_blender.predict(fh=fh)
+    mean_blender_pred = ts_experiment.predict_model(mean_blender)
+    median_blender_pred = ts_experiment.predict_model(median_blender)
+    voting_blender_pred = ts_experiment.predict_model(voting_blender)
 
     mean_median_equal = np.array_equal(mean_blender_pred, median_blender_pred)
     mean_voting_equal = np.array_equal(mean_blender_pred, voting_blender_pred)
@@ -266,7 +266,7 @@ def test_tune_model_grid(model, load_data):
 
     model_obj = exp.create_model(model)
     tuned_model_obj = exp.tune_model(model_obj, search_algorithm="grid")
-    y_pred = tuned_model_obj.predict()
+    y_pred = exp.predict_model(tuned_model_obj)
     assert isinstance(y_pred, pd.Series)
 
     expected_period_index = load_data.iloc[-fh:].index
@@ -283,7 +283,7 @@ def test_tune_model_random(model, load_data):
 
     model_obj = exp.create_model(model)
     tuned_model_obj = exp.tune_model(model_obj)  # default search_algorithm = "random"
-    y_pred = tuned_model_obj.predict()
+    y_pred = exp.predict_model(tuned_model_obj)
     assert isinstance(y_pred, pd.Series)
 
     expected_period_index = load_data.iloc[-fh:].index
@@ -358,3 +358,55 @@ def test_tune_model_raises(load_data):
         exceptionmsg
         == f"`search_algorithm` must be one of 'None, random, grid'. You passed '{search_algorithm}'."
     )
+
+
+def test_predict_model_customization(load_data):
+    """Tests predict model customization"""
+
+    exp = TimeSeriesExperiment()
+
+    fh = 12
+    fold = 2
+    data = load_data
+
+    exp.setup(
+        data=data,
+        fh=fh,
+        fold=fold,
+        fold_strategy="expanding",
+        verbose=False,
+        session_id=42,
+    )
+
+    model = exp.create_model("arima")
+
+    expected_period_index = load_data.iloc[-fh:].index
+
+    # Default prediction
+    y_pred = exp.predict_model(model)
+    assert isinstance(y_pred, pd.Series)
+    assert np.all(y_pred.index == expected_period_index)
+
+    # With Prediction Interval (default alpha = 0.05)
+    y_pred = exp.predict_model(model, return_pred_int=True)
+    assert isinstance(y_pred, pd.DataFrame)
+    assert np.all(y_pred.columns == ["y_pred", "lower", "upper"])
+    assert np.all(y_pred.index == expected_period_index)
+
+    # With Prediction Interval (alpha = 0.2)
+    y_pred2 = exp.predict_model(model, return_pred_int=True, alpha=0.2)
+    assert isinstance(y_pred2, pd.DataFrame)
+    assert np.all(y_pred2.columns == ["y_pred", "lower", "upper"])
+    assert np.all(y_pred2.index == expected_period_index)
+
+    # Increased forecast horizon to 2 years instead of the original 1 year
+    y_pred = exp.predict_model(model, fh=np.arange(1, 25))
+    assert len(y_pred) == 24
+
+    # For models that do not produce a prediction interval --> returns NA values
+    model = exp.create_model("lr_cds_dt")
+    y_pred = exp.predict_model(model, return_pred_int=True)
+    assert y_pred["lower"].isnull().all()
+    assert y_pred["upper"].isnull().all()
+
+    print("DONE")
