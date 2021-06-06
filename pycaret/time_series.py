@@ -1214,9 +1214,9 @@ def predict_model(
     return _CURRENT_EXPERIMENT.predict_model(
         estimator=estimator,
         data=data,
-        fh=None,
-        return_pred_int=False,
-        alpha=0.05,
+        fh=fh,
+        return_pred_int=return_pred_int,
+        alpha=alpha,
         round=round,
         verbose=verbose,
     )
