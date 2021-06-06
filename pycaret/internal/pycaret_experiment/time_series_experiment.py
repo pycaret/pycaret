@@ -615,7 +615,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             turbo=turbo,
             errors=errors,
             fit_kwargs=fit_kwargs,
-            groups=None,
             verbose=verbose,
         )
 
@@ -705,7 +704,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             round=round,
             cross_validation=cross_validation,
             fit_kwargs=fit_kwargs,
-            groups=None,
             verbose=verbose,
             **kwargs,
         )
@@ -749,7 +747,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         return model, model_fit_time
 
-    # TODO: Check where this is used.
     def _create_model_with_cv(
         self,
         model,
@@ -758,7 +755,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         fit_kwargs,
         round,
         cv,
-        groups,  # TODO: Remove groups
+        groups,  # TODO: See if we can remove groups
         metrics,
         refit,
         display,
@@ -1354,7 +1351,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             display=display,
             fold=fold,
             round=round,
-            groups=None,
             fit_kwargs=fit_kwargs,
             **best_params,
         )
@@ -1368,7 +1364,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 [estimator, (best_model, model_results)],
                 compare_dimension,
                 fold,
-                groups=None,
                 fit_kwargs=fit_kwargs,
                 display=display,
             )
@@ -1503,7 +1498,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             choose_better=choose_better,
             optimize=optimize,
             fit_kwargs=fit_kwargs,
-            groups=None,
             verbose=verbose,
         )
 
@@ -1605,7 +1599,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             method=method,
             weights=weights,
             fit_kwargs=fit_kwargs,
-            groups=None,
             verbose=verbose,
         )
 
@@ -1697,7 +1690,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             choose_better=choose_better,
             optimize=optimize,
             fit_kwargs=fit_kwargs,
-            groups=None,
             verbose=verbose,
         )
 
@@ -1794,7 +1786,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             save=save,
             fold=fold,
             fit_kwargs=fit_kwargs,
-            groups=None,
             verbose=verbose,
             use_train_data=use_train_data,
             system=True,
@@ -1857,7 +1848,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             estimator=estimator,
             fold=fold,
             fit_kwargs=fit_kwargs,
-            groups=None,
             use_train_data=use_train_data,
         )
 
@@ -2071,7 +2061,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         return super().finalize_model(
             estimator=estimator,
             fit_kwargs=fit_kwargs,
-            groups=None,
             model_only=model_only,
         )
 
