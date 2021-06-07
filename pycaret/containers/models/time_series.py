@@ -537,7 +537,7 @@ class AutoArimaContainer(TimeSeriesContainer):
 
         super().__init__(
             id="auto_arima",
-            name="Auto Arima",
+            name="Auto ARIMA",
             class_def=AutoARIMA,
             args=args,
             tune_grid=tune_grid,
