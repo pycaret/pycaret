@@ -19,7 +19,7 @@ import pycaret.containers.metrics.time_series
 import pycaret.containers.models.time_series
 import pycaret.internal.preprocess
 import pycaret.internal.persistence
-import pandas as pd  # type ignore
+import pandas as pd  # type: ignore
 from pandas.io.formats.style import Styler
 import numpy as np  # type: ignore
 import datetime
@@ -1993,9 +1993,13 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             return_vals = estimator.predict(
                 X=data, fh=fh, return_pred_int=return_pred_int, alpha=alpha
             )
-        except NotImplementedError:
-            # Most likely prediction interval has not been implemented.
-            # Hence try by explicitly setting it to False
+        except NotImplementedError as error:
+            self.logger.warning(error)
+            self.logger.warning(
+                "Most likely, prediction intervals has not been implemented for this "
+                "algorithm. Predcition will be run with `return_pred_int` = False, and "
+                "NaN values will be returned for the prediction intervals instead."
+            )
             return_vals = estimator.predict(
                 X=data, fh=fh, return_pred_int=False, alpha=alpha
             )
