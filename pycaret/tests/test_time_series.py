@@ -182,8 +182,10 @@ def test_setup_seasonal_period_int(load_data, seasonal_key, seasonal_value):
 
 
 @pytest.mark.parametrize("name, fh", _model_parameters)
-def test_create_model(name, fh, load_data):
-    """test create_model functionality"""
+def test_create_predict_model(name, fh, load_data):
+    """test create_model and predict_model functionality
+    Combined to save run time
+    """
     exp = TimeSeriesExperiment()
     exp.setup(
         data=load_data,
@@ -192,14 +194,56 @@ def test_create_model(name, fh, load_data):
         fold_strategy="sliding",
         verbose=False,
     )
-    model_obj = exp.create_model(name)
-
-    y_pred = exp.predict_model(model_obj)
-    assert isinstance(y_pred, pd.Series)
+    model = exp.create_model(name)
 
     fh_index = fh if isinstance(fh, int) else fh[-1]
     expected_period_index = load_data.iloc[-fh_index:].index
+
+    # Default prediction
+    y_pred = exp.predict_model(model)
+    assert isinstance(y_pred, pd.Series)
     assert np.all(y_pred.index == expected_period_index)
+
+    # With Prediction Interval (default alpha = 0.05)
+    y_pred = exp.predict_model(model, return_pred_int=True)
+    assert isinstance(y_pred, pd.DataFrame)
+    assert np.all(y_pred.columns == ["y_pred", "lower", "upper"])
+    assert np.all(y_pred.index == expected_period_index)
+
+    # With Prediction Interval (alpha = 0.2)
+    y_pred2 = exp.predict_model(model, return_pred_int=True, alpha=0.2)
+    assert isinstance(y_pred2, pd.DataFrame)
+    assert np.all(y_pred2.columns == ["y_pred", "lower", "upper"])
+    assert np.all(y_pred2.index == expected_period_index)
+
+    # Increased forecast horizon to 2 years instead of the original 1 year
+    y_pred = exp.predict_model(model, fh=np.arange(1, 25))
+    assert len(y_pred) == 24
+
+
+def test_prediction_interval_na(load_data):
+    """Tests predict model when interval is NA"""
+
+    exp = TimeSeriesExperiment()
+
+    fh = 12
+    fold = 2
+    data = load_data
+
+    exp.setup(
+        data=data,
+        fh=fh,
+        fold=fold,
+        fold_strategy="expanding",
+        verbose=False,
+        session_id=42,
+    )
+
+    # For models that do not produce a prediction interval --> returns NA values
+    model = exp.create_model("lr_cds_dt")
+    y_pred = exp.predict_model(model, return_pred_int=True)
+    assert y_pred["lower"].isnull().all()
+    assert y_pred["upper"].isnull().all()
 
 
 @pytest.mark.filterwarnings(
@@ -235,7 +279,6 @@ def test_blend_model_predict(load_setup, load_models):
     ts_experiment = load_setup
     ts_models = load_models
     ts_weights = [uniform(0, 1) for _ in range(len(ts_models))]
-    fh = ts_experiment.fh
 
     mean_blender = ts_experiment.blend_models(ts_models, method="mean")
     median_blender = ts_experiment.blend_models(ts_models, method="median")
@@ -358,55 +401,3 @@ def test_tune_model_raises(load_data):
         exceptionmsg
         == f"`search_algorithm` must be one of 'None, random, grid'. You passed '{search_algorithm}'."
     )
-
-
-def test_predict_model_customization(load_data):
-    """Tests predict model customization"""
-
-    exp = TimeSeriesExperiment()
-
-    fh = 12
-    fold = 2
-    data = load_data
-
-    exp.setup(
-        data=data,
-        fh=fh,
-        fold=fold,
-        fold_strategy="expanding",
-        verbose=False,
-        session_id=42,
-    )
-
-    model = exp.create_model("arima")
-
-    expected_period_index = load_data.iloc[-fh:].index
-
-    # Default prediction
-    y_pred = exp.predict_model(model)
-    assert isinstance(y_pred, pd.Series)
-    assert np.all(y_pred.index == expected_period_index)
-
-    # With Prediction Interval (default alpha = 0.05)
-    y_pred = exp.predict_model(model, return_pred_int=True)
-    assert isinstance(y_pred, pd.DataFrame)
-    assert np.all(y_pred.columns == ["y_pred", "lower", "upper"])
-    assert np.all(y_pred.index == expected_period_index)
-
-    # With Prediction Interval (alpha = 0.2)
-    y_pred2 = exp.predict_model(model, return_pred_int=True, alpha=0.2)
-    assert isinstance(y_pred2, pd.DataFrame)
-    assert np.all(y_pred2.columns == ["y_pred", "lower", "upper"])
-    assert np.all(y_pred2.index == expected_period_index)
-
-    # Increased forecast horizon to 2 years instead of the original 1 year
-    y_pred = exp.predict_model(model, fh=np.arange(1, 25))
-    assert len(y_pred) == 24
-
-    # For models that do not produce a prediction interval --> returns NA values
-    model = exp.create_model("lr_cds_dt")
-    y_pred = exp.predict_model(model, return_pred_int=True)
-    assert y_pred["lower"].isnull().all()
-    assert y_pred["upper"].isnull().all()
-
-    print("DONE")
