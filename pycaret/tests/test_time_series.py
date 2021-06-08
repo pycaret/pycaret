@@ -182,8 +182,8 @@ def test_setup_seasonal_period_int(load_data, seasonal_key, seasonal_value):
 
 
 @pytest.mark.parametrize("name, fh", _model_parameters)
-def test_create_predict_model(name, fh, load_data):
-    """test create_model and predict_model functionality
+def test_create_predict_finalize_model(name, fh, load_data):
+    """test create_model, predict_model and finalize_model functionality
     Combined to save run time
     """
     exp = TimeSeriesExperiment()
@@ -194,8 +194,14 @@ def test_create_predict_model(name, fh, load_data):
         fold_strategy="sliding",
         verbose=False,
     )
+    #######################
+    ## Test Create Model ##
+    #######################
     model = exp.create_model(name)
 
+    ########################
+    ## Test Predict Model ##
+    ########################
     fh_index = fh if isinstance(fh, int) else fh[-1]
     expected_period_index = load_data.iloc[-fh_index:].index
 
@@ -219,6 +225,16 @@ def test_create_predict_model(name, fh, load_data):
     # Increased forecast horizon to 2 years instead of the original 1 year
     y_pred = exp.predict_model(model, fh=np.arange(1, 25))
     assert len(y_pred) == 24
+
+    #########################
+    ## Test Finalize Model ##
+    #########################
+
+    final_model = exp.finalize_model(model)
+    y_pred = exp.predict_model(final_model)
+
+    final_expected_period_index = expected_period_index.shift(fh_index)
+    assert np.all(y_pred.index == final_expected_period_index)
 
 
 def test_prediction_interval_na(load_data):
