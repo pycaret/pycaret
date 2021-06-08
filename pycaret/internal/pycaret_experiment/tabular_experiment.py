@@ -495,9 +495,6 @@ class _TabularExperiment(_PyCaretExperiment):
         if experiment_name:
             self.exp_name_log = experiment_name
         self.logger = create_logger(experiment_name)
-        # else:
-        #    # create exp_name_log parameter incase logging is False
-        #    self.exp_name_log = "no_logging"
 
         self.logger.info(f"PyCaret {type(self).__name__}")
         self.logger.info(f"Logging name: {self.exp_name_log}")
