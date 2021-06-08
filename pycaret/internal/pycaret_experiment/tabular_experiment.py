@@ -474,54 +474,47 @@ class _TabularExperiment(_PyCaretExperiment):
         All other parameters are optional.
 
         """
+        from pycaret.utils import __version__
 
+        # Initialization =========================================== >>
+
+        # Get local parameters to write to logger
         function_params_str = ", ".join(
-            [f"{k}={v}" for k, v in locals().items() if k != "data"]
+            [f"{k}={v}" for k, v in locals().items() if k != "self"]
         )
 
         warnings.filterwarnings("ignore")
 
-        from pycaret.utils import __version__
-
-        ver = __version__
-
-        # experiment_name
         if experiment_name:
-            if type(experiment_name) is not str:
+            if not isinstance(experiment_name, str):
                 raise TypeError(
-                    "experiment_name parameter must be a non-empty str if not None."
+                    "The experiment_name parameter must be a non-empty str if not None."
                 )
-
-        if experiment_name:
             self.exp_name_log = experiment_name
-        self.logger = create_logger(experiment_name)
-        # else:
-        #    # create exp_name_log parameter incase logging is False
-        #    self.exp_name_log = "no_logging"
 
+        self.logger = create_logger(experiment_name)
         self.logger.info(f"PyCaret {type(self).__name__}")
         self.logger.info(f"Logging name: {self.exp_name_log}")
         self.logger.info(f"ML Usecase: {self._ml_usecase}")
-        self.logger.info(f"version {ver}")
+        self.logger.info(f"version {__version__}")
         self.logger.info("Initializing setup()")
-        self.logger.info(f"setup({function_params_str})")
+        self.logger.info(f"setup(data=data, {function_params_str})")
 
         self._check_enviroment()
 
-        # run_time
         runtime_start = time.time()
 
-        self.logger.info("Checking Exceptions")
+        # Checking parameters ====================================== >>
 
-        # checking data type
+        self.logger.info("Checking parameters...")
+
         if not isinstance(data, pd.DataFrame):
-            raise TypeError("data passed must be of type pandas.DataFrame")
-        if data.shape[0] == 0:
-            raise ValueError("data passed must be a positive dataframe")
+            raise TypeError("The provided data must be of type pandas.DataFrame.")
+        elif data.empty:
+            raise ValueError("The provided data cannot be an empty dataframe.")
 
-        # checking train size parameter
-        if type(train_size) is not float:
-            raise TypeError("train_size parameter only accepts float value.")
+        if not isinstance(train_size, float):
+            raise TypeError("The train_size parameter must be of type float.")
         if train_size <= 0 or train_size > 1:
             raise ValueError("train_size parameter has to be positive and not above 1.")
 
@@ -537,14 +530,17 @@ class _TabularExperiment(_PyCaretExperiment):
                 raise TypeError("session_id parameter must be an integer.")
 
         # checking profile parameter
-        if type(profile) is not bool:
+        if not isinstance(profile, bool):
             raise TypeError("profile parameter only accepts True or False.")
 
-        if profile_kwargs is not None:
-            if type(profile_kwargs) is not dict:
-                raise TypeError("profile_kwargs can only be a dict.")
-        else:
+        if profile_kwargs is None:
             profile_kwargs = {}
+        elif not isinstance(profile_kwargs, dict):
+            raise TypeError("profile_kwargs can only be a dict.")
+
+        # Start adding transformers to the pipeline
+
+        self.logger.info("Creating pipeline...")
 
         # checking normalize parameter
         if type(normalize) is not bool:
