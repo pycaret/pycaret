@@ -5,6 +5,7 @@
 # Last modified : 25/10/2020
 
 import time
+import logging
 from collections import defaultdict
 from functools import partial
 
@@ -58,6 +59,7 @@ def setup(
     ] = None,
     html: bool = True,
     session_id: Optional[int] = None,
+    system_log: Union[bool, logging.Logger] = True,
     log_experiment: bool = False,
     experiment_name: Optional[str] = None,
     log_plots: Union[bool, list] = False,
@@ -195,6 +197,11 @@ def setup(
         for later reproducibility of the entire experiment.
 
 
+    system_log: bool or logging.Logger, default = True
+        Whether to save the system logging file (as logs.log). If the input
+        already is a logger object, that one is used instead.
+
+
     log_experiment: bool, default = False
         When set to True, all metrics and parameters are logged on the ``MLFlow`` server.
 
@@ -252,6 +259,7 @@ def setup(
         custom_pipeline=custom_pipeline,
         html=html,
         session_id=session_id,
+        system_log=system_log,
         log_experiment=log_experiment,
         experiment_name=experiment_name,
         log_plots=log_plots,
@@ -1237,14 +1245,14 @@ def finalize_model(
     Example
     --------
     >>> from pycaret.datasets import get_data
-    >>> boston = get_data('boston')
-    >>> from pycaret.regression import *
-    >>> exp_name = setup(data = boston,  target = 'medv')
-    >>> lr = create_model('lr')
-    >>> final_lr = finalize_model(lr)
+    >>> data = get_data('airline')
+    >>> from pycaret.time_series import *
+    >>> exp_name = setup(data = data, fh = 12)
+    >>> model = create_model('naive')
+    >>> final_model = finalize_model(model)
 
 
-    estimator: scikit-learn compatible object
+    estimator: sktime compatible object
         Trained model object
 
 

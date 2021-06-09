@@ -32,6 +32,7 @@ from IPython.utils import io
 import traceback
 import plotly.express as px  # type: ignore
 import plotly.graph_objects as go  # type: ignore
+import logging
 
 
 warnings.filterwarnings("ignore")
@@ -153,6 +154,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         ] = None,
         html: bool = True,
         session_id: Optional[int] = None,
+        system_log: Union[bool, logging.Logger] = True,
         log_experiment: bool = False,
         experiment_name: Optional[str] = None,
         log_plots: Union[bool, list] = False,
@@ -288,6 +290,11 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             Controls the randomness of experiment. It is equivalent to 'random_state' in
             scikit-learn. When None, a pseudo random number is generated. This can be used
             for later reproducibility of the entire experiment.
+
+
+        system_log: bool or logging.Logger, default = True
+            Whether to save the system logging file (as logs.log). If the input
+            already is a logger object, that one is used instead.
 
 
         log_experiment: bool, default = False
@@ -483,6 +490,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             custom_pipeline=custom_pipeline,
             html=html,
             session_id=session_id,
+            system_log=system_log,
             log_experiment=log_experiment,
             experiment_name=experiment_name,
             log_plots=log_plots,
@@ -2036,14 +2044,14 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         Example
         --------
         >>> from pycaret.datasets import get_data
-        >>> boston = get_data('boston')
-        >>> from pycaret.regression import *
-        >>> exp_name = setup(data = boston,  target = 'medv')
-        >>> lr = create_model('lr')
-        >>> final_lr = finalize_model(lr)
+        >>> data = get_data('airline')
+        >>> from pycaret.time_series import *
+        >>> exp_name = setup(data = data, fh = 12)
+        >>> model = create_model('naive')
+        >>> final_model = finalize_model(model)
 
 
-        estimator: scikit-learn compatible object
+        estimator: sktime compatible object
             Trained model object
 
 
