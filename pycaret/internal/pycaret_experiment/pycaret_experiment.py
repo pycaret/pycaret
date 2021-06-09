@@ -120,7 +120,7 @@ class _PyCaretExperiment:
         except ImportError:
             self.logger.warning("mlflow not found")
 
-    def setup(self) -> None:
+    def setup(self, *args, **kwargs) -> None:
         return
 
     def deploy_model(

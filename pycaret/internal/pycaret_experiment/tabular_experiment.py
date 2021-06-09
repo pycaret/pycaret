@@ -39,6 +39,7 @@ from unittest.mock import patch
 import plotly.express as px  # type: ignore
 import plotly.graph_objects as go  # type: ignore
 import scikitplot as skplt  # type: ignore
+import logging
 
 
 warnings.filterwarnings("ignore")
@@ -452,6 +453,7 @@ class _TabularExperiment(_PyCaretExperiment):
         ] = None,
         html: bool = True,
         session_id: Optional[int] = None,
+        system_log: Union[bool, logging.Logger] = True,
         log_experiment: bool = False,
         experiment_name: Optional[str] = None,
         log_plots: Union[bool, list] = False,
@@ -494,10 +496,7 @@ class _TabularExperiment(_PyCaretExperiment):
 
         if experiment_name:
             self.exp_name_log = experiment_name
-        self.logger = create_logger(experiment_name)
-        # else:
-        #    # create exp_name_log parameter incase logging is False
-        #    self.exp_name_log = "no_logging"
+        self.logger = create_logger(system_log)
 
         self.logger.info(f"PyCaret {type(self).__name__}")
         self.logger.info(f"Logging name: {self.exp_name_log}")
