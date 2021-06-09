@@ -19,7 +19,7 @@ import pycaret.containers.metrics.time_series
 import pycaret.containers.models.time_series
 import pycaret.internal.preprocess
 import pycaret.internal.persistence
-import pandas as pd  # type ignore
+import pandas as pd  # type: ignore
 from pandas.io.formats.style import Styler
 import numpy as np  # type: ignore
 import datetime
@@ -513,7 +513,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         turbo: bool = True,
         errors: str = "ignore",
         fit_kwargs: Optional[dict] = None,
-        groups: Optional[Union[str, Any]] = None,
         verbose: bool = True,
     ):
 
@@ -593,13 +592,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             Dictionary of arguments passed to the fit method of the model.
 
 
-        groups: str or array-like, with shape (n_samples,), default = None
-            Optional group labels when 'GroupKFold' is used for the cross validation.
-            It takes an array with shape (n_samples, ) where n_samples is the number
-            of rows in the training dataset. When string is passed, it is interpreted
-            as the column name in the dataset containing group labels.
-
-
         verbose: bool, default = True
             Score grid is not printed when verbose is set to False.
 
@@ -629,7 +621,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             turbo=turbo,
             errors=errors,
             fit_kwargs=fit_kwargs,
-            groups=groups,
             verbose=verbose,
         )
 
@@ -640,7 +631,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         round: int = 4,
         cross_validation: bool = True,
         fit_kwargs: Optional[dict] = None,
-        groups: Optional[Union[str, Any]] = None,
         verbose: bool = True,
         **kwargs,
     ):
@@ -695,13 +685,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             Dictionary of arguments passed to the fit method of the model.
 
 
-        groups: str or array-like, with shape (n_samples,), default = None
-            Optional group labels when GroupKFold is used for the cross validation.
-            It takes an array with shape (n_samples, ) where n_samples is the number
-            of rows in training dataset. When string is passed, it is interpreted as
-            the column name in the dataset containing group labels.
-
-
         verbose: bool, default = True
             Score grid is not printed when verbose is set to False.
 
@@ -727,7 +710,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             round=round,
             cross_validation=cross_validation,
             fit_kwargs=fit_kwargs,
-            groups=groups,
             verbose=verbose,
             **kwargs,
         )
@@ -779,7 +761,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         fit_kwargs,
         round,
         cv,
-        groups,
+        groups,  # TODO: See if we can remove groups
         metrics,
         refit,
         display,
@@ -885,7 +867,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         search_algorithm: Optional[str] = None,
         choose_better: bool = False,
         fit_kwargs: Optional[dict] = None,
-        groups: Optional[Union[str, Any]] = None,
         return_tuner: bool = False,
         verbose: bool = True,
         tuner_verbose: Union[int, bool] = True,
@@ -961,13 +942,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         fit_kwargs: dict, default = {} (empty dict)
             Dictionary of arguments passed to the fit method of the tuner.
-
-
-        groups: str or array-like, with shape (n_samples,), default = None
-            Optional group labels when GroupKFold is used for the cross validation.
-            It takes an array with shape (n_samples, ) where n_samples is the number
-            of rows in training dataset. When string is passed, it is interpreted as
-            the column name in the dataset containing group labels.
 
 
         return_tuner: bool, default = False
@@ -1383,7 +1357,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             display=display,
             fold=fold,
             round=round,
-            groups=groups,
             fit_kwargs=fit_kwargs,
             **best_params,
         )
@@ -1397,7 +1370,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 [estimator, (best_model, model_results)],
                 compare_dimension,
                 fold,
-                groups=groups,
                 fit_kwargs=fit_kwargs,
                 display=display,
             )
@@ -1457,7 +1429,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         choose_better: bool = False,
         optimize: str = "R2",
         fit_kwargs: Optional[dict] = None,
-        groups: Optional[Union[str, Any]] = None,
         verbose: bool = True,
     ) -> Any:
 
@@ -1515,13 +1486,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 Dictionary of arguments passed to the fit method of the model.
 
 
-            groups: str or array-like, with shape (n_samples,), default = None
-                Optional group labels when GroupKFold is used for the cross validation.
-                It takes an array with shape (n_samples, ) where n_samples is the number
-                of rows in training dataset. When string is passed, it is interpreted as
-                the column name in the dataset containing group labels.
-
-
             verbose: bool, default = True
                 Score grid is not printed when verbose is set to False.
 
@@ -1540,7 +1504,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             choose_better=choose_better,
             optimize=optimize,
             fit_kwargs=fit_kwargs,
-            groups=groups,
             verbose=verbose,
         )
 
@@ -1554,7 +1517,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         optimize: str = "SMAPE",
         weights: Optional[List[float]] = None,
         fit_kwargs: Optional[dict] = None,
-        groups: Optional[Union[str, Any]] = None,
         verbose: bool = True,
     ):
 
@@ -1624,13 +1586,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             Dictionary of arguments passed to the fit method of the model.
 
 
-        groups: str or array-like, with shape (n_samples,), default = None
-            Optional group labels when GroupKFold is used for the cross validation.
-            It takes an array with shape (n_samples, ) where n_samples is the number
-            of rows in training dataset. When string is passed, it is interpreted as
-            the column name in the dataset containing group labels.
-
-
         verbose: bool, default = True
             Score grid is not printed when verbose is set to False.
 
@@ -1650,7 +1605,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             method=method,
             weights=weights,
             fit_kwargs=fit_kwargs,
-            groups=groups,
             verbose=verbose,
         )
 
@@ -1664,7 +1618,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         choose_better: bool = False,
         optimize: str = "R2",
         fit_kwargs: Optional[dict] = None,
-        groups: Optional[Union[str, Any]] = None,
         verbose: bool = True,
     ):
 
@@ -1724,13 +1677,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             Dictionary of arguments passed to the fit method of the model.
 
 
-        groups: str or array-like, with shape (n_samples,), default = None
-            Optional group labels when GroupKFold is used for the cross validation.
-            It takes an array with shape (n_samples, ) where n_samples is the number
-            of rows in training dataset. When string is passed, it is interpreted as
-            the column name in the dataset containing group labels.
-
-
         verbose: bool, default = True
             Score grid is not printed when verbose is set to False.
 
@@ -1750,7 +1696,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             choose_better=choose_better,
             optimize=optimize,
             fit_kwargs=fit_kwargs,
-            groups=groups,
             verbose=verbose,
         )
 
@@ -1762,7 +1707,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         save: bool = False,
         fold: Optional[Union[int, Any]] = None,
         fit_kwargs: Optional[dict] = None,
-        groups: Optional[Union[str, Any]] = None,
         use_train_data: bool = False,
         verbose: bool = True,
         display_format: Optional[str] = None,
@@ -1822,13 +1766,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             Dictionary of arguments passed to the fit method of the model.
 
 
-        groups: str or array-like, with shape (n_samples,), default = None
-            Optional group labels when GroupKFold is used for the cross validation.
-            It takes an array with shape (n_samples, ) where n_samples is the number
-            of rows in training dataset. When string is passed, it is interpreted as
-            the column name in the dataset containing group labels.
-
-
         use_train_data: bool, default = False
             When set to true, train data will be used for plots, instead
             of test data.
@@ -1855,7 +1792,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             save=save,
             fold=fold,
             fit_kwargs=fit_kwargs,
-            groups=groups,
             verbose=verbose,
             use_train_data=use_train_data,
             system=True,
@@ -1867,7 +1803,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         estimator,
         fold: Optional[Union[int, Any]] = None,
         fit_kwargs: Optional[dict] = None,
-        groups: Optional[Union[str, Any]] = None,
         use_train_data: bool = False,
     ):
 
@@ -1900,13 +1835,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             Dictionary of arguments passed to the fit method of the model.
 
 
-        groups: str or array-like, with shape (n_samples,), default = None
-            Optional group labels when GroupKFold is used for the cross validation.
-            It takes an array with shape (n_samples, ) where n_samples is the number
-            of rows in training dataset. When string is passed, it is interpreted as
-            the column name in the dataset containing group labels.
-
-
         use_train_data: bool, default = False
             When set to true, train data will be used for plots, instead
             of test data.
@@ -1926,7 +1854,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             estimator=estimator,
             fold=fold,
             fit_kwargs=fit_kwargs,
-            groups=groups,
             use_train_data=use_train_data,
         )
 
@@ -2002,6 +1929,9 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         self,
         estimator,
         data: Optional[pd.DataFrame] = None,
+        fh=None,
+        return_pred_int=False,
+        alpha=0.05,
         round: int = 4,
         verbose: bool = True,
     ) -> pd.DataFrame:
@@ -2053,20 +1983,54 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         """
 
-        return super().predict_model(
-            estimator=estimator,
-            data=data,
-            probability_threshold=None,
-            encoded_labels=True,
-            round=round,
-            verbose=verbose,
-        )
+        # return super().predict_model(
+        #     estimator=estimator,
+        #     data=data,
+        #     probability_threshold=None,
+        #     encoded_labels=True,
+        #     round=round,
+        #     verbose=verbose,
+        # )
+
+        if fh is None:
+            fh = self.fh
+
+        try:
+            return_vals = estimator.predict(
+                X=data, fh=fh, return_pred_int=return_pred_int, alpha=alpha
+            )
+        except NotImplementedError as error:
+            self.logger.warning(error)
+            self.logger.warning(
+                "Most likely, prediction intervals has not been implemented for this "
+                "algorithm. Predcition will be run with `return_pred_int` = False, and "
+                "NaN values will be returned for the prediction intervals instead."
+            )
+            return_vals = estimator.predict(
+                X=data, fh=fh, return_pred_int=False, alpha=alpha
+            )
+        if isinstance(return_vals, tuple):
+            # Prediction Interval is returned
+            #   First Value is a series of predictions
+            #   Second Value is a dataframe of lower and upper bounds
+            result = pd.DataFrame(return_vals[0], columns=["y_pred"])
+            result = result.join(return_vals[1])
+        else:
+            # Prediction interval is not returned (not implemented)
+            if return_pred_int:
+                result = pd.DataFrame(return_vals, columns=["y_pred"])
+                result["lower"] = np.nan
+                result["upper"] = np.nan
+            else:
+                # Leave as series
+                result = return_vals
+        result = result.round(round)
+        return result
 
     def finalize_model(
         self,
         estimator,
         fit_kwargs: Optional[dict] = None,
-        groups: Optional[Union[str, Any]] = None,
         model_only: bool = True,
     ) -> Any:
 
@@ -2093,13 +2057,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             Dictionary of arguments passed to the fit method of the model.
 
 
-        groups: str or array-like, with shape (n_samples,), default = None
-            Optional group labels when GroupKFold is used for the cross validation.
-            It takes an array with shape (n_samples, ) where n_samples is the number
-            of rows in training dataset. When string is passed, it is interpreted as
-            the column name in the dataset containing group labels.
-
-
         model_only: bool, default = True
             When set to False, only model object is re-trained and all the
             transformations in Pipeline are ignored.
@@ -2114,7 +2071,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         return super().finalize_model(
             estimator=estimator,
             fit_kwargs=fit_kwargs,
-            groups=groups,
             model_only=model_only,
         )
 
