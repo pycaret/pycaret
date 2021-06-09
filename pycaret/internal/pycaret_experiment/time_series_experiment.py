@@ -2044,14 +2044,14 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         Example
         --------
         >>> from pycaret.datasets import get_data
-        >>> boston = get_data('boston')
-        >>> from pycaret.regression import *
-        >>> exp_name = setup(data = boston,  target = 'medv')
-        >>> lr = create_model('lr')
-        >>> final_lr = finalize_model(lr)
+        >>> data = get_data('airline')
+        >>> from pycaret.time_series import *
+        >>> exp_name = setup(data = data, fh = 12)
+        >>> model = create_model('naive')
+        >>> final_model = finalize_model(model)
 
 
-        estimator: scikit-learn compatible object
+        estimator: sktime compatible object
             Trained model object
 
 

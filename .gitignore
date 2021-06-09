@@ -26,3 +26,4 @@ tutorials/logs.log
 /docs/build
 .idea/
 /pycaret/tests/mlruns/
+*.log
