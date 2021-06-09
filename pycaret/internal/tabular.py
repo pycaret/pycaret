@@ -67,6 +67,7 @@ from unittest.mock import patch
 import plotly.express as px
 import plotly.graph_objects as go
 import scikitplot as skplt
+import logging
 
 warnings.filterwarnings("ignore")
 
@@ -150,7 +151,7 @@ def setup(
     ] = None,
     html: bool = True,
     session_id: Optional[int] = None,
-    system_log: bool = True,
+    system_log: Union[bool, logging.Logger] = True,
     log_experiment: bool = False,
     experiment_name: Optional[str] = None,
     log_plots: Union[bool, list] = False,

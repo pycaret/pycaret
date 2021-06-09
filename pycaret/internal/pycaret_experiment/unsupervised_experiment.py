@@ -28,6 +28,7 @@ from IPython.utils import io
 import traceback
 import plotly.express as px  # type: ignore
 import plotly.graph_objects as go  # type: ignore
+import logging
 
 
 warnings.filterwarnings("ignore")
@@ -319,7 +320,7 @@ class _UnsupervisedExperiment(_TabularExperiment):
         ] = None,
         html: bool = True,
         session_id: Optional[int] = None,
-        system_log: bool = True,
+        system_log: Union[bool, logging.Logger] = True,
         log_experiment: bool = False,
         experiment_name: Optional[str] = None,
         log_plots: Union[bool, list] = False,

@@ -32,6 +32,7 @@ from IPython.utils import io
 import traceback
 import plotly.express as px  # type: ignore
 import plotly.graph_objects as go  # type: ignore
+import logging
 
 
 warnings.filterwarnings("ignore")
@@ -153,7 +154,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         ] = None,
         html: bool = True,
         session_id: Optional[int] = None,
-        system_log: bool = True,
+        system_log: Union[bool, logging.Logger] = True,
         log_experiment: bool = False,
         experiment_name: Optional[str] = None,
         log_plots: Union[bool, list] = False,
@@ -291,8 +292,9 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             for later reproducibility of the entire experiment.
 
 
-        system_log: bool, default = True
-            Whether to save the system logging file (as logs.log).
+        system_log: bool or logging.Logger, default = True
+            Whether to save the system logging file (as logs.log). If the input
+            already is a logger object, that one is used instead.
 
 
         log_experiment: bool, default = False

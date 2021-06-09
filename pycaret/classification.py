@@ -4,6 +4,7 @@
 # Release: PyCaret 2.2.0
 # Last modified : 25/10/2020
 
+import logging
 import pandas as pd
 import numpy as np
 
@@ -90,7 +91,7 @@ def setup(
     ] = None,
     html: bool = True,
     session_id: Optional[int] = None,
-    system_log: bool = True,
+    system_log: Union[bool, logging.Logger] = True,
     log_experiment: bool = False,
     experiment_name: Optional[str] = None,
     log_plots: Union[bool, list] = False,
@@ -515,8 +516,9 @@ def setup(
         When set to True, all metrics and parameters are logged on the ``MLFlow`` server.
 
 
-    system_log: bool, default = True
-        Whether to save the system logging file (as logs.log).
+    system_log: bool or logging.Logger, default = True
+        Whether to save the system logging file (as logs.log). If the input
+        already is a logger object, that one is used instead.
 
 
     experiment_name: str, default = None

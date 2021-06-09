@@ -33,11 +33,25 @@ def get_logger(name: str = "logs") -> logging.Logger:
         return create_logger(name)
 
 
-def create_logger(name: Optional[str] = None) -> Union[logging.Logger, DummyLogger]:
-    if not name:
-        return DummyLogger()
+def create_logger(
+    log: Union[bool, logging.Logger] = True
+) -> Union[logging.Logger, DummyLogger]:
+    """Create and return a logger object.
 
-    logger = logging.getLogger(name)
+    Parameters
+    ----------
+    log: bool or logging.Logger, default = True
+        - If False, don't create any logger (return dummy).
+        - If True, create a default logger (logs.log).
+        - If logging.Logger, returns the object unchanged.
+
+    """
+    if not log:
+        return DummyLogger()
+    elif isinstance(log, logging.Logger):
+        return log
+
+    logger = logging.getLogger("logs")
     logger.setLevel(logging.DEBUG)
 
     # create console handler and set level to debug
@@ -45,7 +59,7 @@ def create_logger(name: Optional[str] = None) -> Union[logging.Logger, DummyLogg
         logger.handlers.clear()
 
     try:
-        ch = logging.FileHandler(f"{name}.log")
+        ch = logging.FileHandler("logs.log")
     except:
         print("Could not attach a FileHandler to the logger! No logs will be saved.")
         traceback.print_exc()
