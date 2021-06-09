@@ -850,9 +850,14 @@ class _SupervisedExperiment(_TabularExperiment):
                     [master_display, compare_models_], ignore_index=False
                 )
             master_display = master_display.round(round)
-            master_display = master_display.sort_values(
-                by=sort, ascending=sort_ascending
-            )
+            if self._ml_usecase != MLUsecase.TIME_SERIES:
+                master_display = master_display.sort_values(
+                    by=sort, ascending=sort_ascending
+                )
+            else:
+                master_display = master_display.sort_values(
+                    by=sort.upper(), ascending=sort_ascending
+                )
 
             master_display_ = master_display.drop(
                 ["Object", "runtime"], axis=1, errors="ignore"
