@@ -1616,6 +1616,7 @@ def setup(
                 ["Outliers Threshold", outliers_threshold_grid],
                 ["Remove Multicollinearity", remove_multicollinearity],
                 ["Multicollinearity Threshold", multicollinearity_threshold_grid],
+                ["Remove Perfect Collinearity", remove_perfect_collinearity],
                 ["Clustering", create_clusters],
                 ["Clustering Iteration", cluster_iter_grid],
                 ["Polynomial Features", polynomial_features],
