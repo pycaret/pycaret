@@ -150,6 +150,7 @@ def setup(
     ] = None,
     html: bool = True,
     session_id: Optional[int] = None,
+    system_log: bool = True,
     log_experiment: bool = False,
     experiment_name: Optional[str] = None,
     log_plots: Union[bool, list] = False,

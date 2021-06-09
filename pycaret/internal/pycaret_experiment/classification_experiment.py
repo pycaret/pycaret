@@ -279,6 +279,7 @@ class ClassificationExperiment(_SupervisedExperiment):
         ] = None,
         html: bool = True,
         session_id: Optional[int] = None,
+        system_log: bool = True,
         log_experiment: bool = False,
         experiment_name: Optional[str] = None,
         log_plots: Union[bool, list] = False,
@@ -699,6 +700,10 @@ class ClassificationExperiment(_SupervisedExperiment):
             for later reproducibility of the entire experiment.
 
 
+    system_log: bool, default = True
+        Whether to save the system logging file (as logs.log).
+
+
         log_experiment: bool, default = False
             When set to True, all metrics and parameters are logged on the ``MLFlow`` server.
 
@@ -811,6 +816,7 @@ class ClassificationExperiment(_SupervisedExperiment):
             custom_pipeline=custom_pipeline,
             html=html,
             session_id=session_id,
+            system_log=system_log,
             log_experiment=log_experiment,
             experiment_name=experiment_name,
             log_plots=log_plots,

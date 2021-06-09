@@ -10,8 +10,9 @@ from typing import Union, Optional
 class DummyLogger:
     """Logger class that does nothing.
 
-    This class is a dummy logger class assigned to self.logger when
-    experiment_name is None to overwrite commands to the logger.
+    This class is a dummy logger class assigned to self.logger
+    when system_log=None to overwrite commands to the logger.
+
     """
 
     def info(self, msg):

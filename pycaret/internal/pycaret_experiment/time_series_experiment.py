@@ -153,6 +153,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         ] = None,
         html: bool = True,
         session_id: Optional[int] = None,
+        system_log: bool = True,
         log_experiment: bool = False,
         experiment_name: Optional[str] = None,
         log_plots: Union[bool, list] = False,
@@ -288,6 +289,10 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             Controls the randomness of experiment. It is equivalent to 'random_state' in
             scikit-learn. When None, a pseudo random number is generated. This can be used
             for later reproducibility of the entire experiment.
+
+
+        system_log: bool, default = True
+            Whether to save the system logging file (as logs.log).
 
 
         log_experiment: bool, default = False
@@ -483,6 +488,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             custom_pipeline=custom_pipeline,
             html=html,
             session_id=session_id,
+            system_log=system_log,
             log_experiment=log_experiment,
             experiment_name=experiment_name,
             log_plots=log_plots,
