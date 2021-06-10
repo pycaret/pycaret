@@ -32,7 +32,9 @@ _BLEND_TEST_MODELS = [
 @pytest.fixture(scope="session", name="load_data")
 def load_data():
     """Load Pycaret Airline dataset."""
-    return get_data("airline")
+    data = get_data("airline")
+    data = data - 400  # simulate negative values
+    return data
 
 
 @pytest.fixture(scope="session", name="load_setup")
