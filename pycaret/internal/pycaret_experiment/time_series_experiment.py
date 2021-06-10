@@ -383,9 +383,11 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             not isinstance(data.index, allowed_freq_index_types)
             and seasonal_period is None
         ):
+            # https://stackoverflow.com/questions/3590165/join-a-list-of-items-with-different-types-as-string-in-python
             raise ValueError(
                 f"The index of your 'data' is of type '{type(data.index)}'. "
-                f"If the 'data' index is not of one of the following types: {', '.join(allowed_freq_index_types)}, "
+                "If the 'data' index is not of one of the following types: "
+                f"{', '.join(str(type) for type in allowed_freq_index_types)}, "
                 "then 'seasonal_period' must be provided. Refer to docstring for options."
             )
 
@@ -434,9 +436,10 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         data.columns = [str(x) for x in data.columns]
 
-        if not np.issubdtype(data[data.columns[0]].dtype, np.number):
+        target_name = data.columns[0]
+        if not np.issubdtype(data[target_name].dtype, np.number):
             raise TypeError(
-                f"Data must be of 'numpy.number' subtype, got {data[data.columns[0]].dtype}!"
+                f"Data must be of 'numpy.number' subtype, got {data[target_name].dtype}!"
             )
 
         if len(data.index) != len(set(data.index)):
@@ -444,10 +447,13 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         # check valid seasonal parameter
         valid_seasonality = autocorrelation_seasonality_test(
-            data[data.columns[0]], self.seasonal_period
+            data[target_name], self.seasonal_period
         )
 
         self.seasonality_present = True if valid_seasonality else False
+
+        # Should multiplicative components be allowed in models that support it
+        self.strictly_positive = np.all(data[target_name] > 0)
 
         return super().setup(
             data=data,
