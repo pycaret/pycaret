@@ -572,6 +572,7 @@ def setup(
         "lift": "Lift Chart",
         "gain": "Gain Chart",
         "tree": "Decision Tree",
+        "ks" : "KS Statistic Plot"
     }
 
     if log_plots == True:
@@ -1476,6 +1477,7 @@ def plot_model(
         * 'lift' - Lift Curve
         * 'gain' - Gain Chart
         * 'tree' - Decision Tree
+        * 'ks' - KS Statistic Plot
 
 
     scale: float, default = 1

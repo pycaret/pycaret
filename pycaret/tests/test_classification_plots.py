@@ -45,6 +45,7 @@ def test():
         "boundary",
         "lift",
         "gain",
+        "ks"
     ]
 
     for plot in available_plots:
