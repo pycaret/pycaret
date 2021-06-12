@@ -37,6 +37,15 @@ import plotly.graph_objects as go  # type: ignore
 warnings.filterwarnings("ignore")
 LOGGER = get_logger()
 
+DATETIME_INDEX_MODELS = [
+    'arima',
+    'prophet',
+    'naive',
+    'snaive',
+    'tbats',
+    'bats'
+]
+
 
 class TimeSeriesExperiment(_SupervisedExperiment):
     def __init__(self) -> None:
@@ -383,6 +392,9 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 "then 'seasonal_period' must be provided. Refer to docstring for options."
             )
 
+        if isinstance(data.index, pd.DatetimeIndex):
+            warnings.warn(f"Data index DatetimeIndex is only supported for models: {', '.join(DATETIME_INDEX_MODELS)}")
+
         if seasonal_period is None:
 
             index_freq = data.index.freqstr
@@ -714,7 +726,8 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         - Models are not logged on the ``MLFlow`` server when ``cross_validation`` param
         is set to False.
 
-        """
+        """   
+        self._check_datetime_index(estimator)
 
         return super().create_model(
             estimator=estimator,
@@ -726,6 +739,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             verbose=verbose,
             **kwargs,
         )
+
 
     def _create_model_without_cv(
         self, model, data_X, data_y, fit_kwargs, predict, system, display
@@ -2616,3 +2630,19 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         """
 
         return super().get_logs(experiment_name=experiment_name, save=save)
+
+    
+    def _check_datetime_index(self, estimator):
+        if isinstance(estimator, str):
+            y_index = self.y.index
+
+            if isinstance(y_index, pd.DatetimeIndex) and estimator not in DATETIME_INDEX_MODELS:
+                raise ValueError(f'Estimator {estimator} does not support data index DatetimeIndex, convert the data index to PeriodIndex.')
+
+        else:
+
+            all_mdls, _ = self._get_models() 
+            all_mdls_class = [v.class_def for k,v in all_mdls.items() if k in DATETIME_INDEX_MODELS]
+
+            if not any([type(estimator) == mdl_class for mdl_class in all_mdls_class]):
+                raise ValueError(f'Estimator {estimator} does not support data index DatetimeIndex, convert the data index to PeriodIndex.')
