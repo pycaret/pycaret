@@ -723,41 +723,42 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         )
 
     def _create_model_without_cv(
-        self, model, data_X, data_y, fit_kwargs, predict, system, display
+        self, model, data_X, data_y, fit_kwargs, predict, system, display: Display
     ):
-        with estimator_pipeline(self._internal_pipeline, model) as pipeline_with_model:
+        #with estimator_pipeline(self._internal_pipeline, model) as pipeline_with_model:
 
-            self.logger.info(
-                "Support for Exogenous variables not yet supported. Switching X, y order"
-            )
-            data_X, data_y = data_y, data_X
+        self.logger.info(
+            "Support for Exogenous variables not yet supported. Switching X, y order"
+        )
+        data_X, data_y = data_y, data_X
 
-            fit_kwargs = get_pipeline_fit_kwargs(pipeline_with_model, fit_kwargs)
-            self.logger.info("Cross validation set to False")
+        fit_kwargs = get_pipeline_fit_kwargs(model, fit_kwargs)
+        self.logger.info("Cross validation set to False")
 
-            self.logger.info("Fitting Model")
-            model_fit_start = time.time()
-            with io.capture_output():
-                pipeline_with_model.fit(data_X, data_y, **fit_kwargs)
-            model_fit_end = time.time()
+        self.logger.info("Fitting Model")
+        model_fit_start = time.time()
+        with io.capture_output():
+            model.fit(data_X, data_y, **fit_kwargs)
+        model_fit_end = time.time()
 
-            model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
+        model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
 
-            display.move_progress()
+        #display.move_progress()
+        display.clear_output()
 
-            if predict:
-                self.predict_model(pipeline_with_model, verbose=False)
-                model_results = self.pull(pop=True).drop("Model", axis=1)
+        # if predict:
+        #     self.predict_model(model, verbose=False)
+        #     model_results = self.pull(pop=True).drop("Model", axis=1)
 
-                self.display_container.append(model_results)
+        #     self.display_container.append(model_results)
 
-                display.display(
-                    model_results,
-                    clear=system,
-                    override=False if not system else None,
-                )
+        #     display.display(
+        #         model_results,
+        #         clear=system,
+        #         override=False if not system else None,
+        #     )
 
-                self.logger.info(f"display_container: {len(self.display_container)}")
+        #     self.logger.info(f"display_container: {len(self.display_container)}")
 
         return model, model_fit_time
 
