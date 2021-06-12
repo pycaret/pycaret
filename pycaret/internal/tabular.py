@@ -7219,14 +7219,13 @@ def plot_model(
             with fit_if_not_fitted(
                 pipeline_with_model, data_X, data_y, groups=groups, **fit_kwargs
             ) as fitted_pipeline_with_model:
-                y_test__ = test_y #fitted_pipeline_with_model.predict(X_test)
-                predict_proba__ = fitted_pipeline_with_model.predict_proba(X_test)
+                predict_proba__ = fitted_pipeline_with_model.predict_proba(data_X)
             display.move_progress()
             display.move_progress()
             display.clear_output()
             with MatplotlibDefaultDPI(base_dpi=_base_dpi, scale_to_set=scale):
                 fig = skplt.metrics.plot_ks_statistic(
-                    y_test__, predict_proba__, figsize=(10, 6)
+                    data_y, predict_proba__, figsize=(10, 6)
                 )
                 if save:
                     logger.info(f"Saving '{plot_name}.png' in current active directory")
