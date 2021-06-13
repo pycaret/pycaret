@@ -2338,10 +2338,11 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
 
         type: str, default = None
-            - linear : filters and only return linear models
-            - tree : filters and only return tree based models
-            - ensemble : filters and only return ensemble models
-
+            - baseline: filters and only return baseline models.
+            - classical: filters and only return classical models.
+            - linear : filters and only return linear models.
+            - neighbors: filters and only return neighbors models.
+            - tree : filters and only return tree based models.
 
         internal: bool, default = False
             When True, will return extra columns and rows used internally.
@@ -2356,7 +2357,41 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             pandas.DataFrame
 
         """
-        return super().models(type=type, internal=internal, raise_errors=raise_errors)
+        MODEL_TYPES = [
+            'baseline',
+            'classical',
+            'linear',
+            'neighbors',
+            'tree'
+        ]
+
+        self.logger.info(f"gpu_param set to {self.gpu_param}")
+
+        if type:
+
+            if type not in MODEL_TYPES:
+                raise ValueError(
+                    f"type parameter only accepts {', '.join(MODEL_TYPES)}."
+                )
+
+            MODEL_TYPES = [type]
+
+        _, model_containers = self._get_models(raise_errors)
+
+        model_containers = {
+            k:v for k, v in model_containers.items() if v.model_type in MODEL_TYPES
+        }
+
+        rows = [
+            v.get_dict(internal)
+            for k, v in model_containers.items()
+            if (internal or not v.is_special)
+        ]
+
+        df = pd.DataFrame(rows)
+        df.set_index("ID", inplace=True, drop=True)
+
+        return df
 
     def get_metrics(
         self,
