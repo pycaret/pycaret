@@ -1942,7 +1942,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
     def predict_model(
         self,
         estimator,
-        data: Optional[pd.DataFrame] = None,
+        # data: Optional[pd.DataFrame] = None,
         fh=None,
         return_pred_int=False,
         alpha=0.05,
@@ -2005,6 +2005,8 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         #     round=round,
         #     verbose=verbose,
         # )
+
+        data = None  # TODO: Add back when we have support for multivariate TS
 
         if fh is None:
             fh = self.fh
