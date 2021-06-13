@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 
 #### Release: PyCaret 2.3.2 | Release Date: XX XX, 2021 (SEVERAL BUGS FIXED)
 - `gain` and `lift` plot fixed in `pycaret.classification` module. Previously `y_pred` was passed instead of `y_true`. 
+- The Kolmogorov-Smirnov (or KS) plot added in the `plot_model` function under `pycaret.classification` module.
+- Partial Dependence Plot is now added in the `interpret_model` function under `pycaret.classification` and `pycaret.regression`.
+- shap value force plot for LightGBM in the `interpret_model` function was displayed as multiclass plot. Bug fixed now.
 <br/><br/><br/>
 
 #### Release: PyCaret 2.3.1 | Release Date: April 28, 2021 (SEVERAL BUGS FIXED)
