@@ -3101,7 +3101,9 @@ class _SupervisedExperiment(_TabularExperiment):
 
         """
         if self._ml_usecase == MLUsecase.TIME_SERIES:
-            fold = self.fold_generator
+            # Just return the fold to create_model. It will do the rest
+            # fold = fold
+            pass
         else:
             fold = self._get_cv_splitter(fold)
 
