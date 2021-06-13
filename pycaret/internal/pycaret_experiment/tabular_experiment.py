@@ -1563,6 +1563,7 @@ class _TabularExperiment(_PyCaretExperiment):
 
             elif self._ml_usecase == MLUsecase.TIME_SERIES:
                 # Set splitter
+                self.fold_generator = None
                 if fold_strategy in possible_time_series_fold_strategies:
                     self.fold_strategy = fold_strategy  # save for use in methods later
                     self.fold_generator = self.get_fold_generator(fold=self.fold_param)

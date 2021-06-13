@@ -1089,7 +1089,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         """
 
         # cross validation setup starts here
-        cv = self.fold_generator
+        cv = self.get_fold_generator(fold=fold)
 
         if not display:
             progress_args = {"max": 3 + 4}
@@ -2525,17 +2525,18 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         return super().get_logs(experiment_name=experiment_name, save=save)
 
     def get_fold_generator(
-        self, fold: int, fold_strategy: Optional[str] = None
+        self, fold: Optional[int] = None, fold_strategy: Optional[str] = None
     ) -> Union[ExpandingWindowSplitter, SlidingWindowSplitter]:
         """Returns the cv object based on number of folds and fold_strategy
 
         Parameters
         ----------
-        fold : int
-            The number of folds
+        fold : Optional[int]
+            The number of folds, by default None which returns the fold generator
+            (cv object) defined during setup
         fold_strategy : Optional[str], optional
             The fold strategy - 'expanding' or 'sliding', by default None which
-            takes the strategy set dueing `setup`
+            takes the strategy set during `setup`
 
         Returns
         -------
@@ -2547,35 +2548,45 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         ValueError
             If not enough data points to support the number of folds requested
         """
-        y_size = len(self.y_train)
-        window_length = len(self.fh)
-        step_length = len(self.fh)
-        initial_window = y_size - (fold * window_length)
+        # cross validation setup starts here
+        if fold is None:
+            # Get cv object defined during setup
+            if self.fold_generator is None:
+                raise ValueError(
+                    "Trying to retrieve Fold Generator but this has not been defined yet."
+                )
+            fold_generator = self.fold_generator
+        else:
+            # Get new cv object based on the fold parameter
+            y_size = len(self.y_train)
+            window_length = len(self.fh)
+            step_length = len(self.fh)
+            initial_window = y_size - (fold * window_length)
 
-        if initial_window < 1:
-            raise ValueError(
-                "Not Enough Data Points, set a lower number of folds or fh"
-            )
+            if initial_window < 1:
+                raise ValueError(
+                    "Not Enough Data Points, set a lower number of folds or fh"
+                )
 
-        # If None, get the strategy defined in the setup (e.g. `expanding`, 'sliding`, etc.)
-        if fold_strategy is None:
-            fold_strategy = self.fold_strategy
+            # If None, get the strategy defined in the setup (e.g. `expanding`, 'sliding`, etc.)
+            if fold_strategy is None:
+                fold_strategy = self.fold_strategy
 
-        if fold_strategy == "expanding" or fold_strategy == "rolling":
-            fold_generator = ExpandingWindowSplitter(
-                initial_window=initial_window,
-                step_length=step_length,
-                window_length=window_length,
-                fh=self.fh,
-                start_with_window=True,
-            )
+            if fold_strategy == "expanding" or fold_strategy == "rolling":
+                fold_generator = ExpandingWindowSplitter(
+                    initial_window=initial_window,
+                    step_length=step_length,
+                    window_length=window_length,
+                    fh=self.fh,
+                    start_with_window=True,
+                )
 
-        if fold_strategy == "sliding":
-            fold_generator = SlidingWindowSplitter(
-                initial_window=initial_window,
-                step_length=step_length,
-                window_length=window_length,
-                fh=self.fh,
-                start_with_window=True,
-            )
+            if fold_strategy == "sliding":
+                fold_generator = SlidingWindowSplitter(
+                    initial_window=initial_window,
+                    step_length=step_length,
+                    window_length=window_length,
+                    fh=self.fh,
+                    start_with_window=True,
+                )
         return fold_generator

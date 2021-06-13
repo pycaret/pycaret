@@ -239,8 +239,8 @@ def test_create_predict_finalize_model(name, fh, load_data):
     assert np.all(y_pred.index == final_expected_period_index)
 
 
-def test_create_model_customization(load_data):
-    """test customization of create_model arguments"""
+def test_create_model_custom_folds(load_data):
+    """test custom fold in create_model"""
     exp = TimeSeriesExperiment()
     setup_fold = 3
     exp.setup(
@@ -414,6 +414,33 @@ def test_tune_custom_grid_and_choose_better(load_data):
     assert tuned_model1.strategy == only_strategy
     # tuned model does improve score (verified manually), so pick original
     assert tuned_model2.strategy == model.strategy
+
+
+def test_tune_model_custom_folds(load_data):
+    """test custom folds in tune_model"""
+    exp = TimeSeriesExperiment()
+    setup_fold = 3
+    exp.setup(
+        data=load_data,
+        fold=setup_fold,
+        fh=12,
+        fold_strategy="sliding",
+        verbose=False,
+    )
+
+    #######################################
+    ## Test Tune Model with custom folds ##
+    #######################################
+    model = exp.create_model("naive")
+    _ = exp.tune_model(model)
+    metrics1 = exp.pull()
+
+    custom_fold = 5
+    _ = exp.tune_model(model, fold=5)
+    metrics2 = exp.pull()
+
+    assert len(metrics1) == setup_fold + 2  # + 2 for Mean and SD
+    assert len(metrics2) == custom_fold + 2  # + 2 for Mean and SD
 
 
 def test_tune_model_raises(load_data):
