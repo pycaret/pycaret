@@ -2633,10 +2633,12 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
     
     def _check_datetime_index(self, estimator):
-        if isinstance(estimator, str):
-            y_index = self.y.index
+        y_index = self.y.index
+        index_is_datetime = isinstance(y_index, pd.DatetimeIndex)
 
-            if isinstance(y_index, pd.DatetimeIndex) and estimator not in DATETIME_INDEX_MODELS:
+        if isinstance(estimator, str):
+
+            if index_is_datetime and estimator not in DATETIME_INDEX_MODELS:
                 raise ValueError(f'Estimator {estimator} does not support data index DatetimeIndex, convert the data index to PeriodIndex.')
 
         else:
@@ -2644,5 +2646,5 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             all_mdls, _ = self._get_models() 
             all_mdls_class = [v.class_def for k,v in all_mdls.items() if k in DATETIME_INDEX_MODELS]
 
-            if not any([type(estimator) == mdl_class for mdl_class in all_mdls_class]):
+            if index_is_datetime and not any([type(estimator) == mdl_class for mdl_class in all_mdls_class]):
                 raise ValueError(f'Estimator {estimator} does not support data index DatetimeIndex, convert the data index to PeriodIndex.')
