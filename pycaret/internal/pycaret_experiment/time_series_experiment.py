@@ -1,3 +1,8 @@
+from sktime.forecasting.model_selection import (
+    ExpandingWindowSplitter,
+    SlidingWindowSplitter,
+)
+
 from pycaret.internal.pycaret_experiment.utils import highlight_setup, MLUsecase
 from pycaret.internal.pycaret_experiment.supervised_experiment import (
     _SupervisedExperiment,
@@ -725,7 +730,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
     def _create_model_without_cv(
         self, model, data_X, data_y, fit_kwargs, predict, system, display: Display
     ):
-        #with estimator_pipeline(self._internal_pipeline, model) as pipeline_with_model:
+        # with estimator_pipeline(self._internal_pipeline, model) as pipeline_with_model:
 
         self.logger.info(
             "Support for Exogenous variables not yet supported. Switching X, y order"
@@ -743,7 +748,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
 
-        #display.move_progress()
+        # display.move_progress()
         display.clear_output()
 
         # if predict:
@@ -2518,3 +2523,59 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         """
 
         return super().get_logs(experiment_name=experiment_name, save=save)
+
+    def get_fold_generator(
+        self, fold: int, fold_strategy: Optional[str] = None
+    ) -> Union[ExpandingWindowSplitter, SlidingWindowSplitter]:
+        """Returns the cv object based on number of folds and fold_strategy
+
+        Parameters
+        ----------
+        fold : int
+            The number of folds
+        fold_strategy : Optional[str], optional
+            The fold strategy - 'expanding' or 'sliding', by default None which
+            takes the strategy set dueing `setup`
+
+        Returns
+        -------
+        Union[ExpandingWindowSplitter, SlidingWindowSplitter]
+            The cross-validation object
+
+        Raises
+        ------
+        ValueError
+            If not enough data points to support the number of folds requested
+        """
+        y_size = len(self.y_train)
+        window_length = len(self.fh)
+        step_length = len(self.fh)
+        initial_window = y_size - (fold * window_length)
+
+        if initial_window < 1:
+            raise ValueError(
+                "Not Enough Data Points, set a lower number of folds or fh"
+            )
+
+        # If None, get the strategy defined in the setup (e.g. `expanding`, 'sliding`, etc.)
+        if fold_strategy is None:
+            fold_strategy = self.fold_strategy
+
+        if fold_strategy == "expanding" or fold_strategy == "rolling":
+            fold_generator = ExpandingWindowSplitter(
+                initial_window=initial_window,
+                step_length=step_length,
+                window_length=window_length,
+                fh=self.fh,
+                start_with_window=True,
+            )
+
+        if fold_strategy == "sliding":
+            fold_generator = SlidingWindowSplitter(
+                initial_window=initial_window,
+                step_length=step_length,
+                window_length=window_length,
+                fh=self.fh,
+                start_with_window=True,
+            )
+        return fold_generator

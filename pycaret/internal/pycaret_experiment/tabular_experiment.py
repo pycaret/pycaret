@@ -1562,38 +1562,12 @@ class _TabularExperiment(_PyCaretExperiment):
                     self.fold_generator = fold_strategy
 
             elif self._ml_usecase == MLUsecase.TIME_SERIES:
-                y_size = len(self.y_train)
                 # Set splitter
                 if fold_strategy in possible_time_series_fold_strategies:
-                    window_length = len(fh)
-                    step_length = len(fh)
-                    initial_window = y_size - (self.fold_param * window_length)
-
-                    if initial_window < 1:
-                        raise ValueError(
-                            "Not Enough Data Points, set a lower number of folds or fh"
-                        )
-
-                    if (fold_strategy == "expanding") or ((fold_strategy == "rolling")):
-                        self.fold_generator = ExpandingWindowSplitter(
-                            initial_window=initial_window,
-                            step_length=step_length,
-                            window_length=window_length,
-                            fh=fh,
-                            start_with_window=True,
-                        )
-
-                    if fold_strategy == "sliding":
-                        self.fold_generator = SlidingWindowSplitter(
-                            initial_window=initial_window,
-                            step_length=step_length,
-                            window_length=window_length,
-                            fh=fh,
-                            start_with_window=True,
-                        )
+                    self.fold_strategy = fold_strategy  # save for use in methods later
+                    self.fold_generator = self.get_fold_generator(fold=self.fold_param)
                 else:
                     self.fold_generator = fold_strategy
-                    # fh = fold_strategy.fh  # Already reset in child class
 
                     def _get_cv_n_folds(y, cv) -> int:
                         """
@@ -1607,8 +1581,15 @@ class _TabularExperiment(_PyCaretExperiment):
                         n_folds = int((len(y) - cv.initial_window) / cv.step_length)
                         return n_folds
 
+                    # Set the number of folds from the cv object
                     fold = _get_cv_n_folds(y=self.y_train, cv=fold_strategy)
                     self.fold_param = fold
+
+                    # Set the strategy from the cv object
+                    if isinstance(self.fold_generator, ExpandingWindowSplitter):
+                        self.fold_strategy = "expanding"
+                    if isinstance(self.fold_generator, SlidingWindowSplitter):
+                        self.fold_strategy = "sliding"
 
         # we do just the fitting so that it will be fitted when saved/deployed,
         # but we don't want to modify the data

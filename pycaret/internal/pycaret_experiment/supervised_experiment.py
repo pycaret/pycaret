@@ -1397,7 +1397,12 @@ class _SupervisedExperiment(_TabularExperiment):
 
         # cross validation setup starts here
         if self._ml_usecase == MLUsecase.TIME_SERIES:
-            cv = self.fold_generator
+            if fold is None:
+                # Get cv object defined during setup
+                cv = self.fold_generator
+            else:
+                # Get new cv object based on the fold parameter
+                cv = self.get_fold_generator(fold=fold)
         else:
             cv = self._get_cv_splitter(fold)
 
