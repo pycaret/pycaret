@@ -1397,7 +1397,7 @@ class _SupervisedExperiment(_TabularExperiment):
 
         # cross validation setup starts here
         if self._ml_usecase == MLUsecase.TIME_SERIES:
-            cv = self.fold_generator
+            cv = self.get_fold_generator(fold=fold)
         else:
             cv = self._get_cv_splitter(fold)
 
@@ -3101,7 +3101,9 @@ class _SupervisedExperiment(_TabularExperiment):
 
         """
         if self._ml_usecase == MLUsecase.TIME_SERIES:
-            fold = self.fold_generator
+            # Just return the fold to create_model. It will do the rest
+            # fold = fold
+            pass
         else:
             fold = self._get_cv_splitter(fold)
 

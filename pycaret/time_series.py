@@ -1164,7 +1164,7 @@ def interpret_model(
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def predict_model(
     estimator,
-    data: Optional[pd.DataFrame] = None,
+    # data: Optional[pd.DataFrame] = None,
     fh=None,
     return_pred_int=False,
     alpha=0.05,
@@ -1221,7 +1221,7 @@ def predict_model(
 
     return _CURRENT_EXPERIMENT.predict_model(
         estimator=estimator,
-        data=data,
+        # data=data,
         fh=fh,
         return_pred_int=return_pred_int,
         alpha=alpha,
