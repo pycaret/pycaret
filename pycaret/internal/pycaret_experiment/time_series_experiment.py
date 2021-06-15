@@ -17,6 +17,7 @@ import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
 from pycaret.internal.logging import get_logger
 from pycaret.internal.Display import Display
+
 from pycaret.internal.distributions import *
 from pycaret.internal.validation import *
 from pycaret.internal.tunable import TunableMixin
@@ -876,7 +877,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         round: int = 4,
         n_iter: int = 10,
         custom_grid: Optional[Union[Dict[str, list], Any]] = None,
-        optimize: str = "smape",
+        optimize: str = "SMAPE",
         custom_scorer=None,
         search_algorithm: Optional[str] = None,
         choose_better: bool = False,
@@ -1053,7 +1054,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 raise ValueError(
                     "Optimize method not supported. See docstring for list of available parameters."
                 )
-
         else:
             self.logger.info(f"optimize set to user defined function {optimize}")
 
@@ -1142,11 +1142,25 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         display.move_progress()
 
         # setting optimize parameter
-
         # TODO: Changed compared to other PyCaret UseCases (Check with Antoni)
         # optimize = optimize.scorer
         compare_dimension = optimize_container.display_name
-        optimize_dict = {optimize: optimize_container.scorer}
+        optimize_metric_dict = {optimize_container.id: optimize_container.scorer}
+
+        # Returns a dictionary of all metric containers (disabled for now since
+        # we only need optimize metric)
+        # {'mae': <pycaret.containers....783DEB0C8>, 'rmse': <pycaret.containers....783DEB148> ...}
+        #  all_metric_containers = self._all_metrics
+
+        # # Returns a dictionary of all metric scorers (disabled for now since
+        # we only need optimize metric)
+        # {'mae': 'neg_mean_absolute_error', 'rmse': 'neg_root_mean_squared_error' ...}
+        # all_metrics_dict = {
+        #     all_metric_containers[metric_id].id: all_metric_containers[metric_id].scorer
+        #     for metric_id in all_metric_containers
+        # }
+
+        refit_metric = optimize_container.id  # Name of the metric: e.g. 'mae'
 
         # convert trained estimator into string name for grids
 
@@ -1303,7 +1317,8 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                         forecaster=model,
                         cv=cv,
                         param_grid=param_grid,
-                        scoring=optimize_dict,
+                        scoring=optimize_metric_dict,
+                        refit_metric=refit_metric,
                         n_jobs=n_jobs,
                         verbose=tuner_verbose,
                         refit=False,  # since we will refit afterwards anyway
@@ -1318,7 +1333,8 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                         cv=cv,
                         param_distributions=param_grid,
                         n_iter=n_iter,
-                        scoring=optimize_dict,
+                        scoring=optimize_metric_dict,
+                        refit_metric=refit_metric,
                         n_jobs=n_jobs,
                         verbose=tuner_verbose,
                         random_state=self.seed,

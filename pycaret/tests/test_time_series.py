@@ -470,6 +470,23 @@ def test_tune_model_custom_folds(load_data):
     assert len(metrics2) == custom_fold + 2  # + 2 for Mean and SD
 
 
+def test_tune_model_alternate_metric(load_data):
+    """tests model selection using non default metric"""
+    exp = TimeSeriesExperiment()
+    fh = 12
+    fold = 2
+
+    exp.setup(data=load_data, fold=fold, fh=fh, fold_strategy="sliding")
+
+    model_obj = exp.create_model("naive")
+    tuned_model_obj = exp.tune_model(model_obj, optimize="MAE")
+    y_pred = exp.predict_model(tuned_model_obj)
+    assert isinstance(y_pred, pd.Series)
+
+    expected_period_index = load_data.iloc[-fh:].index
+    assert np.all(y_pred.index == expected_period_index)
+
+
 def test_tune_model_raises(load_data):
     """Tests conditions that raise an error due to lack of data"""
 
