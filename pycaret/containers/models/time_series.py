@@ -12,6 +12,7 @@ from typing import Union, Dict, List, Tuple, Any, Optional
 from abc import abstractmethod
 import random
 import numpy as np  # type: ignore
+import pandas as pd
 import logging
 
 from sktime.forecasting.base._sktime import _SktimeForecaster  # type: ignore
@@ -787,7 +788,7 @@ class TBATSContainer(TimeSeriesContainer):
         logger = get_logger()
         np.random.seed(globals_dict["seed"])
         self.gpu_imported = False
-        
+
         try:
             from sktime.forecasting.tbats import TBATS  # type: ignore
         except ImportError:
@@ -926,9 +927,7 @@ class ProphetContainer(TimeSeriesContainer):
         np.random.seed(globals_dict["seed"])
         self.gpu_imported = False
 
-        try:
-            from sktime.forecasting.fbprophet import Prophet  # type: ignore
-        except ImportError:
+        if not ProphetPeriodPatched:
             logger.warning("Couldn't import sktime.forecasting.fbprophet")
             self.active = False
             return
@@ -949,7 +948,7 @@ class ProphetContainer(TimeSeriesContainer):
         super().__init__(
             id="prophet",
             name="Prophet",
-            class_def=Prophet,
+            class_def=ProphetPeriodPatched,
             args=args,
             tune_grid=tune_grid,
             tune_distribution=tune_distributions,
@@ -960,7 +959,7 @@ class ProphetContainer(TimeSeriesContainer):
 
     @property
     def _set_args(self) -> dict:
-        return {} 
+        return {}
 
     @property
     def _set_tune_args(self) -> dict:
@@ -968,18 +967,20 @@ class ProphetContainer(TimeSeriesContainer):
 
     @property
     def _set_tune_grid(self) -> dict:
-        return {
-            'growth': ['linear'] # param_grid must not be empty
-        }
-    
+        return {"growth": ["linear"]}  # param_grid must not be empty
+
     @property
     def _set_tune_distributions(self) -> dict:
         return {
             # Based on https://facebook.github.io/prophet/docs/diagnostics.html#hyperparameter-tuning
-            "seasonality_mode": CategoricalDistribution(['additive', 'multiplicative']),
-            'changepoint_prior_scale': UniformDistribution(lower=0.001, upper=0.5, log=True),
-            'seasonality_prior_scale': UniformDistribution(lower=0.01, upper=10, log=True),
-            'holidays_prior_scale': UniformDistribution(lower=0.01, upper=10, log=True)
+            "seasonality_mode": CategoricalDistribution(["additive", "multiplicative"]),
+            "changepoint_prior_scale": UniformDistribution(
+                lower=0.001, upper=0.5, log=True
+            ),
+            "seasonality_prior_scale": UniformDistribution(
+                lower=0.01, upper=10, log=True
+            ),
+            "holidays_prior_scale": UniformDistribution(lower=0.01, upper=10, log=True),
         }
 
 
@@ -2197,6 +2198,31 @@ class BaseCdsDt(_SktimeForecaster):
         return self.forecaster_.predict(
             fh=fh, X=X, return_pred_int=return_pred_int, alpha=alpha
         )
+
+
+try:
+    from sktime.forecasting.fbprophet import Prophet  # type: ignore
+    from sktime.forecasting.base._base import DEFAULT_ALPHA
+
+    class ProphetPeriodPatched(Prophet):
+        def fit(self, y, X=None, fh=None, **fit_params):
+            if isinstance(y, (pd.Series, pd.DataFrame)):
+                if isinstance(y.index, pd.PeriodIndex):
+                    y.index = y.index.to_timestamp(freq=y.index.freq)
+
+            return super().fit(y, X=X, fh=fh, **fit_params)
+
+        def predict(self, fh=None, X=None, return_pred_int=False, alpha=DEFAULT_ALPHA):
+            y = super().predict(
+                fh=fh, X=X, return_pred_int=return_pred_int, alpha=alpha
+            )
+            y.index = y.index.to_period(freq=y.index.freq)
+            return y
+
+
+except ImportError:
+    Prophet = None
+    ProphetPeriodPatched = None
 
 
 class EnsembleTimeSeriesContainer(TimeSeriesContainer):
