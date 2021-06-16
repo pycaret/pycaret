@@ -2216,7 +2216,10 @@ try:
             y = super().predict(
                 fh=fh, X=X, return_pred_int=return_pred_int, alpha=alpha
             )
-            y.index = y.index.to_period(freq=y.index.freq)
+            try:
+                y.index = y.index.to_period(freq=y.index.freq)
+            except Exception:
+                pass
             return y
 
 
