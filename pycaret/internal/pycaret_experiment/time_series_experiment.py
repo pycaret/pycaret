@@ -749,22 +749,22 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
 
-        # display.move_progress()
-        display.clear_output()
+        display.move_progress()
+        # display.clear_output()
 
-        # if predict:
-        #     self.predict_model(model, verbose=False)
-        #     model_results = self.pull(pop=True).drop("Model", axis=1)
+        if predict:
+            self.predict_model(model, verbose=False)
+            model_results = self.pull(pop=True).drop("Model", axis=1)
 
-        #     self.display_container.append(model_results)
+            self.display_container.append(model_results)
 
-        #     display.display(
-        #         model_results,
-        #         clear=system,
-        #         override=False if not system else None,
-        #     )
+            display.display(
+                model_results,
+                clear=system,
+                override=False if not system else None,
+            )
 
-        #     self.logger.info(f"display_container: {len(self.display_container)}")
+            self.logger.info(f"display_container: {len(self.display_container)}")
 
         return model, model_fit_time
 
@@ -2024,8 +2024,29 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         data = None  # TODO: Add back when we have support for multivariate TS
 
+        X_test_ = self.X_test.copy()
+        # Some predict methods in sktime expect None (not an empty dataframe as
+        # returned by pycaret). Hence converting to None.
+        if X_test_.shape[0] == 0 or X_test_.shape[1] == 0:
+            X_test_ = None
+        y_test_ = self.y_test.copy()
+
         if fh is None:
             fh = self.fh
+
+        display = None
+        try:
+            np.random.seed(self.seed)
+            if not display:
+                display = Display(
+                    verbose=verbose,
+                    html_param=self.html_param,
+                )
+        except:
+            display = Display(
+                verbose=False,
+                html_param=False,
+            )
 
         try:
             return_vals = estimator.predict(
@@ -2056,7 +2077,53 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             else:
                 # Leave as series
                 result = return_vals
+
         result = result.round(round)
+
+        # This is not technically y_test_pred in all cases.
+        # If the model has not been finalized, y_test_pred will match the indices from y_test
+        # If the model has been finalized, y_test_pred will not match the indices from y_test
+        # Also, the user can use a different fh length in predict in which case the length
+        # of y_test_pred will not match y_test.
+        y_test_pred = estimator.predict(
+            X=X_test_, fh=fh, return_pred_int=False, alpha=alpha
+        )
+        if len(y_test_pred) != len(y_test_):
+            self.logger.warning(
+                "predict_model >> Forecast Horizon does not match the horizon length "
+                "used during training. Metrics displayed will be using indices that match only"
+            )
+        # concatenates by index
+        y_test_and_pred = pd.concat([y_test_pred, y_test_], axis=1)
+        y_test_and_pred.dropna(inplace=True)  # Removes any indices that do not match
+        y_test_pred_common = y_test_and_pred[y_test_and_pred.columns[0]]
+        y_test_common = y_test_and_pred[y_test_and_pred.columns[1]]
+
+        if len(y_test_and_pred) == 0:
+            self.logger.warning(
+                "predict_model >> No indices matched between test set and prediction. "
+                "You are most likely calling predict_model after finalizing model. "
+                "All metrics will be set to NaN"
+            )
+            metrics = self._calculate_metrics(y_test=[], pred=[], pred_prob=None)  # type: ignore
+            metrics = {metric_name: np.nan for metric_name, _ in metrics.items()}
+        else:
+            metrics = self._calculate_metrics(y_test=y_test_common, pred=y_test_pred_common, pred_prob=None)  # type: ignore
+
+        # Display Test Score
+        # model name
+        full_name = self._get_model_name(estimator)
+        df_score = pd.DataFrame(metrics, index=[0])
+        df_score.insert(0, "Model", full_name)
+        df_score = df_score.round(round)
+        display.display(df_score.style.set_precision(round), clear=False)
+
+        # store predictions on hold-out in display_container
+        if df_score is not None:
+            self.display_container.append(df_score)
+
+        gc.collect()
+
         return result
 
     def finalize_model(
