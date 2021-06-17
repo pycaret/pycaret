@@ -861,6 +861,9 @@ class Iterative_Imputer(_BaseImputer):
             else:
                 self.regressors_[column] = (time, dummy, le, estimator)
 
+        if result.dtype.name == "float64":
+            result = result.astype("float32")
+
         X_test[column] = result
         X.update(X_test[column])
 
