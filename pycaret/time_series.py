@@ -2036,10 +2036,10 @@ def cross_validate_ts(
         raise
 
     # Similar to parts of _format_results in BaseGridSearch
-    (test_scores_dict, fit_time, score_time) = zip(*out)
+    (test_scores_dict, fit_time, score_time, cutoffs) = zip(*out)
     test_scores = _aggregate_score_dicts(test_scores_dict)
 
-    return test_scores
+    return test_scores, cutoffs
 
 
 def _get_metrics_dict_ts(
@@ -2122,6 +2122,7 @@ def _fit_and_score(
 
     start = time.time()
     forecaster.fit(y_train, X_train, **fit_params)
+    cutoff = forecaster.cutoff
     fit_time = time.time() - start
 
     y_pred = forecaster.predict(X_test)
@@ -2141,7 +2142,7 @@ def _fit_and_score(
         fold_scores[scorer_name] = metric
     score_time = time.time() - start
 
-    return fold_scores, fit_time, score_time
+    return fold_scores, fit_time, score_time, cutoff
 
 
 class BaseGridSearch:
@@ -2279,7 +2280,7 @@ class BaseGridSearch:
     def _format_results(candidate_params, scorers, out, n_splits):
         """From sklearn and sktime"""
         n_candidates = len(candidate_params)
-        (test_scores_dict, fit_time, score_time) = zip(*out)
+        (test_scores_dict, fit_time, score_time, cutoffs) = zip(*out)
         test_scores_dict = _aggregate_score_dicts(test_scores_dict)
 
         results = {}
