@@ -749,22 +749,22 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
 
-        # display.move_progress()
-        display.clear_output()
+        display.move_progress()
+        # display.clear_output()
 
-        # if predict:
-        #     self.predict_model(model, verbose=False)
-        #     model_results = self.pull(pop=True).drop("Model", axis=1)
+        if predict:
+            self.predict_model(model, verbose=False)
+            model_results = self.pull(pop=True).drop("Model", axis=1)
 
-        #     self.display_container.append(model_results)
+            self.display_container.append(model_results)
 
-        #     display.display(
-        #         model_results,
-        #         clear=system,
-        #         override=False if not system else None,
-        #     )
+            display.display(
+                model_results,
+                clear=system,
+                override=False if not system else None,
+            )
 
-        #     self.logger.info(f"display_container: {len(self.display_container)}")
+            self.logger.info(f"display_container: {len(self.display_container)}")
 
         return model, model_fit_time
 
