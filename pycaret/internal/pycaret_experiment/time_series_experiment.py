@@ -2025,6 +2025,10 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         data = None  # TODO: Add back when we have support for multivariate TS
 
         X_test_ = self.X_test.copy()
+        # Some predict methods in sktime expect None (not an empty dataframe as
+        # returned by pycaret). Hence converting to None.
+        if X_test_.shape[0] == 0 or X_test_.shape[1] == 0:
+            X_test_ = None
         y_test_ = self.y_test.copy()
 
         if fh is None:
