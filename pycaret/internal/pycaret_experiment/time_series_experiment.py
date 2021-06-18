@@ -6,8 +6,11 @@ from pycaret.internal.pipeline import (
     estimator_pipeline,
     get_pipeline_fit_kwargs,
 )
-from pycaret.internal.utils import color_df
-from pycaret.internal.utils import SeasonalPeriod
+from pycaret.internal.utils import (
+    color_df,
+    SeasonalPeriod,
+    TSModelTypes
+)
 import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
 from pycaret.internal.logging import get_logger
@@ -2357,21 +2360,15 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             pandas.DataFrame
 
         """
-        MODEL_TYPES = [
-            'baseline',
-            'classical',
-            'linear',
-            'neighbors',
-            'tree'
-        ]
-
         self.logger.info(f"gpu_param set to {self.gpu_param}")
+
+        MODEL_TYPES = list(TSModelTypes.__members__.keys())
 
         if type:
 
             if type not in MODEL_TYPES:
                 raise ValueError(
-                    f"type parameter only accepts {', '.join(MODEL_TYPES)}."
+                    f"type parameter only accepts: {', '.join(MODEL_TYPES)}."
                 )
 
             MODEL_TYPES = [type]
