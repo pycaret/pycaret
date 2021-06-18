@@ -814,7 +814,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         model_fit_start = time.time()
 
-        scores = cross_validate_ts(
+        scores, cutoffs = cross_validate_ts(
             forecaster=clone(model),
             y=data_y,
             X=data_X,
@@ -830,6 +830,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         model_fit_end = time.time()
         model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
 
+        # Scores has metric names in lowercase, scores_dict has metric names in uppercase
         score_dict = {v.display_name: scores[f"{k}"] for k, v in metrics.items()}
 
         self.logger.info("Calculating mean and std")
@@ -841,15 +842,19 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         self.logger.info("Creating metrics dataframe")
 
         model_results = pd.DataFrame(score_dict)
+        model_results.insert(0, "cutoff", cutoffs)
+
         model_avgs = pd.DataFrame(
             avgs_dict,
             index=["Mean", "SD"],
         )
+        model_avgs.insert(0, "cutoff", np.nan)
+
         model_results = model_results.append(model_avgs)
         # Round the results
         model_results = model_results.round(round)
 
-        # yellow the mean
+        # yellow the mean (converts model_results from dataframe to dataframe styler)
         model_results = color_df(model_results, "yellow", ["Mean"], axis=1)
         model_results = model_results.set_precision(round)
 

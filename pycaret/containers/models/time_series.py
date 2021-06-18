@@ -2171,6 +2171,15 @@ class BaseCdsDt(_SktimeForecaster):
         self.window_length = window_length
 
     def fit(self, y, X=None, fh=None):
+        # TODO: Check what all is done here (might need to replicate it here)
+        # https://github.com/alan-turing-institute/sktime/blob/ad82a2792b792c6357c8c0db815772bae04c86c1/sktime/forecasting/base/_base.py#L73
+        # e.g. State change
+        # ------------
+        # stores data in self._X and self._y
+        # stores fh, if passed
+        # updates self.cutoff to most recent time in y
+        # creates fitted model (attributes ending in "_")
+        # sets is_fitted flag to true
         self.forecaster_ = TransformedTargetForecaster(
             [
                 (
@@ -2193,6 +2202,7 @@ class BaseCdsDt(_SktimeForecaster):
             ]
         )
         self.forecaster_.fit(y=y, X=X, fh=fh)
+        self._cutoff = self.forecaster_.cutoff
         return self
 
     def predict(self, fh=None, X=None, return_pred_int=False, alpha=DEFAULT_ALPHA):
