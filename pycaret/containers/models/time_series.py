@@ -36,6 +36,7 @@ from pycaret.internal.distributions import (
     IntUniformDistribution,
     CategoricalDistribution,
 )
+from pycaret.internal.utils import TSModelTypes
 import pycaret.containers.base_container
 
 
@@ -223,7 +224,7 @@ class TimeSeriesContainer(ModelContainer):
 
 
 class NaiveContainer(TimeSeriesContainer):
-    model_type = 'baseline'
+    model_type = TSModelTypes.BASELINE
 
     def __init__(self, globals_dict: dict) -> None:
         logger = get_logger()
@@ -266,7 +267,7 @@ class NaiveContainer(TimeSeriesContainer):
 
 
 class SeasonalNaiveContainer(TimeSeriesContainer):
-    model_type = 'baseline'
+    model_type = TSModelTypes.BASELINE
 
     def __init__(self, globals_dict: dict) -> None:
         logger = get_logger()
@@ -323,7 +324,7 @@ class SeasonalNaiveContainer(TimeSeriesContainer):
 
 
 class PolyTrendContainer(TimeSeriesContainer):
-    model_type = 'baseline'
+    model_type = TSModelTypes.BASELINE
     def __init__(self, globals_dict: dict) -> None:
         logger = get_logger()
         np.random.seed(globals_dict["seed"])
@@ -368,7 +369,7 @@ class PolyTrendContainer(TimeSeriesContainer):
 
 
 class ArimaContainer(TimeSeriesContainer):
-    model_type = 'classical'
+    model_type = TSModelTypes.CLASSICAL
 
     def __init__(self, globals_dict: dict) -> None:
         logger = get_logger()
@@ -524,7 +525,7 @@ class ArimaContainer(TimeSeriesContainer):
 
 
 class AutoArimaContainer(TimeSeriesContainer):
-    model_type = 'classical'
+    model_type = TSModelTypes.CLASSICAL
 
     def __init__(self, globals_dict: dict) -> None:
         logger = get_logger()
@@ -590,7 +591,7 @@ class AutoArimaContainer(TimeSeriesContainer):
 
 
 class ExponentialSmoothingContainer(TimeSeriesContainer):
-    model_type = 'classical'
+    model_type = TSModelTypes.CLASSICAL
 
     def __init__(self, globals_dict: dict) -> None:
         logger = get_logger()
@@ -711,7 +712,7 @@ class ExponentialSmoothingContainer(TimeSeriesContainer):
 
 
 class ETSContainer(TimeSeriesContainer):
-    model_type = 'classical'
+    model_type = TSModelTypes.CLASSICAL
 
     def __init__(self, globals_dict: dict) -> None:
         logger = get_logger()
@@ -783,7 +784,7 @@ class ETSContainer(TimeSeriesContainer):
 
 
 class ThetaContainer(TimeSeriesContainer):
-    model_type = 'classical'
+    model_type = TSModelTypes.CLASSICAL
 
     def __init__(self, globals_dict: dict) -> None:
         logger = get_logger()
@@ -866,7 +867,7 @@ class ThetaContainer(TimeSeriesContainer):
 
 
 class TBATSContainer(TimeSeriesContainer):
-    model_type = 'classical'
+    model_type = TSModelTypes.CLASSICAL
 
     def __init__(self, globals_dict: dict) -> None:
         logger = get_logger()
@@ -924,7 +925,7 @@ class TBATSContainer(TimeSeriesContainer):
 
 
 class BATSContainer(TimeSeriesContainer):
-    model_type = 'classical'
+    model_type = TSModelTypes.CLASSICAL
 
     def __init__(self, globals_dict: dict) -> None:
         logger = get_logger()
@@ -991,7 +992,7 @@ class CdsDtContainer(TimeSeriesContainer):
     conditional deseasonalizing and detrending.
     """
     active = False
-    model_type = ''
+    model_type = None
 
     def __init__(self, globals_dict: dict) -> None:
         self.logger = get_logger()
@@ -1089,7 +1090,7 @@ class LinearCdsDtContainer(CdsDtContainer):
     id = "lr_cds_dt"
     name = "Linear w/ Cond. Deseasonalize & Detrending"
     active = True  # set back to True as the parent has False
-    model_type = 'linear'
+    model_type = TSModelTypes.LINEAR
 
     def return_model_class(self):
         from sklearn.linear_model import LinearRegression
@@ -1144,7 +1145,7 @@ class ElasticNetCdsDtContainer(CdsDtContainer):
     id = "en_cds_dt"
     name = "Elastic Net w/ Cond. Deseasonalize & Detrending"
     active = True  # set back to True as the parent has False
-    model_type = 'linear'
+    model_type = TSModelTypes.LINEAR
 
     def return_model_class(self):
         from sklearn.linear_model import ElasticNet
@@ -1201,7 +1202,7 @@ class RidgeCdsDtContainer(CdsDtContainer):
     id = "ridge_cds_dt"
     name = "Ridge w/ Cond. Deseasonalize & Detrending"
     active = True  # set back to True as the parent has False
-    model_type = 'linear'
+    model_type = TSModelTypes.LINEAR
 
     def return_model_class(self):
         from sklearn.linear_model import Ridge
@@ -1258,7 +1259,7 @@ class LassoCdsDtContainer(CdsDtContainer):
     id = "lasso_cds_dt"
     name = "Lasso w/ Cond. Deseasonalize & Detrending"
     active = True  # set back to True as the parent has False
-    model_type = 'linear'
+    model_type = TSModelTypes.LINEAR
 
     def return_model_class(self):
         from sklearn.linear_model import Lasso
@@ -1315,7 +1316,7 @@ class LarsCdsDtContainer(CdsDtContainer):
     id = "lar_cds_dt"
     name = "Least Angular Regressor w/ Cond. Deseasonalize & Detrending"
     active = True  # set back to True as the parent has False
-    model_type = 'linear'
+    model_type = TSModelTypes.LINEAR
 
     def return_model_class(self):
         from sklearn.linear_model import Lars
@@ -1359,7 +1360,7 @@ class LassoLarsCdsDtContainer(CdsDtContainer):
     id = "llar_cds_dt"
     name = "Lasso Least Angular Regressor w/ Cond. Deseasonalize & Detrending"
     active = True  # set back to True as the parent has False
-    model_type = 'linear'
+    model_type = TSModelTypes.LINEAR
 
     def return_model_class(self):
         from sklearn.linear_model import LassoLars
@@ -1405,7 +1406,7 @@ class BayesianRidgeCdsDtContainer(CdsDtContainer):
     id = "br_cds_dt"
     name = "Bayesian Ridge w/ Cond. Deseasonalize & Detrending"
     active = True  # set back to True as the parent has False
-    model_type = 'linear'
+    model_type = TSModelTypes.LINEAR
 
     def return_model_class(self):
         from sklearn.linear_model import BayesianRidge
@@ -1462,7 +1463,7 @@ class HuberCdsDtContainer(CdsDtContainer):
     id = "huber_cds_dt"
     name = "Huber w/ Cond. Deseasonalize & Detrending"
     active = True  # set back to True as the parent has False
-    model_type = 'linear'
+    model_type = TSModelTypes.LINEAR
 
     def return_model_class(self):
         from sklearn.linear_model import HuberRegressor
@@ -1513,7 +1514,7 @@ class PassiveAggressiveCdsDtContainer(CdsDtContainer):
     id = "par_cds_dt"
     name = "Passive Aggressive w/ Cond. Deseasonalize & Detrending"
     active = True  # set back to True as the parent has False
-    model_type = 'linear'
+    model_type = TSModelTypes.LINEAR
 
     def return_model_class(self):
         from sklearn.linear_model import PassiveAggressiveRegressor
@@ -1558,7 +1559,7 @@ class OrthogonalMatchingPursuitCdsDtContainer(CdsDtContainer):
     id = "omp_cds_dt"
     name = "Orthogonal Matching Pursuit w/ Cond. Deseasonalize & Detrending"
     active = True  # set back to True as the parent has False
-    model_type = 'linear' 
+    model_type = TSModelTypes.LINEAR 
 
     def __init__(self, globals_dict: dict) -> None:
         self.num_features = len(globals_dict["X_train"].columns)
@@ -1610,7 +1611,7 @@ class KNeighborsCdsDtContainer(CdsDtContainer):
     id = "knn_cds_dt"
     name = "K Neighbors w/ Cond. Deseasonalize & Detrending"
     active = True  # set back to True as the parent has False
-    model_type = 'neighbors'
+    model_type = TSModelTypes.NEIGHBORS
 
     def __init__(self, globals_dict: dict) -> None:
         self.num_features = len(globals_dict["X_train"].columns)
@@ -1669,7 +1670,7 @@ class DecisionTreeCdsDtContainer(CdsDtContainer):
     id = "dt_cds_dt"
     name = "Decision Tree w/ Cond. Deseasonalize & Detrending"
     active = True  # set back to True as the parent has False
-    model_type = 'tree'
+    model_type = TSModelTypes.TREE
 
     def return_model_class(self):
         from sklearn.tree import DecisionTreeRegressor
@@ -1720,7 +1721,7 @@ class RandomForestCdsDtContainer(CdsDtContainer):
     id = "rf_cds_dt"
     name = "Random Forest w/ Cond. Deseasonalize & Detrending"
     active = True  # set back to True as the parent has False
-    model_type = 'tree'
+    model_type = TSModelTypes.TREE
 
     def return_model_class(self):
         from sklearn.ensemble import RandomForestRegressor
@@ -1770,7 +1771,7 @@ class ExtraTreesCdsDtContainer(CdsDtContainer):
     id = "et_cds_dt"
     name = "Extra Trees w/ Cond. Deseasonalize & Detrending"
     active = True  # set back to True as the parent has False
-    model_type = 'tree'
+    model_type = TSModelTypes.TREE
 
     def return_model_class(self):
         from sklearn.ensemble import ExtraTreesRegressor
@@ -1833,7 +1834,7 @@ class GradientBoostingCdsDtContainer(CdsDtContainer):
     id = "gbr_cds_dt"
     name = "Gradient Boosting w/ Cond. Deseasonalize & Detrending"
     active = True  # set back to True as the parent has False
-    model_type = 'tree'
+    model_type = TSModelTypes.TREE
 
     def return_model_class(self):
         from sklearn.ensemble import GradientBoostingRegressor
@@ -1889,7 +1890,7 @@ class AdaBoostCdsDtContainer(CdsDtContainer):
     id = "ada_cds_dt"
     name = "AdaBoost w/ Cond. Deseasonalize & Detrending"
     active = True  # set back to True as the parent has False
-    model_type = 'tree'
+    model_type = TSModelTypes.TREE
 
     def return_model_class(self):
         from sklearn.ensemble import AdaBoostRegressor
@@ -1932,7 +1933,7 @@ class XGBCdsDtContainer(CdsDtContainer):
     id = "xgboost_cds_dt"
     name = "Extreme Gradient Boosting w/ Cond. Deseasonalize & Detrending"
     active = True  # set back to True as the parent has False
-    model_type = 'tree'
+    model_type = TSModelTypes.TREE
 
     def return_model_class(self):
         try:
@@ -2007,7 +2008,7 @@ class LGBMCdsDtContainer(CdsDtContainer):
     id = "lightgbm_cds_dt"
     name = "Light Gradient Boosting w/ Cond. Deseasonalize & Detrending"
     active = True  # set back to True as the parent has False
-    model_type = 'tree'
+    model_type = TSModelTypes.TREE
 
     def return_model_class(self):
         from lightgbm import LGBMRegressor
@@ -2087,7 +2088,7 @@ class CatBoostCdsDtContainer(CdsDtContainer):
     id = "catboost_cds_dt"
     name = "CatBoost Regressor w/ Cond. Deseasonalize & Detrending"
     active = True  # set back to True as the parent has False
-    model_type = 'tree'
+    model_type = TSModelTypes.TREE
 
     def __init__(self, globals_dict: dict) -> None:
         # suppress output
@@ -2183,7 +2184,7 @@ class CatBoostCdsDtContainer(CdsDtContainer):
 
 
 class BaseCdsDt(_SktimeForecaster):
-    model_type = ''
+    model_type = None
 
     def __init__(
         self, regressor, sp=1, deseasonal_model="additive", degree=1, window_length=10

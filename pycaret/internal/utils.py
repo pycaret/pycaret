@@ -33,11 +33,11 @@ class SeasonalPeriod(IntEnum):
 
 
 class TSModelTypes(Enum):
-    baseline = 'baseline'
-    classical = 'classical'
-    linear = 'linear'
-    neighbors = 'neighbors'
-    tree = 'tree'
+    BASELINE = 'baseline'
+    CLASSICAL = 'classical'
+    LINEAR = 'linear'
+    NEIGHBORS = 'neighbors'
+    TREE = 'tree'
 
 
 def id_or_display_name(metric, input_ml_usecase, target_ml_usecase):

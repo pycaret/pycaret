@@ -2362,21 +2362,22 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         """
         self.logger.info(f"gpu_param set to {self.gpu_param}")
 
-        MODEL_TYPES = list(TSModelTypes.__members__.keys())
+        model_types = list(TSModelTypes)
 
         if type:
-
-            if type not in MODEL_TYPES:
+            try:
+                type = TSModelTypes(type)
+            except ValueError:
                 raise ValueError(
-                    f"type parameter only accepts: {', '.join(MODEL_TYPES)}."
+                    f"type parameter only accepts: {', '.join([x.value for x in TSModelTypes.__members__.values()])}."
                 )
 
-            MODEL_TYPES = [type]
+            model_types = [type]
 
         _, model_containers = self._get_models(raise_errors)
 
         model_containers = {
-            k:v for k, v in model_containers.items() if v.model_type in MODEL_TYPES
+            k: v for k, v in model_containers.items() if v.model_type in model_types
         }
 
         rows = [
