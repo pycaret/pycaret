@@ -11,8 +11,11 @@ from pycaret.internal.pipeline import (
     estimator_pipeline,
     get_pipeline_fit_kwargs,
 )
-from pycaret.internal.utils import color_df
-from pycaret.internal.utils import SeasonalPeriod
+from pycaret.internal.utils import (
+    color_df,
+    SeasonalPeriod,
+    TSModelTypes
+)
 import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
 from pycaret.internal.logging import get_logger
@@ -2433,10 +2436,11 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
 
         type: str, default = None
-            - linear : filters and only return linear models
-            - tree : filters and only return tree based models
-            - ensemble : filters and only return ensemble models
-
+            - baseline: filters and only return baseline models.
+            - classical: filters and only return classical models.
+            - linear : filters and only return linear models.
+            - neighbors: filters and only return neighbors models.
+            - tree : filters and only return tree based models.
 
         internal: bool, default = False
             When True, will return extra columns and rows used internally.
@@ -2451,7 +2455,36 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             pandas.DataFrame
 
         """
-        return super().models(type=type, internal=internal, raise_errors=raise_errors)
+        self.logger.info(f"gpu_param set to {self.gpu_param}")
+
+        model_types = list(TSModelTypes)
+
+        if type:
+            try:
+                type = TSModelTypes(type)
+            except ValueError:
+                raise ValueError(
+                    f"type parameter only accepts: {', '.join([x.value for x in TSModelTypes.__members__.values()])}."
+                )
+
+            model_types = [type]
+
+        _, model_containers = self._get_models(raise_errors)
+
+        model_containers = {
+            k: v for k, v in model_containers.items() if v.model_type in model_types
+        }
+
+        rows = [
+            v.get_dict(internal)
+            for k, v in model_containers.items()
+            if (internal or not v.is_special)
+        ]
+
+        df = pd.DataFrame(rows)
+        df.set_index("ID", inplace=True, drop=True)
+
+        return df
 
     def get_metrics(
         self,

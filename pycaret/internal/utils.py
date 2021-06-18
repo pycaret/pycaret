@@ -16,7 +16,7 @@ from typing import Any, List, Optional, Dict, Tuple, Union
 from sklearn import clone
 from sklearn.model_selection import KFold, StratifiedKFold, BaseCrossValidator
 from sklearn.model_selection._split import _BaseKFold
-from enum import IntEnum
+from enum import IntEnum, Enum
 import functools
 
 
@@ -30,6 +30,14 @@ class SeasonalPeriod(IntEnum):
     Q = 4 # quarter
     A = 1 #year
     Y = 1 #year
+
+
+class TSModelTypes(Enum):
+    BASELINE = 'baseline'
+    CLASSICAL = 'classical'
+    LINEAR = 'linear'
+    NEIGHBORS = 'neighbors'
+    TREE = 'tree'
 
 
 def id_or_display_name(metric, input_ml_usecase, target_ml_usecase):

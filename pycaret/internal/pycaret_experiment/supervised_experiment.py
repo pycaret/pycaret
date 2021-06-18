@@ -652,7 +652,7 @@ class _SupervisedExperiment(_TabularExperiment):
         target_ml_usecase = MLUsecase.TIME_SERIES
 
         greater_is_worse_columns = {
-            id_or_display_name(v, input_ml_usecase, target_ml_usecase)
+            id_or_display_name(v, input_ml_usecase, target_ml_usecase).upper()
             for k, v in self._all_metrics.items()
             if not v.greater_is_better
         }
