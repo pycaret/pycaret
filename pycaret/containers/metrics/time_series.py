@@ -240,6 +240,17 @@ class SMAPEMetricContainer(TimeSeriesMetricContainer):
             greater_is_better=False,
         )
 
+class R2MetricContainer(TimeSeriesMetricContainer):
+    def __init__(self, globals_dict: dict) -> None:
+
+        super().__init__(
+            id="r2",
+            name="R2",
+            score_func=metrics.r2_score,
+            greater_is_better=True,
+            scorer="r2",
+        )
+
 
 def get_all_metric_containers(
     globals_dict: dict, raise_errors: bool = True
