@@ -11,11 +11,7 @@ from pycaret.internal.pipeline import (
     estimator_pipeline,
     get_pipeline_fit_kwargs,
 )
-from pycaret.internal.utils import (
-    color_df,
-    SeasonalPeriod,
-    TSModelTypes
-)
+from pycaret.internal.utils import color_df, SeasonalPeriod, TSModelTypes
 import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
 from pycaret.internal.logging import get_logger
@@ -2648,15 +2644,18 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         return super().get_logs(experiment_name=experiment_name, save=save)
 
     def get_fold_generator(
-        self, fold: Optional[int] = None, fold_strategy: Optional[str] = None
+        self,
+        fold: Optional[Union[int, Any]] = None,
+        fold_strategy: Optional[str] = None,
     ) -> Union[ExpandingWindowSplitter, SlidingWindowSplitter]:
         """Returns the cv object based on number of folds and fold_strategy
 
         Parameters
         ----------
-        fold : Optional[int]
-            The number of folds, by default None which returns the fold generator
-            (cv object) defined during setup
+        fold : Optional[Union[int, Any]]
+            The number of folds (int), by default None which returns the fold generator
+            (cv object) defined during setup. Could also be a sktime cross-validation object.
+            If it is a sktime cross-validation object, it is simply returned back
         fold_strategy : Optional[str], optional
             The fold strategy - 'expanding' or 'sliding', by default None which
             takes the strategy set during `setup`
@@ -2679,6 +2678,8 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                     "Trying to retrieve Fold Generator but this has not been defined yet."
                 )
             fold_generator = self.fold_generator
+        elif not isinstance(fold, int):
+            return fold  # assumes fold is an sktime compatible cross-validation object
         else:
             # Get new cv object based on the fold parameter
             y_size = len(self.y_train)

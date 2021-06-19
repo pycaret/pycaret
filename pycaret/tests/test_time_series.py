@@ -336,6 +336,27 @@ def test_prediction_interval_na(load_data):
     assert y_pred["upper"].isnull().all()
 
 
+def test_compare_models(load_data):
+    """tests compare_models functionality"""
+    exp = TimeSeriesExperiment()
+
+    fh = 12
+    fold = 2
+    data = load_data
+
+    exp.setup(
+        data=data,
+        fh=fh,
+        fold=fold,
+        fold_strategy="expanding",
+        verbose=False,
+        session_id=42,
+    )
+
+    best_baseline_models = exp.compare_models(n_select=3)
+    assert len(best_baseline_models) == 3
+
+
 @pytest.mark.filterwarnings(
     "ignore::statsmodels.tools.sm_exceptions.ConvergenceWarning:statsmodels"
 )

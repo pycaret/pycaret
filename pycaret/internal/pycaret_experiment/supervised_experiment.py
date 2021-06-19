@@ -596,7 +596,9 @@ class _SupervisedExperiment(_TabularExperiment):
 
         """
 
-        fold = self._get_cv_splitter(fold)
+        if self._ml_usecase != MLUsecase.TIME_SERIES:
+            fold = self._get_cv_splitter(fold)
+        # else keep fold as integer
 
         groups = self._get_groups(groups)
 
