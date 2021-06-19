@@ -71,7 +71,7 @@ class _EnsembleForecasterWithVoting(
             )
 
     def _check_weights(self):
-        if len(self.weights) != len(self.forecasters):
+        if (self.weights is not None and len(self.weights) != len(self.forecasters)):
             raise ValueError(
                 f"Number of forecasters and weights must be equal, got {len(self.weights)} weights and {len(self.estimators)} estimators"
             )
