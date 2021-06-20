@@ -60,6 +60,7 @@ from sklearn.exceptions import NotFittedError
 from sklearn.compose import TransformedTargetRegressor
 from sklearn.preprocessing import LabelEncoder
 from typing import List, Tuple, Any, Union, Optional, Dict
+from collections import Iterable
 import warnings
 from IPython.utils import io
 import traceback
@@ -4142,7 +4143,7 @@ def tune_model_supervised(
             )
         ):
             param_grid = {
-                k: CategoricalDistribution(v) if not isinstance(v, Distribution) else v
+                k: CategoricalDistribution(v) if isinstance(v, Iterable) else v
                 for k, v in param_grid.items()
             }
         elif any(isinstance(v, Distribution) for k, v in param_grid.items()):
