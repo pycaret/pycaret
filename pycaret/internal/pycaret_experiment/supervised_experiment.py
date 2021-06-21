@@ -135,8 +135,9 @@ class _SupervisedExperiment(_TabularExperiment):
         """
 
         self.logger.info("choose_better activated")
-        display.update_monitor(1, "Compiling Final Results")
-        display.display_monitor()
+        if display is not None:
+            display.update_monitor(1, "Compiling Final Results")
+            display.display_monitor()
 
         if not fit_kwargs:
             fit_kwargs = {}
@@ -147,7 +148,7 @@ class _SupervisedExperiment(_TabularExperiment):
             elif isinstance(x[0], str):
                 models_and_results[i] = (x[1], None)
             elif len(x) != 2:
-                raise ValueError(f"{x} must have lenght 2 but has {len(x)}")
+                raise ValueError(f"{x} must have length 2 but has {len(x)}")
 
         metric = self._get_metric_by_name_or_id(compare_dimension)
 
@@ -595,7 +596,9 @@ class _SupervisedExperiment(_TabularExperiment):
 
         """
 
-        fold = self._get_cv_splitter(fold)
+        if self._ml_usecase != MLUsecase.TIME_SERIES:
+            fold = self._get_cv_splitter(fold)
+        # else keep fold as integer
 
         groups = self._get_groups(groups)
 
@@ -651,7 +654,7 @@ class _SupervisedExperiment(_TabularExperiment):
         target_ml_usecase = MLUsecase.TIME_SERIES
 
         greater_is_worse_columns = {
-            id_or_display_name(v, input_ml_usecase, target_ml_usecase)
+            id_or_display_name(v, input_ml_usecase, target_ml_usecase).upper()
             for k, v in self._all_metrics.items()
             if not v.greater_is_better
         }
@@ -849,9 +852,14 @@ class _SupervisedExperiment(_TabularExperiment):
                     [master_display, compare_models_], ignore_index=False
                 )
             master_display = master_display.round(round)
-            master_display = master_display.sort_values(
-                by=sort, ascending=sort_ascending
-            )
+            if self._ml_usecase != MLUsecase.TIME_SERIES:
+                master_display = master_display.sort_values(
+                    by=sort, ascending=sort_ascending
+                )
+            else:
+                master_display = master_display.sort_values(
+                    by=sort.upper(), ascending=sort_ascending
+                )
 
             master_display_ = master_display.drop(
                 ["Object", "runtime"], axis=1, errors="ignore"
@@ -1391,7 +1399,7 @@ class _SupervisedExperiment(_TabularExperiment):
 
         # cross validation setup starts here
         if self._ml_usecase == MLUsecase.TIME_SERIES:
-            cv = self.fold_generator
+            cv = self.get_fold_generator(fold=fold)
         else:
             cv = self._get_cv_splitter(fold)
 
@@ -3105,7 +3113,9 @@ class _SupervisedExperiment(_TabularExperiment):
 
         """
         if self._ml_usecase == MLUsecase.TIME_SERIES:
-            fold = self.fold_generator
+            # Just return the fold to create_model. It will do the rest
+            # fold = fold
+            pass
         else:
             fold = self._get_cv_splitter(fold)
 

@@ -33,7 +33,7 @@ class _EnsembleForecasterWithVoting(
     weights : array-like of shape (n_estimators,), default=None
         A sequence of weights (`float` or `int`) to weight the occurrences of
         predicted values before averaging. This parameter is only valid for
-        'voting' method.
+        'voting' method, uses uniform weights for 'voting' method if None.
 
     n_jobs : int or None, optional (default=None)
         The number of jobs to run in parallel for fit. None means 1 unless
@@ -47,17 +47,19 @@ class _EnsembleForecasterWithVoting(
     _available_methods = ["voting", "mean", "median"]
 
     def __init__(self, forecasters, method="mean", weights=None, n_jobs=None):
+        self.forecasters = forecasters
         self.method = method
         self.weights = weights
         super(_EnsembleForecasterWithVoting, self).__init__(
-            forecasters=forecasters, n_jobs=n_jobs
+            forecasters=self.forecasters, n_jobs=n_jobs
         )
 
     def _check_method(self):
         if self.method == "voting" and self.weights is None:
-            raise ValueError(
-                "Missing 'weights' argument. When method='voting' provide a sequence of weights"
+            warnings.warn(
+                "Missing 'weights' argument, setting uniform weights."
             )
+            self._set_weights_uniform
         elif self.method in self._not_required_weights and self.weights:
             warnings.warn(
                 "Unused 'weights' argument. When method='mean' or method='median', 'weights' argument is not provided. Setting weights to `None`"
@@ -66,6 +68,12 @@ class _EnsembleForecasterWithVoting(
         elif self.method not in self._available_methods:
             raise ValueError(
                 f"Method {self.method} is not supported. Avaible methods are {', '.join(self._available_methods)}"
+            )
+
+    def _check_weights(self):
+        if (self.weights is not None and len(self.weights) != len(self.forecasters)):
+            raise ValueError(
+                f"Number of forecasters and weights must be equal, got {len(self.weights)} weights and {len(self.estimators)} estimators"
             )
 
     def fit(self, y, X=None, fh=None):
@@ -119,9 +127,14 @@ class _EnsembleForecasterWithVoting(
         if self.method == "median":
             return pred_forecasters.median(axis=1)
         elif self.method in self._required_weights:
+            self._check_weights()
             pred_w = np.average(pred_forecasters, axis=1, weights=self.weights)
             return pd.DataFrame(pred_w, index=pred_forecasters.index)
 
     @property
     def _set_weights_none(self):
         self.weights = None
+
+    @property
+    def _set_weights_uniform(self):
+        self.weights = np.ones(len(self.forecasters))

@@ -16,7 +16,8 @@ from typing import Any, List, Optional, Dict, Tuple, Union
 from sklearn import clone
 from sklearn.model_selection import KFold, StratifiedKFold, BaseCrossValidator
 from sklearn.model_selection._split import _BaseKFold
-from enum import IntEnum
+from enum import IntEnum, Enum
+import functools
 
 
 class SeasonalPeriod(IntEnum):
@@ -29,6 +30,14 @@ class SeasonalPeriod(IntEnum):
     Q = 4 # quarter
     A = 1 #year
     Y = 1 #year
+
+
+class TSModelTypes(Enum):
+    BASELINE = 'baseline'
+    CLASSICAL = 'classical'
+    LINEAR = 'linear'
+    NEIGHBORS = 'neighbors'
+    TREE = 'tree'
 
 
 def id_or_display_name(metric, input_ml_usecase, target_ml_usecase):
@@ -765,6 +774,7 @@ def get_columns_to_stratify_by(
 
 def check_if_global_is_not_none(globals_d: dict, global_names: dict):
     def decorator(func):
+        @functools.wraps(func)
         def wrapper(*args, **kwargs):
             for name, message in global_names.items():
                 if globals_d[name] is None:

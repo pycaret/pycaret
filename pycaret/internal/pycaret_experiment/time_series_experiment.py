@@ -1,3 +1,8 @@
+from sktime.forecasting.model_selection import (
+    ExpandingWindowSplitter,
+    SlidingWindowSplitter,
+)
+
 from pycaret.internal.pycaret_experiment.utils import highlight_setup, MLUsecase
 from pycaret.internal.pycaret_experiment.supervised_experiment import (
     _SupervisedExperiment,
@@ -6,12 +11,12 @@ from pycaret.internal.pipeline import (
     estimator_pipeline,
     get_pipeline_fit_kwargs,
 )
-from pycaret.internal.utils import color_df
-from pycaret.internal.utils import SeasonalPeriod
+from pycaret.internal.utils import color_df, SeasonalPeriod, TSModelTypes
 import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
 from pycaret.internal.logging import get_logger
 from pycaret.internal.Display import Display
+
 from pycaret.internal.distributions import *
 from pycaret.internal.validation import *
 from pycaret.internal.tunable import TunableMixin
@@ -19,7 +24,7 @@ import pycaret.containers.metrics.time_series
 import pycaret.containers.models.time_series
 import pycaret.internal.preprocess
 import pycaret.internal.persistence
-import pandas as pd  # type ignore
+import pandas as pd  # type: ignore
 from pandas.io.formats.style import Styler
 import numpy as np  # type: ignore
 import datetime
@@ -32,6 +37,7 @@ from IPython.utils import io
 import traceback
 import plotly.express as px  # type: ignore
 import plotly.graph_objects as go  # type: ignore
+import logging
 
 
 warnings.filterwarnings("ignore")
@@ -71,7 +77,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         self.variable_keys = self.variable_keys.union(
             {"fh", "seasonal_period", "seasonality_present"}
         )
-        return
 
     def _get_setup_display(self, **kwargs) -> Styler:
         # define highlight function for function grid to display
@@ -163,6 +168,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         ] = None,
         html: bool = True,
         session_id: Optional[int] = None,
+        system_log: Union[bool, logging.Logger] = True,
         log_experiment: bool = False,
         experiment_name: Optional[str] = None,
         log_plots: Union[bool, list] = False,
@@ -300,6 +306,11 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             for later reproducibility of the entire experiment.
 
 
+        system_log: bool or logging.Logger, default = True
+            Whether to save the system logging file (as logs.log). If the input
+            already is a logger object, that one is used instead.
+
+
         log_experiment: bool, default = False
             When set to True, all metrics and parameters are logged on the ``MLFlow`` server.
 
@@ -386,9 +397,11 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             not isinstance(data.index, allowed_freq_index_types)
             and seasonal_period is None
         ):
+            # https://stackoverflow.com/questions/3590165/join-a-list-of-items-with-different-types-as-string-in-python
             raise ValueError(
                 f"The index of your 'data' is of type '{type(data.index)}'. "
-                f"If the 'data' index is not of one of the following types: {', '.join(allowed_freq_index_types)}, "
+                "If the 'data' index is not of one of the following types: "
+                f"{', '.join(str(type) for type in allowed_freq_index_types)}, "
                 "then 'seasonal_period' must be provided. Refer to docstring for options."
             )
 
@@ -440,9 +453,10 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         data.columns = [str(x) for x in data.columns]
 
-        if not np.issubdtype(data[data.columns[0]].dtype, np.number):
+        target_name = data.columns[0]
+        if not np.issubdtype(data[target_name].dtype, np.number):
             raise TypeError(
-                f"Data must be of 'numpy.number' subtype, got {data[data.columns[0]].dtype}!"
+                f"Data must be of 'numpy.number' subtype, got {data[target_name].dtype}!"
             )
 
         if len(data.index) != len(set(data.index)):
@@ -450,10 +464,13 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         # check valid seasonal parameter
         valid_seasonality = autocorrelation_seasonality_test(
-            data[data.columns[0]], self.seasonal_period
+            data[target_name], self.seasonal_period
         )
 
         self.seasonality_present = True if valid_seasonality else False
+
+        # Should multiplicative components be allowed in models that support it
+        self.strictly_positive = np.all(data[target_name] > 0)
 
         return super().setup(
             data=data,
@@ -496,6 +513,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             custom_pipeline=custom_pipeline,
             html=html,
             session_id=session_id,
+            system_log=system_log,
             log_experiment=log_experiment,
             experiment_name=experiment_name,
             log_plots=log_plots,
@@ -520,7 +538,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         turbo: bool = True,
         errors: str = "ignore",
         fit_kwargs: Optional[dict] = None,
-        groups: Optional[Union[str, Any]] = None,
         verbose: bool = True,
     ):
 
@@ -600,13 +617,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             Dictionary of arguments passed to the fit method of the model.
 
 
-        groups: str or array-like, with shape (n_samples,), default = None
-            Optional group labels when 'GroupKFold' is used for the cross validation.
-            It takes an array with shape (n_samples, ) where n_samples is the number
-            of rows in the training dataset. When string is passed, it is interpreted
-            as the column name in the dataset containing group labels.
-
-
         verbose: bool, default = True
             Score grid is not printed when verbose is set to False.
 
@@ -636,7 +646,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             turbo=turbo,
             errors=errors,
             fit_kwargs=fit_kwargs,
-            groups=groups,
             verbose=verbose,
         )
 
@@ -647,7 +656,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         round: int = 4,
         cross_validation: bool = True,
         fit_kwargs: Optional[dict] = None,
-        groups: Optional[Union[str, Any]] = None,
         verbose: bool = True,
         **kwargs,
     ):
@@ -702,13 +710,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             Dictionary of arguments passed to the fit method of the model.
 
 
-        groups: str or array-like, with shape (n_samples,), default = None
-            Optional group labels when GroupKFold is used for the cross validation.
-            It takes an array with shape (n_samples, ) where n_samples is the number
-            of rows in training dataset. When string is passed, it is interpreted as
-            the column name in the dataset containing group labels.
-
-
         verbose: bool, default = True
             Score grid is not printed when verbose is set to False.
 
@@ -735,48 +736,48 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             round=round,
             cross_validation=cross_validation,
             fit_kwargs=fit_kwargs,
-            groups=groups,
             verbose=verbose,
             **kwargs,
         )
 
 
     def _create_model_without_cv(
-        self, model, data_X, data_y, fit_kwargs, predict, system, display
+        self, model, data_X, data_y, fit_kwargs, predict, system, display: Display
     ):
-        with estimator_pipeline(self._internal_pipeline, model) as pipeline_with_model:
+        # with estimator_pipeline(self._internal_pipeline, model) as pipeline_with_model:
 
-            self.logger.info(
-                "Support for Exogenous variables not yet supported. Switching X, y order"
+        self.logger.info(
+            "Support for Exogenous variables not yet supported. Switching X, y order"
+        )
+        data_X, data_y = data_y, data_X
+
+        fit_kwargs = get_pipeline_fit_kwargs(model, fit_kwargs)
+        self.logger.info("Cross validation set to False")
+
+        self.logger.info("Fitting Model")
+        model_fit_start = time.time()
+        with io.capture_output():
+            model.fit(data_X, data_y, **fit_kwargs)
+        model_fit_end = time.time()
+
+        model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
+
+        display.move_progress()
+        # display.clear_output()
+
+        if predict:
+            self.predict_model(model, verbose=False)
+            model_results = self.pull(pop=True).drop("Model", axis=1)
+
+            self.display_container.append(model_results)
+
+            display.display(
+                model_results,
+                clear=system,
+                override=False if not system else None,
             )
-            data_X, data_y = data_y, data_X
 
-            fit_kwargs = get_pipeline_fit_kwargs(pipeline_with_model, fit_kwargs)
-            self.logger.info("Cross validation set to False")
-
-            self.logger.info("Fitting Model")
-            model_fit_start = time.time()
-            with io.capture_output():
-                pipeline_with_model.fit(data_X, data_y, **fit_kwargs)
-            model_fit_end = time.time()
-
-            model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
-
-            display.move_progress()
-
-            if predict:
-                self.predict_model(pipeline_with_model, verbose=False)
-                model_results = self.pull(pop=True).drop("Model", axis=1)
-
-                self.display_container.append(model_results)
-
-                display.display(
-                    model_results,
-                    clear=system,
-                    override=False if not system else None,
-                )
-
-                self.logger.info(f"display_container: {len(self.display_container)}")
+            self.logger.info(f"display_container: {len(self.display_container)}")
 
         return model, model_fit_time
 
@@ -788,7 +789,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         fit_kwargs,
         round,
         cv,
-        groups,
+        groups,  # TODO: See if we can remove groups
         metrics,
         refit,
         display,
@@ -807,10 +808,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         """
         MONITOR UPDATE ENDS
         """
-        # TODO: pass metrics dict to cross_validate_ts instead of metrics (also update cross_validate_ts to use scorers directly)
-        # Also change to dict comprehension (for efficiency)
         metrics_dict = dict([(k, v.scorer) for k, v in metrics.items()])
-        # metrics_dict = {k, v.scorer for k, v in metrics.items()}
 
         self.logger.info("Starting cross validation")
 
@@ -826,17 +824,14 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             fit_kwargs = fh_param
         else:
             fit_kwargs.update(fh_param)
-        # fit_kwargs.update({'actual_estimator__fh': self.fh})
-        # # TODO: Temporarily disabling parallelization for debug (parallelization makes debugging harder)
-        # n_jobs=1
 
         model_fit_start = time.time()
 
-        scores = cross_validate_ts(
+        scores, cutoffs = cross_validate_ts(
             forecaster=clone(model),
             y=data_y,
             X=data_X,
-            scoring=metrics_dict,  # metrics,
+            scoring=metrics_dict,
             cv=cv,
             n_jobs=n_jobs,
             verbose=0,
@@ -848,7 +843,8 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         model_fit_end = time.time()
         model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
 
-        score_dict = scores
+        # Scores has metric names in lowercase, scores_dict has metric names in uppercase
+        score_dict = {v.display_name: scores[f"{k}"] for k, v in metrics.items()}
 
         self.logger.info("Calculating mean and std")
 
@@ -859,15 +855,19 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         self.logger.info("Creating metrics dataframe")
 
         model_results = pd.DataFrame(score_dict)
+        model_results.insert(0, "cutoff", cutoffs)
+
         model_avgs = pd.DataFrame(
             avgs_dict,
             index=["Mean", "SD"],
         )
+        model_avgs.insert(0, "cutoff", np.nan)
+
         model_results = model_results.append(model_avgs)
         # Round the results
         model_results = model_results.round(round)
 
-        # yellow the mean
+        # yellow the mean (converts model_results from dataframe to dataframe styler)
         model_results = color_df(model_results, "yellow", ["Mean"], axis=1)
         model_results = model_results.set_precision(round)
 
@@ -895,15 +895,11 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         round: int = 4,
         n_iter: int = 10,
         custom_grid: Optional[Union[Dict[str, list], Any]] = None,
-        optimize: str = "smape",
+        optimize: str = "SMAPE",
         custom_scorer=None,
-        search_library: str = "pycaret",
         search_algorithm: Optional[str] = None,
-        early_stopping: Any = False,
-        early_stopping_max_iters: int = 10,
         choose_better: bool = False,
         fit_kwargs: Optional[dict] = None,
-        groups: Optional[Union[str, Any]] = None,
         return_tuner: bool = False,
         verbose: bool = True,
         tuner_verbose: Union[int, bool] = True,
@@ -967,64 +963,10 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             custom metric in the ``optimize`` parameter.
             Will be deprecated in future.
 
-
-        search_library: str, default = 'scikit-learn'
-            The search library used for tuning hyperparameters. Possible values:
-
-            - 'scikit-learn' - default, requires no further installation
-                https://github.com/scikit-learn/scikit-learn
-
-            - 'scikit-optimize' - ``pip install scikit-optimize``
-                https://scikit-optimize.github.io/stable/
-
-            - 'tune-sklearn' - ``pip install tune-sklearn ray[tune]``
-                https://github.com/ray-project/tune-sklearn
-
-            - 'optuna' - ``pip install optuna``
-                https://optuna.org/
-
-
-        search_algorithm: str, default = None
-            The search algorithm depends on the ``search_library`` parameter.
-            Some search algorithms require additional libraries to be installed.
-            If None, will use search library-specific default algorithm.
-
-            - 'scikit-learn' possible values:
+        search_algorithm: str, default = None (defaults to 'random')
+            possible values:
                 - 'random' : random grid search (default)
                 - 'grid' : grid search
-
-            - 'scikit-optimize' possible values:
-                - 'bayesian' : Bayesian search (default)
-
-            - 'tune-sklearn' possible values:
-                - 'random' : random grid search (default)
-                - 'grid' : grid search
-                - 'bayesian' : ``pip install scikit-optimize``
-                - 'hyperopt' : ``pip install hyperopt``
-                - 'bohb' : ``pip install hpbandster ConfigSpace``
-
-            - 'optuna' possible values:
-                - 'random' : randomized search
-                - 'tpe' : Tree-structured Parzen Estimator search (default)
-
-
-        early_stopping: bool or str or object, default = False
-            Use early stopping to stop fitting to a hyperparameter configuration
-            if it performs poorly. Ignored when ``search_library`` is scikit-learn,
-            or if the estimator does not have 'partial_fit' attribute. If False or
-            None, early stopping will not be used. Can be either an object accepted
-            by the search library or one of the following:
-
-            - 'asha' for Asynchronous Successive Halving Algorithm
-            - 'hyperband' for Hyperband
-            - 'median' for Median Stopping Rule
-            - If False or None, early stopping will not be used.
-
-
-        early_stopping_max_iters: int, default = 10
-            Maximum number of epochs to run for each sampled configuration.
-            Ignored if ``early_stopping`` is False or None.
-
 
         choose_better: bool, default = False
             When set to True, the returned object is always better performing. The
@@ -1033,13 +975,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         fit_kwargs: dict, default = {} (empty dict)
             Dictionary of arguments passed to the fit method of the tuner.
-
-
-        groups: str or array-like, with shape (n_samples,), default = None
-            Optional group labels when GroupKFold is used for the cross validation.
-            It takes an array with shape (n_samples, ) where n_samples is the number
-            of rows in training dataset. When string is passed, it is interpreted as
-            the column name in the dataset containing group labels.
 
 
         return_tuner: bool, default = False
@@ -1069,30 +1004,19 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         Only recommended with smaller search spaces that can be defined in the
         ``custom_grid`` parameter.
 
-        - ``search_library`` 'tune-sklearn' does not support GPU models.
-
         """
 
-        # return super().tune_model(
-        #     estimator=estimator,
-        #     fold=fold,
-        #     round=round,
-        #     n_iter=n_iter,
-        #     custom_grid=custom_grid,
-        #     optimize=optimize,
-        #     custom_scorer=custom_scorer,
-        #     search_library=search_library,
-        #     search_algorithm=search_algorithm,
-        #     early_stopping=early_stopping,
-        #     early_stopping_max_iters=early_stopping_max_iters,
-        #     choose_better=choose_better,
-        #     fit_kwargs=fit_kwargs,
-        #     groups=groups,
-        #     return_tuner=return_tuner,
-        #     verbose=verbose,
-        #     tuner_verbose=tuner_verbose,
-        #     **kwargs,
-        # )
+        search_library = "pycaret"  # only 1 library supported right now
+
+        _allowed_search_algorithms = []
+        if search_library == "pycaret":
+            _allowed_search_algorithms = [None, "random", "grid"]
+            if search_algorithm not in _allowed_search_algorithms:
+                raise ValueError(
+                    "`search_algorithm` must be one of "
+                    f"'{', '.join(str(allowed_type) for allowed_type in _allowed_search_algorithms)}'. "
+                    f"You passed '{search_algorithm}'."
+                )
 
         function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
 
@@ -1148,7 +1072,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 raise ValueError(
                     "Optimize method not supported. See docstring for list of available parameters."
                 )
-
         else:
             self.logger.info(f"optimize set to user defined function {optimize}")
 
@@ -1184,7 +1107,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         """
 
         # cross validation setup starts here
-        cv = self.fold_generator
+        cv = self.get_fold_generator(fold=fold)
 
         if not display:
             progress_args = {"max": 3 + 4}
@@ -1237,11 +1160,25 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         display.move_progress()
 
         # setting optimize parameter
-
         # TODO: Changed compared to other PyCaret UseCases (Check with Antoni)
         # optimize = optimize.scorer
         compare_dimension = optimize_container.display_name
-        optimize_dict = {optimize: optimize_container.scorer}
+        optimize_metric_dict = {optimize_container.id: optimize_container.scorer}
+
+        # Returns a dictionary of all metric containers (disabled for now since
+        # we only need optimize metric)
+        # {'mae': <pycaret.containers....783DEB0C8>, 'rmse': <pycaret.containers....783DEB148> ...}
+        #  all_metric_containers = self._all_metrics
+
+        # # Returns a dictionary of all metric scorers (disabled for now since
+        # we only need optimize metric)
+        # {'mae': 'neg_mean_absolute_error', 'rmse': 'neg_root_mean_squared_error' ...}
+        # all_metrics_dict = {
+        #     all_metric_containers[metric_id].id: all_metric_containers[metric_id].scorer
+        #     for metric_id in all_metric_containers
+        # }
+
+        refit_metric = optimize_container.id  # Name of the metric: e.g. 'mae'
 
         # convert trained estimator into string name for grids
 
@@ -1317,16 +1254,20 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             return nc
 
         if search_algorithm is None:
-            search_algorithm = "grid"
+            search_algorithm = "random"  # Defaults to Random
 
-        if search_algorithm == "grid":
-            param_grid = estimator_definition.tune_grid
-        elif search_algorithm == "random":
-            param_grid = estimator_definition.tune_distribution
+        param_grid = None
+        if search_library == "pycaret":
+            if search_algorithm == "grid":
+                param_grid = estimator_definition.tune_grid
+            elif search_algorithm == "random":
+                param_grid = estimator_definition.tune_distribution
 
         if not param_grid:
             raise ValueError(
-                "parameter grid for tuning is empty. If passing custom_grid, make sure that it is not empty. If not passing custom_grid, the passed estimator does not have a built-in tuning grid."
+                "parameter grid for tuning is empty. If passing custom_grid, "
+                "make sure that it is not empty. If not passing custom_grid, "
+                "the passed estimator does not have a built-in tuning grid."
             )
 
         suffixes = []
@@ -1370,6 +1311,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 n_jobs = self.n_jobs_param
 
             if custom_grid is not None:
+                param_grid = custom_grid
                 self.logger.info(f"custom_grid: {param_grid}")
 
             self.logger.info(f"Tuning with n_jobs={n_jobs}")
@@ -1393,9 +1335,11 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                         forecaster=model,
                         cv=cv,
                         param_grid=param_grid,
-                        scoring=optimize_dict,  # metrics
+                        scoring=optimize_metric_dict,
+                        refit_metric=refit_metric,
                         n_jobs=n_jobs,
                         verbose=tuner_verbose,
+                        refit=False,  # since we will refit afterwards anyway
                         **search_kwargs,
                     )
                 elif search_algorithm == "random":
@@ -1407,10 +1351,12 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                         cv=cv,
                         param_distributions=param_grid,
                         n_iter=n_iter,
-                        scoring=optimize_dict,  # metrics
+                        scoring=optimize_metric_dict,
+                        refit_metric=refit_metric,
                         n_jobs=n_jobs,
                         verbose=tuner_verbose,
                         random_state=self.seed,
+                        refit=False,  # since we will refit afterwards anyway
                         **search_kwargs,
                     )
                 else:
@@ -1460,7 +1406,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             display=display,
             fold=fold,
             round=round,
-            groups=groups,
             fit_kwargs=fit_kwargs,
             **best_params,
         )
@@ -1474,7 +1419,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 [estimator, (best_model, model_results)],
                 compare_dimension,
                 fold,
-                groups=groups,
                 fit_kwargs=fit_kwargs,
                 display=display,
             )
@@ -1534,7 +1478,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         choose_better: bool = False,
         optimize: str = "R2",
         fit_kwargs: Optional[dict] = None,
-        groups: Optional[Union[str, Any]] = None,
         verbose: bool = True,
     ) -> Any:
 
@@ -1592,13 +1535,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 Dictionary of arguments passed to the fit method of the model.
 
 
-            groups: str or array-like, with shape (n_samples,), default = None
-                Optional group labels when GroupKFold is used for the cross validation.
-                It takes an array with shape (n_samples, ) where n_samples is the number
-                of rows in training dataset. When string is passed, it is interpreted as
-                the column name in the dataset containing group labels.
-
-
             verbose: bool, default = True
                 Score grid is not printed when verbose is set to False.
 
@@ -1617,7 +1553,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             choose_better=choose_better,
             optimize=optimize,
             fit_kwargs=fit_kwargs,
-            groups=groups,
             verbose=verbose,
         )
 
@@ -1631,7 +1566,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         optimize: str = "SMAPE",
         weights: Optional[List[float]] = None,
         fit_kwargs: Optional[dict] = None,
-        groups: Optional[Union[str, Any]] = None,
         verbose: bool = True,
     ):
 
@@ -1701,13 +1635,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             Dictionary of arguments passed to the fit method of the model.
 
 
-        groups: str or array-like, with shape (n_samples,), default = None
-            Optional group labels when GroupKFold is used for the cross validation.
-            It takes an array with shape (n_samples, ) where n_samples is the number
-            of rows in training dataset. When string is passed, it is interpreted as
-            the column name in the dataset containing group labels.
-
-
         verbose: bool, default = True
             Score grid is not printed when verbose is set to False.
 
@@ -1727,7 +1654,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             method=method,
             weights=weights,
             fit_kwargs=fit_kwargs,
-            groups=groups,
             verbose=verbose,
         )
 
@@ -1741,7 +1667,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         choose_better: bool = False,
         optimize: str = "R2",
         fit_kwargs: Optional[dict] = None,
-        groups: Optional[Union[str, Any]] = None,
         verbose: bool = True,
     ):
 
@@ -1801,13 +1726,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             Dictionary of arguments passed to the fit method of the model.
 
 
-        groups: str or array-like, with shape (n_samples,), default = None
-            Optional group labels when GroupKFold is used for the cross validation.
-            It takes an array with shape (n_samples, ) where n_samples is the number
-            of rows in training dataset. When string is passed, it is interpreted as
-            the column name in the dataset containing group labels.
-
-
         verbose: bool, default = True
             Score grid is not printed when verbose is set to False.
 
@@ -1827,7 +1745,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             choose_better=choose_better,
             optimize=optimize,
             fit_kwargs=fit_kwargs,
-            groups=groups,
             verbose=verbose,
         )
 
@@ -1839,7 +1756,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         save: bool = False,
         fold: Optional[Union[int, Any]] = None,
         fit_kwargs: Optional[dict] = None,
-        groups: Optional[Union[str, Any]] = None,
         use_train_data: bool = False,
         verbose: bool = True,
         display_format: Optional[str] = None,
@@ -1899,13 +1815,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             Dictionary of arguments passed to the fit method of the model.
 
 
-        groups: str or array-like, with shape (n_samples,), default = None
-            Optional group labels when GroupKFold is used for the cross validation.
-            It takes an array with shape (n_samples, ) where n_samples is the number
-            of rows in training dataset. When string is passed, it is interpreted as
-            the column name in the dataset containing group labels.
-
-
         use_train_data: bool, default = False
             When set to true, train data will be used for plots, instead
             of test data.
@@ -1932,7 +1841,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             save=save,
             fold=fold,
             fit_kwargs=fit_kwargs,
-            groups=groups,
             verbose=verbose,
             use_train_data=use_train_data,
             system=True,
@@ -1944,7 +1852,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         estimator,
         fold: Optional[Union[int, Any]] = None,
         fit_kwargs: Optional[dict] = None,
-        groups: Optional[Union[str, Any]] = None,
         use_train_data: bool = False,
     ):
 
@@ -1977,13 +1884,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             Dictionary of arguments passed to the fit method of the model.
 
 
-        groups: str or array-like, with shape (n_samples,), default = None
-            Optional group labels when GroupKFold is used for the cross validation.
-            It takes an array with shape (n_samples, ) where n_samples is the number
-            of rows in training dataset. When string is passed, it is interpreted as
-            the column name in the dataset containing group labels.
-
-
         use_train_data: bool, default = False
             When set to true, train data will be used for plots, instead
             of test data.
@@ -2003,7 +1903,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             estimator=estimator,
             fold=fold,
             fit_kwargs=fit_kwargs,
-            groups=groups,
             use_train_data=use_train_data,
         )
 
@@ -2078,7 +1977,10 @@ class TimeSeriesExperiment(_SupervisedExperiment):
     def predict_model(
         self,
         estimator,
-        data: Optional[pd.DataFrame] = None,
+        # data: Optional[pd.DataFrame] = None,
+        fh=None,
+        return_pred_int=False,
+        alpha=0.05,
         round: int = 4,
         verbose: bool = True,
     ) -> pd.DataFrame:
@@ -2130,20 +2032,123 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         """
 
-        return super().predict_model(
-            estimator=estimator,
-            data=data,
-            probability_threshold=None,
-            encoded_labels=True,
-            round=round,
-            verbose=verbose,
+        # return super().predict_model(
+        #     estimator=estimator,
+        #     data=data,
+        #     probability_threshold=None,
+        #     encoded_labels=True,
+        #     round=round,
+        #     verbose=verbose,
+        # )
+
+        data = None  # TODO: Add back when we have support for multivariate TS
+
+        X_test_ = self.X_test.copy()
+        # Some predict methods in sktime expect None (not an empty dataframe as
+        # returned by pycaret). Hence converting to None.
+        if X_test_.shape[0] == 0 or X_test_.shape[1] == 0:
+            X_test_ = None
+        y_test_ = self.y_test.copy()
+
+        if fh is None:
+            fh = self.fh
+
+        display = None
+        try:
+            np.random.seed(self.seed)
+            if not display:
+                display = Display(
+                    verbose=verbose,
+                    html_param=self.html_param,
+                )
+        except:
+            display = Display(
+                verbose=False,
+                html_param=False,
+            )
+
+        try:
+            return_vals = estimator.predict(
+                X=data, fh=fh, return_pred_int=return_pred_int, alpha=alpha
+            )
+        except NotImplementedError as error:
+            self.logger.warning(error)
+            self.logger.warning(
+                "Most likely, prediction intervals has not been implemented for this "
+                "algorithm. Predcition will be run with `return_pred_int` = False, and "
+                "NaN values will be returned for the prediction intervals instead."
+            )
+            return_vals = estimator.predict(
+                X=data, fh=fh, return_pred_int=False, alpha=alpha
+            )
+        if isinstance(return_vals, tuple):
+            # Prediction Interval is returned
+            #   First Value is a series of predictions
+            #   Second Value is a dataframe of lower and upper bounds
+            result = pd.DataFrame(return_vals[0], columns=["y_pred"])
+            result = result.join(return_vals[1])
+        else:
+            # Prediction interval is not returned (not implemented)
+            if return_pred_int:
+                result = pd.DataFrame(return_vals, columns=["y_pred"])
+                result["lower"] = np.nan
+                result["upper"] = np.nan
+            else:
+                # Leave as series
+                result = return_vals
+
+        result = result.round(round)
+
+        # This is not technically y_test_pred in all cases.
+        # If the model has not been finalized, y_test_pred will match the indices from y_test
+        # If the model has been finalized, y_test_pred will not match the indices from y_test
+        # Also, the user can use a different fh length in predict in which case the length
+        # of y_test_pred will not match y_test.
+        y_test_pred = estimator.predict(
+            X=X_test_, fh=fh, return_pred_int=False, alpha=alpha
         )
+        if len(y_test_pred) != len(y_test_):
+            self.logger.warning(
+                "predict_model >> Forecast Horizon does not match the horizon length "
+                "used during training. Metrics displayed will be using indices that match only"
+            )
+        # concatenates by index
+        y_test_and_pred = pd.concat([y_test_pred, y_test_], axis=1)
+        y_test_and_pred.dropna(inplace=True)  # Removes any indices that do not match
+        y_test_pred_common = y_test_and_pred[y_test_and_pred.columns[0]]
+        y_test_common = y_test_and_pred[y_test_and_pred.columns[1]]
+
+        if len(y_test_and_pred) == 0:
+            self.logger.warning(
+                "predict_model >> No indices matched between test set and prediction. "
+                "You are most likely calling predict_model after finalizing model. "
+                "All metrics will be set to NaN"
+            )
+            metrics = self._calculate_metrics(y_test=[], pred=[], pred_prob=None)  # type: ignore
+            metrics = {metric_name: np.nan for metric_name, _ in metrics.items()}
+        else:
+            metrics = self._calculate_metrics(y_test=y_test_common, pred=y_test_pred_common, pred_prob=None)  # type: ignore
+
+        # Display Test Score
+        # model name
+        full_name = self._get_model_name(estimator)
+        df_score = pd.DataFrame(metrics, index=[0])
+        df_score.insert(0, "Model", full_name)
+        df_score = df_score.round(round)
+        display.display(df_score.style.set_precision(round), clear=False)
+
+        # store predictions on hold-out in display_container
+        if df_score is not None:
+            self.display_container.append(df_score)
+
+        gc.collect()
+
+        return result
 
     def finalize_model(
         self,
         estimator,
         fit_kwargs: Optional[dict] = None,
-        groups: Optional[Union[str, Any]] = None,
         model_only: bool = True,
     ) -> Any:
 
@@ -2155,26 +2160,19 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         Example
         --------
         >>> from pycaret.datasets import get_data
-        >>> boston = get_data('boston')
-        >>> from pycaret.regression import *
-        >>> exp_name = setup(data = boston,  target = 'medv')
-        >>> lr = create_model('lr')
-        >>> final_lr = finalize_model(lr)
+        >>> data = get_data('airline')
+        >>> from pycaret.time_series import *
+        >>> exp_name = setup(data = data, fh = 12)
+        >>> model = create_model('naive')
+        >>> final_model = finalize_model(model)
 
 
-        estimator: scikit-learn compatible object
+        estimator: sktime compatible object
             Trained model object
 
 
         fit_kwargs: dict, default = {} (empty dict)
             Dictionary of arguments passed to the fit method of the model.
-
-
-        groups: str or array-like, with shape (n_samples,), default = None
-            Optional group labels when GroupKFold is used for the cross validation.
-            It takes an array with shape (n_samples, ) where n_samples is the number
-            of rows in training dataset. When string is passed, it is interpreted as
-            the column name in the dataset containing group labels.
 
 
         model_only: bool, default = True
@@ -2191,7 +2189,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         return super().finalize_model(
             estimator=estimator,
             fit_kwargs=fit_kwargs,
-            groups=groups,
             model_only=model_only,
         )
 
@@ -2450,10 +2447,11 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
 
         type: str, default = None
-            - linear : filters and only return linear models
-            - tree : filters and only return tree based models
-            - ensemble : filters and only return ensemble models
-
+            - baseline: filters and only return baseline models.
+            - classical: filters and only return classical models.
+            - linear : filters and only return linear models.
+            - neighbors: filters and only return neighbors models.
+            - tree : filters and only return tree based models.
 
         internal: bool, default = False
             When True, will return extra columns and rows used internally.
@@ -2468,7 +2466,36 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             pandas.DataFrame
 
         """
-        return super().models(type=type, internal=internal, raise_errors=raise_errors)
+        self.logger.info(f"gpu_param set to {self.gpu_param}")
+
+        model_types = list(TSModelTypes)
+
+        if type:
+            try:
+                type = TSModelTypes(type)
+            except ValueError:
+                raise ValueError(
+                    f"type parameter only accepts: {', '.join([x.value for x in TSModelTypes.__members__.values()])}."
+                )
+
+            model_types = [type]
+
+        _, model_containers = self._get_models(raise_errors)
+
+        model_containers = {
+            k: v for k, v in model_containers.items() if v.model_type in model_types
+        }
+
+        rows = [
+            v.get_dict(internal)
+            for k, v in model_containers.items()
+            if (internal or not v.is_special)
+        ]
+
+        df = pd.DataFrame(rows)
+        df.set_index("ID", inplace=True, drop=True)
+
+        return df
 
     def get_metrics(
         self,
@@ -2648,3 +2675,75 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
             if index_is_datetime and not any([type(estimator) == mdl_class for mdl_class in all_mdls_class]):
                 raise ValueError(f'Estimator {estimator} does not support data index DatetimeIndex, convert the data index to PeriodIndex.')
+    
+    def get_fold_generator(
+        self,
+        fold: Optional[Union[int, Any]] = None,
+        fold_strategy: Optional[str] = None,
+    ) -> Union[ExpandingWindowSplitter, SlidingWindowSplitter]:
+        """Returns the cv object based on number of folds and fold_strategy
+
+        Parameters
+        ----------
+        fold : Optional[Union[int, Any]]
+            The number of folds (int), by default None which returns the fold generator
+            (cv object) defined during setup. Could also be a sktime cross-validation object.
+            If it is a sktime cross-validation object, it is simply returned back
+        fold_strategy : Optional[str], optional
+            The fold strategy - 'expanding' or 'sliding', by default None which
+            takes the strategy set during `setup`
+
+        Returns
+        -------
+        Union[ExpandingWindowSplitter, SlidingWindowSplitter]
+            The cross-validation object
+
+        Raises
+        ------
+        ValueError
+            If not enough data points to support the number of folds requested
+        """
+        # cross validation setup starts here
+        if fold is None:
+            # Get cv object defined during setup
+            if self.fold_generator is None:
+                raise ValueError(
+                    "Trying to retrieve Fold Generator but this has not been defined yet."
+                )
+            fold_generator = self.fold_generator
+        elif not isinstance(fold, int):
+            return fold  # assumes fold is an sktime compatible cross-validation object
+        else:
+            # Get new cv object based on the fold parameter
+            y_size = len(self.y_train)
+            window_length = len(self.fh)
+            step_length = len(self.fh)
+            initial_window = y_size - (fold * window_length)
+
+            if initial_window < 1:
+                raise ValueError(
+                    "Not Enough Data Points, set a lower number of folds or fh"
+                )
+
+            # If None, get the strategy defined in the setup (e.g. `expanding`, 'sliding`, etc.)
+            if fold_strategy is None:
+                fold_strategy = self.fold_strategy
+
+            if fold_strategy == "expanding" or fold_strategy == "rolling":
+                fold_generator = ExpandingWindowSplitter(
+                    initial_window=initial_window,
+                    step_length=step_length,
+                    window_length=window_length,
+                    fh=self.fh,
+                    start_with_window=True,
+                )
+
+            if fold_strategy == "sliding":
+                fold_generator = SlidingWindowSplitter(
+                    initial_window=initial_window,
+                    step_length=step_length,
+                    window_length=window_length,
+                    fh=self.fh,
+                    start_with_window=True,
+                )
+        return fold_generator

@@ -18,6 +18,7 @@ from typing import List, Tuple, Any, Union, Optional, Dict
 import warnings
 import plotly.express as px  # type: ignore
 import plotly.graph_objects as go  # type: ignore
+import logging
 
 
 warnings.filterwarnings("ignore")
@@ -255,6 +256,7 @@ class RegressionExperiment(_SupervisedExperiment):
         ] = None,
         html: bool = True,
         session_id: Optional[int] = None,
+        system_log: Union[bool, logging.Logger] = True,
         log_experiment: bool = False,
         experiment_name: Optional[str] = None,
         log_plots: Union[bool, list] = False,
@@ -676,6 +678,11 @@ class RegressionExperiment(_SupervisedExperiment):
             for later reproducibility of the entire experiment.
 
 
+        system_log: bool or logging.Logger, default = True
+            Whether to save the system logging file (as logs.log). If the input
+            already is a logger object, that one is used instead.
+
+
         log_experiment: bool, default = False
             When set to True, all metrics and parameters are logged on the ``MLFlow`` server.
 
@@ -788,6 +795,7 @@ class RegressionExperiment(_SupervisedExperiment):
             custom_pipeline=custom_pipeline,
             html=html,
             session_id=session_id,
+            system_log=system_log,
             log_experiment=log_experiment,
             experiment_name=experiment_name,
             log_plots=log_plots,
