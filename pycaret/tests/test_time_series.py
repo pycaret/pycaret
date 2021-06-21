@@ -217,7 +217,6 @@ def test_create_predict_finalize_model(name, fh, load_data):
 
     exp.setup(
         data=data,
-        fold=3,
         fold=2,
         fh=fh,
         fold_strategy="sliding",
