@@ -469,8 +469,9 @@ def test_tune_model_grid(model, load_data):
     exp = TimeSeriesExperiment()
     fh = 12
     fold = 2
+    data = load_data
 
-    exp.setup(data=load_data, fold=fold, fh=fh, fold_strategy="sliding")
+    exp.setup(data=data, fold=fold, fh=fh, fold_strategy="sliding")
 
     model_obj = exp.create_model(model)
     tuned_model_obj = exp.tune_model(model_obj, search_algorithm="grid")
@@ -486,8 +487,9 @@ def test_tune_model_random(model, load_data):
     exp = TimeSeriesExperiment()
     fh = 12
     fold = 2
+    data = load_data
 
-    exp.setup(data=load_data, fold=fold, fh=fh, fold_strategy="sliding")
+    exp.setup(data=data, fold=fold, fh=fh, fold_strategy="sliding")
 
     model_obj = exp.create_model(model)
     tuned_model_obj = exp.tune_model(model_obj)  # default search_algorithm = "random"
