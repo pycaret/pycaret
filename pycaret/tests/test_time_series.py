@@ -142,11 +142,11 @@ def _return_model_parameters():
     return parameters
 
 
-def _check_data_for_prophet(mdl_name, data):
-    """Convert data index to DatetimeIndex"""
-    if mdl_name == "prophet":
-        data = data.to_timestamp(freq="M")
-    return data
+# def _check_data_for_prophet(mdl_name, data):
+#     """Convert data index to DatetimeIndex"""
+#     if mdl_name == "prophet":
+#         data = data.to_timestamp(freq="M")
+#     return data
 
 
 _model_names = _return_model_names()
@@ -209,7 +209,7 @@ def test_setup_seasonal_period_int(load_data, seasonal_key, seasonal_value):
 def test_create_model(name, fh, load_data):
     """test create_model functionality"""
     exp = TimeSeriesExperiment()
-    data = _check_data_for_prophet(name, load_data)
+    data = load_data #_check_data_for_prophet(name, load_data)
 
     exp.setup(
         data=data,
@@ -287,7 +287,7 @@ def test_tune_model_grid(model, load_data):
     exp = TimeSeriesExperiment()
     fh = 12
     fold = 3
-    data = _check_data_for_prophet(model, load_data)
+    data = load_data #_check_data_for_prophet(model, load_data)
 
     exp.setup(data=data, fold=fold, fh=fh, fold_strategy="expanding")
 
@@ -305,7 +305,7 @@ def test_tune_model_random(model, load_data):
     exp = TimeSeriesExperiment()
     fh = 12
     fold = 3
-    data = _check_data_for_prophet(model, load_data)
+    data = load_data#_check_data_for_prophet(model, load_data)
 
     exp.setup(data=data, fold=fold, fh=fh, fold_strategy="expanding")
 
