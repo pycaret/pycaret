@@ -1953,6 +1953,8 @@ def get_folds(cv, y) -> Generator[Tuple[pd.Series, pd.Series], None, None]:
                         ~rolling_y_train.index.duplicated(keep="first")
                     ]
 
+                    rolling_y_train = rolling_y_train.asfreq(y_train.index.freqstr) # Ensure freq value is preserved, otherwise when predicting raise error
+
                     if isinstance(cv, SlidingWindowSplitter):
                         rolling_y_train = rolling_y_train.iloc[-cv.initial_window :]
         yield rolling_y_train.index, y_test.index
@@ -2016,6 +2018,7 @@ def cross_validate_ts(
         # n_jobs = 1
         scoring = _get_metrics_dict_ts(scoring)
         parallel = Parallel(n_jobs=n_jobs)
+
         out = parallel(
             delayed(_fit_and_score)(
                 forecaster=clone(forecaster),

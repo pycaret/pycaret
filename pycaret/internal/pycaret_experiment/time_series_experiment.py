@@ -383,7 +383,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             )
         self.fh = fh
 
-        allowed_freq_index_types = (pd.core.indexes.period.PeriodIndex,)
+        allowed_freq_index_types = (pd.PeriodIndex, pd.DatetimeIndex)
         if (
             not isinstance(data.index, allowed_freq_index_types)
             and seasonal_period is None
@@ -395,6 +395,9 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 f"{', '.join(str(type) for type in allowed_freq_index_types)}, "
                 "then 'seasonal_period' must be provided. Refer to docstring for options."
             )
+
+        if isinstance(data.index, pd.DatetimeIndex):
+            data.index = data.index.to_period()
 
         if seasonal_period is None:
 
@@ -715,8 +718,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         - Models are not logged on the ``MLFlow`` server when ``cross_validation`` param
         is set to False.
 
-        """
-
+        """   
         return super().create_model(
             estimator=estimator,
             fold=fold,
@@ -726,6 +728,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             verbose=verbose,
             **kwargs,
         )
+
 
     def _create_model_without_cv(
         self, model, data_X, data_y, fit_kwargs, predict, system, display: Display
@@ -1385,6 +1388,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         self.logger.info(
             "SubProcess create_model() called =================================="
         )
+
         best_model, model_fit_time = self.create_model(
             estimator=model,
             system=False,
@@ -2070,8 +2074,10 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             # Prediction Interval is returned
             #   First Value is a series of predictions
             #   Second Value is a dataframe of lower and upper bounds
-            result = pd.DataFrame(return_vals[0], columns=["y_pred"])
-            result = result.join(return_vals[1])
+            #result = pd.DataFrame(return_vals[0], columns=["y_pred"])
+            #result = result.join(return_vals[1])
+            result = pd.concat(return_vals, axis=1)
+            result.columns = ["y_pred", "lower", "upper"]
         else:
             # Prediction interval is not returned (not implemented)
             if return_pred_int:
@@ -2083,6 +2089,9 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 result = return_vals
 
         result = result.round(round)
+
+        if isinstance(result.index, pd.DatetimeIndex):
+            result.index = result.index.to_period() # Prophet with return_pred_int = True returns datetime index.
 
         # This is not technically y_test_pred in all cases.
         # If the model has not been finalized, y_test_pred will match the indices from y_test
@@ -2642,7 +2651,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         """
 
         return super().get_logs(experiment_name=experiment_name, save=save)
-
+    
     def get_fold_generator(
         self,
         fold: Optional[Union[int, Any]] = None,

@@ -95,6 +95,16 @@ def _get_seasonal_values():
     return [(k, v.value) for k, v in SeasonalPeriod.__members__.items()]
 
 
+def _check_windows():
+    """Check if the system is Windows."""
+    import sys
+
+    platform = sys.platform
+    is_windows = True if platform.startswith("win") else False
+
+    return is_windows
+
+
 def _return_model_names():
     """Return all model names."""
     globals_dict = {
@@ -105,9 +115,16 @@ def _return_model_names():
     }
     model_containers = get_all_model_containers(globals_dict)
 
+    models_to_ignore = (
+        ["prophet", "ensemble_forecaster"]
+        if _check_windows()
+        else ["ensemble_forecaster"]
+    )
+
     model_names_ = []
     for model_name in model_containers.keys():
-        if not model_name.startswith(("ensemble")):
+
+        if model_name not in models_to_ignore:
             model_names_.append(model_name)
 
     return model_names_
@@ -125,6 +142,13 @@ def _return_model_parameters():
     ]
 
     return parameters
+
+
+# def _check_data_for_prophet(mdl_name, data):
+#     """Convert data index to DatetimeIndex"""
+#     if mdl_name == "prophet":
+#         data = data.to_timestamp(freq="M")
+#     return data
 
 
 _model_names = _return_model_names()
@@ -189,8 +213,10 @@ def test_create_predict_finalize_model(name, fh, load_data):
     Combined to save run time
     """
     exp = TimeSeriesExperiment()
+    data = load_data #_check_data_for_prophet(name, load_data)
+
     exp.setup(
-        data=load_data,
+        data=data,
         fold=2,
         fh=fh,
         fold_strategy="sliding",
@@ -442,15 +468,16 @@ def test_tune_model_grid(model, load_data):
     exp = TimeSeriesExperiment()
     fh = 12
     fold = 2
+    data = load_data
 
-    exp.setup(data=load_data, fold=fold, fh=fh, fold_strategy="sliding")
+    exp.setup(data=data, fold=fold, fh=fh, fold_strategy="sliding")
 
     model_obj = exp.create_model(model)
     tuned_model_obj = exp.tune_model(model_obj, search_algorithm="grid")
     y_pred = exp.predict_model(tuned_model_obj)
     assert isinstance(y_pred, pd.Series)
 
-    expected_period_index = load_data.iloc[-fh:].index
+    expected_period_index = data.iloc[-fh:].index
     assert np.all(y_pred.index == expected_period_index)
 
 
@@ -459,15 +486,16 @@ def test_tune_model_random(model, load_data):
     exp = TimeSeriesExperiment()
     fh = 12
     fold = 2
+    data = load_data
 
-    exp.setup(data=load_data, fold=fold, fh=fh, fold_strategy="sliding")
+    exp.setup(data=data, fold=fold, fh=fh, fold_strategy="sliding")
 
     model_obj = exp.create_model(model)
     tuned_model_obj = exp.tune_model(model_obj)  # default search_algorithm = "random"
     y_pred = exp.predict_model(tuned_model_obj)
     assert isinstance(y_pred, pd.Series)
 
-    expected_period_index = load_data.iloc[-fh:].index
+    expected_period_index = data.iloc[-fh:].index
     assert np.all(y_pred.index == expected_period_index)
 
 

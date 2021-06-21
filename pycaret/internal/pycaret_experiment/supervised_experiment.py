@@ -1426,6 +1426,16 @@ class _SupervisedExperiment(_TabularExperiment):
             self.logger.info("Declaring custom model")
 
             model = clone(estimator)
+
+            # WORKAROUND FOR https://github.com/alan-turing-institute/sktime/issues/910
+            # REMOVE AFTER FIX IS IN SKTIME
+            if "changepoint_prior_scale" in kwargs:
+                kwargs["changepoint_prior_scale"] = float(kwargs["changepoint_prior_scale"])
+            if "holidays_prior_scale" in kwargs:
+                kwargs["holidays_prior_scale"] = float(kwargs["holidays_prior_scale"])
+            if "seasonality_prior_scale" in kwargs:
+                kwargs["seasonality_prior_scale"] = float(kwargs["seasonality_prior_scale"])
+
             model.set_params(**kwargs)
 
             full_name = self._get_model_name(model)
