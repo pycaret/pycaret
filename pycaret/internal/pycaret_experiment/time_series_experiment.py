@@ -396,6 +396,9 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 "then 'seasonal_period' must be provided. Refer to docstring for options."
             )
 
+        if isinstance(data.index, pd.DatetimeIndex):
+            data.index = data.index.to_period()
+
         if seasonal_period is None:
 
             index_freq = data.index.freqstr
@@ -716,7 +719,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         is set to False.
 
         """   
-
         return super().create_model(
             estimator=estimator,
             fold=fold,
