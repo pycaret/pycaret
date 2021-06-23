@@ -246,7 +246,7 @@ class NaiveContainer(TimeSeriesContainer):
 
         super().__init__(
             id="naive",
-            name="Naive Forcaster",
+            name="Naive Forecaster",
             class_def=NaiveForecaster,
             args=args,
             tune_grid=tune_grid,
@@ -289,7 +289,7 @@ class SeasonalNaiveContainer(TimeSeriesContainer):
 
         super().__init__(
             id="snaive",
-            name="Seasonal Naive Forcaster",
+            name="Seasonal Naive Forecaster",
             class_def=NaiveForecaster,
             args=args,
             tune_grid=tune_grid,
