@@ -699,7 +699,7 @@ class _SupervisedExperiment(_TabularExperiment):
                 warnings.warn(
                     "Unsupported estimator `ensemble_forecaster` for method `compare_models()`, removing from model_library"
                 )
-            model_library.remove("ensemble_forecaster")
+                model_library.remove("ensemble_forecaster")
 
         display.move_progress()
 

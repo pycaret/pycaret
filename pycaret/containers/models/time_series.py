@@ -994,6 +994,8 @@ class BATSContainer(TimeSeriesContainer):
 
 
 class ProphetContainer(TimeSeriesContainer):
+    model_type = TSModelTypes.LINEAR
+
     def __init__(self, globals_dict: dict) -> None:
         logger = get_logger()
         np.random.seed(globals_dict["seed"])
