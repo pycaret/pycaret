@@ -830,6 +830,8 @@ class _SupervisedExperiment(_TabularExperiment):
                 )
                 break
 
+            model_results.drop("cutoff", axis=1, errors="ignore")
+
             runtime_end = time.time()
             runtime = np.array(runtime_end - runtime_start).round(2)
 
@@ -862,7 +864,7 @@ class _SupervisedExperiment(_TabularExperiment):
                 )
 
             master_display_ = master_display.drop(
-                ["Object", "runtime"], axis=1, errors="ignore"
+                ["Object", "runtime", "cutoff"], axis=1, errors="ignore"
             ).style.set_precision(round)
             master_display_ = master_display_.set_properties(**{"text-align": "left"})
             master_display_ = master_display_.set_table_styles(
@@ -1040,6 +1042,7 @@ class _SupervisedExperiment(_TabularExperiment):
         groups,
         metrics,
         refit,
+        system,
         display,
     ):
         """
@@ -1345,6 +1348,8 @@ class _SupervisedExperiment(_TabularExperiment):
             master_display_columns = [
                 v.display_name for k, v in self._all_metrics.items()
             ]
+            if self._ml_usecase == MLUsecase.TIME_SERIES:
+                master_display_columns.insert(0, "cutoff")
             timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
             monitor_rows = [
                 ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
@@ -1500,6 +1505,7 @@ class _SupervisedExperiment(_TabularExperiment):
             groups,
             metrics,
             refit,
+            system,
             display,
         )
 
@@ -1534,6 +1540,9 @@ class _SupervisedExperiment(_TabularExperiment):
         display.move_progress()
 
         self.logger.info("Uploading results into container")
+
+        if getattr(display, "master_display", None) is not None and "cutoff" not in display.master_display.columns:
+            model_results.data.drop("cutoff", axis=1, inplace=True, errors="ignore")
 
         self.display_container.append(model_results.data)
 
@@ -1982,6 +1991,8 @@ class _SupervisedExperiment(_TabularExperiment):
             master_display_columns = [
                 v.display_name for k, v in self._all_metrics.items()
             ]
+            if self._ml_usecase == MLUsecase.TIME_SERIES:
+                master_display_columns.insert(0, "cutoff")
             timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
             monitor_rows = [
                 ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
@@ -2748,6 +2759,8 @@ class _SupervisedExperiment(_TabularExperiment):
             master_display_columns = [
                 v.display_name for k, v in self._all_metrics.items()
             ]
+            if self._ml_usecase == MLUsecase.TIME_SERIES:
+                master_display_columns.insert(0, "cutoff")
             timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
             monitor_rows = [
                 ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
@@ -3126,6 +3139,8 @@ class _SupervisedExperiment(_TabularExperiment):
             master_display_columns = [
                 v.display_name for k, v in self._all_metrics.items()
             ]
+            if self._ml_usecase == MLUsecase.TIME_SERIES:
+                master_display_columns.insert(0, "cutoff")
             timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
             monitor_rows = [
                 ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
@@ -3492,6 +3507,8 @@ class _SupervisedExperiment(_TabularExperiment):
             master_display_columns = [
                 v.display_name for k, v in self._all_metrics.items()
             ]
+            if self._ml_usecase == MLUsecase.TIME_SERIES:
+                master_display_columns.insert(0, "cutoff")
             timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
             monitor_rows = [
                 ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],

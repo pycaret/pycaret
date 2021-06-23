@@ -93,9 +93,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 ]
             )
             + (
-                [
-                    ["Imputation Type", kwargs["imputation_type"]],
-                ]
+                [["Imputation Type", kwargs["imputation_type"]],]
                 if self.preprocess
                 else []
             ),
@@ -117,10 +115,8 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             ).items()
             if not v.is_special
         }
-        all_models_internal = (
-            pycaret.containers.models.time_series.get_all_model_containers(
-                self.variables, raise_errors=raise_errors
-            )
+        all_models_internal = pycaret.containers.models.time_series.get_all_model_containers(
+            self.variables, raise_errors=raise_errors
         )
         return all_models, all_models_internal
 
@@ -718,7 +714,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         - Models are not logged on the ``MLFlow`` server when ``cross_validation`` param
         is set to False.
 
-        """   
+        """
         return super().create_model(
             estimator=estimator,
             fold=fold,
@@ -728,7 +724,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             verbose=verbose,
             **kwargs,
         )
-
 
     def _create_model_without_cv(
         self, model, data_X, data_y, fit_kwargs, predict, system, display: Display
@@ -761,9 +756,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             self.display_container.append(model_results)
 
             display.display(
-                model_results,
-                clear=system,
-                override=False if not system else None,
+                model_results, clear=system, override=False if not system else None,
             )
 
             self.logger.info(f"display_container: {len(self.display_container)}")
@@ -781,6 +774,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         groups,  # TODO: See if we can remove groups
         metrics,
         refit,
+        system,
         display,
     ):
         """
@@ -790,8 +784,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         from pycaret.time_series import cross_validate_ts, _get_cv_n_folds
 
         display.update_monitor(
-            1,
-            f"Fitting {_get_cv_n_folds(data_y, cv)} Folds",
+            1, f"Fitting {_get_cv_n_folds(data_y, cv)} Folds",
         )
         display.display_monitor()
         """
@@ -846,10 +839,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         model_results = pd.DataFrame(score_dict)
         model_results.insert(0, "cutoff", cutoffs)
 
-        model_avgs = pd.DataFrame(
-            avgs_dict,
-            index=["Mean", "SD"],
-        )
+        model_avgs = pd.DataFrame(avgs_dict, index=["Mean", "SD"],)
         model_avgs.insert(0, "cutoff", np.nan)
 
         model_results = model_results.append(model_avgs)
@@ -1103,6 +1093,8 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             master_display_columns = [
                 v.display_name for k, v in self._all_metrics.items()
             ]
+            if self._ml_usecase == MLUsecase.TIME_SERIES:
+                master_display_columns.insert(0, "cutoff")
             timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
             monitor_rows = [
                 ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
@@ -2046,15 +2038,9 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         try:
             np.random.seed(self.seed)
             if not display:
-                display = Display(
-                    verbose=verbose,
-                    html_param=self.html_param,
-                )
+                display = Display(verbose=verbose, html_param=self.html_param,)
         except:
-            display = Display(
-                verbose=False,
-                html_param=False,
-            )
+            display = Display(verbose=False, html_param=False,)
 
         try:
             return_vals = estimator.predict(
@@ -2074,8 +2060,8 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             # Prediction Interval is returned
             #   First Value is a series of predictions
             #   Second Value is a dataframe of lower and upper bounds
-            #result = pd.DataFrame(return_vals[0], columns=["y_pred"])
-            #result = result.join(return_vals[1])
+            # result = pd.DataFrame(return_vals[0], columns=["y_pred"])
+            # result = result.join(return_vals[1])
             result = pd.concat(return_vals, axis=1)
             result.columns = ["y_pred", "lower", "upper"]
         else:
@@ -2091,7 +2077,9 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         result = result.round(round)
 
         if isinstance(result.index, pd.DatetimeIndex):
-            result.index = result.index.to_period() # Prophet with return_pred_int = True returns datetime index.
+            result.index = (
+                result.index.to_period()
+            )  # Prophet with return_pred_int = True returns datetime index.
 
         # This is not technically y_test_pred in all cases.
         # If the model has not been finalized, y_test_pred will match the indices from y_test
@@ -2140,10 +2128,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         return result
 
     def finalize_model(
-        self,
-        estimator,
-        fit_kwargs: Optional[dict] = None,
-        model_only: bool = True,
+        self, estimator, fit_kwargs: Optional[dict] = None, model_only: bool = True,
     ) -> Any:
 
         """
@@ -2181,17 +2166,11 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         """
 
         return super().finalize_model(
-            estimator=estimator,
-            fit_kwargs=fit_kwargs,
-            model_only=model_only,
+            estimator=estimator, fit_kwargs=fit_kwargs, model_only=model_only,
         )
 
     def deploy_model(
-        self,
-        model,
-        model_name: str,
-        authentication: dict,
-        platform: str = "aws",
+        self, model, model_name: str, authentication: dict, platform: str = "aws",
     ):
 
         """
@@ -2531,9 +2510,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         """
 
         return super().get_metrics(
-            reset=reset,
-            include_custom=include_custom,
-            raise_errors=raise_errors,
+            reset=reset, include_custom=include_custom, raise_errors=raise_errors,
         )
 
     def add_metric(
@@ -2651,7 +2628,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         """
 
         return super().get_logs(experiment_name=experiment_name, save=save)
-    
+
     def get_fold_generator(
         self,
         fold: Optional[Union[int, Any]] = None,
