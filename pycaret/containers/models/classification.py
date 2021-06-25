@@ -26,6 +26,17 @@ from pycaret.internal.distributions import *
 import pycaret.containers.base_container
 import numpy as np
 
+def CompareVersion(version1: str, version2: str) -> int:\
+    """
+    Compare between two versions. 
+    If version1 > version2, return 1;
+    if version1 == version2, return 0;
+    if version1 < version2, return -1.
+    """
+    v1, v2 = ([*map(int, v.split('.'))] for v in (version1, version2))
+    d = len(v2) - len(v1)
+    v1, v2 = v1 + [0] * d, v2 + [0] * -d
+    return (v1 > v2) - (v1 < v2)
 
 class ClassifierContainer(ModelContainer):
     """
@@ -749,14 +760,22 @@ class RandomForestClassifierContainer(ClassifierContainer):
                 pycaret.internal.cuml_wrappers.get_random_forest_classifier()
             )
 
-        args = (
-            {
+        if not gpu_imported:
+            args = {
                 "random_state": globals_dict["seed"],
                 "n_jobs": globals_dict["n_jobs_param"],
             }
-            if not gpu_imported
-            else {"seed": globals_dict["seed"]}
-        )
+        else:
+            import cuml
+            if CompareVersion("0.19",cuml.__version__) >= 0:
+                args = {
+                "random_state": globals_dict["seed"],
+                }
+            else:
+                args = {
+                    "seed": globals_dict["seed"]
+                }
+        
         tune_args = {}
         tune_grid = {
             "n_estimators": np_list_arange(10, 300, 10, inclusive=True),
