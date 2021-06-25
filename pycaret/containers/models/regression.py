@@ -1673,13 +1673,13 @@ class LGBMRegressorContainer(RegressorContainer):
             try:
                 lgb = LGBMRegressor(device="gpu")
                 lgb.fit(np.zeros((2, 2)), [0, 1])
-                is_gpu_enabled = True
+                is_gpu_enabled = "gpu"
                 del lgb
             except:
                 try:
                     lgb = LGBMRegressor(device="cuda")
                     lgb.fit(np.zeros((2, 2)), [0, 1])
-                    is_gpu_enabled = True
+                    is_gpu_enabled = "cuda"
                     del lgb
                 except LightGBMError:
                     is_gpu_enabled = False
@@ -1688,8 +1688,10 @@ class LGBMRegressorContainer(RegressorContainer):
                             f"LightGBM GPU mode not available. Consult https://lightgbm.readthedocs.io/en/latest/GPU-Tutorial.html."
                         )
 
-        if is_gpu_enabled:
+        if is_gpu_enabled=="gpu":
             args["device"] = "gpu"
+        elif is_gpu_enabled=="cuda":
+            args["device"] = "cuda"
 
         super().__init__(
             id="lightgbm",
