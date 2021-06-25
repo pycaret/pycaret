@@ -1320,12 +1320,18 @@ class LGBMClassifierContainer(ClassifierContainer):
                 lgb.fit(np.zeros((2, 2)), [0, 1])
                 is_gpu_enabled = True
                 del lgb
-            except LightGBMError:
-                is_gpu_enabled = False
-                if globals_dict["gpu_param"] == "force":
-                    raise RuntimeError(
-                        f"LightGBM GPU mode not available. Consult https://lightgbm.readthedocs.io/en/latest/GPU-Tutorial.html."
-                    )
+            except:
+                try:
+                    lgb = LGBMClassifier(device="cuda")
+                    lgb.fit(np.zeros((2, 2)), [0, 1])
+                    is_gpu_enabled = True
+                    del lgb
+                except LightGBMError:
+                    is_gpu_enabled = False
+                    if globals_dict["gpu_param"] == "force":
+                        raise RuntimeError(
+                            f"LightGBM GPU mode not available. Consult https://lightgbm.readthedocs.io/en/latest/GPU-Tutorial.html."
+                        )
 
         if is_gpu_enabled:
             args["device"] = "gpu"
