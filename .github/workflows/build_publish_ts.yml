@@ -6,7 +6,7 @@ name: Build and publish pycaret ts
 on: [push]
 
 jobs:
-  build_and_publish_stable:
+  build_and_publish_ts:
 
     runs-on: ubuntu-latest
 
@@ -21,7 +21,7 @@ jobs:
         python -m pip install --user --upgrade setuptools wheel requests
     - name: Checkout last passing commit
       uses: actions/checkout@v2
-    - name: Build stable distribution
+    - name: Build ts distribution
       run: |
         rm -rf dist/*
         python setup_ts_alpha.py sdist bdist_wheel
