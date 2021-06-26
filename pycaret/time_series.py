@@ -1373,7 +1373,7 @@ def deploy_model(
 
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
-def save_model(model, model_name: str, model_only: bool = False, verbose: bool = True):
+def save_model(model, model_name: str, model_only: bool = True, verbose: bool = True):
 
     """
     This function saves the transformation pipeline and trained model object
@@ -1397,7 +1397,7 @@ def save_model(model, model_name: str, model_only: bool = False, verbose: bool =
         Name of the model.
 
 
-    model_only: bool, default = False
+    model_only: bool, default = True
         When set to True, only trained model object is saved instead of the
         entire pipeline.
 

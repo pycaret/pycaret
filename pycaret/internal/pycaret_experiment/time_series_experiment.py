@@ -2263,7 +2263,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         )
 
     def save_model(
-        self, model, model_name: str, model_only: bool = False, verbose: bool = True
+        self, model, model_name: str, model_only: bool = True, verbose: bool = True
     ):
 
         """
@@ -2288,7 +2288,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             Name of the model.
 
 
-        model_only: bool, default = False
+        model_only: bool, default = True
             When set to True, only trained model object is saved instead of the
             entire pipeline.
 
