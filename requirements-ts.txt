@@ -1,4 +1,3 @@
 sktime==0.5.3
 tbats==1.1.0
 pmdarima>=1.8.0
-fbprophet>=0.7.1
