@@ -1114,6 +1114,9 @@ class CdsDtContainer(TimeSeriesContainer):
             eq_function=eq_function,
         )
 
+        if self.regressor is None:
+            self.active = False
+
     @property
     @abstractmethod
     def id(self) -> str:
