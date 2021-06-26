@@ -510,13 +510,6 @@ class _SupervisedExperiment(_TabularExperiment):
         # checking error for exclude (string)
         available_estimators = self._all_models
 
-        if exclude is not None:
-            for i in exclude:
-                if i not in available_estimators:
-                    raise ValueError(
-                        f"Estimator Not Available {i}. Please see docstring for list of available estimators."
-                    )
-
         if include is not None:
             for i in include:
                 if isinstance(i, str):
