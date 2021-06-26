@@ -1142,13 +1142,16 @@ class CdsDtContainer(TimeSeriesContainer):
 
     @property
     def _set_regressor_args(self) -> Dict[str, Any]:
+        model_class = self.return_model_class()
         regressor_args: Dict[str, Any] = {}
-        if hasattr(self.return_model_class()(), "n_jobs"):
-            regressor_args["n_jobs"] = self.n_jobs_param
-        if hasattr(self.return_model_class()(), "random_state"):
-            regressor_args["random_state"] = self.seed
-        if hasattr(self.return_model_class()(), "seed"):
-            regressor_args["seed"] = self.seed
+        if model_class is not None:
+            model = model_class()
+            if hasattr(model, "n_jobs"):
+                regressor_args["n_jobs"] = self.n_jobs_param
+            if hasattr(model, "random_state"):
+                regressor_args["random_state"] = self.seed
+            if hasattr(model, "seed"):
+                regressor_args["seed"] = self.seed
         return regressor_args
 
     @property
