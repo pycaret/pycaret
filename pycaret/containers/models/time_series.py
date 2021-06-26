@@ -1081,7 +1081,10 @@ class CdsDtContainer(TimeSeriesContainer):
         self.n_jobs_param = globals_dict["n_jobs_param"]
         model_class = self.return_model_class()  # e.g. LinearRegression
         regressor_args = self._set_regressor_args
-        self.regressor = model_class(**regressor_args)
+        if model_class is not None:
+            self.regressor = model_class(**regressor_args)
+        else:
+            self.regressor = None
 
         # Set the model hyperparameters
         sp = globals_dict.get("seasonal_period")
