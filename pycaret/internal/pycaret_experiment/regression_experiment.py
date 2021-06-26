@@ -137,6 +137,7 @@ class RegressionExperiment(_SupervisedExperiment):
                         "Multicollinearity Threshold",
                         kwargs["multicollinearity_threshold_grid"],
                     ],
+                    ["Remove Perfect Collinearity", kwargs["remove_perfect_collinearity"]],
                     [
                         "Columns Removed Due to Multicollinearity",
                         kwargs["multicollinearity_removed_columns"],
@@ -430,7 +431,7 @@ class RegressionExperiment(_SupervisedExperiment):
         pca_method: str, default = 'linear'
             The 'linear' method performs uses Singular Value  Decomposition. Other options are:
 
-            - kernel: dimensionality reduction through the use of RVF kernel.
+            - kernel: dimensionality reduction through the use of RBF kernel.
             - incremental: replacement for 'linear' pca when the dataset is too large.
 
 
@@ -479,7 +480,8 @@ class RegressionExperiment(_SupervisedExperiment):
         remove_multicollinearity: bool, default = False
             When set to True, features with the inter-correlations higher than the defined
             threshold are removed. When two features are highly correlated with each other,
-            the feature that is less correlated with the target variable is removed.
+            the feature that is less correlated with the target variable is removed. Only
+            considers numeric features.
 
 
         multicollinearity_threshold: float, default = 0.9
@@ -1737,13 +1739,15 @@ class RegressionExperiment(_SupervisedExperiment):
         feature: Optional[str] = None,
         observation: Optional[int] = None,
         use_train_data: bool = False,
+        X_new_sample: Optional[pd.DataFrame] = None,
+        save: bool = False,
         **kwargs,
     ):
 
         """
-        This function analyzes the predictions generated from a tree-based model. It is
-        implemented based on the SHAP (SHapley Additive exPlanations). For more info on
-        this, please see https://shap.readthedocs.io/en/latest/
+        This function analyzes the predictions generated from a trained model. Most plots
+        in this function are implemented based on the SHAP (SHapley Additive exPlanations).
+        For more info on this, please see https://shap.readthedocs.io/en/latest/
 
 
         Example
@@ -1761,13 +1765,17 @@ class RegressionExperiment(_SupervisedExperiment):
 
 
         plot: str, default = 'summary'
-            Type of plot. Available options are: 'summary', 'correlation', and 'reason'.
+            List of available plots (ID - Name):
+            * 'summary' - Summary Plot using SHAP
+            * 'correlation' - Dependence Plot using SHAP
+            * 'reason' - Force Plot using SHAP
+            * 'pdp' - Partial Dependence Plot
 
 
         feature: str, default = None
             Feature to check correlation with. This parameter is only required when ``plot``
-            type is 'correlation'. When set to None, it uses the first column in the train
-            dataset.
+            type is 'correlation' or 'pdp'. When set to None, it uses the first column from 
+            the dataset.
 
 
         observation: int, default = None
@@ -1778,6 +1786,16 @@ class RegressionExperiment(_SupervisedExperiment):
         use_train_data: bool, default = False
             When set to true, train data will be used for plots, instead
             of test data.
+
+
+        X_new_sample: pd.DataFrame, default = None
+            Row from an out-of-sample dataframe (neither train nor test data) to be plotted.
+            The sample must have the same columns as the raw input data, and it is transformed
+            by the preprocessing pipeline automatically before plotting.
+
+
+        save: bool, default = False
+            When set to True, Plot is saved as a 'png' file in current working directory.
 
 
         **kwargs:
@@ -1795,6 +1813,8 @@ class RegressionExperiment(_SupervisedExperiment):
             feature=feature,
             observation=observation,
             use_train_data=use_train_data,
+            X_new_sample=X_new_sample,
+            save=save,
             **kwargs,
         )
 
@@ -1933,20 +1953,22 @@ class RegressionExperiment(_SupervisedExperiment):
         >>> from pycaret.regression import *
         >>> exp_name = setup(data = boston,  target = 'medv')
         >>> lr = create_model('lr')
+        >>> # sets appropriate credentials for the platform as environment variables
+        >>> import os
+        >>> os.environ["AWS_ACCESS_KEY_ID"] = str("foo")
+        >>> os.environ["AWS_SECRET_ACCESS_KEY"] = str("bar")
         >>> deploy_model(model = lr, model_name = 'lr-for-deployment', platform = 'aws', authentication = {'bucket' : 'S3-bucket-name'})
 
 
         Amazon Web Service (AWS) users:
-            To deploy a model on AWS S3 ('aws'), environment variables must be set in your
-            local environment. To configure AWS environment variables, type ``aws configure``
-            in the command line. Following information from the IAM portal of amazon console
-            account is required:
+            To deploy a model on AWS S3 ('aws'), the credentials have to be passed. The easiest way is to use environment
+            variables in your local environment. Following information from the IAM portal of amazon console account
+            are required:
 
             - AWS Access Key ID
             - AWS Secret Key Access
-            - Default Region Name (can be seen under Global settings on your AWS console)
 
-            More info: https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-envvars.html
+            More info: https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html#environment-variables
 
 
         Google Cloud Platform (GCP) users:
@@ -1962,6 +1984,8 @@ class RegressionExperiment(_SupervisedExperiment):
             To deploy a model on Microsoft Azure ('azure'), environment variables for connection
             string must be set in your local environment. Go to settings of storage account on
             Azure portal to access the connection string required.
+
+            - AZURE_STORAGE_CONNECTION_STRING (required as environment variable)
 
             More info: https://docs.microsoft.com/en-us/azure/storage/blobs/storage-quickstart-blobs-python?toc=%2Fpython%2Fazure%2FTOC.json
 

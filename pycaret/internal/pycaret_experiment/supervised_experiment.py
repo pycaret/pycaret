@@ -35,6 +35,7 @@ import os
 import datetime
 import time
 import gc
+from collections import Iterable
 from copy import deepcopy
 from sklearn.base import clone  # type: ignore
 from sklearn.compose import TransformedTargetRegressor  # type: ignore
@@ -69,16 +70,13 @@ class _SupervisedExperiment(_TabularExperiment):
                 "fold_generator",
                 "fold_param",
                 "fold_groups_param",
+                "fold_groups_param_full",
             }
         )
         return
 
     def _calculate_metrics(
-        self,
-        y_test,
-        pred,
-        pred_prob,
-        weights: Optional[list] = None,
+        self, y_test, pred, pred_prob, weights: Optional[list] = None,
     ) -> dict:
         """
         Calculate all metrics in _all_metrics.
@@ -96,16 +94,12 @@ class _SupervisedExperiment(_TabularExperiment):
         except Exception:
             ml_usecase = get_ml_task(y_test)
             if ml_usecase == MLUsecase.CLASSIFICATION:
-                metrics = (
-                    pycaret.containers.metrics.classification.get_all_metric_containers(
-                        self.variables, True
-                    )
+                metrics = pycaret.containers.metrics.classification.get_all_metric_containers(
+                    self.variables, True
                 )
             elif ml_usecase == MLUsecase.REGRESSION:
-                metrics = (
-                    pycaret.containers.metrics.regression.get_all_metric_containers(
-                        self.variables, True
-                    )
+                metrics = pycaret.containers.metrics.regression.get_all_metric_containers(
+                    self.variables, True
                 )
             return calculate_metrics(
                 metrics=metrics,  # type: ignore
@@ -259,6 +253,7 @@ class _SupervisedExperiment(_TabularExperiment):
         self.y_test = test_data[target]
 
         if self.fold_groups_param is not None:
+            self.fold_groups_param_full = self.fold_groups_param.copy()
             self.fold_groups_param = self.fold_groups_param[
                 self.fold_groups_param.index.isin(self.X_train.index)
             ]
@@ -271,13 +266,7 @@ class _SupervisedExperiment(_TabularExperiment):
         return
 
     def _set_up_mlflow(
-        self,
-        functions,
-        runtime,
-        log_profile,
-        profile_kwargs,
-        log_data,
-        display,
+        self, functions, runtime, log_profile, profile_kwargs, log_data, display,
     ) -> None:
         functions_styler = functions
         if isinstance(functions, Styler):
@@ -1022,9 +1011,7 @@ class _SupervisedExperiment(_TabularExperiment):
                 self.display_container.append(model_results)
 
                 display.display(
-                    model_results,
-                    clear=system,
-                    override=False if not system else None,
+                    model_results, clear=system, override=False if not system else None,
                 )
 
                 self.logger.info(f"display_container: {len(self.display_container)}")
@@ -1107,10 +1094,7 @@ class _SupervisedExperiment(_TabularExperiment):
             self.logger.info("Creating metrics dataframe")
 
             model_results = pd.DataFrame(score_dict)
-            model_avgs = pd.DataFrame(
-                avgs_dict,
-                index=["Mean", "SD"],
-            )
+            model_avgs = pd.DataFrame(avgs_dict, index=["Mean", "SD"],)
 
             model_results = model_results.append(model_avgs)
             model_results = model_results.round(round)
@@ -1341,7 +1325,7 @@ class _SupervisedExperiment(_TabularExperiment):
 
         """
 
-        groups = self._get_groups(groups)
+        groups = self._get_groups(groups, data=X_train_data)
 
         if not display:
             progress_args = {"max": 4}
@@ -1435,11 +1419,15 @@ class _SupervisedExperiment(_TabularExperiment):
             # WORKAROUND FOR https://github.com/alan-turing-institute/sktime/issues/910
             # REMOVE AFTER FIX IS IN SKTIME
             if "changepoint_prior_scale" in kwargs:
-                kwargs["changepoint_prior_scale"] = float(kwargs["changepoint_prior_scale"])
+                kwargs["changepoint_prior_scale"] = float(
+                    kwargs["changepoint_prior_scale"]
+                )
             if "holidays_prior_scale" in kwargs:
                 kwargs["holidays_prior_scale"] = float(kwargs["holidays_prior_scale"])
             if "seasonality_prior_scale" in kwargs:
-                kwargs["seasonality_prior_scale"] = float(kwargs["seasonality_prior_scale"])
+                kwargs["seasonality_prior_scale"] = float(
+                    kwargs["seasonality_prior_scale"]
+                )
 
             model.set_params(**kwargs)
 
@@ -1541,7 +1529,10 @@ class _SupervisedExperiment(_TabularExperiment):
 
         self.logger.info("Uploading results into container")
 
-        if getattr(display, "master_display", None) is not None and "cutoff" not in display.master_display.columns:
+        if (
+            getattr(display, "master_display", None) is not None
+            and "cutoff" not in display.master_display.columns
+        ):
             model_results.data.drop("cutoff", axis=1, inplace=True, errors="ignore")
 
         self.display_container.append(model_results.data)
@@ -2127,9 +2118,7 @@ class _SupervisedExperiment(_TabularExperiment):
                 )
             ):
                 param_grid = {
-                    k: CategoricalDistribution(v)
-                    if not isinstance(v, Distribution)
-                    else v
+                    k: CategoricalDistribution(v) if isinstance(v, Iterable) else v
                     for k, v in param_grid.items()
                 }
             elif any(isinstance(v, Distribution) for k, v in param_grid.items()):
@@ -3669,6 +3658,7 @@ class _SupervisedExperiment(_TabularExperiment):
         feature: Optional[str] = None,
         observation: Optional[int] = None,
         use_train_data: bool = False,
+        X_new_sample: Optional[pd.DataFrame] = None,
         save: bool = False,
         **kwargs,  # added in pycaret==2.1
     ):
@@ -3682,6 +3672,8 @@ class _SupervisedExperiment(_TabularExperiment):
         SHAP connects game theory with local explanations.
 
         For more information : https://shap.readthedocs.io/en/latest/
+
+        For Partial Dependence Plot : https://github.com/SauceCat/PDPbox
 
         Example
         -------
@@ -3713,6 +3705,11 @@ class _SupervisedExperiment(_TabularExperiment):
             interactivity. For analysis at the sample level, an observation parameter must
             be passed with the index value of the observation in test / hold-out set.
 
+        X_new_sample: pd.DataFrame, default = None
+            Row from an out-of-sample dataframe (neither train nor test data) to be plotted.
+            The sample must have the same columns as the raw input data, and it is transformed
+            by the preprocessing pipeline automatically before plotting.
+
         save: bool, default = False
             When set to True, Plot is saved as a 'png' file in current working directory.
 
@@ -3739,15 +3736,28 @@ class _SupervisedExperiment(_TabularExperiment):
         self.logger.info("Checking exceptions")
 
         # checking if shap available
-        try:
-            import shap
-        except ImportError:
-            self.logger.error(
-                "shap library not found. pip install shap to use interpret_model function."
-            )
-            raise ImportError(
-                "shap library not found. pip install shap to use interpret_model function."
-            )
+        if plot in ["summary", "correlation", "reason"]:
+            try:
+                import shap
+            except ImportError:
+                logger.error(
+                    "shap library not found. pip install shap to use interpret_model function."
+                )
+                raise ImportError(
+                    "shap library not found. pip install shap to use interpret_model function."
+                )
+
+        # checking if pdpbox is available
+        if plot == "pdp":
+            try:
+                import pdpbox
+            except ImportError:
+                logger.error(
+                    "pdpbox library not found. pip install pdpbox to generate pdp plot in interpret_model function."
+                )
+                raise ImportError(
+                    "pdpbox library not found. pip install pdpbox to generate pdp plot in interpret_model function."
+                )
 
         import matplotlib.pyplot as plt
 
@@ -3760,16 +3770,23 @@ class _SupervisedExperiment(_TabularExperiment):
         shap_models = {k: v for k, v in self._all_models_internal.items() if v.shap}
         shap_models_ids = set(shap_models.keys())
 
-        if model_id not in shap_models_ids:
+        if plot in ["summary", "correlation", "reason"] and (
+            model_id not in shap_models_ids
+        ):
             raise TypeError(
                 f"This function only supports tree based models for binary classification: {', '.join(shap_models_ids)}."
             )
 
         # plot type
-        allowed_types = ["summary", "correlation", "reason"]
+        allowed_types = ["summary", "correlation", "reason", "pdp"]
         if plot not in allowed_types:
             raise ValueError(
-                "type parameter only accepts 'summary', 'correlation' or 'reason'."
+                "type parameter only accepts 'summary', 'correlation', 'reason' or 'pdp'."
+            )
+
+        if X_new_sample is not None and (observation is not None or use_train_data):
+            raise ValueError(
+                "Specifying 'X_new_sample' and ('observation' or 'use_train_data') is ambiguous."
             )
 
         """
@@ -3778,7 +3795,11 @@ class _SupervisedExperiment(_TabularExperiment):
         """
 
         # Storing X_train and y_train in data_X and data_y parameter
-        test_X = self.X_train if use_train_data else self.X_test
+        if X_new_sample is not None:
+            test_X = self.prep_pipe.transform(X_new_sample)
+        else:
+            # Storing X_train and y_train in data_X and data_y parameter
+            test_X = self.X_train if use_train_data else self.X_test
 
         np.random.seed(self.seed)
 
@@ -3799,7 +3820,13 @@ class _SupervisedExperiment(_TabularExperiment):
             explainer = shap.TreeExplainer(model)
             self.logger.info("Compiling shap values")
             shap_values = explainer.shap_values(test_X)
-            shap_plot = shap.summary_plot(shap_values, test_X, show=show, **kwargs)
+            try:
+                assert len(shap_values) == 2
+                shap_plot = shap.summary_plot(
+                    shap_values[1], test_X, show=show, **kwargs
+                )
+            except Exception:
+                shap_plot = shap.summary_plot(shap_values, test_X, show=show, **kwargs)
             if save:
                 plt.savefig(f"SHAP {plot}.png", bbox_inches="tight")
             return shap_plot
@@ -3816,7 +3843,7 @@ class _SupervisedExperiment(_TabularExperiment):
             else:
 
                 self.logger.warning(
-                    f"feature value passed. Feature used for correlation plot: {test_X.columns[0]}"
+                    f"feature value passed. Feature used for correlation plot: {feature}"
                 )
                 dependence = feature
 
@@ -3924,6 +3951,46 @@ class _SupervisedExperiment(_TabularExperiment):
             if save:
                 shap.save_html(f"SHAP {plot}.html", shap_plot)
             return shap_plot
+
+        def pdp(show: bool = True):
+
+            self.logger.info("Checking feature parameter passed")
+            if feature == None:
+
+                self.logger.warning(
+                    f"No feature passed. Default value of feature used for pdp : {test_X.columns[0]}"
+                )
+                pdp_feature = test_X.columns[0]
+
+            else:
+
+                self.logger.warning(
+                    f"feature value passed. Feature used for correlation plot: {feature}"
+                )
+                pdp_feature = feature
+
+            self.logger.info("Importing pdf from pdpbox")
+            from pdpbox import pdp
+
+            self.logger.info("Creating PDPIsolate Object")
+            pdp_ = pdp.pdp_isolate(
+                model=model,
+                dataset=test_X,
+                model_features=test_X.columns,
+                feature=pdp_feature,
+            )
+            self.logger.info("Creating PDP Plot")
+            fig, axes = pdp.pdp_plot(
+                pdp_,
+                pdp_feature,
+                plot_lines=True,
+                frac_to_plot=100,
+                x_quantile=True,
+                show_percentile=True,
+            )
+
+            if save:
+                plt.savefig(f"PDP {plot}.png", bbox_inches="tight")
 
         shap_plot = locals()[plot](show=not save)
 
@@ -4136,30 +4203,26 @@ class _SupervisedExperiment(_TabularExperiment):
             raise ValueError("id already present in metrics dataframe.")
 
         if self._ml_usecase == MLUsecase.CLASSIFICATION:
-            new_metric = (
-                pycaret.containers.metrics.classification.ClassificationMetricContainer(
-                    id=id,
-                    name=name,
-                    score_func=score_func,
-                    target=target,
-                    args=kwargs,
-                    display_name=name,
-                    greater_is_better=greater_is_better,
-                    is_multiclass=bool(multiclass),
-                    is_custom=True,
-                )
+            new_metric = pycaret.containers.metrics.classification.ClassificationMetricContainer(
+                id=id,
+                name=name,
+                score_func=score_func,
+                target=target,
+                args=kwargs,
+                display_name=name,
+                greater_is_better=greater_is_better,
+                is_multiclass=bool(multiclass),
+                is_custom=True,
             )
         else:
-            new_metric = (
-                pycaret.containers.metrics.regression.RegressionMetricContainer(
-                    id=id,
-                    name=name,
-                    score_func=score_func,
-                    args=kwargs,
-                    display_name=name,
-                    greater_is_better=greater_is_better,
-                    is_custom=True,
-                )
+            new_metric = pycaret.containers.metrics.regression.RegressionMetricContainer(
+                id=id,
+                name=name,
+                score_func=score_func,
+                args=kwargs,
+                display_name=name,
+                greater_is_better=greater_is_better,
+                is_custom=True,
             )
 
         self._all_metrics[id] = new_metric
@@ -4271,13 +4334,12 @@ class _SupervisedExperiment(_TabularExperiment):
         if not fit_kwargs:
             fit_kwargs = {}
 
-        groups = self._get_groups(groups)
+        groups = self._get_groups(
+            groups, data=self.X, fold_groups=self.fold_groups_param_full
+        )
 
         if not display:
-            display = Display(
-                verbose=False,
-                html_param=self.html_param,
-            )
+            display = Display(verbose=False, html_param=self.html_param,)
 
         np.random.seed(self.seed)
 
@@ -4465,15 +4527,9 @@ class _SupervisedExperiment(_TabularExperiment):
         try:
             np.random.seed(self.seed)
             if not display:
-                display = Display(
-                    verbose=verbose,
-                    html_param=self.html_param,
-                )
+                display = Display(verbose=verbose, html_param=self.html_param,)
         except:
-            display = Display(
-                verbose=False,
-                html_param=False,
-            )
+            display = Display(verbose=False, html_param=False,)
 
         dtypes = None
 

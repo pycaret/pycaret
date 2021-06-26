@@ -83,12 +83,18 @@ class _TabularExperiment(_PyCaretExperiment):
     def _get_setup_display(self, **kwargs) -> Styler:
         return pd.DataFrame().style
 
-    def _get_groups(self, groups, ml_usecase: Optional[MLUsecase] = None):
+    def _get_groups(
+        self,
+        groups,
+        data: Optional[pd.DataFrame] = None,
+        fold_groups=None,
+        ml_usecase: Optional[MLUsecase] = None,
+    ):
         import pycaret.internal.utils
 
-        return pycaret.internal.utils.get_groups(
-            groups, self.X_train, self.fold_groups_param
-        )
+        data = data if data is not None else self.X_train
+        fold_groups = fold_groups if fold_groups is not None else self.fold_groups_param
+        return pycaret.internal.utils.get_groups(groups, data, fold_groups)
 
     def _get_cv_splitter(
         self, fold, ml_usecase: Optional[MLUsecase] = None
@@ -362,13 +368,7 @@ class _TabularExperiment(_PyCaretExperiment):
         return
 
     def _set_up_mlflow(
-        self,
-        functions,
-        runtime,
-        log_profile,
-        profile_kwargs,
-        log_data,
-        display,
+        self, functions, runtime, log_profile, profile_kwargs, log_data, display,
     ) -> None:
         return
 
@@ -1444,6 +1444,7 @@ class _TabularExperiment(_PyCaretExperiment):
         # CV params
         self.fold_param = fold
         self.fold_groups_param = None
+        self.fold_groups_param_full = None
         if fold_groups is not None:
             if isinstance(fold_groups, str):
                 self.fold_groups_param = X_before_preprocess[fold_groups]
@@ -1790,12 +1791,7 @@ class _TabularExperiment(_PyCaretExperiment):
         runtime = np.array(runtime_end - runtime_start).round(2)
 
         self._set_up_mlflow(
-            functions,
-            runtime,
-            log_profile,
-            profile_kwargs,
-            log_data,
-            display,
+            functions, runtime, log_profile, profile_kwargs, log_data, display,
         )
 
         self._setup_ran = True
@@ -2565,9 +2561,7 @@ class _TabularExperiment(_PyCaretExperiment):
                             hover_data=d.columns,
                         )
 
-                        fig.update_layout(
-                            height=600 * scale,
-                        )
+                        fig.update_layout(height=600 * scale,)
 
                         plot_filename = f"{plot_name}.html"
 
@@ -2952,7 +2946,7 @@ class _TabularExperiment(_PyCaretExperiment):
                             groups=groups,
                             **fit_kwargs,
                         ) as fitted_pipeline_with_model:
-                            y_test__ = fitted_pipeline_with_model.predict(test_X)
+                            y_test__ = test_y
                             predict_proba__ = fitted_pipeline_with_model.predict_proba(
                                 test_X
                             )
@@ -2989,7 +2983,7 @@ class _TabularExperiment(_PyCaretExperiment):
                             groups=groups,
                             **fit_kwargs,
                         ) as fitted_pipeline_with_model:
-                            y_test__ = fitted_pipeline_with_model.predict(test_X)
+                            y_test__ = test_y
                             predict_proba__ = fitted_pipeline_with_model.predict_proba(
                                 test_X
                             )
@@ -3553,6 +3547,40 @@ class _TabularExperiment(_PyCaretExperiment):
                             columns=["Parameters"],
                         )
                         display.display(param_df, clear=True)
+                        self.logger.info("Visual Rendered Successfully")
+
+                    def ks():
+
+                        display.move_progress()
+                        self.logger.info(
+                            "Generating predictions / predict_proba on X_test"
+                        )
+                        with fit_if_not_fitted(
+                            pipeline_with_model,
+                            data_X,
+                            data_y,
+                            groups=groups,
+                            **fit_kwargs,
+                        ) as fitted_pipeline_with_model:
+                            predict_proba__ = fitted_pipeline_with_model.predict_proba(data_X)
+                        display.move_progress()
+                        display.move_progress()
+                        display.clear_output()
+                        with MatplotlibDefaultDPI(
+                            base_dpi=_base_dpi, scale_to_set=scale
+                        ):
+                            fig = skplt.metrics.plot_ks_statistic(
+                                data_y, predict_proba__, figsize=(10, 6)
+                            )
+                            if save:
+                                self.logger.info(
+                                    f"Saving '{plot_name}.png' in current active directory"
+                                )
+                                plt.savefig(f"{plot_name}.png", bbox_inches="tight")
+                            elif system:
+                                plt.show()
+                            plt.close()
+
                         self.logger.info("Visual Rendered Successfully")
 
                     # execute the plot method

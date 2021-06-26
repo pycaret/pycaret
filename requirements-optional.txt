@@ -5,14 +5,18 @@ hyperopt
 optuna
 scikit-optimize>=0.8.1
 psutil
-awscli
-azure-storage-blob
-google-cloud-storage
 catboost>=0.23.2
 xgboost>=1.1.0
 LunarCalendar>=0.0.9
 convertdate>=2.1.2
 holidays>=0.10.2
 pystan~=2.19.1.1
+
+# for cloud deployment
+boto3
+azure-storage-blob
+google-cloud-storage
+
 #hpbandster
 #ConfigSpace
+#pdpbox

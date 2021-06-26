@@ -27,3 +27,10 @@ tutorials/logs.log
 .idea/
 /pycaret/tests/mlruns/
 *.log
+trained_models/
+*.ipynb
+*.pkl
+/mlruns.db
+/mlruns.db-journal
+mlflow_backend.py
+demo4.py
