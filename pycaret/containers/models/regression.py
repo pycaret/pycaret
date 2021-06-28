@@ -23,18 +23,7 @@ from pycaret.internal.utils import (
 from pycaret.internal.distributions import *
 import pycaret.containers.base_container
 import numpy as np
-
-def CompareVersion(version1: str, version2: str) -> int:\
-    """
-    Compare between two versions. 
-    If version1 > version2, return 1;
-    if version1 == version2, return 0;
-    if version1 < version2, return -1.
-    """
-    v1, v2 = ([*map(int, v.split('.'))] for v in (version1, version2))
-    d = len(v2) - len(v1)
-    v1, v2 = v1 + [0] * d, v2 + [0] * -d
-    return (v1 > v2) - (v1 < v2)
+from packaging import version
 
 class RegressorContainer(ModelContainer):
     """
@@ -1139,7 +1128,7 @@ class RandomForestRegressorContainer(RegressorContainer):
             }
         else:
             import cuml
-            if CompareVersion("0.19",cuml.__version__) >= 0:
+            if version.parse(cuml.__version__) >= version.parse("0.19"):
                 args = {
                 "random_state": globals_dict["seed"],
                 }
