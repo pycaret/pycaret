@@ -3,7 +3,7 @@
 # License: MIT
 
 
-def get_data(dataset="index", save_copy=False, profile=False, verbose=True):
+def get_data(dataset="index", save_copy=False, profile=False, verbose=True,address = "https://raw.githubusercontent.com/pycaret/pycaret/master/datasets/"):
 
     """
     This function loads sample datasets from git repository. List of available
@@ -32,6 +32,10 @@ def get_data(dataset="index", save_copy=False, profile=False, verbose=True):
     verbose: bool, default = True
         When set to False, head of data is not displayed.
 
+    address: string, default = "https://raw.githubusercontent.com/pycaret/pycaret/master/datasets/"
+        Download url of dataset. For people have difficulty linking to github, they can change
+        the default address to their own (e.g. "https://gitee.com/IncubatorShokuhou/pycaret/raw/master/datasets/")
+
 
     Returns:
         pandas.DataFrame
@@ -47,7 +51,6 @@ def get_data(dataset="index", save_copy=False, profile=False, verbose=True):
     import os.path
     from IPython.display import display, HTML, clear_output, update_display
 
-    address = "https://raw.githubusercontent.com/pycaret/pycaret/master/datasets/"
     extension = ".csv"
     filename = str(dataset) + extension
 
