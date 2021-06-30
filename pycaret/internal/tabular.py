@@ -7471,6 +7471,18 @@ def interpret_model(
                 "pdpbox library not found. pip install pdpbox to generate pdp plot in interpret_model function."
             )
 
+    # checking interpret is available
+    if plot == 'msa':
+        try:
+            import interpret
+        except ImportError:
+            logger.error(
+                "interpretml library not found. pip install interpret to generate msa plot in interpret_model function."
+            )
+            raise ImportError(
+                "interpretml library not found. pip install interpret to generate msa plot in interpret_model function."
+            )
+
     # get estimator from meta estimator
     estimator = get_estimator_from_meta_estimator(estimator)
 
@@ -7486,10 +7498,10 @@ def interpret_model(
         )
 
     # plot type
-    allowed_types = ["summary", "correlation", "reason", "pdp"]
+    allowed_types = ["summary", "correlation", "reason", "pdp", "msa"]
     if plot not in allowed_types:
         raise ValueError(
-            "type parameter only accepts 'summary', 'correlation', 'reason' or 'pdp'."
+            "type parameter only accepts 'summary', 'correlation', 'reason', 'pdp' or 'msa'."
         )
 
     if X_new_sample is not None and (observation is not None or use_train_data):
@@ -7682,6 +7694,17 @@ def interpret_model(
         if save:
             plt.savefig(f"PDP {plot}.png", bbox_inches="tight")
             
+    def msa(show: bool = True):
+        from interpret.blackbox import MorrisSensitivity
+        msa = MorrisSensitivity(predict_fn=model.predict_proba, data=X_train)
+        msa_global = msa.explain_global()
+        msa_plot = msa_global.visualize()
+        if save:
+            import plotly.io as pio
+            pio.write_html(msa_plot,f"MSA {plot}.html")
+        return msa_plot
+
+
     shap_plot = locals()[plot](show=not save)
 
     logger.info("Visual Rendered Successfully")
