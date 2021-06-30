@@ -40,6 +40,11 @@ import plotly.express as px  # type: ignore
 import plotly.graph_objects as go  # type: ignore
 import scikitplot as skplt  # type: ignore
 import logging
+from sklearn.compose import ColumnTransformer
+import sklearn
+from sklearn.experimental import enable_iterative_imputer
+from sklearn.impute import SimpleImputer, IterativeImputer
+from sklearn.preprocessing import OrdinalEncoder
 
 
 warnings.filterwarnings("ignore")
@@ -468,12 +473,10 @@ class _TabularExperiment(_PyCaretExperiment):
     ):
 
         """
-        This function initializes the environment in pycaret and creates the transformation
-        pipeline to prepare the data for modeling and deployment. setup() must called before
-        executing any other function in pycaret. It takes two mandatory parameters:
-        data and name of the target column.
-
-        All other parameters are optional.
+        This function initializes the environment in pycaret and creates the
+        transformation pipeline to prepare the data for modeling and deployment.
+        setup() must called before executing any other function in pycaret. It
+        takes only two mandatory parameters: data and name of the target column.
 
         """
         from pycaret.utils import __version__
@@ -1004,7 +1007,6 @@ class _TabularExperiment(_PyCaretExperiment):
 
         # declaring global variables to be accessed by other functions
         self.logger.info("Declaring global variables")
-        # global _ml_usecase, USI, html_param, X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, experiment__, fold_shuffle_param, n_jobs_param, _gpu_n_jobs_param, master_model_container, display_container, exp_name_log, logging_param, log_plots_param, fix_imbalance_param, fix_imbalance_method_param, transform_target_param, transform_target_method_param, data_before_preprocess, target_param, gpu_param, _all_models, _all_models_internal, _all_metrics, _internal_pipeline, stratify_param, fold_generator, fold_param, fold_groups_param, imputation_regressor, imputation_classifier, iterative_imputation_iters_param
 
         self.USI = secrets.token_hex(nbytes=2)
         self.logger.info(f"self.USI: {self.USI}")
@@ -1043,8 +1045,6 @@ class _TabularExperiment(_PyCaretExperiment):
         self.logger.info("Importing libraries")
 
         # setting sklearn config to print all parameters including default
-        import sklearn
-
         sklearn.set_config(print_changed_only=False)
 
         self.logger.info("Copying data for preprocessing")
@@ -1063,28 +1063,147 @@ class _TabularExperiment(_PyCaretExperiment):
         preprocessing starts here
         """
 
-        display.update_monitor(1, "Preparing Data for Modeling")
-        display.display_monitor()
+        self._preprocess_pipeline = []
+        if preprocess:
+            display.update_monitor(1, "Preparing Data for Modeling")
+            display.display_monitor()
 
-        # define parameters for preprocessor
+            self.logger.info("Creating preprocessing pipeline...")
 
-        self.logger.info("Declaring preprocessing parameters")
+            # Define column types ==================== >>
 
-        # categorical features
-        cat_features_pass = categorical_features or []
+            encoder = None
+            if ordinal_features:
+                ordinal_encoder = OrdinalEncoder(ordinal_features)
 
-        # numeric features
-        numeric_features_pass = numeric_features or []
+            # Categorical columns
+            cat_cols = data.select_dtypes(exclude="number").columns
+            if categorical_features:
+                cat_cols = categorical_features
 
-        # drop features
-        ignore_features_pass = ignore_features or []
+            # Numerical columns
+            num_cols = data.select_dtypes(include="number").columns
+            if categorical_features:
+                num_cols = categorical_features
 
-        # date features
-        date_features_pass = date_features or []
+            # Ignore features
+            ign_cols = []
+            if ignore_features:
+                ign_cols = ignore_features
 
-        # categorical imputation strategy
-        cat_dict = {"constant": "not_available", "mode": "most frequent"}
-        categorical_imputation_pass = cat_dict[categorical_imputation]
+            # Date features
+            date_cols = data.select_dtypes(include="datetime").columns
+            if date_features:
+                date_cols = date_features
+
+            # Create pipeline ======================== >>
+
+            num_dict = {"zero": 0, "mean": "mean", "median": "median"}
+            num_imputation = num_dict[numeric_imputation]
+
+            cat_dict = {"constant": "not_available", "mode": "most_frequent"}
+            cat_imputation = cat_dict[categorical_imputation]
+
+            if imputation_type == "simple":
+                self.logger.info("Setting up simple imputation")
+                imputer = ColumnTransformer(
+                    transformers=[
+                        ("num_imputer", SimpleImputer(num_imputation), num_cols),
+                        ("cat_imputer", SimpleImputer(cat_imputation), cat_cols),
+                    ],
+                    remainder="passthrough",
+                    n_jobs=n_jobs,
+                )
+            else:
+                self.logger.info("Setting up iterative imputation")
+                imputer = IterativeImputer(
+                    estimator="lightgbm",
+                    max_iter=iterative_imputation_iters,
+                )
+
+        self.iterative_imputation_iters_param = iterative_imputation_iters
+
+        # creating variables to be used later in the function
+        train_data = self.data_before_preprocess.copy()
+        if self._is_unsupervised():
+            target = "UNSUPERVISED_DUMMY_TARGET"
+            train_data[target] = 2
+            # just to add diversified values to target
+            train_data[target][0:3] = 3
+        X_before_preprocess = train_data.drop(target, axis=1)
+        y_before_preprocess = train_data[target]
+
+        self.imputation_regressor = numeric_iterative_imputer
+        self.imputation_classifier = categorical_iterative_imputer
+        imputation_regressor_name = "Bayesian Ridge"  # todo change
+        imputation_classifier_name = "Random Forest Classifier"
+
+        if imputation_type == "iterative":
+            self.logger.info("Setting up iterative imputation")
+
+            iterative_imputer_models_globals = self.variables.copy()
+            iterative_imputer_models_globals["y_train"] = y_before_preprocess
+            iterative_imputer_models_globals["X_train"] = X_before_preprocess
+            iterative_imputer_classification_models = {
+                k: v
+                for k, v in pycaret.containers.models.classification.get_all_model_containers(
+                    iterative_imputer_models_globals, raise_errors=True
+                ).items()
+                if not v.is_special
+            }
+            iterative_imputer_regression_models = {
+                k: v
+                for k, v in pycaret.containers.models.regression.get_all_model_containers(
+                    iterative_imputer_models_globals, raise_errors=True
+                ).items()
+                if not v.is_special
+            }
+
+            if not (
+                    (
+                            isinstance(self.imputation_regressor, str)
+                            and self.imputation_regressor in iterative_imputer_regression_models
+                    )
+                    or hasattr(self.imputation_regressor, "predict")
+            ):
+                raise ValueError(
+                    f"numeric_iterative_imputer parameter must be either a scikit-learn estimator or a string - one of {', '.join(iterative_imputer_regression_models.keys())}."
+                )
+
+            if not (
+                    (
+                            isinstance(self.imputation_classifier, str)
+                            and self.imputation_classifier
+                            in iterative_imputer_classification_models
+                    )
+                    or hasattr(self.imputation_classifier, "predict")
+            ):
+                raise ValueError(
+                    f"categorical_iterative_imputer parameter must be either a scikit-learn estimator or a string - one of {', '.join(iterative_imputer_classification_models.keys())}."
+                )
+
+            if isinstance(self.imputation_regressor, str):
+                self.imputation_regressor = iterative_imputer_regression_models[
+                    self.imputation_regressor
+                ]
+                imputation_regressor_name = self.imputation_regressor.name
+                self.imputation_regressor = self.imputation_regressor.class_def(
+                    **self.imputation_regressor.args
+                )
+            else:
+                imputation_regressor_name = type(self.imputation_regressor).__name__
+
+            if isinstance(self.imputation_classifier, str):
+                self.imputation_classifier = iterative_imputer_classification_models[
+                    self.imputation_classifier
+                ]
+                imputation_classifier_name = self.imputation_classifier.name
+                self.imputation_classifier = self.imputation_classifier.class_def(
+                    **self.imputation_classifier.args
+                )
+            else:
+                imputation_classifier_name = type(self.imputation_classifier).__name__
+
 
         # transformation method strategy
         trans_dict = {"yeo-johnson": "yj", "quantile": "quantile"}
@@ -1223,89 +1342,6 @@ class _TabularExperiment(_PyCaretExperiment):
 
         # create gpu_param var
         self.gpu_param = use_gpu
-
-        self.iterative_imputation_iters_param = iterative_imputation_iters
-
-        # creating variables to be used later in the function
-        train_data = self.data_before_preprocess.copy()
-        if self._is_unsupervised():
-            target = "UNSUPERVISED_DUMMY_TARGET"
-            train_data[target] = 2
-            # just to add diversified values to target
-            train_data[target][0:3] = 3
-        X_before_preprocess = train_data.drop(target, axis=1)
-        y_before_preprocess = train_data[target]
-
-        self.imputation_regressor = numeric_iterative_imputer
-        self.imputation_classifier = categorical_iterative_imputer
-        imputation_regressor_name = "Bayesian Ridge"  # todo change
-        imputation_classifier_name = "Random Forest Classifier"
-
-        if imputation_type == "iterative":
-            self.logger.info("Setting up iterative imputation")
-
-            iterative_imputer_models_globals = self.variables.copy()
-            iterative_imputer_models_globals["y_train"] = y_before_preprocess
-            iterative_imputer_models_globals["X_train"] = X_before_preprocess
-            iterative_imputer_classification_models = {
-                k: v
-                for k, v in pycaret.containers.models.classification.get_all_model_containers(
-                    iterative_imputer_models_globals, raise_errors=True
-                ).items()
-                if not v.is_special
-            }
-            iterative_imputer_regression_models = {
-                k: v
-                for k, v in pycaret.containers.models.regression.get_all_model_containers(
-                    iterative_imputer_models_globals, raise_errors=True
-                ).items()
-                if not v.is_special
-            }
-
-            if not (
-                (
-                    isinstance(self.imputation_regressor, str)
-                    and self.imputation_regressor in iterative_imputer_regression_models
-                )
-                or hasattr(self.imputation_regressor, "predict")
-            ):
-                raise ValueError(
-                    f"numeric_iterative_imputer parameter must be either a scikit-learn estimator or a string - one of {', '.join(iterative_imputer_regression_models.keys())}."
-                )
-
-            if not (
-                (
-                    isinstance(self.imputation_classifier, str)
-                    and self.imputation_classifier
-                    in iterative_imputer_classification_models
-                )
-                or hasattr(self.imputation_classifier, "predict")
-            ):
-                raise ValueError(
-                    f"categorical_iterative_imputer parameter must be either a scikit-learn estimator or a string - one of {', '.join(iterative_imputer_classification_models.keys())}."
-                )
-
-            if isinstance(self.imputation_regressor, str):
-                self.imputation_regressor = iterative_imputer_regression_models[
-                    self.imputation_regressor
-                ]
-                imputation_regressor_name = self.imputation_regressor.name
-                self.imputation_regressor = self.imputation_regressor.class_def(
-                    **self.imputation_regressor.args
-                )
-            else:
-                imputation_regressor_name = type(self.imputation_regressor).__name__
-
-            if isinstance(self.imputation_classifier, str):
-                self.imputation_classifier = iterative_imputer_classification_models[
-                    self.imputation_classifier
-                ]
-                imputation_classifier_name = self.imputation_classifier.name
-                self.imputation_classifier = self.imputation_classifier.class_def(
-                    **self.imputation_classifier.args
-                )
-            else:
-                imputation_classifier_name = type(self.imputation_classifier).__name__
 
         self.logger.info("Creating preprocessing pipeline")
 
