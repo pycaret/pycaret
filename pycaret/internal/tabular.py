@@ -7360,6 +7360,7 @@ def interpret_model(
     observation: Optional[int] = None,
     use_train_data: Optional[bool] = False,
     X_new_sample: Optional[pd.DataFrame] = None,
+    y_new_sample: Optional[pd.DataFrame] = None, # add for pfi explainer
     save: bool = False,
     **kwargs,  # added in pycaret==2.1
 ):
@@ -7399,6 +7400,8 @@ def interpret_model(
         * 'correlation' - Dependence Plot using SHAP
         * 'reason' - Force Plot using SHAP           
         * 'pdp' - Partial Dependence Plot                
+        * 'msa' - Morris Sensitivity Analysis
+        * 'pfi' - Permutation Feature Importance
 
     feature: str, default = None
         This parameter is only needed when plot = 'correlation' or 'pdp'. 
@@ -7415,7 +7418,12 @@ def interpret_model(
 
     X_new_sample: pd.DataFrame, default = None
         Row from an out-of-sample dataframe (neither train nor test data) to be plotted.
-        The sample must have the same columns as the raw input data, and it is transformed
+        The sample must have the same columns as the raw input train data, and it is transformed
+        by the preprocessing pipeline automatically before plotting.
+    
+    y_new_sample: pd.DataFrame, default = None
+        Row from an out-of-sample dataframe (neither train nor test data) to be plotted.
+        The sample must have the same columns as the raw input label data, and it is transformed
         by the preprocessing pipeline automatically before plotting.
 
     save: bool, default = False
@@ -7462,13 +7470,13 @@ def interpret_model(
     # checking if pdpbox is available
     if plot == 'pdp':
         try:
-            import pdpbox
+            import interpret
         except ImportError:
             logger.error(
-                "pdpbox library not found. pip install pdpbox to generate pdp plot in interpret_model function."
+                "interpretml library not found. pip install interpret to generate pdp plot in interpret_model function."
             )
             raise ImportError(
-                "pdpbox library not found. pip install pdpbox to generate pdp plot in interpret_model function."
+                "interpretml library not found. pip install interpret to generate pdp plot in interpret_model function."
             )
 
     # checking interpret is available
@@ -7481,6 +7489,18 @@ def interpret_model(
             )
             raise ImportError(
                 "interpretml library not found. pip install interpret to generate msa plot in interpret_model function."
+            )
+
+    # checking interpret-community is available
+    if plot == 'pfi':
+        try:
+            import interpret
+        except ImportError:
+            logger.error(
+                "interpret-community library not found. pip install interpret-community to generate msa plot in interpret_model function."
+            )
+            raise ImportError(
+                "interpret-community library not found. pip install interpret-community to generate msa plot in interpret_model function."
             )
 
     # get estimator from meta estimator
@@ -7498,10 +7518,10 @@ def interpret_model(
         )
 
     # plot type
-    allowed_types = ["summary", "correlation", "reason", "pdp", "msa"]
+    allowed_types = ["summary", "correlation", "reason", "pdp", "msa", "pfi"]
     if plot not in allowed_types:
         raise ValueError(
-            "type parameter only accepts 'summary', 'correlation', 'reason', 'pdp' or 'msa'."
+            "type parameter only accepts 'summary', 'correlation', 'reason', 'pdp', 'msa' or 'pfi'."
         )
 
     if X_new_sample is not None and (observation is not None or use_train_data):
@@ -7514,9 +7534,11 @@ def interpret_model(
     """
     if X_new_sample is not None:
         test_X = prep_pipe.transform(X_new_sample)
+        test_y = prep_pipe.transform(Y_new_sample)  # add for pfi explainer
     else:
         # Storing X_train and y_train in data_X and data_y parameter
         test_X = X_train if use_train_data else X_test
+        test_y = y_train if use_train_data else y_test # add for pfi explainer
 
     np.random.seed(seed)
 
@@ -7668,41 +7690,53 @@ def interpret_model(
         return shap_plot
 
     def pdp(show: bool = True):
-
         logger.info("Checking feature parameter passed")
         if feature == None:
-
             logger.warning(
-                f"No feature passed. Default value of feature used for pdp : {X_train.columns[0]}"
+                f"No feature passed. Default value of feature used for pdp : {test_X.columns[0]}"
             )
-            pdp_feature = X_train.columns[0]
-
+            pdp_feature = test_X.columns[0]
         else:
-
             logger.info(
                 f"feature value passed. Feature used for correlation plot: {feature}"
             )
             pdp_feature = feature
 
-        logger.info("Importing pdf from pdpbox")
-        from pdpbox import pdp
-        logger.info("Creating PDPIsolate Object")
-        pdp_ = pdp.pdp_isolate(model=model, dataset=X_train, model_features=X_train.columns, feature=pdp_feature)
-        logger.info("Creating PDP Plot")
-        fig, axes = pdp.pdp_plot(pdp_, pdp_feature, plot_lines=True, frac_to_plot=100, x_quantile=True, show_percentile=True)
-        
+        from interpret.blackbox import PartialDependence
+        try:
+            pdp = PartialDependence(predict_fn=model.predict_proba, data=test_X)  # classification
+        except:
+            pdp = PartialDependence(predict_fn=model.predict, data=test_X)  # regression
+
+        pdp_global = pdp.explain_global()
+        pdp_plot = pdp_global.visualize(list(test_X.columns).index(pdp_feature))
         if save:
-            plt.savefig(f"PDP {plot}.png", bbox_inches="tight")
-            
+            import plotly.io as pio
+            pio.write_html(pdp_plot,f"PDP {plot}.html")
+        return pdp_plot
+
     def msa(show: bool = True):
         from interpret.blackbox import MorrisSensitivity
-        msa = MorrisSensitivity(predict_fn=model.predict_proba, data=X_train)
+        try:
+            msa = MorrisSensitivity(predict_fn=model.predict_proba, data=test_X) # classification
+        except:
+            msa = MorrisSensitivity(predict_fn=model.predict, data=test_X) # regression
         msa_global = msa.explain_global()
         msa_plot = msa_global.visualize()
         if save:
             import plotly.io as pio
             pio.write_html(msa_plot,f"MSA {plot}.html")
         return msa_plot
+
+    def pfi(show: bool = True):
+        from interpret.ext.blackbox import PFIExplainer
+        pfi = PFIExplainer(model)
+        pfi_global = pfi.explain_global(test_X, true_labels=test_y)
+        pfi_plot = pfi_global.visualize()
+        if save:
+            import plotly.io as pio
+            pio.write_html(msa_plot,f"PFI {plot}.html")
+        return pfi_plot
 
 
     shap_plot = locals()[plot](show=not save)
