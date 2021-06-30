@@ -68,6 +68,7 @@ from unittest.mock import patch
 import plotly.express as px
 import plotly.graph_objects as go
 import scikitplot as skplt
+from packaging import version
 
 warnings.filterwarnings("ignore")
 
@@ -1011,16 +1012,13 @@ def setup(
     if use_gpu:
         try:
             from cuml import __version__
-
+ 
             cuml_version = __version__
             logger.info(f"cuml=={cuml_version}")
-
-            cuml_version = cuml_version.split(".")
-            cuml_version = (int(cuml_version[0]), int(cuml_version[1]))
         except:
             logger.warning(f"cuML not found")
 
-        if cuml_version is None or not cuml_version >= (0, 15):
+        if cuml_version is None or not version.parse(cuml_version) >= version.parse("0.15"):
             message = f"cuML is outdated or not found. Required version is >=0.15, got {__version__}"
             if use_gpu == "force":
                 raise ImportError(message)
