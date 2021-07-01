@@ -45,6 +45,9 @@ import sklearn
 from sklearn.experimental import enable_iterative_imputer
 from sklearn.impute import SimpleImputer, IterativeImputer
 from sklearn.preprocessing import OrdinalEncoder
+import secrets
+from pycaret.internal.utils import get_columns_to_stratify_by
+from sklearn.model_selection import train_test_split
 
 
 warnings.filterwarnings("ignore")
@@ -481,14 +484,34 @@ class _TabularExperiment(_PyCaretExperiment):
         """
         from pycaret.utils import __version__
 
+        # Settings ================================================= >>
+
+        pd.set_option("display.max_columns", 500)
+        pd.set_option("display.max_rows", 500)
+        sklearn.set_config(print_changed_only=False)
+
+        # Attribute definition ===================================== >>
+
+        # Parameter attrs
+        self.data = data
+        self.target_param = target
+        self.stratify_param = data_split_stratify
+        self.n_jobs_param = n_jobs
+        self.gpu_param = use_gpu
+        self.html_param = html
+
+        # Global attrs
+        self.seed = random.randint(150, 9000) if session_id is None else session_id
+        np.random.seed(self.seed)
+
         # Initialization =========================================== >>
+
+        runtime_start = time.time()
 
         # Get local parameters to write to logger
         function_params_str = ", ".join(
             [f"{k}={v}" for k, v in locals().items() if k != "self"]
         )
-
-        warnings.filterwarnings("ignore")
 
         if experiment_name:
             if not isinstance(experiment_name, str):
@@ -505,9 +528,12 @@ class _TabularExperiment(_PyCaretExperiment):
         self.logger.info("Initializing setup()")
         self.logger.info(f"setup(data=data, {function_params_str})")
 
-        self._check_enviroment()
+        self.USI = secrets.token_hex(nbytes=2)
+        self.logger.info(f"self.USI: {self.USI}")
 
-        runtime_start = time.time()
+        self.logger.info(f"self.variable_keys: {self.variable_keys}")
+
+        self._check_enviroment()
 
         # Checking parameters ====================================== >>
 
@@ -998,79 +1024,69 @@ class _TabularExperiment(_PyCaretExperiment):
                 f"transform_target_method parameter only accepts {', '.join(allowed_transform_target_method)}."
             )
 
-        # pandas option
-        pd.set_option("display.max_columns", 500)
-        pd.set_option("display.max_rows", 500)
+        # Data preparation ========================================= >>
 
-        # generate USI for mlflow tracking
-        import secrets
+        if test_data is None:
+            if self._ml_usecase == MLUsecase.TIME_SERIES:
+                # TODO: Fix time series for new data properties!
+                from sktime.forecasting.model_selection import (
+                    temporal_train_test_split,
+                )  # sktime is an optional dependency
 
-        # declaring global variables to be accessed by other functions
-        self.logger.info("Declaring global variables")
+                (
+                    train_data,
+                    test_data,
+                    self.X_train,
+                    self.X_test,
+                ) = temporal_train_test_split(
+                    y=self.y,
+                    X=self.X,
+                    fh=fh,  # if fh is provided it splits by it
+                )
 
-        self.USI = secrets.token_hex(nbytes=2)
-        self.logger.info(f"self.USI: {self.USI}")
+                train_data, test_data = (
+                    pd.DataFrame(train_data),
+                    pd.DataFrame(test_data),
+                )
 
-        self.logger.info(f"self.variable_keys: {self.variable_keys}")
+                self.y_train = train_data
+                self.y_test = test_data
 
-        # create html_param
-        self.html_param = html
+            else:
+                _stratify_columns = get_columns_to_stratify_by(
+                    X=self.X,
+                    y=self.y,
+                    stratify=self.stratify_param,
+                )
 
-        self.logger.info("Preparing display monitor")
+                train, test = train_test_split(
+                    self.data,
+                    test_size=1 - train_size,
+                    stratify=_stratify_columns,
+                    random_state=self.seed,
+                    shuffle=data_split_shuffle,
+                )
+                self.data = pd.concat([train, test]).reset_index(drop=True)
+                self.idx = (len(train), len(test))
 
-        if not display:
-            # progress bar
-            max_steps = 3
-
-            progress_args = {"max": max_steps}
-            timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
-            monitor_rows = [
-                ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
-                [
-                    "Status",
-                    ". . . . . . . . . . . . . . . . . .",
-                    "Loading Dependencies",
-                ],
-            ]
-            display = Display(
-                verbose=verbose,
-                html_param=self.html_param,
-                progress_args=progress_args,
-                monitor_rows=monitor_rows,
-            )
-
-            display.display_progress()
-            display.display_monitor()
-
-        self.logger.info("Importing libraries")
-
-        # setting sklearn config to print all parameters including default
-        sklearn.set_config(print_changed_only=False)
-
-        self.logger.info("Copying data for preprocessing")
-
-        # copy original data for pandas profiler
-        self.data_before_preprocess = data.copy()
-
-        # generate seed to be used globally
-        self.seed = random.randint(150, 9000) if session_id is None else session_id
-
-        np.random.seed(self.seed)
-
-        self._internal_pipeline = []
+        else:  # test_data is provided
+            self.data = pd.concat([data, test_data]).reset_index(drop=True)
+            self.idx = [len(self.data), len(test_data)]
 
         """
         preprocessing starts here
         """
 
-        self._preprocess_pipeline = []
+        # Copy original data for pandas profiler
+        self.logger.info("Copying data for preprocessing")
+        self.data_before_preprocess = data.copy()
+        X_before_preprocess = self.data_before_preprocess.drop(target, axis=1)
+        y_before_preprocess = self.data_before_preprocess[target]
+
         if preprocess:
-            display.update_monitor(1, "Preparing Data for Modeling")
-            display.display_monitor()
+            self.logger.info("Preparing preprocessing pipeline...")
 
-            self.logger.info("Creating preprocessing pipeline...")
-
-            # Define column types ==================== >>
+            # Define column types ================================== >>
 
             encoder = None
             if ordinal_features:
@@ -1096,23 +1112,32 @@ class _TabularExperiment(_PyCaretExperiment):
             if date_features:
                 date_cols = date_features
 
-            # Create pipeline ======================== >>
+            # Imputation =========================================== >>
 
-            num_dict = {"zero": 0, "mean": "mean", "median": "median"}
-            num_imputation = num_dict[numeric_imputation]
-
-            cat_dict = {"constant": "not_available", "mode": "most_frequent"}
-            cat_imputation = cat_dict[categorical_imputation]
+            num_dict = {"zero": "constant", "mean": "mean", "median": "median"}
+            cat_dict = {"constant": "constant", "mode": "most_frequent"}
 
             if imputation_type == "simple":
                 self.logger.info("Setting up simple imputation")
+
+                # Define sklearn estimators
+                num_imputer = SimpleImputer(
+                    strategy=num_dict[numeric_imputation],
+                    fill_value=0,
+                )
+                cat_imputer = SimpleImputer(
+                    strategy=cat_dict[categorical_imputation],
+                    fill_value="not_available",
+                )
+
+                # Create meta-estimator to split imputers over columns
                 imputer = ColumnTransformer(
                     transformers=[
-                        ("num_imputer", SimpleImputer(num_imputation), num_cols),
-                        ("cat_imputer", SimpleImputer(cat_imputation), cat_cols),
+                        ("numerical_imputer", num_imputer, num_cols),
+                        ("categorical_imputer", cat_imputer, cat_cols),
                     ],
                     remainder="passthrough",
-                    n_jobs=n_jobs,
+                    n_jobs=self.n_jobs_param,
                 )
             else:
                 self.logger.info("Setting up iterative imputation")
@@ -1121,207 +1146,217 @@ class _TabularExperiment(_PyCaretExperiment):
                     max_iter=iterative_imputation_iters,
                 )
 
-        self.iterative_imputation_iters_param = iterative_imputation_iters
+        # Create final preprocessing pipeline ====================== >>
 
-        # creating variables to be used later in the function
-        train_data = self.data_before_preprocess.copy()
-        if self._is_unsupervised():
-            target = "UNSUPERVISED_DUMMY_TARGET"
-            train_data[target] = 2
-            # just to add diversified values to target
-            train_data[target][0:3] = 3
-        X_before_preprocess = train_data.drop(target, axis=1)
-        y_before_preprocess = train_data[target]
-
-        self.imputation_regressor = numeric_iterative_imputer
-        self.imputation_classifier = categorical_iterative_imputer
-        imputation_regressor_name = "Bayesian Ridge"  # todo change
-        imputation_classifier_name = "Random Forest Classifier"
-
-        if imputation_type == "iterative":
-            self.logger.info("Setting up iterative imputation")
-
-            iterative_imputer_models_globals = self.variables.copy()
-            iterative_imputer_models_globals["y_train"] = y_before_preprocess
-            iterative_imputer_models_globals["X_train"] = X_before_preprocess
-            iterative_imputer_classification_models = {
-                k: v
-                for k, v in pycaret.containers.models.classification.get_all_model_containers(
-                    iterative_imputer_models_globals, raise_errors=True
-                ).items()
-                if not v.is_special
-            }
-            iterative_imputer_regression_models = {
-                k: v
-                for k, v in pycaret.containers.models.regression.get_all_model_containers(
-                    iterative_imputer_models_globals, raise_errors=True
-                ).items()
-                if not v.is_special
-            }
-
-            if not (
-                    (
-                            isinstance(self.imputation_regressor, str)
-                            and self.imputation_regressor in iterative_imputer_regression_models
-                    )
-                    or hasattr(self.imputation_regressor, "predict")
-            ):
-                raise ValueError(
-                    f"numeric_iterative_imputer parameter must be either a scikit-learn estimator or a string - one of {', '.join(iterative_imputer_regression_models.keys())}."
-                )
-
-            if not (
-                    (
-                            isinstance(self.imputation_classifier, str)
-                            and self.imputation_classifier
-                            in iterative_imputer_classification_models
-                    )
-                    or hasattr(self.imputation_classifier, "predict")
-            ):
-                raise ValueError(
-                    f"categorical_iterative_imputer parameter must be either a scikit-learn estimator or a string - one of {', '.join(iterative_imputer_classification_models.keys())}."
-                )
-
-            if isinstance(self.imputation_regressor, str):
-                self.imputation_regressor = iterative_imputer_regression_models[
-                    self.imputation_regressor
-                ]
-                imputation_regressor_name = self.imputation_regressor.name
-                self.imputation_regressor = self.imputation_regressor.class_def(
-                    **self.imputation_regressor.args
-                )
-            else:
-                imputation_regressor_name = type(self.imputation_regressor).__name__
-
-            if isinstance(self.imputation_classifier, str):
-                self.imputation_classifier = iterative_imputer_classification_models[
-                    self.imputation_classifier
-                ]
-                imputation_classifier_name = self.imputation_classifier.name
-                self.imputation_classifier = self.imputation_classifier.class_def(
-                    **self.imputation_classifier.args
-                )
-            else:
-                imputation_classifier_name = type(self.imputation_classifier).__name__
-
-
-        # transformation method strategy
-        trans_dict = {"yeo-johnson": "yj", "quantile": "quantile"}
-        trans_method_pass = trans_dict[transformation_method]
-
-        # pass method
-        pca_dict = {
-            "linear": "pca_liner",
-            "kernel": "pca_kernal",
-            "incremental": "incremental",
-            "pls": "pls",
-        }
-        pca_method_pass = pca_dict[pca_method]
-
-        # pca components
-        if pca is True:
-            if pca_components is None:
-                if pca_method == "linear":
-                    pca_components_pass = 0.99
-                else:
-                    pca_components_pass = int((len(data.columns) - 1) * 0.5)
-
-            else:
-                pca_components_pass = pca_components
-
-        else:
-            pca_components_pass = 0.99
-
-        apply_binning_pass = False if bin_numeric_features is None else True
-        features_to_bin_pass = bin_numeric_features or []
-
-        # trignometry
-        trigonometry_features_pass = (
-            ["sin", "cos", "tan"] if trigonometry_features else []
+        self.logger.info("Creating preprocessing pipeline...")
+        self._internal_pipeline = InternalPipeline(
+            steps=[
+                ("imputer", imputer),
+            ]
         )
 
-        # group features
-        # =============#
+        self.logger.info(f"Internal pipeline: {self._internal_pipeline}")
 
-        # apply grouping
-        apply_grouping_pass = True if group_features is not None else False
+        # self.iterative_imputation_iters_param = iterative_imputation_iters
+        #
+        # # creating variables to be used later in the function
+        # train_data = self.data_before_preprocess.copy()
+        # if self._is_unsupervised():
+        #     target = "UNSUPERVISED_DUMMY_TARGET"
+        #     train_data[target] = 2
+        #     # just to add diversified values to target
+        #     train_data[target][0:3] = 3
+        # X_before_preprocess = train_data.drop(target, axis=1)
+        # y_before_preprocess = train_data[target]
+        #
+        # self.imputation_regressor = numeric_iterative_imputer
+        # self.imputation_classifier = categorical_iterative_imputer
+        # imputation_regressor_name = "Bayesian Ridge"  # todo change
+        # imputation_classifier_name = "Random Forest Classifier"
+        #
+        # if imputation_type == "iterative":
+        #     self.logger.info("Setting up iterative imputation")
+        #
+        #     iterative_imputer_models_globals = self.variables.copy()
+        #     iterative_imputer_models_globals["y_train"] = y_before_preprocess
+        #     iterative_imputer_models_globals["X_train"] = X_before_preprocess
+        #     iterative_imputer_classification_models = {
+        #         k: v
+        #         for k, v in pycaret.containers.models.classification.get_all_model_containers(
+        #             iterative_imputer_models_globals, raise_errors=True
+        #         ).items()
+        #         if not v.is_special
+        #     }
+        #     iterative_imputer_regression_models = {
+        #         k: v
+        #         for k, v in pycaret.containers.models.regression.get_all_model_containers(
+        #             iterative_imputer_models_globals, raise_errors=True
+        #         ).items()
+        #         if not v.is_special
+        #     }
+        #
+        #     if not (
+        #             (
+        #                     isinstance(self.imputation_regressor, str)
+        #                     and self.imputation_regressor in iterative_imputer_regression_models
+        #             )
+        #             or hasattr(self.imputation_regressor, "predict")
+        #     ):
+        #         raise ValueError(
+        #             f"numeric_iterative_imputer parameter must be either a scikit-learn estimator or a string - one of {', '.join(iterative_imputer_regression_models.keys())}."
+        #         )
+        #
+        #     if not (
+        #             (
+        #                     isinstance(self.imputation_classifier, str)
+        #                     and self.imputation_classifier
+        #                     in iterative_imputer_classification_models
+        #             )
+        #             or hasattr(self.imputation_classifier, "predict")
+        #     ):
+        #         raise ValueError(
+        #             f"categorical_iterative_imputer parameter must be either a scikit-learn estimator or a string - one of {', '.join(iterative_imputer_classification_models.keys())}."
+        #         )
+        #
+        #     if isinstance(self.imputation_regressor, str):
+        #         self.imputation_regressor = iterative_imputer_regression_models[
+        #             self.imputation_regressor
+        #         ]
+        #         imputation_regressor_name = self.imputation_regressor.name
+        #         self.imputation_regressor = self.imputation_regressor.class_def(
+        #             **self.imputation_regressor.args
+        #         )
+        #     else:
+        #         imputation_regressor_name = type(self.imputation_regressor).__name__
+        #
+        #     if isinstance(self.imputation_classifier, str):
+        #         self.imputation_classifier = iterative_imputer_classification_models[
+        #             self.imputation_classifier
+        #         ]
+        #         imputation_classifier_name = self.imputation_classifier.name
+        #         self.imputation_classifier = self.imputation_classifier.class_def(
+        #             **self.imputation_classifier.args
+        #         )
+        #     else:
+        #         imputation_classifier_name = type(self.imputation_classifier).__name__
 
-        # group features listing
-        if apply_grouping_pass is True:
 
-            if type(group_features[0]) is str:
-                group_features_pass = []
-                group_features_pass.append(group_features)
-            else:
-                group_features_pass = group_features
+        # # transformation method strategy
+        # trans_dict = {"yeo-johnson": "yj", "quantile": "quantile"}
+        # trans_method_pass = trans_dict[transformation_method]
+        #
+        # # pass method
+        # pca_dict = {
+        #     "linear": "pca_liner",
+        #     "kernel": "pca_kernal",
+        #     "incremental": "incremental",
+        #     "pls": "pls",
+        # }
+        # pca_method_pass = pca_dict[pca_method]
+        #
+        # # pca components
+        # if pca is True:
+        #     if pca_components is None:
+        #         if pca_method == "linear":
+        #             pca_components_pass = 0.99
+        #         else:
+        #             pca_components_pass = int((len(data.columns) - 1) * 0.5)
+        #
+        #     else:
+        #         pca_components_pass = pca_components
+        #
+        # else:
+        #     pca_components_pass = 0.99
+        #
+        # apply_binning_pass = False if bin_numeric_features is None else True
+        # features_to_bin_pass = bin_numeric_features or []
+        #
+        # # trignometry
+        # trigonometry_features_pass = (
+        #     ["sin", "cos", "tan"] if trigonometry_features else []
+        # )
+        #
+        # # group features
+        # # =============#
+        #
+        # # apply grouping
+        # apply_grouping_pass = True if group_features is not None else False
+        #
+        # # group features listing
+        # if apply_grouping_pass is True:
+        #
+        #     if type(group_features[0]) is str:
+        #         group_features_pass = []
+        #         group_features_pass.append(group_features)
+        #     else:
+        #         group_features_pass = group_features
+        #
+        # else:
+        #
+        #     group_features_pass = [[]]
+        #
+        # # group names
+        # if apply_grouping_pass is True:
+        #
+        #     if (group_names is None) or (len(group_names) != len(group_features_pass)):
+        #         group_names_pass = list(np.arange(len(group_features_pass)))
+        #         group_names_pass = [f"group_{i}" for i in group_names_pass]
+        #
+        #     else:
+        #         group_names_pass = group_names
+        #
+        # else:
+        #     group_names_pass = []
+        #
+        # # feature interactions
+        #
+        # apply_feature_interactions_pass = (
+        #     True if feature_interaction or feature_ratio else False
+        # )
+        #
+        # interactions_to_apply_pass = []
+        #
+        # if feature_interaction:
+        #     interactions_to_apply_pass.append("multiply")
+        #
+        # if feature_ratio:
+        #     interactions_to_apply_pass.append("divide")
+        #
+        # # unknown categorical
+        # unkn_dict = {
+        #     "least_frequent": "least frequent",
+        #     "most_frequent": "most frequent",
+        # }
+        # unknown_categorical_method_pass = unkn_dict[unknown_categorical_method]
+        #
+        # # ordinal_features
+        # apply_ordinal_encoding_pass = True if ordinal_features is not None else False
+        #
+        # ordinal_columns_and_categories_pass = (
+        #     ordinal_features if apply_ordinal_encoding_pass else {}
+        # )
+        #
+        # apply_cardinality_reduction_pass = (
+        #     True if high_cardinality_features is not None else False
+        # )
+        #
+        # hi_card_dict = {"frequency": "count", "clustering": "cluster"}
+        # cardinal_method_pass = hi_card_dict[high_cardinality_method]
+        #
+        # cardinal_features_pass = (
+        #     high_cardinality_features if apply_cardinality_reduction_pass else []
+        # )
+        #
+        # display_dtypes_pass = False if silent else True
+        #
+        # # transform target method
+        # self.transform_target_param = transform_target
+        # self.transform_target_method_param = transform_target_method
 
-        else:
-
-            group_features_pass = [[]]
-
-        # group names
-        if apply_grouping_pass is True:
-
-            if (group_names is None) or (len(group_names) != len(group_features_pass)):
-                group_names_pass = list(np.arange(len(group_features_pass)))
-                group_names_pass = [f"group_{i}" for i in group_names_pass]
-
-            else:
-                group_names_pass = group_names
-
-        else:
-            group_names_pass = []
-
-        # feature interactions
-
-        apply_feature_interactions_pass = (
-            True if feature_interaction or feature_ratio else False
-        )
-
-        interactions_to_apply_pass = []
-
-        if feature_interaction:
-            interactions_to_apply_pass.append("multiply")
-
-        if feature_ratio:
-            interactions_to_apply_pass.append("divide")
-
-        # unknown categorical
-        unkn_dict = {
-            "least_frequent": "least frequent",
-            "most_frequent": "most frequent",
-        }
-        unknown_categorical_method_pass = unkn_dict[unknown_categorical_method]
-
-        # ordinal_features
-        apply_ordinal_encoding_pass = True if ordinal_features is not None else False
-
-        ordinal_columns_and_categories_pass = (
-            ordinal_features if apply_ordinal_encoding_pass else {}
-        )
-
-        apply_cardinality_reduction_pass = (
-            True if high_cardinality_features is not None else False
-        )
-
-        hi_card_dict = {"frequency": "count", "clustering": "cluster"}
-        cardinal_method_pass = hi_card_dict[high_cardinality_method]
-
-        cardinal_features_pass = (
-            high_cardinality_features if apply_cardinality_reduction_pass else []
-        )
-
-        display_dtypes_pass = False if silent else True
-
-        # transform target method
-        self.transform_target_param = transform_target
-        self.transform_target_method_param = transform_target_method
-
-        # create n_jobs_param
-        self.n_jobs_param = n_jobs
+        # Set up GPU usage ========================================= >>
 
         cuml_version = None
-        if use_gpu:
+        if self.gpu_param:
             try:
                 from cuml import __version__
 
@@ -1340,136 +1375,133 @@ class _TabularExperiment(_PyCaretExperiment):
                 else:
                     self.logger.warning(message)
 
-        # create gpu_param var
-        self.gpu_param = use_gpu
-
         self.logger.info("Creating preprocessing pipeline")
 
-        self.prep_pipe = pycaret.internal.preprocess.Preprocess_Path_One(
-            train_data=train_data,
-            ml_usecase="classification"
-            if self._ml_usecase == MLUsecase.CLASSIFICATION
-            else "regression",
-            imputation_type=imputation_type,
-            target_variable=target,
-            imputation_regressor=self.imputation_regressor,
-            imputation_classifier=self.imputation_classifier,
-            imputation_max_iter=self.iterative_imputation_iters_param,
-            categorical_features=cat_features_pass,
-            apply_ordinal_encoding=apply_ordinal_encoding_pass,
-            ordinal_columns_and_categories=ordinal_columns_and_categories_pass,
-            apply_cardinality_reduction=apply_cardinality_reduction_pass,
-            cardinal_method=cardinal_method_pass,
-            cardinal_features=cardinal_features_pass,
-            numerical_features=numeric_features_pass,
-            time_features=date_features_pass,
-            features_todrop=ignore_features_pass,
-            numeric_imputation_strategy=numeric_imputation,
-            categorical_imputation_strategy=categorical_imputation_pass,
-            scale_data=normalize,
-            scaling_method=normalize_method,
-            Power_transform_data=transformation,
-            Power_transform_method=trans_method_pass,
-            apply_untrained_levels_treatment=handle_unknown_categorical,
-            untrained_levels_treatment_method=unknown_categorical_method_pass,
-            apply_pca=pca,
-            pca_method=pca_method_pass,
-            pca_variance_retained_or_number_of_components=pca_components_pass,
-            apply_zero_nearZero_variance=ignore_low_variance,
-            club_rare_levels=combine_rare_levels,
-            rara_level_threshold_percentage=rare_level_threshold,
-            apply_binning=apply_binning_pass,
-            features_to_binn=features_to_bin_pass,
-            remove_outliers=remove_outliers,
-            outlier_contamination_percentage=outliers_threshold,
-            outlier_methods=["pca"],
-            remove_multicollinearity=remove_multicollinearity,
-            maximum_correlation_between_features=multicollinearity_threshold,
-            remove_perfect_collinearity=remove_perfect_collinearity,
-            cluster_entire_data=create_clusters,
-            range_of_clusters_to_try=cluster_iter,
-            apply_polynomial_trigonometry_features=polynomial_features,
-            max_polynomial=polynomial_degree,
-            trigonometry_calculations=trigonometry_features_pass,
-            top_poly_trig_features_to_select_percentage=polynomial_threshold,
-            apply_grouping=apply_grouping_pass,
-            features_to_group_ListofList=group_features_pass,
-            group_name=group_names_pass,
-            apply_feature_selection=feature_selection,
-            feature_selection_top_features_percentage=feature_selection_threshold,
-            feature_selection_method=feature_selection_method,
-            apply_feature_interactions=apply_feature_interactions_pass,
-            feature_interactions_to_apply=interactions_to_apply_pass,
-            feature_interactions_top_features_to_select_percentage=interaction_threshold,
-            display_types=display_dtypes_pass,  # this is for inferred input box
-            random_state=self.seed,
-            float_dtype="float64"
-            if self._ml_usecase == MLUsecase.TIME_SERIES
-            else "float32",
-        )
+        # self.prep_pipe = pycaret.internal.preprocess.Preprocess_Path_One(
+        #     train_data=train_data,
+        #     ml_usecase="classification"
+        #     if self._ml_usecase == MLUsecase.CLASSIFICATION
+        #     else "regression",
+        #     imputation_type=imputation_type,
+        #     target_variable=target,
+        #     imputation_regressor=self.imputation_regressor,
+        #     imputation_classifier=self.imputation_classifier,
+        #     imputation_max_iter=self.iterative_imputation_iters_param,
+        #     categorical_features=cat_features_pass,
+        #     apply_ordinal_encoding=apply_ordinal_encoding_pass,
+        #     ordinal_columns_and_categories=ordinal_columns_and_categories_pass,
+        #     apply_cardinality_reduction=apply_cardinality_reduction_pass,
+        #     cardinal_method=cardinal_method_pass,
+        #     cardinal_features=cardinal_features_pass,
+        #     numerical_features=numeric_features_pass,
+        #     time_features=date_features_pass,
+        #     features_todrop=ignore_features_pass,
+        #     numeric_imputation_strategy=numeric_imputation,
+        #     categorical_imputation_strategy=categorical_imputation_pass,
+        #     scale_data=normalize,
+        #     scaling_method=normalize_method,
+        #     Power_transform_data=transformation,
+        #     Power_transform_method=trans_method_pass,
+        #     apply_untrained_levels_treatment=handle_unknown_categorical,
+        #     untrained_levels_treatment_method=unknown_categorical_method_pass,
+        #     apply_pca=pca,
+        #     pca_method=pca_method_pass,
+        #     pca_variance_retained_or_number_of_components=pca_components_pass,
+        #     apply_zero_nearZero_variance=ignore_low_variance,
+        #     club_rare_levels=combine_rare_levels,
+        #     rara_level_threshold_percentage=rare_level_threshold,
+        #     apply_binning=apply_binning_pass,
+        #     features_to_binn=features_to_bin_pass,
+        #     remove_outliers=remove_outliers,
+        #     outlier_contamination_percentage=outliers_threshold,
+        #     outlier_methods=["pca"],
+        #     remove_multicollinearity=remove_multicollinearity,
+        #     maximum_correlation_between_features=multicollinearity_threshold,
+        #     remove_perfect_collinearity=remove_perfect_collinearity,
+        #     cluster_entire_data=create_clusters,
+        #     range_of_clusters_to_try=cluster_iter,
+        #     apply_polynomial_trigonometry_features=polynomial_features,
+        #     max_polynomial=polynomial_degree,
+        #     trigonometry_calculations=trigonometry_features_pass,
+        #     top_poly_trig_features_to_select_percentage=polynomial_threshold,
+        #     apply_grouping=apply_grouping_pass,
+        #     features_to_group_ListofList=group_features_pass,
+        #     group_name=group_names_pass,
+        #     apply_feature_selection=feature_selection,
+        #     feature_selection_top_features_percentage=feature_selection_threshold,
+        #     feature_selection_method=feature_selection_method,
+        #     apply_feature_interactions=apply_feature_interactions_pass,
+        #     feature_interactions_to_apply=interactions_to_apply_pass,
+        #     feature_interactions_top_features_to_select_percentage=interaction_threshold,
+        #     display_types=display_dtypes_pass,  # this is for inferred input box
+        #     random_state=self.seed,
+        #     float_dtype="float64"
+        #     if self._ml_usecase == MLUsecase.TIME_SERIES
+        #     else "float32",
+        # )
 
-        dtypes = self.prep_pipe.named_steps["dtypes"]
-        try:
-            fix_perfect_removed_columns = (
-                self.prep_pipe.named_steps["fix_perfect"].columns_to_drop
-                if remove_perfect_collinearity
-                else []
-            )
-        except:
-            fix_perfect_removed_columns = []
-        try:
-            fix_multi_removed_columns = (
-                (
-                    self.prep_pipe.named_steps["fix_multi"].to_drop
-                    + self.prep_pipe.named_steps["fix_multi"].to_drop_taret_correlation
-                )
-                if remove_multicollinearity
-                else []
-            )
-        except:
-            fix_multi_removed_columns = []
-        multicollinearity_removed_columns = (
-            fix_perfect_removed_columns + fix_multi_removed_columns
-        )
+        # dtypes = self.prep_pipe.named_steps["dtypes"]
+        # try:
+        #     fix_perfect_removed_columns = (
+        #         self.prep_pipe.named_steps["fix_perfect"].columns_to_drop
+        #         if remove_perfect_collinearity
+        #         else []
+        #     )
+        # except:
+        #     fix_perfect_removed_columns = []
+        # try:
+        #     fix_multi_removed_columns = (
+        #         (
+        #             self.prep_pipe.named_steps["fix_multi"].to_drop
+        #             + self.prep_pipe.named_steps["fix_multi"].to_drop_taret_correlation
+        #         )
+        #         if remove_multicollinearity
+        #         else []
+        #     )
+        # except:
+        #     fix_multi_removed_columns = []
+        # multicollinearity_removed_columns = (
+        #     fix_perfect_removed_columns + fix_multi_removed_columns
+        # )
 
-        display.move_progress()
-        self.logger.info("Preprocessing pipeline created successfully")
+        # display.move_progress()
+        # self.logger.info("Preprocessing pipeline created successfully")
 
-        try:
-            res_type = [
-                "quit",
-                "Quit",
-                "exit",
-                "EXIT",
-                "q",
-                "Q",
-                "e",
-                "E",
-                "QUIT",
-                "Exit",
-            ]
-            res = dtypes.response
+        # try:
+        #     res_type = [
+        #         "quit",
+        #         "Quit",
+        #         "exit",
+        #         "EXIT",
+        #         "q",
+        #         "Q",
+        #         "e",
+        #         "E",
+        #         "QUIT",
+        #         "Exit",
+        #     ]
+        #     res = dtypes.response
+        #
+        #     if res in res_type:
+        #         sys.exit(
+        #             "(Process Exit): setup has been interupted with user command 'quit'. setup must rerun."
+        #         )
+        #
+        # except:
+        #     self.logger.error(
+        #         "(Process Exit): setup has been interupted with user command 'quit'. setup must rerun."
+        #     )
+        #
+        # if not preprocess:
+        #     self.prep_pipe.steps = self.prep_pipe.steps[:1]
 
-            if res in res_type:
-                sys.exit(
-                    "(Process Exit): setup has been interupted with user command 'quit'. setup must rerun."
-                )
+        # """
+        # preprocessing ends here
+        # """
 
-        except:
-            self.logger.error(
-                "(Process Exit): setup has been interupted with user command 'quit'. setup must rerun."
-            )
-
-        if not preprocess:
-            self.prep_pipe.steps = self.prep_pipe.steps[:1]
-
-        """
-        preprocessing ends here
-        """
-
-        # reset pandas option
-        pd.reset_option("display.max_rows")
-        pd.reset_option("display.max_columns")
+        # # reset pandas option
+        # pd.reset_option("display.max_rows")
+        # pd.reset_option("display.max_columns")
 
         self.logger.info("Creating global containers")
 
@@ -1503,63 +1535,55 @@ class _TabularExperiment(_PyCaretExperiment):
         else:
             self.log_plots_param = log_plots
 
-        # add custom transformers to prep pipe
-        if custom_pipeline:
-            custom_steps = normalize_custom_transformers(custom_pipeline)
-            self._internal_pipeline.extend(custom_steps)
+        # # add custom transformers to prep pipe
+        # if custom_pipeline:
+        #     custom_steps = normalize_custom_transformers(custom_pipeline)
+        #     self._internal_pipeline.extend(custom_steps)
+        #
+        # # create a fix_imbalance_param and fix_imbalance_method_param
+        # self.fix_imbalance_param = fix_imbalance and preprocess
+        # self.fix_imbalance_method_param = fix_imbalance_method
+        #
+        # fix_imbalance_model_name = "SMOTE"
+        #
+        # if self.fix_imbalance_param:
+        #     if self.fix_imbalance_method_param is None:
+        #         import six
+        #
+        #         sys.modules["sklearn.externals.six"] = six
+        #         from imblearn.over_sampling import SMOTE
+        #
+        #         fix_imbalance_resampler = SMOTE(random_state=self.seed)
+        #     else:
+        #         fix_imbalance_model_name = str(self.fix_imbalance_method_param).split(
+        #             "("
+        #         )[0]
+        #         fix_imbalance_resampler = self.fix_imbalance_method_param
+        #     self._internal_pipeline.append(("fix_imbalance", fix_imbalance_resampler))
+        #
+        # for x in self._internal_pipeline:
+        #     if x[0] in self.prep_pipe.named_steps:
+        #         raise ValueError(f"Step named {x[0]} already present in pipeline.")
+        #
+        # self._internal_pipeline = self._make_internal_pipeline(self._internal_pipeline)
 
-        # create a fix_imbalance_param and fix_imbalance_method_param
-        self.fix_imbalance_param = fix_imbalance and preprocess
-        self.fix_imbalance_method_param = fix_imbalance_method
+        # display.move_progress()
+        #
+        # display.update_monitor(1, "Preprocessing Data")
+        # display.display_monitor()
 
-        fix_imbalance_model_name = "SMOTE"
-
-        if self.fix_imbalance_param:
-            if self.fix_imbalance_method_param is None:
-                import six
-
-                sys.modules["sklearn.externals.six"] = six
-                from imblearn.over_sampling import SMOTE
-
-                fix_imbalance_resampler = SMOTE(random_state=self.seed)
-            else:
-                fix_imbalance_model_name = str(self.fix_imbalance_method_param).split(
-                    "("
-                )[0]
-                fix_imbalance_resampler = self.fix_imbalance_method_param
-            self._internal_pipeline.append(("fix_imbalance", fix_imbalance_resampler))
-
-        for x in self._internal_pipeline:
-            if x[0] in self.prep_pipe.named_steps:
-                raise ValueError(f"Step named {x[0]} already present in pipeline.")
-
-        self._internal_pipeline = self._make_internal_pipeline(self._internal_pipeline)
-
-        self.logger.info(f"Internal pipeline: {self._internal_pipeline}")
-
-        # create target_param var
-        self.target_param = target
-
-        # create stratify_param var
-        self.stratify_param = data_split_stratify
-
-        display.move_progress()
-
-        display.update_monitor(1, "Preprocessing Data")
-        display.display_monitor()
-
-        self._split_data(
-            X_before_preprocess,
-            y_before_preprocess,
-            target,
-            train_data,
-            test_data,
-            train_size,
-            data_split_shuffle,
-            dtypes,
-            display,
-            fh,
-        )
+        # self._split_data(
+        #     X_before_preprocess,
+        #     y_before_preprocess,
+        #     target,
+        #     train_data,
+        #     test_data,
+        #     train_size,
+        #     data_split_shuffle,
+        #     dtypes,
+        #     display,
+        #     fh,
+        # )
 
         if not self._is_unsupervised():
             from sklearn.model_selection import (
@@ -1647,20 +1671,20 @@ class _TabularExperiment(_PyCaretExperiment):
 
         # we do just the fitting so that it will be fitted when saved/deployed,
         # but we don't want to modify the data
-        self._internal_pipeline.fit(
-            self.X, y=self.y if not self._is_unsupervised() else None
-        )
-
-        self.prep_pipe.steps = self.prep_pipe.steps + [
-            (step[0], deepcopy(step[1]))
-            for step in self._internal_pipeline.steps
-            if hasattr(step[1], "transform")
-        ]
-
-        try:
-            dtypes.final_training_columns.remove(target)
-        except ValueError:
-            pass
+        # self._internal_pipeline.fit(
+        #     self.X, y=self.y if not self._is_unsupervised() else None
+        # )
+        #
+        # self.prep_pipe.steps = self.prep_pipe.steps + [
+        #     (step[0], deepcopy(step[1]))
+        #     for step in self._internal_pipeline.steps
+        #     if hasattr(step[1], "transform")
+        # ]
+        #
+        # try:
+        #     dtypes.final_training_columns.remove(target)
+        # except ValueError:
+        #     pass
 
         # determining target type
         if self._is_multiclass():
@@ -1676,86 +1700,86 @@ class _TabularExperiment(_PyCaretExperiment):
         """
         self.logger.info("Creating grid variables")
 
-        if hasattr(dtypes, "replacement"):
-            label_encoded = dtypes.replacement
-            label_encoded = (
-                str(label_encoded).replace("'", "").replace("{", "").replace("}", "")
-            )
-
-        else:
-            label_encoded = "None"
+        # if hasattr(dtypes, "replacement"):
+        #     label_encoded = dtypes.replacement
+        #     label_encoded = (
+        #         str(label_encoded).replace("'", "").replace("{", "").replace("}", "")
+        #     )
+        #
+        # else:
+        #     label_encoded = "None"
 
         # generate values for grid show
         missing_values = self.data_before_preprocess.isna().sum().sum()
         missing_flag = True if missing_values > 0 else False
 
-        normalize_grid = normalize_method if normalize else "None"
-
-        transformation_grid = transformation_method if transformation else "None"
-
-        pca_method_grid = pca_method if pca else "None"
-
-        pca_components_grid = pca_components_pass if pca else "None"
-
-        rare_level_threshold_grid = (
-            rare_level_threshold if combine_rare_levels else "None"
-        )
-
-        numeric_bin_grid = False if bin_numeric_features is None else True
-
-        outliers_threshold_grid = outliers_threshold if remove_outliers else None
-
-        multicollinearity_threshold_grid = (
-            multicollinearity_threshold if remove_multicollinearity else None
-        )
-
-        cluster_iter_grid = cluster_iter if create_clusters else None
-
-        polynomial_degree_grid = polynomial_degree if polynomial_features else None
-
-        polynomial_threshold_grid = (
-            polynomial_threshold
-            if polynomial_features or trigonometry_features
-            else None
-        )
-
-        feature_selection_threshold_grid = (
-            feature_selection_threshold if feature_selection else None
-        )
-
-        interaction_threshold_grid = (
-            interaction_threshold if feature_interaction or feature_ratio else None
-        )
-
-        ordinal_features_grid = False if ordinal_features is None else True
-
-        unknown_categorical_method_grid = (
-            unknown_categorical_method if handle_unknown_categorical else None
-        )
-
-        group_features_grid = False if group_features is None else True
-
-        high_cardinality_features_grid = (
-            False if high_cardinality_features is None else True
-        )
-
-        high_cardinality_method_grid = (
-            high_cardinality_method if high_cardinality_features_grid else None
-        )
-
-        learned_types = dtypes.learned_dtypes
-        learned_types.drop(target, inplace=True)
-
-        float_type = 0
-        cat_type = 0
-
-        for i in dtypes.learned_dtypes:
-            if "float" in str(i):
-                float_type += 1
-            elif "object" in str(i):
-                cat_type += 1
-            elif "int" in str(i):
-                float_type += 1
+        # normalize_grid = normalize_method if normalize else "None"
+        #
+        # transformation_grid = transformation_method if transformation else "None"
+        #
+        # pca_method_grid = pca_method if pca else "None"
+        #
+        # pca_components_grid = pca_components_pass if pca else "None"
+        #
+        # rare_level_threshold_grid = (
+        #     rare_level_threshold if combine_rare_levels else "None"
+        # )
+        #
+        # numeric_bin_grid = False if bin_numeric_features is None else True
+        #
+        # outliers_threshold_grid = outliers_threshold if remove_outliers else None
+        #
+        # multicollinearity_threshold_grid = (
+        #     multicollinearity_threshold if remove_multicollinearity else None
+        # )
+        #
+        # cluster_iter_grid = cluster_iter if create_clusters else None
+        #
+        # polynomial_degree_grid = polynomial_degree if polynomial_features else None
+        #
+        # polynomial_threshold_grid = (
+        #     polynomial_threshold
+        #     if polynomial_features or trigonometry_features
+        #     else None
+        # )
+        #
+        # feature_selection_threshold_grid = (
+        #     feature_selection_threshold if feature_selection else None
+        # )
+        #
+        # interaction_threshold_grid = (
+        #     interaction_threshold if feature_interaction or feature_ratio else None
+        # )
+        #
+        # ordinal_features_grid = False if ordinal_features is None else True
+        #
+        # unknown_categorical_method_grid = (
+        #     unknown_categorical_method if handle_unknown_categorical else None
+        # )
+        #
+        # group_features_grid = False if group_features is None else True
+        #
+        # high_cardinality_features_grid = (
+        #     False if high_cardinality_features is None else True
+        # )
+        #
+        # high_cardinality_method_grid = (
+        #     high_cardinality_method if high_cardinality_features_grid else None
+        # )
+        #
+        # learned_types = dtypes.learned_dtypes
+        # learned_types.drop(target, inplace=True)
+        #
+        # float_type = 0
+        # cat_type = 0
+        #
+        # for i in dtypes.learned_dtypes:
+        #     if "float" in str(i):
+        #         float_type += 1
+        #     elif "object" in str(i):
+        #         cat_type += 1
+        #     elif "int" in str(i):
+        #         float_type += 1
 
         if profile:
             print("Setup Successfully Completed! Loading Profile Now... Please Wait!")
@@ -1763,60 +1787,60 @@ class _TabularExperiment(_PyCaretExperiment):
             if verbose:
                 print("Setup Successfully Completed!")
 
-        self.preprocess = preprocess
-        functions = self._get_setup_display(
-            label_encoded=label_encoded,
-            target_type=target_type,
-            missing_flag=missing_flag,
-            float_type=float_type,
-            cat_type=cat_type,
-            ordinal_features_grid=ordinal_features_grid,
-            high_cardinality_features_grid=high_cardinality_features_grid,
-            high_cardinality_method_grid=high_cardinality_method_grid,
-            data_split_shuffle=data_split_shuffle,
-            data_split_stratify=data_split_stratify,
-            imputation_type=imputation_type,
-            numeric_imputation=numeric_imputation,
-            imputation_regressor_name=imputation_regressor_name,
-            categorical_imputation=categorical_imputation,
-            imputation_classifier_name=imputation_classifier_name,
-            unknown_categorical_method_grid=unknown_categorical_method_grid,
-            normalize=normalize,
-            normalize_grid=normalize_grid,
-            transformation=transformation,
-            transformation_grid=transformation_grid,
-            pca=pca,
-            pca_method_grid=pca_method_grid,
-            pca_components_grid=pca_components_grid,
-            ignore_low_variance=ignore_low_variance,
-            combine_rare_levels=combine_rare_levels,
-            rare_level_threshold_grid=rare_level_threshold_grid,
-            numeric_bin_grid=numeric_bin_grid,
-            remove_outliers=remove_outliers,
-            outliers_threshold_grid=outliers_threshold_grid,
-            remove_perfect_collinearity=remove_perfect_collinearity,
-            remove_multicollinearity=remove_multicollinearity,
-            multicollinearity_threshold_grid=multicollinearity_threshold_grid,
-            multicollinearity_removed_columns=multicollinearity_removed_columns,
-            create_clusters=create_clusters,
-            cluster_iter_grid=cluster_iter_grid,
-            polynomial_features=polynomial_features,
-            polynomial_degree_grid=polynomial_degree_grid,
-            trigonometry_features=trigonometry_features,
-            polynomial_threshold_grid=polynomial_threshold_grid,
-            group_features_grid=group_features_grid,
-            feature_selection=feature_selection,
-            feature_selection_method=feature_selection_method,
-            feature_selection_threshold_grid=feature_selection_threshold_grid,
-            feature_interaction=feature_interaction,
-            feature_ratio=feature_ratio,
-            interaction_threshold_grid=interaction_threshold_grid,
-            fix_imbalance_model_name=fix_imbalance_model_name,
-        )
+        # self.preprocess = preprocess
+        # functions = self._get_setup_display(
+        #     label_encoded=label_encoded,
+        #     target_type=target_type,
+        #     missing_flag=missing_flag,
+        #     float_type=float_type,
+        #     cat_type=cat_type,
+        #     ordinal_features_grid=ordinal_features_grid,
+        #     high_cardinality_features_grid=high_cardinality_features_grid,
+        #     high_cardinality_method_grid=high_cardinality_method_grid,
+        #     data_split_shuffle=data_split_shuffle,
+        #     data_split_stratify=data_split_stratify,
+        #     imputation_type=imputation_type,
+        #     numeric_imputation=numeric_imputation,
+        #     imputation_regressor_name=imputation_regressor_name,
+        #     categorical_imputation=categorical_imputation,
+        #     imputation_classifier_name=imputation_classifier_name,
+        #     unknown_categorical_method_grid=unknown_categorical_method_grid,
+        #     normalize=normalize,
+        #     normalize_grid=normalize_grid,
+        #     transformation=transformation,
+        #     transformation_grid=transformation_grid,
+        #     pca=pca,
+        #     pca_method_grid=pca_method_grid,
+        #     pca_components_grid=pca_components_grid,
+        #     ignore_low_variance=ignore_low_variance,
+        #     combine_rare_levels=combine_rare_levels,
+        #     rare_level_threshold_grid=rare_level_threshold_grid,
+        #     numeric_bin_grid=numeric_bin_grid,
+        #     remove_outliers=remove_outliers,
+        #     outliers_threshold_grid=outliers_threshold_grid,
+        #     remove_perfect_collinearity=remove_perfect_collinearity,
+        #     remove_multicollinearity=remove_multicollinearity,
+        #     multicollinearity_threshold_grid=multicollinearity_threshold_grid,
+        #     multicollinearity_removed_columns=multicollinearity_removed_columns,
+        #     create_clusters=create_clusters,
+        #     cluster_iter_grid=cluster_iter_grid,
+        #     polynomial_features=polynomial_features,
+        #     polynomial_degree_grid=polynomial_degree_grid,
+        #     trigonometry_features=trigonometry_features,
+        #     polynomial_threshold_grid=polynomial_threshold_grid,
+        #     group_features_grid=group_features_grid,
+        #     feature_selection=feature_selection,
+        #     feature_selection_method=feature_selection_method,
+        #     feature_selection_threshold_grid=feature_selection_threshold_grid,
+        #     feature_interaction=feature_interaction,
+        #     feature_ratio=feature_ratio,
+        #     interaction_threshold_grid=interaction_threshold_grid,
+        #     fix_imbalance_model_name=fix_imbalance_model_name,
+        # )
 
-        self.display_container.append(functions)
-
-        display.display(functions, clear=True)
+        # self.display_container.append(functions)
+        #
+        # display.display(functions, clear=True)
 
         if profile:
             try:
@@ -1828,43 +1852,36 @@ class _TabularExperiment(_PyCaretExperiment):
                 display.display(pf, clear=True)
             except:
                 print(
-                    "Data Profiler Failed. No output to show, please continue with Modeling."
+                    "Data Profiler Failed. No output to show, please continue with modeling."
                 )
                 self.logger.error(
-                    "Data Profiler Failed. No output to show, please continue with Modeling."
+                    "Data Profiler Failed. No output to show, please continue with modeling."
                 )
 
         """
         Final display Ends
         """
 
-        # end runtime
-        runtime_end = time.time()
-        runtime = np.array(runtime_end - runtime_start).round(2)
-
-        self._set_up_mlflow(
-            functions,
-            runtime,
-            log_profile,
-            profile_kwargs,
-            log_data,
-            display,
-        )
-
-        self._setup_ran = True
+        # self._set_up_mlflow(
+        #     functions,
+        #     np.array(time.time() - runtime_start).round(2),
+        #     log_profile,
+        #     profile_kwargs,
+        #     log_data,
+        #     display,
+        # )
 
         self.logger.info(
             f"self.master_model_container: {len(self.master_model_container)}"
         )
         self.logger.info(f"self.display_container: {len(self.display_container)}")
 
-        self.logger.info(str(self.prep_pipe))
+        # self.logger.info(str(self.prep_pipe))
         self.logger.info(
             "setup() successfully completed......................................"
         )
 
-        gc.collect()
-
+        self._setup_ran = True
         return self
 
     def create_model(self, *args, **kwargs):

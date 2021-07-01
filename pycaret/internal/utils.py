@@ -749,7 +749,7 @@ def infer_ml_usecase(y: pd.Series) -> Tuple[str, str]:
 
 
 def get_columns_to_stratify_by(
-    X: pd.DataFrame, y: pd.DataFrame, stratify: Union[bool, List[str]], target: str
+    X: pd.DataFrame, y: pd.DataFrame, stratify: Union[bool, List[str]]
 ) -> pd.DataFrame:
     if not stratify:
         stratify = None

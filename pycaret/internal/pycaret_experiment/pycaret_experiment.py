@@ -28,7 +28,11 @@ class _PyCaretExperiment:
         self.gpu_param = False
         self.n_jobs_param = -1
         self.logger = LOGGER
-        return
+
+        # Data attrs
+        self.data = None
+        self.target_param = None
+        self.idx = [0, 0]  # Train and test sizes
 
     @property
     def _gpu_n_jobs_param(self) -> int:
@@ -410,3 +414,47 @@ class _PyCaretExperiment:
             return None
         return self.display_container.pop(-1) if pop else self.display_container[-1]
 
+    @property
+    def dataset(self):
+        """Complete data set."""
+        return self.data
+
+    @property
+    def train(self):
+        """Training set."""
+        return self.data[:self.idx[0]]
+
+    @property
+    def test(self):
+        """Test set."""
+        return self.data[-self.idx[1]:]
+
+    @property
+    def X(self):
+        """Feature set."""
+        return self.data.drop(self.target_param, axis=1)
+
+    @property
+    def y(self):
+        """Target column."""
+        return self.data[self.target_param]
+
+    @property
+    def X_train(self):
+        """Feature set of the training set."""
+        return self.train.drop(self.target_param, axis=1)
+
+    @property
+    def X_test(self):
+        """Feature set of the test set."""
+        return self.test.drop(self.target_param, axis=1)
+
+    @property
+    def y_train(self):
+        """Target column of the training set."""
+        return self.train[self.target_param]
+
+    @property
+    def y_test(self):
+        """Target column of the test set."""
+        return self.test[self.target_param]
