@@ -47,8 +47,13 @@ from sklearn.impute import SimpleImputer, IterativeImputer
 from sklearn.preprocessing import OrdinalEncoder
 import secrets
 from pycaret.internal.utils import get_columns_to_stratify_by
-from sklearn.model_selection import train_test_split
-
+from sklearn.model_selection import (
+    train_test_split,
+    StratifiedKFold,
+    KFold,
+    GroupKFold,
+    TimeSeriesSplit,
+)
 
 warnings.filterwarnings("ignore")
 LOGGER = get_logger()
@@ -495,6 +500,8 @@ class _TabularExperiment(_PyCaretExperiment):
         # Parameter attrs
         self.data = data
         self.target_param = target
+        self.transform_target_param = transform_target
+        self.transform_target_method_param = transform_target_method
         self.stratify_param = data_split_stratify
         self.n_jobs_param = n_jobs
         self.gpu_param = use_gpu
@@ -568,10 +575,6 @@ class _TabularExperiment(_PyCaretExperiment):
             profile_kwargs = {}
         elif not isinstance(profile_kwargs, dict):
             raise TypeError("profile_kwargs can only be a dict.")
-
-        # Start adding transformers to the pipeline
-
-        self.logger.info("Creating pipeline...")
 
         # checking normalize parameter
         if type(normalize) is not bool:
@@ -653,7 +656,8 @@ class _TabularExperiment(_PyCaretExperiment):
             for high_cardinality_feature in high_cardinality_features:
                 if high_cardinality_feature not in data_cols:
                     raise ValueError(
-                        f"Item {high_cardinality_feature} in high_cardinality_features parameter is either target column or doesn't exist in the dataset."
+                        f"Item {high_cardinality_feature} in high_cardinality_features"
+                        f" parameter is either target column or doesn't exist in the dataset."
                     )
 
         # stratify
@@ -1053,16 +1057,10 @@ class _TabularExperiment(_PyCaretExperiment):
                 self.y_test = test_data
 
             else:
-                _stratify_columns = get_columns_to_stratify_by(
-                    X=self.X,
-                    y=self.y,
-                    stratify=self.stratify_param,
-                )
-
                 train, test = train_test_split(
                     self.data,
                     test_size=1 - train_size,
-                    stratify=_stratify_columns,
+                    stratify=get_columns_to_stratify_by(self.X, self.y, self.stratify_param),
                     random_state=self.seed,
                     shuffle=data_split_shuffle,
                 )
@@ -1073,15 +1071,7 @@ class _TabularExperiment(_PyCaretExperiment):
             self.data = pd.concat([data, test_data]).reset_index(drop=True)
             self.idx = [len(self.data), len(test_data)]
 
-        """
-        preprocessing starts here
-        """
-
-        # Copy original data for pandas profiler
-        self.logger.info("Copying data for preprocessing")
-        self.data_before_preprocess = data.copy()
-        X_before_preprocess = self.data_before_preprocess.drop(target, axis=1)
-        y_before_preprocess = self.data_before_preprocess[target]
+        # Preprocessing ============================================ >>
 
         if preprocess:
             self.logger.info("Preparing preprocessing pipeline...")
@@ -1090,15 +1080,19 @@ class _TabularExperiment(_PyCaretExperiment):
 
             encoder = None
             if ordinal_features:
-                ordinal_encoder = OrdinalEncoder(ordinal_features)
+                ordinal_encoder = OrdinalEncoder(
+                    categories=ordinal_features,
+                    handle_unknown="use_encoded_value",
+                    unknown_value=np.NaN,
+                )
 
             # Categorical columns
-            cat_cols = data.select_dtypes(exclude="number").columns
+            cat_cols = self.X.select_dtypes(exclude="number").columns
             if categorical_features:
                 cat_cols = categorical_features
 
             # Numerical columns
-            num_cols = data.select_dtypes(include="number").columns
+            num_cols = self.X.select_dtypes(include="number").columns
             if categorical_features:
                 num_cols = categorical_features
 
@@ -1108,7 +1102,7 @@ class _TabularExperiment(_PyCaretExperiment):
                 ign_cols = ignore_features
 
             # Date features
-            date_cols = data.select_dtypes(include="datetime").columns
+            date_cols = self.X.select_dtypes(include="datetime").columns
             if date_features:
                 date_cols = date_features
 
@@ -1349,10 +1343,6 @@ class _TabularExperiment(_PyCaretExperiment):
         #
         # display_dtypes_pass = False if silent else True
         #
-        # # transform target method
-        # self.transform_target_param = transform_target
-        # self.transform_target_method_param = transform_target_method
-
         # Set up GPU usage ========================================= >>
 
         cuml_version = None
@@ -1513,7 +1503,7 @@ class _TabularExperiment(_PyCaretExperiment):
         self.fold_groups_param = None
         if fold_groups is not None:
             if isinstance(fold_groups, str):
-                self.fold_groups_param = X_before_preprocess[fold_groups]
+                self.fold_groups_param = self.X[fold_groups]
             else:
                 self.fold_groups_param = fold_groups
             if pd.isnull(self.fold_groups_param).any():
@@ -1586,18 +1576,6 @@ class _TabularExperiment(_PyCaretExperiment):
         # )
 
         if not self._is_unsupervised():
-            from sklearn.model_selection import (
-                StratifiedKFold,
-                KFold,
-                GroupKFold,
-                TimeSeriesSplit,
-            )
-
-            from sktime.forecasting.model_selection import (
-                ExpandingWindowSplitter,
-                SlidingWindowSplitter,
-            )
-
             fold_random_state = self.seed if self.fold_shuffle_param else None
 
             if self._ml_usecase != MLUsecase.TIME_SERIES:
@@ -1621,6 +1599,11 @@ class _TabularExperiment(_PyCaretExperiment):
                     self.fold_generator = fold_strategy
 
             elif self._ml_usecase == MLUsecase.TIME_SERIES:
+                from sktime.forecasting.model_selection import (
+                    ExpandingWindowSplitter,
+                    SlidingWindowSplitter,
+                )
+
                 y_size = len(self.y_train)
                 # Set splitter
                 if fold_strategy in possible_time_series_fold_strategies:
@@ -1710,8 +1693,8 @@ class _TabularExperiment(_PyCaretExperiment):
         #     label_encoded = "None"
 
         # generate values for grid show
-        missing_values = self.data_before_preprocess.isna().sum().sum()
-        missing_flag = True if missing_values > 0 else False
+        # missing_values = self.data_before_preprocess.isna().sum().sum()
+        # missing_flag = True if missing_values > 0 else False
 
         # normalize_grid = normalize_method if normalize else "None"
         #
@@ -1839,16 +1822,12 @@ class _TabularExperiment(_PyCaretExperiment):
         # )
 
         # self.display_container.append(functions)
-        #
-        # display.display(functions, clear=True)
 
         if profile:
             try:
                 import pandas_profiling
 
-                pf = pandas_profiling.ProfileReport(
-                    self.data_before_preprocess, **profile_kwargs
-                )
+                pf = pandas_profiling.ProfileReport(self.data, **profile_kwargs)
                 display.display(pf, clear=True)
             except:
                 print(

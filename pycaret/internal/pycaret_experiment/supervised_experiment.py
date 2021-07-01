@@ -192,84 +192,6 @@ class _SupervisedExperiment(_TabularExperiment):
             fold, default=self.fold_generator, X=X, y=y, groups=groups
         )
 
-    def _split_data(
-        self,
-        X_before_preprocess,
-        y_before_preprocess,
-        target,
-        train_data,
-        test_data,
-        train_size,
-        data_split_shuffle,
-        dtypes,
-        display: Display,
-        fh=None,
-    ) -> None:
-        _stratify_columns = get_columns_to_stratify_by(
-            X_before_preprocess, y_before_preprocess, self.stratify_param, target
-        )
-        if test_data is None:
-
-            if self._ml_usecase == MLUsecase.TIME_SERIES:
-
-                from sktime.forecasting.model_selection import (
-                    temporal_train_test_split,
-                )  # sktime is an optional dependency
-
-                (
-                    train_data,
-                    test_data,
-                    self.X_train,
-                    self.X_test,
-                ) = temporal_train_test_split(
-                    y=y_before_preprocess,
-                    X=X_before_preprocess,
-                    fh=fh,  # if fh is provided it splits by it
-                )
-
-                train_data, test_data = (
-                    pd.DataFrame(train_data),
-                    pd.DataFrame(test_data),
-                )
-
-                self.y_train = train_data
-                self.y_test = test_data
-
-            else:
-                self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(
-                    X_before_preprocess,
-                    y_before_preprocess,
-                    test_size=1 - train_size,
-                    stratify=_stratify_columns,
-                    random_state=self.seed,
-                    shuffle=data_split_shuffle,
-                )
-                train_data = pd.concat([self.X_train, self.y_train], axis=1)
-                test_data = pd.concat([self.X_test, self.y_test], axis=1)
-
-        train_data = self.prep_pipe.fit_transform(train_data)
-        # workaround to also transform target
-        dtypes.final_training_columns.append(target)
-        test_data = self.prep_pipe.transform(test_data)
-
-        self.X_train = train_data.drop(target, axis=1)
-        self.y_train = train_data[target]
-
-        self.X_test = test_data.drop(target, axis=1)
-        self.y_test = test_data[target]
-
-        if self.fold_groups_param is not None:
-            self.fold_groups_param = self.fold_groups_param[
-                self.fold_groups_param.index.isin(self.X_train.index)
-            ]
-
-        display.move_progress()
-        self._internal_pipeline.fit(train_data.drop(target, axis=1), train_data[target])
-        data = self.prep_pipe.transform(self.data_before_preprocess.copy())
-        self.X = data.drop(target, axis=1)
-        self.y = data[target]
-        return
-
     def _set_up_mlflow(
         self,
         functions,
@@ -289,7 +211,7 @@ class _SupervisedExperiment(_TabularExperiment):
         self.experiment__.append(("y_training Set", self.y_train))
         self.experiment__.append(("X_test Set", self.X_test))
         self.experiment__.append(("y_test Set", self.y_test))
-        self.experiment__.append(("Transformation Pipeline", self.prep_pipe))
+        self.experiment__.append(("Transformation Pipeline", self._internal_pipeline))
 
         if self.logging_param:
 
@@ -336,7 +258,7 @@ class _SupervisedExperiment(_TabularExperiment):
                     "SubProcess save_model() called =================================="
                 )
                 self.save_model(
-                    self.prep_pipe, "Transformation Pipeline", verbose=False
+                    self._internal_pipeline, "Transformation Pipeline", verbose=False
                 )
                 self.logger.info(
                     "SubProcess save_model() end =================================="
@@ -348,9 +270,7 @@ class _SupervisedExperiment(_TabularExperiment):
                 if log_profile:
                     import pandas_profiling
 
-                    pf = pandas_profiling.ProfileReport(
-                        self.data_before_preprocess, **profile_kwargs
-                    )
+                    pf = pandas_profiling.ProfileReport(self.data, **profile_kwargs)
                     pf.to_file("Data Profile.html")
                     mlflow.log_artifact("Data Profile.html")
                     os.remove("Data Profile.html")
@@ -364,7 +284,6 @@ class _SupervisedExperiment(_TabularExperiment):
                     mlflow.log_artifact("Test.csv")
                     os.remove("Train.csv")
                     os.remove("Test.csv")
-        return
 
     def compare_models(
         self,
@@ -1475,7 +1394,7 @@ class _SupervisedExperiment(_TabularExperiment):
             gc.collect()
 
             if not system:
-                return (model, model_fit_time)
+                return model, model_fit_time
             return model
 
         model, model_fit_time, model_results, avgs_dict = self._create_model_with_cv(
