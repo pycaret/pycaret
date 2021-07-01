@@ -7534,11 +7534,13 @@ def interpret_model(
     """
     if X_new_sample is not None:
         test_X = prep_pipe.transform(X_new_sample)
-        test_y = prep_pipe.transform(Y_new_sample)  # add for pfi explainer
+        if plot == "pfi":
+            test_y = prep_pipe.transform(y_new_sample)  # add for pfi explainer
     else:
         # Storing X_train and y_train in data_X and data_y parameter
         test_X = X_train if use_train_data else X_test
-        test_y = y_train if use_train_data else y_test # add for pfi explainer
+        if plot == "pfi":
+            test_y = y_train if use_train_data else y_test # add for pfi explainer
 
     np.random.seed(seed)
 
