@@ -1173,6 +1173,7 @@ def setup(
         feature_interactions_top_features_to_select_percentage=interaction_threshold,
         display_types=display_dtypes_pass,  # this is for inferred input box
         random_state=seed,
+        gpu_param=gpu_param,  # use gpu in preprocessing
     )
 
     dtypes = prep_pipe.named_steps["dtypes"]

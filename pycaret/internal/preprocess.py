@@ -2404,6 +2404,7 @@ class Boruta_Feature_Selection(BaseEstimator, TransformerMixin):
         random_state=42,
         subclass="ignore",
         n_jobs=1,
+        gpu_param=False,
     ):
         self.target = target
         self.ml_usecase = ml_usecase
@@ -2415,6 +2416,7 @@ class Boruta_Feature_Selection(BaseEstimator, TransformerMixin):
         self.alpha = alpha
         self.selected_columns_test = []
         self.n_jobs = n_jobs
+        self.gpu_param = gpu_param
 
     @property
     def selected_columns(self):
@@ -2428,6 +2430,11 @@ class Boruta_Feature_Selection(BaseEstimator, TransformerMixin):
         y = y.astype("float32")
         X_cols = X.columns
         X = X.values
+        
+        # convert rf to cuml.rf
+        if gpu_param: # True of "force"
+            from cuml.ensemble import RandomForestClassifier as rfc
+            from cuml.ensemble import RandomForestRegressor as rfr 
 
         if self.ml_usecase == "classification":
             m = rfc(
@@ -3286,6 +3293,7 @@ def Preprocess_Path_One(
     pca_variance_retained_or_number_of_components=0.99,
     random_state=42,
     n_jobs=-1,
+    gpu_param=False,
 ):
 
     """
@@ -3518,6 +3526,7 @@ def Preprocess_Path_One(
                 random_state=random_state,
                 subclass=subcase,
                 n_jobs=n_jobs,
+                gpu_param=gpu_param,
             )
         else:
             feature_select = Advanced_Feature_Selection_Classic(
