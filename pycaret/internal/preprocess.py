@@ -2441,13 +2441,13 @@ class Boruta_Feature_Selection(BaseEstimator, TransformerMixin):
                 random_forest_args["seed"] = self.random_state
             if self.ml_usecase == "classification":
                 random_forest_args["class_weight"] = "balanced"
-                from cuml.ensemble import RandomForestClassifier as rfc
+                from cuml.ensemble import RandomForestClassifier as curfc
 
-                m = rfc(random_forest_args)
+                m = curfc(random_forest_args)
             else:
-                from cuml.ensemble import RandomForestRegressor as rfr
+                from cuml.ensemble import RandomForestRegressor as curfr
 
-                m = rfr(random_forest_args)
+                m = curfr(random_forest_args)
         else:
             random_forest_args["n_jobs"] = (self.n_jobs,)
             random_forest_args["random_state"] = (self.random_state,)
