@@ -3,12 +3,18 @@
 # License: MIT
 
 
-def get_data(dataset="index", save_copy=False, profile=False, verbose=True):
+def get_data(
+    dataset="index",
+    save_copy=False,
+    profile=False,
+    verbose=True,
+    address="https://raw.githubusercontent.com/pycaret/pycaret/master/datasets/",
+):
 
     """
     This function loads sample datasets from git repository. List of available
     datasets can be checked using ``get_data('index')``.
-    
+
 
     Example
     -------
@@ -16,38 +22,41 @@ def get_data(dataset="index", save_copy=False, profile=False, verbose=True):
     >>> all_datasets = get_data('index')
     >>> juice = get_data('juice')
 
-        
+
     dataset: str, default = 'index'
         Index value of dataset.
-    
+
 
     save_copy: bool, default = False
         When set to true, it saves a copy in current working directory.
-    
+
 
     profile: bool, default = False
-        When set to true, an interactive EDA report is displayed. 
+        When set to true, an interactive EDA report is displayed.
 
 
     verbose: bool, default = True
         When set to False, head of data is not displayed.
 
+    address: string, default = "https://raw.githubusercontent.com/pycaret/pycaret/master/datasets/"
+        Download url of dataset. For people have difficulty linking to github, they can change
+        the default address to their own (e.g. "https://gitee.com/IncubatorShokuhou/pycaret/raw/master/datasets/")
+
 
     Returns:
         pandas.DataFrame
-        
+
 
     Warnings
     --------
     - Use of ``get_data`` requires internet connection.
-         
+
     """
 
     import pandas as pd
     import os.path
     from IPython.display import display, HTML, clear_output, update_display
 
-    address = "https://raw.githubusercontent.com/pycaret/pycaret/master/datasets/"
     extension = ".csv"
     filename = str(dataset) + extension
 
