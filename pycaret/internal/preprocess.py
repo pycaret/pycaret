@@ -2,49 +2,42 @@
 # Author: Fahad Akbar <m.akbar@queensu.ca>
 # License: MIT
 
-import pandas as pd
-import numpy as np
+import calendar
+import gc
+import sys
+from collections import defaultdict
+from datetime import datetime
+from typing import Optional, Union
+
 import ipywidgets as wg
+import numpy as np
+import pandas as pd
 from IPython.display import display
 from ipywidgets import Layout
-from sklearn.base import BaseEstimator, TransformerMixin, clone
-from sklearn.impute._base import _BaseImputer
-from sklearn.impute import SimpleImputer
-from sklearn.preprocessing import StandardScaler
-from sklearn.preprocessing import MinMaxScaler
-from sklearn.preprocessing import RobustScaler
-from sklearn.preprocessing import MaxAbsScaler
-from sklearn.preprocessing import PowerTransformer
-from sklearn.preprocessing import QuantileTransformer
-from sklearn.preprocessing import OneHotEncoder
-from sklearn.preprocessing import OrdinalEncoder
-from sklearn.decomposition import PCA
-from sklearn.decomposition import KernelPCA
-from sklearn.cross_decomposition import PLSRegression
-from sklearn.manifold import TSNE
-from sklearn.decomposition import IncrementalPCA
-from sklearn.preprocessing import KBinsDiscretizer
-from pyod.models.knn import KNN
-from pyod.models.iforest import IForest
-from pyod.models.pca import PCA as PCA_od
-from sklearn import cluster
-from scipy import stats
-from sklearn.ensemble import RandomForestClassifier as rfc
-from sklearn.ensemble import RandomForestRegressor as rfr
 from lightgbm import LGBMClassifier as lgbmc
 from lightgbm import LGBMRegressor as lgbmr
-import sys
-import gc
-from sklearn.pipeline import Pipeline
-from sklearn import metrics
-from datetime import datetime
-import calendar
-from sklearn.preprocessing import LabelEncoder
-from collections import defaultdict
-from typing import Optional, Union
+from packaging import version
 from pycaret.internal.logging import get_logger
 from pycaret.internal.utils import infer_ml_usecase
-
+from pyod.models.iforest import IForest
+from pyod.models.knn import KNN
+from pyod.models.pca import PCA as PCA_od
+from scipy import stats
+from sklearn import cluster, metrics
+from sklearn.base import BaseEstimator, TransformerMixin, clone
+from sklearn.cross_decomposition import PLSRegression
+from sklearn.decomposition import PCA, IncrementalPCA, KernelPCA
+from sklearn.ensemble import RandomForestClassifier as rfc
+from sklearn.ensemble import RandomForestRegressor as rfr
+from sklearn.impute import SimpleImputer
+from sklearn.impute._base import _BaseImputer
+from sklearn.manifold import TSNE
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import (KBinsDiscretizer, LabelEncoder,
+                                   MaxAbsScaler, MinMaxScaler, OneHotEncoder,
+                                   OrdinalEncoder, PowerTransformer,
+                                   QuantileTransformer, RobustScaler,
+                                   StandardScaler)
 from sklearn.utils.validation import check_is_fitted, check_random_state
 
 pd.set_option("display.max_columns", 500)
@@ -2431,23 +2424,28 @@ class Boruta_Feature_Selection(BaseEstimator, TransformerMixin):
         X_cols = X.columns
         X = X.values
         
+        random_forest_args = {"n_estimators":100,"max_depth":5}
         # convert rf to cuml.rf
         if gpu_param: # True of "force"
-            from cuml.ensemble import RandomForestClassifier as rfc
-            from cuml.ensemble import RandomForestRegressor as rfr 
-
-        if self.ml_usecase == "classification":
-            m = rfc(
-                100,
-                max_depth=5,
-                n_jobs=self.n_jobs,
-                random_state=self.random_state,
-                class_weight="balanced",
-            )
+            if version.parse(cuml.__version__) >= version.parse("0.19"):
+                random_forest_args["random_state"]=self.random_state
+            else:
+                random_forest_args["seed"]=self.random_state
+            if self.ml_usecase == "classification":
+                random_forest_args["class_weight"] = "balanced"
+                from cuml.ensemble import RandomForestClassifier as rfc
+                m = rfc(random_forest_args)
+            else:
+                from cuml.ensemble import RandomForestRegressor as rfr
+                m = rfr(random_forest_args)
         else:
-            m = rfr(
-                100, max_depth=5, n_jobs=self.n_jobs, random_state=self.random_state,
-            )
+            random_forest_args["n_jobs"]=self.n_jobs,
+            random_forest_args["random_state"]=self.random_state,
+            if self.ml_usecase == "classification":
+                random_forest_args["class_weight"]="balanced"
+                m = rfc(random_forest_args)
+            else:
+                m = rfr(random_forest_args)
 
         feat_selector = BorutaPyPatched(
             m,
