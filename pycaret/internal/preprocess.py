@@ -33,11 +33,18 @@ from sklearn.impute import SimpleImputer
 from sklearn.impute._base import _BaseImputer
 from sklearn.manifold import TSNE
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import (KBinsDiscretizer, LabelEncoder,
-                                   MaxAbsScaler, MinMaxScaler, OneHotEncoder,
-                                   OrdinalEncoder, PowerTransformer,
-                                   QuantileTransformer, RobustScaler,
-                                   StandardScaler)
+from sklearn.preprocessing import (
+    KBinsDiscretizer,
+    LabelEncoder,
+    MaxAbsScaler,
+    MinMaxScaler,
+    OneHotEncoder,
+    OrdinalEncoder,
+    PowerTransformer,
+    QuantileTransformer,
+    RobustScaler,
+    StandardScaler,
+)
 from sklearn.utils.validation import check_is_fitted, check_random_state
 
 pd.set_option("display.max_columns", 500)
@@ -82,9 +89,9 @@ def find_id_columns(data, target, numerical_features):
 class DataTypes_Auto_infer(BaseEstimator, TransformerMixin):
     """
     - This will try to infer data types automatically, option to override learent data types is also available.
-    - This alos automatically delets duplicate columns (values or same colume name), removes rows where target variable is null and 
+    - This alos automatically delets duplicate columns (values or same colume name), removes rows where target variable is null and
       remove columns and rows where all the records are null
-  """
+    """
 
     def __init__(
         self,
@@ -98,15 +105,15 @@ class DataTypes_Auto_infer(BaseEstimator, TransformerMixin):
         display_types=True,
     ):  # nothing to define
         """
-    User to define the target (y) variable
-      args:
-        target: string, name of the target variable
-        ml_usecase: string , 'regresson' or 'classification . For now, only supports two  class classification
-        - this is useful in case target variable is an object / string . it will replace the strings with integers
-        categorical_features: list of categorical features, default None, when None best guess will be used to identify categorical features
-        numerical_features: list of numerical features, default None, when None best guess will be used to identify numerical features
-        time_features: list of date/time features, default None, when None best guess will be used to identify date/time features    
-  """
+        User to define the target (y) variable
+          args:
+            target: string, name of the target variable
+            ml_usecase: string , 'regresson' or 'classification . For now, only supports two  class classification
+            - this is useful in case target variable is an object / string . it will replace the strings with integers
+            categorical_features: list of categorical features, default None, when None best guess will be used to identify categorical features
+            numerical_features: list of numerical features, default None, when None best guess will be used to identify numerical features
+            time_features: list of date/time features, default None, when None best guess will be used to identify date/time features
+        """
         self.target = target
         self.ml_usecase = ml_usecase
         self.features_todrop = [str(x) for x in features_todrop]
@@ -122,11 +129,11 @@ class DataTypes_Auto_infer(BaseEstimator, TransformerMixin):
 
     def fit(self, dataset, y=None):  # learning data types of all the columns
         """
-    Args: 
-      data: accepts a pandas data frame
-    Returns:
-      Panda Data Frame
-    """
+        Args:
+          data: accepts a pandas data frame
+        Returns:
+          Panda Data Frame
+        """
 
         data = dataset.copy()
 
@@ -341,11 +348,11 @@ class DataTypes_Auto_infer(BaseEstimator, TransformerMixin):
 
     def transform(self, dataset, y=None):
         """
-      Args: 
-        data: accepts a pandas data frame
-      Returns:
-        Panda Data Frame
-    """
+        Args:
+          data: accepts a pandas data frame
+        Returns:
+          Panda Data Frame
+        """
 
         data = dataset.copy()
 
@@ -453,13 +460,13 @@ class Simple_Imputer(_BaseImputer):
       Numerical values can be imputed with mean or median or filled with zeros
       categorical missing values will be replaced with "Other"
       Time values are imputed with the most frequesnt value
-      Ignores target (y) variable    
-      Args: 
+      Ignores target (y) variable
+      Args:
         Numeric_strategy: string , all possible values {'mean','median','zero'}
         categorical_strategy: string , all possible values {'not_available','most frequent'}
         target: string , name of the target variable
 
-  """
+    """
 
     _numeric_strategies = {
         "mean": "mean",
@@ -581,14 +588,14 @@ class Surrogate_Imputer(_BaseImputer):
       - Numerical values can be imputed with mean or median or filled with zeros
       - categorical missing values will be replaced with "Other"
       - Time values are imputed with the most frequesnt value
-      - Ignores target (y) variable    
-      Args: 
+      - Ignores target (y) variable
+      Args:
         feature_name: string, provide features name
         feature_type: string , all possible values {'numeric','categorical','date'}
         strategy: string ,all possible values {'mean','median','zero','not_available','most frequent'}
         target: string , name of the target variable
 
-  """
+    """
 
     def __init__(self, numeric_strategy, categorical_strategy, target_variable):
         self.numeric_strategy = numeric_strategy
@@ -945,18 +952,18 @@ class Zroe_NearZero_Variance(BaseEstimator, TransformerMixin):
     """
     - it eliminates the features having zero variance
     - it eliminates the features haveing near zero variance
-    - Near zero variance is determined by 
-      -1) Count of unique points divided by the total length of the feature has to be lower than a pre sepcified threshold 
+    - Near zero variance is determined by
+      -1) Count of unique points divided by the total length of the feature has to be lower than a pre sepcified threshold
       -2) Most common point(count) divided by the second most common point(count) in the feature is greater than a pre specified threshold
-      Once both conditions are met , the feature is dropped  
+      Once both conditions are met , the feature is dropped
     -Ignores target variable
-      
-      Args: 
-        threshold_1: float (between 0.0 to 1.0) , default is .10 
-        threshold_2: int (between 1 to 100), default is 20 
+
+      Args:
+        threshold_1: float (between 0.0 to 1.0) , default is .10
+        threshold_2: int (between 1 to 100), default is 20
         tatget variable : string, name of the target variable
 
-  """
+    """
 
     def __init__(self, target, threshold_1=0.1, threshold_2=20):
         self.threshold_1 = threshold_1
@@ -1007,20 +1014,20 @@ class Zroe_NearZero_Variance(BaseEstimator, TransformerMixin):
 # rare catagorical variables
 class Catagorical_variables_With_Rare_levels(BaseEstimator, TransformerMixin):
     """
-    -Merges levels in catagorical features with more frequent level  if they appear less than a threshold count 
+    -Merges levels in catagorical features with more frequent level  if they appear less than a threshold count
       e.g. Col=[a,a,a,a,b,b,c,c]
       if threshold is set to 2 , then c will be mrged with b because both are below threshold
-      There has to be atleast two levels belwo threshold for this to work 
+      There has to be atleast two levels belwo threshold for this to work
       the process will keep going until all the levels have atleast 2(threshold) counts
     -Only handles catagorical features
     -It is recommended to run the Zroe_NearZero_Variance and Define_dataTypes first
-    -Ignores target variable 
-      Args: 
+    -Ignores target variable
+      Args:
         threshold: int , default 10
         target: string , name of the target variable
         new_level_name: string , name given to the new level generated, default 'others'
 
-  """
+    """
 
     def __init__(self, target, new_level_name="others_infrequent", threshold=0.05):
         self.threshold = threshold
@@ -1080,15 +1087,15 @@ class Catagorical_variables_With_Rare_levels(BaseEstimator, TransformerMixin):
 # new catagorical level in test
 class New_Catagorical_Levels_in_TestData(BaseEstimator, TransformerMixin):
     """
-    -This treats if a new level appears in the test dataset catagorical's feature (i.e a level on whihc model was not trained previously) 
+    -This treats if a new level appears in the test dataset catagorical's feature (i.e a level on whihc model was not trained previously)
     -It simply replaces the new level in test data set with the most frequent or least frequent level in the same feature in the training data set
     -It is recommended to run the Zroe_NearZero_Variance and Define_dataTypes first
-    -Ignores target variable 
-      Args: 
+    -Ignores target variable
+      Args:
         target: string , name of the target variable
         replacement_strategy:string , 'raise exception', 'least frequent' or 'most frequent' (default 'most frequent' )
 
-  """
+    """
 
     def __init__(self, target, replacement_strategy="most frequent"):
         self.target = target
@@ -1148,13 +1155,13 @@ class New_Catagorical_Levels_in_TestData(BaseEstimator, TransformerMixin):
 # Group akin features
 class Group_Similar_Features(BaseEstimator, TransformerMixin):
     """
-    - Given a list of features , it creates aggregate features 
+    - Given a list of features , it creates aggregate features
     - features created are Min, Max, Mean, Median, Mode & Std
     - Only works on numerical features
-      Args: 
+      Args:
         list_of_similar_features: list of list, string , e.g. [['col',col2],['col3','col4']]
         group_name: list, group name/names to be added as prefix to aggregate features, e.g ['gorup1','group2']
-  """
+    """
 
     def __init__(self, group_name=[], list_of_grouped_features=[[]]):
         self.list_of_similar_features = list_of_grouped_features
@@ -1201,7 +1208,7 @@ class Binning(BaseEstimator, TransformerMixin):
         Args:
             features_to_discretize: list of featur names to be binned
 
-  """
+    """
 
     def __init__(self, features_to_discretize):
         self.features_to_discretize = features_to_discretize
@@ -1275,12 +1282,12 @@ class Scaling_and_Power_transformation(BaseEstimator, TransformerMixin):
     """
     -Given a data set, applies Min Max, Standar Scaler or Power Transformation (yeo-johnson)
     -it is recommended to run Define_dataTypes first
-    - ignores target variable 
-      Args: 
+    - ignores target variable
+      Args:
         target: string , name of the target variable
         function_to_apply: string , default 'zscore' (standard scaler), all other {'minmaxm','yj','quantile','robust','maxabs'} ( min max,yeo-johnson & quantile power transformation, robust and MaxAbs scaler )
 
-  """
+    """
 
     def __init__(self, target, function_to_apply="zscore", random_state_quantile=42):
         self.target = target
@@ -1360,9 +1367,9 @@ class Target_Transformation(BaseEstimator, TransformerMixin):
     """
     - Applies Power Transformation (yeo-johnson , Box-Cox) to target variable (Applicable to Regression only)
       - 'bc' for Box_Coc & 'yj' for yeo-johnson, default is Box-Cox
-    - if target containes negtive / zero values , yeo-johnson is automatically selected 
-    
-  """
+    - if target containes negtive / zero values , yeo-johnson is automatically selected
+
+    """
 
     def __init__(self, target, function_to_apply="bc"):
         self.target = target
@@ -1416,11 +1423,11 @@ class Make_Time_Features(BaseEstimator, TransformerMixin):
       ['month','weekday',is_month_end','is_month_start','hour']
     - all extracted features are defined as string / object
     -it is recommended to run Define_dataTypes first
-      Args: 
+      Args:
         time_feature: list of feature names as datetime64[ns] , default empty/none , if empty/None , it will try to pickup dates automatically where data type is datetime64[ns]
         list_of_features: list of required features , default value ['month','weekday','is_month_end','is_month_start','hour']
 
-  """
+    """
 
     def __init__(
         self,
@@ -1497,10 +1504,10 @@ class Make_Time_Features(BaseEstimator, TransformerMixin):
 # Ordinal transformer
 class Ordinal(BaseEstimator, TransformerMixin):
     """
-    - converts categorical features into ordinal values 
+    - converts categorical features into ordinal values
     - takes a dataframe , and information about column names and ordered categories as dict
     - returns float panda data frame
-  """
+    """
 
     def __init__(self, info_as_dict):
         self.info_as_dict = info_as_dict
@@ -1551,9 +1558,9 @@ class Dummify(BaseEstimator, TransformerMixin):
     - it is HIGHLY recommended to run the Select_Data_Type class first
     - Ignores target variable
 
-      Args: 
+      Args:
         target: string , name of the target variable
-  """
+    """
 
     def __init__(self, target):
         self.target = target
@@ -1636,7 +1643,7 @@ class Outlier(BaseEstimator, TransformerMixin):
     """
     - Removes outlier using ABOD,KNN,IFO,PCA & HOBS using hard voting
     - Only takes numerical / One Hot Encoded features
-  """
+    """
 
     def __init__(
         self, target, contamination=0.20, random_state=42, methods=["knn", "iso", "pca"]
@@ -1704,7 +1711,7 @@ class Outlier(BaseEstimator, TransformerMixin):
 class Clean_Colum_Names(BaseEstimator, TransformerMixin):
     """
     - Cleans special chars that are not supported by jason format
-  """
+    """
 
     def fit(self, data, y=None):
         return self
@@ -1727,7 +1734,7 @@ class Cluster_Entire_Data(BaseEstimator, TransformerMixin):
       Args:
           target_variable: target variable (integer or numerical only)
           check_clusters_upto: to determine optimum number of kmeans clusters, set the uppler limit of clusters
-  """
+    """
 
     def __init__(self, target_variable, check_clusters_upto=20, random_state=42):
         self.target = target_variable
@@ -1840,13 +1847,13 @@ class Cluster_Entire_Data(BaseEstimator, TransformerMixin):
 # Clustering catagorical data
 class Reduce_Cardinality_with_Clustering(BaseEstimator, TransformerMixin):
     """
-    - Reduces the level of catagorical column / cardinality through clustering 
+    - Reduces the level of catagorical column / cardinality through clustering
     - Highly recommended to run the DataTypes_Auto_infer class first
       Args:
           target_variable: target variable (integer or numerical only)
           catagorical_feature: list of features on which clustering  is to be applied / cardinality to be reduced
           check_clusters_upto: to determine optimum number of kmeans clusters, set the uppler limit of clusters
-  """
+    """
 
     def __init__(
         self,
@@ -1988,7 +1995,7 @@ class Reduce_Cardinality_with_Counts(BaseEstimator, TransformerMixin):
     - Reduces the level of catagorical column by replacing levels with their count & converting objects into float
       Args:
           catagorical_feature: list of features on which clustering is to be applied
-  """
+    """
 
     def __init__(self, catagorical_feature=[]):
         self.feature = catagorical_feature
@@ -2035,13 +2042,13 @@ class Make_NonLiner_Features(BaseEstimator, TransformerMixin):
     - convert numerical features into polynomial features
     - it is HIGHLY recommended to run the Autoinfer_Data_Type class first
     - Ignores target variable
-    - it picks up data type float32 as numerical 
+    - it picks up data type float32 as numerical
     - for multiclass classification problem , set subclass arg to 'multi'
 
-      Args: 
+      Args:
         target: string , name of the target variable
-        Polynomial_degree: int ,default 2  
-  """
+        Polynomial_degree: int ,default 2
+    """
 
     def __init__(
         self,
@@ -2217,7 +2224,7 @@ class Advanced_Feature_Selection_Classic(BaseEstimator, TransformerMixin):
     """
     - Selects important features and reduces the feature space. Feature selection is based on Random Forest , Light GBM and Correlation
     - to run on multiclass classification , set the subclass argument to 'multi'
-  """
+    """
 
     def __init__(
         self,
@@ -2373,18 +2380,18 @@ class Advanced_Feature_Selection_Classic(BaseEstimator, TransformerMixin):
 # Base on: https://github.com/scikit-learn-contrib/boruta_py/blob/master/boruta/boruta_py.py
 class Boruta_Feature_Selection(BaseEstimator, TransformerMixin):
     """
-          Boruta selection algorithm based on borutaPy sklearn-contrib and
-          Miron B Kursa, https://m2.icm.edu.pl/boruta/
-          Selects the most important features.
-            Args:
-              target (str): target column name
-              ml_usecase (str): case: classification or regression
-              top_features_to_pick: to make...
-              max_iteration {int): overall iterations of shuffle and train forests 
-              alpha {float): p-value on which 
-              the option to favour one measur to another. e.g. if value is .6 , during feature selection tug of war, correlation target measure will have a higher say.
-              A value of .5 means both measure have equal say 
-  """
+    Boruta selection algorithm based on borutaPy sklearn-contrib and
+    Miron B Kursa, https://m2.icm.edu.pl/boruta/
+    Selects the most important features.
+      Args:
+        target (str): target column name
+        ml_usecase (str): case: classification or regression
+        top_features_to_pick: to make...
+        max_iteration {int): overall iterations of shuffle and train forests
+        alpha {float): p-value on which
+        the option to favour one measur to another. e.g. if value is .6 , during feature selection tug of war, correlation target measure will have a higher say.
+        A value of .5 means both measure have equal say
+    """
 
     def __init__(
         self,
@@ -2423,26 +2430,28 @@ class Boruta_Feature_Selection(BaseEstimator, TransformerMixin):
         y = y.astype("float32")
         X_cols = X.columns
         X = X.values
-        
-        random_forest_args = {"n_estimators":100,"max_depth":5}
+
+        random_forest_args = {"n_estimators": 100, "max_depth": 5}
         # convert rf to cuml.rf
-        if gpu_param: # True of "force"
+        if gpu_param:  # True of "force"
             if version.parse(cuml.__version__) >= version.parse("0.19"):
-                random_forest_args["random_state"]=self.random_state
+                random_forest_args["random_state"] = self.random_state
             else:
-                random_forest_args["seed"]=self.random_state
+                random_forest_args["seed"] = self.random_state
             if self.ml_usecase == "classification":
                 random_forest_args["class_weight"] = "balanced"
                 from cuml.ensemble import RandomForestClassifier as rfc
+
                 m = rfc(random_forest_args)
             else:
                 from cuml.ensemble import RandomForestRegressor as rfr
+
                 m = rfr(random_forest_args)
         else:
-            random_forest_args["n_jobs"]=self.n_jobs,
-            random_forest_args["random_state"]=self.random_state,
+            random_forest_args["n_jobs"] = (self.n_jobs,)
+            random_forest_args["random_state"] = (self.random_state,)
             if self.ml_usecase == "classification":
-                random_forest_args["class_weight"]="balanced"
+                random_forest_args["class_weight"] = "balanced"
                 m = rfc(random_forest_args)
             else:
                 m = rfr(random_forest_args)
@@ -2480,17 +2489,17 @@ class Boruta_Feature_Selection(BaseEstimator, TransformerMixin):
 # _________________________________________________________________________________________________________________________________________
 class Fix_multicollinearity(BaseEstimator, TransformerMixin):
     """
-          Fixes multicollinearity between predictor variables , also considering the correlation between target variable.
-          Only applies to regression or two class classification ML use case
-          Takes numerical and one hot encoded variables only
-            Args:
-              threshold (float): The utmost absolute pearson correlation tolerated beyween featres from 0.0 to 1.0
-              target_variable (str): The target variable/column name
-              correlation_with_target_threshold: minimum absolute correlation required between every feature and the target variable , default 1.0 (0.0 to 1.0)
-              correlation_with_target_preference: float (0.0 to 1.0), default .08 ,while choosing between a pair of features w.r.t multicol & correlation target , this gives 
-              the option to favour one measur to another. e.g. if value is .6 , during feature selection tug of war, correlation target measure will have a higher say.
-              A value of .5 means both measure have equal say 
-  """
+    Fixes multicollinearity between predictor variables , also considering the correlation between target variable.
+    Only applies to regression or two class classification ML use case
+    Takes numerical and one hot encoded variables only
+      Args:
+        threshold (float): The utmost absolute pearson correlation tolerated beyween featres from 0.0 to 1.0
+        target_variable (str): The target variable/column name
+        correlation_with_target_threshold: minimum absolute correlation required between every feature and the target variable , default 1.0 (0.0 to 1.0)
+        correlation_with_target_preference: float (0.0 to 1.0), default .08 ,while choosing between a pair of features w.r.t multicol & correlation target , this gives
+        the option to favour one measur to another. e.g. if value is .6 , during feature selection tug of war, correlation target measure will have a higher say.
+        A value of .5 means both measure have equal say
+    """
 
     # mamke a constructer
 
@@ -2515,7 +2524,7 @@ class Fix_multicollinearity(BaseEstimator, TransformerMixin):
             data = takes preprocessed data frame
         Returns:
             None
-    """
+        """
 
         # global data1
         data1 = data.select_dtypes(include=["int64", "float64", "float32"])
@@ -2533,9 +2542,7 @@ class Fix_multicollinearity(BaseEstimator, TransformerMixin):
         corr_matrix = abs(corr)
 
         # for every diagonal value, make it Nan
-        corr_matrix.values[
-            tuple([np.arange(corr_matrix.shape[0])] * 2)
-        ] = np.NaN
+        corr_matrix.values[tuple([np.arange(corr_matrix.shape[0])] * 2)] = np.NaN
 
         # Now Calculate the average correlation of every feature with other, and get a pandas data frame
         avg_cor = pd.DataFrame(corr_matrix.mean())
@@ -2562,24 +2569,24 @@ class Fix_multicollinearity(BaseEstimator, TransformerMixin):
         )
 
         # now bring in the avg correlation for first of the pair
-        merge = pd.merge(
-            melt, avg_cor, left_on="column", right_on="features"
-        ).drop("features", axis=1)
+        merge = pd.merge(melt, avg_cor, left_on="column", right_on="features").drop(
+            "features", axis=1
+        )
 
         # now bring in the avg correlation for second of the pair
-        merge = pd.merge(
-            merge, avg_cor, left_on="variable", right_on="features"
-        ).drop("features", axis=1)
+        merge = pd.merge(merge, avg_cor, left_on="variable", right_on="features").drop(
+            "features", axis=1
+        )
 
         # now bring in the target correlation for first of the pair
-        merge = pd.merge(
-            merge, targ_cor, left_on="column", right_on="features"
-        ).drop("features", axis=1)
+        merge = pd.merge(merge, targ_cor, left_on="column", right_on="features").drop(
+            "features", axis=1
+        )
 
         # now bring in the avg correlation for second of the pair
-        merge = pd.merge(
-            merge, targ_cor, left_on="variable", right_on="features"
-        ).drop("features", axis=1)
+        merge = pd.merge(merge, targ_cor, left_on="variable", right_on="features").drop(
+            "features", axis=1
+        )
 
         # sort and save
         merge = merge.sort_values(by="value", ascending=False)
@@ -2619,12 +2626,8 @@ class Fix_multicollinearity(BaseEstimator, TransformerMixin):
         # however one varibale can appear more than once on any of the sides , so we will run for loop to find all pairs...
         # here it goes
         # take a list of all (but unique ) variables that have correlation 1 for eachother, we will make two copies
-        u_all = list(
-            pd.unique(pd.concat((one["column"], one["variable"]), axis=0))
-        )
-        u_all_1 = list(
-            pd.unique(pd.concat((one["column"], one["variable"]), axis=0))
-        )
+        u_all = list(pd.unique(pd.concat((one["column"], one["variable"]), axis=0)))
+        u_all_1 = list(pd.unique(pd.concat((one["column"], one["variable"]), axis=0)))
         # take a list of features (unique) for the first side of the pair
         u_column = pd.unique(one["column"])
 
@@ -2647,9 +2650,7 @@ class Fix_multicollinearity(BaseEstimator, TransformerMixin):
         # to_drop = to_drop_a + to_drop_b
 
         ## now we are to treat where rank is not Zero and Value (correlation) is greater than a specific threshold
-        non_zero = merge[
-            (merge["rank_x"] != 0.0) & (merge["value"] >= self.threshold)
-        ]
+        non_zero = merge[(merge["rank_x"] != 0.0) & (merge["value"] >= self.threshold)]
 
         # pick the column to delete
         non_zero_list = list(
@@ -2697,7 +2698,7 @@ class Fix_multicollinearity(BaseEstimator, TransformerMixin):
             data = takes preprocessed data frame
         Returns:
             data frame
-    """
+        """
         data = dataset
         data = data.drop(self.to_drop, axis=1)
         # now drop less correlated data
@@ -2712,7 +2713,7 @@ class Fix_multicollinearity(BaseEstimator, TransformerMixin):
             data = takes preprocessed data frame
         Returns:
             data frame
-    """
+        """
         self.fit(data)
         return self.transform(data)
 
@@ -2722,7 +2723,7 @@ class Fix_multicollinearity(BaseEstimator, TransformerMixin):
 class Remove_100(BaseEstimator, TransformerMixin):
     """
     - Takes DF, return data frame while removing features that are perfectly correlated (droping one)
-  """
+    """
 
     def __init__(self, target):
         self.target = target
@@ -2789,9 +2790,9 @@ class DFS_Classic(BaseEstimator, TransformerMixin):
     """
     - Automated feature interactions using multiplication, division , addition & substraction
     - Only accepts numeric / One Hot Encoded features
-    - Takes DF, return same DF 
+    - Takes DF, return same DF
     - for Multiclass classification problem , set subclass arg as 'multi'
-  """
+    """
 
     def __init__(
         self,
@@ -3104,8 +3105,8 @@ class DFS_Classic(BaseEstimator, TransformerMixin):
 # Empty transformer
 class Empty(BaseEstimator, TransformerMixin):
     """
-    - Takes DF, return same DF 
-  """
+    - Takes DF, return same DF
+    """
 
     def fit(self, data, y=None):
         return self
@@ -3122,10 +3123,10 @@ class Empty(BaseEstimator, TransformerMixin):
 class Reduce_Dimensions_For_Supervised_Path(BaseEstimator, TransformerMixin):
     """
     - Takes DF, return same DF with different types of dimensionality reduction modles (pca_liner , pca_kernal, tsne , pls, incremental)
-    - except pca_liner, every other method takes integer as number of components 
+    - except pca_liner, every other method takes integer as number of components
     - only takes numeric variables (float & One Hot Encoded)
     - it is intended to solve supervised ML usecases , such as classification / regression
-  """
+    """
 
     def __init__(
         self,
@@ -3296,18 +3297,18 @@ def Preprocess_Path_One(
 
     """
     Follwoing preprocess steps are taken:
-      - 1) Auto infer data types 
+      - 1) Auto infer data types
       - 2) Impute (simple or with surrogate columns)
       - 3) Ordinal Encoder
       - 4) Drop categorical variables that have zero variance or near zero variance
       - 5) Club categorical variables levels togather as a new level (other_infrequent) that are rare / at the bottom 5% of the variable distribution
-      - 6) Club unseen levels in test dataset with most/least frequent levels in train dataset 
+      - 6) Club unseen levels in test dataset with most/least frequent levels in train dataset
       - 7) Reduce high cardinality in categorical features using clustering or counts
       - 8) Generate sub features from time feature such as 'month','weekday',is_month_end','is_month_start' & 'hour'
       - 9) Group features by calculating min, max, mean, median & sd of similar features
       -10) Make nonliner features (polynomial, sin , cos & tan)
       -11) Scales & Power Transform (zscore,minmax,yeo-johnson,quantile,maxabs,robust) , including option to transform target variable
-      -12) Apply binning to continious variable when numeric features are provided as a list 
+      -12) Apply binning to continious variable when numeric features are provided as a list
       -13) Detect & remove outliers using isolation forest, knn and PCA
       -14) Apply clusters to segment entire data
       -15) One Hot / Dummy encoding
@@ -3315,9 +3316,9 @@ def Preprocess_Path_One(
       -17) Feature Selection throuh Random Forest , LightGBM and Pearson Correlation / Boruta algorithm
       -18) Fix multicollinearity
       -19) Feature Interaction (DFS) , multiply , divided , add and substract features
-      -20) Apply diamension reduction techniques such as pca_liner, pca_kernal, incremental, tsne 
-          - except for pca_liner, all other method only takes number of component (as integer) i.e no variance explaination metohd available  
-  """
+      -20) Apply diamension reduction techniques such as pca_liner, pca_kernal, incremental, tsne
+          - except for pca_liner, all other method only takes number of component (as integer) i.e no variance explaination metohd available
+    """
 
     # also make sure that all the column names are string
     train_data.columns = [str(i) for i in train_data.columns]
@@ -3391,7 +3392,8 @@ def Preprocess_Path_One(
         )
     else:
         new_levels = New_Catagorical_Levels_in_TestData(
-            target=target_variable, replacement_strategy="raise exception",
+            target=target_variable,
+            replacement_strategy="raise exception",
         )
 
     # untrained levels in test(ordinal specific)
@@ -3402,7 +3404,8 @@ def Preprocess_Path_One(
         )
     else:
         new_levels1 = New_Catagorical_Levels_in_TestData(
-            target=target_variable, replacement_strategy="raise exception",
+            target=target_variable,
+            replacement_strategy="raise exception",
         )
 
     # cardinality:
@@ -3672,24 +3675,24 @@ def Preprocess_Path_Two(
     """
     Follwoing preprocess steps are taken:
       - THIS IS BUILt FOR UNSUPERVISED LEARNING
-      - 1) Auto infer data types 
+      - 1) Auto infer data types
       - 2) Impute (simple or with surrogate columns)
       - 3) Ordinal Encoder
       - 4) Drop categorical variables that have zero variance or near zero variance
       - 5) Club categorical variables levels togather as a new level (other_infrequent) that are rare / at the bottom 5% of the variable distribution
-      - 6) Club unseen levels in test dataset with most/least frequent levels in train dataset 
+      - 6) Club unseen levels in test dataset with most/least frequent levels in train dataset
       - 7) Reduce high cardinality in categorical features using clustering or counts
       - 8) Generate sub features from time feature such as 'month','weekday',is_month_end','is_month_start' & 'hour'
       - 9) Group features by calculating min, max, mean, median & sd of similar features
       -10) Scales & Power Transform (zscore,minmax,yeo-johnson,quantile,maxabs,robust) , including option to transform target variable
-      -11) Apply binning to continious variable when numeric features are provided as a list 
+      -11) Apply binning to continious variable when numeric features are provided as a list
       -12) Detect & remove outliers using isolation forest, knn and PCA
       -13) One Hot / Dummy encoding
       -14) Remove special characters from column names such as commas, square brackets etc to make it competible with jason dependednt models
       -15) Fix multicollinearity
-      -16) Apply diamension reduction techniques such as pca_liner, pca_kernal, incremental, tsne 
-          - except for pca_liner, all other method only takes number of component (as integer) i.e no variance explaination metohd available 
-  """
+      -16) Apply diamension reduction techniques such as pca_liner, pca_kernal, incremental, tsne
+          - except for pca_liner, all other method only takes number of component (as integer) i.e no variance explaination metohd available
+    """
     return Preprocess_Path_One(
         train_data=train_data,
         ml_usecase=ml_usecase,
