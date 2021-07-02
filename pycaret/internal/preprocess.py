@@ -2434,6 +2434,7 @@ class Boruta_Feature_Selection(BaseEstimator, TransformerMixin):
         random_forest_args = {"n_estimators": 100, "max_depth": 5}
         # convert rf to cuml.rf
         if self.gpu_param:  # True of "force"
+            import cuml
             if version.parse(cuml.__version__) >= version.parse("0.19"):
                 random_forest_args["random_state"] = self.random_state
             else:
