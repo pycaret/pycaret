@@ -66,7 +66,7 @@ cuML >= 0.15 cannot be installed on Google Colab. Instead use blazingSQL (https:
 - Other Resources: https://github.com/pycaret/pycaret/tree/master/resources
 - Issue Logs: https://github.com/pycaret/pycaret/issues
 - Contribute: https://pycaret.readthedocs.io/en/latest/contribute.html
-- Join Slack Community: https://join.slack.com/t/pycaret/shared_invite/zt-qc4pfcw5-OLV3UFF~DzMHFyaJeFKw~A
+- Join Slack Community: https://join.slack.com/t/pycaret/shared_invite/zt-row9phbm-BoJdEVPYnGf7_NxNBP307w
 
 ## Who should use PyCaret?
 PyCaret is an open source library that anybody can use. In our view the ideal target audience of PyCaret is: <br />
