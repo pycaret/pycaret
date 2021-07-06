@@ -7388,16 +7388,16 @@ def interpret_model(
     estimator : object, default = none
         A trained model object to be passed as an estimator. Only tree-based
         models are accepted when plot type is 'summary', 'correlation', or 
-        'reason'. 'pdp' plot is model agnostic.   
+        'reason'. 'pdp' plot is model agnostic.
 
     plot : str, default = 'summary'
-        Enter abbreviation of type of plot. The current list of plots supported 
+        Abbreviation of type of plot. The current list of plots supported 
         are (Plot - Name):
 
         * 'summary' - Summary Plot using SHAP
         * 'correlation' - Dependence Plot using SHAP
-        * 'reason' - Force Plot using SHAP           
-        * 'pdp' - Partial Dependence Plot                
+        * 'reason' - Force Plot using SHAP
+        * 'pdp' - Partial Dependence Plot
         * 'msa' - Morris Sensitivity Analysis
         * 'pfi' - Permutation Feature Importance
 
@@ -7413,6 +7413,10 @@ def interpret_model(
         with the option to select the feature on x and y axes through drop down
         interactivity. For analysis at the sample level, an observation parameter must
         be passed with the index value of the observation in test / hold-out set.
+
+    use_train_data: bool, default = False
+        When set to true, train data will be used for plots, instead
+        of test data.
 
     X_new_sample: pd.DataFrame, default = None
         Row from an out-of-sample dataframe (neither train nor test data) to be plotted.
@@ -7705,7 +7709,7 @@ def interpret_model(
         from interpret.blackbox import PartialDependence
         try:
             pdp = PartialDependence(predict_fn=model.predict_proba, data=test_X)  # classification
-        except:
+        except AttributeError:
             pdp = PartialDependence(predict_fn=model.predict, data=test_X)  # regression
 
         pdp_global = pdp.explain_global()
@@ -7719,7 +7723,7 @@ def interpret_model(
         from interpret.blackbox import MorrisSensitivity
         try:
             msa = MorrisSensitivity(predict_fn=model.predict_proba, data=test_X) # classification
-        except:
+        except AttributeError:
             msa = MorrisSensitivity(predict_fn=model.predict, data=test_X) # regression
         msa_global = msa.explain_global()
         msa_plot = msa_global.visualize()
@@ -7735,7 +7739,7 @@ def interpret_model(
         pfi_plot = pfi_global.visualize()
         if save:
             import plotly.io as pio
-            pio.write_html(msa_plot,f"PFI {plot}.html")
+            pio.write_html(pfi_plot,f"PFI {plot}.html")
         return pfi_plot
 
 
