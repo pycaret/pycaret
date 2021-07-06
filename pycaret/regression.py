@@ -1580,7 +1580,7 @@ def interpret_model(
     observation: Optional[int] = None,
     use_train_data: bool = False,
     X_new_sample: Optional[pd.DataFrame] = None,
-    y_new_sample: Optional[pd.DataFrame] = None, # add for pfi explainer
+    y_new_sample: Optional[pd.DataFrame] = None,  # add for pfi explainer
     save: bool = False,
     **kwargs,
 ):

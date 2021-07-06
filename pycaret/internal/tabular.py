@@ -7358,21 +7358,21 @@ def interpret_model(
     observation: Optional[int] = None,
     use_train_data: Optional[bool] = False,
     X_new_sample: Optional[pd.DataFrame] = None,
-    y_new_sample: Optional[pd.DataFrame] = None, # add for pfi explainer
+    y_new_sample: Optional[pd.DataFrame] = None,  # add for pfi explainer
     save: bool = False,
     **kwargs,  # added in pycaret==2.1
 ):
 
     """
     This function takes a trained model object and returns an interpretation plot.
-    Most plots in this function are implemented based on the SHAP (SHapley Additive 
-    exPlanations), which is a unified approach to explain the output of any machine 
+    Most plots in this function are implemented based on the SHAP (SHapley Additive
+    exPlanations), which is a unified approach to explain the output of any machine
     learning model. SHAP connects game theory with local explanations.
 
     For more information : https://shap.readthedocs.io/en/latest/
 
     For Partial Dependence Plot : https://github.com/SauceCat/PDPbox
-     
+
     Example
     -------
     >>> from pycaret.datasets import get_data
@@ -7387,11 +7387,11 @@ def interpret_model(
     ----------
     estimator : object, default = none
         A trained model object to be passed as an estimator. Only tree-based
-        models are accepted when plot type is 'summary', 'correlation', or 
+        models are accepted when plot type is 'summary', 'correlation', or
         'reason'. 'pdp' plot is model agnostic.
 
     plot : str, default = 'summary'
-        Abbreviation of type of plot. The current list of plots supported 
+        Abbreviation of type of plot. The current list of plots supported
         are (Plot - Name):
 
         * 'summary' - Summary Plot using SHAP
@@ -7402,9 +7402,9 @@ def interpret_model(
         * 'pfi' - Permutation Feature Importance
 
     feature: str, default = None
-        This parameter is only needed when plot = 'correlation' or 'pdp'. 
-        By default feature is set to None which means the first column of the 
-        dataset will be used as a variable. A feature parameter must be passed 
+        This parameter is only needed when plot = 'correlation' or 'pdp'.
+        By default feature is set to None which means the first column of the
+        dataset will be used as a variable. A feature parameter must be passed
         to change this.
 
     observation: integer, default = None
@@ -7422,7 +7422,7 @@ def interpret_model(
         Row from an out-of-sample dataframe (neither train nor test data) to be plotted.
         The sample must have the same columns as the raw input train data, and it is transformed
         by the preprocessing pipeline automatically before plotting.
-    
+
     y_new_sample: pd.DataFrame, default = None
         Row from an out-of-sample dataframe (neither train nor test data) to be plotted.
         The sample must have the same columns as the raw input label data, and it is transformed
@@ -7458,7 +7458,7 @@ def interpret_model(
     import matplotlib.pyplot as plt
 
     # checking if shap available
-    if plot in ['summary','correlation','reason']:
+    if plot in ["summary", "correlation", "reason"]:
         try:
             import shap
         except ImportError:
@@ -7470,7 +7470,7 @@ def interpret_model(
             )
 
     # checking if pdpbox is available
-    if plot == 'pdp':
+    if plot == "pdp":
         try:
             from interpret.blackbox import PartialDependence
         except ImportError:
@@ -7482,7 +7482,7 @@ def interpret_model(
             )
 
     # checking interpret is available
-    if plot == 'msa':
+    if plot == "msa":
         try:
             from interpret.blackbox import MorrisSensitivity
         except ImportError:
@@ -7494,7 +7494,7 @@ def interpret_model(
             )
 
     # checking interpret-community is available
-    if plot == 'pfi':
+    if plot == "pfi":
         try:
             from interpret.ext.blackbox import PFIExplainer
         except ImportError:
@@ -7514,7 +7514,9 @@ def interpret_model(
     shap_models = {k: v for k, v in _all_models_internal.items() if v.shap}
     shap_models_ids = set(shap_models.keys())
 
-    if plot in ['summary', 'correlation', 'reason'] and (model_id not in shap_models_ids):
+    if plot in ["summary", "correlation", "reason"] and (
+        model_id not in shap_models_ids
+    ):
         raise TypeError(
             f"This function only supports tree based models for binary classification: {', '.join(shap_models_ids)}."
         )
@@ -7542,7 +7544,7 @@ def interpret_model(
         # Storing X_train and y_train in data_X and data_y parameter
         test_X = X_train if use_train_data else X_test
         if plot == "pfi":
-            test_y = y_train if use_train_data else y_test # add for pfi explainer
+            test_y = y_train if use_train_data else y_test  # add for pfi explainer
 
     np.random.seed(seed)
 
@@ -7569,7 +7571,7 @@ def interpret_model(
             shap_plot = shap.summary_plot(shap_values[1], test_X, show=show, **kwargs)
         except Exception:
             shap_plot = shap.summary_plot(shap_values, test_X, show=show, **kwargs)
-        
+
         if save:
             plt.savefig(f"SHAP {plot}.png", bbox_inches="tight")
         return shap_plot
@@ -7707,8 +7709,11 @@ def interpret_model(
             pdp_feature = feature
 
         from interpret.blackbox import PartialDependence
+
         try:
-            pdp = PartialDependence(predict_fn=model.predict_proba, data=test_X)  # classification
+            pdp = PartialDependence(
+                predict_fn=model.predict_proba, data=test_X
+            )  # classification
         except AttributeError:
             pdp = PartialDependence(predict_fn=model.predict, data=test_X)  # regression
 
@@ -7716,32 +7721,38 @@ def interpret_model(
         pdp_plot = pdp_global.visualize(list(test_X.columns).index(pdp_feature))
         if save:
             import plotly.io as pio
-            pio.write_html(pdp_plot,f"PDP {plot}.html")
+
+            pio.write_html(pdp_plot, f"PDP {plot}.html")
         return pdp_plot
 
     def msa(show: bool = True):
         from interpret.blackbox import MorrisSensitivity
+
         try:
-            msa = MorrisSensitivity(predict_fn=model.predict_proba, data=test_X) # classification
+            msa = MorrisSensitivity(
+                predict_fn=model.predict_proba, data=test_X
+            )  # classification
         except AttributeError:
-            msa = MorrisSensitivity(predict_fn=model.predict, data=test_X) # regression
+            msa = MorrisSensitivity(predict_fn=model.predict, data=test_X)  # regression
         msa_global = msa.explain_global()
         msa_plot = msa_global.visualize()
         if save:
             import plotly.io as pio
-            pio.write_html(msa_plot,f"MSA {plot}.html")
+
+            pio.write_html(msa_plot, f"MSA {plot}.html")
         return msa_plot
 
     def pfi(show: bool = True):
         from interpret.ext.blackbox import PFIExplainer
+
         pfi = PFIExplainer(model)
         pfi_global = pfi.explain_global(test_X, true_labels=test_y)
         pfi_plot = pfi_global.visualize()
         if save:
             import plotly.io as pio
-            pio.write_html(pfi_plot,f"PFI {plot}.html")
-        return pfi_plot
 
+            pio.write_html(pfi_plot, f"PFI {plot}.html")
+        return pfi_plot
 
     shap_plot = locals()[plot](show=not save)
 
