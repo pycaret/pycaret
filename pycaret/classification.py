@@ -1628,6 +1628,7 @@ def interpret_model(
     observation: Optional[int] = None,
     use_train_data: bool = False,
     X_new_sample: Optional[pd.DataFrame] = None,
+    y_new_sample: Optional[pd.DataFrame] = None,  # add for pfi explainer
     save: bool = False,
     **kwargs,
 ):
@@ -1652,24 +1653,31 @@ def interpret_model(
         Trained model object
 
 
-    plot: str, default = 'summary'
-        List of available plots (ID - Name):
+    plot : str, default = 'summary'
+        Abbreviation of type of plot. The current list of plots supported 
+        are (Plot - Name):
 
         * 'summary' - Summary Plot using SHAP
         * 'correlation' - Dependence Plot using SHAP
-        * 'reason' - Force Plot using SHAP           
+        * 'reason' - Force Plot using SHAP
         * 'pdp' - Partial Dependence Plot
+        * 'msa' - Morris Sensitivity Analysis
+        * 'pfi' - Permutation Feature Importance
 
 
     feature: str, default = None
-        Feature to check correlation with. This parameter is only required when ``plot``
-        type is 'correlation' or 'pdp'. When set to None, it uses the first column from 
-        the dataset.
+        This parameter is only needed when plot = 'correlation' or 'pdp'. 
+        By default feature is set to None which means the first column of the 
+        dataset will be used as a variable. A feature parameter must be passed 
+        to change this.
 
 
-    observation: int, default = None
-        Observation index number in holdout set to explain. When ``plot`` is not
-        'reason', this parameter is ignored. 
+    observation: integer, default = None
+        This parameter only comes into effect when plot is set to 'reason'. If no
+        observation number is provided, it will return an analysis of all observations
+        with the option to select the feature on x and y axes through drop down
+        interactivity. For analysis at the sample level, an observation parameter must
+        be passed with the index value of the observation in test / hold-out set.
 
 
     use_train_data: bool, default = False
@@ -1680,6 +1688,12 @@ def interpret_model(
     X_new_sample: pd.DataFrame, default = None
         Row from an out-of-sample dataframe (neither train nor test data) to be plotted.
         The sample must have the same columns as the raw input data, and it is transformed
+        by the preprocessing pipeline automatically before plotting.
+
+
+    y_new_sample: pd.DataFrame, default = None
+        Row from an out-of-sample dataframe (neither train nor test data) to be plotted.
+        The sample must have the same columns as the raw input label data, and it is transformed
         by the preprocessing pipeline automatically before plotting.
 
 
@@ -1703,6 +1717,7 @@ def interpret_model(
         observation=observation,
         use_train_data=use_train_data,
         X_new_sample=X_new_sample,
+        y_new_sample=y_new_sample,
         save=save,
         **kwargs,
     )
