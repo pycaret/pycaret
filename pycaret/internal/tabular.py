@@ -7468,7 +7468,7 @@ def interpret_model(
     # checking if pdpbox is available
     if plot == 'pdp':
         try:
-            import interpret
+            from interpret.blackbox import PartialDependence
         except ImportError:
             logger.error(
                 "interpretml library not found. pip install interpret to generate pdp plot in interpret_model function."
@@ -7480,7 +7480,7 @@ def interpret_model(
     # checking interpret is available
     if plot == 'msa':
         try:
-            import interpret
+            from interpret.blackbox import MorrisSensitivity
         except ImportError:
             logger.error(
                 "interpretml library not found. pip install interpret to generate msa plot in interpret_model function."
@@ -7492,13 +7492,13 @@ def interpret_model(
     # checking interpret-community is available
     if plot == 'pfi':
         try:
-            import interpret
+            from interpret.ext.blackbox import PFIExplainer
         except ImportError:
             logger.error(
-                "interpret-community library not found. pip install interpret-community to generate msa plot in interpret_model function."
+                "interpret-community library not found. pip install interpret-community to generate pfi plot in interpret_model function."
             )
             raise ImportError(
-                "interpret-community library not found. pip install interpret-community to generate msa plot in interpret_model function."
+                "interpret-community library not found. pip install interpret-community to generate pfi plot in interpret_model function."
             )
 
     # get estimator from meta estimator
