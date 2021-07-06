@@ -108,7 +108,7 @@ def setup(
     unknown_categorical_method: str = "least_frequent",
     pca: bool = False,
     pca_method: str = "linear",
-    pca_components: Optional[float] = None,
+    pca_components: Union[int, float] = 1.0,
     ignore_low_variance: bool = False,
     combine_rare_levels: bool = False,
     rare_level_threshold: float = 0.10,

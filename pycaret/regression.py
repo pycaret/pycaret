@@ -52,7 +52,7 @@ def setup(
     unknown_categorical_method: str = "least_frequent",
     pca: bool = False,
     pca_method: str = "linear",
-    pca_components: Optional[float] = None,
+    pca_components: Union[int, float] = 1.0,
     ignore_low_variance: bool = False,
     combine_rare_levels: bool = False,
     rare_level_threshold: float = 0.10,
@@ -217,7 +217,7 @@ def setup(
 
 
     normalize: bool, default = False
-        When set to True, it transforms the numeric features by scaling them to a given
+        When set to True, it transforms the features by scaling them to a given
         range. Type of scaling is defined by the ``normalize_method`` parameter.
 
 
@@ -263,17 +263,17 @@ def setup(
         
 
     pca_method: str, default = 'linear'
-        The 'linear' method performs uses Singular Value  Decomposition. Other options are:
-        
-        - kernel: dimensionality reduction through the use of RVF kernel.
-        - incremental: replacement for 'linear' pca when the dataset is too large.
+        Method with which to apply PCA. Possible values are:
+            - 'linear': Uses Singular Value  Decomposition.
+            - kernel: Dimensionality reduction through the use of RBF kernel.
+            - incremental: Similar to 'linear', but more efficient for large datasets.
 
 
-    pca_components: int or float, default = None
-        Number of components to keep. if pca_components is a float, it is treated as a 
-        target percentage for information retention. When pca_components is an integer
-        it is treated as the number of features to be kept. pca_components must be less
-        than the original number of features. Ignored when ``pca`` is not True.
+    pca_components: int or float, default = 1.0
+        Number of components to keep. If >1, it select that number of components.
+        If <= 1, it selects that fraction of components from the original features.
+        The value must must be smaller than the number of original features.
+        Ignored when ``pca`` is not True.
 
 
     ignore_low_variance: bool, default = False

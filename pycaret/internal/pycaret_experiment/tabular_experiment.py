@@ -16,8 +16,6 @@ import pycaret.internal.patches.yellowbrick
 from pycaret.internal.logging import get_logger, create_logger
 from pycaret.internal.plots.yellowbrick import show_yellowbrick_plot
 from pycaret.internal.plots.helper import MatplotlibDefaultDPI
-from pycaret.internal.Display import Display
-from pycaret.internal.distributions import *
 from pycaret.internal.validation import *
 import pycaret.internal.preprocess
 import pycaret.internal.persistence
@@ -25,8 +23,6 @@ import pandas as pd  # type ignore
 from pandas.io.formats.style import Styler
 import numpy as np  # type: ignore
 import os
-import sys
-import datetime
 import time
 import random
 import gc
@@ -45,6 +41,7 @@ import sklearn
 from sklearn.experimental import enable_iterative_imputer
 from sklearn.impute import SimpleImputer, IterativeImputer
 from sklearn.preprocessing import OrdinalEncoder
+from sklearn.feature_selection import VarianceThreshold
 import secrets
 from pycaret.internal.utils import get_columns_to_stratify_by
 from sklearn.model_selection import (
@@ -54,6 +51,14 @@ from sklearn.model_selection import (
     GroupKFold,
     TimeSeriesSplit,
 )
+from sklearn.preprocessing import (
+    StandardScaler,
+    MinMaxScaler,
+    MaxAbsScaler,
+    RobustScaler,
+)
+from sklearn.decomposition import PCA, KernelPCA, IncrementalPCA
+
 
 warnings.filterwarnings("ignore")
 LOGGER = get_logger()
@@ -422,7 +427,7 @@ class _TabularExperiment(_PyCaretExperiment):
         unknown_categorical_method: str = "least_frequent",
         pca: bool = False,
         pca_method: str = "linear",
-        pca_components: Optional[float] = None,
+        pca_components: Union[int, float] = 1.0,
         ignore_low_variance: bool = False,
         combine_rare_levels: bool = False,
         rare_level_threshold: float = 0.10,
@@ -502,7 +507,6 @@ class _TabularExperiment(_PyCaretExperiment):
         self.target_param = target
         self.transform_target_param = transform_target
         self.transform_target_method_param = transform_target_method
-        self.stratify_param = data_split_stratify
         self.n_jobs_param = n_jobs
         self.gpu_param = use_gpu
         self.html_param = html
@@ -588,26 +592,12 @@ class _TabularExperiment(_PyCaretExperiment):
         if not self._is_unsupervised():
             all_cols.remove(target)
 
-        # checking imputation type
-        allowed_imputation_type = ["simple", "iterative"]
-        if imputation_type not in allowed_imputation_type:
-            raise ValueError(
-                f"imputation_type parameter only accepts {', '.join(allowed_imputation_type)}."
-            )
-
         if (
             type(iterative_imputation_iters) is not int
             or iterative_imputation_iters <= 0
         ):
             raise TypeError(
                 "iterative_imputation_iters must be an integer greater than 0."
-            )
-
-        # checking categorical imputation
-        allowed_categorical_imputation = ["constant", "mode"]
-        if categorical_imputation not in allowed_categorical_imputation:
-            raise ValueError(
-                f"categorical_imputation parameter only accepts {', '.join(allowed_categorical_imputation)}."
             )
 
         # ordinal_features
@@ -682,20 +672,6 @@ class _TabularExperiment(_PyCaretExperiment):
                 f"high_cardinality_method parameter only accepts {', '.join(high_cardinality_allowed_methods)}."
             )
 
-        # checking numeric imputation
-        allowed_numeric_imputation = ["mean", "median", "zero"]
-        if numeric_imputation not in allowed_numeric_imputation:
-            raise ValueError(
-                f"numeric_imputation parameter only accepts {', '.join(allowed_numeric_imputation)}."
-            )
-
-        # checking normalize method
-        allowed_normalize_method = ["zscore", "minmax", "maxabs", "robust"]
-        if normalize_method not in allowed_normalize_method:
-            raise ValueError(
-                f"normalize_method parameter only accepts {', '.join(allowed_normalize_method)}."
-            )
-
         # checking transformation method
         allowed_transformation_method = ["yeo-johnson", "quantile"]
         if transformation_method not in allowed_transformation_method:
@@ -717,50 +693,6 @@ class _TabularExperiment(_PyCaretExperiment):
                 f"unknown_categorical_method only accepts {', '.join(unknown_categorical_method_available)}."
             )
 
-        # check pca
-        if type(pca) is not bool:
-            raise TypeError("PCA parameter only accepts True or False.")
-
-        # pca method check
-        allowed_pca_methods = ["linear", "kernel", "incremental"]
-        if pca_method not in allowed_pca_methods:
-            raise ValueError(
-                f"pca method parameter only accepts {', '.join(allowed_pca_methods)}."
-            )
-
-        # pca components check
-        if pca is True:
-            if pca_method != "linear":
-                if pca_components is not None:
-                    if (type(pca_components)) is not int:
-                        raise TypeError(
-                            "pca_components parameter must be integer when pca_method is not 'linear'."
-                        )
-
-        # pca components check 2
-        if pca is True:
-            if pca_method != "linear":
-                if pca_components is not None:
-                    if pca_components > len(data.columns) - 1:
-                        raise TypeError(
-                            "pca_components parameter cannot be greater than original features space."
-                        )
-
-        # pca components check 3
-        if pca is True:
-            if pca_method == "linear":
-                if pca_components is not None:
-                    if type(pca_components) is not float:
-                        if pca_components > len(data.columns) - 1:
-                            raise TypeError(
-                                "pca_components parameter cannot be greater than original features space or float between 0 - 1."
-                            )
-
-        # check ignore_low_variance
-        if type(ignore_low_variance) is not bool:
-            raise TypeError("ignore_low_variance parameter only accepts True or False.")
-
-        # check ignore_low_variance
         if type(combine_rare_levels) is not bool:
             raise TypeError("combine_rare_levels parameter only accepts True or False.")
 
@@ -1060,7 +992,7 @@ class _TabularExperiment(_PyCaretExperiment):
                 train, test = train_test_split(
                     self.data,
                     test_size=1 - train_size,
-                    stratify=get_columns_to_stratify_by(self.X, self.y, self.stratify_param),
+                    stratify=get_columns_to_stratify_by(self.X, self.y, data_split_stratify),
                     random_state=self.seed,
                     shuffle=data_split_shuffle,
                 )
@@ -1106,10 +1038,34 @@ class _TabularExperiment(_PyCaretExperiment):
             if date_features:
                 date_cols = date_features
 
+            # Low variance ========================================= >>
+
+            if ignore_low_variance < 0:
+                raise ValueError(
+                    "Invalid value for the ignore_low_variance parameter. "
+                    f"The value should be >0, got {ignore_low_variance}."
+                )
+
+            variance_estimator = ColumnTransformer(
+                [("variance", VarianceThreshold(ignore_low_variance), cat_cols)]
+            )
+
             # Imputation =========================================== >>
 
+            # Checking parameters
             num_dict = {"zero": "constant", "mean": "mean", "median": "median"}
+            if numeric_imputation not in num_dict:
+                raise ValueError(
+                    "Invalid value for the numeric_imputation parameter, got "
+                    f"{numeric_imputation}. Possible values are {' '.join(num_dict)}."
+                )
+
             cat_dict = {"constant": "constant", "mode": "most_frequent"}
+            if categorical_imputation not in cat_dict:
+                raise ValueError(
+                    "Invalid value for the categorical_imputation parameter, got "
+                    f"{categorical_imputation}. Possible values are {' '.join(cat_dict)}."
+                )
 
             if imputation_type == "simple":
                 self.logger.info("Setting up simple imputation")
@@ -1125,7 +1081,7 @@ class _TabularExperiment(_PyCaretExperiment):
                 )
 
                 # Create meta-estimator to split imputers over columns
-                imputer = ColumnTransformer(
+                impute_estimator = ColumnTransformer(
                     transformers=[
                         ("numerical_imputer", num_imputer, num_cols),
                         ("categorical_imputer", cat_imputer, cat_cols),
@@ -1133,11 +1089,67 @@ class _TabularExperiment(_PyCaretExperiment):
                     remainder="passthrough",
                     n_jobs=self.n_jobs_param,
                 )
-            else:
+            elif imputation_type == "iterative":
                 self.logger.info("Setting up iterative imputation")
-                imputer = IterativeImputer(
+                impute_estimator = IterativeImputer(
                     estimator="lightgbm",
                     max_iter=iterative_imputation_iters,
+                )
+            else:
+                raise ValueError(
+                    "Invalid value for the imputation_type parameter, got "
+                    f"{imputation_type}. Possible values are: simple, iterative."
+                )
+
+        # Normalization ============================================ >>
+
+        normalize_estimator = None
+        if normalize:
+            norm_dict = {
+                "zscore": StandardScaler(),
+                "minmax": MinMaxScaler(),
+                "maxabs": MaxAbsScaler(),
+                "robust": RobustScaler(),
+            }
+            if normalize_method in norm_dict:
+                normalize_estimator = norm_dict[normalize_method]
+            else:
+                raise ValueError(
+                    "Invalid value for the normalize_method parameter, got "
+                    f"{normalize_method}. Possible values are: {' '.join(norm_dict)}."
+                )
+
+        # PCA ====================================================== >>
+
+        pca_estimator = None
+        if pca:
+            if pca_components <= 0:
+                raise ValueError(
+                    "Invalid value for the pca_components parameter. "
+                    f"The value should be >0, got {pca_components}."
+                )
+            elif pca_components <= 1:
+                pca_components = int(pca_components * self.X.shape[1])
+            elif pca_components <= self.X.shape[1]:
+                pca_components = int(pca_components)
+            else:
+                raise ValueError(
+                    "Invalid value for the pca_components parameter. "
+                    "The value should be smaller than the number of "
+                    f"features, got {pca_components}."
+                )
+
+            pca_dict = {
+                "linear": PCA(n_components=pca_components),
+                "kernel": KernelPCA(n_components=pca_components, kernel="rbf"),
+                "incremental": IncrementalPCA(n_components=pca_components),
+            }
+            if pca_method in pca_dict:
+                pca_estimator = pca_dict[pca_method]
+            else:
+                raise ValueError(
+                    "Invalid value for the pca_method parameter, got "
+                    f"{pca_method}. Possible values are: {' '.join(pca_dict)}."
                 )
 
         # Create final preprocessing pipeline ====================== >>
@@ -1145,7 +1157,10 @@ class _TabularExperiment(_PyCaretExperiment):
         self.logger.info("Creating preprocessing pipeline...")
         self._internal_pipeline = InternalPipeline(
             steps=[
-                ("imputer", imputer),
+                ("low_variance", variance_estimator),
+                ("impute", impute_estimator),
+                ("normalize", normalize_estimator),
+                ("pca", pca_estimator),
             ]
         )
 
@@ -1239,28 +1254,6 @@ class _TabularExperiment(_PyCaretExperiment):
         # trans_dict = {"yeo-johnson": "yj", "quantile": "quantile"}
         # trans_method_pass = trans_dict[transformation_method]
         #
-        # # pass method
-        # pca_dict = {
-        #     "linear": "pca_liner",
-        #     "kernel": "pca_kernal",
-        #     "incremental": "incremental",
-        #     "pls": "pls",
-        # }
-        # pca_method_pass = pca_dict[pca_method]
-        #
-        # # pca components
-        # if pca is True:
-        #     if pca_components is None:
-        #         if pca_method == "linear":
-        #             pca_components_pass = 0.99
-        #         else:
-        #             pca_components_pass = int((len(data.columns) - 1) * 0.5)
-        #
-        #     else:
-        #         pca_components_pass = pca_components
-        #
-        # else:
-        #     pca_components_pass = 0.99
         #
         # apply_binning_pass = False if bin_numeric_features is None else True
         # features_to_bin_pass = bin_numeric_features or []

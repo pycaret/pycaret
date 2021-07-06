@@ -217,7 +217,7 @@ class RegressionExperiment(_SupervisedExperiment):
         unknown_categorical_method: str = "least_frequent",
         pca: bool = False,
         pca_method: str = "linear",
-        pca_components: Optional[float] = None,
+        pca_components: Union[int, float] = 1.0,
         ignore_low_variance: bool = False,
         combine_rare_levels: bool = False,
         rare_level_threshold: float = 0.10,
@@ -382,7 +382,7 @@ class RegressionExperiment(_SupervisedExperiment):
 
 
         normalize: bool, default = False
-            When set to True, it transforms the numeric features by scaling them to a given
+            When set to True, it transforms the features by scaling them to a given
             range. Type of scaling is defined by the ``normalize_method`` parameter.
 
 
