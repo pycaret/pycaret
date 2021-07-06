@@ -49,12 +49,14 @@ def test():
         pycaret.regression.create_model("xgboost"),
     ]
 
-    available_shap = ["summary", "correlation", "reason"]
+    available_shap = ["summary", "correlation", "reason", "pdp", "msa", "pfi"]
 
     for model in models:
         for plot in available_shap:
             pycaret.regression.interpret_model(model, plot=plot)
-            pycaret.regression.interpret_model(model, plot=plot, X_new_sample=data.iloc[:10])
+            pycaret.regression.interpret_model(
+                model, plot=plot, X_new_sample=data.iloc[:10]
+            )
 
     assert 1 == 1
 
