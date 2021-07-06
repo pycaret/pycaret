@@ -49,7 +49,8 @@ def test():
         pycaret.regression.create_model("xgboost"),
     ]
 
-    available_shap = ["summary", "correlation", "reason", "pdp", "msa", "pfi"]
+    # no pfi due to dependency hell
+    available_shap = ["summary", "correlation", "reason", "pdp", "msa"]
 
     for model in models:
         for plot in available_shap:

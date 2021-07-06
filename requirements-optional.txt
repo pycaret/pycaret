@@ -1,6 +1,6 @@
-shap==0.39.0
+shap
 interpret
-interpret-community
+# no interpret-community as it causes a breaking dependency mismatch
 tune-sklearn>=0.2.1
 ray[tune]>=1.0.0
 hyperopt
