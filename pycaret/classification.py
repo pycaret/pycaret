@@ -53,7 +53,7 @@ def setup(
     pca: bool = False,
     pca_method: str = "linear",
     pca_components: Union[int, float] = 1.0,
-    ignore_low_variance: bool = False,
+    low_variance_threshold: float = 0,
     combine_rare_levels: bool = False,
     rare_level_threshold: float = 0.10,
     bin_numeric_features: Optional[List[str]] = None,
@@ -277,11 +277,10 @@ def setup(
         Ignored when ``pca`` is not True.
 
 
-    ignore_low_variance: bool, default = False
-        When set to True, all categorical features with insignificant variances are 
-        removed from the data. The variance is calculated using the ratio of unique 
-        values to the number of samples, and the ratio of the most common value to the 
-        frequency of the second most common value.
+    low_variance_threshold: float, default = 0
+        Remove features with a training-set variance lower than the provided
+        threshold. The default is to keep all features with non-zero variance,
+        i.e. remove the features that have the same value in all samples.
 
 
     combine_rare_levels: bool, default = False
@@ -594,7 +593,7 @@ def setup(
         pca=pca,
         pca_method=pca_method,
         pca_components=pca_components,
-        ignore_low_variance=ignore_low_variance,
+        low_variance_threshold=low_variance_threshold,
         combine_rare_levels=combine_rare_levels,
         rare_level_threshold=rare_level_threshold,
         bin_numeric_features=bin_numeric_features,

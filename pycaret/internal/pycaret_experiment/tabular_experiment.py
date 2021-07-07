@@ -428,7 +428,7 @@ class _TabularExperiment(_PyCaretExperiment):
         pca: bool = False,
         pca_method: str = "linear",
         pca_components: Union[int, float] = 1.0,
-        ignore_low_variance: bool = False,
+        low_variance_threshold: float = 0,
         combine_rare_levels: bool = False,
         rare_level_threshold: float = 0.10,
         bin_numeric_features: Optional[List[str]] = None,
@@ -1038,18 +1038,6 @@ class _TabularExperiment(_PyCaretExperiment):
             if date_features:
                 date_cols = date_features
 
-            # Low variance ========================================= >>
-
-            if ignore_low_variance < 0:
-                raise ValueError(
-                    "Invalid value for the ignore_low_variance parameter. "
-                    f"The value should be >0, got {ignore_low_variance}."
-                )
-
-            variance_estimator = ColumnTransformer(
-                [("variance", VarianceThreshold(ignore_low_variance), cat_cols)]
-            )
-
             # Imputation =========================================== >>
 
             # Checking parameters
@@ -1092,7 +1080,7 @@ class _TabularExperiment(_PyCaretExperiment):
             elif imputation_type == "iterative":
                 self.logger.info("Setting up iterative imputation")
                 impute_estimator = IterativeImputer(
-                    estimator="lightgbm",
+                    estimator="lightgbm",  # TODO: fix
                     max_iter=iterative_imputation_iters,
                 )
             else:
@@ -1118,6 +1106,16 @@ class _TabularExperiment(_PyCaretExperiment):
                     "Invalid value for the normalize_method parameter, got "
                     f"{normalize_method}. Possible values are: {' '.join(norm_dict)}."
                 )
+
+        # Low variance ========================================= >>
+
+        if low_variance_threshold < 0:
+            raise ValueError(
+                "Invalid value for the ignore_low_variance parameter. "
+                f"The value should be >0, got {low_variance_threshold}."
+            )
+
+        variance_estimator = VarianceThreshold(low_variance_threshold)
 
         # PCA ====================================================== >>
 
@@ -1157,9 +1155,9 @@ class _TabularExperiment(_PyCaretExperiment):
         self.logger.info("Creating preprocessing pipeline...")
         self._internal_pipeline = InternalPipeline(
             steps=[
-                ("low_variance", variance_estimator),
                 ("impute", impute_estimator),
                 ("normalize", normalize_estimator),
+                ("low_variance", variance_estimator),
                 ("pca", pca_estimator),
             ]
         )
@@ -1788,7 +1786,7 @@ class _TabularExperiment(_PyCaretExperiment):
         #     pca=pca,
         #     pca_method_grid=pca_method_grid,
         #     pca_components_grid=pca_components_grid,
-        #     ignore_low_variance=ignore_low_variance,
+        #     low_variance_threshold=low_variance_threshold,
         #     combine_rare_levels=combine_rare_levels,
         #     rare_level_threshold_grid=rare_level_threshold_grid,
         #     numeric_bin_grid=numeric_bin_grid,

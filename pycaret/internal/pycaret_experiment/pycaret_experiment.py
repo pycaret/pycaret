@@ -415,11 +415,6 @@ class _PyCaretExperiment:
         return self.display_container.pop(-1) if pop else self.display_container[-1]
 
     @property
-    def dataset(self):
-        """Complete data set."""
-        return self.data
-
-    @property
     def train(self):
         """Training set."""
         return self.data[:self.idx[0]]

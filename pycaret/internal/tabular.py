@@ -109,7 +109,7 @@ def setup(
     pca: bool = False,
     pca_method: str = "linear",
     pca_components: Union[int, float] = 1.0,
-    ignore_low_variance: bool = False,
+    low_variance_threshold: float = 0,
     combine_rare_levels: bool = False,
     rare_level_threshold: float = 0.10,
     bin_numeric_features: Optional[List[str]] = None,
