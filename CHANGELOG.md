@@ -2,11 +2,23 @@
 All notable changes to this project will be documented in this file.
 <br/><br/>
 
-#### Release: PyCaret 2.3.2 | Release Date: XX XX, 2021 (SEVERAL BUGS FIXED)
-- `gain` and `lift` plot fixed in `pycaret.classification` module. Previously `y_pred` was passed instead of `y_true`. 
-- The Kolmogorov-Smirnov (or KS) plot added in the `plot_model` function under `pycaret.classification` module.
-- Partial Dependence Plot is now added in the `interpret_model` function under `pycaret.classification` and `pycaret.regression`.
-- shap value force plot for LightGBM in the `interpret_model` function was displayed as multiclass plot. Bug fixed now.
+#### Release: PyCaret 2.3.2 | Release Date: July 7th, 2021 (NEW FEATURES, BUG FIXES)
+- Implemented PDP, MSA and PFI plots in `interpret_model` - thanks to @IncubatorShokuhou (https://github.com/pycaret/pycaret/pull/1415)
+- Implemented  Kolmogorov-Smirnov (KS) plot in `plot_model` under `pycaret.classification` module
+- Fixed a typo "RVF" to "RBF" - thanks to @baturayo (https://github.com/pycaret/pycaret/pull/1220)
+- Readme & license updates and improvements
+- Fixed `remove_multicollinearity` considering categorical features
+- Fixed keyword issues with PyCaret's cuML wrappers
+- Improved performance of iterative imputation
+- Fixed `gain` and `lift` plots taking wrong arguments, creating misleading plots
+- `interpret_model` on LightGBM will now show a beeswarm plot
+- Multiple improvements to exception handling and documentation in `pycaret.persistence` (https://github.com/pycaret/pycaret/pull/1324)
+- `remove_perfect_collinearity` option will now be show in the `setup()` summary - thanks to @mjkanji (https://github.com/pycaret/pycaret/pull/1342)
+- Fixed `IterativeImputer` setting wrong float precision
+- Fixed custom grids in `tune_model` raising an exception when composed of lists
+- Improved documentation in `pycaret.clustering` - thanks to @susmitpy (https://github.com/pycaret/pycaret/pull/1372)
+- Added support for LightGBM CUDA version - thanks to @IncubatorShokuhou (https://github.com/pycaret/pycaret/pull/1396)
+- Exposed `address` in `get_data` for alternative data sources - thanks to @IncubatorShokuhou (https://github.com/pycaret/pycaret/pull/1416)
 <br/><br/><br/>
 
 #### Release: PyCaret 2.3.1 | Release Date: April 28, 2021 (SEVERAL BUGS FIXED)

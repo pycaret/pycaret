@@ -4,8 +4,8 @@
 
 import pandas as pd
 
-version_ = "2.3.1"
-nightly_version_ = "2.3.1"
+version_ = "2.3.2"
+nightly_version_ = "2.3.2"
 
 __version__ = version_
 
