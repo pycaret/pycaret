@@ -181,13 +181,12 @@ class RMSEMetricContainer(RegressionMetricContainer):
         def root_mean_squared_error(
             y_true, y_pred, *, sample_weight=None, multioutput="uniform_average"
         ):
-            return np.sqrt(
-                metrics.mean_squared_error(
-                    np.abs(y_true),
-                    np.abs(y_pred),
-                    sample_weight=sample_weight,
-                    multioutput=multioutput,
-                )
+            return metrics.mean_squared_error(
+                np.abs(y_true),
+                np.abs(y_pred),
+                sample_weight=sample_weight,
+                multioutput=multioutput,
+                squared=False
             )
 
         super().__init__(
