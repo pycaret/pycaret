@@ -178,11 +178,22 @@ class MSEMetricContainer(RegressionMetricContainer):
 
 class RMSEMetricContainer(RegressionMetricContainer):
     def __init__(self, globals_dict: dict) -> None:
+        def root_mean_squared_error(
+            y_true, y_pred, *, sample_weight=None, multioutput="uniform_average"
+        ):
+            return np.sqrt(
+                metrics.mean_squared_error(
+                    np.abs(y_true),
+                    np.abs(y_pred),
+                    sample_weight=sample_weight,
+                    multioutput=multioutput,
+                )
+            )
 
         super().__init__(
             id="rmse",
             name="RMSE",
-            score_func=metrics.mean_squared_error,
+            score_func=root_mean_squared_error,
             greater_is_better=False,
             args={"squared": False},
             scorer="neg_root_mean_squared_error",
