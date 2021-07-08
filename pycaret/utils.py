@@ -3,6 +3,7 @@
 # License: MIT
 
 import pandas as pd
+import functools
 
 version_ = "2.3.2"
 nightly_version_ = "2.3.2"
@@ -56,7 +57,10 @@ def check_metric(actual: pd.Series, prediction: pd.Series, metric: str, round: i
         ),
         **pycaret.containers.metrics.regression.get_all_metric_containers(globals_dict),
     }
-    metrics = {v.name: v.score_func for k, v in metric_containers.items()}
+    metrics = {
+        v.name: functools.partial(v.score_func, **(v.args or {}))
+        for k, v in metric_containers.items()
+    }
 
     # metric calculation starts here
 
