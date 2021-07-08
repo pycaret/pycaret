@@ -40,7 +40,7 @@ from sklearn.compose import ColumnTransformer
 import sklearn
 from sklearn.experimental import enable_iterative_imputer
 from sklearn.impute import SimpleImputer, IterativeImputer
-from sklearn.preprocessing import OrdinalEncoder
+from sklearn.preprocessing import OrdinalEncoder, PolynomialFeatures
 from sklearn.feature_selection import VarianceThreshold
 import secrets
 from pycaret.internal.utils import get_columns_to_stratify_by
@@ -756,7 +756,7 @@ class _TabularExperiment(_PyCaretExperiment):
         if type(polynomial_degree) is not int:
             raise TypeError("polynomial_degree must be an integer.")
 
-        # polynomial_features
+        # trigonometry_features
         if type(trigonometry_features) is not bool:
             raise TypeError("trigonometry_features only accepts True or False.")
 
@@ -1150,6 +1150,12 @@ class _TabularExperiment(_PyCaretExperiment):
                     f"{pca_method}. Possible values are: {' '.join(pca_dict)}."
                 )
 
+        # polynomial_features
+        if polynomial_features:
+            polynomial_features_estimator = PolynomialFeatures(degree=polynomial_degree, interaction_only=False, include_bias=True, order='C')
+        else:
+            polynomial_features_estimator = "passthrough"
+        
         # Create final preprocessing pipeline ====================== >>
 
         self.logger.info("Creating preprocessing pipeline...")
@@ -1159,6 +1165,7 @@ class _TabularExperiment(_PyCaretExperiment):
                 ("normalize", normalize_estimator),
                 ("low_variance", variance_estimator),
                 ("pca", pca_estimator),
+                ("polynomial_features", polynomial_features_estimator),
             ]
         )
 
