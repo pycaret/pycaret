@@ -1,64 +1,65 @@
-from pycaret.internal.pycaret_experiment.utils import MLUsecase
-from pycaret.internal.pycaret_experiment.pycaret_experiment import _PyCaretExperiment
-from pycaret.internal.meta_estimators import get_estimator_from_meta_estimator
-from pycaret.internal.pipeline import (
-    get_pipeline_estimator_label,
-    estimator_pipeline,
-    get_pipeline_fit_kwargs,
-    Pipeline as InternalPipeline,
-)
-from pycaret.internal.utils import (
-    normalize_custom_transformers,
-    get_model_name,
-)
-import pycaret.internal.patches.sklearn
-import pycaret.internal.patches.yellowbrick
-from pycaret.internal.logging import get_logger, create_logger
-from pycaret.internal.plots.yellowbrick import show_yellowbrick_plot
-from pycaret.internal.plots.helper import MatplotlibDefaultDPI
-from pycaret.internal.validation import *
-import pycaret.internal.preprocess
-import pycaret.internal.persistence
-import pandas as pd  # type ignore
-from pandas.io.formats.style import Styler
-import numpy as np  # type: ignore
-import os
-import time
-import random
 import gc
-from copy import deepcopy
-from sklearn.model_selection import BaseCrossValidator  # type: ignore
-from typing import List, Tuple, Any, Union, Optional, Dict
-import warnings
+import logging
+import os
+import random
+import secrets
+import time
 import traceback
+import warnings
+from copy import deepcopy
+from typing import Any, Dict, List, Optional, Tuple, Union
 from unittest.mock import patch
+
+import numpy as np  # type: ignore
+import pandas as pd  # type ignore
 import plotly.express as px  # type: ignore
 import plotly.graph_objects as go  # type: ignore
+import pycaret.internal.patches.sklearn
+import pycaret.internal.patches.yellowbrick
+import pycaret.internal.persistence
+import pycaret.internal.preprocess
 import scikitplot as skplt  # type: ignore
-import logging
-from sklearn.compose import ColumnTransformer
 import sklearn
+from pandas.io.formats.style import Styler
+from pycaret.internal.logging import create_logger, get_logger
+from pycaret.internal.meta_estimators import get_estimator_from_meta_estimator
+from pycaret.internal.pipeline import Pipeline as InternalPipeline
+from pycaret.internal.pipeline import (
+    estimator_pipeline,
+    get_pipeline_estimator_label,
+    get_pipeline_fit_kwargs,
+)
+from pycaret.internal.plots.helper import MatplotlibDefaultDPI
+from pycaret.internal.plots.yellowbrick import show_yellowbrick_plot
+from pycaret.internal.pycaret_experiment.pycaret_experiment import _PyCaretExperiment
+from pycaret.internal.pycaret_experiment.utils import MLUsecase
+from pycaret.internal.utils import (
+    get_columns_to_stratify_by,
+    get_model_name,
+    normalize_custom_transformers,
+)
+from pycaret.internal.validation import *
+from sklearn.compose import ColumnTransformer
+from sklearn.decomposition import PCA, IncrementalPCA, KernelPCA
 from sklearn.experimental import enable_iterative_imputer
-from sklearn.impute import SimpleImputer, IterativeImputer
-from sklearn.preprocessing import OrdinalEncoder
 from sklearn.feature_selection import VarianceThreshold
-import secrets
-from pycaret.internal.utils import get_columns_to_stratify_by
+from sklearn.impute import IterativeImputer, SimpleImputer
+from sklearn.model_selection import BaseCrossValidator  # type: ignore
 from sklearn.model_selection import (
-    train_test_split,
-    StratifiedKFold,
-    KFold,
     GroupKFold,
+    KFold,
+    StratifiedKFold,
     TimeSeriesSplit,
+    train_test_split,
 )
 from sklearn.preprocessing import (
-    StandardScaler,
-    MinMaxScaler,
     MaxAbsScaler,
+    MinMaxScaler,
+    OrdinalEncoder,
+    PolynomialFeatures,
     RobustScaler,
+    StandardScaler,
 )
-from sklearn.decomposition import PCA, KernelPCA, IncrementalPCA
-
 
 warnings.filterwarnings("ignore")
 LOGGER = get_logger()
@@ -380,13 +381,7 @@ class _TabularExperiment(_PyCaretExperiment):
         return
 
     def _set_up_mlflow(
-        self,
-        functions,
-        runtime,
-        log_profile,
-        profile_kwargs,
-        log_data,
-        display,
+        self, functions, runtime, log_profile, profile_kwargs, log_data, display,
     ) -> None:
         return
 
@@ -756,7 +751,7 @@ class _TabularExperiment(_PyCaretExperiment):
         if type(polynomial_degree) is not int:
             raise TypeError("polynomial_degree must be an integer.")
 
-        # polynomial_features
+        # trigonometry_features
         if type(trigonometry_features) is not bool:
             raise TypeError("trigonometry_features only accepts True or False.")
 
@@ -975,9 +970,7 @@ class _TabularExperiment(_PyCaretExperiment):
                     self.X_train,
                     self.X_test,
                 ) = temporal_train_test_split(
-                    y=self.y,
-                    X=self.X,
-                    fh=fh,  # if fh is provided it splits by it
+                    y=self.y, X=self.X, fh=fh,  # if fh is provided it splits by it
                 )
 
                 train_data, test_data = (
@@ -992,7 +985,9 @@ class _TabularExperiment(_PyCaretExperiment):
                 train, test = train_test_split(
                     self.data,
                     test_size=1 - train_size,
-                    stratify=get_columns_to_stratify_by(self.X, self.y, data_split_stratify),
+                    stratify=get_columns_to_stratify_by(
+                        self.X, self.y, data_split_stratify
+                    ),
                     random_state=self.seed,
                     shuffle=data_split_shuffle,
                 )
@@ -1060,8 +1055,7 @@ class _TabularExperiment(_PyCaretExperiment):
 
                 # Define sklearn estimators
                 num_imputer = SimpleImputer(
-                    strategy=num_dict[numeric_imputation],
-                    fill_value=0,
+                    strategy=num_dict[numeric_imputation], fill_value=0,
                 )
                 cat_imputer = SimpleImputer(
                     strategy=cat_dict[categorical_imputation],
@@ -1150,6 +1144,17 @@ class _TabularExperiment(_PyCaretExperiment):
                     f"{pca_method}. Possible values are: {' '.join(pca_dict)}."
                 )
 
+        # polynomial_features
+        if polynomial_features:
+            polynomial_features_estimator = PolynomialFeatures(
+                degree=polynomial_degree,
+                interaction_only=False,
+                include_bias=True,
+                order="C",
+            )
+        else:
+            polynomial_features_estimator = "passthrough"
+
         # Create final preprocessing pipeline ====================== >>
 
         self.logger.info("Creating preprocessing pipeline...")
@@ -1159,6 +1164,7 @@ class _TabularExperiment(_PyCaretExperiment):
                 ("normalize", normalize_estimator),
                 ("low_variance", variance_estimator),
                 ("pca", pca_estimator),
+                ("polynomial_features", polynomial_features_estimator),
             ]
         )
 
@@ -1246,7 +1252,6 @@ class _TabularExperiment(_PyCaretExperiment):
         #         )
         #     else:
         #         imputation_classifier_name = type(self.imputation_classifier).__name__
-
 
         # # transformation method strategy
         # trans_dict = {"yeo-johnson": "yj", "quantile": "quantile"}
@@ -2038,8 +2043,8 @@ class _TabularExperiment(_PyCaretExperiment):
             )
 
         def is_tree(e):
-            from sklearn.tree import BaseDecisionTree
             from sklearn.ensemble._forest import BaseForest
+            from sklearn.tree import BaseDecisionTree
 
             if "final_estimator" in e.get_params():
                 e = e.final_estimator
@@ -2145,8 +2150,8 @@ class _TabularExperiment(_PyCaretExperiment):
         display.move_progress()
 
         # yellowbrick workaround start
-        import yellowbrick.utils.types
         import yellowbrick.utils.helpers
+        import yellowbrick.utils.types
 
         # yellowbrick workaround end
 
@@ -2605,9 +2610,7 @@ class _TabularExperiment(_PyCaretExperiment):
                             hover_data=d.columns,
                         )
 
-                        fig.update_layout(
-                            height=600 * scale,
-                        )
+                        fig.update_layout(height=600 * scale,)
 
                         plot_filename = f"{plot_name}.html"
 
@@ -2890,8 +2893,8 @@ class _TabularExperiment(_PyCaretExperiment):
 
                     def boundary():
 
-                        from sklearn.preprocessing import StandardScaler
                         from sklearn.decomposition import PCA
+                        from sklearn.preprocessing import StandardScaler
                         from yellowbrick.contrib.classifier import DecisionViz
 
                         data_X_transformed = data_X.select_dtypes(include="float32")
@@ -3078,9 +3081,9 @@ class _TabularExperiment(_PyCaretExperiment):
 
                     def tree():
 
-                        from sklearn.tree import plot_tree
                         from sklearn.base import is_classifier
                         from sklearn.model_selection import check_cv
+                        from sklearn.tree import plot_tree
 
                         is_stacked_model = False
                         is_ensemble_of_forests = False
@@ -3485,9 +3488,9 @@ class _TabularExperiment(_PyCaretExperiment):
 
                     def dimension():
 
-                        from yellowbrick.features import RadViz
-                        from sklearn.preprocessing import StandardScaler
                         from sklearn.decomposition import PCA
+                        from sklearn.preprocessing import StandardScaler
+                        from yellowbrick.features import RadViz
 
                         data_X_transformed = data_X.select_dtypes(include="float32")
                         self.logger.info("Fitting StandardScaler()")
@@ -3671,7 +3674,7 @@ class _TabularExperiment(_PyCaretExperiment):
         self.logger.info(f"evaluate_model({function_params_str})")
 
         from ipywidgets import widgets
-        from ipywidgets.widgets import interact, fixed
+        from ipywidgets.widgets import fixed, interact
 
         if not fit_kwargs:
             fit_kwargs = {}
