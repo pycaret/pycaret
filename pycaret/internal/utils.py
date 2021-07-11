@@ -406,7 +406,7 @@ def _calculate_metric(
         except:
             calculated_metric = 0
 
-    return (display_name, calculated_metric)
+    return display_name, calculated_metric
 
 
 def normalize_custom_transformers(
