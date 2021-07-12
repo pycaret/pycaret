@@ -738,9 +738,6 @@ class _TabularExperiment(_PyCaretExperiment):
         if type(log_experiment) is not bool:
             raise TypeError("log_experiment parameter only accepts True or False.")
 
-        print(type, loggers)
-        print(isinstance(loggers[0], ExperimentLogger))
-
         # loggers
         if not (
             isinstance(loggers, list)
