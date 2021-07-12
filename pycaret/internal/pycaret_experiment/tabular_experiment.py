@@ -1,6 +1,7 @@
 from pycaret.internal.pycaret_experiment.utils import MLUsecase
 from pycaret.internal.pycaret_experiment.pycaret_experiment import _PyCaretExperiment
 from pycaret.internal.meta_estimators import get_estimator_from_meta_estimator
+from pycaret.internal.experiment_logger.experiment_logger import ExperimentLogger
 from pycaret.internal.experiment_logger import MLFlowLogger
 from pycaret.internal.pipeline import (
     get_pipeline_estimator_label,
@@ -93,8 +94,7 @@ class _TabularExperiment(_PyCaretExperiment):
     def _get_cv_splitter(
         self, fold, ml_usecase: Optional[MLUsecase] = None
     ) -> BaseCrossValidator:
-        """Returns the cross validator object used to perform cross validation
-        """
+        """Returns the cross validator object used to perform cross validation"""
         if not ml_usecase:
             ml_usecase = self._ml_usecase
 
@@ -169,6 +169,8 @@ class _TabularExperiment(_PyCaretExperiment):
         URI=None,
         display: Optional[Display] = None,
     ):
+        if not self.logging_param:
+            return
         for logger in self.loggers.values():
             logger.log_model(
                 experiment=self,
@@ -215,6 +217,8 @@ class _TabularExperiment(_PyCaretExperiment):
         log_data: bool,
         display: Optional[Display],
     ) -> None:
+        if not self.logging_param:
+            return
         for logger in self.loggers.values():
             logger.setup_logging(
                 self,
@@ -309,6 +313,7 @@ class _TabularExperiment(_PyCaretExperiment):
         session_id: Optional[int] = None,
         log_experiment: bool = False,
         experiment_name: Optional[str] = None,
+        loggers: Optional[List[ExperimentLogger]] = None,
         log_plots: Union[bool, list] = False,
         log_profile: bool = False,
         log_data: bool = False,
@@ -732,6 +737,18 @@ class _TabularExperiment(_PyCaretExperiment):
         # log_experiment
         if type(log_experiment) is not bool:
             raise TypeError("log_experiment parameter only accepts True or False.")
+
+        print(type, loggers)
+        print(isinstance(loggers[0], ExperimentLogger))
+
+        # loggers
+        if not (
+            isinstance(loggers, list)
+            and all(isinstance(x, ExperimentLogger) for x in loggers)
+        ):
+            raise TypeError(
+                "loggers parameter must be a list of ExperimentLogger instances."
+            )
 
         # log_profile
         if type(log_profile) is not bool:
@@ -1307,7 +1324,7 @@ class _TabularExperiment(_PyCaretExperiment):
 
         # create logging parameter
         self.logging_param = log_experiment
-        self.loggers = [MLFlowLogger()] if self.logging_param else []
+        self.loggers = [MLFlowLogger()] if not loggers else loggers
         self.loggers = {logger.id: logger for logger in self.loggers}
 
         # create an empty log_plots_param
@@ -1644,7 +1661,12 @@ class _TabularExperiment(_PyCaretExperiment):
         runtime = np.array(runtime_end - runtime_start).round(2)
 
         self._setup_loggers(
-            functions, runtime, log_profile, profile_kwargs, log_data, display,
+            functions,
+            runtime,
+            log_profile,
+            profile_kwargs,
+            log_data,
+            display,
         )
 
         self._setup_ran = True
@@ -2414,7 +2436,9 @@ class _TabularExperiment(_PyCaretExperiment):
                             hover_data=d.columns,
                         )
 
-                        fig.update_layout(height=600 * scale,)
+                        fig.update_layout(
+                            height=600 * scale,
+                        )
 
                         plot_filename = f"{plot_name}.html"
 

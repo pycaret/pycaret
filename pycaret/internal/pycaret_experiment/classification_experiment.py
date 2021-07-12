@@ -2,6 +2,7 @@ from pycaret.internal.pycaret_experiment.utils import highlight_setup, MLUsecase
 from pycaret.internal.pycaret_experiment.supervised_experiment import (
     _SupervisedExperiment,
 )
+from pycaret.internal.experiment_logger.experiment_logger import ExperimentLogger
 from pycaret.internal.utils import color_df
 import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
@@ -281,6 +282,7 @@ class ClassificationExperiment(_SupervisedExperiment):
         session_id: Optional[int] = None,
         log_experiment: bool = False,
         experiment_name: Optional[str] = None,
+        loggers: Optional[List[ExperimentLogger]] = None,
         log_plots: Union[bool, list] = False,
         log_profile: bool = False,
         log_data: bool = False,
@@ -813,6 +815,7 @@ class ClassificationExperiment(_SupervisedExperiment):
             session_id=session_id,
             log_experiment=log_experiment,
             experiment_name=experiment_name,
+            loggers=loggers,
             log_plots=log_plots,
             log_profile=log_profile,
             log_data=log_data,
