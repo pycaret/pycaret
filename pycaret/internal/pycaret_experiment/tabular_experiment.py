@@ -739,7 +739,7 @@ class _TabularExperiment(_PyCaretExperiment):
             raise TypeError("log_experiment parameter only accepts True or False.")
 
         # loggers
-        if not (
+        if loggers is not None and not (
             isinstance(loggers, list)
             and all(isinstance(x, ExperimentLogger) for x in loggers)
         ):
