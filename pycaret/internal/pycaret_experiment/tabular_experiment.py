@@ -1103,13 +1103,15 @@ class _TabularExperiment(_PyCaretExperiment):
 
         # Low variance ========================================= >>
 
-        if low_variance_threshold < 0:
-            raise ValueError(
-                "Invalid value for the ignore_low_variance parameter. "
-                f"The value should be >0, got {low_variance_threshold}."
-            )
+        variance_estimator = None
+        if low_variance_threshold:
+            if low_variance_threshold < 0:
+                raise ValueError(
+                    "Invalid value for the ignore_low_variance parameter. "
+                    f"The value should be >0, got {low_variance_threshold}."
+                )
 
-        variance_estimator = VarianceThreshold(low_variance_threshold)
+            variance_estimator = VarianceThreshold(low_variance_threshold)
 
         # PCA ====================================================== >>
 
@@ -1144,7 +1146,8 @@ class _TabularExperiment(_PyCaretExperiment):
                     f"{pca_method}. Possible values are: {' '.join(pca_dict)}."
                 )
 
-        # polynomial_features
+        # Polynomial features  ===================================== >>
+
         if polynomial_features:
             polynomial_features_estimator = PolynomialFeatures(
                 degree=polynomial_degree,
@@ -1153,7 +1156,7 @@ class _TabularExperiment(_PyCaretExperiment):
                 order="C",
             )
         else:
-            polynomial_features_estimator = "passthrough"
+            polynomial_features_estimator = None
 
         # Create final preprocessing pipeline ====================== >>
 
@@ -1167,6 +1170,13 @@ class _TabularExperiment(_PyCaretExperiment):
                 ("polynomial_features", polynomial_features_estimator),
             ]
         )
+
+        # Custom transformers ====================================== >>
+
+        custom_estimators = None
+        if custom_pipeline:
+            for name, estimator in normalize_custom_transformers(custom_pipeline):
+                self._internal_pipeline.steps.append((name, estimator))
 
         self.logger.info(f"Internal pipeline: {self._internal_pipeline}")
 
@@ -1261,11 +1271,6 @@ class _TabularExperiment(_PyCaretExperiment):
         # apply_binning_pass = False if bin_numeric_features is None else True
         # features_to_bin_pass = bin_numeric_features or []
         #
-        # # trignometry
-        # trigonometry_features_pass = (
-        #     ["sin", "cos", "tan"] if trigonometry_features else []
-        # )
-        #
         # # group features
         # # =============#
         #
@@ -1338,7 +1343,7 @@ class _TabularExperiment(_PyCaretExperiment):
         # )
         #
         # display_dtypes_pass = False if silent else True
-        #
+
         # Set up GPU usage ========================================= >>
 
         cuml_version = None
@@ -1450,44 +1455,9 @@ class _TabularExperiment(_PyCaretExperiment):
         #     fix_perfect_removed_columns + fix_multi_removed_columns
         # )
 
-        # display.move_progress()
-        # self.logger.info("Preprocessing pipeline created successfully")
-
-        # try:
-        #     res_type = [
-        #         "quit",
-        #         "Quit",
-        #         "exit",
-        #         "EXIT",
-        #         "q",
-        #         "Q",
-        #         "e",
-        #         "E",
-        #         "QUIT",
-        #         "Exit",
-        #     ]
-        #     res = dtypes.response
-        #
-        #     if res in res_type:
-        #         sys.exit(
-        #             "(Process Exit): setup has been interupted with user command 'quit'. setup must rerun."
-        #         )
-        #
-        # except:
-        #     self.logger.error(
-        #         "(Process Exit): setup has been interupted with user command 'quit'. setup must rerun."
-        #     )
-        #
-        # if not preprocess:
-        #     self.prep_pipe.steps = self.prep_pipe.steps[:1]
-
-        # """
-        # preprocessing ends here
-        # """
-
-        # # reset pandas option
-        # pd.reset_option("display.max_rows")
-        # pd.reset_option("display.max_columns")
+        # Reset pandas option
+        pd.reset_option("display.max_rows")
+        pd.reset_option("display.max_columns")
 
         self.logger.info("Creating global containers")
 
@@ -1521,11 +1491,6 @@ class _TabularExperiment(_PyCaretExperiment):
         else:
             self.log_plots_param = log_plots
 
-        # # add custom transformers to prep pipe
-        # if custom_pipeline:
-        #     custom_steps = normalize_custom_transformers(custom_pipeline)
-        #     self._internal_pipeline.extend(custom_steps)
-        #
         # # create a fix_imbalance_param and fix_imbalance_method_param
         # self.fix_imbalance_param = fix_imbalance and preprocess
         # self.fix_imbalance_method_param = fix_imbalance_method
@@ -1552,24 +1517,6 @@ class _TabularExperiment(_PyCaretExperiment):
         #         raise ValueError(f"Step named {x[0]} already present in pipeline.")
         #
         # self._internal_pipeline = self._make_internal_pipeline(self._internal_pipeline)
-
-        # display.move_progress()
-        #
-        # display.update_monitor(1, "Preprocessing Data")
-        # display.display_monitor()
-
-        # self._split_data(
-        #     X_before_preprocess,
-        #     y_before_preprocess,
-        #     target,
-        #     train_data,
-        #     test_data,
-        #     train_size,
-        #     data_split_shuffle,
-        #     dtypes,
-        #     display,
-        #     fh,
-        # )
 
         if not self._is_unsupervised():
             fold_random_state = self.seed if self.fold_shuffle_param else None

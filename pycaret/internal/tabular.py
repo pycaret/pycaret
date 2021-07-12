@@ -27,7 +27,6 @@ from pycaret.internal.utils import (
     true_warm_start,
     can_early_stop,
     infer_ml_usecase,
-    _get_columns_to_stratify_by,
 )
 import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick

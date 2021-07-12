@@ -276,10 +276,11 @@ def setup(
         Ignored when ``pca`` is not True.
 
 
-    low_variance_threshold: float, default = 0
+    low_variance_threshold: float or None, default = 0
         Remove features with a training-set variance lower than the provided
         threshold. The default is to keep all features with non-zero variance,
-        i.e. remove the features that have the same value in all samples.
+        i.e. remove the features that have the same value in all samples. If
+        None, skip this treansformation step.
 
     
     combine_rare_levels: bool, default = False
@@ -346,19 +347,6 @@ def setup(
         Degree of polynomial features. For example, if an input sample is two dimensional 
         and of the form [a, b], the polynomial features with degree = 2 are: 
         [1, a, b, a^2, ab, b^2]. Ignored when ``polynomial_features`` is not True.
-
-
-    trigonometry_features: bool, default = False
-        When set to True, new features are derived using existing numeric features.
-
-
-    polynomial_threshold: float, default = 0.1
-        When ``polynomial_features`` or ``trigonometry_features`` is True, new features
-        are derived from the existing numeric features. This may sometimes result in too 
-        large feature space. polynomial_threshold parameter can be used to deal with this  
-        problem. It does so by using combination of Random Forest, AdaBoost and Linear 
-        correlation. All derived features that falls within the percentile distribution 
-        are kept and rest of the features are removed.
 
 
     group_features: list or list of list, default = None
@@ -607,8 +595,6 @@ def setup(
         cluster_iter=cluster_iter,
         polynomial_features=polynomial_features,
         polynomial_degree=polynomial_degree,
-        trigonometry_features=trigonometry_features,
-        polynomial_threshold=polynomial_threshold,
         group_features=group_features,
         group_names=group_names,
         feature_selection=feature_selection,

@@ -20,6 +20,8 @@ Changes:
   or fraction of components.
 - `remove_low_variance` is deprecated. Use `low_variance_threshold` instead. Now
   works for all numerical columns (is done after encoding).
+- Remove `trigonometry_features` parameter.
+- Removed `polynomial_threshold` parameter.
 
 
 
@@ -29,3 +31,4 @@ Preprocessing steps:
 - normalization: DONE
 - low variance: DONE
 - pca: DONE
+- polynomial features: DONE

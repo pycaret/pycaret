@@ -237,10 +237,11 @@ def setup(
         Ignored when ``pca`` is not True.
 
 
-    low_variance_threshold: float, default = 0
+    low_variance_threshold: float or None, default = 0
         Remove features with a training-set variance lower than the provided
         threshold. The default is to keep all features with non-zero variance,
-        i.e. remove the features that have the same value in all samples.
+        i.e. remove the features that have the same value in all samples. If
+        None, skip this treansformation step.
 
     
     combine_rare_levels: bool, default = False
@@ -309,10 +310,9 @@ def setup(
           https://github.com/rapidsai/cuml
 
 
-    custom_pipeline: (str, transformer) or list of (str, transformer), default = None
-        When passed, will append the custom transformers in the preprocessing pipeline
-        and are applied on each CV fold separately and on the final fit. All the custom
-        transformations are applied before pycaret's internal transformations. 
+    custom_pipeline: (str, transformer), list of (str, transformer) or dict, default = None
+        Addidiotnal custom transformers. If passed, they are applied to the
+        pipeline last, after all the build-in transformers.
 
 
     html: bool, default = True
