@@ -39,6 +39,7 @@ from pycaret.internal.utils import (
     get_model_name,
     normalize_custom_transformers,
 )
+
 from pycaret.internal.validation import *
 from sklearn.compose import ColumnTransformer
 from sklearn.decomposition import PCA, IncrementalPCA, KernelPCA
@@ -58,6 +59,8 @@ from sklearn.preprocessing import (
     MinMaxScaler,
     OrdinalEncoder,
     PolynomialFeatures,
+    PowerTransformer,
+    QuantileTransformer,
     RobustScaler,
     StandardScaler,
 )
@@ -382,7 +385,13 @@ class _TabularExperiment(_PyCaretExperiment):
         return
 
     def _set_up_mlflow(
-        self, functions, runtime, log_profile, profile_kwargs, log_data, display,
+        self,
+        functions,
+        runtime,
+        log_profile,
+        profile_kwargs,
+        log_data,
+        display,
     ) -> None:
         return
 
@@ -971,7 +980,9 @@ class _TabularExperiment(_PyCaretExperiment):
                     self.X_train,
                     self.X_test,
                 ) = temporal_train_test_split(
-                    y=self.y, X=self.X, fh=fh,  # if fh is provided it splits by it
+                    y=self.y,
+                    X=self.X,
+                    fh=fh,  # if fh is provided it splits by it
                 )
 
                 train_data, test_data = (
@@ -1056,7 +1067,8 @@ class _TabularExperiment(_PyCaretExperiment):
 
                 # Define sklearn estimators
                 num_imputer = SimpleImputer(
-                    strategy=num_dict[numeric_imputation], fill_value=0,
+                    strategy=num_dict[numeric_imputation],
+                    fill_value=0,
                 )
                 cat_imputer = SimpleImputer(
                     strategy=cat_dict[categorical_imputation],
@@ -1106,6 +1118,28 @@ class _TabularExperiment(_PyCaretExperiment):
 
             self._internal_pipeline.steps.append(("normalize", normalize_estimator))
 
+        # transformation ========================================= >>
+
+        if transformation:
+            if transformation_method == "yeo-johnson":
+                transformation_estimator = PowerTransformer(
+                    method="yeo-johnson", standardize=True, copy=True
+                )
+            elif transformation_method == "quantile":
+                transformation_estimator = QuantileTransformer(
+                    random_state=self.seed,
+                    output_distribution="normal",
+                )
+            else:
+                raise ValueError(
+                    "Invalid value for the transformation_method parameter. "
+                    "The value should be either yeo-johnson or quantile, "
+                    f"got {transformation_method}."
+                )
+
+            self._internal_pipeline.steps.append(
+                ("transformation", transformation_estimator)
+            )
         # Low variance ========================================= >>
 
         if low_variance_threshold:
@@ -2564,7 +2598,9 @@ class _TabularExperiment(_PyCaretExperiment):
                             hover_data=d.columns,
                         )
 
-                        fig.update_layout(height=600 * scale,)
+                        fig.update_layout(
+                            height=600 * scale,
+                        )
 
                         plot_filename = f"{plot_name}.html"
 
