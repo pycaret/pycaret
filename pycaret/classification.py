@@ -382,7 +382,7 @@ def setup(
         importance techniques. Other possible value is 'boruta' which uses boruta
         algorithm for feature selection. 
 
-    
+
     feature_interaction: bool, default = False 
         When set to True, new features are created by interacting (a * b) all the 
         numeric variables in the dataset. This feature is not scalable and may not

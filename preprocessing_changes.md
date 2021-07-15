@@ -32,3 +32,5 @@ Preprocessing steps:
 - low variance: DONE
 - pca: DONE
 - polynomial features: DONE
+- fix imbalance: DONE
+

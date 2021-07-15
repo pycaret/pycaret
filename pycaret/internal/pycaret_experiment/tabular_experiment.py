@@ -20,6 +20,7 @@ import pycaret.internal.persistence
 import pycaret.internal.preprocess
 import scikitplot as skplt  # type: ignore
 import sklearn
+from imblearn.over_sampling import SMOTE
 from pandas.io.formats.style import Styler
 from pycaret.internal.logging import create_logger, get_logger
 from pycaret.internal.meta_estimators import get_estimator_from_meta_estimator
@@ -1083,9 +1084,11 @@ class _TabularExperiment(_PyCaretExperiment):
                     f"{imputation_type}. Possible values are: simple, iterative."
                 )
 
+            # Start with the internal pipeline
+            self._internal_pipeline = InternalPipeline([("impute", impute_estimator)])
+
         # Normalization ============================================ >>
 
-        normalize_estimator = None
         if normalize:
             norm_dict = {
                 "zscore": StandardScaler(),
@@ -1101,21 +1104,23 @@ class _TabularExperiment(_PyCaretExperiment):
                     f"{normalize_method}. Possible values are: {' '.join(norm_dict)}."
                 )
 
+            self._internal_pipeline.steps.append(("normalize", normalize_estimator))
+
         # Low variance ========================================= >>
 
-        variance_estimator = None
         if low_variance_threshold:
             if low_variance_threshold < 0:
                 raise ValueError(
                     "Invalid value for the ignore_low_variance parameter. "
                     f"The value should be >0, got {low_variance_threshold}."
                 )
+            else:
+                variance_estimator = VarianceThreshold(low_variance_threshold)
 
-            variance_estimator = VarianceThreshold(low_variance_threshold)
+            self._internal_pipeline.steps.append(("low_variance", variance_estimator))
 
         # PCA ====================================================== >>
 
-        pca_estimator = None
         if pca:
             if pca_components <= 0:
                 raise ValueError(
@@ -1146,39 +1151,43 @@ class _TabularExperiment(_PyCaretExperiment):
                     f"{pca_method}. Possible values are: {' '.join(pca_dict)}."
                 )
 
+            self._internal_pipeline.steps.append(("pca", pca_estimator))
+
         # Polynomial features  ===================================== >>
 
         if polynomial_features:
-            polynomial_features_estimator = PolynomialFeatures(
+            polynomial = PolynomialFeatures(
                 degree=polynomial_degree,
                 interaction_only=False,
                 include_bias=True,
                 order="C",
             )
-        else:
-            polynomial_features_estimator = None
+            self._internal_pipeline.steps.append(("polynomial_features", polynomial))
 
-        # Create final preprocessing pipeline ====================== >>
+        # Balance the dataset ======================================= >>
 
-        self.logger.info("Creating preprocessing pipeline...")
-        self._internal_pipeline = InternalPipeline(
-            steps=[
-                ("impute", impute_estimator),
-                ("normalize", normalize_estimator),
-                ("low_variance", variance_estimator),
-                ("pca", pca_estimator),
-                ("polynomial_features", polynomial_features_estimator),
-            ]
-        )
+        if fix_imbalance:
+            if fix_imbalance_method is None:
+                balance_estimator = SMOTE()
+            elif not hasattr(fix_imbalance_method, "fit_resample"):
+                raise ValueError(
+                    "Invalid value for the fix_imbalance_method parameter. "
+                    "The provided value must be a imblearn estimator, got "
+                    f"{fix_imbalance_method.__class__.__name_}."
+                )
+            else:
+                balance_estimator = fix_imbalance_method
+
+            self._internal_pipeline.steps.append(("balance", balance_estimator))
 
         # Custom transformers ====================================== >>
 
-        custom_estimators = None
         if custom_pipeline:
             for name, estimator in normalize_custom_transformers(custom_pipeline):
                 self._internal_pipeline.steps.append((name, estimator))
 
-        self.logger.info(f"Internal pipeline: {self._internal_pipeline}")
+        self.logger.info(f"Finsihed creating pipeline.")
+        self.logger.info(f"Preprocessing pipeline: {self._internal_pipeline}")
 
         # self.iterative_imputation_iters_param = iterative_imputation_iters
         #
@@ -1341,8 +1350,6 @@ class _TabularExperiment(_PyCaretExperiment):
         # cardinal_features_pass = (
         #     high_cardinality_features if apply_cardinality_reduction_pass else []
         # )
-        #
-        # display_dtypes_pass = False if silent else True
 
         # Set up GPU usage ========================================= >>
 
