@@ -1,12 +1,9 @@
 # Module: internal.persistence
 # Author: Moez Ali <moez.ali@queensu.ca> and Antoni Baum (Yard1) <antoni.baum@protonmail.com>
 # License: MIT
-
 import gc
 from typing import Dict, Optional
-
 from sklearn.pipeline import Pipeline
-
 from pycaret.internal.utils import get_logger
 
 
@@ -73,7 +70,7 @@ def deploy_model(
         Dictionary of applicable authentication tokens.
 
         When platform = 'aws':
-        {'bucket' : 'Name of Bucket on S3'}
+        {'bucket' : 'Name of Bucket on S3', 'path': folder name under the bucket}
 
         When platform = 'gcp':
         {'project': 'gcp_pycaret', 'bucket' : 'pycaret-test'}
@@ -152,7 +149,10 @@ def deploy_model(
         logger.info("Initializing S3 client")
         s3 = boto3.client("s3")
         filename = f"{model_name}.pkl"
-        key = f"{model_name}.pkl"
+        if "path" in authentication:
+            key = os.path.join(authentication.get("path"), f"{model_name}.pkl")
+        else:
+            key = f"{model_name}.pkl"
         bucket_name = authentication.get("bucket")
 
         if bucket_name is None:
