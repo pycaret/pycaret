@@ -46,7 +46,7 @@ class _EnsembleForecasterWithVoting(_HeterogenousEnsembleForecaster):
         self.forecasters = forecasters
         self.method = method
         self.weights = weights
-        super(EnsembleForecaster, self).__init__(
+        super(_EnsembleForecasterWithVoting, self).__init__(
             forecasters=self.forecasters, n_jobs=n_jobs
         )
 
