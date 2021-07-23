@@ -56,54 +56,59 @@ warnings.filterwarnings("ignore")
 LOGGER = get_logger()
 
 
-def _get_cv_n_folds(y, cv) -> int:
-    """
-    Get the number of folds for time series
-    cv must be of type SlidingWindowSplitter or ExpandingWindowSplitter
-    TODO: Fix this inside sktime and replace this with sktime method [1]
+# def _get_cv_n_folds(y, cv) -> int:
+#     """
+#     Get the number of folds for time series
+#     cv must be of type SlidingWindowSplitter or ExpandingWindowSplitter
+#     TODO: Fix this inside sktime and replace this with sktime method [1]
 
-    Ref:
-    [1] https://github.com/alan-turing-institute/sktime/issues/632
-    """
-    n_folds = int((len(y) - cv.initial_window) / cv.step_length)
-    return n_folds
+#     Ref:
+#     [1] https://github.com/alan-turing-institute/sktime/issues/632
+#     """
+#     n_folds = int((len(y) - cv.initial_window) / cv.step_length)
+#     return n_folds
 
 
 def get_folds(cv, y) -> Generator[Tuple[pd.Series, pd.Series], None, None]:
     """
     Returns the train and test indices for the time series data
     """
-    n_folds = _get_cv_n_folds(y, cv)
-    for i in np.arange(n_folds):
-        if i == 0:
-            # Initial Split in sktime
-            train_initial, test_initial = cv.split_initial(y)
-            y_train_initial = y.iloc[train_initial]
-            y_test_initial = y.iloc[test_initial]  # Includes all entries after y_train
+    # n_folds = _get_cv_n_folds(y, cv)
+    # for i in np.arange(n_folds):
+    #     if i == 0:
+    #         # Initial Split in sktime
+    #         train_initial, test_initial = cv.split_initial(y)
+    #         y_train_initial = y.iloc[train_initial]
+    #         y_test_initial = y.iloc[test_initial]  # Includes all entries after y_train
 
-            rolling_y_train = y_train_initial.copy(deep=True)
-            y_test = y_test_initial.iloc[
-                np.arange(len(cv.fh))
-            ]  # filter to only what is needed
-        else:
-            # Subsequent Splits in sktime
-            for j, (train, test) in enumerate(cv.split(y_test_initial)):
-                if j == i - 1:
-                    y_train = y_test_initial.iloc[train]
-                    y_test = y_test_initial.iloc[test]
+    #         rolling_y_train = y_train_initial.copy(deep=True)
+    #         y_test = y_test_initial.iloc[
+    #             np.arange(len(cv.fh))
+    #         ]  # filter to only what is needed
+    #     else:
+    #         # Subsequent Splits in sktime
+    #         for j, (train, test) in enumerate(cv.split(y_test_initial)):
+    #             if j == i - 1:
+    #                 y_train = y_test_initial.iloc[train]
+    #                 y_test = y_test_initial.iloc[test]
 
-                    rolling_y_train = pd.concat([rolling_y_train, y_train])
-                    rolling_y_train = rolling_y_train[
-                        ~rolling_y_train.index.duplicated(keep="first")
-                    ]
+    #                 rolling_y_train = pd.concat([rolling_y_train, y_train])
+    #                 rolling_y_train = rolling_y_train[
+    #                     ~rolling_y_train.index.duplicated(keep="first")
+    #                 ]
 
-                    rolling_y_train = rolling_y_train.asfreq(
-                        y_train.index.freqstr
-                    )  # Ensure freq value is preserved, otherwise when predicting raise error
+    #                 rolling_y_train = rolling_y_train.asfreq(
+    #                     y_train.index.freqstr
+    #                 )  # Ensure freq value is preserved, otherwise when predicting raise error
 
-                    if isinstance(cv, SlidingWindowSplitter):
-                        rolling_y_train = rolling_y_train.iloc[-cv.initial_window :]
-        yield rolling_y_train.index, y_test.index
+    #                 if isinstance(cv, SlidingWindowSplitter):
+    #                     rolling_y_train = rolling_y_train.iloc[-cv.initial_window :]
+    #     yield rolling_y_train.index, y_test.index
+
+    # https://github.com/alan-turing-institute/sktime/blob/main/examples/window_splitters.ipynb
+    for train_indices, test_indices in cv.split(y):
+        # print(f"Train Indices: {train_indices}, Test Indices: {test_indices}")
+        yield train_indices, test_indices
 
 
 def cross_validate_ts(
@@ -358,7 +363,8 @@ class BaseGridSearch:
         def evaluate_candidates(candidate_params):
             candidate_params = list(candidate_params)
             n_candidates = len(candidate_params)
-            n_splits = _get_cv_n_folds(y, cv)
+            # n_splits = _get_cv_n_folds(y, cv)
+            n_splits = cv.get_n_splits(y)
 
             if self.verbose > 0:
                 print(  # noqa
@@ -420,7 +426,8 @@ class BaseGridSearch:
         self.scorer_ = scorers
 
         self.cv_results_ = results
-        self.n_splits_ = _get_cv_n_folds(y, cv)
+        # self.n_splits_ = _get_cv_n_folds(y, cv)
+        self.n_splits_ = cv.get_n_splits(y)
 
         self._is_fitted = True
         return self
@@ -1331,8 +1338,11 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         MONITOR UPDATE STARTS
         """
 
+        # display.update_monitor(
+        #     1, f"Fitting {_get_cv_n_folds(data_y, cv)} Folds",
+        # )
         display.update_monitor(
-            1, f"Fitting {_get_cv_n_folds(data_y, cv)} Folds",
+            1, f"Fitting {cv.get_n_splits(data_y)} Folds",
         )
         display.display_monitor()
         """
@@ -1410,7 +1420,8 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
             model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
         else:
-            model_fit_time /= _get_cv_n_folds(data_y, cv)
+            # model_fit_time /= _get_cv_n_folds(data_y, cv)
+            model_fit_time /= cv.get_n_splits(data_y)
 
         # return model, model_fit_time, model_results, avgs_dict
         return model, model_fit_time, model_results, avgs_dict
@@ -2473,7 +2484,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         feature: str, default = None
             Feature to check correlation with. This parameter is only required when ``plot``
-            type is 'correlation' or 'pdp'. When set to None, it uses the first column from 
+            type is 'correlation' or 'pdp'. When set to None, it uses the first column from
             the dataset.
 
 
@@ -3240,16 +3251,16 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 fold_generator = ExpandingWindowSplitter(
                     initial_window=initial_window,
                     step_length=step_length,
-                    window_length=window_length,
+                    # window_length=window_length,
                     fh=self.fh,
                     start_with_window=True,
                 )
 
             if fold_strategy == "sliding":
                 fold_generator = SlidingWindowSplitter(
-                    initial_window=initial_window,
+                    # initial_window=initial_window,
                     step_length=step_length,
-                    window_length=window_length,
+                    window_length=initial_window,
                     fh=self.fh,
                     start_with_window=True,
                 )
