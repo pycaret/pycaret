@@ -15,10 +15,6 @@ boto3
 azure-storage-blob
 google-cloud-storage
 
-# for testing
-pytest
-moto
-
 #hpbandster
 #ConfigSpace
 #pdpbox

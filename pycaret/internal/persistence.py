@@ -70,7 +70,7 @@ def deploy_model(
         Dictionary of applicable authentication tokens.
 
         When platform = 'aws':
-        {'bucket' : 'Name of Bucket on S3', 'path': folder name under the bucket}
+        {'bucket' : 'Name of Bucket on S3', 'path': (optional) folder name under the bucket}
 
         When platform = 'gcp':
         {'project': 'gcp_pycaret', 'bucket' : 'pycaret-test'}
