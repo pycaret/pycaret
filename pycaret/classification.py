@@ -2073,7 +2073,7 @@ def deploy_model(
         Dictionary of applicable authentication tokens.
 
         When platform = 'aws':
-        {'bucket' : 'S3-bucket-name'}
+        {'bucket' : 'S3-bucket-name', 'path': (optional) folder name under the bucket}
 
         When platform = 'gcp':
         {'project': 'gcp-project-name', 'bucket' : 'gcp-bucket-name'}

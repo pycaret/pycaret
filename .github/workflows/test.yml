@@ -28,6 +28,7 @@ jobs:
         python -m pip install codecov
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
         if [ -f requirements-optional.txt ]; then pip install -r requirements-optional.txt; fi
+        if [ -f requirements-test.txt ]; then pip install -r requirements-test.txt; fi
         pip install https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.0.0/en_core_web_sm-3.0.0-py3-none-any.whl
     - name: Remove tests
       run: |
@@ -59,6 +60,7 @@ jobs:
         python -m pip install codecov
         pip install -r requirements.txt
         pip install -r requirements-optional.txt
+        pip install -r requirements-test.txt
         pip install https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.0.0/en_core_web_sm-3.0.0-py3-none-any.whl
     - name: Remove tests
       run: |
@@ -160,6 +162,7 @@ jobs:
         python -m pip install codecov
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
         if [ -f requirements-optional.txt ]; then pip install -r requirements-optional.txt; fi
+        if [ -f requirements-test.txt ]; then pip install -r requirements-test.txt; fi
         pip install https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.0.0/en_core_web_sm-3.0.0-py3-none-any.whl
     - name: Remove tests
       run: |
