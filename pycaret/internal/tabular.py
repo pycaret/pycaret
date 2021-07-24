@@ -4239,6 +4239,16 @@ def tune_model_supervised(
 
         logger.info(f"Tuning with n_jobs={n_jobs}")
 
+        def get_optuna_tpe_sampler():
+            try:
+                tpe_sampler = optuna.samplers.TPESampler(
+                    seed=seed, multivariate=True, constant_liar=True
+                )
+            except TypeError:
+                # constant_liar added in 2.8.0
+                tpe_sampler = optuna.samplers.TPESampler(seed=seed, multivariate=True)
+            return tpe_sampler
+
         if search_library == "optuna":
             # suppress output
             logging.getLogger("optuna").setLevel(logging.WARNING)
@@ -4255,7 +4265,7 @@ def tune_model_supervised(
                 pruner = pruner_translator[early_stopping]
 
             sampler_translator = {
-                "tpe": optuna.samplers.TPESampler(seed=seed),
+                "tpe": get_optuna_tpe_sampler(),
                 "random": optuna.samplers.RandomSampler(seed=seed),
             }
             sampler = sampler_translator[search_algorithm]
@@ -4392,6 +4402,10 @@ def tune_model_supervised(
                                 "Couldn't convert param_grid to specific library distributions. Exception:"
                             )
                             logger.warning(traceback.format_exc())
+                    if search_algorithm == "optuna" and not "sampler" in search_kwargs:
+                        import optuna
+
+                        search_kwargs["sampler"] = get_optuna_tpe_sampler()
                     logger.info(
                         f"Initializing tune_sklearn.TuneSearchCV, {search_algorithm}"
                     )
