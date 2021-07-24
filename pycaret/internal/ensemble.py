@@ -50,17 +50,25 @@ class _EnsembleForecasterWithVoting(_HeterogenousEnsembleForecaster):
             forecasters=self.forecasters, n_jobs=n_jobs
         )
 
+    @property
+    def weights(self):
+        return self.weights
+
+    @weights.setter
+    def weights(self, value):
+        self.weights = value
+
     def _check_method(self):
         if self.method == "voting" and self.weights is None:
             warnings.warn(
                 "Missing 'weights' argument, setting uniform weights."
             )
-            self._set_weights_uniform
+            self.weights = np.ones(len(self.forecasters))
         elif self.method in self._not_required_weights and self.weights:
             warnings.warn(
                 "Unused 'weights' argument. When method='mean' or method='median', 'weights' argument is not provided. Setting weights to `None`"
             )
-            self._set_weights_none
+            self.weights = None
         elif self.method not in self._available_methods:
             raise ValueError(
                 f"Method {self.method} is not supported. Avaible methods are {', '.join(self._available_methods)}"
@@ -119,11 +127,3 @@ class _EnsembleForecasterWithVoting(_HeterogenousEnsembleForecaster):
             self._check_weights()
             pred_w = np.average(pred_forecasters, axis=1, weights=self.weights)
             return pd.DataFrame(pred_w, index=pred_forecasters.index)
-
-    @property
-    def _set_weights_none(self):
-        self.weights = None
-
-    @property
-    def _set_weights_uniform(self):
-        self.weights = np.ones(len(self.forecasters))
