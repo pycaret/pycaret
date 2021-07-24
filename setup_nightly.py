@@ -44,5 +44,5 @@ setup(
     include_package_data=True,
     install_requires=required,
     extras_require={"full": optional_required,
-                    "test": test_required},
+                    "test": test_required + optional_required},
 )
