@@ -4,7 +4,7 @@ interpret<=0.2.4
 tune-sklearn>=0.2.1
 ray[tune]>=1.0.0
 hyperopt
-optuna
+optuna>=2.2.0
 scikit-optimize>=0.8.1
 psutil
 catboost>=0.23.2
