@@ -18,7 +18,7 @@ PyCaret is a great library which not only simplifies the machine learning tasks 
 ![alt text](https://github.com/pycaret/pycaret/blob/master/pycaret2-features.png)
 
 ## Current Release
-PyCaret `2.3.2` is now available. See `2.3.2` release notes. The easiest way to install pycaret is using pip.
+PyCaret `2.3.3` is now available. See `2.3.3` release notes. The easiest way to install pycaret is using pip.
 
 ```python
 pip install pycaret
