@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file.
 <br/><br/>
 
+#### Release: PyCaret 2.3.3 | Release Date: July 24th, 2021 (NEW FEATURES, BUG FIXES)
+- Fixed issues with `[full]` install by pinning `interpret<=0.2.4`
+- Added support for S3 folder path in `deploy_model()` with AWS
+- Enabled experimental Optuna `TPESampler` options to improve convergence (in `tune_model()`)
+<br/><br/><br/>
+
 #### Release: PyCaret 2.3.2 | Release Date: July 7th, 2021 (NEW FEATURES, BUG FIXES)
 - Implemented PDP, MSA and PFI plots in `interpret_model` - thanks to @IncubatorShokuhou (https://github.com/pycaret/pycaret/pull/1415)
 - Implemented  Kolmogorov-Smirnov (KS) plot in `plot_model` under `pycaret.classification` module
