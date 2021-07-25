@@ -1,15 +1,15 @@
 """Module to test time_series functionality
 """
-import pytest
+from random import uniform, randint
 
-from random import choice, uniform, randint
-from pycaret.internal.ensemble import _ENSEMBLE_METHODS
 import numpy as np  # type: ignore
 import pandas as pd  # type: ignore
+import pytest
 
-from pycaret.datasets import get_data
-from pycaret.internal.pycaret_experiment import TimeSeriesExperiment
 from pycaret.containers.models.time_series import get_all_model_containers
+from pycaret.datasets import get_data
+from pycaret.internal.ensemble import _ENSEMBLE_METHODS
+from pycaret.internal.pycaret_experiment import TimeSeriesExperiment
 
 pytestmark = pytest.mark.filterwarnings("ignore::UserWarning")
 
@@ -23,6 +23,7 @@ _BLEND_TEST_MODELS = [
     "dt_cds_dt",
     "lightgbm_cds_dt",
 ]  # Test blend model functionality only in these models
+
 
 #############################
 #### Fixtures Start Here ####
@@ -154,6 +155,7 @@ def _return_model_parameters():
 _model_names = _return_model_names()
 _model_parameters = _return_model_parameters()
 
+
 ############################
 #### Functions End Here ####
 ############################
@@ -166,7 +168,6 @@ _model_parameters = _return_model_parameters()
 
 @pytest.mark.parametrize("seasonal_period, seasonal_value", _get_seasonal_values())
 def test_setup_seasonal_period_str(load_data, seasonal_period, seasonal_value):
-
     exp = TimeSeriesExperiment()
 
     fh = np.arange(1, 13)
@@ -188,7 +189,6 @@ def test_setup_seasonal_period_str(load_data, seasonal_period, seasonal_value):
 
 @pytest.mark.parametrize("seasonal_key, seasonal_value", _get_seasonal_values())
 def test_setup_seasonal_period_int(load_data, seasonal_key, seasonal_value):
-
     exp = TimeSeriesExperiment()
 
     fh = np.arange(1, 13)
@@ -213,7 +213,7 @@ def test_create_predict_finalize_model(name, fh, load_data):
     Combined to save run time
     """
     exp = TimeSeriesExperiment()
-    data = load_data #_check_data_for_prophet(name, load_data)
+    data = load_data  # _check_data_for_prophet(name, load_data)
 
     exp.setup(
         data=data,
@@ -388,7 +388,6 @@ def test_compare_models(load_data):
 )
 @pytest.mark.parametrize("method", _ENSEMBLE_METHODS)
 def test_blend_model(load_setup, load_models, method):
-
     from pycaret.internal.ensemble import _EnsembleForecasterWithVoting
 
     ts_experiment = load_setup
@@ -412,7 +411,6 @@ def test_blend_model(load_setup, load_models, method):
     "ignore::statsmodels.tools.sm_exceptions.ConvergenceWarning:statsmodels"
 )
 def test_blend_model_predict(load_setup, load_models):
-
     ts_experiment = load_setup
     ts_models = load_models
     ts_weights = [uniform(0, 1) for _ in range(len(ts_models))]
@@ -611,3 +609,32 @@ def test_tune_model_raises(load_data):
         exceptionmsg
         == f"`search_algorithm` must be one of 'None, random, grid'. You passed '{search_algorithm}'."
     )
+
+
+def test_ts_tests(load_data):
+    """Tests ts_tests module"""
+
+    exp = TimeSeriesExperiment()
+    data = load_data  # _check_data_for_prophet(name, load_data)
+
+    exp.setup(
+        data=data,
+        verbose=False,
+    )
+    result = exp.ts_tests(show_hidden_keys=True)
+    # print(result)
+    assert type(result) == pd.DataFrame
+    assert list(result.index) == [
+        ('Temporal', 'Trend'), ('Temporal', 'Trend Slope'), ('Temporal', 'Seasonal'),
+        ('Temporal', 'Seasonal Period'), ('Correlation', 'Significant ACF lags'),
+        ('Correlation', 'Significant PACF lags'), ('Correlation', 'Highest ACF lag'),
+        ('Correlation', 'Highest PACF lag'), ('Correlation', '_ACF values'),
+        ('Correlation', '_PACF values'), ('Statistics', 'Mean'), ('Statistics', 'Median'),
+        ('Statistics', 'Standard Deviation'), ('Statistics', 'Variance'),
+        ('Statistics', 'Kurtosis'), ('Statistics', 'Skewness'),
+        ('Statistics', 'Count of distinct values'), ('Statistics', '_Data distribution'),
+        ('Statistics', 'Length'), ('Statistics', 'Shapiro normality test'),
+        ('Statistics', '_Normality pvalue'), ('Stationarity', 'ADF stationarity'),
+        ('Stationarity', '_ADF pvalue'), ('Stationarity', 'KPSS stationarity'),
+        ('Stationarity', '_KPSS pvalue'), ('Stationarity', 'Stationarity')
+    ]
