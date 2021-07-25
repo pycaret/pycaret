@@ -1,4 +1,4 @@
-![alt text](https://github.com/pycaret/pycaret/blob/master/pycaret_233.jpg)
+![alt text](https://github.com/pycaret/pycaret/blob/master/pycaret_233.jfif)
 
 # PyCaret 2.3
 ![Python](https://img.shields.io/badge/Python-3.6%20%7C%203.7%20%7C%203.8-blue) ![pytest on push](https://github.com/pycaret/pycaret/workflows/pytest%20on%20push/badge.svg) [![Documentation Status](https://readthedocs.org/projects/pip/badge/?version=stable)](http://pip.pypa.io/en/stable/?badge=stable) [![PyPI version](https://badge.fury.io/py/pycaret.svg)](https://badge.fury.io/py/pycaret) [![License](https://img.shields.io/pypi/l/ansicolortags.svg)](https://img.shields.io/pypi/l/ansicolortags.svg) [![Git count](http://hits.dwyl.com/pycaret/pycaret/pycaret.svg)](http://hits.dwyl.com/pycaret/pycaret/pycaret) [![Slack](https://img.shields.io/badge/slack-chat-green.svg?logo=slack)](https://join.slack.com/t/pycaret/shared_invite/zt-row9phbm-BoJdEVPYnGf7_NxNBP307w)
