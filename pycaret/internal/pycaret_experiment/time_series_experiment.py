@@ -1,56 +1,51 @@
+import datetime
+import gc
+import logging
+import time
+import traceback
+import warnings
+from collections import defaultdict
+from functools import partial
+from typing import List, Tuple, Union, Dict, Generator
+
+import numpy as np  # type: ignore
+import pandas as pd  # type: ignore
+import plotly.express as px  # type: ignore
+import plotly.graph_objects as go  # type: ignore
+from IPython.utils import io
+from joblib import Parallel, delayed  # type: ignore
+from pandas.io.formats.style import Styler
+from scipy.stats import rankdata  # type: ignore
+from sklearn.base import clone  # type: ignore
+from sklearn.base import clone  # type: ignore
+from sklearn.metrics._scorer import get_scorer, _PredictScorer  # type: ignore
+from sklearn.model_selection import check_cv, ParameterGrid, ParameterSampler  # type: ignore
+from sklearn.model_selection._search import _check_param_grid  # type: ignore
+from sklearn.model_selection._validation import _aggregate_score_dicts  # type: ignore
 from sktime.forecasting.model_selection import (
     ExpandingWindowSplitter,
-    SlidingWindowSplitter,
 )
+from sktime.forecasting.model_selection import SlidingWindowSplitter  # type: ignore
+from sktime.utils.validation.forecasting import check_y_X  # type: ignore
 
-from pycaret.internal.pycaret_experiment.utils import highlight_setup, MLUsecase
+import pycaret.containers.metrics.time_series
+import pycaret.containers.models.time_series
+import pycaret.internal.patches.sklearn
+import pycaret.internal.patches.yellowbrick
+import pycaret.internal.persistence
+import pycaret.internal.preprocess
+from pycaret.internal.distributions import *
+from pycaret.internal.pipeline import (
+    get_pipeline_fit_kwargs,
+)
 from pycaret.internal.pycaret_experiment.supervised_experiment import (
     _SupervisedExperiment,
 )
-from pycaret.internal.pipeline import (
-    estimator_pipeline,
-    get_pipeline_fit_kwargs,
-)
-from pycaret.internal.utils import color_df, SeasonalPeriod, TSModelTypes
-import pycaret.internal.patches.sklearn
-import pycaret.internal.patches.yellowbrick
-from pycaret.internal.logging import get_logger
-from pycaret.internal.Display import Display
-
-from pycaret.internal.distributions import *
-from pycaret.internal.validation import *
+from pycaret.internal.pycaret_experiment.utils import highlight_setup, MLUsecase
+from pycaret.internal.ts_tests import ts_tests
 from pycaret.internal.tunable import TunableMixin
-import pycaret.containers.metrics.time_series
-import pycaret.containers.models.time_series
-import pycaret.internal.preprocess
-import pycaret.internal.persistence
-import pandas as pd  # type: ignore
-from pandas.io.formats.style import Styler
-import numpy as np  # type: ignore
-import datetime
-import time
-import gc
-from sklearn.base import clone  # type: ignore
-from typing import List, Tuple, Any, Union, Optional, Dict, Generator
-import warnings
-from IPython.utils import io
-import traceback
-import plotly.express as px  # type: ignore
-import plotly.graph_objects as go  # type: ignore
-import logging
-from sklearn.base import clone  # type: ignore
-from sklearn.model_selection._validation import _aggregate_score_dicts  # type: ignore
-from sklearn.model_selection import check_cv, ParameterGrid, ParameterSampler  # type: ignore
-from sklearn.model_selection._search import _check_param_grid  # type: ignore
-from sklearn.metrics._scorer import get_scorer, _PredictScorer  # type: ignore
-from collections import defaultdict
-from functools import partial
-from scipy.stats import rankdata  # type: ignore
-from joblib import Parallel, delayed  # type: ignore
-
-from sktime.utils.validation.forecasting import check_y_X  # type: ignore
-from sktime.forecasting.model_selection import SlidingWindowSplitter  # type: ignore
-
+from pycaret.internal.utils import color_df, SeasonalPeriod, TSModelTypes
+from pycaret.internal.validation import *
 
 warnings.filterwarnings("ignore")
 LOGGER = get_logger()
@@ -102,7 +97,7 @@ def get_folds(cv, y) -> Generator[Tuple[pd.Series, pd.Series], None, None]:
                     )  # Ensure freq value is preserved, otherwise when predicting raise error
 
                     if isinstance(cv, SlidingWindowSplitter):
-                        rolling_y_train = rolling_y_train.iloc[-cv.initial_window :]
+                        rolling_y_train = rolling_y_train.iloc[-cv.initial_window:]
         yield rolling_y_train.index, y_test.index
 
 
@@ -489,7 +484,7 @@ class BaseGridSearch:
         # not contain all the params
         param_results = defaultdict(
             partial(
-                np.ma.MaskedArray, np.empty(n_candidates,), mask=True, dtype=object,
+                np.ma.MaskedArray, np.empty(n_candidates, ), mask=True, dtype=object,
             )
         )
         for cand_i, params in enumerate(candidate_params):
@@ -643,7 +638,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 ]
             )
             + (
-                [["Imputation Type", kwargs["imputation_type"]],]
+                [["Imputation Type", kwargs["imputation_type"]], ]
                 if self.preprocess
                 else []
             ),
@@ -1387,7 +1382,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         model_results = pd.DataFrame(score_dict)
         model_results.insert(0, "cutoff", cutoffs)
 
-        model_avgs = pd.DataFrame(avgs_dict, index=["Mean", "SD"],)
+        model_avgs = pd.DataFrame(avgs_dict, index=["Mean", "SD"], )
         model_avgs.insert(0, "cutoff", np.nan)
 
         model_results = model_results.append(model_avgs)
@@ -1672,8 +1667,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         # ignore warnings
 
         warnings.filterwarnings("ignore")
-
-        import logging
 
         np.random.seed(self.seed)
 
@@ -2588,9 +2581,9 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         try:
             np.random.seed(self.seed)
             if not display:
-                display = Display(verbose=verbose, html_param=self.html_param,)
+                display = Display(verbose=verbose, html_param=self.html_param, )
         except:
-            display = Display(verbose=False, html_param=False,)
+            display = Display(verbose=False, html_param=False, )
 
         try:
             return_vals = estimator.predict(
@@ -2659,7 +2652,8 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             metrics = self._calculate_metrics(y_test=[], pred=[], pred_prob=None)  # type: ignore
             metrics = {metric_name: np.nan for metric_name, _ in metrics.items()}
         else:
-            metrics = self._calculate_metrics(y_test=y_test_common, pred=y_test_pred_common, pred_prob=None)  # type: ignore
+            metrics = self._calculate_metrics(y_test=y_test_common, pred=y_test_pred_common,
+                                              pred_prob=None)  # type: ignore
 
         # Display Test Score
         # model name
@@ -2718,6 +2712,26 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         return super().finalize_model(
             estimator=estimator, fit_kwargs=fit_kwargs, model_only=model_only,
         )
+
+    def ts_tests(
+        self,
+        show_hidden_keys: bool = False,
+        **kwargs
+    ):
+        """
+        This method performs all statistical tests for the given time series dataset. This is further help in modelling
+        and most modelling inference
+
+        Returns
+        -------
+        Dataframe with the results for the tests
+
+        """
+        data = self.data_before_preprocess
+        if isinstance(data, pd.DataFrame):
+            return ts_tests(data, show_hidden_keys=show_hidden_keys, **kwargs)
+        else:
+            raise ValueError(f'Expected data to be of type pd.DataFrame got {type(data)}')
 
     def deploy_model(
         self, model, model_name: str, authentication: dict, platform: str = "aws",
