@@ -52,11 +52,11 @@ class _EnsembleForecasterWithVoting(_HeterogenousEnsembleForecaster):
 
     @property
     def weights(self):
-        return self.weights
+        return self._weights
 
     @weights.setter
     def weights(self, value):
-        self.weights = value
+        self._weights = value
 
     def _check_method(self):
         if self.method == "voting" and self.weights is None:
