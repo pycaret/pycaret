@@ -1099,129 +1099,131 @@ class _TabularExperiment(_PyCaretExperiment):
             # Start with the internal pipeline
             self._internal_pipeline = InternalPipeline([("impute", impute_estimator)])
 
-        # Normalization ============================================ >>
-
-        if normalize:
-            norm_dict = {
-                "zscore": StandardScaler(),
-                "minmax": MinMaxScaler(),
-                "maxabs": MaxAbsScaler(),
-                "robust": RobustScaler(),
-            }
-            if normalize_method in norm_dict:
-                normalize_estimator = norm_dict[normalize_method]
-            else:
-                raise ValueError(
-                    "Invalid value for the normalize_method parameter, got "
-                    f"{normalize_method}. Possible values are: {' '.join(norm_dict)}."
+            # transformation ========================================= >>
+    
+            if transformation:
+                if transformation_method == "yeo-johnson":
+                    transformation_estimator = PowerTransformer(
+                        method="yeo-johnson", standardize=False, copy=True
+                    )
+                elif transformation_method == "quantile":
+                    transformation_estimator = QuantileTransformer(
+                        random_state=self.seed,
+                        output_distribution="normal",
+                    )
+                else:
+                    raise ValueError(
+                        "Invalid value for the transformation_method parameter. "
+                        "The value should be either yeo-johnson or quantile, "
+                        f"got {transformation_method}."
+                    )
+    
+                self._internal_pipeline.steps.append(
+                    ("transformation", transformation_estimator)
                 )
 
-            self._internal_pipeline.steps.append(("normalize", normalize_estimator))
+            # Normalization ============================================ >>
+    
+            if normalize:
+                norm_dict = {
+                    "zscore": StandardScaler(),
+                    "minmax": MinMaxScaler(),
+                    "maxabs": MaxAbsScaler(),
+                    "robust": RobustScaler(),
+                }
+                if normalize_method in norm_dict:
+                    normalize_estimator = norm_dict[normalize_method]
+                else:
+                    raise ValueError(
+                        "Invalid value for the normalize_method parameter, got "
+                        f"{normalize_method}. Possible values are: {' '.join(norm_dict)}."
+                    )
+    
+                self._internal_pipeline.steps.append(("normalize", normalize_estimator))
+    
 
-        # transformation ========================================= >>
-
-        if transformation:
-            if transformation_method == "yeo-johnson":
-                transformation_estimator = PowerTransformer(
-                    method="yeo-johnson", standardize=True, copy=True
+            # Low variance ========================================= >>
+    
+            if low_variance_threshold:
+                if low_variance_threshold < 0:
+                    raise ValueError(
+                        "Invalid value for the ignore_low_variance parameter. "
+                        f"The value should be >0, got {low_variance_threshold}."
+                    )
+                else:
+                    variance_estimator = VarianceThreshold(low_variance_threshold)
+    
+                self._internal_pipeline.steps.append(("low_variance", variance_estimator))
+    
+            # PCA ====================================================== >>
+    
+            if pca:
+                if pca_components <= 0:
+                    raise ValueError(
+                        "Invalid value for the pca_components parameter. "
+                        f"The value should be >0, got {pca_components}."
+                    )
+                elif pca_components <= 1:
+                    pca_components = int(pca_components * self.X.shape[1])
+                elif pca_components <= self.X.shape[1]:
+                    pca_components = int(pca_components)
+                else:
+                    raise ValueError(
+                        "Invalid value for the pca_components parameter. "
+                        "The value should be smaller than the number of "
+                        f"features, got {pca_components}."
+                    )
+    
+                pca_dict = {
+                    "linear": PCA(n_components=pca_components),
+                    "kernel": KernelPCA(n_components=pca_components, kernel="rbf"),
+                    "incremental": IncrementalPCA(n_components=pca_components),
+                }
+                if pca_method in pca_dict:
+                    pca_estimator = pca_dict[pca_method]
+                else:
+                    raise ValueError(
+                        "Invalid value for the pca_method parameter, got "
+                        f"{pca_method}. Possible values are: {' '.join(pca_dict)}."
+                    )
+    
+                self._internal_pipeline.steps.append(("pca", pca_estimator))
+    
+            # Polynomial features  ===================================== >>
+    
+            if polynomial_features:
+                polynomial = PolynomialFeatures(
+                    degree=polynomial_degree,
+                    interaction_only=False,
+                    include_bias=True,
+                    order="C",
                 )
-            elif transformation_method == "quantile":
-                transformation_estimator = QuantileTransformer(
-                    random_state=self.seed,
-                    output_distribution="normal",
-                )
-            else:
-                raise ValueError(
-                    "Invalid value for the transformation_method parameter. "
-                    "The value should be either yeo-johnson or quantile, "
-                    f"got {transformation_method}."
-                )
-
-            self._internal_pipeline.steps.append(
-                ("transformation", transformation_estimator)
-            )
-        # Low variance ========================================= >>
-
-        if low_variance_threshold:
-            if low_variance_threshold < 0:
-                raise ValueError(
-                    "Invalid value for the ignore_low_variance parameter. "
-                    f"The value should be >0, got {low_variance_threshold}."
-                )
-            else:
-                variance_estimator = VarianceThreshold(low_variance_threshold)
-
-            self._internal_pipeline.steps.append(("low_variance", variance_estimator))
-
-        # PCA ====================================================== >>
-
-        if pca:
-            if pca_components <= 0:
-                raise ValueError(
-                    "Invalid value for the pca_components parameter. "
-                    f"The value should be >0, got {pca_components}."
-                )
-            elif pca_components <= 1:
-                pca_components = int(pca_components * self.X.shape[1])
-            elif pca_components <= self.X.shape[1]:
-                pca_components = int(pca_components)
-            else:
-                raise ValueError(
-                    "Invalid value for the pca_components parameter. "
-                    "The value should be smaller than the number of "
-                    f"features, got {pca_components}."
-                )
-
-            pca_dict = {
-                "linear": PCA(n_components=pca_components),
-                "kernel": KernelPCA(n_components=pca_components, kernel="rbf"),
-                "incremental": IncrementalPCA(n_components=pca_components),
-            }
-            if pca_method in pca_dict:
-                pca_estimator = pca_dict[pca_method]
-            else:
-                raise ValueError(
-                    "Invalid value for the pca_method parameter, got "
-                    f"{pca_method}. Possible values are: {' '.join(pca_dict)}."
-                )
-
-            self._internal_pipeline.steps.append(("pca", pca_estimator))
-
-        # Polynomial features  ===================================== >>
-
-        if polynomial_features:
-            polynomial = PolynomialFeatures(
-                degree=polynomial_degree,
-                interaction_only=False,
-                include_bias=True,
-                order="C",
-            )
-            self._internal_pipeline.steps.append(("polynomial_features", polynomial))
-
-        # Balance the dataset ======================================= >>
-
-        if fix_imbalance:
-            if fix_imbalance_method is None:
-                balance_estimator = SMOTE()
-            elif not hasattr(fix_imbalance_method, "fit_resample"):
-                raise ValueError(
-                    "Invalid value for the fix_imbalance_method parameter. "
-                    "The provided value must be a imblearn estimator, got "
-                    f"{fix_imbalance_method.__class__.__name_}."
-                )
-            else:
-                balance_estimator = fix_imbalance_method
-
-            self._internal_pipeline.steps.append(("balance", balance_estimator))
-
-        # Custom transformers ====================================== >>
-
-        if custom_pipeline:
-            for name, estimator in normalize_custom_transformers(custom_pipeline):
-                self._internal_pipeline.steps.append((name, estimator))
-
-        self.logger.info(f"Finsihed creating pipeline.")
-        self.logger.info(f"Preprocessing pipeline: {self._internal_pipeline}")
+                self._internal_pipeline.steps.append(("polynomial_features", polynomial))
+    
+            # Balance the dataset ======================================= >>
+    
+            if fix_imbalance:
+                if fix_imbalance_method is None:
+                    balance_estimator = SMOTE()
+                elif not hasattr(fix_imbalance_method, "fit_resample"):
+                    raise ValueError(
+                        "Invalid value for the fix_imbalance_method parameter. "
+                        "The provided value must be a imblearn estimator, got "
+                        f"{fix_imbalance_method.__class__.__name_}."
+                    )
+                else:
+                    balance_estimator = fix_imbalance_method
+    
+                self._internal_pipeline.steps.append(("balance", balance_estimator))
+    
+            # Custom transformers ====================================== >>
+    
+            if custom_pipeline:
+                for name, estimator in normalize_custom_transformers(custom_pipeline):
+                    self._internal_pipeline.steps.append((name, estimator))
+    
+            self.logger.info(f"Finsihed creating pipeline.")
+            self.logger.info(f"Preprocessing pipeline: {self._internal_pipeline}")
 
         # self.iterative_imputation_iters_param = iterative_imputation_iters
         #
