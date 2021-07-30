@@ -40,6 +40,7 @@ from pycaret.internal.utils import (
     normalize_custom_transformers,
 )
 
+from category_encoders.leave_one_out import LeaveOneOutEncoder
 from pycaret.internal.validation import *
 from sklearn.compose import ColumnTransformer
 from sklearn.decomposition import PCA, IncrementalPCA, KernelPCA
@@ -395,45 +396,39 @@ class _TabularExperiment(_PyCaretExperiment):
     ) -> None:
         return
 
-    def _make_internal_pipeline(
-        self, internal_pipeline_steps: list, memory=None
-    ) -> InternalPipeline:
-        if not internal_pipeline_steps:
-            memory = None
-            internal_pipeline_steps = [("empty_step", "passthrough")]
-
-        return InternalPipeline(internal_pipeline_steps, memory=memory)
-
     def setup(
         self,
         data: pd.DataFrame,
         target: str,
         train_size: float = 0.7,
         test_data: Optional[pd.DataFrame] = None,
-        preprocess: bool = True,
-        imputation_type: str = "simple",
-        iterative_imputation_iters: int = 5,
-        categorical_features: Optional[List[str]] = None,
-        categorical_imputation: str = "mode",
-        categorical_iterative_imputer: Union[str, Any] = "lightgbm",
         ordinal_features: Optional[Dict[str, list]] = None,
-        high_cardinality_features: Optional[List[str]] = None,
-        high_cardinality_method: str = "frequency",
         numeric_features: Optional[List[str]] = None,
-        numeric_imputation: str = "mean",  # method 'zero' added in pycaret==2.1
-        numeric_iterative_imputer: Union[str, Any] = "lightgbm",
+        categorical_features: Optional[List[str]] = None,
         date_features: Optional[List[str]] = None,
         ignore_features: Optional[List[str]] = None,
-        normalize: bool = False,
-        normalize_method: str = "zscore",
+        preprocess: bool = True,
+        imputation_type: str = "simple",
+        numeric_imputation: str = "mean",
+        categorical_imputation: str = "constant",
+        iterative_imputation_iters: int = 5,
+        numeric_iterative_imputer: Union[str, Any] = "lightgbm",
+        categorical_iterative_imputer: Union[str, Any] = "lightgbm",
+        encode_method: Optional[Any] = None,
         transformation: bool = False,
         transformation_method: str = "yeo-johnson",
-        handle_unknown_categorical: bool = True,
-        unknown_categorical_method: str = "least_frequent",
+        normalize: bool = False,
+        normalize_method: str = "zscore",
+        low_variance_threshold: float = 0,
         pca: bool = False,
         pca_method: str = "linear",
         pca_components: Union[int, float] = 1.0,
-        low_variance_threshold: float = 0,
+        polynomial_features: bool = False,
+        polynomial_degree: int = 2,
+        fix_imbalance: bool = False,
+        fix_imbalance_method: Optional[Any] = None,
+        handle_unknown_categorical: bool = True,
+        unknown_categorical_method: str = "least_frequent",
         combine_rare_levels: bool = False,
         rare_level_threshold: float = 0.10,
         bin_numeric_features: Optional[List[str]] = None,
@@ -444,22 +439,16 @@ class _TabularExperiment(_PyCaretExperiment):
         remove_perfect_collinearity: bool = True,
         create_clusters: bool = False,
         cluster_iter: int = 20,
-        polynomial_features: bool = False,
-        polynomial_degree: int = 2,
-        trigonometry_features: bool = False,
-        polynomial_threshold: float = 0.1,
         group_features: Optional[List[str]] = None,
         group_names: Optional[List[str]] = None,
         feature_selection: bool = False,
         feature_selection_threshold: float = 0.8,
-        feature_selection_method: str = "classic",  # boruta algorithm added in pycaret==2.1
+        feature_selection_method: str = "classic",
         feature_interaction: bool = False,
         feature_ratio: bool = False,
         interaction_threshold: float = 0.01,
-        # classification specific
-        fix_imbalance: bool = False,
-        fix_imbalance_method: Optional[Any] = None,
-        # regression specific
+        high_cardinality_features: Optional[List[str]] = None,
+        high_cardinality_method: str = "frequency",
         transform_target=False,
         transform_target_method="box-cox",
         data_split_shuffle: bool = True,
@@ -489,7 +478,6 @@ class _TabularExperiment(_PyCaretExperiment):
         profile_kwargs: Dict[str, Any] = None,
         display: Optional[Display] = None,
     ):
-
         """
         This function initializes the environment in pycaret and creates the
         transformation pipeline to prepare the data for modeling and deployment.
@@ -677,27 +665,6 @@ class _TabularExperiment(_PyCaretExperiment):
                 f"high_cardinality_method parameter only accepts {', '.join(high_cardinality_allowed_methods)}."
             )
 
-        # checking transformation method
-        allowed_transformation_method = ["yeo-johnson", "quantile"]
-        if transformation_method not in allowed_transformation_method:
-            raise ValueError(
-                f"transformation_method parameter only accepts {', '.join(allowed_transformation_method)}."
-            )
-
-        # handle unknown categorical
-        if type(handle_unknown_categorical) is not bool:
-            raise TypeError(
-                "handle_unknown_categorical parameter only accepts True or False."
-            )
-
-        # unknown categorical method
-        unknown_categorical_method_available = ["least_frequent", "most_frequent"]
-
-        if unknown_categorical_method not in unknown_categorical_method_available:
-            raise TypeError(
-                f"unknown_categorical_method only accepts {', '.join(unknown_categorical_method_available)}."
-            )
-
         if type(combine_rare_levels) is not bool:
             raise TypeError("combine_rare_levels parameter only accepts True or False.")
 
@@ -753,22 +720,6 @@ class _TabularExperiment(_PyCaretExperiment):
         if type(cluster_iter) is not int:
             raise TypeError("cluster_iter must be a integer greater than 1.")
 
-        # polynomial_features
-        if type(polynomial_features) is not bool:
-            raise TypeError("polynomial_features only accepts True or False.")
-
-        # polynomial_degree
-        if type(polynomial_degree) is not int:
-            raise TypeError("polynomial_degree must be an integer.")
-
-        # trigonometry_features
-        if type(trigonometry_features) is not bool:
-            raise TypeError("trigonometry_features only accepts True or False.")
-
-        # polynomial threshold
-        if type(polynomial_threshold) is not float:
-            raise TypeError("polynomial_threshold must be a float between 0 and 1.")
-
         # group features
         if group_features is not None:
             if type(group_features) is not list:
@@ -777,11 +728,6 @@ class _TabularExperiment(_PyCaretExperiment):
         if group_names is not None:
             if type(group_names) is not list:
                 raise TypeError("group_names must be of type list.")
-
-        # cannot drop target
-        if ignore_features is not None:
-            if target in ignore_features:
-                raise ValueError("cannot drop target column.")
 
         # feature_selection
         if type(feature_selection) is not bool:
@@ -811,38 +757,6 @@ class _TabularExperiment(_PyCaretExperiment):
         # interaction_threshold
         if type(interaction_threshold) is not float:
             raise TypeError("interaction_threshold must be a float between 0 and 1.")
-
-        # categorical
-        if categorical_features is not None:
-            for i in categorical_features:
-                if i not in all_cols:
-                    raise ValueError(
-                        "Column type forced is either target column or doesn't exist in the dataset."
-                    )
-
-        # numeric
-        if numeric_features is not None:
-            for i in numeric_features:
-                if i not in all_cols:
-                    raise ValueError(
-                        "Column type forced is either target column or doesn't exist in the dataset."
-                    )
-
-        # date features
-        if date_features is not None:
-            for i in date_features:
-                if i not in all_cols:
-                    raise ValueError(
-                        "Column type forced is either target column or doesn't exist in the dataset."
-                    )
-
-        # drop features
-        if ignore_features is not None:
-            for i in ignore_features:
-                if i not in all_cols:
-                    raise ValueError(
-                        "Feature ignored is either target column or doesn't exist in the dataset."
-                    )
 
         # log_experiment
         if type(log_experiment) is not bool:
@@ -1017,33 +931,29 @@ class _TabularExperiment(_PyCaretExperiment):
 
             # Define column types ================================== >>
 
-            encoder = None
-            if ordinal_features:
-                ordinal_encoder = OrdinalEncoder(
-                    categories=ordinal_features,
-                    handle_unknown="use_encoded_value",
-                    unknown_value=np.NaN,
-                )
+            # TODO: Extra checks that the provided columns are allowed
 
             # Categorical columns
-            cat_cols = self.X.select_dtypes(exclude="number").columns
+            cat_cols = list(self.X.select_dtypes(exclude="number").columns)
             if categorical_features:
                 cat_cols = categorical_features
+            cat_cols_idx = [self.X.columns.get_loc(col) for col in cat_cols]
 
             # Numerical columns
-            num_cols = self.X.select_dtypes(include="number").columns
+            num_cols = list(self.X.select_dtypes(include="number").columns)
             if categorical_features:
                 num_cols = categorical_features
+            num_cols_idx = [self.X.columns.get_loc(col) for col in num_cols]
+
+            # Date features
+            date_cols = list(self.X.select_dtypes(include="datetime").columns)
+            if date_features:
+                date_cols = date_features
 
             # Ignore features
             ign_cols = []
             if ignore_features:
                 ign_cols = ignore_features
-
-            # Date features
-            date_cols = self.X.select_dtypes(include="datetime").columns
-            if date_features:
-                date_cols = date_features
 
             # Imputation =========================================== >>
 
@@ -1058,8 +968,9 @@ class _TabularExperiment(_PyCaretExperiment):
             cat_dict = {"constant": "constant", "mode": "most_frequent"}
             if categorical_imputation not in cat_dict:
                 raise ValueError(
-                    "Invalid value for the categorical_imputation parameter, got "
-                    f"{categorical_imputation}. Possible values are {' '.join(cat_dict)}."
+                    "Invalid value for the categorical_imputation "
+                    f"parameter, got {categorical_imputation}. Possible "
+                    f"values are {' '.join(cat_dict)}."
                 )
 
             if imputation_type == "simple":
@@ -1078,8 +989,8 @@ class _TabularExperiment(_PyCaretExperiment):
                 # Create meta-estimator to split imputers over columns
                 impute_estimator = ColumnTransformer(
                     transformers=[
-                        ("numerical_imputer", num_imputer, num_cols),
-                        ("categorical_imputer", cat_imputer, cat_cols),
+                        ("numerical_imputer", num_imputer, num_cols_idx),
+                        ("categorical_imputer", cat_imputer, cat_cols_idx),
                     ],
                     remainder="passthrough",
                     n_jobs=self.n_jobs_param,
@@ -1099,8 +1010,32 @@ class _TabularExperiment(_PyCaretExperiment):
             # Start with the internal pipeline
             self._internal_pipeline = InternalPipeline([("impute", impute_estimator)])
 
-            # transformation ========================================= >>
-    
+            # Encoding =============================================== >>
+
+            estimator = []
+            if ordinal_features:
+                ord_cols_idx = [self.X.columns.get_loc(col) for col in ordinal_features]
+                ord_estimator = OrdinalEncoder(
+                        categories=list(ordinal_features.values()),
+                        handle_unknown="use_encoded_value",
+                        unknown_value=np.NaN,
+                    )
+
+                estimator.append(("ordinal_encoding", ord_estimator, ord_cols_idx))
+
+            if cat_cols:
+                if not encode_method:
+                    encode_method = LeaveOneOutEncoder(random_state=self.seed)
+
+                estimator.append(("categorical_encoding", encode_method, cat_cols_idx))
+
+            if estimator:
+                self._internal_pipeline.steps.append(
+                    ("encoding", ColumnTransformer(estimator, n_jobs=self.n_jobs_param))
+                )
+
+            # Transformation ========================================= >>
+
             if transformation:
                 if transformation_method == "yeo-johnson":
                     transformation_estimator = PowerTransformer(
@@ -1123,7 +1058,7 @@ class _TabularExperiment(_PyCaretExperiment):
                 )
 
             # Normalization ============================================ >>
-    
+
             if normalize:
                 norm_dict = {
                     "zscore": StandardScaler(),
@@ -1138,12 +1073,11 @@ class _TabularExperiment(_PyCaretExperiment):
                         "Invalid value for the normalize_method parameter, got "
                         f"{normalize_method}. Possible values are: {' '.join(norm_dict)}."
                     )
-    
+
                 self._internal_pipeline.steps.append(("normalize", normalize_estimator))
-    
 
             # Low variance ========================================= >>
-    
+
             if low_variance_threshold:
                 if low_variance_threshold < 0:
                     raise ValueError(
@@ -1152,11 +1086,11 @@ class _TabularExperiment(_PyCaretExperiment):
                     )
                 else:
                     variance_estimator = VarianceThreshold(low_variance_threshold)
-    
+
                 self._internal_pipeline.steps.append(("low_variance", variance_estimator))
-    
+
             # PCA ====================================================== >>
-    
+
             if pca:
                 if pca_components <= 0:
                     raise ValueError(
@@ -1173,7 +1107,7 @@ class _TabularExperiment(_PyCaretExperiment):
                         "The value should be smaller than the number of "
                         f"features, got {pca_components}."
                     )
-    
+
                 pca_dict = {
                     "linear": PCA(n_components=pca_components),
                     "kernel": KernelPCA(n_components=pca_components, kernel="rbf"),
@@ -1186,11 +1120,11 @@ class _TabularExperiment(_PyCaretExperiment):
                         "Invalid value for the pca_method parameter, got "
                         f"{pca_method}. Possible values are: {' '.join(pca_dict)}."
                     )
-    
+
                 self._internal_pipeline.steps.append(("pca", pca_estimator))
-    
+
             # Polynomial features  ===================================== >>
-    
+
             if polynomial_features:
                 polynomial = PolynomialFeatures(
                     degree=polynomial_degree,
@@ -1198,10 +1132,13 @@ class _TabularExperiment(_PyCaretExperiment):
                     include_bias=True,
                     order="C",
                 )
-                self._internal_pipeline.steps.append(("polynomial_features", polynomial))
-    
+
+                self._internal_pipeline.steps.append(
+                    ("polynomial_features", polynomial)
+                )
+
             # Balance the dataset ======================================= >>
-    
+
             if fix_imbalance:
                 if fix_imbalance_method is None:
                     balance_estimator = SMOTE()
@@ -1213,16 +1150,16 @@ class _TabularExperiment(_PyCaretExperiment):
                     )
                 else:
                     balance_estimator = fix_imbalance_method
-    
+
                 self._internal_pipeline.steps.append(("balance", balance_estimator))
-    
+
             # Custom transformers ====================================== >>
-    
+
             if custom_pipeline:
                 for name, estimator in normalize_custom_transformers(custom_pipeline):
                     self._internal_pipeline.steps.append((name, estimator))
-    
-            self.logger.info(f"Finsihed creating pipeline.")
+
+            self.logger.info(f"Finished creating pipeline.")
             self.logger.info(f"Preprocessing pipeline: {self._internal_pipeline}")
 
         # self.iterative_imputation_iters_param = iterative_imputation_iters
@@ -1534,33 +1471,6 @@ class _TabularExperiment(_PyCaretExperiment):
         else:
             self.log_plots_param = log_plots
 
-        # # create a fix_imbalance_param and fix_imbalance_method_param
-        # self.fix_imbalance_param = fix_imbalance and preprocess
-        # self.fix_imbalance_method_param = fix_imbalance_method
-        #
-        # fix_imbalance_model_name = "SMOTE"
-        #
-        # if self.fix_imbalance_param:
-        #     if self.fix_imbalance_method_param is None:
-        #         import six
-        #
-        #         sys.modules["sklearn.externals.six"] = six
-        #         from imblearn.over_sampling import SMOTE
-        #
-        #         fix_imbalance_resampler = SMOTE(random_state=self.seed)
-        #     else:
-        #         fix_imbalance_model_name = str(self.fix_imbalance_method_param).split(
-        #             "("
-        #         )[0]
-        #         fix_imbalance_resampler = self.fix_imbalance_method_param
-        #     self._internal_pipeline.append(("fix_imbalance", fix_imbalance_resampler))
-        #
-        # for x in self._internal_pipeline:
-        #     if x[0] in self.prep_pipe.named_steps:
-        #         raise ValueError(f"Step named {x[0]} already present in pipeline.")
-        #
-        # self._internal_pipeline = self._make_internal_pipeline(self._internal_pipeline)
-
         if not self._is_unsupervised():
             fold_random_state = self.seed if self.fold_shuffle_param else None
 
@@ -1638,23 +1548,6 @@ class _TabularExperiment(_PyCaretExperiment):
                     fold = _get_cv_n_folds(y=self.y_train, cv=fold_strategy)
                     self.fold_param = fold
 
-        # we do just the fitting so that it will be fitted when saved/deployed,
-        # but we don't want to modify the data
-        # self._internal_pipeline.fit(
-        #     self.X, y=self.y if not self._is_unsupervised() else None
-        # )
-        #
-        # self.prep_pipe.steps = self.prep_pipe.steps + [
-        #     (step[0], deepcopy(step[1]))
-        #     for step in self._internal_pipeline.steps
-        #     if hasattr(step[1], "transform")
-        # ]
-        #
-        # try:
-        #     dtypes.final_training_columns.remove(target)
-        # except ValueError:
-        #     pass
-
         # determining target type
         if self._is_multiclass():
             target_type = "Multiclass"
@@ -1667,7 +1560,7 @@ class _TabularExperiment(_PyCaretExperiment):
         """
         Final display Starts
         """
-        self.logger.info("Creating grid variables")
+        # self.logger.info("Creating grid variables")
 
         # if hasattr(dtypes, "replacement"):
         #     label_encoded = dtypes.replacement

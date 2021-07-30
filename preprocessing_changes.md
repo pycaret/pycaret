@@ -5,12 +5,14 @@ Ideas:
 
 - Drop preprocessing.py
 - The pipeline is created in the setup method in tabular_experiment.py
-- Pipeline consists ONLY of sklearn, imbalanced-learn, category-encoder
+- Pipeline consists ONLY of sklearn, imbalanced-learn, category-encoders
   estimators. No custom estimators since we want the pipeline to work
   without pycaret.
 
 
 Changes:
+
+- Added category_encoders library to requirements
 
 - Data attributes train, test, X, y, X_train, etc... are now properties of the
   experiment. The dataset is stored only once in self.data. Train and test indices
@@ -22,12 +24,16 @@ Changes:
   works for all numerical columns (is done after encoding).
 - Remove `trigonometry_features` parameter.
 - Removed `polynomial_threshold` parameter.
-
+- Changed the way encoding works. Now defaults to LeaveOneOut and another
+  estimator can be selected.
+- Reorder of the parameters to a logical order (following the pipeline)
 
 
 Preprocessing steps:
 
+- encoding: DONE
 - simple imputation: DONE
+- transformation: DONE
 - normalization: DONE
 - low variance: DONE
 - pca: DONE

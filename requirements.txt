@@ -24,5 +24,6 @@ pandas-profiling>=2.8.0
 kmodes>=0.10.1
 mlflow
 imbalanced-learn==0.7.0
+category-encoders>=2.2.2
 scikit-plot #for lift and gain charts
 Boruta
