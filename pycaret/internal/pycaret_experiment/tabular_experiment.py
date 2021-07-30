@@ -39,6 +39,7 @@ from pycaret.internal.utils import (
     get_model_name,
     normalize_custom_transformers,
 )
+
 from pycaret.internal.validation import *
 from sklearn.compose import ColumnTransformer
 from sklearn.decomposition import PCA, IncrementalPCA, KernelPCA
@@ -58,6 +59,8 @@ from sklearn.preprocessing import (
     MinMaxScaler,
     OrdinalEncoder,
     PolynomialFeatures,
+    PowerTransformer,
+    QuantileTransformer,
     RobustScaler,
     StandardScaler,
 )
@@ -382,7 +385,13 @@ class _TabularExperiment(_PyCaretExperiment):
         return
 
     def _set_up_mlflow(
-        self, functions, runtime, log_profile, profile_kwargs, log_data, display,
+        self,
+        functions,
+        runtime,
+        log_profile,
+        profile_kwargs,
+        log_data,
+        display,
     ) -> None:
         return
 
@@ -971,7 +980,9 @@ class _TabularExperiment(_PyCaretExperiment):
                     self.X_train,
                     self.X_test,
                 ) = temporal_train_test_split(
-                    y=self.y, X=self.X, fh=fh,  # if fh is provided it splits by it
+                    y=self.y,
+                    X=self.X,
+                    fh=fh,  # if fh is provided it splits by it
                 )
 
                 train_data, test_data = (
@@ -1056,7 +1067,8 @@ class _TabularExperiment(_PyCaretExperiment):
 
                 # Define sklearn estimators
                 num_imputer = SimpleImputer(
-                    strategy=num_dict[numeric_imputation], fill_value=0,
+                    strategy=num_dict[numeric_imputation],
+                    fill_value=0,
                 )
                 cat_imputer = SimpleImputer(
                     strategy=cat_dict[categorical_imputation],
@@ -1087,107 +1099,131 @@ class _TabularExperiment(_PyCaretExperiment):
             # Start with the internal pipeline
             self._internal_pipeline = InternalPipeline([("impute", impute_estimator)])
 
-        # Normalization ============================================ >>
-
-        if normalize:
-            norm_dict = {
-                "zscore": StandardScaler(),
-                "minmax": MinMaxScaler(),
-                "maxabs": MaxAbsScaler(),
-                "robust": RobustScaler(),
-            }
-            if normalize_method in norm_dict:
-                normalize_estimator = norm_dict[normalize_method]
-            else:
-                raise ValueError(
-                    "Invalid value for the normalize_method parameter, got "
-                    f"{normalize_method}. Possible values are: {' '.join(norm_dict)}."
+            # transformation ========================================= >>
+    
+            if transformation:
+                if transformation_method == "yeo-johnson":
+                    transformation_estimator = PowerTransformer(
+                        method="yeo-johnson", standardize=False, copy=True
+                    )
+                elif transformation_method == "quantile":
+                    transformation_estimator = QuantileTransformer(
+                        random_state=self.seed,
+                        output_distribution="normal",
+                    )
+                else:
+                    raise ValueError(
+                        "Invalid value for the transformation_method parameter. "
+                        "The value should be either yeo-johnson or quantile, "
+                        f"got {transformation_method}."
+                    )
+    
+                self._internal_pipeline.steps.append(
+                    ("transformation", transformation_estimator)
                 )
 
-            self._internal_pipeline.steps.append(("normalize", normalize_estimator))
+            # Normalization ============================================ >>
+    
+            if normalize:
+                norm_dict = {
+                    "zscore": StandardScaler(),
+                    "minmax": MinMaxScaler(),
+                    "maxabs": MaxAbsScaler(),
+                    "robust": RobustScaler(),
+                }
+                if normalize_method in norm_dict:
+                    normalize_estimator = norm_dict[normalize_method]
+                else:
+                    raise ValueError(
+                        "Invalid value for the normalize_method parameter, got "
+                        f"{normalize_method}. Possible values are: {' '.join(norm_dict)}."
+                    )
+    
+                self._internal_pipeline.steps.append(("normalize", normalize_estimator))
+    
 
-        # Low variance ========================================= >>
-
-        if low_variance_threshold:
-            if low_variance_threshold < 0:
-                raise ValueError(
-                    "Invalid value for the ignore_low_variance parameter. "
-                    f"The value should be >0, got {low_variance_threshold}."
+            # Low variance ========================================= >>
+    
+            if low_variance_threshold:
+                if low_variance_threshold < 0:
+                    raise ValueError(
+                        "Invalid value for the ignore_low_variance parameter. "
+                        f"The value should be >0, got {low_variance_threshold}."
+                    )
+                else:
+                    variance_estimator = VarianceThreshold(low_variance_threshold)
+    
+                self._internal_pipeline.steps.append(("low_variance", variance_estimator))
+    
+            # PCA ====================================================== >>
+    
+            if pca:
+                if pca_components <= 0:
+                    raise ValueError(
+                        "Invalid value for the pca_components parameter. "
+                        f"The value should be >0, got {pca_components}."
+                    )
+                elif pca_components <= 1:
+                    pca_components = int(pca_components * self.X.shape[1])
+                elif pca_components <= self.X.shape[1]:
+                    pca_components = int(pca_components)
+                else:
+                    raise ValueError(
+                        "Invalid value for the pca_components parameter. "
+                        "The value should be smaller than the number of "
+                        f"features, got {pca_components}."
+                    )
+    
+                pca_dict = {
+                    "linear": PCA(n_components=pca_components),
+                    "kernel": KernelPCA(n_components=pca_components, kernel="rbf"),
+                    "incremental": IncrementalPCA(n_components=pca_components),
+                }
+                if pca_method in pca_dict:
+                    pca_estimator = pca_dict[pca_method]
+                else:
+                    raise ValueError(
+                        "Invalid value for the pca_method parameter, got "
+                        f"{pca_method}. Possible values are: {' '.join(pca_dict)}."
+                    )
+    
+                self._internal_pipeline.steps.append(("pca", pca_estimator))
+    
+            # Polynomial features  ===================================== >>
+    
+            if polynomial_features:
+                polynomial = PolynomialFeatures(
+                    degree=polynomial_degree,
+                    interaction_only=False,
+                    include_bias=True,
+                    order="C",
                 )
-            else:
-                variance_estimator = VarianceThreshold(low_variance_threshold)
-
-            self._internal_pipeline.steps.append(("low_variance", variance_estimator))
-
-        # PCA ====================================================== >>
-
-        if pca:
-            if pca_components <= 0:
-                raise ValueError(
-                    "Invalid value for the pca_components parameter. "
-                    f"The value should be >0, got {pca_components}."
-                )
-            elif pca_components <= 1:
-                pca_components = int(pca_components * self.X.shape[1])
-            elif pca_components <= self.X.shape[1]:
-                pca_components = int(pca_components)
-            else:
-                raise ValueError(
-                    "Invalid value for the pca_components parameter. "
-                    "The value should be smaller than the number of "
-                    f"features, got {pca_components}."
-                )
-
-            pca_dict = {
-                "linear": PCA(n_components=pca_components),
-                "kernel": KernelPCA(n_components=pca_components, kernel="rbf"),
-                "incremental": IncrementalPCA(n_components=pca_components),
-            }
-            if pca_method in pca_dict:
-                pca_estimator = pca_dict[pca_method]
-            else:
-                raise ValueError(
-                    "Invalid value for the pca_method parameter, got "
-                    f"{pca_method}. Possible values are: {' '.join(pca_dict)}."
-                )
-
-            self._internal_pipeline.steps.append(("pca", pca_estimator))
-
-        # Polynomial features  ===================================== >>
-
-        if polynomial_features:
-            polynomial = PolynomialFeatures(
-                degree=polynomial_degree,
-                interaction_only=False,
-                include_bias=True,
-                order="C",
-            )
-            self._internal_pipeline.steps.append(("polynomial_features", polynomial))
-
-        # Balance the dataset ======================================= >>
-
-        if fix_imbalance:
-            if fix_imbalance_method is None:
-                balance_estimator = SMOTE()
-            elif not hasattr(fix_imbalance_method, "fit_resample"):
-                raise ValueError(
-                    "Invalid value for the fix_imbalance_method parameter. "
-                    "The provided value must be a imblearn estimator, got "
-                    f"{fix_imbalance_method.__class__.__name_}."
-                )
-            else:
-                balance_estimator = fix_imbalance_method
-
-            self._internal_pipeline.steps.append(("balance", balance_estimator))
-
-        # Custom transformers ====================================== >>
-
-        if custom_pipeline:
-            for name, estimator in normalize_custom_transformers(custom_pipeline):
-                self._internal_pipeline.steps.append((name, estimator))
-
-        self.logger.info(f"Finsihed creating pipeline.")
-        self.logger.info(f"Preprocessing pipeline: {self._internal_pipeline}")
+                self._internal_pipeline.steps.append(("polynomial_features", polynomial))
+    
+            # Balance the dataset ======================================= >>
+    
+            if fix_imbalance:
+                if fix_imbalance_method is None:
+                    balance_estimator = SMOTE()
+                elif not hasattr(fix_imbalance_method, "fit_resample"):
+                    raise ValueError(
+                        "Invalid value for the fix_imbalance_method parameter. "
+                        "The provided value must be a imblearn estimator, got "
+                        f"{fix_imbalance_method.__class__.__name_}."
+                    )
+                else:
+                    balance_estimator = fix_imbalance_method
+    
+                self._internal_pipeline.steps.append(("balance", balance_estimator))
+    
+            # Custom transformers ====================================== >>
+    
+            if custom_pipeline:
+                for name, estimator in normalize_custom_transformers(custom_pipeline):
+                    self._internal_pipeline.steps.append((name, estimator))
+    
+            self.logger.info(f"Finsihed creating pipeline.")
+            self.logger.info(f"Preprocessing pipeline: {self._internal_pipeline}")
 
         # self.iterative_imputation_iters_param = iterative_imputation_iters
         #
@@ -2564,7 +2600,9 @@ class _TabularExperiment(_PyCaretExperiment):
                             hover_data=d.columns,
                         )
 
-                        fig.update_layout(height=600 * scale,)
+                        fig.update_layout(
+                            height=600 * scale,
+                        )
 
                         plot_filename = f"{plot_name}.html"
 

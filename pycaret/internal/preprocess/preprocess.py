@@ -3580,7 +3580,7 @@ def Preprocess_Path_One(
     else:
         dummy = SKLEARN_EMPTY_STEP
 
-    # remove putliers
+    # remove outliers
     if remove_outliers == True:
         rem_outliers = Outlier(
             target=target_variable,
@@ -3966,7 +3966,7 @@ def Preprocess_Path_One_Sklearn(
     else:
         dummy = SKLEARN_EMPTY_STEP
 
-    # remove putliers
+    # remove outliers
     if remove_outliers == True:
         rem_outliers = Outlier(
             target=target_variable,
