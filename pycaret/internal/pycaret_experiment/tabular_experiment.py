@@ -6,12 +6,10 @@ import secrets
 import time
 import traceback
 import warnings
-from copy import deepcopy
 from typing import Any, Dict, List, Optional, Tuple, Union
 from unittest.mock import patch
 
 import numpy as np  # type: ignore
-import pandas as pd  # type ignore
 import plotly.express as px  # type: ignore
 import plotly.graph_objects as go  # type: ignore
 import pycaret.internal.patches.sklearn
@@ -38,6 +36,7 @@ from pycaret.internal.utils import (
     get_columns_to_stratify_by,
     get_model_name,
     normalize_custom_transformers,
+    df_shrink_dtypes,
 )
 
 from category_encoders.leave_one_out import LeaveOneOutEncoder
@@ -406,8 +405,6 @@ class _TabularExperiment(_PyCaretExperiment):
         remove_multicollinearity: bool = False,
         multicollinearity_threshold: float = 0.9,
         remove_perfect_collinearity: bool = True,
-        create_clusters: bool = False,
-        cluster_iter: int = 20,
         group_features: Optional[List[str]] = None,
         group_names: Optional[List[str]] = None,
         feature_selection: bool = False,
@@ -691,14 +688,6 @@ class _TabularExperiment(_PyCaretExperiment):
                 "multicollinearity_threshold must be a float between 0 and 1."
             )
 
-        # create_clusters
-        if type(create_clusters) is not bool:
-            raise TypeError("create_clusters parameter only accepts True or False.")
-
-        # cluster_iter
-        if type(cluster_iter) is not int:
-            raise TypeError("cluster_iter must be a integer greater than 1.")
-
         # group features
         if group_features is not None:
             if type(group_features) is not list:
@@ -902,6 +891,9 @@ class _TabularExperiment(_PyCaretExperiment):
         # Preprocessing ============================================ >>
 
         self.logger.info("Preparing preprocessing pipeline...")
+
+        # Standardize dataframe types to save memory
+        self.data = df_shrink_dtypes(self.data)
 
         # Define column types ================================== >>
 
@@ -1430,11 +1422,6 @@ class _TabularExperiment(_PyCaretExperiment):
 
         self.logger.info("Creating final display dataframe.")
 
-        if low_variance_threshold:
-            low_var = len(variance_estimator.variances_ < low_variance_threshold)
-        else:
-            low_var = None
-
         display_container = self._get_setup_display(
             target_type="Multiclass" if self._is_multiclass() else "Binary",
             ordinal_features=len(ordinal_features) if ordinal_features else 0,
@@ -1443,12 +1430,10 @@ class _TabularExperiment(_PyCaretExperiment):
             date_features=len(date_cols),
             ignore_features=len(ign_cols),
             missing_values=self.data.isna().sum().sum(),
-            drop_variance_features=low_var,
         )
 
         if verbose:
             print(display_container)
-        self.logger.info(display_container)
 
         # Pandas profiling ========================================= >>
 

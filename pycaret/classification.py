@@ -62,8 +62,6 @@ def setup(
     remove_multicollinearity: bool = False,
     multicollinearity_threshold: float = 0.9,
     remove_perfect_collinearity: bool = True,
-    create_clusters: bool = False,
-    cluster_iter: int = 20,
     group_features: Optional[List[str]] = None,
     group_names: Optional[List[str]] = None,
     feature_selection: bool = False,
@@ -341,17 +339,6 @@ def setup(
         removed from the dataset.
 
 
-    create_clusters: bool, default = False
-        When set to True, an additional feature is created in training dataset where each 
-        instance is assigned to a cluster. The number of clusters is determined by 
-        optimizing Calinski-Harabasz and Silhouette criterion.
-
-
-    cluster_iter: int, default = 20
-        Number of iterations for creating cluster. Each iteration represents cluster 
-        size. Ignored when ``create_clusters`` is not True. 
-
-
     group_features: list or list of list, default = None
         When the dataset contains features with related characteristics, group_features
         parameter can be used for feature extraction. It takes a list of strings with 
@@ -582,8 +569,6 @@ def setup(
         remove_multicollinearity=remove_multicollinearity,
         multicollinearity_threshold=multicollinearity_threshold,
         remove_perfect_collinearity=remove_perfect_collinearity,
-        create_clusters=create_clusters,
-        cluster_iter=cluster_iter,
         group_features=group_features,
         group_names=group_names,
         feature_selection=feature_selection,

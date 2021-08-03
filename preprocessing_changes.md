@@ -24,6 +24,8 @@ Changes:
   works for all numerical columns (is done after encoding).
 - Remove `trigonometry_features` parameter.
 - Removed `polynomial_threshold` parameter.
+- Removed `create_cluster` parameter.
+- Removed `cluster_iter` parameter.
 - Changed the way encoding works. Now defaults to LeaveOneOut and another
   estimator can be selected.
 - Reorder of the parameters to a logical order (following the pipeline)

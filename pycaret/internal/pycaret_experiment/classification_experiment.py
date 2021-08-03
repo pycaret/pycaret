@@ -76,18 +76,6 @@ class ClassificationExperiment(_SupervisedExperiment):
                 ["Date features", kwargs["date_features"]],
                 ["Ignored features", kwargs["ignore_features"]],
                 ["Missing Values", kwargs["missing_values"]],
-            ],
-            ignore_index=True,
-        )
-
-        if kwargs["drop_variance_features"]:
-            overview = overview.append(
-                ["drop_variance_features", kwargs["drop_variance_features"]],
-                ignore_index=True,
-            )
-
-        overview = overview.append(
-            [
                 ["Fold Generator", type(self.fold_generator).__name__],
                 ["Fold Number", self.fold_param],
                 ["CPU Jobs", self.n_jobs_param],
