@@ -91,7 +91,7 @@ class _TabularExperiment(_PyCaretExperiment):
                 "exp_id",
                 "logging_param",
                 "log_plots_param",
-                "data_before_preprocess",
+                "data",
                 "gpu_param",
                 "_all_models",
                 "_all_models_internal",
@@ -338,19 +338,19 @@ class _TabularExperiment(_PyCaretExperiment):
 
             try:
                 signature = infer_signature(
-                    self.data_before_preprocess.drop([self.target_param], axis=1)
+                    self.data.drop([self.target_param], axis=1)
                 )
             except Exception:
                 self.logger.warning("Couldn't infer MLFlow signature.")
                 signature = None
             if not self._is_unsupervised():
                 input_example = (
-                    self.data_before_preprocess.drop([self.target_param], axis=1)
+                    self.data.drop([self.target_param], axis=1)
                     .iloc[0]
                     .to_dict()
                 )
             else:
-                input_example = self.data_before_preprocess.iloc[0].to_dict()
+                input_example = self.data.iloc[0].to_dict()
 
             # log model as sklearn flavor
             prep_pipe_temp = deepcopy(_prep_pipe)
@@ -364,37 +364,6 @@ class _TabularExperiment(_PyCaretExperiment):
             )
             del prep_pipe_temp
         gc.collect()
-
-    def _split_data(
-        self,
-        X_before_preprocess,
-        y_before_preprocess,
-        target,
-        train_data,
-        test_data,
-        train_size,
-        data_split_shuffle,
-        dtypes,
-        display: Display,
-    ) -> None:
-        self.X = None
-        self.X_train = None
-        self.y_train = None
-        self.y = None
-        self.X_test = None
-        self.y_test = None
-        return
-
-    def _set_up_mlflow(
-        self,
-        functions,
-        runtime,
-        log_profile,
-        profile_kwargs,
-        log_data,
-        display,
-    ) -> None:
-        return
 
     def setup(
         self,
@@ -502,11 +471,21 @@ class _TabularExperiment(_PyCaretExperiment):
         self.transform_target_method_param = transform_target_method
         self.n_jobs_param = n_jobs
         self.gpu_param = use_gpu
+        self.fold_param = fold
+        self.fold_groups_param = None
         self.html_param = html
+        self.logging_param = log_experiment
+        self.log_plots_param = log_plots if log_plots else False
 
         # Global attrs
         self.seed = random.randint(150, 9000) if session_id is None else session_id
         np.random.seed(self.seed)
+
+        # Other attrs
+        self.experiment__ = []
+        self.master_model_container = []
+        self._all_models, self._all_models_internal = self._get_models()
+        self._all_metrics = self._get_metrics()
 
         # Initialization =========================================== >>
 
@@ -780,10 +759,6 @@ class _TabularExperiment(_PyCaretExperiment):
         if type(html) is not bool:
             raise TypeError("html parameter only accepts True or False.")
 
-        # use_gpu
-        if use_gpu != "force" and type(use_gpu) is not bool:
-            raise TypeError("use_gpu parameter only accepts 'force', True or False.")
-
         # data_split_shuffle
         if type(data_split_shuffle) is not bool:
             raise TypeError("data_split_shuffle parameter only accepts True or False.")
@@ -926,89 +901,93 @@ class _TabularExperiment(_PyCaretExperiment):
 
         # Preprocessing ============================================ >>
 
+        self.logger.info("Preparing preprocessing pipeline...")
+
+        # Define column types ================================== >>
+
+        # TODO: Extra checks that the provided columns are allowed
+
+        # Categorical columns
+        cat_cols = list(self.X.select_dtypes(exclude="number").columns)
+        if categorical_features:
+            cat_cols = categorical_features
+        cat_cols_idx = [self.X.columns.get_loc(col) for col in cat_cols]
+
+        # Numerical columns
+        num_cols = list(self.X.select_dtypes(include="number").columns)
+        if categorical_features:
+            num_cols = categorical_features
+        num_cols_idx = [self.X.columns.get_loc(col) for col in num_cols]
+
+        # Date features
+        date_cols = list(self.X.select_dtypes(include="datetime").columns)
+        if date_features:
+            date_cols = date_features
+
+        # Ignore features
+        ign_cols = []
+        if ignore_features:
+            ign_cols = ignore_features
+
+        # Imputation =========================================== >>
+
+        # Checking parameters
+        num_dict = {"zero": "constant", "mean": "mean", "median": "median"}
+        if numeric_imputation not in num_dict:
+            raise ValueError(
+                "Invalid value for the numeric_imputation parameter, got "
+                f"{numeric_imputation}. Possible values are {' '.join(num_dict)}."
+            )
+
+        cat_dict = {"constant": "constant", "mode": "most_frequent"}
+        if categorical_imputation not in cat_dict:
+            raise ValueError(
+                "Invalid value for the categorical_imputation "
+                f"parameter, got {categorical_imputation}. Possible "
+                f"values are {' '.join(cat_dict)}."
+            )
+
+        if imputation_type == "simple":
+            self.logger.info("Setting up simple imputation")
+
+            # Define sklearn estimators
+            num_imputer = SimpleImputer(
+                strategy=num_dict[numeric_imputation],
+                fill_value=0,
+            )
+            cat_imputer = SimpleImputer(
+                strategy=cat_dict[categorical_imputation],
+                fill_value="not_available",
+            )
+
+            # Create meta-estimator to split imputers over columns
+            impute_estimator = ColumnTransformer(
+                transformers=[
+                    ("numerical_imputer", num_imputer, num_cols_idx),
+                    ("categorical_imputer", cat_imputer, cat_cols_idx),
+                ],
+                remainder="passthrough",
+                n_jobs=self.n_jobs_param,
+            )
+        elif imputation_type == "iterative":
+            self.logger.info("Setting up iterative imputation")
+            impute_estimator = IterativeImputer(
+                estimator="lightgbm",  # TODO: fix
+                max_iter=iterative_imputation_iters,
+            )
+        else:
+            raise ValueError(
+                "Invalid value for the imputation_type parameter, got "
+                f"{imputation_type}. Possible values are: simple, iterative."
+            )
+
+        # Start with the internal pipeline
+        # Always create (even if preprocess=False) since we need a
+        # pipeline for the rest of the methods and if there are no
+        # NaNs then this step is almost instant
+        self._internal_pipeline = InternalPipeline([("impute", impute_estimator)])
+
         if preprocess:
-            self.logger.info("Preparing preprocessing pipeline...")
-
-            # Define column types ================================== >>
-
-            # TODO: Extra checks that the provided columns are allowed
-
-            # Categorical columns
-            cat_cols = list(self.X.select_dtypes(exclude="number").columns)
-            if categorical_features:
-                cat_cols = categorical_features
-            cat_cols_idx = [self.X.columns.get_loc(col) for col in cat_cols]
-
-            # Numerical columns
-            num_cols = list(self.X.select_dtypes(include="number").columns)
-            if categorical_features:
-                num_cols = categorical_features
-            num_cols_idx = [self.X.columns.get_loc(col) for col in num_cols]
-
-            # Date features
-            date_cols = list(self.X.select_dtypes(include="datetime").columns)
-            if date_features:
-                date_cols = date_features
-
-            # Ignore features
-            ign_cols = []
-            if ignore_features:
-                ign_cols = ignore_features
-
-            # Imputation =========================================== >>
-
-            # Checking parameters
-            num_dict = {"zero": "constant", "mean": "mean", "median": "median"}
-            if numeric_imputation not in num_dict:
-                raise ValueError(
-                    "Invalid value for the numeric_imputation parameter, got "
-                    f"{numeric_imputation}. Possible values are {' '.join(num_dict)}."
-                )
-
-            cat_dict = {"constant": "constant", "mode": "most_frequent"}
-            if categorical_imputation not in cat_dict:
-                raise ValueError(
-                    "Invalid value for the categorical_imputation "
-                    f"parameter, got {categorical_imputation}. Possible "
-                    f"values are {' '.join(cat_dict)}."
-                )
-
-            if imputation_type == "simple":
-                self.logger.info("Setting up simple imputation")
-
-                # Define sklearn estimators
-                num_imputer = SimpleImputer(
-                    strategy=num_dict[numeric_imputation],
-                    fill_value=0,
-                )
-                cat_imputer = SimpleImputer(
-                    strategy=cat_dict[categorical_imputation],
-                    fill_value="not_available",
-                )
-
-                # Create meta-estimator to split imputers over columns
-                impute_estimator = ColumnTransformer(
-                    transformers=[
-                        ("numerical_imputer", num_imputer, num_cols_idx),
-                        ("categorical_imputer", cat_imputer, cat_cols_idx),
-                    ],
-                    remainder="passthrough",
-                    n_jobs=self.n_jobs_param,
-                )
-            elif imputation_type == "iterative":
-                self.logger.info("Setting up iterative imputation")
-                impute_estimator = IterativeImputer(
-                    estimator="lightgbm",  # TODO: fix
-                    max_iter=iterative_imputation_iters,
-                )
-            else:
-                raise ValueError(
-                    "Invalid value for the imputation_type parameter, got "
-                    f"{imputation_type}. Possible values are: simple, iterative."
-                )
-
-            # Start with the internal pipeline
-            self._internal_pipeline = InternalPipeline([("impute", impute_estimator)])
 
             # Encoding =============================================== >>
 
@@ -1030,9 +1009,12 @@ class _TabularExperiment(_PyCaretExperiment):
                 estimator.append(("categorical_encoding", encode_method, cat_cols_idx))
 
             if estimator:
-                self._internal_pipeline.steps.append(
-                    ("encoding", ColumnTransformer(estimator, n_jobs=self.n_jobs_param))
+                encoding_est = ColumnTransformer(
+                    transformers=estimator,
+                    remainder="passthrough",
+                    n_jobs=self.n_jobs_param,
                 )
+                self._internal_pipeline.steps.append(("encoding", encoding_est))
 
             # Transformation ========================================= >>
 
@@ -1159,13 +1141,13 @@ class _TabularExperiment(_PyCaretExperiment):
                 for name, estimator in normalize_custom_transformers(custom_pipeline):
                     self._internal_pipeline.steps.append((name, estimator))
 
-            self.logger.info(f"Finished creating pipeline.")
-            self.logger.info(f"Preprocessing pipeline: {self._internal_pipeline}")
+            self.logger.info(f"Finished creating preprocessing pipeline.")
+            self.logger.info(f"Pipeline: {self._internal_pipeline}")
 
         # self.iterative_imputation_iters_param = iterative_imputation_iters
         #
         # # creating variables to be used later in the function
-        # train_data = self.data_before_preprocess.copy()
+        # train_data = self.data.copy()
         # if self._is_unsupervised():
         #     target = "UNSUPERVISED_DUMMY_TARGET"
         #     train_data[target] = 2
@@ -1326,8 +1308,16 @@ class _TabularExperiment(_PyCaretExperiment):
 
         # Set up GPU usage ========================================= >>
 
+        if self.gpu_param != "force" and type(self.gpu_param) is not bool:
+            raise TypeError(
+                f"Invalid value for the use_gpu parameter, got {self.gpu_param}. "
+                "Possible values are: 'force', True or False."
+            )
+
         cuml_version = None
         if self.gpu_param:
+            self.logger.info("Set up GPU usage.")
+
             try:
                 from cuml import __version__
 
@@ -1346,107 +1336,10 @@ class _TabularExperiment(_PyCaretExperiment):
                 else:
                     self.logger.warning(message)
 
-        self.logger.info("Creating preprocessing pipeline")
+        # Set up folding strategy ================================== >>
 
-        # self.prep_pipe = pycaret.internal.preprocess.Preprocess_Path_One(
-        #     train_data=train_data,
-        #     ml_usecase="classification"
-        #     if self._ml_usecase == MLUsecase.CLASSIFICATION
-        #     else "regression",
-        #     imputation_type=imputation_type,
-        #     target_variable=target,
-        #     imputation_regressor=self.imputation_regressor,
-        #     imputation_classifier=self.imputation_classifier,
-        #     imputation_max_iter=self.iterative_imputation_iters_param,
-        #     categorical_features=cat_features_pass,
-        #     apply_ordinal_encoding=apply_ordinal_encoding_pass,
-        #     ordinal_columns_and_categories=ordinal_columns_and_categories_pass,
-        #     apply_cardinality_reduction=apply_cardinality_reduction_pass,
-        #     cardinal_method=cardinal_method_pass,
-        #     cardinal_features=cardinal_features_pass,
-        #     numerical_features=numeric_features_pass,
-        #     time_features=date_features_pass,
-        #     features_todrop=ignore_features_pass,
-        #     numeric_imputation_strategy=numeric_imputation,
-        #     categorical_imputation_strategy=categorical_imputation_pass,
-        #     scale_data=normalize,
-        #     scaling_method=normalize_method,
-        #     Power_transform_data=transformation,
-        #     Power_transform_method=trans_method_pass,
-        #     apply_untrained_levels_treatment=handle_unknown_categorical,
-        #     untrained_levels_treatment_method=unknown_categorical_method_pass,
-        #     apply_pca=pca,
-        #     pca_method=pca_method_pass,
-        #     pca_variance_retained_or_number_of_components=pca_components_pass,
-        #     apply_zero_nearZero_variance=ignore_low_variance,
-        #     club_rare_levels=combine_rare_levels,
-        #     rara_level_threshold_percentage=rare_level_threshold,
-        #     apply_binning=apply_binning_pass,
-        #     features_to_binn=features_to_bin_pass,
-        #     remove_outliers=remove_outliers,
-        #     outlier_contamination_percentage=outliers_threshold,
-        #     outlier_methods=["pca"],
-        #     remove_multicollinearity=remove_multicollinearity,
-        #     maximum_correlation_between_features=multicollinearity_threshold,
-        #     remove_perfect_collinearity=remove_perfect_collinearity,
-        #     cluster_entire_data=create_clusters,
-        #     range_of_clusters_to_try=cluster_iter,
-        #     apply_polynomial_trigonometry_features=polynomial_features,
-        #     max_polynomial=polynomial_degree,
-        #     trigonometry_calculations=trigonometry_features_pass,
-        #     top_poly_trig_features_to_select_percentage=polynomial_threshold,
-        #     apply_grouping=apply_grouping_pass,
-        #     features_to_group_ListofList=group_features_pass,
-        #     group_name=group_names_pass,
-        #     apply_feature_selection=feature_selection,
-        #     feature_selection_top_features_percentage=feature_selection_threshold,
-        #     feature_selection_method=feature_selection_method,
-        #     apply_feature_interactions=apply_feature_interactions_pass,
-        #     feature_interactions_to_apply=interactions_to_apply_pass,
-        #     feature_interactions_top_features_to_select_percentage=interaction_threshold,
-        #     display_types=display_dtypes_pass,  # this is for inferred input box
-        #     random_state=self.seed,
-        #     float_dtype="float64"
-        #     if self._ml_usecase == MLUsecase.TIME_SERIES
-        #     else "float32",
-        # )
+        self.logger.info("Set up folding strategy.")
 
-        # dtypes = self.prep_pipe.named_steps["dtypes"]
-        # try:
-        #     fix_perfect_removed_columns = (
-        #         self.prep_pipe.named_steps["fix_perfect"].columns_to_drop
-        #         if remove_perfect_collinearity
-        #         else []
-        #     )
-        # except:
-        #     fix_perfect_removed_columns = []
-        # try:
-        #     fix_multi_removed_columns = (
-        #         (
-        #             self.prep_pipe.named_steps["fix_multi"].to_drop
-        #             + self.prep_pipe.named_steps["fix_multi"].to_drop_taret_correlation
-        #         )
-        #         if remove_multicollinearity
-        #         else []
-        #     )
-        # except:
-        #     fix_multi_removed_columns = []
-        # multicollinearity_removed_columns = (
-        #     fix_perfect_removed_columns + fix_multi_removed_columns
-        # )
-
-        # Reset pandas option
-        pd.reset_option("display.max_rows")
-        pd.reset_option("display.max_columns")
-
-        self.logger.info("Creating global containers")
-
-        # create an empty list for pickling later.
-        self.experiment__ = []
-
-        # CV params
-        self.fold_param = fold
-        self.fold_groups_param = None
         if fold_groups is not None:
             if isinstance(fold_groups, str):
                 self.fold_groups_param = self.X[fold_groups]
@@ -1455,21 +1348,6 @@ class _TabularExperiment(_PyCaretExperiment):
             if pd.isnull(self.fold_groups_param).any():
                 raise ValueError(f"fold_groups cannot contain NaNs.")
         self.fold_shuffle_param = fold_shuffle
-
-        # create master_model_container
-        self.master_model_container = []
-
-        # create display container
-        self.display_container = []
-
-        # create logging parameter
-        self.logging_param = log_experiment
-
-        # create an empty log_plots_param
-        if not log_plots:
-            self.log_plots_param = False
-        else:
-            self.log_plots_param = log_plots
 
         if not self._is_unsupervised():
             fold_random_state = self.seed if self.fold_shuffle_param else None
@@ -1548,196 +1426,65 @@ class _TabularExperiment(_PyCaretExperiment):
                     fold = _get_cv_n_folds(y=self.y_train, cv=fold_strategy)
                     self.fold_param = fold
 
-        # determining target type
-        if self._is_multiclass():
-            target_type = "Multiclass"
+        # Final display ============================================ >>
+
+        self.logger.info("Creating final display dataframe.")
+
+        if low_variance_threshold:
+            low_var = len(variance_estimator.variances_ < low_variance_threshold)
         else:
-            target_type = "Binary"
+            low_var = None
 
-        self._all_models, self._all_models_internal = self._get_models()
-        self._all_metrics = self._get_metrics()
+        display_container = self._get_setup_display(
+            target_type="Multiclass" if self._is_multiclass() else "Binary",
+            ordinal_features=len(ordinal_features) if ordinal_features else 0,
+            numerical_features=len(num_cols),
+            categorical_features=len(cat_cols),
+            date_features=len(date_cols),
+            ignore_features=len(ign_cols),
+            missing_values=self.data.isna().sum().sum(),
+            drop_variance_features=low_var,
+        )
 
-        """
-        Final display Starts
-        """
-        # self.logger.info("Creating grid variables")
+        if verbose:
+            print(display_container)
+        self.logger.info(display_container)
 
-        # if hasattr(dtypes, "replacement"):
-        #     label_encoded = dtypes.replacement
-        #     label_encoded = (
-        #         str(label_encoded).replace("'", "").replace("{", "").replace("}", "")
-        #     )
-        #
-        # else:
-        #     label_encoded = "None"
-
-        # generate values for grid show
-        # missing_values = self.data_before_preprocess.isna().sum().sum()
-        # missing_flag = True if missing_values > 0 else False
-
-        # normalize_grid = normalize_method if normalize else "None"
-        #
-        # transformation_grid = transformation_method if transformation else "None"
-        #
-        # pca_method_grid = pca_method if pca else "None"
-        #
-        # pca_components_grid = pca_components_pass if pca else "None"
-        #
-        # rare_level_threshold_grid = (
-        #     rare_level_threshold if combine_rare_levels else "None"
-        # )
-        #
-        # numeric_bin_grid = False if bin_numeric_features is None else True
-        #
-        # outliers_threshold_grid = outliers_threshold if remove_outliers else None
-        #
-        # multicollinearity_threshold_grid = (
-        #     multicollinearity_threshold if remove_multicollinearity else None
-        # )
-        #
-        # cluster_iter_grid = cluster_iter if create_clusters else None
-        #
-        # polynomial_degree_grid = polynomial_degree if polynomial_features else None
-        #
-        # polynomial_threshold_grid = (
-        #     polynomial_threshold
-        #     if polynomial_features or trigonometry_features
-        #     else None
-        # )
-        #
-        # feature_selection_threshold_grid = (
-        #     feature_selection_threshold if feature_selection else None
-        # )
-        #
-        # interaction_threshold_grid = (
-        #     interaction_threshold if feature_interaction or feature_ratio else None
-        # )
-        #
-        # ordinal_features_grid = False if ordinal_features is None else True
-        #
-        # unknown_categorical_method_grid = (
-        #     unknown_categorical_method if handle_unknown_categorical else None
-        # )
-        #
-        # group_features_grid = False if group_features is None else True
-        #
-        # high_cardinality_features_grid = (
-        #     False if high_cardinality_features is None else True
-        # )
-        #
-        # high_cardinality_method_grid = (
-        #     high_cardinality_method if high_cardinality_features_grid else None
-        # )
-        #
-        # learned_types = dtypes.learned_dtypes
-        # learned_types.drop(target, inplace=True)
-        #
-        # float_type = 0
-        # cat_type = 0
-        #
-        # for i in dtypes.learned_dtypes:
-        #     if "float" in str(i):
-        #         float_type += 1
-        #     elif "object" in str(i):
-        #         cat_type += 1
-        #     elif "int" in str(i):
-        #         float_type += 1
+        # Pandas profiling ========================================= >>
 
         if profile:
-            print("Setup Successfully Completed! Loading Profile Now... Please Wait!")
-        else:
             if verbose:
-                print("Setup Successfully Completed!")
-
-        # self.preprocess = preprocess
-        # functions = self._get_setup_display(
-        #     label_encoded=label_encoded,
-        #     target_type=target_type,
-        #     missing_flag=missing_flag,
-        #     float_type=float_type,
-        #     cat_type=cat_type,
-        #     ordinal_features_grid=ordinal_features_grid,
-        #     high_cardinality_features_grid=high_cardinality_features_grid,
-        #     high_cardinality_method_grid=high_cardinality_method_grid,
-        #     data_split_shuffle=data_split_shuffle,
-        #     data_split_stratify=data_split_stratify,
-        #     imputation_type=imputation_type,
-        #     numeric_imputation=numeric_imputation,
-        #     imputation_regressor_name=imputation_regressor_name,
-        #     categorical_imputation=categorical_imputation,
-        #     imputation_classifier_name=imputation_classifier_name,
-        #     unknown_categorical_method_grid=unknown_categorical_method_grid,
-        #     normalize=normalize,
-        #     normalize_grid=normalize_grid,
-        #     transformation=transformation,
-        #     transformation_grid=transformation_grid,
-        #     pca=pca,
-        #     pca_method_grid=pca_method_grid,
-        #     pca_components_grid=pca_components_grid,
-        #     low_variance_threshold=low_variance_threshold,
-        #     combine_rare_levels=combine_rare_levels,
-        #     rare_level_threshold_grid=rare_level_threshold_grid,
-        #     numeric_bin_grid=numeric_bin_grid,
-        #     remove_outliers=remove_outliers,
-        #     outliers_threshold_grid=outliers_threshold_grid,
-        #     remove_perfect_collinearity=remove_perfect_collinearity,
-        #     remove_multicollinearity=remove_multicollinearity,
-        #     multicollinearity_threshold_grid=multicollinearity_threshold_grid,
-        #     multicollinearity_removed_columns=multicollinearity_removed_columns,
-        #     create_clusters=create_clusters,
-        #     cluster_iter_grid=cluster_iter_grid,
-        #     polynomial_features=polynomial_features,
-        #     polynomial_degree_grid=polynomial_degree_grid,
-        #     trigonometry_features=trigonometry_features,
-        #     polynomial_threshold_grid=polynomial_threshold_grid,
-        #     group_features_grid=group_features_grid,
-        #     feature_selection=feature_selection,
-        #     feature_selection_method=feature_selection_method,
-        #     feature_selection_threshold_grid=feature_selection_threshold_grid,
-        #     feature_interaction=feature_interaction,
-        #     feature_ratio=feature_ratio,
-        #     interaction_threshold_grid=interaction_threshold_grid,
-        #     fix_imbalance_model_name=fix_imbalance_model_name,
-        # )
-
-        # self.display_container.append(functions)
-
-        if profile:
+                print("Setup Successfully Completed! Loading profile... Please Wait!")
             try:
                 import pandas_profiling
 
                 pf = pandas_profiling.ProfileReport(self.data, **profile_kwargs)
                 display.display(pf, clear=True)
-            except:
-                print(
-                    "Data Profiler Failed. No output to show, please continue with modeling."
-                )
+            except Exception as ex:
+                print("Profiler Failed. No output to show, continue with modeling.")
                 self.logger.error(
-                    "Data Profiler Failed. No output to show, please continue with modeling."
+                    f"Data Failed with exception:\n {ex}\n"
+                    "No output to show, continue with modeling."
                 )
 
-        """
-        Final display Ends
-        """
+        # MLflow and wrap-up ======================================= >>
 
-        # self._set_up_mlflow(
-        #     functions,
-        #     np.array(time.time() - runtime_start).round(2),
-        #     log_profile,
-        #     profile_kwargs,
-        #     log_data,
-        #     display,
-        # )
-
-        self.logger.info(
-            f"self.master_model_container: {len(self.master_model_container)}"
+        self._set_up_mlflow(
+            display_container,
+            np.array(time.time() - runtime_start).round(2),
+            log_profile,
+            profile_kwargs,
+            log_data,
+            display,
         )
+
         self.logger.info(f"self.display_container: {len(self.display_container)}")
+        self.logger.info(f"Pipeline: {str(self._internal_pipeline)}")
+        self.logger.info("setup() successfully completed............................")
 
-        # self.logger.info(str(self.prep_pipe))
-        self.logger.info(
-            "setup() successfully completed......................................"
-        )
+        # Reset pandas option
+        pd.reset_option("display.max_rows")
+        pd.reset_option("display.max_columns")
 
         self._setup_ran = True
         return self
@@ -2110,10 +1857,10 @@ class _TabularExperiment(_PyCaretExperiment):
                         pca_["Cluster"] = cluster
 
                         if feature_name is not None:
-                            pca_["Feature"] = self.data_before_preprocess[feature_name]
+                            pca_["Feature"] = self.data[feature_name]
                         else:
-                            pca_["Feature"] = self.data_before_preprocess[
-                                self.data_before_preprocess.columns[0]
+                            pca_["Feature"] = self.data[
+                                self.data.columns[0]
                             ]
 
                         if label:
@@ -2211,10 +1958,10 @@ class _TabularExperiment(_PyCaretExperiment):
                         df["Anomaly"] = label
 
                         if feature_name is not None:
-                            df["Feature"] = self.data_before_preprocess[feature_name]
+                            df["Feature"] = self.data[feature_name]
                         else:
-                            df["Feature"] = self.data_before_preprocess[
-                                self.data_before_preprocess.columns[0]
+                            df["Feature"] = self.data[
+                                self.data.columns[0]
                             ]
 
                         display.clear_output()
@@ -2280,10 +2027,10 @@ class _TabularExperiment(_PyCaretExperiment):
                         X = pd.DataFrame(X_embedded)
                         X["Anomaly"] = cluster
                         if feature_name is not None:
-                            X["Feature"] = self.data_before_preprocess[feature_name]
+                            X["Feature"] = self.data[feature_name]
                         else:
-                            X["Feature"] = self.data_before_preprocess[
-                                self.data_before_preprocess.columns[0]
+                            X["Feature"] = self.data[
+                                self.data.columns[0]
                             ]
 
                         df = X
@@ -2362,11 +2109,11 @@ class _TabularExperiment(_PyCaretExperiment):
                         X_embedded["Cluster"] = cluster
 
                         if feature_name is not None:
-                            X_embedded["Feature"] = self.data_before_preprocess[
+                            X_embedded["Feature"] = self.data[
                                 feature_name
                             ]
                         else:
-                            X_embedded["Feature"] = self.data_before_preprocess[
+                            X_embedded["Feature"] = self.data[
                                 data_X.columns[0]
                             ]
 

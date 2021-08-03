@@ -37,7 +37,7 @@ class ClassificationExperiment(_SupervisedExperiment):
         self._ml_usecase = MLUsecase.CLASSIFICATION
         self.exp_name_log = "clf-default-name"
         self.variable_keys = self.variable_keys.union(
-            {"fix_imbalance_param", "fix_imbalance_method_param",}
+            {"fix_imbalance_param", "fix_imbalance_method_param"}
         )
         self._available_plots = {
             "parameter": "Hyperparameters",
@@ -60,131 +60,46 @@ class ClassificationExperiment(_SupervisedExperiment):
             "gain": "Gain Chart",
             "tree": "Decision Tree",
         }
-        return
 
     def _get_setup_display(self, **kwargs) -> Styler:
-        # define highlight function for function grid to display
-
-        functions = pd.DataFrame(
+        """Display overview of the setup."""
+        overview = pd.DataFrame(columns=["Description", "Value"])
+        overview = overview.append(
             [
                 ["session_id", self.seed],
                 ["Target", self.target_param],
-                ["Target Type", kwargs["target_type"]],
-                ["Label Encoded", kwargs["label_encoded"]],
-                ["Original Data", self.data_before_preprocess.shape],
-                ["Missing Values", kwargs["missing_flag"]],
-                ["Numeric Features", str(kwargs["float_type"])],
-                ["Categorical Features", str(kwargs["cat_type"])],
-            ]
-            + (
-                [
-                    ["Ordinal Features", kwargs["ordinal_features_grid"]],
-                    [
-                        "High Cardinality Features",
-                        kwargs["high_cardinality_features_grid"],
-                    ],
-                    ["High Cardinality Method", kwargs["high_cardinality_method_grid"]],
-                ]
-                if self.preprocess
-                else []
-            )
-            + (
-                [
-                    ["Transformed Train Set", self.X_train.shape],
-                    ["Transformed Test Set", self.X_test.shape],
-                    ["Shuffle Train-Test", str(kwargs["data_split_shuffle"])],
-                    ["Stratify Train-Test", str(kwargs["data_split_stratify"])],
-                    ["Fold Generator", type(self.fold_generator).__name__],
-                    ["Fold Number", self.fold_param],
-                    ["CPU Jobs", self.n_jobs_param],
-                    ["Use GPU", self.gpu_param],
-                    ["Log Experiment", self.logging_param],
-                    ["Experiment Name", self.exp_name_log],
-                    ["USI", self.USI],
-                ]
-            )
-            + (
-                [
-                    ["Imputation Type", kwargs["imputation_type"]],
-                    [
-                        "Iterative Imputation Iteration",
-                        self.iterative_imputation_iters_param
-                        if kwargs["imputation_type"] == "iterative"
-                        else "None",
-                    ],
-                    ["Numeric Imputer", kwargs["numeric_imputation"]],
-                    [
-                        "Iterative Imputation Numeric Model",
-                        kwargs["imputation_regressor_name"]
-                        if kwargs["imputation_type"] == "iterative"
-                        else "None",
-                    ],
-                    ["Categorical Imputer", kwargs["categorical_imputation"]],
-                    [
-                        "Iterative Imputation Categorical Model",
-                        kwargs["imputation_classifier_name"]
-                        if kwargs["imputation_type"] == "iterative"
-                        else "None",
-                    ],
-                    [
-                        "Unknown Categoricals Handling",
-                        kwargs["unknown_categorical_method_grid"],
-                    ],
-                    ["Normalize", kwargs["normalize"]],
-                    ["Normalize Method", kwargs["normalize_grid"]],
-                    ["Transformation", kwargs["transformation"]],
-                    ["Transformation Method", kwargs["transformation_grid"]],
-                    ["PCA", kwargs["pca"]],
-                    ["PCA Method", kwargs["pca_method_grid"]],
-                    ["PCA Components", kwargs["pca_components_grid"]],
-                    ["Ignore Low Variance", kwargs["ignore_low_variance"]],
-                    ["Combine Rare Levels", kwargs["combine_rare_levels"]],
-                    ["Rare Level Threshold", kwargs["rare_level_threshold_grid"]],
-                    ["Numeric Binning", kwargs["numeric_bin_grid"]],
-                    ["Remove Outliers", kwargs["remove_outliers"]],
-                    ["Outliers Threshold", kwargs["outliers_threshold_grid"]],
-                    [
-                        "Remove Perfect Collinearity",
-                        kwargs["remove_perfect_collinearity"],
-                    ],
-                    ["Remove Multicollinearity", kwargs["remove_multicollinearity"]],
-                    [
-                        "Multicollinearity Threshold",
-                        kwargs["multicollinearity_threshold_grid"],
-                    ],
-                    [
-                        "Columns Removed Due to Multicollinearity",
-                        kwargs["multicollinearity_removed_columns"],
-                    ],
-                    ["Clustering", kwargs["create_clusters"]],
-                    ["Clustering Iteration", kwargs["cluster_iter_grid"]],
-                    ["Polynomial Features", kwargs["polynomial_features"]],
-                    ["Polynomial Degree", kwargs["polynomial_degree_grid"]],
-                    ["Trignometry Features", kwargs["trigonometry_features"]],
-                    ["Polynomial Threshold", kwargs["polynomial_threshold_grid"]],
-                    ["Group Features", kwargs["group_features_grid"]],
-                    ["Feature Selection", kwargs["feature_selection"]],
-                    ["Feature Selection Method", kwargs["feature_selection_method"]],
-                    [
-                        "Features Selection Threshold",
-                        kwargs["feature_selection_threshold_grid"],
-                    ],
-                    ["Feature Interaction", kwargs["feature_interaction"]],
-                    ["Feature Ratio", kwargs["feature_ratio"]],
-                    ["Interaction Threshold", kwargs["interaction_threshold_grid"]],
-                ]
-                if self.preprocess
-                else []
-            )
-            + (
-                [
-                    ["Fix Imbalance", self.fix_imbalance_param],
-                    ["Fix Imbalance Method", kwargs["fix_imbalance_model_name"]],  # type: ignore
-                ]
-            ),
-            columns=["Description", "Value"],
+                ["Target type", kwargs["target_type"]],
+                ["Data shape", self.data.shape],
+                ["Ordinal features", kwargs["ordinal_features"]],
+                ["Numerical features", kwargs["numerical_features"]],
+                ["Categorical features", kwargs["categorical_features"]],
+                ["Date features", kwargs["date_features"]],
+                ["Ignored features", kwargs["ignore_features"]],
+                ["Missing Values", kwargs["missing_values"]],
+            ],
+            ignore_index=True,
         )
-        return functions.style.apply(highlight_setup)
+
+        if kwargs["drop_variance_features"]:
+            overview = overview.append(
+                ["drop_variance_features", kwargs["drop_variance_features"]],
+                ignore_index=True,
+            )
+
+        overview = overview.append(
+            [
+                ["Fold Generator", type(self.fold_generator).__name__],
+                ["Fold Number", self.fold_param],
+                ["CPU Jobs", self.n_jobs_param],
+                ["Use GPU", self.gpu_param],
+                ["Log Experiment", self.logging_param],
+                ["Experiment Name", self.exp_name_log],
+                ["USI", self.USI],
+            ],
+            ignore_index=True,
+        )
+
+        return overview.style.apply(highlight_setup)
 
     def _get_models(self, raise_errors: bool = True) -> Tuple[dict, dict]:
         all_models = {
