@@ -262,8 +262,8 @@ def setup(
     remove_multicollinearity: bool, default = False
         When set to True, features with the inter-correlations higher than the defined 
         threshold are removed. When two features are highly correlated with each other, 
-        the feature that is less correlated with the target variable is removed. 
-
+        the feature that is less correlated with the target variable is removed. Only
+        considers numeric features.
 
     multicollinearity_threshold: float, default = 0.9
         Threshold for correlated features. Ignored when ``remove_multicollinearity``
@@ -872,8 +872,8 @@ def deploy_model(
 
     """
     This function deploys the transformation pipeline and trained model on cloud.
-    
-    
+
+
     Example
     -------
     >>> from pycaret.datasets import get_data
@@ -881,46 +881,51 @@ def deploy_model(
     >>> from pycaret.anomaly import *
     >>> exp_name = setup(data = anomaly)
     >>> knn = create_model('knn')
+    >>> # sets appropriate credentials for the platform as environment variables
+    >>> import os
+    >>> os.environ["AWS_ACCESS_KEY_ID"] = str("foo")
+    >>> os.environ["AWS_SECRET_ACCESS_KEY"] = str("bar")
     >>> deploy_model(model = knn, model_name = 'knn-for-deployment', platform = 'aws', authentication = {'bucket' : 'S3-bucket-name'})
-        
+
 
     Amazon Web Service (AWS) users:
-        To deploy a model on AWS S3 ('aws'), environment variables must be set in your
-        local environment. To configure AWS environment variables, type ``aws configure`` 
-        in the command line. Following information from the IAM portal of amazon console 
-        account is required:
+        To deploy a model on AWS S3 ('aws'), the credentials have to be passed. The easiest way is to use environment
+        variables in your local environment. Following information from the IAM portal of amazon console account
+        are required:
 
         - AWS Access Key ID
         - AWS Secret Key Access
-        - Default Region Name (can be seen under Global settings on your AWS console)
 
-        More info: https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-envvars.html
+
+        More info: https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html#environment-variables
 
 
     Google Cloud Platform (GCP) users:
-        To deploy a model on Google Cloud Platform ('gcp'), project must be created 
-        using command line or GCP console. Once project is created, you must create 
-        a service account and download the service account key as a JSON file to set 
-        environment variables in your local environment. 
+        To deploy a model on Google Cloud Platform ('gcp'), project must be created
+        using command line or GCP console. Once project is created, you must create
+        a service account and download the service account key as a JSON file to set
+        environment variables in your local environment.
 
         More info: https://cloud.google.com/docs/authentication/production
 
-    
+
     Microsoft Azure (Azure) users:
         To deploy a model on Microsoft Azure ('azure'), environment variables for connection
         string must be set in your local environment. Go to settings of storage account on
-        Azure portal to access the connection string required. 
+        Azure portal to access the connection string required.
+
+        - AZURE_STORAGE_CONNECTION_STRING (required as environment variable)
 
         More info: https://docs.microsoft.com/en-us/azure/storage/blobs/storage-quickstart-blobs-python?toc=%2Fpython%2Fazure%2FTOC.json
 
 
     model: scikit-learn compatible object
         Trained model object
-    
+
 
     model_name: str
         Name of model.
-    
+
 
     authentication: dict
         Dictionary of applicable authentication tokens.
@@ -933,7 +938,7 @@ def deploy_model(
 
         When platform = 'azure':
         {'container': 'azure-container-name'}
-    
+
 
     platform: str, default = 'aws'
         Name of the platform. Currently supported platforms: 'aws', 'gcp' and 'azure'.
@@ -941,7 +946,7 @@ def deploy_model(
 
     Returns:
         None
-    
+
     """
 
     return _CURRENT_EXPERIMENT.deploy_model(

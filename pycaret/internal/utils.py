@@ -8,7 +8,7 @@ from pycaret.internal.validation import *
 from typing import Any, List, Optional, Dict, Tuple, Union
 from sklearn.model_selection import KFold, StratifiedKFold, BaseCrossValidator
 from sklearn.model_selection._split import _BaseKFold
-from enum import IntEnum
+from enum import IntEnum, Enum
 import functools
 
 
@@ -83,6 +83,14 @@ def to_series(data, index=None, name="Target"):
         data = pd.Series(data, index=index, name=name)
 
     return data
+
+
+class TSModelTypes(Enum):
+    BASELINE = 'baseline'
+    CLASSICAL = 'classical'
+    LINEAR = 'linear'
+    NEIGHBORS = 'neighbors'
+    TREE = 'tree'
 
 
 def id_or_display_name(metric, input_ml_usecase, target_ml_usecase):

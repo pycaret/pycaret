@@ -32,7 +32,9 @@ _BLEND_TEST_MODELS = [
 @pytest.fixture(scope="session", name="load_data")
 def load_data():
     """Load Pycaret Airline dataset."""
-    return get_data("airline")
+    data = get_data("airline")
+    data = data - 400  # simulate negative values
+    return data
 
 
 @pytest.fixture(scope="session", name="load_setup")
@@ -93,6 +95,16 @@ def _get_seasonal_values():
     return [(k, v.value) for k, v in SeasonalPeriod.__members__.items()]
 
 
+def _check_windows():
+    """Check if the system is Windows."""
+    import sys
+
+    platform = sys.platform
+    is_windows = True if platform.startswith("win") else False
+
+    return is_windows
+
+
 def _return_model_names():
     """Return all model names."""
     globals_dict = {
@@ -103,9 +115,16 @@ def _return_model_names():
     }
     model_containers = get_all_model_containers(globals_dict)
 
+    models_to_ignore = (
+        ["prophet", "ensemble_forecaster"]
+        if _check_windows()
+        else ["ensemble_forecaster"]
+    )
+
     model_names_ = []
     for model_name in model_containers.keys():
-        if not model_name.startswith(("ensemble")):
+
+        if model_name not in models_to_ignore:
             model_names_.append(model_name)
 
     return model_names_
@@ -123,6 +142,13 @@ def _return_model_parameters():
     ]
 
     return parameters
+
+
+# def _check_data_for_prophet(mdl_name, data):
+#     """Convert data index to DatetimeIndex"""
+#     if mdl_name == "prophet":
+#         data = data.to_timestamp(freq="M")
+#     return data
 
 
 _model_names = _return_model_names()
@@ -187,8 +213,10 @@ def test_create_predict_finalize_model(name, fh, load_data):
     Combined to save run time
     """
     exp = TimeSeriesExperiment()
+    data = load_data #_check_data_for_prophet(name, load_data)
+
     exp.setup(
-        data=load_data,
+        data=data,
         fold=2,
         fh=fh,
         fold_strategy="sliding",
@@ -237,6 +265,78 @@ def test_create_predict_finalize_model(name, fh, load_data):
     assert np.all(y_pred.index == final_expected_period_index)
 
 
+def test_predict_model_warnings(load_data):
+    """test predict_model warnings cases"""
+    exp = TimeSeriesExperiment()
+    exp.setup(
+        data=load_data,
+        fold=2,
+        fh=12,
+        fold_strategy="sliding",
+        verbose=False,
+    )
+
+    model = exp.create_model("naive")
+
+    ######################################
+    #### Test before finalizing model ####
+    ######################################
+    # Default (Correct comparison to test set)
+    _ = exp.predict_model(model)
+    expected = exp.pull()
+
+    # Prediction horizon larger than test set --> Metrics limited to common indices
+    _ = exp.predict_model(model, fh=np.arange(1, 24))
+    metrics = exp.pull()
+    assert metrics.equals(expected)
+
+    #####################################
+    #### Test after finalizing model ####
+    #####################################
+    final_model = exp.finalize_model(model)
+
+    # Expect to get all NaN values in metrics since no indices match
+    model_col = expected["Model"]
+    expected = pd.DataFrame(np.nan, index=expected.index, columns=expected.columns)
+    expected["Model"] = model_col  # Replace Model column with correct value
+
+    # Expect to get all NaN values in metrics since no indices match
+    _ = exp.predict_model(final_model)
+    metrics = exp.pull()
+    assert metrics.equals(expected)
+
+    # Expect to get all NaN values in metrics since no indices match
+    _ = exp.predict_model(final_model, fh=np.arange(1, 24))
+    metrics = exp.pull()
+    assert metrics.equals(expected)
+
+
+def test_create_model_custom_folds(load_data):
+    """test custom fold in create_model"""
+    exp = TimeSeriesExperiment()
+    setup_fold = 3
+    exp.setup(
+        data=load_data,
+        fold=setup_fold,
+        fh=12,
+        fold_strategy="sliding",
+        verbose=False,
+    )
+
+    #########################################
+    ## Test Create Model with custom folds ##
+    #########################################
+    _ = exp.create_model("naive")
+    metrics1 = exp.pull()
+
+    custom_fold = 5
+    _ = exp.create_model("naive", fold=custom_fold)
+    metrics2 = exp.pull()
+
+    assert len(metrics1) == setup_fold + 2  # + 2 for Mean and SD
+    assert len(metrics2) == custom_fold + 2  # + 2 for Mean and SD
+
+
 def test_prediction_interval_na(load_data):
     """Tests predict model when interval is NA"""
 
@@ -260,6 +360,27 @@ def test_prediction_interval_na(load_data):
     y_pred = exp.predict_model(model, return_pred_int=True)
     assert y_pred["lower"].isnull().all()
     assert y_pred["upper"].isnull().all()
+
+
+def test_compare_models(load_data):
+    """tests compare_models functionality"""
+    exp = TimeSeriesExperiment()
+
+    fh = 12
+    fold = 2
+    data = load_data
+
+    exp.setup(
+        data=data,
+        fh=fh,
+        fold=fold,
+        fold_strategy="expanding",
+        verbose=False,
+        session_id=42,
+    )
+
+    best_baseline_models = exp.compare_models(n_select=3)
+    assert len(best_baseline_models) == 3
 
 
 @pytest.mark.filterwarnings(
@@ -315,20 +436,48 @@ def test_blend_model_predict(load_setup, load_models):
     assert median_voting_equal == False
 
 
+def test_blend_model_custom_folds(load_data):
+    """test custom folds in blend_model"""
+    exp = TimeSeriesExperiment()
+    setup_fold = 3
+    exp.setup(
+        data=load_data,
+        fold=setup_fold,
+        fh=12,
+        fold_strategy="sliding",
+        verbose=False,
+    )
+
+    #######################################
+    ## Test Tune Model with custom folds ##
+    #######################################
+    model = exp.create_model("naive")
+    _ = exp.blend_models([model, model, model])
+    metrics1 = exp.pull()
+
+    custom_fold = 5
+    _ = exp.blend_models([model, model, model], fold=custom_fold)
+    metrics2 = exp.pull()
+
+    assert len(metrics1) == setup_fold + 2  # + 2 for Mean and SD
+    assert len(metrics2) == custom_fold + 2  # + 2 for Mean and SD
+
+
 @pytest.mark.parametrize("model", _model_names)
 def test_tune_model_grid(model, load_data):
     exp = TimeSeriesExperiment()
     fh = 12
     fold = 2
+    data = load_data
 
-    exp.setup(data=load_data, fold=fold, fh=fh, fold_strategy="sliding")
+    exp.setup(data=data, fold=fold, fh=fh, fold_strategy="sliding")
 
     model_obj = exp.create_model(model)
     tuned_model_obj = exp.tune_model(model_obj, search_algorithm="grid")
     y_pred = exp.predict_model(tuned_model_obj)
     assert isinstance(y_pred, pd.Series)
 
-    expected_period_index = load_data.iloc[-fh:].index
+    expected_period_index = data.iloc[-fh:].index
     assert np.all(y_pred.index == expected_period_index)
 
 
@@ -337,15 +486,16 @@ def test_tune_model_random(model, load_data):
     exp = TimeSeriesExperiment()
     fh = 12
     fold = 2
+    data = load_data
 
-    exp.setup(data=load_data, fold=fold, fh=fh, fold_strategy="sliding")
+    exp.setup(data=data, fold=fold, fh=fh, fold_strategy="sliding")
 
     model_obj = exp.create_model(model)
     tuned_model_obj = exp.tune_model(model_obj)  # default search_algorithm = "random"
     y_pred = exp.predict_model(tuned_model_obj)
     assert isinstance(y_pred, pd.Series)
 
-    expected_period_index = load_data.iloc[-fh:].index
+    expected_period_index = data.iloc[-fh:].index
     assert np.all(y_pred.index == expected_period_index)
 
 
@@ -386,6 +536,50 @@ def test_tune_custom_grid_and_choose_better(load_data):
     assert tuned_model1.strategy == only_strategy
     # tuned model does improve score (verified manually), so pick original
     assert tuned_model2.strategy == model.strategy
+
+
+def test_tune_model_custom_folds(load_data):
+    """test custom folds in tune_model"""
+    exp = TimeSeriesExperiment()
+    setup_fold = 3
+    exp.setup(
+        data=load_data,
+        fold=setup_fold,
+        fh=12,
+        fold_strategy="sliding",
+        verbose=False,
+    )
+
+    #######################################
+    ## Test Tune Model with custom folds ##
+    #######################################
+    model = exp.create_model("naive")
+    _ = exp.tune_model(model)
+    metrics1 = exp.pull()
+
+    custom_fold = 5
+    _ = exp.tune_model(model, fold=5)
+    metrics2 = exp.pull()
+
+    assert len(metrics1) == setup_fold + 2  # + 2 for Mean and SD
+    assert len(metrics2) == custom_fold + 2  # + 2 for Mean and SD
+
+
+def test_tune_model_alternate_metric(load_data):
+    """tests model selection using non default metric"""
+    exp = TimeSeriesExperiment()
+    fh = 12
+    fold = 2
+
+    exp.setup(data=load_data, fold=fold, fh=fh, fold_strategy="sliding")
+
+    model_obj = exp.create_model("naive")
+    tuned_model_obj = exp.tune_model(model_obj, optimize="MAE")
+    y_pred = exp.predict_model(tuned_model_obj)
+    assert isinstance(y_pred, pd.Series)
+
+    expected_period_index = load_data.iloc[-fh:].index
+    assert np.all(y_pred.index == expected_period_index)
 
 
 def test_tune_model_raises(load_data):

@@ -12,6 +12,7 @@ from typing import Union, Dict, List, Tuple, Any, Optional
 from abc import abstractmethod
 import random
 import numpy as np  # type: ignore
+import pandas as pd
 import logging
 
 from sktime.forecasting.base._sktime import _SktimeForecaster  # type: ignore
@@ -36,6 +37,7 @@ from pycaret.internal.distributions import (
     IntUniformDistribution,
     CategoricalDistribution,
 )
+from pycaret.internal.utils import TSModelTypes
 import pycaret.containers.base_container
 
 
@@ -223,6 +225,8 @@ class TimeSeriesContainer(ModelContainer):
 
 
 class NaiveContainer(TimeSeriesContainer):
+    model_type = TSModelTypes.BASELINE
+
     def __init__(self, globals_dict: dict) -> None:
         logger = get_logger()
         np.random.seed(globals_dict["seed"])
@@ -242,7 +246,7 @@ class NaiveContainer(TimeSeriesContainer):
 
         super().__init__(
             id="naive",
-            name="Naive Forcaster",
+            name="Naive Forecaster",
             class_def=NaiveForecaster,
             args=args,
             tune_grid=tune_grid,
@@ -264,6 +268,8 @@ class NaiveContainer(TimeSeriesContainer):
 
 
 class SeasonalNaiveContainer(TimeSeriesContainer):
+    model_type = TSModelTypes.BASELINE
+
     def __init__(self, globals_dict: dict) -> None:
         logger = get_logger()
         np.random.seed(globals_dict["seed"])
@@ -283,7 +289,7 @@ class SeasonalNaiveContainer(TimeSeriesContainer):
 
         super().__init__(
             id="snaive",
-            name="Seasonal Naive Forcaster",
+            name="Seasonal Naive Forecaster",
             class_def=NaiveForecaster,
             args=args,
             tune_grid=tune_grid,
@@ -319,6 +325,7 @@ class SeasonalNaiveContainer(TimeSeriesContainer):
 
 
 class PolyTrendContainer(TimeSeriesContainer):
+    model_type = TSModelTypes.BASELINE
     def __init__(self, globals_dict: dict) -> None:
         logger = get_logger()
         np.random.seed(globals_dict["seed"])
@@ -363,6 +370,8 @@ class PolyTrendContainer(TimeSeriesContainer):
 
 
 class ArimaContainer(TimeSeriesContainer):
+    model_type = TSModelTypes.CLASSICAL
+
     def __init__(self, globals_dict: dict) -> None:
         logger = get_logger()
         random.seed(globals_dict["seed"])
@@ -517,6 +526,8 @@ class ArimaContainer(TimeSeriesContainer):
 
 
 class AutoArimaContainer(TimeSeriesContainer):
+    model_type = TSModelTypes.CLASSICAL
+
     def __init__(self, globals_dict: dict) -> None:
         logger = get_logger()
         self.seed = globals_dict["seed"]
@@ -581,6 +592,8 @@ class AutoArimaContainer(TimeSeriesContainer):
 
 
 class ExponentialSmoothingContainer(TimeSeriesContainer):
+    model_type = TSModelTypes.CLASSICAL
+
     def __init__(self, globals_dict: dict) -> None:
         logger = get_logger()
         np.random.seed(globals_dict["seed"])
@@ -591,6 +604,8 @@ class ExponentialSmoothingContainer(TimeSeriesContainer):
         self.seasonality_present = globals_dict.get("seasonality_present")
         sp = globals_dict.get("seasonal_period")
         self.sp = sp if sp is not None else 1
+
+        self.strictly_positive = globals_dict.get("strictly_positive")
 
         args = self._set_args
         tune_args = self._set_tune_args
@@ -615,7 +630,13 @@ class ExponentialSmoothingContainer(TimeSeriesContainer):
     @property
     def _set_args(self) -> Dict[str, Any]:
         # TODO: Check if there is a formal test for type of seasonality
-        args = {"sp": self.sp, "seasonal": "mul"} if self.seasonality_present else {}
+        if self.seasonality_present and self.strictly_positive:
+            seasonal = "mul"
+        elif self.seasonality_present and not self.strictly_positive:
+            seasonal = "add"
+        else:
+            seasonal = None
+        args = {"sp": self.sp, "seasonal": seasonal}
         # Add irrespective of whether seasonality is present or not
         args["trend"] = "add"
         return args
@@ -625,19 +646,25 @@ class ExponentialSmoothingContainer(TimeSeriesContainer):
         if self.seasonality_present:
             tune_grid = {
                 # TODO: Check if add and additive are doing the same thing
-                "trend": ["add", "mul", "additive", "multiplicative", None],
+                "trend": ["add", "mul", "additive", "multiplicative", None]
+                if self.strictly_positive
+                else ["add", "additive", None],
                 # "damped_trend": [True, False],
-                "seasonal": ["add", "mul", "additive", "multiplicative"],
-                "use_boxcox": [True, False],
+                "seasonal": ["add", "mul", "additive", "multiplicative"]
+                if self.strictly_positive
+                else ["add", "additive"],
+                "use_boxcox": [True, False] if self.strictly_positive else [False],
                 "sp": [self.sp],
             }
         else:
             tune_grid = {
                 # TODO: Check if add and additive are doing the same thing
-                "trend": ["add", "mul", "additive", "multiplicative", None],
+                "trend": ["add", "mul", "additive", "multiplicative", None]
+                if self.strictly_positive
+                else ["add", "additive", None],
                 # "damped_trend": [True, False],
                 "seasonal": [None],
-                "use_boxcox": [True, False],
+                "use_boxcox": [True, False] if self.strictly_positive else [False],
                 "sp": [None],
             }
         return tune_grid
@@ -648,16 +675,20 @@ class ExponentialSmoothingContainer(TimeSeriesContainer):
             tune_distributions = {
                 "trend": CategoricalDistribution(
                     values=["add", "mul", "additive", "multiplicative", None]
+                    if self.strictly_positive
+                    else ["add", "additive", None],
                 ),
                 # "damped_trend": [True, False],
                 "seasonal": CategoricalDistribution(
                     values=["add", "mul", "additive", "multiplicative"]
+                    if self.strictly_positive
+                    else ["add", "additive"],
                 ),
                 # "initial_level": UniformDistribution(lower=0, upper=1),  # ValueError: initialization method is estimated but initial_level has been set.
                 # "initial_trend": UniformDistribution(lower=0, upper=1),  # ValueError: initialization method is estimated but initial_trend has been set.
                 # "initial_seasonal": UniformDistribution(lower=0, upper=1), # ValueError: initialization method is estimated but initial_seasonal has been set.
                 "use_boxcox": CategoricalDistribution(
-                    values=[True, False]
+                    values=[True, False] if self.strictly_positive else [False]
                 ),  # 'log', float
                 "sp": CategoricalDistribution(values=[self.sp, 2 * self.sp]),
             }
@@ -665,6 +696,8 @@ class ExponentialSmoothingContainer(TimeSeriesContainer):
             tune_distributions = {
                 "trend": CategoricalDistribution(
                     values=["add", "mul", "additive", "multiplicative", None]
+                    if self.strictly_positive
+                    else ["add", "additive", None],
                 ),
                 # "damped_trend": [True, False],
                 "seasonal": CategoricalDistribution(values=[None]),
@@ -672,7 +705,7 @@ class ExponentialSmoothingContainer(TimeSeriesContainer):
                 # "initial_trend": UniformDistribution(lower=0, upper=1),  # ValueError: initialization method is estimated but initial_trend has been set.
                 # "initial_seasonal": UniformDistribution(lower=0, upper=1), # ValueError: initialization method is estimated but initial_seasonal has been set.
                 "use_boxcox": CategoricalDistribution(
-                    values=[True, False]
+                    values=[True, False] if self.strictly_positive else [False]
                 ),  # 'log', float
                 "sp": CategoricalDistribution(values=[None]),
             }
@@ -680,6 +713,8 @@ class ExponentialSmoothingContainer(TimeSeriesContainer):
 
 
 class ETSContainer(TimeSeriesContainer):
+    model_type = TSModelTypes.CLASSICAL
+
     def __init__(self, globals_dict: dict) -> None:
         logger = get_logger()
         np.random.seed(globals_dict["seed"])
@@ -690,6 +725,8 @@ class ETSContainer(TimeSeriesContainer):
         self.seasonality_present = globals_dict.get("seasonality_present")
         sp = globals_dict.get("seasonal_period")
         self.sp = sp if sp is not None else 1
+
+        self.strictly_positive = globals_dict.get("strictly_positive")
 
         args = self._set_args
         tune_args = self._set_tune_args
@@ -711,7 +748,13 @@ class ETSContainer(TimeSeriesContainer):
     @property
     def _set_args(self) -> Dict[str, Any]:
         # TODO: Check if there is a formal test for type of seasonality
-        args = {"sp": self.sp, "seasonal": "mul"} if self.seasonality_present else {}
+        if self.seasonality_present and self.strictly_positive:
+            seasonal = "mul"
+        elif self.seasonality_present and not self.strictly_positive:
+            seasonal = "add"
+        else:
+            seasonal = None
+        args = {"sp": self.sp, "seasonal": seasonal}
         # Add irrespective of whether seasonality is present or not
         args["trend"] = "add"
         return args
@@ -720,16 +763,20 @@ class ETSContainer(TimeSeriesContainer):
     def _set_tune_grid(self) -> Dict[str, List[Any]]:
         if self.seasonality_present:
             tune_grid = {
-                "error": ["add", "mul"],
-                "trend": ["add", "mul", None],
+                "error": ["add", "mul"] if self.strictly_positive else ["add"],
+                "trend": ["add", "mul", None]
+                if self.strictly_positive
+                else ["add", None],
                 # "damped_trend": [True, False],
-                "seasonal": ["add", "mul"],
+                "seasonal": ["add", "mul"] if self.strictly_positive else ["add"],
                 "sp": [self.sp],
             }
         else:
             tune_grid = {
-                "error": ["add", "mul"],
-                "trend": ["add", "mul", None],
+                "error": ["add", "mul"] if self.strictly_positive else ["add"],
+                "trend": ["add", "mul", None]
+                if self.strictly_positive
+                else ["add", None],
                 # "damped_trend": [True, False],
                 "seasonal": [None],
                 "sp": [1],
@@ -738,6 +785,8 @@ class ETSContainer(TimeSeriesContainer):
 
 
 class ThetaContainer(TimeSeriesContainer):
+    model_type = TSModelTypes.CLASSICAL
+
     def __init__(self, globals_dict: dict) -> None:
         logger = get_logger()
         np.random.seed(globals_dict["seed"])
@@ -748,6 +797,8 @@ class ThetaContainer(TimeSeriesContainer):
         self.seasonality_present = globals_dict.get("seasonality_present")
         sp = globals_dict.get("seasonal_period")
         self.sp = sp if sp is not None else 1
+
+        self.strictly_positive = globals_dict.get("strictly_positive")
 
         args = self._set_args
         tune_args = self._set_tune_args
@@ -771,9 +822,14 @@ class ThetaContainer(TimeSeriesContainer):
 
     @property
     def _set_args(self) -> Dict[str, Any]:
-        args = (
-            {"sp": self.sp, "deseasonalize": True} if self.seasonality_present else {}
-        )
+        # https://github.com/alan-turing-institute/sktime/issues/940
+        if self.strictly_positive:
+            deseasonalize = True
+        else:
+            deseasonalize = False
+
+        # sp is automatically ignored if deseasonalize = False
+        args = {"sp": self.sp, "deseasonalize": deseasonalize}
         return args
 
     @property
@@ -784,7 +840,7 @@ class ThetaContainer(TimeSeriesContainer):
         if self.seasonality_present:
             tune_grid = {
                 # "initial_level": [0.1, 0.5, 0.9],
-                "deseasonalize": [True],
+                "deseasonalize": [True] if self.strictly_positive else [False],
                 "sp": [self.sp, 2 * self.sp],
             }
         else:
@@ -812,12 +868,19 @@ class ThetaContainer(TimeSeriesContainer):
 
 
 class TBATSContainer(TimeSeriesContainer):
+    model_type = TSModelTypes.CLASSICAL
+
     def __init__(self, globals_dict: dict) -> None:
         logger = get_logger()
         np.random.seed(globals_dict["seed"])
         self.gpu_imported = False
 
-        from sktime.forecasting.tbats import TBATS  # type: ignore
+        try:
+            from sktime.forecasting.tbats import TBATS  # type: ignore
+        except ImportError:
+            logger.warning("Couldn't import sktime.forecasting.bats")
+            self.active = False
+            return
 
         sp = globals_dict.get("seasonal_period")
         self.sp = sp if sp is not None else 1
@@ -868,12 +931,19 @@ class TBATSContainer(TimeSeriesContainer):
 
 
 class BATSContainer(TimeSeriesContainer):
+    model_type = TSModelTypes.CLASSICAL
+
     def __init__(self, globals_dict: dict) -> None:
         logger = get_logger()
         np.random.seed(globals_dict["seed"])
         self.gpu_imported = False
 
-        from sktime.forecasting.bats import BATS  # type: ignore
+        try:
+            from sktime.forecasting.bats import BATS  # type: ignore
+        except ImportError:
+            logger.warning("Couldn't import sktime.forecasting.bats")
+            self.active = False
+            return
 
         sp = globals_dict.get("seasonal_period")
         self.sp = sp if sp is not None else 1
@@ -923,6 +993,71 @@ class BATSContainer(TimeSeriesContainer):
         return tune_grid
 
 
+class ProphetContainer(TimeSeriesContainer):
+    model_type = TSModelTypes.LINEAR
+
+    def __init__(self, globals_dict: dict) -> None:
+        logger = get_logger()
+        np.random.seed(globals_dict["seed"])
+        self.gpu_imported = False
+
+        if not ProphetPeriodPatched:
+            logger.warning("Couldn't import sktime.forecasting.fbprophet")
+            self.active = False
+            return
+
+        sp = globals_dict.get("seasonal_period")
+        self.sp = sp if sp is not None else 1
+
+        self.seasonality_present = globals_dict.get("seasonality_present")
+        self.freq = globals_dict.get("freq")
+
+        args = self._set_args
+        tune_args = self._set_tune_args
+        tune_grid = self._set_tune_grid
+        tune_distributions = self._set_tune_distributions
+
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+
+        super().__init__(
+            id="prophet",
+            name="Prophet",
+            class_def=ProphetPeriodPatched,
+            args=args,
+            tune_grid=tune_grid,
+            tune_distribution=tune_distributions,
+            tune_args=tune_args,
+            is_gpu_enabled=self.gpu_imported,
+            is_turbo=False,
+        )
+
+    @property
+    def _set_args(self) -> dict:
+        return {}
+
+    @property
+    def _set_tune_args(self) -> dict:
+        return {}
+
+    @property
+    def _set_tune_grid(self) -> dict:
+        return {"growth": ["linear"]}  # param_grid must not be empty
+
+    @property
+    def _set_tune_distributions(self) -> dict:
+        return {
+            # Based on https://facebook.github.io/prophet/docs/diagnostics.html#hyperparameter-tuning
+            "seasonality_mode": CategoricalDistribution(["additive", "multiplicative"]),
+            "changepoint_prior_scale": UniformDistribution(
+                lower=0.001, upper=0.5, log=True
+            ),
+            "seasonality_prior_scale": UniformDistribution(
+                lower=0.01, upper=10, log=True
+            ),
+            "holidays_prior_scale": UniformDistribution(lower=0.01, upper=10, log=True),
+        }
+
+
 #################################
 #### REGRESSION BASED MODELS ####
 #################################
@@ -932,8 +1067,8 @@ class CdsDtContainer(TimeSeriesContainer):
     """Abstract container for sktime  reduced regression forecaster with
     conditional deseasonalizing and detrending.
     """
-
     active = False
+    model_type = None
 
     def __init__(self, globals_dict: dict) -> None:
         self.logger = get_logger()
@@ -946,11 +1081,17 @@ class CdsDtContainer(TimeSeriesContainer):
         self.n_jobs_param = globals_dict["n_jobs_param"]
         model_class = self.return_model_class()  # e.g. LinearRegression
         regressor_args = self._set_regressor_args
-        self.regressor = model_class(**regressor_args)
+        if model_class is not None:
+            self.regressor = model_class(**regressor_args)
+        else:
+            self.regressor = None
 
         # Set the model hyperparameters
         sp = globals_dict.get("seasonal_period")
         self.sp = sp if sp is not None else 1
+
+        self.strictly_positive = globals_dict.get("strictly_positive")
+
         args = self._set_args
         tune_args = self._set_tune_args
         tune_grid = self._set_tune_grid
@@ -972,6 +1113,9 @@ class CdsDtContainer(TimeSeriesContainer):
             is_gpu_enabled=self.gpu_imported,
             eq_function=eq_function,
         )
+
+        if self.regressor is None:
+            self.active = False
 
     @property
     @abstractmethod
@@ -1004,13 +1148,16 @@ class CdsDtContainer(TimeSeriesContainer):
 
     @property
     def _set_regressor_args(self) -> Dict[str, Any]:
+        model_class = self.return_model_class()
         regressor_args: Dict[str, Any] = {}
-        if hasattr(self.return_model_class()(), "n_jobs"):
-            regressor_args["n_jobs"] = self.n_jobs_param
-        if hasattr(self.return_model_class()(), "random_state"):
-            regressor_args["random_state"] = self.seed
-        if hasattr(self.return_model_class()(), "seed"):
-            regressor_args["seed"] = self.seed
+        if model_class is not None:
+            model = model_class()
+            if hasattr(model, "n_jobs"):
+                regressor_args["n_jobs"] = self.n_jobs_param
+            if hasattr(model, "random_state"):
+                regressor_args["random_state"] = self.seed
+            if hasattr(model, "seed"):
+                regressor_args["seed"] = self.seed
         return regressor_args
 
     @property
@@ -1028,6 +1175,7 @@ class LinearCdsDtContainer(CdsDtContainer):
     id = "lr_cds_dt"
     name = "Linear w/ Cond. Deseasonalize & Detrending"
     active = True  # set back to True as the parent has False
+    model_type = TSModelTypes.LINEAR
 
     def return_model_class(self):
         from sklearn.linear_model import LinearRegression
@@ -1069,6 +1217,8 @@ class LinearCdsDtContainer(CdsDtContainer):
             ),  # TODO: 'None' errors out here
             "deseasonal_model": CategoricalDistribution(
                 values=["additive", "multiplicative"]
+                if self.strictly_positive
+                else ["additive"]
             ),
             "degree": IntUniformDistribution(lower=1, upper=10),
             "window_length": IntUniformDistribution(lower=self.sp, upper=2 * self.sp),
@@ -1080,6 +1230,7 @@ class ElasticNetCdsDtContainer(CdsDtContainer):
     id = "en_cds_dt"
     name = "Elastic Net w/ Cond. Deseasonalize & Detrending"
     active = True  # set back to True as the parent has False
+    model_type = TSModelTypes.LINEAR
 
     def return_model_class(self):
         from sklearn.linear_model import ElasticNet
@@ -1121,6 +1272,8 @@ class ElasticNetCdsDtContainer(CdsDtContainer):
             ),  # TODO: 'None' errors out here
             "deseasonal_model": CategoricalDistribution(
                 values=["additive", "multiplicative"]
+                if self.strictly_positive
+                else ["additive"]
             ),
             "degree": IntUniformDistribution(lower=1, upper=10),
             "window_length": IntUniformDistribution(lower=self.sp, upper=2 * self.sp),
@@ -1134,6 +1287,7 @@ class RidgeCdsDtContainer(CdsDtContainer):
     id = "ridge_cds_dt"
     name = "Ridge w/ Cond. Deseasonalize & Detrending"
     active = True  # set back to True as the parent has False
+    model_type = TSModelTypes.LINEAR
 
     def return_model_class(self):
         from sklearn.linear_model import Ridge
@@ -1174,6 +1328,8 @@ class RidgeCdsDtContainer(CdsDtContainer):
             ),  # TODO: 'None' errors out here
             "deseasonal_model": CategoricalDistribution(
                 values=["additive", "multiplicative"]
+                if self.strictly_positive
+                else ["additive"]
             ),
             "degree": IntUniformDistribution(lower=1, upper=10),
             "window_length": IntUniformDistribution(lower=self.sp, upper=2 * self.sp),
@@ -1188,6 +1344,7 @@ class LassoCdsDtContainer(CdsDtContainer):
     id = "lasso_cds_dt"
     name = "Lasso w/ Cond. Deseasonalize & Detrending"
     active = True  # set back to True as the parent has False
+    model_type = TSModelTypes.LINEAR
 
     def return_model_class(self):
         from sklearn.linear_model import Lasso
@@ -1228,6 +1385,8 @@ class LassoCdsDtContainer(CdsDtContainer):
             ),  # TODO: 'None' errors out here
             "deseasonal_model": CategoricalDistribution(
                 values=["additive", "multiplicative"]
+                if self.strictly_positive
+                else ["additive"]
             ),
             "degree": IntUniformDistribution(lower=1, upper=10),
             "window_length": IntUniformDistribution(lower=self.sp, upper=2 * self.sp),
@@ -1242,6 +1401,7 @@ class LarsCdsDtContainer(CdsDtContainer):
     id = "lar_cds_dt"
     name = "Least Angular Regressor w/ Cond. Deseasonalize & Detrending"
     active = True  # set back to True as the parent has False
+    model_type = TSModelTypes.LINEAR
 
     def return_model_class(self):
         from sklearn.linear_model import Lars
@@ -1269,6 +1429,8 @@ class LarsCdsDtContainer(CdsDtContainer):
             ),  # TODO: 'None' errors out here
             "deseasonal_model": CategoricalDistribution(
                 values=["additive", "multiplicative"]
+                if self.strictly_positive
+                else ["additive"]
             ),
             "degree": IntUniformDistribution(lower=1, upper=10),
             "window_length": IntUniformDistribution(lower=self.sp, upper=2 * self.sp),
@@ -1283,6 +1445,7 @@ class LassoLarsCdsDtContainer(CdsDtContainer):
     id = "llar_cds_dt"
     name = "Lasso Least Angular Regressor w/ Cond. Deseasonalize & Detrending"
     active = True  # set back to True as the parent has False
+    model_type = TSModelTypes.LINEAR
 
     def return_model_class(self):
         from sklearn.linear_model import LassoLars
@@ -1311,6 +1474,8 @@ class LassoLarsCdsDtContainer(CdsDtContainer):
             ),  # TODO: 'None' errors out here
             "deseasonal_model": CategoricalDistribution(
                 values=["additive", "multiplicative"]
+                if self.strictly_positive
+                else ["additive"]
             ),
             "degree": IntUniformDistribution(lower=1, upper=10),
             "window_length": IntUniformDistribution(lower=self.sp, upper=2 * self.sp),
@@ -1326,6 +1491,7 @@ class BayesianRidgeCdsDtContainer(CdsDtContainer):
     id = "br_cds_dt"
     name = "Bayesian Ridge w/ Cond. Deseasonalize & Detrending"
     active = True  # set back to True as the parent has False
+    model_type = TSModelTypes.LINEAR
 
     def return_model_class(self):
         from sklearn.linear_model import BayesianRidge
@@ -1357,6 +1523,8 @@ class BayesianRidgeCdsDtContainer(CdsDtContainer):
             ),  # TODO: 'None' errors out here
             "deseasonal_model": CategoricalDistribution(
                 values=["additive", "multiplicative"]
+                if self.strictly_positive
+                else ["additive"]
             ),
             "degree": IntUniformDistribution(lower=1, upper=10),
             "window_length": IntUniformDistribution(lower=self.sp, upper=2 * self.sp),
@@ -1380,6 +1548,7 @@ class HuberCdsDtContainer(CdsDtContainer):
     id = "huber_cds_dt"
     name = "Huber w/ Cond. Deseasonalize & Detrending"
     active = True  # set back to True as the parent has False
+    model_type = TSModelTypes.LINEAR
 
     def return_model_class(self):
         from sklearn.linear_model import HuberRegressor
@@ -1415,6 +1584,8 @@ class HuberCdsDtContainer(CdsDtContainer):
             ),  # TODO: 'None' errors out here
             "deseasonal_model": CategoricalDistribution(
                 values=["additive", "multiplicative"]
+                if self.strictly_positive
+                else ["additive"]
             ),
             "degree": IntUniformDistribution(lower=1, upper=10),
             "window_length": IntUniformDistribution(lower=self.sp, upper=2 * self.sp),
@@ -1428,6 +1599,7 @@ class PassiveAggressiveCdsDtContainer(CdsDtContainer):
     id = "par_cds_dt"
     name = "Passive Aggressive w/ Cond. Deseasonalize & Detrending"
     active = True  # set back to True as the parent has False
+    model_type = TSModelTypes.LINEAR
 
     def return_model_class(self):
         from sklearn.linear_model import PassiveAggressiveRegressor
@@ -1457,6 +1629,8 @@ class PassiveAggressiveCdsDtContainer(CdsDtContainer):
             ),  # TODO: 'None' errors out here
             "deseasonal_model": CategoricalDistribution(
                 values=["additive", "multiplicative"]
+                if self.strictly_positive
+                else ["additive"]
             ),
             "degree": IntUniformDistribution(lower=1, upper=10),
             "window_length": IntUniformDistribution(lower=self.sp, upper=2 * self.sp),
@@ -1470,6 +1644,7 @@ class OrthogonalMatchingPursuitCdsDtContainer(CdsDtContainer):
     id = "omp_cds_dt"
     name = "Orthogonal Matching Pursuit w/ Cond. Deseasonalize & Detrending"
     active = True  # set back to True as the parent has False
+    model_type = TSModelTypes.LINEAR 
 
     def __init__(self, globals_dict: dict) -> None:
         self.num_features = len(globals_dict["X_train"].columns)
@@ -1503,6 +1678,8 @@ class OrthogonalMatchingPursuitCdsDtContainer(CdsDtContainer):
             ),  # TODO: 'None' errors out here
             "deseasonal_model": CategoricalDistribution(
                 values=["additive", "multiplicative"]
+                if self.strictly_positive
+                else ["additive"]
             ),
             "degree": IntUniformDistribution(lower=1, upper=10),
             "window_length": IntUniformDistribution(lower=self.sp, upper=2 * self.sp),
@@ -1519,6 +1696,7 @@ class KNeighborsCdsDtContainer(CdsDtContainer):
     id = "knn_cds_dt"
     name = "K Neighbors w/ Cond. Deseasonalize & Detrending"
     active = True  # set back to True as the parent has False
+    model_type = TSModelTypes.NEIGHBORS
 
     def __init__(self, globals_dict: dict) -> None:
         self.num_features = len(globals_dict["X_train"].columns)
@@ -1577,6 +1755,7 @@ class DecisionTreeCdsDtContainer(CdsDtContainer):
     id = "dt_cds_dt"
     name = "Decision Tree w/ Cond. Deseasonalize & Detrending"
     active = True  # set back to True as the parent has False
+    model_type = TSModelTypes.TREE
 
     def return_model_class(self):
         from sklearn.tree import DecisionTreeRegressor
@@ -1607,6 +1786,8 @@ class DecisionTreeCdsDtContainer(CdsDtContainer):
             ),  # TODO: 'None' errors out here
             "deseasonal_model": CategoricalDistribution(
                 values=["additive", "multiplicative"]
+                if self.strictly_positive
+                else ["additive"]
             ),
             "degree": IntUniformDistribution(lower=1, upper=10),
             "window_length": IntUniformDistribution(lower=self.sp, upper=2 * self.sp),
@@ -1625,6 +1806,7 @@ class RandomForestCdsDtContainer(CdsDtContainer):
     id = "rf_cds_dt"
     name = "Random Forest w/ Cond. Deseasonalize & Detrending"
     active = True  # set back to True as the parent has False
+    model_type = TSModelTypes.TREE
 
     def return_model_class(self):
         from sklearn.ensemble import RandomForestRegressor
@@ -1654,6 +1836,8 @@ class RandomForestCdsDtContainer(CdsDtContainer):
             ),  # TODO: 'None' errors out here
             "deseasonal_model": CategoricalDistribution(
                 values=["additive", "multiplicative"]
+                if self.strictly_positive
+                else ["additive"]
             ),
             "degree": IntUniformDistribution(lower=1, upper=10),
             "window_length": IntUniformDistribution(lower=self.sp, upper=2 * self.sp),
@@ -1672,6 +1856,7 @@ class ExtraTreesCdsDtContainer(CdsDtContainer):
     id = "et_cds_dt"
     name = "Extra Trees w/ Cond. Deseasonalize & Detrending"
     active = True  # set back to True as the parent has False
+    model_type = TSModelTypes.TREE
 
     def return_model_class(self):
         from sklearn.ensemble import ExtraTreesRegressor
@@ -1704,6 +1889,8 @@ class ExtraTreesCdsDtContainer(CdsDtContainer):
             ),  # TODO: 'None' errors out here
             "deseasonal_model": CategoricalDistribution(
                 values=["additive", "multiplicative"]
+                if self.strictly_positive
+                else ["additive"]
             ),
             "degree": IntUniformDistribution(lower=1, upper=10),
             "window_length": IntUniformDistribution(lower=self.sp, upper=2 * self.sp),
@@ -1732,6 +1919,7 @@ class GradientBoostingCdsDtContainer(CdsDtContainer):
     id = "gbr_cds_dt"
     name = "Gradient Boosting w/ Cond. Deseasonalize & Detrending"
     active = True  # set back to True as the parent has False
+    model_type = TSModelTypes.TREE
 
     def return_model_class(self):
         from sklearn.ensemble import GradientBoostingRegressor
@@ -1764,6 +1952,8 @@ class GradientBoostingCdsDtContainer(CdsDtContainer):
             ),  # TODO: 'None' errors out here
             "deseasonal_model": CategoricalDistribution(
                 values=["additive", "multiplicative"]
+                if self.strictly_positive
+                else ["additive"]
             ),
             "degree": IntUniformDistribution(lower=1, upper=10),
             "window_length": IntUniformDistribution(lower=self.sp, upper=2 * self.sp),
@@ -1785,6 +1975,7 @@ class AdaBoostCdsDtContainer(CdsDtContainer):
     id = "ada_cds_dt"
     name = "AdaBoost w/ Cond. Deseasonalize & Detrending"
     active = True  # set back to True as the parent has False
+    model_type = TSModelTypes.TREE
 
     def return_model_class(self):
         from sklearn.ensemble import AdaBoostRegressor
@@ -1812,6 +2003,8 @@ class AdaBoostCdsDtContainer(CdsDtContainer):
             ),  # TODO: 'None' errors out here
             "deseasonal_model": CategoricalDistribution(
                 values=["additive", "multiplicative"]
+                if self.strictly_positive
+                else ["additive"]
             ),
             "degree": IntUniformDistribution(lower=1, upper=10),
             "window_length": IntUniformDistribution(lower=self.sp, upper=2 * self.sp),
@@ -1825,6 +2018,7 @@ class XGBCdsDtContainer(CdsDtContainer):
     id = "xgboost_cds_dt"
     name = "Extreme Gradient Boosting w/ Cond. Deseasonalize & Detrending"
     active = True  # set back to True as the parent has False
+    model_type = TSModelTypes.TREE
 
     def return_model_class(self):
         try:
@@ -1877,6 +2071,8 @@ class XGBCdsDtContainer(CdsDtContainer):
             ),  # TODO: 'None' errors out here
             "deseasonal_model": CategoricalDistribution(
                 values=["additive", "multiplicative"]
+                if self.strictly_positive
+                else ["additive"]
             ),
             "degree": IntUniformDistribution(lower=1, upper=10),
             "window_length": IntUniformDistribution(lower=self.sp, upper=2 * self.sp),
@@ -1897,6 +2093,7 @@ class LGBMCdsDtContainer(CdsDtContainer):
     id = "lightgbm_cds_dt"
     name = "Light Gradient Boosting w/ Cond. Deseasonalize & Detrending"
     active = True  # set back to True as the parent has False
+    model_type = TSModelTypes.TREE
 
     def return_model_class(self):
         from lightgbm import LGBMRegressor
@@ -1950,6 +2147,8 @@ class LGBMCdsDtContainer(CdsDtContainer):
             ),  # TODO: 'None' errors out here
             "deseasonal_model": CategoricalDistribution(
                 values=["additive", "multiplicative"]
+                if self.strictly_positive
+                else ["additive"]
             ),
             "degree": IntUniformDistribution(lower=1, upper=10),
             "window_length": IntUniformDistribution(lower=self.sp, upper=2 * self.sp),
@@ -1974,6 +2173,7 @@ class CatBoostCdsDtContainer(CdsDtContainer):
     id = "catboost_cds_dt"
     name = "CatBoost Regressor w/ Cond. Deseasonalize & Detrending"
     active = True  # set back to True as the parent has False
+    model_type = TSModelTypes.TREE
 
     def __init__(self, globals_dict: dict) -> None:
         # suppress output
@@ -2045,6 +2245,8 @@ class CatBoostCdsDtContainer(CdsDtContainer):
             ),  # TODO: 'None' errors out here
             "deseasonal_model": CategoricalDistribution(
                 values=["additive", "multiplicative"]
+                if self.strictly_positive
+                else ["additive"]
             ),
             "degree": IntUniformDistribution(lower=1, upper=10),
             "window_length": IntUniformDistribution(lower=self.sp, upper=2 * self.sp),
@@ -2067,6 +2269,8 @@ class CatBoostCdsDtContainer(CdsDtContainer):
 
 
 class BaseCdsDt(_SktimeForecaster):
+    model_type = None
+
     def __init__(
         self, regressor, sp=1, deseasonal_model="additive", degree=1, window_length=10
     ):
@@ -2093,6 +2297,15 @@ class BaseCdsDt(_SktimeForecaster):
         self.window_length = window_length
 
     def fit(self, y, X=None, fh=None):
+        # TODO: Check what all is done here (might need to replicate it here)
+        # https://github.com/alan-turing-institute/sktime/blob/ad82a2792b792c6357c8c0db815772bae04c86c1/sktime/forecasting/base/_base.py#L73
+        # e.g. State change
+        # ------------
+        # stores data in self._X and self._y
+        # stores fh, if passed
+        # updates self.cutoff to most recent time in y
+        # creates fitted model (attributes ending in "_")
+        # sets is_fitted flag to true
         self.forecaster_ = TransformedTargetForecaster(
             [
                 (
@@ -2115,6 +2328,7 @@ class BaseCdsDt(_SktimeForecaster):
             ]
         )
         self.forecaster_.fit(y=y, X=X, fh=fh)
+        self._cutoff = self.forecaster_.cutoff
         return self
 
     def predict(self, fh=None, X=None, return_pred_int=False, alpha=DEFAULT_ALPHA):
@@ -2124,7 +2338,37 @@ class BaseCdsDt(_SktimeForecaster):
         )
 
 
+try:
+    from sktime.forecasting.fbprophet import Prophet  # type: ignore
+    from sktime.forecasting.base._base import DEFAULT_ALPHA
+
+    class ProphetPeriodPatched(Prophet):
+        def fit(self, y, X=None, fh=None, **fit_params):
+            if isinstance(y, (pd.Series, pd.DataFrame)):
+                if isinstance(y.index, pd.PeriodIndex):
+                    y.index = y.index.to_timestamp(freq=y.index.freq)
+
+            return super().fit(y, X=X, fh=fh, **fit_params)
+
+        def predict(self, fh=None, X=None, return_pred_int=False, alpha=DEFAULT_ALPHA):
+            y = super().predict(
+                fh=fh, X=X, return_pred_int=return_pred_int, alpha=alpha
+            )
+            try:
+                y.index = y.index.to_period(freq=y.index.freq)
+            except Exception:
+                pass
+            return y
+
+
+except ImportError:
+    Prophet = None
+    ProphetPeriodPatched = None
+
+
 class EnsembleTimeSeriesContainer(TimeSeriesContainer):
+    model_type='ensemble'
+
     def __init__(self, globals_dict: dict) -> None:
         logger = get_logger()
         np.random.seed(globals_dict["seed"])

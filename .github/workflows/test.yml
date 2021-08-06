@@ -23,9 +23,9 @@ jobs:
         python -m pip install -U pytest
         python -m pip install codecov
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-        if [ -f requirements-optional.txt ]; then pip install -r requirements-optional.txt; fi
         if [ -f requirements-ts.txt ]; then pip install -r requirements-ts.txt; fi
-        python -m spacy download en
+        if [ -f requirements-optional.txt ]; then pip install -r requirements-optional.txt; fi
+        pip install https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.0.0/en_core_web_sm-3.0.0-py3-none-any.whl
     - name: Remove tests
       run: |
         rm pycaret/tests/test_classification_tuning.py
@@ -55,9 +55,9 @@ jobs:
         python -m pip install -U pytest
         python -m pip install codecov
         pip install -r requirements.txt
-        pip install -r requirements-optional.txt
         pip install -r requirements-ts.txt
-        python -m spacy download en
+        pip install -r requirements-optional.txt
+        pip install https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.0.0/en_core_web_sm-3.0.0-py3-none-any.whl
     - name: Remove tests
       run: |
         remove-item pycaret/tests/* -Include @('test_classification_tuning.py','test_classification_plots.py','test_regression_plots.py', 'test_regression_tuning.py')
@@ -157,9 +157,9 @@ jobs:
         python -m pip install -U pytest
         python -m pip install codecov
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-        if [ -f requirements-optional.txt ]; then pip install -r requirements-optional.txt; fi
         if [ -f requirements-ts.txt ]; then pip install -r requirements-ts.txt; fi
-        python -m spacy download en
+        if [ -f requirements-optional.txt ]; then pip install -r requirements-optional.txt; fi
+        pip install https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.0.0/en_core_web_sm-3.0.0-py3-none-any.whl
     - name: Remove tests
       run: |
         find pycaret/tests -type f -not -name '__init__.py' -not -name 'test_classification_plots.py' -not -name 'test_regression_plots.py' -delete

@@ -121,6 +121,7 @@ class _UnsupervisedExperiment(_TabularExperiment):
                         "Multicollinearity Threshold",
                         kwargs["multicollinearity_threshold_grid"],
                     ],
+                    ["Remove Perfect Collinearity", kwargs["remove_perfect_collinearity"]],
                     [
                         "Columns Removed Due to Multicollinearity",
                         kwargs["multicollinearity_removed_columns"],

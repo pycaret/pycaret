@@ -45,6 +45,7 @@ def test():
         "boundary",
         "lift",
         "gain",
+        "ks"
     ]
 
     for plot in available_plots:
@@ -61,6 +62,7 @@ def test():
     for model in models:
         for plot in available_shap:
             pycaret.classification.interpret_model(model, plot=plot)
+            pycaret.classification.interpret_model(model, plot=plot, X_new_sample=data.iloc[:10])
 
     assert 1 == 1
 
