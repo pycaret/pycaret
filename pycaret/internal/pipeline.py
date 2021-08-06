@@ -8,13 +8,59 @@
 
 # This pipeline is only to be used internally.
 
-from pycaret.internal.utils import get_all_object_vars_and_properties, is_fit_var
 import imblearn.pipeline
 from sklearn.utils import _print_elapsed_time
-from sklearn.base import BaseEstimator, TransformerMixin, clone
+from sklearn.base import clone
 from sklearn.utils.metaestimators import if_delegate_has_method
+from sklearn.utils.validation import check_memory
 import sklearn.pipeline
-from pycaret.internal.validation import is_fitted
+from inspect import signature
+
+from pycaret.internal.utils import (
+    get_all_object_vars_and_properties,
+    is_fit_var,
+    variable_return,
+)
+
+
+def _fit_one(transformer, X=None, y=None, message=None, **fit_params):
+    """Fit the data using one transformer."""
+    with _print_elapsed_time("Pipeline", message):
+        if hasattr(transformer, "fit"):
+            args = []
+            if "X" in signature(transformer.fit).parameters:
+                args.append(X)
+            if "y" in signature(transformer.fit).parameters:
+                args.append(y)
+            transformer.fit(*args, **fit_params)
+
+
+def _transform_one(transformer, X=None, y=None):
+    """Transform the data using one transformer."""
+    args = []
+    if "X" in signature(transformer.transform).parameters:
+        args.append(X)
+    if "y" in signature(transformer.transform).parameters:
+        args.append(y)
+    output = transformer.transform(*args)
+
+    if isinstance(output, tuple):
+        X, y = output[0], output[1]
+    else:
+        if len(output.shape) > 1:
+            X, y = output, y  # Only X
+        else:
+            X, y = X, output  # Only y
+
+    return X, y
+
+
+def _fit_transform_one(transformer, X=None, y=None, message=None, **fit_params):
+    """Fit and transform the data using one transformer."""
+    _fit_one(transformer, X, y, message, **fit_params)
+    X, y = _transform_one(transformer, X, y)
+
+    return X, y, transformer
 
 
 class Pipeline(imblearn.pipeline.Pipeline):
@@ -22,6 +68,116 @@ class Pipeline(imblearn.pipeline.Pipeline):
         super().__init__(steps, memory=memory, verbose=verbose)
         self._fit_vars = set()
         self._carry_over_final_estimator_fit_vars()
+
+    def _fit(self, X=None, y=None, **fit_params_steps):
+        self.steps = list(self.steps)
+        self._validate_steps()
+
+        # Setup the memory
+        memory = check_memory(self.memory).cache(_fit_transform_one)
+
+        for (step_idx, name, transformer) in self._iter(False, False):
+            if transformer is None or transformer == "passthrough":
+                with _print_elapsed_time("Pipeline", self._log_message(step_idx)):
+                    continue
+
+            if hasattr(transformer, "transform"):
+                if getattr(memory, "location", "") is None:
+                    # Don't clone when caching is disabled to
+                    # preserve backward compatibility
+                    cloned = transformer
+                else:
+                    cloned = clone(transformer)
+
+                # Fit or load the current transformer from cache
+                X, y, fitted_transformer = memory(
+                    transformer=cloned,
+                    X=X,
+                    y=y,
+                    message=self._log_message(step_idx),
+                    **fit_params_steps[name],
+                )
+
+            # Replace the transformer of the step with the fitted
+            # transformer (necessary when loading from the cache)
+            self.steps[step_idx] = (name, fitted_transformer)
+
+        if self._final_estimator == "passthrough":
+            return X, y, {}
+
+        return X, y, fit_params_steps[self.steps[-1][0]]
+
+    def fit(self, X=None, y=None, **fit_params):
+        fit_params_steps = self._check_fit_params(**fit_params)
+        X, y, _ = self._fit(X, y, **fit_params_steps)
+        with _print_elapsed_time("Pipeline", self._log_message(len(self.steps) - 1)):
+            if self._final_estimator != "passthrough":
+                fit_params_last_step = fit_params_steps[self.steps[-1][0]]
+                _fit_one(self._final_estimator, X, y, **fit_params_last_step)
+
+        return self
+
+    def fit_transform(self, X=None, y=None, **fit_params):
+        fit_params_steps = self._check_fit_params(**fit_params)
+        X, y, _ = self._fit(X, y, **fit_params_steps)
+
+        last_step = self._final_estimator
+        with _print_elapsed_time("Pipeline", self._log_message(len(self.steps) - 1)):
+            if last_step == "passthrough":
+                return variable_return(X, y)
+
+            fit_params_last_step = fit_params_steps[self.steps[-1][0]]
+            X, y, _ = _fit_transform_one(last_step, X, y, **fit_params_last_step)
+
+        return variable_return(X, y)
+
+    @if_delegate_has_method(delegate="_final_estimator")
+    def predict(self, X, **predict_params):
+        for _, name, transformer in self._iter(with_final=False):
+            X, _ = _transform_one(transformer, X)
+
+        return self.steps[-1][-1].predict(X, **predict_params)
+
+    @if_delegate_has_method(delegate="_final_estimator")
+    def predict_proba(self, X):
+        for _, _, transformer in self._iter(with_final=False):
+            X, _ = _transform_one(transformer, X)
+
+        return self.steps[-1][-1].predict_proba(X)
+
+    @if_delegate_has_method(delegate="_final_estimator")
+    def predict_log_proba(self, X):
+        for _, _, transformer in self._iter(with_final=False):
+            X, _ = _transform_one(transformer, X)
+
+        return self.steps[-1][-1].predict_log_proba(X)
+
+    @if_delegate_has_method(delegate="_final_estimator")
+    def decision_function(self, X):
+        for _, _, transformer in self._iter(with_final=False):
+            X, _ = _transform_one(transformer, X)
+
+        return self.steps[-1][-1].decision_function(X)
+
+    @if_delegate_has_method(delegate="_final_estimator")
+    def score(self, X, y, sample_weight=None):
+        for _, _, transformer in self._iter(with_final=False):
+            X, y = _transform_one(transformer, X, y)
+
+        return self.steps[-1][-1].score(X, y, sample_weight=sample_weight)
+
+    @property
+    def transform(self):
+        # _final_estimator is None or has transform, otherwise
+        # attribute error handling the None case means we can't
+        # use if_delegate_has_method
+        return self._custom_transform
+
+    def _custom_transform(self, X=None, y=None):
+        for _, _, transformer in self._iter():
+            X, y = _transform_one(transformer, X, y)
+
+        return variable_return(X, y)
 
     @property
     def inverse_transform(self):
@@ -110,16 +266,6 @@ class Pipeline(imblearn.pipeline.Pipeline):
         self._carry_over_final_estimator_fit_vars()
         return result
 
-    def predict(self, X, **predict_params):
-        result = super().predict(X, **predict_params)
-        return self.inverse_transform(result)
-
-    def fit(self, X, y=None, **fit_kwargs):
-        result = super().fit(X, y=y, **fit_kwargs)
-
-        self._carry_over_final_estimator_fit_vars()
-        return result
-
     @if_delegate_has_method(delegate="_final_estimator")
     def fit_predict(self, X, y=None, **fit_params):
         result = super().fit_predict(X, y=y, **fit_params)
@@ -129,12 +275,6 @@ class Pipeline(imblearn.pipeline.Pipeline):
 
     def fit_resample(self, X, y=None, **fit_params):
         result = super().fit_resample(X, y=y, **fit_params)
-
-        self._carry_over_final_estimator_fit_vars()
-        return result
-
-    def fit_transform(self, X, y=None, **fit_params):
-        result = super().fit_transform(X, y=y, **fit_params)
 
         self._carry_over_final_estimator_fit_vars()
         return result

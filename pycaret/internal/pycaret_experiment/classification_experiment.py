@@ -70,12 +70,44 @@ class ClassificationExperiment(_SupervisedExperiment):
                 ["Target", self.target_param],
                 ["Target type", kwargs["target_type"]],
                 ["Data shape", self.data.shape],
+                ["Train size", kwargs["train_size"]],
                 ["Ordinal features", kwargs["ordinal_features"]],
                 ["Numerical features", kwargs["numerical_features"]],
                 ["Categorical features", kwargs["categorical_features"]],
                 ["Date features", kwargs["date_features"]],
                 ["Ignored features", kwargs["ignore_features"]],
                 ["Missing Values", kwargs["missing_values"]],
+                ["Preprocess", kwargs["preprocess"]],
+            ]
+        )
+
+        if kwargs["preprocess"]:
+            overview = overview.append(
+                [
+                    ["Imputation type", kwargs["imputation_type"]],
+                    ["Numeric imputation", kwargs["numeric_imputation"]],
+                    ["Iterative imputation iterations", kwargs["iterative_imputation_iters"]],
+                    ["Numeric iterative imputer", kwargs["numeric_iterative_imputer"]],
+                    ["Categorical iterative imputer", kwargs["categorical_iterative_imputer"]],
+                    ["Encoding method", kwargs["encoding_method"]],
+                    ["Transformation", kwargs["transformation"]],
+                    ["Transformation method", kwargs["transformation_method"]],
+                    ["Normalize", kwargs["normalize"]],
+                    ["Normalize method", kwargs["normalize_method"]],
+                    ["Low variance threshold", kwargs["low_variance_threshold"]],
+                    ["PCA", kwargs["pca"]],
+                    ["PCA method", kwargs["pca_method"]],
+                    ["PCA components", kwargs["pca_components"]],
+                    ["Polynomial features", kwargs["polynomial_features"]],
+                    ["Polynomial degree", kwargs["polynomial_degree"]],
+                    ["Fix imbalance", kwargs["fix_imbalance"]],
+                    ["Fix imbalance method", kwargs["fix_imbalance_method"]],
+                ],
+                ignore_index=True,
+            )
+
+        overview = overview.append(
+            [
                 ["Fold Generator", type(self.fold_generator).__name__],
                 ["Fold Number", self.fold_param],
                 ["CPU Jobs", self.n_jobs_param],

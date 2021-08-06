@@ -21,6 +21,7 @@ import sklearn
 from imblearn.over_sampling import SMOTE
 from pandas.io.formats.style import Styler
 from pycaret.internal.logging import create_logger, get_logger
+from pycaret.internal.preprocess import TransfomerWrapper
 from pycaret.internal.meta_estimators import get_estimator_from_meta_estimator
 from pycaret.internal.pipeline import Pipeline as InternalPipeline
 from pycaret.internal.pipeline import (
@@ -382,7 +383,7 @@ class _TabularExperiment(_PyCaretExperiment):
         iterative_imputation_iters: int = 5,
         numeric_iterative_imputer: Union[str, Any] = "lightgbm",
         categorical_iterative_imputer: Union[str, Any] = "lightgbm",
-        encode_method: Optional[Any] = None,
+        encoding_method: Optional[Any] = None,
         transformation: bool = False,
         transformation_method: str = "yeo-johnson",
         normalize: bool = False,
@@ -549,14 +550,6 @@ class _TabularExperiment(_PyCaretExperiment):
         elif not isinstance(profile_kwargs, dict):
             raise TypeError("profile_kwargs can only be a dict.")
 
-        # checking normalize parameter
-        if type(normalize) is not bool:
-            raise TypeError("normalize parameter only accepts True or False.")
-
-        # checking transformation parameter
-        if type(transformation) is not bool:
-            raise TypeError("transformation parameter only accepts True or False.")
-
         all_cols = list(data.columns)
         if not self._is_unsupervised():
             all_cols.remove(target)
@@ -575,33 +568,6 @@ class _TabularExperiment(_PyCaretExperiment):
                 raise TypeError(
                     "ordinal_features must be of type dictionary with column name as key and ordered values as list."
                 )
-
-        # ordinal features check
-        if ordinal_features is not None:
-            ordinal_features = ordinal_features.copy()
-            data_cols = data.columns.drop(target, errors="ignore")
-            ord_keys = ordinal_features.keys()
-
-            for i in ord_keys:
-                if i not in data_cols:
-                    raise ValueError(
-                        "Column name passed as a key in ordinal_features parameter doesnt exist."
-                    )
-
-            for k in ord_keys:
-                if data[k].nunique() != len(ordinal_features[k]):
-                    raise ValueError(
-                        "Levels passed in ordinal_features parameter doesnt match with levels in data."
-                    )
-
-            for i in ord_keys:
-                value_in_keys = ordinal_features.get(i)
-                value_in_data = list(data[i].unique().astype(str))
-                for j in value_in_keys:
-                    if str(j) not in value_in_data:
-                        raise ValueError(
-                            f"Column name '{i}' doesn't contain any level named '{j}'."
-                        )
 
         # high_cardinality_features
         if high_cardinality_features is not None:
@@ -903,13 +869,11 @@ class _TabularExperiment(_PyCaretExperiment):
         cat_cols = list(self.X.select_dtypes(exclude="number").columns)
         if categorical_features:
             cat_cols = categorical_features
-        cat_cols_idx = [self.X.columns.get_loc(col) for col in cat_cols]
 
         # Numerical columns
         num_cols = list(self.X.select_dtypes(include="number").columns)
         if categorical_features:
             num_cols = categorical_features
-        num_cols_idx = [self.X.columns.get_loc(col) for col in num_cols]
 
         # Date features
         date_cols = list(self.X.select_dtypes(include="datetime").columns)
@@ -917,9 +881,7 @@ class _TabularExperiment(_PyCaretExperiment):
             date_cols = date_features
 
         # Ignore features
-        ign_cols = []
-        if ignore_features:
-            ign_cols = ignore_features
+        ign_cols = ignore_features if ignore_features else []
 
         # Imputation =========================================== >>
 
@@ -942,25 +904,21 @@ class _TabularExperiment(_PyCaretExperiment):
         if imputation_type == "simple":
             self.logger.info("Setting up simple imputation")
 
-            # Define sklearn estimators
-            num_imputer = SimpleImputer(
-                strategy=num_dict[numeric_imputation],
-                fill_value=0,
+            num_estimator = TransfomerWrapper(
+                transformer=SimpleImputer(
+                    strategy=num_dict[numeric_imputation],
+                    fill_value=0,
+                ),
+                columns=[c for c in num_cols if c not in ign_cols],
             )
-            cat_imputer = SimpleImputer(
-                strategy=cat_dict[categorical_imputation],
-                fill_value="not_available",
+            cat_estimator = TransfomerWrapper(
+                transformer=SimpleImputer(
+                    strategy=cat_dict[categorical_imputation],
+                    fill_value="not_available",
+                ),
+                columns=[c for c in cat_cols if c not in ign_cols],
             )
 
-            # Create meta-estimator to split imputers over columns
-            impute_estimator = ColumnTransformer(
-                transformers=[
-                    ("numerical_imputer", num_imputer, num_cols_idx),
-                    ("categorical_imputer", cat_imputer, cat_cols_idx),
-                ],
-                remainder="passthrough",
-                n_jobs=self.n_jobs_param,
-            )
         elif imputation_type == "iterative":
             self.logger.info("Setting up iterative imputation")
             impute_estimator = IterativeImputer(
@@ -977,36 +935,60 @@ class _TabularExperiment(_PyCaretExperiment):
         # Always create (even if preprocess=False) since we need a
         # pipeline for the rest of the methods and if there are no
         # NaNs then this step is almost instant
-        self._internal_pipeline = InternalPipeline([("impute", impute_estimator)])
+        self._internal_pipeline = InternalPipeline(
+            [
+                ("numerical_imputer", num_estimator),
+                ("categorical_imputer", cat_estimator),
+            ],
+        )
 
         if preprocess:
 
             # Encoding =============================================== >>
 
-            estimator = []
             if ordinal_features:
-                ord_cols_idx = [self.X.columns.get_loc(col) for col in ordinal_features]
-                ord_estimator = OrdinalEncoder(
+                # Check provided features and levels are correct
+                for key, value in ordinal_features.items():
+                    if key not in self.X.columns:
+                        raise ValueError(
+                            "Invalid column name passed as a key in ordinal_features."
+                        )
+                    if self.X[key].nunique() != len(value):
+                        raise ValueError(
+                            "The levels passed to the ordinal_features parameter "
+                            "doesn't match with the levels in the dataset."
+                        )
+                    for elem in value:
+                        if elem not in self.X[key].unique():
+                            raise ValueError(
+                                f"Feature {key} doesn't contain the {elem} level."
+                            )
+
+                ord_estimator = TransfomerWrapper(
+                    transformer=OrdinalEncoder(
                         categories=list(ordinal_features.values()),
                         handle_unknown="use_encoded_value",
                         unknown_value=np.NaN,
-                    )
+                    ),
+                    columns=[c for c in ordinal_features if c not in ign_cols],
+                )
 
-                estimator.append(("ordinal_encoding", ord_estimator, ord_cols_idx))
+                self._internal_pipeline.steps.append(
+                    ("ordinal_encoding", ord_estimator)
+                )
 
             if cat_cols:
-                if not encode_method:
-                    encode_method = LeaveOneOutEncoder(random_state=self.seed)
+                if not encoding_method:
+                    encoding_method = LeaveOneOutEncoder(random_state=self.seed)
 
-                estimator.append(("categorical_encoding", encode_method, cat_cols_idx))
-
-            if estimator:
-                encoding_est = ColumnTransformer(
-                    transformers=estimator,
-                    remainder="passthrough",
-                    n_jobs=self.n_jobs_param,
+                enc_estimator = TransfomerWrapper(
+                    transformer=encoding_method,
+                    columns=[c for c in cat_cols if c not in ign_cols],
                 )
-                self._internal_pipeline.steps.append(("encoding", encoding_est))
+
+                self._internal_pipeline.steps.append(
+                    ("categorical_encoding", enc_estimator)
+                )
 
             # Transformation ========================================= >>
 
@@ -1026,7 +1008,12 @@ class _TabularExperiment(_PyCaretExperiment):
                         "The value should be either yeo-johnson or quantile, "
                         f"got {transformation_method}."
                     )
-    
+
+                transformation_estimator = TransfomerWrapper(
+                    transformer=transformation_estimator,
+                    columns=[c for c in self.X.columns if c not in ign_cols],
+                )
+
                 self._internal_pipeline.steps.append(
                     ("transformation", transformation_estimator)
                 )
@@ -1424,12 +1411,33 @@ class _TabularExperiment(_PyCaretExperiment):
 
         display_container = self._get_setup_display(
             target_type="Multiclass" if self._is_multiclass() else "Binary",
+            train_size=train_size,
             ordinal_features=len(ordinal_features) if ordinal_features else 0,
             numerical_features=len(num_cols),
             categorical_features=len(cat_cols),
             date_features=len(date_cols),
             ignore_features=len(ign_cols),
             missing_values=self.data.isna().sum().sum(),
+            preprocess=preprocess,
+            imputation_type=imputation_type,
+            numeric_imputation=numeric_imputation,
+            categorical_imputation=categorical_imputation,
+            iterative_imputation_iters=iterative_imputation_iters,
+            numeric_iterative_imputer=numeric_iterative_imputer,
+            categorical_iterative_imputer=categorical_iterative_imputer,
+            encoding_method=encoding_method,
+            transformation=transformation,
+            transformation_method=transformation_method,
+            normalize=normalize,
+            normalize_method=normalize_method,
+            low_variance_threshold=low_variance_threshold,
+            pca=pca,
+            pca_method=pca_method,
+            pca_components=pca_components,
+            polynomial_features=polynomial_features,
+            polynomial_degree=polynomial_degree,
+            fix_imbalance=fix_imbalance,
+            fix_imbalance_method=fix_imbalance_method,
         )
 
         if verbose:

@@ -2,18 +2,10 @@
 # Author: Moez Ali <moez.ali@queensu.ca> and Antoni Baum (Yard1) <antoni.baum@protonmail.com>
 # License: MIT
 
-import os
 import numpy as np
-# from pycaret.containers.metrics.base_metric import MetricContainer  # Removed due to circular import
-# from pycaret.containers.models.base_model import ModelContainer  # Removed due to circular import
-import pandas as pd
 import pandas.io.formats.style
-import ipywidgets as ipw
-from IPython.display import display, HTML, clear_output, update_display
-from pycaret.internal.logging import get_logger
 from pycaret.internal.validation import *
 from typing import Any, List, Optional, Dict, Tuple, Union
-from sklearn import clone
 from sklearn.model_selection import KFold, StratifiedKFold, BaseCrossValidator
 from sklearn.model_selection._split import _BaseKFold
 from enum import IntEnum
@@ -32,6 +24,67 @@ class SeasonalPeriod(IntEnum):
     Y = 1 #year
 
 
+def to_df(data, index=None, columns=None, pca=False):
+    """Convert a dataset to pd.Dataframe.
+
+    Parameters
+    ----------
+    data: list, tuple, dict, np.ndarray, pd.DataFrame or None
+        Dataset to convert to a dataframe.  If None, return
+        unchanged.
+
+    index: sequence or Index
+        Values for the dataframe's index.
+
+    columns: sequence or None, optional (default=None)
+        Name of the columns. Use None for automatic naming.
+
+    pca: bool, optional (default=False)
+        Whether the columns are Features or Components.
+
+    Returns
+    -------
+    df: pd.DataFrame or None
+        Transformed dataframe.
+
+    """
+    if data is not None and not isinstance(data, pd.DataFrame):
+        if not isinstance(data, dict):  # Dict already has column names
+            if columns is None:
+                columns = [f"Feature {str(i)}" for i in range(1, len(data[0]) + 1)]
+            elif columns is None:
+                columns = [f"Component {str(i)}" for i in range(1, len(data[0]) + 1)]
+        data = pd.DataFrame(data, index=index, columns=columns)
+
+    return data
+
+
+def to_series(data, index=None, name="Target"):
+    """Convert a column to pd.Series.
+
+    Parameters
+    ----------
+    data: sequence or None
+        Data to convert. If None, return unchanged.
+
+    index: sequence or Index, optional (default=None)
+        Values for the indices.
+
+    name: string, optional (default="Target")
+        Name of the target column.
+
+    Returns
+    -------
+    series: pd.Series or None
+        Transformed series.
+
+    """
+    if data is not None and not isinstance(data, pd.Series):
+        data = pd.Series(data, index=index, name=name)
+
+    return data
+
+
 def id_or_display_name(metric, input_ml_usecase, target_ml_usecase):
     """
     Get id or display_name attribute from metric. In time series experiment
@@ -44,6 +97,16 @@ def id_or_display_name(metric, input_ml_usecase, target_ml_usecase):
         output = metric.display_name
 
     return output
+
+
+def variable_return(X, y):
+    """Return one or two arguments depending on which is None."""
+    if y is None:
+        return X
+    elif X is None:
+        return y
+    else:
+        return X, y
 
 
 def get_config(variable: str, globals_d: dict):
