@@ -2293,9 +2293,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             verbose=verbose,
         )
 
-    def test_model(self, estimator, test: str = "residuals",) -> pd.DataFrame:
-        pass
-
     def plot_model(
         self,
         estimator,
@@ -3276,23 +3273,73 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 )
         return fold_generator
 
+    def test_model(
+        self,
+        estimator: Optional[Any] = None,
+        test: str = "all",
+        alpha: float = 0.05,
+        split: str = "all",
+    ) -> pd.DataFrame:
+        if estimator is None:
+            data = self._get_y_data(split=split)
+            results = test_(data=data, test=test, alpha=alpha)
+        else:
+            raise NotImplementedError(
+                "Tests on estimators have not been implemented yet."
+            )
+        return results
 
+    def _get_y_data(self, split="all"):
+        if split == "all":
+            data = self.y.copy()
+        elif split == "train":
+            data = self.y_train.copy()
+        else:
+            raise ValueError("split value: '{split}' is not supported.")
+        return data
+
+
+#############################################################
 ###################### TESTS STARTS HERE ####################
+#############################################################
+
+#################
+#### Helpers ####
+#################
 
 
-def test_(data, test: str, *kwargs):
-    pass
+def test_(data, test: str, alpha: float = 0.05, *kwargs):
+    if test == "all":
+        results = test_all(data=data, alpha=alpha)
+    elif test == "stat_summary":
+        results = test_summary_statistics(data=data)
+    elif test == "white_noise":
+        results = test_is_white_noise(data=data, alpha=alpha, verbose=True)[1]
+    elif test == "stationarity":
+        results = test_is_stationary(data=data, alpha=alpha)
+    elif test == "adf":
+        results = test_is_stationary_adf(data=data, alpha=alpha, verbose=True)[1]
+    elif test == "kpss":
+        results = test_is_stationary_kpss(data=data, alpha=alpha, verbose=True)[1]
+    elif test == "normality":
+        results = test_is_gaussian(data=data, alpha=alpha, verbose=True)[1]
+    else:
+        raise ValueError(f"Tests: '{test}' is not supported.")
+    return results
 
 
-def test_all(data, alpha=0.05, verbose=True):
+########################
+#### Combined Tests ####
+########################
+def test_all(data, alpha: float = 0.05):
     result_summary_stats = test_summary_statistics(data=data)
     result_summary_stats["Setting"] = ""
     result_summary_stats.set_index("Setting", append=True, inplace=True)
 
-    result_wn = test_is_white_noise(data, verbose=verbose)
-    result_adf = test_is_stationary_adf(data, verbose=verbose)
-    result_kpss = test_is_stationary_kpss(data, verbose=verbose)
-    result_normality = test_is_gaussian(data, verbose=verbose)
+    result_wn = test_is_white_noise(data, verbose=True)
+    result_adf = test_is_stationary_adf(data, alpha=alpha, verbose=True)
+    result_kpss = test_is_stationary_kpss(data, alpha=alpha, verbose=True)
+    result_normality = test_is_gaussian(data, alpha=alpha, verbose=True)
 
     all_dfs = [
         result_summary_stats,
@@ -3303,6 +3350,23 @@ def test_all(data, alpha=0.05, verbose=True):
     ]
     final = pd.concat(all_dfs)
     return final
+
+
+def test_is_stationary(data, alpha: float = 0.05):
+    result_adf = test_is_stationary_adf(data, alpha=alpha, verbose=True)
+    result_kpss = test_is_stationary_kpss(data, alpha=alpha, verbose=True)
+
+    all_dfs = [
+        result_adf[1],
+        result_kpss[1],
+    ]
+    final = pd.concat(all_dfs)
+    return final
+
+
+##########################
+#### Individual Tests ####
+##########################
 
 
 def test_summary_statistics(data: pd.Series):
@@ -3318,14 +3382,17 @@ def test_summary_statistics(data: pd.Series):
         "# Distinct Values": len(distinct_counts),
     }
 
-    result = pd.DataFrame(result, index=["value"]).T.reset_index()
+    result = pd.DataFrame(result, index=["Value"]).T.reset_index()
     result = _format_test_results(result, "Summary", "Statistics")
 
     return result
 
 
 def test_is_white_noise(
-    data: pd.Series, lags: List[int] = [24, 48], verbose: bool = False
+    data: pd.Series,
+    lags: List[int] = [24, 48],
+    alpha: float = 0.05,
+    verbose: bool = False,
 ):
     """Performs the Ljung-Box test for testing if a time series is White Noise
 
@@ -3340,26 +3407,22 @@ def test_is_white_noise(
         The lags used to test the autocorelation for white noise, by default [24, 48]
     """
     results = sm.stats.acorr_ljungbox(data, lags=lags, return_df=True)
-    results["White Noise"] = results["lb_pvalue"] > 0.05
+    results["White Noise"] = results["lb_pvalue"] > alpha
     is_white_noise = False if results["White Noise"].all() == False else True
     results.rename(
-        columns={"lb_stat": "LB Test Statictic", "lb_pvalue": "LB p-value"},
-        inplace=True,
+        columns={"lb_stat": "Test Statictic", "lb_pvalue": "p-value"}, inplace=True,
     )
 
     results.reset_index(inplace=True)
     results.rename(columns={"index": "Setting"}, inplace=True)
-    results = pd.melt(results, id_vars="Setting", var_name="index", value_name="value")
+    # TODO: Add alpha value to Settings
+    results = pd.melt(results, id_vars="Setting", var_name="index", value_name="Value")
     results = _format_test_results(results, "White Noise", "Ljung-Box")
 
     if verbose:
         return is_white_noise, results
     else:
         return is_white_noise
-
-
-def test_is_stationary(data):
-    pass
 
 
 def test_is_stationary_adf(data: pd.Series, alpha: float = 0.05, verbose: bool = False):
@@ -3392,7 +3455,7 @@ def test_is_stationary_adf(data: pd.Series, alpha: float = 0.05, verbose: bool =
     }
     details.update(critical_values)
 
-    details = pd.DataFrame(details, index=["value"]).T.reset_index()
+    details = pd.DataFrame(details, index=["Value"]).T.reset_index()
     details["Setting"] = alpha
     details = _format_test_results(details, "Stationarity", "ADF")
 
@@ -3434,7 +3497,7 @@ def test_is_stationary_kpss(
     }
     details.update(critical_values)
 
-    details = pd.DataFrame(details, index=["value"]).T.reset_index()
+    details = pd.DataFrame(details, index=["Value"]).T.reset_index()
     details["Setting"] = alpha
     details = _format_test_results(details, "Stationarity", "KPSS")
 
@@ -3463,7 +3526,7 @@ def test_is_gaussian(data: pd.Series, alpha: float = 0.05, verbose: bool = False
         "Normality": normality,
         "p-value": p_value,
     }
-    details = pd.DataFrame(details, index=["value"]).T.reset_index()
+    details = pd.DataFrame(details, index=["Value"]).T.reset_index()
     details["Setting"] = alpha
     details = _format_test_results(details, "Normality", "Shapiro")
 

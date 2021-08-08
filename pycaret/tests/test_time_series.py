@@ -17,7 +17,8 @@ pytestmark = pytest.mark.filterwarnings("ignore::UserWarning")
 _BLEND_TEST_MODELS = [
     "naive",
     "poly_trend",
-    "arima", "auto_ets",
+    "arima",
+    "auto_ets",
     "lr_cds_dt",
     "en_cds_dt",
     "knn_cds_dt",
@@ -163,6 +164,51 @@ _model_parameters = _return_model_parameters()
 ##########################
 #### Tests Start Here ####
 ##########################
+
+
+def test_test_model(load_data):
+    """Tests the test_model functionality
+    """
+
+    exp = TimeSeriesExperiment()
+
+    fh = np.arange(1, 13)
+    fold = 2
+    data = load_data
+
+    exp.setup(
+        data=data,
+        fh=fh,
+        fold=fold,
+        fold_strategy="sliding",
+        verbose=False,
+        session_id=42,
+    )
+
+    expected = ["Test", "Test Name", "Property", "Setting"]
+    expected_small = ["Test", "Test Name", "Property"]
+
+    results = exp.test_model()
+    index_names = list(results.index.names)
+    for i, name in enumerate(expected):
+        assert index_names[i] == name
+
+    # Individual Tests
+    tests = ["white_noise", "stationarity", "adf", "kpss", "normality"]
+    for test in tests:
+        results = exp.test_model(test=test)
+        index_names = list(results.index.names)
+        for i, name in enumerate(expected):
+            assert index_names[i] == name
+
+    results = exp.test_model(test="stat_summary")
+    index_names = list(results.index.names)
+    for i, name in enumerate(expected_small):
+        assert index_names[i] == name
+
+    alpha = 0.2
+    results = exp.test_model(alpha=alpha)
+    assert alpha in results.index.get_level_values("Setting")
 
 
 @pytest.mark.parametrize("seasonal_period, seasonal_value", _get_seasonal_values())
