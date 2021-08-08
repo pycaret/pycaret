@@ -1,8 +1,7 @@
 # Module: internal.ensemble
-# Author: Miguel Trejo
-# License: MIT
 
 # Provides an Ensemble Forecaster supporting voting, mean and median methods.
+# This is a reimplementation from Sktime original EnsembleForecaster.
 
 # This Ensemble is only to be used internally.
 
@@ -11,13 +10,10 @@ import numpy as np
 import warnings
 from sktime.forecasting.base._base import DEFAULT_ALPHA
 from sktime.forecasting.base._meta import _HeterogenousEnsembleForecaster
-from sktime.forecasting.base._sktime import _OptionalForecastingHorizonMixin
 
 _ENSEMBLE_METHODS = ["voting", "mean", "median"]
 
-class _EnsembleForecasterWithVoting(
-    _OptionalForecastingHorizonMixin, _HeterogenousEnsembleForecaster
-):
+class _EnsembleForecasterWithVoting(_HeterogenousEnsembleForecaster):
     """
     Ensemble of forecasters.
 
@@ -54,17 +50,25 @@ class _EnsembleForecasterWithVoting(
             forecasters=self.forecasters, n_jobs=n_jobs
         )
 
+    @property
+    def weights(self):
+        return self._weights
+
+    @weights.setter
+    def weights(self, value):
+        self._weights = value
+
     def _check_method(self):
         if self.method == "voting" and self.weights is None:
             warnings.warn(
                 "Missing 'weights' argument, setting uniform weights."
             )
-            self._set_weights_uniform
+            self.weights = np.ones(len(self.forecasters))
         elif self.method in self._not_required_weights and self.weights:
             warnings.warn(
                 "Unused 'weights' argument. When method='mean' or method='median', 'weights' argument is not provided. Setting weights to `None`"
             )
-            self._set_weights_none
+            self.weights = None
         elif self.method not in self._available_methods:
             raise ValueError(
                 f"Method {self.method} is not supported. Avaible methods are {', '.join(self._available_methods)}"
@@ -76,7 +80,7 @@ class _EnsembleForecasterWithVoting(
                 f"Number of forecasters and weights must be equal, got {len(self.weights)} weights and {len(self.estimators)} estimators"
             )
 
-    def fit(self, y, X=None, fh=None):
+    def _fit(self, y, X=None, fh=None):
         """Fit to training data.
         Parameters
         ----------
@@ -90,11 +94,8 @@ class _EnsembleForecasterWithVoting(
         -------
         self : returns an instance of self.
         """
-        self._set_y_X(y, X)
-        self._set_fh(fh)
         names, forecasters = self._check_forecasters()
         self._fit_forecasters(forecasters, y, X, fh)
-        self._is_fitted = True
         return self
 
     def update(self, y, X=None, update_params=True):
@@ -108,12 +109,8 @@ class _EnsembleForecasterWithVoting(
         -------
         self : an instance of self
         """
-        self.check_is_fitted()
-        self._update_y_X(y, X)
-
         for forecaster in self.forecasters_:
             forecaster.update(y, X, update_params=update_params)
-
         return self
 
     def _predict(self, fh, X=None, return_pred_int=False, alpha=DEFAULT_ALPHA):
@@ -130,11 +127,3 @@ class _EnsembleForecasterWithVoting(
             self._check_weights()
             pred_w = np.average(pred_forecasters, axis=1, weights=self.weights)
             return pd.DataFrame(pred_w, index=pred_forecasters.index)
-
-    @property
-    def _set_weights_none(self):
-        self.weights = None
-
-    @property
-    def _set_weights_uniform(self):
-        self.weights = np.ones(len(self.forecasters))

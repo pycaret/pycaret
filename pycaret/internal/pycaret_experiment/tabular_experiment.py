@@ -1571,21 +1571,22 @@ class _TabularExperiment(_PyCaretExperiment):
                 else:
                     self.fold_generator = fold_strategy
 
-                    def _get_cv_n_folds(y, cv) -> int:
-                        """
-                        Get the number of folds for time series
-                        cv must be of type SlidingWindowSplitter or ExpandingWindowSplitter
-                        TODO: Fix this inside sktime and replace this with sktime method [1]
+                    # def _get_cv_n_folds(y, cv) -> int:
+                    #     """
+                    #     Get the number of folds for time series
+                    #     cv must be of type SlidingWindowSplitter or ExpandingWindowSplitter
+                    #     TODO: Fix this inside sktime and replace this with sktime method [1]
 
-                        Ref:
-                        [1] https://github.com/alan-turing-institute/sktime/issues/632
-                        """
-                        n_folds = int((len(y) - cv.initial_window) / cv.step_length)
-                        return n_folds
+                    #     Ref:
+                    #     [1] https://github.com/alan-turing-institute/sktime/issues/632
+                    #     """
+                    #     n_folds = int((len(y) - cv.initial_window) / cv.step_length)
+                    #     return n_folds
 
                     # Set the number of folds from the cv object
-                    fold = _get_cv_n_folds(y=self.y_train, cv=fold_strategy)
-                    self.fold_param = fold
+                    # fold = _get_cv_n_folds(y=self.y_train, cv=fold_strategy)
+                    # Number of folds
+                    self.fold_param = fold_strategy.get_n_splits(y=self.y_train)
 
                     # Set the strategy from the cv object
                     if isinstance(self.fold_generator, ExpandingWindowSplitter):
@@ -3562,7 +3563,9 @@ class _TabularExperiment(_PyCaretExperiment):
                             groups=groups,
                             **fit_kwargs,
                         ) as fitted_pipeline_with_model:
-                            predict_proba__ = fitted_pipeline_with_model.predict_proba(data_X)
+                            predict_proba__ = fitted_pipeline_with_model.predict_proba(
+                                data_X
+                            )
                         display.move_progress()
                         display.move_progress()
                         display.clear_output()

@@ -15,8 +15,8 @@ import numpy as np  # type: ignore
 import pandas as pd
 import logging
 
-from sktime.forecasting.base._sktime import _SktimeForecaster  # type: ignore
-from sktime.forecasting.compose import ReducedForecaster, TransformedTargetForecaster  # type: ignore
+from sktime.forecasting.base import BaseForecaster  # type: ignore
+from sktime.forecasting.compose import make_reduction, TransformedTargetForecaster  # type: ignore
 from sktime.forecasting.trend import PolynomialTrendForecaster  # type: ignore
 from sktime.transformations.series.detrend import ConditionalDeseasonalizer, Detrender  # type: ignore
 from sktime.forecasting.base._sktime import DEFAULT_ALPHA  # type: ignore
@@ -326,6 +326,7 @@ class SeasonalNaiveContainer(TimeSeriesContainer):
 
 class PolyTrendContainer(TimeSeriesContainer):
     model_type = TSModelTypes.BASELINE
+
     def __init__(self, globals_dict: dict) -> None:
         logger = get_logger()
         np.random.seed(globals_dict["seed"])
@@ -1067,6 +1068,7 @@ class CdsDtContainer(TimeSeriesContainer):
     """Abstract container for sktime  reduced regression forecaster with
     conditional deseasonalizing and detrending.
     """
+
     active = False
     model_type = None
 
@@ -1644,7 +1646,7 @@ class OrthogonalMatchingPursuitCdsDtContainer(CdsDtContainer):
     id = "omp_cds_dt"
     name = "Orthogonal Matching Pursuit w/ Cond. Deseasonalize & Detrending"
     active = True  # set back to True as the parent has False
-    model_type = TSModelTypes.LINEAR 
+    model_type = TSModelTypes.LINEAR
 
     def __init__(self, globals_dict: dict) -> None:
         self.num_features = len(globals_dict["X_train"].columns)
@@ -2268,7 +2270,7 @@ class CatBoostCdsDtContainer(CdsDtContainer):
 # ===================================#
 
 
-class BaseCdsDt(_SktimeForecaster):
+class BaseCdsDt(BaseForecaster):
     model_type = None
 
     def __init__(
@@ -2318,9 +2320,9 @@ class BaseCdsDt(_SktimeForecaster):
                 ),
                 (
                     "forecast",
-                    ReducedForecaster(
-                        regressor=self.regressor,
-                        scitype="regressor",
+                    make_reduction(
+                        estimator=self.regressor,
+                        scitype="tabular-regressor",
                         window_length=self.window_length,
                         strategy="recursive",
                     ),
@@ -2367,7 +2369,7 @@ except ImportError:
 
 
 class EnsembleTimeSeriesContainer(TimeSeriesContainer):
-    model_type='ensemble'
+    model_type = "ensemble"
 
     def __init__(self, globals_dict: dict) -> None:
         logger = get_logger()

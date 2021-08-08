@@ -3,6 +3,7 @@
 import pytest
 
 from random import choice, uniform, randint
+
 from pycaret.internal.ensemble import _ENSEMBLE_METHODS
 import numpy as np  # type: ignore
 import pandas as pd  # type: ignore
@@ -16,7 +17,7 @@ pytestmark = pytest.mark.filterwarnings("ignore::UserWarning")
 _BLEND_TEST_MODELS = [
     "naive",
     "poly_trend",
-    "arima" "auto_ets",
+    "arima", "auto_ets",
     "lr_cds_dt",
     "en_cds_dt",
     "knn_cds_dt",
@@ -213,14 +214,10 @@ def test_create_predict_finalize_model(name, fh, load_data):
     Combined to save run time
     """
     exp = TimeSeriesExperiment()
-    data = load_data #_check_data_for_prophet(name, load_data)
+    data = load_data  # _check_data_for_prophet(name, load_data)
 
     exp.setup(
-        data=data,
-        fold=2,
-        fh=fh,
-        fold_strategy="sliding",
-        verbose=False,
+        data=data, fold=2, fh=fh, fold_strategy="sliding", verbose=False,
     )
     #######################
     ## Test Create Model ##
@@ -269,11 +266,7 @@ def test_predict_model_warnings(load_data):
     """test predict_model warnings cases"""
     exp = TimeSeriesExperiment()
     exp.setup(
-        data=load_data,
-        fold=2,
-        fh=12,
-        fold_strategy="sliding",
-        verbose=False,
+        data=load_data, fold=2, fh=12, fold_strategy="sliding", verbose=False,
     )
 
     model = exp.create_model("naive")
@@ -316,11 +309,7 @@ def test_create_model_custom_folds(load_data):
     exp = TimeSeriesExperiment()
     setup_fold = 3
     exp.setup(
-        data=load_data,
-        fold=setup_fold,
-        fh=12,
-        fold_strategy="sliding",
-        verbose=False,
+        data=load_data, fold=setup_fold, fh=12, fold_strategy="sliding", verbose=False,
     )
 
     #########################################
@@ -543,11 +532,7 @@ def test_tune_model_custom_folds(load_data):
     exp = TimeSeriesExperiment()
     setup_fold = 3
     exp.setup(
-        data=load_data,
-        fold=setup_fold,
-        fh=12,
-        fold_strategy="sliding",
-        verbose=False,
+        data=load_data, fold=setup_fold, fh=12, fold_strategy="sliding", verbose=False,
     )
 
     #######################################
