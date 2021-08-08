@@ -76,7 +76,7 @@ PyCaret is an open source library that anybody can use. In our view the ideal ta
 - Data Science Students.
 - Data Science Professionals who wants to build rapid prototypes.
 
-## Current Contributors
+## Contributors
 <a href="https://github.com/pycaret/pycaret/graphs/contributors">
   <img src="https://contributors-img.web.app/image?repo=pycaret/pycaret" />
 </a>
