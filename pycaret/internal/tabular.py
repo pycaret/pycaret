@@ -5198,7 +5198,7 @@ def blend_models(
     estimator_dict = {}
     for x in estimator_list:
         x = get_estimator_from_meta_estimator(x)
-        name = _get_model_id(x)
+        name = _get_model_id(x) or x.__class__.__name__
         suffix = 1
         original_name = name
         while name in estimator_dict:
@@ -5537,7 +5537,7 @@ def stack_models(
     estimator_dict = {}
     for x in estimator_list:
         x = get_estimator_from_meta_estimator(x)
-        name = _get_model_id(x)
+        name = _get_model_id(x) or x.__class__.__name__
         suffix = 1
         original_name = name
         while name in estimator_dict:
