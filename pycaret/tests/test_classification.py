@@ -17,6 +17,8 @@ def test():
     clf1 = pycaret.classification.setup(
         data,
         target="Purchase",
+        remove_multicollinearity=True,
+        multicollinearity_threshold=0.95,
         log_experiment=True,
         silent=True,
         html=False,
