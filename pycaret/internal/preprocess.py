@@ -2510,10 +2510,13 @@ class Fix_multicollinearity(BaseEstimator, TransformerMixin):
             data = takes preprocessed data frame
         Returns:
             None
-    """
+        """
+
+        if data[self.target_variable].dtype not in ["int32", "int64"]:
+            raise ValueError('dtype for the target variable should be int32 or int64 only')
 
         # global data1
-        data1 = data.select_dtypes(include=["int64", "float64", "float32"])
+        data1 = data.select_dtypes(include=["int32", "int64", "float32", "float64"])
         # try:
         #   self.data1 = self.data1.astype('float16')
         # except:
