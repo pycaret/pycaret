@@ -2395,3 +2395,23 @@ def load_config(file_name: str):
     """
 
     return pycaret.internal.tabular.load_config(file_name=file_name)
+
+
+def get_leaderboard():
+    
+    """
+    This function returns the leaderboard of all models trained in the 
+    current setup.
+
+
+    Example
+    -------
+    >>> from pycaret.classification import get_leaderboard
+    >>> leaderboard = get_leaderboard()
+
+
+    Returns:
+        Pandas.DataFrame
+
+    """
+    return pycaret.internal.tabular.get_leaderboard()
