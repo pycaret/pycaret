@@ -3,6 +3,7 @@ from sktime.forecasting.model_selection import (
     SlidingWindowSplitter,
 )
 
+
 from pycaret.internal.pycaret_experiment.utils import highlight_setup, MLUsecase
 from pycaret.internal.pycaret_experiment.supervised_experiment import (
     _SupervisedExperiment,
@@ -50,6 +51,8 @@ from joblib import Parallel, delayed  # type: ignore
 
 from sktime.utils.validation.forecasting import check_y_X  # type: ignore
 from sktime.forecasting.model_selection import SlidingWindowSplitter  # type: ignore
+
+from ..tests.time_series import test_
 
 
 warnings.filterwarnings("ignore")
@@ -3265,3 +3268,29 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                     start_with_window=True,
                 )
         return fold_generator
+
+    def test_model(
+        self,
+        estimator: Optional[Any] = None,
+        test: str = "all",
+        alpha: float = 0.05,
+        split: str = "all",
+    ) -> pd.DataFrame:
+        if estimator is None:
+            data = self._get_y_data(split=split)
+            results = test_(data=data, test=test, alpha=alpha)
+        else:
+            raise NotImplementedError(
+                "Tests on estimators have not been implemented yet."
+            )
+        return results
+
+    def _get_y_data(self, split="all"):
+        if split == "all":
+            data = self.y
+        elif split == "train":
+            data = self.y_train
+        else:
+            raise ValueError("split value: '{split}' is not supported.")
+        return data
+
