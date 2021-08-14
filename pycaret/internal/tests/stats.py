@@ -3,7 +3,7 @@ from typing import List
 import pandas as pd
 import statsmodels.api as sm
 
-from . import _format_test_results
+from pycaret.internal.tests import _format_test_results
 
 
 ##########################

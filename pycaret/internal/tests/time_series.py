@@ -5,8 +5,12 @@ from statsmodels.tsa.api import kpss
 
 import pmdarima as pm
 
-from .stats import test_summary_statistics, test_is_gaussian, test_is_white_noise
-from . import _format_test_results
+from pycaret.internal.tests.stats import (
+    test_summary_statistics,
+    test_is_gaussian,
+    test_is_white_noise,
+)
+from pycaret.internal.tests import _format_test_results
 
 
 #############################################################
