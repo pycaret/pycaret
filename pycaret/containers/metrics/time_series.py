@@ -149,14 +149,14 @@ class TimeSeriesMetricContainer(MetricContainer):
         return d
 
 
-def _smape_loss(y_true, y_pred):
+def _smape_loss(y_true, y_pred, **kwargs):
     """Wrapper for sktime metrics"""
     return mean_absolute_percentage_error(
         y_true=_check_series(y_true), y_pred=_check_series(y_pred), symmetric=True
     )
 
 
-def _mape_loss(y_true, y_pred):
+def _mape_loss(y_true, y_pred, **kwargs):
     """Wrapper for sktime metrics"""
     return mean_absolute_percentage_error(
         y_true=_check_series(y_true), y_pred=_check_series(y_pred), symmetric=False
