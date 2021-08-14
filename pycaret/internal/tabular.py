@@ -2305,21 +2305,41 @@ def compare_models(
             if index in n_select_range:
                 display.update_monitor(2, _get_model_name(model))
                 display.display_monitor()
-                model, model_fit_time = create_model_supervised(
-                    estimator=model,
-                    system=False,
-                    verbose=False,
-                    fold=fold,
-                    round=round,
-                    cross_validation=False,
-                    predict=False,
-                    fit_kwargs=fit_kwargs,
-                    groups=groups,
-                )
-                sorted_models.append(model)
+                if errors == "raise":
+                    model, model_fit_time = create_model_supervised(
+                        estimator=model,
+                        system=False,
+                        verbose=False,
+                        fold=fold,
+                        round=round,
+                        cross_validation=False,
+                        predict=False,
+                        fit_kwargs=fit_kwargs,
+                        groups=groups,
+                    )
+                    sorted_models.append(model)
+                else:
+                    try:
+                        model, model_fit_time = create_model_supervised(
+                            estimator=model,
+                            system=False,
+                            verbose=False,
+                            fold=fold,
+                            round=round,
+                            cross_validation=False,
+                            predict=False,
+                            fit_kwargs=fit_kwargs,
+                            groups=groups,
+                        )
+                        sorted_models.append(model)
+                    except Exception:
+                        logger.error(f"create_model() for {model} raised an exception:")
+                        logger.error(traceback.format_exc())
+                        model = None
+                        continue
                 full_logging = True
 
-            if logging_param and cross_validation:
+            if logging_param and cross_validation and model is not None:
 
                 try:
                     _mlflow_log_model(
