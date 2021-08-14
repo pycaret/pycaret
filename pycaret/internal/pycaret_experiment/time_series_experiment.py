@@ -295,7 +295,7 @@ def _fit_and_score(
 
     scoring = _get_metrics_dict_ts(scoring)
     for scorer_name, scorer in scoring.items():
-        metric = scorer._score_func(y_true=y_test, y_pred=y_pred)
+        metric = scorer._score_func(y_true=y_test, y_pred=y_pred, **scorer._kwargs)
         fold_scores[scorer_name] = metric
     score_time = time.time() - start
 
@@ -1351,7 +1351,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         """
         MONITOR UPDATE ENDS
         """
-        metrics_dict = dict([(k, v.scorer) for k, v in metrics.items()])
+        metrics_dict = {k: v.scorer for k, v in metrics.items()}
 
         self.logger.info("Starting cross validation")
 
