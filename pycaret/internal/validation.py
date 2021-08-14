@@ -43,10 +43,6 @@ class fit_if_not_fitted(object):
         logger = get_logger()
         self.estimator = deepcopy(estimator)
         if not is_fitted(self.estimator):
-            try:
-                self.estimator._carry_over_final_estimator_fit_vars()
-            except:
-                pass
             if not is_fitted(self.estimator):
                 logger.info(f"fit_if_not_fitted: {estimator} is not fitted, fitting")
                 try:
