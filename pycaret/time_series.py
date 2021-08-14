@@ -915,14 +915,15 @@ def stack_models(
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def plot_model(
-    estimator,
-    plot: str = "residuals",
+    estimator: Optional[Any] = None,
+    plot: str = "ts",
     scale: float = 1,
     save: bool = False,
     fold: Optional[Union[int, Any]] = None,
     fit_kwargs: Optional[dict] = None,
     use_train_data: bool = False,
     verbose: bool = True,
+    return_data: bool = False,
     display_format: Optional[str] = None,
 ) -> str:
 
@@ -1006,8 +1007,9 @@ def plot_model(
         save=save,
         fold=fold,
         fit_kwargs=fit_kwargs,
-        verbose=verbose,
         use_train_data=use_train_data,
+        verbose=verbose,
+        return_data=return_data,
         display_format=display_format,
     )
 

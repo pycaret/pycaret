@@ -11,7 +11,7 @@ from pycaret.internal.tests import _format_test_results
 ##########################
 
 
-def test_summary_statistics(data: pd.Series):
+def summary_statistics(data: pd.Series):
     distinct_counts = dict(data.value_counts(normalize=True))
     result = {
         "Length": len(data),
@@ -30,7 +30,7 @@ def test_summary_statistics(data: pd.Series):
     return result
 
 
-def test_is_gaussian(data: pd.Series, alpha: float = 0.05, verbose: bool = False):
+def is_gaussian(data: pd.Series, alpha: float = 0.05, verbose: bool = False):
     """Performs the shapiro test to check for normality of data
     """
     from scipy.stats import shapiro, norm
@@ -51,7 +51,7 @@ def test_is_gaussian(data: pd.Series, alpha: float = 0.05, verbose: bool = False
         return normality
 
 
-def test_is_white_noise(
+def is_white_noise(
     data: pd.Series,
     lags: List[int] = [24, 48],
     alpha: float = 0.05,

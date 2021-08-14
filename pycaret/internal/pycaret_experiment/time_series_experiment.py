@@ -52,7 +52,8 @@ from joblib import Parallel, delayed  # type: ignore
 from sktime.utils.validation.forecasting import check_y_X  # type: ignore
 from sktime.forecasting.model_selection import SlidingWindowSplitter  # type: ignore
 
-from ..tests.time_series import test_
+from pycaret.internal.tests.time_series import test_
+from pycaret.internal.plots.time_series import plot_
 
 
 warnings.filterwarnings("ignore")
@@ -2291,14 +2292,15 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
     def plot_model(
         self,
-        estimator,
-        plot: str = "residuals",
+        estimator: Optional[Any] = None,
+        plot: str = "ts",
         scale: float = 1,
         save: bool = False,
         fold: Optional[Union[int, Any]] = None,
         fit_kwargs: Optional[dict] = None,
         use_train_data: bool = False,
         verbose: bool = True,
+        return_data: bool = False,
         display_format: Optional[str] = None,
     ) -> str:
 
@@ -2374,19 +2376,45 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             None
 
         """
+        data, train, test, predictions, cv = None, None, None, None, None
 
-        return super().plot_model(
-            estimator=estimator,
+        if plot == "ts":
+            data = self._get_y_data(split="all")
+        elif plot == "splits-tt":
+            train = self._get_y_data(split="train")
+            test = self._get_y_data(split="test")
+        elif plot == "splits_cv":
+            data = self._get_y_data(split="train")
+            cv = self.get_fold_generator()
+        elif estimator is None:
+            if plot == "acf":
+                data = self._get_y_data(split="all")
+            elif plot == "pacf":
+                data = self._get_y_data(split="all")
+            else:
+                raise ValueError(f"Plot type {plot} is not supported for the data.")
+        else:
+            if plot == "predictions":
+                data = self._get_y_data(split="all")
+                predictions = estimator.predict()
+            elif plot == "residuals" or plot == "acf" or plot == "pacf":
+                raise NotImplementedError(
+                    "Plotting on residuals have not been implemented yet."
+                )
+            else:
+                raise ValueError(f"Plot type '{plot}' is not supported for estimators.")
+
+        plot_data = plot_(
             plot=plot,
-            scale=scale,
-            save=save,
-            fold=fold,
-            fit_kwargs=fit_kwargs,
-            verbose=verbose,
-            use_train_data=use_train_data,
-            system=True,
-            display_format=display_format,
+            data=data,
+            train=train,
+            test=test,
+            predictions=predictions,
+            cv=cv,
+            return_data=return_data,
         )
+
+        return plot_data
 
     def evaluate_model(
         self,
@@ -3290,7 +3318,9 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             data = self.y
         elif split == "train":
             data = self.y_train
+        elif split == "test":
+            data = self.y_test
         else:
-            raise ValueError("split value: '{split}' is not supported.")
+            raise ValueError(f"split value: '{split}' is not supported.")
         return data
 

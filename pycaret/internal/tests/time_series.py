@@ -6,9 +6,9 @@ from statsmodels.tsa.api import kpss
 import pmdarima as pm
 
 from pycaret.internal.tests.stats import (
-    test_summary_statistics,
-    test_is_gaussian,
-    test_is_white_noise,
+    summary_statistics,
+    is_gaussian,
+    is_white_noise,
 )
 from pycaret.internal.tests import _format_test_results
 
@@ -26,17 +26,17 @@ def test_(data, test: str, alpha: float = 0.05, *kwargs):
     if test == "all":
         results = test_all(data=data, alpha=alpha)
     elif test == "stat_summary":
-        results = test_summary_statistics(data=data)
+        results = summary_statistics(data=data)
     elif test == "white_noise":
-        results = test_is_white_noise(data=data, alpha=alpha, verbose=True)[1]
+        results = is_white_noise(data=data, alpha=alpha, verbose=True)[1]
     elif test == "stationarity":
-        results = test_is_stationary(data=data, alpha=alpha)
+        results = is_stationary(data=data, alpha=alpha)
     elif test == "adf":
-        results = test_is_stationary_adf(data=data, alpha=alpha, verbose=True)[1]
+        results = is_stationary_adf(data=data, alpha=alpha, verbose=True)[1]
     elif test == "kpss":
-        results = test_is_stationary_kpss(data=data, alpha=alpha, verbose=True)[1]
+        results = is_stationary_kpss(data=data, alpha=alpha, verbose=True)[1]
     elif test == "normality":
-        results = test_is_gaussian(data=data, alpha=alpha, verbose=True)[1]
+        results = is_gaussian(data=data, alpha=alpha, verbose=True)[1]
     else:
         raise ValueError(f"Tests: '{test}' is not supported.")
     return results
@@ -46,14 +46,14 @@ def test_(data, test: str, alpha: float = 0.05, *kwargs):
 #### Combined Tests ####
 ########################
 def test_all(data, alpha: float = 0.05):
-    result_summary_stats = test_summary_statistics(data=data)
+    result_summary_stats = summary_statistics(data=data)
     result_summary_stats["Setting"] = ""
     result_summary_stats.set_index("Setting", append=True, inplace=True)
 
-    result_wn = test_is_white_noise(data, verbose=True)
-    result_adf = test_is_stationary_adf(data, alpha=alpha, verbose=True)
-    result_kpss = test_is_stationary_kpss(data, alpha=alpha, verbose=True)
-    result_normality = test_is_gaussian(data, alpha=alpha, verbose=True)
+    result_wn = is_white_noise(data, verbose=True)
+    result_adf = is_stationary_adf(data, alpha=alpha, verbose=True)
+    result_kpss = is_stationary_kpss(data, alpha=alpha, verbose=True)
+    result_normality = is_gaussian(data, alpha=alpha, verbose=True)
 
     all_dfs = [
         result_summary_stats,
@@ -66,9 +66,9 @@ def test_all(data, alpha: float = 0.05):
     return final
 
 
-def test_is_stationary(data, alpha: float = 0.05):
-    result_adf = test_is_stationary_adf(data, alpha=alpha, verbose=True)
-    result_kpss = test_is_stationary_kpss(data, alpha=alpha, verbose=True)
+def is_stationary(data, alpha: float = 0.05):
+    result_adf = is_stationary_adf(data, alpha=alpha, verbose=True)
+    result_kpss = is_stationary_kpss(data, alpha=alpha, verbose=True)
 
     all_dfs = [
         result_adf[1],
@@ -83,7 +83,7 @@ def test_is_stationary(data, alpha: float = 0.05):
 ##########################
 
 
-def test_is_stationary_adf(data: pd.Series, alpha: float = 0.05, verbose: bool = False):
+def is_stationary_adf(data: pd.Series, alpha: float = 0.05, verbose: bool = False):
     """Checks Difference Stationarity
 
     H0: The time series is not stationary (has a unit root)
@@ -121,9 +121,7 @@ def test_is_stationary_adf(data: pd.Series, alpha: float = 0.05, verbose: bool =
         return stationarity
 
 
-def test_is_stationary_kpss(
-    data: pd.Series, alpha: float = 0.05, verbose: bool = False
-):
+def is_stationary_kpss(data: pd.Series, alpha: float = 0.05, verbose: bool = False):
     """Checks Stationarity around a deterministic trend
 
     H0: The time series is trend stationary
@@ -161,12 +159,12 @@ def test_is_stationary_kpss(
         return stationarity
 
 
-def test_trend():
+def is_trending():
     """TBD"""
     pass
 
 
-def test_seasonality():
+def is_seasonal():
     """TBD"""
     pass
 

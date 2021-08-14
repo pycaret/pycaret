@@ -211,6 +211,81 @@ def test_test_model(load_data):
     assert alpha in results.index.get_level_values("Setting")
 
 
+def test_plot_model(load_data):
+    """Tests the plot_model functionality
+    """
+    exp = TimeSeriesExperiment()
+
+    fh = np.arange(1, 13)
+    fold = 2
+    data = load_data
+
+    ######################
+    #### OOP Approach ####
+    ######################
+
+    exp.setup(
+        data=data,
+        fh=fh,
+        fold=fold,
+        fold_strategy="sliding",
+        verbose=False,
+        session_id=42,
+    )
+
+    model = exp.create_model("naive")
+
+    print("\n\n==== ON DATA (using OOP) ====")
+    exp.plot_model()
+    exp.plot_model(plot="ts")
+    exp.plot_model(plot="splits-tt")
+    exp.plot_model(plot="splits_cv")
+    exp.plot_model(plot="acf")
+    exp.plot_model(plot="pacf")
+
+    print("\n\n==== ON ESTIMATOR (using OOP) ====")
+    exp.plot_model(estimator=model)
+    exp.plot_model(estimator=model, plot="ts")
+    exp.plot_model(estimator=model, plot="splits-tt")
+    exp.plot_model(estimator=model, plot="splits_cv")
+    exp.plot_model(estimator=model, plot="predictions")
+
+    ## Not Implemented on Residuals yet
+    # exp.plot_model(estimator=model, plot="acf")
+    # exp.plot_model(estimator=model, plot="pacf")
+    # exp.plot_model(estimator=model, plot="residuals")
+
+    ########################
+    #### Functional API ####
+    ########################
+    from pycaret.time_series import setup, create_model, plot_model
+
+    _ = setup(
+        data=data, fh=fh, fold=fold, fold_strategy="expanding", session_id=42, n_jobs=-1
+    )
+    model = create_model("naive")
+
+    print("\n\n==== ON DATA (using Functional API) ====")
+    plot_model()
+    plot_model(plot="ts")
+    plot_model(plot="splits-tt")
+    plot_model(plot="splits_cv")
+    plot_model(plot="acf")
+    plot_model(plot="pacf")
+
+    print("\n\n==== ON ESTIMATOR (using Functional API) ====")
+    plot_model(estimator=model)
+    plot_model(estimator=model, plot="ts")
+    plot_model(estimator=model, plot="splits-tt")
+    plot_model(estimator=model, plot="splits_cv")
+    plot_model(estimator=model, plot="predictions")
+
+    ## Not Implemented on Residuals yet
+    # plot_model(estimator=model, plot="acf")
+    # plot_model(estimator=model, plot="pacf")
+    # plot_model(estimator=model, plot="residuals")
+
+
 @pytest.mark.parametrize("seasonal_period, seasonal_value", _get_seasonal_values())
 def test_setup_seasonal_period_str(load_data, seasonal_period, seasonal_value):
 
@@ -476,11 +551,7 @@ def test_blend_model_custom_folds(load_data):
     exp = TimeSeriesExperiment()
     setup_fold = 3
     exp.setup(
-        data=load_data,
-        fold=setup_fold,
-        fh=12,
-        fold_strategy="sliding",
-        verbose=False,
+        data=load_data, fold=setup_fold, fh=12, fold_strategy="sliding", verbose=False,
     )
 
     #######################################
