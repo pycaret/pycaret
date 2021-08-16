@@ -216,7 +216,7 @@ class DataTypes_Auto_infer(BaseEstimator, TransformerMixin):
 
         # if column is int and unique counts are more than two, then: (exclude target)
         for i in data.select_dtypes(include=["int64"]).columns:
-            if data[i].nunique() <= 20:  # hard coded
+            if data[i].nunique() <= 20 and i != self.target:  # hard coded
                 data[i] = data[i].apply(str_if_not_null)
             else:
                 data[i] = data[i].astype("float32")
