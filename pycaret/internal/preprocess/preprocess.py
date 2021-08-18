@@ -7,6 +7,7 @@ import pandas as pd
 import numpy as np
 from inspect import signature
 from sklearn.base import BaseEstimator
+from sklearn.ensemble import IsolationForest
 
 from ..utils import to_df, to_series, variable_return
 
@@ -125,3 +126,27 @@ class TransfomerWrapper(BaseEstimator):
 
     def fit_transform(self, *args, **kwargs):
         return self.fit(*args, **kwargs).transform(*args, **kwargs)
+
+
+class RemoveOutliers(BaseEstimator):
+    """Transformer to drop outliers from a dataset."""
+
+    def __init__(self, method="if", threshold=0.05, n_jobs=1, random_state=None):
+        self.method = method
+        self.threshold = threshold
+        self.n_jobs = n_jobs
+        self.random_state = random_state
+
+    def fit(self, X, y):
+        if self.method == "if":
+            self._estimator = IsolationForest(
+                n_estimators=100,
+                contamination=self.threshold,
+                n_jobs=self.n_jobs,
+                random_state=self.random_state,
+            )
+            self._estimator.fit(X, y)
+
+    def transform(self, X, y):
+        mask = self._estimator.predict(X) != -1
+        return X[mask], y[mask]

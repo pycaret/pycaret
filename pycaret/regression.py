@@ -48,11 +48,13 @@ def setup(
     normalize: bool = False,
     normalize_method: str = "zscore",
     low_variance_threshold: float = 0,
+    remove_outliers: bool = False,
+    outliers_threshold: float = 0.05,
+    polynomial_features: bool = False,
+    polynomial_degree: int = 2,
     pca: bool = False,
     pca_method: str = "linear",
     pca_components: Union[int, float] = 1.0,
-    polynomial_features: bool = False,
-    polynomial_degree: int = 2,
     transform_target: bool = False,
     transform_target_method: str = "box-cox",
     handle_unknown_categorical: bool = True,
@@ -60,8 +62,6 @@ def setup(
     combine_rare_levels: bool = False,
     rare_level_threshold: float = 0.10,
     bin_numeric_features: Optional[List[str]] = None,
-    remove_outliers: bool = False,
-    outliers_threshold: float = 0.05,
     remove_multicollinearity: bool = False,
     multicollinearity_threshold: float = 0.9,
     remove_perfect_collinearity: bool = True,
@@ -240,9 +240,29 @@ def setup(
         None, skip this treansformation step.
 
 
+    remove_outliers: bool, default = False
+        When set to True, outliers from the training data are removed using an
+        Isolation Forest.
+
+
+    outliers_threshold: float, default = 0.05
+        The percentage outliers to be removed from the training dataset. Ignored
+        when ``remove_outliers=False``.
+
+
+    polynomial_features: bool, default = False
+        When set to True, new features are derived using existing numeric features.
+
+
+    polynomial_degree: int, default = 2
+        Degree of polynomial features. For example, if an input sample is two dimensional
+        and of the form [a, b], the polynomial features with degree = 2 are:
+        [1, a, b, a^2, ab, b^2]. Ignored when ``polynomial_features`` is not True.
+
+
     pca: bool, default = False
-        When set to True, dimensionality reduction is applied to project the data into 
-        a lower dimensional space using the method defined in ``pca_method`` parameter. 
+        When set to True, dimensionality reduction is applied to project the data into
+        a lower dimensional space using the method defined in ``pca_method`` parameter.
 
 
     pca_method: str, default = 'linear'
@@ -257,16 +277,6 @@ def setup(
         If <= 1, it selects that fraction of components from the original features.
         The value must must be smaller than the number of original features.
         Ignored when ``pca`` is not True.
-
-
-    polynomial_features: bool, default = False
-        When set to True, new features are derived using existing numeric features.
-
-
-    polynomial_degree: int, default = 2
-        Degree of polynomial features. For example, if an input sample is two dimensional
-        and of the form [a, b], the polynomial features with degree = 2 are:
-        [1, a, b, a^2, ab, b^2]. Ignored when ``polynomial_features`` is not True.
 
 
     transform_target: bool, default = False
@@ -556,11 +566,13 @@ def setup(
         normalize=normalize,
         normalize_method=normalize_method,
         low_variance_threshold=low_variance_threshold,
+        remove_outliers=remove_outliers,
+        outliers_threshold=outliers_threshold,
+        polynomial_features=polynomial_features,
+        polynomial_degree=polynomial_degree,
         pca=pca,
         pca_method=pca_method,
         pca_components=pca_components,
-        polynomial_features=polynomial_features,
-        polynomial_degree=polynomial_degree,
         transform_target=transform_target,
         transform_target_method=transform_target_method,
         handle_unknown_categorical=handle_unknown_categorical,
@@ -568,8 +580,6 @@ def setup(
         combine_rare_levels=combine_rare_levels,
         rare_level_threshold=rare_level_threshold,
         bin_numeric_features=bin_numeric_features,
-        remove_outliers=remove_outliers,
-        outliers_threshold=outliers_threshold,
         remove_multicollinearity=remove_multicollinearity,
         multicollinearity_threshold=multicollinearity_threshold,
         remove_perfect_collinearity=remove_perfect_collinearity,

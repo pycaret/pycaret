@@ -45,20 +45,20 @@ def setup(
     normalize: bool = False,
     normalize_method: str = "zscore",
     low_variance_threshold: float = 0,
-    pca: bool = False,
-    pca_method: str = "linear",
-    pca_components: Union[int, float] = 1.0,
+    remove_outliers: bool = False,
+    outliers_threshold: float = 0.05,
     polynomial_features: bool = False,
     polynomial_degree: int = 2,
     fix_imbalance: bool = False,
     fix_imbalance_method: Optional[Any] = None,
+    pca: bool = False,
+    pca_method: str = "linear",
+    pca_components: Union[int, float] = 1.0,
     handle_unknown_categorical: bool = True,
     unknown_categorical_method: str = "least_frequent",
     combine_rare_levels: bool = False,
     rare_level_threshold: float = 0.10,
     bin_numeric_features: Optional[List[str]] = None,
-    remove_outliers: bool = False,
-    outliers_threshold: float = 0.05,
     remove_multicollinearity: bool = False,
     multicollinearity_threshold: float = 0.9,
     remove_perfect_collinearity: bool = True,
@@ -238,23 +238,14 @@ def setup(
         None, skip this treansformation step.
 
 
-    pca: bool, default = False
-        When set to True, dimensionality reduction is applied to project the data into 
-        a lower dimensional space using the method defined in ``pca_method`` parameter. 
-        
-
-    pca_method: str, default = 'linear'
-        Method with which to apply PCA. Possible values are:
-            - 'linear': Uses Singular Value  Decomposition.
-            - kernel: Dimensionality reduction through the use of RBF kernel.
-            - incremental: Similar to 'linear', but more efficient for large datasets.
+    remove_outliers: bool, default = False
+        When set to True, outliers from the training data are removed using an
+        Isolation Forest.
 
 
-    pca_components: int or float, default = 1.0
-        Number of components to keep. If >1, it select that number of components.
-        If <= 1, it selects that fraction of components from the original features.
-        The value must must be smaller than the number of original features.
-        Ignored when ``pca`` is not True.
+    outliers_threshold: float, default = 0.05
+        The percentage outliers to be removed from the training dataset. Ignored
+        when ``remove_outliers=False``.
 
 
     polynomial_features: bool, default = False
@@ -277,6 +268,25 @@ def setup(
         When ``fix_imbalance`` is True, `imblearn` compatible estimator with a
         `fit_resample` method can be passed. If None, `imblearn.over_sampling.SMOTE`
         is used.
+
+
+    pca: bool, default = False
+        When set to True, dimensionality reduction is applied to project the data into
+        a lower dimensional space using the method defined in ``pca_method`` parameter.
+
+
+    pca_method: str, default = 'linear'
+        Method with which to apply PCA. Possible values are:
+            - 'linear': Uses Singular Value  Decomposition.
+            - kernel: Dimensionality reduction through the use of RBF kernel.
+            - incremental: Similar to 'linear', but more efficient for large datasets.
+
+
+    pca_components: int or float, default = 1.0
+        Number of components to keep. If >1, it select that number of components.
+        If <= 1, it selects that fraction of components from the original features.
+        The value must must be smaller than the number of original features.
+        Ignored when ``pca`` is not True.
 
 
     combine_rare_levels: bool, default = False
@@ -310,16 +320,6 @@ def setup(
         so by using 'sturges' rule to determine the number of clusters and then apply
         KMeans algorithm. Original values of the feature are then replaced by the
         cluster label.
-
-
-    remove_outliers: bool, default = False
-        When set to True, outliers from the training data are removed using the Singular 
-        Value Decomposition.
-
-
-    outliers_threshold: float, default = 0.05
-        The percentage outliers to be removed from the training dataset. Ignored when 
-        ``remove_outliers`` is not True.
 
 
     remove_multicollinearity: bool, default = False
@@ -552,20 +552,20 @@ def setup(
         normalize=normalize,
         normalize_method=normalize_method,
         low_variance_threshold=low_variance_threshold,
-        pca=pca,
-        pca_method=pca_method,
-        pca_components=pca_components,
+        remove_outliers=remove_outliers,
+        outliers_threshold=outliers_threshold,
         polynomial_features=polynomial_features,
         polynomial_degree=polynomial_degree,
         fix_imbalance=fix_imbalance,
         fix_imbalance_method=fix_imbalance_method,
+        pca=pca,
+        pca_method=pca_method,
+        pca_components=pca_components,
         handle_unknown_categorical=handle_unknown_categorical,
         unknown_categorical_method=unknown_categorical_method,
         combine_rare_levels=combine_rare_levels,
         rare_level_threshold=rare_level_threshold,
         bin_numeric_features=bin_numeric_features,
-        remove_outliers=remove_outliers,
-        outliers_threshold=outliers_threshold,
         remove_multicollinearity=remove_multicollinearity,
         multicollinearity_threshold=multicollinearity_threshold,
         remove_perfect_collinearity=remove_perfect_collinearity,

@@ -39,7 +39,7 @@ Preprocessing steps:
 - transformation: DONE
 - normalization: DONE
 - low variance: DONE
-- pca: DONE
+- remove outliers: DONE
 - polynomial features: DONE
 - fix imbalance: DONE
-
+- pca: DONE

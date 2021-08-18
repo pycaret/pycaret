@@ -21,7 +21,7 @@ import sklearn
 from imblearn.over_sampling import SMOTE
 from pandas.io.formats.style import Styler
 from pycaret.internal.logging import create_logger
-from pycaret.internal.preprocess import TransfomerWrapper
+from pycaret.internal.preprocess import TransfomerWrapper, RemoveOutliers
 from pycaret.internal.meta_estimators import get_estimator_from_meta_estimator
 from pycaret.internal.pipeline import Pipeline as InternalPipeline
 from pycaret.internal.pipeline import (
@@ -395,21 +395,21 @@ class _TabularExperiment(_PyCaretExperiment):
         normalize: bool = False,
         normalize_method: str = "zscore",
         low_variance_threshold: float = 0,
-        pca: bool = False,
-        pca_method: str = "linear",
-        pca_components: Union[int, float] = 1.0,
+        outliers_threshold: float = 0.05,
+        remove_multicollinearity: bool = False,
         polynomial_features: bool = False,
         polynomial_degree: int = 2,
         fix_imbalance: bool = False,
         fix_imbalance_method: Optional[Any] = None,
+        pca: bool = False,
+        pca_method: str = "linear",
+        pca_components: Union[int, float] = 1.0,
         handle_unknown_categorical: bool = True,
         unknown_categorical_method: str = "least_frequent",
         combine_rare_levels: bool = False,
         rare_level_threshold: float = 0.10,
         bin_numeric_features: Optional[List[str]] = None,
         remove_outliers: bool = False,
-        outliers_threshold: float = 0.05,
-        remove_multicollinearity: bool = False,
         multicollinearity_threshold: float = 0.9,
         remove_perfect_collinearity: bool = True,
         group_features: Optional[List[str]] = None,
@@ -1081,7 +1081,52 @@ class _TabularExperiment(_PyCaretExperiment):
 
                 self._internal_pipeline.steps.append(("low_variance", variance_estimator))
 
-            # PCA ====================================================== >>
+            # Remove outliers ====================================== >>
+
+            if remove_outliers:
+                self.logger.info("Setting up removing outliers")
+                outliers = RemoveOutliers(
+                    method="if",
+                    threshold=outliers_threshold,
+                )
+
+                self._internal_pipeline.steps.append(
+                    ("remove_outliers", outliers)
+                )
+
+            # Polynomial features ================================== >>
+
+            if polynomial_features:
+                self.logger.info("Setting up polynomial features")
+                polynomial = PolynomialFeatures(
+                    degree=polynomial_degree,
+                    interaction_only=False,
+                    include_bias=True,
+                    order="C",
+                )
+
+                self._internal_pipeline.steps.append(
+                    ("polynomial_features", polynomial)
+                )
+
+            # Balance the dataset ================================== >>
+
+            if fix_imbalance:
+                self.logger.info("Setting up imbalanced handling")
+                if fix_imbalance_method is None:
+                    balance_estimator = SMOTE()
+                elif not hasattr(fix_imbalance_method, "fit_resample"):
+                    raise ValueError(
+                        "Invalid value for the fix_imbalance_method parameter. "
+                        "The provided value must be a imblearn estimator, got "
+                        f"{fix_imbalance_method.__class__.__name_}."
+                    )
+                else:
+                    balance_estimator = fix_imbalance_method
+
+                self._internal_pipeline.steps.append(("balance", balance_estimator))
+
+            # PCA ================================================== >>
 
             if pca:
                 self.logger.info("Setting up PCA")
@@ -1116,39 +1161,7 @@ class _TabularExperiment(_PyCaretExperiment):
 
                 self._internal_pipeline.steps.append(("pca", pca_estimator))
 
-            # Polynomial features  ===================================== >>
-
-            if polynomial_features:
-                self.logger.info("Setting up polynomial features")
-                polynomial = PolynomialFeatures(
-                    degree=polynomial_degree,
-                    interaction_only=False,
-                    include_bias=True,
-                    order="C",
-                )
-
-                self._internal_pipeline.steps.append(
-                    ("polynomial_features", polynomial)
-                )
-
-            # Balance the dataset ======================================= >>
-
-            if fix_imbalance:
-                self.logger.info("Setting up imbalanced handling")
-                if fix_imbalance_method is None:
-                    balance_estimator = SMOTE()
-                elif not hasattr(fix_imbalance_method, "fit_resample"):
-                    raise ValueError(
-                        "Invalid value for the fix_imbalance_method parameter. "
-                        "The provided value must be a imblearn estimator, got "
-                        f"{fix_imbalance_method.__class__.__name_}."
-                    )
-                else:
-                    balance_estimator = fix_imbalance_method
-
-                self._internal_pipeline.steps.append(("balance", balance_estimator))
-
-            # Custom transformers ====================================== >>
+            # Custom transformers ================================== >>
 
             if custom_pipeline:
                 self.logger.info("Setting up custom pipeline")
@@ -1285,13 +1298,15 @@ class _TabularExperiment(_PyCaretExperiment):
             normalize=normalize,
             normalize_method=normalize_method,
             low_variance_threshold=low_variance_threshold,
-            pca=pca,
-            pca_method=pca_method,
-            pca_components=pca_components,
+            remove_outliers=remove_outliers,
+            outliers_threshold=outliers_threshold,
             polynomial_features=polynomial_features,
             polynomial_degree=polynomial_degree,
             fix_imbalance=fix_imbalance,
             fix_imbalance_method=fix_imbalance_method,
+            pca=pca,
+            pca_method=pca_method,
+            pca_components=pca_components,
         )
 
         if verbose:
