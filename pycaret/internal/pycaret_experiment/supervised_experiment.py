@@ -16,13 +16,10 @@ from pycaret.internal.utils import (
     nullcontext,
     true_warm_start,
     can_early_stop,
-    get_columns_to_stratify_by,
 )
 from pycaret.internal.utils import id_or_display_name
 import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
-from pycaret.internal.logging import get_logger
-from pycaret.internal.Display import Display
 from pycaret.internal.distributions import *
 from pycaret.internal.validation import *
 from pycaret.internal.tunable import TunableMixin
@@ -39,7 +36,6 @@ from collections import Iterable
 from copy import deepcopy
 from sklearn.base import clone  # type: ignore
 from sklearn.compose import TransformedTargetRegressor  # type: ignore
-from sklearn.model_selection import train_test_split
 from typing import List, Tuple, Any, Union, Optional, Dict
 import warnings
 from IPython.utils import io

@@ -20,7 +20,7 @@ import scikitplot as skplt  # type: ignore
 import sklearn
 from imblearn.over_sampling import SMOTE
 from pandas.io.formats.style import Styler
-from pycaret.internal.logging import create_logger, get_logger
+from pycaret.internal.logging import create_logger
 from pycaret.internal.preprocess import TransfomerWrapper
 from pycaret.internal.meta_estimators import get_estimator_from_meta_estimator
 from pycaret.internal.pipeline import Pipeline as InternalPipeline
@@ -32,6 +32,7 @@ from pycaret.internal.pipeline import (
 from pycaret.internal.plots.helper import MatplotlibDefaultDPI
 from pycaret.internal.plots.yellowbrick import show_yellowbrick_plot
 from pycaret.internal.pycaret_experiment.pycaret_experiment import _PyCaretExperiment
+from pycaret.containers.models.regression import get_all_model_containers as get_regressors
 from pycaret.internal.pycaret_experiment.utils import MLUsecase
 from pycaret.internal.utils import (
     get_columns_to_stratify_by,
@@ -42,7 +43,6 @@ from pycaret.internal.utils import (
 
 from category_encoders.leave_one_out import LeaveOneOutEncoder
 from pycaret.internal.validation import *
-from sklearn.compose import ColumnTransformer
 from sklearn.decomposition import PCA, IncrementalPCA, KernelPCA
 from sklearn.experimental import enable_iterative_imputer
 from sklearn.feature_selection import VarianceThreshold
@@ -560,21 +560,6 @@ class _TabularExperiment(_PyCaretExperiment):
         if not self._is_unsupervised():
             all_cols.remove(target)
 
-        if (
-            type(iterative_imputation_iters) is not int
-            or iterative_imputation_iters <= 0
-        ):
-            raise TypeError(
-                "iterative_imputation_iters must be an integer greater than 0."
-            )
-
-        # ordinal_features
-        if ordinal_features is not None:
-            if type(ordinal_features) is not dict:
-                raise TypeError(
-                    "ordinal_features must be of type dictionary with column name as key and ordered values as list."
-                )
-
         # high_cardinality_features
         if high_cardinality_features is not None:
             if type(high_cardinality_features) is not list:
@@ -659,15 +644,6 @@ class _TabularExperiment(_PyCaretExperiment):
             raise TypeError(
                 "multicollinearity_threshold must be a float between 0 and 1."
             )
-
-        # group features
-        if group_features is not None:
-            if type(group_features) is not list:
-                raise TypeError("group_features must be of type list.")
-
-        if group_names is not None:
-            if type(group_names) is not list:
-                raise TypeError("group_names must be of type list.")
 
         # feature_selection
         if type(feature_selection) is not bool:
@@ -794,16 +770,6 @@ class _TabularExperiment(_PyCaretExperiment):
         if type(fix_imbalance) is not bool:
             raise TypeError("fix_imbalance parameter only accepts True or False.")
 
-        # fix_imbalance_method
-        if fix_imbalance:
-            if fix_imbalance_method is not None:
-                if hasattr(fix_imbalance_method, "fit_resample"):
-                    pass
-                else:
-                    raise TypeError(
-                        "fix_imbalance_method must contain resampler with fit_resample method."
-                    )
-
         # check transform_target
         if type(transform_target) is not bool:
             raise TypeError("transform_target parameter only accepts True or False.")
@@ -889,6 +855,12 @@ class _TabularExperiment(_PyCaretExperiment):
         # Ignore features
         ign_cols = ignore_features if ignore_features else []
 
+        # Date feature engineering =============================== >>
+
+        # TODO: Extract features from date columns
+        if date_cols:
+            self.logger.info("Extracting features from datetime columns")
+
         # Imputation =========================================== >>
 
         # Checking parameters
@@ -927,9 +899,56 @@ class _TabularExperiment(_PyCaretExperiment):
 
         elif imputation_type == "iterative":
             self.logger.info("Setting up iterative imputation")
-            impute_estimator = IterativeImputer(
-                estimator="lightgbm",  # TODO: fix
-                max_iter=iterative_imputation_iters,
+
+            # TODO: Fix iterative imputer for categorical columns
+
+            # Dict of all regressor models available
+            regressors = {k: v for k, v in get_regressors(self).items() if not v.is_special}
+
+            if isinstance(numeric_iterative_imputer, str):
+                if numeric_iterative_imputer not in regressors:
+                    raise ValueError(
+                        "Invalid value for the numeric_iterative_imputer parameter, "
+                        f"got {numeric_iterative_imputer}. Allowed estimators are: "
+                        f"{', '.join(regressors)}."
+                    )
+                numeric_iterative_imputer = regressors[numeric_iterative_imputer].class_def()
+            elif not hasattr(numeric_iterative_imputer, "predict"):
+                raise ValueError(
+                    "Invalid value for the numeric_iterative_imputer parameter. "
+                    "The provided estimator does not adhere to sklearn's API."
+                )
+
+            if isinstance(categorical_iterative_imputer, str):
+                if categorical_iterative_imputer not in regressors:
+                    raise ValueError(
+                        "Invalid value for the categorical_iterative_imputer parameter, "
+                        f"got {categorical_iterative_imputer}. Allowed estimators are: "
+                        f"{', '.join(regressors)}."
+                    )
+                categorical_iterative_imputer = regressors[categorical_iterative_imputer].class_def()
+            elif not hasattr(categorical_iterative_imputer, "predict"):
+                raise ValueError(
+                    "Invalid value for the categorical_iterative_imputer parameter. "
+                    "The provided estimator does not adhere to sklearn's API."
+                )
+
+            num_estimator = TransfomerWrapper(
+                transformer=IterativeImputer(
+                    estimator=numeric_iterative_imputer,
+                    max_iter=iterative_imputation_iters,
+                    random_state=self.seed,
+                ),
+                columns=[c for c in num_cols if c not in ign_cols],
+            )
+            cat_estimator = TransfomerWrapper(
+                transformer=IterativeImputer(
+                    estimator=categorical_iterative_imputer,
+                    max_iter=iterative_imputation_iters,
+                    initial_strategy="most_frequent",
+                    random_state=self.seed,
+                ),
+                columns=[c for c in cat_cols if c not in ign_cols],
             )
         else:
             raise ValueError(
@@ -953,6 +972,8 @@ class _TabularExperiment(_PyCaretExperiment):
             # Encoding =============================================== >>
 
             if ordinal_features:
+                self.logger.info("Setting up encoding of ordinal features")
+
                 # Check provided features and levels are correct
                 for key, value in ordinal_features.items():
                     if key not in self.X.columns:
@@ -984,6 +1005,7 @@ class _TabularExperiment(_PyCaretExperiment):
                 )
 
             if cat_cols:
+                self.logger.info("Setting up encoding of categorical features")
                 if not encoding_method:
                     encoding_method = LeaveOneOutEncoder(random_state=self.seed)
 
@@ -999,6 +1021,7 @@ class _TabularExperiment(_PyCaretExperiment):
             # Transformation ========================================= >>
 
             if transformation:
+                self.logger.info("Setting up column transformation")
                 if transformation_method == "yeo-johnson":
                     transformation_estimator = PowerTransformer(
                         method="yeo-johnson", standardize=False, copy=True
@@ -1027,6 +1050,7 @@ class _TabularExperiment(_PyCaretExperiment):
             # Normalization ============================================ >>
 
             if normalize:
+                self.logger.info("Setting up feature normalization")
                 norm_dict = {
                     "zscore": StandardScaler(),
                     "minmax": MinMaxScaler(),
@@ -1046,6 +1070,7 @@ class _TabularExperiment(_PyCaretExperiment):
             # Low variance ========================================= >>
 
             if low_variance_threshold:
+                self.logger.info("Setting up variance threshold")
                 if low_variance_threshold < 0:
                     raise ValueError(
                         "Invalid value for the ignore_low_variance parameter. "
@@ -1059,6 +1084,7 @@ class _TabularExperiment(_PyCaretExperiment):
             # PCA ====================================================== >>
 
             if pca:
+                self.logger.info("Setting up PCA")
                 if pca_components <= 0:
                     raise ValueError(
                         "Invalid value for the pca_components parameter. "
@@ -1093,6 +1119,7 @@ class _TabularExperiment(_PyCaretExperiment):
             # Polynomial features  ===================================== >>
 
             if polynomial_features:
+                self.logger.info("Setting up polynomial features")
                 polynomial = PolynomialFeatures(
                     degree=polynomial_degree,
                     interaction_only=False,
@@ -1107,6 +1134,7 @@ class _TabularExperiment(_PyCaretExperiment):
             # Balance the dataset ======================================= >>
 
             if fix_imbalance:
+                self.logger.info("Setting up imbalanced handling")
                 if fix_imbalance_method is None:
                     balance_estimator = SMOTE()
                 elif not hasattr(fix_imbalance_method, "fit_resample"):
@@ -1123,173 +1151,12 @@ class _TabularExperiment(_PyCaretExperiment):
             # Custom transformers ====================================== >>
 
             if custom_pipeline:
+                self.logger.info("Setting up custom pipeline")
                 for name, estimator in normalize_custom_transformers(custom_pipeline):
                     self._internal_pipeline.steps.append((name, estimator))
 
             self.logger.info(f"Finished creating preprocessing pipeline.")
             self.logger.info(f"Pipeline: {self._internal_pipeline}")
-
-        # self.iterative_imputation_iters_param = iterative_imputation_iters
-        #
-        # # creating variables to be used later in the function
-        # train_data = self.data.copy()
-        # if self._is_unsupervised():
-        #     target = "UNSUPERVISED_DUMMY_TARGET"
-        #     train_data[target] = 2
-        #     # just to add diversified values to target
-        #     train_data[target][0:3] = 3
-        # X_before_preprocess = train_data.drop(target, axis=1)
-        # y_before_preprocess = train_data[target]
-        #
-        # self.imputation_regressor = numeric_iterative_imputer
-        # self.imputation_classifier = categorical_iterative_imputer
-        # imputation_regressor_name = "Bayesian Ridge"  # todo change
-        # imputation_classifier_name = "Random Forest Classifier"
-        #
-        # if imputation_type == "iterative":
-        #     self.logger.info("Setting up iterative imputation")
-        #
-        #     iterative_imputer_models_globals = self.variables.copy()
-        #     iterative_imputer_models_globals["y_train"] = y_before_preprocess
-        #     iterative_imputer_models_globals["X_train"] = X_before_preprocess
-        #     iterative_imputer_classification_models = {
-        #         k: v
-        #         for k, v in pycaret.containers.models.classification.get_all_model_containers(
-        #             iterative_imputer_models_globals, raise_errors=True
-        #         ).items()
-        #         if not v.is_special
-        #     }
-        #     iterative_imputer_regression_models = {
-        #         k: v
-        #         for k, v in pycaret.containers.models.regression.get_all_model_containers(
-        #             iterative_imputer_models_globals, raise_errors=True
-        #         ).items()
-        #         if not v.is_special
-        #     }
-        #
-        #     if not (
-        #             (
-        #                     isinstance(self.imputation_regressor, str)
-        #                     and self.imputation_regressor in iterative_imputer_regression_models
-        #             )
-        #             or hasattr(self.imputation_regressor, "predict")
-        #     ):
-        #         raise ValueError(
-        #             f"numeric_iterative_imputer parameter must be either a scikit-learn estimator or a string - one of {', '.join(iterative_imputer_regression_models.keys())}."
-        #         )
-        #
-        #     if not (
-        #             (
-        #                     isinstance(self.imputation_classifier, str)
-        #                     and self.imputation_classifier
-        #                     in iterative_imputer_classification_models
-        #             )
-        #             or hasattr(self.imputation_classifier, "predict")
-        #     ):
-        #         raise ValueError(
-        #             f"categorical_iterative_imputer parameter must be either a scikit-learn estimator or a string - one of {', '.join(iterative_imputer_classification_models.keys())}."
-        #         )
-        #
-        #     if isinstance(self.imputation_regressor, str):
-        #         self.imputation_regressor = iterative_imputer_regression_models[
-        #             self.imputation_regressor
-        #         ]
-        #         imputation_regressor_name = self.imputation_regressor.name
-        #         self.imputation_regressor = self.imputation_regressor.class_def(
-        #             **self.imputation_regressor.args
-        #         )
-        #     else:
-        #         imputation_regressor_name = type(self.imputation_regressor).__name__
-        #
-        #     if isinstance(self.imputation_classifier, str):
-        #         self.imputation_classifier = iterative_imputer_classification_models[
-        #             self.imputation_classifier
-        #         ]
-        #         imputation_classifier_name = self.imputation_classifier.name
-        #         self.imputation_classifier = self.imputation_classifier.class_def(
-        #             **self.imputation_classifier.args
-        #         )
-        #     else:
-        #         imputation_classifier_name = type(self.imputation_classifier).__name__
-
-        # # transformation method strategy
-        # trans_dict = {"yeo-johnson": "yj", "quantile": "quantile"}
-        # trans_method_pass = trans_dict[transformation_method]
-        #
-        #
-        # apply_binning_pass = False if bin_numeric_features is None else True
-        # features_to_bin_pass = bin_numeric_features or []
-        #
-        # # group features
-        # # =============#
-        #
-        # # apply grouping
-        # apply_grouping_pass = True if group_features is not None else False
-        #
-        # # group features listing
-        # if apply_grouping_pass is True:
-        #
-        #     if type(group_features[0]) is str:
-        #         group_features_pass = []
-        #         group_features_pass.append(group_features)
-        #     else:
-        #         group_features_pass = group_features
-        #
-        # else:
-        #
-        #     group_features_pass = [[]]
-        #
-        # # group names
-        # if apply_grouping_pass is True:
-        #
-        #     if (group_names is None) or (len(group_names) != len(group_features_pass)):
-        #         group_names_pass = list(np.arange(len(group_features_pass)))
-        #         group_names_pass = [f"group_{i}" for i in group_names_pass]
-        #
-        #     else:
-        #         group_names_pass = group_names
-        #
-        # else:
-        #     group_names_pass = []
-        #
-        # # feature interactions
-        #
-        # apply_feature_interactions_pass = (
-        #     True if feature_interaction or feature_ratio else False
-        # )
-        #
-        # interactions_to_apply_pass = []
-        #
-        # if feature_interaction:
-        #     interactions_to_apply_pass.append("multiply")
-        #
-        # if feature_ratio:
-        #     interactions_to_apply_pass.append("divide")
-        #
-        # # unknown categorical
-        # unkn_dict = {
-        #     "least_frequent": "least frequent",
-        #     "most_frequent": "most frequent",
-        # }
-        # unknown_categorical_method_pass = unkn_dict[unknown_categorical_method]
-        #
-        # # ordinal_features
-        # apply_ordinal_encoding_pass = True if ordinal_features is not None else False
-        #
-        # ordinal_columns_and_categories_pass = (
-        #     ordinal_features if apply_ordinal_encoding_pass else {}
-        # )
-        #
-        # apply_cardinality_reduction_pass = (
-        #     True if high_cardinality_features is not None else False
-        # )
-        #
-        # hi_card_dict = {"frequency": "count", "clustering": "cluster"}
-        # cardinal_method_pass = hi_card_dict[high_cardinality_method]
-        #
-        # cardinal_features_pass = (
-        #     high_cardinality_features if apply_cardinality_reduction_pass else []
-        # )
 
         # Set up GPU usage ========================================= >>
 
@@ -1386,6 +1253,16 @@ class _TabularExperiment(_PyCaretExperiment):
 
         self.logger.info("Creating final display dataframe.")
 
+        if isinstance(numeric_iterative_imputer, str):
+            num_imputer = numeric_iterative_imputer
+        else:
+            num_imputer = numeric_iterative_imputer.__class__.__name__
+
+        if isinstance(categorical_iterative_imputer, str):
+            cat_imputer = categorical_iterative_imputer
+        else:
+            cat_imputer = categorical_iterative_imputer.__class__.__name__
+
         display_container = self._get_setup_display(
             target_type="Multiclass" if self._is_multiclass() else "Binary",
             train_size=train_size,
@@ -1400,8 +1277,8 @@ class _TabularExperiment(_PyCaretExperiment):
             numeric_imputation=numeric_imputation,
             categorical_imputation=categorical_imputation,
             iterative_imputation_iters=iterative_imputation_iters,
-            numeric_iterative_imputer=numeric_iterative_imputer,
-            categorical_iterative_imputer=categorical_iterative_imputer,
+            numeric_iterative_imputer=num_imputer,
+            categorical_iterative_imputer=cat_imputer,
             encoding_method=encoding_method,
             transformation=transformation,
             transformation_method=transformation_method,
@@ -1458,9 +1335,6 @@ class _TabularExperiment(_PyCaretExperiment):
 
         self._setup_ran = True
         return self
-
-    def create_model(self, *args, **kwargs):
-        return
 
     def plot_model(
         self,

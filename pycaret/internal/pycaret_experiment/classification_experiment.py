@@ -24,7 +24,6 @@ import warnings
 import traceback
 import plotly.express as px  # type: ignore
 import plotly.graph_objects as go  # type: ignore
-import logging
 
 
 warnings.filterwarnings("ignore")
@@ -87,6 +86,7 @@ class ClassificationExperiment(_SupervisedExperiment):
                 [
                     ["Imputation type", kwargs["imputation_type"]],
                     ["Numeric imputation", kwargs["numeric_imputation"]],
+                    ["Categorical imputation", kwargs["categorical_imputation"]],
                     ["Iterative imputation iterations", kwargs["iterative_imputation_iters"]],
                     ["Numeric iterative imputer", kwargs["numeric_iterative_imputer"]],
                     ["Categorical iterative imputer", kwargs["categorical_iterative_imputer"]],
@@ -126,12 +126,12 @@ class ClassificationExperiment(_SupervisedExperiment):
         all_models = {
             k: v
             for k, v in pycaret.containers.models.classification.get_all_model_containers(
-                self.variables, raise_errors=raise_errors
+                self, raise_errors=raise_errors
             ).items()
             if not v.is_special
         }
         all_models_internal = pycaret.containers.models.classification.get_all_model_containers(
-            self.variables, raise_errors=raise_errors
+            self, raise_errors=raise_errors
         )
         return all_models, all_models_internal
 

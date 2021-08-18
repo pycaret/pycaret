@@ -10,17 +10,13 @@
 
 import logging
 import pycaret.internal.cuml_wrappers
-from typing import Union, Dict, Any, Optional
+from typing import Any
 from pycaret.containers.models.base_model import (
     ModelContainer,
-    leftover_parameters_to_categorical_distributions,
 )
-from pycaret.internal.cuml_wrappers import get_dbscan, get_kmeans
 from pycaret.internal.utils import (
     param_grid_to_lists,
     get_logger,
-    get_class_name,
-    np_list_arange,
 )
 from pycaret.internal.distributions import *
 import pycaret.containers.base_container
@@ -165,9 +161,9 @@ class AnomalyContainer(ModelContainer):
 
 
 class ABODAnomalyContainer(AnomalyContainer):
-    def __init__(self, globals_dict: dict) -> None:
+    def __init__(self, experiment):
         logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+        np.random.seed(experiment.seed)
         from pyod.models.abod import ABOD
 
         args = {}
@@ -187,14 +183,14 @@ class ABODAnomalyContainer(AnomalyContainer):
 
 
 class CBLOFAnomalyContainer(AnomalyContainer):
-    def __init__(self, globals_dict: dict) -> None:
+    def __init__(self, experiment):
         logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+        np.random.seed(experiment.seed)
         from pyod.models.cblof import CBLOF
 
         args = {
-            "random_state": globals_dict["seed"],
-            "n_jobs": globals_dict["n_jobs_param"],
+            "random_state": experiment.seed,
+            "n_jobs": experiment.n_jobs_param,
         }
         tune_args = {}
         tune_grid = {}
@@ -212,9 +208,9 @@ class CBLOFAnomalyContainer(AnomalyContainer):
 
 
 class COFAnomalyContainer(AnomalyContainer):
-    def __init__(self, globals_dict: dict) -> None:
+    def __init__(self, experiment):
         logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+        np.random.seed(experiment.seed)
         from pyod.models.cof import COF
 
         args = {}
@@ -234,15 +230,15 @@ class COFAnomalyContainer(AnomalyContainer):
 
 
 class IForestAnomalyContainer(AnomalyContainer):
-    def __init__(self, globals_dict: dict) -> None:
+    def __init__(self, experiment):
         logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+        np.random.seed(experiment.seed)
         from pyod.models.iforest import IForest
 
         args = {
             "behaviour": "new",
-            "random_state": globals_dict["seed"],
-            "n_jobs": globals_dict["n_jobs_param"],
+            "random_state": experiment.seed,
+            "n_jobs": experiment.n_jobs_param,
         }
         tune_args = {}
         tune_grid = {}
@@ -260,9 +256,9 @@ class IForestAnomalyContainer(AnomalyContainer):
 
 
 class HBOSAnomalyContainer(AnomalyContainer):
-    def __init__(self, globals_dict: dict) -> None:
+    def __init__(self, experiment):
         logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+        np.random.seed(experiment.seed)
         from pyod.models.hbos import HBOS
 
         args = {}
@@ -282,13 +278,13 @@ class HBOSAnomalyContainer(AnomalyContainer):
 
 
 class KNNAnomalyContainer(AnomalyContainer):
-    def __init__(self, globals_dict: dict) -> None:
+    def __init__(self, experiment):
         logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+        np.random.seed(experiment.seed)
         from pyod.models.knn import KNN
 
         args = {
-            "n_jobs": globals_dict["n_jobs_param"],
+            "n_jobs": experiment.n_jobs_param,
         }
         tune_args = {}
         tune_grid = {}
@@ -306,13 +302,13 @@ class KNNAnomalyContainer(AnomalyContainer):
 
 
 class LOFAnomalyContainer(AnomalyContainer):
-    def __init__(self, globals_dict: dict) -> None:
+    def __init__(self, experiment):
         logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+        np.random.seed(experiment.seed)
         from pyod.models.lof import LOF
 
         args = {
-            "n_jobs": globals_dict["n_jobs_param"],
+            "n_jobs": experiment.n_jobs_param,
         }
         tune_args = {}
         tune_grid = {}
@@ -330,9 +326,9 @@ class LOFAnomalyContainer(AnomalyContainer):
 
 
 class OCSVMAnomalyContainer(AnomalyContainer):
-    def __init__(self, globals_dict: dict) -> None:
+    def __init__(self, experiment):
         logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+        np.random.seed(experiment.seed)
         from pyod.models.ocsvm import OCSVM
 
         args = {}
@@ -352,13 +348,13 @@ class OCSVMAnomalyContainer(AnomalyContainer):
 
 
 class PCAAnomalyContainer(AnomalyContainer):
-    def __init__(self, globals_dict: dict) -> None:
+    def __init__(self, experiment):
         logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+        np.random.seed(experiment.seed)
         from pyod.models.pca import PCA
 
         args = {
-            "random_state": globals_dict["seed"],
+            "random_state": experiment.seed,
         }
         tune_args = {}
         tune_grid = {}
@@ -376,13 +372,13 @@ class PCAAnomalyContainer(AnomalyContainer):
 
 
 class MCDAnomalyContainer(AnomalyContainer):
-    def __init__(self, globals_dict: dict) -> None:
+    def __init__(self, experiment):
         logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+        np.random.seed(experiment.seed)
         from pyod.models.mcd import MCD
 
         args = {
-            "random_state": globals_dict["seed"],
+            "random_state": experiment.seed,
         }
         tune_args = {}
         tune_grid = {}
@@ -400,9 +396,9 @@ class MCDAnomalyContainer(AnomalyContainer):
 
 
 class SODAnomalyContainer(AnomalyContainer):
-    def __init__(self, globals_dict: dict) -> None:
+    def __init__(self, experiment):
         logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+        np.random.seed(experiment.seed)
         from pyod.models.sod import SOD
 
         args = {}
@@ -422,9 +418,9 @@ class SODAnomalyContainer(AnomalyContainer):
 
 
 class SOSAnomalyContainer(AnomalyContainer):
-    def __init__(self, globals_dict: dict) -> None:
+    def __init__(self, experiment):
         logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+        np.random.seed(experiment.seed)
         from pyod.models.sos import SOS
 
         args = {}
@@ -444,8 +440,8 @@ class SOSAnomalyContainer(AnomalyContainer):
 
 
 def get_all_model_containers(
-    globals_dict: dict, raise_errors: bool = True
+    experiment: Any, raise_errors: bool = True
 ) -> Dict[str, AnomalyContainer]:
     return pycaret.containers.base_container.get_all_containers(
-        globals(), globals_dict, AnomalyContainer, raise_errors
+        globals(), experiment, AnomalyContainer, raise_errors
     )

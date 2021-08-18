@@ -35,6 +35,7 @@ Preprocessing steps:
 
 - encoding: DONE
 - simple imputation: DONE
+- iterative imputation: DONE
 - transformation: DONE
 - normalization: DONE
 - low variance: DONE

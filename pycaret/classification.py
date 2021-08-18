@@ -181,17 +181,17 @@ def setup(
 
 
     iterative_imputation_iters: int, default = 5
-        Number of iterations. Ignored when ``imputation_type`` is not 'iterative'.
+        Number of iterations. Ignored when ``imputation_type=simple``.
 
 
-    numeric_iterative_imputer: str, default = 'lightgbm'
-        Estimator for iterative imputation of missing values in numeric features.
-        Ignored when ``imputation_type`` is set to 'simple'.
+    numeric_iterative_imputer: str or sklearn estimator, default = 'lightgbm'
+        Regressor for iterative imputation of missing values in numeric features.
+        If None, it uses LGBClassifier. Ignored when ``imputation_type=simple``.
 
 
-    categorical_iterative_imputer: str, default = 'lightgbm'
-        Estimator for iterative imputation of missing values in categorical features.
-        Ignored when ``imputation_type`` is not 'iterative'.
+    categorical_iterative_imputer: str or sklearn estimator, default = 'lightgbm'
+        Regressor for iterative imputation of missing values in categorical features.
+        If None, it uses LGBClassifier. Ignored when ``imputation_type=simple``.
 
 
     encoding_method: category-encoders estimator, default = None

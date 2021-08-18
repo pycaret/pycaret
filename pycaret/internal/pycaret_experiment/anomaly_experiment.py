@@ -36,12 +36,12 @@ class AnomalyExperiment(_UnsupervisedExperiment):
         all_models = {
             k: v
             for k, v in pycaret.containers.models.anomaly.get_all_model_containers(
-                self.variables, raise_errors=raise_errors
+                self, raise_errors=raise_errors
             ).items()
             if not v.is_special
         }
         all_models_internal = pycaret.containers.models.anomaly.get_all_model_containers(
-            self.variables, raise_errors=raise_errors
+            self, raise_errors=raise_errors
         )
         return all_models, all_models_internal
 

@@ -457,18 +457,18 @@ class _UnsupervisedExperiment(_TabularExperiment):
 
         if supervised_type == "classification":
             metrics = pycaret.containers.metrics.classification.get_all_metric_containers(
-                temp_globals, raise_errors=True
+                self, raise_errors=True
             )
             available_estimators = pycaret.containers.models.classification.get_all_model_containers(
-                temp_globals, raise_errors=True
+                self, raise_errors=True
             )
             ml_usecase = MLUsecase.CLASSIFICATION
         elif supervised_type == "regression":
             metrics = pycaret.containers.metrics.regression.get_all_metric_containers(
-                temp_globals, raise_errors=True
+                self, raise_errors=True
             )
             available_estimators = pycaret.containers.models.regression.get_all_model_containers(
-                temp_globals, raise_errors=True
+                self, raise_errors=True
             )
             ml_usecase = MLUsecase.REGRESSION
         else:

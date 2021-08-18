@@ -9,22 +9,15 @@
 # to complete the process. Refer to the existing classes for examples.
 
 import logging
+import numpy as np
 import pycaret.internal.cuml_wrappers
-from typing import Union, Dict, Any, Optional
-from pycaret.containers.models.base_model import (
-    ModelContainer,
-    leftover_parameters_to_categorical_distributions,
-)
+from typing import Any
+from pycaret.containers.models.base_model import ModelContainer
 from pycaret.internal.cuml_wrappers import get_dbscan, get_kmeans
-from pycaret.internal.utils import (
-    param_grid_to_lists,
-    get_logger,
-    get_class_name,
-    np_list_arange,
-)
+from pycaret.internal.utils import param_grid_to_lists, get_logger
 from pycaret.internal.distributions import *
 import pycaret.containers.base_container
-import numpy as np
+
 
 _DEFAULT_N_CLUSTERS = 4
 
@@ -165,18 +158,18 @@ class ClusterContainer(ModelContainer):
 
 
 class KMeansClusterContainer(ClusterContainer):
-    def __init__(self, globals_dict: dict) -> None:
+    def __init__(self, experiment):
         logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+        np.random.seed(experiment.seed)
         gpu_imported = False
         from sklearn.cluster import KMeans
 
-        if globals_dict["gpu_param"] == "force":
+        if experiment.gpu_param == "force":
             from cuml.cluster import KMeans
 
             logger.info("Imported cuml.cluster.KMeans")
             gpu_imported = True
-        elif globals_dict["gpu_param"]:
+        elif experiment.gpu_param:
             try:
                 from cuml.cluster import KMeans
 
@@ -187,14 +180,14 @@ class KMeansClusterContainer(ClusterContainer):
 
         args = {
             "n_clusters": _DEFAULT_N_CLUSTERS,
-            "random_state": globals_dict["seed"],
+            "random_state": experiment.seed,
         }
         tune_args = {}
         tune_grid = {}
         tune_distributions = {}
 
         if not gpu_imported:
-            args["n_jobs"] = globals_dict["n_jobs_param"]
+            args["n_jobs"] = experiment.n_jobs_param
         else:
             KMeans = get_kmeans()
 
@@ -211,9 +204,9 @@ class KMeansClusterContainer(ClusterContainer):
 
 
 class AffinityPropagationClusterContainer(ClusterContainer):
-    def __init__(self, globals_dict: dict) -> None:
+    def __init__(self, experiment):
         logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+        np.random.seed(experiment.seed)
         from sklearn.cluster import AffinityPropagation
 
         args = {}
@@ -233,13 +226,13 @@ class AffinityPropagationClusterContainer(ClusterContainer):
 
 
 class MeanShiftClusterContainer(ClusterContainer):
-    def __init__(self, globals_dict: dict) -> None:
+    def __init__(self, experiment):
         logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+        np.random.seed(experiment.seed)
         from sklearn.cluster import MeanShift
 
         args = {
-            "n_jobs": globals_dict["n_jobs_param"],
+            "n_jobs": experiment.n_jobs_param,
         }
         tune_args = {}
         tune_grid = {}
@@ -257,15 +250,15 @@ class MeanShiftClusterContainer(ClusterContainer):
 
 
 class SpectralClusteringClusterContainer(ClusterContainer):
-    def __init__(self, globals_dict: dict) -> None:
+    def __init__(self, experiment):
         logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+        np.random.seed(experiment.seed)
         from sklearn.cluster import SpectralClustering
 
         args = {
             "n_clusters": _DEFAULT_N_CLUSTERS,
-            "random_state": globals_dict["seed"],
-            "n_jobs": globals_dict["n_jobs_param"],
+            "random_state": experiment.seed,
+            "n_jobs": experiment.n_jobs_param,
         }
         tune_args = {}
         tune_grid = {}
@@ -283,9 +276,9 @@ class SpectralClusteringClusterContainer(ClusterContainer):
 
 
 class AgglomerativeClusteringClusterContainer(ClusterContainer):
-    def __init__(self, globals_dict: dict) -> None:
+    def __init__(self, experiment):
         logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+        np.random.seed(experiment.seed)
         from sklearn.cluster import AgglomerativeClustering
 
         args = {
@@ -307,18 +300,18 @@ class AgglomerativeClusteringClusterContainer(ClusterContainer):
 
 
 class DBSCANClusterContainer(ClusterContainer):
-    def __init__(self, globals_dict: dict) -> None:
+    def __init__(self, experiment):
         logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+        np.random.seed(experiment.seed)
         gpu_imported = False
         from sklearn.cluster import DBSCAN
 
-        if globals_dict["gpu_param"] == "force":
+        if experiment.gpu_param == "force":
             from cuml.cluster import DBSCAN
 
             logger.info("Imported cuml.cluster.DBSCAN")
             gpu_imported = True
-        elif globals_dict["gpu_param"]:
+        elif experiment.gpu_param:
             try:
                 from cuml.cluster import DBSCAN
 
@@ -333,7 +326,7 @@ class DBSCANClusterContainer(ClusterContainer):
         tune_distributions = {}
 
         if not gpu_imported:
-            args["n_jobs"] = globals_dict["n_jobs_param"]
+            args["n_jobs"] = experiment.n_jobs_param
         else:
             DBSCAN = get_dbscan()
 
@@ -350,12 +343,12 @@ class DBSCANClusterContainer(ClusterContainer):
 
 
 class OPTICSClusterContainer(ClusterContainer):
-    def __init__(self, globals_dict: dict) -> None:
+    def __init__(self, experiment):
         logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+        np.random.seed(experiment.seed)
         from sklearn.cluster import OPTICS
 
-        args = {"n_jobs": globals_dict["n_jobs_param"]}
+        args = {"n_jobs": experiment.n_jobs_param}
         tune_args = {}
         tune_grid = {}
         tune_distributions = {}
@@ -372,9 +365,9 @@ class OPTICSClusterContainer(ClusterContainer):
 
 
 class BirchClusterContainer(ClusterContainer):
-    def __init__(self, globals_dict: dict) -> None:
+    def __init__(self, experiment):
         logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+        np.random.seed(experiment.seed)
         from sklearn.cluster import Birch
 
         args = {"n_clusters": _DEFAULT_N_CLUSTERS}
@@ -394,15 +387,15 @@ class BirchClusterContainer(ClusterContainer):
 
 
 class KModesClusterContainer(ClusterContainer):
-    def __init__(self, globals_dict: dict) -> None:
+    def __init__(self, experiment):
         logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+        np.random.seed(experiment.seed)
         from kmodes.kmodes import KModes
 
         args = {
             "n_clusters": _DEFAULT_N_CLUSTERS,
-            "random_state": globals_dict["seed"],
-            "n_jobs": globals_dict["n_jobs_param"],
+            "random_state": experiment.seed,
+            "n_jobs": experiment.n_jobs_param,
         }
         tune_args = {}
         tune_grid = {}
@@ -420,8 +413,8 @@ class KModesClusterContainer(ClusterContainer):
 
 
 def get_all_model_containers(
-    globals_dict: dict, raise_errors: bool = True
+    experiment: Any, raise_errors: bool = True
 ) -> Dict[str, ClusterContainer]:
     return pycaret.containers.base_container.get_all_containers(
-        globals(), globals_dict, ClusterContainer, raise_errors
+        globals(), experiment, ClusterContainer, raise_errors
     )

@@ -4,8 +4,6 @@ from pycaret.internal.pycaret_experiment.supervised_experiment import (
 )
 import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
-from pycaret.internal.logging import get_logger
-from pycaret.internal.distributions import *
 from pycaret.internal.validation import *
 import pycaret.containers.metrics.regression
 import pycaret.containers.models.regression
@@ -18,7 +16,6 @@ from typing import List, Tuple, Any, Union, Optional, Dict
 import warnings
 import plotly.express as px  # type: ignore
 import plotly.graph_objects as go  # type: ignore
-import logging
 
 
 warnings.filterwarnings("ignore")
@@ -176,12 +173,12 @@ class RegressionExperiment(_SupervisedExperiment):
         all_models = {
             k: v
             for k, v in pycaret.containers.models.regression.get_all_model_containers(
-                self.variables, raise_errors=raise_errors
+                self, raise_errors=raise_errors
             ).items()
             if not v.is_special
         }
         all_models_internal = pycaret.containers.models.regression.get_all_model_containers(
-            self.variables, raise_errors=raise_errors
+            self, raise_errors=raise_errors
         )
         return all_models, all_models_internal
 

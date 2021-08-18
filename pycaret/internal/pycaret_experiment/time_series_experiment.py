@@ -661,12 +661,12 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         all_models = {
             k: v
             for k, v in pycaret.containers.models.time_series.get_all_model_containers(
-                self.variables, raise_errors=raise_errors
+                self, raise_errors=raise_errors
             ).items()
             if not v.is_special
         }
         all_models_internal = pycaret.containers.models.time_series.get_all_model_containers(
-            self.variables, raise_errors=raise_errors
+            self, raise_errors=raise_errors
         )
         return all_models, all_models_internal
 
