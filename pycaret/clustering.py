@@ -63,6 +63,7 @@ def setup(
     session_id: Optional[int] = None,
     log_experiment: bool = False,
     experiment_name: Optional[str] = None,
+    experiment_custom_tags: Optional[Dict[str, Any]] = None,
     log_plots: Union[bool, list] = False,
     log_profile: bool = False,
     log_data: bool = False,
@@ -327,6 +328,10 @@ def setup(
     experiment_name: str, default = None
         Name of the experiment for logging. Ignored when ``log_experiment`` is not True.
 
+    experiment_custom_tags: dict, default = None
+        Dictionary of tag_name: String -> value: (String, but will be string-ified 
+        if not) passed to the mlflow.set_tags to add new custom tags for the experiment.
+
 
     log_plots: bool or list, default = False
         When set to True, certain plots are logged automatically in the ``MLFlow`` server. 
@@ -433,6 +438,7 @@ def setup(
         session_id=session_id,
         log_experiment=log_experiment,
         experiment_name=experiment_name,
+        experiment_custom_tags=experiment_custom_tags,
         log_plots=log_plots,
         log_profile=log_profile,
         log_data=log_data,
@@ -450,6 +456,7 @@ def create_model(
     round: int = 4,
     fit_kwargs: Optional[dict] = None,
     verbose: bool = True,
+    experiment_custom_tags: Optional[Dict[str, Any]] = None,
     **kwargs
 ):
 
@@ -507,6 +514,10 @@ def create_model(
     verbose: bool, default = True
         Status update is not printed when verbose is set to False.
 
+    experiment_custom_tags: dict, default = None
+        Dictionary of tag_name: String -> value: (String, but will be string-ified 
+        if not) passed to the mlflow.set_tags to add new custom tags for the experiment.
+
 
     **kwargs: 
         Additional keyword arguments to pass to the estimator.
@@ -541,6 +552,7 @@ def create_model(
         round=round,
         fit_kwargs=fit_kwargs,
         verbose=verbose,
+        experiment_custom_tags=experiment_custom_tags,
         **kwargs,
     )
 

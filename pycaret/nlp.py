@@ -4,7 +4,7 @@
 # Release: PyCaret 2.2.0
 # Last modified : 25/10/2020
 
-
+from typing import Optional, Dict, Any, Dict
 def setup(
     data,
     target=None,
@@ -13,6 +13,7 @@ def setup(
     session_id=None,
     log_experiment=False,
     experiment_name=None,
+    experiment_custom_tags: Optional[Dict[str, Any]] = None,
     log_plots=False,
     log_data=False,
     verbose=True,
@@ -62,6 +63,10 @@ def setup(
 
     experiment_name: str, default = None
         Name of the experiment for logging. Ignored when ``log_experiment`` is not True.
+
+    experiment_custom_tags: dict, default = None
+        Dictionary of tag_name: String -> value: (String, but will be string-ified 
+        if not) passed to the mlflow.set_tags to add new custom tags for the experiment.
 
 
     log_plots: bool or list, default = False
@@ -323,6 +328,11 @@ def setup(
     # log_experiment
     if type(log_experiment) is not bool:
         sys.exit("(Type Error): log_experiment parameter only accepts True or False.")
+    
+    # experiment custom tags
+    if experiment_custom_tags is not None:
+        if not isinstance(experiment_custom_tags, dict):
+            raise TypeError("experiment_custom_tags parameter must be dict if not None")
 
     # log_plots
     if type(log_plots) is not bool:
@@ -963,6 +973,10 @@ def setup(
             # set tag of compare_models
             mlflow.set_tag("Source", "setup")
 
+            # set custom tags if applicable
+            if isinstance(experiment_custom_tags, dict):
+                mlflow.set_tags(experiment_custom_tags)
+
             import secrets
 
             URI = secrets.token_hex(nbytes=4)
@@ -1037,7 +1051,13 @@ def setup(
 
 
 def create_model(
-    model=None, multi_core=False, num_topics=None, verbose=True, system=True, **kwargs
+    model=None, 
+    multi_core=False, 
+    num_topics=None, 
+    verbose=True, 
+    system=True, 
+    experiment_custom_tags: Optional[Dict[str, Any]] = None,
+    **kwargs
 ):
 
     """
@@ -1080,6 +1100,10 @@ def create_model(
 
     system: bool, default = True
         Must remain True all times. Only to be changed by internal functions.
+
+    experiment_custom_tags: dict, default = None
+        Dictionary of tag_name: String -> value: (String, but will be string-ified 
+        if not) passed to the mlflow.set_tags to add new custom tags for the experiment.
 
 
     **kwargs: 
@@ -1171,6 +1195,11 @@ def create_model(
         sys.exit(
             "(Type Error): Verbose parameter can only take argument as True or False."
         )
+
+    # experiment custom tags
+    if experiment_custom_tags is not None:
+        if not isinstance(experiment_custom_tags, dict):
+            raise TypeError("experiment_custom_tags parameter must be dict if not None")
 
     """
     error handling ends here
@@ -1424,6 +1453,10 @@ def create_model(
 
             # set tag of compare_models
             mlflow.set_tag("Source", "create_model")
+
+            # set custom tags if applicable
+            if isinstance(experiment_custom_tags, dict):
+                mlflow.set_tags(experiment_custom_tags)
 
             import secrets
 

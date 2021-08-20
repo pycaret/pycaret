@@ -6,6 +6,8 @@
 
 from enum import Enum, auto
 import math
+
+from traitlets.traitlets import Instance
 from pycaret.internal.meta_estimators import (
     PowerTransformedTargetRegressor,
     get_estimator_from_meta_estimator,
@@ -160,6 +162,7 @@ def setup(
     session_id: Optional[int] = None,
     log_experiment: bool = False,
     experiment_name: Optional[str] = None,
+    experiment_custom_tags: Optional[Dict[str, Any]] = None,
     log_plots: Union[bool, list] = False,
     log_profile: bool = False,
     log_data: bool = False,
@@ -658,6 +661,11 @@ def setup(
     if experiment_name is not None:
         if type(experiment_name) is not str:
             raise TypeError("experiment_name parameter must be str if not None.")
+    
+    # experiment custom tags
+    if experiment_custom_tags is not None:
+        if not isinstance(experiment_custom_tags, dict):
+            raise TypeError("experiment_custom_tags parameter must be dict if not None")
 
     # silent
     if type(silent) is not bool:
@@ -1723,6 +1731,10 @@ def setup(
             # set tag of compare_models
             mlflow.set_tag("Source", "setup")
 
+            # set custom tags if applicable
+            if isinstance(experiment_custom_tags, dict):
+                mlflow.set_tags(experiment_custom_tags)
+
             import secrets
 
             URI = secrets.token_hex(nbytes=4)
@@ -1795,6 +1807,7 @@ def compare_models(
     errors: str = "ignore",
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
+    experiment_custom_tags: Optional[Dict[str, Any]] = None,
     verbose: bool = True,
     display: Optional[Display] = None,
 ) -> List[Any]:
@@ -1890,6 +1903,10 @@ def compare_models(
         Only used if a group based cross-validation generator is used (eg. GroupKFold).
         If None, will use the value set in fold_groups param in setup().
 
+    experiment_custom_tags: dict, default = None
+        Dictionary of tag_name: String -> value: (String, but will be string-ified if not) 
+        passed to the mlflow.set_tags to add new custom tags for the experiment.
+
     verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
 
@@ -1964,6 +1981,11 @@ def compare_models(
         raise TypeError(
             "fold parameter must be either None, an integer or a scikit-learn compatible CV generator object."
         )
+
+    # checking experiment_custom_tags parameter 
+    if experiment_custom_tags is not None:
+        if not isinstance(experiment_custom_tags, dict):
+            raise TypeError("experiment_custom_tags parameter must be dict if not None")
 
     # checking round parameter
     if type(round) is not int:
@@ -2159,6 +2181,7 @@ def compare_models(
                 fit_kwargs=fit_kwargs,
                 groups=groups,
                 refit=False,
+                experiment_custom_tags=experiment_custom_tags
             )
             model_results = pull(pop=True)
         else:
@@ -2174,6 +2197,7 @@ def compare_models(
                     fit_kwargs=fit_kwargs,
                     groups=groups,
                     refit=False,
+                    experiment_custom_tags=experiment_custom_tags
                 )
                 model_results = pull(pop=True)
                 assert np.sum(model_results.iloc[0]) != 0.0
@@ -2193,6 +2217,7 @@ def compare_models(
                         cross_validation=cross_validation,
                         groups=groups,
                         refit=False,
+                        experiment_custom_tags=experiment_custom_tags
                     )
                     model_results = pull(pop=True)
                 except:
@@ -2316,6 +2341,7 @@ def compare_models(
                         predict=False,
                         fit_kwargs=fit_kwargs,
                         groups=groups,
+                        experiment_custom_tags=experiment_custom_tags
                     )
                     sorted_models.append(model)
                 else:
@@ -2330,6 +2356,7 @@ def compare_models(
                             predict=False,
                             fit_kwargs=fit_kwargs,
                             groups=groups,
+                            experiment_custom_tags=experiment_custom_tags
                         )
                         sorted_models.append(model)
                     except Exception:
@@ -2351,6 +2378,7 @@ def compare_models(
                         model_fit_time=row["TT (Sec)"],
                         _prep_pipe=prep_pipe,
                         log_plots=log_plots_param if full_logging else False,
+                        experiment_custom_tags=experiment_custom_tags,
                         log_holdout=full_logging,
                         URI=URI,
                         display=display,
@@ -2394,6 +2422,7 @@ def create_model_unsupervised(
     system: bool = True,
     raise_num_clusters: bool = False,
     X_data: Optional[pd.DataFrame] = None,  # added in pycaret==2.2.0
+    experiment_custom_tags: Optional[Dict[str, Any]] = None,
     display: Optional[Display] = None,  # added in pycaret==2.2.0
     **kwargs,
 ) -> Any:
@@ -2547,6 +2576,11 @@ def create_model_unsupervised(
             raise ValueError(
                 f"ground_truth {ground_truth} doesn't exist in the dataset."
             )
+    # checking experiment_custom_tags
+    if experiment_custom_tags is not None:
+        if not isinstance(experiment_custom_tags, dict):
+            raise TypeError("experiment_custom_tags parameter must be dict if not None")
+
 
     """
 
@@ -2707,6 +2741,7 @@ def create_model_unsupervised(
                 model_results=None,
                 score_dict=metrics_log,
                 source="create_model",
+                experiment_custom_tags=experiment_custom_tags,
                 runtime=runtime,
                 model_fit_time=model_fit_time,
                 _prep_pipe=prep_pipe,
@@ -2769,6 +2804,7 @@ def create_model_supervised(
     X_train_data: Optional[pd.DataFrame] = None,  # added in pycaret==2.2.0
     y_train_data: Optional[pd.DataFrame] = None,  # added in pycaret==2.2.0
     metrics=None,
+    experiment_custom_tags: Optional[Dict[str, Any]] = None,
     display: Optional[Display] = None,  # added in pycaret==2.2.0
     **kwargs,
 ) -> Any:
@@ -2949,6 +2985,10 @@ def create_model_supervised(
         raise TypeError(
             "cross_validation parameter can only take argument as True or False."
         )
+    # checking experiment_custom_tags
+    if experiment_custom_tags is not None:
+        if not isinstance(experiment_custom_tags, dict):
+            raise TypeError("experiment_custom_tags parameter must be dict if not None")
 
     """
 
@@ -3204,6 +3244,7 @@ def create_model_supervised(
                 model_fit_time=model_fit_time,
                 _prep_pipe=prep_pipe,
                 log_plots=log_plots_param,
+                experiment_custom_tags=experiment_custom_tags,
                 display=display,
             )
         except:
@@ -8675,6 +8716,7 @@ def finalize_model(
     groups: Optional[Union[str, Any]] = None,
     model_only: bool = True,
     display: Optional[Display] = None,
+    experiment_custom_tags: Optional[Dict[str, Any]] = None
 ) -> Any:  # added in pycaret==2.2.0
 
     """
@@ -8709,6 +8751,10 @@ def finalize_model(
     model_only : bool, default = True
         When set to True, only trained model object is saved and all the
         transformations are ignored.
+
+    experiment_custom_tags: dict, default = None
+        Dictionary of tag_name: String -> value: (String, but will be string-ified if not) 
+        passed to the mlflow.set_tags to add new custom tags for the experiment.
 
     Returns
     -------
@@ -8756,6 +8802,7 @@ def finalize_model(
         y_train_data=y,
         fit_kwargs=fit_kwargs,
         groups=groups,
+        experiment_custom_tags=experiment_custom_tags
     )
     model_results = pull(pop=True)
 
@@ -8778,6 +8825,7 @@ def finalize_model(
                 model_fit_time=model_fit_time,
                 _prep_pipe=prep_pipe,
                 log_plots=log_plots_param,
+                experiment_custom_tags=experiment_custom_tags,
                 display=display,
             )
         except:
@@ -10085,6 +10133,7 @@ def _mlflow_log_model(
     _prep_pipe,
     log_holdout: bool = True,
     log_plots: bool = False,
+    experiment_custom_tags: Optional[Dict[str, Any]] = None,
     tune_cv_results=None,
     URI=None,
     display: Optional[Display] = None,
@@ -10145,6 +10194,10 @@ def _mlflow_log_model(
 
         # set tag of compare_models
         mlflow.set_tag("Source", source)
+
+        # set custom tags if applicable
+        if isinstance(experiment_custom_tags, dict):
+            mlflow.set_tags(experiment_custom_tags)
 
         if not URI:
             import secrets
