@@ -2195,8 +2195,11 @@ def compare_models(
                         refit=False,
                     )
                     model_results = pull(pop=True)
+                    assert np.sum(model_results.iloc[0]) != 0.0
                 except:
-                    logger.error(f"create_model() for {model} raised an exception:")
+                    logger.error(
+                        f"create_model() for {model} raised an exception or returned all 0.0:"
+                    )
                     logger.error(traceback.format_exc())
                     continue
         logger.info("SubProcess create_model() end ==================================")
@@ -2332,8 +2335,11 @@ def compare_models(
                             groups=groups,
                         )
                         sorted_models.append(model)
+                        assert np.sum(model_results.iloc[0]) != 0.0
                     except Exception:
-                        logger.error(f"create_model() for {model} raised an exception:")
+                        logger.error(
+                            f"create_model() for {model} raised an exception or returned all 0.0:"
+                        )
                         logger.error(traceback.format_exc())
                         model = None
                         continue
