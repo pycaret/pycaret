@@ -67,7 +67,6 @@ class Pipeline(imblearn.pipeline.Pipeline):
     def __init__(self, steps, *, memory=None, verbose=False):
         super().__init__(steps, memory=memory, verbose=verbose)
         self._fit_vars = set()
-        self._carry_over_final_estimator_fit_vars()
 
     def _fit(self, X=None, y=None, **fit_params_steps):
         self.steps = list(self.steps)
@@ -207,18 +206,9 @@ class Pipeline(imblearn.pipeline.Pipeline):
                 pass
         return Xt
 
-    def _carry_over_final_estimator_fit_vars(self):
-        self._clear_final_estimator_fit_vars()
-        if hasattr(self._final_estimator, "fit"):
-            for k, v in get_all_object_vars_and_properties(
-                self._final_estimator
-            ).items():
-                if is_fit_var(k):
-                    try:
-                        setattr(self, k, v)
-                        self._fit_vars.add(k)
-                    except:
-                        pass
+    def __getattr__(self, name: str):
+        # override getattr to allow grabbing of final estimator attrs
+        return getattr(self._final_estimator, name)
 
     def _clear_final_estimator_fit_vars(self, all: bool = False):
         vars_to_remove = []
@@ -255,7 +245,6 @@ class Pipeline(imblearn.pipeline.Pipeline):
             self.steps.append(
                 (name if name else "actual_estimator", new_final_estimator)
             )
-        self._carry_over_final_estimator_fit_vars()
 
     def set_params(self, **kwargs):
         try:
@@ -263,20 +252,6 @@ class Pipeline(imblearn.pipeline.Pipeline):
         except:
             result = self._final_estimator.set_params(**kwargs)
 
-        self._carry_over_final_estimator_fit_vars()
-        return result
-
-    @if_delegate_has_method(delegate="_final_estimator")
-    def fit_predict(self, X, y=None, **fit_params):
-        result = super().fit_predict(X, y=y, **fit_params)
-
-        self._carry_over_final_estimator_fit_vars()
-        return self.inverse_transform(result)
-
-    def fit_resample(self, X, y=None, **fit_params):
-        result = super().fit_resample(X, y=y, **fit_params)
-
-        self._carry_over_final_estimator_fit_vars()
         return result
 
     @if_delegate_has_method(delegate="_final_estimator")
@@ -328,7 +303,6 @@ class Pipeline(imblearn.pipeline.Pipeline):
                     )
                 except TypeError:
                     self._final_estimator.partial_fit(Xt, yt, **fit_params)
-        self._carry_over_final_estimator_fit_vars()
         return self
 
 
@@ -371,7 +345,6 @@ class TimeSeriesPipeline(Pipeline):
         with _print_elapsed_time("Pipeline", self._log_message(len(self.steps) - 1)):
             if self._final_estimator != "passthrough":
                 self._final_estimator.fit(y=yt, X=Xt, **fit_params)
-        self._carry_over_final_estimator_fit_vars()
         return self
 
     @if_delegate_has_method(delegate="_final_estimator")
@@ -382,7 +355,6 @@ class TimeSeriesPipeline(Pipeline):
             Xt, yt, fit_params = self._get_fit_params(X, y, **fit_params)
         with _print_elapsed_time("Pipeline", self._log_message(len(self.steps) - 1)):
             y_pred = self.steps[-1][-1].fit_predict(y=yt, X=Xt, **fit_params)
-        self._carry_over_final_estimator_fit_vars()
         return y_pred
 
     def fit_resample(self, X=None, y=None, **fit_params):
@@ -397,7 +369,6 @@ class TimeSeriesPipeline(Pipeline):
                 result = Xt
             elif hasattr(last_step, "fit_resample"):
                 result = last_step.fit_resample(y=yt, X=Xt, **fit_params)
-        self._carry_over_final_estimator_fit_vars()
         return result
 
     def fit_transform(self, X=None, y=None, **fit_params):
@@ -414,7 +385,6 @@ class TimeSeriesPipeline(Pipeline):
                 result = last_step.fit_transform(y=yt, X=Xt, **fit_params)
             else:
                 result = last_step.fit(y=yt, X=Xt, **fit_params).transform(Xt)
-        self._carry_over_final_estimator_fit_vars()
         return result
 
 
@@ -453,16 +423,10 @@ def add_estimator_to_pipeline(pipeline: Pipeline, estimator, name="actual_estima
         pipeline.replace_final_estimator(estimator, name=name)
     except:
         pipeline.steps.append((name, estimator))
-        if hasattr(pipeline, "_carry_over_final_estimator_fit_vars"):
-            pipeline._carry_over_final_estimator_fit_vars()
 
 
 def merge_pipelines(pipeline_to_merge_to: Pipeline, pipeline_to_be_merged: Pipeline):
     pipeline_to_merge_to.steps.extend(pipeline_to_be_merged.steps)
-    try:
-        pipeline_to_merge_to._carry_over_final_estimator_fit_vars()
-    except:
-        pass
 
 
 def get_pipeline_estimator_label(pipeline: Pipeline) -> str:
