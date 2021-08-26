@@ -6080,8 +6080,12 @@ def plot_model(
             plot_filename = f"{plot_name}.html"
 
             if save:
-                fig.write_html(plot_filename)
-                logger.info(f"Saving '{plot_filename}' in current active directory")
+                if save == True:
+                    fig.write_html(plot_filename)
+                    logger.info(f"Saving '{plot_filename}' in current active directory")
+                else:
+                    fig.write_html(plot_filename)
+                    logger.info(f"Saving '{plot_filename}' in directory mentioned")
 
             elif system:
                 if display_format == "streamlit":
@@ -6225,8 +6229,13 @@ def plot_model(
             plot_filename = f"{plot_name}.html"
 
             if save:
-                fig.write_html(f"{plot_filename}")
-                logger.info(f"Saving '{plot_filename}' in current active directory")
+                if save == True:
+                    fig.write_html(f"{plot_filename}")
+                    logger.info(f"Saving '{plot_filename}' in current active directory")
+                else:
+                    fig.write_html(plot_filename)
+                    logger.info(f"Saving '{plot_filename}' in directory mentioned")                    
+
             elif system:
                 if display_format == "streamlit":
                     st.write(fig)
@@ -6317,8 +6326,12 @@ def plot_model(
             plot_filename = f"{plot_name}.html"
 
             if save:
-                fig.write_html(f"{plot_filename}")
-                logger.info(f"Saving '{plot_filename}' in current active directory")
+                if save == True:
+                    fig.write_html(f"{plot_filename}")
+                    logger.info(f"Saving '{plot_filename}' in current active directory")
+                else:
+                    fig.write_html(plot_filename)
+                    logger.info(f"Saving '{plot_filename}' in directory mentioned")
             elif system:
                 if display_format == "streamlit":
                     st.write(fig)
@@ -6386,8 +6399,12 @@ def plot_model(
             plot_filename = f"{plot_name}.html"
 
             if save:
-                fig.write_html(f"{plot_filename}")
-                logger.info(f"Saving '{plot_filename}' in current active directory")
+                if save == True:
+                    fig.write_html(f"{plot_filename}")
+                    logger.info(f"Saving '{plot_filename}' in current active directory")
+                else:
+                    fig.write_html(plot_filename)
+                    logger.info(f"Saving '{plot_filename}' in directory mentioned")
             elif system:
                 fig.show()
 
@@ -6750,8 +6767,12 @@ def plot_model(
                     y_test__, predict_proba__, figsize=(10, 6)
                 )
                 if save:
-                    logger.info(f"Saving '{plot_name}.png' in current active directory")
-                    plt.savefig(f"{plot_name}.png", bbox_inches="tight")
+                    if save == True:
+                        logger.info(f"Saving '{plot_name}.png' in current active directory")
+                        plt.savefig(f"{plot_name}.png", bbox_inches="tight")
+                    else:
+                        logger.info(f"Saving '{plot_name}.png' in the path specified")
+                        plt.savefig("{}/{}.png".format(save,plot_name))
                 elif system:
                     plt.show()
                 plt.close()
@@ -6775,8 +6796,12 @@ def plot_model(
                     y_test__, predict_proba__, figsize=(10, 6)
                 )
                 if save:
-                    logger.info(f"Saving '{plot_name}.png' in current active directory")
-                    plt.savefig(f"{plot_name}.png", bbox_inches="tight")
+                    if save == True:
+                        logger.info(f"Saving '{plot_name}.png' in current active directory")
+                        plt.savefig(f"{plot_name}.png", bbox_inches="tight")
+                    else:
+                        logger.info(f"Saving '{plot_name}.png' in the path specified")
+                        plt.savefig("{}/{}.png".format(save,plot_name))
                 elif system:
                     plt.show()
                 plt.close()
@@ -6918,8 +6943,12 @@ def plot_model(
             display.move_progress()
             display.clear_output()
             if save:
-                logger.info(f"Saving '{plot_name}.png' in current active directory")
-                plt.savefig(f"{plot_name}.png", bbox_inches="tight")
+                if save == True:
+                    logger.info(f"Saving '{plot_name}.png' in current active directory")
+                    plt.savefig(f"{plot_name}.png", bbox_inches="tight")
+                else:
+                    logger.info(f"Saving '{plot_name}.png' in the path specified")
+                    plt.savefig("{}/{}.png".format(save,plot_name))
             elif system:
                 plt.show()
             plt.close()
@@ -6963,8 +6992,12 @@ def plot_model(
             display.move_progress()
             display.clear_output()
             if save:
-                logger.info(f"Saving '{plot_name}.png' in current active directory")
-                plt.savefig(f"{plot_name}.png", bbox_inches="tight")
+                if save == True:
+                    logger.info(f"Saving '{plot_name}.png' in current active directory")
+                    plt.savefig(f"{plot_name}.png", bbox_inches="tight")
+                else:
+                    logger.info(f"Saving '{plot_name}.png' in the path specified")
+                    plt.savefig("{}/{}.png".format(save,plot_name))
             elif system:
                 plt.show()
             plt.close()
@@ -7223,8 +7256,12 @@ def plot_model(
             display.move_progress()
             display.clear_output()
             if save:
-                logger.info(f"Saving '{plot_name}.png' in current active directory")
-                plt.savefig(f"{plot_name}.png", bbox_inches="tight")
+                if save == True:
+                    logger.info(f"Saving '{plot_name}.png' in current active directory")
+                    plt.savefig(f"{plot_name}.png", bbox_inches="tight")
+                else:
+                    logger.info(f"Saving '{plot_name}.png' in the path specified")
+                    plt.savefig("{}/{}.png".format(save,plot_name))
             elif system:
                 plt.show()
             plt.close()
@@ -7262,8 +7299,12 @@ def plot_model(
                     data_y, predict_proba__, figsize=(10, 6)
                 )
                 if save:
-                    logger.info(f"Saving '{plot_name}.png' in current active directory")
-                    plt.savefig(f"{plot_name}.png", bbox_inches="tight")
+                    if save == True:
+                        logger.info(f"Saving '{plot_name}.png' in current active directory")
+                        plt.savefig(f"{plot_name}.png", bbox_inches="tight")
+                    else:
+                        logger.info(f"Saving '{plot_name}.png' in the path specified")
+                        plt.savefig("{}/{}.png".format(save,plot_name))
                 elif system:
                     plt.show()
                 plt.close()
@@ -7607,7 +7648,10 @@ def interpret_model(
             shap_plot = shap.summary_plot(shap_values, test_X, show=show, **kwargs)
 
         if save:
-            plt.savefig(f"SHAP {plot}.png", bbox_inches="tight")
+            if save == True:
+                plt.savefig(f"SHAP {plot}.png", bbox_inches="tight")
+            else:
+                plt.savefig("{}/{}.png".format(save,plot))
         return shap_plot
 
     def correlation(show: bool = True):
@@ -7640,7 +7684,10 @@ def interpret_model(
             logger.info("model type detected: type 2")
             shap.dependence_plot(dependence, shap_values, test_X, show=show, **kwargs)
         if save:
-            plt.savefig(f"SHAP {plot}.png", bbox_inches="tight")
+            if save == True:
+                plt.savefig(f"SHAP {plot}.png", bbox_inches="tight")
+            else:
+                plt.savefig("{}/{}.png".format(save,plot_name))
         return None
 
     def reason(show: bool = True):
