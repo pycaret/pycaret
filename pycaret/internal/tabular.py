@@ -9882,7 +9882,7 @@ def get_leaderboard():
     
     mc = 0
 
-    for i in np.arange(0,len(result_container)):
+    for i in range(len(result_container)):
         c = result_container[i]
         r = c[-2:-1]
         model_name = _get_model_name(model_container[mc]) 
