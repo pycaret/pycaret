@@ -2637,7 +2637,7 @@ def get_leaderboard():
 
 
     Returns:
-        Pandas.DataFrame
+        pandas.DataFrame
 
     """
     return pycaret.internal.tabular.get_leaderboard()
