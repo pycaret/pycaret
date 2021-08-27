@@ -109,8 +109,12 @@ def show_yellowbrick_plot(
     display.clear_output()
 
     if save:
-        logger.info(f"Saving '{name}.png' in current active directory")
-        visualizer.show(outpath=f"{name}.png", clear_figure=True)
+        if save == True:
+            logger.info(f"Saving '{name}.png' in current active directory891")
+            visualizer.show(outpath=f"{name}.png", clear_figure=True)
+        else:
+            logger.info(f"Saving '{name}.png' in the path specified")
+            plt.savefig("{}/{}.png".format(save,name))
     else:
         if display_format == "streamlit":
             show_yellowbrick_in_streamlit(visualizer, clear_figure=True)
