@@ -5726,8 +5726,9 @@ def plot_model(
     scale: float, default = 1
         The resolution scale of the figure.
 
-    save: bool, default = False
+    save: string/bool, default = False
         When set to True, Plot is saved as a 'png' file in current working directory.
+        When a path destination is given, Plot is saved as a 'png' file the given path to the directory of choice.
 
     fold: integer or scikit-learn compatible CV generator, default = None
         Controls cross-validation used in certain plots. If None, will use the CV generator
@@ -5993,8 +5994,12 @@ def plot_model(
             plot_filename = f"{plot_name}.html"
 
             if save:
-                resplots.write_html(plot_filename)
-                logger.info(f"Saving '{plot_filename}' in current active directory")
+                if save == True:
+                    resplots.write_html(plot_filename)
+                    logger.info(f"Saving '{plot_filename}' in current active directory")
+                else:
+                    resplots.write_html(save+'/'+plot_filename)
+                    logger.info(f"Saving '{plot_filename}' in the directory specified")
 
             logger.info("Visual Rendered Successfully")
             return plot_filename
