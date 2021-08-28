@@ -6084,9 +6084,8 @@ def plot_model(
                     fig.write_html(plot_filename)
                     logger.info(f"Saving '{plot_filename}' in current active directory")
                 else:
-                    fig.write_html(plot_filename)
+                    fig.write_html(save+'/'+plot_filename)
                     logger.info(f"Saving '{plot_filename}' in directory mentioned")
-
             elif system:
                 if display_format == "streamlit":
                     st.write(fig)
@@ -6148,8 +6147,12 @@ def plot_model(
             plot_filename = f"{plot_name}.html"
 
             if save:
-                fig.write_html(f"{plot_filename}")
-                logger.info(f"Saving '{plot_filename}' in current active directory")
+                if save == True:
+                    fig.write_html(plot_filename)
+                    logger.info(f"Saving '{plot_filename}' in current active directory")
+                else:
+                    fig.write_html(save+'/'+plot_filename)
+                    logger.info(f"Saving '{plot_filename}' in directory mentioned")
             elif system:
                 if display_format == "streamlit":
                     st.write(fig)
@@ -6230,12 +6233,11 @@ def plot_model(
 
             if save:
                 if save == True:
-                    fig.write_html(f"{plot_filename}")
+                    fig.write_html(plot_filename)
                     logger.info(f"Saving '{plot_filename}' in current active directory")
                 else:
-                    fig.write_html(plot_filename)
-                    logger.info(f"Saving '{plot_filename}' in directory mentioned")                    
-
+                    fig.write_html(save+'/'+plot_filename)
+                    logger.info(f"Saving '{plot_filename}' in directory mentioned")                 
             elif system:
                 if display_format == "streamlit":
                     st.write(fig)
@@ -6327,10 +6329,10 @@ def plot_model(
 
             if save:
                 if save == True:
-                    fig.write_html(f"{plot_filename}")
+                    fig.write_html(plot_filename)
                     logger.info(f"Saving '{plot_filename}' in current active directory")
                 else:
-                    fig.write_html(plot_filename)
+                    fig.write_html(save+'/'+plot_filename)
                     logger.info(f"Saving '{plot_filename}' in directory mentioned")
             elif system:
                 if display_format == "streamlit":
@@ -6400,10 +6402,10 @@ def plot_model(
 
             if save:
                 if save == True:
-                    fig.write_html(f"{plot_filename}")
+                    fig.write_html(plot_filename)
                     logger.info(f"Saving '{plot_filename}' in current active directory")
                 else:
-                    fig.write_html(plot_filename)
+                    fig.write_html(save+'/'+plot_filename)
                     logger.info(f"Saving '{plot_filename}' in directory mentioned")
             elif system:
                 fig.show()
@@ -6772,7 +6774,6 @@ def plot_model(
                         plt.savefig(f"{plot_name}.png", bbox_inches="tight")
                     else:
                         logger.info(f"Saving '{plot_name}.png' in the path specified")
-                        print("Saving.......")
                         plt.savefig("{}/{}.png".format(save,plot_name))
                 elif system:
                     plt.show()
@@ -6802,7 +6803,6 @@ def plot_model(
                         plt.savefig(f"{plot_name}.png", bbox_inches="tight")
                     else:
                         logger.info(f"Saving '{plot_name}.png' in the path specified")
-                        print("Saving2.......")
                         plt.savefig("{}/{}.png".format(save,plot_name))
                 elif system:
                     plt.show()
@@ -6950,7 +6950,6 @@ def plot_model(
                     plt.savefig(f"{plot_name}.png", bbox_inches="tight")
                 else:
                     logger.info(f"Saving '{plot_name}.png' in the path specified")
-                    print("Savin3.......")
                     plt.savefig("{}/{}.png".format(save,plot_name))
             elif system:
                 plt.show()
@@ -7000,7 +6999,6 @@ def plot_model(
                     plt.savefig(f"{plot_name}.png", bbox_inches="tight")
                 else:
                     logger.info(f"Saving '{plot_name}.png' in the path specified")
-                    print("Saving4.......")
                     plt.savefig("{}/{}.png".format(save,plot_name))
             elif system:
                 plt.show()
@@ -7265,7 +7263,6 @@ def plot_model(
                     plt.savefig(f"{plot_name}.png", bbox_inches="tight")
                 else:
                     logger.info(f"Saving '{plot_name}.png' in the path specified")
-                    print("Saving5.......")
                     plt.savefig("{}/{}.png".format(save,plot_name))
             elif system:
                 plt.show()
@@ -7309,7 +7306,6 @@ def plot_model(
                         plt.savefig(f"{plot_name}.png", bbox_inches="tight")
                     else:
                         logger.info(f"Saving '{plot_name}.png' in the path specified")
-                        print("Saving6.......")
                         plt.savefig("{}/{}.png".format(save,plot_name))
                 elif system:
                     plt.show()
@@ -7657,7 +7653,6 @@ def interpret_model(
             if save == True:
                 plt.savefig(f"SHAP {plot}.png", bbox_inches="tight")
             else:
-                print("Saving7.......")
                 plt.savefig("{}/{}.png".format(save,plot))
         return shap_plot
 
@@ -7694,7 +7689,6 @@ def interpret_model(
             if save == True:
                 plt.savefig(f"SHAP {plot}.png", bbox_inches="tight")
             else:
-                print("Saving8.......")
                 plt.savefig("{}/{}.png".format(save,plot_name))
         return None
 
