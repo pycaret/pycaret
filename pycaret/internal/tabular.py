@@ -9883,14 +9883,14 @@ def get_leaderboard():
     mc = 0
 
     for i in range(len(result_container)):
-        c = result_container[i]
-        r = c[-2:-1]
+        model_results = result_container[i]
+        mean_scores = model_results[-2:-1]
         model_name = _get_model_name(model_container[mc]) 
-        r['Model Name'] = model_name
-        r['Model'] = model_container[mc]
-        r.set_index('Model Name', drop=True, inplace=True)
-        r = r[['Model', 'Accuracy', 'AUC', 'Recall', 'Prec.', 'F1', 'Kappa', 'MCC']]
-        result_container_mean.append(r)
+        mean_scores['Model Name'] = model_name
+        mean_scores['Model'] = model_container[mc]
+        mean_scores.set_index('Model Name', drop=True, inplace=True)
+        mean_scores = mean_scores[['Model', 'Accuracy', 'AUC', 'Recall', 'Prec.', 'F1', 'Kappa', 'MCC']]
+        result_container_mean.append(mean_scores)
         mc += 1
     
     results = pd.concat(result_container_mean)
