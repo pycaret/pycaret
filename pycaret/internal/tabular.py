@@ -9897,6 +9897,36 @@ def load_config(file_name: str):
     return r
 
 
+def get_leaderboard():
+    """
+    generates leaderboard for all models run in current run.
+    """
+    model_container = get_config("master_model_container")
+    result_container = get_config("create_model_container")
+
+    result_container_mean = []
+
+    for i in range(len(result_container)):
+        model_results = result_container[i]
+        mean_scores = model_results[-2:-1]
+        model_name = _get_model_name(model_container[i])
+        mean_scores["Index"] = i
+        mean_scores["Model Name"] = model_name
+        mean_scores["Model"] = str(model_container[i])
+        rearranged_columns = list(mean_scores.columns)
+        rearranged_columns.remove("Model")
+        rearranged_columns.remove("Model Name")
+        rearranged_columns = ["Model Name", "Model"] + rearranged_columns
+        mean_scores = mean_scores[rearranged_columns]
+        result_container_mean.append(mean_scores)
+
+    results = pd.concat(result_container_mean)
+
+    results.set_index("Index", inplace=True, drop=True)
+
+    return results
+
+
 def _choose_better(
     models_and_results: list,
     compare_dimension: str,
