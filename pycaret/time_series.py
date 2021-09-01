@@ -1888,14 +1888,14 @@ def set_current_experiment(experiment: TimeSeriesExperiment):
 
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
-def test_model(
+def check_stats(
     estimator: Optional[Any] = None,
     test: str = "all",
     alpha: float = 0.05,
     split: str = "all",
 ) -> pd.DataFrame:
 
-    return _CURRENT_EXPERIMENT.test_model(
+    return _CURRENT_EXPERIMENT.check_stats(
         estimator=estimator, test=test, alpha=alpha, split=split,
     )
 

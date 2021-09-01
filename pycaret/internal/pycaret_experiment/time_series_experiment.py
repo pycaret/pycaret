@@ -3297,7 +3297,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 )
         return fold_generator
 
-    def test_model(
+    def check_stats(
         self,
         estimator: Optional[Any] = None,
         test: str = "all",

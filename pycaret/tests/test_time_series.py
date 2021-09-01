@@ -166,8 +166,8 @@ _model_parameters = _return_model_parameters()
 ##########################
 
 
-def test_test_model(load_data):
-    """Tests the test_model functionality
+def test_check_stats(load_data):
+    """Tests the check_stats functionality
     """
 
     exp = TimeSeriesExperiment()
@@ -188,7 +188,7 @@ def test_test_model(load_data):
     expected = ["Test", "Test Name", "Property", "Setting"]
     expected_small = ["Test", "Test Name", "Property"]
 
-    results = exp.test_model()
+    results = exp.check_stats()
     index_names = list(results.index.names)
     for i, name in enumerate(expected):
         assert index_names[i] == name
@@ -196,18 +196,18 @@ def test_test_model(load_data):
     # Individual Tests
     tests = ["white_noise", "stationarity", "adf", "kpss", "normality"]
     for test in tests:
-        results = exp.test_model(test=test)
+        results = exp.check_stats(test=test)
         index_names = list(results.index.names)
         for i, name in enumerate(expected):
             assert index_names[i] == name
 
-    results = exp.test_model(test="stat_summary")
+    results = exp.check_stats(test="stat_summary")
     index_names = list(results.index.names)
     for i, name in enumerate(expected_small):
         assert index_names[i] == name
 
     alpha = 0.2
-    results = exp.test_model(alpha=alpha)
+    results = exp.check_stats(alpha=alpha)
     assert alpha in results.index.get_level_values("Setting")
 
 
