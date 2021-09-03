@@ -112,6 +112,8 @@ def show_yellowbrick_plot(
     if save:
         if not isinstance(save, bool):
             plot_filename = os.path.join(save, name)
+        else:
+            plot_filename = name
         logger.info(f"Saving '{plot_filename}.png'")
         plt.savefig(f"{plot_filename}.png", bbox_inches="tight")
     else:

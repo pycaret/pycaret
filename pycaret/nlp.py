@@ -2192,6 +2192,8 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
             if save:
                 if not isinstance(save, bool):
                     plot_filename = os.path.join(save, "Word Frequency.html")
+                else:
+                    plot_filename = "Word Frequency.html"
                 logger.info(f"Saving '{plot_filename}'")
                 df3.write_html(plot_filename)
 
@@ -2285,6 +2287,8 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
             if save:
                 if not isinstance(save, bool):
                     plot_filename = os.path.join(save, "Distribution.html")
+                else:
+                    plot_filename = "Distribution.html"
                 logger.info(f"Saving '{plot_filename}'")
                 b.write_html(plot_filename)
             
@@ -2403,8 +2407,10 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
             if save:
                 if not isinstance(save, bool):
                     plot_filename = os.path.join(save, "Bigram.html")
+                else:
+                    plot_filename = "Bigram.html"
                 logger.info(f"Saving '{plot_filename}'")
-                df3.write_html(plot_filename)            
+                df3.write_html(plot_filename)
 
 
         except:
@@ -2521,6 +2527,8 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
             if save:
                 if not isinstance(save, bool):
                     plot_filename = os.path.join(save, "Trigram.html")
+                else:
+                    plot_filename = "Trigram.html"
                 logger.info(f"Saving '{plot_filename}'")
                 df3.write_html(plot_filename) 
 
@@ -2619,6 +2627,8 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
             if save:
                 if not isinstance(save, bool):
                     plot_filename = os.path.join(save, "Sentiments.html")
+                else:
+                    plot_filename = "Sentiments.html"
                 logger.info(f"Saving '{plot_filename}'")
                 sentiments.write_html(plot_filename) 
 
@@ -2668,7 +2678,9 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
 
         if save:
             if not isinstance(save, bool):
-                    plot_filename = os.path.join(save, "POS.html")
+                plot_filename = os.path.join(save, "POS.html")
+            else:
+                plot_filename = "POS.html"
             logger.info(f"Saving '{plot_filename}'")
             pos_df.write_html(plot_filename) 
 
@@ -2728,6 +2740,8 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
         if save:
             if not isinstance(save, bool):
                 plot_filename = os.path.join(save, "TSNE.html")
+            else:
+                plot_filename = "TSNE.html"
             logger.info(f"Saving '{plot_filename}'")
             fig.write_html(plot_filename) 
 
@@ -2857,7 +2871,9 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
 
         if save:
             if not isinstance(save, bool):
-                    plot_filename = os.path.join(save, "Topic Distribution.html")
+                plot_filename = os.path.join(save, "Topic Distribution.html")
+            else:
+                plot_filename = "Topic Distribution.html"
             logger.info(f"Saving '{plot_filename}'")
             fig.write_html(plot_filename) 
 

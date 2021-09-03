@@ -5996,6 +5996,8 @@ def plot_model(
             if save:
                 if not isinstance(save, bool):
                     plot_filename = os.path.join(save, plot_filename)
+                else:
+                    plot_filename = plot
                 logger.info(f"Saving '{plot_filename}'")
                 resplots.write_html(plot_filename)
 
@@ -6085,6 +6087,8 @@ def plot_model(
             if save:
                 if not isinstance(save, bool):
                     plot_filename = os.path.join(save, plot_filename)
+                else:
+                    plot_filename = plot
                 logger.info(f"Saving '{plot_filename}'")
                 fig.write_html(plot_filename)
             elif system:
@@ -6150,6 +6154,8 @@ def plot_model(
             if save:
                 if not isinstance(save, bool):
                     plot_filename = os.path.join(save, plot_filename)
+                else:
+                    plot_filename = plot
                 logger.info(f"Saving '{plot_filename}'")
                 fig.write_html(plot_filename)
             elif system:
@@ -6233,8 +6239,10 @@ def plot_model(
             if save:
                 if not isinstance(save, bool):
                     plot_filename = os.path.join(save, plot_filename)
+                else:
+                    plot_filename = plot
                 logger.info(f"Saving '{plot_filename}'")
-                fig.write_html(plot_filename)                
+                fig.write_html(plot_filename)
             elif system:
                 if display_format == "streamlit":
                     st.write(fig)
@@ -6327,6 +6335,8 @@ def plot_model(
             if save:
                 if not isinstance(save, bool):
                     plot_filename = os.path.join(save, plot_filename)
+                else:
+                    plot_filename = plot
                 logger.info(f"Saving '{plot_filename}'")
                 fig.write_html(plot_filename)
             elif system:
@@ -6398,6 +6408,8 @@ def plot_model(
             if save:
                 if not isinstance(save, bool):
                     plot_filename = os.path.join(save, plot_filename)
+                else:
+                    plot_filename = plot
                 logger.info(f"Saving '{plot_filename}'")
                 fig.write_html(plot_filename)
             elif system:
@@ -6764,6 +6776,8 @@ def plot_model(
                 if save:
                     if not isinstance(save, bool):
                         plot_filename = os.path.join(save, plot_name)
+                    else:
+                        plot_filename = plot
                     logger.info(f"Saving '{plot_filename}.png'")
                     plt.savefig(f"{plot_filename}.png", bbox_inches="tight")
                 elif system:
@@ -6791,6 +6805,8 @@ def plot_model(
                 if save:
                     if not isinstance(save, bool):
                         plot_filename = os.path.join(save, plot_name)
+                    else:
+                        plot_filename = plot
                     logger.info(f"Saving '{plot_filename}.png'")
                     plt.savefig(f"{plot_filename}.png", bbox_inches="tight")
                 elif system:
@@ -6936,6 +6952,8 @@ def plot_model(
             if save:
                 if not isinstance(save, bool):
                     plot_filename = os.path.join(save, plot_name)
+                else:
+                    plot_filename = plot
                 logger.info(f"Saving '{plot_filename}.png'")
                 plt.savefig(f"{plot_filename}.png", bbox_inches="tight")
             elif system:
@@ -6983,6 +7001,8 @@ def plot_model(
             if save:
                 if not isinstance(save, bool):
                     plot_filename = os.path.join(save, plot_name)
+                else:
+                    plot_filename = plot
                 logger.info(f"Saving '{plot_filename}.png'")
                 plt.savefig(f"{plot_filename}.png", bbox_inches="tight")
             elif system:
@@ -7245,6 +7265,8 @@ def plot_model(
             if save:
                 if not isinstance(save, bool):
                     plot_filename = os.path.join(save, plot_name)
+                else:
+                    plot_filename = plot
                 logger.info(f"Saving '{plot_filename}.png'")
                 plt.savefig(f"{plot_filename}.png", bbox_inches="tight")
             elif system:
@@ -7286,6 +7308,8 @@ def plot_model(
                 if save:
                     if not isinstance(save, bool):
                         plot_filename = os.path.join(save, plot_name)
+                    else:
+                        plot_filename = plot
                     logger.info(f"Saving '{plot_filename}.png'")
                     plt.savefig(f"{plot_filename}.png", bbox_inches="tight")
                 elif system:
@@ -7633,6 +7657,8 @@ def interpret_model(
         if save:
             if not isinstance(save, bool):
                 plot_filename = os.path.join(save, plot)
+            else:
+                plot_filename = plot
             logger.info(f"Saving '{plot_filename}.png'")
             plt.savefig(plot_filename)
 
@@ -7670,6 +7696,8 @@ def interpret_model(
         if save:
             if not isinstance(save, bool):
                 plot_filename = os.path.join(save, plot)
+            else:
+                plot_filename = plot
             logger.info(f"Saving '{plot_filename}.png'")
             plt.savefig(f"{plot_filename}.png", bbox_inches="tight")
 
