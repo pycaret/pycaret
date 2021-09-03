@@ -167,8 +167,7 @@ _model_parameters = _return_model_parameters()
 
 
 def test_check_stats(load_data):
-    """Tests the check_stats functionality
-    """
+    """Tests the check_stats functionality"""
 
     exp = TimeSeriesExperiment()
 
@@ -212,8 +211,7 @@ def test_check_stats(load_data):
 
 
 def test_plot_model(load_data):
-    """Tests the plot_model functionality
-    """
+    """Tests the plot_model functionality"""
     exp = TimeSeriesExperiment()
 
     fh = np.arange(1, 13)
@@ -236,19 +234,19 @@ def test_plot_model(load_data):
     model = exp.create_model("naive")
 
     print("\n\n==== ON DATA (using OOP) ====")
-    exp.plot_model()
-    exp.plot_model(plot="ts")
-    exp.plot_model(plot="splits-tt")
-    exp.plot_model(plot="splits_cv")
-    exp.plot_model(plot="acf")
-    exp.plot_model(plot="pacf")
+    exp.plot_model(system=False)
+    exp.plot_model(plot="ts", system=False)
+    exp.plot_model(plot="splits-tt", system=False)
+    exp.plot_model(plot="splits_cv", system=False)
+    exp.plot_model(plot="acf", system=False)
+    exp.plot_model(plot="pacf", system=False)
 
     print("\n\n==== ON ESTIMATOR (using OOP) ====")
-    exp.plot_model(estimator=model)
-    exp.plot_model(estimator=model, plot="ts")
-    exp.plot_model(estimator=model, plot="splits-tt")
-    exp.plot_model(estimator=model, plot="splits_cv")
-    exp.plot_model(estimator=model, plot="predictions")
+    exp.plot_model(estimator=model, system=False)
+    exp.plot_model(estimator=model, plot="ts", system=False)
+    exp.plot_model(estimator=model, plot="splits-tt", system=False)
+    exp.plot_model(estimator=model, plot="splits_cv", system=False)
+    exp.plot_model(estimator=model, plot="predictions", system=False)
 
     ## Not Implemented on Residuals yet
     # exp.plot_model(estimator=model, plot="acf")
@@ -266,19 +264,19 @@ def test_plot_model(load_data):
     model = create_model("naive")
 
     print("\n\n==== ON DATA (using Functional API) ====")
-    plot_model()
-    plot_model(plot="ts")
-    plot_model(plot="splits-tt")
-    plot_model(plot="splits_cv")
-    plot_model(plot="acf")
-    plot_model(plot="pacf")
+    plot_model(system=False)
+    plot_model(plot="ts", system=False)
+    plot_model(plot="splits-tt", system=False)
+    plot_model(plot="splits_cv", system=False)
+    plot_model(plot="acf", system=False)
+    plot_model(plot="pacf", system=False)
 
     print("\n\n==== ON ESTIMATOR (using Functional API) ====")
-    plot_model(estimator=model)
-    plot_model(estimator=model, plot="ts")
-    plot_model(estimator=model, plot="splits-tt")
-    plot_model(estimator=model, plot="splits_cv")
-    plot_model(estimator=model, plot="predictions")
+    plot_model(estimator=model, system=False)
+    plot_model(estimator=model, plot="ts", system=False)
+    plot_model(estimator=model, plot="splits-tt", system=False)
+    plot_model(estimator=model, plot="splits_cv", system=False)
+    plot_model(estimator=model, plot="predictions", system=False)
 
     ## Not Implemented on Residuals yet
     # plot_model(estimator=model, plot="acf")
@@ -338,7 +336,11 @@ def test_create_predict_finalize_model(name, fh, load_data):
     data = load_data  # _check_data_for_prophet(name, load_data)
 
     exp.setup(
-        data=data, fold=2, fh=fh, fold_strategy="sliding", verbose=False,
+        data=data,
+        fold=2,
+        fh=fh,
+        fold_strategy="sliding",
+        verbose=False,
     )
     #######################
     ## Test Create Model ##
@@ -387,7 +389,11 @@ def test_predict_model_warnings(load_data):
     """test predict_model warnings cases"""
     exp = TimeSeriesExperiment()
     exp.setup(
-        data=load_data, fold=2, fh=12, fold_strategy="sliding", verbose=False,
+        data=load_data,
+        fold=2,
+        fh=12,
+        fold_strategy="sliding",
+        verbose=False,
     )
 
     model = exp.create_model("naive")
@@ -430,7 +436,11 @@ def test_create_model_custom_folds(load_data):
     exp = TimeSeriesExperiment()
     setup_fold = 3
     exp.setup(
-        data=load_data, fold=setup_fold, fh=12, fold_strategy="sliding", verbose=False,
+        data=load_data,
+        fold=setup_fold,
+        fh=12,
+        fold_strategy="sliding",
+        verbose=False,
     )
 
     #########################################
@@ -551,7 +561,11 @@ def test_blend_model_custom_folds(load_data):
     exp = TimeSeriesExperiment()
     setup_fold = 3
     exp.setup(
-        data=load_data, fold=setup_fold, fh=12, fold_strategy="sliding", verbose=False,
+        data=load_data,
+        fold=setup_fold,
+        fh=12,
+        fold_strategy="sliding",
+        verbose=False,
     )
 
     #######################################
@@ -649,7 +663,11 @@ def test_tune_model_custom_folds(load_data):
     exp = TimeSeriesExperiment()
     setup_fold = 3
     exp.setup(
-        data=load_data, fold=setup_fold, fh=12, fold_strategy="sliding", verbose=False,
+        data=load_data,
+        fold=setup_fold,
+        fh=12,
+        fold_strategy="sliding",
+        verbose=False,
     )
 
     #######################################

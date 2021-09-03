@@ -2302,6 +2302,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         verbose: bool = True,
         return_data: bool = False,
         display_format: Optional[str] = None,
+        system: bool = True,
     ) -> str:
 
         """
@@ -2372,6 +2373,10 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             Currently, not all plots are supported.
 
 
+        system: bool, default = True
+            Must remain True all times. Only to be changed by internal functions.
+
+
         Returns:
             None
 
@@ -2412,6 +2417,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             predictions=predictions,
             cv=cv,
             return_data=return_data,
+            show=system
         )
 
         return plot_data

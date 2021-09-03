@@ -27,30 +27,37 @@ def plot_(
     predictions: Optional[pd.Series] = None,
     cv: Optional[Union[ExpandingWindowSplitter, SlidingWindowSplitter]] = None,
     return_data: bool = False,
+    show: bool = True,
 ) -> Optional[Any]:
     if plot == "ts":
-        plot_data = plot_series(data=data, return_data=return_data)
+        plot_data = plot_series(data=data, return_data=return_data, show=show)
     elif plot == "splits-tt":
-        plot_data = plot_splits_tt(train=train, test=test, return_data=return_data)
+        plot_data = plot_splits_tt(
+            train=train, test=test, return_data=return_data, show=show
+        )
     elif plot == "splits_cv":
-        plot_data = plot_splits_cv(data=data, cv=cv, return_data=return_data)
+        plot_data = plot_splits_cv(data=data, cv=cv, return_data=return_data, show=show)
     elif plot == "acf":
-        plot_data = plot_acf(data=data, return_data=return_data)
+        plot_data = plot_acf(data=data, return_data=return_data, show=show)
     elif plot == "pacf":
-        plot_data = plot_pacf(data=data, return_data=return_data)
+        plot_data = plot_pacf(data=data, return_data=return_data, show=show)
     elif plot == "predictions":
         plot_data = plot_predictions(
-            data=data, predictions=predictions, return_data=return_data
+            data=data, predictions=predictions, return_data=return_data, show=show
         )
     elif plot == "residuals":
-        plot_data = plot_diagnostics(data=data, return_data=return_data)
+        plot_data = plot_diagnostics(data=data, return_data=return_data, show=show)
     else:
         raise ValueError(f"Tests: '{plot}' is not supported.")
 
     return plot_data if return_data else None
 
 
-def plot_series(data: pd.Series, return_data: bool = False):
+def plot_series(
+    data: pd.Series,
+    return_data: bool = False,
+    show: bool = True,
+):
     """Plots the original time series"""
     original = go.Scatter(
         name="Original",
@@ -63,13 +70,16 @@ def plot_series(data: pd.Series, return_data: bool = False):
     plot_data = [original]
 
     layout = go.Layout(
-        yaxis=dict(title="Values"), xaxis=dict(title="Time"), title="Time Series",
+        yaxis=dict(title="Values"),
+        xaxis=dict(title="Time"),
+        title="Time Series",
     )
 
     fig = go.Figure(data=plot_data, layout=layout)
     fig.update_layout(template="simple_white")
     fig.update_layout(showlegend=True)
-    fig.show()
+    if show:
+        fig.show()
 
     if return_data:
         return fig, data
@@ -77,7 +87,12 @@ def plot_series(data: pd.Series, return_data: bool = False):
         return fig
 
 
-def plot_splits_tt(train: pd.Series, test: pd.Series, return_data: bool = False):
+def plot_splits_tt(
+    train: pd.Series,
+    test: pd.Series,
+    return_data: bool = False,
+    show: bool = True,
+):
     """Plots the train-test split for the time serirs"""
     fig = go.Figure()
 
@@ -109,7 +124,8 @@ def plot_splits_tt(train: pd.Series, test: pd.Series, return_data: bool = False)
         }
     )
     fig.update_layout(template="simple_white")
-    fig.show()
+    if show:
+        fig.show()
 
     if return_data:
         return fig, (train, test)
@@ -117,7 +133,12 @@ def plot_splits_tt(train: pd.Series, test: pd.Series, return_data: bool = False)
         return fig
 
 
-def plot_splits_cv(data: pd.Series, cv, return_data: bool = False):
+def plot_splits_cv(
+    data: pd.Series,
+    cv,
+    return_data: bool = False,
+    show: bool = True,
+):
     """Plots the cv splits used on the training split"""
 
     def get_windows(y, cv):
@@ -183,7 +204,8 @@ def plot_splits_cv(data: pd.Series, cv, return_data: bool = False):
 
     train_windows, test_windows = get_windows(data, cv)
     fig = plot_windows(data, train_windows, test_windows)
-    fig.show()
+    if show:
+        fig.show()
 
     if return_data:
         return fig, data
@@ -191,7 +213,11 @@ def plot_splits_cv(data: pd.Series, cv, return_data: bool = False):
         return fig
 
 
-def plot_acf(data: pd.Series, return_data: bool = False):
+def plot_acf(
+    data: pd.Series,
+    return_data: bool = False,
+    show: bool = True,
+):
     """Plots the ACF on the data provided"""
     corr_array = acf(data, alpha=0.05)
     title = "Autocorrelation (ACF)"
@@ -249,7 +275,8 @@ def plot_acf(data: pd.Series, return_data: bool = False):
 
     fig.update_layout(template="simple_white")
     fig.update_layout(title=title)
-    fig.show()
+    if show:
+        fig.show()
 
     if return_data:
         # Return `plotly Figure` object and the ACF values
@@ -258,7 +285,11 @@ def plot_acf(data: pd.Series, return_data: bool = False):
         return fig
 
 
-def plot_pacf(data: pd.Series, return_data: bool = False):
+def plot_pacf(
+    data: pd.Series,
+    return_data: bool = False,
+    show: bool = True,
+):
     """Plots the PACF on the data provided"""
     corr_array = pacf(data, alpha=0.05)
     title = "Partial Autocorrelation (PACF)"
@@ -315,7 +346,8 @@ def plot_pacf(data: pd.Series, return_data: bool = False):
 
     fig.update_layout(template="simple_white")
     fig.update_layout(title=title)
-    fig.show()
+    if show:
+        fig.show()
 
     if return_data:
         # Return `plotly Figure` object and the PACF values
@@ -325,7 +357,10 @@ def plot_pacf(data: pd.Series, return_data: bool = False):
 
 
 def plot_predictions(
-    data: pd.Series, predictions: pd.Series, return_data: bool = False
+    data: pd.Series,
+    predictions: pd.Series,
+    return_data: bool = False,
+    show: bool = True,
 ):
     """Plots the original data and the predictions provided"""
     mean = go.Scatter(
@@ -334,7 +369,9 @@ def plot_predictions(
         y=predictions,
         mode="lines+markers",
         line=dict(color="#1f77b4"),
-        marker=dict(size=5,),
+        marker=dict(
+            size=5,
+        ),
         showlegend=True,
     )
     original = go.Scatter(
@@ -349,13 +386,16 @@ def plot_predictions(
     data = [mean, original]
 
     layout = go.Layout(
-        yaxis=dict(title="Values"), xaxis=dict(title="Time"), title="Forecasts",
+        yaxis=dict(title="Values"),
+        xaxis=dict(title="Time"),
+        title="Forecasts",
     )
 
     fig = go.Figure(data=data, layout=layout)
     fig.update_layout(template="simple_white")
     fig.update_layout(showlegend=True)
-    fig.show()
+    if show:
+        fig.show()
 
     if return_data:
         return fig, data, predictions
@@ -363,12 +403,19 @@ def plot_predictions(
         return fig
 
 
-def plot_diagnostics(data: pd.Series, return_data: bool = False):
+def plot_diagnostics(
+    data: pd.Series,
+    return_data: bool = False,
+    show: bool = True,
+):
     """Plots the diagnostic data such as ACF, Histogram, QQ plot on the data provided"""
     fig = make_subplots(
         rows=2,
         cols=2,
-        row_heights=[0.5, 0.5,],
+        row_heights=[
+            0.5,
+            0.5,
+        ],
         subplot_titles=[
             "Time Plot",
             "Histogram Plot",
@@ -500,7 +547,9 @@ def plot_diagnostics(data: pd.Series, return_data: bool = False):
     dist_plot(fig)
     plot_acf(fig)
     time_plot(fig)
-    fig.show()
+    if show:
+        fig.show()
+
     if return_data:
         return fig, data
     else:
@@ -513,6 +562,7 @@ def plot_predictions_with_confidence(
     upper_interval: pd.Series,
     lower_interval: pd.Series,
     return_data: bool = False,
+    show: bool = True,
 ):
     """Plots the original data and the predictions provided with confidence"""
     upper_bound = go.Scatter(
@@ -533,7 +583,9 @@ def plot_predictions_with_confidence(
         y=predictions,
         mode="lines+markers",
         line=dict(color="#1f77b4"),
-        marker=dict(size=5,),
+        marker=dict(
+            size=5,
+        ),
         fillcolor="#68BBE3",
         fill="tonexty",
         showlegend=True,
@@ -560,13 +612,16 @@ def plot_predictions_with_confidence(
     data = [lower_bound, mean, upper_bound, original]
 
     layout = go.Layout(
-        yaxis=dict(title="Values"), xaxis=dict(title="Time"), title="Forecasts",
+        yaxis=dict(title="Values"),
+        xaxis=dict(title="Time"),
+        title="Forecasts",
     )
 
     fig = go.Figure(data=data, layout=layout)
     fig.update_layout(template="simple_white")
     fig.update_layout(showlegend=True)
-    fig.show()
+    if show:
+        fig.show()
 
     if return_data:
         return fig, data, predictions, upper_interval, lower_interval

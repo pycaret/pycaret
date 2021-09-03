@@ -925,6 +925,7 @@ def plot_model(
     verbose: bool = True,
     return_data: bool = False,
     display_format: Optional[str] = None,
+    system: bool = True
 ) -> str:
 
     """
@@ -995,6 +996,10 @@ def plot_model(
         Currently, not all plots are supported.
 
 
+    system: bool, default = True
+        Must remain True all times. Only to be changed by internal functions.
+
+
     Returns:
         None
 
@@ -1011,6 +1016,7 @@ def plot_model(
         verbose=verbose,
         return_data=return_data,
         display_format=display_format,
+        system=system,
     )
 
 
