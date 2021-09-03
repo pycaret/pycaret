@@ -6934,10 +6934,10 @@ def plot_model(
             display.move_progress()
             display.clear_output()
             if save:
-                    if not isinstance(save, bool):
-                        plot_filename = os.path.join(save, plot_name)
-                    logger.info(f"Saving '{plot_filename}.png'")
-                    plt.savefig(f"{plot_filename}.png", bbox_inches="tight")
+                if not isinstance(save, bool):
+                    plot_filename = os.path.join(save, plot_name)
+                logger.info(f"Saving '{plot_filename}.png'")
+                plt.savefig(f"{plot_filename}.png", bbox_inches="tight")
             elif system:
                 plt.show()
             plt.close()
@@ -6981,10 +6981,10 @@ def plot_model(
             display.move_progress()
             display.clear_output()
             if save:
-                    if not isinstance(save, bool):
-                        plot_filename = os.path.join(save, plot_name)
-                    logger.info(f"Saving '{plot_filename}.png'")
-                    plt.savefig(f"{plot_filename}.png", bbox_inches="tight")
+                if not isinstance(save, bool):
+                    plot_filename = os.path.join(save, plot_name)
+                logger.info(f"Saving '{plot_filename}.png'")
+                plt.savefig(f"{plot_filename}.png", bbox_inches="tight")
             elif system:
                 plt.show()
             plt.close()
@@ -7631,10 +7631,11 @@ def interpret_model(
             shap_plot = shap.summary_plot(shap_values, test_X, show=show, **kwargs)
 
         if save:
-            if save == True:
-                plt.savefig(f"SHAP {plot}.png", bbox_inches="tight")
-            else:
-                plt.savefig("{}/{}.png".format(save,plot))
+            if not isinstance(save, bool):
+                plot_filename = os.path.join(save, plot)
+            logger.info(f"Saving '{plot_filename}.png'")
+            plt.savefig(plot_filename)
+
         return shap_plot
 
     def correlation(show: bool = True):
@@ -7667,10 +7668,11 @@ def interpret_model(
             logger.info("model type detected: type 2")
             shap.dependence_plot(dependence, shap_values, test_X, show=show, **kwargs)
         if save:
-            if save == True:
-                plt.savefig(f"SHAP {plot}.png", bbox_inches="tight")
-            else:
-                plt.savefig("{}/{}.png".format(save,plot_name))
+            if not isinstance(save, bool):
+                plot_filename = os.path.join(save, plot)
+            logger.info(f"Saving '{plot_filename}.png'")
+            plt.savefig(f"{plot_filename}.png", bbox_inches="tight")
+
         return None
 
     def reason(show: bool = True):
