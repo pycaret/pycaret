@@ -1908,8 +1908,9 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
         be on 'Topic 0'
     
 
-    save: bool, default = False
+    save: string/bool, default = False
         Plot is saved as png file in local directory when save parameter set to True.
+        Plot is saved as png file in the specified directory when the path to the directory is specified.
 
 
     system: bool, default = True
@@ -2189,8 +2190,14 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
             logger.info("Visual Rendered Successfully")
 
             if save:
-                df3.write_html("Word Frequency.html")
-                logger.info("Saving 'Word Frequency.html' in current active directory")
+                if not isinstance(save, bool):
+                    plot_filename = os.path.join(save, "Word Frequency.html")
+                else:
+                    plot_filename = "Word Frequency.html"
+                logger.info(f"Saving '{plot_filename}'")
+                df3.write_html(plot_filename)
+
+
 
         except:
             logger.warning(
@@ -2278,8 +2285,13 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
             logger.info("Visual Rendered Successfully")
 
             if save:
-                b.write_html("Distribution.html")
-                logger.info("Saving 'Distribution.html' in current active directory")
+                if not isinstance(save, bool):
+                    plot_filename = os.path.join(save, "Distribution.html")
+                else:
+                    plot_filename = "Distribution.html"
+                logger.info(f"Saving '{plot_filename}'")
+                b.write_html(plot_filename)
+            
 
         except:
             logger.warning(
@@ -2393,8 +2405,13 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
             logger.info("Visual Rendered Successfully")
 
             if save:
-                df3.write_html("Bigram.html")
-                logger.info("Saving 'Bigram.html' in current active directory")
+                if not isinstance(save, bool):
+                    plot_filename = os.path.join(save, "Bigram.html")
+                else:
+                    plot_filename = "Bigram.html"
+                logger.info(f"Saving '{plot_filename}'")
+                df3.write_html(plot_filename)
+
 
         except:
             logger.warning(
@@ -2508,8 +2525,12 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
             logger.info("Visual Rendered Successfully")
 
             if save:
-                df3.write_html("Trigram.html")
-                logger.info("Saving 'Trigram.html' in current active directory")
+                if not isinstance(save, bool):
+                    plot_filename = os.path.join(save, "Trigram.html")
+                else:
+                    plot_filename = "Trigram.html"
+                logger.info(f"Saving '{plot_filename}'")
+                df3.write_html(plot_filename) 
 
         except:
             logger.warning(
@@ -2604,8 +2625,14 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
             logger.info("Visual Rendered Successfully")
 
             if save:
-                sentiments.write_html("Sentiments.html")
-                logger.info("Saving 'Sentiments.html' in current active directory")
+                if not isinstance(save, bool):
+                    plot_filename = os.path.join(save, "Sentiments.html")
+                else:
+                    plot_filename = "Sentiments.html"
+                logger.info(f"Saving '{plot_filename}'")
+                sentiments.write_html(plot_filename) 
+
+            
 
         except:
             logger.warning(
@@ -2650,8 +2677,13 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
         logger.info("Visual Rendered Sucessfully")
 
         if save:
-            pos_df.write_html("POS.html")
-            logger.info("Saving 'POS.html' in current active directory")
+            if not isinstance(save, bool):
+                plot_filename = os.path.join(save, "POS.html")
+            else:
+                plot_filename = "POS.html"
+            logger.info(f"Saving '{plot_filename}'")
+            pos_df.write_html(plot_filename) 
+
 
     elif plot == "tsne":
 
@@ -2706,8 +2738,13 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
         logger.info("Visual Rendered Successfully")
 
         if save:
-            fig.write_html("TSNE.html")
-            logger.info("Saving 'TSNE.html' in current active directory")
+            if not isinstance(save, bool):
+                plot_filename = os.path.join(save, "TSNE.html")
+            else:
+                plot_filename = "TSNE.html"
+            logger.info(f"Saving '{plot_filename}'")
+            fig.write_html(plot_filename) 
+
 
     elif plot == "topic_model":
 
@@ -2722,6 +2759,7 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
         vis = pyLDAvis.gensim.prepare(model, corpus, id2word, mds="mmds")
         display(vis)
         logger.info("Visual Rendered Successfully")
+ 
 
     elif plot == "topic_distribution":
 
@@ -2832,8 +2870,12 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
         logger.info("Visual Rendered Successfully")
 
         if save:
-            fig.write_html("Topic Distribution.html")
-            logger.info("Saving 'Topic Distribution.html' in current active directory")
+            if not isinstance(save, bool):
+                plot_filename = os.path.join(save, "Topic Distribution.html")
+            else:
+                plot_filename = "Topic Distribution.html"
+            logger.info(f"Saving '{plot_filename}'")
+            fig.write_html(plot_filename) 
 
     elif plot == "wordcloud":
 
