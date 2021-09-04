@@ -166,9 +166,8 @@ _model_parameters = _return_model_parameters()
 ##########################
 
 
-def test_test_model(load_data):
-    """Tests the test_model functionality
-    """
+def test_check_stats(load_data):
+    """Tests the check_stats functionality"""
 
     exp = TimeSeriesExperiment()
 
@@ -188,7 +187,7 @@ def test_test_model(load_data):
     expected = ["Test", "Test Name", "Property", "Setting"]
     expected_small = ["Test", "Test Name", "Property"]
 
-    results = exp.test_model()
+    results = exp.check_stats()
     index_names = list(results.index.names)
     for i, name in enumerate(expected):
         assert index_names[i] == name
@@ -196,19 +195,93 @@ def test_test_model(load_data):
     # Individual Tests
     tests = ["white_noise", "stationarity", "adf", "kpss", "normality"]
     for test in tests:
-        results = exp.test_model(test=test)
+        results = exp.check_stats(test=test)
         index_names = list(results.index.names)
         for i, name in enumerate(expected):
             assert index_names[i] == name
 
-    results = exp.test_model(test="stat_summary")
+    results = exp.check_stats(test="stat_summary")
     index_names = list(results.index.names)
     for i, name in enumerate(expected_small):
         assert index_names[i] == name
 
     alpha = 0.2
-    results = exp.test_model(alpha=alpha)
+    results = exp.check_stats(alpha=alpha)
     assert alpha in results.index.get_level_values("Setting")
+
+
+def test_plot_model(load_data):
+    """Tests the plot_model functionality"""
+    exp = TimeSeriesExperiment()
+
+    fh = np.arange(1, 13)
+    fold = 2
+    data = load_data
+
+    ######################
+    #### OOP Approach ####
+    ######################
+
+    exp.setup(
+        data=data,
+        fh=fh,
+        fold=fold,
+        fold_strategy="sliding",
+        verbose=False,
+        session_id=42,
+    )
+
+    model = exp.create_model("naive")
+
+    print("\n\n==== ON DATA (using OOP) ====")
+    exp.plot_model(system=False)
+    exp.plot_model(plot="ts", system=False)
+    exp.plot_model(plot="splits-tt", system=False)
+    exp.plot_model(plot="splits_cv", system=False)
+    exp.plot_model(plot="acf", system=False)
+    exp.plot_model(plot="pacf", system=False)
+
+    print("\n\n==== ON ESTIMATOR (using OOP) ====")
+    exp.plot_model(estimator=model, system=False)
+    exp.plot_model(estimator=model, plot="ts", system=False)
+    exp.plot_model(estimator=model, plot="splits-tt", system=False)
+    exp.plot_model(estimator=model, plot="splits_cv", system=False)
+    exp.plot_model(estimator=model, plot="predictions", system=False)
+
+    ## Not Implemented on Residuals yet
+    # exp.plot_model(estimator=model, plot="acf")
+    # exp.plot_model(estimator=model, plot="pacf")
+    # exp.plot_model(estimator=model, plot="residuals")
+
+    ########################
+    #### Functional API ####
+    ########################
+    from pycaret.time_series import setup, create_model, plot_model
+
+    _ = setup(
+        data=data, fh=fh, fold=fold, fold_strategy="expanding", session_id=42, n_jobs=-1
+    )
+    model = create_model("naive")
+
+    print("\n\n==== ON DATA (using Functional API) ====")
+    plot_model(system=False)
+    plot_model(plot="ts", system=False)
+    plot_model(plot="splits-tt", system=False)
+    plot_model(plot="splits_cv", system=False)
+    plot_model(plot="acf", system=False)
+    plot_model(plot="pacf", system=False)
+
+    print("\n\n==== ON ESTIMATOR (using Functional API) ====")
+    plot_model(estimator=model, system=False)
+    plot_model(estimator=model, plot="ts", system=False)
+    plot_model(estimator=model, plot="splits-tt", system=False)
+    plot_model(estimator=model, plot="splits_cv", system=False)
+    plot_model(estimator=model, plot="predictions", system=False)
+
+    ## Not Implemented on Residuals yet
+    # plot_model(estimator=model, plot="acf")
+    # plot_model(estimator=model, plot="pacf")
+    # plot_model(estimator=model, plot="residuals")
 
 
 @pytest.mark.parametrize("seasonal_period, seasonal_value", _get_seasonal_values())
@@ -263,7 +336,11 @@ def test_create_predict_finalize_model(name, fh, load_data):
     data = load_data  # _check_data_for_prophet(name, load_data)
 
     exp.setup(
-        data=data, fold=2, fh=fh, fold_strategy="sliding", verbose=False,
+        data=data,
+        fold=2,
+        fh=fh,
+        fold_strategy="sliding",
+        verbose=False,
     )
     #######################
     ## Test Create Model ##
@@ -312,7 +389,11 @@ def test_predict_model_warnings(load_data):
     """test predict_model warnings cases"""
     exp = TimeSeriesExperiment()
     exp.setup(
-        data=load_data, fold=2, fh=12, fold_strategy="sliding", verbose=False,
+        data=load_data,
+        fold=2,
+        fh=12,
+        fold_strategy="sliding",
+        verbose=False,
     )
 
     model = exp.create_model("naive")
@@ -355,7 +436,11 @@ def test_create_model_custom_folds(load_data):
     exp = TimeSeriesExperiment()
     setup_fold = 3
     exp.setup(
-        data=load_data, fold=setup_fold, fh=12, fold_strategy="sliding", verbose=False,
+        data=load_data,
+        fold=setup_fold,
+        fh=12,
+        fold_strategy="sliding",
+        verbose=False,
     )
 
     #########################################
@@ -578,7 +663,11 @@ def test_tune_model_custom_folds(load_data):
     exp = TimeSeriesExperiment()
     setup_fold = 3
     exp.setup(
-        data=load_data, fold=setup_fold, fh=12, fold_strategy="sliding", verbose=False,
+        data=load_data,
+        fold=setup_fold,
+        fh=12,
+        fold_strategy="sliding",
+        verbose=False,
     )
 
     #######################################

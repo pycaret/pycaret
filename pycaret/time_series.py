@@ -915,15 +915,17 @@ def stack_models(
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def plot_model(
-    estimator,
-    plot: str = "residuals",
+    estimator: Optional[Any] = None,
+    plot: str = "ts",
     scale: float = 1,
     save: bool = False,
     fold: Optional[Union[int, Any]] = None,
     fit_kwargs: Optional[dict] = None,
     use_train_data: bool = False,
     verbose: bool = True,
+    return_data: bool = False,
     display_format: Optional[str] = None,
+    system: bool = True
 ) -> str:
 
     """
@@ -994,6 +996,10 @@ def plot_model(
         Currently, not all plots are supported.
 
 
+    system: bool, default = True
+        Must remain True all times. Only to be changed by internal functions.
+
+
     Returns:
         None
 
@@ -1006,9 +1012,11 @@ def plot_model(
         save=save,
         fold=fold,
         fit_kwargs=fit_kwargs,
-        verbose=verbose,
         use_train_data=use_train_data,
+        verbose=verbose,
+        return_data=return_data,
         display_format=display_format,
+        system=system,
     )
 
 
@@ -1886,14 +1894,14 @@ def set_current_experiment(experiment: TimeSeriesExperiment):
 
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
-def test_model(
+def check_stats(
     estimator: Optional[Any] = None,
     test: str = "all",
     alpha: float = 0.05,
     split: str = "all",
 ) -> pd.DataFrame:
 
-    return _CURRENT_EXPERIMENT.test_model(
+    return _CURRENT_EXPERIMENT.check_stats(
         estimator=estimator, test=test, alpha=alpha, split=split,
     )
 
