@@ -8818,6 +8818,7 @@ def finalize_model(
         estimator=estimator,
         verbose=False,
         system=False,
+        cross_validation=False,
         X_train_data=X,
         y_train_data=y,
         fit_kwargs=fit_kwargs,
@@ -9957,33 +9958,76 @@ def load_config(file_name: str):
     return r
 
 
-def get_leaderboard():
+def get_leaderboard(
+    finalize_models: bool = True,
+    fit_kwargs: Optional[dict] = None,
+    groups: Optional[Union[str, Any]] = None,
+    model_only: bool = True,
+    verbose: bool = True,
+    display: Optional[Display] = None,
+):
     """
     generates leaderboard for all models run in current run.
     """
     model_container = get_config("master_model_container")
     result_container = get_config("create_model_container")
 
-    result_container_mean = []
+    if not display:
+        progress_args = {"max": len(model_container)+1}
+        timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
+        monitor_rows = [
+            ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
+            ["Status", ". . . . . . . . . . . . . . . . . .", "Loading Dependencies"],
+            ["Estimator", ". . . . . . . . . . . . . . . . . .", "Compiling Library"],
+        ]
+        display = Display(
+            verbose=verbose,
+            html_param=html_param,
+            progress_args=progress_args,
+            monitor_rows=monitor_rows,
+        )
 
+        display.display_progress()
+        display.display_monitor()
+
+    result_container_mean = []
+    finalized_models = []
+
+    display.update_monitor(1, "Finalizing models" if finalize_models else "Collecting models")
     for i in range(len(result_container)):
         model_results = result_container[i]
         mean_scores = model_results[-2:-1]
         model_name = _get_model_name(model_container[i])
         mean_scores["Index"] = i
         mean_scores["Model Name"] = model_name
-        mean_scores["Model"] = str(model_container[i])
-        rearranged_columns = list(mean_scores.columns)
-        rearranged_columns.remove("Model")
-        rearranged_columns.remove("Model Name")
-        rearranged_columns = ["Model Name", "Model"] + rearranged_columns
-        mean_scores = mean_scores[rearranged_columns]
+        display.update_monitor(2, model_name)
+        model = (
+            finalize_model(
+                model_container[i],
+                fit_kwargs=fit_kwargs,
+                groups=groups,
+                model_only=model_only,
+            )
+            if finalize_models
+            else model_container[i]
+        )
+        display.move_progress()
+        finalized_models.append(model)
         result_container_mean.append(mean_scores)
 
+    display.update_monitor(1, "Creating dataframe")
     results = pd.concat(result_container_mean)
-
+    results["Model"] = list(range(len(results)))
+    results["Model"] = results["Model"].astype("object")
+    model_loc = results.columns.get_loc("Model")
+    for x in range(len(results)):
+        results.iat[x, model_loc] = finalized_models[x]
+    rearranged_columns = list(results.columns)
+    rearranged_columns.remove("Model")
+    rearranged_columns.remove("Model Name")
+    rearranged_columns = ["Model Name", "Model"] + rearranged_columns
+    results = results[rearranged_columns]
     results.set_index("Index", inplace=True, drop=True)
-
     return results
 
 
