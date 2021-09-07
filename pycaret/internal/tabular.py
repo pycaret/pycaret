@@ -2398,6 +2398,7 @@ def create_model_unsupervised(
     fit_kwargs: Optional[dict] = None,
     verbose: bool = True,
     system: bool = True,
+    add_to_model_list: bool = True,
     raise_num_clusters: bool = False,
     X_data: Optional[pd.DataFrame] = None,  # added in pycaret==2.2.0
     display: Optional[Display] = None,  # added in pycaret==2.2.0
@@ -2730,13 +2731,15 @@ def create_model_unsupervised(
     model_results = pd.DataFrame(metrics, index=[0])
     model_results = model_results.round(round)
 
-    # storing results in create_model_container
-    create_model_container.append(model_results)
     display_container.append(model_results)
 
-    # storing results in master_model_container
-    logger.info("Uploading model into container now")
-    master_model_container.append(model)
+    if add_to_model_list:
+        # storing results in create_model_container
+        create_model_container.append(model_results)
+
+        # storing results in master_model_container
+        logger.info("Uploading model into container now")
+        master_model_container.append(model)
 
     if _ml_usecase == MLUsecase.CLUSTERING:
         display.display(
@@ -2775,6 +2778,7 @@ def create_model_supervised(
     X_train_data: Optional[pd.DataFrame] = None,  # added in pycaret==2.2.0
     y_train_data: Optional[pd.DataFrame] = None,  # added in pycaret==2.2.0
     metrics=None,
+    add_to_model_list: bool = True,
     display: Optional[Display] = None,  # added in pycaret==2.2.0
     **kwargs,
 ) -> Any:
@@ -3218,15 +3222,17 @@ def create_model_supervised(
 
     display.move_progress()
 
-    logger.info("Uploading results into container")
-
-    # storing results in create_model_container
-    create_model_container.append(model_results.data)
     display_container.append(model_results.data)
 
-    # storing results in master_model_container
-    logger.info("Uploading model into container now")
-    master_model_container.append(model)
+    if add_to_model_list:
+        logger.info("Uploading results into container")
+
+        # storing results in create_model_container
+        create_model_container.append(model_results.data)
+
+        # storing results in master_model_container
+        logger.info("Uploading model into container now")
+        master_model_container.append(model)
 
     display.display(model_results, clear=system, override=False if not system else None)
 
@@ -8818,11 +8824,11 @@ def finalize_model(
         estimator=estimator,
         verbose=False,
         system=False,
-        cross_validation=False,
         X_train_data=X,
         y_train_data=y,
         fit_kwargs=fit_kwargs,
         groups=groups,
+        add_to_model_list=False,
     )
     model_results = pull(pop=True)
 
