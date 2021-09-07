@@ -240,6 +240,18 @@ def setup(
         None, skip this treansformation step.
 
 
+    remove_multicollinearity: bool, default = False
+        When set to True, features with the inter-correlations higher than the defined
+        threshold are removed. When two features are highly correlated with each other,
+        the feature that is less correlated with the target variable is removed. Only
+        considers numeric features.
+
+
+    multicollinearity_threshold: float, default = 0.9
+        Threshold for correlated features. Ignored when ``remove_multicollinearity``
+        is not True.
+
+
     remove_outliers: bool, default = False
         When set to True, outliers from the training data are removed using an
         Isolation Forest.
@@ -333,24 +345,6 @@ def setup(
     outliers_threshold: float, default = 0.05
         The percentage outliers to be removed from the training dataset. Ignored when 
         ``remove_outliers`` is not True.
-
-
-    remove_multicollinearity: bool, default = False
-        When set to True, features with the inter-correlations higher than the defined 
-        threshold are removed. When two features are highly correlated with each other, 
-        the feature that is less correlated with the target variable is removed. Only
-        considers numeric features.
-
-
-    multicollinearity_threshold: float, default = 0.9
-        Threshold for correlated features. Ignored when ``remove_multicollinearity``
-        is not True.
-
-
-    remove_perfect_collinearity: bool, default = True
-        When set to True, perfect collinearity (features with correlation = 1) is removed
-        from the dataset, when two features are 100% correlated, one of it is randomly 
-        removed from the dataset.
 
 
     group_features: list or list of list, default = None
@@ -566,6 +560,8 @@ def setup(
         normalize=normalize,
         normalize_method=normalize_method,
         low_variance_threshold=low_variance_threshold,
+        remove_multicollinearity=remove_multicollinearity,
+        multicollinearity_threshold=multicollinearity_threshold,
         remove_outliers=remove_outliers,
         outliers_threshold=outliers_threshold,
         polynomial_features=polynomial_features,
@@ -580,9 +576,6 @@ def setup(
         combine_rare_levels=combine_rare_levels,
         rare_level_threshold=rare_level_threshold,
         bin_numeric_features=bin_numeric_features,
-        remove_multicollinearity=remove_multicollinearity,
-        multicollinearity_threshold=multicollinearity_threshold,
-        remove_perfect_collinearity=remove_perfect_collinearity,
         group_features=group_features,
         group_names=group_names,
         feature_selection=feature_selection,

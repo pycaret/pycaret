@@ -333,12 +333,6 @@ def setup(
         is not True.
 
 
-    remove_perfect_collinearity: bool, default = True
-        When set to True, perfect collinearity (features with correlation = 1) is removed
-        from the dataset, when two features are 100% correlated, one of it is randomly 
-        removed from the dataset.
-
-
     group_features: list or list of list, default = None
         When the dataset contains features with related characteristics, group_features
         parameter can be used for feature extraction. It takes a list of strings with 
@@ -552,6 +546,8 @@ def setup(
         normalize=normalize,
         normalize_method=normalize_method,
         low_variance_threshold=low_variance_threshold,
+        remove_multicollinearity=remove_multicollinearity,
+        multicollinearity_threshold=multicollinearity_threshold,
         remove_outliers=remove_outliers,
         outliers_threshold=outliers_threshold,
         polynomial_features=polynomial_features,
@@ -566,9 +562,6 @@ def setup(
         combine_rare_levels=combine_rare_levels,
         rare_level_threshold=rare_level_threshold,
         bin_numeric_features=bin_numeric_features,
-        remove_multicollinearity=remove_multicollinearity,
-        multicollinearity_threshold=multicollinearity_threshold,
-        remove_perfect_collinearity=remove_perfect_collinearity,
         group_features=group_features,
         group_names=group_names,
         feature_selection=feature_selection,

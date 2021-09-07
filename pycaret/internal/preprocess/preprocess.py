@@ -128,6 +128,54 @@ class TransfomerWrapper(BaseEstimator):
         return self.fit(*args, **kwargs).transform(*args, **kwargs)
 
 
+class ExtractDateTimeFeatures(BaseEstimator):
+    """Extract features from datetime columns."""
+
+    def __init__(self, features=["day", "month", "year"]):
+        self.features = features
+
+    def fit(self, X, y=None):
+        return self
+
+    def transform(self, X, y=None):
+        for col in X:
+            if col.dtype != "datetime64":
+                raise TypeError(f"Column {col} has no dtype datetime64!")
+
+            for fx in self.features:
+                values = getattr(col.dt, fx)
+
+                # Only create feature if values contains less than 30% NaTs
+                if values.isna().sum() <= 0.3 * len(values):
+                    X.insert(X.columns.get_loc(col) + 1, f"{col}_{fx}", values)
+
+            X = X.drop(col, axis=1)  # Drop the original datetime column
+
+        return X
+
+
+class RemoveMulticollinearity(BaseEstimator):
+    """Drop multicollinear features."""
+
+    def __init__(self, threshold=1):
+        self.threshold = threshold
+        self._drop = None
+
+    def fit(self, X, y=None):
+        mtx = X.corr()  # Pearson correlation coefficient matrix
+
+        # Extract the upper triangle of the correlation matrix
+        upper = mtx.where(np.triu(np.ones(mtx.shape).astype(bool), k=1))
+
+        # Select the features with correlations above the threshold
+        self._drop = [i for i in upper.columns if any(abs(upper[i] >= self.threshold))]
+
+        return self
+
+    def transform(self, X, y=None):
+        return X.drop(self._drop, axis=1)
+
+
 class RemoveOutliers(BaseEstimator):
     """Transformer to drop outliers from a dataset."""
 

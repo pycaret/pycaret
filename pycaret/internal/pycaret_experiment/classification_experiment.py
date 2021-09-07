@@ -96,6 +96,8 @@ class ClassificationExperiment(_SupervisedExperiment):
                     ["Normalize", kwargs["normalize"]],
                     ["Normalize method", kwargs["normalize_method"]],
                     ["Low variance threshold", kwargs["low_variance_threshold"]],
+                    ["Remove multicollinearity", kwargs["remove_multicollinearity"]],
+                    ["Multicollinearity threshold", kwargs["multicollinearity_threshold"]],
                     ["Remove outliers", kwargs["remove_outliers"]],
                     ["Outliers threshold", kwargs["outliers_threshold"]],
                     ["Polynomial degree", kwargs["polynomial_degree"]],

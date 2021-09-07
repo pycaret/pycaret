@@ -22,6 +22,8 @@ Changes:
   or fraction of components.
 - `remove_low_variance` is deprecated. Use `low_variance_threshold` instead. Now
   works for all numerical columns (is done after encoding).
+- Remove `remove_perfect_collinearity` parameter. Same can be achieved
+  setting multicollinearity_threshold=1.
 - Remove `trigonometry_features` parameter.
 - Removed `polynomial_threshold` parameter.
 - Removed `create_cluster` parameter.
@@ -33,12 +35,14 @@ Changes:
 
 Preprocessing steps:
 
+- create features form datetime columns
 - encoding: DONE
 - simple imputation: DONE
 - iterative imputation: DONE
 - transformation: DONE
 - normalization: DONE
 - low variance: DONE
+- remove multicollinearity: DONE
 - remove outliers: DONE
 - polynomial features: DONE
 - fix imbalance: DONE

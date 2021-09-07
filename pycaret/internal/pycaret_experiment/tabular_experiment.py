@@ -21,7 +21,12 @@ import sklearn
 from imblearn.over_sampling import SMOTE
 from pandas.io.formats.style import Styler
 from pycaret.internal.logging import create_logger
-from pycaret.internal.preprocess import TransfomerWrapper, RemoveOutliers
+from pycaret.internal.preprocess import (
+    TransfomerWrapper,
+    ExtractDateTimeFeatures,
+    RemoveMulticollinearity,
+    RemoveOutliers,
+)
 from pycaret.internal.meta_estimators import get_estimator_from_meta_estimator
 from pycaret.internal.pipeline import Pipeline as InternalPipeline
 from pycaret.internal.pipeline import (
@@ -395,8 +400,10 @@ class _TabularExperiment(_PyCaretExperiment):
         normalize: bool = False,
         normalize_method: str = "zscore",
         low_variance_threshold: float = 0,
-        outliers_threshold: float = 0.05,
         remove_multicollinearity: bool = False,
+        multicollinearity_threshold: float = 0.9,
+        remove_outliers: bool = False,
+        outliers_threshold: float = 0.05,
         polynomial_features: bool = False,
         polynomial_degree: int = 2,
         fix_imbalance: bool = False,
@@ -409,9 +416,6 @@ class _TabularExperiment(_PyCaretExperiment):
         combine_rare_levels: bool = False,
         rare_level_threshold: float = 0.10,
         bin_numeric_features: Optional[List[str]] = None,
-        remove_outliers: bool = False,
-        multicollinearity_threshold: float = 0.9,
-        remove_perfect_collinearity: bool = True,
         group_features: Optional[List[str]] = None,
         group_names: Optional[List[str]] = None,
         feature_selection: bool = False,
@@ -531,8 +535,6 @@ class _TabularExperiment(_PyCaretExperiment):
         elif data.empty:
             raise ValueError("The provided data cannot be an empty dataframe.")
 
-        if not isinstance(train_size, float):
-            raise TypeError("The train_size parameter must be of type float.")
         if train_size <= 0 or train_size > 1:
             raise ValueError("train_size parameter has to be positive and not above 1.")
 
@@ -546,10 +548,6 @@ class _TabularExperiment(_PyCaretExperiment):
         if session_id is not None:
             if type(session_id) is not int:
                 raise TypeError("session_id parameter must be an integer.")
-
-        # checking profile parameter
-        if not isinstance(profile, bool):
-            raise TypeError("profile parameter only accepts True or False.")
 
         if profile_kwargs is None:
             profile_kwargs = {}
@@ -598,19 +596,6 @@ class _TabularExperiment(_PyCaretExperiment):
                 f"high_cardinality_method parameter only accepts {', '.join(high_cardinality_allowed_methods)}."
             )
 
-        if type(combine_rare_levels) is not bool:
-            raise TypeError("combine_rare_levels parameter only accepts True or False.")
-
-        # check rare_level_threshold
-        if (
-            type(rare_level_threshold) is not float
-            and rare_level_threshold < 0
-            or rare_level_threshold > 1
-        ):
-            raise TypeError(
-                "rare_level_threshold parameter must be a float between 0 and 1."
-            )
-
         # bin numeric features
         if bin_numeric_features is not None:
             if type(bin_numeric_features) is not list:
@@ -625,80 +610,12 @@ class _TabularExperiment(_PyCaretExperiment):
                         f"bin_numeric_feature: {bin_numeric_feature} is either target column or does not exist in the dataset."
                     )
 
-        # remove_outliers
-        if type(remove_outliers) is not bool:
-            raise TypeError("remove_outliers parameter only accepts True or False.")
-
-        # outliers_threshold
-        if type(outliers_threshold) is not float:
-            raise TypeError("outliers_threshold must be a float between 0 and 1.")
-
-        # remove_multicollinearity
-        if type(remove_multicollinearity) is not bool:
-            raise TypeError(
-                "remove_multicollinearity parameter only accepts True or False."
-            )
-
-        # multicollinearity_threshold
-        if type(multicollinearity_threshold) is not float:
-            raise TypeError(
-                "multicollinearity_threshold must be a float between 0 and 1."
-            )
-
-        # feature_selection
-        if type(feature_selection) is not bool:
-            raise TypeError("feature_selection only accepts True or False.")
-
-        # feature_selection_threshold
-        if type(feature_selection_threshold) is not float:
-            raise TypeError(
-                "feature_selection_threshold must be a float between 0 and 1."
-            )
-
         # feature_selection_method
         feature_selection_methods = ["boruta", "classic"]
         if feature_selection_method not in feature_selection_methods:
             raise TypeError(
                 f"feature_selection_method must be one of {', '.join(feature_selection_methods)}"
             )
-
-        # feature_interaction
-        if type(feature_interaction) is not bool:
-            raise TypeError("feature_interaction only accepts True or False.")
-
-        # feature_ratio
-        if type(feature_ratio) is not bool:
-            raise TypeError("feature_ratio only accepts True or False.")
-
-        # interaction_threshold
-        if type(interaction_threshold) is not float:
-            raise TypeError("interaction_threshold must be a float between 0 and 1.")
-
-        # log_experiment
-        if type(log_experiment) is not bool:
-            raise TypeError("log_experiment parameter only accepts True or False.")
-
-        # log_profile
-        if type(log_profile) is not bool:
-            raise TypeError("log_profile parameter only accepts True or False.")
-
-        # silent
-        if type(silent) is not bool:
-            raise TypeError("silent parameter only accepts True or False.")
-
-        # remove_perfect_collinearity
-        if type(remove_perfect_collinearity) is not bool:
-            raise TypeError(
-                "remove_perfect_collinearity parameter only accepts True or False."
-            )
-
-        # html
-        if type(html) is not bool:
-            raise TypeError("html parameter only accepts True or False.")
-
-        # data_split_shuffle
-        if type(data_split_shuffle) is not bool:
-            raise TypeError("data_split_shuffle parameter only accepts True or False.")
 
         possible_fold_strategy = [
             "kfold",
@@ -765,10 +682,6 @@ class _TabularExperiment(_PyCaretExperiment):
         # log_data
         if type(log_data) is not bool:
             raise TypeError("log_data parameter only accepts True or False.")
-
-        # fix_imbalance
-        if type(fix_imbalance) is not bool:
-            raise TypeError("fix_imbalance parameter only accepts True or False.")
 
         # check transform_target
         if type(transform_target) is not bool:
@@ -857,9 +770,13 @@ class _TabularExperiment(_PyCaretExperiment):
 
         # Date feature engineering =============================== >>
 
-        # TODO: Extract features from date columns
+        # TODO: Could be improved allowing the user to choose which features to add
         if date_cols:
             self.logger.info("Extracting features from datetime columns")
+            self.data = TransfomerWrapper(
+                transformer=ExtractDateTimeFeatures(),
+                columns=[c for c in date_cols if c not in ign_cols],
+            )
 
         # Imputation =========================================== >>
 
@@ -1081,6 +998,23 @@ class _TabularExperiment(_PyCaretExperiment):
 
                 self._internal_pipeline.steps.append(("low_variance", variance_estimator))
 
+            # Remove multicollinearity ============================= >>
+
+            if remove_multicollinearity:
+                self.logger.info("Setting up removing multicollinearity")
+                if 0 <= multicollinearity_threshold <= 1:
+                    raise ValueError(
+                        "Invalid value for the multicollinearity_threshold "
+                        "parameter. Value should lie between 0 and 1, got "
+                        f"{multicollinearity_threshold}."
+                    )
+
+                multicollinearity = RemoveMulticollinearity(multicollinearity_threshold)
+
+                self._internal_pipeline.steps.append(
+                    ("remove_multicollinearity", multicollinearity)
+                )
+
             # Remove outliers ====================================== >>
 
             if remove_outliers:
@@ -1298,6 +1232,8 @@ class _TabularExperiment(_PyCaretExperiment):
             normalize=normalize,
             normalize_method=normalize_method,
             low_variance_threshold=low_variance_threshold,
+            remove_multicollinearity=remove_multicollinearity,
+            multicollinearity_threshold=multicollinearity_threshold,
             remove_outliers=remove_outliers,
             outliers_threshold=outliers_threshold,
             polynomial_features=polynomial_features,
