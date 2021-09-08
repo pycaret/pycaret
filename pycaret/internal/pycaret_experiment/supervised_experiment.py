@@ -862,7 +862,7 @@ class _SupervisedExperiment(_TabularExperiment):
                             source="compare_models",
                             runtime=row["runtime"],
                             model_fit_time=row["TT (Sec)"],
-                            _prep_pipe=self.prep_pipe,
+                            _prep_pipe=self._internal_pipeline,
                             log_plots=self.log_plots_param if full_logging else False,
                             log_holdout=full_logging,
                             URI=URI,
@@ -1422,7 +1422,7 @@ class _SupervisedExperiment(_TabularExperiment):
                     source="create_model",
                     runtime=runtime,
                     model_fit_time=model_fit_time,
-                    _prep_pipe=self.prep_pipe,
+                    _prep_pipe=self._internal_pipeline,
                     log_plots=self.log_plots_param,
                     display=display,
                 )
@@ -2429,7 +2429,7 @@ class _SupervisedExperiment(_TabularExperiment):
                     source="tune_model",
                     runtime=runtime,
                     model_fit_time=model_fit_time,
-                    _prep_pipe=self.prep_pipe,
+                    _prep_pipe=self._internal_pipeline,
                     log_plots=self.log_plots_param,
                     tune_cv_results=cv_results,
                     display=display,
@@ -2784,7 +2784,7 @@ class _SupervisedExperiment(_TabularExperiment):
                     source="ensemble_model",
                     runtime=runtime,
                     model_fit_time=model_fit_time,
-                    _prep_pipe=self.prep_pipe,
+                    _prep_pipe=self._internal_pipeline,
                     log_plots=self.log_plots_param,
                     display=display,
                 )
@@ -3160,7 +3160,7 @@ class _SupervisedExperiment(_TabularExperiment):
                     source="blend_models",
                     runtime=runtime,
                     model_fit_time=model_fit_time,
-                    _prep_pipe=self.prep_pipe,
+                    _prep_pipe=self._internal_pipeline,
                     log_plots=self.log_plots_param,
                     display=display,
                 )
@@ -3523,7 +3523,7 @@ class _SupervisedExperiment(_TabularExperiment):
                     source="stack_models",
                     runtime=runtime,
                     model_fit_time=model_fit_time,
-                    _prep_pipe=self.prep_pipe,
+                    _prep_pipe=self._internal_pipeline,
                     log_plots=self.log_plots_param,
                     display=display,
                 )
@@ -3703,7 +3703,7 @@ class _SupervisedExperiment(_TabularExperiment):
 
         # Storing X_train and y_train in data_X and data_y parameter
         if X_new_sample is not None:
-            test_X = self.prep_pipe.transform(X_new_sample)
+            test_X = self._internal_pipeline.transform(X_new_sample)
         else:
             # Storing X_train and y_train in data_X and data_y parameter
             test_X = self.X_train if use_train_data else self.X_test
@@ -4280,7 +4280,7 @@ class _SupervisedExperiment(_TabularExperiment):
                     source="finalize_model",
                     runtime=runtime,
                     model_fit_time=model_fit_time,
-                    _prep_pipe=self.prep_pipe,
+                    _prep_pipe=self._internal_pipeline,
                     log_plots=self.log_plots_param,
                     display=display,
                 )
@@ -4304,7 +4304,7 @@ class _SupervisedExperiment(_TabularExperiment):
 
         gc.collect()
         if not model_only:
-            pipeline_final = deepcopy(self.prep_pipe)
+            pipeline_final = deepcopy(self._internal_pipeline)
             pipeline_final.steps.append(["trained_model", model_final])
             return pipeline_final
 
@@ -4449,7 +4449,7 @@ class _SupervisedExperiment(_TabularExperiment):
             X_test_ = self.X_test.copy()
             y_test_ = self.y_test.copy()
 
-            dtypes = self.prep_pipe.named_steps["dtypes"]
+            dtypes = self._internal_pipeline.named_steps["dtypes"]
 
             X_test_.reset_index(drop=True, inplace=True)
             y_test_.reset_index(drop=True, inplace=True)
@@ -4460,9 +4460,9 @@ class _SupervisedExperiment(_TabularExperiment):
                 dtypes = estimator.named_steps["dtypes"]
             else:
                 try:
-                    dtypes = self.prep_pipe.named_steps["dtypes"]
+                    dtypes = self._internal_pipeline.named_steps["dtypes"]
 
-                    estimator_ = deepcopy(self.prep_pipe)
+                    estimator_ = deepcopy(self._internal_pipeline)
                     if is_sklearn_pipeline(estimator):
                         merge_pipelines(estimator_, estimator)
                         estimator_.steps[-1] = (

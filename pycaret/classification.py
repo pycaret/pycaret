@@ -155,8 +155,9 @@ def setup(
 
 
     ignore_features: list of str, default = None
-        ignore_features param can be used to ignore features during model training.
-        It takes a list of strings with column names that are to be ignored.
+        ignore_features param can be used to ignore features during preprocessing
+        and model training. It takes a list of strings with column names that are
+        to be ignored.
 
 
     preprocess: bool, default = True
@@ -236,6 +237,17 @@ def setup(
         threshold. The default is to keep all features with non-zero variance,
         i.e. remove the features that have the same value in all samples. If
         None, skip this treansformation step.
+
+
+    remove_multicollinearity: bool, default = False
+        When set to True, features with the inter-correlations higher than the defined
+        threshold are removed. When two features are highly correlated with each other,
+        the feature that is less correlated with the target variable is removed. Only
+        considers numeric features.
+
+    multicollinearity_threshold: float, default = 0.9
+        Threshold for correlated features. Ignored when ``remove_multicollinearity``
+        is not True.
 
 
     remove_outliers: bool, default = False
@@ -320,17 +332,6 @@ def setup(
         so by using 'sturges' rule to determine the number of clusters and then apply
         KMeans algorithm. Original values of the feature are then replaced by the
         cluster label.
-
-
-    remove_multicollinearity: bool, default = False
-        When set to True, features with the inter-correlations higher than the defined 
-        threshold are removed. When two features are highly correlated with each other, 
-        the feature that is less correlated with the target variable is removed. Only
-        considers numeric features.
-
-    multicollinearity_threshold: float, default = 0.9
-        Threshold for correlated features. Ignored when ``remove_multicollinearity``
-        is not True.
 
 
     group_features: list or list of list, default = None

@@ -26,10 +26,16 @@ class TransfomerWrapper(BaseEstimator):
         self.transformer = transformer
         self.columns = columns
 
+    def __repr__(self, N_CHAR_MAX=1400):
+        return self.transformer.__repr__(N_CHAR_MAX)
+
     def fit(self, X, y=None, **fit_params):
+        if not self.columns:
+            self.columns = X.columns
+
         args = []
         if "X" in signature(self.transformer.fit).parameters:
-            args.append(X[X.columns if not self.columns else self.columns])
+            args.append(X[self.columns])
         if "y" in signature(self.transformer.fit).parameters:
             args.append(y)
 
@@ -55,8 +61,8 @@ class TransfomerWrapper(BaseEstimator):
 
             """
             # If columns were only transformed, return og names
-            if array.shape[1] == df.shape[1]:
-                return df.columns
+            if array.shape[1] == len(self.columns):
+                return self.columns
 
             # If columns were added or removed
             temp_cols = []
@@ -65,7 +71,7 @@ class TransfomerWrapper(BaseEstimator):
                 if any(mask):
                     temp_cols.append(mask[mask].index.values[0])
                 else:
-                    diff = len(df.columns) - len(X.columns if not self.columns else self.columns)
+                    diff = len(df.columns) - len(self.columns)
                     temp_cols.append(f"Feature {str(i + diff)}")
 
             return temp_cols
@@ -100,9 +106,12 @@ class TransfomerWrapper(BaseEstimator):
 
             return temp_df
 
+        if not self.columns:
+            self.columns = X.columns
+
         args = []
         if "X" in signature(self.transformer.transform).parameters:
-            args.append(X[X.columns if not self.columns else self.columns])
+            args.append(X[self.columns])
         if "y" in signature(self.transformer.transform).parameters:
             args.append(y)
         output = self.transformer.transform(*args)

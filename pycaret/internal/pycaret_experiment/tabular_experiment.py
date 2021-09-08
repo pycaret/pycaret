@@ -975,7 +975,10 @@ class _TabularExperiment(_PyCaretExperiment):
                     "robust": RobustScaler(),
                 }
                 if normalize_method in norm_dict:
-                    normalize_estimator = norm_dict[normalize_method]
+                    normalize_estimator = TransfomerWrapper(
+                        transformer=norm_dict[normalize_method],
+                        columns=[c for c in self.X.columns if c not in ign_cols],
+                    )
                 else:
                     raise ValueError(
                         "Invalid value for the normalize_method parameter, got "
@@ -994,7 +997,10 @@ class _TabularExperiment(_PyCaretExperiment):
                         f"The value should be >0, got {low_variance_threshold}."
                     )
                 else:
-                    variance_estimator = VarianceThreshold(low_variance_threshold)
+                    variance_estimator = TransfomerWrapper(
+                        transformer=VarianceThreshold(low_variance_threshold),
+                        columns=[c for c in self.X.columns if c not in ign_cols],
+                    )
 
                 self._internal_pipeline.steps.append(("low_variance", variance_estimator))
 
@@ -1002,14 +1008,17 @@ class _TabularExperiment(_PyCaretExperiment):
 
             if remove_multicollinearity:
                 self.logger.info("Setting up removing multicollinearity")
-                if 0 <= multicollinearity_threshold <= 1:
+                if 0 > multicollinearity_threshold or multicollinearity_threshold > 1:
                     raise ValueError(
                         "Invalid value for the multicollinearity_threshold "
                         "parameter. Value should lie between 0 and 1, got "
                         f"{multicollinearity_threshold}."
                     )
 
-                multicollinearity = RemoveMulticollinearity(multicollinearity_threshold)
+                multicollinearity = TransfomerWrapper(
+                    transformer=RemoveMulticollinearity(multicollinearity_threshold),
+                    columns=[c for c in self.X.columns if c not in ign_cols],
+                )
 
                 self._internal_pipeline.steps.append(
                     ("remove_multicollinearity", multicollinearity)
@@ -1019,9 +1028,9 @@ class _TabularExperiment(_PyCaretExperiment):
 
             if remove_outliers:
                 self.logger.info("Setting up removing outliers")
-                outliers = RemoveOutliers(
-                    method="if",
-                    threshold=outliers_threshold,
+                outliers = TransfomerWrapper(
+                    transformer=RemoveOutliers(method="if", threshold=outliers_threshold),
+                    columns=[c for c in self.X.columns if c not in ign_cols],
                 )
 
                 self._internal_pipeline.steps.append(
@@ -1032,11 +1041,14 @@ class _TabularExperiment(_PyCaretExperiment):
 
             if polynomial_features:
                 self.logger.info("Setting up polynomial features")
-                polynomial = PolynomialFeatures(
-                    degree=polynomial_degree,
-                    interaction_only=False,
-                    include_bias=True,
-                    order="C",
+                polynomial = TransfomerWrapper(
+                    transformer=PolynomialFeatures(
+                        degree=polynomial_degree,
+                        interaction_only=False,
+                        include_bias=True,
+                        order="C",
+                    ),
+                    columns=[c for c in self.X.columns if c not in ign_cols],
                 )
 
                 self._internal_pipeline.steps.append(
@@ -1058,6 +1070,10 @@ class _TabularExperiment(_PyCaretExperiment):
                 else:
                     balance_estimator = fix_imbalance_method
 
+                balance_estimator = TransfomerWrapper(
+                    transformer=balance_estimator,
+                    columns=[c for c in self.X.columns if c not in ign_cols],
+                )
                 self._internal_pipeline.steps.append(("balance", balance_estimator))
 
             # PCA ================================================== >>
@@ -1086,7 +1102,10 @@ class _TabularExperiment(_PyCaretExperiment):
                     "incremental": IncrementalPCA(n_components=pca_components),
                 }
                 if pca_method in pca_dict:
-                    pca_estimator = pca_dict[pca_method]
+                    pca_estimator = TransfomerWrapper(
+                        transformer=pca_dict[pca_method],
+                        columns=[c for c in self.X.columns if c not in ign_cols],
+                    )
                 else:
                     raise ValueError(
                         "Invalid value for the pca_method parameter, got "
@@ -1100,7 +1119,11 @@ class _TabularExperiment(_PyCaretExperiment):
             if custom_pipeline:
                 self.logger.info("Setting up custom pipeline")
                 for name, estimator in normalize_custom_transformers(custom_pipeline):
-                    self._internal_pipeline.steps.append((name, estimator))
+                    transformer = TransfomerWrapper(
+                        transformer=estimator,
+                        columns=[c for c in self.X.columns if c not in ign_cols],
+                    )
+                    self._internal_pipeline.steps.append((name, transformer))
 
             self.logger.info(f"Finished creating preprocessing pipeline.")
             self.logger.info(f"Pipeline: {self._internal_pipeline}")
@@ -2567,7 +2590,7 @@ class _TabularExperiment(_PyCaretExperiment):
                             if self._ml_usecase == MLUsecase.CLASSIFICATION:
                                 class_names = {
                                     v: k
-                                    for k, v in self.prep_pipe.named_steps[
+                                    for k, v in self._internal_pipeline.named_steps[
                                         "dtypes"
                                     ].replacement.items()
                                 }
@@ -3463,7 +3486,7 @@ class _TabularExperiment(_PyCaretExperiment):
 
         """
         return pycaret.internal.persistence.deploy_model(
-            model, model_name, authentication, platform, self.prep_pipe
+            model, model_name, authentication, platform, self._internal_pipeline
         )
 
     def save_model(
@@ -3510,7 +3533,7 @@ class _TabularExperiment(_PyCaretExperiment):
 
         """
         return pycaret.internal.persistence.save_model(
-            model, model_name, None if model_only else self.prep_pipe, verbose, **kwargs
+            model, model_name, None if model_only else self._internal_pipeline, verbose, **kwargs
         )
 
     def load_model(

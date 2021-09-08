@@ -192,7 +192,7 @@ class _UnsupervisedExperiment(_TabularExperiment):
         fh=None,
     ) -> None:
         display.move_progress()
-        self.X = self.prep_pipe.fit_transform(train_data).drop(target, axis=1)
+        self.X = self._internal_pipeline.fit_transform(train_data).drop(target, axis=1)
         self.X_train = self.X
 
     def _set_up_mlflow(
@@ -204,7 +204,7 @@ class _UnsupervisedExperiment(_TabularExperiment):
         # log into experiment
         self.experiment__.append(("Setup Config", functions))
         self.experiment__.append(("Transformed Data", self.X))
-        self.experiment__.append(("Transformation Pipeline", self.prep_pipe))
+        self.experiment__.append(("Transformation Pipeline", self._internal_pipeline))
 
         if self.logging_param:
 
@@ -250,7 +250,7 @@ class _UnsupervisedExperiment(_TabularExperiment):
                     "SubProcess save_model() called =================================="
                 )
                 self.save_model(
-                    self.prep_pipe, "Transformation Pipeline", verbose=False
+                    self._internal_pipeline, "Transformation Pipeline", verbose=False
                 )
                 self.logger.info(
                     "SubProcess save_model() end =================================="
@@ -715,7 +715,7 @@ class _UnsupervisedExperiment(_TabularExperiment):
                     source="tune_model",
                     runtime=runtime,
                     model_fit_time=best_model_fit_time,
-                    _prep_pipe=self.prep_pipe,
+                    _prep_pipe=self._internal_pipeline,
                     log_plots=self.log_plots_param,
                     display=display,
                 )
@@ -910,10 +910,10 @@ class _UnsupervisedExperiment(_TabularExperiment):
             if ml_usecase == MLUsecase.ANOMALY:
                 pred_score = estimator.decision_function(data_transformed)
         else:
-            pred = estimator.predict(self.prep_pipe.transform(data_transformed))
+            pred = estimator.predict(self._internal_pipeline.transform(data_transformed))
             if ml_usecase == MLUsecase.ANOMALY:
                 pred_score = estimator.decision_function(
-                    self.prep_pipe.transform(data_transformed)
+                    self._internal_pipeline.transform(data_transformed)
                 )
 
         if ml_usecase == MLUsecase.CLUSTERING:
@@ -1265,7 +1265,7 @@ class _UnsupervisedExperiment(_TabularExperiment):
                     source="create_model",
                     runtime=runtime,
                     model_fit_time=model_fit_time,
-                    _prep_pipe=self.prep_pipe,
+                    _prep_pipe=self._internal_pipeline,
                     log_plots=self.log_plots_param,
                     display=display,
                 )

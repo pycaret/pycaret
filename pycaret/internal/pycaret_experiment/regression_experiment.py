@@ -53,7 +53,7 @@ class RegressionExperiment(_SupervisedExperiment):
             [
                 ["session_id", self.seed],
                 ["Target", self.target_param],
-                ["Original Data", self.data_before_preprocess.shape],
+                ["Original Data", self.data.shape],
                 ["Missing Values", kwargs["missing_flag"]],
                 ["Numeric Features", str(kwargs["float_type"])],
                 ["Categorical Features", str(kwargs["cat_type"])],
