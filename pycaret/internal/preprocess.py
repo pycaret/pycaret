@@ -1450,7 +1450,7 @@ class Make_Time_Features(BaseEstimator, TransformerMixin):
     def transform(self, dataset, y=None):
         data = dataset.copy()
         # run fit transform first
-
+         
         def get_time_features(r):
             features = []
             if "month" in self.list_of_features_o:
@@ -1462,7 +1462,7 @@ class Make_Time_Features(BaseEstimator, TransformerMixin):
                     (
                         "_is_month_end",
                         "1"
-                        if calendar.monthrange(r.year, r.month)[1] == r.day
+                        if not pd.isnull(r) and calendar.monthrange(r.year, r.month)[1] == r.day
                         else "0",
                     )
                 )
@@ -1476,7 +1476,7 @@ class Make_Time_Features(BaseEstimator, TransformerMixin):
 
             fd = defaultdict(list)
             for x in list_of_features:
-                for k, v in x:
+               for k, v in x:
                     fd[k].append(v)
 
             for k, v in fd.items():
