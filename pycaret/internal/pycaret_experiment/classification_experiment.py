@@ -76,6 +76,7 @@ class ClassificationExperiment(_SupervisedExperiment):
                 ["Categorical features", kwargs["categorical_features"]],
                 ["Date features", kwargs["date_features"]],
                 ["Ignored features", kwargs["ignore_features"]],
+                ["Kept features", kwargs["keep_features"]],
                 ["Missing Values", kwargs["missing_values"]],
                 ["Preprocess", kwargs["preprocess"]],
             ]

@@ -31,7 +31,7 @@ class TransfomerWrapper(BaseEstimator):
 
     def fit(self, X, y=None, **fit_params):
         if not self.columns:
-            self.columns = X.columns
+            self.columns = list(X.columns)
 
         args = []
         if "X" in signature(self.transformer.fit).parameters:
@@ -107,7 +107,7 @@ class TransfomerWrapper(BaseEstimator):
             return temp_df
 
         if not self.columns:
-            self.columns = X.columns
+            self.columns = list(X.columns)
 
         args = []
         if "X" in signature(self.transformer.transform).parameters:

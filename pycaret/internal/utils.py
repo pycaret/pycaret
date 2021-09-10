@@ -24,6 +24,14 @@ class SeasonalPeriod(IntEnum):
     Y = 1 #year
 
 
+class TSModelTypes(Enum):
+    BASELINE = 'baseline'
+    CLASSICAL = 'classical'
+    LINEAR = 'linear'
+    NEIGHBORS = 'neighbors'
+    TREE = 'tree'
+
+
 def to_df(data, index=None, columns=None, pca=False):
     """Convert a dataset to pd.Dataframe.
 
@@ -85,12 +93,11 @@ def to_series(data, index=None, name="Target"):
     return data
 
 
-class TSModelTypes(Enum):
-    BASELINE = 'baseline'
-    CLASSICAL = 'classical'
-    LINEAR = 'linear'
-    NEIGHBORS = 'neighbors'
-    TREE = 'tree'
+def check_features_exist(features, df):
+    """Raise an error if the features are not in the dataframe."""
+    for fx in features:
+        if fx not in df.columns:
+            raise ValueError(f"Column {fx} not found in the dataset!")
 
 
 def id_or_display_name(metric, input_ml_usecase, target_ml_usecase):

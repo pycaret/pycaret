@@ -22,7 +22,7 @@ def test():
         ignore_features=["Time"],
         n_jobs=1,
     )
-    assert "Time" not in list(pycaret.classification.get_config("X_train").columns)
+    assert "Time" not in clf1.X.columns
 
 
 if __name__ == "__main__":

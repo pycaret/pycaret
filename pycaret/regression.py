@@ -35,6 +35,7 @@ def setup(
     categorical_features: Optional[List[str]] = None,
     date_features: Optional[List[str]] = None,
     ignore_features: Optional[List[str]] = None,
+    keep_features: Optional[List[str]] = None,
     preprocess: bool = True,
     imputation_type: str = "simple",
     numeric_imputation: str = "mean",
@@ -48,6 +49,8 @@ def setup(
     normalize: bool = False,
     normalize_method: str = "zscore",
     low_variance_threshold: float = 0,
+    remove_multicollinearity: bool = False,
+    multicollinearity_threshold: float = 0.9,
     remove_outliers: bool = False,
     outliers_threshold: float = 0.05,
     polynomial_features: bool = False,
@@ -62,9 +65,6 @@ def setup(
     combine_rare_levels: bool = False,
     rare_level_threshold: float = 0.10,
     bin_numeric_features: Optional[List[str]] = None,
-    remove_multicollinearity: bool = False,
-    multicollinearity_threshold: float = 0.9,
-    remove_perfect_collinearity: bool = True,
     group_features: Optional[List[str]] = None,
     group_names: Optional[List[str]] = None,
     feature_selection: bool = False,
@@ -133,39 +133,47 @@ def setup(
 
 
     ordinal_features: dict, default = None
-        Encode categorical features as ordinal. For example, a categorical feature with
-        'low', 'medium', 'high' values where low < medium < high can be passed as
-        ordinal_features = { 'column_name' : ['low', 'medium', 'high'] }.
+        Categorical features to be encoded ordinally. For example, a categorical
+        feature with 'low', 'medium', 'high' values where low < medium < high can
+        be passed as ordinal_features = {'column_name' : ['low', 'medium', 'high']}.
 
 
     numeric_features: list of str, default = None
-        If the inferred data types are not correct or the silent param is set to True,
-        numeric_features param can be used to overwrite or define the data types.
-        It takes a list of strings with column names that are numeric.
+        If the inferred data types are not correct, the numeric_features param can
+        be used to define the data types. It takes a list of strings with column
+        names that are numeric.
 
 
     categorical_features: list of str, default = None
-        If the inferred data types are not correct or the silent param is set to True,
-        categorical_features param can be used to overwrite or define the data types.
-        It takes a list of strings with column names that are categorical.
+        If the inferred data types are not correct, the categorical_features param
+        can be used to define the data types. It takes a list of strings with column
+        names that are categorical.
 
 
     date_features: list of str, default = None
-        If the inferred data types are not correct or the silent param is set to True,
-        date_features param can be used to overwrite or define the data types. It takes
-        a list of strings with column names that are DateTime.
+        If the inferred data types are not correct, the date_features param can be
+        used to overwrite the data types. It takes a list of strings with column
+        names that are DateTime.
 
 
     ignore_features: list of str, default = None
-        ignore_features param can be used to ignore features during model training.
-        It takes a list of strings with column names that are to be ignored.
+        ignore_features param can be used to ignore features during preprocessing
+        and model training. It takes a list of strings with column names that are
+        to be ignored.
+
+
+    keep_features: list of str, default = None
+        keep_features param can be used to always keep specific features during
+        preprocessing, i.e. these features are never dropped by any kind of
+        feature selection. It takes a list of strings with column names that are
+        to be kept.
 
 
     preprocess: bool, default = True
-        When set to False, no transformations are applied except for train_test_split
-        and custom transformations passed in ``custom_pipeline`` param. Data must be
-        ready for modeling (no missing values, no dates, categorical data encoding),
-        when preprocess is set to False.
+        When set to False, no transformations are applied except for missing
+        values imputation, train_test_split and custom transformations passed
+        in ``custom_pipeline`` param. When False, the data must be ready for
+        modeling (no dates, categorical data encoding, etc...).
 
 
     imputation_type: str, default = 'simple'
@@ -547,6 +555,7 @@ def setup(
         categorical_features=categorical_features,
         date_features=date_features,
         ignore_features=ignore_features,
+        keep_features=keep_features,
         preprocess=preprocess,
         imputation_type=imputation_type,
         numeric_imputation=numeric_imputation,

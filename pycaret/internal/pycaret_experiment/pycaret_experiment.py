@@ -415,24 +415,29 @@ class _PyCaretExperiment:
         return self.display_container.pop(-1) if pop else self.display_container[-1]
 
     @property
+    def dataset(self):
+        """Complete dataset without ignored columns."""
+        return self.data[[c for c in self.data.columns if c not in self._ign_cols]]
+
+    @property
     def train(self):
         """Training set."""
-        return self.data[:self.idx[0]]
+        return self.dataset[:self.idx[0]]
 
     @property
     def test(self):
         """Test set."""
-        return self.data[-self.idx[1]:]
+        return self.dataset[-self.idx[1]:]
 
     @property
     def X(self):
         """Feature set."""
-        return self.data.drop(self.target_param, axis=1)
+        return self.dataset.drop(self.target_param, axis=1)
 
     @property
     def y(self):
         """Target column."""
-        return self.data[self.target_param]
+        return self.dataset[self.target_param]
 
     @property
     def X_train(self):

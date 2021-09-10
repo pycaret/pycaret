@@ -40,6 +40,7 @@ from pycaret.internal.pycaret_experiment.pycaret_experiment import _PyCaretExper
 from pycaret.containers.models.regression import get_all_model_containers as get_regressors
 from pycaret.internal.pycaret_experiment.utils import MLUsecase
 from pycaret.internal.utils import (
+    check_features_exist,
     get_columns_to_stratify_by,
     get_model_name,
     normalize_custom_transformers,
@@ -387,6 +388,7 @@ class _TabularExperiment(_PyCaretExperiment):
         categorical_features: Optional[List[str]] = None,
         date_features: Optional[List[str]] = None,
         ignore_features: Optional[List[str]] = None,
+        keep_features: Optional[List[str]] = None,
         preprocess: bool = True,
         imputation_type: str = "simple",
         numeric_imputation: str = "mean",
@@ -696,6 +698,33 @@ class _TabularExperiment(_PyCaretExperiment):
 
         # Data preparation ========================================= >>
 
+        # Standardize dataframe types to save memory
+        self.data = df_shrink_dtypes(self.data)
+
+        # Features to be ignored (are not read by self.X, self.X_train, etc...)
+        self._ign_cols = ignore_features if ignore_features else []
+
+        # Numerical columns
+        if numeric_features:
+            check_features_exist(numeric_features, self.data)
+        else:
+            numeric_features = list(self.X.select_dtypes(include="number").columns)
+
+        # Categorical columns
+        if categorical_features:
+            check_features_exist(categorical_features, self.data)
+        else:
+            categorical_features = list(self.X.select_dtypes(exclude="number").columns)
+
+        # Date features
+        if date_features:
+            check_features_exist(date_features, self.data)
+        else:
+            date_features = list(self.X.select_dtypes(include="datetime").columns)
+
+        # Features to keep during all preprocessing
+        keep_features = keep_features if keep_features else []
+
         if test_data is None:
             if self._ml_usecase == MLUsecase.TIME_SERIES:
                 # TODO: Fix time series for new data properties!
@@ -743,39 +772,14 @@ class _TabularExperiment(_PyCaretExperiment):
 
         self.logger.info("Preparing preprocessing pipeline...")
 
-        # Standardize dataframe types to save memory
-        self.data = df_shrink_dtypes(self.data)
-
-        # Define column types ================================== >>
-
-        # TODO: Extra checks that the provided columns are allowed
-
-        # Categorical columns
-        cat_cols = list(self.X.select_dtypes(exclude="number").columns)
-        if categorical_features:
-            cat_cols = categorical_features
-
-        # Numerical columns
-        num_cols = list(self.X.select_dtypes(include="number").columns)
-        if categorical_features:
-            num_cols = categorical_features
-
-        # Date features
-        date_cols = list(self.X.select_dtypes(include="datetime").columns)
-        if date_features:
-            date_cols = date_features
-
-        # Ignore features
-        ign_cols = ignore_features if ignore_features else []
-
-        # Date feature engineering =============================== >>
+        # Date feature engineering ================================= >>
 
         # TODO: Could be improved allowing the user to choose which features to add
-        if date_cols:
+        if date_features:
             self.logger.info("Extracting features from datetime columns")
             self.data = TransfomerWrapper(
                 transformer=ExtractDateTimeFeatures(),
-                columns=[c for c in date_cols if c not in ign_cols],
+                columns=date_features,
             )
 
         # Imputation =========================================== >>
@@ -804,14 +808,14 @@ class _TabularExperiment(_PyCaretExperiment):
                     strategy=num_dict[numeric_imputation],
                     fill_value=0,
                 ),
-                columns=[c for c in num_cols if c not in ign_cols],
+                columns=numeric_features,
             )
             cat_estimator = TransfomerWrapper(
                 transformer=SimpleImputer(
                     strategy=cat_dict[categorical_imputation],
                     fill_value="not_available",
                 ),
-                columns=[c for c in cat_cols if c not in ign_cols],
+                columns=categorical_features,
             )
 
         elif imputation_type == "iterative":
@@ -856,7 +860,7 @@ class _TabularExperiment(_PyCaretExperiment):
                     max_iter=iterative_imputation_iters,
                     random_state=self.seed,
                 ),
-                columns=[c for c in num_cols if c not in ign_cols],
+                columns=numeric_features,
             )
             cat_estimator = TransfomerWrapper(
                 transformer=IterativeImputer(
@@ -865,7 +869,7 @@ class _TabularExperiment(_PyCaretExperiment):
                     initial_strategy="most_frequent",
                     random_state=self.seed,
                 ),
-                columns=[c for c in cat_cols if c not in ign_cols],
+                columns=categorical_features,
             )
         else:
             raise ValueError(
@@ -890,13 +894,10 @@ class _TabularExperiment(_PyCaretExperiment):
 
             if ordinal_features:
                 self.logger.info("Setting up encoding of ordinal features")
+                check_features_exist(ordinal_features.keys(), self.data)
 
                 # Check provided features and levels are correct
                 for key, value in ordinal_features.items():
-                    if key not in self.X.columns:
-                        raise ValueError(
-                            "Invalid column name passed as a key in ordinal_features."
-                        )
                     if self.X[key].nunique() != len(value):
                         raise ValueError(
                             "The levels passed to the ordinal_features parameter "
@@ -914,21 +915,21 @@ class _TabularExperiment(_PyCaretExperiment):
                         handle_unknown="use_encoded_value",
                         unknown_value=np.NaN,
                     ),
-                    columns=[c for c in ordinal_features if c not in ign_cols],
+                    columns=ordinal_features,
                 )
 
                 self._internal_pipeline.steps.append(
                     ("ordinal_encoding", ord_estimator)
                 )
 
-            if cat_cols:
+            if categorical_features:
                 self.logger.info("Setting up encoding of categorical features")
                 if not encoding_method:
                     encoding_method = LeaveOneOutEncoder(random_state=self.seed)
 
                 enc_estimator = TransfomerWrapper(
                     transformer=encoding_method,
-                    columns=[c for c in cat_cols if c not in ign_cols],
+                    columns=categorical_features,
                 )
 
                 self._internal_pipeline.steps.append(
@@ -955,10 +956,7 @@ class _TabularExperiment(_PyCaretExperiment):
                         f"got {transformation_method}."
                     )
 
-                transformation_estimator = TransfomerWrapper(
-                    transformer=transformation_estimator,
-                    columns=[c for c in self.X.columns if c not in ign_cols],
-                )
+                transformation_estimator = TransfomerWrapper(transformation_estimator)
 
                 self._internal_pipeline.steps.append(
                     ("transformation", transformation_estimator)
@@ -975,10 +973,7 @@ class _TabularExperiment(_PyCaretExperiment):
                     "robust": RobustScaler(),
                 }
                 if normalize_method in norm_dict:
-                    normalize_estimator = TransfomerWrapper(
-                        transformer=norm_dict[normalize_method],
-                        columns=[c for c in self.X.columns if c not in ign_cols],
-                    )
+                    normalize_estimator = TransfomerWrapper(norm_dict[normalize_method])
                 else:
                     raise ValueError(
                         "Invalid value for the normalize_method parameter, got "
@@ -999,7 +994,7 @@ class _TabularExperiment(_PyCaretExperiment):
                 else:
                     variance_estimator = TransfomerWrapper(
                         transformer=VarianceThreshold(low_variance_threshold),
-                        columns=[c for c in self.X.columns if c not in ign_cols],
+                        columns=[c for c in self.X.columns if c not in keep_features],
                     )
 
                 self._internal_pipeline.steps.append(("low_variance", variance_estimator))
@@ -1017,7 +1012,7 @@ class _TabularExperiment(_PyCaretExperiment):
 
                 multicollinearity = TransfomerWrapper(
                     transformer=RemoveMulticollinearity(multicollinearity_threshold),
-                    columns=[c for c in self.X.columns if c not in ign_cols],
+                    columns=[c for c in self.X.columns if c not in keep_features],
                 )
 
                 self._internal_pipeline.steps.append(
@@ -1029,8 +1024,7 @@ class _TabularExperiment(_PyCaretExperiment):
             if remove_outliers:
                 self.logger.info("Setting up removing outliers")
                 outliers = TransfomerWrapper(
-                    transformer=RemoveOutliers(method="if", threshold=outliers_threshold),
-                    columns=[c for c in self.X.columns if c not in ign_cols],
+                    RemoveOutliers(method="if", threshold=outliers_threshold),
                 )
 
                 self._internal_pipeline.steps.append(
@@ -1048,7 +1042,6 @@ class _TabularExperiment(_PyCaretExperiment):
                         include_bias=True,
                         order="C",
                     ),
-                    columns=[c for c in self.X.columns if c not in ign_cols],
                 )
 
                 self._internal_pipeline.steps.append(
@@ -1070,10 +1063,7 @@ class _TabularExperiment(_PyCaretExperiment):
                 else:
                     balance_estimator = fix_imbalance_method
 
-                balance_estimator = TransfomerWrapper(
-                    transformer=balance_estimator,
-                    columns=[c for c in self.X.columns if c not in ign_cols],
-                )
+                balance_estimator = TransfomerWrapper(balance_estimator)
                 self._internal_pipeline.steps.append(("balance", balance_estimator))
 
             # PCA ================================================== >>
@@ -1104,7 +1094,7 @@ class _TabularExperiment(_PyCaretExperiment):
                 if pca_method in pca_dict:
                     pca_estimator = TransfomerWrapper(
                         transformer=pca_dict[pca_method],
-                        columns=[c for c in self.X.columns if c not in ign_cols],
+                        columns=[c for c in self.X.columns if c not in keep_features],
                     )
                 else:
                     raise ValueError(
@@ -1114,19 +1104,17 @@ class _TabularExperiment(_PyCaretExperiment):
 
                 self._internal_pipeline.steps.append(("pca", pca_estimator))
 
-            # Custom transformers ================================== >>
+        # Custom transformers ================================== >>
 
-            if custom_pipeline:
-                self.logger.info("Setting up custom pipeline")
-                for name, estimator in normalize_custom_transformers(custom_pipeline):
-                    transformer = TransfomerWrapper(
-                        transformer=estimator,
-                        columns=[c for c in self.X.columns if c not in ign_cols],
-                    )
-                    self._internal_pipeline.steps.append((name, transformer))
+        if custom_pipeline:
+            self.logger.info("Setting up custom pipeline")
+            for name, estimator in normalize_custom_transformers(custom_pipeline):
+                self._internal_pipeline.steps.append(
+                    (name, TransfomerWrapper(estimator))
+                )
 
-            self.logger.info(f"Finished creating preprocessing pipeline.")
-            self.logger.info(f"Pipeline: {self._internal_pipeline}")
+        self.logger.info(f"Finished creating preprocessing pipeline.")
+        self.logger.info(f"Pipeline: {self._internal_pipeline}")
 
         # Set up GPU usage ========================================= >>
 
@@ -1237,10 +1225,11 @@ class _TabularExperiment(_PyCaretExperiment):
             target_type="Multiclass" if self._is_multiclass() else "Binary",
             train_size=train_size,
             ordinal_features=len(ordinal_features) if ordinal_features else 0,
-            numerical_features=len(num_cols),
-            categorical_features=len(cat_cols),
-            date_features=len(date_cols),
-            ignore_features=len(ign_cols),
+            numerical_features=len(numeric_features),
+            categorical_features=len(categorical_features),
+            date_features=len(date_features),
+            ignore_features=len(ignore_features),
+            keep_features=len(keep_features),
             missing_values=self.data.isna().sum().sum(),
             preprocess=preprocess,
             imputation_type=imputation_type,
