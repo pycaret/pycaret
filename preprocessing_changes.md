@@ -43,6 +43,7 @@ Preprocessing steps:
 - normalization: DONE
 - low variance: DONE
 - remove multicollinearity: DONE
+- bin_numeric_features: DONE
 - remove outliers: DONE
 - polynomial features: DONE
 - fix imbalance: DONE

@@ -43,6 +43,7 @@ def setup(
     iterative_imputation_iters: int = 5,
     numeric_iterative_imputer: Union[str, Any] = "lightgbm",
     categorical_iterative_imputer: Union[str, Any] = "lightgbm",
+    max_encoding_ohe: int = 5,
     encoding_method: Optional[Any] = None,
     transformation: bool = False,
     transformation_method: str = "yeo-johnson",
@@ -51,6 +52,7 @@ def setup(
     low_variance_threshold: float = 0,
     remove_multicollinearity: bool = False,
     multicollinearity_threshold: float = 0.9,
+    bin_numeric_features: Optional[List[str]] = None,
     remove_outliers: bool = False,
     outliers_threshold: float = 0.05,
     polynomial_features: bool = False,
@@ -64,9 +66,6 @@ def setup(
     unknown_categorical_method: str = "least_frequent",
     combine_rare_levels: bool = False,
     rare_level_threshold: float = 0.10,
-    bin_numeric_features: Optional[List[str]] = None,
-    group_features: Optional[List[str]] = None,
-    group_names: Optional[List[str]] = None,
     feature_selection: bool = False,
     feature_selection_threshold: float = 0.8,
     feature_selection_method: str = "classic",
@@ -204,10 +203,17 @@ def setup(
         If None, it uses LGBClassifier. Ignored when ``imputation_type=simple``.
 
 
+    max_encoding_ohe: int, default = 5
+        Categorical columns with `max_encoding_ohe` or less unique values are
+        encoded using OneHotEncoding. If more, the `encoding_method` estimator
+        is used. Note that columns with exactly two classes are always encoded
+        ordinally.
+
+
     encoding_method: category-encoders estimator, default = None
         A `category-encoders` estimator to encode the categorical columns
-        in the dataset. If None, `category_encoders.leave_one_out.LeaveOneOutEncoder`
-        is used.
+        with more than `max_encoding_ohe` unique values. If None,
+        `category_encoders.leave_one_out.LeaveOneOutEncoder` is used.
 
 
     transformation: bool, default = False
@@ -258,6 +264,14 @@ def setup(
     multicollinearity_threshold: float, default = 0.9
         Threshold for correlated features. Ignored when ``remove_multicollinearity``
         is not True.
+
+
+    bin_numeric_features: list of str, default = None
+        To convert numeric features into categorical, bin_numeric_features parameter can
+        be used. It takes a list of strings with column names to be discretized. It does
+        so by using 'sturges' rule to determine the number of clusters and then apply
+        KMeans algorithm. Original values of the feature are then replaced by the
+        cluster label.
 
 
     remove_outliers: bool, default = False
@@ -337,35 +351,14 @@ def setup(
         and Silhouette criterion.
 
 
-    bin_numeric_features: list of str, default = None
-        To convert numeric features into categorical, bin_numeric_features parameter can 
-        be used. It takes a list of strings with column names to be discretized. It does
-        so by using 'sturges' rule to determine the number of clusters and then apply
-        KMeans algorithm. Original values of the feature are then replaced by the
-        cluster label.
-
-
     remove_outliers: bool, default = False
-        When set to True, outliers from the training data are removed using the Singular 
-        Value Decomposition.
+        When set to True, outliers from the training data are removed using an
+        Isolation Forest.
 
 
     outliers_threshold: float, default = 0.05
-        The percentage outliers to be removed from the training dataset. Ignored when 
-        ``remove_outliers`` is not True.
-
-
-    group_features: list or list of list, default = None
-        When the dataset contains features with related characteristics, group_features
-        parameter can be used for feature extraction. It takes a list of strings with 
-        column names that are related.
-
-
-    group_names: list, default = None
-        Group names to be used in naming new features. When the length of group_names 
-        does not match with the length of ``group_features``, new features are named 
-        sequentially group_1, group_2, etc. It is ignored when ``group_features`` is
-        None.
+        The percentage outliers to be removed from the training dataset. Ignored
+        when ``remove_outliers=False``.
 
 
     feature_selection: bool, default = False
@@ -563,6 +556,7 @@ def setup(
         iterative_imputation_iters=iterative_imputation_iters,
         numeric_iterative_imputer=numeric_iterative_imputer,
         categorical_iterative_imputer=categorical_iterative_imputer,
+        max_encoding_ohe=max_encoding_ohe,
         encoding_method=encoding_method,
         transformation=transformation,
         transformation_method=transformation_method,
@@ -571,6 +565,7 @@ def setup(
         low_variance_threshold=low_variance_threshold,
         remove_multicollinearity=remove_multicollinearity,
         multicollinearity_threshold=multicollinearity_threshold,
+        bin_numeric_features=bin_numeric_features,
         remove_outliers=remove_outliers,
         outliers_threshold=outliers_threshold,
         polynomial_features=polynomial_features,
@@ -584,9 +579,6 @@ def setup(
         unknown_categorical_method=unknown_categorical_method,
         combine_rare_levels=combine_rare_levels,
         rare_level_threshold=rare_level_threshold,
-        bin_numeric_features=bin_numeric_features,
-        group_features=group_features,
-        group_names=group_names,
         feature_selection=feature_selection,
         feature_selection_threshold=feature_selection_threshold,
         feature_selection_method=feature_selection_method,

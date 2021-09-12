@@ -6,7 +6,7 @@ import secrets
 import time
 import traceback
 import warnings
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
 from unittest.mock import patch
 
 import numpy as np  # type: ignore
@@ -46,9 +46,11 @@ from pycaret.internal.utils import (
     normalize_custom_transformers,
     df_shrink_dtypes,
 )
-
-from category_encoders.leave_one_out import LeaveOneOutEncoder
 from pycaret.internal.validation import *
+
+from category_encoders.one_hot import OneHotEncoder
+from category_encoders.ordinal import OrdinalEncoder
+from category_encoders.leave_one_out import LeaveOneOutEncoder
 from sklearn.decomposition import PCA, IncrementalPCA, KernelPCA
 from sklearn.experimental import enable_iterative_imputer
 from sklearn.feature_selection import VarianceThreshold
@@ -64,12 +66,12 @@ from sklearn.model_selection import (
 from sklearn.preprocessing import (
     MaxAbsScaler,
     MinMaxScaler,
-    OrdinalEncoder,
     PolynomialFeatures,
     PowerTransformer,
     QuantileTransformer,
     RobustScaler,
     StandardScaler,
+    KBinsDiscretizer,
 )
 
 warnings.filterwarnings("ignore")
@@ -396,6 +398,7 @@ class _TabularExperiment(_PyCaretExperiment):
         iterative_imputation_iters: int = 5,
         numeric_iterative_imputer: Union[str, Any] = "lightgbm",
         categorical_iterative_imputer: Union[str, Any] = "lightgbm",
+        max_encoding_ohe: int = 5,
         encoding_method: Optional[Any] = None,
         transformation: bool = False,
         transformation_method: str = "yeo-johnson",
@@ -404,6 +407,7 @@ class _TabularExperiment(_PyCaretExperiment):
         low_variance_threshold: float = 0,
         remove_multicollinearity: bool = False,
         multicollinearity_threshold: float = 0.9,
+        bin_numeric_features: Optional[List[str]] = None,
         remove_outliers: bool = False,
         outliers_threshold: float = 0.05,
         polynomial_features: bool = False,
@@ -417,9 +421,6 @@ class _TabularExperiment(_PyCaretExperiment):
         unknown_categorical_method: str = "least_frequent",
         combine_rare_levels: bool = False,
         rare_level_threshold: float = 0.10,
-        bin_numeric_features: Optional[List[str]] = None,
-        group_features: Optional[List[str]] = None,
-        group_names: Optional[List[str]] = None,
         feature_selection: bool = False,
         feature_selection_threshold: float = 0.8,
         feature_selection_method: str = "classic",
@@ -704,17 +705,23 @@ class _TabularExperiment(_PyCaretExperiment):
         # Features to be ignored (are not read by self.X, self.X_train, etc...)
         self._ign_cols = ignore_features if ignore_features else []
 
-        # Numerical columns
+        # Ordinal features
+        if ordinal_features:
+            check_features_exist(ordinal_features.keys(), self.data)
+        else:
+            ordinal_features = {}
+
+        # Numerical features
         if numeric_features:
             check_features_exist(numeric_features, self.data)
         else:
             numeric_features = list(self.X.select_dtypes(include="number").columns)
 
-        # Categorical columns
+        # Categorical features
         if categorical_features:
             check_features_exist(categorical_features, self.data)
         else:
-            categorical_features = list(self.X.select_dtypes(exclude="number").columns)
+            categorical_features = list(self.X.select_dtypes(include=["object", "category"]).columns)
 
         # Date features
         if date_features:
@@ -892,11 +899,24 @@ class _TabularExperiment(_PyCaretExperiment):
 
             # Encoding =============================================== >>
 
+            self.logger.info("Setting up encoding")
+
+            # Select columns for different encoding types
+            one_hot_cols, rest_cols = [], []
+            for col in categorical_features:
+                unique = self.X[col].nunique()
+                if unique == 2:
+                    ordinal_features[col] = list(self.X[col].unique())
+                elif unique <= max_encoding_ohe:
+                    one_hot_cols.append(col)
+                else:
+                    rest_cols.append(col)
+
             if ordinal_features:
                 self.logger.info("Setting up encoding of ordinal features")
-                check_features_exist(ordinal_features.keys(), self.data)
 
                 # Check provided features and levels are correct
+                mapping = {}
                 for key, value in ordinal_features.items():
                     if self.X[key].nunique() != len(value):
                         raise ValueError(
@@ -906,16 +926,17 @@ class _TabularExperiment(_PyCaretExperiment):
                     for elem in value:
                         if elem not in self.X[key].unique():
                             raise ValueError(
-                                f"Feature {key} doesn't contain the {elem} level."
+                                f"Feature {key} doesn't contain the {elem} element."
                             )
+                    mapping[key] = {v: i for i, v in enumerate(value)}
 
                 ord_estimator = TransfomerWrapper(
                     transformer=OrdinalEncoder(
-                        categories=list(ordinal_features.values()),
-                        handle_unknown="use_encoded_value",
-                        unknown_value=np.NaN,
+                        mapping=[{"col": k, "mapping": val} for k, val in mapping.items()],
+                        handle_missing="return_nan",
+                        handle_unknown="value",
                     ),
-                    columns=ordinal_features,
+                    columns=list(ordinal_features.keys()),
                 )
 
                 self._internal_pipeline.steps.append(
@@ -924,17 +945,38 @@ class _TabularExperiment(_PyCaretExperiment):
 
             if categorical_features:
                 self.logger.info("Setting up encoding of categorical features")
-                if not encoding_method:
-                    encoding_method = LeaveOneOutEncoder(random_state=self.seed)
 
-                enc_estimator = TransfomerWrapper(
-                    transformer=encoding_method,
-                    columns=categorical_features,
-                )
+                if len(one_hot_cols) > 0:
+                    onehot_estimator = TransfomerWrapper(
+                        transformer=OneHotEncoder(
+                            use_cat_names=True,
+                            handle_missing="return_nan",
+                            handle_unknown="value",
+                        ),
+                        columns=one_hot_cols,
+                    )
 
-                self._internal_pipeline.steps.append(
-                    ("categorical_encoding", enc_estimator)
-                )
+                    self._internal_pipeline.steps.append(
+                        ("onehot_encoding", onehot_estimator)
+                    )
+
+                # Encode the rest of the categorical columns
+                if len(rest_cols) > 0:
+                    if not encoding_method:
+                        encoding_method = LeaveOneOutEncoder(
+                            handle_missing="return_nan",
+                            handle_unknown="value",
+                            random_state=self.seed,
+                        )
+
+                    rest_estimator = TransfomerWrapper(
+                        transformer=encoding_method,
+                        columns=rest_cols,
+                    )
+
+                    self._internal_pipeline.steps.append(
+                        ("rest_encoding", rest_estimator)
+                    )
 
             # Transformation ========================================= >>
 
@@ -1017,6 +1059,21 @@ class _TabularExperiment(_PyCaretExperiment):
 
                 self._internal_pipeline.steps.append(
                     ("remove_multicollinearity", multicollinearity)
+                )
+
+            # Bin numerical features =============================== >>
+
+            if bin_numeric_features:
+                self.logger.info("Setting up binning of numerical features")
+                check_features_exist(bin_numeric_features, self.X)
+
+                binning_estimator = TransfomerWrapper(
+                    transformer=KBinsDiscretizer(encode="ordinal", strategy="kmeans"),
+                    columns=bin_numeric_features,
+                )
+
+                self._internal_pipeline.steps.append(
+                    ("bin_numeric_features", binning_estimator)
                 )
 
             # Remove outliers ====================================== >>
@@ -1238,6 +1295,7 @@ class _TabularExperiment(_PyCaretExperiment):
             iterative_imputation_iters=iterative_imputation_iters,
             numeric_iterative_imputer=num_imputer,
             categorical_iterative_imputer=cat_imputer,
+            max_encoding_ohe=max_encoding_ohe,
             encoding_method=encoding_method,
             transformation=transformation,
             transformation_method=transformation_method,

@@ -6,6 +6,7 @@
 import pandas as pd
 import numpy as np
 from inspect import signature
+from scipy.sparse import issparse
 from sklearn.base import BaseEstimator
 from sklearn.ensemble import IsolationForest
 
@@ -127,6 +128,10 @@ class TransfomerWrapper(BaseEstimator):
 
         # Convert to pandas and assign proper column names
         if new_X is not None and not isinstance(new_X, pd.DataFrame):
+            # If sparse matrix, convert back to array
+            if issparse(new_X):
+                new_X = new_X.toarray()
+
             new_X = to_df(new_X, columns=name_cols(new_X, X))
         new_X = reorder_cols(new_X, X)
         new_y = to_series(y, name=y.name)
