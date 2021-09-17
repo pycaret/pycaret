@@ -2398,10 +2398,10 @@ def load_config(file_name: str):
 
 
 def get_leaderboard(
-    finalize_models: bool = True,
+    finalize_models: bool = False,
+    model_only: bool = False,
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
-    model_only: bool = False,
     verbose: bool = True,
 ) -> pd.DataFrame:
 
@@ -2416,8 +2416,13 @@ def get_leaderboard(
     >>> leaderboard = get_leaderboard()
 
 
-    finalize_models: bool, default = True
+    finalize_models: bool, default = False
         If True, will finalize all models in the 'Model' column.
+
+
+    model_only: bool, default = False
+        When set to False, only model object is returned, instead
+        of the entire pipeline.
 
 
     fit_kwargs: dict, default = {} (empty dict)
@@ -2433,12 +2438,6 @@ def get_leaderboard(
         Ignored if finalize_models is False.
 
 
-    model_only: bool, default = False
-        When set to False, only model object is re-trained and all the
-        transformations in Pipeline are ignored.
-        Ignored if finalize_models is False.
-
-
     verbose: bool, default = True
         Progress bar is not printed when verbose is set to False.
 
@@ -2449,8 +2448,8 @@ def get_leaderboard(
     """
     return pycaret.internal.tabular.get_leaderboard(
         finalize_models=finalize_models,
+        model_only=model_only,
         fit_kwargs=fit_kwargs,
         groups=groups,
-        model_only=model_only,
         verbose=verbose,
     )

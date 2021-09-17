@@ -9965,10 +9965,10 @@ def load_config(file_name: str):
 
 
 def get_leaderboard(
-    finalize_models: bool = True,
+    finalize_models: bool = False,
+    model_only: bool = False,
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
-    model_only: bool = True,
     verbose: bool = True,
     display: Optional[Display] = None,
 ):
@@ -10007,16 +10007,20 @@ def get_leaderboard(
         mean_scores["Index"] = i
         mean_scores["Model Name"] = model_name
         display.update_monitor(2, model_name)
-        model = (
-            finalize_model(
-                model_container[i],
-                fit_kwargs=fit_kwargs,
-                groups=groups,
-                model_only=model_only,
+        if finalize_models:
+            model = (
+                finalize_model(
+                    model_container[i],
+                    fit_kwargs=fit_kwargs,
+                    groups=groups,
+                    model_only=model_only,
+                )
             )
-            if finalize_models
-            else model_container[i]
-        )
+        elif model_only:
+            model = deepcopy(model_container[i])
+        else:
+            model = deepcopy(prep_pipe)
+            model.steps.append(["trained_model", deepcopy(model_container[i])])
         display.move_progress()
         finalized_models.append(model)
         result_container_mean.append(mean_scores)
@@ -10034,6 +10038,7 @@ def get_leaderboard(
     rearranged_columns = ["Model Name", "Model"] + rearranged_columns
     results = results[rearranged_columns]
     results.set_index("Index", inplace=True, drop=True)
+    display.clear_output()
     return results
 
 
