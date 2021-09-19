@@ -200,7 +200,7 @@ def test_check_stats(load_data):
         for i, name in enumerate(expected):
             assert index_names[i] == name
 
-    results = exp.check_stats(test="stat_summary")
+    results = exp.check_stats(test="summary")
     index_names = list(results.index.names)
     for i, name in enumerate(expected_small):
         assert index_names[i] == name
