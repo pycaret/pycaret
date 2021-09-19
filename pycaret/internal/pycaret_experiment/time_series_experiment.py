@@ -2404,7 +2404,9 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             elif plot == "pacf":
                 data = self._get_y_data(split="all")
             else:
-                raise ValueError(f"Plot type {plot} is not supported for the data.")
+                raise ValueError(
+                    f"Plot type '{plot}' is not supported OR is not supported when estimator is not provided."
+                )
         else:
             if plot == "predictions":
                 data = self._get_y_data(split="all")
@@ -2414,7 +2416,9 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                     "Plotting on residuals have not been implemented yet."
                 )
             else:
-                raise ValueError(f"Plot type '{plot}' is not supported for estimators.")
+                raise ValueError(
+                    f"Plot type '{plot}' is not supported OR is not supported when estimators is provided."
+                )
 
         plot_data = plot_(
             plot=plot,
