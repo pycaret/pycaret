@@ -31,17 +31,17 @@ def plot_(
 ) -> Optional[Any]:
     if plot == "ts":
         plot_data = plot_series(data=data, return_data=return_data, show=show)
-    elif plot == "splits-tt":
+    elif plot == "train_test_split":
         plot_data = plot_splits_tt(
             train=train, test=test, return_data=return_data, show=show
         )
-    elif plot == "splits_cv":
-        plot_data = plot_splits_cv(data=data, cv=cv, return_data=return_data, show=show)
+    elif plot == "cv":
+        plot_data = plot_cv(data=data, cv=cv, return_data=return_data, show=show)
     elif plot == "acf":
         plot_data = plot_acf(data=data, return_data=return_data, show=show)
     elif plot == "pacf":
         plot_data = plot_pacf(data=data, return_data=return_data, show=show)
-    elif plot == "predictions":
+    elif plot == "forecast":
         plot_data = plot_predictions(
             data=data, predictions=predictions, return_data=return_data, show=show
         )
@@ -54,9 +54,7 @@ def plot_(
 
 
 def plot_series(
-    data: pd.Series,
-    return_data: bool = False,
-    show: bool = True,
+    data: pd.Series, return_data: bool = False, show: bool = True,
 ):
     """Plots the original time series"""
     original = go.Scatter(
@@ -70,9 +68,7 @@ def plot_series(
     plot_data = [original]
 
     layout = go.Layout(
-        yaxis=dict(title="Values"),
-        xaxis=dict(title="Time"),
-        title="Time Series",
+        yaxis=dict(title="Values"), xaxis=dict(title="Time"), title="Time Series",
     )
 
     fig = go.Figure(data=plot_data, layout=layout)
@@ -88,10 +84,7 @@ def plot_series(
 
 
 def plot_splits_tt(
-    train: pd.Series,
-    test: pd.Series,
-    return_data: bool = False,
-    show: bool = True,
+    train: pd.Series, test: pd.Series, return_data: bool = False, show: bool = True,
 ):
     """Plots the train-test split for the time serirs"""
     fig = go.Figure()
@@ -133,11 +126,8 @@ def plot_splits_tt(
         return fig
 
 
-def plot_splits_cv(
-    data: pd.Series,
-    cv,
-    return_data: bool = False,
-    show: bool = True,
+def plot_cv(
+    data: pd.Series, cv, return_data: bool = False, show: bool = True,
 ):
     """Plots the cv splits used on the training split"""
 
@@ -214,9 +204,7 @@ def plot_splits_cv(
 
 
 def plot_acf(
-    data: pd.Series,
-    return_data: bool = False,
-    show: bool = True,
+    data: pd.Series, return_data: bool = False, show: bool = True,
 ):
     """Plots the ACF on the data provided"""
     corr_array = acf(data, alpha=0.05)
@@ -286,9 +274,7 @@ def plot_acf(
 
 
 def plot_pacf(
-    data: pd.Series,
-    return_data: bool = False,
-    show: bool = True,
+    data: pd.Series, return_data: bool = False, show: bool = True,
 ):
     """Plots the PACF on the data provided"""
     corr_array = pacf(data, alpha=0.05)
@@ -369,9 +355,7 @@ def plot_predictions(
         y=predictions,
         mode="lines+markers",
         line=dict(color="#1f77b4"),
-        marker=dict(
-            size=5,
-        ),
+        marker=dict(size=5,),
         showlegend=True,
     )
     original = go.Scatter(
@@ -386,9 +370,7 @@ def plot_predictions(
     data = [mean, original]
 
     layout = go.Layout(
-        yaxis=dict(title="Values"),
-        xaxis=dict(title="Time"),
-        title="Forecasts",
+        yaxis=dict(title="Values"), xaxis=dict(title="Time"), title="Forecasts",
     )
 
     fig = go.Figure(data=data, layout=layout)
@@ -404,18 +386,13 @@ def plot_predictions(
 
 
 def plot_diagnostics(
-    data: pd.Series,
-    return_data: bool = False,
-    show: bool = True,
+    data: pd.Series, return_data: bool = False, show: bool = True,
 ):
     """Plots the diagnostic data such as ACF, Histogram, QQ plot on the data provided"""
     fig = make_subplots(
         rows=2,
         cols=2,
-        row_heights=[
-            0.5,
-            0.5,
-        ],
+        row_heights=[0.5, 0.5,],
         subplot_titles=[
             "Time Plot",
             "Histogram Plot",
@@ -583,9 +560,7 @@ def plot_predictions_with_confidence(
         y=predictions,
         mode="lines+markers",
         line=dict(color="#1f77b4"),
-        marker=dict(
-            size=5,
-        ),
+        marker=dict(size=5,),
         fillcolor="#68BBE3",
         fill="tonexty",
         showlegend=True,
@@ -612,9 +587,7 @@ def plot_predictions_with_confidence(
     data = [lower_bound, mean, upper_bound, original]
 
     layout = go.Layout(
-        yaxis=dict(title="Values"),
-        xaxis=dict(title="Time"),
-        title="Forecasts",
+        yaxis=dict(title="Values"), xaxis=dict(title="Time"), title="Forecasts",
     )
 
     fig = go.Figure(data=data, layout=layout)

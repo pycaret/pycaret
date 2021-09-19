@@ -925,7 +925,7 @@ def plot_model(
     verbose: bool = True,
     return_data: bool = False,
     display_format: Optional[str] = None,
-    system: bool = True
+    system: bool = True,
 ) -> str:
 
     """
@@ -1008,12 +1008,6 @@ def plot_model(
     return _CURRENT_EXPERIMENT.plot_model(
         estimator=estimator,
         plot=plot,
-        scale=scale,
-        save=save,
-        fold=fold,
-        fit_kwargs=fit_kwargs,
-        use_train_data=use_train_data,
-        verbose=verbose,
         return_data=return_data,
         display_format=display_format,
         system=system,

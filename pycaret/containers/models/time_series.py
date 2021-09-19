@@ -2271,7 +2271,19 @@ class CatBoostCdsDtContainer(CdsDtContainer):
 
 
 class BaseCdsDt(BaseForecaster):
+    # https://github.com/alan-turing-institute/sktime/blob/v0.8.0/extension_templates/forecasting.py
     model_type = None
+
+    _tags = {
+        "scitype:y": "univariate",  # which y are fine? univariate/multivariate/both
+        "univariate-only": True,  # does estimator use the exogeneous X?
+        "handles-missing-data": False,  # can estimator handle missing data?
+        "y_inner_mtype": "pd.Series",  # which types do _fit, _predict, assume for y?
+        "X_inner_mtype": "pd.DataFrame",  # which types do _fit, _predict, assume for X?
+        "requires-fh-in-fit": False,  # is forecasting horizon already required in fit?
+        "X-y-must-have-same-index": True,  # can estimator handle different X/y index?
+        "enforce-index-type": None,  # index type that needs to be enforced in X/y
+    }
 
     def __init__(
         self, regressor, sp=1, deseasonal_model="additive", degree=1, window_length=10
@@ -2298,17 +2310,10 @@ class BaseCdsDt(BaseForecaster):
         self.degree = degree
         self.window_length = window_length
 
-    def fit(self, y, X=None, fh=None):
-        # TODO: Check what all is done here (might need to replicate it here)
-        # https://github.com/alan-turing-institute/sktime/blob/ad82a2792b792c6357c8c0db815772bae04c86c1/sktime/forecasting/base/_base.py#L73
-        # e.g. State change
-        # ------------
-        # stores data in self._X and self._y
-        # stores fh, if passed
-        # updates self.cutoff to most recent time in y
-        # creates fitted model (attributes ending in "_")
-        # sets is_fitted flag to true
-        self.forecaster_ = TransformedTargetForecaster(
+        super(BaseCdsDt, self).__init__()
+
+    def _fit(self, y, X=None, fh=None):
+        self._forecaster = TransformedTargetForecaster(
             [
                 (
                     "conditional_deseasonalise",
@@ -2329,15 +2334,23 @@ class BaseCdsDt(BaseForecaster):
                 ),
             ]
         )
-        self.forecaster_.fit(y=y, X=X, fh=fh)
-        self._cutoff = self.forecaster_.cutoff
+        self._forecaster.fit(y=y, X=X, fh=fh)
+        self._cutoff = self._forecaster.cutoff
+
+        # this should happen last
+        self._is_fitted = True
+
         return self
 
-    def predict(self, fh=None, X=None, return_pred_int=False, alpha=DEFAULT_ALPHA):
-        check_is_fitted(self)
-        return self.forecaster_.predict(
+    def _predict(self, fh=None, X=None, return_pred_int=False, alpha=DEFAULT_ALPHA):
+        # check_is_fitted(self)
+
+        self.check_is_fitted()
+        y = self._forecaster.predict(
             fh=fh, X=X, return_pred_int=return_pred_int, alpha=alpha
         )
+
+        return y
 
 
 try:
