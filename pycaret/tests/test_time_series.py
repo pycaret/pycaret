@@ -1,5 +1,6 @@
 """Module to test time_series functionality
 """
+import os
 import pytest
 
 from random import choice, uniform, randint
@@ -263,20 +264,22 @@ def test_plot_model(load_data):
     )
     model = create_model("naive")
 
+    os.environ["PYCARET_TESTING"] = "1"
+
     print("\n\n==== ON DATA (using Functional API) ====")
-    plot_model(system=False)
-    plot_model(plot="ts", system=False)
-    plot_model(plot="splits-tt", system=False)
-    plot_model(plot="splits_cv", system=False)
-    plot_model(plot="acf", system=False)
-    plot_model(plot="pacf", system=False)
+    plot_model()
+    plot_model(plot="ts")
+    plot_model(plot="splits-tt")
+    plot_model(plot="splits_cv")
+    plot_model(plot="acf")
+    plot_model(plot="pacf")
 
     print("\n\n==== ON ESTIMATOR (using Functional API) ====")
-    plot_model(estimator=model, system=False)
-    plot_model(estimator=model, plot="ts", system=False)
-    plot_model(estimator=model, plot="splits-tt", system=False)
-    plot_model(estimator=model, plot="splits_cv", system=False)
-    plot_model(estimator=model, plot="predictions", system=False)
+    plot_model(estimator=model)
+    plot_model(estimator=model, plot="ts")
+    plot_model(estimator=model, plot="splits-tt")
+    plot_model(estimator=model, plot="splits_cv")
+    plot_model(estimator=model, plot="predictions")
 
     ## Not Implemented on Residuals yet
     # plot_model(estimator=model, plot="acf")

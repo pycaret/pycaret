@@ -4,6 +4,7 @@
 # Release: PyCaret 2.2.0
 # Last modified : 25/10/2020
 
+import os
 import time
 import logging
 
@@ -926,7 +927,6 @@ def plot_model(
     verbose: bool = True,
     return_data: bool = False,
     display_format: Optional[str] = None,
-    system: bool = True
 ) -> str:
 
     """
@@ -997,14 +997,13 @@ def plot_model(
         Currently, not all plots are supported.
 
 
-    system: bool, default = True
-        Must remain True all times. Only to be changed by internal functions.
-
-
     Returns:
         None
 
     """
+
+    system = os.environ.get("PYCARET_TESTING", "0")
+    system = system == "0"
 
     return _CURRENT_EXPERIMENT.plot_model(
         estimator=estimator,
