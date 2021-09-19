@@ -10016,11 +10016,21 @@ def get_leaderboard(
                     model_only=model_only,
                 )
             )
-        elif model_only:
-            model = deepcopy(model_container[i])
         else:
-            model = deepcopy(prep_pipe)
-            model.steps.append(["trained_model", deepcopy(model_container[i])])
+            model = deepcopy(model_container[i])
+            if not is_fitted(model):
+                model, _ = create_model_supervised(
+                    estimator=model,
+                    verbose=False,
+                    system=False,
+                    fit_kwargs=fit_kwargs,
+                    groups=groups,
+                    add_to_model_list=False,
+                )
+            if not model_only:
+                pipeline = deepcopy(prep_pipe)
+                pipeline.steps.append(["trained_model", model])
+                model = pipeline
         display.move_progress()
         finalized_models.append(model)
         result_container_mean.append(mean_scores)
