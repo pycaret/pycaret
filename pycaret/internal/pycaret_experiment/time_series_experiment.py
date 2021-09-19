@@ -2293,7 +2293,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
     def plot_model(
         self,
         estimator: Optional[Any] = None,
-        plot: str = "ts",
+        plot: Optional[str] = None,
         scale: float = 1,
         save: bool = False,
         fold: Optional[Union[int, Any]] = None,
@@ -2381,6 +2381,13 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             None
 
         """
+        # Default plot when no model is specified is the time series plot
+        # Default plot when model is specified is the forecast plot
+        if plot is None and estimator is None:
+            plot = "ts"
+        elif plot is None and estimator is not None:
+            plot = "predictions"
+
         data, train, test, predictions, cv = None, None, None, None, None
 
         if plot == "ts":
