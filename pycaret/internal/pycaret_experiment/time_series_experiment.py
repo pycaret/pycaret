@@ -1310,6 +1310,29 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             **kwargs,
         )
 
+    @staticmethod
+    def update_fit_kwargs_with_fh_from_cv(fit_kwargs: Optional[Dict], cv) -> Dict:
+        """Updated the fit_ kwargs to include the fh parameter from cv
+
+        Parameters
+        ----------
+        fit_kwargs : Optional[Dict]
+            Original fit kwargs
+        cv : [type]
+            cross validation object
+
+        Returns
+        -------
+        Dict[Any]
+            Updated fit kwargs
+        """
+        fh_param = {"fh": cv.fh}
+        if fit_kwargs is None:
+            fit_kwargs = fh_param
+        else:
+            fit_kwargs.update(fh_param)
+        return fit_kwargs
+
     def _create_model_without_cv(
         self, model, data_X, data_y, fit_kwargs, predict, system, display: Display
     ):
@@ -1387,16 +1410,23 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         self.logger.info(f"Cross validating with {cv}, n_jobs={n_jobs}")
 
         # Cross Validate time series
-        fh_param = {"fh": cv.fh}
-        if fit_kwargs is None:
-            fit_kwargs = fh_param
-        else:
-            fit_kwargs.update(fh_param)
+        # fh_param = {"fh": cv.fh}
+
+        # if fit_kwargs is None:
+        #     fit_kwargs = fh_param
+        # else:
+        #     fit_kwargs.update(fh_param)
+        fit_kwargs = self.update_fit_kwargs_with_fh_from_cv(
+            fit_kwargs=fit_kwargs, cv=cv
+        )
 
         model_fit_start = time.time()
 
         scores, cutoffs = cross_validate_ts(
-            forecaster=clone(model),
+            # Commented out since supervised_experiment also does not clone
+            # when doing cross_validate
+            # forecaster=clone(model),
+            forecaster=model,
             y=data_y,
             X=data_X,
             scoring=metrics_dict,
@@ -1448,6 +1478,10 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
             model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
         else:
+            # Set fh explicitly since we are not fitting explicitly
+            # This is needed so that the model can be used later to predict, etc.
+            model._set_fh(fit_kwargs.get("fh"))
+
             # model_fit_time /= _get_cv_n_folds(data_y, cv)
             model_fit_time /= cv.get_n_splits(data_y)
 
@@ -1852,11 +1886,15 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         if True:
 
             # fit_kwargs = get_pipeline_fit_kwargs(pipeline_with_model, fit_kwargs)
-            fh_param = {"fh": cv.fh}
-            if fit_kwargs is None:
-                fit_kwargs = fh_param
-            else:
-                fit_kwargs.update(fh_param)
+
+            # fh_param = {"fh": cv.fh}
+            # if fit_kwargs is None:
+            #     fit_kwargs = fh_param
+            # else:
+            #     fit_kwargs.update(fh_param)
+            fit_kwargs = self.update_fit_kwargs_with_fh_from_cv(
+                fit_kwargs=fit_kwargs, cv=cv
+            )
 
             # actual_estimator_label = get_pipeline_estimator_label(pipeline_with_model)
             actual_estimator_label = ""
@@ -2399,6 +2437,10 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             None
 
         """
+        available_plots_common = ["ts", "train_test_split", "cv", "acf", "pacf"]
+        available_plots_data = available_plots_common + []
+        available_plots_model = available_plots_common + ["forecast", "residuals"]
+
         # Default plot when no model is specified is the time series plot
         # Default plot when model is specified is the forecast plot
         if plot is None and estimator is None:
@@ -2423,7 +2465,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 data = self._get_y_data(split="all")
             else:
                 raise ValueError(
-                    f"Plot type '{plot}' is not supported OR is not supported when estimator is not provided."
+                    f"Plot type '{plot}' is not supported when estimator is not provided. Available plots are '{' '.join(available_plots_data)}'"
                 )
         else:
             if plot == "forecast":
@@ -2435,7 +2477,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 )
             else:
                 raise ValueError(
-                    f"Plot type '{plot}' is not supported OR is not supported when estimators is provided."
+                    f"Plot type '{plot}' is not supported when estimator is provided. Available plots are '{' '.join(available_plots_model)}'"
                 )
 
         plot_data = plot_(
