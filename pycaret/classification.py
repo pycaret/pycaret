@@ -2503,7 +2503,6 @@ def get_config(variable: str):
     - fold_shuffle_param: shuffle parameter used in Kfolds
     - n_jobs_param: n_jobs parameter used in model training
     - html_param: html_param configured through setup
-    - create_model_container: results grid storage container
     - master_model_container: model storage container
     - display_container: results display container
     - exp_name_log: Name of experiment
@@ -2556,7 +2555,6 @@ def set_config(variable: str, value):
     - fold_shuffle_param: shuffle parameter used in Kfolds
     - n_jobs_param: n_jobs parameter used in model training
     - html_param: html_param configured through setup
-    - create_model_container: results grid storage container
     - master_model_container: model storage container
     - display_container: results display container
     - exp_name_log: Name of experiment
