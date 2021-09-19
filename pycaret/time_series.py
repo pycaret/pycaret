@@ -1658,7 +1658,6 @@ def add_metric(
         id=id,
         name=name,
         score_func=score_func,
-        target="pred",
         greater_is_better=greater_is_better,
         **kwargs,
     )
