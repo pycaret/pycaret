@@ -614,9 +614,9 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         # Values in variable_keys are accessible in globals
         self.variable_keys = self.variable_keys.difference(
             {
-                "X",
+                # "X",
                 # "X_train",
-                "X_test",
+                # "X_test",
                 "target_param",
                 "iterative_imputation_iters_param",
                 "imputation_regressor",
@@ -2417,7 +2417,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             predictions=predictions,
             cv=cv,
             return_data=return_data,
-            show=system
+            show=system,
         )
 
         return plot_data
