@@ -698,6 +698,45 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             self.variables, raise_errors=raise_errors
         )
 
+    def check_fh(self, fh: Union[List[int], int, np.array]) -> np.array:
+        """
+        Checks fh for validity and converts fh into an appropriate forecasting
+        horizon compatible with sktime (if necessary)
+
+        Parameters
+        ----------
+        fh : Union[List[int], int, np.array]
+            Forecasting Horizon
+
+        Returns
+        -------
+        np.array
+            Forecast Horizon (possibly updated to made compatible with sktime)
+
+        Raises
+        ------
+        ValueError
+            (1) When forecast horizon is an integer < 1
+            (2) When forecast horizon is not the correct type
+        """
+        if isinstance(fh, int):
+            if fh >= 1:
+                fh = np.arange(1, fh + 1)
+            else:
+                raise ValueError(
+                    f"If Forecast Horizon `fh` is an integer, it must be >= 1. You provided fh = '{fh}'!"
+                )
+        elif isinstance(fh, List):
+            fh = np.array(fh)
+        elif isinstance(fh, np.ndarray):
+            # Good to go
+            pass
+        else:
+            raise ValueError(
+                f"Horizon `fh` must be a of type int, list, or numpy array, got object of {type(fh)} type!"
+            )
+        return fh
+
     def setup(
         self,
         data: Union[pd.Series, pd.DataFrame],
@@ -922,22 +961,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             )
             # fold value will be reset after the data is split in the parent class setup
 
-        if isinstance(fh, int):
-            if fh >= 1:
-                fh = np.arange(1, fh + 1)
-            else:
-                raise ValueError(
-                    f"If Forecast Horizon `fh` is an integer, it must be >= 1. You provided fh = '{fh}'!"
-                )
-        elif isinstance(fh, List):
-            fh = np.array(fh)
-        elif isinstance(fh, np.ndarray):
-            # Good to go
-            pass
-        else:
-            raise ValueError(
-                f"Horizon `fh` must be a of type int, list, or numpy array, got object of {type(fh)} type!"
-            )
+        fh = self.check_fh(fh)
         self.fh = fh
 
         allowed_freq_index_types = (pd.PeriodIndex, pd.DatetimeIndex)
@@ -2642,6 +2666,9 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         if fh is None:
             fh = self.fh
+        else:
+            # Get the fh in the right format for sktime
+            fh = self.check_fh(fh)
 
         display = None
         try:
