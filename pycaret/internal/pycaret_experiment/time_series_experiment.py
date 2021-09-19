@@ -2386,16 +2386,16 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         if plot is None and estimator is None:
             plot = "ts"
         elif plot is None and estimator is not None:
-            plot = "predictions"
+            plot = "forecast"
 
         data, train, test, predictions, cv = None, None, None, None, None
 
         if plot == "ts":
             data = self._get_y_data(split="all")
-        elif plot == "splits-tt":
+        elif plot == "train_test_split":
             train = self._get_y_data(split="train")
             test = self._get_y_data(split="test")
-        elif plot == "splits_cv":
+        elif plot == "cv":
             data = self._get_y_data(split="train")
             cv = self.get_fold_generator()
         elif estimator is None:
@@ -2408,7 +2408,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                     f"Plot type '{plot}' is not supported OR is not supported when estimator is not provided."
                 )
         else:
-            if plot == "predictions":
+            if plot == "forecast":
                 data = self._get_y_data(split="all")
                 predictions = estimator.predict()
             elif plot == "residuals" or plot == "acf" or plot == "pacf":
