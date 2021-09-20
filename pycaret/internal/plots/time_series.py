@@ -26,27 +26,42 @@ def plot_(
     test: Optional[pd.Series] = None,
     predictions: Optional[pd.Series] = None,
     cv: Optional[Union[ExpandingWindowSplitter, SlidingWindowSplitter]] = None,
+    model_name: Optional[str] = None,
     return_data: bool = False,
     show: bool = True,
 ) -> Optional[Any]:
     if plot == "ts":
         plot_data = plot_series(data=data, return_data=return_data, show=show)
     elif plot == "train_test_split":
-        plot_data = plot_splits_tt(
+        plot_data = plot_splits_train_test_split(
             train=train, test=test, return_data=return_data, show=show
         )
     elif plot == "cv":
         plot_data = plot_cv(data=data, cv=cv, return_data=return_data, show=show)
     elif plot == "acf":
-        plot_data = plot_acf(data=data, return_data=return_data, show=show)
+        plot_data = plot_acf(
+            data=data, model_name=model_name, return_data=return_data, show=show
+        )
     elif plot == "pacf":
-        plot_data = plot_pacf(data=data, return_data=return_data, show=show)
+        plot_data = plot_pacf(
+            data=data, model_name=model_name, return_data=return_data, show=show
+        )
+    elif plot == "diagnostics":
+        plot_data = plot_diagnostics(
+            data=data, model_name=model_name, return_data=return_data, show=show
+        )
     elif plot == "forecast":
         plot_data = plot_predictions(
-            data=data, predictions=predictions, return_data=return_data, show=show
+            data=data,
+            predictions=predictions,
+            model_name=model_name,
+            return_data=return_data,
+            show=show,
         )
     elif plot == "residuals":
-        plot_data = plot_diagnostics(data=data, return_data=return_data, show=show)
+        plot_data = plot_diagnostics(
+            data=data, model_name=model_name, return_data=return_data, show=show
+        )
     else:
         raise ValueError(f"Tests: '{plot}' is not supported.")
 
@@ -83,7 +98,7 @@ def plot_series(
         return fig
 
 
-def plot_splits_tt(
+def plot_splits_train_test_split(
     train: pd.Series, test: pd.Series, return_data: bool = False, show: bool = True,
 ):
     """Plots the train-test split for the time serirs"""
@@ -204,11 +219,18 @@ def plot_cv(
 
 
 def plot_acf(
-    data: pd.Series, return_data: bool = False, show: bool = True,
+    data: pd.Series,
+    model_name: Optional[str] = None,
+    return_data: bool = False,
+    show: bool = True,
 ):
     """Plots the ACF on the data provided"""
     corr_array = acf(data, alpha=0.05)
-    title = "Autocorrelation (ACF)"
+    title = (
+        "Autocorrelation (ACF)"
+        if model_name is None
+        else f"Autocorrelation (ACF) | {model_name}"
+    )
 
     lower_y = corr_array[1][:, 0] - corr_array[0]
     upper_y = corr_array[1][:, 1] - corr_array[0]
@@ -221,7 +243,7 @@ def plot_acf(
         mode="markers",
         marker_color="#1f77b4",
         marker_size=10,
-        name="ACF",
+        name=f"ACF",
     )
 
     [
@@ -274,11 +296,18 @@ def plot_acf(
 
 
 def plot_pacf(
-    data: pd.Series, return_data: bool = False, show: bool = True,
+    data: pd.Series,
+    model_name: Optional[str] = None,
+    return_data: bool = False,
+    show: bool = True,
 ):
     """Plots the PACF on the data provided"""
     corr_array = pacf(data, alpha=0.05)
-    title = "Partial Autocorrelation (PACF)"
+    title = (
+        "Partial Autocorrelation (PACF)"
+        if model_name is None
+        else f"Partial Autocorrelation (PACF) | {model_name}"
+    )
     lower_y = corr_array[1][:, 0] - corr_array[0]
     upper_y = corr_array[1][:, 1] - corr_array[0]
 
@@ -345,12 +374,15 @@ def plot_pacf(
 def plot_predictions(
     data: pd.Series,
     predictions: pd.Series,
+    model_name: Optional[str] = None,
     return_data: bool = False,
     show: bool = True,
 ):
     """Plots the original data and the predictions provided"""
+    title = "Forecast(s)"
+
     mean = go.Scatter(
-        name="Forecast",
+        name=f"Forecast | {model_name}",
         x=predictions.index.to_timestamp(),
         y=predictions,
         mode="lines+markers",
@@ -370,7 +402,7 @@ def plot_predictions(
     data = [mean, original]
 
     layout = go.Layout(
-        yaxis=dict(title="Values"), xaxis=dict(title="Time"), title="Forecasts",
+        yaxis=dict(title="Values"), xaxis=dict(title="Time"), title=title,
     )
 
     fig = go.Figure(data=data, layout=layout)
@@ -386,9 +418,19 @@ def plot_predictions(
 
 
 def plot_diagnostics(
-    data: pd.Series, return_data: bool = False, show: bool = True,
+    data: pd.Series,
+    model_name: Optional[str] = None,
+    return_data: bool = False,
+    show: bool = True,
 ):
     """Plots the diagnostic data such as ACF, Histogram, QQ plot on the data provided"""
+    time_series_name = data.name
+    title = (
+        f"Diagnostics | {time_series_name}"
+        if model_name is None
+        else f"Diagnostics | '{model_name}' Residuals"
+    )
+
     fig = make_subplots(
         rows=2,
         cols=2,
@@ -399,6 +441,7 @@ def plot_diagnostics(
             "ACF Plot",
             "Quantile-Quantile Plot",
         ],
+        x_title=title,
     )
 
     def time_plot(fig):
@@ -450,7 +493,7 @@ def plot_diagnostics(
             row=2,
             col=2,
         )
-        fig.update_xaxes(title_text="Theoritical Quantities", row=2, col=2)
+        fig.update_xaxes(title_text="Theoretical Quantities", row=2, col=2)
         fig.update_yaxes(title_text="Sample Quantities", row=2, col=2)
 
     def dist_plot(fig):

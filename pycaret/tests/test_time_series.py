@@ -241,6 +241,7 @@ def test_plot_model(load_data):
     exp.plot_model(plot="cv", system=False)
     exp.plot_model(plot="acf", system=False)
     exp.plot_model(plot="pacf", system=False)
+    exp.plot_model(plot="diagnostics", system=False)
 
     print("\n\n==== ON ESTIMATOR (using OOP) ====")
     exp.plot_model(estimator=model, system=False)
@@ -273,6 +274,7 @@ def test_plot_model(load_data):
     plot_model(plot="cv")
     plot_model(plot="acf")
     plot_model(plot="pacf")
+    plot_model(plot="diagnostics")
 
     print("\n\n==== ON ESTIMATOR (using Functional API) ====")
     plot_model(estimator=model)

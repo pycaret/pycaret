@@ -2438,7 +2438,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         """
         available_plots_common = ["ts", "train_test_split", "cv", "acf", "pacf"]
-        available_plots_data = available_plots_common + []
+        available_plots_data = available_plots_common + ["diagnostics"]
         available_plots_model = available_plots_common + ["forecast", "residuals"]
 
         # Default plot when no model is specified is the time series plot
@@ -2448,7 +2448,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         elif plot is None and estimator is not None:
             plot = "forecast"
 
-        data, train, test, predictions, cv = None, None, None, None, None
+        data, train, test, predictions, cv, model_name = None, None, None, None, None, None
 
         if plot == "ts":
             data = self._get_y_data(split="all")
@@ -2463,11 +2463,14 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 data = self._get_y_data(split="all")
             elif plot == "pacf":
                 data = self._get_y_data(split="all")
+            elif plot == "diagnostics":
+                data = self._get_y_data(split="all")
             else:
                 raise ValueError(
-                    f"Plot type '{plot}' is not supported when estimator is not provided. Available plots are '{' '.join(available_plots_data)}'"
+                    f"Plot type '{plot}' is not supported when estimator is not provided. Available plots are '{', '.join(available_plots_data)}'"
                 )
         else:
+            model_name = self._get_model_name(estimator)
             if plot == "forecast":
                 data = self._get_y_data(split="all")
                 predictions = estimator.predict()
@@ -2477,7 +2480,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 )
             else:
                 raise ValueError(
-                    f"Plot type '{plot}' is not supported when estimator is provided. Available plots are '{' '.join(available_plots_model)}'"
+                    f"Plot type '{plot}' is not supported when estimator is provided. Available plots are '{', '.join(available_plots_model)}'"
                 )
 
         plot_data = plot_(
@@ -2487,6 +2490,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             test=test,
             predictions=predictions,
             cv=cv,
+            model_name=model_name,
             return_data=return_data,
             show=system,
         )
