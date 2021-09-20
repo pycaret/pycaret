@@ -2397,21 +2397,59 @@ def load_config(file_name: str):
     return pycaret.internal.tabular.load_config(file_name=file_name)
 
 
-def get_leaderboard():
-    
+def get_leaderboard(
+    finalize_models: bool = False,
+    model_only: bool = False,
+    fit_kwargs: Optional[dict] = None,
+    groups: Optional[Union[str, Any]] = None,
+    verbose: bool = True,
+) -> pd.DataFrame:
+
     """
-    This function returns the leaderboard of all models trained in the 
+    This function returns the leaderboard of all models trained in the
     current setup.
 
 
     Example
     -------
-    >>> from pycaret.classification import get_leaderboard
+    >>> from pycaret.regression import get_leaderboard
     >>> leaderboard = get_leaderboard()
+
+
+    finalize_models: bool, default = False
+        If True, will finalize all models in the 'Model' column.
+
+
+    model_only: bool, default = False
+        When set to False, only model object is returned, instead
+        of the entire pipeline.
+
+
+    fit_kwargs: dict, default = {} (empty dict)
+        Dictionary of arguments passed to the fit method of the model.
+        Ignored if finalize_models is False.
+
+
+    groups: str or array-like, with shape (n_samples,), default = None
+        Optional group labels when GroupKFold is used for the cross validation.
+        It takes an array with shape (n_samples, ) where n_samples is the number
+        of rows in training dataset. When string is passed, it is interpreted as
+        the column name in the dataset containing group labels.
+        Ignored if finalize_models is False.
+
+
+    verbose: bool, default = True
+        Progress bar is not printed when verbose is set to False.
 
 
     Returns:
         pandas.DataFrame
 
     """
-    return pycaret.internal.tabular.get_leaderboard()
+    return pycaret.internal.tabular.get_leaderboard(
+        finalize_models=finalize_models,
+        model_only=model_only,
+        fit_kwargs=fit_kwargs,
+        groups=groups,
+        verbose=verbose,
+    )
