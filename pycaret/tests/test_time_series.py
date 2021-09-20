@@ -269,17 +269,17 @@ def test_plot_model(load_data):
     print("\n\n==== ON DATA (using Functional API) ====")
     plot_model()
     plot_model(plot="ts")
-    plot_model(plot="splits-tt")
-    plot_model(plot="splits_cv")
+    plot_model(plot="train_test_split")
+    plot_model(plot="cv")
     plot_model(plot="acf")
     plot_model(plot="pacf")
 
     print("\n\n==== ON ESTIMATOR (using Functional API) ====")
     plot_model(estimator=model)
     plot_model(estimator=model, plot="ts")
-    plot_model(estimator=model, plot="splits-tt")
-    plot_model(estimator=model, plot="splits_cv")
-    plot_model(estimator=model, plot="predictions")
+    plot_model(estimator=model, plot="train_test_split")
+    plot_model(estimator=model, plot="cv")
+    plot_model(estimator=model, plot="forecast")
 
     ## Not Implemented on Residuals yet
     # plot_model(estimator=model, plot="acf")
