@@ -776,7 +776,7 @@ class _SupervisedExperiment(_TabularExperiment):
                         refit=False,
                     )
                     model_results = self.pull(pop=True)
-                    assert np.sum(model_results.iloc[0]) != 0.0
+                    assert np.sum(model_results.drop("cutoff", axis=1, errors="ignore").iloc[0]) != 0.0
                 except Exception:
                     self.logger.warning(
                         f"create_model() for {model} raised an exception or returned all 0.0, trying without fit_kwargs:"

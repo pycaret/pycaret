@@ -163,7 +163,6 @@ def save_config(file_name: str, globals_d: dict):
         "_all_models",
         "_all_models_internal",
         "_all_metrics",
-        "create_model_container",
         "master_model_container",
         "display_container",
     }
