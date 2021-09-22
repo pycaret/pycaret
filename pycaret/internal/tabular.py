@@ -7673,6 +7673,7 @@ def interpret_model(
                 plot_filename = plot
             logger.info(f"Saving '{plot_filename}.png'")
             plt.savefig(plot_filename)
+            plt.close()
 
         return shap_plot
 
@@ -7712,6 +7713,7 @@ def interpret_model(
                 plot_filename = plot
             logger.info(f"Saving '{plot_filename}.png'")
             plt.savefig(f"{plot_filename}.png", bbox_inches="tight")
+            plt.close()
 
         return None
 
