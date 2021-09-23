@@ -823,6 +823,7 @@ class RandomForestClassifierContainer(ClassifierContainer):
             self.reference = get_class_name(cuml.ensemble.RandomForestClassifier)
 
 
+        
 class QuadraticDiscriminantAnalysisContainer(ClassifierContainer):
     def __init__(self, globals_dict: dict) -> None:
         logger = get_logger()
@@ -847,7 +848,103 @@ class QuadraticDiscriminantAnalysisContainer(ClassifierContainer):
             shap=False,
         )
 
+class DummyStratifiedClassifierContainer(ClassifierContainer):
+    def __init__(self, globals_dict: dict) -> None:
+        logger = get_logger()
+        np.random.seed(globals_dict["seed"])
+        from sklearn.dummy import DummyClassifier
+        
+        args = {"strategy": "stratified", "random_state": globals_dict["seed"]}
+        tune_args = {}
+        tune_grid = {}
+        tune_distributions = {}
 
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+
+        super().__init__(
+            id="dummy_s",
+            name="Dummy Classifier, Stratified",
+            class_def=DummyClassifier,
+            args=args,
+            tune_grid=tune_grid,
+            tune_distribution=tune_distributions,
+            tune_args=tune_args,
+            shap=False,
+        )
+        
+class DummyMostFrequentClassifierContainer(ClassifierContainer):
+    def __init__(self, globals_dict: dict) -> None:
+        logger = get_logger()
+        np.random.seed(globals_dict["seed"])
+        from sklearn.dummy import DummyClassifier
+        
+        args = {"strategy": "most_frequent"}
+        tune_args = {}
+        tune_grid = {}
+        tune_distributions = {}
+
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+
+        super().__init__(
+            id="dummy_f",
+            name="Dummy Classifier, Most Frequent",
+            class_def=DummyClassifier,
+            args=args,
+            tune_grid=tune_grid,
+            tune_distribution=tune_distributions,
+            tune_args=tune_args,
+            shap=False,
+        )
+    
+class DummyPriorClassifierContainer(ClassifierContainer):
+    def __init__(self, globals_dict: dict) -> None:
+        logger = get_logger()
+        np.random.seed(globals_dict["seed"])
+        from sklearn.dummy import DummyClassifier
+        
+        args = {"strategy": "prior"}
+        tune_args = {}
+        tune_grid = {}
+        tune_distributions = {}
+
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+
+        super().__init__(
+            id="dummy_p",
+            name="Dummy Classifier, Prior",
+            class_def=DummyClassifier,
+            args=args,
+            tune_grid=tune_grid,
+            tune_distribution=tune_distributions,
+            tune_args=tune_args,
+            shap=False,
+        )    
+        
+class DummyUniformClassifierContainer(ClassifierContainer):
+    def __init__(self, globals_dict: dict) -> None:
+        logger = get_logger()
+        np.random.seed(globals_dict["seed"])
+        from sklearn.dummy import DummyClassifier
+        
+        args = {"strategy": "uniform", "random_state": globals_dict["seed"]}
+        tune_args = {}
+        tune_grid = {}
+        tune_distributions = {}
+
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+
+        super().__init__(
+            id="dummy_u",
+            name="Dummy Classifier, Uniform",
+            class_def=DummyClassifier,
+            args=args,
+            tune_grid=tune_grid,
+            tune_distribution=tune_distributions,
+            tune_args=tune_args,
+            shap=False,
+        ) 
+        
+        
 class AdaBoostClassifierContainer(ClassifierContainer):
     def __init__(self, globals_dict: dict) -> None:
         logger = get_logger()

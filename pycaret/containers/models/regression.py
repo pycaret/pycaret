@@ -762,7 +762,102 @@ class PassiveAggressiveRegressorContainer(RegressorContainer):
             shap=False,
         )
 
+class DummyMeanRegressorContainer(RegressorContainer):
+    def __init__(self, globals_dict: dict) -> None:
+        logger = get_logger()
+        np.random.seed(globals_dict["seed"])
+        from sklearn.dummy import DummyRegressor
+        
+        args = {"strategy": "mean"}
+        tune_args = {}
+        tune_grid = {}
+        tune_distributions = {}
 
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+
+        super().__init__(
+            id="dummy_mean",
+            name="Dummy Regressor, Mean",
+            class_def=DummyRegressor,
+            args=args,
+            tune_grid=tune_grid,
+            tune_distribution=tune_distributions,
+            tune_args=tune_args,
+            shap=False,
+        )    
+        
+class DummyMedianRegressorContainer(RegressorContainer):
+    def __init__(self, globals_dict: dict) -> None:
+        logger = get_logger()
+        np.random.seed(globals_dict["seed"])
+        from sklearn.dummy import DummyRegressor
+        
+        args = {"strategy": "median"}
+        tune_args = {}
+        tune_grid = {}
+        tune_distributions = {}
+
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+
+        super().__init__(
+            id="dummy_med",
+            name="Dummy Regressor, Median",
+            class_def=DummyRegressor,
+            args=args,
+            tune_grid=tune_grid,
+            tune_distribution=tune_distributions,
+            tune_args=tune_args,
+            shap=False,
+        ) 
+        
+class DummyQuantileRegressorContainer_7(RegressorContainer):
+    def __init__(self, globals_dict: dict) -> None:
+        logger = get_logger()
+        np.random.seed(globals_dict["seed"])
+        from sklearn.dummy import DummyRegressor
+        
+        args = {"strategy": "quantile", "quantile":0.7}
+        tune_args = {}
+        tune_grid = {}
+        tune_distributions = {}
+
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+
+        super().__init__(
+            id="dummy_q7",
+            name="Dummy Regressor, Quantile 0.7",
+            class_def=DummyRegressor,
+            args=args,
+            tune_grid=tune_grid,
+            tune_distribution=tune_distributions,
+            tune_args=tune_args,
+            shap=False,
+        ) 
+        
+class DummyQuantileRegressorContainer_9(RegressorContainer):
+    def __init__(self, globals_dict: dict) -> None:
+        logger = get_logger()
+        np.random.seed(globals_dict["seed"])
+        from sklearn.dummy import DummyRegressor
+        
+        args = {"strategy": "quantile", "quantile":0.9}
+        tune_args = {}
+        tune_grid = {}
+        tune_distributions = {}
+
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+
+        super().__init__(
+            id="dummy_q9",
+            name="Dummy Regressor, Quantile 0.9",
+            class_def=DummyRegressor,
+            args=args,
+            tune_grid=tune_grid,
+            tune_distribution=tune_distributions,
+            tune_args=tune_args,
+            shap=False,
+        )       
+        
 class RANSACRegressorContainer(RegressorContainer):
     def __init__(self, globals_dict: dict) -> None:
         logger = get_logger()

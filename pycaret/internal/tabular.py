@@ -9476,8 +9476,17 @@ def models(
             "xgboost",
             "lightgbm",
             "catboost",
-            "ada",
+            "ada"
         ],
+        "dummy":
+        ["dummy_s",
+        "dummy_f",
+        "dummy_p",
+        "dummy_u",
+        "dummy_mean",
+        "dummy_med",
+        "dummy_q",
+        ]
     }
 
     def filter_model_df_by_type(df):
