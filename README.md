@@ -1,4 +1,4 @@
-![alt text](https://github.com/pycaret/pycaret/blob/master/pycaret_233.jfif)
+![alt text](https://github.com/pycaret/pycaret/blob/master/pycaret_234.jfif)
 
 # PyCaret 2.3
 [![Python](https://img.shields.io/badge/Python-3.6%20%7C%203.7%20%7C%203.8-blue)](https://badge.fury.io/py/pycaret) 
@@ -24,7 +24,7 @@ PyCaret is a great library which not only simplifies the machine learning tasks 
 ![alt text](https://github.com/pycaret/pycaret/blob/master/pycaret2-features.png)
 
 ## Current Release
-PyCaret `2.3.3` is now available. See `2.3.3` release notes. The easiest way to install pycaret is using pip.
+PyCaret `2.3.4` is now available. See `2.3.4` release notes. The easiest way to install pycaret is using pip.
 
 ```python
 pip install pycaret
