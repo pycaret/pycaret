@@ -2,6 +2,19 @@
 All notable changes to this project will be documented in this file.
 <br/><br/>
 
+#### Release: PyCaret 2.3.4 | Release Date: September 23rd, 2021 (NEW FEATURES, BUG FIXES)
+- Added `get_leaderboard` function for classification and regression modules
+- It is now possible to specify the plot save path with the save argument of `plot_model` and `interpret_model` - thanks to @bhanuteja2001 (https://github.com/pycaret/pycaret/pull/1537)
+- Fixed `interpret_model` affecting `plot_model` behavior - thanks to @naujgf (https://github.com/pycaret/pycaret/pull/1600)
+- Fixed issues with conda builds - thanks to @melonhead901 (https://github.com/pycaret/pycaret/pull/1479)
+- Documentation improvements - thanks to @caron14 and @harsh204016 (https://github.com/pycaret/pycaret/pull/1499, https://github.com/pycaret/pycaret/pull/1502)
+- Fixed `blend_models` and `stack_models` throwing an exception when using custom estimators (https://github.com/pycaret/pycaret/pull/1500)
+- Fixed a "Target Missing" issue with "Remove Multicolinearity" option (https://github.com/pycaret/pycaret/pull/1508)
+- `errors="ignore"` parameter for `compare_models` now correctly ignores errors during full fit (https://github.com/pycaret/pycaret/pull/1510)
+- Fixed certain data types being incorrectly encoded as int64 during setup (https://github.com/pycaret/pycaret/pull/1515)
+- `Pinned numba<0.54` (https://github.com/pycaret/pycaret/pull/1530)
+<br/><br/><br/>
+
 #### Release: PyCaret 2.3.3 | Release Date: July 24th, 2021 (NEW FEATURES, BUG FIXES)
 - Fixed issues with `[full]` install by pinning `interpret<=0.2.4`
 - Added support for S3 folder path in `deploy_model()` with AWS
