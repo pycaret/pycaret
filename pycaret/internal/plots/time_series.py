@@ -379,7 +379,11 @@ def plot_predictions(
     show: bool = True,
 ):
     """Plots the original data and the predictions provided"""
-    title = "Forecast(s)"
+
+    title = "Actual vs. Forecast"
+    time_series_name = data.name
+    if time_series_name is not None:
+        title = time_series_name + " | " + title
 
     mean = go.Scatter(
         name=f"Forecast | {model_name}",

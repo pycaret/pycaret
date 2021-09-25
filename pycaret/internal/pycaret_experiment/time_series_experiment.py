@@ -943,6 +943,9 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             autocorrelation_seasonality_test,
         )  # only needed in setup
 
+        if isinstance(data, pd.Series) and data.name is None:
+            data.name = "Time Series"
+
         # Forecast Horizon Checks
         if fh is None and isinstance(fold_strategy, str):
             raise ValueError(
@@ -2765,6 +2768,8 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             else:
                 # Leave as series
                 result = return_vals
+                if result.name is None:
+                    result.name = self.y.name
 
         result = result.round(round)
 
@@ -2782,10 +2787,13 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             X=X_test_, fh=fh, return_pred_int=False, alpha=alpha
         )
         if len(y_test_pred) != len(y_test_):
-            self.logger.warning(
+            msg = (
                 "predict_model >> Forecast Horizon does not match the horizon length "
                 "used during training. Metrics displayed will be using indices that match only"
             )
+            # Need to print and log as well.
+            print(msg)
+            self.logger.warning(msg)
         # concatenates by index
         y_test_and_pred = pd.concat([y_test_pred, y_test_], axis=1)
         y_test_and_pred.dropna(inplace=True)  # Removes any indices that do not match
