@@ -28,6 +28,7 @@ def plot_(
     cv: Optional[Union[ExpandingWindowSplitter, SlidingWindowSplitter]] = None,
     return_data: bool = False,
     show: bool = True,
+    prediction_interval_flag: bool = False
 ) -> Optional[Any]:
     if plot == "ts":
         plot_data = plot_series(data=data, return_data=return_data, show=show)
@@ -35,16 +36,26 @@ def plot_(
         plot_data = plot_splits_tt(
             train=train, test=test, return_data=return_data, show=show
         )
-    elif plot == "splits_cv":
+    elif plot == "splits-cv":
         plot_data = plot_splits_cv(data=data, cv=cv, return_data=return_data, show=show)
     elif plot == "acf":
         plot_data = plot_acf(data=data, return_data=return_data, show=show)
     elif plot == "pacf":
         plot_data = plot_pacf(data=data, return_data=return_data, show=show)
     elif plot == "predictions":
-        plot_data = plot_predictions(
-            data=data, predictions=predictions, return_data=return_data, show=show
-        )
+        if prediction_interval_flag:
+            plot_data = plot_predictions_with_confidence(
+                data=data,
+                predictions= predictions["y_pred"],
+                upper_interval= predictions["lower"],
+                lower_interval= predictions["upper"],
+                return_data = False,
+                show = True,
+            )
+        else:
+            plot_data = plot_predictions(
+                data=data, predictions=predictions, return_data=return_data, show=show,
+            )
     elif plot == "residuals":
         plot_data = plot_diagnostics(data=data, return_data=return_data, show=show)
     else:
@@ -57,6 +68,7 @@ def plot_series(
     data: pd.Series,
     return_data: bool = False,
     show: bool = True,
+    **figure_args
 ):
     """Plots the original time series"""
     original = go.Scatter(
@@ -76,8 +88,19 @@ def plot_series(
     )
 
     fig = go.Figure(data=plot_data, layout=layout)
-    fig.update_layout(template="simple_white")
+
+    fig_template = figure_args.get("fig_template", "simple_white")
+    fig.update_layout(template=fig_template)
     fig.update_layout(showlegend=True)
+
+    fig_size = figure_args.get("fig_size", None)
+    if fig_size is not None:
+        fig.update_layout(
+            autosize=False,
+            width=fig_size[0],
+            height=fig_size[1],
+        )
+
     if show:
         fig.show()
 
@@ -92,6 +115,7 @@ def plot_splits_tt(
     test: pd.Series,
     return_data: bool = False,
     show: bool = True,
+    **figure_args
 ):
     """Plots the train-test split for the time serirs"""
     fig = go.Figure()
@@ -123,7 +147,16 @@ def plot_splits_tt(
             "showlegend": True,
         }
     )
-    fig.update_layout(template="simple_white")
+    fig_template = figure_args.get("fig_template", "simple_white")
+    fig.update_layout(template=fig_template)
+
+    fig_size = figure_args.get("fig_size", None)
+    if fig_size is not None:
+        fig.update_layout(
+            autosize=False,
+            width=fig_size[0],
+            height=fig_size[1],
+        )
     if show:
         fig.show()
 
@@ -138,6 +171,7 @@ def plot_splits_cv(
     cv,
     return_data: bool = False,
     show: bool = True,
+    **figure_args
 ):
     """Plots the cv splits used on the training split"""
 
@@ -199,7 +233,16 @@ def plot_splits_cv(
                     "showlegend": True,
                 }
             )
-            fig.update_layout(template="simple_white")
+            fig_template = figure_args.get("fig_template", "simple_white")
+            fig.update_layout(template=fig_template)
+
+            fig_size = figure_args.get("fig_size", None)
+            if fig_size is not None:
+                fig.update_layout(
+                    autosize=False,
+                    width=fig_size[0],
+                    height=fig_size[1],
+                )
         return fig
 
     train_windows, test_windows = get_windows(data, cv)
@@ -217,9 +260,11 @@ def plot_acf(
     data: pd.Series,
     return_data: bool = False,
     show: bool = True,
+    **figure_args
 ):
     """Plots the ACF on the data provided"""
-    corr_array = acf(data, alpha=0.05)
+    lags = figure_args.get("lags", None)
+    corr_array = acf(data, alpha=0.05, lags=lags)
     title = "Autocorrelation (ACF)"
 
     lower_y = corr_array[1][:, 0] - corr_array[0]
@@ -273,7 +318,16 @@ def plot_acf(
 
     fig.update_yaxes(zerolinecolor="#000000")
 
-    fig.update_layout(template="simple_white")
+    fig_template = figure_args.get("fig_template", "simple_white")
+    fig.update_layout(template=fig_template)
+
+    fig_size = figure_args.get("fig_size", None)
+    if fig_size is not None:
+        fig.update_layout(
+            autosize=False,
+            width=fig_size[0],
+            height=fig_size[1],
+        )
     fig.update_layout(title=title)
     if show:
         fig.show()
@@ -289,9 +343,11 @@ def plot_pacf(
     data: pd.Series,
     return_data: bool = False,
     show: bool = True,
+    lags: int = None,
+    **figure_args
 ):
     """Plots the PACF on the data provided"""
-    corr_array = pacf(data, alpha=0.05)
+    corr_array = pacf(data, alpha=0.05, lags=lags)
     title = "Partial Autocorrelation (PACF)"
     lower_y = corr_array[1][:, 0] - corr_array[0]
     upper_y = corr_array[1][:, 1] - corr_array[0]
@@ -344,7 +400,17 @@ def plot_pacf(
 
     fig.update_yaxes(zerolinecolor="#000000")
 
-    fig.update_layout(template="simple_white")
+    fig_template = figure_args.get("fig_template", "simple_white")
+    fig.update_layout(template=fig_template)
+
+    fig_size = figure_args.get("fig_size", None)
+    if fig_size is not None:
+        fig.update_layout(
+            autosize=False,
+            width=fig_size[0],
+            height=fig_size[1],
+        )
+
     fig.update_layout(title=title)
     if show:
         fig.show()
@@ -361,6 +427,7 @@ def plot_predictions(
     predictions: pd.Series,
     return_data: bool = False,
     show: bool = True,
+    **figure_args
 ):
     """Plots the original data and the predictions provided"""
     mean = go.Scatter(
@@ -392,7 +459,17 @@ def plot_predictions(
     )
 
     fig = go.Figure(data=data, layout=layout)
-    fig.update_layout(template="simple_white")
+
+    fig_template = figure_args.get("fig_template", "simple_white")
+    fig.update_layout(template=fig_template)
+
+    fig_size = figure_args.get("fig_size", None)
+    if fig_size is not None:
+        fig.update_layout(
+            autosize=False,
+            width=fig_size[0],
+            height=fig_size[1],
+        )
     fig.update_layout(showlegend=True)
     if show:
         fig.show()
@@ -407,6 +484,7 @@ def plot_diagnostics(
     data: pd.Series,
     return_data: bool = False,
     show: bool = True,
+    **figure_args
 ):
     """Plots the diagnostic data such as ACF, Histogram, QQ plot on the data provided"""
     fig = make_subplots(
@@ -541,7 +619,8 @@ def plot_diagnostics(
         # fig.update_layout(title=title)
 
     fig.update_layout(showlegend=False)
-    fig.update_layout(template="simple_white")
+    fig_template = figure_args.get("fig_template", "simple_white")
+    fig.update_layout(template=fig_template)
 
     qq(fig)
     dist_plot(fig)
@@ -563,6 +642,7 @@ def plot_predictions_with_confidence(
     lower_interval: pd.Series,
     return_data: bool = False,
     show: bool = True,
+    **figure_args
 ):
     """Plots the original data and the predictions provided with confidence"""
     upper_bound = go.Scatter(
@@ -618,8 +698,19 @@ def plot_predictions_with_confidence(
     )
 
     fig = go.Figure(data=data, layout=layout)
-    fig.update_layout(template="simple_white")
+
+    fig_template = figure_args.get("fig_template", "simple_white")
+    fig.update_layout(template=fig_template)
     fig.update_layout(showlegend=True)
+
+    fig_size = figure_args.get("fig_size", None)
+    if fig_size is not None:
+        fig.update_layout(
+            autosize=False,
+            width=fig_size[0],
+            height=fig_size[1],
+        )
+
     if show:
         fig.show()
 

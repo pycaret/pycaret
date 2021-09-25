@@ -2382,6 +2382,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         """
         data, train, test, predictions, cv = None, None, None, None, None
+        prediction_interval_flag = False
 
         if plot == "ts":
             data = self._get_y_data(split="all")
@@ -2401,6 +2402,16 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         else:
             if plot == "predictions":
                 data = self._get_y_data(split="all")
+
+                def _check_estimator_has_intervals(estimator):
+                    tags = estimator.get_tags()
+                    if tags["capability:pred_int"]:
+                        return True
+                    else:
+                        return False
+
+                prediction_interval_flag = _check_estimator_has_intervals(estimator)
+
                 predictions = estimator.predict()
             elif plot == "residuals" or plot == "acf" or plot == "pacf":
                 raise NotImplementedError(
@@ -2417,7 +2428,8 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             predictions=predictions,
             cv=cv,
             return_data=return_data,
-            show=system
+            show=system,
+            prediction_interval_flag = prediction_interval_flag
         )
 
         return plot_data
