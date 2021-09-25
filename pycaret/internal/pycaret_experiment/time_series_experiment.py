@@ -2448,7 +2448,14 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         elif plot is None and estimator is not None:
             plot = "forecast"
 
-        data, train, test, predictions, cv, model_name = None, None, None, None, None, None
+        data, train, test, predictions, cv, model_name = (
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        )
 
         if plot == "ts":
             data = self._get_y_data(split="all")
@@ -2466,8 +2473,9 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             elif plot == "diagnostics":
                 data = self._get_y_data(split="all")
             else:
+                plots_formatted_data = [f"'{plot}'" for plot in available_plots_data]
                 raise ValueError(
-                    f"Plot type '{plot}' is not supported when estimator is not provided. Available plots are '{', '.join(available_plots_data)}'"
+                    f"Plot type '{plot}' is not supported when estimator is not provided. Available plots are: {', '.join(plots_formatted_data)}"
                 )
         else:
             model_name = self._get_model_name(estimator)
@@ -2479,8 +2487,9 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                     "Plotting on residuals have not been implemented yet."
                 )
             else:
+                plots_formatted_model = [f"'{plot}'" for plot in available_plots_model]
                 raise ValueError(
-                    f"Plot type '{plot}' is not supported when estimator is provided. Available plots are '{', '.join(available_plots_model)}'"
+                    f"Plot type '{plot}' is not supported when estimator is provided. Available plots are: {', '.join(plots_formatted_model)}"
                 )
 
         plot_data = plot_(
