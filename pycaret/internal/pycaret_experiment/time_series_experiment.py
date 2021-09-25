@@ -2441,6 +2441,13 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         available_plots_data = available_plots_common + ["diagnostics"]
         available_plots_model = available_plots_common + ["forecast", "residuals"]
 
+        # Type checks
+        if estimator is not None and isinstance(estimator, str):
+            raise ValueError(
+                "Estimator must be a trained object. "
+                f"You have passed a string: '{estimator}'"
+            )
+
         # Default plot when no model is specified is the time series plot
         # Default plot when model is specified is the forecast plot
         if plot is None and estimator is None:
