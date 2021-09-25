@@ -919,12 +919,6 @@ def stack_models(
 def plot_model(
     estimator: Optional[Any] = None,
     plot: str = "ts",
-    scale: float = 1,
-    save: bool = False,
-    fold: Optional[Union[int, Any]] = None,
-    fit_kwargs: Optional[dict] = None,
-    use_train_data: bool = False,
-    verbose: bool = True,
     return_data: bool = False,
     display_format: Optional[str] = None,
 ) -> str:
