@@ -59,8 +59,8 @@ def plot_(
             plot_data = plot_predictions_with_confidence(
                 data=data,
                 predictions=predictions["y_pred"],
-                upper_interval=predictions["lower"],
-                lower_interval=predictions["upper"],
+                upper_interval=predictions["upper"],
+                lower_interval=predictions["lower"],
                 model_name=model_name,
                 return_data=False,
                 show=True,
