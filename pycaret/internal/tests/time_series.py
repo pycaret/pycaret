@@ -25,7 +25,7 @@ from pycaret.internal.tests import _format_test_results
 def test_(data, test: str, alpha: float = 0.05, *kwargs):
     if test == "all":
         results = test_all(data=data, alpha=alpha)
-    elif test == "stat_summary":
+    elif test == "summary":
         results = summary_statistics(data=data)
     elif test == "white_noise":
         results = is_white_noise(data=data, alpha=alpha, verbose=True)[1]

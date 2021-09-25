@@ -776,7 +776,7 @@ class _SupervisedExperiment(_TabularExperiment):
                         refit=False,
                     )
                     model_results = self.pull(pop=True)
-                    assert np.sum(model_results.iloc[0]) != 0.0
+                    assert np.sum(model_results.drop("cutoff", axis=1, errors="ignore").iloc[0]) != 0.0
                 except Exception:
                     self.logger.warning(
                         f"create_model() for {model} raised an exception or returned all 0.0, trying without fit_kwargs:"
@@ -975,7 +975,7 @@ class _SupervisedExperiment(_TabularExperiment):
 
         self.logger.info(str(sorted_models))
         self.logger.info(
-            "compare_models() succesfully completed......................................"
+            "compare_models() successfully completed......................................"
         )
 
         return sorted_models
@@ -1385,6 +1385,12 @@ class _SupervisedExperiment(_TabularExperiment):
         else:
             cv = self._get_cv_splitter(fold)
 
+        if self._ml_usecase == MLUsecase.TIME_SERIES:
+            # Add forecast horizon if use case is Time Series
+            fit_kwargs = self.update_fit_kwargs_with_fh_from_cv(
+                fit_kwargs=fit_kwargs, cv=cv
+            )
+
         self.logger.info("Declaring metric variables")
 
         """
@@ -1458,7 +1464,6 @@ class _SupervisedExperiment(_TabularExperiment):
         """
 
         if not cross_validation:
-
             model, model_fit_time = self._create_model_without_cv(
                 model, data_X, data_y, fit_kwargs, predict, system, display
             )
@@ -1683,7 +1688,7 @@ class _SupervisedExperiment(_TabularExperiment):
 
         choose_better: bool, default = False
             When set to set to True, base estimator is returned when the performance doesn't
-            improve by tune_model. This gurantees the returned object would perform atleast
+            improve by tune_model. This guarantees the returned object would perform at least
             equivalent to base estimator created using create_model or model returned by
             compare_models.
 
@@ -1697,7 +1702,7 @@ class _SupervisedExperiment(_TabularExperiment):
             If None, will use the value set in fold_groups parameter in setup().
 
         return_tuner: bool, default = False
-            If True, will reutrn a tuple of (model, tuner_object). Otherwise,
+            If True, will return a tuple of (model, tuner_object). Otherwise,
             will return just the best model.
 
         verbose: bool, default = True
@@ -2083,7 +2088,7 @@ class _SupervisedExperiment(_TabularExperiment):
 
         from pycaret.internal.tunable import VotingClassifier, VotingRegressor
 
-        def total_combintaions_in_grid(grid):
+        def total_combinations_in_grid(grid):
             nc = 1
 
             def get_iter(x):
@@ -2132,7 +2137,7 @@ class _SupervisedExperiment(_TabularExperiment):
                 }
 
             if search_algorithm != "grid":
-                tc = total_combintaions_in_grid(param_grid)
+                tc = total_combinations_in_grid(param_grid)
                 if tc <= n_iter:
                     self.logger.info(
                         f"{n_iter} is bigger than total combinations {tc}, setting search algorithm to grid"
@@ -2535,7 +2540,7 @@ class _SupervisedExperiment(_TabularExperiment):
 
         self.logger.info(str(best_model))
         self.logger.info(
-            "tune_model() succesfully completed......................................"
+            "tune_model() successfully completed......................................"
         )
 
         gc.collect()
@@ -2603,13 +2608,13 @@ class _SupervisedExperiment(_TabularExperiment):
 
         choose_better: bool, default = False
             When set to set to True, base estimator is returned when the metric doesn't
-            improve by ensemble_model. This gurantees the returned object would perform
-            atleast equivalent to base estimator created using create_model or model
+            improve by ensemble_model. This guarantees the returned object would perform
+            at least equivalent to base estimator created using create_model or model
             returned by compare_models.
 
         optimize: str, default = 'Accuracy'
             Only used when choose_better is set to True. optimize parameter is used
-            to compare emsembled model with base estimator. Values accepted in
+            to compare ensembled model with base estimator. Values accepted in
             optimize parameter are 'Accuracy', 'AUC', 'Recall', 'Precision', 'F1',
             'Kappa', 'MCC'.
 
@@ -2953,13 +2958,13 @@ class _SupervisedExperiment(_TabularExperiment):
 
         choose_better: bool, default = False
             When set to set to True, base estimator is returned when the metric doesn't
-            improve by ensemble_model. This gurantees the returned object would perform
-            atleast equivalent to base estimator created using create_model or model
+            improve by ensemble_model. This guarantees the returned object would perform
+            at least equivalent to base estimator created using create_model or model
             returned by compare_models.
 
         optimize: str, default = 'Accuracy'
             Only used when choose_better is set to True. optimize parameter is used
-            to compare emsembled model with base estimator. Values accepted in
+            to compare ensembled model with base estimator. Values accepted in
             optimize parameter are 'Accuracy', 'AUC', 'Recall', 'Precision', 'F1',
             'Kappa', 'MCC'.
 
@@ -2999,11 +3004,11 @@ class _SupervisedExperiment(_TabularExperiment):
         Warnings
         --------
         - When passing estimator_list with method set to 'soft'. All the models in the
-        estimator_list must support predict_proba function. 'svm' and 'ridge' doesnt
+        estimator_list must support predict_proba function. 'svm' and 'ridge' does not
         support the predict_proba and hence an exception will be raised.
 
         - When estimator_list is set to 'All' and method is forced to 'soft', estimators
-        that doesnt support the predict_proba function will be dropped from the estimator
+        that does not support the predict_proba function will be dropped from the estimator
         list.
 
         - If target variable is multiclass (more than 2 classes), AUC will be returned as
@@ -3353,13 +3358,13 @@ class _SupervisedExperiment(_TabularExperiment):
 
         choose_better: bool, default = False
             When set to set to True, base estimator is returned when the metric doesn't
-            improve by ensemble_model. This gurantees the returned object would perform
-            atleast equivalent to base estimator created using create_model or model
+            improve by ensemble_model. This guarantees the returned object would perform
+            at least equivalent to base estimator created using create_model or model
             returned by compare_models.
 
         optimize: str, default = 'Accuracy'
             Only used when choose_better is set to True. optimize parameter is used
-            to compare emsembled model with base estimator. Values accepted in
+            to compare ensembled model with base estimator. Values accepted in
             optimize parameter are 'Accuracy', 'AUC', 'Recall', 'Precision', 'F1',
             'Kappa', 'MCC'.
 
@@ -4311,7 +4316,7 @@ class _SupervisedExperiment(_TabularExperiment):
         passing a new unseen dataset, then the information grid printed is misleading
         as the model is trained on the complete dataset including test / hold-out sample.
         Once finalize_model() is used, the model is considered ready for deployment and
-        should be used on new unseens dataset only.
+        should be used on new unseen dataset only.
 
 
         """

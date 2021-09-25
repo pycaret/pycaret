@@ -26,38 +26,58 @@ def plot_(
     test: Optional[pd.Series] = None,
     predictions: Optional[pd.Series] = None,
     cv: Optional[Union[ExpandingWindowSplitter, SlidingWindowSplitter]] = None,
+    model_name: Optional[str] = None,
     return_data: bool = False,
     show: bool = True,
     prediction_interval_flag: bool = False
 ) -> Optional[Any]:
     if plot == "ts":
         plot_data = plot_series(data=data, return_data=return_data, show=show)
-    elif plot == "splits-tt":
-        plot_data = plot_splits_tt(
+    elif plot == "train_test_split":
+        plot_data = plot_splits_train_test_split(
             train=train, test=test, return_data=return_data, show=show
         )
-    elif plot == "splits-cv":
-        plot_data = plot_splits_cv(data=data, cv=cv, return_data=return_data, show=show)
+
+    elif plot == "cv":
+        plot_data = plot_cv(data=data, cv=cv, return_data=return_data, show=show)
+
     elif plot == "acf":
-        plot_data = plot_acf(data=data, return_data=return_data, show=show)
+        plot_data = plot_acf(
+            data=data, model_name=model_name, return_data=return_data, show=show
+        )
     elif plot == "pacf":
-        plot_data = plot_pacf(data=data, return_data=return_data, show=show)
-    elif plot == "predictions":
+        plot_data = plot_pacf(
+            data=data, model_name=model_name, return_data=return_data, show=show
+        )
+    elif plot == "diagnostics":
+        plot_data = plot_diagnostics(
+            data=data, model_name=model_name, return_data=return_data, show=show
+        )
+    elif plot == "forecast":
+
         if prediction_interval_flag:
             plot_data = plot_predictions_with_confidence(
                 data=data,
-                predictions= predictions["y_pred"],
-                upper_interval= predictions["lower"],
-                lower_interval= predictions["upper"],
-                return_data = False,
-                show = True,
+                predictions=predictions["y_pred"],
+                upper_interval=predictions["lower"],
+                lower_interval=predictions["upper"],
+                model_name=model_name,
+                return_data=False,
+                show=True,
             )
         else:
             plot_data = plot_predictions(
-                data=data, predictions=predictions, return_data=return_data, show=show,
+                data=data,
+                predictions=predictions,
+                model_name=model_name,
+                return_data=return_data,
+                show=show,
             )
+
     elif plot == "residuals":
-        plot_data = plot_diagnostics(data=data, return_data=return_data, show=show)
+        plot_data = plot_diagnostics(
+            data=data, model_name=model_name, return_data=return_data, show=show
+        )
     else:
         raise ValueError(f"Tests: '{plot}' is not supported.")
 
@@ -82,9 +102,7 @@ def plot_series(
     plot_data = [original]
 
     layout = go.Layout(
-        yaxis=dict(title="Values"),
-        xaxis=dict(title="Time"),
-        title="Time Series",
+        yaxis=dict(title="Values"), xaxis=dict(title="Time"), title="Time Series",
     )
 
     fig = go.Figure(data=plot_data, layout=layout)
@@ -110,7 +128,7 @@ def plot_series(
         return fig
 
 
-def plot_splits_tt(
+def plot_splits_train_test_split(
     train: pd.Series,
     test: pd.Series,
     return_data: bool = False,
@@ -166,7 +184,7 @@ def plot_splits_tt(
         return fig
 
 
-def plot_splits_cv(
+def plot_cv(
     data: pd.Series,
     cv,
     return_data: bool = False,
@@ -198,6 +216,7 @@ def plot_splits_cv(
                     mode="lines+markers",
                     line_color="#C0C0C0",
                     name=f"Unchanged",
+                    hoverinfo='skip'
                 )
                 for i in range(len(data) - 1)
             ]
@@ -209,6 +228,7 @@ def plot_splits_cv(
                     line_color="#1f77b4",
                     name="Train",
                     showlegend=False,
+                    hoverinfo='skip'
                 )
                 for i in train_windows[num_window][:-1]
             ]
@@ -219,6 +239,7 @@ def plot_splits_cv(
                     mode="lines+markers",
                     line_color="#DE970B",
                     name="ForecastHorizon",
+                    hoverinfo='skip'
                 )
                 for i in test_windows[num_window][:-1]
             ]
@@ -258,14 +279,20 @@ def plot_splits_cv(
 
 def plot_acf(
     data: pd.Series,
+    model_name: Optional[str] = None,
     return_data: bool = False,
     show: bool = True,
     **figure_args
 ):
     """Plots the ACF on the data provided"""
+
     lags = figure_args.get("lags", None)
     corr_array = acf(data, alpha=0.05, lags=lags)
-    title = "Autocorrelation (ACF)"
+    title = (
+        "Autocorrelation (ACF)"
+        if model_name is None
+        else f"Autocorrelation (ACF) | {model_name}"
+    )
 
     lower_y = corr_array[1][:, 0] - corr_array[0]
     upper_y = corr_array[1][:, 1] - corr_array[0]
@@ -278,7 +305,7 @@ def plot_acf(
         mode="markers",
         marker_color="#1f77b4",
         marker_size=10,
-        name="ACF",
+        name=f"ACF",
     )
 
     [
@@ -341,14 +368,21 @@ def plot_acf(
 
 def plot_pacf(
     data: pd.Series,
+    model_name: Optional[str] = None,
     return_data: bool = False,
     show: bool = True,
     lags: int = None,
     **figure_args
 ):
     """Plots the PACF on the data provided"""
+
     corr_array = pacf(data, alpha=0.05, lags=lags)
-    title = "Partial Autocorrelation (PACF)"
+    title = (
+        "Partial Autocorrelation (PACF)"
+        if model_name is None
+        else f"Partial Autocorrelation (PACF) | {model_name}"
+    )
+
     lower_y = corr_array[1][:, 0] - corr_array[0]
     upper_y = corr_array[1][:, 1] - corr_array[0]
 
@@ -425,20 +459,26 @@ def plot_pacf(
 def plot_predictions(
     data: pd.Series,
     predictions: pd.Series,
+    model_name: Optional[str] = None,
     return_data: bool = False,
     show: bool = True,
     **figure_args
 ):
     """Plots the original data and the predictions provided"""
+
+    title = (
+        "Actual and Forecast"
+        if data.name is None
+        else f"Actual and Forecast | {data.name}"
+    )
+
     mean = go.Scatter(
-        name="Forecast",
+        name=f"Forecast | {model_name}",
         x=predictions.index.to_timestamp(),
         y=predictions,
         mode="lines+markers",
         line=dict(color="#1f77b4"),
-        marker=dict(
-            size=5,
-        ),
+        marker=dict(size=5,),
         showlegend=True,
     )
     original = go.Scatter(
@@ -453,9 +493,7 @@ def plot_predictions(
     data = [mean, original]
 
     layout = go.Layout(
-        yaxis=dict(title="Values"),
-        xaxis=dict(title="Time"),
-        title="Forecasts",
+        yaxis=dict(title="Values"), xaxis=dict(title="Time"), title=title,
     )
 
     fig = go.Figure(data=data, layout=layout)
@@ -482,24 +520,30 @@ def plot_predictions(
 
 def plot_diagnostics(
     data: pd.Series,
+    model_name: Optional[str] = None,
     return_data: bool = False,
     show: bool = True,
     **figure_args
 ):
     """Plots the diagnostic data such as ACF, Histogram, QQ plot on the data provided"""
+    time_series_name = data.name
+    title = (
+        f"Diagnostics | {time_series_name}"
+        if model_name is None
+        else f"Diagnostics | '{model_name}' Residuals"
+    )
+
     fig = make_subplots(
         rows=2,
         cols=2,
-        row_heights=[
-            0.5,
-            0.5,
-        ],
+        row_heights=[0.5, 0.5,],
         subplot_titles=[
             "Time Plot",
             "Histogram Plot",
             "ACF Plot",
             "Quantile-Quantile Plot",
         ],
+        x_title=title,
     )
 
     def time_plot(fig):
@@ -551,7 +595,7 @@ def plot_diagnostics(
             row=2,
             col=2,
         )
-        fig.update_xaxes(title_text="Theoritical Quantities", row=2, col=2)
+        fig.update_xaxes(title_text="Theoretical Quantities", row=2, col=2)
         fig.update_yaxes(title_text="Sample Quantities", row=2, col=2)
 
     def dist_plot(fig):
@@ -645,6 +689,12 @@ def plot_predictions_with_confidence(
     **figure_args
 ):
     """Plots the original data and the predictions provided with confidence"""
+    title = (
+        "Actual and Forecast"
+        if data.name is None
+        else f"Actual and Forecast | {data.name}"
+    )
+
     upper_bound = go.Scatter(
         name="Upper interval",
         x=upper_interval.index.to_timestamp(),
@@ -663,9 +713,7 @@ def plot_predictions_with_confidence(
         y=predictions,
         mode="lines+markers",
         line=dict(color="#1f77b4"),
-        marker=dict(
-            size=5,
-        ),
+        marker=dict(size=5,),
         fillcolor="#68BBE3",
         fill="tonexty",
         showlegend=True,
@@ -692,9 +740,7 @@ def plot_predictions_with_confidence(
     data = [lower_bound, mean, upper_bound, original]
 
     layout = go.Layout(
-        yaxis=dict(title="Values"),
-        xaxis=dict(title="Time"),
-        title="Forecasts",
+        yaxis=dict(title="Values"), xaxis=dict(title="Time"), title=title,
     )
 
     fig = go.Figure(data=data, layout=layout)

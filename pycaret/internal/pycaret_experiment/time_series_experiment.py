@@ -614,9 +614,9 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         # Values in variable_keys are accessible in globals
         self.variable_keys = self.variable_keys.difference(
             {
-                "X",
+                # "X",
                 # "X_train",
-                "X_test",
+                # "X_test",
                 "target_param",
                 "iterative_imputation_iters_param",
                 "imputation_regressor",
@@ -697,6 +697,45 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         return pycaret.containers.metrics.time_series.get_all_metric_containers(
             self.variables, raise_errors=raise_errors
         )
+
+    def check_fh(self, fh: Union[List[int], int, np.array]) -> np.array:
+        """
+        Checks fh for validity and converts fh into an appropriate forecasting
+        horizon compatible with sktime (if necessary)
+
+        Parameters
+        ----------
+        fh : Union[List[int], int, np.array]
+            Forecasting Horizon
+
+        Returns
+        -------
+        np.array
+            Forecast Horizon (possibly updated to made compatible with sktime)
+
+        Raises
+        ------
+        ValueError
+            (1) When forecast horizon is an integer < 1
+            (2) When forecast horizon is not the correct type
+        """
+        if isinstance(fh, int):
+            if fh >= 1:
+                fh = np.arange(1, fh + 1)
+            else:
+                raise ValueError(
+                    f"If Forecast Horizon `fh` is an integer, it must be >= 1. You provided fh = '{fh}'!"
+                )
+        elif isinstance(fh, List):
+            fh = np.array(fh)
+        elif isinstance(fh, np.ndarray):
+            # Good to go
+            pass
+        else:
+            raise ValueError(
+                f"Horizon `fh` must be a of type int, list, or numpy array, got object of {type(fh)} type!"
+            )
+        return fh
 
     def setup(
         self,
@@ -922,22 +961,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             )
             # fold value will be reset after the data is split in the parent class setup
 
-        if isinstance(fh, int):
-            if fh >= 1:
-                fh = np.arange(1, fh + 1)
-            else:
-                raise ValueError(
-                    f"If Forecast Horizon `fh` is an integer, it must be >= 1. You provided fh = '{fh}'!"
-                )
-        elif isinstance(fh, List):
-            fh = np.array(fh)
-        elif isinstance(fh, np.ndarray):
-            # Good to go
-            pass
-        else:
-            raise ValueError(
-                f"Horizon `fh` must be a of type int, list, or numpy array, got object of {type(fh)} type!"
-            )
+        fh = self.check_fh(fh)
         self.fh = fh
 
         allowed_freq_index_types = (pd.PeriodIndex, pd.DatetimeIndex)
@@ -1286,6 +1310,29 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             **kwargs,
         )
 
+    @staticmethod
+    def update_fit_kwargs_with_fh_from_cv(fit_kwargs: Optional[Dict], cv) -> Dict:
+        """Updated the fit_ kwargs to include the fh parameter from cv
+
+        Parameters
+        ----------
+        fit_kwargs : Optional[Dict]
+            Original fit kwargs
+        cv : [type]
+            cross validation object
+
+        Returns
+        -------
+        Dict[Any]
+            Updated fit kwargs
+        """
+        fh_param = {"fh": cv.fh}
+        if fit_kwargs is None:
+            fit_kwargs = fh_param
+        else:
+            fit_kwargs.update(fh_param)
+        return fit_kwargs
+
     def _create_model_without_cv(
         self, model, data_X, data_y, fit_kwargs, predict, system, display: Display
     ):
@@ -1363,16 +1410,23 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         self.logger.info(f"Cross validating with {cv}, n_jobs={n_jobs}")
 
         # Cross Validate time series
-        fh_param = {"fh": cv.fh}
-        if fit_kwargs is None:
-            fit_kwargs = fh_param
-        else:
-            fit_kwargs.update(fh_param)
+        # fh_param = {"fh": cv.fh}
+
+        # if fit_kwargs is None:
+        #     fit_kwargs = fh_param
+        # else:
+        #     fit_kwargs.update(fh_param)
+        fit_kwargs = self.update_fit_kwargs_with_fh_from_cv(
+            fit_kwargs=fit_kwargs, cv=cv
+        )
 
         model_fit_start = time.time()
 
         scores, cutoffs = cross_validate_ts(
-            forecaster=clone(model),
+            # Commented out since supervised_experiment also does not clone
+            # when doing cross_validate
+            # forecaster=clone(model),
+            forecaster=model,
             y=data_y,
             X=data_X,
             scoring=metrics_dict,
@@ -1424,6 +1478,10 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
             model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
         else:
+            # Set fh explicitly since we are not fitting explicitly
+            # This is needed so that the model can be used later to predict, etc.
+            model._set_fh(fit_kwargs.get("fh"))
+
             # model_fit_time /= _get_cv_n_folds(data_y, cv)
             model_fit_time /= cv.get_n_splits(data_y)
 
@@ -1828,11 +1886,15 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         if True:
 
             # fit_kwargs = get_pipeline_fit_kwargs(pipeline_with_model, fit_kwargs)
-            fh_param = {"fh": cv.fh}
-            if fit_kwargs is None:
-                fit_kwargs = fh_param
-            else:
-                fit_kwargs.update(fh_param)
+
+            # fh_param = {"fh": cv.fh}
+            # if fit_kwargs is None:
+            #     fit_kwargs = fh_param
+            # else:
+            #     fit_kwargs.update(fh_param)
+            fit_kwargs = self.update_fit_kwargs_with_fh_from_cv(
+                fit_kwargs=fit_kwargs, cv=cv
+            )
 
             # actual_estimator_label = get_pipeline_estimator_label(pipeline_with_model)
             actual_estimator_label = ""
@@ -2293,13 +2355,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
     def plot_model(
         self,
         estimator: Optional[Any] = None,
-        plot: str = "ts",
-        scale: float = 1,
-        save: bool = False,
-        fold: Optional[Union[int, Any]] = None,
-        fit_kwargs: Optional[dict] = None,
-        use_train_data: bool = False,
-        verbose: bool = True,
+        plot: Optional[str] = None,
         return_data: bool = False,
         display_format: Optional[str] = None,
         system: bool = True,
@@ -2381,15 +2437,28 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             None
 
         """
-        data, train, test, predictions, cv = None, None, None, None, None
+
+        available_plots_common = ["ts", "train_test_split", "cv", "acf", "pacf"]
+        available_plots_data = available_plots_common + ["diagnostics"]
+        available_plots_model = available_plots_common + ["forecast", "residuals"]
+
+        # Default plot when no model is specified is the time series plot
+        # Default plot when model is specified is the forecast plot
+        if plot is None and estimator is None:
+            plot = "ts"
+        elif plot is None and estimator is not None:
+            plot = "forecast"
+
+        data, train, test, predictions, cv, model_name = None, None, None, None, None, None
         prediction_interval_flag = False
+
 
         if plot == "ts":
             data = self._get_y_data(split="all")
-        elif plot == "splits-tt":
+        elif plot == "train_test_split":
             train = self._get_y_data(split="train")
             test = self._get_y_data(split="test")
-        elif plot == "splits_cv":
+        elif plot == "cv":
             data = self._get_y_data(split="train")
             cv = self.get_fold_generator()
         elif estimator is None:
@@ -2397,10 +2466,15 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 data = self._get_y_data(split="all")
             elif plot == "pacf":
                 data = self._get_y_data(split="all")
+            elif plot == "diagnostics":
+                data = self._get_y_data(split="all")
             else:
-                raise ValueError(f"Plot type {plot} is not supported for the data.")
+                raise ValueError(
+                    f"Plot type '{plot}' is not supported when estimator is not provided. Available plots are '{', '.join(available_plots_data)}'"
+                )
         else:
-            if plot == "predictions":
+            model_name = self._get_model_name(estimator)
+            if plot == "forecast":
                 data = self._get_y_data(split="all")
 
                 def _check_estimator_has_intervals(estimator):
@@ -2418,7 +2492,9 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                     "Plotting on residuals have not been implemented yet."
                 )
             else:
-                raise ValueError(f"Plot type '{plot}' is not supported for estimators.")
+                raise ValueError(
+                    f"Plot type '{plot}' is not supported when estimator is provided. Available plots are '{', '.join(available_plots_model)}'"
+                )
 
         plot_data = plot_(
             plot=plot,
@@ -2427,6 +2503,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             test=test,
             predictions=predictions,
             cv=cv,
+            model_name=model_name,
             return_data=return_data,
             show=system,
             prediction_interval_flag = prediction_interval_flag
@@ -2643,6 +2720,9 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         if fh is None:
             fh = self.fh
+        else:
+            # Get the fh in the right format for sktime
+            fh = self.check_fh(fh)
 
         display = None
         try:

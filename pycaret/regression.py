@@ -16,6 +16,7 @@ import warnings
 
 warnings.filterwarnings("ignore")
 
+_EXPERIMENT_CLASS = RegressionExperiment
 _CURRENT_EXPERIMENT = None
 _CURRENT_EXPERIMENT_EXCEPTION = (
     "_CURRENT_EXPERIMENT global variable is not set. Please run setup() first."
@@ -566,7 +567,7 @@ def setup(
       
     """
 
-    exp = RegressionExperiment()
+    exp = _EXPERIMENT_CLASS()
     set_current_experiment(exp)
     return exp.setup(
         data=data,
@@ -1663,7 +1664,7 @@ def interpret_model(
     )
 
 
-@check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
+# not using check_if_global_is_not_none on purpose
 def predict_model(
     estimator,
     data: Optional[pd.DataFrame] = None,
@@ -1718,7 +1719,11 @@ def predict_model(
     
     """
 
-    return _CURRENT_EXPERIMENT.predict_model(
+    experiment = _CURRENT_EXPERIMENT
+    if experiment is None:
+        experiment = _EXPERIMENT_CLASS()
+
+    return experiment.predict_model(
         estimator=estimator, data=data, round=round, verbose=verbose,
     )
 
@@ -2264,7 +2269,6 @@ def get_config(variable: str):
     - fold_shuffle_param: shuffle parameter used in Kfolds
     - n_jobs_param: n_jobs parameter used in model training
     - html_param: html_param configured through setup
-    - create_model_container: results grid storage container
     - master_model_container: model storage container
     - display_container: results display container
     - exp_name_log: Name of experiment
@@ -2320,7 +2324,6 @@ def set_config(variable: str, value):
     - fold_shuffle_param: shuffle parameter used in Kfolds
     - n_jobs_param: n_jobs parameter used in model training
     - html_param: html_param configured through setup
-    - create_model_container: results grid storage container
     - master_model_container: model storage container
     - display_container: results display container
     - exp_name_log: Name of experiment
