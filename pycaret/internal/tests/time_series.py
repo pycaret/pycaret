@@ -47,10 +47,7 @@ def test_(data, test: str, alpha: float = 0.05, *kwargs):
 ########################
 def test_all(data, alpha: float = 0.05):
     result_summary_stats = summary_statistics(data=data)
-    result_summary_stats["Setting"] = ""
-    result_summary_stats.set_index("Setting", append=True, inplace=True)
-
-    result_wn = is_white_noise(data, verbose=True)
+    result_wn = is_white_noise(data, alpha=alpha, verbose=True)
     result_adf = is_stationary_adf(data, alpha=alpha, verbose=True)
     result_kpss = is_stationary_kpss(data, alpha=alpha, verbose=True)
     result_normality = is_gaussian(data, alpha=alpha, verbose=True)
@@ -112,7 +109,7 @@ def is_stationary_adf(data: pd.Series, alpha: float = 0.05, verbose: bool = Fals
     details.update(critical_values)
 
     details = pd.DataFrame(details, index=["Value"]).T.reset_index()
-    details["Setting"] = alpha
+    details["Setting"] = [{"alpha": alpha}] * len(details)
     details = _format_test_results(details, "Stationarity", "ADF")
 
     if verbose:
@@ -150,7 +147,7 @@ def is_stationary_kpss(data: pd.Series, alpha: float = 0.05, verbose: bool = Fal
     details.update(critical_values)
 
     details = pd.DataFrame(details, index=["Value"]).T.reset_index()
-    details["Setting"] = alpha
+    details["Setting"] = [{"alpha": alpha}] * len(details)
     details = _format_test_results(details, "Stationarity", "KPSS")
 
     if verbose:

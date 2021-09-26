@@ -32,8 +32,8 @@ def _format_test_results(
     result.rename(columns={"index": "Property"}, inplace=True)
     result["Test"] = test
     result["Test Name"] = test_name
-    if "Setting" in result.columns:
-        result.set_index(["Test", "Test Name", "Property", "Setting"], inplace=True)
-    else:
-        result.set_index(["Test", "Test Name", "Property"], inplace=True)
+    if "Setting" not in result.columns:
+        result["Setting"] = ""
+    result = result[["Test", "Test Name", "Property", "Setting", "Value"]]
+    result.reset_index(inplace=True, drop=True)
     return result

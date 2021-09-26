@@ -185,30 +185,31 @@ def test_check_stats(load_data):
         session_id=42,
     )
 
-    expected = ["Test", "Test Name", "Property", "Setting"]
-    expected_small = ["Test", "Test Name", "Property"]
+    expected = ["Test", "Test Name", "Property", "Setting", "Value"]
+    # expected_small = ["Test", "Test Name", "Property"]
 
     results = exp.check_stats()
-    index_names = list(results.index.names)
+    column_names = list(results.columns)
     for i, name in enumerate(expected):
-        assert index_names[i] == name
+        assert column_names[i] == name
 
     # Individual Tests
-    tests = ["white_noise", "stationarity", "adf", "kpss", "normality"]
+    tests = ["summary", "white_noise", "stationarity", "adf", "kpss", "normality"]
     for test in tests:
         results = exp.check_stats(test=test)
-        index_names = list(results.index.names)
+        column_names = list(results.columns)
         for i, name in enumerate(expected):
-            assert index_names[i] == name
-
-    results = exp.check_stats(test="summary")
-    index_names = list(results.index.names)
-    for i, name in enumerate(expected_small):
-        assert index_names[i] == name
+            assert column_names[i] == name
 
     alpha = 0.2
     results = exp.check_stats(alpha=alpha)
-    assert alpha in results.index.get_level_values("Setting")
+    assert (
+        results.query("Test == 'White Noise'").iloc[0]["Setting"].get("alpha") == alpha
+    )
+    assert (
+        results.query("Test == 'Stationarity'").iloc[0]["Setting"].get("alpha") == alpha
+    )
+    assert results.query("Test == 'Normality'").iloc[0]["Setting"].get("alpha") == alpha
 
 
 def test_plot_model(load_data):
