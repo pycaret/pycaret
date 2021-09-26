@@ -13,6 +13,7 @@ from sktime.forecasting.base._meta import _HeterogenousEnsembleForecaster
 
 _ENSEMBLE_METHODS = ["voting", "mean", "median"]
 
+
 class _EnsembleForecasterWithVoting(_HeterogenousEnsembleForecaster):
     """
     Ensemble of forecasters.
@@ -60,9 +61,7 @@ class _EnsembleForecasterWithVoting(_HeterogenousEnsembleForecaster):
 
     def _check_method(self):
         if self.method == "voting" and self.weights is None:
-            warnings.warn(
-                "Missing 'weights' argument, setting uniform weights."
-            )
+            warnings.warn("Missing 'weights' argument, setting uniform weights.")
             self.weights = np.ones(len(self.forecasters))
         elif self.method in self._not_required_weights and self.weights:
             warnings.warn(
@@ -75,7 +74,7 @@ class _EnsembleForecasterWithVoting(_HeterogenousEnsembleForecaster):
             )
 
     def _check_weights(self):
-        if (self.weights is not None and len(self.weights) != len(self.forecasters)):
+        if self.weights is not None and len(self.weights) != len(self.forecasters):
             raise ValueError(
                 f"Number of forecasters and weights must be equal, got {len(self.weights)} weights and {len(self.estimators)} estimators"
             )
@@ -122,8 +121,8 @@ class _EnsembleForecasterWithVoting(_HeterogenousEnsembleForecaster):
         pred_forecasters = pd.concat(self._predict_forecasters(fh, X), axis=1)
 
         if self.method == "median":
-            return pred_forecasters.median(axis=1)
+            return pd.Series(pred_forecasters.median(axis=1))
         elif self.method in self._required_weights:
             self._check_weights()
             pred_w = np.average(pred_forecasters, axis=1, weights=self.weights)
-            return pd.DataFrame(pred_w, index=pred_forecasters.index)
+            return pd.Series(pred_w, index=pred_forecasters.index)

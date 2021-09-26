@@ -1,4 +1,4 @@
-from typing import Optional, Any, Union
+from typing import Optional, Any, Union, Dict
 import pandas as pd
 import plotly.graph_objects as go
 import numpy as np
@@ -29,32 +29,66 @@ def plot_(
     model_name: Optional[str] = None,
     return_data: bool = False,
     show: bool = True,
-    prediction_interval_flag: bool = False
+    prediction_interval_flag: bool = False,
+    data_kwargs: Dict = {},
+    fig_kwargs: Dict = {},
 ) -> Optional[Any]:
     if plot == "ts":
-        plot_data = plot_series(data=data, return_data=return_data, show=show)
+        plot_data = plot_series(
+            data=data,
+            return_data=return_data,
+            show=show,
+            data_kwargs=data_kwargs,
+            fig_kwargs=fig_kwargs,
+        )
     elif plot == "train_test_split":
         plot_data = plot_splits_train_test_split(
-            train=train, test=test, return_data=return_data, show=show
+            train=train,
+            test=test,
+            return_data=return_data,
+            show=show,
+            data_kwargs=data_kwargs,
+            fig_kwargs=fig_kwargs,
         )
 
     elif plot == "cv":
-        plot_data = plot_cv(data=data, cv=cv, return_data=return_data, show=show)
+        plot_data = plot_cv(
+            data=data,
+            cv=cv,
+            return_data=return_data,
+            show=show,
+            data_kwargs=data_kwargs,
+            fig_kwargs=fig_kwargs,
+        )
 
     elif plot == "acf":
         plot_data = plot_acf(
-            data=data, model_name=model_name, return_data=return_data, show=show
+            data=data,
+            model_name=model_name,
+            return_data=return_data,
+            show=show,
+            data_kwargs=data_kwargs,
+            fig_kwargs=fig_kwargs,
         )
     elif plot == "pacf":
         plot_data = plot_pacf(
-            data=data, model_name=model_name, return_data=return_data, show=show
+            data=data,
+            model_name=model_name,
+            return_data=return_data,
+            show=show,
+            data_kwargs=data_kwargs,
+            fig_kwargs=fig_kwargs,
         )
-    elif plot == "diagnostics":
+    elif plot == "diagnostics" or plot == "residuals":
         plot_data = plot_diagnostics(
-            data=data, model_name=model_name, return_data=return_data, show=show
+            data=data,
+            model_name=model_name,
+            return_data=return_data,
+            show=show,
+            data_kwargs=data_kwargs,
+            fig_kwargs=fig_kwargs,
         )
     elif plot == "forecast":
-
         if prediction_interval_flag:
             plot_data = plot_predictions_with_confidence(
                 data=data,
@@ -64,6 +98,8 @@ def plot_(
                 model_name=model_name,
                 return_data=False,
                 show=True,
+                data_kwargs=data_kwargs,
+                fig_kwargs=fig_kwargs,
             )
         else:
             plot_data = plot_predictions(
@@ -72,12 +108,9 @@ def plot_(
                 model_name=model_name,
                 return_data=return_data,
                 show=show,
+                data_kwargs=data_kwargs,
+                fig_kwargs=fig_kwargs,
             )
-
-    elif plot == "residuals":
-        plot_data = plot_diagnostics(
-            data=data, model_name=model_name, return_data=return_data, show=show
-        )
     else:
         raise ValueError(f"Tests: '{plot}' is not supported.")
 
@@ -88,7 +121,8 @@ def plot_series(
     data: pd.Series,
     return_data: bool = False,
     show: bool = True,
-    **figure_args
+    data_kwargs: Dict = {},
+    fig_kwargs: Dict = {},
 ):
     """Plots the original time series"""
     original = go.Scatter(
@@ -107,16 +141,14 @@ def plot_series(
 
     fig = go.Figure(data=plot_data, layout=layout)
 
-    fig_template = figure_args.get("fig_template", "simple_white")
+    fig_template = fig_kwargs.get("fig_template", "simple_white")
     fig.update_layout(template=fig_template)
     fig.update_layout(showlegend=True)
 
-    fig_size = figure_args.get("fig_size", None)
+    fig_size = fig_kwargs.get("fig_size", None)
     if fig_size is not None:
         fig.update_layout(
-            autosize=False,
-            width=fig_size[0],
-            height=fig_size[1],
+            autosize=False, width=fig_size[0], height=fig_size[1],
         )
 
     if show:
@@ -133,7 +165,8 @@ def plot_splits_train_test_split(
     test: pd.Series,
     return_data: bool = False,
     show: bool = True,
-    **figure_args
+    data_kwargs: Dict = {},
+    fig_kwargs: Dict = {},
 ):
     """Plots the train-test split for the time serirs"""
     fig = go.Figure()
@@ -165,15 +198,13 @@ def plot_splits_train_test_split(
             "showlegend": True,
         }
     )
-    fig_template = figure_args.get("fig_template", "simple_white")
+    fig_template = fig_kwargs.get("fig_template", "simple_white")
     fig.update_layout(template=fig_template)
 
-    fig_size = figure_args.get("fig_size", None)
+    fig_size = fig_kwargs.get("fig_size", None)
     if fig_size is not None:
         fig.update_layout(
-            autosize=False,
-            width=fig_size[0],
-            height=fig_size[1],
+            autosize=False, width=fig_size[0], height=fig_size[1],
         )
     if show:
         fig.show()
@@ -189,7 +220,8 @@ def plot_cv(
     cv,
     return_data: bool = False,
     show: bool = True,
-    **figure_args
+    data_kwargs: Dict = {},
+    fig_kwargs: Dict = {},
 ):
     """Plots the cv splits used on the training split"""
 
@@ -216,7 +248,7 @@ def plot_cv(
                     mode="lines+markers",
                     line_color="#C0C0C0",
                     name=f"Unchanged",
-                    hoverinfo='skip'
+                    hoverinfo="skip",
                 )
                 for i in range(len(data) - 1)
             ]
@@ -228,7 +260,7 @@ def plot_cv(
                     line_color="#1f77b4",
                     name="Train",
                     showlegend=False,
-                    hoverinfo='skip'
+                    hoverinfo="skip",
                 )
                 for i in train_windows[num_window][:-1]
             ]
@@ -239,7 +271,7 @@ def plot_cv(
                     mode="lines+markers",
                     line_color="#DE970B",
                     name="ForecastHorizon",
-                    hoverinfo='skip'
+                    hoverinfo="skip",
                 )
                 for i in test_windows[num_window][:-1]
             ]
@@ -254,15 +286,13 @@ def plot_cv(
                     "showlegend": True,
                 }
             )
-            fig_template = figure_args.get("fig_template", "simple_white")
+            fig_template = fig_kwargs.get("fig_template", "simple_white")
             fig.update_layout(template=fig_template)
 
-            fig_size = figure_args.get("fig_size", None)
+            fig_size = fig_kwargs.get("fig_size", None)
             if fig_size is not None:
                 fig.update_layout(
-                    autosize=False,
-                    width=fig_size[0],
-                    height=fig_size[1],
+                    autosize=False, width=fig_size[0], height=fig_size[1],
                 )
         return fig
 
@@ -282,12 +312,13 @@ def plot_acf(
     model_name: Optional[str] = None,
     return_data: bool = False,
     show: bool = True,
-    **figure_args
+    data_kwargs: Dict = {},
+    fig_kwargs: Dict = {},
 ):
     """Plots the ACF on the data provided"""
 
-    lags = figure_args.get("lags", None)
-    corr_array = acf(data, alpha=0.05, lags=lags)
+    nlags = data_kwargs.get("nlags", None)
+    corr_array = acf(data, alpha=0.05, nlags=nlags)
     title = (
         "Autocorrelation (ACF)"
         if model_name is None
@@ -345,15 +376,13 @@ def plot_acf(
 
     fig.update_yaxes(zerolinecolor="#000000")
 
-    fig_template = figure_args.get("fig_template", "simple_white")
+    fig_template = fig_kwargs.get("fig_template", "simple_white")
     fig.update_layout(template=fig_template)
 
-    fig_size = figure_args.get("fig_size", None)
+    fig_size = fig_kwargs.get("fig_size", None)
     if fig_size is not None:
         fig.update_layout(
-            autosize=False,
-            width=fig_size[0],
-            height=fig_size[1],
+            autosize=False, width=fig_size[0], height=fig_size[1],
         )
     fig.update_layout(title=title)
     if show:
@@ -371,12 +400,13 @@ def plot_pacf(
     model_name: Optional[str] = None,
     return_data: bool = False,
     show: bool = True,
-    lags: int = None,
-    **figure_args
+    data_kwargs: Dict = {},
+    fig_kwargs: Dict = {},
 ):
     """Plots the PACF on the data provided"""
 
-    corr_array = pacf(data, alpha=0.05, lags=lags)
+    nlags = data_kwargs.get("nlags", None)
+    corr_array = pacf(data, alpha=0.05, nlags=nlags)
     title = (
         "Partial Autocorrelation (PACF)"
         if model_name is None
@@ -434,15 +464,13 @@ def plot_pacf(
 
     fig.update_yaxes(zerolinecolor="#000000")
 
-    fig_template = figure_args.get("fig_template", "simple_white")
+    fig_template = fig_kwargs.get("fig_template", "simple_white")
     fig.update_layout(template=fig_template)
 
-    fig_size = figure_args.get("fig_size", None)
+    fig_size = fig_kwargs.get("fig_size", None)
     if fig_size is not None:
         fig.update_layout(
-            autosize=False,
-            width=fig_size[0],
-            height=fig_size[1],
+            autosize=False, width=fig_size[0], height=fig_size[1],
         )
 
     fig.update_layout(title=title)
@@ -462,15 +490,15 @@ def plot_predictions(
     model_name: Optional[str] = None,
     return_data: bool = False,
     show: bool = True,
-    **figure_args
+    data_kwargs: Dict = {},
+    fig_kwargs: Dict = {},
 ):
     """Plots the original data and the predictions provided"""
 
-    title = (
-        "Actual and Forecast"
-        if data.name is None
-        else f"Actual and Forecast | {data.name}"
-    )
+    title = "Actual vs. Forecast"
+    time_series_name = data.name
+    if time_series_name is not None:
+        title = time_series_name + " | " + title
 
     mean = go.Scatter(
         name=f"Forecast | {model_name}",
@@ -498,15 +526,13 @@ def plot_predictions(
 
     fig = go.Figure(data=data, layout=layout)
 
-    fig_template = figure_args.get("fig_template", "simple_white")
+    fig_template = fig_kwargs.get("fig_template", "simple_white")
     fig.update_layout(template=fig_template)
 
-    fig_size = figure_args.get("fig_size", None)
+    fig_size = fig_kwargs.get("fig_size", None)
     if fig_size is not None:
         fig.update_layout(
-            autosize=False,
-            width=fig_size[0],
-            height=fig_size[1],
+            autosize=False, width=fig_size[0], height=fig_size[1],
         )
     fig.update_layout(showlegend=True)
     if show:
@@ -523,7 +549,8 @@ def plot_diagnostics(
     model_name: Optional[str] = None,
     return_data: bool = False,
     show: bool = True,
-    **figure_args
+    data_kwargs: Dict = {},
+    fig_kwargs: Dict = {},
 ):
     """Plots the diagnostic data such as ACF, Histogram, QQ plot on the data provided"""
     time_series_name = data.name
@@ -663,7 +690,7 @@ def plot_diagnostics(
         # fig.update_layout(title=title)
 
     fig.update_layout(showlegend=False)
-    fig_template = figure_args.get("fig_template", "simple_white")
+    fig_template = fig_kwargs.get("fig_template", "simple_white")
     fig.update_layout(template=fig_template)
 
     qq(fig)
@@ -684,9 +711,11 @@ def plot_predictions_with_confidence(
     predictions: pd.Series,
     upper_interval: pd.Series,
     lower_interval: pd.Series,
+    model_name: Optional[str] = None,
     return_data: bool = False,
     show: bool = True,
-    **figure_args
+    data_kwargs: Dict = {},
+    fig_kwargs: Dict = {},
 ):
     """Plots the original data and the predictions provided with confidence"""
     title = (
@@ -696,7 +725,7 @@ def plot_predictions_with_confidence(
     )
 
     upper_bound = go.Scatter(
-        name="Upper interval",
+        name=f"Prediction Interval | {model_name}",  # Changed since we use only 1 legend
         x=upper_interval.index.to_timestamp(),
         y=upper_interval,
         mode="lines",
@@ -708,7 +737,7 @@ def plot_predictions_with_confidence(
     )
 
     mean = go.Scatter(
-        name="Forecast",
+        name=f"Forecast | {model_name}",
         x=predictions.index.to_timestamp(),
         y=predictions,
         mode="lines+markers",
@@ -734,7 +763,7 @@ def plot_predictions_with_confidence(
         marker=dict(color="#68BBE3"),
         line=dict(width=0),
         mode="lines",
-        showlegend=False,
+        showlegend=False,  # Not outputting since we need only 1 legend for interval
     )
 
     data = [lower_bound, mean, upper_bound, original]
@@ -745,16 +774,14 @@ def plot_predictions_with_confidence(
 
     fig = go.Figure(data=data, layout=layout)
 
-    fig_template = figure_args.get("fig_template", "simple_white")
+    fig_template = fig_kwargs.get("fig_template", "simple_white")
     fig.update_layout(template=fig_template)
     fig.update_layout(showlegend=True)
 
-    fig_size = figure_args.get("fig_size", None)
+    fig_size = fig_kwargs.get("fig_size", None)
     if fig_size is not None:
         fig.update_layout(
-            autosize=False,
-            width=fig_size[0],
-            height=fig_size[1],
+            autosize=False, width=fig_size[0], height=fig_size[1],
         )
 
     if show:

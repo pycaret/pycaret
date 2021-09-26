@@ -943,6 +943,9 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             autocorrelation_seasonality_test,
         )  # only needed in setup
 
+        if isinstance(data, pd.Series) and data.name is None:
+            data.name = "Time Series"
+
         # Forecast Horizon Checks
         if fh is None and isinstance(fold_strategy, str):
             raise ValueError(
@@ -2358,6 +2361,8 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         plot: Optional[str] = None,
         return_data: bool = False,
         display_format: Optional[str] = None,
+        data_kwargs: Dict = {},
+        fig_kwargs: Dict = {},
         system: bool = True,
     ) -> str:
 
@@ -2442,6 +2447,15 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         available_plots_data = available_plots_common + ["diagnostics"]
         available_plots_model = available_plots_common + ["forecast", "residuals"]
 
+        prediction_interval_flag = False
+
+        # Type checks
+        if estimator is not None and isinstance(estimator, str):
+            raise ValueError(
+                "Estimator must be a trained object. "
+                f"You have passed a string: '{estimator}'"
+            )
+
         # Default plot when no model is specified is the time series plot
         # Default plot when model is specified is the forecast plot
         if plot is None and estimator is None:
@@ -2449,9 +2463,14 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         elif plot is None and estimator is not None:
             plot = "forecast"
 
-        data, train, test, predictions, cv, model_name = None, None, None, None, None, None
-        prediction_interval_flag = False
-
+        data, train, test, predictions, cv, model_name = (
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        )
 
         if plot == "ts":
             data = self._get_y_data(split="all")
@@ -2469,8 +2488,9 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             elif plot == "diagnostics":
                 data = self._get_y_data(split="all")
             else:
+                plots_formatted_data = [f"'{plot}'" for plot in available_plots_data]
                 raise ValueError(
-                    f"Plot type '{plot}' is not supported when estimator is not provided. Available plots are '{', '.join(available_plots_data)}'"
+                    f"Plot type '{plot}' is not supported when estimator is not provided. Available plots are: {', '.join(plots_formatted_data)}"
                 )
         else:
             model_name = self._get_model_name(estimator)
@@ -2486,14 +2506,17 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
                 prediction_interval_flag = _check_estimator_has_intervals(estimator)
 
-                predictions = estimator.predict()
+                predictions = self.predict_model(
+                    estimator, return_pred_int=prediction_interval_flag
+                )
             elif plot == "residuals" or plot == "acf" or plot == "pacf":
                 raise NotImplementedError(
                     "Plotting on residuals have not been implemented yet."
                 )
             else:
+                plots_formatted_model = [f"'{plot}'" for plot in available_plots_model]
                 raise ValueError(
-                    f"Plot type '{plot}' is not supported when estimator is provided. Available plots are '{', '.join(available_plots_model)}'"
+                    f"Plot type '{plot}' is not supported when estimator is provided. Available plots are: {', '.join(plots_formatted_model)}"
                 )
 
         plot_data = plot_(
@@ -2506,7 +2529,9 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             model_name=model_name,
             return_data=return_data,
             show=system,
-            prediction_interval_flag = prediction_interval_flag
+            prediction_interval_flag=prediction_interval_flag,
+            data_kwargs=data_kwargs,
+            fig_kwargs=fig_kwargs,
         )
 
         return plot_data
@@ -2763,8 +2788,11 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             else:
                 # Leave as series
                 result = return_vals
+                if result.name is None:
+                    result.name = self.y.name
 
-        result = result.round(round)
+        # Converting to float since rounding does not support int
+        result = result.astype(float).round(round)
 
         if isinstance(result.index, pd.DatetimeIndex):
             result.index = (
@@ -2780,10 +2808,13 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             X=X_test_, fh=fh, return_pred_int=False, alpha=alpha
         )
         if len(y_test_pred) != len(y_test_):
-            self.logger.warning(
+            msg = (
                 "predict_model >> Forecast Horizon does not match the horizon length "
                 "used during training. Metrics displayed will be using indices that match only"
             )
+            # Need to print and log as well.
+            print(msg)
+            self.logger.warning(msg)
         # concatenates by index
         y_test_and_pred = pd.concat([y_test_pred, y_test_], axis=1)
         y_test_and_pred.dropna(inplace=True)  # Removes any indices that do not match
