@@ -2142,7 +2142,7 @@ def save_model(
     )
 
 
-@check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
+# not using check_if_global_is_not_none on purpose
 def load_model(
     model_name,
     platform: Optional[str] = None,
@@ -2191,7 +2191,11 @@ def load_model(
 
     """
 
-    return _CURRENT_EXPERIMENT.load_model(
+    experiment = _CURRENT_EXPERIMENT
+    if experiment is None:
+        experiment = _EXPERIMENT_CLASS()
+
+    return experiment.load_model(
         model_name=model_name,
         platform=platform,
         authentication=authentication,
