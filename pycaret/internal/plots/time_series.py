@@ -29,6 +29,7 @@ def plot_(
     model_name: Optional[str] = None,
     return_data: bool = False,
     show: bool = True,
+    prediction_interval_flag: bool = False,
 ) -> Optional[Any]:
     if plot == "ts":
         plot_data = plot_series(data=data, return_data=return_data, show=show)
@@ -36,8 +37,10 @@ def plot_(
         plot_data = plot_splits_train_test_split(
             train=train, test=test, return_data=return_data, show=show
         )
+
     elif plot == "cv":
         plot_data = plot_cv(data=data, cv=cv, return_data=return_data, show=show)
+
     elif plot == "acf":
         plot_data = plot_acf(
             data=data, model_name=model_name, return_data=return_data, show=show
@@ -51,13 +54,26 @@ def plot_(
             data=data, model_name=model_name, return_data=return_data, show=show
         )
     elif plot == "forecast":
-        plot_data = plot_predictions(
-            data=data,
-            predictions=predictions,
-            model_name=model_name,
-            return_data=return_data,
-            show=show,
-        )
+
+        if prediction_interval_flag:
+            plot_data = plot_predictions_with_confidence(
+                data=data,
+                predictions=predictions["y_pred"],
+                upper_interval=predictions["upper"],
+                lower_interval=predictions["lower"],
+                model_name=model_name,
+                return_data=False,
+                show=True,
+            )
+        else:
+            plot_data = plot_predictions(
+                data=data,
+                predictions=predictions,
+                model_name=model_name,
+                return_data=return_data,
+                show=show,
+            )
+
     elif plot == "residuals":
         plot_data = plot_diagnostics(
             data=data, model_name=model_name, return_data=return_data, show=show
@@ -69,7 +85,7 @@ def plot_(
 
 
 def plot_series(
-    data: pd.Series, return_data: bool = False, show: bool = True,
+    data: pd.Series, return_data: bool = False, show: bool = True, **figure_args
 ):
     """Plots the original time series"""
     original = go.Scatter(
@@ -87,8 +103,17 @@ def plot_series(
     )
 
     fig = go.Figure(data=plot_data, layout=layout)
-    fig.update_layout(template="simple_white")
+
+    fig_template = figure_args.get("fig_template", "simple_white")
+    fig.update_layout(template=fig_template)
     fig.update_layout(showlegend=True)
+
+    fig_size = figure_args.get("fig_size", None)
+    if fig_size is not None:
+        fig.update_layout(
+            autosize=False, width=fig_size[0], height=fig_size[1],
+        )
+
     if show:
         fig.show()
 
@@ -99,7 +124,11 @@ def plot_series(
 
 
 def plot_splits_train_test_split(
-    train: pd.Series, test: pd.Series, return_data: bool = False, show: bool = True,
+    train: pd.Series,
+    test: pd.Series,
+    return_data: bool = False,
+    show: bool = True,
+    **figure_args,
 ):
     """Plots the train-test split for the time serirs"""
     fig = go.Figure()
@@ -131,7 +160,14 @@ def plot_splits_train_test_split(
             "showlegend": True,
         }
     )
-    fig.update_layout(template="simple_white")
+    fig_template = figure_args.get("fig_template", "simple_white")
+    fig.update_layout(template=fig_template)
+
+    fig_size = figure_args.get("fig_size", None)
+    if fig_size is not None:
+        fig.update_layout(
+            autosize=False, width=fig_size[0], height=fig_size[1],
+        )
     if show:
         fig.show()
 
@@ -142,7 +178,7 @@ def plot_splits_train_test_split(
 
 
 def plot_cv(
-    data: pd.Series, cv, return_data: bool = False, show: bool = True,
+    data: pd.Series, cv, return_data: bool = False, show: bool = True, **figure_args
 ):
     """Plots the cv splits used on the training split"""
 
@@ -169,6 +205,7 @@ def plot_cv(
                     mode="lines+markers",
                     line_color="#C0C0C0",
                     name=f"Unchanged",
+                    hoverinfo="skip",
                 )
                 for i in range(len(data) - 1)
             ]
@@ -180,6 +217,7 @@ def plot_cv(
                     line_color="#1f77b4",
                     name="Train",
                     showlegend=False,
+                    hoverinfo="skip",
                 )
                 for i in train_windows[num_window][:-1]
             ]
@@ -190,6 +228,7 @@ def plot_cv(
                     mode="lines+markers",
                     line_color="#DE970B",
                     name="ForecastHorizon",
+                    hoverinfo="skip",
                 )
                 for i in test_windows[num_window][:-1]
             ]
@@ -204,7 +243,14 @@ def plot_cv(
                     "showlegend": True,
                 }
             )
-            fig.update_layout(template="simple_white")
+            fig_template = figure_args.get("fig_template", "simple_white")
+            fig.update_layout(template=fig_template)
+
+            fig_size = figure_args.get("fig_size", None)
+            if fig_size is not None:
+                fig.update_layout(
+                    autosize=False, width=fig_size[0], height=fig_size[1],
+                )
         return fig
 
     train_windows, test_windows = get_windows(data, cv)
@@ -223,9 +269,12 @@ def plot_acf(
     model_name: Optional[str] = None,
     return_data: bool = False,
     show: bool = True,
+    **figure_args,
 ):
     """Plots the ACF on the data provided"""
-    corr_array = acf(data, alpha=0.05)
+
+    lags = figure_args.get("lags", None)
+    corr_array = acf(data, alpha=0.05, lags=lags)
     title = (
         "Autocorrelation (ACF)"
         if model_name is None
@@ -283,7 +332,14 @@ def plot_acf(
 
     fig.update_yaxes(zerolinecolor="#000000")
 
-    fig.update_layout(template="simple_white")
+    fig_template = figure_args.get("fig_template", "simple_white")
+    fig.update_layout(template=fig_template)
+
+    fig_size = figure_args.get("fig_size", None)
+    if fig_size is not None:
+        fig.update_layout(
+            autosize=False, width=fig_size[0], height=fig_size[1],
+        )
     fig.update_layout(title=title)
     if show:
         fig.show()
@@ -300,14 +356,18 @@ def plot_pacf(
     model_name: Optional[str] = None,
     return_data: bool = False,
     show: bool = True,
+    lags: int = None,
+    **figure_args,
 ):
     """Plots the PACF on the data provided"""
-    corr_array = pacf(data, alpha=0.05)
+
+    corr_array = pacf(data, alpha=0.05, lags=lags)
     title = (
         "Partial Autocorrelation (PACF)"
         if model_name is None
         else f"Partial Autocorrelation (PACF) | {model_name}"
     )
+
     lower_y = corr_array[1][:, 0] - corr_array[0]
     upper_y = corr_array[1][:, 1] - corr_array[0]
 
@@ -359,7 +419,15 @@ def plot_pacf(
 
     fig.update_yaxes(zerolinecolor="#000000")
 
-    fig.update_layout(template="simple_white")
+    fig_template = figure_args.get("fig_template", "simple_white")
+    fig.update_layout(template=fig_template)
+
+    fig_size = figure_args.get("fig_size", None)
+    if fig_size is not None:
+        fig.update_layout(
+            autosize=False, width=fig_size[0], height=fig_size[1],
+        )
+
     fig.update_layout(title=title)
     if show:
         fig.show()
@@ -377,6 +445,7 @@ def plot_predictions(
     model_name: Optional[str] = None,
     return_data: bool = False,
     show: bool = True,
+    **figure_args,
 ):
     """Plots the original data and the predictions provided"""
 
@@ -410,7 +479,15 @@ def plot_predictions(
     )
 
     fig = go.Figure(data=data, layout=layout)
-    fig.update_layout(template="simple_white")
+
+    fig_template = figure_args.get("fig_template", "simple_white")
+    fig.update_layout(template=fig_template)
+
+    fig_size = figure_args.get("fig_size", None)
+    if fig_size is not None:
+        fig.update_layout(
+            autosize=False, width=fig_size[0], height=fig_size[1],
+        )
     fig.update_layout(showlegend=True)
     if show:
         fig.show()
@@ -426,6 +503,7 @@ def plot_diagnostics(
     model_name: Optional[str] = None,
     return_data: bool = False,
     show: bool = True,
+    **figure_args,
 ):
     """Plots the diagnostic data such as ACF, Histogram, QQ plot on the data provided"""
     time_series_name = data.name
@@ -565,7 +643,8 @@ def plot_diagnostics(
         # fig.update_layout(title=title)
 
     fig.update_layout(showlegend=False)
-    fig.update_layout(template="simple_white")
+    fig_template = figure_args.get("fig_template", "simple_white")
+    fig.update_layout(template=fig_template)
 
     qq(fig)
     dist_plot(fig)
@@ -587,8 +666,15 @@ def plot_predictions_with_confidence(
     lower_interval: pd.Series,
     return_data: bool = False,
     show: bool = True,
+    **figure_args,
 ):
     """Plots the original data and the predictions provided with confidence"""
+    title = (
+        "Actual and Forecast"
+        if data.name is None
+        else f"Actual and Forecast | {data.name}"
+    )
+
     upper_bound = go.Scatter(
         name="Upper interval",
         x=upper_interval.index.to_timestamp(),
@@ -634,12 +720,21 @@ def plot_predictions_with_confidence(
     data = [lower_bound, mean, upper_bound, original]
 
     layout = go.Layout(
-        yaxis=dict(title="Values"), xaxis=dict(title="Time"), title="Forecasts",
+        yaxis=dict(title="Values"), xaxis=dict(title="Time"), title=title,
     )
 
     fig = go.Figure(data=data, layout=layout)
-    fig.update_layout(template="simple_white")
+
+    fig_template = figure_args.get("fig_template", "simple_white")
+    fig.update_layout(template=fig_template)
     fig.update_layout(showlegend=True)
+
+    fig_size = figure_args.get("fig_size", None)
+    if fig_size is not None:
+        fig.update_layout(
+            autosize=False, width=fig_size[0], height=fig_size[1],
+        )
+
     if show:
         fig.show()
 

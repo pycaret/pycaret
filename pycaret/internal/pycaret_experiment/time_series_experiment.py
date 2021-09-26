@@ -2440,6 +2440,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             None
 
         """
+
         available_plots_common = ["ts", "train_test_split", "cv", "acf", "pacf"]
         available_plots_data = available_plots_common + ["diagnostics"]
         available_plots_model = available_plots_common + ["forecast", "residuals"]
@@ -2491,6 +2492,16 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             model_name = self._get_model_name(estimator)
             if plot == "forecast":
                 data = self._get_y_data(split="all")
+
+                def _check_estimator_has_intervals(estimator):
+                    tags = estimator.get_tags()
+                    if tags["capability:pred_int"]:
+                        return True
+                    else:
+                        return False
+
+                prediction_interval_flag = _check_estimator_has_intervals(estimator)
+
                 predictions = estimator.predict()
             elif plot == "residuals" or plot == "acf" or plot == "pacf":
                 raise NotImplementedError(
@@ -2512,6 +2523,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             model_name=model_name,
             return_data=return_data,
             show=system,
+            prediction_interval_flag=prediction_interval_flag,
         )
 
         return plot_data
