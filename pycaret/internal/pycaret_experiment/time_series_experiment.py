@@ -2361,6 +2361,8 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         plot: Optional[str] = None,
         return_data: bool = False,
         display_format: Optional[str] = None,
+        data_kwargs: Dict = {},
+        fig_kwargs: Dict = {},
         system: bool = True,
     ) -> str:
 
@@ -2445,6 +2447,8 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         available_plots_data = available_plots_common + ["diagnostics"]
         available_plots_model = available_plots_common + ["forecast", "residuals"]
 
+        prediction_interval_flag = False
+
         # Type checks
         if estimator is not None and isinstance(estimator, str):
             raise ValueError(
@@ -2502,7 +2506,9 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
                 prediction_interval_flag = _check_estimator_has_intervals(estimator)
 
-                predictions = estimator.predict()
+                predictions = self.predict_model(
+                    estimator, return_pred_int=prediction_interval_flag
+                )
             elif plot == "residuals" or plot == "acf" or plot == "pacf":
                 raise NotImplementedError(
                     "Plotting on residuals have not been implemented yet."
@@ -2524,6 +2530,8 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             return_data=return_data,
             show=system,
             prediction_interval_flag=prediction_interval_flag,
+            data_kwargs=data_kwargs,
+            fig_kwargs=fig_kwargs,
         )
 
         return plot_data

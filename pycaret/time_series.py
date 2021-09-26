@@ -921,6 +921,8 @@ def plot_model(
     plot: str = "ts",
     return_data: bool = False,
     display_format: Optional[str] = None,
+    data_kwargs: Dict = {},
+    fig_kwargs: Dict = {},
 ) -> str:
 
     """
@@ -1004,6 +1006,8 @@ def plot_model(
         plot=plot,
         return_data=return_data,
         display_format=display_format,
+        data_kwargs=data_kwargs,
+        fig_kwargs=fig_kwargs,
         system=system,
     )
 
