@@ -2771,7 +2771,8 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 if result.name is None:
                     result.name = self.y.name
 
-        result = result.round(round)
+        # Converting to float since rounding does not support int
+        result = result.astype(float).round(round)
 
         if isinstance(result.index, pd.DatetimeIndex):
             result.index = (
