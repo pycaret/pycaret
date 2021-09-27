@@ -2493,7 +2493,12 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                     f"Plot type '{plot}' is not supported when estimator is not provided. Available plots are: {', '.join(plots_formatted_data)}"
                 )
         else:
-            model_name = self._get_model_name(estimator)
+            try:
+                model_name = self._get_model_name(estimator)
+            except AttributeError:
+                # If the model is saved and loaded afterwards,
+                # it will not have self._get_model_name
+                model_name = "Model"
             if plot == "forecast":
                 data = self._get_y_data(split="all")
 
@@ -2507,7 +2512,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 prediction_interval_flag = _check_estimator_has_intervals(estimator)
 
                 predictions = self.predict_model(
-                    estimator, return_pred_int=prediction_interval_flag
+                    estimator, return_pred_int=prediction_interval_flag, verbose=False
                 )
             elif plot == "residuals" or plot == "acf" or plot == "pacf":
                 raise NotImplementedError(
@@ -2736,15 +2741,21 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         data = None  # TODO: Add back when we have support for multivariate TS
 
-        X_test_ = self.X_test.copy()
-        # Some predict methods in sktime expect None (not an empty dataframe as
-        # returned by pycaret). Hence converting to None.
-        if X_test_.shape[0] == 0 or X_test_.shape[1] == 0:
-            X_test_ = None
-        y_test_ = self.y_test.copy()
+        display_test_metric = True
+        try:
+            self.X_test
+        except AttributeError:
+            # If the model is saved and loaded afterwards,
+            # it will not have self.X_test
+            display_test_metric = False
 
         if fh is None:
-            fh = self.fh
+            try:
+                fh = self.fh
+            except AttributeError:
+                # If the model is saved and loaded afterwards,
+                # it will not have self.fh
+                fh = estimator.fh
         else:
             # Get the fh in the right format for sktime
             fh = self.check_fh(fh)
@@ -2788,8 +2799,13 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             else:
                 # Leave as series
                 result = return_vals
-                if result.name is None:
-                    result.name = self.y.name
+                try:
+                    if result.name is None:
+                        result.name = self.y.name
+                except AttributeError:
+                    # If the model is saved and loaded afterwards,
+                    # it will not have self.y
+                    pass
 
         # Converting to float since rounding does not support int
         result = result.astype(float).round(round)
@@ -2799,50 +2815,61 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 result.index.to_period()
             )  # Prophet with return_pred_int = True returns datetime index.
 
-        # This is not technically y_test_pred in all cases.
-        # If the model has not been finalized, y_test_pred will match the indices from y_test
-        # If the model has been finalized, y_test_pred will not match the indices from y_test
-        # Also, the user can use a different fh length in predict in which case the length
-        # of y_test_pred will not match y_test.
-        y_test_pred = estimator.predict(
-            X=X_test_, fh=fh, return_pred_int=False, alpha=alpha
-        )
-        if len(y_test_pred) != len(y_test_):
-            msg = (
-                "predict_model >> Forecast Horizon does not match the horizon length "
-                "used during training. Metrics displayed will be using indices that match only"
+        if display_test_metric:
+            # This is not technically y_test_pred in all cases.
+            # If the model has not been finalized, y_test_pred will match the indices from y_test
+            # If the model has been finalized, y_test_pred will not match the indices from y_test
+            # Also, the user can use a different fh length in predict in which case the length
+            # of y_test_pred will not match y_test.
+            X_test_ = self.X_test.copy()
+            # Some predict methods in sktime expect None (not an empty dataframe as
+            # returned by pycaret). Hence converting to None.
+            if X_test_.shape[0] == 0 or X_test_.shape[1] == 0:
+                X_test_ = None
+            y_test_ = self.y_test.copy()
+
+            y_test_pred = estimator.predict(
+                X=X_test_, fh=fh, return_pred_int=False, alpha=alpha
             )
-            # Need to print and log as well.
-            print(msg)
-            self.logger.warning(msg)
-        # concatenates by index
-        y_test_and_pred = pd.concat([y_test_pred, y_test_], axis=1)
-        y_test_and_pred.dropna(inplace=True)  # Removes any indices that do not match
-        y_test_pred_common = y_test_and_pred[y_test_and_pred.columns[0]]
-        y_test_common = y_test_and_pred[y_test_and_pred.columns[1]]
+            if len(y_test_pred) != len(y_test_):
+                msg = (
+                    "predict_model >> Forecast Horizon does not match the horizon length "
+                    "used during training. Metrics displayed will be using indices that match only"
+                )
+                # Need to print and log as well.
+                print(msg)
+                self.logger.warning(msg)
 
-        if len(y_test_and_pred) == 0:
-            self.logger.warning(
-                "predict_model >> No indices matched between test set and prediction. "
-                "You are most likely calling predict_model after finalizing model. "
-                "All metrics will be set to NaN"
-            )
-            metrics = self._calculate_metrics(y_test=[], pred=[], pred_prob=None)  # type: ignore
-            metrics = {metric_name: np.nan for metric_name, _ in metrics.items()}
-        else:
-            metrics = self._calculate_metrics(y_test=y_test_common, pred=y_test_pred_common, pred_prob=None)  # type: ignore
+            # concatenates by index
+            y_test_and_pred = pd.concat([y_test_pred, y_test_], axis=1)
+            y_test_and_pred.dropna(
+                inplace=True
+            )  # Removes any indices that do not match
+            y_test_pred_common = y_test_and_pred[y_test_and_pred.columns[0]]
+            y_test_common = y_test_and_pred[y_test_and_pred.columns[1]]
 
-        # Display Test Score
-        # model name
-        full_name = self._get_model_name(estimator)
-        df_score = pd.DataFrame(metrics, index=[0])
-        df_score.insert(0, "Model", full_name)
-        df_score = df_score.round(round)
-        display.display(df_score.style.set_precision(round), clear=False)
+            if len(y_test_and_pred) == 0:
+                self.logger.warning(
+                    "predict_model >> No indices matched between test set and prediction. "
+                    "You are most likely calling predict_model after finalizing model. "
+                    "All metrics will be set to NaN"
+                )
+                metrics = self._calculate_metrics(y_test=[], pred=[], pred_prob=None)  # type: ignore
+                metrics = {metric_name: np.nan for metric_name, _ in metrics.items()}
+            else:
+                metrics = self._calculate_metrics(y_test=y_test_common, pred=y_test_pred_common, pred_prob=None)  # type: ignore
 
-        # store predictions on hold-out in display_container
-        if df_score is not None:
-            self.display_container.append(df_score)
+            # Display Test Score
+            # model name
+            full_name = self._get_model_name(estimator)
+            df_score = pd.DataFrame(metrics, index=[0])
+            df_score.insert(0, "Model", full_name)
+            df_score = df_score.round(round)
+            display.display(df_score.style.set_precision(round), clear=False)
+
+            # store predictions on hold-out in display_container
+            if df_score is not None:
+                self.display_container.append(df_score)
 
         gc.collect()
 
