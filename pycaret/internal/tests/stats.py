@@ -42,7 +42,7 @@ def is_gaussian(data: pd.Series, alpha: float = 0.05, verbose: bool = False):
         "p-value": p_value,
     }
     details = pd.DataFrame(details, index=["Value"]).T.reset_index()
-    details["Setting"] = alpha
+    details["Setting"] = [{"alpha": alpha}] * len(details)
     details = _format_test_results(details, "Normality", "Shapiro")
 
     if verbose:
@@ -78,7 +78,13 @@ def is_white_noise(
 
     results.reset_index(inplace=True)
     results.rename(columns={"index": "Setting"}, inplace=True)
+
+    def add_and_format_settings(row):
+        row["Setting"] = {"alpha": alpha, "K": row["Setting"]}
+        return row
+
     # TODO: Add alpha value to Settings
+    results = results.apply(add_and_format_settings, axis=1)
     results = pd.melt(results, id_vars="Setting", var_name="index", value_name="Value")
     results = _format_test_results(results, "White Noise", "Ljung-Box")
 

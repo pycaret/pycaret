@@ -3440,6 +3440,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             raise NotImplementedError(
                 "Tests on estimators have not been implemented yet."
             )
+        results.reset_index(inplace=True, drop=True)
         return results
 
     def _get_y_data(self, split="all"):
