@@ -167,6 +167,62 @@ _model_parameters = _return_model_parameters()
 ##########################
 
 
+def test_save_load_model(load_data):
+    """Tests the save_model and load_model functionality"""
+
+    fh = np.arange(1, 13)
+    fold = 2
+    data = load_data
+
+    ######################
+    #### OOP Approach ####
+    ######################
+    exp = TimeSeriesExperiment()
+    exp.setup(
+        data=data,
+        fh=fh,
+        fold=fold,
+        fold_strategy="sliding",
+        verbose=False,
+        session_id=42,
+    )
+
+    model = exp.create_model("ets")
+    expected_predictions = exp.predict_model(model)
+    exp.save_model(model, "model_unit_test_oop")
+
+    # Mimic loading in another session
+    exp_loaded = TimeSeriesExperiment()
+    loaded_model = exp_loaded.load_model("model_unit_test_oop")
+    loaded_predictions = exp_loaded.predict_model(loaded_model)
+
+    assert np.all(loaded_predictions == expected_predictions)
+
+    ########################
+    #### Functional API ####
+    ########################
+    from pycaret.time_series import (
+        setup,
+        create_model,
+        predict_model,
+        save_model,
+        load_model,
+    )
+
+    _ = setup(
+        data=data, fh=fh, fold=fold, fold_strategy="expanding", session_id=42, n_jobs=-1
+    )
+    model = create_model("naive")
+    expected_predictions = predict_model(model)
+    save_model(model, "model_unit_test_func")
+
+    # Mimic loading in another session
+    loaded_model = load_model("model_unit_test_func")
+    loaded_predictions = predict_model(loaded_model)
+
+    assert np.all(loaded_predictions == expected_predictions)
+
+
 def test_check_stats(load_data):
     """Tests the check_stats functionality"""
 
