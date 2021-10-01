@@ -31,6 +31,7 @@ def setup(
     numeric_features: Optional[List[str]] = None,
     categorical_features: Optional[List[str]] = None,
     date_features: Optional[List[str]] = None,
+    text_features: Optional[List[str]] = None,
     ignore_features: Optional[List[str]] = None,
     keep_features: Optional[List[str]] = None,
     preprocess: bool = True,
@@ -40,6 +41,7 @@ def setup(
     iterative_imputation_iters: int = 5,
     numeric_iterative_imputer: Union[str, Any] = "lightgbm",
     categorical_iterative_imputer: Union[str, Any] = "lightgbm",
+    text_features_method: str = "tf-idf",
     max_encoding_ohe: int = 5,
     encoding_method: Optional[Any] = None,
     transformation: bool = False,
@@ -59,18 +61,10 @@ def setup(
     pca: bool = False,
     pca_method: str = "linear",
     pca_components: Union[int, float] = 1.0,
-    handle_unknown_categorical: bool = True,
-    unknown_categorical_method: str = "least_frequent",
-    combine_rare_levels: bool = False,
-    rare_level_threshold: float = 0.10,
     feature_selection: bool = False,
-    feature_selection_threshold: float = 0.8,
     feature_selection_method: str = "classic",
-    feature_interaction: bool = False,
-    feature_ratio: bool = False,
-    interaction_threshold: float = 0.01,
-    high_cardinality_features: Optional[List[str]] = None,
-    high_cardinality_method: str = "frequency",
+    feature_selection_threshold: float = 0.8,
+    custom_pipeline: Any = None,
     data_split_shuffle: bool = True,
     data_split_stratify: Union[bool, List[str]] = False,
     fold_strategy: Union[str, Any] = "stratifiedkfold",
@@ -79,7 +73,6 @@ def setup(
     fold_groups: Optional[Union[str, pd.DataFrame]] = None,
     n_jobs: Optional[int] = -1,
     use_gpu: bool = False,
-    custom_pipeline: Union[Any] = None,
     html: bool = True,
     session_id: Optional[int] = None,
     system_log: Union[bool, logging.Logger] = True,
@@ -153,6 +146,11 @@ def setup(
         names that are DateTime.
 
 
+    text_features: list of str, default = None
+        Column names that contain a text corpus. If None, no text features are
+        selected.
+
+
     ignore_features: list of str, default = None
         ignore_features param can be used to ignore features during preprocessing
         and model training. It takes a list of strings with column names that are
@@ -200,6 +198,9 @@ def setup(
         Regressor for iterative imputation of missing values in categorical features.
         If None, it uses LGBClassifier. Ignored when ``imputation_type=simple``.
 
+
+    text_features_method: str, default = "tf-idf"
+        Method with which to embed the text features in the dataset.
 
     max_encoding_ohe: int, default = 5
         Categorical columns with `max_encoding_ohe` or less unique values are
@@ -322,31 +323,6 @@ def setup(
         Ignored when ``pca`` is not True.
 
 
-    combine_rare_levels: bool, default = False
-        When set to True, frequency percentile for levels in categorical features below 
-        a certain threshold is combined into a single level.
-
-
-    rare_level_threshold: float, default = 0.1
-        Percentile distribution below which rare categories are combined. Ignored when
-        ``combine_rare_levels`` is not True.
-
-
-    high_cardinality_features: list of str, default = None
-        When categorical features contains many levels, it can be compressed into fewer
-        levels using this parameter. It takes a list of strings with column names that
-        are categorical.
-
-
-    high_cardinality_method: str, default = 'frequency'
-        Categorical features with high cardinality are replaced with the frequency of
-        values in each level occurring in the training dataset. Other available method
-        is 'clustering' which trains the K-Means clustering algorithm on the statistical
-        attribute of the training data and replaces the original value of feature with the
-        cluster label. The number of clusters is determined by optimizing Calinski-Harabasz
-        and Silhouette criterion.
-
-
     feature_selection: bool, default = False
         When set to True, a subset of features are selected using a combination of 
         various permutation importance techniques including Random Forest, Adaboost 
@@ -354,37 +330,17 @@ def setup(
         dependent on the ``feature_selection_threshold`` parameter. 
 
 
+    feature_selection_method: str, default = 'classic'
+        Algorithm for feature selection. 'classic' method uses permutation feature
+        importance techniques. Other possible value is 'boruta' which uses boruta
+        algorithm for feature selection.
+
+
     feature_selection_threshold: float, default = 0.8
         Threshold value used for feature selection. When ``polynomial_features`` or 
         ``feature_interaction`` is True, it is recommended to keep the threshold low
         to avoid large feature spaces. Setting a very low value may be efficient but 
         could result in under-fitting.
-
-
-    feature_selection_method: str, default = 'classic'
-        Algorithm for feature selection. 'classic' method uses permutation feature
-        importance techniques. Other possible value is 'boruta' which uses boruta
-        algorithm for feature selection. 
-
-
-    feature_interaction: bool, default = False 
-        When set to True, new features are created by interacting (a * b) all the 
-        numeric variables in the dataset. This feature is not scalable and may not
-        work as expected on datasets with large feature space.
-
-
-    feature_ratio: bool, default = False
-        When set to True, new features are created by calculating the ratios (a / b) 
-        between all numeric variables in the dataset. This feature is not scalable and 
-        may not work as expected on datasets with large feature space.
-
-
-    interaction_threshold: bool, default = 0.01
-        Similar to polynomial_threshold, It is used to compress a sparse matrix of newly 
-        created features through interaction. Features whose importance based on the 
-        combination  of  Random Forest, AdaBoost and Linear correlation falls within the 
-        percentile of the  defined threshold are kept in the dataset. Remaining features 
-        are dropped before further processing.
 
 
     custom_pipeline: (str, transformer), list of (str, transformer) or dict, default = None
@@ -533,6 +489,7 @@ def setup(
         numeric_features=numeric_features,
         categorical_features=categorical_features,
         date_features=date_features,
+        text_features=text_features,
         ignore_features=ignore_features,
         keep_features=keep_features,
         preprocess=preprocess,
@@ -542,6 +499,7 @@ def setup(
         iterative_imputation_iters=iterative_imputation_iters,
         numeric_iterative_imputer=numeric_iterative_imputer,
         categorical_iterative_imputer=categorical_iterative_imputer,
+        text_features_method=text_features_method,
         max_encoding_ohe=max_encoding_ohe,
         encoding_method=encoding_method,
         transformation=transformation,
@@ -561,18 +519,10 @@ def setup(
         pca=pca,
         pca_method=pca_method,
         pca_components=pca_components,
-        handle_unknown_categorical=handle_unknown_categorical,
-        unknown_categorical_method=unknown_categorical_method,
-        combine_rare_levels=combine_rare_levels,
-        rare_level_threshold=rare_level_threshold,
         feature_selection=feature_selection,
-        feature_selection_threshold=feature_selection_threshold,
         feature_selection_method=feature_selection_method,
-        feature_interaction=feature_interaction,
-        feature_ratio=feature_ratio,
-        interaction_threshold=interaction_threshold,
-        high_cardinality_features=high_cardinality_features,
-        high_cardinality_method=high_cardinality_method,
+        feature_selection_threshold=feature_selection_threshold,
+        custom_pipeline=custom_pipeline,
         data_split_shuffle=data_split_shuffle,
         data_split_stratify=data_split_stratify,
         fold_strategy=fold_strategy,
@@ -581,7 +531,6 @@ def setup(
         fold_groups=fold_groups,
         n_jobs=n_jobs,
         use_gpu=use_gpu,
-        custom_pipeline=custom_pipeline,
         html=html,
         session_id=session_id,
         system_log=system_log,

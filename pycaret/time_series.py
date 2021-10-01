@@ -40,7 +40,7 @@ def setup(
     seasonal_period: Optional[Union[int, str]] = None,
     n_jobs: Optional[int] = -1,
     use_gpu: bool = False,
-    custom_pipeline: Union[Any] = None,
+    custom_pipeline: Any = None,
     html: bool = True,
     session_id: Optional[int] = None,
     system_log: Union[bool, logging.Logger] = True,

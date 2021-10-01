@@ -7,8 +7,9 @@ import pandas as pd
 import numpy as np
 from inspect import signature
 from scipy.sparse import issparse
-from sklearn.base import BaseEstimator
+from sklearn.base import clone, BaseEstimator
 from sklearn.ensemble import IsolationForest
+from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 
 from ..utils import to_df, to_series, variable_return
 
@@ -20,9 +21,12 @@ class TransfomerWrapper(BaseEstimator):
     dataframe instead of a numpy array. Note that, in order to
     keep the correct column names, the underlying transformer is
     only allowed to add or remove columns, never both.
-    From: https://github.com/tvdboom/ATOM/blob/master/atom/utils.py#L815
+    From: https://github.com/tvdboom/ATOM/blob/master/atom/pipeline.py
 
     """
+
+    _X_params = ("X", "raw_documents")  # Parameter names to accept as first input
+
     def __init__(self, transformer, columns=None):
         self.transformer = transformer
         self.columns = columns
@@ -31,11 +35,13 @@ class TransfomerWrapper(BaseEstimator):
         return self.transformer.__repr__(N_CHAR_MAX)
 
     def fit(self, X, y=None, **fit_params):
-        if not self.columns:
+        if self.columns is None:
             self.columns = list(X.columns)
+        elif not self.columns:
+            return self
 
         args = []
-        if "X" in signature(self.transformer.fit).parameters:
+        if any(p in signature(self.transformer.fit).parameters for p in self._X_params):
             args.append(X[self.columns])
         if "y" in signature(self.transformer.fit).parameters:
             args.append(y)
@@ -107,11 +113,13 @@ class TransfomerWrapper(BaseEstimator):
 
             return temp_df
 
-        if not self.columns:
+        if self.columns is None:
             self.columns = list(X.columns)
+        elif not self.columns:
+            return variable_return(X, y)
 
         args = []
-        if "X" in signature(self.transformer.transform).parameters:
+        if any(p in signature(self.transformer.fit).parameters for p in self._X_params):
             args.append(X[self.columns])
         if "y" in signature(self.transformer.transform).parameters:
             args.append(y)
@@ -133,6 +141,7 @@ class TransfomerWrapper(BaseEstimator):
                 new_X = new_X.toarray()
 
             new_X = to_df(new_X, columns=name_cols(new_X, X))
+
         new_X = reorder_cols(new_X, X)
         new_y = to_series(y, name=y.name)
 
@@ -164,6 +173,37 @@ class ExtractDateTimeFeatures(BaseEstimator):
                     X.insert(X.columns.get_loc(col) + 1, f"{col}_{fx}", values)
 
             X = X.drop(col, axis=1)  # Drop the original datetime column
+
+        return X
+
+
+class EmbedTextFeatures(BaseEstimator):
+    """Embed text features to an array representation."""
+
+    def __init__(self, method="tf-idf", **kwargs):
+        self.method = method
+        self.kwargs = kwargs
+        self._estimators = {}
+
+    def fit(self, X, y=None):
+        if self.method.lower() == "bow":
+            estimator = CountVectorizer(**self.kwargs)
+        else:
+            estimator = TfidfVectorizer(**self.kwargs)
+
+        # Fit every text column in a separate estimator
+        for col in X:
+            self._estimators[col] = clone(estimator).fit(X[col])
+
+        return self
+
+    def transform(self, X, y=None):
+        for col in X:
+            matrix = self._estimators[col].transform(X[col]).toarray()
+            for i, word in enumerate(self._estimators[col].get_feature_names()):
+                X[f"{col}_{word}"] = matrix[:, i]
+
+            X = X.drop(col, axis=1)  # Drop original column
 
         return X
 

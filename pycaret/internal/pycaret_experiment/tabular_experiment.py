@@ -24,6 +24,7 @@ from pycaret.internal.logging import create_logger
 from pycaret.internal.preprocess import (
     TransfomerWrapper,
     ExtractDateTimeFeatures,
+    EmbedTextFeatures,
     RemoveMulticollinearity,
     RemoveOutliers,
 )
@@ -389,6 +390,7 @@ class _TabularExperiment(_PyCaretExperiment):
         numeric_features: Optional[List[str]] = None,
         categorical_features: Optional[List[str]] = None,
         date_features: Optional[List[str]] = None,
+        text_features: Optional[List[str]] = None,
         ignore_features: Optional[List[str]] = None,
         keep_features: Optional[List[str]] = None,
         preprocess: bool = True,
@@ -398,6 +400,7 @@ class _TabularExperiment(_PyCaretExperiment):
         iterative_imputation_iters: int = 5,
         numeric_iterative_imputer: Union[str, Any] = "lightgbm",
         categorical_iterative_imputer: Union[str, Any] = "lightgbm",
+        text_features_method: str = "tf-idf",
         max_encoding_ohe: int = 5,
         encoding_method: Optional[Any] = None,
         transformation: bool = False,
@@ -417,20 +420,12 @@ class _TabularExperiment(_PyCaretExperiment):
         pca: bool = False,
         pca_method: str = "linear",
         pca_components: Union[int, float] = 1.0,
-        handle_unknown_categorical: bool = True,
-        unknown_categorical_method: str = "least_frequent",
-        combine_rare_levels: bool = False,
-        rare_level_threshold: float = 0.10,
         feature_selection: bool = False,
         feature_selection_threshold: float = 0.8,
         feature_selection_method: str = "classic",
-        feature_interaction: bool = False,
-        feature_ratio: bool = False,
-        interaction_threshold: float = 0.01,
-        high_cardinality_features: Optional[List[str]] = None,
-        high_cardinality_method: str = "frequency",
         transform_target=False,
         transform_target_method="box-cox",
+        custom_pipeline: Any = None,
         data_split_shuffle: bool = True,
         data_split_stratify: Union[bool, List[str]] = False,  # added in pycaret==2.2
         fold_strategy: Union[str, Any] = "kfold",  # added in pycaret==2.2
@@ -440,9 +435,6 @@ class _TabularExperiment(_PyCaretExperiment):
         fold_groups: Optional[Union[str, pd.DataFrame]] = None,
         n_jobs: Optional[int] = -1,
         use_gpu: bool = False,  # added in pycaret==2.1
-        custom_pipeline: Union[
-            Any, Tuple[str, Any], List[Any], List[Tuple[str, Any]]
-        ] = None,
         html: bool = True,
         session_id: Optional[int] = None,
         system_log: Union[bool, logging.Logger] = True,
@@ -469,9 +461,8 @@ class _TabularExperiment(_PyCaretExperiment):
 
         # Settings ================================================= >>
 
-        pd.set_option("display.max_columns", 500)
-        pd.set_option("display.max_rows", 500)
-        sklearn.set_config(print_changed_only=False)
+        pd.set_option("display.max_columns", 100)
+        pd.set_option("display.max_rows", 100)
 
         # Attribute definition ===================================== >>
 
@@ -557,26 +548,6 @@ class _TabularExperiment(_PyCaretExperiment):
         elif not isinstance(profile_kwargs, dict):
             raise TypeError("profile_kwargs can only be a dict.")
 
-        all_cols = list(data.columns)
-        if not self._is_unsupervised():
-            all_cols.remove(target)
-
-        # high_cardinality_features
-        if high_cardinality_features is not None:
-            if type(high_cardinality_features) is not list:
-                raise TypeError(
-                    "high_cardinality_features parameter only accepts name of columns as a list."
-                )
-
-        if high_cardinality_features is not None:
-            data_cols = data.columns.drop(target, errors="ignore")
-            for high_cardinality_feature in high_cardinality_features:
-                if high_cardinality_feature not in data_cols:
-                    raise ValueError(
-                        f"Item {high_cardinality_feature} in high_cardinality_features"
-                        f" parameter is either target column or doesn't exist in the dataset."
-                    )
-
         # stratify
         if data_split_stratify:
             if (
@@ -591,34 +562,6 @@ class _TabularExperiment(_PyCaretExperiment):
                 raise TypeError(
                     "data_split_stratify parameter requires data_split_shuffle to be set to True."
                 )
-
-        # high_cardinality_methods
-        high_cardinality_allowed_methods = ["frequency", "clustering"]
-        if high_cardinality_method not in high_cardinality_allowed_methods:
-            raise ValueError(
-                f"high_cardinality_method parameter only accepts {', '.join(high_cardinality_allowed_methods)}."
-            )
-
-        # bin numeric features
-        if bin_numeric_features is not None:
-            if type(bin_numeric_features) is not list:
-                raise TypeError("bin_numeric_features parameter must be a list.")
-            for bin_numeric_feature in bin_numeric_features:
-                if type(bin_numeric_feature) is not str:
-                    raise TypeError(
-                        "bin_numeric_features parameter item must be a string."
-                    )
-                if bin_numeric_feature not in all_cols:
-                    raise ValueError(
-                        f"bin_numeric_feature: {bin_numeric_feature} is either target column or does not exist in the dataset."
-                    )
-
-        # feature_selection_method
-        feature_selection_methods = ["boruta", "classic"]
-        if feature_selection_method not in feature_selection_methods:
-            raise TypeError(
-                f"feature_selection_method must be one of {', '.join(feature_selection_methods)}"
-            )
 
         possible_fold_strategy = [
             "kfold",
@@ -653,7 +596,7 @@ class _TabularExperiment(_PyCaretExperiment):
             )
 
         if isinstance(fold_groups, str):
-            if fold_groups not in all_cols:
+            if fold_groups not in self.X.columns:
                 raise ValueError(
                     f"Column {fold_groups} used for fold_groups is not present in the dataset."
                 )
@@ -717,17 +660,27 @@ class _TabularExperiment(_PyCaretExperiment):
         else:
             numeric_features = list(self.X.select_dtypes(include="number").columns)
 
-        # Categorical features
-        if categorical_features:
-            check_features_exist(categorical_features, self.data)
-        else:
-            categorical_features = list(self.X.select_dtypes(include=["object", "category"]).columns)
-
         # Date features
         if date_features:
             check_features_exist(date_features, self.data)
         else:
             date_features = list(self.X.select_dtypes(include="datetime").columns)
+
+        # Text features
+        if text_features:
+            check_features_exist(text_features, self.data)
+        else:
+            text_features = []
+
+        # Categorical features
+        if categorical_features:
+            check_features_exist(categorical_features, self.data)
+        else:
+            # Default should exclude datetime and text columns
+            categorical_features = [
+                col for col in self.X.select_dtypes(include=["object", "category"]).columns
+                if col not in date_features + text_features
+            ]
 
         # Features to keep during all preprocessing
         keep_features = keep_features if keep_features else []
@@ -897,7 +850,27 @@ class _TabularExperiment(_PyCaretExperiment):
 
         if preprocess:
 
-            # Encoding =============================================== >>
+            # Text embedding ======================================= >>
+
+            if text_features:
+                self.logger.info("Setting text embedding...")
+                if text_features_method.lower() in ("bow", "tfidf", "tf-idf"):
+                    embed_estimator = TransfomerWrapper(
+                        transformer=EmbedTextFeatures(method=text_features_method),
+                        columns=text_features,
+                    )
+                else:
+                    raise ValueError(
+                        "Invalid value for the text_features_method "
+                        "parameter. Choose between bow (Bag of Words) "
+                        f"or tf-idf, got {text_features_method}."
+                    )
+
+                self._internal_pipeline.steps.append(
+                    ("text_embedding", embed_estimator)
+                )
+
+            # Encoding ============================================= >>
 
             self.logger.info("Setting up encoding")
 
@@ -978,7 +951,7 @@ class _TabularExperiment(_PyCaretExperiment):
                         ("rest_encoding", rest_estimator)
                     )
 
-            # Transformation ========================================= >>
+            # Transformation ======================================= >>
 
             if transformation:
                 self.logger.info("Setting up column transformation")
@@ -1004,7 +977,7 @@ class _TabularExperiment(_PyCaretExperiment):
                     ("transformation", transformation_estimator)
                 )
 
-            # Normalization ============================================ >>
+            # Normalization ======================================== >>
 
             if normalize:
                 self.logger.info("Setting up feature normalization")
@@ -1161,7 +1134,13 @@ class _TabularExperiment(_PyCaretExperiment):
 
                 self._internal_pipeline.steps.append(("pca", pca_estimator))
 
-        # Custom transformers ================================== >>
+            # Feature selection ==================================== >>
+
+            if feature_selection:
+                self.logger.info("Setting up feature selection...")
+                # TODO: finish
+
+        # Custom transformers ====================================== >>
 
         if custom_pipeline:
             self.logger.info("Setting up custom pipeline")
@@ -1285,7 +1264,8 @@ class _TabularExperiment(_PyCaretExperiment):
             numerical_features=len(numeric_features),
             categorical_features=len(categorical_features),
             date_features=len(date_features),
-            ignore_features=len(ignore_features),
+            text_features=len(text_features),
+            ignore_features=len(self._ign_cols),
             keep_features=len(keep_features),
             missing_values=self.data.isna().sum().sum(),
             preprocess=preprocess,
@@ -1295,6 +1275,7 @@ class _TabularExperiment(_PyCaretExperiment):
             iterative_imputation_iters=iterative_imputation_iters,
             numeric_iterative_imputer=num_imputer,
             categorical_iterative_imputer=cat_imputer,
+            text_features_method=text_features_method,
             max_encoding_ohe=max_encoding_ohe,
             encoding_method=encoding_method,
             transformation=transformation,
