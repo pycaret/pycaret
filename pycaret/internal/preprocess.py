@@ -2512,8 +2512,8 @@ class Fix_multicollinearity(BaseEstimator, TransformerMixin):
             None
         """
 
-        if data[self.target_variable].dtype not in ["int32", "int64"]:
-            raise ValueError('dtype for the target variable should be int32 or int64 only')
+        if data[self.target_variable].dtype not in ["int32", "int64", "float32", "float64"]:
+            raise ValueError('dtype for the target variable should be int32, int64, float32, or float64 only')
 
         # global data1
         data1 = data.select_dtypes(include=["int32", "int64", "float32", "float64"])

@@ -17,6 +17,8 @@ def test():
     reg1 = pycaret.regression.setup(
         data,
         target="medv",
+        remove_multicollinearity=True,
+        multicollinearity_threshold=0.95,
         silent=True,
         log_experiment=True,
         html=False,
