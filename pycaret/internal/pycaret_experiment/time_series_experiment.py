@@ -49,6 +49,8 @@ from functools import partial
 from scipy.stats import rankdata  # type: ignore
 from joblib import Parallel, delayed  # type: ignore
 
+
+from sktime.forecasting.base import ForecastingHorizon
 from sktime.utils.validation.forecasting import check_y_X  # type: ignore
 from sktime.forecasting.model_selection import SlidingWindowSplitter  # type: ignore
 
@@ -2443,8 +2445,15 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         """
 
-        available_plots_common = ["ts", "train_test_split", "cv", "acf", "pacf"]
-        available_plots_data = available_plots_common + ["diagnostics"]
+        available_plots_common = [
+            "ts",
+            "train_test_split",
+            "cv",
+            "acf",
+            "pacf",
+            "diagnostics",
+        ]
+        available_plots_data = available_plots_common
         available_plots_model = available_plots_common + ["forecast", "residuals"]
 
         prediction_interval_flag = False
@@ -2499,6 +2508,8 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 # If the model is saved and loaded afterwards,
                 # it will not have self._get_model_name
                 model_name = "Model"
+
+            require_residuals = ["residuals", "diagnostics", "acf", "pacf"]
             if plot == "forecast":
                 data = self._get_y_data(split="all")
 
@@ -2514,10 +2525,10 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 predictions = self.predict_model(
                     estimator, return_pred_int=prediction_interval_flag, verbose=False
                 )
-            elif plot == "residuals" or plot == "acf" or plot == "pacf":
-                raise NotImplementedError(
-                    "Plotting on residuals have not been implemented yet."
-                )
+            elif plot in require_residuals:
+                resid = self.get_residuals(estimator=estimator)
+                resid = self.check_and_clean_resid(resid=resid)
+                data = resid
             else:
                 plots_formatted_model = [f"'{plot}'" for plot in available_plots_model]
                 raise ValueError(
@@ -3464,9 +3475,10 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             data = self._get_y_data(split=split)
             results = test_(data=data, test=test, alpha=alpha)
         else:
-            raise NotImplementedError(
-                "Tests on estimators have not been implemented yet."
-            )
+            resid = self.get_residuals(estimator=estimator)
+            resid = self.check_and_clean_resid(resid=resid)
+            results = test_(data=resid, test=test, alpha=alpha)
+
         results.reset_index(inplace=True, drop=True)
         return results
 
@@ -3480,4 +3492,56 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         else:
             raise ValueError(f"split value: '{split}' is not supported.")
         return data
+
+    @staticmethod
+    def get_residuals(estimator) -> pd.Series:
+        # https://github.com/alan-turing-institute/sktime/issues/1105#issuecomment-932216820
+        estimator.check_is_fitted()
+        y_used_to_train = estimator._y
+        resid = y_used_to_train - estimator.predict(
+            ForecastingHorizon(y_used_to_train.index, is_relative=False)
+        )
+        return resid
+
+    def check_and_clean_resid(self, resid: pd.Series) -> pd.Series:
+        """Checks to see if the residuals matches one of the test set or
+        full dataset. If it does, it resturns the residuals without the NA values.
+
+        Parameters
+        ----------
+        resid : pd.Series
+            Residuals from an estimator
+
+        Returns
+        -------
+        pd.Series
+            Cleaned Residuals
+
+        Raises
+        ------
+        ValueError
+          If any one of these 3 conditions are satisfied:
+            1. If residual length matches the length of train set but indices do not
+            2. If residual length matches the length of full data set but indices do not
+            3. If residual length does not match either train OR full dataset
+        """
+        y_train = self._get_y_data(split="train")
+        y_all = self._get_y_data(split="all")
+
+        if len(resid.index) == len(y_train.index):
+            if np.all(resid.index != y_train.index):
+                raise ValueError(
+                    "Residuals match the length of the train set, but indices do not match up..."
+                )
+        elif len(resid.index) == len(y_all.index):
+            if np.all(resid.index != y_all.index):
+                raise ValueError(
+                    "Residuals match the length of the full data set, but indices do not match up..."
+                )
+        else:
+            raise ValueError(
+                "Residuals time points do not match either test set or full dataset."
+            )
+        resid.dropna(inplace=True)
+        return resid
 

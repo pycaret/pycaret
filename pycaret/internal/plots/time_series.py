@@ -79,8 +79,17 @@ def plot_(
             data_kwargs=data_kwargs,
             fig_kwargs=fig_kwargs,
         )
-    elif plot == "diagnostics" or plot == "residuals":
+    elif plot == "diagnostics":
         plot_data = plot_diagnostics(
+            data=data,
+            model_name=model_name,
+            return_data=return_data,
+            show=show,
+            data_kwargs=data_kwargs,
+            fig_kwargs=fig_kwargs,
+        )
+    elif plot == "residuals":
+        plot_data = plot_series(
             data=data,
             model_name=model_name,
             return_data=return_data,
@@ -119,14 +128,18 @@ def plot_(
 
 def plot_series(
     data: pd.Series,
+    model_name: Optional[str] = None,
     return_data: bool = False,
     show: bool = True,
     data_kwargs: Dict = {},
     fig_kwargs: Dict = {},
 ):
     """Plots the original time series"""
+    title = "Time Series" if model_name is None else f"Residual(s)"
+    legend = "Time Series" if model_name is None else f"Residual"
+
     original = go.Scatter(
-        name="Original",
+        name=f"{legend} | {model_name}",
         x=data.index.to_timestamp(),
         y=data,
         mode="lines+markers",
@@ -136,7 +149,7 @@ def plot_series(
     plot_data = [original]
 
     layout = go.Layout(
-        yaxis=dict(title="Values"), xaxis=dict(title="Time"), title="Time Series",
+        yaxis=dict(title="Values"), xaxis=dict(title="Time"), title=title,
     )
 
     fig = go.Figure(data=plot_data, layout=layout)
@@ -692,6 +705,12 @@ def plot_diagnostics(
     fig.update_layout(showlegend=False)
     fig_template = fig_kwargs.get("fig_template", "simple_white")
     fig.update_layout(template=fig_template)
+
+    fig_size = fig_kwargs.get("fig_size", None)
+    if fig_size is not None:
+        fig.update_layout(
+            autosize=False, width=fig_size[0], height=fig_size[1],
+        )
 
     qq(fig)
     dist_plot(fig)
