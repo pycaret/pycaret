@@ -2753,9 +2753,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         data = None  # TODO: Add back when we have support for multivariate TS
 
         display_test_metric = True
-        try:
-            self.X_test
-        except AttributeError:
+        if not hasattr(self, X_test):
             # If the model is saved and loaded afterwards,
             # it will not have self.X_test
             display_test_metric = False
