@@ -918,7 +918,7 @@ def stack_models(
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def plot_model(
     estimator: Optional[Any] = None,
-    plot: str = "ts",
+    plot: Optional[str] = None,
     return_data: bool = False,
     display_format: Optional[str] = None,
     data_kwargs: Dict = {},
