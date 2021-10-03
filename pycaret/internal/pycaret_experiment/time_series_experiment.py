@@ -2502,9 +2502,9 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                     f"Plot type '{plot}' is not supported when estimator is not provided. Available plots are: {', '.join(plots_formatted_data)}"
                 )
         else:
-            try:
+            if hasattr(self, "_get_model_name"):
                 model_name = self._get_model_name(estimator)
-            except AttributeError:
+            else:
                 # If the model is saved and loaded afterwards,
                 # it will not have self._get_model_name
                 model_name = estimator.__class__.__name__
@@ -2753,13 +2753,13 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         data = None  # TODO: Add back when we have support for multivariate TS
 
         display_test_metric = True
-        if not hasattr(self, 'X_test'):
+        if not hasattr(self, "X_test"):
             # If the model is saved and loaded afterwards,
             # it will not have self.X_test
             display_test_metric = False
 
         if fh is None:
-            if not hasattr(self, 'fh'):
+            if not hasattr(self, "fh"):
                 # If the model is saved and loaded afterwards,
                 # it will not have self.fh
                 fh = estimator.fh
@@ -2806,7 +2806,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             else:
                 # Leave as series
                 result = return_vals
-                if hasattr(result, 'name'):
+                if hasattr(result, "name"):
                     if result.name is None:
                         result.name = self.y.name
                 else:
