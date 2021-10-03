@@ -2507,7 +2507,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             except AttributeError:
                 # If the model is saved and loaded afterwards,
                 # it will not have self._get_model_name
-                model_name = "Model"
+                model_name = estimator.__class__.__name__
 
             require_residuals = ["residuals", "diagnostics", "acf", "pacf"]
             if plot == "forecast":
