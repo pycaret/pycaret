@@ -2806,13 +2806,13 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             else:
                 # Leave as series
                 result = return_vals
-                if hasattr(result, "name"):
-                    if result.name is None:
+                if result.name is None:
+                    if hasattr(self, "y"):
                         result.name = self.y.name
-                else:
-                    # If the model is saved and loaded afterwards,
-                    # it will not have self.y
-                    pass
+                    else:
+                        # If the model is saved and loaded afterwards,
+                        # it will not have self.y
+                        pass
 
         # Converting to float since rounding does not support int
         result = result.astype(float).round(round)
