@@ -818,6 +818,7 @@ def blend_models(
         round=round,
         choose_better=choose_better,
         optimize=optimize,
+        method=method,
         weights=weights,
         fit_kwargs=fit_kwargs,
         verbose=verbose,
