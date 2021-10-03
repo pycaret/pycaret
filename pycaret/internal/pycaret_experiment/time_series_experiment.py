@@ -2753,15 +2753,13 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         data = None  # TODO: Add back when we have support for multivariate TS
 
         display_test_metric = True
-        if not hasattr(self, X_test):
+        if not hasattr(self, 'X_test'):
             # If the model is saved and loaded afterwards,
             # it will not have self.X_test
             display_test_metric = False
 
         if fh is None:
-            try:
-                fh = self.fh
-            except AttributeError:
+            if not hasattr(self, 'fh'):
                 # If the model is saved and loaded afterwards,
                 # it will not have self.fh
                 fh = estimator.fh
@@ -2808,10 +2806,10 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             else:
                 # Leave as series
                 result = return_vals
-                try:
+                if hasattr(result, 'name'):
                     if result.name is None:
                         result.name = self.y.name
-                except AttributeError:
+                else:
                     # If the model is saved and loaded afterwards,
                     # it will not have self.y
                     pass
