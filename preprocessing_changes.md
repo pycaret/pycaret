@@ -28,6 +28,8 @@ Changes:
 - Removed `polynomial_threshold` parameter.
 - Removed `create_cluster` parameter.
 - Removed `cluster_iter` parameter.
+- Classic feature selection uses SelectFromModel.
+- Added `feature_selection_estimator` parameter.
 - Changed the way encoding works. Now defaults to LeaveOneOut and another
   estimator can be selected.
 - Reorder of the parameters to a logical order (following the pipeline)
@@ -35,7 +37,8 @@ Changes:
 
 Preprocessing steps:
 
-- create features form datetime columns
+- create features form datetime columns: DONE
+- vectorize text features: DONE
 - encoding: DONE
 - simple imputation: DONE
 - iterative imputation: DONE
@@ -48,3 +51,4 @@ Preprocessing steps:
 - polynomial features: DONE
 - fix imbalance: DONE
 - pca: DONE
+- feature selection: DONE

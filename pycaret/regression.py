@@ -56,6 +56,7 @@ def setup(
     multicollinearity_threshold: float = 0.9,
     bin_numeric_features: Optional[List[str]] = None,
     remove_outliers: bool = False,
+    outliers_method: str = "iforest",
     outliers_threshold: float = 0.05,
     polynomial_features: bool = False,
     polynomial_degree: int = 2,
@@ -63,8 +64,9 @@ def setup(
     pca_method: str = "linear",
     pca_components: Union[int, float] = 1.0,
     feature_selection: bool = False,
-    feature_selection_threshold: float = 0.8,
     feature_selection_method: str = "classic",
+    feature_selection_estimator: Union[str, Any] = "lightgbm",
+    n_features_to_select: Union[int, float] = 0.5,
     transform_target: bool = False,
     transform_target_method: str = "box-cox",
     custom_pipeline: Any = None,
@@ -202,7 +204,8 @@ def setup(
 
 
     text_features_method: str, default = "tf-idf"
-        Method with which to embed the text features in the dataset.
+        Method with which to embed the text features in the dataset. Choose
+        between "bow" (Bag of Words - CountVectorizer) or "tf-idf" (TfidfVectorizer).
 
 
     max_encoding_ohe: int, default = 5
@@ -281,8 +284,15 @@ def setup(
         Isolation Forest.
 
 
+    outliers_method: str, default = "iforest"
+        Method with which to remove outliers. Possible values are:
+            - 'iforest': Uses sklearn's IsolationForest.
+            - 'ee': Uses sklearn's EllipticEnvelope.
+            - 'lof': Uses sklearn's LocalOutlierFactor.
+
+
     outliers_threshold: float, default = 0.05
-        The percentage outliers to be removed from the training dataset. Ignored
+        The percentage outliers to be removed from the dataset. Ignored
         when ``remove_outliers=False``.
 
 
@@ -316,23 +326,29 @@ def setup(
 
 
     feature_selection: bool, default = False
-        When set to True, a subset of features are selected using a combination of 
-        various permutation importance techniques including Random Forest, Adaboost 
-        and Linear correlation with target variable. The size of the subset is 
-        dependent on the ``feature_selection_threshold`` parameter. 
+        When set to True, a subset of features is selected based on a feature
+        importance score determined by ``feature_selection_estimator``.
 
 
     feature_selection_method: str, default = 'classic'
-        Algorithm for feature selection. 'classic' method uses permutation feature
-        importance techniques. Other possible value is 'boruta' which uses boruta
-        algorithm for feature selection. 
+        Algorithm for feature selection. Choose from:
+            - 'classic': Uses sklearn's SelectFromModel.
+            - 'sequential': Uses sklearn's SequtnailFeatureSelector.
+            - 'boruta': Uses the boruta algorithm for feature selection.
 
 
-    feature_selection_threshold: float, default = 0.8
-        Threshold value used for feature selection. When ``polynomial_features`` or 
-        ``feature_interaction`` is True, it is recommended to keep the threshold low
-        to avoid large feature spaces. Setting a very low value may be efficient but 
-        could result in under-fitting.
+    feature_selection_estimator: str or sklearn estimator, default = 'lightgbm'
+        Classifier used to determine the feature importances. The estimator should
+        have a feature_importances_ or coef_ attribute after fitting. If None, it
+        uses LGBClassifier.
+
+
+    n_features_to_select: int or float, default = 0.5
+        The number of features to select. If integer, the parameter is the
+        absolute number of features to select. If float between 0 and 1, it
+        is the fraction of features to select. Note that this parameter doesn't
+        take features in ``ignore_features`` or ``keep_features`` into account
+        when counting.
 
 
     transform_target: bool, default = False
@@ -516,6 +532,7 @@ def setup(
         multicollinearity_threshold=multicollinearity_threshold,
         bin_numeric_features=bin_numeric_features,
         remove_outliers=remove_outliers,
+        outliers_method=outliers_method,
         outliers_threshold=outliers_threshold,
         polynomial_features=polynomial_features,
         polynomial_degree=polynomial_degree,
@@ -524,7 +541,8 @@ def setup(
         pca_components=pca_components,
         feature_selection=feature_selection,
         feature_selection_method=feature_selection_method,
-        feature_selection_threshold=feature_selection_threshold,
+        feature_selection_estimator=feature_selection_estimator,
+        n_features_to_select=n_features_to_select,
         transform_target=transform_target,
         transform_target_method=transform_target_method,
         custom_pipeline=custom_pipeline,

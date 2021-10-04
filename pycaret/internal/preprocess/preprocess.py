@@ -9,6 +9,8 @@ from inspect import signature
 from scipy.sparse import issparse
 from sklearn.base import clone, BaseEstimator
 from sklearn.ensemble import IsolationForest
+from sklearn.covariance import EllipticEnvelope
+from sklearn.neighbors import LocalOutlierFactor
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 
 from ..utils import to_df, to_series, variable_return
@@ -25,8 +27,6 @@ class TransfomerWrapper(BaseEstimator):
 
     """
 
-    _X_params = ("X", "raw_documents")  # Parameter names to accept as first input
-
     def __init__(self, transformer, columns=None):
         self.transformer = transformer
         self.columns = columns
@@ -41,7 +41,7 @@ class TransfomerWrapper(BaseEstimator):
             return self
 
         args = []
-        if any(p in signature(self.transformer.fit).parameters for p in self._X_params):
+        if "X" in signature(self.transformer.fit).parameters:
             args.append(X[self.columns])
         if "y" in signature(self.transformer.fit).parameters:
             args.append(y)
@@ -119,7 +119,7 @@ class TransfomerWrapper(BaseEstimator):
             return variable_return(X, y)
 
         args = []
-        if any(p in signature(self.transformer.fit).parameters for p in self._X_params):
+        if "X" in signature(self.transformer.transform).parameters:
             args.append(X[self.columns])
         if "y" in signature(self.transformer.transform).parameters:
             args.append(y)
@@ -233,22 +233,33 @@ class RemoveMulticollinearity(BaseEstimator):
 class RemoveOutliers(BaseEstimator):
     """Transformer to drop outliers from a dataset."""
 
-    def __init__(self, method="if", threshold=0.05, n_jobs=1, random_state=None):
+    def __init__(self, method="iforest", threshold=0.05, n_jobs=1, random_state=None):
         self.method = method
         self.threshold = threshold
         self.n_jobs = n_jobs
         self.random_state = random_state
 
     def fit(self, X, y):
-        if self.method == "if":
+        if self.method.lower() == "iforest":
             self._estimator = IsolationForest(
                 n_estimators=100,
                 contamination=self.threshold,
                 n_jobs=self.n_jobs,
                 random_state=self.random_state,
             )
-            self._estimator.fit(X, y)
+        elif self.method.lower() == "ee":
+            self._estimator = EllipticEnvelope(
+                contamination=self.threshold,
+                random_state=self.random_state,
+            )
+        elif self.method.lower() == "lof":
+            self._estimator = LocalOutlierFactor(
+                contamination=self.threshold,
+                n_jobs=self.n_jobs,
+            )
+
+        return self
 
     def transform(self, X, y):
-        mask = self._estimator.predict(X) != -1
+        mask = self._estimator.fit_predict(X) != -1
         return X[mask], y[mask]

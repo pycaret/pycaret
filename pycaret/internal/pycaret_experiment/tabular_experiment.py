@@ -18,6 +18,7 @@ import pycaret.internal.persistence
 import pycaret.internal.preprocess
 import scikitplot as skplt  # type: ignore
 import sklearn
+from boruta import BorutaPy
 from imblearn.over_sampling import SMOTE
 from pandas.io.formats.style import Styler
 from pycaret.internal.logging import create_logger
@@ -38,6 +39,7 @@ from pycaret.internal.pipeline import (
 from pycaret.internal.plots.helper import MatplotlibDefaultDPI
 from pycaret.internal.plots.yellowbrick import show_yellowbrick_plot
 from pycaret.internal.pycaret_experiment.pycaret_experiment import _PyCaretExperiment
+from pycaret.containers.models.classification import get_all_model_containers as get_classifiers
 from pycaret.containers.models.regression import get_all_model_containers as get_regressors
 from pycaret.internal.pycaret_experiment.utils import MLUsecase
 from pycaret.internal.utils import (
@@ -54,7 +56,11 @@ from category_encoders.ordinal import OrdinalEncoder
 from category_encoders.leave_one_out import LeaveOneOutEncoder
 from sklearn.decomposition import PCA, IncrementalPCA, KernelPCA
 from sklearn.experimental import enable_iterative_imputer
-from sklearn.feature_selection import VarianceThreshold
+from sklearn.feature_selection import (
+    VarianceThreshold,
+    SelectFromModel,
+    SequentialFeatureSelector,
+)
 from sklearn.impute import IterativeImputer, SimpleImputer
 from sklearn.model_selection import BaseCrossValidator  # type: ignore
 from sklearn.model_selection import (
@@ -412,6 +418,7 @@ class _TabularExperiment(_PyCaretExperiment):
         multicollinearity_threshold: float = 0.9,
         bin_numeric_features: Optional[List[str]] = None,
         remove_outliers: bool = False,
+        outliers_method: str = "iforest",
         outliers_threshold: float = 0.05,
         polynomial_features: bool = False,
         polynomial_degree: int = 2,
@@ -421,8 +428,9 @@ class _TabularExperiment(_PyCaretExperiment):
         pca_method: str = "linear",
         pca_components: Union[int, float] = 1.0,
         feature_selection: bool = False,
-        feature_selection_threshold: float = 0.8,
         feature_selection_method: str = "classic",
+        feature_selection_estimator: Union[str, Any] = "lightgbm",
+        n_features_to_select: Union[int, float] = 0.5,
         transform_target=False,
         transform_target_method="box-cox",
         custom_pipeline: Any = None,
@@ -1012,7 +1020,9 @@ class _TabularExperiment(_PyCaretExperiment):
                         columns=[c for c in self.X.columns if c not in keep_features],
                     )
 
-                self._internal_pipeline.steps.append(("low_variance", variance_estimator))
+                self._internal_pipeline.steps.append(
+                    ("low_variance", variance_estimator)
+                )
 
             # Remove multicollinearity ============================= >>
 
@@ -1053,8 +1063,18 @@ class _TabularExperiment(_PyCaretExperiment):
 
             if remove_outliers:
                 self.logger.info("Setting up removing outliers")
+                if outliers_method.lower() not in ("iforest", "ee", "lof"):
+                    raise ValueError(
+                        "Invalid value for the outliers_method parameter, "
+                        f"got {outliers_method}. Possible values are: "
+                        "'iforest', 'ee' or 'lof'."
+                    )
+
                 outliers = TransfomerWrapper(
-                    RemoveOutliers(method="if", threshold=outliers_threshold),
+                    RemoveOutliers(
+                        method=outliers_method,
+                        threshold=outliers_threshold,
+                    ),
                 )
 
                 self._internal_pipeline.steps.append(
@@ -1138,7 +1158,67 @@ class _TabularExperiment(_PyCaretExperiment):
 
             if feature_selection:
                 self.logger.info("Setting up feature selection...")
-                # TODO: finish
+
+                if self._ml_usecase == MLUsecase.CLASSIFICATION:
+                    func = get_classifiers
+                else:
+                    func = get_regressors
+
+                models = {k: v for k, v in func(self).items() if not v.is_special}
+                if isinstance(feature_selection_estimator, str):
+                    if feature_selection_estimator not in models:
+                        raise ValueError(
+                            "Invalid value for the feature_selection_estimator "
+                            f"parameter, got {feature_selection_estimator}. Allowed "
+                            f"estimators are: {', '.join(models)}."
+                        )
+                    fs_estimator = models[feature_selection_estimator].class_def()
+                elif not hasattr(feature_selection_estimator, "predict"):
+                    raise ValueError(
+                        "Invalid value for the feature_selection_estimator parameter. "
+                        "The provided estimator does not adhere to sklearn's API."
+                    )
+
+                cols = [c for c in self.X.columns if c not in keep_features]
+                if n_features_to_select < 1:
+                    n_features_to_select = int(len(cols) * n_features_to_select)
+
+                if feature_selection_method.lower() == "classic":
+                    feature_selector = TransfomerWrapper(
+                        transformer=SelectFromModel(
+                            estimator=fs_estimator,
+                            threshold=-np.inf,
+                            max_features=n_features_to_select,
+                        ),
+                        columns=cols,
+                    )
+                elif feature_selection_method.lower() == "sequential":
+                    feature_selector = TransfomerWrapper(
+                        transformer=SequentialFeatureSelector(
+                            estimator=fs_estimator,
+                            n_features_to_select=n_features_to_select,
+                            n_jobs=self.n_jobs_param,
+                        ),
+                        columns=cols,
+                    )
+                elif feature_selection_method.lower() == "boruta":
+                    feature_selector = TransfomerWrapper(
+                        transformer=BorutaPy(
+                            estimator=fs_estimator,
+                            n_estimators="auto",
+                        ),
+                        columns=cols,
+                    )
+                else:
+                    raise ValueError(
+                        "Invalid value for the feature_selection_method parameter, "
+                        f"got {feature_selection_method}. Possible values are: "
+                        "'classic' or 'boruta'."
+                    )
+
+                self._internal_pipeline.steps.append(
+                    ("feature_selection", feature_selector)
+                )
 
         # Custom transformers ====================================== >>
 
