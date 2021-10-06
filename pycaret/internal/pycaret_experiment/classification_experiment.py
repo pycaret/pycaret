@@ -58,7 +58,7 @@ class ClassificationExperiment(_SupervisedExperiment):
             "lift": "Lift Chart",
             "gain": "Gain Chart",
             "tree": "Decision Tree",
-            "ks" : "KS Statistic Plot",
+            "ks": "KS Statistic Plot",
         }
 
     def _get_setup_display(self, **kwargs) -> Styler:
@@ -115,6 +115,10 @@ class ClassificationExperiment(_SupervisedExperiment):
                         ["PCA", kwargs["pca"]],
                         ["PCA method", kwargs["pca_method"]],
                         ["PCA components", kwargs["pca_components"]],
+                        ["Feature selection", kwargs["feature_selection"]],
+                        ["Feature selection method", kwargs["feature_selection_method"]],
+                        ["Feature selection estimator", kwargs["feature_selection_estimator"]],
+                        ["Number of features selected", kwargs["n_features_to_select"]],
                     ],
                     columns=overview.columns,
                 ),
@@ -124,6 +128,7 @@ class ClassificationExperiment(_SupervisedExperiment):
         overview = overview.append(
             pd.DataFrame(
                 [
+                    ["Custom pipeline", "Yes" if kwargs["custom_pipeline"] else "No"],
                     ["Fold Generator", type(self.fold_generator).__name__],
                     ["Fold Number", self.fold_param],
                     ["CPU Jobs", self.n_jobs_param],

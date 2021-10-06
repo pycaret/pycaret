@@ -740,123 +740,126 @@ class _TabularExperiment(_PyCaretExperiment):
 
         self.logger.info("Preparing preprocessing pipeline...")
 
-        # Date feature engineering ================================= >>
-
-        # TODO: Could be improved allowing the user to choose which features to add
-        if date_features:
-            self.logger.info("Extracting features from datetime columns")
-            self.data = TransfomerWrapper(
-                transformer=ExtractDateTimeFeatures(),
-                columns=date_features,
-            )
-
-        # Imputation =========================================== >>
-
-        # Checking parameters
-        num_dict = {"zero": "constant", "mean": "mean", "median": "median"}
-        if numeric_imputation not in num_dict:
-            raise ValueError(
-                "Invalid value for the numeric_imputation parameter, got "
-                f"{numeric_imputation}. Possible values are {' '.join(num_dict)}."
-            )
-
-        cat_dict = {"constant": "constant", "mode": "most_frequent"}
-        if categorical_imputation not in cat_dict:
-            raise ValueError(
-                "Invalid value for the categorical_imputation "
-                f"parameter, got {categorical_imputation}. Possible "
-                f"values are {' '.join(cat_dict)}."
-            )
-
-        if imputation_type == "simple":
-            self.logger.info("Setting up simple imputation")
-
-            num_estimator = TransfomerWrapper(
-                transformer=SimpleImputer(
-                    strategy=num_dict[numeric_imputation],
-                    fill_value=0,
-                ),
-                columns=numeric_features,
-            )
-            cat_estimator = TransfomerWrapper(
-                transformer=SimpleImputer(
-                    strategy=cat_dict[categorical_imputation],
-                    fill_value="not_available",
-                ),
-                columns=categorical_features,
-            )
-
-        elif imputation_type == "iterative":
-            self.logger.info("Setting up iterative imputation")
-
-            # TODO: Fix iterative imputer for categorical columns
-
-            # Dict of all regressor models available
-            regressors = {k: v for k, v in get_regressors(self).items() if not v.is_special}
-
-            if isinstance(numeric_iterative_imputer, str):
-                if numeric_iterative_imputer not in regressors:
-                    raise ValueError(
-                        "Invalid value for the numeric_iterative_imputer parameter, "
-                        f"got {numeric_iterative_imputer}. Allowed estimators are: "
-                        f"{', '.join(regressors)}."
-                    )
-                numeric_iterative_imputer = regressors[numeric_iterative_imputer].class_def()
-            elif not hasattr(numeric_iterative_imputer, "predict"):
-                raise ValueError(
-                    "Invalid value for the numeric_iterative_imputer parameter. "
-                    "The provided estimator does not adhere to sklearn's API."
-                )
-
-            if isinstance(categorical_iterative_imputer, str):
-                if categorical_iterative_imputer not in regressors:
-                    raise ValueError(
-                        "Invalid value for the categorical_iterative_imputer parameter, "
-                        f"got {categorical_iterative_imputer}. Allowed estimators are: "
-                        f"{', '.join(regressors)}."
-                    )
-                categorical_iterative_imputer = regressors[categorical_iterative_imputer].class_def()
-            elif not hasattr(categorical_iterative_imputer, "predict"):
-                raise ValueError(
-                    "Invalid value for the categorical_iterative_imputer parameter. "
-                    "The provided estimator does not adhere to sklearn's API."
-                )
-
-            num_estimator = TransfomerWrapper(
-                transformer=IterativeImputer(
-                    estimator=numeric_iterative_imputer,
-                    max_iter=iterative_imputation_iters,
-                    random_state=self.seed,
-                ),
-                columns=numeric_features,
-            )
-            cat_estimator = TransfomerWrapper(
-                transformer=IterativeImputer(
-                    estimator=categorical_iterative_imputer,
-                    max_iter=iterative_imputation_iters,
-                    initial_strategy="most_frequent",
-                    random_state=self.seed,
-                ),
-                columns=categorical_features,
-            )
-        else:
-            raise ValueError(
-                "Invalid value for the imputation_type parameter, got "
-                f"{imputation_type}. Possible values are: simple, iterative."
-            )
-
-        # Start with the internal pipeline
-        # Always create (even if preprocess=False) since we need a
-        # pipeline for the rest of the methods and if there are no
-        # NaNs then this step is almost instant
-        self._internal_pipeline = InternalPipeline(
-            [
-                ("numerical_imputer", num_estimator),
-                ("categorical_imputer", cat_estimator),
-            ],
-        )
+        # Initialize empty pipeline
+        self._internal_pipeline = InternalPipeline(steps=[("placeholder", None)])
 
         if preprocess:
+
+            # Date feature engineering ============================= >>
+
+            # TODO: Could be improved allowing the user to choose which features to add
+            if date_features:
+                self.logger.info("Extracting features from datetime columns")
+                date_estimator = TransfomerWrapper(
+                    transformer=ExtractDateTimeFeatures(),
+                    columns=date_features,
+                )
+
+                self._internal_pipeline.steps.append(
+                    ("date_feature_extractor", date_estimator),
+                )
+
+            # Imputation =========================================== >>
+
+            # Checking parameters
+            num_dict = {"zero": "constant", "mean": "mean", "median": "median"}
+            if numeric_imputation not in num_dict:
+                raise ValueError(
+                    "Invalid value for the numeric_imputation parameter, got "
+                    f"{numeric_imputation}. Possible values are {' '.join(num_dict)}."
+                )
+
+            cat_dict = {"constant": "constant", "mode": "most_frequent"}
+            if categorical_imputation not in cat_dict:
+                raise ValueError(
+                    "Invalid value for the categorical_imputation "
+                    f"parameter, got {categorical_imputation}. Possible "
+                    f"values are {' '.join(cat_dict)}."
+                )
+
+            if imputation_type == "simple":
+                self.logger.info("Setting up simple imputation")
+
+                num_estimator = TransfomerWrapper(
+                    transformer=SimpleImputer(
+                        strategy=num_dict[numeric_imputation],
+                        fill_value=0,
+                    ),
+                    columns=numeric_features,
+                )
+                cat_estimator = TransfomerWrapper(
+                    transformer=SimpleImputer(
+                        strategy=cat_dict[categorical_imputation],
+                        fill_value="not_available",
+                    ),
+                    columns=categorical_features,
+                )
+
+            elif imputation_type == "iterative":
+                self.logger.info("Setting up iterative imputation")
+
+                # TODO: Fix iterative imputer for categorical columns
+
+                # Dict of all regressor models available
+                regressors = {k: v for k, v in get_regressors(self).items() if not v.is_special}
+
+                if isinstance(numeric_iterative_imputer, str):
+                    if numeric_iterative_imputer not in regressors:
+                        raise ValueError(
+                            "Invalid value for the numeric_iterative_imputer parameter, "
+                            f"got {numeric_iterative_imputer}. Allowed estimators are: "
+                            f"{', '.join(regressors)}."
+                        )
+                    numeric_iterative_imputer = regressors[numeric_iterative_imputer].class_def()
+                elif not hasattr(numeric_iterative_imputer, "predict"):
+                    raise ValueError(
+                        "Invalid value for the numeric_iterative_imputer parameter. "
+                        "The provided estimator does not adhere to sklearn's API."
+                    )
+
+                if isinstance(categorical_iterative_imputer, str):
+                    if categorical_iterative_imputer not in regressors:
+                        raise ValueError(
+                            "Invalid value for the categorical_iterative_imputer parameter, "
+                            f"got {categorical_iterative_imputer}. Allowed estimators are: "
+                            f"{', '.join(regressors)}."
+                        )
+                    categorical_iterative_imputer = regressors[categorical_iterative_imputer].class_def()
+                elif not hasattr(categorical_iterative_imputer, "predict"):
+                    raise ValueError(
+                        "Invalid value for the categorical_iterative_imputer parameter. "
+                        "The provided estimator does not adhere to sklearn's API."
+                    )
+
+                num_estimator = TransfomerWrapper(
+                    transformer=IterativeImputer(
+                        estimator=numeric_iterative_imputer,
+                        max_iter=iterative_imputation_iters,
+                        random_state=self.seed,
+                    ),
+                    columns=numeric_features,
+                )
+                cat_estimator = TransfomerWrapper(
+                    transformer=IterativeImputer(
+                        estimator=categorical_iterative_imputer,
+                        max_iter=iterative_imputation_iters,
+                        initial_strategy="most_frequent",
+                        random_state=self.seed,
+                    ),
+                    columns=categorical_features,
+                )
+            else:
+                raise ValueError(
+                    "Invalid value for the imputation_type parameter, got "
+                    f"{imputation_type}. Possible values are: simple, iterative."
+                )
+
+            self._internal_pipeline.steps.extend(
+                [
+                    ("numerical_imputer", num_estimator),
+                    ("categorical_imputer", cat_estimator),
+                ],
+            )
 
             # Text embedding ======================================= >>
 
@@ -1202,6 +1205,7 @@ class _TabularExperiment(_PyCaretExperiment):
                         columns=cols,
                     )
                 elif feature_selection_method.lower() == "boruta":
+                    # TODO: Fix
                     feature_selector = TransfomerWrapper(
                         transformer=BorutaPy(
                             estimator=fs_estimator,
@@ -1228,6 +1232,10 @@ class _TabularExperiment(_PyCaretExperiment):
                 self._internal_pipeline.steps.append(
                     (name, TransfomerWrapper(estimator))
                 )
+
+        # Remove placeholder step
+        if len(self._internal_pipeline) > 1:
+            self._internal_pipeline.steps.pop(0)
 
         self.logger.info(f"Finished creating preprocessing pipeline.")
         self.logger.info(f"Pipeline: {self._internal_pipeline}")
@@ -1374,6 +1382,11 @@ class _TabularExperiment(_PyCaretExperiment):
             pca=pca,
             pca_method=pca_method,
             pca_components=pca_components,
+            feature_selection=feature_selection,
+            feature_selection_method=feature_selection_method,
+            feature_selection_estimator=feature_selection_estimator,
+            n_features_to_select=n_features_to_select,
+            custom_pipeline=custom_pipeline,
         )
 
         if verbose:

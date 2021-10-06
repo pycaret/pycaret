@@ -1,4 +1,4 @@
-## Related Issuse or bug
+## Related Issue or bug
   - Info about Issue or bug
 
 Fixes: #[issue number that will be closed through this PR]
@@ -50,22 +50,3 @@ Example how to mark a checkbox :-
  Original           | Updated
  :--------------------: |:--------------------:
  **original screenshot**  | <b>updated screenshot </b> |
- 
- 
- 
- 
- 
- 
- 
- 
- 
-
-
-
-
-
-
-
-
-
-
