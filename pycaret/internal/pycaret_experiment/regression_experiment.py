@@ -47,35 +47,74 @@ class RegressionExperiment(_SupervisedExperiment):
         return
 
     def _get_setup_display(self, **kwargs) -> Styler:
-        # define highlight function for function grid to display
+        """Display overview of the setup."""
+        transform_target = (
+            self.transform_target_param
+            if not self.transform_target_param
+            else self.transform_target_method
+        )
+        overview = pd.DataFrame(columns=["Description", "Value"])
+        overview = overview.append(
+            pd.DataFrame(
+                [
+                    ["session_id", self.seed],
+                    ["Target", self.target_param],
+                    ["Target type", kwargs["target_type"]],
+                    ["Data shape", self.data.shape],
+                    ["Train size", kwargs["train_size"]],
+                    ["Ordinal features", kwargs["ordinal_features"]],
+                    ["Numerical features", kwargs["numerical_features"]],
+                    ["Categorical features", kwargs["categorical_features"]],
+                    ["Date features", kwargs["date_features"]],
+                    ["Text features", kwargs["text_features"]],
+                    ["Ignored features", kwargs["ignore_features"]],
+                    ["Kept features", kwargs["keep_features"]],
+                    ["Missing Values", kwargs["missing_values"]],
+                    ["Transform Target", transform_target],
+                    ["Preprocess", kwargs["preprocess"]],
+                ],
+                columns=overview.columns
+            ),
+            ignore_index=True,
+        )
 
-        functions = pd.DataFrame(
-            [
-                ["session_id", self.seed],
-                ["Target", self.target_param],
-                ["Original Data", self.data.shape],
-                ["Missing Values", kwargs["missing_flag"]],
-                ["Numeric Features", str(kwargs["float_type"])],
-                ["Categorical Features", str(kwargs["cat_type"])],
-            ]
-            + (
-                [
-                    ["Ordinal Features", kwargs["ordinal_features_grid"]],
+        if kwargs["preprocess"]:
+            overview = overview.append(
+                pd.DataFrame(
                     [
-                        "High Cardinality Features",
-                        kwargs["high_cardinality_features_grid"],
+                        ["Imputation type", kwargs["imputation_type"]],
+                        ["Numeric imputation", kwargs["numeric_imputation"]],
+                        ["Categorical imputation", kwargs["categorical_imputation"]],
+                        ["Iterative imputation iterations", kwargs["iterative_imputation_iters"]],
+                        ["Numeric iterative imputer", kwargs["numeric_iterative_imputer"]],
+                        ["Categorical iterative imputer", kwargs["categorical_iterative_imputer"]],
+                        ["Text features embedding method", kwargs["text_features_method"]],
+                        ["Maximum one-hot encoding", kwargs["max_encoding_ohe"]],
+                        ["Encoding method", kwargs["encoding_method"]],
+                        ["Transformation", kwargs["transformation"]],
+                        ["Transformation method", kwargs["transformation_method"]],
+                        ["Normalize", kwargs["normalize"]],
+                        ["Normalize method", kwargs["normalize_method"]],
+                        ["Low variance threshold", kwargs["low_variance_threshold"]],
+                        ["Remove multicollinearity", kwargs["remove_multicollinearity"]],
+                        ["Multicollinearity threshold", kwargs["multicollinearity_threshold"]],
+                        ["Remove outliers", kwargs["remove_outliers"]],
+                        ["Outliers threshold", kwargs["outliers_threshold"]],
+                        ["Polynomial degree", kwargs["polynomial_degree"]],
+                        ["Fix imbalance", kwargs["fix_imbalance"]],
+                        ["Fix imbalance method", kwargs["fix_imbalance_method"]],
+                        ["PCA", kwargs["pca"]],
+                        ["PCA method", kwargs["pca_method"]],
+                        ["PCA components", kwargs["pca_components"]],
                     ],
-                    ["High Cardinality Method", kwargs["high_cardinality_method_grid"]],
-                ]
-                if self.preprocess
-                else []
+                    columns=overview.columns,
+                ),
+                ignore_index=True,
             )
-            + (
+
+        overview = overview.append(
+            pd.DataFrame(
                 [
-                    ["Transformed Train Set", self.X_train.shape],
-                    ["Transformed Test Set", self.X_test.shape],
-                    ["Shuffle Train-Test", str(kwargs["data_split_shuffle"])],
-                    ["Stratify Train-Test", str(kwargs["data_split_stratify"])],
                     ["Fold Generator", type(self.fold_generator).__name__],
                     ["Fold Number", self.fold_param],
                     ["CPU Jobs", self.n_jobs_param],
@@ -83,91 +122,13 @@ class RegressionExperiment(_SupervisedExperiment):
                     ["Log Experiment", self.logging_param],
                     ["Experiment Name", self.exp_name_log],
                     ["USI", self.USI],
-                ]
-            )
-            + (
-                [
-                    ["Imputation Type", kwargs["imputation_type"]],
-                    [
-                        "Iterative Imputation Iteration",
-                        self.iterative_imputation_iters_param
-                        if kwargs["imputation_type"] == "iterative"
-                        else "None",
-                    ],
-                    ["Numeric Imputer", kwargs["numeric_imputation"]],
-                    [
-                        "Iterative Imputation Numeric Model",
-                        kwargs["imputation_regressor_name"]
-                        if kwargs["imputation_type"] == "iterative"
-                        else "None",
-                    ],
-                    ["Categorical Imputer", kwargs["categorical_imputation"]],
-                    [
-                        "Iterative Imputation Categorical Model",
-                        kwargs["imputation_classifier_name"]
-                        if kwargs["imputation_type"] == "iterative"
-                        else "None",
-                    ],
-                    [
-                        "Unknown Categoricals Handling",
-                        kwargs["unknown_categorical_method_grid"],
-                    ],
-                    ["Normalize", kwargs["normalize"]],
-                    ["Normalize Method", kwargs["normalize_grid"]],
-                    ["Transformation", kwargs["transformation"]],
-                    ["Transformation Method", kwargs["transformation_grid"]],
-                    ["PCA", kwargs["pca"]],
-                    ["PCA Method", kwargs["pca_method_grid"]],
-                    ["PCA Components", kwargs["pca_components_grid"]],
-                    ["Ignore Low Variance", kwargs["ignore_low_variance"]],
-                    ["Combine Rare Levels", kwargs["combine_rare_levels"]],
-                    ["Rare Level Threshold", kwargs["rare_level_threshold_grid"]],
-                    ["Numeric Binning", kwargs["numeric_bin_grid"]],
-                    ["Remove Outliers", kwargs["remove_outliers"]],
-                    ["Outliers Threshold", kwargs["outliers_threshold_grid"]],
-                    [
-                        "Remove Perfect Collinearity",
-                        kwargs["remove_perfect_collinearity"],
-                    ],
-                    ["Remove Multicollinearity", kwargs["remove_multicollinearity"]],
-                    [
-                        "Multicollinearity Threshold",
-                        kwargs["multicollinearity_threshold_grid"],
-                    ],
-                    ["Remove Perfect Collinearity", kwargs["remove_perfect_collinearity"]],
-                    [
-                        "Columns Removed Due to Multicollinearity",
-                        kwargs["multicollinearity_removed_columns"],
-                    ],
-                    ["Clustering", kwargs["create_clusters"]],
-                    ["Clustering Iteration", kwargs["cluster_iter_grid"]],
-                    ["Polynomial Features", kwargs["polynomial_features"]],
-                    ["Polynomial Degree", kwargs["polynomial_degree_grid"]],
-                    ["Trignometry Features", kwargs["trigonometry_features"]],
-                    ["Polynomial Threshold", kwargs["polynomial_threshold_grid"]],
-                    ["Group Features", kwargs["group_features_grid"]],
-                    ["Feature Selection", kwargs["feature_selection"]],
-                    ["Feature Selection Method", kwargs["feature_selection_method"]],
-                    [
-                        "Features Selection Threshold",
-                        kwargs["feature_selection_threshold_grid"],
-                    ],
-                    ["Feature Interaction", kwargs["feature_interaction"]],
-                    ["Feature Ratio", kwargs["feature_ratio"]],
-                    ["Interaction Threshold", kwargs["interaction_threshold_grid"]],
-                ]
-                if self.preprocess
-                else []
-            )
-            + (
-                [
-                    ["Transform Target", self.transform_target_param],
-                    ["Transform Target Method", self.transform_target_method_param],
-                ]
+                ],
+                columns=overview.columns,
             ),
-            columns=["Description", "Value"],
+            ignore_index=True,
         )
-        return functions.style.apply(highlight_setup)
+
+        return overview.style.apply(highlight_setup)
 
     def _get_models(self, raise_errors: bool = True) -> Tuple[dict, dict]:
         all_models = {
