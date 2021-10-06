@@ -491,12 +491,6 @@ class _TabularExperiment(_PyCaretExperiment):
         self.seed = random.randint(150, 9000) if session_id is None else session_id
         np.random.seed(self.seed)
 
-        # Other attrs
-        self.experiment__ = []
-        self.master_model_container = []
-        self._all_models, self._all_models_internal = self._get_models()
-        self._all_metrics = self._get_metrics()
-
         # Initialization =========================================== >>
 
         runtime_start = time.time()
@@ -1388,6 +1382,12 @@ class _TabularExperiment(_PyCaretExperiment):
             n_features_to_select=n_features_to_select,
             custom_pipeline=custom_pipeline,
         )
+
+        # Other attrs
+        self.experiment__ = []
+        self.master_model_container = []
+        self._all_models, self._all_models_internal = self._get_models()
+        self._all_metrics = self._get_metrics()
 
         if verbose:
             print(display_container)

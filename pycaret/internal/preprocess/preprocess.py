@@ -143,7 +143,10 @@ class TransfomerWrapper(BaseEstimator):
             new_X = to_df(new_X, columns=name_cols(new_X, X))
 
         new_X = reorder_cols(new_X, X)
-        new_y = to_series(y, name=y.name)
+        if hasattr(y, "name"):
+            new_y = to_series(y, name=y.name)
+        else:
+            new_y = to_series(y)
 
         return variable_return(new_X, new_y)
 
