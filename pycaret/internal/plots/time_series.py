@@ -12,6 +12,10 @@ from sktime.forecasting.model_selection import (
     ExpandingWindowSplitter,
     SlidingWindowSplitter,
 )
+from statsmodels.tsa.seasonal import (
+    seasonal_decompose,
+    STL
+)
 
 __author__ = ["satya-pattnaik", "ngupta23"]
 #################
@@ -85,8 +89,17 @@ def plot_(
             data_kwargs=data_kwargs,
             fig_kwargs=fig_kwargs,
         )
-    elif plot == "diagnostics" or plot == "residuals":
+    elif plot == "diagnostics":
         plot_data = plot_diagnostics(
+            data=data,
+            model_name=model_name,
+            return_data=return_data,
+            show=show,
+            data_kwargs=data_kwargs,
+            fig_kwargs=fig_kwargs,
+        )
+    elif plot == "residuals":
+        plot_data = plot_series(
             data=data,
             model_name=model_name,
             return_data=return_data,
@@ -125,19 +138,25 @@ def plot_(
 
 def plot_series(
     data: pd.Series,
+    model_name: Optional[str] = None,
     return_data: bool = False,
     show: bool = True,
     data_kwargs: Dict = None,
     fig_kwargs: Dict = None):
     """Plots the original time series"""
 
+
     if data_kwargs is None:
         data_kwargs = {}
     if fig_kwargs is None:
         fig_kwargs = {}
 
+    title = "Time Series" if model_name is None else f"Residual(s)"
+    legend = "Time Series" if model_name is None else f"Residual"
+
+
     original = go.Scatter(
-        name="Original",
+        name=f"{legend} | {model_name}",
         x=data.index.to_timestamp(),
         y=data,
         mode="lines+markers",
@@ -147,7 +166,7 @@ def plot_series(
     plot_data = [original]
 
     layout = go.Layout(
-        yaxis=dict(title="Values"), xaxis=dict(title="Time"), title="Time Series",
+        yaxis=dict(title="Values"), xaxis=dict(title="Time"), title=title,
     )
 
     fig = go.Figure(data=plot_data, layout=layout)
@@ -730,6 +749,12 @@ def plot_diagnostics(
     fig_template = fig_kwargs.get("fig_template", "simple_white")
     fig.update_layout(template=fig_template)
 
+    fig_size = fig_kwargs.get("fig_size", None)
+    if fig_size is not None:
+        fig.update_layout(
+            autosize=False, width=fig_size[0], height=fig_size[1],
+        )
+
     qq(fig)
     dist_plot(fig)
     plot_acf(fig)
@@ -836,10 +861,8 @@ def plot_predictions_with_confidence(
 
 def plot_time_series_decomposition(
     data: pd.Series,
-    trend_component:pd.Series,
-    seasonl_component:pd.Series,
-    resdiual_component:pd.Series,
     model_name: Optional[str] = None,
+    plot: str = "decomp_classical",
     return_data: bool = False,
     show: bool = True,
     data_kwargs: Dict = None,
@@ -857,6 +880,14 @@ def plot_time_series_decomposition(
         else f"Time Series Decomposition | {data.name}"
     )
 
+    classical_decomp_type = data_kwargs.get("type", "additive")
+    decomp_result = None
+    if plot == "decomp_classical":
+        decomp_result = seasonal_decompose(data.to_timestamp(),
+                                           model=classical_decomp_type)
+    elif plot == "decomp_stl":
+        decomp_result = STL(data.to_timestamp()).fit()
+
     fig = make_subplots(
         rows=4,
         cols=1,
@@ -873,7 +904,7 @@ def plot_time_series_decomposition(
     fig.add_trace(
         go.Scatter(
             x=data.index.to_timestamp(),
-            y=data.observed,
+            y=data,
             line=dict(color="#1f77b4", width=2),
             mode="lines+markers",
             name="Actual",
@@ -887,7 +918,7 @@ def plot_time_series_decomposition(
     fig.add_trace(
         go.Scatter(
             x=data.index.to_timestamp(),
-            y=seasonl_component,
+            y=decomp_result.seasonal,
             line=dict(color="#1f77b4", width=2),
             mode="lines+markers",
             name="Seasonal",
@@ -900,7 +931,7 @@ def plot_time_series_decomposition(
     fig.add_trace(
         go.Scatter(
             x=data.index.to_timestamp(),
-            y=trend_component,
+            y=decomp_result.trend,
             line=dict(color="#1f77b4", width=2),
             mode="lines+markers",
             name="Trend",
@@ -913,7 +944,7 @@ def plot_time_series_decomposition(
     fig.add_trace(
         go.Scatter(
             x=data.index.to_timestamp(),
-            y=resdiual_component,
+            y=decomp_result.resid,
             line=dict(color="#1f77b4", width=2),
             mode="markers",
             name="Resdiuals",
@@ -926,7 +957,6 @@ def plot_time_series_decomposition(
     fig.update_layout(showlegend=False)
     fig_template = fig_kwargs.get("fig_template", "simple_white")
     fig.update_layout(template=fig_template)
-
 
     if show:
         fig.show()
