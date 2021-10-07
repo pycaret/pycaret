@@ -12,6 +12,10 @@ from sktime.forecasting.model_selection import (
     ExpandingWindowSplitter,
     SlidingWindowSplitter,
 )
+from statsmodels.tsa.seasonal import (
+    seasonal_decompose,
+    STL
+)
 
 __author__ = ["satya-pattnaik", "ngupta23"]
 #################
@@ -30,9 +34,15 @@ def plot_(
     return_data: bool = False,
     show: bool = True,
     prediction_interval_flag: bool = False,
-    data_kwargs: Dict = {},
-    fig_kwargs: Dict = {},
+    data_kwargs:Dict =  None,
+    fig_kwargs:Dict = None,
 ) -> Optional[Any]:
+
+    if data_kwargs is None:
+        data_kwargs = {}
+    if fig_kwargs is None:
+        fig_kwargs = {}
+
     if plot == "ts":
         plot_data = plot_series(
             data=data,
@@ -131,12 +141,19 @@ def plot_series(
     model_name: Optional[str] = None,
     return_data: bool = False,
     show: bool = True,
-    data_kwargs: Dict = {},
-    fig_kwargs: Dict = {},
-):
+    data_kwargs: Dict = None,
+    fig_kwargs: Dict = None):
     """Plots the original time series"""
+
+
+    if data_kwargs is None:
+        data_kwargs = {}
+    if fig_kwargs is None:
+        fig_kwargs = {}
+
     title = "Time Series" if model_name is None else f"Residual(s)"
     legend = "Time Series" if model_name is None else f"Residual"
+
 
     original = go.Scatter(
         name=f"{legend} | {model_name}",
@@ -178,10 +195,14 @@ def plot_splits_train_test_split(
     test: pd.Series,
     return_data: bool = False,
     show: bool = True,
-    data_kwargs: Dict = {},
-    fig_kwargs: Dict = {},
+    data_kwargs: Dict = None,
+    fig_kwargs: Dict = None,
 ):
     """Plots the train-test split for the time serirs"""
+    if data_kwargs is None:
+        data_kwargs = {}
+    if fig_kwargs is None:
+        fig_kwargs = {}
     fig = go.Figure()
 
     fig.add_trace(
@@ -233,10 +254,14 @@ def plot_cv(
     cv,
     return_data: bool = False,
     show: bool = True,
-    data_kwargs: Dict = {},
-    fig_kwargs: Dict = {},
+    data_kwargs: Dict = None,
+    fig_kwargs: Dict = None,
 ):
     """Plots the cv splits used on the training split"""
+    if data_kwargs is None:
+        data_kwargs = {}
+    if fig_kwargs is None:
+        fig_kwargs = {}
 
     def get_windows(y, cv):
         """
@@ -254,10 +279,12 @@ def plot_cv(
         fig = go.Figure()
         for num_window in reversed(range(len(train_windows))):
             time_stamps = data.index.to_timestamp()
+
+            y_axis_label = str(num_window)
             [
                 fig.add_scatter(
                     x=(time_stamps[i], time_stamps[i + 1]),
-                    y=(num_window, num_window),
+                    y=(y_axis_label, y_axis_label),
                     mode="lines+markers",
                     line_color="#C0C0C0",
                     name=f"Unchanged",
@@ -268,7 +295,7 @@ def plot_cv(
             [
                 fig.add_scatter(
                     x=(time_stamps[i], time_stamps[i + 1]),
-                    y=(num_window, num_window),
+                    y=(y_axis_label, y_axis_label),
                     mode="lines+markers",
                     line_color="#1f77b4",
                     name="Train",
@@ -280,7 +307,7 @@ def plot_cv(
             [
                 fig.add_scatter(
                     x=(time_stamps[i], time_stamps[i + 1]),
-                    y=(num_window, num_window),
+                    y=(y_axis_label, y_axis_label),
                     mode="lines+markers",
                     line_color="#DE970B",
                     name="ForecastHorizon",
@@ -289,7 +316,6 @@ def plot_cv(
                 for i in test_windows[num_window][:-1]
             ]
             fig.update_traces(showlegend=False)
-            fig.update_yaxes(autorange="reversed")
 
             fig.update_layout(
                 {
@@ -325,10 +351,14 @@ def plot_acf(
     model_name: Optional[str] = None,
     return_data: bool = False,
     show: bool = True,
-    data_kwargs: Dict = {},
-    fig_kwargs: Dict = {},
+    data_kwargs: Dict = None,
+    fig_kwargs: Dict = None,
 ):
     """Plots the ACF on the data provided"""
+    if data_kwargs is None:
+        data_kwargs = {}
+    if fig_kwargs is None:
+        fig_kwargs = {}
 
     nlags = data_kwargs.get("nlags", None)
     corr_array = acf(data, alpha=0.05, nlags=nlags)
@@ -413,10 +443,14 @@ def plot_pacf(
     model_name: Optional[str] = None,
     return_data: bool = False,
     show: bool = True,
-    data_kwargs: Dict = {},
-    fig_kwargs: Dict = {},
+    data_kwargs: Dict = None,
+    fig_kwargs: Dict = None,
 ):
     """Plots the PACF on the data provided"""
+    if data_kwargs is None:
+        data_kwargs = {}
+    if fig_kwargs is None:
+        fig_kwargs = {}
 
     nlags = data_kwargs.get("nlags", None)
     corr_array = pacf(data, alpha=0.05, nlags=nlags)
@@ -503,10 +537,14 @@ def plot_predictions(
     model_name: Optional[str] = None,
     return_data: bool = False,
     show: bool = True,
-    data_kwargs: Dict = {},
-    fig_kwargs: Dict = {},
+    data_kwargs: Dict = None,
+    fig_kwargs: Dict = None,
 ):
     """Plots the original data and the predictions provided"""
+    if data_kwargs is None:
+        data_kwargs = {}
+    if fig_kwargs is None:
+        fig_kwargs = {}
 
     title = "Actual vs. Forecast"
     time_series_name = data.name
@@ -562,10 +600,15 @@ def plot_diagnostics(
     model_name: Optional[str] = None,
     return_data: bool = False,
     show: bool = True,
-    data_kwargs: Dict = {},
-    fig_kwargs: Dict = {},
+    data_kwargs: Dict = None,
+    fig_kwargs: Dict = None,
 ):
     """Plots the diagnostic data such as ACF, Histogram, QQ plot on the data provided"""
+    if data_kwargs is None:
+        data_kwargs = {}
+    if fig_kwargs is None:
+        fig_kwargs = {}
+
     time_series_name = data.name
     title = (
         f"Diagnostics | {time_series_name}"
@@ -733,10 +776,14 @@ def plot_predictions_with_confidence(
     model_name: Optional[str] = None,
     return_data: bool = False,
     show: bool = True,
-    data_kwargs: Dict = {},
-    fig_kwargs: Dict = {},
-):
+    data_kwargs: Dict = None,
+    fig_kwargs: Dict = None):
     """Plots the original data and the predictions provided with confidence"""
+    if data_kwargs is None:
+        data_kwargs = {}
+    if fig_kwargs is None:
+        fig_kwargs = {}
+
     title = (
         "Actual and Forecast"
         if data.name is None
@@ -808,5 +855,113 @@ def plot_predictions_with_confidence(
 
     if return_data:
         return fig, data, predictions, upper_interval, lower_interval
+    else:
+        return fig
+
+
+def plot_time_series_decomposition(
+    data: pd.Series,
+    model_name: Optional[str] = None,
+    plot: str = "decomp_classical",
+    return_data: bool = False,
+    show: bool = True,
+    data_kwargs: Dict = None,
+    fig_kwargs: Dict = None,
+):
+
+    if data_kwargs is None:
+        data_kwargs = {}
+    if fig_kwargs is None:
+        fig_kwargs = {}
+
+    title = (
+        "Time Series Decomposition"
+        if data.name is None
+        else f"Time Series Decomposition | {data.name}"
+    )
+
+    classical_decomp_type = data_kwargs.get("type", "additive")
+    decomp_result = None
+    if plot == "decomp_classical":
+        decomp_result = seasonal_decompose(data.to_timestamp(),
+                                           model=classical_decomp_type)
+    elif plot == "decomp_stl":
+        decomp_result = STL(data.to_timestamp()).fit()
+
+    fig = make_subplots(
+        rows=4,
+        cols=1,
+        row_heights=[
+            0.25,
+            0.25,
+            0.25,
+            0.25,
+        ],
+
+        row_titles=["Actual", "Seasonal", "Trend", "Residual"],
+    )
+
+    fig.add_trace(
+        go.Scatter(
+            x=data.index.to_timestamp(),
+            y=data,
+            line=dict(color="#1f77b4", width=2),
+            mode="lines+markers",
+            name="Actual",
+            marker=dict(size=2, ),
+        ),
+
+        row=1,
+        col=1,
+    )
+
+    fig.add_trace(
+        go.Scatter(
+            x=data.index.to_timestamp(),
+            y=decomp_result.seasonal,
+            line=dict(color="#1f77b4", width=2),
+            mode="lines+markers",
+            name="Seasonal",
+            marker=dict(size=2, ),
+        ),
+        row=2,
+        col=1,
+    )
+
+    fig.add_trace(
+        go.Scatter(
+            x=data.index.to_timestamp(),
+            y=decomp_result.trend,
+            line=dict(color="#1f77b4", width=2),
+            mode="lines+markers",
+            name="Trend",
+            marker=dict(size=2, ),
+        ),
+        row=3,
+        col=1,
+    )
+
+    fig.add_trace(
+        go.Scatter(
+            x=data.index.to_timestamp(),
+            y=decomp_result.resid,
+            line=dict(color="#1f77b4", width=2),
+            mode="markers",
+            name="Resdiuals",
+            marker=dict(size=4, ),
+        ),
+        row=4,
+        col=1,
+    )
+    fig.update_layout(title=title)
+    fig.update_layout(showlegend=False)
+    fig_template = fig_kwargs.get("fig_template", "simple_white")
+    fig.update_layout(template=fig_template)
+
+    if show:
+        fig.show()
+
+    if return_data:
+        return fig, data
     else:
         return fig
