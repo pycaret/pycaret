@@ -115,6 +115,7 @@ def _return_model_names():
         "n_jobs_param": -1,
         "gpu_param": False,
         "X_train": pd.DataFrame(get_data("airline")),
+        "enforce_pi": True,
     }
     model_containers = get_all_model_containers(globals_dict)
 
@@ -387,6 +388,23 @@ def test_setup_seasonal_period_int(load_data, seasonal_key, seasonal_value):
     )
 
     assert exp.seasonal_period == seasonal_value
+
+
+def test_enforce_pi(load_data):
+    """Tests the enforcement of prediction interval"""
+    data = load_data
+
+    exp1 = TimeSeriesExperiment()
+    exp1.setup(data=data, enforce_pi=True)
+    num_models1 = len(exp1.models())
+
+    exp2 = TimeSeriesExperiment()
+    exp2.setup(data=data, enforce_pi=False)
+    num_models2 = len(exp2.models())
+
+    # We know that some models do not offer PI capability to the following
+    # check is valid for now.
+    assert num_models1 < num_models2
 
 
 @pytest.mark.parametrize("name, fh", _model_parameters)
