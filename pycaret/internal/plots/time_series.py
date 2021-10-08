@@ -12,10 +12,7 @@ from sktime.forecasting.model_selection import (
     ExpandingWindowSplitter,
     SlidingWindowSplitter,
 )
-from statsmodels.tsa.seasonal import (
-    seasonal_decompose,
-    STL
-)
+from statsmodels.tsa.seasonal import seasonal_decompose, STL
 
 __author__ = ["satya-pattnaik", "ngupta23"]
 #################
@@ -33,9 +30,9 @@ def plot_(
     model_name: Optional[str] = None,
     return_data: bool = False,
     show: bool = True,
-    prediction_interval_flag: bool = False,
-    data_kwargs:Dict =  None,
-    fig_kwargs:Dict = None,
+    return_pred_int: bool = False,
+    data_kwargs: Optional[Dict] = None,
+    fig_kwargs: Optional[Dict] = None,
 ) -> Optional[Any]:
 
     if data_kwargs is None:
@@ -65,6 +62,28 @@ def plot_(
         plot_data = plot_cv(
             data=data,
             cv=cv,
+            return_data=return_data,
+            show=show,
+            data_kwargs=data_kwargs,
+            fig_kwargs=fig_kwargs,
+        )
+
+    elif plot == "decomp_classical":
+        plot_data = plot_time_series_decomposition(
+            data=data,
+            model_name=model_name,
+            plot="decomp_classical",
+            return_data=return_data,
+            show=show,
+            data_kwargs=data_kwargs,
+            fig_kwargs=fig_kwargs,
+        )
+
+    elif plot == "decomp_stl":
+        plot_data = plot_time_series_decomposition(
+            data=data,
+            model_name=model_name,
+            plot="decomp_stl",
             return_data=return_data,
             show=show,
             data_kwargs=data_kwargs,
@@ -108,7 +127,7 @@ def plot_(
             fig_kwargs=fig_kwargs,
         )
     elif plot == "forecast":
-        if prediction_interval_flag:
+        if return_pred_int:
             plot_data = plot_predictions_with_confidence(
                 data=data,
                 predictions=predictions["y_pred"],
@@ -131,7 +150,7 @@ def plot_(
                 fig_kwargs=fig_kwargs,
             )
     else:
-        raise ValueError(f"Tests: '{plot}' is not supported.")
+        raise ValueError(f"Plot: '{plot}' is not supported.")
 
     return plot_data if return_data else None
 
@@ -141,10 +160,10 @@ def plot_series(
     model_name: Optional[str] = None,
     return_data: bool = False,
     show: bool = True,
-    data_kwargs: Dict = None,
-    fig_kwargs: Dict = None):
+    data_kwargs: Optional[Dict] = None,
+    fig_kwargs: Optional[Dict] = None,
+):
     """Plots the original time series"""
-
 
     if data_kwargs is None:
         data_kwargs = {}
@@ -153,7 +172,6 @@ def plot_series(
 
     title = "Time Series" if model_name is None else f"Residual(s)"
     legend = "Time Series" if model_name is None else f"Residual"
-
 
     original = go.Scatter(
         name=f"{legend} | {model_name}",
@@ -171,7 +189,7 @@ def plot_series(
 
     fig = go.Figure(data=plot_data, layout=layout)
 
-    fig_template = fig_kwargs.get("fig_template", "simple_white")
+    fig_template = fig_kwargs.get("fig_template", "ggplot2")
     fig.update_layout(template=fig_template)
     fig.update_layout(showlegend=True)
 
@@ -195,8 +213,8 @@ def plot_splits_train_test_split(
     test: pd.Series,
     return_data: bool = False,
     show: bool = True,
-    data_kwargs: Dict = None,
-    fig_kwargs: Dict = None,
+    data_kwargs: Optional[Dict] = None,
+    fig_kwargs: Optional[Dict] = None,
 ):
     """Plots the train-test split for the time serirs"""
     if data_kwargs is None:
@@ -232,7 +250,7 @@ def plot_splits_train_test_split(
             "showlegend": True,
         }
     )
-    fig_template = fig_kwargs.get("fig_template", "simple_white")
+    fig_template = fig_kwargs.get("fig_template", "ggplot2")
     fig.update_layout(template=fig_template)
 
     fig_size = fig_kwargs.get("fig_size", None)
@@ -254,8 +272,8 @@ def plot_cv(
     cv,
     return_data: bool = False,
     show: bool = True,
-    data_kwargs: Dict = None,
-    fig_kwargs: Dict = None,
+    data_kwargs: Optional[Dict] = None,
+    fig_kwargs: Optional[Dict] = None,
 ):
     """Plots the cv splits used on the training split"""
     if data_kwargs is None:
@@ -325,7 +343,7 @@ def plot_cv(
                     "showlegend": True,
                 }
             )
-            fig_template = fig_kwargs.get("fig_template", "simple_white")
+            fig_template = fig_kwargs.get("fig_template", "ggplot2")
             fig.update_layout(template=fig_template)
 
             fig_size = fig_kwargs.get("fig_size", None)
@@ -351,8 +369,8 @@ def plot_acf(
     model_name: Optional[str] = None,
     return_data: bool = False,
     show: bool = True,
-    data_kwargs: Dict = None,
-    fig_kwargs: Dict = None,
+    data_kwargs: Optional[Dict] = None,
+    fig_kwargs: Optional[Dict] = None,
 ):
     """Plots the ACF on the data provided"""
     if data_kwargs is None:
@@ -365,7 +383,7 @@ def plot_acf(
     title = (
         "Autocorrelation (ACF)"
         if model_name is None
-        else f"Autocorrelation (ACF) | {model_name}"
+        else f"Autocorrelation (ACF) | '{model_name}' Residuals"
     )
 
     lower_y = corr_array[1][:, 0] - corr_array[0]
@@ -419,7 +437,7 @@ def plot_acf(
 
     fig.update_yaxes(zerolinecolor="#000000")
 
-    fig_template = fig_kwargs.get("fig_template", "simple_white")
+    fig_template = fig_kwargs.get("fig_template", "ggplot2")
     fig.update_layout(template=fig_template)
 
     fig_size = fig_kwargs.get("fig_size", None)
@@ -443,8 +461,8 @@ def plot_pacf(
     model_name: Optional[str] = None,
     return_data: bool = False,
     show: bool = True,
-    data_kwargs: Dict = None,
-    fig_kwargs: Dict = None,
+    data_kwargs: Optional[Dict] = None,
+    fig_kwargs: Optional[Dict] = None,
 ):
     """Plots the PACF on the data provided"""
     if data_kwargs is None:
@@ -457,7 +475,7 @@ def plot_pacf(
     title = (
         "Partial Autocorrelation (PACF)"
         if model_name is None
-        else f"Partial Autocorrelation (PACF) | {model_name}"
+        else f"Partial Autocorrelation (PACF) | '{model_name}' Residuals"
     )
 
     lower_y = corr_array[1][:, 0] - corr_array[0]
@@ -511,7 +529,7 @@ def plot_pacf(
 
     fig.update_yaxes(zerolinecolor="#000000")
 
-    fig_template = fig_kwargs.get("fig_template", "simple_white")
+    fig_template = fig_kwargs.get("fig_template", "ggplot2")
     fig.update_layout(template=fig_template)
 
     fig_size = fig_kwargs.get("fig_size", None)
@@ -537,8 +555,8 @@ def plot_predictions(
     model_name: Optional[str] = None,
     return_data: bool = False,
     show: bool = True,
-    data_kwargs: Dict = None,
-    fig_kwargs: Dict = None,
+    data_kwargs: Optional[Dict] = None,
+    fig_kwargs: Optional[Dict] = None,
 ):
     """Plots the original data and the predictions provided"""
     if data_kwargs is None:
@@ -577,7 +595,7 @@ def plot_predictions(
 
     fig = go.Figure(data=data, layout=layout)
 
-    fig_template = fig_kwargs.get("fig_template", "simple_white")
+    fig_template = fig_kwargs.get("fig_template", "ggplot2")
     fig.update_layout(template=fig_template)
 
     fig_size = fig_kwargs.get("fig_size", None)
@@ -600,8 +618,8 @@ def plot_diagnostics(
     model_name: Optional[str] = None,
     return_data: bool = False,
     show: bool = True,
-    data_kwargs: Dict = None,
-    fig_kwargs: Dict = None,
+    data_kwargs: Optional[Dict] = None,
+    fig_kwargs: Optional[Dict] = None,
 ):
     """Plots the diagnostic data such as ACF, Histogram, QQ plot on the data provided"""
     if data_kwargs is None:
@@ -746,7 +764,7 @@ def plot_diagnostics(
         # fig.update_layout(title=title)
 
     fig.update_layout(showlegend=False)
-    fig_template = fig_kwargs.get("fig_template", "simple_white")
+    fig_template = fig_kwargs.get("fig_template", "ggplot2")
     fig.update_layout(template=fig_template)
 
     fig_size = fig_kwargs.get("fig_size", None)
@@ -776,8 +794,9 @@ def plot_predictions_with_confidence(
     model_name: Optional[str] = None,
     return_data: bool = False,
     show: bool = True,
-    data_kwargs: Dict = None,
-    fig_kwargs: Dict = None):
+    data_kwargs: Optional[Dict] = None,
+    fig_kwargs: Optional[Dict] = None,
+):
     """Plots the original data and the predictions provided with confidence"""
     if data_kwargs is None:
         data_kwargs = {}
@@ -840,7 +859,7 @@ def plot_predictions_with_confidence(
 
     fig = go.Figure(data=data, layout=layout)
 
-    fig_template = fig_kwargs.get("fig_template", "simple_white")
+    fig_template = fig_kwargs.get("fig_template", "ggplot2")
     fig.update_layout(template=fig_template)
     fig.update_layout(showlegend=True)
 
@@ -865,8 +884,8 @@ def plot_time_series_decomposition(
     plot: str = "decomp_classical",
     return_data: bool = False,
     show: bool = True,
-    data_kwargs: Dict = None,
-    fig_kwargs: Dict = None,
+    data_kwargs: Optional[Dict] = None,
+    fig_kwargs: Optional[Dict] = None,
 ):
 
     if data_kwargs is None:
@@ -874,30 +893,30 @@ def plot_time_series_decomposition(
     if fig_kwargs is None:
         fig_kwargs = {}
 
-    title = (
-        "Time Series Decomposition"
-        if data.name is None
-        else f"Time Series Decomposition | {data.name}"
-    )
-
     classical_decomp_type = data_kwargs.get("type", "additive")
+
+    if plot == "decomp_classical":
+        title_name = f"Classical Decomposition ({classical_decomp_type})"
+    elif plot == "decomp_stl":
+        title_name = "STL Decomposition"
+
+    if model_name is None:
+        title = f"{title_name}" if data.name is None else f"{title_name} | {data.name}"
+    else:
+        title = f"{title_name} | '{model_name}' Residuals"
+
     decomp_result = None
     if plot == "decomp_classical":
-        decomp_result = seasonal_decompose(data.to_timestamp(),
-                                           model=classical_decomp_type)
+        decomp_result = seasonal_decompose(
+            data.to_timestamp(), model=classical_decomp_type
+        )
     elif plot == "decomp_stl":
         decomp_result = STL(data.to_timestamp()).fit()
 
     fig = make_subplots(
         rows=4,
         cols=1,
-        row_heights=[
-            0.25,
-            0.25,
-            0.25,
-            0.25,
-        ],
-
+        row_heights=[0.25, 0.25, 0.25, 0.25,],
         row_titles=["Actual", "Seasonal", "Trend", "Residual"],
     )
 
@@ -908,9 +927,8 @@ def plot_time_series_decomposition(
             line=dict(color="#1f77b4", width=2),
             mode="lines+markers",
             name="Actual",
-            marker=dict(size=2, ),
+            marker=dict(size=2,),
         ),
-
         row=1,
         col=1,
     )
@@ -922,7 +940,7 @@ def plot_time_series_decomposition(
             line=dict(color="#1f77b4", width=2),
             mode="lines+markers",
             name="Seasonal",
-            marker=dict(size=2, ),
+            marker=dict(size=2,),
         ),
         row=2,
         col=1,
@@ -935,7 +953,7 @@ def plot_time_series_decomposition(
             line=dict(color="#1f77b4", width=2),
             mode="lines+markers",
             name="Trend",
-            marker=dict(size=2, ),
+            marker=dict(size=2,),
         ),
         row=3,
         col=1,
@@ -948,15 +966,21 @@ def plot_time_series_decomposition(
             line=dict(color="#1f77b4", width=2),
             mode="markers",
             name="Resdiuals",
-            marker=dict(size=4, ),
+            marker=dict(size=4,),
         ),
         row=4,
         col=1,
     )
     fig.update_layout(title=title)
     fig.update_layout(showlegend=False)
-    fig_template = fig_kwargs.get("fig_template", "simple_white")
+    fig_template = fig_kwargs.get("fig_template", "ggplot2")
     fig.update_layout(template=fig_template)
+
+    fig_size = fig_kwargs.get("fig_size", None)
+    if fig_size is not None:
+        fig.update_layout(
+            autosize=False, width=fig_size[0], height=fig_size[1],
+        )
 
     if show:
         fig.show()
