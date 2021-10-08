@@ -12,10 +12,7 @@ from sktime.forecasting.model_selection import (
     ExpandingWindowSplitter,
     SlidingWindowSplitter,
 )
-from statsmodels.tsa.seasonal import (
-    seasonal_decompose,
-    STL
-)
+from statsmodels.tsa.seasonal import seasonal_decompose, STL
 
 __author__ = ["satya-pattnaik", "ngupta23"]
 #################
@@ -34,8 +31,8 @@ def plot_(
     return_data: bool = False,
     show: bool = True,
     prediction_interval_flag: bool = False,
-    data_kwargs:Dict =  None,
-    fig_kwargs:Dict = None,
+    data_kwargs: Dict = None,
+    fig_kwargs: Dict = None,
 ) -> Optional[Any]:
 
     if data_kwargs is None:
@@ -142,9 +139,9 @@ def plot_series(
     return_data: bool = False,
     show: bool = True,
     data_kwargs: Dict = None,
-    fig_kwargs: Dict = None):
+    fig_kwargs: Dict = None,
+):
     """Plots the original time series"""
-
 
     if data_kwargs is None:
         data_kwargs = {}
@@ -153,7 +150,6 @@ def plot_series(
 
     title = "Time Series" if model_name is None else f"Residual(s)"
     legend = "Time Series" if model_name is None else f"Residual"
-
 
     original = go.Scatter(
         name=f"{legend} | {model_name}",
@@ -362,11 +358,9 @@ def plot_acf(
 
     nlags = data_kwargs.get("nlags", None)
     corr_array = acf(data, alpha=0.05, nlags=nlags)
-    title = (
-        "Autocorrelation (ACF)"
-        if model_name is None
-        else f"Autocorrelation (ACF) | {model_name}"
-    )
+    title = "Autocorrelation (ACF)"
+    if model_name is not None:
+        title = f"{title} | {model_name}"
 
     lower_y = corr_array[1][:, 0] - corr_array[0]
     upper_y = corr_array[1][:, 1] - corr_array[0]
@@ -454,11 +448,9 @@ def plot_pacf(
 
     nlags = data_kwargs.get("nlags", None)
     corr_array = pacf(data, alpha=0.05, nlags=nlags)
-    title = (
-        "Partial Autocorrelation (PACF)"
-        if model_name is None
-        else f"Partial Autocorrelation (PACF) | {model_name}"
-    )
+    title = "Partial Autocorrelation (PACF)"
+    if model_name is not None:
+        title = f"{title} | '{model_name}' Residuals"
 
     lower_y = corr_array[1][:, 0] - corr_array[0]
     upper_y = corr_array[1][:, 1] - corr_array[0]
@@ -777,18 +769,17 @@ def plot_predictions_with_confidence(
     return_data: bool = False,
     show: bool = True,
     data_kwargs: Dict = None,
-    fig_kwargs: Dict = None):
+    fig_kwargs: Dict = None,
+):
     """Plots the original data and the predictions provided with confidence"""
     if data_kwargs is None:
         data_kwargs = {}
     if fig_kwargs is None:
         fig_kwargs = {}
 
-    title = (
-        "Actual and Forecast"
-        if data.name is None
-        else f"Actual and Forecast | {data.name}"
-    )
+    title = "Actual and Forecast"
+    if data.name is not None:
+        title = f"{title} | {data.name}"
 
     upper_bound = go.Scatter(
         name=f"Prediction Interval | {model_name}",  # Changed since we use only 1 legend
@@ -883,21 +874,16 @@ def plot_time_series_decomposition(
     classical_decomp_type = data_kwargs.get("type", "additive")
     decomp_result = None
     if plot == "decomp_classical":
-        decomp_result = seasonal_decompose(data.to_timestamp(),
-                                           model=classical_decomp_type)
+        decomp_result = seasonal_decompose(
+            data.to_timestamp(), model=classical_decomp_type
+        )
     elif plot == "decomp_stl":
         decomp_result = STL(data.to_timestamp()).fit()
 
     fig = make_subplots(
         rows=4,
         cols=1,
-        row_heights=[
-            0.25,
-            0.25,
-            0.25,
-            0.25,
-        ],
-
+        row_heights=[0.25, 0.25, 0.25, 0.25,],
         row_titles=["Actual", "Seasonal", "Trend", "Residual"],
     )
 
@@ -908,9 +894,8 @@ def plot_time_series_decomposition(
             line=dict(color="#1f77b4", width=2),
             mode="lines+markers",
             name="Actual",
-            marker=dict(size=2, ),
+            marker=dict(size=2,),
         ),
-
         row=1,
         col=1,
     )
@@ -922,7 +907,7 @@ def plot_time_series_decomposition(
             line=dict(color="#1f77b4", width=2),
             mode="lines+markers",
             name="Seasonal",
-            marker=dict(size=2, ),
+            marker=dict(size=2,),
         ),
         row=2,
         col=1,
@@ -935,7 +920,7 @@ def plot_time_series_decomposition(
             line=dict(color="#1f77b4", width=2),
             mode="lines+markers",
             name="Trend",
-            marker=dict(size=2, ),
+            marker=dict(size=2,),
         ),
         row=3,
         col=1,
@@ -948,7 +933,7 @@ def plot_time_series_decomposition(
             line=dict(color="#1f77b4", width=2),
             mode="markers",
             name="Resdiuals",
-            marker=dict(size=4, ),
+            marker=dict(size=4,),
         ),
         row=4,
         col=1,
