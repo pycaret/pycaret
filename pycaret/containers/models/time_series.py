@@ -234,6 +234,12 @@ class NaiveContainer(TimeSeriesContainer):
 
         from sktime.forecasting.naive import NaiveForecaster  # type: ignore
 
+        dummy = NaiveForecaster()
+        self.enforce_pi = globals_dict["enforce_pi"]
+        if self.enforce_pi and not dummy.get_tag("capability:pred_int"):
+            self.active = False
+            return
+
         self.seasonality_present = globals_dict.get("seasonality_present")
         sp = globals_dict.get("seasonal_period")
         self.sp = sp if sp is not None else 1
@@ -276,6 +282,12 @@ class SeasonalNaiveContainer(TimeSeriesContainer):
         self.gpu_imported = False
 
         from sktime.forecasting.naive import NaiveForecaster  # type: ignore
+
+        dummy = NaiveForecaster()
+        self.enforce_pi = globals_dict["enforce_pi"]
+        if self.enforce_pi and not dummy.get_tag("capability:pred_int"):
+            self.active = False
+            return
 
         self.seasonality_present = globals_dict.get("seasonality_present")
         sp = globals_dict.get("seasonal_period")
@@ -334,6 +346,12 @@ class PolyTrendContainer(TimeSeriesContainer):
 
         from sktime.forecasting.trend import PolynomialTrendForecaster  # type: ignore
 
+        dummy = PolynomialTrendForecaster()
+        self.enforce_pi = globals_dict["enforce_pi"]
+        if self.enforce_pi and not dummy.get_tag("capability:pred_int"):
+            self.active = False
+            return
+
         args = self._set_args
         tune_args = self._set_tune_args
         tune_grid = self._set_tune_grid
@@ -380,6 +398,12 @@ class ArimaContainer(TimeSeriesContainer):
         self.gpu_imported = False
 
         from sktime.forecasting.arima import ARIMA  # type: ignore
+
+        dummy = ARIMA()
+        self.enforce_pi = globals_dict["enforce_pi"]
+        if self.enforce_pi and not dummy.get_tag("capability:pred_int"):
+            self.active = False
+            return
 
         seasonality_present = globals_dict.get("seasonality_present")
         sp = globals_dict.get("seasonal_period")
@@ -537,6 +561,12 @@ class AutoArimaContainer(TimeSeriesContainer):
 
         from sktime.forecasting.arima import AutoARIMA  # type: ignore
 
+        dummy = AutoARIMA()
+        self.enforce_pi = globals_dict["enforce_pi"]
+        if self.enforce_pi and not dummy.get_tag("capability:pred_int"):
+            self.active = False
+            return
+
         self.seasonality_present = globals_dict.get("seasonality_present")
         sp = globals_dict.get("seasonal_period")
         self.sp = sp if sp is not None else 1
@@ -601,6 +631,12 @@ class ExponentialSmoothingContainer(TimeSeriesContainer):
         self.gpu_imported = False
 
         from sktime.forecasting.exp_smoothing import ExponentialSmoothing  # type: ignore
+
+        dummy = ExponentialSmoothing()
+        self.enforce_pi = globals_dict["enforce_pi"]
+        if self.enforce_pi and not dummy.get_tag("capability:pred_int"):
+            self.active = False
+            return
 
         self.seasonality_present = globals_dict.get("seasonality_present")
         sp = globals_dict.get("seasonal_period")
@@ -723,6 +759,12 @@ class ETSContainer(TimeSeriesContainer):
 
         from sktime.forecasting.ets import AutoETS  # type: ignore
 
+        dummy = AutoETS()
+        self.enforce_pi = globals_dict["enforce_pi"]
+        if self.enforce_pi and not dummy.get_tag("capability:pred_int"):
+            self.active = False
+            return
+
         self.seasonality_present = globals_dict.get("seasonality_present")
         sp = globals_dict.get("seasonal_period")
         self.sp = sp if sp is not None else 1
@@ -794,6 +836,12 @@ class ThetaContainer(TimeSeriesContainer):
         self.gpu_imported = False
 
         from sktime.forecasting.theta import ThetaForecaster  # type: ignore
+
+        dummy = ThetaForecaster()
+        self.enforce_pi = globals_dict["enforce_pi"]
+        if self.enforce_pi and not dummy.get_tag("capability:pred_int"):
+            self.active = False
+            return
 
         self.seasonality_present = globals_dict.get("seasonality_present")
         sp = globals_dict.get("seasonal_period")
@@ -883,6 +931,12 @@ class TBATSContainer(TimeSeriesContainer):
             self.active = False
             return
 
+        dummy = TBATS()
+        self.enforce_pi = globals_dict["enforce_pi"]
+        if self.enforce_pi and not dummy.get_tag("capability:pred_int"):
+            self.active = False
+            return
+
         sp = globals_dict.get("seasonal_period")
         self.sp = sp if sp is not None else 1
 
@@ -946,6 +1000,12 @@ class BATSContainer(TimeSeriesContainer):
             self.active = False
             return
 
+        dummy = BATS()
+        self.enforce_pi = globals_dict["enforce_pi"]
+        if self.enforce_pi and not dummy.get_tag("capability:pred_int"):
+            self.active = False
+            return
+
         sp = globals_dict.get("seasonal_period")
         self.sp = sp if sp is not None else 1
 
@@ -1004,6 +1064,14 @@ class ProphetContainer(TimeSeriesContainer):
 
         if not ProphetPeriodPatched:
             logger.warning("Couldn't import sktime.forecasting.fbprophet")
+            self.active = False
+            return
+
+        from sktime.forecasting.fbprophet import Prophet
+
+        dummy = Prophet()
+        self.enforce_pi = globals_dict["enforce_pi"]
+        if self.enforce_pi and not dummy.get_tag("capability:pred_int"):
             self.active = False
             return
 
@@ -1081,12 +1149,23 @@ class CdsDtContainer(TimeSeriesContainer):
         self.gpu_imported = False
         self.gpu_param = globals_dict["gpu_param"]
         self.n_jobs_param = globals_dict["n_jobs_param"]
+
         model_class = self.return_model_class()  # e.g. LinearRegression
         regressor_args = self._set_regressor_args
         if model_class is not None:
             self.regressor = model_class(**regressor_args)
         else:
             self.regressor = None
+
+        if self.regressor is None:
+            self.active = False
+            return
+
+        dummy = BaseCdsDtForecaster(regressor=self.regressor)
+        self.enforce_pi = globals_dict["enforce_pi"]
+        if self.enforce_pi and not dummy.get_tag("capability:pred_int"):
+            self.active = False
+            return
 
         # Set the model hyperparameters
         sp = globals_dict.get("seasonal_period")
@@ -1101,13 +1180,14 @@ class CdsDtContainer(TimeSeriesContainer):
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
         eq_function = (
-            lambda x: type(x) is BaseCdsDt and type(x.regressor) is model_class
+            lambda x: type(x) is BaseCdsDtForecaster
+            and type(x.regressor) is model_class
         )
 
         super().__init__(
             id=self.id,
             name=self.name,
-            class_def=BaseCdsDt,
+            class_def=BaseCdsDtForecaster,
             args=args,
             tune_grid=tune_grid,
             tune_distribution=tune_distributions,
@@ -1115,9 +1195,6 @@ class CdsDtContainer(TimeSeriesContainer):
             is_gpu_enabled=self.gpu_imported,
             eq_function=eq_function,
         )
-
-        if self.regressor is None:
-            self.active = False
 
     @property
     @abstractmethod
@@ -2270,7 +2347,7 @@ class CatBoostCdsDtContainer(CdsDtContainer):
 # ===================================#
 
 
-class BaseCdsDt(BaseForecaster):
+class BaseCdsDtForecaster(BaseForecaster):
     # https://github.com/alan-turing-institute/sktime/blob/v0.8.0/extension_templates/forecasting.py
     model_type = None
 
@@ -2283,6 +2360,7 @@ class BaseCdsDt(BaseForecaster):
         "requires-fh-in-fit": False,  # is forecasting horizon already required in fit?
         "X-y-must-have-same-index": True,  # can estimator handle different X/y index?
         "enforce-index-type": None,  # index type that needs to be enforced in X/y
+        "capability:pred_int": False,
     }
 
     def __init__(
@@ -2310,7 +2388,7 @@ class BaseCdsDt(BaseForecaster):
         self.degree = degree
         self.window_length = window_length
 
-        super(BaseCdsDt, self).__init__()
+        super(BaseCdsDtForecaster, self).__init__()
 
     def _fit(self, y, X=None, fh=None):
         self._forecaster = TransformedTargetForecaster(

@@ -40,6 +40,7 @@ def setup(
     fold: int = 3,
     fh: Union[List[int], int, np.array] = 1,
     seasonal_period: Optional[Union[int, str]] = None,
+    enforce_pi: bool = False,
     n_jobs: Optional[int] = -1,
     use_gpu: bool = False,
     custom_pipeline: Union[
@@ -242,6 +243,7 @@ def setup(
         fold=fold,
         fh=fh,
         seasonal_period=seasonal_period,
+        enforce_pi=enforce_pi,
         n_jobs=n_jobs,
         use_gpu=use_gpu,
         custom_pipeline=custom_pipeline,
