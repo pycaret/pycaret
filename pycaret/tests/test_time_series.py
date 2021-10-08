@@ -66,6 +66,7 @@ def load_ts_models(load_setup):
         "n_jobs_param": -1,
         "gpu_param": False,
         "X_train": pd.DataFrame(get_data("airline")),
+        "enforce_pi": False,
     }
     ts_models = get_all_model_containers(globals_dict)
     ts_experiment = load_setup
@@ -115,7 +116,7 @@ def _return_model_names():
         "n_jobs_param": -1,
         "gpu_param": False,
         "X_train": pd.DataFrame(get_data("airline")),
-        "enforce_pi": True,
+        "enforce_pi": False,
     }
     model_containers = get_all_model_containers(globals_dict)
 
