@@ -1150,10 +1150,10 @@ class CdsDtContainer(TimeSeriesContainer):
         self.gpu_param = globals_dict["gpu_param"]
         self.n_jobs_param = globals_dict["n_jobs_param"]
 
-        model_class = self.return_model_class()  # e.g. LinearRegression
+        regressor_class = self.return_regressor_class()  # e.g. LinearRegression
         regressor_args = self._set_regressor_args
-        if model_class is not None:
-            self.regressor = model_class(**regressor_args)
+        if regressor_class is not None:
+            self.regressor = regressor_class(**regressor_args)
         else:
             self.regressor = None
 
@@ -1181,7 +1181,7 @@ class CdsDtContainer(TimeSeriesContainer):
 
         eq_function = (
             lambda x: type(x) is BaseCdsDtForecaster
-            and type(x.regressor) is model_class
+            and type(x.regressor) is regressor_class
         )
 
         super().__init__(
@@ -1221,21 +1221,21 @@ class CdsDtContainer(TimeSeriesContainer):
         pass
 
     @abstractmethod
-    def return_model_class(self):
-        """Returns the Class of the model"""
+    def return_regressor_class(self):
+        """Returns the Class of the regressor used in the forecaster"""
         pass
 
     @property
     def _set_regressor_args(self) -> Dict[str, Any]:
-        model_class = self.return_model_class()
+        regressor_class = self.return_regressor_class()
         regressor_args: Dict[str, Any] = {}
-        if model_class is not None:
-            model = model_class()
-            if hasattr(model, "n_jobs"):
+        if regressor_class is not None:
+            regressor = regressor_class()
+            if hasattr(regressor, "n_jobs"):
                 regressor_args["n_jobs"] = self.n_jobs_param
-            if hasattr(model, "random_state"):
+            if hasattr(regressor, "random_state"):
                 regressor_args["random_state"] = self.seed
-            if hasattr(model, "seed"):
+            if hasattr(regressor, "seed"):
                 regressor_args["seed"] = self.seed
         return regressor_args
 
@@ -1256,7 +1256,7 @@ class LinearCdsDtContainer(CdsDtContainer):
     active = True  # set back to True as the parent has False
     model_type = TSModelTypes.LINEAR
 
-    def return_model_class(self):
+    def return_regressor_class(self):
         from sklearn.linear_model import LinearRegression
 
         if self.gpu_param == "force":
@@ -1311,7 +1311,7 @@ class ElasticNetCdsDtContainer(CdsDtContainer):
     active = True  # set back to True as the parent has False
     model_type = TSModelTypes.LINEAR
 
-    def return_model_class(self):
+    def return_regressor_class(self):
         from sklearn.linear_model import ElasticNet
 
         if self.gpu_param == "force":
@@ -1368,7 +1368,7 @@ class RidgeCdsDtContainer(CdsDtContainer):
     active = True  # set back to True as the parent has False
     model_type = TSModelTypes.LINEAR
 
-    def return_model_class(self):
+    def return_regressor_class(self):
         from sklearn.linear_model import Ridge
 
         if self.gpu_param == "force":
@@ -1425,7 +1425,7 @@ class LassoCdsDtContainer(CdsDtContainer):
     active = True  # set back to True as the parent has False
     model_type = TSModelTypes.LINEAR
 
-    def return_model_class(self):
+    def return_regressor_class(self):
         from sklearn.linear_model import Lasso
 
         if self.gpu_param == "force":
@@ -1482,7 +1482,7 @@ class LarsCdsDtContainer(CdsDtContainer):
     active = True  # set back to True as the parent has False
     model_type = TSModelTypes.LINEAR
 
-    def return_model_class(self):
+    def return_regressor_class(self):
         from sklearn.linear_model import Lars
 
         return Lars
@@ -1526,7 +1526,7 @@ class LassoLarsCdsDtContainer(CdsDtContainer):
     active = True  # set back to True as the parent has False
     model_type = TSModelTypes.LINEAR
 
-    def return_model_class(self):
+    def return_regressor_class(self):
         from sklearn.linear_model import LassoLars
 
         return LassoLars
@@ -1572,7 +1572,7 @@ class BayesianRidgeCdsDtContainer(CdsDtContainer):
     active = True  # set back to True as the parent has False
     model_type = TSModelTypes.LINEAR
 
-    def return_model_class(self):
+    def return_regressor_class(self):
         from sklearn.linear_model import BayesianRidge
 
         return BayesianRidge
@@ -1629,7 +1629,7 @@ class HuberCdsDtContainer(CdsDtContainer):
     active = True  # set back to True as the parent has False
     model_type = TSModelTypes.LINEAR
 
-    def return_model_class(self):
+    def return_regressor_class(self):
         from sklearn.linear_model import HuberRegressor
 
         return HuberRegressor
@@ -1680,7 +1680,7 @@ class PassiveAggressiveCdsDtContainer(CdsDtContainer):
     active = True  # set back to True as the parent has False
     model_type = TSModelTypes.LINEAR
 
-    def return_model_class(self):
+    def return_regressor_class(self):
         from sklearn.linear_model import PassiveAggressiveRegressor
 
         return PassiveAggressiveRegressor
@@ -1729,7 +1729,7 @@ class OrthogonalMatchingPursuitCdsDtContainer(CdsDtContainer):
         self.num_features = len(globals_dict["X_train"].columns)
         super().__init__(globals_dict=globals_dict)
 
-    def return_model_class(self):
+    def return_regressor_class(self):
         from sklearn.linear_model import OrthogonalMatchingPursuit
 
         return OrthogonalMatchingPursuit
@@ -1781,7 +1781,7 @@ class KNeighborsCdsDtContainer(CdsDtContainer):
         self.num_features = len(globals_dict["X_train"].columns)
         super().__init__(globals_dict=globals_dict)
 
-    def return_model_class(self):
+    def return_regressor_class(self):
         from sklearn.neighbors import KNeighborsRegressor
 
         if self.gpu_param == "force":
@@ -1836,7 +1836,7 @@ class DecisionTreeCdsDtContainer(CdsDtContainer):
     active = True  # set back to True as the parent has False
     model_type = TSModelTypes.TREE
 
-    def return_model_class(self):
+    def return_regressor_class(self):
         from sklearn.tree import DecisionTreeRegressor
 
         return DecisionTreeRegressor
@@ -1887,7 +1887,7 @@ class RandomForestCdsDtContainer(CdsDtContainer):
     active = True  # set back to True as the parent has False
     model_type = TSModelTypes.TREE
 
-    def return_model_class(self):
+    def return_regressor_class(self):
         from sklearn.ensemble import RandomForestRegressor
 
         return RandomForestRegressor
@@ -1937,7 +1937,7 @@ class ExtraTreesCdsDtContainer(CdsDtContainer):
     active = True  # set back to True as the parent has False
     model_type = TSModelTypes.TREE
 
-    def return_model_class(self):
+    def return_regressor_class(self):
         from sklearn.ensemble import ExtraTreesRegressor
 
         return ExtraTreesRegressor
@@ -2000,7 +2000,7 @@ class GradientBoostingCdsDtContainer(CdsDtContainer):
     active = True  # set back to True as the parent has False
     model_type = TSModelTypes.TREE
 
-    def return_model_class(self):
+    def return_regressor_class(self):
         from sklearn.ensemble import GradientBoostingRegressor
 
         return GradientBoostingRegressor
@@ -2056,7 +2056,7 @@ class AdaBoostCdsDtContainer(CdsDtContainer):
     active = True  # set back to True as the parent has False
     model_type = TSModelTypes.TREE
 
-    def return_model_class(self):
+    def return_regressor_class(self):
         from sklearn.ensemble import AdaBoostRegressor
 
         return AdaBoostRegressor
@@ -2099,7 +2099,7 @@ class XGBCdsDtContainer(CdsDtContainer):
     active = True  # set back to True as the parent has False
     model_type = TSModelTypes.TREE
 
-    def return_model_class(self):
+    def return_regressor_class(self):
         try:
             import xgboost
         except ImportError:
@@ -2174,7 +2174,7 @@ class LGBMCdsDtContainer(CdsDtContainer):
     active = True  # set back to True as the parent has False
     model_type = TSModelTypes.TREE
 
-    def return_model_class(self):
+    def return_regressor_class(self):
         from lightgbm import LGBMRegressor
         from lightgbm.basic import LightGBMError
 
@@ -2264,7 +2264,7 @@ class CatBoostCdsDtContainer(CdsDtContainer):
 
         super().__init__(globals_dict=globals_dict)
 
-    def return_model_class(self):
+    def return_regressor_class(self):
         try:
             import catboost
         except ImportError:
