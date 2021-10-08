@@ -218,6 +218,28 @@ class TimeSeriesContainer(ModelContainer):
         tune_distributions: Dict[str, List[Any]] = {}
         return tune_distributions
 
+    def disable_pred_int_enforcement(self, forecaster, enforce_pi: bool) -> bool:
+        """Checks to see if prediction interbal should be enforced. If it should
+        but the forecaster does not support it, the container will be disabled
+
+        Parameters
+        ----------
+        forecaster : `sktime` compatible forecaster
+            forecaster to check for prediction interval capability.
+            Can be a dummy object of the forecasting class
+        enforce_pi : bool
+            Should prediction interval be enforced?
+
+        Returns
+        -------
+        bool
+            True if user wants to enforce prediction interval and forecaster
+            supports it. False otherwise.
+        """
+        if enforce_pi and not forecaster.get_tag("capability:pred_int"):
+            return False
+        return True
+
 
 #########################
 #### BASELINE MODELS ####
@@ -235,9 +257,10 @@ class NaiveContainer(TimeSeriesContainer):
         from sktime.forecasting.naive import NaiveForecaster  # type: ignore
 
         dummy = NaiveForecaster()
-        self.enforce_pi = globals_dict["enforce_pi"]
-        if self.enforce_pi and not dummy.get_tag("capability:pred_int"):
-            self.active = False
+        self.active = self.disable_pred_int_enforcement(
+            forecaster=dummy, enforce_pi=globals_dict["enforce_pi"]
+        )
+        if not self.active:
             return
 
         self.seasonality_present = globals_dict.get("seasonality_present")
@@ -284,9 +307,10 @@ class SeasonalNaiveContainer(TimeSeriesContainer):
         from sktime.forecasting.naive import NaiveForecaster  # type: ignore
 
         dummy = NaiveForecaster()
-        self.enforce_pi = globals_dict["enforce_pi"]
-        if self.enforce_pi and not dummy.get_tag("capability:pred_int"):
-            self.active = False
+        self.active = self.disable_pred_int_enforcement(
+            forecaster=dummy, enforce_pi=globals_dict["enforce_pi"]
+        )
+        if not self.active:
             return
 
         self.seasonality_present = globals_dict.get("seasonality_present")
@@ -347,9 +371,10 @@ class PolyTrendContainer(TimeSeriesContainer):
         from sktime.forecasting.trend import PolynomialTrendForecaster  # type: ignore
 
         dummy = PolynomialTrendForecaster()
-        self.enforce_pi = globals_dict["enforce_pi"]
-        if self.enforce_pi and not dummy.get_tag("capability:pred_int"):
-            self.active = False
+        self.active = self.disable_pred_int_enforcement(
+            forecaster=dummy, enforce_pi=globals_dict["enforce_pi"]
+        )
+        if not self.active:
             return
 
         args = self._set_args
@@ -400,9 +425,10 @@ class ArimaContainer(TimeSeriesContainer):
         from sktime.forecasting.arima import ARIMA  # type: ignore
 
         dummy = ARIMA()
-        self.enforce_pi = globals_dict["enforce_pi"]
-        if self.enforce_pi and not dummy.get_tag("capability:pred_int"):
-            self.active = False
+        self.active = self.disable_pred_int_enforcement(
+            forecaster=dummy, enforce_pi=globals_dict["enforce_pi"]
+        )
+        if not self.active:
             return
 
         seasonality_present = globals_dict.get("seasonality_present")
@@ -562,9 +588,10 @@ class AutoArimaContainer(TimeSeriesContainer):
         from sktime.forecasting.arima import AutoARIMA  # type: ignore
 
         dummy = AutoARIMA()
-        self.enforce_pi = globals_dict["enforce_pi"]
-        if self.enforce_pi and not dummy.get_tag("capability:pred_int"):
-            self.active = False
+        self.active = self.disable_pred_int_enforcement(
+            forecaster=dummy, enforce_pi=globals_dict["enforce_pi"]
+        )
+        if not self.active:
             return
 
         self.seasonality_present = globals_dict.get("seasonality_present")
@@ -633,9 +660,10 @@ class ExponentialSmoothingContainer(TimeSeriesContainer):
         from sktime.forecasting.exp_smoothing import ExponentialSmoothing  # type: ignore
 
         dummy = ExponentialSmoothing()
-        self.enforce_pi = globals_dict["enforce_pi"]
-        if self.enforce_pi and not dummy.get_tag("capability:pred_int"):
-            self.active = False
+        self.active = self.disable_pred_int_enforcement(
+            forecaster=dummy, enforce_pi=globals_dict["enforce_pi"]
+        )
+        if not self.active:
             return
 
         self.seasonality_present = globals_dict.get("seasonality_present")
@@ -760,9 +788,10 @@ class ETSContainer(TimeSeriesContainer):
         from sktime.forecasting.ets import AutoETS  # type: ignore
 
         dummy = AutoETS()
-        self.enforce_pi = globals_dict["enforce_pi"]
-        if self.enforce_pi and not dummy.get_tag("capability:pred_int"):
-            self.active = False
+        self.active = self.disable_pred_int_enforcement(
+            forecaster=dummy, enforce_pi=globals_dict["enforce_pi"]
+        )
+        if not self.active:
             return
 
         self.seasonality_present = globals_dict.get("seasonality_present")
@@ -838,9 +867,10 @@ class ThetaContainer(TimeSeriesContainer):
         from sktime.forecasting.theta import ThetaForecaster  # type: ignore
 
         dummy = ThetaForecaster()
-        self.enforce_pi = globals_dict["enforce_pi"]
-        if self.enforce_pi and not dummy.get_tag("capability:pred_int"):
-            self.active = False
+        self.active = self.disable_pred_int_enforcement(
+            forecaster=dummy, enforce_pi=globals_dict["enforce_pi"]
+        )
+        if not self.active:
             return
 
         self.seasonality_present = globals_dict.get("seasonality_present")
@@ -932,9 +962,10 @@ class TBATSContainer(TimeSeriesContainer):
             return
 
         dummy = TBATS()
-        self.enforce_pi = globals_dict["enforce_pi"]
-        if self.enforce_pi and not dummy.get_tag("capability:pred_int"):
-            self.active = False
+        self.active = self.disable_pred_int_enforcement(
+            forecaster=dummy, enforce_pi=globals_dict["enforce_pi"]
+        )
+        if not self.active:
             return
 
         sp = globals_dict.get("seasonal_period")
@@ -1001,9 +1032,10 @@ class BATSContainer(TimeSeriesContainer):
             return
 
         dummy = BATS()
-        self.enforce_pi = globals_dict["enforce_pi"]
-        if self.enforce_pi and not dummy.get_tag("capability:pred_int"):
-            self.active = False
+        self.active = self.disable_pred_int_enforcement(
+            forecaster=dummy, enforce_pi=globals_dict["enforce_pi"]
+        )
+        if not self.active:
             return
 
         sp = globals_dict.get("seasonal_period")
@@ -1070,9 +1102,10 @@ class ProphetContainer(TimeSeriesContainer):
         from sktime.forecasting.fbprophet import Prophet
 
         dummy = Prophet()
-        self.enforce_pi = globals_dict["enforce_pi"]
-        if self.enforce_pi and not dummy.get_tag("capability:pred_int"):
-            self.active = False
+        self.active = self.disable_pred_int_enforcement(
+            forecaster=dummy, enforce_pi=globals_dict["enforce_pi"]
+        )
+        if not self.active:
             return
 
         sp = globals_dict.get("seasonal_period")
@@ -1162,9 +1195,10 @@ class CdsDtContainer(TimeSeriesContainer):
             return
 
         dummy = BaseCdsDtForecaster(regressor=self.regressor)
-        self.enforce_pi = globals_dict["enforce_pi"]
-        if self.enforce_pi and not dummy.get_tag("capability:pred_int"):
-            self.active = False
+        self.active = self.disable_pred_int_enforcement(
+            forecaster=dummy, enforce_pi=globals_dict["enforce_pi"]
+        )
+        if not self.active:
             return
 
         # Set the model hyperparameters
