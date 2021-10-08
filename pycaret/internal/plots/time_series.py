@@ -170,11 +170,18 @@ def plot_series(
     if fig_kwargs is None:
         fig_kwargs = {}
 
-    title = "Time Series" if model_name is None else f"Residual(s)"
-    legend = "Time Series" if model_name is None else f"Residual"
+    time_series_name = data.name
+    if model_name is not None:
+        title = f"Residuals"
+        legend = f"Residuals | {model_name}"
+    else:
+        title = "Time Series"
+        if time_series_name is not None:
+            title = f"{title} | {time_series_name}"
+        legend = f"Time Series"
 
     original = go.Scatter(
-        name=f"{legend} | {model_name}",
+        name=legend,
         x=data.index.to_timestamp(),
         y=data,
         mode="lines+markers",
@@ -380,15 +387,18 @@ def plot_acf(
 
     nlags = data_kwargs.get("nlags", None)
     corr_array = acf(data, alpha=0.05, nlags=nlags)
-    title = (
-        "Autocorrelation (ACF)"
-        if model_name is None
-        else f"Autocorrelation (ACF) | '{model_name}' Residuals"
-    )
+
+    time_series_name = data.name
+    title = "Autocorrelation (ACF)"
+    if model_name is not None:
+        title = f"{title} | '{model_name}' Residuals"
+    elif time_series_name is not None:
+        title = f"{title} | {time_series_name}"
 
     lower_y = corr_array[1][:, 0] - corr_array[0]
     upper_y = corr_array[1][:, 1] - corr_array[0]
 
+    fig = go.Figure()
     fig = go.Figure()
 
     fig.add_scatter(
@@ -472,11 +482,13 @@ def plot_pacf(
 
     nlags = data_kwargs.get("nlags", None)
     corr_array = pacf(data, alpha=0.05, nlags=nlags)
-    title = (
-        "Partial Autocorrelation (PACF)"
-        if model_name is None
-        else f"Partial Autocorrelation (PACF) | '{model_name}' Residuals"
-    )
+
+    time_series_name = data.name
+    title = "Partial Autocorrelation (PACF)"
+    if model_name is not None:
+        title = f"{title} | '{model_name}' Residuals"
+    elif time_series_name is not None:
+        title = f"{title} | {time_series_name}"
 
     lower_y = corr_array[1][:, 0] - corr_array[0]
     upper_y = corr_array[1][:, 1] - corr_array[0]
@@ -567,7 +579,7 @@ def plot_predictions(
     title = "Actual vs. Forecast"
     time_series_name = data.name
     if time_series_name is not None:
-        title = time_series_name + " | " + title
+        title = f"{title} | {time_series_name}"
 
     mean = go.Scatter(
         name=f"Forecast | {model_name}",
@@ -628,11 +640,11 @@ def plot_diagnostics(
         fig_kwargs = {}
 
     time_series_name = data.name
-    title = (
-        f"Diagnostics | {time_series_name}"
-        if model_name is None
-        else f"Diagnostics | '{model_name}' Residuals"
-    )
+    title = "Diagnostics"
+    if model_name is not None:
+        title = f"{title} | '{model_name}' Residuals"
+    elif time_series_name is not None:
+        title = f"{title} | {time_series_name}"
 
     fig = make_subplots(
         rows=2,
@@ -803,11 +815,10 @@ def plot_predictions_with_confidence(
     if fig_kwargs is None:
         fig_kwargs = {}
 
-    title = (
-        "Actual and Forecast"
-        if data.name is None
-        else f"Actual and Forecast | {data.name}"
-    )
+    title = "Actual vs. Forecast"
+    time_series_name = data.name
+    if time_series_name is not None:
+        title = f"{title} | {time_series_name}"
 
     upper_bound = go.Scatter(
         name=f"Prediction Interval | {model_name}",  # Changed since we use only 1 legend

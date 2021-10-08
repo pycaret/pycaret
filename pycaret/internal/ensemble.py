@@ -70,7 +70,7 @@ class _EnsembleForecasterWithVoting(_HeterogenousEnsembleForecaster):
             self.weights = None
         elif self.method not in self._available_methods:
             raise ValueError(
-                f"Method {self.method} is not supported. Avaible methods are {', '.join(self._available_methods)}"
+                f"Method {self.method} is not supported. Available methods are {', '.join(self._available_methods)}"
             )
 
     def _check_weights(self):

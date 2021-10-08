@@ -218,6 +218,28 @@ class TimeSeriesContainer(ModelContainer):
         tune_distributions: Dict[str, List[Any]] = {}
         return tune_distributions
 
+    def disable_pred_int_enforcement(self, forecaster, enforce_pi: bool) -> bool:
+        """Checks to see if prediction interbal should be enforced. If it should
+        but the forecaster does not support it, the container will be disabled
+
+        Parameters
+        ----------
+        forecaster : `sktime` compatible forecaster
+            forecaster to check for prediction interval capability.
+            Can be a dummy object of the forecasting class
+        enforce_pi : bool
+            Should prediction interval be enforced?
+
+        Returns
+        -------
+        bool
+            True if user wants to enforce prediction interval and forecaster
+            supports it. False otherwise.
+        """
+        if enforce_pi and not forecaster.get_tag("capability:pred_int"):
+            return False
+        return True
+
 
 #########################
 #### BASELINE MODELS ####
@@ -233,6 +255,13 @@ class NaiveContainer(TimeSeriesContainer):
         self.gpu_imported = False
 
         from sktime.forecasting.naive import NaiveForecaster  # type: ignore
+
+        dummy = NaiveForecaster()
+        self.active = self.disable_pred_int_enforcement(
+            forecaster=dummy, enforce_pi=globals_dict["enforce_pi"]
+        )
+        if not self.active:
+            return
 
         self.seasonality_present = globals_dict.get("seasonality_present")
         sp = globals_dict.get("seasonal_period")
@@ -276,6 +305,13 @@ class SeasonalNaiveContainer(TimeSeriesContainer):
         self.gpu_imported = False
 
         from sktime.forecasting.naive import NaiveForecaster  # type: ignore
+
+        dummy = NaiveForecaster()
+        self.active = self.disable_pred_int_enforcement(
+            forecaster=dummy, enforce_pi=globals_dict["enforce_pi"]
+        )
+        if not self.active:
+            return
 
         self.seasonality_present = globals_dict.get("seasonality_present")
         sp = globals_dict.get("seasonal_period")
@@ -334,6 +370,13 @@ class PolyTrendContainer(TimeSeriesContainer):
 
         from sktime.forecasting.trend import PolynomialTrendForecaster  # type: ignore
 
+        dummy = PolynomialTrendForecaster()
+        self.active = self.disable_pred_int_enforcement(
+            forecaster=dummy, enforce_pi=globals_dict["enforce_pi"]
+        )
+        if not self.active:
+            return
+
         args = self._set_args
         tune_args = self._set_tune_args
         tune_grid = self._set_tune_grid
@@ -380,6 +423,13 @@ class ArimaContainer(TimeSeriesContainer):
         self.gpu_imported = False
 
         from sktime.forecasting.arima import ARIMA  # type: ignore
+
+        dummy = ARIMA()
+        self.active = self.disable_pred_int_enforcement(
+            forecaster=dummy, enforce_pi=globals_dict["enforce_pi"]
+        )
+        if not self.active:
+            return
 
         seasonality_present = globals_dict.get("seasonality_present")
         sp = globals_dict.get("seasonal_period")
@@ -537,6 +587,13 @@ class AutoArimaContainer(TimeSeriesContainer):
 
         from sktime.forecasting.arima import AutoARIMA  # type: ignore
 
+        dummy = AutoARIMA()
+        self.active = self.disable_pred_int_enforcement(
+            forecaster=dummy, enforce_pi=globals_dict["enforce_pi"]
+        )
+        if not self.active:
+            return
+
         self.seasonality_present = globals_dict.get("seasonality_present")
         sp = globals_dict.get("seasonal_period")
         self.sp = sp if sp is not None else 1
@@ -601,6 +658,13 @@ class ExponentialSmoothingContainer(TimeSeriesContainer):
         self.gpu_imported = False
 
         from sktime.forecasting.exp_smoothing import ExponentialSmoothing  # type: ignore
+
+        dummy = ExponentialSmoothing()
+        self.active = self.disable_pred_int_enforcement(
+            forecaster=dummy, enforce_pi=globals_dict["enforce_pi"]
+        )
+        if not self.active:
+            return
 
         self.seasonality_present = globals_dict.get("seasonality_present")
         sp = globals_dict.get("seasonal_period")
@@ -723,6 +787,13 @@ class ETSContainer(TimeSeriesContainer):
 
         from sktime.forecasting.ets import AutoETS  # type: ignore
 
+        dummy = AutoETS()
+        self.active = self.disable_pred_int_enforcement(
+            forecaster=dummy, enforce_pi=globals_dict["enforce_pi"]
+        )
+        if not self.active:
+            return
+
         self.seasonality_present = globals_dict.get("seasonality_present")
         sp = globals_dict.get("seasonal_period")
         self.sp = sp if sp is not None else 1
@@ -794,6 +865,13 @@ class ThetaContainer(TimeSeriesContainer):
         self.gpu_imported = False
 
         from sktime.forecasting.theta import ThetaForecaster  # type: ignore
+
+        dummy = ThetaForecaster()
+        self.active = self.disable_pred_int_enforcement(
+            forecaster=dummy, enforce_pi=globals_dict["enforce_pi"]
+        )
+        if not self.active:
+            return
 
         self.seasonality_present = globals_dict.get("seasonality_present")
         sp = globals_dict.get("seasonal_period")
@@ -883,6 +961,13 @@ class TBATSContainer(TimeSeriesContainer):
             self.active = False
             return
 
+        dummy = TBATS()
+        self.active = self.disable_pred_int_enforcement(
+            forecaster=dummy, enforce_pi=globals_dict["enforce_pi"]
+        )
+        if not self.active:
+            return
+
         sp = globals_dict.get("seasonal_period")
         self.sp = sp if sp is not None else 1
 
@@ -946,6 +1031,13 @@ class BATSContainer(TimeSeriesContainer):
             self.active = False
             return
 
+        dummy = BATS()
+        self.active = self.disable_pred_int_enforcement(
+            forecaster=dummy, enforce_pi=globals_dict["enforce_pi"]
+        )
+        if not self.active:
+            return
+
         sp = globals_dict.get("seasonal_period")
         self.sp = sp if sp is not None else 1
 
@@ -1005,6 +1097,15 @@ class ProphetContainer(TimeSeriesContainer):
         if not ProphetPeriodPatched:
             logger.warning("Couldn't import sktime.forecasting.fbprophet")
             self.active = False
+            return
+
+        from sktime.forecasting.fbprophet import Prophet
+
+        dummy = Prophet()
+        self.active = self.disable_pred_int_enforcement(
+            forecaster=dummy, enforce_pi=globals_dict["enforce_pi"]
+        )
+        if not self.active:
             return
 
         sp = globals_dict.get("seasonal_period")
@@ -1081,12 +1182,24 @@ class CdsDtContainer(TimeSeriesContainer):
         self.gpu_imported = False
         self.gpu_param = globals_dict["gpu_param"]
         self.n_jobs_param = globals_dict["n_jobs_param"]
-        model_class = self.return_model_class()  # e.g. LinearRegression
+
+        regressor_class = self.return_regressor_class()  # e.g. LinearRegression
         regressor_args = self._set_regressor_args
-        if model_class is not None:
-            self.regressor = model_class(**regressor_args)
+        if regressor_class is not None:
+            self.regressor = regressor_class(**regressor_args)
         else:
             self.regressor = None
+
+        if self.regressor is None:
+            self.active = False
+            return
+
+        dummy = BaseCdsDtForecaster(regressor=self.regressor)
+        self.active = self.disable_pred_int_enforcement(
+            forecaster=dummy, enforce_pi=globals_dict["enforce_pi"]
+        )
+        if not self.active:
+            return
 
         # Set the model hyperparameters
         sp = globals_dict.get("seasonal_period")
@@ -1101,13 +1214,14 @@ class CdsDtContainer(TimeSeriesContainer):
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
         eq_function = (
-            lambda x: type(x) is BaseCdsDt and type(x.regressor) is model_class
+            lambda x: type(x) is BaseCdsDtForecaster
+            and type(x.regressor) is regressor_class
         )
 
         super().__init__(
             id=self.id,
             name=self.name,
-            class_def=BaseCdsDt,
+            class_def=BaseCdsDtForecaster,
             args=args,
             tune_grid=tune_grid,
             tune_distribution=tune_distributions,
@@ -1115,9 +1229,6 @@ class CdsDtContainer(TimeSeriesContainer):
             is_gpu_enabled=self.gpu_imported,
             eq_function=eq_function,
         )
-
-        if self.regressor is None:
-            self.active = False
 
     @property
     @abstractmethod
@@ -1144,21 +1255,21 @@ class CdsDtContainer(TimeSeriesContainer):
         pass
 
     @abstractmethod
-    def return_model_class(self):
-        """Returns the Class of the model"""
+    def return_regressor_class(self):
+        """Returns the Class of the regressor used in the forecaster"""
         pass
 
     @property
     def _set_regressor_args(self) -> Dict[str, Any]:
-        model_class = self.return_model_class()
+        regressor_class = self.return_regressor_class()
         regressor_args: Dict[str, Any] = {}
-        if model_class is not None:
-            model = model_class()
-            if hasattr(model, "n_jobs"):
+        if regressor_class is not None:
+            regressor = regressor_class()
+            if hasattr(regressor, "n_jobs"):
                 regressor_args["n_jobs"] = self.n_jobs_param
-            if hasattr(model, "random_state"):
+            if hasattr(regressor, "random_state"):
                 regressor_args["random_state"] = self.seed
-            if hasattr(model, "seed"):
+            if hasattr(regressor, "seed"):
                 regressor_args["seed"] = self.seed
         return regressor_args
 
@@ -1179,7 +1290,7 @@ class LinearCdsDtContainer(CdsDtContainer):
     active = True  # set back to True as the parent has False
     model_type = TSModelTypes.LINEAR
 
-    def return_model_class(self):
+    def return_regressor_class(self):
         from sklearn.linear_model import LinearRegression
 
         if self.gpu_param == "force":
@@ -1234,7 +1345,7 @@ class ElasticNetCdsDtContainer(CdsDtContainer):
     active = True  # set back to True as the parent has False
     model_type = TSModelTypes.LINEAR
 
-    def return_model_class(self):
+    def return_regressor_class(self):
         from sklearn.linear_model import ElasticNet
 
         if self.gpu_param == "force":
@@ -1291,7 +1402,7 @@ class RidgeCdsDtContainer(CdsDtContainer):
     active = True  # set back to True as the parent has False
     model_type = TSModelTypes.LINEAR
 
-    def return_model_class(self):
+    def return_regressor_class(self):
         from sklearn.linear_model import Ridge
 
         if self.gpu_param == "force":
@@ -1348,7 +1459,7 @@ class LassoCdsDtContainer(CdsDtContainer):
     active = True  # set back to True as the parent has False
     model_type = TSModelTypes.LINEAR
 
-    def return_model_class(self):
+    def return_regressor_class(self):
         from sklearn.linear_model import Lasso
 
         if self.gpu_param == "force":
@@ -1405,7 +1516,7 @@ class LarsCdsDtContainer(CdsDtContainer):
     active = True  # set back to True as the parent has False
     model_type = TSModelTypes.LINEAR
 
-    def return_model_class(self):
+    def return_regressor_class(self):
         from sklearn.linear_model import Lars
 
         return Lars
@@ -1449,7 +1560,7 @@ class LassoLarsCdsDtContainer(CdsDtContainer):
     active = True  # set back to True as the parent has False
     model_type = TSModelTypes.LINEAR
 
-    def return_model_class(self):
+    def return_regressor_class(self):
         from sklearn.linear_model import LassoLars
 
         return LassoLars
@@ -1495,7 +1606,7 @@ class BayesianRidgeCdsDtContainer(CdsDtContainer):
     active = True  # set back to True as the parent has False
     model_type = TSModelTypes.LINEAR
 
-    def return_model_class(self):
+    def return_regressor_class(self):
         from sklearn.linear_model import BayesianRidge
 
         return BayesianRidge
@@ -1552,7 +1663,7 @@ class HuberCdsDtContainer(CdsDtContainer):
     active = True  # set back to True as the parent has False
     model_type = TSModelTypes.LINEAR
 
-    def return_model_class(self):
+    def return_regressor_class(self):
         from sklearn.linear_model import HuberRegressor
 
         return HuberRegressor
@@ -1603,7 +1714,7 @@ class PassiveAggressiveCdsDtContainer(CdsDtContainer):
     active = True  # set back to True as the parent has False
     model_type = TSModelTypes.LINEAR
 
-    def return_model_class(self):
+    def return_regressor_class(self):
         from sklearn.linear_model import PassiveAggressiveRegressor
 
         return PassiveAggressiveRegressor
@@ -1652,7 +1763,7 @@ class OrthogonalMatchingPursuitCdsDtContainer(CdsDtContainer):
         self.num_features = len(globals_dict["X_train"].columns)
         super().__init__(globals_dict=globals_dict)
 
-    def return_model_class(self):
+    def return_regressor_class(self):
         from sklearn.linear_model import OrthogonalMatchingPursuit
 
         return OrthogonalMatchingPursuit
@@ -1704,7 +1815,7 @@ class KNeighborsCdsDtContainer(CdsDtContainer):
         self.num_features = len(globals_dict["X_train"].columns)
         super().__init__(globals_dict=globals_dict)
 
-    def return_model_class(self):
+    def return_regressor_class(self):
         from sklearn.neighbors import KNeighborsRegressor
 
         if self.gpu_param == "force":
@@ -1759,7 +1870,7 @@ class DecisionTreeCdsDtContainer(CdsDtContainer):
     active = True  # set back to True as the parent has False
     model_type = TSModelTypes.TREE
 
-    def return_model_class(self):
+    def return_regressor_class(self):
         from sklearn.tree import DecisionTreeRegressor
 
         return DecisionTreeRegressor
@@ -1810,7 +1921,7 @@ class RandomForestCdsDtContainer(CdsDtContainer):
     active = True  # set back to True as the parent has False
     model_type = TSModelTypes.TREE
 
-    def return_model_class(self):
+    def return_regressor_class(self):
         from sklearn.ensemble import RandomForestRegressor
 
         return RandomForestRegressor
@@ -1860,7 +1971,7 @@ class ExtraTreesCdsDtContainer(CdsDtContainer):
     active = True  # set back to True as the parent has False
     model_type = TSModelTypes.TREE
 
-    def return_model_class(self):
+    def return_regressor_class(self):
         from sklearn.ensemble import ExtraTreesRegressor
 
         return ExtraTreesRegressor
@@ -1923,7 +2034,7 @@ class GradientBoostingCdsDtContainer(CdsDtContainer):
     active = True  # set back to True as the parent has False
     model_type = TSModelTypes.TREE
 
-    def return_model_class(self):
+    def return_regressor_class(self):
         from sklearn.ensemble import GradientBoostingRegressor
 
         return GradientBoostingRegressor
@@ -1979,7 +2090,7 @@ class AdaBoostCdsDtContainer(CdsDtContainer):
     active = True  # set back to True as the parent has False
     model_type = TSModelTypes.TREE
 
-    def return_model_class(self):
+    def return_regressor_class(self):
         from sklearn.ensemble import AdaBoostRegressor
 
         return AdaBoostRegressor
@@ -2022,7 +2133,7 @@ class XGBCdsDtContainer(CdsDtContainer):
     active = True  # set back to True as the parent has False
     model_type = TSModelTypes.TREE
 
-    def return_model_class(self):
+    def return_regressor_class(self):
         try:
             import xgboost
         except ImportError:
@@ -2097,7 +2208,7 @@ class LGBMCdsDtContainer(CdsDtContainer):
     active = True  # set back to True as the parent has False
     model_type = TSModelTypes.TREE
 
-    def return_model_class(self):
+    def return_regressor_class(self):
         from lightgbm import LGBMRegressor
         from lightgbm.basic import LightGBMError
 
@@ -2187,7 +2298,7 @@ class CatBoostCdsDtContainer(CdsDtContainer):
 
         super().__init__(globals_dict=globals_dict)
 
-    def return_model_class(self):
+    def return_regressor_class(self):
         try:
             import catboost
         except ImportError:
@@ -2270,7 +2381,7 @@ class CatBoostCdsDtContainer(CdsDtContainer):
 # ===================================#
 
 
-class BaseCdsDt(BaseForecaster):
+class BaseCdsDtForecaster(BaseForecaster):
     # https://github.com/alan-turing-institute/sktime/blob/v0.8.0/extension_templates/forecasting.py
     model_type = None
 
@@ -2283,6 +2394,7 @@ class BaseCdsDt(BaseForecaster):
         "requires-fh-in-fit": False,  # is forecasting horizon already required in fit?
         "X-y-must-have-same-index": True,  # can estimator handle different X/y index?
         "enforce-index-type": None,  # index type that needs to be enforced in X/y
+        "capability:pred_int": False,
     }
 
     def __init__(
@@ -2310,7 +2422,7 @@ class BaseCdsDt(BaseForecaster):
         self.degree = degree
         self.window_length = window_length
 
-        super(BaseCdsDt, self).__init__()
+        super(BaseCdsDtForecaster, self).__init__()
 
     def _fit(self, y, X=None, fh=None):
         self._forecaster = TransformedTargetForecaster(

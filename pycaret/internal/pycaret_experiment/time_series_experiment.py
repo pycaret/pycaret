@@ -629,7 +629,13 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             }
         )
         self.variable_keys = self.variable_keys.union(
-            {"fh", "seasonal_period", "seasonality_present"}
+            {
+                "fh",
+                "seasonal_period",
+                "seasonality_present",
+                "strictly_positive",
+                "enforce_pi",
+            }
         )
 
     def _get_setup_display(self, **kwargs) -> Styler:
@@ -750,6 +756,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         fold: int = 3,
         fh: Union[List[int], int, np.array] = 1,
         seasonal_period: Optional[Union[int, str]] = None,
+        enforce_pi: bool = False,
         n_jobs: Optional[int] = -1,
         use_gpu: bool = False,
         custom_pipeline: Union[
@@ -1048,6 +1055,8 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         # Should multiplicative components be allowed in models that support it
         self.strictly_positive = np.all(data[target_name] > 0)
+
+        self.enforce_pi = enforce_pi
 
         return super().setup(
             data=data,
