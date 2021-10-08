@@ -2452,11 +2452,13 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             "acf",
             "pacf",
             "diagnostics",
+            "decomp_classical",
+            "decomp_stl",
         ]
         available_plots_data = available_plots_common
         available_plots_model = available_plots_common + ["forecast", "residuals"]
 
-        prediction_interval_flag = False
+        return_pred_int = False
 
         # Type checks
         if estimator is not None and isinstance(estimator, str):
@@ -2490,11 +2492,14 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             data = self._get_y_data(split="train")
             cv = self.get_fold_generator()
         elif estimator is None:
-            if plot == "acf":
-                data = self._get_y_data(split="all")
-            elif plot == "pacf":
-                data = self._get_y_data(split="all")
-            elif plot == "diagnostics":
+            require_full_data = [
+                "acf",
+                "pacf",
+                "diagnostics",
+                "decomp_classical",
+                "decomp_stl",
+            ]
+            if plot in require_full_data:
                 data = self._get_y_data(split="all")
             else:
                 plots_formatted_data = [f"'{plot}'" for plot in available_plots_data]
@@ -2502,6 +2507,8 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                     f"Plot type '{plot}' is not supported when estimator is not provided. Available plots are: {', '.join(plots_formatted_data)}"
                 )
         else:
+            # Estimator is Provided
+
             if hasattr(self, "_get_model_name"):
                 model_name = self._get_model_name(estimator)
             else:
@@ -2509,21 +2516,20 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 # it will not have self._get_model_name
                 model_name = estimator.__class__.__name__
 
-            require_residuals = ["residuals", "diagnostics", "acf", "pacf"]
+            require_residuals = [
+                "residuals",
+                "diagnostics",
+                "acf",
+                "pacf",
+                "decomp_classical",
+                "decomp_stl",
+            ]
             if plot == "forecast":
                 data = self._get_y_data(split="all")
 
-                def _check_estimator_has_intervals(estimator):
-                    tags = estimator.get_tags()
-                    if tags["capability:pred_int"]:
-                        return True
-                    else:
-                        return False
-
-                prediction_interval_flag = _check_estimator_has_intervals(estimator)
-
+                return_pred_int = estimator.get_tag("capability:pred_int")
                 predictions = self.predict_model(
-                    estimator, return_pred_int=prediction_interval_flag, verbose=False
+                    estimator, return_pred_int=return_pred_int, verbose=False
                 )
             elif plot in require_residuals:
                 resid = self.get_residuals(estimator=estimator)
@@ -2545,7 +2551,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             model_name=model_name,
             return_data=return_data,
             show=system,
-            prediction_interval_flag=prediction_interval_flag,
+            return_pred_int=return_pred_int,
             data_kwargs=data_kwargs,
             fig_kwargs=fig_kwargs,
         )
