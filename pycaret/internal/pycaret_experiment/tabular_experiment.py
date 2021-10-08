@@ -71,6 +71,7 @@ from sklearn.model_selection import (
     train_test_split,
 )
 from sklearn.preprocessing import (
+    LabelEncoder,
     MaxAbsScaler,
     MinMaxScaler,
     PolynomialFeatures,
@@ -652,31 +653,31 @@ class _TabularExperiment(_PyCaretExperiment):
 
         # Ordinal features
         if ordinal_features:
-            check_features_exist(ordinal_features.keys(), self.data)
+            check_features_exist(ordinal_features.keys(), self.X)
         else:
             ordinal_features = {}
 
         # Numerical features
         if numeric_features:
-            check_features_exist(numeric_features, self.data)
+            check_features_exist(numeric_features, self.X)
         else:
             numeric_features = list(self.X.select_dtypes(include="number").columns)
 
         # Date features
         if date_features:
-            check_features_exist(date_features, self.data)
+            check_features_exist(date_features, self.X)
         else:
             date_features = list(self.X.select_dtypes(include="datetime").columns)
 
         # Text features
         if text_features:
-            check_features_exist(text_features, self.data)
+            check_features_exist(text_features, self.X)
         else:
             text_features = []
 
         # Categorical features
         if categorical_features:
-            check_features_exist(categorical_features, self.data)
+            check_features_exist(categorical_features, self.X)
         else:
             # Default should exclude datetime and text columns
             categorical_features = [
@@ -738,6 +739,11 @@ class _TabularExperiment(_PyCaretExperiment):
         self._internal_pipeline = InternalPipeline(steps=[("placeholder", None)])
 
         if preprocess:
+
+            # Encode target variable =============================== >>
+
+            if self.y.dtype.kind not in "ifu":
+                self._internal_pipeline.steps.append(("label_encoder", LabelEncoder()))
 
             # Date feature engineering ============================= >>
 
