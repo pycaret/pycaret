@@ -924,8 +924,8 @@ def plot_model(
     plot: Optional[str] = None,
     return_data: bool = False,
     display_format: Optional[str] = None,
-    data_kwargs: Dict = {},
-    fig_kwargs: Dict = {},
+    data_kwargs: Optional[Dict] = None,
+    fig_kwargs: Optional[Dict] = None,
 ) -> str:
 
     """
