@@ -276,7 +276,8 @@ def test_plot_model(load_data):
 
     fh = np.arange(1, 13)
     fold = 2
-    data = load_data
+    # Want to show multiplicative plot here so can not take load data (has -ve values)
+    data = get_data("airline")  # load_data
 
     ######################
     #### OOP Approach ####
@@ -352,6 +353,26 @@ def test_plot_model(load_data):
     plot_model(estimator=model, plot="decomp_stl")
     plot_model(estimator=model, plot="forecast")
     plot_model(estimator=model, plot="residuals")
+
+    #######################
+    #### Customization ####
+    #######################
+
+    print("\n\n==== Testing Customization ON DATA ====")
+    exp.plot_model(
+        plot="pacf",
+        data_kwargs={"nlags": 36,},
+        fig_kwargs={"fig_size": [800, 500], "fig_template": "simple_white"},
+        system=False,
+    )
+    exp.plot_model(
+        plot="decomp_classical", data_kwargs={"type": "multiplicative"}, system=False
+    )
+
+    print("\n\n====  Testing Customization ON ESTIMATOR ====")
+    exp.plot_model(
+        estimator=model, plot="forecast", data_kwargs={"fh": 24}, system=False
+    )
 
 
 @pytest.mark.parametrize("seasonal_period, seasonal_value", _get_seasonal_values())

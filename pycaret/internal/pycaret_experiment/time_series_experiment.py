@@ -2372,8 +2372,8 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         plot: Optional[str] = None,
         return_data: bool = False,
         display_format: Optional[str] = None,
-        data_kwargs: Dict = {},
-        fig_kwargs: Dict = {},
+        data_kwargs: Optional[Dict] = None,
+        fig_kwargs: Optional[Dict] = None,
         system: bool = True,
     ) -> str:
 
@@ -2453,6 +2453,10 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             None
 
         """
+        if data_kwargs is None:
+            data_kwargs = {}
+        if fig_kwargs is None:
+            fig_kwargs = {}
 
         available_plots_common = [
             "ts",
@@ -2518,7 +2522,9 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         else:
             # Estimator is Provided
 
-            if hasattr(self, "_get_model_name"):
+            if hasattr(self, "_get_model_name") and hasattr(
+                self, "_all_models_internal"
+            ):
                 model_name = self._get_model_name(estimator)
             else:
                 # If the model is saved and loaded afterwards,
@@ -2536,9 +2542,10 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             if plot == "forecast":
                 data = self._get_y_data(split="all")
 
+                fh = data_kwargs.get("fh", None)
                 return_pred_int = estimator.get_tag("capability:pred_int")
                 predictions = self.predict_model(
-                    estimator, return_pred_int=return_pred_int, verbose=False
+                    estimator, fh=fh, return_pred_int=return_pred_int, verbose=False
                 )
             elif plot in require_residuals:
                 resid = self.get_residuals(estimator=estimator)
@@ -2767,7 +2774,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         data = None  # TODO: Add back when we have support for multivariate TS
 
-        display_test_metric = True
+        display_test_metric = verbose
         if not hasattr(self, "X_test"):
             # If the model is saved and loaded afterwards,
             # it will not have self.X_test
