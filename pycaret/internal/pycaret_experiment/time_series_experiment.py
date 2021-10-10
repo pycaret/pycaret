@@ -286,8 +286,6 @@ def _fit_and_score(
         forecaster.fit(y_train, X_train, **fit_params)
     except ValueError as error:
         ## Currently only catching ValueError. Can catch more later if needed.
-        print(error)
-        print(f"Fit failed on {forecaster}")
         logging.error(error)
         logging.error(f"Fit failed on {forecaster}")
     fit_time = time.time() - start
