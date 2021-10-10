@@ -224,6 +224,14 @@ class _TabularExperiment(_PyCaretExperiment):
             mlflow.log_params(params)
 
             # Log metrics
+            def try_make_float(val):
+                try:
+                    return np.float64(val)
+                except Exception:
+                    return np.nan
+
+            score_dict = {k: try_make_float(v) for k, v in score_dict.items()}
+            self.logger.info(f"logged metrics: {score_dict}")
             mlflow.log_metrics(score_dict)
 
             # set tag of compare_models
