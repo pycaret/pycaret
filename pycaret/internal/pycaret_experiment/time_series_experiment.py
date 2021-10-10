@@ -286,8 +286,9 @@ def _fit_and_score(
         forecaster.fit(y_train, X_train, **fit_params)
     except ValueError as error:
         ## Currently only catching ValueError. Can catch more later if needed.
-        logging.error(error)
         logging.error(f"Fit failed on {forecaster}")
+        logging.error(error)
+
     fit_time = time.time() - start
 
     #### Determine Cutoff ----
@@ -966,7 +967,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         ## Make a local copy so as not to perfrom inplace operation on the
         ## original dataset
-        data_ = data.copy(deep=True)
+        data_ = data.copy()
 
         if isinstance(data_, pd.Series) and data_.name is None:
             data_.name = "Time Series"
