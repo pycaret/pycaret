@@ -387,7 +387,6 @@ class BaseGridSearch:
         def evaluate_candidates(candidate_params):
             candidate_params = list(candidate_params)
             n_candidates = len(candidate_params)
-            # n_splits = _get_cv_n_folds(y, cv)
             n_splits = cv.get_n_splits(y)
 
             if self.verbose > 0:
@@ -395,7 +394,6 @@ class BaseGridSearch:
                     f"Fitting {n_splits} folds for each of {n_candidates} "
                     f"candidates, totalling {n_candidates * n_splits} fits"
                 )
-                # print(f"Candidate Params: {candidate_params}")
 
             parallel = Parallel(
                 n_jobs=self.n_jobs, verbose=self.verbose, pre_dispatch=self.pre_dispatch
@@ -450,7 +448,6 @@ class BaseGridSearch:
         self.scorer_ = scorers
 
         self.cv_results_ = results
-        # self.n_splits_ = _get_cv_n_folds(y, cv)
         self.n_splits_ = cv.get_n_splits(y)
 
         self._is_fitted = True
