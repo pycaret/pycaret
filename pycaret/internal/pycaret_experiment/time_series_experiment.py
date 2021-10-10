@@ -952,8 +952,12 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             autocorrelation_seasonality_test,
         )  # only needed in setup
 
-        if isinstance(data, pd.Series) and data.name is None:
-            data.name = "Time Series"
+        ## Make a local copy so as not to perfrom inplace operation on the
+        ## original dataset
+        data_ = data.copy(deep=True)
+
+        if isinstance(data_, pd.Series) and data_.name is None:
+            data_.name = "Time Series"
 
         # Forecast Horizon Checks
         if fh is None and isinstance(fold_strategy, str):
@@ -961,6 +965,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 f"The forecast horizon `fh` must be provided when fold_strategy is of type 'string'"
             )
 
+        # Check Fold Strategy
         if not isinstance(fold_strategy, str):
             self.logger.info(
                 f"fh parameter {fh} will be ignored since fold_strategy has been provided. "
@@ -976,25 +981,26 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         fh = self.check_fh(fh)
         self.fh = fh
 
+        # Check Index
         allowed_freq_index_types = (pd.PeriodIndex, pd.DatetimeIndex)
         if (
-            not isinstance(data.index, allowed_freq_index_types)
+            not isinstance(data_.index, allowed_freq_index_types)
             and seasonal_period is None
         ):
             # https://stackoverflow.com/questions/3590165/join-a-list-of-items-with-different-types-as-string-in-python
             raise ValueError(
-                f"The index of your 'data' is of type '{type(data.index)}'. "
+                f"The index of your 'data' is of type '{type(data_.index)}'. "
                 "If the 'data' index is not of one of the following types: "
                 f"{', '.join(str(type) for type in allowed_freq_index_types)}, "
                 "then 'seasonal_period' must be provided. Refer to docstring for options."
             )
 
-        if isinstance(data.index, pd.DatetimeIndex):
-            data.index = data.index.to_period()
+        if isinstance(data_.index, pd.DatetimeIndex):
+            data_.index = data_.index.to_period()
 
         if seasonal_period is None:
 
-            index_freq = data.index.freqstr
+            index_freq = data_.index.freqstr
             index_freq = index_freq.split("-")[0] or index_freq
 
             if index_freq in SeasonalPeriod.__members__:
@@ -1021,46 +1027,46 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             else:
                 self.seasonal_period = seasonal_period
 
-        if isinstance(data, (pd.Series, pd.DataFrame)):
-            if isinstance(data, pd.DataFrame):
-                if data.shape[1] != 1:
+        if isinstance(data_, (pd.Series, pd.DataFrame)):
+            if isinstance(data_, pd.DataFrame):
+                if data_.shape[1] != 1:
                     raise ValueError(
-                        f"data must be a pandas Series or DataFrame with one column, got {data.shape[1]} columns!"
+                        f"data must be a pandas Series or DataFrame with one column, got {data_.shape[1]} columns!"
                     )
-                data = data.copy()
+                data_ = data_.copy()
             else:
-                data = pd.DataFrame(data)  # Force convertion to DataFrame
+                data_ = pd.DataFrame(data_)  # Force convertion to DataFrame
         else:
             raise ValueError(
-                f"data must be a pandas Series or DataFrame, got object of {type(data)} type!"
+                f"data must be a pandas Series or DataFrame, got object of {type(data_)} type!"
             )
 
-        data.columns = [str(x) for x in data.columns]
+        data_.columns = [str(x) for x in data_.columns]
 
-        target_name = data.columns[0]
-        if not np.issubdtype(data[target_name].dtype, np.number):
+        target_name = data_.columns[0]
+        if not np.issubdtype(data_[target_name].dtype, np.number):
             raise TypeError(
-                f"Data must be of 'numpy.number' subtype, got {data[target_name].dtype}!"
+                f"Data must be of 'numpy.number' subtype, got {data_[target_name].dtype}!"
             )
 
-        if len(data.index) != len(set(data.index)):
+        if len(data_.index) != len(set(data_.index)):
             raise ValueError("Index may not have duplicate values!")
 
         # check valid seasonal parameter
         valid_seasonality = autocorrelation_seasonality_test(
-            data[target_name], self.seasonal_period
+            data_[target_name], self.seasonal_period
         )
 
         self.seasonality_present = True if valid_seasonality else False
 
         # Should multiplicative components be allowed in models that support it
-        self.strictly_positive = np.all(data[target_name] > 0)
+        self.strictly_positive = np.all(data_[target_name] > 0)
 
         self.enforce_pi = enforce_pi
 
         return super().setup(
-            data=data,
-            target=data.columns[0],
+            data=data_,
+            target=data_.columns[0],
             test_data=None,
             preprocess=preprocess,
             imputation_type=imputation_type,
