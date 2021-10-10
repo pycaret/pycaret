@@ -1873,23 +1873,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         self.logger.info("Defining Hyperparameters")
 
-        # # TODO: Replace with time series specific code
-        # def total_combintaions_in_grid(grid):
-        #     nc = 1
-
-        #     def get_iter(x):
-        #         if isinstance(x, dict):
-        #             return x.values()
-        #         return x
-
-        #     for v in get_iter(grid):
-        #         if isinstance(v, dict):
-        #             for v2 in get_iter(v):
-        #                 nc *= len(v2)
-        #         else:
-        #             nc *= len(v)
-        #     return nc
-
         if search_algorithm is None:
             search_algorithm = "random"  # Defaults to Random
 
