@@ -280,25 +280,45 @@ def _fit_and_score(
     X_train = None if X is None else X[train]
     X_test = None if X is None else X[test]
 
+    #### Fit the forecaster ----
     start = time.time()
-    forecaster.fit(y_train, X_train, **fit_params)
-    cutoff = forecaster.cutoff
+    try:
+        forecaster.fit(y_train, X_train, **fit_params)
+    except ValueError as error:
+        ## Currently only catching ValueError. Can catch more later if needed.
+        print(error)
+        print(f"Fit failed on {forecaster}")
+        logging.error(error)
+        logging.error(f"Fit failed on {forecaster}")
     fit_time = time.time() - start
 
-    y_pred = forecaster.predict(X_test)
-    if (y_test.index.values != y_pred.index.values).any():
-        print(f"\t y_train: {y_train.index.values}, \n\t y_test: {y_test.index.values}")
-        print(f"\t y_pred: {y_pred.index.values}")
-        raise ValueError(
-            "y_test indices do not match y_pred_indices or split/prediction length does not match forecast horizon."
-        )
+    #### Determine Cutoff ----
+    # NOTE: Cutoff is available irrespective of whether fit passed or failed
+    cutoff = forecaster.cutoff
 
-    fold_scores = {}
+    #### Score the model ----
+    if forecaster.is_fitted:
+        y_pred = forecaster.predict(X_test)
+
+        if (y_test.index.values != y_pred.index.values).any():
+            print(
+                f"\t y_train: {y_train.index.values},"
+                f"\n\t y_test: {y_test.index.values}"
+            )
+            print(f"\t y_pred: {y_pred.index.values}")
+            raise ValueError(
+                "y_test indices do not match y_pred_indices or split/prediction "
+                "length does not match forecast horizon."
+            )
+
     start = time.time()
-
+    fold_scores = {}
     scoring = _get_metrics_dict_ts(scoring)
     for scorer_name, scorer in scoring.items():
-        metric = scorer._score_func(y_true=y_test, y_pred=y_pred, **scorer._kwargs)
+        if forecaster.is_fitted:
+            metric = scorer._score_func(y_true=y_test, y_pred=y_pred, **scorer._kwargs)
+        else:
+            metric = None
         fold_scores[scorer_name] = metric
     score_time = time.time() - start
 
@@ -616,9 +636,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         # Values in variable_keys are accessible in globals
         self.variable_keys = self.variable_keys.difference(
             {
-                # "X",
-                # "X_train",
-                # "X_test",
                 "target_param",
                 "iterative_imputation_iters_param",
                 "imputation_regressor",
@@ -1858,22 +1875,22 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         self.logger.info("Defining Hyperparameters")
 
-        # TODO: Replace with time series specific code
-        def total_combintaions_in_grid(grid):
-            nc = 1
+        # # TODO: Replace with time series specific code
+        # def total_combintaions_in_grid(grid):
+        #     nc = 1
 
-            def get_iter(x):
-                if isinstance(x, dict):
-                    return x.values()
-                return x
+        #     def get_iter(x):
+        #         if isinstance(x, dict):
+        #             return x.values()
+        #         return x
 
-            for v in get_iter(grid):
-                if isinstance(v, dict):
-                    for v2 in get_iter(v):
-                        nc *= len(v2)
-                else:
-                    nc *= len(v)
-            return nc
+        #     for v in get_iter(grid):
+        #         if isinstance(v, dict):
+        #             for v2 in get_iter(v):
+        #                 nc *= len(v2)
+        #         else:
+        #             nc *= len(v)
+        #     return nc
 
         if search_algorithm is None:
             search_algorithm = "random"  # Defaults to Random
