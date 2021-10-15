@@ -5,6 +5,7 @@ from random import choice, uniform, randint
 import numpy as np  # type: ignore
 import pandas as pd  # type: ignore
 
+from pycaret.internal.pycaret_experiment import TimeSeriesExperiment
 from pycaret.datasets import get_data
 from pycaret.containers.models.time_series import get_all_model_containers
 
@@ -19,6 +20,17 @@ _BLEND_TEST_MODELS = [
     "dt_cds_dt",
     "lightgbm_cds_dt",
 ]  # Test blend model functionality only in these models
+
+
+def _get_all_metrics():
+    exp = TimeSeriesExperiment()
+    data = get_data("airline")
+    exp.setup(data=data)
+    all_metrics = exp.get_metrics()["Name"].to_list()
+    return all_metrics
+
+
+_ALL_METRICS = _get_all_metrics()
 
 
 def _get_seasonal_values():

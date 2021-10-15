@@ -17,6 +17,7 @@ from .time_series_test_utils import (
     _return_model_parameters,
     _return_splitter_args,
     _return_setup_args_raises,
+    _ALL_METRICS,
 )
 
 pytestmark = pytest.mark.filterwarnings("ignore::UserWarning")
@@ -710,7 +711,8 @@ def test_tune_model_custom_folds(load_pos_and_neg_data):
     assert len(metrics2) == custom_fold + 2  # + 2 for Mean and SD
 
 
-def test_tune_model_alternate_metric(load_pos_and_neg_data):
+@pytest.mark.parametrize("metric", _ALL_METRICS)
+def test_tune_model_alternate_metric(load_pos_and_neg_data, metric):
     """tests model selection using non default metric"""
     exp = TimeSeriesExperiment()
     fh = 12
@@ -719,7 +721,8 @@ def test_tune_model_alternate_metric(load_pos_and_neg_data):
     exp.setup(data=load_pos_and_neg_data, fold=fold, fh=fh, fold_strategy="sliding")
 
     model_obj = exp.create_model("naive")
-    tuned_model_obj = exp.tune_model(model_obj, optimize="MAE")
+
+    tuned_model_obj = exp.tune_model(model_obj, optimize=metric)
     y_pred = exp.predict_model(tuned_model_obj)
     assert isinstance(y_pred, pd.Series)
 
