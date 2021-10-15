@@ -149,6 +149,28 @@ def _return_model_parameters():
     return parameters
 
 
+def _return_splitter_args():
+    """[summary]
+    """
+    parametrize_list = [
+        (randint(2, 5), randint(5, 10), "expanding"),
+        (randint(2, 5), randint(5, 10), "rolling"),
+        (randint(2, 5), randint(5, 10), "sliding"),
+    ]
+    return parametrize_list
+
+
+def _return_setup_args_raises():
+    """
+    """
+    setup_raises_list = [
+        (randint(50, 100), randint(10, 20), "expanding"),
+        (randint(50, 100), randint(10, 20), "rolling"),
+        (randint(50, 100), randint(10, 20), "sliding"),
+    ]
+    return setup_raises_list
+
+
 # def _check_data_for_prophet(mdl_name, data):
 #     """Convert data index to DatetimeIndex"""
 #     if mdl_name == "prophet":
@@ -158,6 +180,8 @@ def _return_model_parameters():
 
 _model_names = _return_model_names()
 _model_parameters = _return_model_parameters()
+_splitter_args = _return_splitter_args()
+_setup_args_raises = _return_setup_args_raises()
 
 ############################
 #### Functions End Here ####
@@ -167,6 +191,87 @@ _model_parameters = _return_model_parameters()
 ##########################
 #### Tests Start Here ####
 ##########################
+
+
+@pytest.mark.parametrize("fold, fh, fold_strategy", _splitter_args)
+def test_splitter_using_fold_and_fh(fold, fh, fold_strategy, load_data):
+    """Tests the splitter creation using fold, fh and a string value for fold_strategy."""
+
+    from pycaret.time_series import setup
+    from sktime.forecasting.model_selection._split import (
+        ExpandingWindowSplitter,
+        SlidingWindowSplitter,
+    )
+
+    exp_name = setup(data=load_data, fold=fold, fh=fh, fold_strategy=fold_strategy,)
+
+    allowed_fold_strategies = ["expanding", "rolling", "sliding"]
+    if fold_strategy in allowed_fold_strategies:
+        if (fold_strategy == "expanding") or (fold_strategy == "rolling"):
+            assert isinstance(exp_name.fold_generator, ExpandingWindowSplitter)
+        elif fold_strategy == "sliding":
+            assert isinstance(exp_name.fold_generator, SlidingWindowSplitter)
+
+        # Initial Window is not available in new version of sktime (0.7.0). Hence commenting
+        # expected = int(len(load_data) - fh) - fold * fh  # if fh splits original data
+        # assert exp_name.fold_generator.initial_window == expected
+        assert np.all(exp_name.fold_generator.fh == np.arange(1, fh + 1))
+        assert exp_name.fold_generator.step_length == fh  # Since fh is an int
+
+
+def test_splitter_pass_cv_object(load_data):
+    """Tests the passing of a cv splitter to fold_strategy"""
+
+    from pycaret.time_series import setup
+    from sktime.forecasting.model_selection._split import (
+        ExpandingWindowSplitter,
+        SlidingWindowSplitter,
+    )
+
+    fold = 3
+    fh = np.arange(1, 13)  # regular horizon of 12 months
+    fh_extended = np.arange(1, 25)  # extended horizon of 24 months
+    fold_strategy = ExpandingWindowSplitter(
+        initial_window=72,
+        step_length=12,
+        # window_length=12,
+        fh=fh,
+        start_with_window=True,
+    )
+
+    exp_name = setup(
+        data=load_data,
+        fold=fold,  # should be ignored since we are passing explicit fold_strategy
+        fh=fh_extended,  # should be ignored since we are passing explicit fold_strategy
+        fold_strategy=fold_strategy,
+    )
+
+    assert exp_name.fold_generator.initial_window == fold_strategy.initial_window
+    assert np.all(exp_name.fold_generator.fh == fold_strategy.fh)
+    assert exp_name.fold_generator.step_length == fold_strategy.step_length
+    num_folds = exp_name.get_config("fold_param")
+    y_train = exp_name.get_config("y_train")
+    print(f"Initial Window: {fold_strategy.initial_window}")
+    # expected = int(
+    #     ((len(load_data) - len(fh)) - fold_strategy.initial_window)
+    #     / fold_strategy.step_length
+    # )
+    expected = fold_strategy.get_n_splits(y=y_train)
+    assert num_folds == expected
+
+
+@pytest.mark.parametrize("fold, fh, fold_strategy", _setup_args_raises)
+def test_setup_raises(fold, fh, fold_strategy, load_data):
+    """Tests conditions that raise an error due to lack of data"""
+
+    from pycaret.time_series import setup
+
+    with pytest.raises(ValueError) as errmsg:
+        _ = setup(data=load_data, fold=fold, fh=fh, fold_strategy=fold_strategy,)
+
+    exceptionmsg = errmsg.value.args[0]
+
+    assert exceptionmsg == "Not Enough Data Points, set a lower number of folds or fh"
 
 
 def test_save_load_model(load_data):
@@ -673,42 +778,6 @@ def test_blend_model_custom_folds(load_data):
 
     assert len(metrics1) == setup_fold + 2  # + 2 for Mean and SD
     assert len(metrics2) == custom_fold + 2  # + 2 for Mean and SD
-
-
-@pytest.mark.parametrize("model", _model_names)
-def test_tune_model_grid(model, load_data):
-    exp = TimeSeriesExperiment()
-    fh = 12
-    fold = 2
-    data = load_data
-
-    exp.setup(data=data, fold=fold, fh=fh, fold_strategy="sliding")
-
-    model_obj = exp.create_model(model)
-    tuned_model_obj = exp.tune_model(model_obj, search_algorithm="grid")
-    y_pred = exp.predict_model(tuned_model_obj)
-    assert isinstance(y_pred, pd.Series)
-
-    expected_period_index = data.iloc[-fh:].index
-    assert np.all(y_pred.index == expected_period_index)
-
-
-@pytest.mark.parametrize("model", _model_names)
-def test_tune_model_random(model, load_data):
-    exp = TimeSeriesExperiment()
-    fh = 12
-    fold = 2
-    data = load_data
-
-    exp.setup(data=data, fold=fold, fh=fh, fold_strategy="sliding")
-
-    model_obj = exp.create_model(model)
-    tuned_model_obj = exp.tune_model(model_obj)  # default search_algorithm = "random"
-    y_pred = exp.predict_model(tuned_model_obj)
-    assert isinstance(y_pred, pd.Series)
-
-    expected_period_index = data.iloc[-fh:].index
-    assert np.all(y_pred.index == expected_period_index)
 
 
 def test_tune_custom_grid_and_choose_better(load_data):
