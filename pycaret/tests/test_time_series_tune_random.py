@@ -13,23 +13,6 @@ from .time_series_test_utils import _check_windows, _return_model_names
 pytestmark = pytest.mark.filterwarnings("ignore::UserWarning")
 
 
-#############################
-#### Fixtures Start Here ####
-#############################
-
-
-@pytest.fixture(scope="session", name="load_data")
-def load_data():
-    """Load Pycaret Airline dataset."""
-    data = get_data("airline")
-    data = data - 400  # simulate negative values
-    return data
-
-
-###########################
-#### Fixtures End Here ####
-###########################
-
 ##############################
 #### Functions Start Here ####
 ##############################
@@ -53,11 +36,11 @@ _model_names = _return_model_names()
 
 
 @pytest.mark.parametrize("model", _model_names)
-def test_tune_model_random(model, load_data):
+def test_tune_model_random(model, load_pos_and_neg_data):
     exp = TimeSeriesExperiment()
     fh = 12
     fold = 2
-    data = load_data
+    data = load_pos_and_neg_data
 
     exp.setup(data=data, fold=fold, fh=fh, fold_strategy="sliding")
 
