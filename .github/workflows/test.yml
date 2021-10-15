@@ -5,65 +5,65 @@ on: [push, pull_request]
 jobs:
   # JOBS MUST START WITH test !!!!
   test:
-
     runs-on: ubuntu-latest
     strategy:
       matrix:
         python-version: [3.6, 3.7, 3.8]
 
     steps:
-    - uses: actions/checkout@v2
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v2
-      with:
-        python-version: ${{ matrix.python-version }}
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        python -m pip install -U pytest
-        python -m pip install codecov
-        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-        if [ -f requirements-ts.txt ]; then pip install -r requirements-ts.txt; fi
-        if [ -f requirements-optional.txt ]; then pip install -r requirements-optional.txt; fi
-        pip install https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.0.0/en_core_web_sm-3.0.0-py3-none-any.whl
-    - name: Remove tests
-      run: |
-        rm pycaret/tests/test_classification_tuning.py
-        rm pycaret/tests/test_classification_plots.py
-        rm pycaret/tests/test_regression_plots.py
-        rm pycaret/tests/test_regression_tuning.py
-    - name: Test with pytest
-      run: |
-        pytest
+      - uses: actions/checkout@v2
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -U pytest
+          python -m pip install codecov
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          if [ -f requirements-ts.txt ]; then pip install -r requirements-ts.txt; fi
+          if [ -f requirements-optional.txt ]; then pip install -r requirements-optional.txt; fi
+          pip install https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.0.0/en_core_web_sm-3.0.0-py3-none-any.whl
+      - name: Remove tests
+        run: |
+          rm pycaret/tests/test_classification_tuning.py
+          rm pycaret/tests/test_classification_plots.py
+          rm pycaret/tests/test_regression_plots.py
+          rm pycaret/tests/test_regression_tuning.py
+          rm pycaret/tests/test_time_series_tune_grid.py
+          rm pycaret/tests/test_time_series_tune_random.py
+      - name: Test with pytest
+        run: |
+          pytest
 
   test_windows:
-
     runs-on: windows-latest
     strategy:
       matrix:
         python-version: [3.6, 3.7, 3.8]
 
     steps:
-    - uses: actions/checkout@v2
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v2
-      with:
-        python-version: ${{ matrix.python-version }}
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        python -m pip install -U pytest
-        python -m pip install codecov
-        pip install -r requirements.txt
-        pip install -r requirements-ts.txt
-        pip install -r requirements-optional.txt
-        pip install https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.0.0/en_core_web_sm-3.0.0-py3-none-any.whl
-    - name: Remove tests
-      run: |
-        remove-item pycaret/tests/* -Include @('test_classification_tuning.py','test_classification_plots.py','test_regression_plots.py', 'test_regression_tuning.py')
-    - name: Test with pytest
-      run: |
-        pytest
+      - uses: actions/checkout@v2
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -U pytest
+          python -m pip install codecov
+          pip install -r requirements.txt
+          pip install -r requirements-ts.txt
+          pip install -r requirements-optional.txt
+          pip install https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.0.0/en_core_web_sm-3.0.0-py3-none-any.whl
+      - name: Remove tests
+        run: |
+          remove-item pycaret/tests/* -Include @('test_classification_tuning.py','test_classification_plots.py','test_regression_plots.py', 'test_regression_tuning.py', 'test_time_series_tune_grid.py', 'test_time_series_tune_random.py')
+      - name: Test with pytest
+        run: |
+          pytest
 
   # test_tuning:
 
@@ -142,27 +142,82 @@ jobs:
   #       pytest -o log_cli=true
 
   test_plots:
-
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
-    - name: Set up Python 3.8
-      uses: actions/setup-python@v2
-      with:
-        python-version: 3.8
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        python -m pip install -U pytest
-        python -m pip install codecov
-        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-        if [ -f requirements-ts.txt ]; then pip install -r requirements-ts.txt; fi
-        if [ -f requirements-optional.txt ]; then pip install -r requirements-optional.txt; fi
-        pip install https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.0.0/en_core_web_sm-3.0.0-py3-none-any.whl
-    - name: Remove tests
-      run: |
-        find pycaret/tests -type f -not -name '__init__.py' -not -name 'test_classification_plots.py' -not -name 'test_regression_plots.py' -delete
-    - name: Test with pytest
-      run: |
-        pytest -o log_cli=true
+      - uses: actions/checkout@v2
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -U pytest
+          python -m pip install codecov
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          if [ -f requirements-ts.txt ]; then pip install -r requirements-ts.txt; fi
+          if [ -f requirements-optional.txt ]; then pip install -r requirements-optional.txt; fi
+          pip install https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.0.0/en_core_web_sm-3.0.0-py3-none-any.whl
+      - name: Remove tests
+        run: |
+          find pycaret/tests -type f -not -name '__init__.py' -not -name 'test_classification_plots.py' -not -name 'test_regression_plots.py' -delete
+      - name: Test with pytest
+        run: |
+          pytest -o log_cli=true
+
+  test_ts_tune_random:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.6, 3.7, 3.8]
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -U pytest
+          python -m pip install codecov
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          if [ -f requirements-ts.txt ]; then pip install -r requirements-ts.txt; fi
+          if [ -f requirements-optional.txt ]; then pip install -r requirements-optional.txt; fi
+          pip install https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.0.0/en_core_web_sm-3.0.0-py3-none-any.whl
+      - name: Remove tests
+        run: |
+          find pycaret/tests -type f -not -name '__init__.py' -not -name 'conftest.py' -not -name 'time_series_test_utils.py' -not -name 'test_time_series_tune_random.py' -delete
+      - name: Test with pytest
+        run: |
+          pytest -o log_cli=true
+
+  test_ts_tune_grid:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.6, 3.7, 3.8]
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -U pytest
+          python -m pip install codecov
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          if [ -f requirements-ts.txt ]; then pip install -r requirements-ts.txt; fi
+          if [ -f requirements-optional.txt ]; then pip install -r requirements-optional.txt; fi
+          pip install https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.0.0/en_core_web_sm-3.0.0-py3-none-any.whl
+      - name: Remove tests
+        run: |
+          find pycaret/tests -type f -not -name '__init__.py' -not -name 'conftest.py' -not -name 'time_series_test_utils.py' -not -name 'test_time_series_tune_grid.py' -delete
+      - name: Test with pytest
+        run: |
+          pytest -o log_cli=true

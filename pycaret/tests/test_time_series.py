@@ -1,87 +1,27 @@
 """Module to test time_series functionality
 """
 import os
+from random import uniform
 import pytest
 
-from random import choice, uniform, randint
-
-from pycaret.internal.ensemble import _ENSEMBLE_METHODS
 import numpy as np  # type: ignore
 import pandas as pd  # type: ignore
 
-from pycaret.datasets import get_data
+
 from pycaret.internal.pycaret_experiment import TimeSeriesExperiment
-from pycaret.containers.models.time_series import get_all_model_containers
+from pycaret.internal.ensemble import _ENSEMBLE_METHODS
+
+
+from .time_series_test_utils import (
+    _get_seasonal_values,
+    _return_model_parameters,
+    _return_splitter_args,
+    _return_setup_args_raises,
+    _ALL_METRICS,
+)
 
 pytestmark = pytest.mark.filterwarnings("ignore::UserWarning")
 
-_BLEND_TEST_MODELS = [
-    "naive",
-    "poly_trend",
-    "arima",
-    "auto_ets",
-    "lr_cds_dt",
-    "en_cds_dt",
-    "knn_cds_dt",
-    "dt_cds_dt",
-    "lightgbm_cds_dt",
-]  # Test blend model functionality only in these models
-
-#############################
-#### Fixtures Start Here ####
-#############################
-
-
-@pytest.fixture(scope="session", name="load_data")
-def load_data():
-    """Load Pycaret Airline dataset."""
-    data = get_data("airline")
-    data = data - 400  # simulate negative values
-    return data
-
-
-@pytest.fixture(scope="session", name="load_setup")
-def load_setup(load_data):
-    """Create a TimeSeriesExperiment to test module functionalities"""
-    exp = TimeSeriesExperiment()
-
-    fh = np.arange(1, 13)
-    fold = 2
-
-    return exp.setup(
-        data=load_data,
-        fh=fh,
-        fold=fold,
-        fold_strategy="sliding",
-        verbose=False,
-        session_id=42,
-    )
-
-
-@pytest.fixture(scope="session", name="load_models")
-def load_ts_models(load_setup):
-    """Load all time series module models"""
-    globals_dict = {
-        "seed": 0,
-        "n_jobs_param": -1,
-        "gpu_param": False,
-        "X_train": pd.DataFrame(get_data("airline")),
-        "enforce_pi": False,
-    }
-    ts_models = get_all_model_containers(globals_dict)
-    ts_experiment = load_setup
-    ts_estimators = [
-        ts_experiment.create_model(key)
-        for key in ts_models.keys()
-        if key in _BLEND_TEST_MODELS
-    ]
-
-    return ts_estimators
-
-
-###########################
-#### Fixtures End Here ####
-###########################
 
 ##############################
 #### Functions Start Here ####
@@ -93,71 +33,9 @@ def load_ts_models(load_setup):
 # (must happen during collect phase) before passing it to mark.parameterize.
 
 
-def _get_seasonal_values():
-    from pycaret.internal.utils import SeasonalPeriod
-
-    return [(k, v.value) for k, v in SeasonalPeriod.__members__.items()]
-
-
-def _check_windows():
-    """Check if the system is Windows."""
-    import sys
-
-    platform = sys.platform
-    is_windows = True if platform.startswith("win") else False
-
-    return is_windows
-
-
-def _return_model_names():
-    """Return all model names."""
-    globals_dict = {
-        "seed": 0,
-        "n_jobs_param": -1,
-        "gpu_param": False,
-        "X_train": pd.DataFrame(get_data("airline")),
-        "enforce_pi": False,
-    }
-    model_containers = get_all_model_containers(globals_dict)
-
-    models_to_ignore = (
-        ["prophet", "ensemble_forecaster"]
-        if _check_windows()
-        else ["ensemble_forecaster"]
-    )
-
-    model_names_ = []
-    for model_name in model_containers.keys():
-
-        if model_name not in models_to_ignore:
-            model_names_.append(model_name)
-
-    return model_names_
-
-
-def _return_model_parameters():
-    """Parameterize individual models.
-    Returns the model names and the corresponding forecast horizons.
-    Horizons are alternately picked to be either integers or numpy arrays
-    """
-    model_names = _return_model_names()
-    parameters = [
-        (name, np.arange(1, randint(6, 24)) if i % 2 == 0 else randint(6, 24))
-        for i, name in enumerate(model_names)
-    ]
-
-    return parameters
-
-
-# def _check_data_for_prophet(mdl_name, data):
-#     """Convert data index to DatetimeIndex"""
-#     if mdl_name == "prophet":
-#         data = data.to_timestamp(freq="M")
-#     return data
-
-
-_model_names = _return_model_names()
 _model_parameters = _return_model_parameters()
+_splitter_args = _return_splitter_args()
+_setup_args_raises = _return_setup_args_raises()
 
 ############################
 #### Functions End Here ####
@@ -169,12 +47,90 @@ _model_parameters = _return_model_parameters()
 ##########################
 
 
-def test_save_load_model(load_data):
+@pytest.mark.parametrize("fold, fh, fold_strategy", _splitter_args)
+def test_splitter_using_fold_and_fh(fold, fh, fold_strategy, load_pos_and_neg_data):
+    """Tests the splitter creation using fold, fh and a string value for fold_strategy."""
+
+    from pycaret.time_series import setup
+    from sktime.forecasting.model_selection._split import (
+        ExpandingWindowSplitter,
+        SlidingWindowSplitter,
+    )
+
+    exp_name = setup(
+        data=load_pos_and_neg_data, fold=fold, fh=fh, fold_strategy=fold_strategy,
+    )
+
+    allowed_fold_strategies = ["expanding", "rolling", "sliding"]
+    if fold_strategy in allowed_fold_strategies:
+        if (fold_strategy == "expanding") or (fold_strategy == "rolling"):
+            assert isinstance(exp_name.fold_generator, ExpandingWindowSplitter)
+        elif fold_strategy == "sliding":
+            assert isinstance(exp_name.fold_generator, SlidingWindowSplitter)
+
+        assert np.all(exp_name.fold_generator.fh == np.arange(1, fh + 1))
+        assert exp_name.fold_generator.step_length == fh  # Since fh is an int
+
+
+def test_splitter_pass_cv_object(load_pos_and_neg_data):
+    """Tests the passing of a cv splitter to fold_strategy"""
+
+    from pycaret.time_series import setup
+    from sktime.forecasting.model_selection._split import (
+        ExpandingWindowSplitter,
+        SlidingWindowSplitter,
+    )
+
+    fold = 3
+    fh = np.arange(1, 13)  # regular horizon of 12 months
+    fh_extended = np.arange(1, 25)  # extended horizon of 24 months
+    fold_strategy = ExpandingWindowSplitter(
+        initial_window=72,
+        step_length=12,
+        # window_length=12,
+        fh=fh,
+        start_with_window=True,
+    )
+
+    exp_name = setup(
+        data=load_pos_and_neg_data,
+        fold=fold,  # should be ignored since we are passing explicit fold_strategy
+        fh=fh_extended,  # should be ignored since we are passing explicit fold_strategy
+        fold_strategy=fold_strategy,
+    )
+
+    assert exp_name.fold_generator.initial_window == fold_strategy.initial_window
+    assert np.all(exp_name.fold_generator.fh == fold_strategy.fh)
+    assert exp_name.fold_generator.step_length == fold_strategy.step_length
+    num_folds = exp_name.get_config("fold_param")
+    y_train = exp_name.get_config("y_train")
+
+    expected = fold_strategy.get_n_splits(y=y_train)
+    assert num_folds == expected
+
+
+@pytest.mark.parametrize("fold, fh, fold_strategy", _setup_args_raises)
+def test_setup_raises(fold, fh, fold_strategy, load_pos_and_neg_data):
+    """Tests conditions that raise an error due to lack of data"""
+
+    from pycaret.time_series import setup
+
+    with pytest.raises(ValueError) as errmsg:
+        _ = setup(
+            data=load_pos_and_neg_data, fold=fold, fh=fh, fold_strategy=fold_strategy,
+        )
+
+    exceptionmsg = errmsg.value.args[0]
+
+    assert exceptionmsg == "Not Enough Data Points, set a lower number of folds or fh"
+
+
+def test_save_load_model(load_pos_and_neg_data):
     """Tests the save_model and load_model functionality"""
 
     fh = np.arange(1, 13)
     fold = 2
-    data = load_data
+    data = load_pos_and_neg_data
 
     ######################
     #### OOP Approach ####
@@ -225,14 +181,14 @@ def test_save_load_model(load_data):
     assert np.all(loaded_predictions == expected_predictions)
 
 
-def test_check_stats(load_data):
+def test_check_stats(load_pos_and_neg_data):
     """Tests the check_stats functionality"""
 
     exp = TimeSeriesExperiment()
 
     fh = np.arange(1, 13)
     fold = 2
-    data = load_data
+    data = load_pos_and_neg_data
 
     exp.setup(
         data=data,
@@ -270,14 +226,14 @@ def test_check_stats(load_data):
     assert results.query("Test == 'Normality'").iloc[0]["Setting"].get("alpha") == alpha
 
 
-def test_plot_model(load_data):
+def test_plot_model(load_pos_data):
     """Tests the plot_model functionality"""
     exp = TimeSeriesExperiment()
 
     fh = np.arange(1, 13)
     fold = 2
     # Want to show multiplicative plot here so can not take load data (has -ve values)
-    data = get_data("airline")  # load_data
+    data = load_pos_data
 
     ######################
     #### OOP Approach ####
@@ -376,13 +332,15 @@ def test_plot_model(load_data):
 
 
 @pytest.mark.parametrize("seasonal_period, seasonal_value", _get_seasonal_values())
-def test_setup_seasonal_period_str(load_data, seasonal_period, seasonal_value):
+def test_setup_seasonal_period_str(
+    load_pos_and_neg_data, seasonal_period, seasonal_value
+):
 
     exp = TimeSeriesExperiment()
 
     fh = np.arange(1, 13)
     fold = 2
-    data = load_data
+    data = load_pos_and_neg_data
 
     exp.setup(
         data=data,
@@ -398,13 +356,13 @@ def test_setup_seasonal_period_str(load_data, seasonal_period, seasonal_value):
 
 
 @pytest.mark.parametrize("seasonal_key, seasonal_value", _get_seasonal_values())
-def test_setup_seasonal_period_int(load_data, seasonal_key, seasonal_value):
+def test_setup_seasonal_period_int(load_pos_and_neg_data, seasonal_key, seasonal_value):
 
     exp = TimeSeriesExperiment()
 
     fh = np.arange(1, 13)
     fold = 2
-    data = load_data
+    data = load_pos_and_neg_data
 
     exp.setup(
         data=data,
@@ -418,9 +376,9 @@ def test_setup_seasonal_period_int(load_data, seasonal_key, seasonal_value):
     assert exp.seasonal_period == seasonal_value
 
 
-def test_enforce_pi(load_data):
+def test_enforce_pi(load_pos_and_neg_data):
     """Tests the enforcement of prediction interval"""
-    data = load_data
+    data = load_pos_and_neg_data
 
     exp1 = TimeSeriesExperiment()
     exp1.setup(data=data, enforce_pi=True)
@@ -436,12 +394,12 @@ def test_enforce_pi(load_data):
 
 
 @pytest.mark.parametrize("name, fh", _model_parameters)
-def test_create_predict_finalize_model(name, fh, load_data):
+def test_create_predict_finalize_model(name, fh, load_pos_and_neg_data):
     """test create_model, predict_model and finalize_model functionality
     Combined to save run time
     """
     exp = TimeSeriesExperiment()
-    data = load_data  # _check_data_for_prophet(name, load_data)
+    data = load_pos_and_neg_data  # _check_data_for_prophet(name, load_pos_and_neg_data)
 
     exp.setup(
         data=data, fold=2, fh=fh, fold_strategy="sliding", verbose=False,
@@ -455,7 +413,7 @@ def test_create_predict_finalize_model(name, fh, load_data):
     ## Test Predict Model ##
     ########################
     fh_index = fh if isinstance(fh, int) else fh[-1]
-    expected_period_index = load_data.iloc[-fh_index:].index
+    expected_period_index = load_pos_and_neg_data.iloc[-fh_index:].index
 
     # Default prediction
     y_pred = exp.predict_model(model)
@@ -489,11 +447,15 @@ def test_create_predict_finalize_model(name, fh, load_data):
     assert np.all(y_pred.index == final_expected_period_index)
 
 
-def test_predict_model_warnings(load_data):
+def test_predict_model_warnings(load_pos_and_neg_data):
     """test predict_model warnings cases"""
     exp = TimeSeriesExperiment()
     exp.setup(
-        data=load_data, fold=2, fh=12, fold_strategy="sliding", verbose=False,
+        data=load_pos_and_neg_data,
+        fold=2,
+        fh=12,
+        fold_strategy="sliding",
+        verbose=False,
     )
 
     model = exp.create_model("naive")
@@ -531,12 +493,16 @@ def test_predict_model_warnings(load_data):
     assert metrics.equals(expected)
 
 
-def test_create_model_custom_folds(load_data):
+def test_create_model_custom_folds(load_pos_and_neg_data):
     """test custom fold in create_model"""
     exp = TimeSeriesExperiment()
     setup_fold = 3
     exp.setup(
-        data=load_data, fold=setup_fold, fh=12, fold_strategy="sliding", verbose=False,
+        data=load_pos_and_neg_data,
+        fold=setup_fold,
+        fh=12,
+        fold_strategy="sliding",
+        verbose=False,
     )
 
     #########################################
@@ -553,14 +519,14 @@ def test_create_model_custom_folds(load_data):
     assert len(metrics2) == custom_fold + 2  # + 2 for Mean and SD
 
 
-def test_prediction_interval_na(load_data):
+def test_prediction_interval_na(load_pos_and_neg_data):
     """Tests predict model when interval is NA"""
 
     exp = TimeSeriesExperiment()
 
     fh = 12
     fold = 2
-    data = load_data
+    data = load_pos_and_neg_data
 
     exp.setup(
         data=data,
@@ -578,13 +544,13 @@ def test_prediction_interval_na(load_data):
     assert y_pred["upper"].isnull().all()
 
 
-def test_compare_models(load_data):
+def test_compare_models(load_pos_and_neg_data):
     """tests compare_models functionality"""
     exp = TimeSeriesExperiment()
 
     fh = 12
     fold = 2
-    data = load_data
+    data = load_pos_and_neg_data
 
     exp.setup(
         data=data,
@@ -652,12 +618,16 @@ def test_blend_model_predict(load_setup, load_models):
     assert median_voting_equal == False
 
 
-def test_blend_model_custom_folds(load_data):
+def test_blend_model_custom_folds(load_pos_and_neg_data):
     """test custom folds in blend_model"""
     exp = TimeSeriesExperiment()
     setup_fold = 3
     exp.setup(
-        data=load_data, fold=setup_fold, fh=12, fold_strategy="sliding", verbose=False,
+        data=load_pos_and_neg_data,
+        fold=setup_fold,
+        fh=12,
+        fold_strategy="sliding",
+        verbose=False,
     )
 
     #######################################
@@ -675,43 +645,7 @@ def test_blend_model_custom_folds(load_data):
     assert len(metrics2) == custom_fold + 2  # + 2 for Mean and SD
 
 
-@pytest.mark.parametrize("model", _model_names)
-def test_tune_model_grid(model, load_data):
-    exp = TimeSeriesExperiment()
-    fh = 12
-    fold = 2
-    data = load_data
-
-    exp.setup(data=data, fold=fold, fh=fh, fold_strategy="sliding")
-
-    model_obj = exp.create_model(model)
-    tuned_model_obj = exp.tune_model(model_obj, search_algorithm="grid")
-    y_pred = exp.predict_model(tuned_model_obj)
-    assert isinstance(y_pred, pd.Series)
-
-    expected_period_index = data.iloc[-fh:].index
-    assert np.all(y_pred.index == expected_period_index)
-
-
-@pytest.mark.parametrize("model", _model_names)
-def test_tune_model_random(model, load_data):
-    exp = TimeSeriesExperiment()
-    fh = 12
-    fold = 2
-    data = load_data
-
-    exp.setup(data=data, fold=fold, fh=fh, fold_strategy="sliding")
-
-    model_obj = exp.create_model(model)
-    tuned_model_obj = exp.tune_model(model_obj)  # default search_algorithm = "random"
-    y_pred = exp.predict_model(tuned_model_obj)
-    assert isinstance(y_pred, pd.Series)
-
-    expected_period_index = data.iloc[-fh:].index
-    assert np.all(y_pred.index == expected_period_index)
-
-
-def test_tune_custom_grid_and_choose_better(load_data):
+def test_tune_custom_grid_and_choose_better(load_pos_and_neg_data):
     """Tests
     (1) passing a custom grid to tune_model, and
     (2) choose_better=True
@@ -721,7 +655,7 @@ def test_tune_custom_grid_and_choose_better(load_data):
 
     fh = np.arange(1, 13)
     fold = 2
-    data = load_data
+    data = load_pos_and_neg_data
 
     exp.setup(
         data=data,
@@ -750,12 +684,16 @@ def test_tune_custom_grid_and_choose_better(load_data):
     assert tuned_model2.strategy == model.strategy
 
 
-def test_tune_model_custom_folds(load_data):
+def test_tune_model_custom_folds(load_pos_and_neg_data):
     """test custom folds in tune_model"""
     exp = TimeSeriesExperiment()
     setup_fold = 3
     exp.setup(
-        data=load_data, fold=setup_fold, fh=12, fold_strategy="sliding", verbose=False,
+        data=load_pos_and_neg_data,
+        fold=setup_fold,
+        fh=12,
+        fold_strategy="sliding",
+        verbose=False,
     )
 
     #######################################
@@ -773,31 +711,33 @@ def test_tune_model_custom_folds(load_data):
     assert len(metrics2) == custom_fold + 2  # + 2 for Mean and SD
 
 
-def test_tune_model_alternate_metric(load_data):
+@pytest.mark.parametrize("metric", _ALL_METRICS)
+def test_tune_model_alternate_metric(load_pos_and_neg_data, metric):
     """tests model selection using non default metric"""
     exp = TimeSeriesExperiment()
     fh = 12
     fold = 2
 
-    exp.setup(data=load_data, fold=fold, fh=fh, fold_strategy="sliding")
+    exp.setup(data=load_pos_and_neg_data, fold=fold, fh=fh, fold_strategy="sliding")
 
     model_obj = exp.create_model("naive")
-    tuned_model_obj = exp.tune_model(model_obj, optimize="MAE")
+
+    tuned_model_obj = exp.tune_model(model_obj, optimize=metric)
     y_pred = exp.predict_model(tuned_model_obj)
     assert isinstance(y_pred, pd.Series)
 
-    expected_period_index = load_data.iloc[-fh:].index
+    expected_period_index = load_pos_and_neg_data.iloc[-fh:].index
     assert np.all(y_pred.index == expected_period_index)
 
 
-def test_tune_model_raises(load_data):
+def test_tune_model_raises(load_pos_and_neg_data):
     """Tests conditions that raise an error due to lack of data"""
 
     exp = TimeSeriesExperiment()
 
     fh = np.arange(1, 13)
     fold = 2
-    data = load_data
+    data = load_pos_and_neg_data
 
     exp.setup(
         data=data,
