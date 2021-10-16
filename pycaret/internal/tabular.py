@@ -5674,7 +5674,7 @@ def plot_model(
     estimator,
     plot: str = "auc",
     scale: float = 1,  # added in pycaret==2.1.0
-    save: bool = False,
+    save: Union[str, bool] = False,
     fold: Optional[Union[int, Any]] = None,
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
@@ -5738,7 +5738,7 @@ def plot_model(
     scale: float, default = 1
         The resolution scale of the figure.
 
-    save: string/bool, default = False
+    save: string or bool, default = False
         When set to True, Plot is saved as a 'png' file in current working directory.
         When a path destination is given, Plot is saved as a 'png' file the given path to the directory of choice.
 
@@ -7453,7 +7453,7 @@ def interpret_model(
     use_train_data: Optional[bool] = False,
     X_new_sample: Optional[pd.DataFrame] = None,
     y_new_sample: Optional[pd.DataFrame] = None,  # add for pfi explainer
-    save: bool = False,
+    save: Union[str, bool] = False,
     **kwargs,  # added in pycaret==2.1
 ):
 
@@ -7522,8 +7522,9 @@ def interpret_model(
         The sample must have the same columns as the raw input label data, and it is transformed
         by the preprocessing pipeline automatically before plotting.
 
-    save: bool, default = False
+    save: string or bool, default = False
         When set to True, Plot is saved as a 'png' file in current working directory.
+        When a path destination is given, Plot is saved as a 'png' file the given path to the directory of choice.
 
     **kwargs:
         Additional keyword arguments to pass to the plot.
@@ -7667,12 +7668,11 @@ def interpret_model(
             shap_plot = shap.summary_plot(shap_values, test_X, show=show, **kwargs)
 
         if save:
+            plot_filename = f"SHAP {plot}.png"
             if not isinstance(save, bool):
-                plot_filename = os.path.join(save, plot)
-            else:
-                plot_filename = plot
-            logger.info(f"Saving '{plot_filename}.png'")
-            plt.savefig(plot_filename)
+                plot_filename = os.path.join(save, plot_filename)
+            logger.info(f"Saving '{plot_filename}'")
+            plt.savefig(plot_filename, bbox_inches="tight")
             plt.close()
 
         return shap_plot
@@ -7707,12 +7707,11 @@ def interpret_model(
             logger.info("model type detected: type 2")
             shap.dependence_plot(dependence, shap_values, test_X, show=show, **kwargs)
         if save:
+            plot_filename = f"SHAP {plot}.png"
             if not isinstance(save, bool):
-                plot_filename = os.path.join(save, plot)
-            else:
-                plot_filename = plot
-            logger.info(f"Saving '{plot_filename}.png'")
-            plt.savefig(f"{plot_filename}.png", bbox_inches="tight")
+                plot_filename = os.path.join(save, plot_filename)
+            logger.info(f"Saving '{plot_filename}'")
+            plt.savefig(plot_filename, bbox_inches="tight")
             plt.close()
 
         return None
@@ -7800,7 +7799,11 @@ def interpret_model(
                     **kwargs,
                 )
         if save:
-            shap.save_html(f"SHAP {plot}.html", shap_plot)
+            plot_filename = f"SHAP {plot}.html"
+            if not isinstance(save, bool):
+                plot_filename = os.path.join(save, plot_filename)
+            logger.info(f"Saving '{plot_filename}'")
+            shap.save_html(plot_filename, shap_plot)
         return shap_plot
 
     def pdp(show: bool = True):
@@ -7830,7 +7833,11 @@ def interpret_model(
         if save:
             import plotly.io as pio
 
-            pio.write_html(pdp_plot, f"PDP {plot}.html")
+            plot_filename = f"PDP {plot}.html"
+            if not isinstance(save, bool):
+                plot_filename = os.path.join(save, plot_filename)
+            logger.info(f"Saving '{plot_filename}'")
+            pio.write_html(pdp_plot, plot_filename)
         return pdp_plot
 
     def msa(show: bool = True):
@@ -7847,7 +7854,11 @@ def interpret_model(
         if save:
             import plotly.io as pio
 
-            pio.write_html(msa_plot, f"MSA {plot}.html")
+            plot_filename = f"MSA {plot}.html"
+            if not isinstance(save, bool):
+                plot_filename = os.path.join(save, plot_filename)
+            logger.info(f"Saving '{plot_filename}'")
+            pio.write_html(msa_plot, plot_filename)
         return msa_plot
 
     def pfi(show: bool = True):
@@ -7859,7 +7870,11 @@ def interpret_model(
         if save:
             import plotly.io as pio
 
-            pio.write_html(pfi_plot, f"PFI {plot}.html")
+            plot_filename = f"PFI {plot}.html"
+            if not isinstance(save, bool):
+                plot_filename = os.path.join(save, plot_filename)
+            logger.info(f"Saving '{plot_filename}'")
+            pio.write_html(pfi_plot, plot_filename)
         return pfi_plot
 
     shap_plot = locals()[plot](show=not save)

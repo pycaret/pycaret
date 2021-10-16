@@ -1908,7 +1908,7 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
         be on 'Topic 0'
     
 
-    save: string/bool, default = False
+    save: string or bool, default = False
         Plot is saved as png file in local directory when save parameter set to True.
         Plot is saved as png file in the specified directory when the path to the directory is specified.
 
