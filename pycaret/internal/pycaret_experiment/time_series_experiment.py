@@ -1,3 +1,5 @@
+from copy import deepcopy
+
 from sktime.forecasting.model_selection import (
     ExpandingWindowSplitter,
     SlidingWindowSplitter,
@@ -2765,16 +2767,13 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         """
 
-        # return super().predict_model(
-        #     estimator=estimator,
-        #     data=data,
-        #     probability_threshold=None,
-        #     encoded_labels=True,
-        #     round=round,
-        #     verbose=verbose,
-        # )
-
         data = None  # TODO: Add back when we have support for multivariate TS
+
+        # Cloning since setting fh to another value replaces it inplace
+        # Note cloning does not copy the fitted model (only model hyperparams)
+        # Hence, we need to do deep copy per
+        # https://stackoverflow.com/a/33576345/8925915
+        estimator_ = deepcopy(estimator)
 
         display_test_metric = verbose
         if not hasattr(self, "X_test") or fh is not None:
@@ -2790,7 +2789,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             if not hasattr(self, "fh"):
                 # If the model is saved and loaded afterwards,
                 # it will not have self.fh
-                fh = estimator.fh
+                fh = estimator_.fh
         else:
             # Get the fh in the right format for sktime
             fh = self.check_fh(fh)
@@ -2804,7 +2803,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             display = Display(verbose=False, html_param=False,)
 
         try:
-            return_vals = estimator.predict(
+            return_vals = estimator_.predict(
                 X=data, fh=fh, return_pred_int=return_pred_int, alpha=alpha
             )
         except NotImplementedError as error:
@@ -2814,7 +2813,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 "algorithm. Predcition will be run with `return_pred_int` = False, and "
                 "NaN values will be returned for the prediction intervals instead."
             )
-            return_vals = estimator.predict(
+            return_vals = estimator_.predict(
                 X=data, fh=fh, return_pred_int=False, alpha=alpha
             )
         if isinstance(return_vals, tuple):
@@ -2863,7 +2862,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 X_test_ = None
             y_test_ = self.y_test.copy()
 
-            y_test_pred = estimator.predict(
+            y_test_pred = estimator_.predict(
                 X=X_test_, fh=fh, return_pred_int=False, alpha=alpha
             )
             if len(y_test_pred) != len(y_test_):
@@ -2898,7 +2897,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         if display_test_metric:
             # Display Test Score
             # model name
-            full_name = self._get_model_name(estimator)
+            full_name = self._get_model_name(estimator_)
             df_score = pd.DataFrame(metrics, index=[0])
             df_score.insert(0, "Model", full_name)
             df_score = df_score.round(round)
