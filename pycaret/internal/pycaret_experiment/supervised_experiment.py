@@ -4839,7 +4839,7 @@ class _SupervisedExperiment(_TabularExperiment):
         finalized_models = []
 
         display.update_monitor(1, "Finalizing models" if finalize_models else "Collecting models")
-        for i, model_results_tuple in model_container:
+        for i, model_results_tuple in enumerate(model_container):
 
             model_results = model_results_tuple["scores"]
             model = model_results_tuple["model"]
