@@ -39,6 +39,7 @@ from unittest.mock import patch
 import plotly.express as px  # type: ignore
 import plotly.graph_objects as go  # type: ignore
 import scikitplot as skplt  # type: ignore
+from packaging import version
 import logging
 
 
@@ -1223,7 +1224,7 @@ class _TabularExperiment(_PyCaretExperiment):
             except Exception:
                 self.logger.warning("cuML not found")
 
-            if cuml_version is None or not cuml_version >= (0, 15):
+            if cuml_version is None or not version.parse(cuml_version) >= version.parse("0.15"):
                 message = f"cuML is outdated or not found. Required version is >=0.15, got {__version__}"
                 if use_gpu == "force":
                     raise ImportError(message)
@@ -1827,7 +1828,7 @@ class _TabularExperiment(_PyCaretExperiment):
         estimator,
         plot: str = "auc",
         scale: float = 1,  # added in pycaret==2.1.0
-        save: bool = False,
+        save: Union[str, bool] = False,
         fold: Optional[Union[int, Any]] = None,
         fit_kwargs: Optional[dict] = None,
         groups: Optional[Union[str, Any]] = None,
@@ -1888,8 +1889,9 @@ class _TabularExperiment(_PyCaretExperiment):
         scale: float, default = 1
             The resolution scale of the figure.
 
-        save: bool, default = False
+        save: string or bool, default = False
             When set to True, Plot is saved as a 'png' file in current working directory.
+            When a path destination is given, Plot is saved as a 'png' file the given path to the directory of choice.
 
         fold: integer or scikit-learn compatible CV generator, default = None
             Controls cross-validation used in certain plots. If None, will use the CV generator
@@ -2155,10 +2157,12 @@ class _TabularExperiment(_PyCaretExperiment):
                         plot_filename = f"{plot_name}.html"
 
                         if save:
+                            if not isinstance(save, bool):
+                                plot_filename = os.path.join(save, plot_filename)
+                            else:
+                                plot_filename = plot
+                            self.logger.info(f"Saving '{plot_filename}'")
                             resplots.write_html(plot_filename)
-                            self.logger.info(
-                                f"Saving '{plot_filename}' in current active directory"
-                            )
 
                         self.logger.info("Visual Rendered Successfully")
                         return plot_filename
@@ -2246,10 +2250,12 @@ class _TabularExperiment(_PyCaretExperiment):
                         plot_filename = f"{plot_name}.html"
 
                         if save:
+                            if not isinstance(save, bool):
+                                plot_filename = os.path.join(save, plot_filename)
+                            else:
+                                plot_filename = plot
+                            self.logger.info(f"Saving '{plot_filename}'")
                             fig.write_html(plot_filename)
-                            self.logger.info(
-                                f"Saving '{plot_filename}' in current active directory"
-                            )
 
                         elif system:
                             if display_format == "streamlit":
@@ -2312,10 +2318,13 @@ class _TabularExperiment(_PyCaretExperiment):
                         plot_filename = f"{plot_name}.html"
 
                         if save:
+                            if not isinstance(save, bool):
+                                plot_filename = os.path.join(save, plot_filename)
+                            else:
+                                plot_filename = plot
+                            self.logger.info(f"Saving '{plot_filename}'")
                             fig.write_html(f"{plot_filename}")
-                            self.logger.info(
-                                f"Saving '{plot_filename}' in current active directory"
-                            )
+
                         elif system:
                             if display_format == "streamlit":
                                 st.write(fig)
@@ -2399,10 +2408,13 @@ class _TabularExperiment(_PyCaretExperiment):
                         plot_filename = f"{plot_name}.html"
 
                         if save:
+                            if not isinstance(save, bool):
+                                plot_filename = os.path.join(save, plot_filename)
+                            else:
+                                plot_filename = plot
+                            self.logger.info(f"Saving '{plot_filename}'")
                             fig.write_html(f"{plot_filename}")
-                            self.logger.info(
-                                f"Saving '{plot_filename}' in current active directory"
-                            )
+
                         elif system:
                             if display_format == "streamlit":
                                 st.write(fig)
@@ -2502,10 +2514,13 @@ class _TabularExperiment(_PyCaretExperiment):
                         plot_filename = f"{plot_name}.html"
 
                         if save:
+                            if not isinstance(save, bool):
+                                plot_filename = os.path.join(save, plot_filename)
+                            else:
+                                plot_filename = plot
+                            self.logger.info(f"Saving '{plot_filename}'")
                             fig.write_html(f"{plot_filename}")
-                            self.logger.info(
-                                f"Saving '{plot_filename}' in current active directory"
-                            )
+
                         elif system:
                             if display_format == "streamlit":
                                 st.write(fig)
@@ -2575,10 +2590,13 @@ class _TabularExperiment(_PyCaretExperiment):
                         plot_filename = f"{plot_name}.html"
 
                         if save:
+                            if not isinstance(save, bool):
+                                plot_filename = os.path.join(save, plot_filename)
+                            else:
+                                plot_filename = plot
+                            self.logger.info(f"Saving '{plot_filename}'")
                             fig.write_html(f"{plot_filename}")
-                            self.logger.info(
-                                f"Saving '{plot_filename}' in current active directory"
-                            )
+
                         elif system:
                             if display_format == "streamlit":
                                 st.write(fig)
@@ -2969,10 +2987,11 @@ class _TabularExperiment(_PyCaretExperiment):
                                 y_test__, predict_proba__, figsize=(10, 6)
                             )
                             if save:
-                                self.logger.info(
-                                    f"Saving '{plot_name}.png' in current active directory"
-                                )
-                                plt.savefig(f"{plot_name}.png", bbox_inches="tight")
+                                plot_filename = f"{plot_name}.png"
+                                if not isinstance(save, bool):
+                                    plot_filename = os.path.join(save, plot_filename)
+                                self.logger.info(f"Saving '{plot_filename}'")
+                                plt.savefig(plot_filename, bbox_inches="tight")
                             elif system:
                                 plt.show()
                             plt.close()
@@ -3006,10 +3025,11 @@ class _TabularExperiment(_PyCaretExperiment):
                                 y_test__, predict_proba__, figsize=(10, 6)
                             )
                             if save:
-                                self.logger.info(
-                                    f"Saving '{plot_name}.png' in current active directory"
-                                )
-                                plt.savefig(f"{plot_name}.png", bbox_inches="tight")
+                                plot_filename = f"{plot_name}.png"
+                                if not isinstance(save, bool):
+                                    plot_filename = os.path.join(save, plot_filename)
+                                self.logger.info(f"Saving '{plot_filename}'")
+                                plt.savefig(plot_filename, bbox_inches="tight")
                             elif system:
                                 plt.show()
                             plt.close()
@@ -3169,10 +3189,11 @@ class _TabularExperiment(_PyCaretExperiment):
                         display.move_progress()
                         display.clear_output()
                         if save:
-                            self.logger.info(
-                                f"Saving '{plot_name}.png' in current active directory"
-                            )
-                            plt.savefig(f"{plot_name}.png", bbox_inches="tight")
+                            plot_filename = f"{plot_name}.png"
+                            if not isinstance(save, bool):
+                                plot_filename = os.path.join(save, plot_filename)
+                            self.logger.info(f"Saving '{plot_filename}'")
+                            plt.savefig(plot_filename, bbox_inches="tight")
                         elif system:
                             plt.show()
                         plt.close()
@@ -3224,10 +3245,11 @@ class _TabularExperiment(_PyCaretExperiment):
                         display.move_progress()
                         display.clear_output()
                         if save:
-                            self.logger.info(
-                                f"Saving '{plot_name}.png' in current active directory"
-                            )
-                            plt.savefig(f"{plot_name}.png", bbox_inches="tight")
+                            plot_filename = f"{plot_name}.png"
+                            if not isinstance(save, bool):
+                                plot_filename = os.path.join(save, plot_filename)
+                            self.logger.info(f"Saving '{plot_filename}'")
+                            plt.savefig(plot_filename, bbox_inches="tight")
                         elif system:
                             plt.show()
                         plt.close()
@@ -3533,10 +3555,11 @@ class _TabularExperiment(_PyCaretExperiment):
                         display.move_progress()
                         display.clear_output()
                         if save:
-                            self.logger.info(
-                                f"Saving '{plot_name}.png' in current active directory"
-                            )
-                            plt.savefig(f"{plot_name}.png", bbox_inches="tight")
+                            plot_filename = f"{plot_name}.png"
+                            if not isinstance(save, bool):
+                                plot_filename = os.path.join(save, plot_filename)
+                            self.logger.info(f"Saving '{plot_filename}'")
+                            plt.savefig(plot_filename, bbox_inches="tight")
                         elif system:
                             plt.show()
                         plt.close()
@@ -3584,10 +3607,11 @@ class _TabularExperiment(_PyCaretExperiment):
                                 data_y, predict_proba__, figsize=(10, 6)
                             )
                             if save:
-                                self.logger.info(
-                                    f"Saving '{plot_name}.png' in current active directory"
-                                )
-                                plt.savefig(f"{plot_name}.png", bbox_inches="tight")
+                                plot_filename = f"{plot_name}.png"
+                                if not isinstance(save, bool):
+                                    plot_filename = os.path.join(save, plot_filename)
+                                self.logger.info(f"Saving '{plot_filename}'")
+                                plt.savefig(plot_filename, bbox_inches="tight")
                             elif system:
                                 plt.show()
                             plt.close()

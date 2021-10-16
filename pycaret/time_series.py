@@ -926,6 +926,7 @@ def plot_model(
     display_format: Optional[str] = None,
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
+    save: Union[str, bool] = False,
 ) -> str:
 
     """
@@ -996,6 +997,11 @@ def plot_model(
         Currently, not all plots are supported.
 
 
+    save: string or bool, default = False
+        When set to True, Plot is saved as a 'png' file in current working directory.
+        When a path destination is given, Plot is saved as a 'png' file the given path to the directory of choice.
+
+
     Returns:
         None
 
@@ -1012,6 +1018,7 @@ def plot_model(
         data_kwargs=data_kwargs,
         fig_kwargs=fig_kwargs,
         system=system,
+        save=save,
     )
 
 
@@ -1082,7 +1089,7 @@ def interpret_model(
     feature: Optional[str] = None,
     observation: Optional[int] = None,
     use_train_data: bool = False,
-    save: bool = False,
+    save: Union[str, bool] = False,
     **kwargs,
 ):
 
@@ -1130,8 +1137,9 @@ def interpret_model(
         of test data.
 
 
-    save: bool, default = False
+    save: string or bool, default = False
         When set to True, Plot is saved as a 'png' file in current working directory.
+        When a path destination is given, Plot is saved as a 'png' file the given path to the directory of choice.
 
 
     **kwargs:
@@ -1332,7 +1340,7 @@ def deploy_model(
         Dictionary of applicable authentication tokens.
 
         When platform = 'aws':
-        {'bucket' : 'S3-bucket-name'}
+        {'bucket' : 'S3-bucket-name', 'path': (optional) folder name under the bucket}
 
         When platform = 'gcp':
         {'project': 'gcp-project-name', 'bucket' : 'gcp-bucket-name'}

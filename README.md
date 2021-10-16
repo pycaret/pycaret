@@ -1,14 +1,20 @@
-![alt text](https://github.com/pycaret/pycaret/blob/master/pycaret2.3.png)
+![alt text](https://github.com/pycaret/pycaret/blob/master/pycaret_234.jfif)
 
 # PyCaret 2.3
-![Python](https://img.shields.io/badge/Python-3.6%20%7C%203.7%20%7C%203.8-blue) ![pytest on push](https://github.com/pycaret/pycaret/workflows/pytest%20on%20push/badge.svg) [![Documentation Status](https://readthedocs.org/projects/pip/badge/?version=stable)](http://pip.pypa.io/en/stable/?badge=stable) [![PyPI version](https://badge.fury.io/py/pycaret.svg)](https://badge.fury.io/py/pycaret) [![License](https://img.shields.io/pypi/l/ansicolortags.svg)](https://img.shields.io/pypi/l/ansicolortags.svg) [![Git count](http://hits.dwyl.com/pycaret/pycaret/pycaret.svg)](http://hits.dwyl.com/pycaret/pycaret/pycaret) [![Slack](https://img.shields.io/badge/slack-chat-green.svg?logo=slack)](https://join.slack.com/t/pycaret/shared_invite/zt-qc4pfcw5-OLV3UFF~DzMHFyaJeFKw~A)
+[![Python](https://img.shields.io/badge/Python-3.6%20%7C%203.7%20%7C%203.8-blue)](https://badge.fury.io/py/pycaret) 
+![pytest on push](https://github.com/pycaret/pycaret/workflows/pytest%20on%20push/badge.svg) 
+[![Documentation Status](https://readthedocs.org/projects/pip/badge/?version=stable)](http://pip.pypa.io/en/stable/?badge=stable) 
+[![PyPI version](https://badge.fury.io/py/pycaret.svg)](https://badge.fury.io/py/pycaret) 
+[![License](https://img.shields.io/pypi/l/ansicolortags.svg)](https://img.shields.io/pypi/l/ansicolortags.svg) 
+<!-- [![Git count](http://hits.dwyl.com/pycaret/pycaret/pycaret.svg)](http://hits.dwyl.com/pycaret/pycaret/pycaret) -->
+[![Slack](https://img.shields.io/badge/slack-chat-green.svg?logo=slack)](https://join.slack.com/t/pycaret/shared_invite/zt-row9phbm-BoJdEVPYnGf7_NxNBP307w)
 
 ## What is PyCaret?
 PyCaret is an open-source, low-code machine learning library in Python that automates machine learning workflows. It is an end-to-end machine learning and model management tool that speeds up the experiment cycle exponentially and makes you more productive.
 
 In comparison with the other open-source machine learning libraries, PyCaret is an alternate low-code library that can be used to replace hundreds of lines of code with few words only. This makes experiments exponentially fast and efficient. PyCaret is essentially a Python wrapper around several machine learning libraries and frameworks such as scikit-learn, XGBoost, LightGBM, CatBoost, spaCy, Optuna, Hyperopt, Ray, and many more.
 
-The design and simplicity of PyCaret is inspired by the emerging role of citizen data scientists, a term first used by Gartner. Citizen Data Scientists are power users who can perform both simple and moderately sophisticated analytical tasks that would previously have required more expertise. Seasoned data scientists are often difficult to find and expensive to hire but citizen data scientists can be an effective way to mitigate this gap and address data-related challenges in the business setting.
+The design and simplicity of PyCaret are inspired by the emerging role of citizen data scientists, a term first used by Gartner. Citizen Data Scientists are power users who can perform both simple and moderately sophisticated analytical tasks that would previously have required more expertise. Seasoned data scientists are often difficult to find and expensive to hire but citizen data scientists can be an effective way to mitigate this gap and address data-related challenges in the business setting.
 
 PyCaret is a great library which not only simplifies the machine learning tasks for citizen data scientists but also helps new startups to reduce the cost of investing in a team of data scientists. Therefore, this library has not only helped the citizen data scientists but has also helped individuals who want to start exploring the field of data science, having no prior knowledge in this field. Iniitial idea of PyCaret was inspired by Caret library in R.
 
@@ -18,7 +24,7 @@ PyCaret is a great library which not only simplifies the machine learning tasks 
 ![alt text](https://github.com/pycaret/pycaret/blob/master/pycaret2-features.png)
 
 ## Current Release
-PyCaret `2.3.1` is now available. See `2.3.1` release notes. The easiest way to install pycaret is using pip.
+PyCaret `2.3.4` is now available. See `2.3.4` release notes. The easiest way to install pycaret is using pip.
 
 ```python
 pip install pycaret
@@ -66,7 +72,7 @@ cuML >= 0.15 cannot be installed on Google Colab. Instead use blazingSQL (https:
 - Other Resources: https://github.com/pycaret/pycaret/tree/master/resources
 - Issue Logs: https://github.com/pycaret/pycaret/issues
 - Contribute: https://pycaret.readthedocs.io/en/latest/contribute.html
-- Join Slack Community: https://join.slack.com/t/pycaret/shared_invite/zt-qc4pfcw5-OLV3UFF~DzMHFyaJeFKw~A
+- Join Slack Community: https://join.slack.com/t/pycaret/shared_invite/zt-row9phbm-BoJdEVPYnGf7_NxNBP307w
 
 ## Who should use PyCaret?
 PyCaret is an open source library that anybody can use. In our view the ideal target audience of PyCaret is: <br />
@@ -74,9 +80,9 @@ PyCaret is an open source library that anybody can use. In our view the ideal ta
 - Experienced Data Scientists who want to increase productivity.
 - Citizen Data Scientists who prefer a low code machine learning solution.
 - Data Science Students.
-- Data Science Professionals who wants to build rapid prototypes.
+- Data Science Professionals who want to build rapid prototypes.
 
-## Current Contributors
+## Contributors
 <a href="https://github.com/pycaret/pycaret/graphs/contributors">
   <img src="https://contributors-img.web.app/image?repo=pycaret/pycaret" />
 </a>

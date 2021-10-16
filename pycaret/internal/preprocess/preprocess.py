@@ -221,10 +221,11 @@ class DataTypes_Auto_infer(BaseEstimator, TransformerMixin):
 
         # if column is int and unique counts are more than two, then: (exclude target)
         for i in data.select_dtypes(include=["int64"]).columns:
-            if data[i].nunique() <= 20:  # hard coded
-                data[i] = data[i].apply(str_if_not_null)
-            else:
-                data[i] = data[i].astype(self.float_dtype)
+            if i != self.target:
+                if data[i].nunique() <= 20:  # hard coded
+                    data[i] = data[i].apply(str_if_not_null)
+                else:
+                    data[i] = data[i].astype(self.float_dtype)
 
         # # if colum is objfloat  and only have two unique counts , this is probabaly one hot encoded
         # # make it object
@@ -2604,10 +2605,13 @@ class Fix_multicollinearity(BaseEstimator, TransformerMixin):
             data = takes preprocessed data frame
         Returns:
             None
-    """
+        """
+
+        if data[self.target_variable].dtype not in ["int32", "int64", "float32", "float64"]:
+            raise ValueError('dtype for the target variable should be int32, int64, float32, or float64 only')
 
         # global data1
-        data1 = data.select_dtypes(include=["int64", "float64", "float32"])
+        data1 = data.select_dtypes(include=["int32", "int64", "float32", "float64"])
         # try:
         #   self.data1 = self.data1.astype('float16')
         # except:

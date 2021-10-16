@@ -936,6 +936,7 @@ class _UnsupervisedExperiment(_TabularExperiment):
         fit_kwargs: Optional[dict] = None,
         verbose: bool = True,
         system: bool = True,
+        add_to_model_list: bool = True,
         raise_num_clusters: bool = False,
         X_data: Optional[pd.DataFrame] = None,  # added in pycaret==2.2.0
         display: Optional[Display] = None,  # added in pycaret==2.2.0
@@ -998,6 +999,9 @@ class _UnsupervisedExperiment(_TabularExperiment):
         system: bool, default = True
             Must remain True all times. Only to be changed by internal functions.
             If False, method will return a tuple of model and the model fit time.
+
+        add_to_model_list: bool, default = True
+            Whether to save model and results in master_model_container.
 
         **kwargs:
             Additional keyword arguments to pass to the estimator.
@@ -1284,11 +1288,12 @@ class _UnsupervisedExperiment(_TabularExperiment):
 
         self.display_container.append(model_results)
 
-        # storing results in master_model_container
-        self.logger.info("Uploading model into container now")
-        self.master_model_container.append(
-            {"model": model, "scores": model_results, "cv": None}
-        )
+        if add_to_model_list:
+            # storing results in master_model_container
+            self.logger.info("Uploading model into container now")
+            self.master_model_container.append(
+                {"model": model, "scores": model_results, "cv": None}
+            )
 
         if self._ml_usecase == MLUsecase.CLUSTERING:
             display.display(

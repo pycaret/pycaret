@@ -2418,8 +2418,9 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             The resolution scale of the figure.
 
 
-        save: bool, default = False
-            When set to True, plot is saved in the current working directory.
+        save: string or bool, default = False
+            When set to True, Plot is saved as a 'png' file in current working directory.
+            When a path destination is given, Plot is saved as a 'png' file the given path to the directory of choice.
 
 
         fold: int or scikit-learn compatible CV generator, default = None
@@ -2642,6 +2643,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         feature: Optional[str] = None,
         observation: Optional[int] = None,
         use_train_data: bool = False,
+        save: Union[str, bool] = False,
         **kwargs,
     ):
 
@@ -2689,6 +2691,11 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             of test data.
 
 
+        save: string or bool, default = False
+            When set to True, Plot is saved as a 'png' file in current working directory.
+            When a path destination is given, Plot is saved as a 'png' file the given path to the directory of choice.
+
+
         **kwargs:
             Additional keyword arguments to pass to the plot.
 
@@ -2704,6 +2711,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             feature=feature,
             observation=observation,
             use_train_data=use_train_data,
+            save=save,
             **kwargs,
         )
 
@@ -3012,7 +3020,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             Dictionary of applicable authentication tokens.
 
             When platform = 'aws':
-            {'bucket' : 'S3-bucket-name'}
+            {'bucket' : 'S3-bucket-name', 'path': (optional) folder name under the bucket}
 
             When platform = 'gcp':
             {'project': 'gcp-project-name', 'bucket' : 'gcp-bucket-name'}

@@ -1,6 +1,10 @@
 name: pytest on push
 
-on: [push, pull_request]
+on:
+  push:
+  pull_request:
+  schedule:
+    - cron: "0 5 * * *"
 
 jobs:
   # JOBS MUST START WITH test !!!!
@@ -24,6 +28,7 @@ jobs:
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
           if [ -f requirements-ts.txt ]; then pip install -r requirements-ts.txt; fi
           if [ -f requirements-optional.txt ]; then pip install -r requirements-optional.txt; fi
+          if [ -f requirements-test.txt ]; then pip install -r requirements-test.txt; fi
           pip install https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.0.0/en_core_web_sm-3.0.0-py3-none-any.whl
       - name: Remove tests
         run: |
@@ -54,9 +59,10 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -U pytest
           python -m pip install codecov
-          pip install -r requirements.txt
-          pip install -r requirements-ts.txt
-          pip install -r requirements-optional.txt
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          if [ -f requirements-ts.txt ]; then pip install -r requirements-ts.txt; fi
+          if [ -f requirements-optional.txt ]; then pip install -r requirements-optional.txt; fi
+          if [ -f requirements-test.txt ]; then pip install -r requirements-test.txt; fi
           pip install https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.0.0/en_core_web_sm-3.0.0-py3-none-any.whl
       - name: Remove tests
         run: |
@@ -158,6 +164,7 @@ jobs:
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
           if [ -f requirements-ts.txt ]; then pip install -r requirements-ts.txt; fi
           if [ -f requirements-optional.txt ]; then pip install -r requirements-optional.txt; fi
+          if [ -f requirements-test.txt ]; then pip install -r requirements-test.txt; fi
           pip install https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.0.0/en_core_web_sm-3.0.0-py3-none-any.whl
       - name: Remove tests
         run: |
@@ -214,6 +221,7 @@ jobs:
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
           if [ -f requirements-ts.txt ]; then pip install -r requirements-ts.txt; fi
           if [ -f requirements-optional.txt ]; then pip install -r requirements-optional.txt; fi
+          if [ -f requirements-test.txt ]; then pip install -r requirements-test.txt; fi
           pip install https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.0.0/en_core_web_sm-3.0.0-py3-none-any.whl
       - name: Remove tests
         run: |

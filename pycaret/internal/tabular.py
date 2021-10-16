@@ -580,8 +580,11 @@ def compare_models(
                         refit=False,
                     )
                     model_results = pull(pop=True)
+                    assert np.sum(model_results.iloc[0]) != 0.0
                 except:
-                    logger.error(f"create_model() for {model} raised an exception:")
+                    logger.error(
+                        f"create_model() for {model} raised an exception or returned all 0.0:"
+                    )
                     logger.error(traceback.format_exc())
                     continue
         logger.info("SubProcess create_model() end ==================================")
@@ -690,21 +693,44 @@ def compare_models(
             if index in n_select_range:
                 display.update_monitor(2, _get_model_name(model))
                 display.display_monitor()
-                model, model_fit_time = create_model_supervised(
-                    estimator=model,
-                    system=False,
-                    verbose=False,
-                    fold=fold,
-                    round=round,
-                    cross_validation=False,
-                    predict=False,
-                    fit_kwargs=fit_kwargs,
-                    groups=groups,
-                )
-                sorted_models.append(model)
+                if errors == "raise":
+                    model, model_fit_time = create_model_supervised(
+                        estimator=model,
+                        system=False,
+                        verbose=False,
+                        fold=fold,
+                        round=round,
+                        cross_validation=False,
+                        predict=False,
+                        fit_kwargs=fit_kwargs,
+                        groups=groups,
+                    )
+                    sorted_models.append(model)
+                else:
+                    try:
+                        model, model_fit_time = create_model_supervised(
+                            estimator=model,
+                            system=False,
+                            verbose=False,
+                            fold=fold,
+                            round=round,
+                            cross_validation=False,
+                            predict=False,
+                            fit_kwargs=fit_kwargs,
+                            groups=groups,
+                        )
+                        sorted_models.append(model)
+                        assert np.sum(model_results.iloc[0]) != 0.0
+                    except Exception:
+                        logger.error(
+                            f"create_model() for {model} raised an exception or returned all 0.0:"
+                        )
+                        logger.error(traceback.format_exc())
+                        model = None
+                        continue
                 full_logging = True
 
-            if logging_param and cross_validation:
+            if logging_param and cross_validation and model is not None:
 
                 try:
                     _mlflow_log_model(
@@ -757,6 +783,7 @@ def create_model_unsupervised(
     fit_kwargs: Optional[dict] = None,
     verbose: bool = True,
     system: bool = True,
+    add_to_model_list: bool = True,
     raise_num_clusters: bool = False,
     X_data: Optional[pd.DataFrame] = None,  # added in pycaret==2.2.0
     display: Optional[Display] = None,  # added in pycaret==2.2.0
@@ -1089,13 +1116,15 @@ def create_model_unsupervised(
     model_results = pd.DataFrame(metrics, index=[0])
     model_results = model_results.round(round)
 
-    # storing results in create_model_container
-    create_model_container.append(model_results)
     display_container.append(model_results)
 
-    # storing results in master_model_container
-    logger.info("Uploading model into container now")
-    master_model_container.append(model)
+    if add_to_model_list:
+        # storing results in create_model_container
+        create_model_container.append(model_results)
+
+        # storing results in master_model_container
+        logger.info("Uploading model into container now")
+        master_model_container.append(model)
 
     if _ml_usecase == MLUsecase.CLUSTERING:
         display.display(
@@ -1134,6 +1163,7 @@ def create_model_supervised(
     X_train_data: Optional[pd.DataFrame] = None,  # added in pycaret==2.2.0
     y_train_data: Optional[pd.DataFrame] = None,  # added in pycaret==2.2.0
     metrics=None,
+    add_to_model_list: bool = True,
     display: Optional[Display] = None,  # added in pycaret==2.2.0
     **kwargs,
 ) -> Any:
@@ -1577,15 +1607,17 @@ def create_model_supervised(
 
     display.move_progress()
 
-    logger.info("Uploading results into container")
-
-    # storing results in create_model_container
-    create_model_container.append(model_results.data)
     display_container.append(model_results.data)
 
-    # storing results in master_model_container
-    logger.info("Uploading model into container now")
-    master_model_container.append(model)
+    if add_to_model_list:
+        logger.info("Uploading results into container")
+
+        # storing results in create_model_container
+        create_model_container.append(model_results.data)
+
+        # storing results in master_model_container
+        logger.info("Uploading model into container now")
+        master_model_container.append(model)
 
     display.display(model_results, clear=system, override=False if not system else None)
 
@@ -2624,6 +2656,16 @@ def tune_model_supervised(
 
         logger.info(f"Tuning with n_jobs={n_jobs}")
 
+        def get_optuna_tpe_sampler():
+            try:
+                tpe_sampler = optuna.samplers.TPESampler(
+                    seed=seed, multivariate=True, constant_liar=True
+                )
+            except TypeError:
+                # constant_liar added in 2.8.0
+                tpe_sampler = optuna.samplers.TPESampler(seed=seed, multivariate=True)
+            return tpe_sampler
+
         if search_library == "optuna":
             # suppress output
             logging.getLogger("optuna").setLevel(logging.WARNING)
@@ -2640,7 +2682,7 @@ def tune_model_supervised(
                 pruner = pruner_translator[early_stopping]
 
             sampler_translator = {
-                "tpe": optuna.samplers.TPESampler(seed=seed),
+                "tpe": get_optuna_tpe_sampler(),
                 "random": optuna.samplers.RandomSampler(seed=seed),
             }
             sampler = sampler_translator[search_algorithm]
@@ -2777,6 +2819,10 @@ def tune_model_supervised(
                                 "Couldn't convert param_grid to specific library distributions. Exception:"
                             )
                             logger.warning(traceback.format_exc())
+                    if search_algorithm == "optuna" and not "sampler" in search_kwargs:
+                        import optuna
+
+                        search_kwargs["sampler"] = get_optuna_tpe_sampler()
                     logger.info(
                         f"Initializing tune_sklearn.TuneSearchCV, {search_algorithm}"
                     )
@@ -3570,7 +3616,7 @@ def blend_models(
     estimator_dict = {}
     for x in estimator_list:
         x = get_estimator_from_meta_estimator(x)
-        name = _get_model_id(x)
+        name = _get_model_id(x) or x.__class__.__name__
         suffix = 1
         original_name = name
         while name in estimator_dict:
@@ -3909,7 +3955,7 @@ def stack_models(
     estimator_dict = {}
     for x in estimator_list:
         x = get_estimator_from_meta_estimator(x)
-        name = _get_model_id(x)
+        name = _get_model_id(x) or x.__class__.__name__
         suffix = 1
         original_name = name
         while name in estimator_dict:
@@ -4078,8 +4124,9 @@ def plot_model(
     scale: float, default = 1
         The resolution scale of the figure.
 
-    save: bool, default = False
+    save: string/bool, default = False
         When set to True, Plot is saved as a 'png' file in current working directory.
+        When a path destination is given, Plot is saved as a 'png' file the given path to the directory of choice.
 
     fold: integer or scikit-learn compatible CV generator, default = None
         Controls cross-validation used in certain plots. If None, will use the CV generator
@@ -4345,8 +4392,12 @@ def plot_model(
             plot_filename = f"{plot_name}.html"
 
             if save:
+                if not isinstance(save, bool):
+                    plot_filename = os.path.join(save, plot_filename)
+                else:
+                    plot_filename = plot
+                logger.info(f"Saving '{plot_filename}'")
                 resplots.write_html(plot_filename)
-                logger.info(f"Saving '{plot_filename}' in current active directory")
 
             logger.info("Visual Rendered Successfully")
             return plot_filename
@@ -4432,9 +4483,12 @@ def plot_model(
             plot_filename = f"{plot_name}.html"
 
             if save:
+                if not isinstance(save, bool):
+                    plot_filename = os.path.join(save, plot_filename)
+                else:
+                    plot_filename = plot
+                logger.info(f"Saving '{plot_filename}'")
                 fig.write_html(plot_filename)
-                logger.info(f"Saving '{plot_filename}' in current active directory")
-
             elif system:
                 if display_format == "streamlit":
                     st.write(fig)
@@ -4496,8 +4550,12 @@ def plot_model(
             plot_filename = f"{plot_name}.html"
 
             if save:
-                fig.write_html(f"{plot_filename}")
-                logger.info(f"Saving '{plot_filename}' in current active directory")
+                if not isinstance(save, bool):
+                    plot_filename = os.path.join(save, plot_filename)
+                else:
+                    plot_filename = plot
+                logger.info(f"Saving '{plot_filename}'")
+                fig.write_html(plot_filename)
             elif system:
                 if display_format == "streamlit":
                     st.write(fig)
@@ -4577,8 +4635,12 @@ def plot_model(
             plot_filename = f"{plot_name}.html"
 
             if save:
-                fig.write_html(f"{plot_filename}")
-                logger.info(f"Saving '{plot_filename}' in current active directory")
+                if not isinstance(save, bool):
+                    plot_filename = os.path.join(save, plot_filename)
+                else:
+                    plot_filename = plot
+                logger.info(f"Saving '{plot_filename}'")
+                fig.write_html(plot_filename)
             elif system:
                 if display_format == "streamlit":
                     st.write(fig)
@@ -4669,8 +4731,12 @@ def plot_model(
             plot_filename = f"{plot_name}.html"
 
             if save:
-                fig.write_html(f"{plot_filename}")
-                logger.info(f"Saving '{plot_filename}' in current active directory")
+                if not isinstance(save, bool):
+                    plot_filename = os.path.join(save, plot_filename)
+                else:
+                    plot_filename = plot
+                logger.info(f"Saving '{plot_filename}'")
+                fig.write_html(plot_filename)
             elif system:
                 if display_format == "streamlit":
                     st.write(fig)
@@ -4738,8 +4804,12 @@ def plot_model(
             plot_filename = f"{plot_name}.html"
 
             if save:
-                fig.write_html(f"{plot_filename}")
-                logger.info(f"Saving '{plot_filename}' in current active directory")
+                if not isinstance(save, bool):
+                    plot_filename = os.path.join(save, plot_filename)
+                else:
+                    plot_filename = plot
+                logger.info(f"Saving '{plot_filename}'")
+                fig.write_html(plot_filename)
             elif system:
                 fig.show()
 
@@ -5102,8 +5172,12 @@ def plot_model(
                     y_test__, predict_proba__, figsize=(10, 6)
                 )
                 if save:
-                    logger.info(f"Saving '{plot_name}.png' in current active directory")
-                    plt.savefig(f"{plot_name}.png", bbox_inches="tight")
+                    if not isinstance(save, bool):
+                        plot_filename = os.path.join(save, plot_name)
+                    else:
+                        plot_filename = plot
+                    logger.info(f"Saving '{plot_filename}.png'")
+                    plt.savefig(f"{plot_filename}.png", bbox_inches="tight")
                 elif system:
                     plt.show()
                 plt.close()
@@ -5127,8 +5201,12 @@ def plot_model(
                     y_test__, predict_proba__, figsize=(10, 6)
                 )
                 if save:
-                    logger.info(f"Saving '{plot_name}.png' in current active directory")
-                    plt.savefig(f"{plot_name}.png", bbox_inches="tight")
+                    if not isinstance(save, bool):
+                        plot_filename = os.path.join(save, plot_name)
+                    else:
+                        plot_filename = plot
+                    logger.info(f"Saving '{plot_filename}.png'")
+                    plt.savefig(f"{plot_filename}.png", bbox_inches="tight")
                 elif system:
                     plt.show()
                 plt.close()
@@ -5270,8 +5348,12 @@ def plot_model(
             display.move_progress()
             display.clear_output()
             if save:
-                logger.info(f"Saving '{plot_name}.png' in current active directory")
-                plt.savefig(f"{plot_name}.png", bbox_inches="tight")
+                if not isinstance(save, bool):
+                    plot_filename = os.path.join(save, plot_name)
+                else:
+                    plot_filename = plot
+                logger.info(f"Saving '{plot_filename}.png'")
+                plt.savefig(f"{plot_filename}.png", bbox_inches="tight")
             elif system:
                 plt.show()
             plt.close()
@@ -5315,8 +5397,12 @@ def plot_model(
             display.move_progress()
             display.clear_output()
             if save:
-                logger.info(f"Saving '{plot_name}.png' in current active directory")
-                plt.savefig(f"{plot_name}.png", bbox_inches="tight")
+                if not isinstance(save, bool):
+                    plot_filename = os.path.join(save, plot_name)
+                else:
+                    plot_filename = plot
+                logger.info(f"Saving '{plot_filename}.png'")
+                plt.savefig(f"{plot_filename}.png", bbox_inches="tight")
             elif system:
                 plt.show()
             plt.close()
@@ -5575,8 +5661,12 @@ def plot_model(
             display.move_progress()
             display.clear_output()
             if save:
-                logger.info(f"Saving '{plot_name}.png' in current active directory")
-                plt.savefig(f"{plot_name}.png", bbox_inches="tight")
+                if not isinstance(save, bool):
+                    plot_filename = os.path.join(save, plot_name)
+                else:
+                    plot_filename = plot
+                logger.info(f"Saving '{plot_filename}.png'")
+                plt.savefig(f"{plot_filename}.png", bbox_inches="tight")
             elif system:
                 plt.show()
             plt.close()
@@ -5614,8 +5704,12 @@ def plot_model(
                     data_y, predict_proba__, figsize=(10, 6)
                 )
                 if save:
-                    logger.info(f"Saving '{plot_name}.png' in current active directory")
-                    plt.savefig(f"{plot_name}.png", bbox_inches="tight")
+                    if not isinstance(save, bool):
+                        plot_filename = os.path.join(save, plot_name)
+                    else:
+                        plot_filename = plot
+                    logger.info(f"Saving '{plot_filename}.png'")
+                    plt.savefig(f"{plot_filename}.png", bbox_inches="tight")
                 elif system:
                     plt.show()
                 plt.close()
@@ -5744,20 +5838,21 @@ def interpret_model(
     observation: Optional[int] = None,
     use_train_data: Optional[bool] = False,
     X_new_sample: Optional[pd.DataFrame] = None,
+    y_new_sample: Optional[pd.DataFrame] = None,  # add for pfi explainer
     save: bool = False,
     **kwargs,  # added in pycaret==2.1
 ):
 
     """
     This function takes a trained model object and returns an interpretation plot.
-    Most plots in this function are implemented based on the SHAP (SHapley Additive 
-    exPlanations), which is a unified approach to explain the output of any machine 
+    Most plots in this function are implemented based on the SHAP (SHapley Additive
+    exPlanations), which is a unified approach to explain the output of any machine
     learning model. SHAP connects game theory with local explanations.
 
     For more information : https://shap.readthedocs.io/en/latest/
 
     For Partial Dependence Plot : https://github.com/SauceCat/PDPbox
-     
+
     Example
     -------
     >>> from pycaret.datasets import get_data
@@ -5772,22 +5867,24 @@ def interpret_model(
     ----------
     estimator : object, default = none
         A trained model object to be passed as an estimator. Only tree-based
-        models are accepted when plot type is 'summary', 'correlation', or 
-        'reason'. 'pdp' plot is model agnostic.   
+        models are accepted when plot type is 'summary', 'correlation', or
+        'reason'. 'pdp' plot is model agnostic.
 
     plot : str, default = 'summary'
-        Enter abbreviation of type of plot. The current list of plots supported 
+        Abbreviation of type of plot. The current list of plots supported
         are (Plot - Name):
 
         * 'summary' - Summary Plot using SHAP
         * 'correlation' - Dependence Plot using SHAP
-        * 'reason' - Force Plot using SHAP           
-        * 'pdp' - Partial Dependence Plot                
+        * 'reason' - Force Plot using SHAP
+        * 'pdp' - Partial Dependence Plot
+        * 'msa' - Morris Sensitivity Analysis
+        * 'pfi' - Permutation Feature Importance
 
     feature: str, default = None
-        This parameter is only needed when plot = 'correlation' or 'pdp'. 
-        By default feature is set to None which means the first column of the 
-        dataset will be used as a variable. A feature parameter must be passed 
+        This parameter is only needed when plot = 'correlation' or 'pdp'.
+        By default feature is set to None which means the first column of the
+        dataset will be used as a variable. A feature parameter must be passed
         to change this.
 
     observation: integer, default = None
@@ -5797,9 +5894,18 @@ def interpret_model(
         interactivity. For analysis at the sample level, an observation parameter must
         be passed with the index value of the observation in test / hold-out set.
 
+    use_train_data: bool, default = False
+        When set to true, train data will be used for plots, instead
+        of test data.
+
     X_new_sample: pd.DataFrame, default = None
         Row from an out-of-sample dataframe (neither train nor test data) to be plotted.
-        The sample must have the same columns as the raw input data, and it is transformed
+        The sample must have the same columns as the raw input train data, and it is transformed
+        by the preprocessing pipeline automatically before plotting.
+
+    y_new_sample: pd.DataFrame, default = None
+        Row from an out-of-sample dataframe (neither train nor test data) to be plotted.
+        The sample must have the same columns as the raw input label data, and it is transformed
         by the preprocessing pipeline automatically before plotting.
 
     save: bool, default = False
@@ -5832,7 +5938,7 @@ def interpret_model(
     import matplotlib.pyplot as plt
 
     # checking if shap available
-    if plot in ['summary','correlation','reason']:
+    if plot in ["summary", "correlation", "reason"]:
         try:
             import shap
         except ImportError:
@@ -5844,15 +5950,39 @@ def interpret_model(
             )
 
     # checking if pdpbox is available
-    if plot == 'pdp':
+    if plot == "pdp":
         try:
-            import pdpbox
+            from interpret.blackbox import PartialDependence
         except ImportError:
             logger.error(
-                "pdpbox library not found. pip install pdpbox to generate pdp plot in interpret_model function."
+                "interpretml library not found. pip install interpret to generate pdp plot in interpret_model function."
             )
             raise ImportError(
-                "pdpbox library not found. pip install pdpbox to generate pdp plot in interpret_model function."
+                "interpretml library not found. pip install interpret to generate pdp plot in interpret_model function."
+            )
+
+    # checking interpret is available
+    if plot == "msa":
+        try:
+            from interpret.blackbox import MorrisSensitivity
+        except ImportError:
+            logger.error(
+                "interpretml library not found. pip install interpret to generate msa plot in interpret_model function."
+            )
+            raise ImportError(
+                "interpretml library not found. pip install interpret to generate msa plot in interpret_model function."
+            )
+
+    # checking interpret-community is available
+    if plot == "pfi":
+        try:
+            from interpret.ext.blackbox import PFIExplainer
+        except ImportError:
+            logger.error(
+                "interpret-community library not found. pip install interpret-community to generate pfi plot in interpret_model function."
+            )
+            raise ImportError(
+                "interpret-community library not found. pip install interpret-community to generate pfi plot in interpret_model function."
             )
 
     # get estimator from meta estimator
@@ -5864,16 +5994,18 @@ def interpret_model(
     shap_models = {k: v for k, v in _all_models_internal.items() if v.shap}
     shap_models_ids = set(shap_models.keys())
 
-    if plot in ['summary', 'correlation', 'reason'] and (model_id not in shap_models_ids):
+    if plot in ["summary", "correlation", "reason"] and (
+        model_id not in shap_models_ids
+    ):
         raise TypeError(
             f"This function only supports tree based models for binary classification: {', '.join(shap_models_ids)}."
         )
 
     # plot type
-    allowed_types = ["summary", "correlation", "reason", "pdp"]
+    allowed_types = ["summary", "correlation", "reason", "pdp", "msa", "pfi"]
     if plot not in allowed_types:
         raise ValueError(
-            "type parameter only accepts 'summary', 'correlation', 'reason' or 'pdp'."
+            "type parameter only accepts 'summary', 'correlation', 'reason', 'pdp', 'msa' or 'pfi'."
         )
 
     if X_new_sample is not None and (observation is not None or use_train_data):
@@ -5886,9 +6018,13 @@ def interpret_model(
     """
     if X_new_sample is not None:
         test_X = prep_pipe.transform(X_new_sample)
+        if plot == "pfi":
+            test_y = prep_pipe.transform(y_new_sample)  # add for pfi explainer
     else:
         # Storing X_train and y_train in data_X and data_y parameter
         test_X = X_train if use_train_data else X_test
+        if plot == "pfi":
+            test_y = y_train if use_train_data else y_test  # add for pfi explainer
 
     np.random.seed(seed)
 
@@ -5915,9 +6051,16 @@ def interpret_model(
             shap_plot = shap.summary_plot(shap_values[1], test_X, show=show, **kwargs)
         except Exception:
             shap_plot = shap.summary_plot(shap_values, test_X, show=show, **kwargs)
-        
+
         if save:
-            plt.savefig(f"SHAP {plot}.png", bbox_inches="tight")
+            if not isinstance(save, bool):
+                plot_filename = os.path.join(save, plot)
+            else:
+                plot_filename = plot
+            logger.info(f"Saving '{plot_filename}.png'")
+            plt.savefig(plot_filename)
+            plt.close()
+
         return shap_plot
 
     def correlation(show: bool = True):
@@ -5950,7 +6093,14 @@ def interpret_model(
             logger.info("model type detected: type 2")
             shap.dependence_plot(dependence, shap_values, test_X, show=show, **kwargs)
         if save:
-            plt.savefig(f"SHAP {plot}.png", bbox_inches="tight")
+            if not isinstance(save, bool):
+                plot_filename = os.path.join(save, plot)
+            else:
+                plot_filename = plot
+            logger.info(f"Saving '{plot_filename}.png'")
+            plt.savefig(f"{plot_filename}.png", bbox_inches="tight")
+            plt.close()
+
         return None
 
     def reason(show: bool = True):
@@ -6040,32 +6190,64 @@ def interpret_model(
         return shap_plot
 
     def pdp(show: bool = True):
-
         logger.info("Checking feature parameter passed")
         if feature == None:
-
             logger.warning(
-                f"No feature passed. Default value of feature used for pdp : {X_train.columns[0]}"
+                f"No feature passed. Default value of feature used for pdp : {test_X.columns[0]}"
             )
-            pdp_feature = X_train.columns[0]
-
+            pdp_feature = test_X.columns[0]
         else:
-
             logger.info(
                 f"feature value passed. Feature used for correlation plot: {feature}"
             )
             pdp_feature = feature
 
-        logger.info("Importing pdf from pdpbox")
-        from pdpbox import pdp
-        logger.info("Creating PDPIsolate Object")
-        pdp_ = pdp.pdp_isolate(model=model, dataset=X_train, model_features=X_train.columns, feature=pdp_feature)
-        logger.info("Creating PDP Plot")
-        fig, axes = pdp.pdp_plot(pdp_, pdp_feature, plot_lines=True, frac_to_plot=100, x_quantile=True, show_percentile=True)
-        
+        from interpret.blackbox import PartialDependence
+
+        try:
+            pdp = PartialDependence(
+                predict_fn=model.predict_proba, data=test_X
+            )  # classification
+        except AttributeError:
+            pdp = PartialDependence(predict_fn=model.predict, data=test_X)  # regression
+
+        pdp_global = pdp.explain_global()
+        pdp_plot = pdp_global.visualize(list(test_X.columns).index(pdp_feature))
         if save:
-            plt.savefig(f"PDP {plot}.png", bbox_inches="tight")
-            
+            import plotly.io as pio
+
+            pio.write_html(pdp_plot, f"PDP {plot}.html")
+        return pdp_plot
+
+    def msa(show: bool = True):
+        from interpret.blackbox import MorrisSensitivity
+
+        try:
+            msa = MorrisSensitivity(
+                predict_fn=model.predict_proba, data=test_X
+            )  # classification
+        except AttributeError:
+            msa = MorrisSensitivity(predict_fn=model.predict, data=test_X)  # regression
+        msa_global = msa.explain_global()
+        msa_plot = msa_global.visualize()
+        if save:
+            import plotly.io as pio
+
+            pio.write_html(msa_plot, f"MSA {plot}.html")
+        return msa_plot
+
+    def pfi(show: bool = True):
+        from interpret.ext.blackbox import PFIExplainer
+
+        pfi = PFIExplainer(model)
+        pfi_global = pfi.explain_global(test_X, true_labels=test_y)
+        pfi_plot = pfi_global.visualize()
+        if save:
+            import plotly.io as pio
+
+            pio.write_html(pfi_plot, f"PFI {plot}.html")
+        return pfi_plot
+
     shap_plot = locals()[plot](show=not save)
 
     logger.info("Visual Rendered Successfully")
@@ -7034,6 +7216,7 @@ def finalize_model(
         y_train_data=y,
         fit_kwargs=fit_kwargs,
         groups=groups,
+        add_to_model_list=False,
     )
     model_results = pull(pop=True)
 
@@ -8166,6 +8349,94 @@ def load_config(file_name: str):
     display_container = []
 
     return r
+
+
+def get_leaderboard(
+    finalize_models: bool = False,
+    model_only: bool = False,
+    fit_kwargs: Optional[dict] = None,
+    groups: Optional[Union[str, Any]] = None,
+    verbose: bool = True,
+    display: Optional[Display] = None,
+):
+    """
+    generates leaderboard for all models run in current run.
+    """
+    model_container = get_config("master_model_container")
+    result_container = get_config("create_model_container")
+
+    if not display:
+        progress_args = {"max": len(model_container)+1}
+        timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
+        monitor_rows = [
+            ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
+            ["Status", ". . . . . . . . . . . . . . . . . .", "Loading Dependencies"],
+            ["Estimator", ". . . . . . . . . . . . . . . . . .", "Compiling Library"],
+        ]
+        display = Display(
+            verbose=verbose,
+            html_param=html_param,
+            progress_args=progress_args,
+            monitor_rows=monitor_rows,
+        )
+
+        display.display_progress()
+        display.display_monitor()
+
+    result_container_mean = []
+    finalized_models = []
+
+    display.update_monitor(1, "Finalizing models" if finalize_models else "Collecting models")
+    for i in range(len(result_container)):
+        model_results = result_container[i]
+        mean_scores = model_results[-2:-1]
+        model_name = _get_model_name(model_container[i])
+        mean_scores["Index"] = i
+        mean_scores["Model Name"] = model_name
+        display.update_monitor(2, model_name)
+        if finalize_models:
+            model = (
+                finalize_model(
+                    model_container[i],
+                    fit_kwargs=fit_kwargs,
+                    groups=groups,
+                    model_only=model_only,
+                )
+            )
+        else:
+            model = deepcopy(model_container[i])
+            if not is_fitted(model):
+                model, _ = create_model_supervised(
+                    estimator=model,
+                    verbose=False,
+                    system=False,
+                    fit_kwargs=fit_kwargs,
+                    groups=groups,
+                    add_to_model_list=False,
+                )
+            if not model_only:
+                pipeline = deepcopy(prep_pipe)
+                pipeline.steps.append(["trained_model", model])
+                model = pipeline
+        display.move_progress()
+        finalized_models.append(model)
+        result_container_mean.append(mean_scores)
+
+    display.update_monitor(1, "Creating dataframe")
+    results = pd.concat(result_container_mean)
+    results["Model"] = list(range(len(results)))
+    results["Model"] = results["Model"].astype("object")
+    model_loc = results.columns.get_loc("Model")
+    for x in range(len(results)):
+        results.iat[x, model_loc] = finalized_models[x]
+    rearranged_columns = list(results.columns)
+    rearranged_columns.remove("Model")
+    rearranged_columns.remove("Model Name")
+    rearranged_columns = ["Model Name", "Model"] + rearranged_columns
+    results = results[rearranged_columns]
+    results.set_index("Index", inplace=True, drop=True)
+    display.clear_output()
+    return results
 
 
 def _choose_better(
