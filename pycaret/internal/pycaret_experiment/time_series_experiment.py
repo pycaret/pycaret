@@ -2547,9 +2547,14 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 data = self._get_y_data(split="all")
 
                 fh = data_kwargs.get("fh", None)
+                alpha = data_kwargs.get("alpha", 0.05)
                 return_pred_int = estimator.get_tag("capability:pred_int")
                 predictions = self.predict_model(
-                    estimator, fh=fh, return_pred_int=return_pred_int, verbose=False
+                    estimator,
+                    fh=fh,
+                    alpha=alpha,
+                    return_pred_int=return_pred_int,
+                    verbose=False,
                 )
             elif plot in require_residuals:
                 resid = self.get_residuals(estimator=estimator)
