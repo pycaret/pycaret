@@ -2777,9 +2777,13 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         data = None  # TODO: Add back when we have support for multivariate TS
 
         display_test_metric = verbose
-        if not hasattr(self, "X_test"):
+        if not hasattr(self, "X_test") or fh is not None:
             # If the model is saved and loaded afterwards,
             # it will not have self.X_test
+
+            # Also do not display metrics if user provides own fh
+            # (even if it is same as test set horizon) per
+            # https://github.com/pycaret/pycaret/issues/1702
             display_test_metric = False
 
         if fh is None:
@@ -2883,13 +2887,15 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 self.logger.warning(
                     "predict_model >> No indices matched between test set and prediction. "
                     "You are most likely calling predict_model after finalizing model. "
-                    "All metrics will be set to NaN"
+                    "Metrics will not be displayed"
                 )
-                metrics = self._calculate_metrics(y_test=[], pred=[], pred_prob=None)  # type: ignore
-                metrics = {metric_name: np.nan for metric_name, _ in metrics.items()}
+                # metrics = self._calculate_metrics(y_test=[], pred=[], pred_prob=None)  # type: ignore
+                # metrics = {metric_name: np.nan for metric_name, _ in metrics.items()}
+                display_test_metric = False
             else:
                 metrics = self._calculate_metrics(y_test=y_test_common, pred=y_test_pred_common, pred_prob=None)  # type: ignore
 
+        if display_test_metric:
             # Display Test Score
             # model name
             full_name = self._get_model_name(estimator)
