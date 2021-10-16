@@ -4092,7 +4092,7 @@ class _SupervisedExperiment(_TabularExperiment):
                 if not isinstance(save, bool):
                     plot_filename = os.path.join(save, plot_filename)
                 self.logger.info(f"Saving '{plot_filename}'")
-                pio.write_html(pdp_plot,plot_filename)
+                pio.write_html(pdp_plot, plot_filename)
             return pdp_plot
 
         def msa(show: bool = True):
