@@ -785,37 +785,26 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         """
         This function initializes the training environment and creates the transformation
         pipeline. Setup function must be called before executing any other function. It takes
-        two mandatory parameters: ``data`` and ``target``. All the other parameters are
-        optional.
+        one mandatory parameters: ``data``. All the other parameters are optional.
 
         Example
         -------
         >>> from pycaret.datasets import get_data
-        >>> boston = get_data('boston')
+        >>> airline = get_data('airline')
         >>> from pycaret.time_series import *
-        >>> exp_name = setup(data = boston,  target = 'medv')
+        >>> exp_name = setup(data = airline,  fh = 12)
 
 
         data : pandas.Series or pandas.DataFrame
-            Shape (n_samples, 1), where n_samples is the number of samples.
-
-
-        fh: np.array, default = None
-            The forecast horizon to be used for forecasting. User must specify a value.
-            The values of the array must be integers specifying the lookahead points that
-            must be forecasted. e.g. np.array([2, 5]) will forecast 2 and 5 points ahead.
-            Default value of None will result in an error.
+            Shape (n_samples, 1), when pandas.DataFrame, otherwise (n_samples, ).
 
 
         preprocess: bool, default = True
-            When set to False, no transformations are applied except for train_test_split
-            and custom transformations passed in ``custom_pipeline`` param. Data must be
-            ready for modeling (no missing values, no dates, categorical data encoding),
-            when preprocess is set to False.
+            Parameter not in use for now. Behavior may change in future.
 
 
         imputation_type: str, default = 'simple'
-            The type of imputation to use. Can be either 'simple' or 'iterative'.
+            Parameter not in use for now. Behavior may change in future.
 
 
         fold_strategy: str or sklearn CV generator object, default = 'expanding'
@@ -826,9 +815,9 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             * 'sliding'
 
             You can also pass an sktime compatible cross validation object such
-            as SlidingWindowSplitter or ExpandingWindowSplitter. In this case,
+            as ``SlidingWindowSplitter`` or ``ExpandingWindowSplitter``. In this case,
             the `fold` and `fh` parameters will be ignored and these values will
-            be extracted from the fold_strategy object directly.
+            be extracted from the ``fold_strategy`` object directly.
 
 
         fold: int, default = 3
@@ -837,16 +826,19 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             parameter. Ignored when ``fold_strategy`` is a custom object.
 
 
-        fh: int, list or np.array, default = 1
-            Number of steps ahead to take to evaluate forecast.
+        fh: int or list or np.array, default = 1
+            The forecast horizon to be used for forecasting. Default is set to ``1`` i.e.
+            forecast one point ahead. When integer is passed it means N continious points 
+            in the future without any gap. If you want to forecast values with gaps, you 
+            must pass an array e.g. np.array([2, 5]) will forecast 2 and 5 points ahead.
 
 
         seasonal_period: int or str, default = None
-            Seasonal periods in timeseries data. If not provided the frequency of the data
+            Seasonal period in timeseries data. If not provided the frequency of the data
             index is map to a seasonal period as follows:
 
-            * "S": 60
-            * "T": 60
+            * 'S': 60
+            * 'T': 60
             * 'H': 24
             * 'D': 7
             * 'W': 52
@@ -858,10 +850,10 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             Alternatively you can provide a custom `seasonal_parameter` by passing
             it as an integer.
 
-            NOTE: If data index is not of type pd.core.indexes.period.PeriodIndex,
-            then seasonal_period MUST be passed. Refer to the mapping above for
-            a guide of what values to use depending on the frequency of the data.
-            If your data does not have any seasonality, then set seasonal_period = 1.
+
+        enforce_pi: bool, default = False
+            When set to True, only models that support prediction intervals are
+            loaded in the environment. 
 
 
         n_jobs: int, default = -1
@@ -871,31 +863,11 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
 
         use_gpu: bool or str, default = False
-            When set to True, it will use GPU for training with algorithms that support it,
-            and fall back to CPU if they are unavailable. When set to 'force', it will only
-            use GPU-enabled algorithms and raise exceptions when they are unavailable. When
-            False, all algorithms are trained using CPU only.
-
-            GPU enabled algorithms:
-
-            - Extreme Gradient Boosting, requires no further installation
-
-            - CatBoost Regressor, requires no further installation
-            (GPU is only enabled when data > 50,000 rows)
-
-            - Light Gradient Boosting Machine, requires GPU installation
-            https://lightgbm.readthedocs.io/en/latest/GPU-Tutorial.html
-
-            - Linear Regression, Lasso Regression, Ridge Regression, K Neighbors Regressor,
-            Random Forest, Support Vector Regression, Elastic Net requires cuML >= 0.15
-            https://github.com/rapidsai/cuml
+            Parameter not in use for now. Behavior may change in future.
 
 
         custom_pipeline: (str, transformer) or list of (str, transformer), default = None
-            When passed, will append the custom transformers in the preprocessing pipeline
-            and are applied on each CV fold separately and on the final fit. All the custom
-            transformations are applied after 'train_test_split' and before pycaret's internal
-            transformations.
+            Parameter not in use for now. Behavior may change in future.
 
 
         html: bool, default = True
@@ -911,12 +883,12 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
 
         system_log: bool or logging.Logger, default = True
-            Whether to save the system logging file (as logs.log). If the input
-            already is a logger object, that one is used instead.
+            Whether to save the system logging file (as logs.log). If the input already is a 
+            logger object, that one is used instead.
 
 
         log_experiment: bool, default = False
-            When set to True, all metrics and parameters are logged on the ``MLFlow`` server.
+            When set to True, all metrics and parameters are logged on the ``MLflow`` server.
 
 
         experiment_name: str, default = None
@@ -954,6 +926,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         Returns:
             Global variables that can be changed using the ``set_config`` function.
+
 
         """
         from sktime.utils.seasonality import (
@@ -1152,15 +1125,13 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         Example
         --------
         >>> from pycaret.datasets import get_data
-        >>> from pycaret.internal.pycaret_experiment import TimeSeriesExperiment
-        >>> airline = get_data('airline', verbose=False)
-        >>> fh, fold = np.arange(1,13), 3
-        >>> exp = TimeSeriesExperiment()
-        >>> exp.setup(data=airline, fh=fh, fold=fold)
-        >>> master_display_exp = exp.compare_models(fold=fold, sort='mape')
+        >>> airline = get_data('airline')
+        >>> from pycaret.time_series import *
+        >>> exp_name = setup(data = airline,  fh = 12)
+        >>> best_model = compare_models()
 
 
-        include: list of str or scikit-learn compatible object, default = None
+        include: list of str or sktime compatible object, default = None
             To train and evaluate select models, list containing model ID or scikit-learn
             compatible object can be passed in include param. To see a list of all models
             available in the model library use the ``models`` function.
@@ -1188,7 +1159,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             is ignored when cross_validation is set to False.
 
 
-        sort: str, default = 'smape'
+        sort: str, default = 'SMAPE'
             The sort order of the score grid. It also accepts custom metrics that are
             added through the ``add_metric`` function.
 
@@ -1227,10 +1198,9 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         Warnings
         --------
-        - Changing turbo parameter to False may result in very high training times with
-        datasets exceeding 10,000 rows.
+        - Changing turbo parameter to False may result in very high training times.
 
-        - No models are logged in ``MLFlow`` when ``cross_validation`` parameter is False.
+        - No models are logged in ``MLflow`` when ``cross_validation`` parameter is False.
 
         """
 
@@ -1272,22 +1242,44 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         Example
         -------
         >>> from pycaret.datasets import get_data
-        >>> boston = get_data('boston')
-        >>> from pycaret.regression import *
-        >>> exp_name = setup(data = boston,  target = 'medv')
-        >>> lr = create_model('lr')
+        >>> airline = get_data('airline')
+        >>> from pycaret.time_series import *
+        >>> exp_name = setup(data = airline,  fh = 12)
+        >>> naive = create_model('naive')
 
-
-        estimator: str or scikit-learn compatible object
+        estimator: str or sktime compatible object
             ID of an estimator available in model library or pass an untrained
             model object consistent with scikit-learn API. Estimators available
             in the model library (ID - Name):
 
+            * 'naive' - Naive Forecaster
+            * 'snaive' - Seasonal Naive Forecaster
+            * 'polytrend' - Polynomial Trend Forecaster
             * 'arima' - ARIMA
-            * 'naive' - Naive
-            * 'poly_trend' - PolyTrend
-            * 'exp_smooth' - ExponentialSmoothing
-            * 'theta' - Theta
+            * 'auto_arima' - Auto ARIMA
+            * 'arima' - ARIMA
+            * 'exp_smooth' - Exponential Smoothing
+            * 'ets' - ETS
+            * 'theta' - Theta Forecaster
+            * 'tbats' - TBATS
+            * 'bats' - BATS
+            * 'lr_cds_dt' - Linear w/ Cond. Deseasonalize & Detrending
+            * 'en_cds_dt' - Elastic Net w/ Cond. Deseasonalize & Detrending
+            * 'ridge_cds_dt' - Ridge w/ Cond. Deseasonalize & Detrending
+            * 'lasso_cds_dt' - Lasso w/ Cond. Deseasonalize & Detrending
+            * 'lar_cds_dt' -   Least Angular Regressor w/ Cond. Deseasonalize & Detrending
+            * 'llar_cds_dt' - Lasso Least Angular Regressor w/ Cond. Deseasonalize & Detrending
+            * 'br_cds_dt' - Bayesian Ridge w/ Cond. Deseasonalize & Deseasonalize & Detrending
+            * 'huber_cds_dt' - Huber w/ Cond. Deseasonalize & Detrending
+            * 'par_cds_dt' - Passive Aggressive w/ Cond. Deseasonalize & Detrending
+            * 'omp_cds_dt' - Orthogonal Matching Pursuit w/ Cond. Deseasonalize & Detrending
+            * 'knn_cds_dt' - K Neighbors w/ Cond. Deseasonalize & Detrending
+            * 'dt_cds_dt' - Decision Tree w/ Cond. Deseasonalize & Detrending
+            * 'rf_cds_dt' - Random Forest w/ Cond. Deseasonalize & Detrending
+            * 'et_cds_dt' - Extra Trees w/ Cond. Deseasonalize & Detrending
+            * 'gbr_cds_dt' - Gradient Boosting w/ Cond. Deseasonalize & Detrending
+            * 'ada_cds_dt' - AdaBoost w/ Cond. Deseasonalize & Detrending
+            * 'lightgbm_cds_dt' - Light Gradient Boosting w/ Cond. Deseasonalize & Detrending
 
 
         fold: int or scikit-learn compatible CV generator, default = None
@@ -1546,11 +1538,11 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         Example
         -------
         >>> from pycaret.datasets import get_data
-        >>> y = get_data('airline', verbose=False)
-        >>> exp = TimeSeriesExperiment()
-        >>> exp.setup(data=y, fh=12 fold_strategy='expandingwindow')
-        >>> exp.create_model("arima")
-        >>> tuned_arima = tune_model('arima')
+        >>> airline = get_data('airline')
+        >>> from pycaret.time_series import *
+        >>> exp_name = setup(data = airline,  fh = 12)
+        >>> dt = create_model('dt_cds_dt')
+        >>> tuned_dt = tune_model(dt)
 
 
         estimator: sktime compatible object
@@ -1579,7 +1571,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             supported by the defined ``search_library``.
 
 
-        optimize: str, default = 'R2'
+        optimize: str, default = 'SMAPE'
             Metric name to be evaluated for hyperparameter tuning. It also accepts custom
             metrics that are added through the ``add_metric`` function.
 
@@ -1591,10 +1583,10 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             custom metric in the ``optimize`` parameter.
             Will be deprecated in future.
 
-        search_algorithm: str, default = None (defaults to 'random')
-            possible values:
-                - 'random' : random grid search (default)
-                - 'grid' : grid search
+
+        search_algorithm: str, default = None
+            Parameter not in use for now. Behavior may change in future.
+
 
         choose_better: bool, default = False
             When set to True, the returned object is always better performing. The
@@ -1615,7 +1607,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         tuner_verbose: bool or in, default = True
             If True or above 0, will print messages from the tuner. Higher values
-            print more messages. Ignored when ``verbose`` parameter is False.
+            print more messages. Ignored when ``verbose`` param is False.
 
 
         **kwargs:
@@ -1624,13 +1616,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         Returns:
             Trained Model and Optional Tuner Object when ``return_tuner`` is True.
-
-
-        Warnings
-        --------
-        - Using 'grid' as ``search_algorithm`` may result in very long computation.
-        Only recommended with smaller search spaces that can be defined in the
-        ``custom_grid`` parameter.
 
         """
 
@@ -2184,20 +2169,15 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         Example
         --------
         >>> from pycaret.datasets import get_data
-        >>> from pycaret.internal.pycaret_experiment import TimeSeriesExperiment
-        >>> import numpy as np
-        >>> airline_data = get_data('airline', verbose=False)
-        >>> fh = np.arange(1,13)
-        >>> fold = 3
-        >>> exp = TimeSeriesExperiment()
-        >>> exp.setup(data=y, fh=fh, fold=fold)
-        >>> arima_model = exp.create_model("arima")
-        >>> naive_model = exp.create_model("naive")
-        >>> ts_blender = exp.blend_models([arima_model, naive_model], optimize='MAPE_ts')
+        >>> airline = get_data('airline')
+        >>> from pycaret.time_series import *
+        >>> exp_name = setup(data = airline,  fh = 12)
+        >>> top3 = compare_models(n_select = 3)
+        >>> blender = blend_models(top3)
 
 
-        estimator_list: list of scikit-learn compatible objects
-            List of trained model objects
+        estimator_list: list of sktime compatible estimators
+            List of model objects
 
 
         method: str, default = 'mean'
@@ -2225,7 +2205,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             metric used for comparison is defined by the ``optimize`` parameter.
 
 
-        optimize: str, default = 'MAPE_ts'
+        optimize: str, default = 'SMAPE'
             Metric to compare for model selection when ``choose_better`` is True.
 
 
@@ -2354,65 +2334,42 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         """
         This function analyzes the performance of a trained model on holdout set.
-        It may require re-training the model in certain cases.
+        When used without any estimator, this function can generate diagnostic
+        plots that doesn't require trained model.
 
 
         Example
         --------
         >>> from pycaret.datasets import get_data
-        >>> boston = get_data('boston')
-        >>> from pycaret.regression import *
-        >>> exp_name = setup(data = boston,  target = 'medv')
-        >>> lr = create_model('lr')
-        >>> plot_model(lr, plot = 'residual')
+        >>> airline = get_data('airline')
+        >>> from pycaret.time_series import *
+        >>> exp_name = setup(data = airline,  fh = 12)
+        >>> arima = create_model('arima')
+        >>> plot_model(arima, plot = 'residuals')
 
 
-        estimator: scikit-learn compatible object
+        estimator: sktime compatible object, default = None
             Trained model object
 
 
-        plot: str, default = 'residual'
-            List of available plots (ID - Name):
+        plot: str, default = None
+            Default is 'ts' when estimator is None, When estimator is not None, 
+            default is changed to 'forecast'. List of available plots (ID - Name): 
 
+            * 'ts' - Time Series Plot
+            * 'train_test_split' - Train Test Split
+            * 'cv' - Cross Validation
+            * 'acf' - Auto Correlation (ACF)
+            * 'pacf' - Partial Auto Correlation (PACF)
+            * 'decomp_classical' - Decomposition Classical
+            * 'decomp_stl' - Decomposition STL
+            * 'diagnostics' - Diagnostics Plot
+            * 'forecast' - Forecast Plot
             * 'residuals' - Residuals Plot
-            * 'error' - Prediction Error Plot
-            * 'cooks' - Cooks Distance Plot
-            * 'rfe' - Recursive Feat. Selection
-            * 'learning' - Learning Curve
-            * 'vc' - Validation Curve
-            * 'manifold' - Manifold Learning
-            * 'feature' - Feature Importance
-            * 'feature_all' - Feature Importance (All)
-            * 'parameter' - Model Hyperparameter
-            * 'tree' - Decision Tree
 
-
-        scale: float, default = 1
-            The resolution scale of the figure.
-
-
-        save: bool, default = False
-            When set to True, plot is saved in the current working directory.
-
-
-        fold: int or scikit-learn compatible CV generator, default = None
-            Controls cross-validation. If None, the CV generator in the ``fold_strategy``
-            parameter of the ``setup`` function is used. When an integer is passed,
-            it is interpreted as the 'n_splits' parameter of the CV generator in the
-            ``setup`` function.
-
-
-        fit_kwargs: dict, default = {} (empty dict)
-            Dictionary of arguments passed to the fit method of the model.
-
-
-        use_train_data: bool, default = False
-            When set to true, train data will be used for plots, instead
-            of test data.
-
-
-        verbose: bool, default = True
-            When set to False, progress bar is not displayed.
+            
+        return_data: bool, default = False
+            When set to True, it returns the data for plotting.
 
 
         display_format: str, default = None
@@ -2420,8 +2377,12 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             Currently, not all plots are supported.
 
 
-        system: bool, default = True
-            Must remain True all times. Only to be changed by internal functions.
+        data_kwargs: dict, default = None
+            Dictionary of arguments passed to the data for plotting.
+
+
+        fig_kwargs: dict, default = None
+            Dictionary of arguments passed to the figure object of plotly. 
 
 
         Returns:
@@ -2674,7 +2635,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
     def predict_model(
         self,
         estimator,
-        # data: Optional[pd.DataFrame] = None,
         fh=None,
         return_pred_int=False,
         alpha=0.05,
@@ -2683,28 +2643,38 @@ class TimeSeriesExperiment(_SupervisedExperiment):
     ) -> pd.DataFrame:
 
         """
-        This function predicts ``Label`` using a trained model. When ``data`` is
-        None, it predicts label on the holdout set.
+        This function forecast using a trained model. When ``fh`` is
+        None, it forecast values for the holdout set.
 
 
         Example
         -------
         >>> from pycaret.datasets import get_data
-        >>> boston = get_data('boston')
-        >>> from pycaret.regression import *
-        >>> exp_name = setup(data = boston,  target = 'medv')
-        >>> lr = create_model('lr')
-        >>> pred_holdout = predict_model(lr)
-        >>> pred_unseen = predict_model(lr, data = unseen_dataframe)
+        >>> airline = get_data('airline')
+        >>> from pycaret.time_series import *
+        >>> exp_name = setup(data = airline,  fh = 12)
+        >>> arima = create_model('arima')
+        >>> pred_holdout = predict_model(arima)
+        >>> pred_unseen = predict_model(finalize_model(arima), fh = 24)
 
 
-        estimator: scikit-learn compatible object
+        estimator: sktime compatible object
             Trained model object
 
 
-        data : pandas.DataFrame
-            Shape (n_samples, n_features). All features used during training
-            must be available in the unseen dataset.
+        fh: int, default = None
+            Number of points from the last date of training to forecast.
+            When set to None, the length of forecast is equal to length 
+            of holdout set.
+
+
+        return_pred_int: bool, default = False
+            When set to True, it returns lower bound and upper bound
+            prediction interval, in addition to the point prediction.
+
+
+        alpha: float, default = 0.05
+            alpha for prediction interval. CI = 1 - alpha.
 
 
         round: int, default = 4
@@ -2717,14 +2687,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         Returns:
             pandas.DataFrame
-
-
-        Warnings
-        --------
-        - The behavior of the ``predict_model`` is changed in version 2.1 without backward
-        compatibility. As such, the pipelines trained using the version (<= 2.0), may not
-        work for inference with version >= 2.1. You can either retrain your models with a
-        newer version or downgrade the version for inference.
 
 
         """
@@ -2888,21 +2850,20 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         >>> data = get_data('airline')
         >>> from pycaret.time_series import *
         >>> exp_name = setup(data = data, fh = 12)
-        >>> model = create_model('naive')
-        >>> final_model = finalize_model(model)
+        >>> arima = create_model('arima')
+        >>> final_arima = finalize_model(arima)
 
 
         estimator: sktime compatible object
             Trained model object
 
 
-        fit_kwargs: dict, default = {} (empty dict)
+        fit_kwargs: dict, default = None
             Dictionary of arguments passed to the fit method of the model.
 
 
         model_only: bool, default = True
-            When set to False, only model object is re-trained and all the
-            transformations in Pipeline are ignored.
+            Parameter not in use for now. Behavior may change in future.
 
 
         Returns:
@@ -2926,26 +2887,24 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         Example
         -------
         >>> from pycaret.datasets import get_data
-        >>> boston = get_data('boston')
-        >>> from pycaret.regression import *
-        >>> exp_name = setup(data = boston,  target = 'medv')
-        >>> lr = create_model('lr')
-        >>> # sets appropriate credentials for the platform as environment variables
-        >>> import os
-        >>> os.environ["AWS_ACCESS_KEY_ID"] = str("foo")
-        >>> os.environ["AWS_SECRET_ACCESS_KEY"] = str("bar")
-        >>> deploy_model(model = lr, model_name = 'lr-for-deployment', platform = 'aws', authentication = {'bucket' : 'S3-bucket-name'})
+        >>> data = get_data('airline')
+        >>> from pycaret.time_series import *
+        >>> exp_name = setup(data = data, fh = 12)
+        >>> arima = create_model('arima')
+        >>> deploy_model(model = arima, model_name = 'arima-for-deployment', platform = 'aws', authentication = {'bucket' : 'S3-bucket-name'})
 
 
         Amazon Web Service (AWS) users:
-            To deploy a model on AWS S3 ('aws'), the credentials have to be passed. The easiest way is to use environment
-            variables in your local environment. Following information from the IAM portal of amazon console account
-            are required:
+            To deploy a model on AWS S3 ('aws'), environment variables must be set in your
+            local environment. To configure AWS environment variables, type ``aws configure``
+            in the command line. Following information from the IAM portal of amazon console
+            account is required:
 
             - AWS Access Key ID
             - AWS Secret Key Access
+            - Default Region Name (can be seen under Global settings on your AWS console)
 
-            More info: https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html#environment-variables
+            More info: https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-envvars.html
 
 
         Google Cloud Platform (GCP) users:
@@ -2961,8 +2920,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             To deploy a model on Microsoft Azure ('azure'), environment variables for connection
             string must be set in your local environment. Go to settings of storage account on
             Azure portal to access the connection string required.
-
-            - AZURE_STORAGE_CONNECTION_STRING (required as environment variable)
 
             More info: https://docs.microsoft.com/en-us/azure/storage/blobs/storage-quickstart-blobs-python?toc=%2Fpython%2Fazure%2FTOC.json
 
@@ -3015,14 +2972,14 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         Example
         -------
         >>> from pycaret.datasets import get_data
-        >>> boston = get_data('boston')
-        >>> from pycaret.regression import *
-        >>> exp_name = setup(data = boston,  target = 'medv')
-        >>> lr = create_model('lr')
-        >>> save_model(lr, 'saved_lr_model')
+        >>> data = get_data('airline')
+        >>> from pycaret.time_series import *
+        >>> exp_name = setup(data = data, fh = 12)
+        >>> arima = create_model('arima')
+        >>> save_model(arima, 'saved_arima_model')
 
 
-        model: scikit-learn compatible object
+        model: sktime compatible object
             Trained model object
 
 
@@ -3031,8 +2988,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
 
         model_only: bool, default = True
-            When set to True, only trained model object is saved instead of the
-            entire pipeline.
+            Parameter not in use for now. Behavior may change in future.
 
 
         verbose: bool, default = True
@@ -3057,12 +3013,12 @@ class TimeSeriesExperiment(_SupervisedExperiment):
     ):
 
         """
-        This function loads a previously saved pipeline.
+        This function loads a previously saved pipeline/model.
 
         Example
         -------
-        >>> from pycaret.regression import load_model
-        >>> saved_lr = load_model('saved_lr_model')
+        >>> from pycaret.time_series import load_model
+        >>> saved_arima = load_model('saved_arima_model')
 
 
         model_name: str
@@ -3157,18 +3113,19 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         Example
         -------
         >>> from pycaret.datasets import get_data
-        >>> boston = get_data('boston')
-        >>> from pycaret.regression import *
-        >>> exp_name = setup(data = boston,  target = 'medv')
-        >>> all_models = models()
+        >>> data = get_data('airline')
+        >>> from pycaret.time_series import *
+        >>> exp_name = setup(data = data, fh = 12)
+        >>> models()
 
 
         type: str, default = None
-            - baseline: filters and only return baseline models.
-            - classical: filters and only return classical models.
-            - linear : filters and only return linear models.
-            - neighbors: filters and only return neighbors models.
-            - tree : filters and only return tree based models.
+            - baseline : filters and only return baseline models
+            - classical : filters and only return classical models
+            - linear : filters and only return linear models
+            - tree : filters and only return tree based models
+            - neighbors : filters and only return neighbors models
+
 
         internal: bool, default = False
             When True, will return extra columns and rows used internally.
@@ -3228,9 +3185,9 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         Example
         -------
         >>> from pycaret.datasets import get_data
-        >>> boston = get_data('boston')
-        >>> from pycaret.regression import *
-        >>> exp_name = setup(data = boston,  target = 'medv')
+        >>> airline = get_data('airline')
+        >>> from pycaret.time_series import *
+        >>> exp_name = setup(data = airline,  fh = 12)
         >>> all_metrics = get_metrics()
 
 
@@ -3273,9 +3230,9 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         Example
         -------
         >>> from pycaret.datasets import get_data
-        >>> boston = get_data('boston')
-        >>> from pycaret.regression import *
-        >>> exp_name = setup(data = boston,  target = 'medv')
+        >>> airline = get_data('airline')
+        >>> from pycaret.time_series import *
+        >>> exp_name = setup(data = airline,  fh = 12)
         >>> from sklearn.metrics import explained_variance_score
         >>> add_metric('evs', 'EVS', explained_variance_score)
 
@@ -3323,9 +3280,9 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         Example
         -------
         >>> from pycaret.datasets import get_data
-        >>> boston = get_data('boston')
-        >>> from pycaret.regression import *
-        >>> exp_name = setup(data = boston,  target = 'mredv')
+        >>> data = get_data('airline')
+        >>> from pycaret.time_series import *
+        >>> exp_name = setup(data = data, fh = 12)
         >>> remove_metric('MAPE')
 
 
@@ -3351,11 +3308,11 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         Example
         -------
         >>> from pycaret.datasets import get_data
-        >>> boston = get_data('boston')
-        >>> from pycaret.regression import *
-        >>> exp_name = setup(data = boston,  target = 'medv', log_experiment = True)
+        >>> data = get_data('airline')
+        >>> from pycaret.time_series import *
+        >>> exp_name = setup(data = data, fh = 12)
         >>> best = compare_models()
-        >>> exp_logs = get_logs()
+        >>> exp_logs = get_logs()   
 
 
         experiment_name: str, default = None
