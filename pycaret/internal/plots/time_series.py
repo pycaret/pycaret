@@ -180,9 +180,14 @@ def plot_series(
             title = f"{title} | {time_series_name}"
         legend = f"Time Series"
 
+    x = (
+        data.index.to_timestamp()
+        if isinstance(data.index, pd.PeriodIndex)
+        else data.index
+    )
     original = go.Scatter(
         name=legend,
-        x=data.index.to_timestamp(),
+        x=x,
         y=data,
         mode="lines+markers",
         marker=dict(size=5, color="#3f3f3f"),
@@ -230,23 +235,25 @@ def plot_splits_train_test_split(
         fig_kwargs = {}
     fig = go.Figure()
 
+    x = (
+        train.index.to_timestamp()
+        if isinstance(train.index, pd.PeriodIndex)
+        else train.index
+    )
     fig.add_trace(
         go.Scatter(
-            x=train.index.to_timestamp(),
-            y=train,
-            mode="lines+markers",
-            marker_color="#1f77b4",
-            name="Train",
+            x=x, y=train, mode="lines+markers", marker_color="#1f77b4", name="Train",
         )
     )
 
+    x = (
+        test.index.to_timestamp()
+        if isinstance(test.index, pd.PeriodIndex)
+        else test.index
+    )
     fig.add_trace(
         go.Scatter(
-            x=test.index.to_timestamp(),
-            y=test,
-            mode="lines+markers",
-            marker_color="#FFA500",
-            name="Test",
+            x=x, y=test, mode="lines+markers", marker_color="#FFA500", name="Test",
         )
     )
     fig.update_layout(
@@ -303,7 +310,13 @@ def plot_cv(
     def plot_windows(data, train_windows, test_windows):
         fig = go.Figure()
         for num_window in reversed(range(len(train_windows))):
-            time_stamps = data.index.to_timestamp()
+
+            x = (
+                data.index.to_timestamp()
+                if isinstance(data.index, pd.PeriodIndex)
+                else data.index
+            )
+            time_stamps = x
 
             y_axis_label = str(num_window)
             [
@@ -398,7 +411,6 @@ def plot_acf(
     lower_y = corr_array[1][:, 0] - corr_array[0]
     upper_y = corr_array[1][:, 1] - corr_array[0]
 
-    fig = go.Figure()
     fig = go.Figure()
 
     fig.add_scatter(
@@ -581,18 +593,29 @@ def plot_predictions(
     if time_series_name is not None:
         title = f"{title} | {time_series_name}"
 
+    x = (
+        predictions.index.to_timestamp()
+        if isinstance(predictions.index, pd.PeriodIndex)
+        else predictions.index
+    )
     mean = go.Scatter(
         name=f"Forecast | {model_name}",
-        x=predictions.index.to_timestamp(),
+        x=x,
         y=predictions,
         mode="lines+markers",
         line=dict(color="#1f77b4"),
         marker=dict(size=5,),
         showlegend=True,
     )
+
+    x = (
+        data.index.to_timestamp()
+        if isinstance(data.index, pd.PeriodIndex)
+        else data.index
+    )
     original = go.Scatter(
         name="Original",
-        x=data.index.to_timestamp(),
+        x=x,
         y=data,
         mode="lines+markers",
         marker=dict(size=5, color="#3f3f3f"),
@@ -660,9 +683,14 @@ def plot_diagnostics(
     )
 
     def time_plot(fig):
+        x = (
+            data.index.to_timestamp()
+            if isinstance(data.index, pd.PeriodIndex)
+            else data.index
+        )
         fig.add_trace(
             go.Scatter(
-                x=data.index.to_timestamp(),
+                x=x,
                 y=data,
                 mode="lines+markers",
                 marker_color="#1f77b4",
@@ -820,9 +848,14 @@ def plot_predictions_with_confidence(
     if time_series_name is not None:
         title = f"{title} | {time_series_name}"
 
+    x = (
+        upper_interval.index.to_timestamp()
+        if isinstance(upper_interval.index, pd.PeriodIndex)
+        else upper_interval.index
+    )
     upper_bound = go.Scatter(
         name=f"Prediction Interval | {model_name}",  # Changed since we use only 1 legend
-        x=upper_interval.index.to_timestamp(),
+        x=x,
         y=upper_interval,
         mode="lines",
         marker=dict(color="#68BBE3"),
@@ -832,9 +865,14 @@ def plot_predictions_with_confidence(
         fill="tonexty",
     )
 
+    x = (
+        predictions.index.to_timestamp()
+        if isinstance(predictions.index, pd.PeriodIndex)
+        else predictions.index
+    )
     mean = go.Scatter(
         name=f"Forecast | {model_name}",
-        x=predictions.index.to_timestamp(),
+        x=x,
         y=predictions,
         mode="lines+markers",
         line=dict(color="#1f77b4"),
@@ -843,18 +881,29 @@ def plot_predictions_with_confidence(
         fill="tonexty",
         showlegend=True,
     )
+
+    x = (
+        data.index.to_timestamp()
+        if isinstance(data.index, pd.PeriodIndex)
+        else data.index
+    )
     original = go.Scatter(
         name="Original",
-        x=data.index.to_timestamp(),
+        x=x,
         y=data,
         mode="lines+markers",
         marker=dict(size=5, color="#3f3f3f"),
         showlegend=True,
     )
 
+    x = (
+        lower_interval.index.to_timestamp()
+        if isinstance(lower_interval.index, pd.PeriodIndex)
+        else lower_interval.index
+    )
     lower_bound = go.Scatter(
         name="Lower Interval",
-        x=lower_interval.index.to_timestamp(),
+        x=x,
         y=lower_interval,
         marker=dict(color="#68BBE3"),
         line=dict(width=0),
@@ -898,6 +947,13 @@ def plot_time_series_decomposition(
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
 ):
+    if not isinstance(data.index, (pd.PeriodIndex, pd.DatetimeIndex)):
+        print(
+            "Decomposition is currently not supported for pandas dataframes "
+            "without a PeriodIndex or DatetimeIndex. Please specify a PeriodIndex "
+            "or DatetimeIndex in setup() before plotting decomposition plots."
+        )
+        return
 
     if data_kwargs is None:
         data_kwargs = {}
@@ -917,12 +973,12 @@ def plot_time_series_decomposition(
         title = f"{title_name} | '{model_name}' Residuals"
 
     decomp_result = None
+    data_ = data.to_timestamp() if isinstance(data.index, pd.PeriodIndex) else data
+
     if plot == "decomp_classical":
-        decomp_result = seasonal_decompose(
-            data.to_timestamp(), model=classical_decomp_type
-        )
+        decomp_result = seasonal_decompose(data_, model=classical_decomp_type)
     elif plot == "decomp_stl":
-        decomp_result = STL(data.to_timestamp()).fit()
+        decomp_result = STL(data_).fit()
 
     fig = make_subplots(
         rows=4,
@@ -931,9 +987,14 @@ def plot_time_series_decomposition(
         row_titles=["Actual", "Seasonal", "Trend", "Residual"],
     )
 
+    x = (
+        data.index.to_timestamp()
+        if isinstance(data.index, pd.PeriodIndex)
+        else data.index
+    )
     fig.add_trace(
         go.Scatter(
-            x=data.index.to_timestamp(),
+            x=x,
             y=data,
             line=dict(color="#1f77b4", width=2),
             mode="lines+markers",
@@ -946,7 +1007,7 @@ def plot_time_series_decomposition(
 
     fig.add_trace(
         go.Scatter(
-            x=data.index.to_timestamp(),
+            x=x,
             y=decomp_result.seasonal,
             line=dict(color="#1f77b4", width=2),
             mode="lines+markers",
@@ -959,7 +1020,7 @@ def plot_time_series_decomposition(
 
     fig.add_trace(
         go.Scatter(
-            x=data.index.to_timestamp(),
+            x=x,
             y=decomp_result.trend,
             line=dict(color="#1f77b4", width=2),
             mode="lines+markers",
@@ -972,11 +1033,11 @@ def plot_time_series_decomposition(
 
     fig.add_trace(
         go.Scatter(
-            x=data.index.to_timestamp(),
+            x=x,
             y=decomp_result.resid,
             line=dict(color="#1f77b4", width=2),
             mode="markers",
-            name="Resdiuals",
+            name="Residuals",
             marker=dict(size=4,),
         ),
         row=4,

@@ -635,7 +635,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             wn = "No"
         elif sum(wn_values) == 1:
             wn = "Maybe"
-        elif sum(wn_values) == 1:
+        elif sum(wn_values) > 1:
             wn = "Yes"
 
         d = recommend_lowercase_d(data=self.y)

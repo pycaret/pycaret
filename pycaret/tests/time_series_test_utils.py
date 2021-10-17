@@ -111,6 +111,15 @@ def _return_setup_args_raises():
     return setup_raises_list
 
 
+def _return_data_with_without_period_index():
+    """Returns one dataset with period index and one with int index"""
+    datasets = [
+        get_data("airline"),
+        get_data("10", folder="time_series/white_noise"),
+    ]
+    return datasets
+
+
 # def _check_data_for_prophet(mdl_name, data):
 #     """Convert data index to DatetimeIndex"""
 #     if mdl_name == "prophet":
