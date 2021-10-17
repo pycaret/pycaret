@@ -635,7 +635,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             wn = "No"
         elif sum(wn_values) == 1:
             wn = "Maybe"
-        elif sum(wn_values) == 1:
+        elif sum(wn_values) > 1:
             wn = "Yes"
 
         d = recommend_lowercase_d(data=self.y)
@@ -2330,6 +2330,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         data_kwargs: Optional[Dict] = None,
         fig_kwargs: Optional[Dict] = None,
         system: bool = True,
+        save: Union[str, bool] = False,
     ) -> str:
 
         """
@@ -2367,7 +2368,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             * 'forecast' - Forecast Plot
             * 'residuals' - Residuals Plot
 
-            
+
         return_data: bool, default = False
             When set to True, it returns the data for plotting.
 
@@ -2383,6 +2384,11 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         fig_kwargs: dict, default = None
             Dictionary of arguments passed to the figure object of plotly. 
+
+
+        save: string or bool, default = False
+            When set to True, Plot is saved as a 'png' file in current working directory.
+            When a path destination is given, Plot is saved as a 'png' file the given path to the directory of choice.
 
 
         Returns:
@@ -2936,7 +2942,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             Dictionary of applicable authentication tokens.
 
             When platform = 'aws':
-            {'bucket' : 'S3-bucket-name'}
+            {'bucket' : 'S3-bucket-name', 'path': (optional) folder name under the bucket}
 
             When platform = 'gcp':
             {'project': 'gcp-project-name', 'bucket' : 'gcp-bucket-name'}

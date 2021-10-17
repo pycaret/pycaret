@@ -253,6 +253,28 @@ def test_target_transformer():
     check_estimator(TransformedTargetClassifier())  # This should pass
 
 
+def test_auto_infer_label():
+    # loading dataset
+    data = pycaret.datasets.get_data("juice")
+    data.loc[:, 'test_target'] = np.random.randint(5, 8, data.shape[0])
+    data.loc[:, 'test_target'] = data.loc[:, 'test_target'].astype(np.int64)  # should not encode
+    target = 'test_target'
+
+    # init setup
+    _ = pycaret.classification.setup(
+        data,
+        target=target,
+        log_experiment=True,
+        silent=True,
+        html=False,
+        session_id=123,
+        n_jobs=1
+    )
+
+    with pytest.raises(AttributeError):
+        _ = pycaret.classification.get_config('prep_pipe').named_steps["dtypes"].replacement
+
+
 def test():
     # loading dataset
     data = pycaret.datasets.get_data("juice")

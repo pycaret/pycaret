@@ -16,6 +16,9 @@ with open("requirements.txt") as f:
 with open("requirements-optional.txt") as f:
     optional_required = f.read().splitlines()
 
+with open("requirements-test.txt") as f:
+    test_required = f.read().splitlines()
+
 setup(
     name="pycaret",
     version="3.0.0",
@@ -35,5 +38,6 @@ setup(
     packages=find_packages(exclude=["*.tests", "*.tests.*", "tests.*", "tests"]),
     include_package_data=True,
     install_requires=required,
-    extras_require={"full": optional_required,},
+    extras_require={"full": optional_required,
+                    "test": test_required + optional_required},
 )
