@@ -551,6 +551,7 @@ def test_compare_models(load_pos_and_neg_data):
         fold_strategy="expanding",
         verbose=False,
         session_id=42,
+        log_experiment=True,
     )
 
     best_baseline_models = exp.compare_models(n_select=3)

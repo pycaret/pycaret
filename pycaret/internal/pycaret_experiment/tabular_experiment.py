@@ -8,6 +8,7 @@ from pycaret.internal.pipeline import (
     Pipeline as InternalPipeline,
 )
 from pycaret.internal.utils import (
+    mlflow_remove_bad_chars,
     normalize_custom_transformers,
     get_model_name,
 )
@@ -221,6 +222,7 @@ class _TabularExperiment(_PyCaretExperiment):
                 if len(str(v)) > 250:
                     params.pop(i)
 
+            params = {mlflow_remove_bad_chars(k): v for k, v in params.items()}
             self.logger.info(f"logged params: {params}")
             mlflow.log_params(params)
 
