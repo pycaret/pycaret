@@ -191,7 +191,7 @@ class _TabularExperiment(_PyCaretExperiment):
         full_name = self._get_model_name(model)
         self.logger.info(f"Model: {full_name}")
 
-        with mlflow.start_run(run_name=full_name) as run:
+        with mlflow.start_run(run_name=full_name, nested=True) as run:
 
             # Get active run to log as tag
             RunID = mlflow.active_run().info.run_id

@@ -949,67 +949,68 @@ def setup(
         mlflow.set_experiment(exp_name_log)
 
         run_name_ = "Session Initialized " + str(USI)
-        with mlflow.start_run(run_name=run_name_) as run:
+        mlflow.end_run()
+        mlflow.start_run(run_name=run_name_)
 
-            # Get active run to log as tag
-            RunID = mlflow.active_run().info.run_id
+        # Get active run to log as tag
+        RunID = mlflow.active_run().info.run_id
 
-            k = functions.copy()
-            k.set_index("Description", drop=True, inplace=True)
-            kdict = k.to_dict()
-            params = kdict.get("Value")
-            mlflow.log_params(params)
+        k = functions.copy()
+        k.set_index("Description", drop=True, inplace=True)
+        kdict = k.to_dict()
+        params = kdict.get("Value")
+        mlflow.log_params(params)
 
-            # set tag of compare_models
-            mlflow.set_tag("Source", "setup")
+        # set tag of compare_models
+        mlflow.set_tag("Source", "setup")
 
-            import secrets
+        import secrets
 
-            URI = secrets.token_hex(nbytes=4)
-            mlflow.set_tag("URI", URI)
-            mlflow.set_tag("USI", USI)
-            mlflow.set_tag("Run Time", runtime)
-            mlflow.set_tag("Run ID", RunID)
+        URI = secrets.token_hex(nbytes=4)
+        mlflow.set_tag("URI", URI)
+        mlflow.set_tag("USI", USI)
+        mlflow.set_tag("Run Time", runtime)
+        mlflow.set_tag("Run ID", RunID)
 
-            # Log gensim id2word
-            id2word.save("id2word")
-            mlflow.log_artifact("id2word")
-            import os
+        # Log gensim id2word
+        id2word.save("id2word")
+        mlflow.log_artifact("id2word")
+        import os
 
-            os.remove("id2word")
+        os.remove("id2word")
 
-            # Log data
-            if log_data:
-                data_.to_csv("data.csv")
-                mlflow.log_artifact("data.csv")
-                os.remove("data.csv")
+        # Log data
+        if log_data:
+            data_.to_csv("data.csv")
+            mlflow.log_artifact("data.csv")
+            os.remove("data.csv")
 
-            # Log plots
-            if log_plots:
+        # Log plots
+        if log_plots:
 
-                logger.info(
-                    "SubProcess plot_model() called =================================="
-                )
+            logger.info(
+                "SubProcess plot_model() called =================================="
+            )
 
-                plot_model(plot="frequency", save=True, system=False)
-                mlflow.log_artifact("Word Frequency.html")
-                os.remove("Word Frequency.html")
+            plot_model(plot="frequency", save=True, system=False)
+            mlflow.log_artifact("Word Frequency.html")
+            os.remove("Word Frequency.html")
 
-                plot_model(plot="bigram", save=True, system=False)
-                mlflow.log_artifact("Bigram.html")
-                os.remove("Bigram.html")
+            plot_model(plot="bigram", save=True, system=False)
+            mlflow.log_artifact("Bigram.html")
+            os.remove("Bigram.html")
 
-                plot_model(plot="trigram", save=True, system=False)
-                mlflow.log_artifact("Trigram.html")
-                os.remove("Trigram.html")
+            plot_model(plot="trigram", save=True, system=False)
+            mlflow.log_artifact("Trigram.html")
+            os.remove("Trigram.html")
 
-                plot_model(plot="pos", save=True, system=False)
-                mlflow.log_artifact("POS.html")
-                os.remove("POS.html")
+            plot_model(plot="pos", save=True, system=False)
+            mlflow.log_artifact("POS.html")
+            os.remove("POS.html")
 
-                logger.info(
-                    "SubProcess plot_model() end =================================="
-                )
+            logger.info(
+                "SubProcess plot_model() end =================================="
+            )
 
     if verbose:
         clear_output()
@@ -1398,7 +1399,7 @@ def create_model(
 
         mlflow.set_experiment(exp_name_log)
 
-        with mlflow.start_run(run_name=topic_model_name) as run:
+        with mlflow.start_run(run_name=topic_model_name, nested=True) as run:
 
             # Get active run to log as tag
             RunID = mlflow.active_run().info.run_id
@@ -1908,7 +1909,7 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
         be on 'Topic 0'
     
 
-    save: string/bool, default = False
+    save: string or bool, default = False
         Plot is saved as png file in local directory when save parameter set to True.
         Plot is saved as png file in the specified directory when the path to the directory is specified.
 
