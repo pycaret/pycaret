@@ -2595,6 +2595,7 @@ class Fix_multicollinearity(BaseEstimator, TransformerMixin):
         self.target_variable = target_variable
         self.correlation_with_target_threshold = correlation_with_target_threshold
         self.correlation_with_target_preference = correlation_with_target_preference
+        self.target_corr_weight = correlation_with_target_preference
         self.multicol_weight = 1 - correlation_with_target_preference
 
     # Make fit method

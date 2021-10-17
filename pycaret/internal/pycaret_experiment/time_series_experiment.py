@@ -2377,6 +2377,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         data_kwargs: Optional[Dict] = None,
         fig_kwargs: Optional[Dict] = None,
         system: bool = True,
+        save: Union[str, bool] = False,
     ) -> str:
 
         """
