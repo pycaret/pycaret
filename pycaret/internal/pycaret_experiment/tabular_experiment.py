@@ -1580,20 +1580,6 @@ class _TabularExperiment(_PyCaretExperiment):
                 else:
                     self.fold_generator = fold_strategy
 
-                    # def _get_cv_n_folds(y, cv) -> int:
-                    #     """
-                    #     Get the number of folds for time series
-                    #     cv must be of type SlidingWindowSplitter or ExpandingWindowSplitter
-                    #     TODO: Fix this inside sktime and replace this with sktime method [1]
-
-                    #     Ref:
-                    #     [1] https://github.com/alan-turing-institute/sktime/issues/632
-                    #     """
-                    #     n_folds = int((len(y) - cv.initial_window) / cv.step_length)
-                    #     return n_folds
-
-                    # Set the number of folds from the cv object
-                    # fold = _get_cv_n_folds(y=self.y_train, cv=fold_strategy)
                     # Number of folds
                     self.fold_param = fold_strategy.get_n_splits(y=self.y_train)
 
@@ -1805,6 +1791,18 @@ class _TabularExperiment(_PyCaretExperiment):
         )
 
         self._setup_ran = True
+
+        ## Disabling of certain metrics.
+        ## NOTE: This must be run after _setup_ran has been set, else metrics can
+        # not be retrieved.
+        if (
+            self._ml_usecase == MLUsecase.TIME_SERIES
+            and len(self.fh) == 1
+            and "r2" in self._get_metrics()
+        ):
+            # disable R2 metric if it exists in the metrics since R2 needs
+            # at least 2 values
+            self.remove_metric("R2")
 
         self.logger.info(
             f"self.master_model_container: {len(self.master_model_container)}"

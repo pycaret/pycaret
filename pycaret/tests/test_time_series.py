@@ -17,6 +17,7 @@ from .time_series_test_utils import (
     _return_model_parameters,
     _return_splitter_args,
     _return_setup_args_raises,
+    _return_data_with_without_period_index,
     _ALL_METRICS,
 )
 
@@ -36,6 +37,7 @@ pytestmark = pytest.mark.filterwarnings("ignore::UserWarning")
 _model_parameters = _return_model_parameters()
 _splitter_args = _return_splitter_args()
 _setup_args_raises = _return_setup_args_raises()
+_data_with_without_period_index = _return_data_with_without_period_index()
 
 ############################
 #### Functions End Here ####
@@ -226,14 +228,17 @@ def test_check_stats(load_pos_and_neg_data):
     assert results.query("Test == 'Normality'").iloc[0]["Setting"].get("alpha") == alpha
 
 
-def test_plot_model(load_pos_data):
-    """Tests the plot_model functionality"""
+@pytest.mark.parametrize("data", _data_with_without_period_index)
+def test_plot_model(data):
+    """Tests the plot_model functionality
+    NOTE: Want to show multiplicative plot here so can not take data with negative values
+    """
     exp = TimeSeriesExperiment()
 
     fh = np.arange(1, 13)
     fold = 2
-    # Want to show multiplicative plot here so can not take load data (has -ve values)
-    data = load_pos_data
+
+    sp = 1 if isinstance(data.index, pd.RangeIndex) else None
 
     ######################
     #### OOP Approach ####
@@ -246,6 +251,7 @@ def test_plot_model(load_pos_data):
         fold_strategy="sliding",
         verbose=False,
         session_id=42,
+        seasonal_period=sp,
     )
 
     model = exp.create_model("naive")
@@ -280,7 +286,13 @@ def test_plot_model(load_pos_data):
     from pycaret.time_series import setup, create_model, plot_model
 
     _ = setup(
-        data=data, fh=fh, fold=fold, fold_strategy="expanding", session_id=42, n_jobs=-1
+        data=data,
+        fh=fh,
+        fold=fold,
+        fold_strategy="expanding",
+        session_id=42,
+        n_jobs=-1,
+        seasonal_period=sp,
     )
     model = create_model("naive")
 
@@ -469,26 +481,6 @@ def test_predict_model_warnings(load_pos_and_neg_data):
 
     # Prediction horizon larger than test set --> Metrics limited to common indices
     _ = exp.predict_model(model, fh=np.arange(1, 24))
-    metrics = exp.pull()
-    assert metrics.equals(expected)
-
-    #####################################
-    #### Test after finalizing model ####
-    #####################################
-    final_model = exp.finalize_model(model)
-
-    # Expect to get all NaN values in metrics since no indices match
-    model_col = expected["Model"]
-    expected = pd.DataFrame(np.nan, index=expected.index, columns=expected.columns)
-    expected["Model"] = model_col  # Replace Model column with correct value
-
-    # Expect to get all NaN values in metrics since no indices match
-    _ = exp.predict_model(final_model)
-    metrics = exp.pull()
-    assert metrics.equals(expected)
-
-    # Expect to get all NaN values in metrics since no indices match
-    _ = exp.predict_model(final_model, fh=np.arange(1, 24))
     metrics = exp.pull()
     assert metrics.equals(expected)
 

@@ -636,93 +636,93 @@ def tune_model(
     )
 
 
-@check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
-def ensemble_model(
-    estimator,
-    method: str = "Bagging",
-    fold: Optional[Union[int, Any]] = None,
-    n_estimators: int = 10,
-    round: int = 4,
-    choose_better: bool = False,
-    optimize: str = "R2",
-    fit_kwargs: Optional[dict] = None,
-    verbose: bool = True,
-) -> Any:
+# @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
+# def ensemble_model(
+#     estimator,
+#     method: str = "Bagging",
+#     fold: Optional[Union[int, Any]] = None,
+#     n_estimators: int = 10,
+#     round: int = 4,
+#     choose_better: bool = False,
+#     optimize: str = "R2",
+#     fit_kwargs: Optional[dict] = None,
+#     verbose: bool = True,
+# ) -> Any:
 
-    """
-    This function ensembles a given estimator. The output of this function is
-    a score grid with CV scores by fold. Metrics evaluated during CV can be
-    accessed using the ``get_metrics`` function. Custom metrics can be added
-    or removed using ``add_metric`` and ``remove_metric`` function.
-
-
-    Example
-    --------
-    >>> from pycaret.datasets import get_data
-    >>> boston = get_data('boston')
-    >>> from pycaret.regression import *
-    >>> exp_name = setup(data = boston,  target = 'medv')
-    >>> dt = create_model('dt')
-    >>> bagged_dt = ensemble_model(dt, method = 'Bagging')
+#     """
+#     This function ensembles a given estimator. The output of this function is
+#     a score grid with CV scores by fold. Metrics evaluated during CV can be
+#     accessed using the ``get_metrics`` function. Custom metrics can be added
+#     or removed using ``add_metric`` and ``remove_metric`` function.
 
 
-    estimator: scikit-learn compatible object
-        Trained model object
+#     Example
+#     --------
+#     >>> from pycaret.datasets import get_data
+#     >>> boston = get_data('boston')
+#     >>> from pycaret.regression import *
+#     >>> exp_name = setup(data = boston,  target = 'medv')
+#     >>> dt = create_model('dt')
+#     >>> bagged_dt = ensemble_model(dt, method = 'Bagging')
 
 
-    method: str, default = 'Bagging'
-        Method for ensembling base estimator. It can be 'Bagging' or 'Boosting'.
+#     estimator: scikit-learn compatible object
+#         Trained model object
 
 
-    fold: int or scikit-learn compatible CV generator, default = None
-        Controls cross-validation. If None, the CV generator in the ``fold_strategy``
-        parameter of the ``setup`` function is used. When an integer is passed,
-        it is interpreted as the 'n_splits' parameter of the CV generator in the
-        ``setup`` function.
+#     method: str, default = 'Bagging'
+#         Method for ensembling base estimator. It can be 'Bagging' or 'Boosting'.
 
 
-    n_estimators: int, default = 10
-        The number of base estimators in the ensemble. In case of perfect fit, the
-        learning procedure is stopped early.
+#     fold: int or scikit-learn compatible CV generator, default = None
+#         Controls cross-validation. If None, the CV generator in the ``fold_strategy``
+#         parameter of the ``setup`` function is used. When an integer is passed,
+#         it is interpreted as the 'n_splits' parameter of the CV generator in the
+#         ``setup`` function.
 
 
-    round: int, default = 4
-        Number of decimal places the metrics in the score grid will be rounded to.
+#     n_estimators: int, default = 10
+#         The number of base estimators in the ensemble. In case of perfect fit, the
+#         learning procedure is stopped early.
 
 
-    choose_better: bool, default = False
-        When set to True, the returned object is always better performing. The
-        metric used for comparison is defined by the ``optimize`` parameter.
+#     round: int, default = 4
+#         Number of decimal places the metrics in the score grid will be rounded to.
 
 
-    optimize: str, default = 'R2'
-        Metric to compare for model selection when ``choose_better`` is True.
+#     choose_better: bool, default = False
+#         When set to True, the returned object is always better performing. The
+#         metric used for comparison is defined by the ``optimize`` parameter.
 
 
-    fit_kwargs: dict, default = {} (empty dict)
-        Dictionary of arguments passed to the fit method of the model.
+#     optimize: str, default = 'R2'
+#         Metric to compare for model selection when ``choose_better`` is True.
 
 
-    verbose: bool, default = True
-        Score grid is not printed when verbose is set to False.
+#     fit_kwargs: dict, default = {} (empty dict)
+#         Dictionary of arguments passed to the fit method of the model.
 
 
-    Returns:
-        Trained Model
+#     verbose: bool, default = True
+#         Score grid is not printed when verbose is set to False.
 
-    """
 
-    return _CURRENT_EXPERIMENT.ensemble_model(
-        estimator=estimator,
-        method=method,
-        fold=fold,
-        n_estimators=n_estimators,
-        round=round,
-        choose_better=choose_better,
-        optimize=optimize,
-        fit_kwargs=fit_kwargs,
-        verbose=verbose,
-    )
+#     Returns:
+#         Trained Model
+
+#     """
+
+#     return _CURRENT_EXPERIMENT.ensemble_model(
+#         estimator=estimator,
+#         method=method,
+#         fold=fold,
+#         n_estimators=n_estimators,
+#         round=round,
+#         choose_better=choose_better,
+#         optimize=optimize,
+#         fit_kwargs=fit_kwargs,
+#         verbose=verbose,
+#     )
 
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
@@ -827,95 +827,95 @@ def blend_models(
     )
 
 
-@check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
-def stack_models(
-    estimator_list: list,
-    meta_model=None,
-    fold: Optional[Union[int, Any]] = None,
-    round: int = 4,
-    restack: bool = True,
-    choose_better: bool = False,
-    optimize: str = "R2",
-    fit_kwargs: Optional[dict] = None,
-    verbose: bool = True,
-):
+# @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
+# def stack_models(
+#     estimator_list: list,
+#     meta_model=None,
+#     fold: Optional[Union[int, Any]] = None,
+#     round: int = 4,
+#     restack: bool = True,
+#     choose_better: bool = False,
+#     optimize: str = "R2",
+#     fit_kwargs: Optional[dict] = None,
+#     verbose: bool = True,
+# ):
 
-    """
-    This function trains a meta model over select estimators passed in
-    the ``estimator_list`` parameter. The output of this function is a
-    score grid with CV scores by fold. Metrics evaluated during CV can
-    be accessed using the ``get_metrics`` function. Custom metrics
-    can be added or removed using ``add_metric`` and ``remove_metric``
-    function.
-
-
-    Example
-    --------
-    >>> from pycaret.datasets import get_data
-    >>> boston = get_data('boston')
-    >>> from pycaret.regression import *
-    >>> exp_name = setup(data = boston,  target = 'medv')
-    >>> top3 = compare_models(n_select = 3)
-    >>> stacker = stack_models(top3)
+#     """
+#     This function trains a meta model over select estimators passed in
+#     the ``estimator_list`` parameter. The output of this function is a
+#     score grid with CV scores by fold. Metrics evaluated during CV can
+#     be accessed using the ``get_metrics`` function. Custom metrics
+#     can be added or removed using ``add_metric`` and ``remove_metric``
+#     function.
 
 
-    estimator_list: list of scikit-learn compatible objects
-        List of trained model objects
+#     Example
+#     --------
+#     >>> from pycaret.datasets import get_data
+#     >>> boston = get_data('boston')
+#     >>> from pycaret.regression import *
+#     >>> exp_name = setup(data = boston,  target = 'medv')
+#     >>> top3 = compare_models(n_select = 3)
+#     >>> stacker = stack_models(top3)
 
 
-    meta_model: scikit-learn compatible object, default = None
-        When None, Linear Regression is trained as a meta model.
+#     estimator_list: list of scikit-learn compatible objects
+#         List of trained model objects
 
 
-    fold: int or scikit-learn compatible CV generator, default = None
-        Controls cross-validation. If None, the CV generator in the ``fold_strategy``
-        parameter of the ``setup`` function is used. When an integer is passed,
-        it is interpreted as the 'n_splits' parameter of the CV generator in the
-        ``setup`` function.
+#     meta_model: scikit-learn compatible object, default = None
+#         When None, Linear Regression is trained as a meta model.
 
 
-    round: int, default = 4
-        Number of decimal places the metrics in the score grid will be rounded to.
+#     fold: int or scikit-learn compatible CV generator, default = None
+#         Controls cross-validation. If None, the CV generator in the ``fold_strategy``
+#         parameter of the ``setup`` function is used. When an integer is passed,
+#         it is interpreted as the 'n_splits' parameter of the CV generator in the
+#         ``setup`` function.
 
 
-    restack: bool, default = True
-        When set to False, only the predictions of estimators will be used as
-        training data for the ``meta_model``.
+#     round: int, default = 4
+#         Number of decimal places the metrics in the score grid will be rounded to.
 
 
-    choose_better: bool, default = False
-        When set to True, the returned object is always better performing. The
-        metric used for comparison is defined by the ``optimize`` parameter.
+#     restack: bool, default = True
+#         When set to False, only the predictions of estimators will be used as
+#         training data for the ``meta_model``.
 
 
-    optimize: str, default = 'R2'
-        Metric to compare for model selection when ``choose_better`` is True.
+#     choose_better: bool, default = False
+#         When set to True, the returned object is always better performing. The
+#         metric used for comparison is defined by the ``optimize`` parameter.
 
 
-    fit_kwargs: dict, default = {} (empty dict)
-        Dictionary of arguments passed to the fit method of the model.
+#     optimize: str, default = 'R2'
+#         Metric to compare for model selection when ``choose_better`` is True.
 
 
-    verbose: bool, default = True
-        Score grid is not printed when verbose is set to False.
+#     fit_kwargs: dict, default = {} (empty dict)
+#         Dictionary of arguments passed to the fit method of the model.
 
 
-    Returns:
-        Trained Model
+#     verbose: bool, default = True
+#         Score grid is not printed when verbose is set to False.
 
-    """
 
-    return _CURRENT_EXPERIMENT.stack_models(
-        estimator_list=estimator_list,
-        meta_model=meta_model,
-        fold=fold,
-        round=round,
-        restack=restack,
-        choose_better=choose_better,
-        optimize=optimize,
-        fit_kwargs=fit_kwargs,
-        verbose=verbose,
-    )
+#     Returns:
+#         Trained Model
+
+#     """
+
+#     return _CURRENT_EXPERIMENT.stack_models(
+#         estimator_list=estimator_list,
+#         meta_model=meta_model,
+#         fold=fold,
+#         round=round,
+#         restack=restack,
+#         choose_better=choose_better,
+#         optimize=optimize,
+#         fit_kwargs=fit_kwargs,
+#         verbose=verbose,
+#     )
 
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
@@ -1022,144 +1022,143 @@ def plot_model(
     )
 
 
-@check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
-def evaluate_model(
-    estimator,
-    fold: Optional[Union[int, Any]] = None,
-    fit_kwargs: Optional[dict] = None,
-    use_train_data: bool = False,
-):
+# @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
+# def evaluate_model(
+#     estimator,
+#     fold: Optional[Union[int, Any]] = None,
+#     fit_kwargs: Optional[dict] = None,
+#     use_train_data: bool = False,
+# ):
 
-    """
-    This function displays a user interface for analyzing performance of a trained
-    model. It calls the ``plot_model`` function internally.
+#     """
+#     This function displays a user interface for analyzing performance of a trained
+#     model. It calls the ``plot_model`` function internally.
 
-    Example
-    --------
-    >>> from pycaret.datasets import get_data
-    >>> boston = get_data('boston')
-    >>> from pycaret.regression import *
-    >>> exp_name = setup(data = boston,  target = 'medv')
-    >>> lr = create_model('lr')
-    >>> evaluate_model(lr)
-
-
-    estimator: scikit-learn compatible object
-        Trained model object
+#     Example
+#     --------
+#     >>> from pycaret.datasets import get_data
+#     >>> boston = get_data('boston')
+#     >>> from pycaret.regression import *
+#     >>> exp_name = setup(data = boston,  target = 'medv')
+#     >>> lr = create_model('lr')
+#     >>> evaluate_model(lr)
 
 
-    fold: int or scikit-learn compatible CV generator, default = None
-        Controls cross-validation. If None, the CV generator in the ``fold_strategy``
-        parameter of the ``setup`` function is used. When an integer is passed,
-        it is interpreted as the 'n_splits' parameter of the CV generator in the
-        ``setup`` function.
+#     estimator: scikit-learn compatible object
+#         Trained model object
 
 
-    fit_kwargs: dict, default = {} (empty dict)
-        Dictionary of arguments passed to the fit method of the model.
+#     fold: int or scikit-learn compatible CV generator, default = None
+#         Controls cross-validation. If None, the CV generator in the ``fold_strategy``
+#         parameter of the ``setup`` function is used. When an integer is passed,
+#         it is interpreted as the 'n_splits' parameter of the CV generator in the
+#         ``setup`` function.
 
 
-    use_train_data: bool, default = False
-        When set to true, train data will be used for plots, instead
-        of test data.
+#     fit_kwargs: dict, default = {} (empty dict)
+#         Dictionary of arguments passed to the fit method of the model.
 
 
-    Returns:
-        None
+#     use_train_data: bool, default = False
+#         When set to true, train data will be used for plots, instead
+#         of test data.
 
 
-    Warnings
-    --------
-    -   This function only works in IPython enabled Notebook.
-
-    """
-
-    return _CURRENT_EXPERIMENT.evaluate_model(
-        estimator=estimator,
-        fold=fold,
-        fit_kwargs=fit_kwargs,
-        use_train_data=use_train_data,
-    )
+#     Returns:
+#         None
 
 
-@check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
-def interpret_model(
-    estimator,
-    plot: str = "summary",
-    feature: Optional[str] = None,
-    observation: Optional[int] = None,
-    use_train_data: bool = False,
-    save: Union[str, bool] = False,
-    **kwargs,
-):
+#     Warnings
+#     --------
+#     -   This function only works in IPython enabled Notebook.
 
-    """
-    This function analyzes the predictions generated from a trained model. Most plots
-    in this function are implemented based on the SHAP (SHapley Additive exPlanations).
-    For more info on this, please see https://shap.readthedocs.io/en/latest/
+#     """
+
+#     return _CURRENT_EXPERIMENT.evaluate_model(
+#         estimator=estimator,
+#         fold=fold,
+#         fit_kwargs=fit_kwargs,
+#         use_train_data=use_train_data,
+#     )
 
 
-    Example
-    --------
-    >>> from pycaret.datasets import get_data
-    >>> boston = get_data('boston')
-    >>> from pycaret.regression import *
-    >>> exp = setup(data = boston,  target = 'medv')
-    >>> xgboost = create_model('xgboost')
-    >>> interpret_model(xgboost)
+# @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
+# def interpret_model(
+#     estimator,
+#     plot: str = "summary",
+#     feature: Optional[str] = None,
+#     observation: Optional[int] = None,
+#     use_train_data: bool = False,
+#     save: bool = False,
+#     **kwargs,
+# ):
+
+#     """
+#     This function analyzes the predictions generated from a trained model. Most plots
+#     in this function are implemented based on the SHAP (SHapley Additive exPlanations).
+#     For more info on this, please see https://shap.readthedocs.io/en/latest/
 
 
-    estimator: scikit-learn compatible object
-        Trained model object
+#     Example
+#     --------
+#     >>> from pycaret.datasets import get_data
+#     >>> boston = get_data('boston')
+#     >>> from pycaret.regression import *
+#     >>> exp = setup(data = boston,  target = 'medv')
+#     >>> xgboost = create_model('xgboost')
+#     >>> interpret_model(xgboost)
 
 
-    plot: str, default = 'summary'
-        List of available plots (ID - Name):
-        * 'summary' - Summary Plot using SHAP
-        * 'correlation' - Dependence Plot using SHAP
-        * 'reason' - Force Plot using SHAP
-        * 'pdp' - Partial Dependence Plot
+#     estimator: scikit-learn compatible object
+#         Trained model object
 
 
-    feature: str, default = None
-        Feature to check correlation with. This parameter is only required when ``plot``
-        type is 'correlation' or 'pdp'. When set to None, it uses the first column from 
-        the dataset.
+#     plot: str, default = 'summary'
+#         List of available plots (ID - Name):
+#         * 'summary' - Summary Plot using SHAP
+#         * 'correlation' - Dependence Plot using SHAP
+#         * 'reason' - Force Plot using SHAP
+#         * 'pdp' - Partial Dependence Plot
 
 
-    observation: int, default = None
-        Observation index number in holdout set to explain. When ``plot`` is not
-        'reason', this parameter is ignored.
+#     feature: str, default = None
+#         Feature to check correlation with. This parameter is only required when ``plot``
+#         type is 'correlation' or 'pdp'. When set to None, it uses the first column from
+#         the dataset.
 
 
-    use_train_data: bool, default = False
-        When set to true, train data will be used for plots, instead
-        of test data.
+#     observation: int, default = None
+#         Observation index number in holdout set to explain. When ``plot`` is not
+#         'reason', this parameter is ignored.
 
 
-    save: string or bool, default = False
-        When set to True, Plot is saved as a 'png' file in current working directory.
-        When a path destination is given, Plot is saved as a 'png' file the given path to the directory of choice.
+#     use_train_data: bool, default = False
+#         When set to true, train data will be used for plots, instead
+#         of test data.
 
 
-    **kwargs:
-        Additional keyword arguments to pass to the plot.
+#     save: bool, default = False
+#         When set to True, Plot is saved as a 'png' file in current working directory.
 
 
-    Returns:
-        None
+#     **kwargs:
+#         Additional keyword arguments to pass to the plot.
 
-    """
 
-    return _CURRENT_EXPERIMENT.interpret_model(
-        estimator=estimator,
-        plot=plot,
-        feature=feature,
-        observation=observation,
-        use_train_data=use_train_data,
-        save=save,
-        **kwargs,
-    )
+#     Returns:
+#         None
+
+#     """
+
+#     return _CURRENT_EXPERIMENT.interpret_model(
+#         estimator=estimator,
+#         plot=plot,
+#         feature=feature,
+#         observation=observation,
+#         use_train_data=use_train_data,
+#         save=save,
+#         **kwargs,
+#     )
 
 
 # not using check_if_global_is_not_none on purpose
@@ -1470,53 +1469,53 @@ def load_model(
     )
 
 
-@check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
-def automl(optimize: str = "R2", use_holdout: bool = False, turbo: bool = True) -> Any:
+# @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
+# def automl(optimize: str = "R2", use_holdout: bool = False, turbo: bool = True) -> Any:
 
-    """
-    This function returns the best model out of all trained models in
-    current session based on the ``optimize`` parameter. Metrics
-    evaluated can be accessed using the ``get_metrics`` function.
-
-
-    Example
-    -------
-    >>> from pycaret.datasets import get_data
-    >>> boston = get_data('boston')
-    >>> from pycaret.regression import *
-    >>> exp_name = setup(data = boston,  target = 'medv')
-    >>> top3 = compare_models(n_select = 3)
-    >>> tuned_top3 = [tune_model(i) for i in top3]
-    >>> blender = blend_models(tuned_top3)
-    >>> stacker = stack_models(tuned_top3)
-    >>> best_mae_model = automl(optimize = 'MAE')
+#     """
+#     This function returns the best model out of all trained models in
+#     current session based on the ``optimize`` parameter. Metrics
+#     evaluated can be accessed using the ``get_metrics`` function.
 
 
-    optimize: str, default = 'R2'
-        Metric to use for model selection. It also accepts custom metrics
-        added using the ``add_metric`` function.
+#     Example
+#     -------
+#     >>> from pycaret.datasets import get_data
+#     >>> boston = get_data('boston')
+#     >>> from pycaret.regression import *
+#     >>> exp_name = setup(data = boston,  target = 'medv')
+#     >>> top3 = compare_models(n_select = 3)
+#     >>> tuned_top3 = [tune_model(i) for i in top3]
+#     >>> blender = blend_models(tuned_top3)
+#     >>> stacker = stack_models(tuned_top3)
+#     >>> best_mae_model = automl(optimize = 'MAE')
 
 
-    use_holdout: bool, default = False
-        When set to True, metrics are evaluated on holdout set instead of CV.
+#     optimize: str, default = 'R2'
+#         Metric to use for model selection. It also accepts custom metrics
+#         added using the ``add_metric`` function.
 
 
-    turbo: bool, default = True
-        When set to True and use_holdout is False, only models created with default fold
-        parameter will be considered. If set to False, models created with a non-default
-        fold parameter will be scored again using default fold settings, so that they can be
-        compared.
+#     use_holdout: bool, default = False
+#         When set to True, metrics are evaluated on holdout set instead of CV.
 
 
-    Returns:
-        Trained Model
+#     turbo: bool, default = True
+#         When set to True and use_holdout is False, only models created with default fold
+#         parameter will be considered. If set to False, models created with a non-default
+#         fold parameter will be scored again using default fold settings, so that they can be
+#         compared.
 
 
-    """
+#     Returns:
+#         Trained Model
 
-    return _CURRENT_EXPERIMENT.automl(
-        optimize=optimize, use_holdout=use_holdout, turbo=turbo
-    )
+
+#     """
+
+#     return _CURRENT_EXPERIMENT.automl(
+#         optimize=optimize, use_holdout=use_holdout, turbo=turbo
+#     )
 
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)

@@ -4,11 +4,13 @@
 
 
 def get_data(
-    dataset="index",
-    save_copy=False,
+    dataset: str = "index",
+    folder: str = "common",
+    index: bool = False,
+    save_copy: bool = False,
     profile=False,
     verbose=True,
-    address="https://raw.githubusercontent.com/pycaret/pycaret/master/datasets/",
+    address="https://raw.githubusercontent.com/pycaret/datasets/main/",
 ):
 
     """
@@ -38,7 +40,7 @@ def get_data(
     verbose: bool, default = True
         When set to False, head of data is not displayed.
 
-    address: string, default = "https://raw.githubusercontent.com/pycaret/pycaret/master/datasets/"
+    address: string, default = "https://raw.githubusercontent.com/pycaret/datasets/main/"
         Download url of dataset. For people have difficulty linking to github, they can change
         the default address to their own (e.g. "https://gitee.com/IncubatorShokuhou/pycaret/raw/master/datasets/")
 
@@ -61,16 +63,24 @@ def get_data(
 
     import pandas as pd
     import os.path
-    from IPython.display import display, HTML, clear_output, update_display
+    from IPython.display import display
+
+    root = address
+    data_dir = "data/"
+    meta_dir = "meta/"
 
     extension = ".csv"
-    filename = str(dataset) + extension
 
-    complete_address = address + filename
+    if index:
+        filename = "index.csv"
+        complete_address = root + meta_dir + folder + "/" + filename
+    else:
+        filename = str(dataset) + extension
+        complete_address = root + data_dir + folder + "/" + filename
 
     sktime_datasets = ["airline", "lynx", "uschange"]
 
-    if os.path.isfile(filename):
+    if os.path.isfile(filename) and not index:
         data = pd.read_csv(filename)
     elif dataset in sktime_datasets:
         try:
@@ -78,7 +88,8 @@ def get_data(
         except ImportError as e:
             print(e)
             raise ImportError(
-                f"Dataset '{dataset}' is meant for time series analysis and needs the sktime library to be installed."
+                f"Dataset '{dataset}' is meant for time series analysis and needs"
+                " the sktime library to be installed."
             )
 
         ts_dataset_mapping = {
