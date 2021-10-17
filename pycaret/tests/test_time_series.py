@@ -472,26 +472,6 @@ def test_predict_model_warnings(load_pos_and_neg_data):
     metrics = exp.pull()
     assert metrics.equals(expected)
 
-    #####################################
-    #### Test after finalizing model ####
-    #####################################
-    final_model = exp.finalize_model(model)
-
-    # Expect to get all NaN values in metrics since no indices match
-    model_col = expected["Model"]
-    expected = pd.DataFrame(np.nan, index=expected.index, columns=expected.columns)
-    expected["Model"] = model_col  # Replace Model column with correct value
-
-    # Expect to get all NaN values in metrics since no indices match
-    _ = exp.predict_model(final_model)
-    metrics = exp.pull()
-    assert metrics.equals(expected)
-
-    # Expect to get all NaN values in metrics since no indices match
-    _ = exp.predict_model(final_model, fh=np.arange(1, 24))
-    metrics = exp.pull()
-    assert metrics.equals(expected)
-
 
 def test_create_model_custom_folds(load_pos_and_neg_data):
     """test custom fold in create_model"""

@@ -3,7 +3,7 @@ import pandas as pd
 from statsmodels.tsa.stattools import adfuller
 from statsmodels.tsa.api import kpss
 
-import pmdarima as pm
+from pmdarima.arima.utils import ndiffs, nsdiffs
 
 from pycaret.internal.tests.stats import (
     summary_statistics,
@@ -193,7 +193,7 @@ def recommend_lowercase_d(data: pd.Series, **kwargs) -> int:
     int
         The differencing order to use
     """
-    recommended_lowercase_d = pm.arima.ndiffs(data, **kwargs)
+    recommended_lowercase_d = ndiffs(data, **kwargs)
     return recommended_lowercase_d
 
 
@@ -224,7 +224,7 @@ def recommend_uppercase_d(data: pd.Series, sp: int, **kwargs) -> int:
     int
         The differencing order to use
     """
-    recommended_uppercase_d = pm.arima.ndsiffs(data, m=sp, **kwargs)
+    recommended_uppercase_d = nsdiffs(data, m=sp, **kwargs)
     return recommended_uppercase_d
 
 
