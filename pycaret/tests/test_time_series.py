@@ -536,8 +536,7 @@ def test_prediction_interval_na(load_pos_and_neg_data):
     assert y_pred["upper"].isnull().all()
 
 
-def test_compare_models(load_pos_and_neg_data):
-    """tests compare_models functionality"""
+def _compare_models(log_experiment: bool):
     exp = TimeSeriesExperiment()
 
     fh = 12
@@ -551,11 +550,21 @@ def test_compare_models(load_pos_and_neg_data):
         fold_strategy="expanding",
         verbose=False,
         session_id=42,
-        log_experiment=True,
+        log_experiment=log_experiment,
     )
 
     best_baseline_models = exp.compare_models(n_select=3)
     assert len(best_baseline_models) == 3
+
+
+def test_compare_models(load_pos_and_neg_data):
+    """tests compare_models functionality"""
+    def _compare_models(log_experiment=False)
+
+
+def test_compare_models_log_experiment(load_pos_and_neg_data):
+    """tests compare_models functionality with log_experiment=True"""
+    def _compare_models(log_experiment=True)
 
 
 @pytest.mark.filterwarnings(
