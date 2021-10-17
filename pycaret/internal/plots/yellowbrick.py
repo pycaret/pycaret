@@ -7,6 +7,7 @@ from pycaret.internal.logging import get_logger
 from pycaret.internal.Display import Display
 import scikitplot as skplt
 import matplotlib.pyplot as plt
+import os
 
 
 def show_yellowbrick_in_streamlit(
@@ -109,8 +110,12 @@ def show_yellowbrick_plot(
     display.clear_output()
 
     if save:
-        logger.info(f"Saving '{name}.png' in current active directory")
-        visualizer.show(outpath=f"{name}.png", clear_figure=True)
+        if not isinstance(save, bool):
+            plot_filename = os.path.join(save, name)
+        else:
+            plot_filename = name
+        logger.info(f"Saving '{plot_filename}.png'")
+        plt.savefig(f"{plot_filename}.png", bbox_inches="tight")
     else:
         if display_format == "streamlit":
             show_yellowbrick_in_streamlit(visualizer, clear_figure=True)
