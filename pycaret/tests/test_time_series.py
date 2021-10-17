@@ -559,12 +559,12 @@ def _compare_models(log_experiment: bool):
 
 def test_compare_models(load_pos_and_neg_data):
     """tests compare_models functionality"""
-    def _compare_models(log_experiment=False)
+    _compare_models(log_experiment=False)
 
 
 def test_compare_models_log_experiment(load_pos_and_neg_data):
     """tests compare_models functionality with log_experiment=True"""
-    def _compare_models(log_experiment=True)
+    _compare_models(log_experiment=True)
 
 
 @pytest.mark.filterwarnings(
