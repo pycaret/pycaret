@@ -23,6 +23,11 @@ from pycaret.internal.Display import Display
 from pycaret.internal.distributions import *
 from pycaret.internal.validation import *
 from pycaret.internal.tunable import TunableMixin
+
+from pycaret.internal.tests.time_series import (
+    recommend_uppercase_d,
+    recommend_lowercase_d,
+)
 import pycaret.containers.metrics.time_series
 import pycaret.containers.models.time_series
 import pycaret.internal.preprocess
@@ -81,38 +86,6 @@ def get_folds(cv, y) -> Generator[Tuple[pd.Series, pd.Series], None, None]:
     """
     Returns the train and test indices for the time series data
     """
-    # n_folds = _get_cv_n_folds(y, cv)
-    # for i in np.arange(n_folds):
-    #     if i == 0:
-    #         # Initial Split in sktime
-    #         train_initial, test_initial = cv.split_initial(y)
-    #         y_train_initial = y.iloc[train_initial]
-    #         y_test_initial = y.iloc[test_initial]  # Includes all entries after y_train
-
-    #         rolling_y_train = y_train_initial.copy(deep=True)
-    #         y_test = y_test_initial.iloc[
-    #             np.arange(len(cv.fh))
-    #         ]  # filter to only what is needed
-    #     else:
-    #         # Subsequent Splits in sktime
-    #         for j, (train, test) in enumerate(cv.split(y_test_initial)):
-    #             if j == i - 1:
-    #                 y_train = y_test_initial.iloc[train]
-    #                 y_test = y_test_initial.iloc[test]
-
-    #                 rolling_y_train = pd.concat([rolling_y_train, y_train])
-    #                 rolling_y_train = rolling_y_train[
-    #                     ~rolling_y_train.index.duplicated(keep="first")
-    #                 ]
-
-    #                 rolling_y_train = rolling_y_train.asfreq(
-    #                     y_train.index.freqstr
-    #                 )  # Ensure freq value is preserved, otherwise when predicting raise error
-
-    #                 if isinstance(cv, SlidingWindowSplitter):
-    #                     rolling_y_train = rolling_y_train.iloc[-cv.initial_window :]
-    #     yield rolling_y_train.index, y_test.index
-
     # https://github.com/alan-turing-institute/sktime/blob/main/examples/window_splitters.ipynb
     for train_indices, test_indices in cv.split(y):
         # print(f"Train Indices: {train_indices}, Test Indices: {test_indices}")
@@ -656,6 +629,19 @@ class TimeSeriesExperiment(_SupervisedExperiment):
     def _get_setup_display(self, **kwargs) -> Styler:
         # define highlight function for function grid to display
 
+        wn_results = self.check_stats(test="white_noise")
+        wn_values = wn_results.query("Property == 'White Noise'")["Value"]
+        if sum(wn_values) == 0:
+            wn = "No"
+        elif sum(wn_values) == 1:
+            wn = "Maybe"
+        elif sum(wn_values) == 1:
+            wn = "Yes"
+
+        d = recommend_lowercase_d(data=self.y)
+        sp = self.seasonal_period if self.seasonality_present else 1
+        D = recommend_uppercase_d(data=self.y, sp=sp) if sp > 1 else 0
+
         functions = pd.DataFrame(
             [
                 ["session_id", self.seed],
@@ -669,6 +655,13 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                     ["Transformed Test Set", self.y_test.shape],
                     ["Fold Generator", type(self.fold_generator).__name__],
                     ["Fold Number", self.fold_param],
+                    ["Enforce Prediction Interval", self.enforce_pi],
+                    ["Seasonal Period Tested", self.seasonal_period],
+                    ["Seasonality Detected", self.seasonality_present],
+                    ["Target Strictly Positive", self.strictly_positive],
+                    ["Target White Noise", wn],
+                    ["Recommended 'd'", d],
+                    ["Recommended Seasonal 'D'", D],
                     ["CPU Jobs", self.n_jobs_param],
                     ["Use GPU", self.gpu_param],
                     ["Log Experiment", self.logging_param],
