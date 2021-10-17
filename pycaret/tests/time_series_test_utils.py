@@ -104,9 +104,9 @@ def _return_compare_model_args():
     """Returns cross_validation, log_experiment parameters respectively"""
     parametrize_list = [
         (False, False),
-        (False, False),  # @Antoni to change to second one to True
+        (False, True),
         (True, False),
-        (True, False),  # @Antoni to change to second one to True
+        (True, True),
     ]
     return parametrize_list
 
