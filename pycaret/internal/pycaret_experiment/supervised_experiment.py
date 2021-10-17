@@ -298,61 +298,62 @@ class _SupervisedExperiment(_TabularExperiment):
 
             run_name_ = f"Session Initialized {self.USI}"
 
-            with mlflow.start_run(run_name=run_name_) as run:
+            mlflow.end_run()
+            mlflow.start_run(run_name=run_name_)
 
-                # Get active run to log as tag
-                RunID = mlflow.active_run().info.run_id
+            # Get active run to log as tag
+            RunID = mlflow.active_run().info.run_id
 
-                k = functions.copy()
-                k.set_index("Description", drop=True, inplace=True)
-                kdict = k.to_dict()
-                params = kdict.get("Value")
-                mlflow.log_params(params)
+            k = functions.copy()
+            k.set_index("Description", drop=True, inplace=True)
+            kdict = k.to_dict()
+            params = kdict.get("Value")
+            mlflow.log_params(params)
 
-                # set tag of compare_models
-                mlflow.set_tag("Source", "setup")
+            # set tag of compare_models
+            mlflow.set_tag("Source", "setup")
 
-                import secrets
+            import secrets
 
-                URI = secrets.token_hex(nbytes=4)
-                mlflow.set_tag("URI", URI)
-                mlflow.set_tag("USI", self.USI)
-                mlflow.set_tag("Run Time", runtime)
-                mlflow.set_tag("Run ID", RunID)
+            URI = secrets.token_hex(nbytes=4)
+            mlflow.set_tag("URI", URI)
+            mlflow.set_tag("USI", self.USI)
+            mlflow.set_tag("Run Time", runtime)
+            mlflow.set_tag("Run ID", RunID)
 
-                # Log the transformation pipeline
-                self.logger.info(
-                    "SubProcess save_model() called =================================="
+            # Log the transformation pipeline
+            self.logger.info(
+                "SubProcess save_model() called =================================="
+            )
+            self.save_model(
+                self.prep_pipe, "Transformation Pipeline", verbose=False
+            )
+            self.logger.info(
+                "SubProcess save_model() end =================================="
+            )
+            mlflow.log_artifact("Transformation Pipeline.pkl")
+            os.remove("Transformation Pipeline.pkl")
+
+            # Log pandas profile
+            if log_profile:
+                import pandas_profiling
+
+                pf = pandas_profiling.ProfileReport(
+                    self.data_before_preprocess, **profile_kwargs
                 )
-                self.save_model(
-                    self.prep_pipe, "Transformation Pipeline", verbose=False
-                )
-                self.logger.info(
-                    "SubProcess save_model() end =================================="
-                )
-                mlflow.log_artifact("Transformation Pipeline.pkl")
-                os.remove("Transformation Pipeline.pkl")
+                pf.to_file("Data Profile.html")
+                mlflow.log_artifact("Data Profile.html")
+                os.remove("Data Profile.html")
+                display.display(functions_styler, clear=True)
 
-                # Log pandas profile
-                if log_profile:
-                    import pandas_profiling
-
-                    pf = pandas_profiling.ProfileReport(
-                        self.data_before_preprocess, **profile_kwargs
-                    )
-                    pf.to_file("Data Profile.html")
-                    mlflow.log_artifact("Data Profile.html")
-                    os.remove("Data Profile.html")
-                    display.display(functions_styler, clear=True)
-
-                # Log training and testing set
-                if log_data:
-                    self.X_train.join(self.y_train).to_csv("Train.csv")
-                    self.X_test.join(self.y_test).to_csv("Test.csv")
-                    mlflow.log_artifact("Train.csv")
-                    mlflow.log_artifact("Test.csv")
-                    os.remove("Train.csv")
-                    os.remove("Test.csv")
+            # Log training and testing set
+            if log_data:
+                self.X_train.join(self.y_train).to_csv("Train.csv")
+                self.X_test.join(self.y_test).to_csv("Test.csv")
+                mlflow.log_artifact("Train.csv")
+                mlflow.log_artifact("Test.csv")
+                os.remove("Train.csv")
+                os.remove("Test.csv")
         return
 
     def compare_models(
@@ -3224,7 +3225,7 @@ class _SupervisedExperiment(_TabularExperiment):
         estimator_dict = {}
         for x in estimator_list:
             x = get_estimator_from_meta_estimator(x)
-            name = self._get_model_id(x) or x.__class__.__name__
+            name = self._get_model_name(x)
             suffix = 1
             original_name = name
             while name in estimator_dict:
@@ -3588,7 +3589,7 @@ class _SupervisedExperiment(_TabularExperiment):
         estimator_dict = {}
         for x in estimator_list:
             x = get_estimator_from_meta_estimator(x)
-            name = self._get_model_id(x) or x.__class__.__name__
+            name = self._get_model_name(x)
             suffix = 1
             original_name = name
             while name in estimator_dict:
