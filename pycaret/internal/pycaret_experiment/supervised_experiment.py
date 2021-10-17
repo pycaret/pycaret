@@ -776,7 +776,14 @@ class _SupervisedExperiment(_TabularExperiment):
                         refit=False,
                     )
                     model_results = self.pull(pop=True)
-                    assert np.sum(model_results.drop("cutoff", axis=1, errors="ignore").iloc[0]) != 0.0
+                    assert (
+                        np.sum(
+                            model_results.drop("cutoff", axis=1, errors="ignore").iloc[
+                                0
+                            ]
+                        )
+                        != 0.0
+                    )
                 except Exception:
                     self.logger.warning(
                         f"create_model() for {model} raised an exception or returned all 0.0, trying without fit_kwargs:"
@@ -812,13 +819,14 @@ class _SupervisedExperiment(_TabularExperiment):
                 )
                 break
 
-            model_results.drop("cutoff", axis=1, errors="ignore")
-
             runtime_end = time.time()
             runtime = np.array(runtime_end - runtime_start).round(2)
 
             self.logger.info("Creating metrics dataframe")
             if cross_validation:
+                # cutoff only present in time series and when cv = True
+                if "cutoff" in model_results.columns:
+                    model_results.drop("cutoff", axis=1, errors="ignore")
                 compare_models_ = pd.DataFrame(model_results.loc["Mean"]).T
             else:
                 compare_models_ = pd.DataFrame(model_results.iloc[0]).T

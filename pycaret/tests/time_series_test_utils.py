@@ -100,6 +100,17 @@ def _return_splitter_args():
     return parametrize_list
 
 
+def _return_compare_model_args():
+    """Returns cross_validation, log_experiment parameters respectively"""
+    parametrize_list = [
+        (False, False),
+        (False, False),  # @Antoni to change to second one to True
+        (True, False),
+        (True, False),  # @Antoni to change to second one to True
+    ]
+    return parametrize_list
+
+
 def _return_setup_args_raises():
     """
     """
