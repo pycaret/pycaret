@@ -4,7 +4,7 @@ from pycaret.internal.pipeline import (
     estimator_pipeline,
     get_pipeline_fit_kwargs,
 )
-from pycaret.internal.utils import infer_ml_usecase
+from pycaret.internal.utils import infer_ml_usecase, mlflow_remove_bad_chars
 import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
 from pycaret.internal.logging import get_logger
@@ -233,6 +233,7 @@ class _UnsupervisedExperiment(_TabularExperiment):
             k.set_index("Description", drop=True, inplace=True)
             kdict = k.to_dict()
             params = kdict.get("Value")
+            params = {mlflow_remove_bad_chars(k): v for k, v in params.items()}
             mlflow.log_params(params)
 
             # set tag of compare_models

@@ -13,6 +13,7 @@ from pycaret.internal.pipeline import (
 )
 from pycaret.internal.utils import (
     color_df,
+    mlflow_remove_bad_chars,
     nullcontext,
     true_warm_start,
     can_early_stop,
@@ -308,6 +309,7 @@ class _SupervisedExperiment(_TabularExperiment):
             k.set_index("Description", drop=True, inplace=True)
             kdict = k.to_dict()
             params = kdict.get("Value")
+            params = {mlflow_remove_bad_chars(k): v for k, v in params.items()}
             mlflow.log_params(params)
 
             # set tag of compare_models
