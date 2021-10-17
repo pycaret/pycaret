@@ -782,7 +782,7 @@ class _SupervisedExperiment(_TabularExperiment):
                     model_results = self.pull(pop=True)
                     assert (
                         np.sum(
-                            model_results.drop("cutoff", axis=1, errors="ignore").iloc[
+                            model_results.drop(results_columns_to_ignore, axis=1, errors="ignore").iloc[
                                 0
                             ]
                         )
