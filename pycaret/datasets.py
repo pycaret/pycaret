@@ -10,6 +10,7 @@ def get_data(
     save_copy: bool = False,
     profile=False,
     verbose=True,
+    address="https://raw.githubusercontent.com/pycaret/datasets/main/",
 ):
 
     """
@@ -39,6 +40,10 @@ def get_data(
     verbose: bool, default = True
         When set to False, head of data is not displayed.
 
+    address: string, default = "https://raw.githubusercontent.com/pycaret/datasets/main/"
+        Download url of dataset. For people have difficulty linking to github, they can change
+        the default address to their own (e.g. "https://gitee.com/IncubatorShokuhou/pycaret/raw/master/datasets/")
+
 
     Returns:
         pandas.DataFrame
@@ -60,7 +65,7 @@ def get_data(
     import os.path
     from IPython.display import display
 
-    root = "https://raw.githubusercontent.com/pycaret/datasets/main/"
+    root = address
     data_dir = "data/"
     meta_dir = "meta/"
 

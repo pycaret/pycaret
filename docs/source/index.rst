@@ -22,7 +22,7 @@ A formatted version of the citation would look like this::
       title   = {PyCaret: An open source, low-code machine learning library in Python},
       year    = {2020},
       month   = {April},
-      note    = {PyCaret version 2.3.1},
+      note    = {PyCaret version 1.0.0},
       url     = {https://www.pycaret.org}
     }
 
