@@ -1709,64 +1709,65 @@ def setup(
 
         run_name_ = f"Session Initialized {USI}"
 
-        with mlflow.start_run(run_name=run_name_) as run:
+        mlflow.end_run()
+        mlflow.start_run(run_name=run_name_)
 
-            # Get active run to log as tag
-            RunID = mlflow.active_run().info.run_id
+        # Get active run to log as tag
+        RunID = mlflow.active_run().info.run_id
 
-            k = functions.copy()
-            k.set_index("Description", drop=True, inplace=True)
-            kdict = k.to_dict()
-            params = kdict.get("Value")
-            mlflow.log_params(params)
+        k = functions.copy()
+        k.set_index("Description", drop=True, inplace=True)
+        kdict = k.to_dict()
+        params = kdict.get("Value")
+        mlflow.log_params(params)
 
-            # set tag of compare_models
-            mlflow.set_tag("Source", "setup")
+        # set tag of compare_models
+        mlflow.set_tag("Source", "setup")
 
-            import secrets
+        import secrets
 
-            URI = secrets.token_hex(nbytes=4)
-            mlflow.set_tag("URI", URI)
-            mlflow.set_tag("USI", USI)
-            mlflow.set_tag("Run Time", runtime)
-            mlflow.set_tag("Run ID", RunID)
+        URI = secrets.token_hex(nbytes=4)
+        mlflow.set_tag("URI", URI)
+        mlflow.set_tag("USI", USI)
+        mlflow.set_tag("Run Time", runtime)
+        mlflow.set_tag("Run ID", RunID)
 
-            # Log the transformation pipeline
-            logger.info(
-                "SubProcess save_model() called =================================="
+        # Log the transformation pipeline
+        logger.info(
+            "SubProcess save_model() called =================================="
+        )
+        save_model(prep_pipe, "Transformation Pipeline", verbose=False)
+        logger.info(
+            "SubProcess save_model() end =================================="
+        )
+        mlflow.log_artifact("Transformation Pipeline.pkl")
+        os.remove("Transformation Pipeline.pkl")
+
+        # Log pandas profile
+        if log_profile:
+            import pandas_profiling
+
+            pf = pandas_profiling.ProfileReport(
+                data_before_preprocess, **profile_kwargs
             )
-            save_model(prep_pipe, "Transformation Pipeline", verbose=False)
-            logger.info(
-                "SubProcess save_model() end =================================="
-            )
-            mlflow.log_artifact("Transformation Pipeline.pkl")
-            os.remove("Transformation Pipeline.pkl")
+            pf.to_file("Data Profile.html")
+            mlflow.log_artifact("Data Profile.html")
+            os.remove("Data Profile.html")
+            display.display(functions_, clear=True)
 
-            # Log pandas profile
-            if log_profile:
-                import pandas_profiling
-
-                pf = pandas_profiling.ProfileReport(
-                    data_before_preprocess, **profile_kwargs
-                )
-                pf.to_file("Data Profile.html")
-                mlflow.log_artifact("Data Profile.html")
-                os.remove("Data Profile.html")
-                display.display(functions_, clear=True)
-
-            # Log training and testing set
-            if log_data:
-                if not _is_unsupervised(_ml_usecase):
-                    X_train.join(y_train).to_csv("Train.csv")
-                    X_test.join(y_test).to_csv("Test.csv")
-                    mlflow.log_artifact("Train.csv")
-                    mlflow.log_artifact("Test.csv")
-                    os.remove("Train.csv")
-                    os.remove("Test.csv")
-                else:
-                    X.to_csv("Dataset.csv")
-                    mlflow.log_artifact("Dataset.csv")
-                    os.remove("Dataset.csv")
+        # Log training and testing set
+        if log_data:
+            if not _is_unsupervised(_ml_usecase):
+                X_train.join(y_train).to_csv("Train.csv")
+                X_test.join(y_test).to_csv("Test.csv")
+                mlflow.log_artifact("Train.csv")
+                mlflow.log_artifact("Test.csv")
+                os.remove("Train.csv")
+                os.remove("Test.csv")
+            else:
+                X.to_csv("Dataset.csv")
+                mlflow.log_artifact("Dataset.csv")
+                os.remove("Dataset.csv")
 
     logger.info(f"create_model_container: {len(create_model_container)}")
     logger.info(f"master_model_container: {len(master_model_container)}")
@@ -10285,7 +10286,7 @@ def _mlflow_log_model(
     full_name = _get_model_name(model)
     logger.info(f"Model: {full_name}")
 
-    with mlflow.start_run(run_name=full_name) as run:
+    with mlflow.start_run(run_name=full_name, nested=True) as run:
 
         # Get active run to log as tag
         RunID = mlflow.active_run().info.run_id
