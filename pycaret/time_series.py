@@ -397,6 +397,7 @@ def create_model(
         * 'theta' - Theta Forecaster
         * 'tbats' - TBATS
         * 'bats' - BATS
+        * 'prophet' - Prophet Forecaster
         * 'lr_cds_dt' - Linear w/ Cond. Deseasonalize & Detrending
         * 'en_cds_dt' - Elastic Net w/ Cond. Deseasonalize & Detrending
         * 'ridge_cds_dt' - Ridge w/ Cond. Deseasonalize & Detrending
@@ -884,8 +885,9 @@ def plot_model(
 
     """
     This function analyzes the performance of a trained model on holdout set.
-    When used without any estimator, this function can generate diagnostic
-    plots that doesn't require trained model.
+    When used without any estimator, this function generates plots on the 
+    original data set. When used with an estimator, it will generate plots on 
+    the model residuals.
 
 
     Example
@@ -895,7 +897,9 @@ def plot_model(
     >>> from pycaret.time_series import *
     >>> exp_name = setup(data = airline,  fh = 12)
     >>> arima = create_model('arima')
-    >>> plot_model(arima, plot = 'residuals')
+    >>> plot_model(plot = 'ts')
+    >>> plot_model(plot = 'decomp_classical', data_kwargs = {'type' : 'multiplicative'})
+    >>> plot_model(estimator = arima, plot = 'forecast', data_kwargs = {'fh' : 24})
 
 
     estimator: sktime compatible object, default = None
@@ -1110,8 +1114,9 @@ def predict_model(
 ) -> pd.DataFrame:
 
     """
-    This function forecast using a trained model. When ``fh`` is
-    None, it forecast values for the holdout set.
+    This function forecast using a trained model. When ``fh`` is None, 
+    it forecasts using the same forecast horizon used during the 
+    training.
 
 
     Example
@@ -1131,8 +1136,8 @@ def predict_model(
 
     fh: int, default = None
         Number of points from the last date of training to forecast.
-        When set to None, the length of forecast is equal to length 
-        of holdout set.
+        When fh is None, it forecasts using the same forecast horizon 
+        used during the training.
 
 
     return_pred_int: bool, default = False
