@@ -16,6 +16,7 @@ from .time_series_test_utils import (
     _get_seasonal_values,
     _return_model_parameters,
     _return_splitter_args,
+    _return_compare_model_args,
     _return_setup_args_raises,
     _return_data_with_without_period_index,
     _ALL_METRICS,
@@ -38,6 +39,7 @@ _model_parameters = _return_model_parameters()
 _splitter_args = _return_splitter_args()
 _setup_args_raises = _return_setup_args_raises()
 _data_with_without_period_index = _return_data_with_without_period_index()
+_compare_model_args = _return_compare_model_args()
 
 ############################
 #### Functions End Here ####
@@ -511,6 +513,23 @@ def test_create_model_custom_folds(load_pos_and_neg_data):
     assert len(metrics2) == custom_fold + 2  # + 2 for Mean and SD
 
 
+def test_create_model_no_cv(load_pos_and_neg_data):
+    """test create_model without cross validation"""
+    exp = TimeSeriesExperiment()
+    exp.setup(
+        data=load_pos_and_neg_data, fh=12, fold_strategy="sliding", verbose=False,
+    )
+
+    ##################################
+    ## Test Create Model without cv ##
+    ##################################
+    _ = exp.create_model("naive", cross_validation=False)
+    metrics = exp.pull()
+
+    # Should return only 1 row for the test set (since no CV)
+    assert len(metrics) == 1
+
+
 def test_prediction_interval_na(load_pos_and_neg_data):
     """Tests predict model when interval is NA"""
 
@@ -536,7 +555,8 @@ def test_prediction_interval_na(load_pos_and_neg_data):
     assert y_pred["upper"].isnull().all()
 
 
-def test_compare_models(load_pos_and_neg_data):
+@pytest.mark.parametrize("cross_validation, log_experiment", _compare_model_args)
+def test_compare_models(cross_validation, log_experiment, load_pos_and_neg_data):
     """tests compare_models functionality"""
     exp = TimeSeriesExperiment()
 
@@ -551,9 +571,12 @@ def test_compare_models(load_pos_and_neg_data):
         fold_strategy="expanding",
         verbose=False,
         session_id=42,
+        log_experiment=log_experiment,
     )
 
-    best_baseline_models = exp.compare_models(n_select=3)
+    best_baseline_models = exp.compare_models(
+        n_select=3, cross_validation=cross_validation
+    )
     assert len(best_baseline_models) == 3
 
 

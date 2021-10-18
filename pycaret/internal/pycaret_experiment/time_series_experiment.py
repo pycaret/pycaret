@@ -1383,7 +1383,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
 
         display.move_progress()
-        # display.clear_output()
 
         if predict:
             self.predict_model(model, verbose=False)
@@ -2739,7 +2738,8 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         # https://stackoverflow.com/a/33576345/8925915
         estimator_ = deepcopy(estimator)
 
-        display_test_metric = verbose
+        loaded_in_same_env = True
+        # Check if loaded in a different environment
         if not hasattr(self, "X_test") or fh is not None:
             # If the model is saved and loaded afterwards,
             # it will not have self.X_test
@@ -2747,7 +2747,14 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             # Also do not display metrics if user provides own fh
             # (even if it is same as test set horizon) per
             # https://github.com/pycaret/pycaret/issues/1702
-            display_test_metric = False
+            loaded_in_same_env = False
+            verbose = False
+
+        if fh is not None:
+            # Do not display metrics if user provides own fh
+            # (even if it is same as test set horizon) per
+            # https://github.com/pycaret/pycaret/issues/1702
+            verbose = False
 
         if fh is None:
             if not hasattr(self, "fh"):
@@ -2757,14 +2764,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         else:
             # Get the fh in the right format for sktime
             fh = self.check_fh(fh)
-
-        display = None
-        try:
-            np.random.seed(self.seed)
-            if not display:
-                display = Display(verbose=verbose, html_param=self.html_param,)
-        except:
-            display = Display(verbose=False, html_param=False,)
 
         try:
             return_vals = estimator_.predict(
@@ -2813,12 +2812,18 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 result.index.to_period()
             )  # Prophet with return_pred_int = True returns datetime index.
 
-        if display_test_metric:
-            # This is not technically y_test_pred in all cases.
-            # If the model has not been finalized, y_test_pred will match the indices from y_test
-            # If the model has been finalized, y_test_pred will not match the indices from y_test
-            # Also, the user can use a different fh length in predict in which case the length
-            # of y_test_pred will not match y_test.
+        #################
+        #### Metrics ####
+        #################
+        # Only display if loaded in same environment
+
+        # This is not technically y_test_pred in all cases.
+        # If the model has not been finalized, y_test_pred will match the indices from y_test
+        # If the model has been finalized, y_test_pred will not match the indices from y_test
+        # Also, the user can use a different fh length in predict in which case the length
+        # of y_test_pred will not match y_test.
+
+        if loaded_in_same_env:
             X_test_ = self.X_test.copy()
             # Some predict methods in sktime expect None (not an empty dataframe as
             # returned by pycaret). Hence converting to None.
@@ -2832,17 +2837,15 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             if len(y_test_pred) != len(y_test_):
                 msg = (
                     "predict_model >> Forecast Horizon does not match the horizon length "
-                    "used during training. Metrics displayed will be using indices that match only"
+                    "used during training. Metrics will not be displayed."
                 )
-                # Need to print and log as well.
-                print(msg)
                 self.logger.warning(msg)
+                verbose = False
 
             # concatenates by index
             y_test_and_pred = pd.concat([y_test_pred, y_test_], axis=1)
-            y_test_and_pred.dropna(
-                inplace=True
-            )  # Removes any indices that do not match
+            # Removes any indices that do not match
+            y_test_and_pred.dropna(inplace=True)
             y_test_pred_common = y_test_and_pred[y_test_and_pred.columns[0]]
             y_test_common = y_test_and_pred[y_test_and_pred.columns[1]]
 
@@ -2852,15 +2855,22 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                     "You are most likely calling predict_model after finalizing model. "
                     "Metrics will not be displayed"
                 )
-                # metrics = self._calculate_metrics(y_test=[], pred=[], pred_prob=None)  # type: ignore
-                # metrics = {metric_name: np.nan for metric_name, _ in metrics.items()}
-                display_test_metric = False
+                metrics = self._calculate_metrics(y_test=[], pred=[], pred_prob=None)  # type: ignore
+                metrics = {metric_name: np.nan for metric_name, _ in metrics.items()}
+                verbose = False
             else:
                 metrics = self._calculate_metrics(y_test=y_test_common, pred=y_test_pred_common, pred_prob=None)  # type: ignore
 
-        if display_test_metric:
             # Display Test Score
             # model name
+            display = None
+            try:
+                np.random.seed(self.seed)
+                if not display:
+                    display = Display(verbose=verbose, html_param=self.html_param,)
+            except:
+                display = Display(verbose=False, html_param=False,)
+
             full_name = self._get_model_name(estimator_)
             df_score = pd.DataFrame(metrics, index=[0])
             df_score.insert(0, "Model", full_name)
