@@ -1584,8 +1584,8 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             Will be deprecated in future.
 
 
-        search_algorithm: str, default = None
-            Parameter not in use for now. Behavior may change in future.
+        search_algorithm: str, default = 'random'
+            use 'random' for random grid search and 'grid' for complete grid search. 
 
 
         choose_better: bool, default = False
@@ -2386,7 +2386,8 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
 
         fig_kwargs: dict, default = None
-            Dictionary of arguments passed to the figure object of plotly. 
+            Dictionary of arguments passed to the figure object of plotly. Example:
+            * fig_kwargs = {'fig_size' : [800, 500], 'fig_template' : 'simple_white'}
 
 
         save: string or bool, default = False
