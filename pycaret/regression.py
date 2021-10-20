@@ -16,6 +16,7 @@ import warnings
 
 warnings.filterwarnings("ignore")
 
+_EXPERIMENT_CLASS = RegressionExperiment
 _CURRENT_EXPERIMENT = None
 _CURRENT_EXPERIMENT_EXCEPTION = (
     "_CURRENT_EXPERIMENT global variable is not set. Please run setup() first."
@@ -566,7 +567,7 @@ def setup(
       
     """
 
-    exp = RegressionExperiment()
+    exp = _EXPERIMENT_CLASS()
     set_current_experiment(exp)
     return exp.setup(
         data=data,
@@ -1583,15 +1584,22 @@ def interpret_model(
     observation: Optional[int] = None,
     use_train_data: bool = False,
     X_new_sample: Optional[pd.DataFrame] = None,
-    save: bool = False,
+    y_new_sample: Optional[pd.DataFrame] = None,  # add for pfi explainer
+    save: Union[str, bool] = False,
     **kwargs,
 ):
 
     """
-    This function analyzes the predictions generated from a trained model. Most plots
-    in this function are implemented based on the SHAP (SHapley Additive exPlanations).
-    For more info on this, please see https://shap.readthedocs.io/en/latest/
+    This function takes a trained model object and returns an interpretation plot
+    based on the test / hold-out set. It only supports tree based algorithms.
 
+    This function is implemented based on the SHAP (SHapley Additive exPlanations),
+    which is a unified approach to explain the output of any machine learning model.
+    SHAP connects game theory with local explanations.
+
+    For more information : https://shap.readthedocs.io/en/latest/
+
+    For Partial Dependence Plot : https://github.com/SauceCat/PDPbox
 
     Example
     --------
@@ -1607,24 +1615,31 @@ def interpret_model(
         Trained model object
 
 
-    plot: str, default = 'summary'
-        List of available plots (ID - Name):
+    plot : str, default = 'summary'
+        Abbreviation of type of plot. The current list of plots supported 
+        are (Plot - Name):
 
         * 'summary' - Summary Plot using SHAP
         * 'correlation' - Dependence Plot using SHAP
-        * 'reason' - Force Plot using SHAP           
+        * 'reason' - Force Plot using SHAP
         * 'pdp' - Partial Dependence Plot
+        * 'msa' - Morris Sensitivity Analysis
+        * 'pfi' - Permutation Feature Importance
 
 
     feature: str, default = None
-        Feature to check correlation with. This parameter is only required when ``plot``
-        type is 'correlation' or 'pdp'. When set to None, it uses the first column from 
-        the dataset.
+        This parameter is only needed when plot = 'correlation' or 'pdp'.
+        By default feature is set to None which means the first column of the
+        dataset will be used as a variable. A feature parameter must be passed
+        to change this.
 
 
-    observation: int, default = None
-        Observation index number in holdout set to explain. When ``plot`` is not
-        'reason', this parameter is ignored. 
+    observation: integer, default = None
+        This parameter only comes into effect when plot is set to 'reason'. If no
+        observation number is provided, it will return an analysis of all observations
+        with the option to select the feature on x and y axes through drop down
+        interactivity. For analysis at the sample level, an observation parameter must
+        be passed with the index value of the observation in test / hold-out set.
 
 
     use_train_data: bool, default = False
@@ -1634,12 +1649,19 @@ def interpret_model(
 
     X_new_sample: pd.DataFrame, default = None
         Row from an out-of-sample dataframe (neither train nor test data) to be plotted.
-        The sample must have the same columns as the raw input data, and it is transformed
+        The sample must have the same columns as the raw input train data, and it is transformed
         by the preprocessing pipeline automatically before plotting.
 
 
-    save: bool, default = False
+    y_new_sample: pd.DataFrame, default = None
+        Row from an out-of-sample dataframe (neither train nor test data) to be plotted.
+        The sample must have the same columns as the raw input label data, and it is transformed
+        by the preprocessing pipeline automatically before plotting.
+
+
+    save: string or bool, default = False
         When set to True, Plot is saved as a 'png' file in current working directory.
+        When a path destination is given, Plot is saved as a 'png' file the given path to the directory of choice.
 
 
     **kwargs:
@@ -1658,12 +1680,13 @@ def interpret_model(
         observation=observation,
         use_train_data=use_train_data,
         X_new_sample=X_new_sample,
+        y_new_sample=y_new_sample,
         save=save,
         **kwargs,
     )
 
 
-@check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
+# not using check_if_global_is_not_none on purpose
 def predict_model(
     estimator,
     data: Optional[pd.DataFrame] = None,
@@ -1718,7 +1741,11 @@ def predict_model(
     
     """
 
-    return _CURRENT_EXPERIMENT.predict_model(
+    experiment = _CURRENT_EXPERIMENT
+    if experiment is None:
+        experiment = _EXPERIMENT_CLASS()
+
+    return experiment.predict_model(
         estimator=estimator, data=data, round=round, verbose=verbose,
     )
 
@@ -1844,7 +1871,7 @@ def deploy_model(
         Dictionary of applicable authentication tokens.
 
         When platform = 'aws':
-        {'bucket' : 'S3-bucket-name'}
+        {'bucket' : 'S3-bucket-name', 'path': (optional) folder name under the bucket}
 
         When platform = 'gcp':
         {'project': 'gcp-project-name', 'bucket' : 'gcp-bucket-name'}
@@ -1924,7 +1951,7 @@ def save_model(
     )
 
 
-@check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
+# not using check_if_global_is_not_none on purpose
 def load_model(
     model_name,
     platform: Optional[str] = None,
@@ -1972,7 +1999,11 @@ def load_model(
 
     """
 
-    return _CURRENT_EXPERIMENT.load_model(
+    experiment = _CURRENT_EXPERIMENT
+    if experiment is None:
+        experiment = _EXPERIMENT_CLASS()
+
+    return experiment.load_model(
         model_name=model_name,
         platform=platform,
         authentication=authentication,
@@ -2264,7 +2295,6 @@ def get_config(variable: str):
     - fold_shuffle_param: shuffle parameter used in Kfolds
     - n_jobs_param: n_jobs parameter used in model training
     - html_param: html_param configured through setup
-    - create_model_container: results grid storage container
     - master_model_container: model storage container
     - display_container: results display container
     - exp_name_log: Name of experiment
@@ -2320,7 +2350,6 @@ def set_config(variable: str, value):
     - fold_shuffle_param: shuffle parameter used in Kfolds
     - n_jobs_param: n_jobs parameter used in model training
     - html_param: html_param configured through setup
-    - create_model_container: results grid storage container
     - master_model_container: model storage container
     - display_container: results display container
     - exp_name_log: Name of experiment
@@ -2402,6 +2431,65 @@ def load_config(file_name: str):
     """
 
     return _CURRENT_EXPERIMENT.load_config(file_name=file_name)
+
+
+@check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
+def get_leaderboard(
+    finalize_models: bool = False,
+    model_only: bool = False,
+    fit_kwargs: Optional[dict] = None,
+    groups: Optional[Union[str, Any]] = None,
+    verbose: bool = True,
+) -> pd.DataFrame:
+
+    """
+    This function returns the leaderboard of all models trained in the
+    current setup.
+
+
+    Example
+    -------
+    >>> from pycaret.regression import get_leaderboard
+    >>> leaderboard = get_leaderboard()
+
+
+    finalize_models: bool, default = False
+        If True, will finalize all models in the 'Model' column.
+
+
+    model_only: bool, default = False
+        When set to False, only model object is returned, instead
+        of the entire pipeline.
+
+
+    fit_kwargs: dict, default = {} (empty dict)
+        Dictionary of arguments passed to the fit method of the model.
+        Ignored if finalize_models is False.
+
+
+    groups: str or array-like, with shape (n_samples,), default = None
+        Optional group labels when GroupKFold is used for the cross validation.
+        It takes an array with shape (n_samples, ) where n_samples is the number
+        of rows in training dataset. When string is passed, it is interpreted as
+        the column name in the dataset containing group labels.
+        Ignored if finalize_models is False.
+
+
+    verbose: bool, default = True
+        Progress bar is not printed when verbose is set to False.
+
+
+    Returns:
+        pandas.DataFrame
+
+    """
+    return _CURRENT_EXPERIMENT.get_leaderboard(
+        finalize_models=finalize_models,
+        model_only=model_only,
+        fit_kwargs=fit_kwargs,
+        groups=groups,
+        verbose=verbose,
+    )
 
 
 def set_current_experiment(experiment: RegressionExperiment):

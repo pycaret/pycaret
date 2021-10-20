@@ -8,6 +8,7 @@ from pycaret.internal.pipeline import (
     Pipeline as InternalPipeline,
 )
 from pycaret.internal.utils import (
+    mlflow_remove_bad_chars,
     normalize_custom_transformers,
     get_model_name,
 )
@@ -39,6 +40,7 @@ from unittest.mock import patch
 import plotly.express as px  # type: ignore
 import plotly.graph_objects as go  # type: ignore
 import scikitplot as skplt  # type: ignore
+from packaging import version
 import logging
 
 
@@ -190,7 +192,7 @@ class _TabularExperiment(_PyCaretExperiment):
         full_name = self._get_model_name(model)
         self.logger.info(f"Model: {full_name}")
 
-        with mlflow.start_run(run_name=full_name) as run:
+        with mlflow.start_run(run_name=full_name, nested=True) as run:
 
             # Get active run to log as tag
             RunID = mlflow.active_run().info.run_id
@@ -220,10 +222,19 @@ class _TabularExperiment(_PyCaretExperiment):
                 if len(str(v)) > 250:
                     params.pop(i)
 
+            params = {mlflow_remove_bad_chars(k): v for k, v in params.items()}
             self.logger.info(f"logged params: {params}")
             mlflow.log_params(params)
 
             # Log metrics
+            def try_make_float(val):
+                try:
+                    return np.float64(val)
+                except Exception:
+                    return np.nan
+
+            score_dict = {k: try_make_float(v) for k, v in score_dict.items()}
+            self.logger.info(f"logged metrics: {score_dict}")
             mlflow.log_metrics(score_dict)
 
             # set tag of compare_models
@@ -1215,7 +1226,7 @@ class _TabularExperiment(_PyCaretExperiment):
             except Exception:
                 self.logger.warning("cuML not found")
 
-            if cuml_version is None or not cuml_version >= (0, 15):
+            if cuml_version is None or not version.parse(cuml_version) >= version.parse("0.15"):
                 message = f"cuML is outdated or not found. Required version is >=0.15, got {__version__}"
                 if use_gpu == "force":
                     raise ImportError(message)
@@ -1571,21 +1582,8 @@ class _TabularExperiment(_PyCaretExperiment):
                 else:
                     self.fold_generator = fold_strategy
 
-                    def _get_cv_n_folds(y, cv) -> int:
-                        """
-                        Get the number of folds for time series
-                        cv must be of type SlidingWindowSplitter or ExpandingWindowSplitter
-                        TODO: Fix this inside sktime and replace this with sktime method [1]
-
-                        Ref:
-                        [1] https://github.com/alan-turing-institute/sktime/issues/632
-                        """
-                        n_folds = int((len(y) - cv.initial_window) / cv.step_length)
-                        return n_folds
-
-                    # Set the number of folds from the cv object
-                    fold = _get_cv_n_folds(y=self.y_train, cv=fold_strategy)
-                    self.fold_param = fold
+                    # Number of folds
+                    self.fold_param = fold_strategy.get_n_splits(y=self.y_train)
 
                     # Set the strategy from the cv object
                     if isinstance(self.fold_generator, ExpandingWindowSplitter):
@@ -1796,6 +1794,18 @@ class _TabularExperiment(_PyCaretExperiment):
 
         self._setup_ran = True
 
+        ## Disabling of certain metrics.
+        ## NOTE: This must be run after _setup_ran has been set, else metrics can
+        # not be retrieved.
+        if (
+            self._ml_usecase == MLUsecase.TIME_SERIES
+            and len(self.fh) == 1
+            and "r2" in self._get_metrics()
+        ):
+            # disable R2 metric if it exists in the metrics since R2 needs
+            # at least 2 values
+            self.remove_metric("R2")
+
         self.logger.info(
             f"self.master_model_container: {len(self.master_model_container)}"
         )
@@ -1818,7 +1828,7 @@ class _TabularExperiment(_PyCaretExperiment):
         estimator,
         plot: str = "auc",
         scale: float = 1,  # added in pycaret==2.1.0
-        save: bool = False,
+        save: Union[str, bool] = False,
         fold: Optional[Union[int, Any]] = None,
         fit_kwargs: Optional[dict] = None,
         groups: Optional[Union[str, Any]] = None,
@@ -1879,8 +1889,9 @@ class _TabularExperiment(_PyCaretExperiment):
         scale: float, default = 1
             The resolution scale of the figure.
 
-        save: bool, default = False
+        save: string or bool, default = False
             When set to True, Plot is saved as a 'png' file in current working directory.
+            When a path destination is given, Plot is saved as a 'png' file the given path to the directory of choice.
 
         fold: integer or scikit-learn compatible CV generator, default = None
             Controls cross-validation used in certain plots. If None, will use the CV generator
@@ -2146,10 +2157,12 @@ class _TabularExperiment(_PyCaretExperiment):
                         plot_filename = f"{plot_name}.html"
 
                         if save:
+                            if not isinstance(save, bool):
+                                plot_filename = os.path.join(save, plot_filename)
+                            else:
+                                plot_filename = plot
+                            self.logger.info(f"Saving '{plot_filename}'")
                             resplots.write_html(plot_filename)
-                            self.logger.info(
-                                f"Saving '{plot_filename}' in current active directory"
-                            )
 
                         self.logger.info("Visual Rendered Successfully")
                         return plot_filename
@@ -2237,10 +2250,12 @@ class _TabularExperiment(_PyCaretExperiment):
                         plot_filename = f"{plot_name}.html"
 
                         if save:
+                            if not isinstance(save, bool):
+                                plot_filename = os.path.join(save, plot_filename)
+                            else:
+                                plot_filename = plot
+                            self.logger.info(f"Saving '{plot_filename}'")
                             fig.write_html(plot_filename)
-                            self.logger.info(
-                                f"Saving '{plot_filename}' in current active directory"
-                            )
 
                         elif system:
                             if display_format == "streamlit":
@@ -2303,10 +2318,13 @@ class _TabularExperiment(_PyCaretExperiment):
                         plot_filename = f"{plot_name}.html"
 
                         if save:
+                            if not isinstance(save, bool):
+                                plot_filename = os.path.join(save, plot_filename)
+                            else:
+                                plot_filename = plot
+                            self.logger.info(f"Saving '{plot_filename}'")
                             fig.write_html(f"{plot_filename}")
-                            self.logger.info(
-                                f"Saving '{plot_filename}' in current active directory"
-                            )
+
                         elif system:
                             if display_format == "streamlit":
                                 st.write(fig)
@@ -2390,10 +2408,13 @@ class _TabularExperiment(_PyCaretExperiment):
                         plot_filename = f"{plot_name}.html"
 
                         if save:
+                            if not isinstance(save, bool):
+                                plot_filename = os.path.join(save, plot_filename)
+                            else:
+                                plot_filename = plot
+                            self.logger.info(f"Saving '{plot_filename}'")
                             fig.write_html(f"{plot_filename}")
-                            self.logger.info(
-                                f"Saving '{plot_filename}' in current active directory"
-                            )
+
                         elif system:
                             if display_format == "streamlit":
                                 st.write(fig)
@@ -2493,10 +2514,13 @@ class _TabularExperiment(_PyCaretExperiment):
                         plot_filename = f"{plot_name}.html"
 
                         if save:
+                            if not isinstance(save, bool):
+                                plot_filename = os.path.join(save, plot_filename)
+                            else:
+                                plot_filename = plot
+                            self.logger.info(f"Saving '{plot_filename}'")
                             fig.write_html(f"{plot_filename}")
-                            self.logger.info(
-                                f"Saving '{plot_filename}' in current active directory"
-                            )
+
                         elif system:
                             if display_format == "streamlit":
                                 st.write(fig)
@@ -2566,10 +2590,13 @@ class _TabularExperiment(_PyCaretExperiment):
                         plot_filename = f"{plot_name}.html"
 
                         if save:
+                            if not isinstance(save, bool):
+                                plot_filename = os.path.join(save, plot_filename)
+                            else:
+                                plot_filename = plot
+                            self.logger.info(f"Saving '{plot_filename}'")
                             fig.write_html(f"{plot_filename}")
-                            self.logger.info(
-                                f"Saving '{plot_filename}' in current active directory"
-                            )
+
                         elif system:
                             if display_format == "streamlit":
                                 st.write(fig)
@@ -2960,10 +2987,11 @@ class _TabularExperiment(_PyCaretExperiment):
                                 y_test__, predict_proba__, figsize=(10, 6)
                             )
                             if save:
-                                self.logger.info(
-                                    f"Saving '{plot_name}.png' in current active directory"
-                                )
-                                plt.savefig(f"{plot_name}.png", bbox_inches="tight")
+                                plot_filename = f"{plot_name}.png"
+                                if not isinstance(save, bool):
+                                    plot_filename = os.path.join(save, plot_filename)
+                                self.logger.info(f"Saving '{plot_filename}'")
+                                plt.savefig(plot_filename, bbox_inches="tight")
                             elif system:
                                 plt.show()
                             plt.close()
@@ -2997,10 +3025,11 @@ class _TabularExperiment(_PyCaretExperiment):
                                 y_test__, predict_proba__, figsize=(10, 6)
                             )
                             if save:
-                                self.logger.info(
-                                    f"Saving '{plot_name}.png' in current active directory"
-                                )
-                                plt.savefig(f"{plot_name}.png", bbox_inches="tight")
+                                plot_filename = f"{plot_name}.png"
+                                if not isinstance(save, bool):
+                                    plot_filename = os.path.join(save, plot_filename)
+                                self.logger.info(f"Saving '{plot_filename}'")
+                                plt.savefig(plot_filename, bbox_inches="tight")
                             elif system:
                                 plt.show()
                             plt.close()
@@ -3160,10 +3189,11 @@ class _TabularExperiment(_PyCaretExperiment):
                         display.move_progress()
                         display.clear_output()
                         if save:
-                            self.logger.info(
-                                f"Saving '{plot_name}.png' in current active directory"
-                            )
-                            plt.savefig(f"{plot_name}.png", bbox_inches="tight")
+                            plot_filename = f"{plot_name}.png"
+                            if not isinstance(save, bool):
+                                plot_filename = os.path.join(save, plot_filename)
+                            self.logger.info(f"Saving '{plot_filename}'")
+                            plt.savefig(plot_filename, bbox_inches="tight")
                         elif system:
                             plt.show()
                         plt.close()
@@ -3215,10 +3245,11 @@ class _TabularExperiment(_PyCaretExperiment):
                         display.move_progress()
                         display.clear_output()
                         if save:
-                            self.logger.info(
-                                f"Saving '{plot_name}.png' in current active directory"
-                            )
-                            plt.savefig(f"{plot_name}.png", bbox_inches="tight")
+                            plot_filename = f"{plot_name}.png"
+                            if not isinstance(save, bool):
+                                plot_filename = os.path.join(save, plot_filename)
+                            self.logger.info(f"Saving '{plot_filename}'")
+                            plt.savefig(plot_filename, bbox_inches="tight")
                         elif system:
                             plt.show()
                         plt.close()
@@ -3524,10 +3555,11 @@ class _TabularExperiment(_PyCaretExperiment):
                         display.move_progress()
                         display.clear_output()
                         if save:
-                            self.logger.info(
-                                f"Saving '{plot_name}.png' in current active directory"
-                            )
-                            plt.savefig(f"{plot_name}.png", bbox_inches="tight")
+                            plot_filename = f"{plot_name}.png"
+                            if not isinstance(save, bool):
+                                plot_filename = os.path.join(save, plot_filename)
+                            self.logger.info(f"Saving '{plot_filename}'")
+                            plt.savefig(plot_filename, bbox_inches="tight")
                         elif system:
                             plt.show()
                         plt.close()
@@ -3562,7 +3594,9 @@ class _TabularExperiment(_PyCaretExperiment):
                             groups=groups,
                             **fit_kwargs,
                         ) as fitted_pipeline_with_model:
-                            predict_proba__ = fitted_pipeline_with_model.predict_proba(data_X)
+                            predict_proba__ = fitted_pipeline_with_model.predict_proba(
+                                data_X
+                            )
                         display.move_progress()
                         display.move_progress()
                         display.clear_output()
@@ -3573,10 +3607,11 @@ class _TabularExperiment(_PyCaretExperiment):
                                 data_y, predict_proba__, figsize=(10, 6)
                             )
                             if save:
-                                self.logger.info(
-                                    f"Saving '{plot_name}.png' in current active directory"
-                                )
-                                plt.savefig(f"{plot_name}.png", bbox_inches="tight")
+                                plot_filename = f"{plot_name}.png"
+                                if not isinstance(save, bool):
+                                    plot_filename = os.path.join(save, plot_filename)
+                                self.logger.info(f"Saving '{plot_filename}'")
+                                plt.savefig(plot_filename, bbox_inches="tight")
                             elif system:
                                 plt.show()
                             plt.close()

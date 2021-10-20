@@ -2,11 +2,42 @@
 All notable changes to this project will be documented in this file.
 <br/><br/>
 
-#### Release: PyCaret 2.3.2 | Release Date: XX XX, 2021 (SEVERAL BUGS FIXED)
-- `gain` and `lift` plot fixed in `pycaret.classification` module. Previously `y_pred` was passed instead of `y_true`. 
-- The Kolmogorov-Smirnov (or KS) plot added in the `plot_model` function under `pycaret.classification` module.
-- Partial Dependence Plot is now added in the `interpret_model` function under `pycaret.classification` and `pycaret.regression`.
-- shap value force plot for LightGBM in the `interpret_model` function was displayed as multiclass plot. Bug fixed now.
+#### Release: PyCaret 2.3.4 | Release Date: September 23rd, 2021 (NEW FEATURES, BUG FIXES)
+- Added `get_leaderboard` function for classification and regression modules
+- It is now possible to specify the plot save path with the save argument of `plot_model` and `interpret_model` - thanks to @bhanuteja2001 (https://github.com/pycaret/pycaret/pull/1537)
+- Fixed `interpret_model` affecting `plot_model` behavior - thanks to @naujgf (https://github.com/pycaret/pycaret/pull/1600)
+- Fixed issues with conda builds - thanks to @melonhead901 (https://github.com/pycaret/pycaret/pull/1479)
+- Documentation improvements - thanks to @caron14 and @harsh204016 (https://github.com/pycaret/pycaret/pull/1499, https://github.com/pycaret/pycaret/pull/1502)
+- Fixed `blend_models` and `stack_models` throwing an exception when using custom estimators (https://github.com/pycaret/pycaret/pull/1500)
+- Fixed a "Target Missing" issue with "Remove Multicolinearity" option (https://github.com/pycaret/pycaret/pull/1508)
+- `errors="ignore"` parameter for `compare_models` now correctly ignores errors during full fit (https://github.com/pycaret/pycaret/pull/1510)
+- Fixed certain data types being incorrectly encoded as int64 during setup (https://github.com/pycaret/pycaret/pull/1515)
+- `Pinned numba<0.54` (https://github.com/pycaret/pycaret/pull/1530)
+<br/><br/><br/>
+
+#### Release: PyCaret 2.3.3 | Release Date: July 24th, 2021 (NEW FEATURES, BUG FIXES)
+- Fixed issues with `[full]` install by pinning `interpret<=0.2.4`
+- Added support for S3 folder path in `deploy_model()` with AWS
+- Enabled experimental Optuna `TPESampler` options to improve convergence (in `tune_model()`)
+<br/><br/><br/>
+
+#### Release: PyCaret 2.3.2 | Release Date: July 7th, 2021 (NEW FEATURES, BUG FIXES)
+- Implemented PDP, MSA and PFI plots in `interpret_model` - thanks to @IncubatorShokuhou (https://github.com/pycaret/pycaret/pull/1415)
+- Implemented  Kolmogorov-Smirnov (KS) plot in `plot_model` under `pycaret.classification` module
+- Fixed a typo "RVF" to "RBF" - thanks to @baturayo (https://github.com/pycaret/pycaret/pull/1220)
+- Readme & license updates and improvements
+- Fixed `remove_multicollinearity` considering categorical features
+- Fixed keyword issues with PyCaret's cuML wrappers
+- Improved performance of iterative imputation
+- Fixed `gain` and `lift` plots taking wrong arguments, creating misleading plots
+- `interpret_model` on LightGBM will now show a beeswarm plot
+- Multiple improvements to exception handling and documentation in `pycaret.persistence` (https://github.com/pycaret/pycaret/pull/1324)
+- `remove_perfect_collinearity` option will now be show in the `setup()` summary - thanks to @mjkanji (https://github.com/pycaret/pycaret/pull/1342)
+- Fixed `IterativeImputer` setting wrong float precision
+- Fixed custom grids in `tune_model` raising an exception when composed of lists
+- Improved documentation in `pycaret.clustering` - thanks to @susmitpy (https://github.com/pycaret/pycaret/pull/1372)
+- Added support for LightGBM CUDA version - thanks to @IncubatorShokuhou (https://github.com/pycaret/pycaret/pull/1396)
+- Exposed `address` in `get_data` for alternative data sources - thanks to @IncubatorShokuhou (https://github.com/pycaret/pycaret/pull/1416)
 <br/><br/><br/>
 
 #### Release: PyCaret 2.3.1 | Release Date: April 28, 2021 (SEVERAL BUGS FIXED)

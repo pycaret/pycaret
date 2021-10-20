@@ -5,7 +5,7 @@ seaborn
 matplotlib
 IPython
 joblib
-scikit-learn==0.23.2
+scikit-learn<1.0
 ipywidgets
 yellowbrick>=1.0.1
 lightgbm>=2.3.1
@@ -26,3 +26,4 @@ mlflow
 imbalanced-learn==0.7.0
 scikit-plot #for lift and gain charts
 Boruta
+numba<0.54
