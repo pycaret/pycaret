@@ -390,7 +390,7 @@ class _TabularExperiment(_PyCaretExperiment):
     def setup(
         self,
         data: pd.DataFrame,
-        target: str,
+        target: Union[int, str] = -1,
         train_size: float = 0.7,
         test_data: Optional[pd.DataFrame] = None,
         ordinal_features: Optional[Dict[str, list]] = None,
@@ -535,11 +535,17 @@ class _TabularExperiment(_PyCaretExperiment):
         if train_size <= 0 or train_size > 1:
             raise ValueError("train_size parameter has to be positive and not above 1.")
 
-        # checking target parameter
-        if not self._is_unsupervised() and target not in data.columns:
-            raise ValueError(
-                f"Target parameter: {target} does not exist in the data provided."
-            )
+        # Checking target parameter
+        if not self._is_unsupervised():
+            if isinstance(target, str):
+                if target not in data.columns:
+                    raise ValueError(
+                        "Invalid value for the target parameter. "
+                        f"Column {target} not found in the data."
+                    )
+                self.target_param = target
+            else:
+                self.target_param = data.columns[target]
 
         # checking session_id
         if session_id is not None:
@@ -888,10 +894,10 @@ class _TabularExperiment(_PyCaretExperiment):
             # Select columns for different encoding types
             one_hot_cols, rest_cols = [], []
             for col in categorical_features:
-                unique = self.X[col].nunique()
-                if unique == 2:
-                    ordinal_features[col] = list(self.X[col].unique())
-                elif unique <= max_encoding_ohe:
+                n_unique = self.X[col].nunique()
+                if n_unique == 2:
+                    ordinal_features[col] = list(self.X[col].dropna().unique())
+                elif n_unique <= max_encoding_ohe:
                     one_hot_cols.append(col)
                 else:
                     rest_cols.append(col)

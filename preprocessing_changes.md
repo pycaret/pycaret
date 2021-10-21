@@ -18,6 +18,7 @@ Changes:
   experiment. The dataset is stored only once in self.data. Train and test indices
   are stored in self.idx = [len(train), len(test)].
   
+- The target column can be selected by index.
 - The `pca_components` parameter is now equal for all methods. Accepts total
   or fraction of components.
 - `remove_low_variance` is deprecated. Use `low_variance_threshold` instead. Now

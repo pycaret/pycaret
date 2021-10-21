@@ -165,11 +165,11 @@ class ExtractDateTimeFeatures(BaseEstimator):
 
     def transform(self, X, y=None):
         for col in X:
-            if col.dtype != "datetime64":
+            if not X[col].dtype.name.startswith("datetime"):
                 raise TypeError(f"Column {col} has no dtype datetime64!")
 
             for fx in self.features:
-                values = getattr(col.dt, fx)
+                values = getattr(X[col].dt, fx)
 
                 # Only create feature if values contains less than 30% NaTs
                 if values.isna().sum() <= 0.3 * len(values):

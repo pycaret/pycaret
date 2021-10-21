@@ -27,7 +27,7 @@ _CURRENT_EXPERIMENT_DECORATOR_DICT = {
 
 def setup(
     data: pd.DataFrame,
-    target: str,
+    target: Union[int, str] = -1,
     train_size: float = 0.7,
     test_data: Optional[pd.DataFrame] = None,
     ordinal_features: Optional[Dict[str, list]] = None,
@@ -110,9 +110,9 @@ def setup(
         n_features is the number of features.
 
 
-    target: str
-        Name of the target column to be passed in as a string. The target variable can 
-        be either binary or multiclass.
+    target: int or str, default = -1
+        Name or index of the target column. The default value selects the last
+        column in the dataset. The target can be either binary or multiclass.
 
 
     train_size: float, default = 0.7
