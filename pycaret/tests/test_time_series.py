@@ -572,6 +572,7 @@ def test_compare_models(cross_validation, log_experiment, load_pos_and_neg_data)
         verbose=False,
         session_id=42,
         log_experiment=log_experiment,
+        log_plots=log_experiment,
     )
 
     best_baseline_models = exp.compare_models(

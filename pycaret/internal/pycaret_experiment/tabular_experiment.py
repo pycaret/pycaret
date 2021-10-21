@@ -85,6 +85,9 @@ class _TabularExperiment(_PyCaretExperiment):
     def _get_setup_display(self, **kwargs) -> Styler:
         return pd.DataFrame().style
 
+    def _get_default_plots_to_log(self) -> List[str]:
+        return []
+
     def _get_groups(
         self,
         groups,
@@ -1006,6 +1009,9 @@ class _TabularExperiment(_PyCaretExperiment):
             raise ValueError(
                 f"transform_target_method parameter only accepts {', '.join(allowed_transform_target_method)}."
             )
+
+        if log_plots == True:
+            log_plots = self._get_default_plots_to_log()
 
         # pandas option
         pd.set_option("display.max_columns", 500)

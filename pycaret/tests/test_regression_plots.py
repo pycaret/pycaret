@@ -18,6 +18,7 @@ def test():
         data,
         target="medv",
         log_experiment=True,
+        log_plots=True,
         silent=True,
         html=False,
         session_id=123,

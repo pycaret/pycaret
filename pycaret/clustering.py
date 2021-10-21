@@ -611,11 +611,11 @@ def plot_model(
     plot: str, default = 'cluster'
         List of available plots (ID - Name):
 
-        * 'cluster' - Cluster PCA Plot (2d)              
-        * 'tsne' - Cluster TSnE (3d)
+        * 'cluster' - Cluster PCA Plot (2d)
+        * 'tsne' - Cluster t-SNE (3d)
         * 'elbow' - Elbow Plot 
-        * 'silhouette' - Silhouette Plot         
-        * 'distance' - Distance Plot   
+        * 'silhouette' - Silhouette Plot
+        * 'distance' - Distance Plot
         * 'distribution' - Distribution Plot
     
     
