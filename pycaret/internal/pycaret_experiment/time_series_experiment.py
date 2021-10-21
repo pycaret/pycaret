@@ -2500,6 +2500,8 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 )
             elif plot in require_residuals:
                 resid = self.get_residuals(estimator=estimator)
+                if resid is None:
+                    return
                 resid = self.check_and_clean_resid(resid=resid)
                 data = resid
             else:
@@ -3432,6 +3434,8 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             results = test_(data=data, test=test, alpha=alpha)
         else:
             resid = self.get_residuals(estimator=estimator)
+            if resid is None:
+                return
             resid = self.check_and_clean_resid(resid=resid)
             results = test_(data=resid, test=test, alpha=alpha)
 
@@ -3449,17 +3453,27 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             raise ValueError(f"split value: '{split}' is not supported.")
         return data
 
-    @staticmethod
-    def get_residuals(estimator) -> pd.Series:
+    def get_residuals(self, estimator) -> Optional[pd.Series]:
         # https://github.com/alan-turing-institute/sktime/issues/1105#issuecomment-932216820
+        resid = None
+
         estimator.check_is_fitted()
         estimator_ = deep_clone(estimator)
         y_used_to_train = estimator_._y
-        resid = y_used_to_train - estimator_.predict(
-            ForecastingHorizon(y_used_to_train.index, is_relative=False)
-        )
+        try:
+            resid = y_used_to_train - estimator_.predict(
+                ForecastingHorizon(y_used_to_train.index, is_relative=False)
+            )
+        except NotImplementedError as exception:
+            self.logger.warning(exception)
+            print(
+                "In sample predictions has not been implemented for this estimator "
+                f"of type '{estimator_.__class__.__name__}' in `sktime`. When "
+                "this is implemented, it will be enabled by default in pycaret."
+            )
+
         return resid
-    
+
     def check_and_clean_resid(self, resid: pd.Series) -> pd.Series:
         """Checks to see if the residuals matches one of the test set or
         full dataset. If it does, it resturns the residuals without the NA values.
