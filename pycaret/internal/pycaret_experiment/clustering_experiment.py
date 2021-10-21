@@ -28,6 +28,14 @@ class ClusteringExperiment(_UnsupervisedExperiment):
         super().__init__()
         self._ml_usecase = MLUsecase.CLUSTERING
         self.exp_name_log = "cluster-default-name"
+        self._available_plots = {
+            "cluster": "t-SNE (3d) Dimension Plot",
+            "tsne": "Cluster t-SNE (3d)",
+            "elbow": "Elbow Plot",
+            "silhouette": "Silhouette Plot",
+            "distance": "Distance Plot",
+            "distribution": "Distribution Plot",
+        }
         return
 
     def _get_models(self, raise_errors: bool = True) -> Tuple[dict, dict]:
@@ -47,6 +55,9 @@ class ClusteringExperiment(_UnsupervisedExperiment):
         return pycaret.containers.metrics.clustering.get_all_metric_containers(
             self.variables, raise_errors=raise_errors
         )
+
+    def _get_default_plots_to_log(self) -> List[str]:
+        return ["cluster", "distribution", "elbow"]
 
     def get_metrics(
         self,
