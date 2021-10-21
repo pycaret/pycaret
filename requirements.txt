@@ -9,7 +9,7 @@ scikit-learn~=0.24.2
 ipywidgets
 yellowbrick>=1.0.1
 lightgbm>=2.3.1
-plotly>=4.4.1
+plotly>=5.0.0
 wordcloud
 textblob
 cufflinks>=0.17.0
