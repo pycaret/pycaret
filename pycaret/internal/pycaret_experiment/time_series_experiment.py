@@ -2704,11 +2704,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         data = None  # TODO: Add back when we have support for multivariate TS
 
-        # Cloning since setting fh to another value replaces it inplace
-        # Note cloning does not copy the fitted model (only model hyperparams)
-        # Hence, we need to do deep copy per
-        # https://stackoverflow.com/a/33576345/8925915
-        estimator_ = deepcopy(estimator)
+        estimator_ = deep_clone(estimator)
 
         loaded_in_same_env = True
         # Check if loaded in a different environment
@@ -3457,12 +3453,13 @@ class TimeSeriesExperiment(_SupervisedExperiment):
     def get_residuals(estimator) -> pd.Series:
         # https://github.com/alan-turing-institute/sktime/issues/1105#issuecomment-932216820
         estimator.check_is_fitted()
-        y_used_to_train = estimator._y
-        resid = y_used_to_train - estimator.predict(
+        estimator_ = deep_clone(estimator)
+        y_used_to_train = estimator_._y
+        resid = y_used_to_train - estimator_.predict(
             ForecastingHorizon(y_used_to_train.index, is_relative=False)
         )
         return resid
-
+    
     def check_and_clean_resid(self, resid: pd.Series) -> pd.Series:
         """Checks to see if the residuals matches one of the test set or
         full dataset. If it does, it resturns the residuals without the NA values.
@@ -3505,3 +3502,12 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         resid.dropna(inplace=True)
         return resid
 
+
+# TODO: Add to pycaret utils or some common location
+def deep_clone(estimator):
+    # Cloning since setting fh to another value replaces it inplace
+    # Note cloning does not copy the fitted model (only model hyperparams)
+    # Hence, we need to do deep copy per
+    # https://stackoverflow.com/a/33576345/8925915
+    estimator_ = deepcopy(estimator)
+    return estimator_
