@@ -1802,7 +1802,7 @@ class DummyRegressorContainer(RegressorContainer):
         np.random.seed(globals_dict["seed"])
         from sklearn.dummy import DummyRegressor
 
-        args = {"random_state": globals_dict["seed"]}
+        args = {"strategy":"mean"}
         tune_args = {}
         tune_grid = {}
         tune_distributions = {}

@@ -1447,7 +1447,7 @@ class DummyClassifierContainer(ClassifierContainer):
         np.random.seed(globals_dict["seed"])
         from sklearn.dummy import DummyClassifier
 
-        args = {"random_state": globals_dict["seed"]}
+        args = {"strategy":"prior","random_state": globals_dict["seed"]}
         tune_args = {}
         tune_grid = {}
         tune_distributions = {}
