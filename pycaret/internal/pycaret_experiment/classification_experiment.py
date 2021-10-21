@@ -215,6 +215,9 @@ class ClassificationExperiment(_SupervisedExperiment):
         except Exception:
             return False
 
+    def _get_default_plots_to_log(self) -> List[str]:
+        return ["auc", "confusion_matrix", "feature"]
+
     def setup(
         self,
         data: pd.DataFrame,
@@ -755,8 +758,6 @@ class ClassificationExperiment(_SupervisedExperiment):
             Global variables that can be changed using the ``set_config`` function.
 
         """
-        if log_plots == True:
-            log_plots = ["auc", "confusion_matrix", "feature"]
         return super().setup(
             data=data,
             target=target,
