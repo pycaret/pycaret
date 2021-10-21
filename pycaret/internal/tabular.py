@@ -9494,6 +9494,9 @@ def models(
             "catboost",
             "ada",
         ],
+        "dummy":[
+            "dummy"
+        ]
     }
 
     def filter_model_df_by_type(df):
