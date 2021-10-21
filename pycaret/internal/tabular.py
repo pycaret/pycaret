@@ -618,33 +618,52 @@ def setup(
     if categorical_features is not None:
         for i in categorical_features:
             if i not in all_cols:
-                raise ValueError(
-                    "Column type forced is either target column or doesn't exist in the dataset."
-                )
+                if i==target:
+                    raise ValueError(
+                            f"Column type forced  >> {i} << is target column."
+                        )
+                else:
+                    raise ValueError(
+                        f"Column type forced  >> {i} << doesn't exist in the dataset."
+                    )
 
     # numeric
     if numeric_features is not None:
         for i in numeric_features:
             if i not in all_cols:
-                raise ValueError(
-                    "Column type forced is either target column or doesn't exist in the dataset."
-                )
+                if i==target:
+                    raise ValueError(
+                        f"Column type forced  >> {i} << is target column."
+                    )
+                else:
+                    raise ValueError(
+                        f"Column type forced  >> {i} <<  doesn't exist in the dataset."
+                    )
 
     # date features
     if date_features is not None:
         for i in date_features:
             if i not in all_cols:
-                raise ValueError(
-                    "Column type forced is either target column or doesn't exist in the dataset."
-                )
-
+                if i==target:
+                    raise ValueError(
+                        f"Column type forced  >> {i} << is target column."
+                    )
+                else:
+                    raise ValueError(
+                        f"Column type forced  >> {i} <<  doesn't exist in the dataset."
+                    )
     # drop features
     if ignore_features is not None:
         for i in ignore_features:
             if i not in all_cols:
-                raise ValueError(
-                    "Feature ignored is either target column or doesn't exist in the dataset."
-                )
+                if i==target:
+                    raise ValueError(
+                        f"Column type forced  >> {i} << is target column."
+                    )
+                else:
+                    raise ValueError(
+                        f"Column type forced  >> {i} <<  doesn't exist in the dataset."
+                    )
 
     # log_experiment
     if type(log_experiment) is not bool:
