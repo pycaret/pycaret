@@ -28,6 +28,7 @@ from pycaret.internal.preprocess import (
     EmbedTextFeatures,
     RemoveMulticollinearity,
     RemoveOutliers,
+    FixImbalancer,
 )
 from pycaret.internal.meta_estimators import get_estimator_from_meta_estimator
 from pycaret.internal.pipeline import Pipeline as InternalPipeline
@@ -1098,7 +1099,7 @@ class _TabularExperiment(_PyCaretExperiment):
                     transformer=PolynomialFeatures(
                         degree=polynomial_degree,
                         interaction_only=False,
-                        include_bias=True,
+                        include_bias=False,
                         order="C",
                     ),
                 )
@@ -1112,7 +1113,7 @@ class _TabularExperiment(_PyCaretExperiment):
             if fix_imbalance:
                 self.logger.info("Setting up imbalanced handling")
                 if fix_imbalance_method is None:
-                    balance_estimator = SMOTE()
+                    balance_estimator = FixImbalancer(SMOTE())
                 elif not hasattr(fix_imbalance_method, "fit_resample"):
                     raise ValueError(
                         "Invalid value for the fix_imbalance_method parameter. "
@@ -1120,7 +1121,7 @@ class _TabularExperiment(_PyCaretExperiment):
                         f"{fix_imbalance_method.__class__.__name_}."
                     )
                 else:
-                    balance_estimator = fix_imbalance_method
+                    balance_estimator = FixImbalancer(fix_imbalance_method)
 
                 balance_estimator = TransfomerWrapper(balance_estimator)
                 self._internal_pipeline.steps.append(("balance", balance_estimator))

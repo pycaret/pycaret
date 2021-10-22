@@ -82,7 +82,7 @@ class ClassificationExperiment(_SupervisedExperiment):
                     ["Missing Values", kwargs["missing_values"]],
                     ["Preprocess", kwargs["preprocess"]],
                 ],
-                columns=overview.columns
+                columns=overview.columns,
             ),
             ignore_index=True,
         )
@@ -109,6 +109,7 @@ class ClassificationExperiment(_SupervisedExperiment):
                         ["Multicollinearity threshold", kwargs["multicollinearity_threshold"]],
                         ["Remove outliers", kwargs["remove_outliers"]],
                         ["Outliers threshold", kwargs["outliers_threshold"]],
+                        ["Polynomial features", kwargs["polynomial_features"]],
                         ["Polynomial degree", kwargs["polynomial_degree"]],
                         ["Fix imbalance", kwargs["fix_imbalance"]],
                         ["Fix imbalance method", kwargs["fix_imbalance_method"]],

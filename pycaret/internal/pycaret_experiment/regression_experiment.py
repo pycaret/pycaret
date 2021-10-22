@@ -73,7 +73,7 @@ class RegressionExperiment(_SupervisedExperiment):
                     ["Transform Target", transform_target],
                     ["Preprocess", kwargs["preprocess"]],
                 ],
-                columns=overview.columns
+                columns=overview.columns,
             ),
             ignore_index=True,
         )
@@ -100,12 +100,15 @@ class RegressionExperiment(_SupervisedExperiment):
                         ["Multicollinearity threshold", kwargs["multicollinearity_threshold"]],
                         ["Remove outliers", kwargs["remove_outliers"]],
                         ["Outliers threshold", kwargs["outliers_threshold"]],
+                        ["Polynomial features", kwargs["polynomial_features"]],
                         ["Polynomial degree", kwargs["polynomial_degree"]],
-                        ["Fix imbalance", kwargs["fix_imbalance"]],
-                        ["Fix imbalance method", kwargs["fix_imbalance_method"]],
                         ["PCA", kwargs["pca"]],
                         ["PCA method", kwargs["pca_method"]],
                         ["PCA components", kwargs["pca_components"]],
+                        ["Feature selection", kwargs["feature_selection"]],
+                        ["Feature selection method", kwargs["feature_selection_method"]],
+                        ["Feature selection estimator", kwargs["feature_selection_estimator"]],
+                        ["Number of features selected", kwargs["n_features_to_select"]],
                     ],
                     columns=overview.columns,
                 ),
@@ -115,6 +118,7 @@ class RegressionExperiment(_SupervisedExperiment):
         overview = overview.append(
             pd.DataFrame(
                 [
+                    ["Custom pipeline", "Yes" if kwargs["custom_pipeline"] else "No"],
                     ["Fold Generator", type(self.fold_generator).__name__],
                     ["Fold Number", self.fold_param],
                     ["CPU Jobs", self.n_jobs_param],

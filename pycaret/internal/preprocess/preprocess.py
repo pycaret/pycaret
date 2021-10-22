@@ -32,7 +32,7 @@ class TransfomerWrapper(BaseEstimator):
         self.columns = columns
 
     def __repr__(self, N_CHAR_MAX=1400):
-        return self.transformer.__repr__(N_CHAR_MAX)
+        return self.transformer.__repr__()
 
     def fit(self, X, y=None, **fit_params):
         if self.columns is None:
@@ -75,7 +75,7 @@ class TransfomerWrapper(BaseEstimator):
             temp_cols = []
             for i, col in enumerate(array.T, start=1):
                 mask = df.apply(lambda c: all(c == col))
-                if any(mask):
+                if any(mask) and mask[mask].index.values[0] not in temp_cols:
                     temp_cols.append(mask[mask].index.values[0])
                 else:
                     diff = len(df.columns) - len(self.columns)
@@ -266,3 +266,16 @@ class RemoveOutliers(BaseEstimator):
     def transform(self, X, y):
         mask = self._estimator.fit_predict(X) != -1
         return X[mask], y[mask]
+
+
+class FixImbalancer:
+    """Wrapper for a balancer with a fit_resample method."""
+
+    def __init__(self, estimator):
+        self.estimator = estimator
+
+    def fit(self, X, y):
+        return self
+
+    def transform(self, X, y):
+        return self.estimator.fit_resample(X, y)
