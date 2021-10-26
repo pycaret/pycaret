@@ -1588,7 +1588,6 @@ class CalibratedClassifierCVContainer(ClassifierContainer):
             is_gpu_enabled=False,
         )
 
-        
 def get_all_model_containers(
     globals_dict: dict, raise_errors: bool = True
 ) -> Dict[str, ClassifierContainer]:
