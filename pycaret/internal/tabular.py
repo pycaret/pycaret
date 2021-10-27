@@ -7015,7 +7015,7 @@ def plot_model(
                 if not isinstance(save, bool):
                     plot_filename = os.path.join(save, plot_name)
                 else:
-                    plot_filename = plot
+                    plot_filename = plot_name
                 logger.info(f"Saving '{plot_filename}.png'")
                 plt.savefig(f"{plot_filename}.png", bbox_inches="tight")
             elif system:
@@ -7279,7 +7279,7 @@ def plot_model(
                 if not isinstance(save, bool):
                     plot_filename = os.path.join(save, plot_name)
                 else:
-                    plot_filename = plot
+                    plot_filename = plot_name
                 logger.info(f"Saving '{plot_filename}.png'")
                 plt.savefig(f"{plot_filename}.png", bbox_inches="tight")
             elif system:
