@@ -66,7 +66,7 @@ def setup(
     feature_selection: bool = False,
     feature_selection_method: str = "classic",
     feature_selection_estimator: Union[str, Any] = "lightgbm",
-    n_features_to_select: Union[int, float] = 0.5,
+    n_features_to_select: int = 10,
     transform_target: bool = False,
     transform_target_method: str = "box-cox",
     custom_pipeline: Any = None,
@@ -343,10 +343,8 @@ def setup(
         uses LGBClassifier.
 
 
-    n_features_to_select: int or float, default = 0.5
-        The number of features to select. If integer, the parameter is the
-        absolute number of features to select. If float between 0 and 1, it
-        is the fraction of features to select. Note that this parameter doesn't
+    n_features_to_select: int, default = 10
+        The number of features to select. Note that this parameter doesn't
         take features in ``ignore_features`` or ``keep_features`` into account
         when counting.
 

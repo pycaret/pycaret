@@ -1,3 +1,12 @@
+# coding: utf-8
+
+"""
+Package: PyCaret
+Author: Mavs
+Description: Unit tests for pipeline.py
+
+"""
+
 import pytest
 import numpy as np
 import pandas as pd

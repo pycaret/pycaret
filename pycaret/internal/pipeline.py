@@ -68,6 +68,33 @@ class Pipeline(imblearn.pipeline.Pipeline):
         super().__init__(steps, memory=memory, verbose=verbose)
         self._fit_vars = set()
 
+    def _iter(
+        self, with_final=True, filter_passthrough=True, filter_train_only=True
+    ):
+        """Generate (idx, name, trans) tuples from self.steps.
+
+        When `filter_passthrough=True`, 'passthrough' and None
+        transformers are filtered out. When `filter_train_only=True`,
+        the RemoveOutliers and FixImbalancer classes are only used for
+        fitting. They are skipped for all prediction methods since we
+        want to keep the original distribution of target classes.
+
+        """
+        # Class names used only for training (not predicting)
+        train_only = ("RemoveOutliers", "FixImbalancer")
+
+        it = super()._iter(with_final, filter_passthrough)
+        if filter_train_only:
+            out = []
+            for idx, name, trans in it:
+                if hasattr(trans, "transformer"):
+                    if trans.transformer.__class__.__name__ not in train_only:
+                        out.append((idx, name, trans))
+
+            return out
+        else:
+            return it
+
     def _fit(self, X=None, y=None, **fit_params_steps):
         self.steps = list(self.steps)
         self._validate_steps()
@@ -75,7 +102,7 @@ class Pipeline(imblearn.pipeline.Pipeline):
         # Setup the memory
         memory = check_memory(self.memory).cache(_fit_transform_one)
 
-        for (step_idx, name, transformer) in self._iter(False, False):
+        for (step_idx, name, transformer) in self._iter(False, False, False):
             if transformer is None or transformer == "passthrough":
                 with _print_elapsed_time("Pipeline", self._log_message(step_idx)):
                     continue
@@ -165,46 +192,16 @@ class Pipeline(imblearn.pipeline.Pipeline):
 
         return self.steps[-1][-1].score(X, y, sample_weight=sample_weight)
 
-    @property
-    def transform(self):
-        # _final_estimator is None or has transform, otherwise
-        # attribute error handling the None case means we can't
-        # use if_delegate_has_method
-        return self._custom_transform
+    def _can_transform(self):
+        return self._final_estimator == "passthrough" or hasattr(
+            self._final_estimator, "transform"
+        )
 
-    def _custom_transform(self, X=None, y=None):
+    def transform(self, X=None, y=None):
         for _, _, transformer in self._iter():
             X, y = _transform_one(transformer, X, y)
 
         return variable_return(X, y)
-
-    @property
-    def inverse_transform(self):
-        """Apply inverse transformations in reverse order.
-
-        Parameters
-        ----------
-        Xt : array-like of shape  (n_samples, n_transformed_features)
-            Data samples, where ``n_samples`` is the number of samples and
-            ``n_features`` is the number of features. Must fulfill
-            input requirements of last step of pipeline's
-            ``inverse_transform`` method.
-
-        Returns
-        -------
-        Xt : array-like of shape (n_samples, n_features)
-        """
-        return self._inverse_transform
-
-    def _inverse_transform(self, X):
-        Xt = X
-        reverse_iter = reversed(list(self._iter()))
-        for _, _, transform in reverse_iter:
-            try:
-                Xt = transform.inverse_transform(Xt)
-            except:
-                pass
-        return Xt
 
     def __getattr__(self, name: str):
         # override getattr to allow grabbing of final estimator attrs

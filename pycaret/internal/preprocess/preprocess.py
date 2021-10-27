@@ -25,24 +25,42 @@ class TransfomerWrapper(BaseEstimator):
     only allowed to add or remove columns, never both.
     From: https://github.com/tvdboom/ATOM/blob/master/atom/pipeline.py
 
+    Parameters
+    ----------
+    transformer: estimator
+        Transformer to wrap. Should implement a `fit` and/or `transform`
+        method.
+
+    include: list or None
+        Columns to apply on the transformer. If specified, only these
+        columns are used and the rest ignored. If None, all columns
+        are used.
+
+    exclude: list or None
+        Columns to NOT apply on the transformer. If None, no columns
+        are excluded.
+
     """
 
-    def __init__(self, transformer, columns=None):
+    def __init__(self, transformer, include=None, exclude=None):
         self.transformer = transformer
-        self.columns = columns
+        self.include = include
+        self.exclude = exclude
+        self._exclude = self.exclude or []
 
     def __repr__(self, N_CHAR_MAX=1400):
         return self.transformer.__repr__()
 
     def fit(self, X, y=None, **fit_params):
-        if self.columns is None:
-            self.columns = list(X.columns)
-        elif not self.columns:
-            return self
-
         args = []
         if "X" in signature(self.transformer.fit).parameters:
-            args.append(X[self.columns])
+            if self.include is None:
+                self.include = [c for c in X.columns if c in X and c not in self._exclude]
+            elif not self.include:  # Don't fit if empty list
+                return self
+            else:
+                self.include = [c for c in self.include if c in X and c not in self._exclude]
+            args.append(X[self.include])
         if "y" in signature(self.transformer.fit).parameters:
             args.append(y)
 
@@ -68,8 +86,8 @@ class TransfomerWrapper(BaseEstimator):
 
             """
             # If columns were only transformed, return og names
-            if array.shape[1] == len(self.columns):
-                return self.columns
+            if array.shape[1] == len(self.include):
+                return self.include
 
             # If columns were added or removed
             temp_cols = []
@@ -78,7 +96,7 @@ class TransfomerWrapper(BaseEstimator):
                 if any(mask) and mask[mask].index.values[0] not in temp_cols:
                     temp_cols.append(mask[mask].index.values[0])
                 else:
-                    diff = len(df.columns) - len(self.columns)
+                    diff = len(df.columns) - len(self.include)
                     temp_cols.append(f"Feature {str(i + diff)}")
 
             return temp_cols
@@ -103,7 +121,7 @@ class TransfomerWrapper(BaseEstimator):
             for col in list(dict.fromkeys(list(original_df.columns) + list(df.columns))):
                 if col in df.columns:
                     temp_df[col] = df[col]
-                elif col not in self.columns:
+                elif col not in self.include:
                     temp_df[col] = original_df[col]
 
                 # Derivative cols are added after original
@@ -113,16 +131,16 @@ class TransfomerWrapper(BaseEstimator):
 
             return temp_df
 
-        if self.columns is None:
-            self.columns = list(X.columns)
-        elif not self.columns:
-            return variable_return(X, y)
-
         args = []
         if "X" in signature(self.transformer.transform).parameters:
-            args.append(X[self.columns])
+            if self.include is None:
+                self.include = [c for c in X.columns if c in X and c not in self._exclude]
+            elif not self.include:  # Don't transform if empty list
+                return variable_return(X, y)
+            args.append(X[self.include])
         if "y" in signature(self.transformer.transform).parameters:
             args.append(y)
+
         output = self.transformer.transform(*args)
 
         # Transform can return X, y or both
@@ -135,18 +153,21 @@ class TransfomerWrapper(BaseEstimator):
                 new_X, new_y = None, output
 
         # Convert to pandas and assign proper column names
-        if new_X is not None and not isinstance(new_X, pd.DataFrame):
-            # If sparse matrix, convert back to array
-            if issparse(new_X):
-                new_X = new_X.toarray()
+        if new_X is not None:
+            if not isinstance(new_X, pd.DataFrame):
+                # If sparse matrix, convert back to array
+                if issparse(new_X):
+                    new_X = new_X.toarray()
 
-            new_X = to_df(new_X, columns=name_cols(new_X, X))
+                new_X = to_df(new_X, columns=name_cols(new_X, X))
 
-        new_X = reorder_cols(new_X, X)
+            # Reorder columns in case only a subset was used
+            new_X = reorder_cols(new_X, X)
+
         if hasattr(y, "name"):
-            new_y = to_series(y, name=y.name)
+            new_y = to_series(new_y, name=y.name)
         else:
-            new_y = to_series(y)
+            new_y = to_series(new_y)
 
         return variable_return(new_X, new_y)
 
@@ -268,8 +289,14 @@ class RemoveOutliers(BaseEstimator):
         return X[mask], y[mask]
 
 
-class FixImbalancer:
-    """Wrapper for a balancer with a fit_resample method."""
+class FixImbalancer(BaseEstimator):
+    """Wrapper for a balancer with a fit_resample method.
+
+    Balancing classes should only be used on the training set,
+    therefore this estimator is skipped by the pipeline when
+    making new predictions (only used to fit).
+
+    """
 
     def __init__(self, estimator):
         self.estimator = estimator

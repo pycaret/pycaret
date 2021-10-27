@@ -432,7 +432,7 @@ class _TabularExperiment(_PyCaretExperiment):
         feature_selection: bool = False,
         feature_selection_method: str = "classic",
         feature_selection_estimator: Union[str, Any] = "lightgbm",
-        n_features_to_select: Union[int, float] = 0.5,
+        n_features_to_select: int = 10,
         transform_target=False,
         transform_target_method="box-cox",
         custom_pipeline: Any = None,
@@ -759,7 +759,7 @@ class _TabularExperiment(_PyCaretExperiment):
                 self.logger.info("Extracting features from datetime columns")
                 date_estimator = TransfomerWrapper(
                     transformer=ExtractDateTimeFeatures(),
-                    columns=date_features,
+                    include=date_features,
                 )
 
                 self._internal_pipeline.steps.append(
@@ -792,14 +792,14 @@ class _TabularExperiment(_PyCaretExperiment):
                         strategy=num_dict[numeric_imputation],
                         fill_value=0,
                     ),
-                    columns=numeric_features,
+                    include=numeric_features,
                 )
                 cat_estimator = TransfomerWrapper(
                     transformer=SimpleImputer(
                         strategy=cat_dict[categorical_imputation],
                         fill_value="not_available",
                     ),
-                    columns=categorical_features,
+                    include=categorical_features,
                 )
 
             elif imputation_type == "iterative":
@@ -844,7 +844,7 @@ class _TabularExperiment(_PyCaretExperiment):
                         max_iter=iterative_imputation_iters,
                         random_state=self.seed,
                     ),
-                    columns=numeric_features,
+                    include=numeric_features,
                 )
                 cat_estimator = TransfomerWrapper(
                     transformer=IterativeImputer(
@@ -853,7 +853,7 @@ class _TabularExperiment(_PyCaretExperiment):
                         initial_strategy="most_frequent",
                         random_state=self.seed,
                     ),
-                    columns=categorical_features,
+                    include=categorical_features,
                 )
             else:
                 raise ValueError(
@@ -875,7 +875,7 @@ class _TabularExperiment(_PyCaretExperiment):
                 if text_features_method.lower() in ("bow", "tfidf", "tf-idf"):
                     embed_estimator = TransfomerWrapper(
                         transformer=EmbedTextFeatures(method=text_features_method),
-                        columns=text_features,
+                        include=text_features,
                     )
                 else:
                     raise ValueError(
@@ -927,7 +927,7 @@ class _TabularExperiment(_PyCaretExperiment):
                         handle_missing="return_nan",
                         handle_unknown="value",
                     ),
-                    columns=list(ordinal_features.keys()),
+                    include=list(ordinal_features.keys()),
                 )
 
                 self._internal_pipeline.steps.append(
@@ -944,7 +944,7 @@ class _TabularExperiment(_PyCaretExperiment):
                             handle_missing="return_nan",
                             handle_unknown="value",
                         ),
-                        columns=one_hot_cols,
+                        include=one_hot_cols,
                     )
 
                     self._internal_pipeline.steps.append(
@@ -962,7 +962,7 @@ class _TabularExperiment(_PyCaretExperiment):
 
                     rest_estimator = TransfomerWrapper(
                         transformer=encoding_method,
-                        columns=rest_cols,
+                        include=rest_cols,
                     )
 
                     self._internal_pipeline.steps.append(
@@ -989,10 +989,8 @@ class _TabularExperiment(_PyCaretExperiment):
                         f"got {transformation_method}."
                     )
 
-                transformation_estimator = TransfomerWrapper(transformation_estimator)
-
                 self._internal_pipeline.steps.append(
-                    ("transformation", transformation_estimator)
+                    ("transformation", TransfomerWrapper(transformation_estimator))
                 )
 
             # Normalization ======================================== >>
@@ -1027,7 +1025,7 @@ class _TabularExperiment(_PyCaretExperiment):
                 else:
                     variance_estimator = TransfomerWrapper(
                         transformer=VarianceThreshold(low_variance_threshold),
-                        columns=[c for c in self.X.columns if c not in keep_features],
+                        exclude=keep_features,
                     )
 
                 self._internal_pipeline.steps.append(
@@ -1047,7 +1045,7 @@ class _TabularExperiment(_PyCaretExperiment):
 
                 multicollinearity = TransfomerWrapper(
                     transformer=RemoveMulticollinearity(multicollinearity_threshold),
-                    columns=[c for c in self.X.columns if c not in keep_features],
+                    exclude=keep_features,
                 )
 
                 self._internal_pipeline.steps.append(
@@ -1062,7 +1060,7 @@ class _TabularExperiment(_PyCaretExperiment):
 
                 binning_estimator = TransfomerWrapper(
                     transformer=KBinsDiscretizer(encode="ordinal", strategy="kmeans"),
-                    columns=bin_numeric_features,
+                    include=bin_numeric_features,
                 )
 
                 self._internal_pipeline.steps.append(
@@ -1154,7 +1152,7 @@ class _TabularExperiment(_PyCaretExperiment):
                 if pca_method in pca_dict:
                     pca_estimator = TransfomerWrapper(
                         transformer=pca_dict[pca_method],
-                        columns=[c for c in self.X.columns if c not in keep_features],
+                        exclude=keep_features,
                     )
                 else:
                     raise ValueError(
@@ -1189,10 +1187,6 @@ class _TabularExperiment(_PyCaretExperiment):
                         "The provided estimator does not adhere to sklearn's API."
                     )
 
-                cols = [c for c in self.X.columns if c not in keep_features]
-                if n_features_to_select < 1:
-                    n_features_to_select = int(len(cols) * n_features_to_select)
-
                 if feature_selection_method.lower() == "classic":
                     feature_selector = TransfomerWrapper(
                         transformer=SelectFromModel(
@@ -1200,7 +1194,7 @@ class _TabularExperiment(_PyCaretExperiment):
                             threshold=-np.inf,
                             max_features=n_features_to_select,
                         ),
-                        columns=cols,
+                        exclude=keep_features,
                     )
                 elif feature_selection_method.lower() == "sequential":
                     feature_selector = TransfomerWrapper(
@@ -1209,7 +1203,7 @@ class _TabularExperiment(_PyCaretExperiment):
                             n_features_to_select=n_features_to_select,
                             n_jobs=self.n_jobs_param,
                         ),
-                        columns=cols,
+                        exclude=keep_features,
                     )
                 elif feature_selection_method.lower() == "boruta":
                     # TODO: Fix
@@ -1218,7 +1212,7 @@ class _TabularExperiment(_PyCaretExperiment):
                             estimator=fs_estimator,
                             n_estimators="auto",
                         ),
-                        columns=cols,
+                        exclude=keep_features,
                     )
                 else:
                     raise ValueError(

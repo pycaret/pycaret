@@ -33,6 +33,9 @@ Changes:
 - Added `feature_selection_estimator` parameter.
 - Changed the way encoding works. Now defaults to LeaveOneOut and another
   estimator can be selected.
+- Outlier removal method can now be chosen.
+- Fix imbalance method defaults to SMOTE but a custom estimator from imblearn
+  can be selected as well.
 - Reorder of the parameters to a logical order (following the pipeline)
 
 
