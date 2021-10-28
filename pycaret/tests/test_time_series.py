@@ -19,7 +19,9 @@ from .time_series_test_utils import (
     _return_compare_model_args,
     _return_setup_args_raises,
     _return_data_with_without_period_index,
+    _return_data_big_small,
     _ALL_METRICS,
+    _ALL_STATS_TESTS,
 )
 
 pytestmark = pytest.mark.filterwarnings("ignore::UserWarning")
@@ -40,6 +42,7 @@ _splitter_args = _return_splitter_args()
 _setup_args_raises = _return_setup_args_raises()
 _data_with_without_period_index = _return_data_with_without_period_index()
 _compare_model_args = _return_compare_model_args()
+_data_big_small = _return_data_big_small()
 
 ############################
 #### Functions End Here ####
@@ -185,12 +188,40 @@ def test_save_load_model(load_pos_and_neg_data):
     assert np.all(loaded_predictions == expected_predictions)
 
 
-def test_check_stats(load_pos_and_neg_data):
+@pytest.mark.parametrize("test", _ALL_STATS_TESTS)
+@pytest.mark.parametrize("data", _data_big_small)
+def test_check_stats(data, test):
     """Tests the check_stats functionality"""
 
     exp = TimeSeriesExperiment()
 
-    fh = np.arange(1, 13)
+    # Reduced fh since we are testing with small dataset as well
+    fh = 1
+    fold = 2
+
+    exp.setup(
+        data=data,
+        fh=fh,
+        fold=fold,
+        fold_strategy="sliding",
+        verbose=False,
+        session_id=42,
+    )
+
+    # Individual Tests
+    results = exp.check_stats(test=test)
+    expected_order = ["Test", "Test Name", "Property", "Setting", "Value"]
+    column_names = list(results.columns)
+    for i, name in enumerate(expected_order):
+        assert column_names[i] == name
+
+
+def test_check_stats_combined(load_pos_and_neg_data):
+    """Tests the check_stats functionality combined test"""
+
+    exp = TimeSeriesExperiment()
+
+    fh = 12
     fold = 2
     data = load_pos_and_neg_data
 
@@ -203,21 +234,31 @@ def test_check_stats(load_pos_and_neg_data):
         session_id=42,
     )
 
-    expected = ["Test", "Test Name", "Property", "Setting", "Value"]
-    # expected_small = ["Test", "Test Name", "Property"]
+    expected_order = ["Test", "Test Name", "Property", "Setting", "Value"]
 
     results = exp.check_stats()
     column_names = list(results.columns)
-    for i, name in enumerate(expected):
+    for i, name in enumerate(expected_order):
         assert column_names[i] == name
 
-    # Individual Tests
-    tests = ["summary", "white_noise", "stationarity", "adf", "kpss", "normality"]
-    for test in tests:
-        results = exp.check_stats(test=test)
-        column_names = list(results.columns)
-        for i, name in enumerate(expected):
-            assert column_names[i] == name
+
+def test_check_stats_alpha(load_pos_and_neg_data):
+    """Tests the check_stats functionality with different alpha"""
+
+    exp = TimeSeriesExperiment()
+
+    fh = 12
+    fold = 2
+    data = load_pos_and_neg_data
+
+    exp.setup(
+        data=data,
+        fh=fh,
+        fold=fold,
+        fold_strategy="sliding",
+        verbose=False,
+        session_id=42,
+    )
 
     alpha = 0.2
     results = exp.check_stats(alpha=alpha)

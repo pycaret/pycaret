@@ -28,7 +28,7 @@ def test_(data, test: str, alpha: float = 0.05, *kwargs):
     elif test == "summary":
         results = summary_statistics(data=data)
     elif test == "white_noise":
-        results = is_white_noise(data=data, alpha=alpha, verbose=True)[1]
+        results = is_white_noise(data=data, alpha=alpha, verbose=True, *kwargs)[1]
     elif test == "stationarity":
         results = is_stationary(data=data, alpha=alpha)
     elif test == "adf":
@@ -93,7 +93,7 @@ def is_stationary_adf(data: pd.Series, alpha: float = 0.05, verbose: bool = Fals
     data : pd.Series
         Time Series to be tested
     """
-    results = adfuller(data, autolag="AIC", maxlag=20)
+    results = adfuller(data, autolag="AIC", maxlag=None)
     test_statistic = results[0]
     critical_values = results[4]
     p_value = results[1]
