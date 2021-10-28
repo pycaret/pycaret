@@ -21,6 +21,15 @@ _BLEND_TEST_MODELS = [
     "lightgbm_cds_dt",
 ]  # Test blend model functionality only in these models
 
+_ALL_STATS_TESTS = [
+    "summary",
+    "white_noise",
+    "stationarity",
+    "adf",
+    "kpss",
+    "normality",
+]
+
 
 def _get_all_metrics():
     exp = TimeSeriesExperiment()
@@ -128,6 +137,16 @@ def _return_data_with_without_period_index():
         get_data("airline"),
         get_data("10", folder="time_series/white_noise"),
     ]
+    return datasets
+
+
+def _return_data_big_small():
+    """Returns one dataset with 144 data points and one with < 12 data points"""
+    data = get_data("airline")
+    data = data - 400
+    data_small = data[:12]  # 11 data points
+    datasets = [data, data_small]
+
     return datasets
 
 
