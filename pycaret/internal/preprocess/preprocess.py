@@ -46,6 +46,8 @@ class TransfomerWrapper(BaseEstimator):
         self.transformer = transformer
         self.include = include
         self.exclude = exclude
+
+        self._include = self.include
         self._exclude = self.exclude or []
 
     def __repr__(self, N_CHAR_MAX=1400):
@@ -54,13 +56,13 @@ class TransfomerWrapper(BaseEstimator):
     def fit(self, X, y=None, **fit_params):
         args = []
         if "X" in signature(self.transformer.fit).parameters:
-            if self.include is None:
-                self.include = [c for c in X.columns if c in X and c not in self._exclude]
-            elif not self.include:  # Don't fit if empty list
+            if self._include is None:
+                self._include = [c for c in X.columns if c in X and c not in self._exclude]
+            elif not self._include:  # Don't fit if empty list
                 return self
             else:
-                self.include = [c for c in self.include if c in X and c not in self._exclude]
-            args.append(X[self.include])
+                self._include = [c for c in self._include if c in X and c not in self._exclude]
+            args.append(X[self._include])
         if "y" in signature(self.transformer.fit).parameters:
             args.append(y)
 
@@ -86,8 +88,8 @@ class TransfomerWrapper(BaseEstimator):
 
             """
             # If columns were only transformed, return og names
-            if array.shape[1] == len(self.include):
-                return self.include
+            if array.shape[1] == len(self._include):
+                return self._include
 
             # If columns were added or removed
             temp_cols = []
@@ -96,7 +98,7 @@ class TransfomerWrapper(BaseEstimator):
                 if any(mask) and mask[mask].index.values[0] not in temp_cols:
                     temp_cols.append(mask[mask].index.values[0])
                 else:
-                    diff = len(df.columns) - len(self.include)
+                    diff = len(df.columns) - len(self._include)
                     temp_cols.append(f"Feature {str(i + diff)}")
 
             return temp_cols
@@ -121,7 +123,7 @@ class TransfomerWrapper(BaseEstimator):
             for col in list(dict.fromkeys(list(original_df.columns) + list(df.columns))):
                 if col in df.columns:
                     temp_df[col] = df[col]
-                elif col not in self.include:
+                elif col not in self._include:
                     temp_df[col] = original_df[col]
 
                 # Derivative cols are added after original
@@ -133,11 +135,11 @@ class TransfomerWrapper(BaseEstimator):
 
         args = []
         if "X" in signature(self.transformer.transform).parameters:
-            if self.include is None:
-                self.include = [c for c in X.columns if c in X and c not in self._exclude]
-            elif not self.include:  # Don't transform if empty list
+            if self._include is None:
+                self._include = [c for c in X.columns if c in X and c not in self._exclude]
+            elif not self._include:  # Don't transform if empty list
                 return variable_return(X, y)
-            args.append(X[self.include])
+            args.append(X[self._include])
         if "y" in signature(self.transformer.transform).parameters:
             args.append(y)
 

@@ -768,105 +768,109 @@ class _TabularExperiment(_PyCaretExperiment):
 
             # Imputation =========================================== >>
 
-            # Checking parameters
-            num_dict = {"zero": "constant", "mean": "mean", "median": "median"}
-            if numeric_imputation not in num_dict:
-                raise ValueError(
-                    "Invalid value for the numeric_imputation parameter, got "
-                    f"{numeric_imputation}. Possible values are {' '.join(num_dict)}."
-                )
-
-            cat_dict = {"constant": "constant", "mode": "most_frequent"}
-            if categorical_imputation not in cat_dict:
-                raise ValueError(
-                    "Invalid value for the categorical_imputation "
-                    f"parameter, got {categorical_imputation}. Possible "
-                    f"values are {' '.join(cat_dict)}."
-                )
-
-            if imputation_type == "simple":
-                self.logger.info("Setting up simple imputation")
-
-                num_estimator = TransfomerWrapper(
-                    transformer=SimpleImputer(
-                        strategy=num_dict[numeric_imputation],
-                        fill_value=0,
-                    ),
-                    include=numeric_features,
-                )
-                cat_estimator = TransfomerWrapper(
-                    transformer=SimpleImputer(
-                        strategy=cat_dict[categorical_imputation],
-                        fill_value="not_available",
-                    ),
-                    include=categorical_features,
-                )
-
-            elif imputation_type == "iterative":
-                self.logger.info("Setting up iterative imputation")
-
-                # TODO: Fix iterative imputer for categorical columns
-
-                # Dict of all regressor models available
-                regressors = {k: v for k, v in get_regressors(self).items() if not v.is_special}
-
-                if isinstance(numeric_iterative_imputer, str):
-                    if numeric_iterative_imputer not in regressors:
-                        raise ValueError(
-                            "Invalid value for the numeric_iterative_imputer parameter, "
-                            f"got {numeric_iterative_imputer}. Allowed estimators are: "
-                            f"{', '.join(regressors)}."
-                        )
-                    numeric_iterative_imputer = regressors[numeric_iterative_imputer].class_def()
-                elif not hasattr(numeric_iterative_imputer, "predict"):
+            if self.data.isna().any().any():
+                # Checking parameters
+                num_dict = {"zero": "constant", "mean": "mean", "median": "median"}
+                if numeric_imputation not in num_dict:
                     raise ValueError(
-                        "Invalid value for the numeric_iterative_imputer parameter. "
-                        "The provided estimator does not adhere to sklearn's API."
+                        "Invalid value for the numeric_imputation parameter, "
+                        f"got {numeric_imputation}. Possible values are "
+                        f"{' '.join(num_dict)}."
                     )
 
-                if isinstance(categorical_iterative_imputer, str):
-                    if categorical_iterative_imputer not in regressors:
-                        raise ValueError(
-                            "Invalid value for the categorical_iterative_imputer parameter, "
-                            f"got {categorical_iterative_imputer}. Allowed estimators are: "
-                            f"{', '.join(regressors)}."
-                        )
-                    categorical_iterative_imputer = regressors[categorical_iterative_imputer].class_def()
-                elif not hasattr(categorical_iterative_imputer, "predict"):
+                cat_dict = {"constant": "constant", "mode": "most_frequent"}
+                if categorical_imputation not in cat_dict:
                     raise ValueError(
-                        "Invalid value for the categorical_iterative_imputer parameter. "
-                        "The provided estimator does not adhere to sklearn's API."
+                        "Invalid value for the categorical_imputation "
+                        f"parameter, got {categorical_imputation}. Possible "
+                        f"values are {' '.join(cat_dict)}."
                     )
 
-                num_estimator = TransfomerWrapper(
-                    transformer=IterativeImputer(
-                        estimator=numeric_iterative_imputer,
-                        max_iter=iterative_imputation_iters,
-                        random_state=self.seed,
-                    ),
-                    include=numeric_features,
-                )
-                cat_estimator = TransfomerWrapper(
-                    transformer=IterativeImputer(
-                        estimator=categorical_iterative_imputer,
-                        max_iter=iterative_imputation_iters,
-                        initial_strategy="most_frequent",
-                        random_state=self.seed,
-                    ),
-                    include=categorical_features,
-                )
-            else:
-                raise ValueError(
-                    "Invalid value for the imputation_type parameter, got "
-                    f"{imputation_type}. Possible values are: simple, iterative."
-                )
+                if imputation_type == "simple":
+                    self.logger.info("Setting up simple imputation")
 
-            self._internal_pipeline.steps.extend(
-                [
-                    ("numerical_imputer", num_estimator),
-                    ("categorical_imputer", cat_estimator),
-                ],
-            )
+                    num_estimator = TransfomerWrapper(
+                        transformer=SimpleImputer(
+                            strategy=num_dict[numeric_imputation],
+                            fill_value=0,
+                        ),
+                        include=numeric_features,
+                    )
+                    cat_estimator = TransfomerWrapper(
+                        transformer=SimpleImputer(
+                            strategy=cat_dict[categorical_imputation],
+                            fill_value="not_available",
+                        ),
+                        include=categorical_features,
+                    )
+
+                elif imputation_type == "iterative":
+                    self.logger.info("Setting up iterative imputation")
+
+                    # TODO: Fix iterative imputer for categorical columns
+
+                    # Dict of all regressor models available
+                    regressors = {k: v for k, v in get_regressors(self).items() if not v.is_special}
+
+                    if isinstance(numeric_iterative_imputer, str):
+                        if numeric_iterative_imputer not in regressors:
+                            raise ValueError(
+                                "Invalid value for the numeric_iterative_imputer "
+                                f"parameter, got {numeric_iterative_imputer}. "
+                                f"Allowed estimators are: {', '.join(regressors)}."
+                            )
+                        numeric_iterative_imputer = regressors[numeric_iterative_imputer].class_def()
+                    elif not hasattr(numeric_iterative_imputer, "predict"):
+                        raise ValueError(
+                            "Invalid value for the numeric_iterative_imputer "
+                            "parameter. The provided estimator does not adhere "
+                            "to sklearn's API."
+                        )
+
+                    if isinstance(categorical_iterative_imputer, str):
+                        if categorical_iterative_imputer not in regressors:
+                            raise ValueError(
+                                "Invalid value for the categorical_iterative_imputer "
+                                "parameter, got {categorical_iterative_imputer}. "
+                                f"Allowed estimators are: {', '.join(regressors)}."
+                            )
+                        categorical_iterative_imputer = regressors[categorical_iterative_imputer].class_def()
+                    elif not hasattr(categorical_iterative_imputer, "predict"):
+                        raise ValueError(
+                            "Invalid value for the categorical_iterative_imputer "
+                            "parameter. The provided estimator does not adhere "
+                            "to sklearn's API."
+                        )
+
+                    num_estimator = TransfomerWrapper(
+                        transformer=IterativeImputer(
+                            estimator=numeric_iterative_imputer,
+                            max_iter=iterative_imputation_iters,
+                            random_state=self.seed,
+                        ),
+                        include=numeric_features,
+                    )
+                    cat_estimator = TransfomerWrapper(
+                        transformer=IterativeImputer(
+                            estimator=categorical_iterative_imputer,
+                            max_iter=iterative_imputation_iters,
+                            initial_strategy="most_frequent",
+                            random_state=self.seed,
+                        ),
+                        include=categorical_features,
+                    )
+                else:
+                    raise ValueError(
+                        "Invalid value for the imputation_type parameter, got "
+                        f"{imputation_type}. Possible values are: simple, iterative."
+                    )
+
+                self._internal_pipeline.steps.extend(
+                    [
+                        ("numerical_imputer", num_estimator),
+                        ("categorical_imputer", cat_estimator),
+                    ],
+                )
 
             # Text embedding ======================================= >>
 
@@ -920,6 +924,10 @@ class _TabularExperiment(_PyCaretExperiment):
                                 f"Feature {key} doesn't contain the {elem} element."
                             )
                     mapping[key] = {v: i for i, v in enumerate(value)}
+
+                    # Encoder always needs mapping of NaN value
+                    if np.NaN not in mapping[key]:
+                        mapping[key][np.NaN] = -1
 
                 ord_estimator = TransfomerWrapper(
                     transformer=OrdinalEncoder(

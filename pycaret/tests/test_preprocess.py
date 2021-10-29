@@ -110,8 +110,8 @@ def test_ordinal_features():
         ordinal_features={"salary": ["low", "medium", "high"]},
     )
     X, _ = pc._internal_pipeline.fit_transform(pc.X, pc.y)
-    ordinal_encoder = pc._internal_pipeline.steps[2][1].transformer
-    assert ordinal_encoder.mapping[0]["mapping"] == {'low': 0, 'medium': 1, 'high': 2}
+    mapping = pc._internal_pipeline.steps[0][1].transformer.mapping
+    assert mapping[0]["mapping"] == {np.nan: -1, "high": 2, "low": 0, "medium": 1}
 
 
 def test_categorical_features():
