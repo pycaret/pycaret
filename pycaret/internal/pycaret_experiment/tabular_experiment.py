@@ -1232,7 +1232,9 @@ class _TabularExperiment(_PyCaretExperiment):
             except Exception:
                 self.logger.warning("cuML not found")
 
-            if cuml_version is None or not version.parse(cuml_version) >= version.parse("0.15"):
+            if cuml_version is None or not version.parse(cuml_version) >= version.parse(
+                "0.15"
+            ):
                 message = f"cuML is outdated or not found. Required version is >=0.15, got {__version__}"
                 if use_gpu == "force":
                     raise ImportError(message)
@@ -1714,6 +1716,35 @@ class _TabularExperiment(_PyCaretExperiment):
         else:
             if verbose:
                 print("Setup Successfully Completed!")
+
+        if self._ml_usecase == MLUsecase.TIME_SERIES:
+            from pycaret.internal.tests.time_series import (
+                recommend_uppercase_d,
+                recommend_lowercase_d,
+            )
+
+            self.white_noise = None
+            wn_results = self.check_stats(test="white_noise")
+            wn_values = wn_results.query("Property == 'White Noise'")["Value"]
+
+            # There can be multiple lags values tested.
+            # Checking the percent of lag values that indicate white noise
+            percent_white_noise = sum(wn_values) / len(wn_values)
+            if percent_white_noise == 0:
+                self.white_noise = "No"
+            elif percent_white_noise == 1.00:
+                self.white_noise = "Yes"
+            else:
+                self.white_noise = "Maybe"
+
+            self.lowercase_d = recommend_lowercase_d(data=self.y)
+            # TODO: Should sp this overrise the self.seasonal_period since sp
+            # will be used for all models and the same checks will need to be
+            # done there as well
+            sp = self.seasonal_period if self.seasonality_present else 1
+            self.uppercase_d = (
+                recommend_uppercase_d(data=self.y, sp=sp) if sp > 1 else 0
+            )
 
         self.preprocess = preprocess
         functions = self._get_setup_display(

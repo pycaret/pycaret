@@ -24,10 +24,6 @@ from pycaret.internal.distributions import *
 from pycaret.internal.validation import *
 from pycaret.internal.tunable import TunableMixin
 
-from pycaret.internal.tests.time_series import (
-    recommend_uppercase_d,
-    recommend_lowercase_d,
-)
 import pycaret.containers.metrics.time_series
 import pycaret.containers.models.time_series
 import pycaret.internal.preprocess
@@ -629,19 +625,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
     def _get_setup_display(self, **kwargs) -> Styler:
         # define highlight function for function grid to display
 
-        wn_results = self.check_stats(test="white_noise")
-        wn_values = wn_results.query("Property == 'White Noise'")["Value"]
-        if sum(wn_values) == 0:
-            wn = "No"
-        elif sum(wn_values) == 1:
-            wn = "Maybe"
-        elif sum(wn_values) > 1:
-            wn = "Yes"
-
-        d = recommend_lowercase_d(data=self.y)
-        sp = self.seasonal_period if self.seasonality_present else 1
-        D = recommend_uppercase_d(data=self.y, sp=sp) if sp > 1 else 0
-
         functions = pd.DataFrame(
             [
                 ["session_id", self.seed],
@@ -659,9 +642,9 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                     ["Seasonal Period Tested", self.seasonal_period],
                     ["Seasonality Detected", self.seasonality_present],
                     ["Target Strictly Positive", self.strictly_positive],
-                    ["Target White Noise", wn],
-                    ["Recommended d", d],
-                    ["Recommended Seasonal D", D],
+                    ["Target White Noise", self.white_noise],
+                    ["Recommended d", self.lowercase_d],
+                    ["Recommended Seasonal D", self.uppercase_d],
                     ["CPU Jobs", self.n_jobs_param],
                     ["Use GPU", self.gpu_param],
                     ["Log Experiment", self.logging_param],
@@ -3429,16 +3412,17 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         alpha: float = 0.05,
         split: str = "all",
     ) -> pd.DataFrame:
+        #### Step 1: Get the data to be tested ----
         if estimator is None:
             data = self._get_y_data(split=split)
-            results = test_(data=data, test=test, alpha=alpha)
         else:
-            resid = self.get_residuals(estimator=estimator)
-            if resid is None:
+            data = self.get_residuals(estimator=estimator)
+            if data is None:
                 return
-            resid = self.check_and_clean_resid(resid=resid)
-            results = test_(data=resid, test=test, alpha=alpha)
+            data = self.check_and_clean_resid(resid=data)
 
+        #### Step 2: Test ----
+        results = test_(data=data, test=test, alpha=alpha)
         results.reset_index(inplace=True, drop=True)
         return results
 

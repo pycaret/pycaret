@@ -69,9 +69,18 @@ def is_white_noise(
     lags : List[int], optional
         The lags used to test the autocorelation for white noise, by default [24, 48]
     """
+    test_category = "White Noise"
+
+    #### Step 1: Validate inputs and adjust as needed ----
+    lags = [lag for lag in lags if lag < len(data)]
+    lags = None if len(lags) == 0 else lags
+
+    #### Step 2: Run test ----
     results = sm.stats.acorr_ljungbox(data, lags=lags, return_df=True)
-    results["White Noise"] = results["lb_pvalue"] > alpha
-    is_white_noise = False if results["White Noise"].all() == False else True
+
+    #### Step 3: Cleanup results ----
+    results[test_category] = results["lb_pvalue"] > alpha
+    is_white_noise = False if results[test_category].all() == False else True
     results.rename(
         columns={"lb_stat": "Test Statictic", "lb_pvalue": "p-value"}, inplace=True,
     )
@@ -86,7 +95,7 @@ def is_white_noise(
     # TODO: Add alpha value to Settings
     results = results.apply(add_and_format_settings, axis=1)
     results = pd.melt(results, id_vars="Setting", var_name="index", value_name="Value")
-    results = _format_test_results(results, "White Noise", "Ljung-Box")
+    results = _format_test_results(results, test_category, "Ljung-Box")
 
     if verbose:
         return is_white_noise, results

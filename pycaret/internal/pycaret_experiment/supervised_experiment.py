@@ -2459,6 +2459,14 @@ class _SupervisedExperiment(_TabularExperiment):
                 # needs to be imported like that for the monkeypatch
                 import sklearn.model_selection._search
 
+                try:
+                    param_grid = get_base_distributions(param_grid)
+                except:
+                    self.logger.warning(
+                        "Couldn't convert param_grid to specific library distributions. Exception:"
+                    )
+                    self.logger.warning(traceback.format_exc())
+
                 if search_algorithm == "grid":
                     self.logger.info("Initializing GridSearchCV")
                     model_grid = sklearn.model_selection._search.GridSearchCV(
