@@ -16,6 +16,7 @@ import warnings
 
 warnings.filterwarnings("ignore")
 
+_EXPERIMENT_CLASS = ClusteringExperiment
 _CURRENT_EXPERIMENT = None
 _CURRENT_EXPERIMENT_EXCEPTION = (
     "_CURRENT_EXPERIMENT global variable is not set. Please run setup() first."
@@ -376,7 +377,7 @@ def setup(
     
     """
 
-    exp = ClusteringExperiment()
+    exp = _EXPERIMENT_CLASS()
     set_current_experiment(exp)
     return exp.setup(
         data=data,
@@ -607,11 +608,11 @@ def plot_model(
     plot: str, default = 'cluster'
         List of available plots (ID - Name):
 
-        * 'cluster' - Cluster PCA Plot (2d)              
-        * 'tsne' - Cluster TSnE (3d)
+        * 'cluster' - Cluster PCA Plot (2d)
+        * 'tsne' - Cluster t-SNE (3d)
         * 'elbow' - Elbow Plot 
-        * 'silhouette' - Silhouette Plot         
-        * 'distance' - Distance Plot   
+        * 'silhouette' - Silhouette Plot
+        * 'distance' - Distance Plot
         * 'distribution' - Distribution Plot
     
     
@@ -852,7 +853,7 @@ def tune_model(
     )
 
 
-@check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
+# not using check_if_global_is_not_none on purpose
 def predict_model(model, data: pd.DataFrame) -> pd.DataFrame:
 
     """
@@ -893,7 +894,11 @@ def predict_model(model, data: pd.DataFrame) -> pd.DataFrame:
 
     """
 
-    return _CURRENT_EXPERIMENT.predict_model(estimator=model, data=data,)
+    experiment = _CURRENT_EXPERIMENT
+    if experiment is None:
+        experiment = _EXPERIMENT_CLASS()
+
+    return experiment.predict_model(estimator=model, data=data,)
 
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
@@ -960,7 +965,7 @@ def deploy_model(
         Dictionary of applicable authentication tokens.
 
         When platform = 'aws':
-        {'bucket' : 'S3-bucket-name'}
+        {'bucket' : 'S3-bucket-name', 'path': (optional) folder name under the bucket}
 
         When platform = 'gcp':
         {'project': 'gcp-project-name', 'bucket' : 'gcp-bucket-name'}
@@ -1041,7 +1046,7 @@ def save_model(
     )
 
 
-@check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
+# not using check_if_global_is_not_none on purpose
 def load_model(
     model_name,
     platform: Optional[str] = None,
@@ -1090,7 +1095,11 @@ def load_model(
 
     """
 
-    return _CURRENT_EXPERIMENT.load_model(
+    experiment = _CURRENT_EXPERIMENT
+    if experiment is None:
+        experiment = _EXPERIMENT_CLASS()
+
+    return experiment.load_model(
         model_name=model_name,
         platform=platform,
         authentication=authentication,
@@ -1327,7 +1336,6 @@ def get_config(variable: str):
     - prep_pipe: Transformation pipeline configured through setup
     - n_jobs_param: n_jobs parameter used in model training
     - html_param: html_param configured through setup
-    - create_model_container: results grid storage container
     - master_model_container: model storage container
     - display_container: results display container
     - exp_name_log: Name of experiment set through setup
@@ -1368,7 +1376,6 @@ def set_config(variable: str, value):
     - prep_pipe: Transformation pipeline configured through setup
     - n_jobs_param: n_jobs parameter used in model training
     - html_param: html_param configured through setup
-    - create_model_container: results grid storage container
     - master_model_container: model storage container
     - display_container: results display container
     - exp_name_log: Name of experiment set through setup
@@ -1496,7 +1503,7 @@ def get_clusters(
     """
     Callable from any external environment without requiring setup initialization.
     """
-    exp = ClusteringExperiment()
+    exp = _EXPERIMENT_CLASS()
     exp.setup(
         data=data,
         preprocess=preprocess,

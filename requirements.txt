@@ -9,7 +9,8 @@ scikit-learn>=1.0
 ipywidgets
 yellowbrick>=1.0.1
 lightgbm>=2.3.1
-plotly>=4.4.1
+plotly>=5.0.0
+pyyaml<6.0.0
 wordcloud
 textblob
 cufflinks>=0.17.0
@@ -27,3 +28,4 @@ imbalanced-learn>=0.8.1
 category-encoders>=2.2.2
 scikit-plot #for lift and gain charts
 Boruta
+numba

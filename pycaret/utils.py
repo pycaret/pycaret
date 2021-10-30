@@ -5,6 +5,7 @@
 import pandas as pd
 import numpy as np
 from typing import Optional
+import functools
 
 version_ = "3.0.0"
 nightly_version_ = "3.0.0"
@@ -20,7 +21,13 @@ def nightly_version():
     return nightly_version_
 
 
-def check_metric(actual: pd.Series, prediction: pd.Series, metric: str, round: int = 4, train: Optional[pd.Series] = None):
+def check_metric(
+    actual: pd.Series,
+    prediction: pd.Series,
+    metric: str,
+    round: int = 4,
+    train: Optional[pd.Series] = None,
+):
 
     """
     Function to evaluate classification, regression and timeseries metrics.
@@ -62,9 +69,14 @@ def check_metric(actual: pd.Series, prediction: pd.Series, metric: str, round: i
             globals_dict
         ),
         **pycaret.containers.metrics.regression.get_all_metric_containers(globals_dict),
-        **pycaret.containers.metrics.time_series.get_all_metric_containers(globals_dict)
+        **pycaret.containers.metrics.time_series.get_all_metric_containers(
+            globals_dict
+        ),
     }
-    metrics = {v.name: v.score_func for k, v in metric_containers.items()}
+    metrics = {
+        v.name: functools.partial(v.score_func, **(v.args or {}))
+        for k, v in metric_containers.items()
+    }
 
     if isinstance(train, pd.Series):
         input_params = [actual, prediction, train]

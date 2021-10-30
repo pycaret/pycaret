@@ -22,6 +22,10 @@ from pycaret.internal.utils import (
     get_logger,
     np_list_arange,
 )
+from pycaret.internal.distributions import *
+import pycaret.containers.base_container
+import numpy as np
+from packaging import version
 
 
 class RegressorContainer(ModelContainer):
@@ -1120,14 +1124,18 @@ class RandomForestRegressorContainer(RegressorContainer):
                 pycaret.internal.cuml_wrappers.get_random_forest_regressor()
             )
 
-        args = (
-            {
+        if not gpu_imported:
+            args = {
                 "random_state": experiment.seed,
                 "n_jobs": experiment.n_jobs_param,
             }
-            if not gpu_imported
-            else {"seed": experiment.seed}
-        )
+        else:
+            import cuml
+            if version.parse(cuml.__version__) >= version.parse("0.19"):
+                args = {"random_state": experiment.seed}
+            else:
+                args = {"seed": experiment.seed}
+
         tune_args = {}
         tune_grid = {
             "n_estimators": np_list_arange(10, 300, 10, inclusive=True),
@@ -1436,10 +1444,9 @@ class XGBRegressorContainer(RegressorContainer):
             self.active = False
             return
 
-        xgboost_version = tuple([int(x) for x in xgboost.__version__.split(".")])
-        if xgboost_version < (1, 1, 0):
+        if version.parse(xgboost.__version__) < version.parse("1.1.0"):
             logger.warning(
-                f"Wrong xgboost version. Expected xgboost>=1.1.0, got xgboost=={xgboost_version}"
+                f"Wrong xgboost version. Expected xgboost>=1.1.0, got xgboost=={xgboost.__version__}"
             )
             self.active = False
             return
@@ -1672,17 +1679,25 @@ class LGBMRegressorContainer(RegressorContainer):
             try:
                 lgb = LGBMRegressor(device="gpu")
                 lgb.fit(np.zeros((2, 2)), [0, 1])
-                is_gpu_enabled = True
+                is_gpu_enabled = "gpu"
                 del lgb
-            except LightGBMError:
-                is_gpu_enabled = False
-                if experiment.gpu_param == "force":
-                    raise RuntimeError(
-                        f"LightGBM GPU mode not available. Consult https://lightgbm.readthedocs.io/en/latest/GPU-Tutorial.html."
-                    )
+            except:
+                try:
+                    lgb = LGBMRegressor(device="cuda")
+                    lgb.fit(np.zeros((2, 2)), [0, 1])
+                    is_gpu_enabled = "cuda"
+                    del lgb
+                except LightGBMError:
+                    is_gpu_enabled = False
+                    if experiment.gpu_param == "force":
+                        raise RuntimeError(
+                            f"LightGBM GPU mode not available. Consult https://lightgbm.readthedocs.io/en/latest/GPU-Tutorial.html."
+                        )
 
-        if is_gpu_enabled:
+        if is_gpu_enabled=="gpu":
             args["device"] = "gpu"
+        elif is_gpu_enabled=="cuda":
+            args["device"] = "cuda"
 
         super().__init__(
             id="lightgbm",
@@ -1708,10 +1723,9 @@ class CatBoostRegressorContainer(RegressorContainer):
             self.active = False
             return
 
-        catboost_version = tuple([int(x) for x in catboost.__version__.split(".")])
-        if catboost_version < (0, 23, 2):
+        if version.parse(catboost.__version__) < version.parse("0.23.2"):
             logger.warning(
-                f"Wrong catboost version. Expected catboost>=0.23.2, got catboost=={catboost_version}"
+                f"Wrong catboost version. Expected catboost>=0.23.2, got catboost=={catboost.__version__}"
             )
             self.active = False
             return

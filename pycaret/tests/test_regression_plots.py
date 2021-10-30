@@ -18,6 +18,7 @@ def test():
         data,
         target="medv",
         log_experiment=True,
+        log_plots=True,
         silent=True,
         html=False,
         session_id=123,
@@ -49,12 +50,15 @@ def test():
         pycaret.regression.create_model("xgboost"),
     ]
 
-    available_shap = ["summary", "correlation", "reason"]
+    # no pfi due to dependency hell
+    available_shap = ["summary", "correlation", "reason", "pdp", "msa"]
 
     for model in models:
         for plot in available_shap:
             pycaret.regression.interpret_model(model, plot=plot)
-            pycaret.regression.interpret_model(model, plot=plot, X_new_sample=data.iloc[:10])
+            pycaret.regression.interpret_model(
+                model, plot=plot, X_new_sample=data.iloc[:10]
+            )
 
     assert 1 == 1
 

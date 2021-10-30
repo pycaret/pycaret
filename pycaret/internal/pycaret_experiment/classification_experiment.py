@@ -1150,14 +1150,23 @@ class ClassificationExperiment(_SupervisedExperiment):
         observation: Optional[int] = None,
         use_train_data: bool = False,
         X_new_sample: Optional[pd.DataFrame] = None,
-        save: bool = False,
+        y_new_sample: Optional[pd.DataFrame] = None,  # add for pfi explainer
+        save: Union[str, bool] = False,
         **kwargs,
     ):
 
         """
-        This function analyzes the predictions generated from a trained model. Most plots
-        in this function are implemented based on the SHAP (SHapley Additive exPlanations).
-        For more info on this, please see https://shap.readthedocs.io/en/latest/
+        This function takes a trained model object and returns an interpretation plot
+        based on the test / hold-out set. It only supports tree based algorithms.
+
+        This function is implemented based on the SHAP (SHapley Additive exPlanations),
+        which is a unified approach to explain the output of any machine learning model.
+        SHAP connects game theory with local explanations.
+
+        For more information : https://shap.readthedocs.io/en/latest/
+
+        For Partial Dependence Plot : https://github.com/SauceCat/PDPbox
+
 
         Example
         -------
@@ -1169,27 +1178,36 @@ class ClassificationExperiment(_SupervisedExperiment):
         >>> interpret_model(xgboost)
 
 
-        estimator: scikit-learn compatible object
-            Trained model object
+        estimator : object, default = none
+            A trained model object to be passed as an estimator. Only tree-based
+            models are accepted when plot type is 'summary', 'correlation', or
+            'reason'. 'pdp' plot is model agnostic.
 
 
-        plot: str, default = 'summary'
-            List of available plots (ID - Name):
+        plot : str, default = 'summary'
+            Abbreviation of type of plot. The current list of plots supported
+            are (Plot - Name):
             * 'summary' - Summary Plot using SHAP
             * 'correlation' - Dependence Plot using SHAP
             * 'reason' - Force Plot using SHAP
             * 'pdp' - Partial Dependence Plot
+            * 'msa' - Morris Sensitivity Analysis
+            * 'pfi' - Permutation Feature Importance
 
 
         feature: str, default = None
-            Feature to check correlation with. This parameter is only required when ``plot``
-            type is 'correlation' or 'pdp'. When set to None, it uses the first column from
-            the dataset.
+            This parameter is only needed when plot = 'correlation' or 'pdp'.
+            By default feature is set to None which means the first column of the
+            dataset will be used as a variable. A feature parameter must be passed
+            to change this.
 
 
-        observation: int, default = None
-            Observation index number in holdout set to explain. When ``plot`` is not
-            'reason', this parameter is ignored.
+        observation: integer, default = None
+            This parameter only comes into effect when plot is set to 'reason'. If no
+            observation number is provided, it will return an analysis of all observations
+            with the option to select the feature on x and y axes through drop down
+            interactivity. For analysis at the sample level, an observation parameter must
+            be passed with the index value of the observation in test / hold-out set.
 
 
         use_train_data: bool, default = False
@@ -1199,12 +1217,19 @@ class ClassificationExperiment(_SupervisedExperiment):
 
         X_new_sample: pd.DataFrame, default = None
             Row from an out-of-sample dataframe (neither train nor test data) to be plotted.
-            The sample must have the same columns as the raw input data, and it is transformed
+            The sample must have the same columns as the raw input train data, and it is transformed
             by the preprocessing pipeline automatically before plotting.
 
 
-        save: bool, default = False
+        y_new_sample: pd.DataFrame, default = None
+            Row from an out-of-sample dataframe (neither train nor test data) to be plotted.
+            The sample must have the same columns as the raw input label data, and it is transformed
+            by the preprocessing pipeline automatically before plotting.
+
+
+        save: string or bool, default = False
             When set to True, Plot is saved as a 'png' file in current working directory.
+            When a path destination is given, Plot is saved as a 'png' file the given path to the directory of choice.
 
 
         **kwargs:
@@ -1223,6 +1248,7 @@ class ClassificationExperiment(_SupervisedExperiment):
             observation=observation,
             use_train_data=use_train_data,
             X_new_sample=X_new_sample,
+            y_new_sample=y_new_sample,
             save=save,
             **kwargs,
         )
@@ -1923,7 +1949,7 @@ class ClassificationExperiment(_SupervisedExperiment):
             Dictionary of applicable authentication tokens.
 
             When platform = 'aws':
-            {'bucket' : 'S3-bucket-name'}
+            {'bucket' : 'S3-bucket-name', 'path': (optional) folder name under the bucket}
 
             When platform = 'gcp':
             {'project': 'gcp-project-name', 'bucket' : 'gcp-bucket-name'}

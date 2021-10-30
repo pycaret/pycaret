@@ -3,6 +3,7 @@
 # License: MIT
 
 import numpy as np
+import pandas as pd
 import pandas.io.formats.style
 from pycaret.internal.validation import *
 from typing import Any, List, Optional, Dict, Tuple, Union
@@ -13,23 +14,23 @@ import functools
 
 
 class SeasonalPeriod(IntEnum):
-    S = 60 # second
-    T = 60 # minute
-    H = 24 # hour
-    D = 7 # day
-    W = 52 # week
-    M = 12 # month
-    Q = 4 # quarter
-    A = 1 #year
-    Y = 1 #year
+    S = 60  # second
+    T = 60  # minute
+    H = 24  # hour
+    D = 7  # day
+    W = 52  # week
+    M = 12  # month
+    Q = 4  # quarter
+    A = 1  # year
+    Y = 1  # year
 
 
 class TSModelTypes(Enum):
-    BASELINE = 'baseline'
-    CLASSICAL = 'classical'
-    LINEAR = 'linear'
-    NEIGHBORS = 'neighbors'
-    TREE = 'tree'
+    BASELINE = "baseline"
+    CLASSICAL = "classical"
+    LINEAR = "linear"
+    NEIGHBORS = "neighbors"
+    TREE = "tree"
 
 
 def to_df(data, index=None, columns=None, pca=False):
@@ -233,7 +234,6 @@ def save_config(file_name: str, globals_d: dict):
         "_all_models",
         "_all_models_internal",
         "_all_metrics",
-        "create_model_container",
         "master_model_container",
         "display_container",
     }
@@ -304,7 +304,9 @@ def color_df(
     )
 
 
-def get_model_id(e, all_models: Dict[str, "pycaret.containers.models.base_model.ModelContainer"]) -> str:
+def get_model_id(
+    e, all_models: Dict[str, "pycaret.containers.models.base_model.ModelContainer"]
+) -> str:
     from pycaret.internal.meta_estimators import get_estimator_from_meta_estimator
 
     return next(
@@ -317,7 +319,11 @@ def get_model_id(e, all_models: Dict[str, "pycaret.containers.models.base_model.
     )
 
 
-def get_model_name(e, all_models: Dict[str, "pycaret.containers.models.base_model.ModelContainer"], deep: bool = True) -> str:
+def get_model_name(
+    e,
+    all_models: Dict[str, "pycaret.containers.models.base_model.ModelContainer"],
+    deep: bool = True,
+) -> str:
     old_e = e
     if isinstance(e, str) and e in all_models:
         model_id = e
@@ -351,7 +357,9 @@ def get_model_name(e, all_models: Dict[str, "pycaret.containers.models.base_mode
     return name
 
 
-def is_special_model(e, all_models: Dict[str, "pycaret.containers.models.base_model.ModelContainer"]) -> bool:
+def is_special_model(
+    e, all_models: Dict[str, "pycaret.containers.models.base_model.ModelContainer"]
+) -> bool:
     try:
         return all_models[get_model_id(e, all_models)].is_special
     except:
@@ -430,7 +438,12 @@ def calculate_unsupervised_metrics(
 
 
 def _calculate_unsupervised_metric(
-    container, score_func, display_name, X, labels, ground_truth,
+    container,
+    score_func,
+    display_name,
+    X,
+    labels,
+    ground_truth,
 ):
     if not score_func:
         return None
@@ -460,7 +473,13 @@ def calculate_metrics(
     for k, v in metrics.items():
         score_dict.append(
             _calculate_metric(
-                v, v.score_func, v.display_name, y_test, pred, pred_proba, weights,
+                v,
+                v.score_func,
+                v.display_name,
+                y_test,
+                pred,
+                pred_proba,
+                weights,
             )
         )
 
@@ -747,7 +766,11 @@ def is_fit_var(key):
 
 
 def can_early_stop(
-    estimator, consider_partial_fit, consider_warm_start, consider_xgboost, params,
+    estimator,
+    consider_partial_fit,
+    consider_warm_start,
+    consider_xgboost,
+    params,
 ):
     """
     From https://github.com/ray-project/tune-sklearn/blob/master/tune_sklearn/tune_basesearch.py.
@@ -899,3 +922,8 @@ def df_shrink_dtypes(df, skip=[], obj2cat=True, int2uint=False):
             new_dtypes[c] = new_t
 
     return df.astype(new_dtypes)
+
+
+def mlflow_remove_bad_chars(string: str) -> str:
+    """Leaves only alphanumeric, spaces _, -, ., / in a string"""
+    return "".join(c for c in string if c.isalpha() or c in ("_", "-", ".", " ", "/"))

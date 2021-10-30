@@ -1,7 +1,10 @@
+from copy import deepcopy
+
 from sktime.forecasting.model_selection import (
     ExpandingWindowSplitter,
     SlidingWindowSplitter,
 )
+
 
 from pycaret.internal.pycaret_experiment.utils import highlight_setup, MLUsecase
 from pycaret.internal.pycaret_experiment.supervised_experiment import (
@@ -20,6 +23,7 @@ from pycaret.internal.Display import Display
 from pycaret.internal.distributions import *
 from pycaret.internal.validation import *
 from pycaret.internal.tunable import TunableMixin
+
 import pycaret.containers.metrics.time_series
 import pycaret.containers.models.time_series
 import pycaret.internal.preprocess
@@ -48,62 +52,40 @@ from functools import partial
 from scipy.stats import rankdata  # type: ignore
 from joblib import Parallel, delayed  # type: ignore
 
+
+from sktime.forecasting.base import ForecastingHorizon
 from sktime.utils.validation.forecasting import check_y_X  # type: ignore
 from sktime.forecasting.model_selection import SlidingWindowSplitter  # type: ignore
+
+from pycaret.internal.tests.time_series import test_
+from pycaret.internal.plots.time_series import plot_
 
 
 warnings.filterwarnings("ignore")
 LOGGER = get_logger()
 
 
-def _get_cv_n_folds(y, cv) -> int:
-    """
-    Get the number of folds for time series
-    cv must be of type SlidingWindowSplitter or ExpandingWindowSplitter
-    TODO: Fix this inside sktime and replace this with sktime method [1]
+# def _get_cv_n_folds(y, cv) -> int:
+#     """
+#     Get the number of folds for time series
+#     cv must be of type SlidingWindowSplitter or ExpandingWindowSplitter
+#     TODO: Fix this inside sktime and replace this with sktime method [1]
 
-    Ref:
-    [1] https://github.com/alan-turing-institute/sktime/issues/632
-    """
-    n_folds = int((len(y) - cv.initial_window) / cv.step_length)
-    return n_folds
+#     Ref:
+#     [1] https://github.com/alan-turing-institute/sktime/issues/632
+#     """
+#     n_folds = int((len(y) - cv.initial_window) / cv.step_length)
+#     return n_folds
 
 
 def get_folds(cv, y) -> Generator[Tuple[pd.Series, pd.Series], None, None]:
     """
     Returns the train and test indices for the time series data
     """
-    n_folds = _get_cv_n_folds(y, cv)
-    for i in np.arange(n_folds):
-        if i == 0:
-            # Initial Split in sktime
-            train_initial, test_initial = cv.split_initial(y)
-            y_train_initial = y.iloc[train_initial]
-            y_test_initial = y.iloc[test_initial]  # Includes all entries after y_train
-
-            rolling_y_train = y_train_initial.copy(deep=True)
-            y_test = y_test_initial.iloc[
-                np.arange(len(cv.fh))
-            ]  # filter to only what is needed
-        else:
-            # Subsequent Splits in sktime
-            for j, (train, test) in enumerate(cv.split(y_test_initial)):
-                if j == i - 1:
-                    y_train = y_test_initial.iloc[train]
-                    y_test = y_test_initial.iloc[test]
-
-                    rolling_y_train = pd.concat([rolling_y_train, y_train])
-                    rolling_y_train = rolling_y_train[
-                        ~rolling_y_train.index.duplicated(keep="first")
-                    ]
-
-                    rolling_y_train = rolling_y_train.asfreq(
-                        y_train.index.freqstr
-                    )  # Ensure freq value is preserved, otherwise when predicting raise error
-
-                    if isinstance(cv, SlidingWindowSplitter):
-                        rolling_y_train = rolling_y_train.iloc[-cv.initial_window :]
-        yield rolling_y_train.index, y_test.index
+    # https://github.com/alan-turing-institute/sktime/blob/main/examples/window_splitters.ipynb
+    for train_indices, test_indices in cv.split(y):
+        # print(f"Train Indices: {train_indices}, Test Indices: {test_indices}")
+        yield train_indices, test_indices
 
 
 def cross_validate_ts(
@@ -269,25 +251,44 @@ def _fit_and_score(
     X_train = None if X is None else X[train]
     X_test = None if X is None else X[test]
 
+    #### Fit the forecaster ----
     start = time.time()
-    forecaster.fit(y_train, X_train, **fit_params)
-    cutoff = forecaster.cutoff
+    try:
+        forecaster.fit(y_train, X_train, **fit_params)
+    except ValueError as error:
+        ## Currently only catching ValueError. Can catch more later if needed.
+        logging.error(f"Fit failed on {forecaster}")
+        logging.error(error)
+
     fit_time = time.time() - start
 
-    y_pred = forecaster.predict(X_test)
-    if (y_test.index.values != y_pred.index.values).any():
-        print(f"\t y_train: {y_train.index.values}, \n\t y_test: {y_test.index.values}")
-        print(f"\t y_pred: {y_pred.index.values}")
-        raise ValueError(
-            "y_test indices do not match y_pred_indices or split/prediction length does not match forecast horizon."
-        )
+    #### Determine Cutoff ----
+    # NOTE: Cutoff is available irrespective of whether fit passed or failed
+    cutoff = forecaster.cutoff
 
-    fold_scores = {}
+    #### Score the model ----
+    if forecaster.is_fitted:
+        y_pred = forecaster.predict(X_test)
+
+        if (y_test.index.values != y_pred.index.values).any():
+            print(
+                f"\t y_train: {y_train.index.values},"
+                f"\n\t y_test: {y_test.index.values}"
+            )
+            print(f"\t y_pred: {y_pred.index.values}")
+            raise ValueError(
+                "y_test indices do not match y_pred_indices or split/prediction "
+                "length does not match forecast horizon."
+            )
+
     start = time.time()
-
+    fold_scores = {}
     scoring = _get_metrics_dict_ts(scoring)
     for scorer_name, scorer in scoring.items():
-        metric = scorer._score_func(y_true=y_test, y_pred=y_pred)
+        if forecaster.is_fitted:
+            metric = scorer._score_func(y_true=y_test, y_pred=y_pred, **scorer._kwargs)
+        else:
+            metric = None
         fold_scores[scorer_name] = metric
     score_time = time.time() - start
 
@@ -358,14 +359,13 @@ class BaseGridSearch:
         def evaluate_candidates(candidate_params):
             candidate_params = list(candidate_params)
             n_candidates = len(candidate_params)
-            n_splits = _get_cv_n_folds(y, cv)
+            n_splits = cv.get_n_splits(y)
 
             if self.verbose > 0:
                 print(  # noqa
                     f"Fitting {n_splits} folds for each of {n_candidates} "
                     f"candidates, totalling {n_candidates * n_splits} fits"
                 )
-                # print(f"Candidate Params: {candidate_params}")
 
             parallel = Parallel(
                 n_jobs=self.n_jobs, verbose=self.verbose, pre_dispatch=self.pre_dispatch
@@ -420,7 +420,7 @@ class BaseGridSearch:
         self.scorer_ = scorers
 
         self.cv_results_ = results
-        self.n_splits_ = _get_cv_n_folds(y, cv)
+        self.n_splits_ = cv.get_n_splits(y)
 
         self._is_fitted = True
         return self
@@ -603,9 +603,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         # Values in variable_keys are accessible in globals
         self.variable_keys = self.variable_keys.difference(
             {
-                "X",
-                # "X_train",
-                "X_test",
                 "target_param",
                 "iterative_imputation_iters_param",
                 "imputation_regressor",
@@ -616,7 +613,13 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             }
         )
         self.variable_keys = self.variable_keys.union(
-            {"fh", "seasonal_period", "seasonality_present"}
+            {
+                "fh",
+                "seasonal_period",
+                "seasonality_present",
+                "strictly_positive",
+                "enforce_pi",
+            }
         )
 
     def _get_setup_display(self, **kwargs) -> Styler:
@@ -635,6 +638,13 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                     ["Transformed Test Set", self.y_test.shape],
                     ["Fold Generator", type(self.fold_generator).__name__],
                     ["Fold Number", self.fold_param],
+                    ["Enforce Prediction Interval", self.enforce_pi],
+                    ["Seasonal Period Tested", self.seasonal_period],
+                    ["Seasonality Detected", self.seasonality_present],
+                    ["Target Strictly Positive", self.strictly_positive],
+                    ["Target White Noise", self.white_noise],
+                    ["Recommended d", self.lowercase_d],
+                    ["Recommended Seasonal D", self.uppercase_d],
                     ["CPU Jobs", self.n_jobs_param],
                     ["Use GPU", self.gpu_param],
                     ["Log Experiment", self.logging_param],
@@ -687,6 +697,45 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             self.variables, raise_errors=raise_errors
         )
 
+    def check_fh(self, fh: Union[List[int], int, np.array]) -> np.array:
+        """
+        Checks fh for validity and converts fh into an appropriate forecasting
+        horizon compatible with sktime (if necessary)
+
+        Parameters
+        ----------
+        fh : Union[List[int], int, np.array]
+            Forecasting Horizon
+
+        Returns
+        -------
+        np.array
+            Forecast Horizon (possibly updated to made compatible with sktime)
+
+        Raises
+        ------
+        ValueError
+            (1) When forecast horizon is an integer < 1
+            (2) When forecast horizon is not the correct type
+        """
+        if isinstance(fh, int):
+            if fh >= 1:
+                fh = np.arange(1, fh + 1)
+            else:
+                raise ValueError(
+                    f"If Forecast Horizon `fh` is an integer, it must be >= 1. You provided fh = '{fh}'!"
+                )
+        elif isinstance(fh, List):
+            fh = np.array(fh)
+        elif isinstance(fh, np.ndarray):
+            # Good to go
+            pass
+        else:
+            raise ValueError(
+                f"Horizon `fh` must be a of type int, list, or numpy array, got object of {type(fh)} type!"
+            )
+        return fh
+
     def setup(
         self,
         data: Union[pd.Series, pd.DataFrame],
@@ -698,6 +747,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         fold: int = 3,
         fh: Union[List[int], int, np.array] = 1,
         seasonal_period: Optional[Union[int, str]] = None,
+        enforce_pi: bool = False,
         n_jobs: Optional[int] = -1,
         use_gpu: bool = False,
         custom_pipeline: Union[
@@ -718,37 +768,26 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         """
         This function initializes the training environment and creates the transformation
         pipeline. Setup function must be called before executing any other function. It takes
-        two mandatory parameters: ``data`` and ``target``. All the other parameters are
-        optional.
+        one mandatory parameters: ``data``. All the other parameters are optional.
 
         Example
         -------
         >>> from pycaret.datasets import get_data
-        >>> boston = get_data('boston')
+        >>> airline = get_data('airline')
         >>> from pycaret.time_series import *
-        >>> exp_name = setup(data = boston,  target = 'medv')
+        >>> exp_name = setup(data = airline,  fh = 12)
 
 
         data : pandas.Series or pandas.DataFrame
-            Shape (n_samples, 1), where n_samples is the number of samples.
-
-
-        fh: np.array, default = None
-            The forecast horizon to be used for forecasting. User must specify a value.
-            The values of the array must be integers specifying the lookahead points that
-            must be forecasted. e.g. np.array([2, 5]) will forecast 2 and 5 points ahead.
-            Default value of None will result in an error.
+            Shape (n_samples, 1), when pandas.DataFrame, otherwise (n_samples, ).
 
 
         preprocess: bool, default = True
-            When set to False, no transformations are applied except for train_test_split
-            and custom transformations passed in ``custom_pipeline`` param. Data must be
-            ready for modeling (no missing values, no dates, categorical data encoding),
-            when preprocess is set to False.
+            Parameter not in use for now. Behavior may change in future.
 
 
         imputation_type: str, default = 'simple'
-            The type of imputation to use. Can be either 'simple' or 'iterative'.
+            Parameter not in use for now. Behavior may change in future.
 
 
         fold_strategy: str or sklearn CV generator object, default = 'expanding'
@@ -759,9 +798,9 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             * 'sliding'
 
             You can also pass an sktime compatible cross validation object such
-            as SlidingWindowSplitter or ExpandingWindowSplitter. In this case,
+            as ``SlidingWindowSplitter`` or ``ExpandingWindowSplitter``. In this case,
             the `fold` and `fh` parameters will be ignored and these values will
-            be extracted from the fold_strategy object directly.
+            be extracted from the ``fold_strategy`` object directly.
 
 
         fold: int, default = 3
@@ -770,16 +809,19 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             parameter. Ignored when ``fold_strategy`` is a custom object.
 
 
-        fh: int, list or np.array, default = 1
-            Number of steps ahead to take to evaluate forecast.
+        fh: int or list or np.array, default = 1
+            The forecast horizon to be used for forecasting. Default is set to ``1`` i.e.
+            forecast one point ahead. When integer is passed it means N continious points 
+            in the future without any gap. If you want to forecast values with gaps, you 
+            must pass an array e.g. np.array([2, 5]) will forecast 2 and 5 points ahead.
 
 
         seasonal_period: int or str, default = None
-            Seasonal periods in timeseries data. If not provided the frequency of the data
+            Seasonal period in timeseries data. If not provided the frequency of the data
             index is map to a seasonal period as follows:
 
-            * "S": 60
-            * "T": 60
+            * 'S': 60
+            * 'T': 60
             * 'H': 24
             * 'D': 7
             * 'W': 52
@@ -791,10 +833,10 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             Alternatively you can provide a custom `seasonal_parameter` by passing
             it as an integer.
 
-            NOTE: If data index is not of type pd.core.indexes.period.PeriodIndex,
-            then seasonal_period MUST be passed. Refer to the mapping above for
-            a guide of what values to use depending on the frequency of the data.
-            If your data does not have any seasonality, then set seasonal_period = 1.
+
+        enforce_pi: bool, default = False
+            When set to True, only models that support prediction intervals are
+            loaded in the environment. 
 
 
         n_jobs: int, default = -1
@@ -804,31 +846,11 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
 
         use_gpu: bool or str, default = False
-            When set to True, it will use GPU for training with algorithms that support it,
-            and fall back to CPU if they are unavailable. When set to 'force', it will only
-            use GPU-enabled algorithms and raise exceptions when they are unavailable. When
-            False, all algorithms are trained using CPU only.
-
-            GPU enabled algorithms:
-
-            - Extreme Gradient Boosting, requires no further installation
-
-            - CatBoost Regressor, requires no further installation
-            (GPU is only enabled when data > 50,000 rows)
-
-            - Light Gradient Boosting Machine, requires GPU installation
-            https://lightgbm.readthedocs.io/en/latest/GPU-Tutorial.html
-
-            - Linear Regression, Lasso Regression, Ridge Regression, K Neighbors Regressor,
-            Random Forest, Support Vector Regression, Elastic Net requires cuML >= 0.15
-            https://github.com/rapidsai/cuml
+            Parameter not in use for now. Behavior may change in future.
 
 
         custom_pipeline: (str, transformer) or list of (str, transformer), default = None
-            When passed, will append the custom transformers in the preprocessing pipeline
-            and are applied on each CV fold separately and on the final fit. All the custom
-            transformations are applied after 'train_test_split' and before pycaret's internal
-            transformations.
+            Parameter not in use for now. Behavior may change in future.
 
 
         html: bool, default = True
@@ -844,12 +866,12 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
 
         system_log: bool or logging.Logger, default = True
-            Whether to save the system logging file (as logs.log). If the input
-            already is a logger object, that one is used instead.
+            Whether to save the system logging file (as logs.log). If the input already is a 
+            logger object, that one is used instead.
 
 
         log_experiment: bool, default = False
-            When set to True, all metrics and parameters are logged on the ``MLFlow`` server.
+            When set to True, all metrics and parameters are logged on the ``MLflow`` server.
 
 
         experiment_name: str, default = None
@@ -888,10 +910,18 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         Returns:
             Global variables that can be changed using the ``set_config`` function.
 
+
         """
         from sktime.utils.seasonality import (
             autocorrelation_seasonality_test,
         )  # only needed in setup
+
+        ## Make a local copy so as not to perfrom inplace operation on the
+        ## original dataset
+        data_ = data.copy()
+
+        if isinstance(data_, pd.Series) and data_.name is None:
+            data_.name = "Time Series"
 
         # Forecast Horizon Checks
         if fh is None and isinstance(fold_strategy, str):
@@ -899,6 +929,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 f"The forecast horizon `fh` must be provided when fold_strategy is of type 'string'"
             )
 
+        # Check Fold Strategy
         if not isinstance(fold_strategy, str):
             self.logger.info(
                 f"fh parameter {fh} will be ignored since fold_strategy has been provided. "
@@ -911,43 +942,29 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             )
             # fold value will be reset after the data is split in the parent class setup
 
-        if isinstance(fh, int):
-            if fh >= 1:
-                fh = np.arange(1, fh + 1)
-            else:
-                raise ValueError(
-                    f"If Forecast Horizon `fh` is an integer, it must be >= 1. You provided fh = '{fh}'!"
-                )
-        elif isinstance(fh, List):
-            fh = np.array(fh)
-        elif isinstance(fh, np.ndarray):
-            # Good to go
-            pass
-        else:
-            raise ValueError(
-                f"Horizon `fh` must be a of type int, list, or numpy array, got object of {type(fh)} type!"
-            )
+        fh = self.check_fh(fh)
         self.fh = fh
 
+        # Check Index
         allowed_freq_index_types = (pd.PeriodIndex, pd.DatetimeIndex)
         if (
-            not isinstance(data.index, allowed_freq_index_types)
+            not isinstance(data_.index, allowed_freq_index_types)
             and seasonal_period is None
         ):
             # https://stackoverflow.com/questions/3590165/join-a-list-of-items-with-different-types-as-string-in-python
             raise ValueError(
-                f"The index of your 'data' is of type '{type(data.index)}'. "
+                f"The index of your 'data' is of type '{type(data_.index)}'. "
                 "If the 'data' index is not of one of the following types: "
                 f"{', '.join(str(type) for type in allowed_freq_index_types)}, "
                 "then 'seasonal_period' must be provided. Refer to docstring for options."
             )
 
-        if isinstance(data.index, pd.DatetimeIndex):
-            data.index = data.index.to_period()
+        if isinstance(data_.index, pd.DatetimeIndex):
+            data_.index = data_.index.to_period()
 
         if seasonal_period is None:
 
-            index_freq = data.index.freqstr
+            index_freq = data_.index.freqstr
             index_freq = index_freq.split("-")[0] or index_freq
 
             if index_freq in SeasonalPeriod.__members__:
@@ -974,44 +991,46 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             else:
                 self.seasonal_period = seasonal_period
 
-        if isinstance(data, (pd.Series, pd.DataFrame)):
-            if isinstance(data, pd.DataFrame):
-                if data.shape[1] != 1:
+        if isinstance(data_, (pd.Series, pd.DataFrame)):
+            if isinstance(data_, pd.DataFrame):
+                if data_.shape[1] != 1:
                     raise ValueError(
-                        f"data must be a pandas Series or DataFrame with one column, got {data.shape[1]} columns!"
+                        f"data must be a pandas Series or DataFrame with one column, got {data_.shape[1]} columns!"
                     )
-                data = data.copy()
+                data_ = data_.copy()
             else:
-                data = pd.DataFrame(data)  # Force convertion to DataFrame
+                data_ = pd.DataFrame(data_)  # Force convertion to DataFrame
         else:
             raise ValueError(
-                f"data must be a pandas Series or DataFrame, got object of {type(data)} type!"
+                f"data must be a pandas Series or DataFrame, got object of {type(data_)} type!"
             )
 
-        data.columns = [str(x) for x in data.columns]
+        data_.columns = [str(x) for x in data_.columns]
 
-        target_name = data.columns[0]
-        if not np.issubdtype(data[target_name].dtype, np.number):
+        target_name = data_.columns[0]
+        if not np.issubdtype(data_[target_name].dtype, np.number):
             raise TypeError(
-                f"Data must be of 'numpy.number' subtype, got {data[target_name].dtype}!"
+                f"Data must be of 'numpy.number' subtype, got {data_[target_name].dtype}!"
             )
 
-        if len(data.index) != len(set(data.index)):
+        if len(data_.index) != len(set(data_.index)):
             raise ValueError("Index may not have duplicate values!")
 
         # check valid seasonal parameter
         valid_seasonality = autocorrelation_seasonality_test(
-            data[target_name], self.seasonal_period
+            data_[target_name], self.seasonal_period
         )
 
         self.seasonality_present = True if valid_seasonality else False
 
         # Should multiplicative components be allowed in models that support it
-        self.strictly_positive = np.all(data[target_name] > 0)
+        self.strictly_positive = np.all(data_[target_name] > 0)
+
+        self.enforce_pi = enforce_pi
 
         return super().setup(
-            data=data,
-            target=data.columns[0],
+            data=data_,
+            target=data_.columns[0],
             test_data=None,
             preprocess=preprocess,
             imputation_type=imputation_type,
@@ -1089,15 +1108,13 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         Example
         --------
         >>> from pycaret.datasets import get_data
-        >>> from pycaret.internal.pycaret_experiment import TimeSeriesExperiment
-        >>> airline = get_data('airline', verbose=False)
-        >>> fh, fold = np.arange(1,13), 3
-        >>> exp = TimeSeriesExperiment()
-        >>> exp.setup(data=airline, fh=fh, fold=fold)
-        >>> master_display_exp = exp.compare_models(fold=fold, sort='mape')
+        >>> airline = get_data('airline')
+        >>> from pycaret.time_series import *
+        >>> exp_name = setup(data = airline,  fh = 12)
+        >>> best_model = compare_models()
 
 
-        include: list of str or scikit-learn compatible object, default = None
+        include: list of str or sktime compatible object, default = None
             To train and evaluate select models, list containing model ID or scikit-learn
             compatible object can be passed in include param. To see a list of all models
             available in the model library use the ``models`` function.
@@ -1125,7 +1142,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             is ignored when cross_validation is set to False.
 
 
-        sort: str, default = 'smape'
+        sort: str, default = 'SMAPE'
             The sort order of the score grid. It also accepts custom metrics that are
             added through the ``add_metric`` function.
 
@@ -1164,10 +1181,9 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         Warnings
         --------
-        - Changing turbo parameter to False may result in very high training times with
-        datasets exceeding 10,000 rows.
+        - Changing turbo parameter to False may result in very high training times.
 
-        - No models are logged in ``MLFlow`` when ``cross_validation`` parameter is False.
+        - No models are logged in ``MLflow`` when ``cross_validation`` parameter is False.
 
         """
 
@@ -1209,22 +1225,45 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         Example
         -------
         >>> from pycaret.datasets import get_data
-        >>> boston = get_data('boston')
-        >>> from pycaret.regression import *
-        >>> exp_name = setup(data = boston,  target = 'medv')
-        >>> lr = create_model('lr')
+        >>> airline = get_data('airline')
+        >>> from pycaret.time_series import *
+        >>> exp_name = setup(data = airline,  fh = 12)
+        >>> naive = create_model('naive')
 
-
-        estimator: str or scikit-learn compatible object
+        estimator: str or sktime compatible object
             ID of an estimator available in model library or pass an untrained
             model object consistent with scikit-learn API. Estimators available
             in the model library (ID - Name):
 
+            * 'naive' - Naive Forecaster
+            * 'snaive' - Seasonal Naive Forecaster
+            * 'polytrend' - Polynomial Trend Forecaster
             * 'arima' - ARIMA
-            * 'naive' - Naive
-            * 'poly_trend' - PolyTrend
-            * 'exp_smooth' - ExponentialSmoothing
-            * 'theta' - Theta
+            * 'auto_arima' - Auto ARIMA
+            * 'arima' - ARIMA
+            * 'exp_smooth' - Exponential Smoothing
+            * 'ets' - ETS
+            * 'theta' - Theta Forecaster
+            * 'tbats' - TBATS
+            * 'bats' - BATS
+            * 'prophet' - Prophet Forecaster
+            * 'lr_cds_dt' - Linear w/ Cond. Deseasonalize & Detrending
+            * 'en_cds_dt' - Elastic Net w/ Cond. Deseasonalize & Detrending
+            * 'ridge_cds_dt' - Ridge w/ Cond. Deseasonalize & Detrending
+            * 'lasso_cds_dt' - Lasso w/ Cond. Deseasonalize & Detrending
+            * 'lar_cds_dt' -   Least Angular Regressor w/ Cond. Deseasonalize & Detrending
+            * 'llar_cds_dt' - Lasso Least Angular Regressor w/ Cond. Deseasonalize & Detrending
+            * 'br_cds_dt' - Bayesian Ridge w/ Cond. Deseasonalize & Deseasonalize & Detrending
+            * 'huber_cds_dt' - Huber w/ Cond. Deseasonalize & Detrending
+            * 'par_cds_dt' - Passive Aggressive w/ Cond. Deseasonalize & Detrending
+            * 'omp_cds_dt' - Orthogonal Matching Pursuit w/ Cond. Deseasonalize & Detrending
+            * 'knn_cds_dt' - K Neighbors w/ Cond. Deseasonalize & Detrending
+            * 'dt_cds_dt' - Decision Tree w/ Cond. Deseasonalize & Detrending
+            * 'rf_cds_dt' - Random Forest w/ Cond. Deseasonalize & Detrending
+            * 'et_cds_dt' - Extra Trees w/ Cond. Deseasonalize & Detrending
+            * 'gbr_cds_dt' - Gradient Boosting w/ Cond. Deseasonalize & Detrending
+            * 'ada_cds_dt' - AdaBoost w/ Cond. Deseasonalize & Detrending
+            * 'lightgbm_cds_dt' - Light Gradient Boosting w/ Cond. Deseasonalize & Detrending
 
 
         fold: int or scikit-learn compatible CV generator, default = None
@@ -1275,6 +1314,29 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             **kwargs,
         )
 
+    @staticmethod
+    def update_fit_kwargs_with_fh_from_cv(fit_kwargs: Optional[Dict], cv) -> Dict:
+        """Updated the fit_ kwargs to include the fh parameter from cv
+
+        Parameters
+        ----------
+        fit_kwargs : Optional[Dict]
+            Original fit kwargs
+        cv : [type]
+            cross validation object
+
+        Returns
+        -------
+        Dict[Any]
+            Updated fit kwargs
+        """
+        fh_param = {"fh": cv.fh}
+        if fit_kwargs is None:
+            fit_kwargs = fh_param
+        else:
+            fit_kwargs.update(fh_param)
+        return fit_kwargs
+
     def _create_model_without_cv(
         self, model, data_X, data_y, fit_kwargs, predict, system, display: Display
     ):
@@ -1297,7 +1359,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
 
         display.move_progress()
-        # display.clear_output()
 
         if predict:
             self.predict_model(model, verbose=False)
@@ -1331,14 +1392,17 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         MONITOR UPDATE STARTS
         """
 
+        # display.update_monitor(
+        #     1, f"Fitting {_get_cv_n_folds(data_y, cv)} Folds",
+        # )
         display.update_monitor(
-            1, f"Fitting {_get_cv_n_folds(data_y, cv)} Folds",
+            1, f"Fitting {cv.get_n_splits(data_y)} Folds",
         )
         display.display_monitor()
         """
         MONITOR UPDATE ENDS
         """
-        metrics_dict = dict([(k, v.scorer) for k, v in metrics.items()])
+        metrics_dict = {k: v.scorer for k, v in metrics.items()}
 
         self.logger.info("Starting cross validation")
 
@@ -1349,16 +1413,23 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         self.logger.info(f"Cross validating with {cv}, n_jobs={n_jobs}")
 
         # Cross Validate time series
-        fh_param = {"fh": cv.fh}
-        if fit_kwargs is None:
-            fit_kwargs = fh_param
-        else:
-            fit_kwargs.update(fh_param)
+        # fh_param = {"fh": cv.fh}
+
+        # if fit_kwargs is None:
+        #     fit_kwargs = fh_param
+        # else:
+        #     fit_kwargs.update(fh_param)
+        fit_kwargs = self.update_fit_kwargs_with_fh_from_cv(
+            fit_kwargs=fit_kwargs, cv=cv
+        )
 
         model_fit_start = time.time()
 
         scores, cutoffs = cross_validate_ts(
-            forecaster=clone(model),
+            # Commented out since supervised_experiment also does not clone
+            # when doing cross_validate
+            # forecaster=clone(model),
+            forecaster=model,
             y=data_y,
             X=data_X,
             scoring=metrics_dict,
@@ -1410,7 +1481,12 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
             model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
         else:
-            model_fit_time /= _get_cv_n_folds(data_y, cv)
+            # Set fh explicitly since we are not fitting explicitly
+            # This is needed so that the model can be used later to predict, etc.
+            model._set_fh(fit_kwargs.get("fh"))
+
+            # model_fit_time /= _get_cv_n_folds(data_y, cv)
+            model_fit_time /= cv.get_n_splits(data_y)
 
         # return model, model_fit_time, model_results, avgs_dict
         return model, model_fit_time, model_results, avgs_dict
@@ -1445,11 +1521,11 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         Example
         -------
         >>> from pycaret.datasets import get_data
-        >>> y = get_data('airline', verbose=False)
-        >>> exp = TimeSeriesExperiment()
-        >>> exp.setup(data=y, fh=12 fold_strategy='expandingwindow')
-        >>> exp.create_model("arima")
-        >>> tuned_arima = tune_model('arima')
+        >>> airline = get_data('airline')
+        >>> from pycaret.time_series import *
+        >>> exp_name = setup(data = airline,  fh = 12)
+        >>> dt = create_model('dt_cds_dt')
+        >>> tuned_dt = tune_model(dt)
 
 
         estimator: sktime compatible object
@@ -1478,7 +1554,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             supported by the defined ``search_library``.
 
 
-        optimize: str, default = 'R2'
+        optimize: str, default = 'SMAPE'
             Metric name to be evaluated for hyperparameter tuning. It also accepts custom
             metrics that are added through the ``add_metric`` function.
 
@@ -1490,10 +1566,10 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             custom metric in the ``optimize`` parameter.
             Will be deprecated in future.
 
-        search_algorithm: str, default = None (defaults to 'random')
-            possible values:
-                - 'random' : random grid search (default)
-                - 'grid' : grid search
+
+        search_algorithm: str, default = 'random'
+            use 'random' for random grid search and 'grid' for complete grid search. 
+
 
         choose_better: bool, default = False
             When set to True, the returned object is always better performing. The
@@ -1514,7 +1590,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         tuner_verbose: bool or in, default = True
             If True or above 0, will print messages from the tuner. Higher values
-            print more messages. Ignored when ``verbose`` parameter is False.
+            print more messages. Ignored when ``verbose`` param is False.
 
 
         **kwargs:
@@ -1523,13 +1599,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         Returns:
             Trained Model and Optional Tuner Object when ``return_tuner`` is True.
-
-
-        Warnings
-        --------
-        - Using 'grid' as ``search_algorithm`` may result in very long computation.
-        Only recommended with smaller search spaces that can be defined in the
-        ``custom_grid`` parameter.
 
         """
 
@@ -1765,23 +1834,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         self.logger.info("Defining Hyperparameters")
 
-        # TODO: Replace with time series specific code
-        def total_combintaions_in_grid(grid):
-            nc = 1
-
-            def get_iter(x):
-                if isinstance(x, dict):
-                    return x.values()
-                return x
-
-            for v in get_iter(grid):
-                if isinstance(v, dict):
-                    for v2 in get_iter(v):
-                        nc *= len(v2)
-                else:
-                    nc *= len(v)
-            return nc
-
         if search_algorithm is None:
             search_algorithm = "random"  # Defaults to Random
 
@@ -1813,11 +1865,15 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         if True:
 
             # fit_kwargs = get_pipeline_fit_kwargs(pipeline_with_model, fit_kwargs)
-            fh_param = {"fh": cv.fh}
-            if fit_kwargs is None:
-                fit_kwargs = fh_param
-            else:
-                fit_kwargs.update(fh_param)
+
+            # fh_param = {"fh": cv.fh}
+            # if fit_kwargs is None:
+            #     fit_kwargs = fh_param
+            # else:
+            #     fit_kwargs.update(fh_param)
+            fit_kwargs = self.update_fit_kwargs_with_fh_from_cv(
+                fit_kwargs=fit_kwargs, cv=cv
+            )
 
             # actual_estimator_label = get_pipeline_estimator_label(pipeline_with_model)
             actual_estimator_label = ""
@@ -1995,93 +2051,82 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             return (best_model, model_grid)
         return best_model
 
-    def ensemble_model(
-        self,
-        estimator,
-        method: str = "Bagging",
-        fold: Optional[Union[int, Any]] = None,
-        n_estimators: int = 10,
-        round: int = 4,
-        choose_better: bool = False,
-        optimize: str = "R2",
-        fit_kwargs: Optional[dict] = None,
-        verbose: bool = True,
-    ) -> Any:
+    # def ensemble_model(
+    #     self,
+    #     estimator,
+    #     method: str = "Bagging",
+    #     fold: Optional[Union[int, Any]] = None,
+    #     n_estimators: int = 10,
+    #     round: int = 4,
+    #     choose_better: bool = False,
+    #     optimize: str = "R2",
+    #     fit_kwargs: Optional[dict] = None,
+    #     verbose: bool = True,
+    # ) -> Any:
 
-        """
-            This function ensembles a given estimator. The output of this function is
-            a score grid with CV scores by fold. Metrics evaluated during CV can be
-            accessed using the ``get_metrics`` function. Custom metrics can be added
-            or removed using ``add_metric`` and ``remove_metric`` function.
+    #     """
+    #         This function ensembles a given estimator. The output of this function is
+    #         a score grid with CV scores by fold. Metrics evaluated during CV can be
+    #         accessed using the ``get_metrics`` function. Custom metrics can be added
+    #         or removed using ``add_metric`` and ``remove_metric`` function.
 
+    #         Example
+    #         --------
+    #         >>> from pycaret.datasets import get_data
+    #         >>> boston = get_data('boston')
+    #         >>> from pycaret.regression import *
+    #         >>> exp_name = setup(data = boston,  target = 'medv')
+    #         >>> dt = create_model('dt')
+    #         >>> bagged_dt = ensemble_model(dt, method = 'Bagging')
 
-            Example
-            --------
-            >>> from pycaret.datasets import get_data
-            >>> boston = get_data('boston')
-            >>> from pycaret.regression import *
-            >>> exp_name = setup(data = boston,  target = 'medv')
-            >>> dt = create_model('dt')
-            >>> bagged_dt = ensemble_model(dt, method = 'Bagging')
+    #     estimator: scikit-learn compatible object
+    #             Trained model object
 
+    #         method: str, default = 'Bagging'
+    #             Method for ensembling base estimator. It can be 'Bagging' or 'Boosting'.
 
-        estimator: scikit-learn compatible object
-                Trained model object
+    #         fold: int or scikit-learn compatible CV generator, default = None
+    #             Controls cross-validation. If None, the CV generator in the ``fold_strategy``
+    #             parameter of the ``setup`` function is used. When an integer is passed,
+    #             it is interpreted as the 'n_splits' parameter of the CV generator in the
+    #             ``setup`` function.
 
+    #         n_estimators: int, default = 10
+    #             The number of base estimators in the ensemble. In case of perfect fit, the
+    #             learning procedure is stopped early.
 
-            method: str, default = 'Bagging'
-                Method for ensembling base estimator. It can be 'Bagging' or 'Boosting'.
+    #         round: int, default = 4
+    #             Number of decimal places the metrics in the score grid will be rounded to.
 
+    #         choose_better: bool, default = False
+    #             When set to True, the returned object is always better performing. The
+    #             metric used for comparison is defined by the ``optimize`` parameter.
 
-            fold: int or scikit-learn compatible CV generator, default = None
-                Controls cross-validation. If None, the CV generator in the ``fold_strategy``
-                parameter of the ``setup`` function is used. When an integer is passed,
-                it is interpreted as the 'n_splits' parameter of the CV generator in the
-                ``setup`` function.
+    #         optimize: str, default = 'R2'
+    #             Metric to compare for model selection when ``choose_better`` is True.
 
+    #         fit_kwargs: dict, default = {} (empty dict)
+    #             Dictionary of arguments passed to the fit method of the model.
 
-            n_estimators: int, default = 10
-                The number of base estimators in the ensemble. In case of perfect fit, the
-                learning procedure is stopped early.
+    #         verbose: bool, default = True
+    #             Score grid is not printed when verbose is set to False.
 
+    #         Returns:
+    #             Trained Model
 
-            round: int, default = 4
-                Number of decimal places the metrics in the score grid will be rounded to.
+    #     """
 
-
-            choose_better: bool, default = False
-                When set to True, the returned object is always better performing. The
-                metric used for comparison is defined by the ``optimize`` parameter.
-
-
-            optimize: str, default = 'R2'
-                Metric to compare for model selection when ``choose_better`` is True.
-
-
-            fit_kwargs: dict, default = {} (empty dict)
-                Dictionary of arguments passed to the fit method of the model.
-
-
-            verbose: bool, default = True
-                Score grid is not printed when verbose is set to False.
-
-
-            Returns:
-                Trained Model
-
-        """
-
-        return super().ensemble_model(
-            estimator=estimator,
-            method=method,
-            fold=fold,
-            n_estimators=n_estimators,
-            round=round,
-            choose_better=choose_better,
-            optimize=optimize,
-            fit_kwargs=fit_kwargs,
-            verbose=verbose,
-        )
+    #     return super().ensemble_model(
+    #         estimator=estimator,
+    #         method=method,
+    #         fold=fold,
+    #         n_estimators=n_estimators,
+    #         round=round,
+    #         choose_better=choose_better,
+    #         optimize=optimize,
+    #         fit_kwargs=fit_kwargs,
+    #         verbose=verbose,
+    #     )
 
     def blend_models(
         self,
@@ -2107,20 +2152,15 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         Example
         --------
         >>> from pycaret.datasets import get_data
-        >>> from pycaret.internal.pycaret_experiment import TimeSeriesExperiment
-        >>> import numpy as np
-        >>> airline_data = get_data('airline', verbose=False)
-        >>> fh = np.arange(1,13)
-        >>> fold = 3
-        >>> exp = TimeSeriesExperiment()
-        >>> exp.setup(data=y, fh=fh, fold=fold)
-        >>> arima_model = exp.create_model("arima")
-        >>> naive_model = exp.create_model("naive")
-        >>> ts_blender = exp.blend_models([arima_model, naive_model], optimize='MAPE_ts')
+        >>> airline = get_data('airline')
+        >>> from pycaret.time_series import *
+        >>> exp_name = setup(data = airline,  fh = 12)
+        >>> top3 = compare_models(n_select = 3)
+        >>> blender = blend_models(top3)
 
 
-        estimator_list: list of scikit-learn compatible objects
-            List of trained model objects
+        estimator_list: list of sktime compatible estimators
+            List of model objects
 
 
         method: str, default = 'mean'
@@ -2148,7 +2188,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             metric used for comparison is defined by the ``optimize`` parameter.
 
 
-        optimize: str, default = 'MAPE_ts'
+        optimize: str, default = 'SMAPE'
             Metric to compare for model selection when ``choose_better`` is True.
 
 
@@ -2184,171 +2224,139 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             verbose=verbose,
         )
 
-    def stack_models(
-        self,
-        estimator_list: list,
-        meta_model=None,
-        fold: Optional[Union[int, Any]] = None,
-        round: int = 4,
-        restack: bool = False,
-        choose_better: bool = False,
-        optimize: str = "R2",
-        fit_kwargs: Optional[dict] = None,
-        verbose: bool = True,
-    ):
+    # def stack_models(
+    #     self,
+    #     estimator_list: list,
+    #     meta_model=None,
+    #     fold: Optional[Union[int, Any]] = None,
+    #     round: int = 4,
+    #     restack: bool = False,
+    #     choose_better: bool = False,
+    #     optimize: str = "R2",
+    #     fit_kwargs: Optional[dict] = None,
+    #     verbose: bool = True,
+    # ):
 
-        """
-        This function trains a meta model over select estimators passed in
-        the ``estimator_list`` parameter. The output of this function is a
-        score grid with CV scores by fold. Metrics evaluated during CV can
-        be accessed using the ``get_metrics`` function. Custom metrics
-        can be added or removed using ``add_metric`` and ``remove_metric``
-        function.
+    #     """
+    #     This function trains a meta model over select estimators passed in
+    #     the ``estimator_list`` parameter. The output of this function is a
+    #     score grid with CV scores by fold. Metrics evaluated during CV can
+    #     be accessed using the ``get_metrics`` function. Custom metrics
+    #     can be added or removed using ``add_metric`` and ``remove_metric``
+    #     function.
 
+    #     Example
+    #     --------
+    #     >>> from pycaret.datasets import get_data
+    #     >>> boston = get_data('boston')
+    #     >>> from pycaret.regression import *
+    #     >>> exp_name = setup(data = boston,  target = 'medv')
+    #     >>> top3 = compare_models(n_select = 3)
+    #     >>> stacker = stack_models(top3)
 
-        Example
-        --------
-        >>> from pycaret.datasets import get_data
-        >>> boston = get_data('boston')
-        >>> from pycaret.regression import *
-        >>> exp_name = setup(data = boston,  target = 'medv')
-        >>> top3 = compare_models(n_select = 3)
-        >>> stacker = stack_models(top3)
+    #     estimator_list: list of scikit-learn compatible objects
+    #         List of trained model objects
 
+    #     meta_model: scikit-learn compatible object, default = None
+    #         When None, Linear Regression is trained as a meta model.
 
-        estimator_list: list of scikit-learn compatible objects
-            List of trained model objects
+    #     fold: int or scikit-learn compatible CV generator, default = None
+    #         Controls cross-validation. If None, the CV generator in the ``fold_strategy``
+    #         parameter of the ``setup`` function is used. When an integer is passed,
+    #         it is interpreted as the 'n_splits' parameter of the CV generator in the
+    #         ``setup`` function.
 
+    #     round: int, default = 4
+    #         Number of decimal places the metrics in the score grid will be rounded to.
 
-        meta_model: scikit-learn compatible object, default = None
-            When None, Linear Regression is trained as a meta model.
+    #     restack: bool, default = False
+    #         When set to False, only the predictions of estimators will be used as
+    #         training data for the ``meta_model``.
 
+    #     choose_better: bool, default = False
+    #         When set to True, the returned object is always better performing. The
+    #         metric used for comparison is defined by the ``optimize`` parameter.
 
-        fold: int or scikit-learn compatible CV generator, default = None
-            Controls cross-validation. If None, the CV generator in the ``fold_strategy``
-            parameter of the ``setup`` function is used. When an integer is passed,
-            it is interpreted as the 'n_splits' parameter of the CV generator in the
-            ``setup`` function.
+    #     optimize: str, default = 'R2'
+    #         Metric to compare for model selection when ``choose_better`` is True.
 
+    #     fit_kwargs: dict, default = {} (empty dict)
+    #         Dictionary of arguments passed to the fit method of the model.
 
-        round: int, default = 4
-            Number of decimal places the metrics in the score grid will be rounded to.
+    #     verbose: bool, default = True
+    #         Score grid is not printed when verbose is set to False.
 
+    #     Returns:
+    #         Trained Model
 
-        restack: bool, default = False
-            When set to False, only the predictions of estimators will be used as
-            training data for the ``meta_model``.
+    #     """
 
-
-        choose_better: bool, default = False
-            When set to True, the returned object is always better performing. The
-            metric used for comparison is defined by the ``optimize`` parameter.
-
-
-        optimize: str, default = 'R2'
-            Metric to compare for model selection when ``choose_better`` is True.
-
-
-        fit_kwargs: dict, default = {} (empty dict)
-            Dictionary of arguments passed to the fit method of the model.
-
-
-        verbose: bool, default = True
-            Score grid is not printed when verbose is set to False.
-
-
-        Returns:
-            Trained Model
-
-        """
-
-        return super().stack_models(
-            estimator_list=estimator_list,
-            meta_model=meta_model,
-            fold=fold,
-            round=round,
-            method="auto",
-            restack=restack,
-            choose_better=choose_better,
-            optimize=optimize,
-            fit_kwargs=fit_kwargs,
-            verbose=verbose,
-        )
+    #     return super().stack_models(
+    #         estimator_list=estimator_list,
+    #         meta_model=meta_model,
+    #         fold=fold,
+    #         round=round,
+    #         method="auto",
+    #         restack=restack,
+    #         choose_better=choose_better,
+    #         optimize=optimize,
+    #         fit_kwargs=fit_kwargs,
+    #         verbose=verbose,
+    #     )
 
     def plot_model(
         self,
-        estimator,
-        plot: str = "residuals",
-        scale: float = 1,
-        save: bool = False,
-        fold: Optional[Union[int, Any]] = None,
-        fit_kwargs: Optional[dict] = None,
-        use_train_data: bool = False,
-        verbose: bool = True,
+        estimator: Optional[Any] = None,
+        plot: Optional[str] = None,
+        return_data: bool = False,
         display_format: Optional[str] = None,
+        data_kwargs: Optional[Dict] = None,
+        fig_kwargs: Optional[Dict] = None,
+        system: bool = True,
+        save: Union[str, bool] = False,
     ) -> str:
 
         """
         This function analyzes the performance of a trained model on holdout set.
-        It may require re-training the model in certain cases.
+        When used without any estimator, this function generates plots on the 
+        original data set. When used with an estimator, it will generate plots on 
+        the model residuals.
 
 
         Example
         --------
         >>> from pycaret.datasets import get_data
-        >>> boston = get_data('boston')
-        >>> from pycaret.regression import *
-        >>> exp_name = setup(data = boston,  target = 'medv')
-        >>> lr = create_model('lr')
-        >>> plot_model(lr, plot = 'residual')
+        >>> airline = get_data('airline')
+        >>> from pycaret.time_series import *
+        >>> exp_name = setup(data = airline,  fh = 12)
+        >>> arima = create_model('arima')
+        >>> plot_model(plot = 'ts')
+        >>> plot_model(plot = 'decomp_classical', data_kwargs = {'type' : 'multiplicative'})
+        >>> plot_model(estimator = arima, plot = 'forecast', data_kwargs = {'fh' : 24})
 
 
-        estimator: scikit-learn compatible object
+        estimator: sktime compatible object, default = None
             Trained model object
 
 
-        plot: str, default = 'residual'
-            List of available plots (ID - Name):
+        plot: str, default = None
+            Default is 'ts' when estimator is None, When estimator is not None, 
+            default is changed to 'forecast'. List of available plots (ID - Name): 
 
+            * 'ts' - Time Series Plot
+            * 'train_test_split' - Train Test Split
+            * 'cv' - Cross Validation
+            * 'acf' - Auto Correlation (ACF)
+            * 'pacf' - Partial Auto Correlation (PACF)
+            * 'decomp_classical' - Decomposition Classical
+            * 'decomp_stl' - Decomposition STL
+            * 'diagnostics' - Diagnostics Plot
+            * 'forecast' - Forecast Plot
             * 'residuals' - Residuals Plot
-            * 'error' - Prediction Error Plot
-            * 'cooks' - Cooks Distance Plot
-            * 'rfe' - Recursive Feat. Selection
-            * 'learning' - Learning Curve
-            * 'vc' - Validation Curve
-            * 'manifold' - Manifold Learning
-            * 'feature' - Feature Importance
-            * 'feature_all' - Feature Importance (All)
-            * 'parameter' - Model Hyperparameter
-            * 'tree' - Decision Tree
 
 
-        scale: float, default = 1
-            The resolution scale of the figure.
-
-
-        save: bool, default = False
-            When set to True, plot is saved in the current working directory.
-
-
-        fold: int or scikit-learn compatible CV generator, default = None
-            Controls cross-validation. If None, the CV generator in the ``fold_strategy``
-            parameter of the ``setup`` function is used. When an integer is passed,
-            it is interpreted as the 'n_splits' parameter of the CV generator in the
-            ``setup`` function.
-
-
-        fit_kwargs: dict, default = {} (empty dict)
-            Dictionary of arguments passed to the fit method of the model.
-
-
-        use_train_data: bool, default = False
-            When set to true, train data will be used for plots, instead
-            of test data.
-
-
-        verbose: bool, default = True
-            When set to False, progress bar is not displayed.
+        return_data: bool, default = False
+            When set to True, it returns the data for plotting.
 
 
         display_format: str, default = None
@@ -2356,159 +2364,272 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             Currently, not all plots are supported.
 
 
+        data_kwargs: dict, default = None
+            Dictionary of arguments passed to the data for plotting.
+
+
+        fig_kwargs: dict, default = None
+            Dictionary of arguments passed to the figure object of plotly. Example:
+            * fig_kwargs = {'fig_size' : [800, 500], 'fig_template' : 'simple_white'}
+
+
+        save: string or bool, default = False
+            When set to True, Plot is saved as a 'png' file in current working directory.
+            When a path destination is given, Plot is saved as a 'png' file the given path to the directory of choice.
+
+
         Returns:
             None
 
         """
+        if data_kwargs is None:
+            data_kwargs = {}
+        if fig_kwargs is None:
+            fig_kwargs = {}
 
-        return super().plot_model(
-            estimator=estimator,
+        available_plots_common = [
+            "ts",
+            "train_test_split",
+            "cv",
+            "acf",
+            "pacf",
+            "diagnostics",
+            "decomp_classical",
+            "decomp_stl",
+        ]
+        available_plots_data = available_plots_common
+        available_plots_model = available_plots_common + ["forecast", "residuals"]
+
+        return_pred_int = False
+
+        # Type checks
+        if estimator is not None and isinstance(estimator, str):
+            raise ValueError(
+                "Estimator must be a trained object. "
+                f"You have passed a string: '{estimator}'"
+            )
+
+        # Default plot when no model is specified is the time series plot
+        # Default plot when model is specified is the forecast plot
+        if plot is None and estimator is None:
+            plot = "ts"
+        elif plot is None and estimator is not None:
+            plot = "forecast"
+
+        data, train, test, predictions, cv, model_name = (
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        )
+
+        if plot == "ts":
+            data = self._get_y_data(split="all")
+        elif plot == "train_test_split":
+            train = self._get_y_data(split="train")
+            test = self._get_y_data(split="test")
+        elif plot == "cv":
+            data = self._get_y_data(split="train")
+            cv = self.get_fold_generator()
+        elif estimator is None:
+            require_full_data = [
+                "acf",
+                "pacf",
+                "diagnostics",
+                "decomp_classical",
+                "decomp_stl",
+            ]
+            if plot in require_full_data:
+                data = self._get_y_data(split="all")
+            else:
+                plots_formatted_data = [f"'{plot}'" for plot in available_plots_data]
+                raise ValueError(
+                    f"Plot type '{plot}' is not supported when estimator is not provided. Available plots are: {', '.join(plots_formatted_data)}"
+                )
+        else:
+            # Estimator is Provided
+
+            if hasattr(self, "_get_model_name") and hasattr(
+                self, "_all_models_internal"
+            ):
+                model_name = self._get_model_name(estimator)
+            else:
+                # If the model is saved and loaded afterwards,
+                # it will not have self._get_model_name
+                model_name = estimator.__class__.__name__
+
+            require_residuals = [
+                "residuals",
+                "diagnostics",
+                "acf",
+                "pacf",
+                "decomp_classical",
+                "decomp_stl",
+            ]
+            if plot == "forecast":
+                data = self._get_y_data(split="all")
+
+                fh = data_kwargs.get("fh", None)
+                alpha = data_kwargs.get("alpha", 0.05)
+                return_pred_int = estimator.get_tag("capability:pred_int")
+                predictions = self.predict_model(
+                    estimator,
+                    fh=fh,
+                    alpha=alpha,
+                    return_pred_int=return_pred_int,
+                    verbose=False,
+                )
+            elif plot in require_residuals:
+                resid = self.get_residuals(estimator=estimator)
+                if resid is None:
+                    return
+                resid = self.check_and_clean_resid(resid=resid)
+                data = resid
+            else:
+                plots_formatted_model = [f"'{plot}'" for plot in available_plots_model]
+                raise ValueError(
+                    f"Plot type '{plot}' is not supported when estimator is provided. Available plots are: {', '.join(plots_formatted_model)}"
+                )
+
+        plot_data = plot_(
             plot=plot,
-            scale=scale,
-            save=save,
-            fold=fold,
-            fit_kwargs=fit_kwargs,
-            verbose=verbose,
-            use_train_data=use_train_data,
-            system=True,
-            display_format=display_format,
+            data=data,
+            train=train,
+            test=test,
+            predictions=predictions,
+            cv=cv,
+            model_name=model_name,
+            return_data=return_data,
+            show=system,
+            return_pred_int=return_pred_int,
+            data_kwargs=data_kwargs,
+            fig_kwargs=fig_kwargs,
         )
 
-    def evaluate_model(
-        self,
-        estimator,
-        fold: Optional[Union[int, Any]] = None,
-        fit_kwargs: Optional[dict] = None,
-        use_train_data: bool = False,
-    ):
+        return plot_data
 
-        """
-        This function displays a user interface for analyzing performance of a trained
-        model. It calls the ``plot_model`` function internally.
+    # def evaluate_model(
+    #     self,
+    #     estimator,
+    #     fold: Optional[Union[int, Any]] = None,
+    #     fit_kwargs: Optional[dict] = None,
+    #     use_train_data: bool = False,
+    # ):
 
-        Example
-        --------
-        >>> from pycaret.datasets import get_data
-        >>> boston = get_data('boston')
-        >>> from pycaret.regression import *
-        >>> exp_name = setup(data = boston,  target = 'medv')
-        >>> lr = create_model('lr')
-        >>> evaluate_model(lr)
+    #     """
+    #     This function displays a user interface for analyzing performance of a trained
+    #     model. It calls the ``plot_model`` function internally.
 
+    #     Example
+    #     --------
+    #     >>> from pycaret.datasets import get_data
+    #     >>> boston = get_data('boston')
+    #     >>> from pycaret.regression import *
+    #     >>> exp_name = setup(data = boston,  target = 'medv')
+    #     >>> lr = create_model('lr')
+    #     >>> evaluate_model(lr)
 
-        estimator: scikit-learn compatible object
-            Trained model object
+    #     estimator: scikit-learn compatible object
+    #         Trained model object
 
+    #     fold: int or scikit-learn compatible CV generator, default = None
+    #         Controls cross-validation. If None, the CV generator in the ``fold_strategy``
+    #         parameter of the ``setup`` function is used. When an integer is passed,
+    #         it is interpreted as the 'n_splits' parameter of the CV generator in the
+    #         ``setup`` function.
 
-        fold: int or scikit-learn compatible CV generator, default = None
-            Controls cross-validation. If None, the CV generator in the ``fold_strategy``
-            parameter of the ``setup`` function is used. When an integer is passed,
-            it is interpreted as the 'n_splits' parameter of the CV generator in the
-            ``setup`` function.
+    #     fit_kwargs: dict, default = {} (empty dict)
+    #         Dictionary of arguments passed to the fit method of the model.
 
+    #     use_train_data: bool, default = False
+    #         When set to true, train data will be used for plots, instead
+    #         of test data.
 
-        fit_kwargs: dict, default = {} (empty dict)
-            Dictionary of arguments passed to the fit method of the model.
+    #     Returns:
+    #         None
 
+    #     Warnings
+    #     --------
+    #     -   This function only works in IPython enabled Notebook.
 
-        use_train_data: bool, default = False
-            When set to true, train data will be used for plots, instead
-            of test data.
+    #     """
 
+    #     return super().evaluate_model(
+    #         estimator=estimator,
+    #         fold=fold,
+    #         fit_kwargs=fit_kwargs,
+    #         use_train_data=use_train_data,
+    #     )
 
-        Returns:
-            None
+    # def interpret_model(
+    #     self,
+    #     estimator,
+    #     plot: str = "summary",
+    #     feature: Optional[str] = None,
+    #     observation: Optional[int] = None,
+    #     use_train_data: bool = False,
+    #     **kwargs,
+    # ):
 
+    #     """
+    #     This function analyzes the predictions generated from a trained model. Most plots
+    #     in this function are implemented based on the SHAP (SHapley Additive exPlanations).
+    #     For more info on this, please see https://shap.readthedocs.io/en/latest/
 
-        Warnings
-        --------
-        -   This function only works in IPython enabled Notebook.
+    #     Example
+    #     --------
+    #     >>> from pycaret.datasets import get_data
+    #     >>> boston = get_data('boston')
+    #     >>> from pycaret.regression import *
+    #     >>> exp = setup(data = boston,  target = 'medv')
+    #     >>> xgboost = create_model('xgboost')
+    #     >>> interpret_model(xgboost)
 
-        """
+    #     estimator: scikit-learn compatible object
+    #         Trained model object
 
-        return super().evaluate_model(
-            estimator=estimator,
-            fold=fold,
-            fit_kwargs=fit_kwargs,
-            use_train_data=use_train_data,
-        )
+    #     plot: str, default = 'summary'
+    #         List of available plots (ID - Name):
+    #         * 'summary' - Summary Plot using SHAP
+    #         * 'correlation' - Dependence Plot using SHAP
+    #         * 'reason' - Force Plot using SHAP
+    #         * 'pdp' - Partial Dependence Plot
 
-    def interpret_model(
-        self,
-        estimator,
-        plot: str = "summary",
-        feature: Optional[str] = None,
-        observation: Optional[int] = None,
-        use_train_data: bool = False,
-        **kwargs,
-    ):
+    #     feature: str, default = None
+    #         Feature to check correlation with. This parameter is only required when ``plot``
+    #         type is 'correlation' or 'pdp'. When set to None, it uses the first column from
+    #         the dataset.
 
-        """
-        This function analyzes the predictions generated from a trained model. Most plots
-        in this function are implemented based on the SHAP (SHapley Additive exPlanations).
-        For more info on this, please see https://shap.readthedocs.io/en/latest/
+    #     observation: int, default = None
+    #         Observation index number in holdout set to explain. When ``plot`` is not
+    #         'reason', this parameter is ignored.
 
+    #     use_train_data: bool, default = False
+    #         When set to true, train data will be used for plots, instead
+    #         of test data.
 
-        Example
-        --------
-        >>> from pycaret.datasets import get_data
-        >>> boston = get_data('boston')
-        >>> from pycaret.regression import *
-        >>> exp = setup(data = boston,  target = 'medv')
-        >>> xgboost = create_model('xgboost')
-        >>> interpret_model(xgboost)
+    #     **kwargs:
+    #         Additional keyword arguments to pass to the plot.
 
+    #     Returns:
+    #         None
 
-        estimator: scikit-learn compatible object
-            Trained model object
+    #     """
 
-
-        plot: str, default = 'summary'
-            List of available plots (ID - Name):
-            * 'summary' - Summary Plot using SHAP
-            * 'correlation' - Dependence Plot using SHAP
-            * 'reason' - Force Plot using SHAP
-            * 'pdp' - Partial Dependence Plot
-
-
-        feature: str, default = None
-            Feature to check correlation with. This parameter is only required when ``plot``
-            type is 'correlation' or 'pdp'. When set to None, it uses the first column from 
-            the dataset.
-
-
-        observation: int, default = None
-            Observation index number in holdout set to explain. When ``plot`` is not
-            'reason', this parameter is ignored.
-
-
-        use_train_data: bool, default = False
-            When set to true, train data will be used for plots, instead
-            of test data.
-
-
-        **kwargs:
-            Additional keyword arguments to pass to the plot.
-
-
-        Returns:
-            None
-
-        """
-
-        return super().interpret_model(
-            estimator=estimator,
-            plot=plot,
-            feature=feature,
-            observation=observation,
-            use_train_data=use_train_data,
-            **kwargs,
-        )
+    #     return super().interpret_model(
+    #         estimator=estimator,
+    #         plot=plot,
+    #         feature=feature,
+    #         observation=observation,
+    #         use_train_data=use_train_data,
+    #         **kwargs,
+    #     )
 
     def predict_model(
         self,
         estimator,
-        # data: Optional[pd.DataFrame] = None,
         fh=None,
         return_pred_int=False,
         alpha=0.05,
@@ -2517,28 +2638,39 @@ class TimeSeriesExperiment(_SupervisedExperiment):
     ) -> pd.DataFrame:
 
         """
-        This function predicts ``Label`` using a trained model. When ``data`` is
-        None, it predicts label on the holdout set.
+        This function forecast using a trained model. When ``fh`` is None, 
+        it forecasts using the same forecast horizon used during the 
+        training.
 
 
         Example
         -------
         >>> from pycaret.datasets import get_data
-        >>> boston = get_data('boston')
-        >>> from pycaret.regression import *
-        >>> exp_name = setup(data = boston,  target = 'medv')
-        >>> lr = create_model('lr')
-        >>> pred_holdout = predict_model(lr)
-        >>> pred_unseen = predict_model(lr, data = unseen_dataframe)
+        >>> airline = get_data('airline')
+        >>> from pycaret.time_series import *
+        >>> exp_name = setup(data = airline,  fh = 12)
+        >>> arima = create_model('arima')
+        >>> pred_holdout = predict_model(arima)
+        >>> pred_unseen = predict_model(finalize_model(arima), fh = 24)
 
 
-        estimator: scikit-learn compatible object
+        estimator: sktime compatible object
             Trained model object
 
 
-        data : pandas.DataFrame
-            Shape (n_samples, n_features). All features used during training
-            must be available in the unseen dataset.
+        fh: int, default = None
+            Number of points from the last date of training to forecast.
+            When fh is None, it forecasts using the same forecast horizon 
+            used during the training.
+
+
+        return_pred_int: bool, default = False
+            When set to True, it returns lower bound and upper bound
+            prediction interval, in addition to the point prediction.
+
+
+        alpha: float, default = 0.05
+            alpha for prediction interval. CI = 1 - alpha.
 
 
         round: int, default = 4
@@ -2553,47 +2685,41 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             pandas.DataFrame
 
 
-        Warnings
-        --------
-        - The behavior of the ``predict_model`` is changed in version 2.1 without backward
-        compatibility. As such, the pipelines trained using the version (<= 2.0), may not
-        work for inference with version >= 2.1. You can either retrain your models with a
-        newer version or downgrade the version for inference.
-
-
         """
-
-        # return super().predict_model(
-        #     estimator=estimator,
-        #     data=data,
-        #     probability_threshold=None,
-        #     encoded_labels=True,
-        #     round=round,
-        #     verbose=verbose,
-        # )
 
         data = None  # TODO: Add back when we have support for multivariate TS
 
-        X_test_ = self.X_test.copy()
-        # Some predict methods in sktime expect None (not an empty dataframe as
-        # returned by pycaret). Hence converting to None.
-        if X_test_.shape[0] == 0 or X_test_.shape[1] == 0:
-            X_test_ = None
-        y_test_ = self.y_test.copy()
+        estimator_ = deep_clone(estimator)
+
+        loaded_in_same_env = True
+        # Check if loaded in a different environment
+        if not hasattr(self, "X_test") or fh is not None:
+            # If the model is saved and loaded afterwards,
+            # it will not have self.X_test
+
+            # Also do not display metrics if user provides own fh
+            # (even if it is same as test set horizon) per
+            # https://github.com/pycaret/pycaret/issues/1702
+            loaded_in_same_env = False
+            verbose = False
+
+        if fh is not None:
+            # Do not display metrics if user provides own fh
+            # (even if it is same as test set horizon) per
+            # https://github.com/pycaret/pycaret/issues/1702
+            verbose = False
 
         if fh is None:
-            fh = self.fh
-
-        display = None
-        try:
-            np.random.seed(self.seed)
-            if not display:
-                display = Display(verbose=verbose, html_param=self.html_param,)
-        except:
-            display = Display(verbose=False, html_param=False,)
+            if not hasattr(self, "fh"):
+                # If the model is saved and loaded afterwards,
+                # it will not have self.fh
+                fh = estimator_.fh
+        else:
+            # Get the fh in the right format for sktime
+            fh = self.check_fh(fh)
 
         try:
-            return_vals = estimator.predict(
+            return_vals = estimator_.predict(
                 X=data, fh=fh, return_pred_int=return_pred_int, alpha=alpha
             )
         except NotImplementedError as error:
@@ -2603,7 +2729,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 "algorithm. Predcition will be run with `return_pred_int` = False, and "
                 "NaN values will be returned for the prediction intervals instead."
             )
-            return_vals = estimator.predict(
+            return_vals = estimator_.predict(
                 X=data, fh=fh, return_pred_int=False, alpha=alpha
             )
         if isinstance(return_vals, tuple):
@@ -2623,55 +2749,90 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             else:
                 # Leave as series
                 result = return_vals
+                if result.name is None:
+                    if hasattr(self, "y"):
+                        result.name = self.y.name
+                    else:
+                        # If the model is saved and loaded afterwards,
+                        # it will not have self.y
+                        pass
 
-        result = result.round(round)
+        # Converting to float since rounding does not support int
+        result = result.astype(float).round(round)
 
         if isinstance(result.index, pd.DatetimeIndex):
             result.index = (
                 result.index.to_period()
             )  # Prophet with return_pred_int = True returns datetime index.
 
+        #################
+        #### Metrics ####
+        #################
+        # Only display if loaded in same environment
+
         # This is not technically y_test_pred in all cases.
         # If the model has not been finalized, y_test_pred will match the indices from y_test
         # If the model has been finalized, y_test_pred will not match the indices from y_test
         # Also, the user can use a different fh length in predict in which case the length
         # of y_test_pred will not match y_test.
-        y_test_pred = estimator.predict(
-            X=X_test_, fh=fh, return_pred_int=False, alpha=alpha
-        )
-        if len(y_test_pred) != len(y_test_):
-            self.logger.warning(
-                "predict_model >> Forecast Horizon does not match the horizon length "
-                "used during training. Metrics displayed will be using indices that match only"
+
+        if loaded_in_same_env:
+            X_test_ = self.X_test.copy()
+            # Some predict methods in sktime expect None (not an empty dataframe as
+            # returned by pycaret). Hence converting to None.
+            if X_test_.shape[0] == 0 or X_test_.shape[1] == 0:
+                X_test_ = None
+            y_test_ = self.y_test.copy()
+
+            y_test_pred = estimator_.predict(
+                X=X_test_, fh=fh, return_pred_int=False, alpha=alpha
             )
-        # concatenates by index
-        y_test_and_pred = pd.concat([y_test_pred, y_test_], axis=1)
-        y_test_and_pred.dropna(inplace=True)  # Removes any indices that do not match
-        y_test_pred_common = y_test_and_pred[y_test_and_pred.columns[0]]
-        y_test_common = y_test_and_pred[y_test_and_pred.columns[1]]
+            if len(y_test_pred) != len(y_test_):
+                msg = (
+                    "predict_model >> Forecast Horizon does not match the horizon length "
+                    "used during training. Metrics will not be displayed."
+                )
+                self.logger.warning(msg)
+                verbose = False
 
-        if len(y_test_and_pred) == 0:
-            self.logger.warning(
-                "predict_model >> No indices matched between test set and prediction. "
-                "You are most likely calling predict_model after finalizing model. "
-                "All metrics will be set to NaN"
-            )
-            metrics = self._calculate_metrics(y_test=[], pred=[], pred_prob=None)  # type: ignore
-            metrics = {metric_name: np.nan for metric_name, _ in metrics.items()}
-        else:
-            metrics = self._calculate_metrics(y_test=y_test_common, pred=y_test_pred_common, pred_prob=None)  # type: ignore
+            # concatenates by index
+            y_test_and_pred = pd.concat([y_test_pred, y_test_], axis=1)
+            # Removes any indices that do not match
+            y_test_and_pred.dropna(inplace=True)
+            y_test_pred_common = y_test_and_pred[y_test_and_pred.columns[0]]
+            y_test_common = y_test_and_pred[y_test_and_pred.columns[1]]
 
-        # Display Test Score
-        # model name
-        full_name = self._get_model_name(estimator)
-        df_score = pd.DataFrame(metrics, index=[0])
-        df_score.insert(0, "Model", full_name)
-        df_score = df_score.round(round)
-        display.display(df_score.style.set_precision(round), clear=False)
+            if len(y_test_and_pred) == 0:
+                self.logger.warning(
+                    "predict_model >> No indices matched between test set and prediction. "
+                    "You are most likely calling predict_model after finalizing model. "
+                    "Metrics will not be displayed"
+                )
+                metrics = self._calculate_metrics(y_test=[], pred=[], pred_prob=None)  # type: ignore
+                metrics = {metric_name: np.nan for metric_name, _ in metrics.items()}
+                verbose = False
+            else:
+                metrics = self._calculate_metrics(y_test=y_test_common, pred=y_test_pred_common, pred_prob=None)  # type: ignore
 
-        # store predictions on hold-out in display_container
-        if df_score is not None:
-            self.display_container.append(df_score)
+            # Display Test Score
+            # model name
+            display = None
+            try:
+                np.random.seed(self.seed)
+                if not display:
+                    display = Display(verbose=verbose, html_param=self.html_param,)
+            except:
+                display = Display(verbose=False, html_param=False,)
+
+            full_name = self._get_model_name(estimator_)
+            df_score = pd.DataFrame(metrics, index=[0])
+            df_score.insert(0, "Model", full_name)
+            df_score = df_score.round(round)
+            display.display(df_score.style.set_precision(round), clear=False)
+
+            # store predictions on hold-out in display_container
+            if df_score is not None:
+                self.display_container.append(df_score)
 
         gc.collect()
 
@@ -2692,21 +2853,20 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         >>> data = get_data('airline')
         >>> from pycaret.time_series import *
         >>> exp_name = setup(data = data, fh = 12)
-        >>> model = create_model('naive')
-        >>> final_model = finalize_model(model)
+        >>> arima = create_model('arima')
+        >>> final_arima = finalize_model(arima)
 
 
         estimator: sktime compatible object
             Trained model object
 
 
-        fit_kwargs: dict, default = {} (empty dict)
+        fit_kwargs: dict, default = None
             Dictionary of arguments passed to the fit method of the model.
 
 
         model_only: bool, default = True
-            When set to False, only model object is re-trained and all the
-            transformations in Pipeline are ignored.
+            Parameter not in use for now. Behavior may change in future.
 
 
         Returns:
@@ -2730,26 +2890,24 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         Example
         -------
         >>> from pycaret.datasets import get_data
-        >>> boston = get_data('boston')
-        >>> from pycaret.regression import *
-        >>> exp_name = setup(data = boston,  target = 'medv')
-        >>> lr = create_model('lr')
-        >>> # sets appropriate credentials for the platform as environment variables
-        >>> import os
-        >>> os.environ["AWS_ACCESS_KEY_ID"] = str("foo")
-        >>> os.environ["AWS_SECRET_ACCESS_KEY"] = str("bar")
-        >>> deploy_model(model = lr, model_name = 'lr-for-deployment', platform = 'aws', authentication = {'bucket' : 'S3-bucket-name'})
+        >>> data = get_data('airline')
+        >>> from pycaret.time_series import *
+        >>> exp_name = setup(data = data, fh = 12)
+        >>> arima = create_model('arima')
+        >>> deploy_model(model = arima, model_name = 'arima-for-deployment', platform = 'aws', authentication = {'bucket' : 'S3-bucket-name'})
 
 
         Amazon Web Service (AWS) users:
-            To deploy a model on AWS S3 ('aws'), the credentials have to be passed. The easiest way is to use environment
-            variables in your local environment. Following information from the IAM portal of amazon console account
-            are required:
+            To deploy a model on AWS S3 ('aws'), environment variables must be set in your
+            local environment. To configure AWS environment variables, type ``aws configure``
+            in the command line. Following information from the IAM portal of amazon console
+            account is required:
 
             - AWS Access Key ID
             - AWS Secret Key Access
+            - Default Region Name (can be seen under Global settings on your AWS console)
 
-            More info: https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html#environment-variables
+            More info: https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-envvars.html
 
 
         Google Cloud Platform (GCP) users:
@@ -2766,8 +2924,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             string must be set in your local environment. Go to settings of storage account on
             Azure portal to access the connection string required.
 
-            - AZURE_STORAGE_CONNECTION_STRING (required as environment variable)
-
             More info: https://docs.microsoft.com/en-us/azure/storage/blobs/storage-quickstart-blobs-python?toc=%2Fpython%2Fazure%2FTOC.json
 
 
@@ -2783,7 +2939,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             Dictionary of applicable authentication tokens.
 
             When platform = 'aws':
-            {'bucket' : 'S3-bucket-name'}
+            {'bucket' : 'S3-bucket-name', 'path': (optional) folder name under the bucket}
 
             When platform = 'gcp':
             {'project': 'gcp-project-name', 'bucket' : 'gcp-bucket-name'}
@@ -2819,14 +2975,14 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         Example
         -------
         >>> from pycaret.datasets import get_data
-        >>> boston = get_data('boston')
-        >>> from pycaret.regression import *
-        >>> exp_name = setup(data = boston,  target = 'medv')
-        >>> lr = create_model('lr')
-        >>> save_model(lr, 'saved_lr_model')
+        >>> data = get_data('airline')
+        >>> from pycaret.time_series import *
+        >>> exp_name = setup(data = data, fh = 12)
+        >>> arima = create_model('arima')
+        >>> save_model(arima, 'saved_arima_model')
 
 
-        model: scikit-learn compatible object
+        model: sktime compatible object
             Trained model object
 
 
@@ -2835,8 +2991,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
 
         model_only: bool, default = True
-            When set to True, only trained model object is saved instead of the
-            entire pipeline.
+            Parameter not in use for now. Behavior may change in future.
 
 
         verbose: bool, default = True
@@ -2861,12 +3016,12 @@ class TimeSeriesExperiment(_SupervisedExperiment):
     ):
 
         """
-        This function loads a previously saved pipeline.
+        This function loads a previously saved pipeline/model.
 
         Example
         -------
-        >>> from pycaret.regression import load_model
-        >>> saved_lr = load_model('saved_lr_model')
+        >>> from pycaret.time_series import load_model
+        >>> saved_arima = load_model('saved_arima_model')
 
 
         model_name: str
@@ -2907,52 +3062,46 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             verbose=verbose,
         )
 
-    def automl(
-        self, optimize: str = "R2", use_holdout: bool = False, turbo: bool = True
-    ) -> Any:
+    # def automl(
+    #     self, optimize: str = "R2", use_holdout: bool = False, turbo: bool = True
+    # ) -> Any:
 
-        """
-        This function returns the best model out of all trained models in
-        current session based on the ``optimize`` parameter. Metrics
-        evaluated can be accessed using the ``get_metrics`` function.
+    #     """
+    #     This function returns the best model out of all trained models in
+    #     current session based on the ``optimize`` parameter. Metrics
+    #     evaluated can be accessed using the ``get_metrics`` function.
 
+    #     Example
+    #     -------
+    #     >>> from pycaret.datasets import get_data
+    #     >>> boston = get_data('boston')
+    #     >>> from pycaret.regression import *
+    #     >>> exp_name = setup(data = boston,  target = 'medv')
+    #     >>> top3 = compare_models(n_select = 3)
+    #     >>> tuned_top3 = [tune_model(i) for i in top3]
+    #     >>> blender = blend_models(tuned_top3)
+    #     >>> stacker = stack_models(tuned_top3)
+    #     >>> best_mae_model = automl(optimize = 'MAE')
 
-        Example
-        -------
-        >>> from pycaret.datasets import get_data
-        >>> boston = get_data('boston')
-        >>> from pycaret.regression import *
-        >>> exp_name = setup(data = boston,  target = 'medv')
-        >>> top3 = compare_models(n_select = 3)
-        >>> tuned_top3 = [tune_model(i) for i in top3]
-        >>> blender = blend_models(tuned_top3)
-        >>> stacker = stack_models(tuned_top3)
-        >>> best_mae_model = automl(optimize = 'MAE')
+    #     optimize: str, default = 'R2'
+    #         Metric to use for model selection. It also accepts custom metrics
+    #         added using the ``add_metric`` function.
 
+    #     use_holdout: bool, default = False
+    #         When set to True, metrics are evaluated on holdout set instead of CV.
 
-        optimize: str, default = 'R2'
-            Metric to use for model selection. It also accepts custom metrics
-            added using the ``add_metric`` function.
+    #     turbo: bool, default = True
+    #         When set to True and use_holdout is False, only models created with default fold
+    #         parameter will be considered. If set to False, models created with a non-default
+    #         fold parameter will be scored again using default fold settings, so that they can be
+    #         compared.
 
+    #     Returns:
+    #         Trained Model
 
-        use_holdout: bool, default = False
-            When set to True, metrics are evaluated on holdout set instead of CV.
+    #     """
 
-
-        turbo: bool, default = True
-            When set to True and use_holdout is False, only models created with default fold
-            parameter will be considered. If set to False, models created with a non-default
-            fold parameter will be scored again using default fold settings, so that they can be
-            compared.
-
-
-        Returns:
-            Trained Model
-
-
-        """
-
-        return super().automl(optimize=optimize, use_holdout=use_holdout, turbo=turbo)
+    #     return super().automl(optimize=optimize, use_holdout=use_holdout, turbo=turbo)
 
     def models(
         self,
@@ -2967,18 +3116,19 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         Example
         -------
         >>> from pycaret.datasets import get_data
-        >>> boston = get_data('boston')
-        >>> from pycaret.regression import *
-        >>> exp_name = setup(data = boston,  target = 'medv')
-        >>> all_models = models()
+        >>> data = get_data('airline')
+        >>> from pycaret.time_series import *
+        >>> exp_name = setup(data = data, fh = 12)
+        >>> models()
 
 
         type: str, default = None
-            - baseline: filters and only return baseline models.
-            - classical: filters and only return classical models.
-            - linear : filters and only return linear models.
-            - neighbors: filters and only return neighbors models.
-            - tree : filters and only return tree based models.
+            - baseline : filters and only return baseline models
+            - classical : filters and only return classical models
+            - linear : filters and only return linear models
+            - tree : filters and only return tree based models
+            - neighbors : filters and only return neighbors models
+
 
         internal: bool, default = False
             When True, will return extra columns and rows used internally.
@@ -3038,9 +3188,9 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         Example
         -------
         >>> from pycaret.datasets import get_data
-        >>> boston = get_data('boston')
-        >>> from pycaret.regression import *
-        >>> exp_name = setup(data = boston,  target = 'medv')
+        >>> airline = get_data('airline')
+        >>> from pycaret.time_series import *
+        >>> exp_name = setup(data = airline,  fh = 12)
         >>> all_metrics = get_metrics()
 
 
@@ -3083,9 +3233,9 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         Example
         -------
         >>> from pycaret.datasets import get_data
-        >>> boston = get_data('boston')
-        >>> from pycaret.regression import *
-        >>> exp_name = setup(data = boston,  target = 'medv')
+        >>> airline = get_data('airline')
+        >>> from pycaret.time_series import *
+        >>> exp_name = setup(data = airline,  fh = 12)
         >>> from sklearn.metrics import explained_variance_score
         >>> add_metric('evs', 'EVS', explained_variance_score)
 
@@ -3133,9 +3283,9 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         Example
         -------
         >>> from pycaret.datasets import get_data
-        >>> boston = get_data('boston')
-        >>> from pycaret.regression import *
-        >>> exp_name = setup(data = boston,  target = 'mredv')
+        >>> data = get_data('airline')
+        >>> from pycaret.time_series import *
+        >>> exp_name = setup(data = data, fh = 12)
         >>> remove_metric('MAPE')
 
 
@@ -3161,11 +3311,11 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         Example
         -------
         >>> from pycaret.datasets import get_data
-        >>> boston = get_data('boston')
-        >>> from pycaret.regression import *
-        >>> exp_name = setup(data = boston,  target = 'medv', log_experiment = True)
+        >>> data = get_data('airline')
+        >>> from pycaret.time_series import *
+        >>> exp_name = setup(data = data, fh = 12)
         >>> best = compare_models()
-        >>> exp_logs = get_logs()
+        >>> exp_logs = get_logs()   
 
 
         experiment_name: str, default = None
@@ -3240,17 +3390,122 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 fold_generator = ExpandingWindowSplitter(
                     initial_window=initial_window,
                     step_length=step_length,
-                    window_length=window_length,
+                    # window_length=window_length,
                     fh=self.fh,
                     start_with_window=True,
                 )
 
             if fold_strategy == "sliding":
                 fold_generator = SlidingWindowSplitter(
-                    initial_window=initial_window,
+                    # initial_window=initial_window,
                     step_length=step_length,
-                    window_length=window_length,
+                    window_length=initial_window,
                     fh=self.fh,
                     start_with_window=True,
                 )
         return fold_generator
+
+    def check_stats(
+        self,
+        estimator: Optional[Any] = None,
+        test: str = "all",
+        alpha: float = 0.05,
+        split: str = "all",
+    ) -> pd.DataFrame:
+        #### Step 1: Get the data to be tested ----
+        if estimator is None:
+            data = self._get_y_data(split=split)
+        else:
+            data = self.get_residuals(estimator=estimator)
+            if data is None:
+                return
+            data = self.check_and_clean_resid(resid=data)
+
+        #### Step 2: Test ----
+        results = test_(data=data, test=test, alpha=alpha)
+        results.reset_index(inplace=True, drop=True)
+        return results
+
+    def _get_y_data(self, split="all"):
+        if split == "all":
+            data = self.y
+        elif split == "train":
+            data = self.y_train
+        elif split == "test":
+            data = self.y_test
+        else:
+            raise ValueError(f"split value: '{split}' is not supported.")
+        return data
+
+    def get_residuals(self, estimator) -> Optional[pd.Series]:
+        # https://github.com/alan-turing-institute/sktime/issues/1105#issuecomment-932216820
+        resid = None
+
+        estimator.check_is_fitted()
+        estimator_ = deep_clone(estimator)
+        y_used_to_train = estimator_._y
+        try:
+            resid = y_used_to_train - estimator_.predict(
+                ForecastingHorizon(y_used_to_train.index, is_relative=False)
+            )
+        except NotImplementedError as exception:
+            self.logger.warning(exception)
+            print(
+                "In sample predictions has not been implemented for this estimator "
+                f"of type '{estimator_.__class__.__name__}' in `sktime`. When "
+                "this is implemented, it will be enabled by default in pycaret."
+            )
+
+        return resid
+
+    def check_and_clean_resid(self, resid: pd.Series) -> pd.Series:
+        """Checks to see if the residuals matches one of the test set or
+        full dataset. If it does, it resturns the residuals without the NA values.
+
+        Parameters
+        ----------
+        resid : pd.Series
+            Residuals from an estimator
+
+        Returns
+        -------
+        pd.Series
+            Cleaned Residuals
+
+        Raises
+        ------
+        ValueError
+          If any one of these 3 conditions are satisfied:
+            1. If residual length matches the length of train set but indices do not
+            2. If residual length matches the length of full data set but indices do not
+            3. If residual length does not match either train OR full dataset
+        """
+        y_train = self._get_y_data(split="train")
+        y_all = self._get_y_data(split="all")
+
+        if len(resid.index) == len(y_train.index):
+            if np.all(resid.index != y_train.index):
+                raise ValueError(
+                    "Residuals match the length of the train set, but indices do not match up..."
+                )
+        elif len(resid.index) == len(y_all.index):
+            if np.all(resid.index != y_all.index):
+                raise ValueError(
+                    "Residuals match the length of the full data set, but indices do not match up..."
+                )
+        else:
+            raise ValueError(
+                "Residuals time points do not match either test set or full dataset."
+            )
+        resid.dropna(inplace=True)
+        return resid
+
+
+# TODO: Add to pycaret utils or some common location
+def deep_clone(estimator):
+    # Cloning since setting fh to another value replaces it inplace
+    # Note cloning does not copy the fitted model (only model hyperparams)
+    # Hence, we need to do deep copy per
+    # https://stackoverflow.com/a/33576345/8925915
+    estimator_ = deepcopy(estimator)
+    return estimator_

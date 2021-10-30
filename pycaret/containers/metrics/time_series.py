@@ -15,9 +15,8 @@ import pycaret.internal.metrics
 from pandas import DataFrame, Series  # type: ignore
 from sklearn import metrics  # type: ignore
 from sktime.performance_metrics.forecasting._functions import (  # type: ignore
-    mase_loss,
-    smape_loss,
-    mape_loss,
+    mean_absolute_scaled_error,
+    mean_absolute_percentage_error,
 )
 
 
@@ -150,23 +149,31 @@ class TimeSeriesMetricContainer(MetricContainer):
         return d
 
 
-def _smape_loss(y_true, y_pred):
+def _smape_loss(y_true, y_pred, **kwargs):
     """Wrapper for sktime metrics"""
-    return smape_loss(y_test=_check_series(y_true), y_pred=_check_series(y_pred))
-
-
-def _mape_loss(y_true, y_pred):
-    """Wrapper for sktime metrics"""
-    return mape_loss(y_test=_check_series(y_true), y_pred=_check_series(y_pred))
-
-
-def _mase_loss(y_true, y_pred, y_train):
-    """Wrapper for sktime metrics"""
-    return mase_loss(
-        y_test=_check_series(y_true),
-        y_pred=_check_series(y_pred),
-        y_train=_check_series(y_train),
+    y_true = _check_series(y_true)
+    y_pred = _check_series(y_pred)
+    return mean_absolute_percentage_error(
+        y_true=y_true, y_pred=y_pred, symmetric=True, **kwargs
     )
+
+
+def _mape_loss(y_true, y_pred, **kwargs):
+    """Wrapper for sktime metrics"""
+    y_true = _check_series(y_true)
+    y_pred = _check_series(y_pred)
+    return mean_absolute_percentage_error(
+        y_true=y_true, y_pred=y_pred, symmetric=False, **kwargs
+    )
+
+
+# def _mase_loss(y_true, y_pred, y_train):
+#     """Wrapper for sktime metrics"""
+#     return mase_loss(
+#         y_test=_check_series(y_true),
+#         y_pred=_check_series(y_pred),
+#         y_train=_check_series(y_train),
+#     )
 
 
 def _check_series(y):
@@ -224,21 +231,16 @@ class RMSEMetricContainer(TimeSeriesMetricContainer):
 class MAPEMetricContainer(TimeSeriesMetricContainer):
     def __init__(self, globals_dict: dict) -> None:
         super().__init__(
-            id="mape",
-            name="MAPE",
-            score_func=_mape_loss,
-            greater_is_better=False,
+            id="mape", name="MAPE", score_func=_mape_loss, greater_is_better=False,
         )
 
 
 class SMAPEMetricContainer(TimeSeriesMetricContainer):
     def __init__(self, globals_dict: dict) -> None:
         super().__init__(
-            id="smape",
-            name="SMAPE",
-            score_func=_smape_loss,
-            greater_is_better=False,
+            id="smape", name="SMAPE", score_func=_smape_loss, greater_is_better=False,
         )
+
 
 class R2MetricContainer(TimeSeriesMetricContainer):
     def __init__(self, globals_dict: dict) -> None:

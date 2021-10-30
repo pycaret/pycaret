@@ -4,7 +4,7 @@ from pycaret.internal.pipeline import (
     estimator_pipeline,
     get_pipeline_fit_kwargs,
 )
-from pycaret.internal.utils import infer_ml_usecase
+from pycaret.internal.utils import infer_ml_usecase, mlflow_remove_bad_chars
 import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
 from pycaret.internal.logging import get_logger
@@ -223,27 +223,29 @@ class _UnsupervisedExperiment(_TabularExperiment):
 
             run_name_ = f"Session Initialized {self.USI}"
 
-            with mlflow.start_run(run_name=run_name_) as run:
+            mlflow.end_run()
+            mlflow.start_run(run_name=run_name_)
 
-                # Get active run to log as tag
-                RunID = mlflow.active_run().info.run_id
+            # Get active run to log as tag
+            RunID = mlflow.active_run().info.run_id
 
-                k = functions.copy()
-                k.set_index("Description", drop=True, inplace=True)
-                kdict = k.to_dict()
-                params = kdict.get("Value")
-                mlflow.log_params(params)
+            k = functions.copy()
+            k.set_index("Description", drop=True, inplace=True)
+            kdict = k.to_dict()
+            params = kdict.get("Value")
+            params = {mlflow_remove_bad_chars(k): v for k, v in params.items()}
+            mlflow.log_params(params)
 
-                # set tag of compare_models
-                mlflow.set_tag("Source", "setup")
+            # set tag of compare_models
+            mlflow.set_tag("Source", "setup")
 
-                import secrets
+            import secrets
 
-                URI = secrets.token_hex(nbytes=4)
-                mlflow.set_tag("URI", URI)
-                mlflow.set_tag("USI", self.USI)
-                mlflow.set_tag("Run Time", runtime)
-                mlflow.set_tag("Run ID", RunID)
+            URI = secrets.token_hex(nbytes=4)
+            mlflow.set_tag("URI", URI)
+            mlflow.set_tag("USI", self.USI)
+            mlflow.set_tag("Run Time", runtime)
+            mlflow.set_tag("Run ID", RunID)
 
                 # Log the transformation pipeline
                 self.logger.info(
@@ -258,23 +260,23 @@ class _UnsupervisedExperiment(_TabularExperiment):
                 mlflow.log_artifact("Transformation Pipeline.pkl")
                 os.remove("Transformation Pipeline.pkl")
 
-                # Log pandas profile
-                if log_profile:
-                    import pandas_profiling
+            # Log pandas profile
+            if log_profile:
+                import pandas_profiling
 
-                    pf = pandas_profiling.ProfileReport(
-                        self.data_before_preprocess, **profile_kwargs
-                    )
-                    pf.to_file("Data Profile.html")
-                    mlflow.log_artifact("Data Profile.html")
-                    os.remove("Data Profile.html")
-                    display.display(functions_styler, clear=True)
+                pf = pandas_profiling.ProfileReport(
+                    self.data_before_preprocess, **profile_kwargs
+                )
+                pf.to_file("Data Profile.html")
+                mlflow.log_artifact("Data Profile.html")
+                os.remove("Data Profile.html")
+                display.display(functions_styler, clear=True)
 
-                # Log training and testing set
-                if log_data:
-                    self.X.to_csv("Dataset.csv")
-                    mlflow.log_artifact("Dataset.csv")
-                    os.remove("Dataset.csv")
+            # Log training and testing set
+            if log_data:
+                self.X.to_csv("Dataset.csv")
+                mlflow.log_artifact("Dataset.csv")
+                os.remove("Dataset.csv")
         return
 
     def setup(
@@ -936,6 +938,7 @@ class _UnsupervisedExperiment(_TabularExperiment):
         fit_kwargs: Optional[dict] = None,
         verbose: bool = True,
         system: bool = True,
+        add_to_model_list: bool = True,
         raise_num_clusters: bool = False,
         X_data: Optional[pd.DataFrame] = None,  # added in pycaret==2.2.0
         display: Optional[Display] = None,  # added in pycaret==2.2.0
@@ -998,6 +1001,9 @@ class _UnsupervisedExperiment(_TabularExperiment):
         system: bool, default = True
             Must remain True all times. Only to be changed by internal functions.
             If False, method will return a tuple of model and the model fit time.
+
+        add_to_model_list: bool, default = True
+            Whether to save model and results in master_model_container.
 
         **kwargs:
             Additional keyword arguments to pass to the estimator.
@@ -1284,11 +1290,12 @@ class _UnsupervisedExperiment(_TabularExperiment):
 
         self.display_container.append(model_results)
 
-        # storing results in master_model_container
-        self.logger.info("Uploading model into container now")
-        self.master_model_container.append(
-            {"model": model, "scores": model_results, "cv": None}
-        )
+        if add_to_model_list:
+            # storing results in master_model_container
+            self.logger.info("Uploading model into container now")
+            self.master_model_container.append(
+                {"model": model, "scores": model_results, "cv": None}
+            )
 
         if self._ml_usecase == MLUsecase.CLUSTERING:
             display.display(
