@@ -103,7 +103,7 @@ class _TabularExperiment(_PyCaretExperiment):
                 "USI",
                 "html_param",
                 "seed",
-                "prep_pipe",
+                "_internal_pipeline",
                 "experiment__",
                 "n_jobs_param",
                 "_gpu_n_jobs_param",
@@ -216,7 +216,7 @@ class _TabularExperiment(_PyCaretExperiment):
         source: str,
         runtime: float,
         model_fit_time: float,
-        _prep_pipe,
+        _internal_pipeline,
         log_holdout: bool = True,
         log_plots: bool = False,
         tune_cv_results=None,
@@ -393,16 +393,16 @@ class _TabularExperiment(_PyCaretExperiment):
                 input_example = self.data.iloc[0].to_dict()
 
             # log model as sklearn flavor
-            prep_pipe_temp = deepcopy(_prep_pipe)
-            prep_pipe_temp.steps.append(["trained_model", model])
+            _internal_pipeline_temp = deepcopy(_internal_pipeline)
+            _internal_pipeline_temp.steps.append(["trained_model", model])
             mlflow.sklearn.log_model(
-                prep_pipe_temp,
+                _internal_pipeline_temp,
                 "model",
                 conda_env=default_conda_env,
                 signature=signature,
                 input_example=input_example,
             )
-            del prep_pipe_temp
+            del _internal_pipeline_temp
         gc.collect()
 
     def setup(
@@ -1492,7 +1492,7 @@ class _TabularExperiment(_PyCaretExperiment):
         )
         self.logger.info(f"self.display_container: {len(self.display_container)}")
 
-        self.logger.info(str(self.prep_pipe))
+        self.logger.info(str(self._internal_pipeline))
         self.logger.info(
             "setup() successfully completed......................................"
         )
