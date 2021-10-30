@@ -240,37 +240,37 @@ class _SupervisedExperiment(_TabularExperiment):
             mlflow.set_tag("Run Time", runtime)
             mlflow.set_tag("Run ID", RunID)
 
-                # Log the transformation pipeline
-                self.logger.info(
-                    "SubProcess save_model() called =================================="
-                )
-                self.save_model(
-                    self._internal_pipeline, "Transformation Pipeline", verbose=False
-                )
-                self.logger.info(
-                    "SubProcess save_model() end =================================="
-                )
-                mlflow.log_artifact("Transformation Pipeline.pkl")
-                os.remove("Transformation Pipeline.pkl")
+            # Log the transformation pipeline
+            self.logger.info(
+                "SubProcess save_model() called =================================="
+            )
+            self.save_model(
+                self._internal_pipeline, "Transformation Pipeline", verbose=False
+            )
+            self.logger.info(
+                "SubProcess save_model() end =================================="
+            )
+            mlflow.log_artifact("Transformation Pipeline.pkl")
+            os.remove("Transformation Pipeline.pkl")
 
             # Log pandas profile
             if log_profile:
                 import pandas_profiling
 
-                    pf = pandas_profiling.ProfileReport(self.data, **profile_kwargs)
-                    pf.to_file("Data Profile.html")
-                    mlflow.log_artifact("Data Profile.html")
-                    os.remove("Data Profile.html")
-                    display.display(functions_styler, clear=True)
+                pf = pandas_profiling.ProfileReport(self.data, **profile_kwargs)
+                pf.to_file("Data Profile.html")
+                mlflow.log_artifact("Data Profile.html")
+                os.remove("Data Profile.html")
+                display.display(functions_styler, clear=True)
 
-                # Log training and testing set
-                if log_data:
-                    self.X_train.join(self.y_train).to_csv("Train.csv")
-                    self.X_test.join(self.y_test).to_csv("Test.csv")
-                    mlflow.log_artifact("Train.csv")
-                    mlflow.log_artifact("Test.csv")
-                    os.remove("Train.csv")
-                    os.remove("Test.csv")
+            # Log training and testing set
+            if log_data:
+                self.X_train.join(self.y_train).to_csv("Train.csv")
+                self.X_test.join(self.y_test).to_csv("Test.csv")
+                mlflow.log_artifact("Train.csv")
+                mlflow.log_artifact("Test.csv")
+                os.remove("Train.csv")
+                os.remove("Test.csv")
 
     def compare_models(
         self,

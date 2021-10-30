@@ -247,18 +247,18 @@ class _UnsupervisedExperiment(_TabularExperiment):
             mlflow.set_tag("Run Time", runtime)
             mlflow.set_tag("Run ID", RunID)
 
-                # Log the transformation pipeline
-                self.logger.info(
-                    "SubProcess save_model() called =================================="
-                )
-                self.save_model(
-                    self._internal_pipeline, "Transformation Pipeline", verbose=False
-                )
-                self.logger.info(
-                    "SubProcess save_model() end =================================="
-                )
-                mlflow.log_artifact("Transformation Pipeline.pkl")
-                os.remove("Transformation Pipeline.pkl")
+            # Log the transformation pipeline
+            self.logger.info(
+                "SubProcess save_model() called =================================="
+            )
+            self.save_model(
+                self._internal_pipeline, "Transformation Pipeline", verbose=False
+            )
+            self.logger.info(
+                "SubProcess save_model() end =================================="
+            )
+            mlflow.log_artifact("Transformation Pipeline.pkl")
+            os.remove("Transformation Pipeline.pkl")
 
             # Log pandas profile
             if log_profile:

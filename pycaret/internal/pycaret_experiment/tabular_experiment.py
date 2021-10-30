@@ -722,24 +722,16 @@ class _TabularExperiment(_PyCaretExperiment):
                     temporal_train_test_split,
                 )  # sktime is an optional dependency
 
-                (
-                    train_data,
-                    test_data,
-                    self.X_train,
-                    self.X_test,
-                ) = temporal_train_test_split(
-                    y=self.y,
+                X_train, X_test, y_train, y_test = temporal_train_test_split(
                     X=self.X,
+                    y=self.y,
                     fh=fh,  # if fh is provided it splits by it
                 )
 
-                train_data, test_data = (
-                    pd.DataFrame(train_data),
-                    pd.DataFrame(test_data),
-                )
+                y_train, y_test = pd.DataFrame(y_train), pd.DataFrame(y_test)
 
-                self.y_train = train_data
-                self.y_test = test_data
+                self.data = pd.concat([X_train, X_test]).reset_index(drop=True)
+                self.idx = [len(X_train), len(X_test)]
 
             else:
                 train, test = train_test_split(
@@ -756,7 +748,7 @@ class _TabularExperiment(_PyCaretExperiment):
 
         else:  # test_data is provided
             self.data = pd.concat([data, test_data]).reset_index(drop=True)
-            self.idx = [len(self.data), len(test_data)]
+            self.idx = [len(data), len(test_data)]
 
         # Preprocessing ============================================ >>
 
