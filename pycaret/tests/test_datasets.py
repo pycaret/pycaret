@@ -9,13 +9,13 @@ def test():
     #### Load Local File ####
     #########################
 
-    # loading dataset
-    os.chdir(os.path.dirname(os.path.realpath(__file__)))
-    data = get_data("test_files/dummy_dataset")
-    assert isinstance(data, pd.DataFrame)
-    rows, cols = data.shape
-    assert rows >= 1
-    assert cols >= 1
+    # # loading dataset
+    # os.chdir(os.path.dirname(os.path.realpath(__file__)))
+    # data = get_data("test_files/dummy_dataset")
+    # assert isinstance(data, pd.DataFrame)
+    # rows, cols = data.shape
+    # assert rows >= 1
+    # assert cols >= 1
 
     ##############################
     #### GitHub Common folder ####
