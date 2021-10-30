@@ -1,5 +1,6 @@
 import os
 import pandas as pd
+import pytest
 from pycaret.datasets import get_data
 
 
@@ -63,6 +64,16 @@ def test():
     assert isinstance(data, pd.Series)
     rows = len(data)
     assert rows >= 1
+
+    ###########################
+    #### Incorrect dataset ####
+    ###########################
+
+    with pytest.raises(ValueError) as errmsg:
+        _ = get_data("wrong")
+
+    exceptionmsg = errmsg.value.args[0]
+    assert exceptionmsg == f"Data could not be read. Please check your inputs..."
 
 
 if __name__ == "__main__":
