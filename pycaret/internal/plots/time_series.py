@@ -28,12 +28,10 @@ def plot_(
     predictions: Optional[pd.Series] = None,
     cv: Optional[Union[ExpandingWindowSplitter, SlidingWindowSplitter]] = None,
     model_name: Optional[str] = None,
-    return_data: bool = False,
-    show: bool = True,
     return_pred_int: bool = False,
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
-) -> Optional[Any]:
+) -> Any:
 
     if data_kwargs is None:
         data_kwargs = {}
@@ -41,129 +39,98 @@ def plot_(
         fig_kwargs = {}
 
     if plot == "ts":
-        plot_data = plot_series(
-            data=data,
-            return_data=return_data,
-            show=show,
-            data_kwargs=data_kwargs,
-            fig_kwargs=fig_kwargs,
+        fig, plot_data = plot_series(
+            data=data, data_kwargs=data_kwargs, fig_kwargs=fig_kwargs,
         )
     elif plot == "train_test_split":
-        plot_data = plot_splits_train_test_split(
-            train=train,
-            test=test,
-            return_data=return_data,
-            show=show,
-            data_kwargs=data_kwargs,
-            fig_kwargs=fig_kwargs,
+        fig, plot_data = plot_splits_train_test_split(
+            train=train, test=test, data_kwargs=data_kwargs, fig_kwargs=fig_kwargs,
         )
 
     elif plot == "cv":
-        plot_data = plot_cv(
-            data=data,
-            cv=cv,
-            return_data=return_data,
-            show=show,
-            data_kwargs=data_kwargs,
-            fig_kwargs=fig_kwargs,
+        fig, plot_data = plot_cv(
+            data=data, cv=cv, data_kwargs=data_kwargs, fig_kwargs=fig_kwargs,
         )
 
     elif plot == "decomp_classical":
-        plot_data = plot_time_series_decomposition(
+        fig, plot_data = plot_time_series_decomposition(
             data=data,
             model_name=model_name,
             plot="decomp_classical",
-            return_data=return_data,
-            show=show,
             data_kwargs=data_kwargs,
             fig_kwargs=fig_kwargs,
         )
 
     elif plot == "decomp_stl":
-        plot_data = plot_time_series_decomposition(
+        fig, plot_data = plot_time_series_decomposition(
             data=data,
             model_name=model_name,
             plot="decomp_stl",
-            return_data=return_data,
-            show=show,
             data_kwargs=data_kwargs,
             fig_kwargs=fig_kwargs,
         )
 
     elif plot == "acf":
-        plot_data = plot_acf(
+        fig, plot_data = plot_acf(
             data=data,
             model_name=model_name,
-            return_data=return_data,
-            show=show,
             data_kwargs=data_kwargs,
             fig_kwargs=fig_kwargs,
         )
     elif plot == "pacf":
-        plot_data = plot_pacf(
+        fig, plot_data = plot_pacf(
             data=data,
             model_name=model_name,
-            return_data=return_data,
-            show=show,
             data_kwargs=data_kwargs,
             fig_kwargs=fig_kwargs,
         )
     elif plot == "diagnostics":
-        plot_data = plot_diagnostics(
+        fig, plot_data = plot_diagnostics(
             data=data,
             model_name=model_name,
-            return_data=return_data,
-            show=show,
             data_kwargs=data_kwargs,
             fig_kwargs=fig_kwargs,
         )
     elif plot == "residuals":
-        plot_data = plot_series(
+        fig, plot_data = plot_series(
             data=data,
             model_name=model_name,
-            return_data=return_data,
-            show=show,
             data_kwargs=data_kwargs,
             fig_kwargs=fig_kwargs,
         )
     elif plot == "forecast":
         if return_pred_int:
-            plot_data = plot_predictions_with_confidence(
+            fig, plot_data = plot_predictions_with_confidence(
                 data=data,
                 predictions=predictions["y_pred"],
                 upper_interval=predictions["upper"],
                 lower_interval=predictions["lower"],
                 model_name=model_name,
-                return_data=False,
-                show=True,
                 data_kwargs=data_kwargs,
                 fig_kwargs=fig_kwargs,
             )
         else:
-            plot_data = plot_predictions(
+            fig, plot_data = plot_predictions(
                 data=data,
                 predictions=predictions,
                 model_name=model_name,
-                return_data=return_data,
-                show=show,
                 data_kwargs=data_kwargs,
                 fig_kwargs=fig_kwargs,
             )
     else:
         raise ValueError(f"Plot: '{plot}' is not supported.")
 
-    return plot_data if return_data else None
+    return fig, plot_data
 
 
 def plot_series(
     data: pd.Series,
     model_name: Optional[str] = None,
-    return_data: bool = False,
-    show: bool = True,
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
 ):
     """Plots the original time series"""
+    fig, return_data_dict = None, None
 
     if data_kwargs is None:
         data_kwargs = {}
@@ -211,24 +178,22 @@ def plot_series(
             autosize=False, width=fig_size[0], height=fig_size[1],
         )
 
-    if show:
-        fig.show()
+    return_data_dict = {
+        "data": data,
+    }
 
-    if return_data:
-        return fig, data
-    else:
-        return fig
+    return fig, return_data_dict
 
 
 def plot_splits_train_test_split(
     train: pd.Series,
     test: pd.Series,
-    return_data: bool = False,
-    show: bool = True,
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
 ):
     """Plots the train-test split for the time serirs"""
+    fig, return_data_dict = None, None
+
     if data_kwargs is None:
         data_kwargs = {}
     if fig_kwargs is None:
@@ -272,24 +237,24 @@ def plot_splits_train_test_split(
         fig.update_layout(
             autosize=False, width=fig_size[0], height=fig_size[1],
         )
-    if show:
-        fig.show()
 
-    if return_data:
-        return fig, (train, test)
-    else:
-        return fig
+    return_data_dict = {
+        "train": train,
+        "test": test,
+    }
+
+    return fig, return_data_dict
 
 
 def plot_cv(
     data: pd.Series,
     cv,
-    return_data: bool = False,
-    show: bool = True,
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
 ):
     """Plots the cv splits used on the training split"""
+    fig, return_data_dict = None, None
+
     if data_kwargs is None:
         data_kwargs = {}
     if fig_kwargs is None:
@@ -375,24 +340,23 @@ def plot_cv(
 
     train_windows, test_windows = get_windows(data, cv)
     fig = plot_windows(data, train_windows, test_windows)
-    if show:
-        fig.show()
 
-    if return_data:
-        return fig, data
-    else:
-        return fig
+    return_data_dict = {
+        "data": data,
+    }
+
+    return fig, return_data_dict
 
 
 def plot_acf(
     data: pd.Series,
     model_name: Optional[str] = None,
-    return_data: bool = False,
-    show: bool = True,
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
 ):
     """Plots the ACF on the data provided"""
+    fig, return_data_dict = None, None
+
     if data_kwargs is None:
         data_kwargs = {}
     if fig_kwargs is None:
@@ -468,25 +432,23 @@ def plot_acf(
             autosize=False, width=fig_size[0], height=fig_size[1],
         )
     fig.update_layout(title=title)
-    if show:
-        fig.show()
 
-    if return_data:
-        # Return `plotly Figure` object and the ACF values
-        return fig, corr_array[0]
-    else:
-        return fig
+    return_data_dict = {
+        "acf": corr_array[0],
+    }
+
+    return fig, return_data_dict
 
 
 def plot_pacf(
     data: pd.Series,
     model_name: Optional[str] = None,
-    return_data: bool = False,
-    show: bool = True,
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
 ):
     """Plots the PACF on the data provided"""
+    fig, return_data_dict = None, None
+
     if data_kwargs is None:
         data_kwargs = {}
     if fig_kwargs is None:
@@ -563,26 +525,24 @@ def plot_pacf(
         )
 
     fig.update_layout(title=title)
-    if show:
-        fig.show()
 
-    if return_data:
-        # Return `plotly Figure` object and the PACF values
-        return fig, corr_array[0]
-    else:
-        return fig
+    return_data_dict = {
+        "pacf": corr_array[0],
+    }
+
+    return fig, return_data_dict
 
 
 def plot_predictions(
     data: pd.Series,
     predictions: pd.Series,
     model_name: Optional[str] = None,
-    return_data: bool = False,
-    show: bool = True,
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
 ):
     """Plots the original data and the predictions provided"""
+    fig, return_data_dict = None, None
+
     if data_kwargs is None:
         data_kwargs = {}
     if fig_kwargs is None:
@@ -639,24 +599,24 @@ def plot_predictions(
             autosize=False, width=fig_size[0], height=fig_size[1],
         )
     fig.update_layout(showlegend=True)
-    if show:
-        fig.show()
 
-    if return_data:
-        return fig, data, predictions
-    else:
-        return fig
+    return_data_dict = {
+        "data": data,
+        "predictions": predictions,
+    }
+
+    return fig, return_data_dict
 
 
 def plot_diagnostics(
     data: pd.Series,
     model_name: Optional[str] = None,
-    return_data: bool = False,
-    show: bool = True,
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
 ):
     """Plots the diagnostic data such as ACF, Histogram, QQ plot on the data provided"""
+    fig, return_data_dict = None, None
+
     if data_kwargs is None:
         data_kwargs = {}
     if fig_kwargs is None:
@@ -817,13 +777,12 @@ def plot_diagnostics(
     dist_plot(fig)
     plot_acf(fig)
     time_plot(fig)
-    if show:
-        fig.show()
 
-    if return_data:
-        return fig, data
-    else:
-        return fig
+    return_data_dict = {
+        "data": data,
+    }
+
+    return fig, return_data_dict
 
 
 def plot_predictions_with_confidence(
@@ -832,12 +791,12 @@ def plot_predictions_with_confidence(
     upper_interval: pd.Series,
     lower_interval: pd.Series,
     model_name: Optional[str] = None,
-    return_data: bool = False,
-    show: bool = True,
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
 ):
     """Plots the original data and the predictions provided with confidence"""
+    fig, return_data_dict = None, None
+
     if data_kwargs is None:
         data_kwargs = {}
     if fig_kwargs is None:
@@ -926,31 +885,32 @@ def plot_predictions_with_confidence(
             autosize=False, width=fig_size[0], height=fig_size[1],
         )
 
-    if show:
-        fig.show()
+    return_data_dict = {
+        "data": data,
+        "predictions": predictions,
+        "upper_interval": upper_interval,
+        "lower_interval": lower_interval,
+    }
 
-    if return_data:
-        return fig, data, predictions, upper_interval, lower_interval
-    else:
-        return fig
+    return fig, return_data_dict
 
 
 def plot_time_series_decomposition(
     data: pd.Series,
     model_name: Optional[str] = None,
     plot: str = "decomp_classical",
-    return_data: bool = False,
-    show: bool = True,
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
 ):
+    fig, return_data_dict = None, None
+
     if not isinstance(data.index, (pd.PeriodIndex, pd.DatetimeIndex)):
         print(
             "Decomposition is currently not supported for pandas dataframes "
             "without a PeriodIndex or DatetimeIndex. Please specify a PeriodIndex "
             "or DatetimeIndex in setup() before plotting decomposition plots."
         )
-        return
+        return fig, return_data_dict
 
     if data_kwargs is None:
         data_kwargs = {}
@@ -1051,10 +1011,12 @@ def plot_time_series_decomposition(
             autosize=False, width=fig_size[0], height=fig_size[1],
         )
 
-    if show:
-        fig.show()
+    return_data_dict = {
+        "data": data,
+        "seasonal": decomp_result.seasonal,
+        "trend": decomp_result.trend,
+        "resid": decomp_result.resid,
+    }
 
-    if return_data:
-        return fig, data
-    else:
-        return fig
+    return fig, return_data_dict
+
