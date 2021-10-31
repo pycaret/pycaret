@@ -21,6 +21,9 @@ from .time_series_test_utils import (
     _return_data_with_without_period_index,
     _return_data_big_small,
     _ALL_METRICS,
+    _ALL_PLOTS_DATA,
+    _ALL_PLOTS_ESTIMATOR,
+    _ALL_PLOTS_ESTIMATOR_NOT_DATA,
     _ALL_STATS_TESTS,
 )
 
@@ -272,8 +275,55 @@ def test_check_stats_alpha(load_pos_and_neg_data):
 
 
 @pytest.mark.parametrize("data", _data_with_without_period_index)
-def test_plot_model(data):
-    """Tests the plot_model functionality
+@pytest.mark.parametrize("plot", _ALL_PLOTS_DATA)
+def test_plot_model_data(data, plot):
+    """Tests the plot_model functionality on original dataset
+    NOTE: Want to show multiplicative plot here so can not take data with negative values
+    """
+    exp = TimeSeriesExperiment()
+    fh = np.arange(1, 13)
+    fold = 2
+    sp = 1 if isinstance(data.index, pd.RangeIndex) else None
+
+    ######################
+    #### OOP Approach ####
+    ######################
+
+    exp.setup(
+        data=data,
+        fh=fh,
+        fold=fold,
+        fold_strategy="sliding",
+        verbose=False,
+        session_id=42,
+        seasonal_period=sp,
+    )
+
+    exp.plot_model(plot=plot, system=False)
+
+    ########################
+    #### Functional API ####
+    ########################
+    from pycaret.time_series import setup, plot_model
+
+    os.environ["PYCARET_TESTING"] = "1"
+
+    _ = setup(
+        data=data,
+        fh=fh,
+        fold=fold,
+        fold_strategy="expanding",
+        session_id=42,
+        n_jobs=-1,
+        seasonal_period=sp,
+    )
+    plot_model(plot=plot)
+
+
+@pytest.mark.parametrize("data", _data_with_without_period_index)
+@pytest.mark.parametrize("plot", _ALL_PLOTS_ESTIMATOR)
+def test_plot_model_estimator(data, plot):
+    """Tests the plot_model functionality on estimators
     NOTE: Want to show multiplicative plot here so can not take data with negative values
     """
     exp = TimeSeriesExperiment()
@@ -298,35 +348,14 @@ def test_plot_model(data):
     )
 
     model = exp.create_model("naive")
-
-    print("\n\n==== ON DATA (using OOP) ====")
-    exp.plot_model(system=False)
-    exp.plot_model(plot="ts", system=False)
-    exp.plot_model(plot="train_test_split", system=False)
-    exp.plot_model(plot="cv", system=False)
-    exp.plot_model(plot="acf", system=False)
-    exp.plot_model(plot="pacf", system=False)
-    exp.plot_model(plot="diagnostics", system=False)
-    exp.plot_model(plot="decomp_classical", system=False)
-    exp.plot_model(plot="decomp_stl", system=False)
-
-    print("\n\n==== ON ESTIMATOR (using OOP) ====")
-    exp.plot_model(estimator=model, system=False)
-    exp.plot_model(estimator=model, plot="ts", system=False)
-    exp.plot_model(estimator=model, plot="train_test_split", system=False)
-    exp.plot_model(estimator=model, plot="cv", system=False)
-    exp.plot_model(estimator=model, plot="acf", system=False)
-    exp.plot_model(estimator=model, plot="pacf", system=False)
-    exp.plot_model(estimator=model, plot="diagnostics", system=False)
-    exp.plot_model(estimator=model, plot="decomp_classical", system=False)
-    exp.plot_model(estimator=model, plot="decomp_stl", system=False)
-    exp.plot_model(estimator=model, plot="forecast", system=False)
-    exp.plot_model(estimator=model, plot="residuals", system=False)
+    exp.plot_model(estimator=model, plot=plot, system=False)
 
     ########################
     #### Functional API ####
     ########################
     from pycaret.time_series import setup, create_model, plot_model
+
+    os.environ["PYCARET_TESTING"] = "1"
 
     _ = setup(
         data=data,
@@ -338,32 +367,67 @@ def test_plot_model(data):
         seasonal_period=sp,
     )
     model = create_model("naive")
+    plot_model(estimator=model, plot=plot)
 
-    os.environ["PYCARET_TESTING"] = "1"
 
-    print("\n\n==== ON DATA (using Functional API) ====")
-    plot_model()
-    plot_model(plot="ts")
-    plot_model(plot="train_test_split")
-    plot_model(plot="cv")
-    plot_model(plot="acf")
-    plot_model(plot="pacf")
-    plot_model(plot="diagnostics")
-    plot_model(plot="decomp_classical")
-    plot_model(plot="decomp_stl")
+@pytest.mark.parametrize("plot", _ALL_PLOTS_ESTIMATOR_NOT_DATA)
+def test_plot_model_data_raises(load_pos_and_neg_data, plot):
+    """Tests the plot_model functionality when it raises an exception
+    """
+    exp = TimeSeriesExperiment()
+    fh = np.arange(1, 13)
+    fold = 2
 
-    print("\n\n==== ON ESTIMATOR (using Functional API) ====")
-    plot_model(estimator=model)
-    plot_model(estimator=model, plot="ts")
-    plot_model(estimator=model, plot="train_test_split")
-    plot_model(estimator=model, plot="cv")
-    plot_model(estimator=model, plot="acf")
-    plot_model(estimator=model, plot="pacf")
-    plot_model(estimator=model, plot="diagnostics")
-    plot_model(estimator=model, plot="decomp_classical")
-    plot_model(estimator=model, plot="decomp_stl")
-    plot_model(estimator=model, plot="forecast")
-    plot_model(estimator=model, plot="residuals")
+    ######################
+    #### OOP Approach ####
+    ######################
+
+    exp.setup(
+        data=load_pos_and_neg_data,
+        fh=fh,
+        fold=fold,
+        fold_strategy="sliding",
+        verbose=False,
+        session_id=42,
+    )
+
+    with pytest.raises(ValueError) as errmsg:
+        # Some code that produces a value error
+        exp.plot_model(plot=plot, system=False)
+
+    # Capture Error message
+    exceptionmsg = errmsg.value.args[0]
+
+    # Check exact error received
+    assert (
+        f"Plot type '{plot}' is not supported when estimator is not provided"
+        in exceptionmsg
+    )
+
+
+@pytest.mark.parametrize("data", _data_with_without_period_index)
+def test_plot_model_customization(data):
+    """Tests the customization of plot_model
+    NOTE: Want to show multiplicative plot here so can not take data with negative values
+    """
+    exp = TimeSeriesExperiment()
+
+    fh = np.arange(1, 13)
+    fold = 2
+
+    sp = 1 if isinstance(data.index, pd.RangeIndex) else None
+
+    exp.setup(
+        data=data,
+        fh=fh,
+        fold=fold,
+        fold_strategy="sliding",
+        verbose=False,
+        session_id=42,
+        seasonal_period=sp,
+    )
+
+    model = exp.create_model("naive")
 
     #######################
     #### Customization ####

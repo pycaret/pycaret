@@ -635,6 +635,30 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             "residuals": "Residuals Plot",
         }
 
+        self._available_plots_data_keys = [
+            "ts",
+            "train_test_split",
+            "cv",
+            "acf",
+            "pacf",
+            "decomp_classical",
+            "decomp_stl",
+            "diagnostics",
+        ]
+
+        self._available_plots_estimator_keys = [
+            "ts",
+            "train_test_split",
+            "cv",
+            "acf",
+            "pacf",
+            "decomp_classical",
+            "decomp_stl",
+            "diagnostics",
+            "forecast",
+            "residuals",
+        ]
+
     def _get_setup_display(self, **kwargs) -> Styler:
         # define highlight function for function grid to display
 
