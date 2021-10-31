@@ -877,8 +877,6 @@ def plot_predictions_with_confidence(
         mode="lines+markers",
         line=dict(color="#1f77b4"),
         marker=dict(size=5,),
-        fillcolor="#68BBE3",
-        fill="tonexty",
         showlegend=True,
     )
 
@@ -911,8 +909,7 @@ def plot_predictions_with_confidence(
         showlegend=False,  # Not outputting since we need only 1 legend for interval
     )
 
-    data = [lower_bound, mean, upper_bound, original]
-
+    data = [mean, lower_bound, upper_bound, original]
     layout = go.Layout(
         yaxis=dict(title="Values"), xaxis=dict(title="Time"), title=title,
     )
