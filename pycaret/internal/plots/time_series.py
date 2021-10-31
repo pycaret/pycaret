@@ -982,6 +982,7 @@ def plot_time_series_decomposition(
         cols=1,
         row_heights=[0.25, 0.25, 0.25, 0.25,],
         row_titles=["Actual", "Seasonal", "Trend", "Residual"],
+        shared_xaxes=True,
     )
 
     x = (
