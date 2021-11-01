@@ -2355,7 +2355,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         fig_kwargs: Optional[Dict] = None,
         system: bool = True,
         save: Union[str, bool] = False,
-    ) -> Tuple[Any]:
+    ) -> Tuple[str, Any]:
 
         """
         This function analyzes the performance of a trained model on holdout set.
