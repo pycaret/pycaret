@@ -882,7 +882,7 @@ def plot_model(
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
     save: Union[str, bool] = False,
-) -> Tuple[Any]:
+) -> Tuple[str, Any]:
 
     """
     This function analyzes the performance of a trained model on holdout set.
