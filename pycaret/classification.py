@@ -572,8 +572,7 @@ def setup(
         "lift": "Lift Chart",
         "gain": "Gain Chart",
         "tree": "Decision Tree",
-        "ks" : "KS Statistic Plot",
-        "miss_classified":"miss_classified"
+        "ks" : "KS Statistic Plot"
     }
 
     if log_plots == True:
@@ -1435,10 +1434,7 @@ def plot_model(
     groups: Optional[Union[str, Any]] = None,
     use_train_data: bool = False,
     verbose: bool = True,
-    display_format: Optional[str] = None,   
-    predition_df=None,
-    target_column: Optional[str]  =None,
-    categorical_limit:Optional[Union[int, Any]]=20
+    display_format: Optional[str] = None,
 ) -> str:
 
     """
@@ -1467,7 +1463,6 @@ def plot_model(
         * 'pr' - Precision Recall Curve
         * 'confusion_matrix' - Confusion Matrix
         * 'error' - Class Prediction Error
-        * 'miss_classified' - Number of Miss Classified By Categorical Features Value
         * 'class_report' - Classification Report
         * 'boundary' - Decision Boundary
         * 'rfe' - Recursive Feature Selection
@@ -1524,25 +1519,10 @@ def plot_model(
         To display plots in Streamlit (https://www.streamlit.io/), set this to 'streamlit'.
         Currently, not all plots are supported.
 
-    predition_df= dataframe, default = None
-        To have  plot='miss_classified', It is needed to pass prediction dataframe to predition_df 
-        
-    target_column: str, default =None
-        To have  plot='miss_classified', It is needed to set target column name
-        
-    categorical_limit:int, default =20
-        To have  plot='miss_classified', It is needed to set number of categorical values per each feature
-    
-    Returns:
-    --------
-    Visual_Plot
-        Prints the visual plot.
-        
-    str:
-        If save param is True, will return the name of the saved file.
 
-    DataFrame:
-        if plot='miss_classified' it will return Miss-Classified DataFrame       
+    Returns:
+        None
+        
 
     Warnings
     --------
@@ -1569,9 +1549,6 @@ def plot_model(
         use_train_data=use_train_data,
         system=True,
         display_format=display_format,
-        predition_df=pred_df,
-        target_column =target,
-        categorical_limit=categorical_limit
     )
 
 
