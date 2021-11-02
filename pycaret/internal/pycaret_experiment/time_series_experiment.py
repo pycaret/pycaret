@@ -1,4 +1,5 @@
 from copy import deepcopy
+import os
 
 from sktime.forecasting.model_selection import (
     ExpandingWindowSplitter,
@@ -621,6 +622,42 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 "enforce_pi",
             }
         )
+        self._available_plots = {
+            "ts": "Time Series Plot",
+            "train_test_split": "Train Test Split",
+            "cv": "Cross Validation",
+            "acf": "Auto Correlation (ACF)",
+            "pacf": "Partial Auto Correlation (PACF)",
+            "decomp_classical": "Decomposition Classical",
+            "decomp_stl": "Decomposition STL",
+            "diagnostics": "Diagnostics Plot",
+            "forecast": "Forecast Plot",
+            "residuals": "Residuals Plot",
+        }
+
+        self._available_plots_data_keys = [
+            "ts",
+            "train_test_split",
+            "cv",
+            "acf",
+            "pacf",
+            "decomp_classical",
+            "decomp_stl",
+            "diagnostics",
+        ]
+
+        self._available_plots_estimator_keys = [
+            "ts",
+            "train_test_split",
+            "cv",
+            "acf",
+            "pacf",
+            "decomp_classical",
+            "decomp_stl",
+            "diagnostics",
+            "forecast",
+            "residuals",
+        ]
 
     def _get_setup_display(self, **kwargs) -> Styler:
         # define highlight function for function grid to display
@@ -696,6 +733,9 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         return pycaret.containers.metrics.time_series.get_all_metric_containers(
             self.variables, raise_errors=raise_errors
         )
+
+    def _get_default_plots_to_log(self) -> List[str]:
+        return ["forecast", "residuals", "diagnostics"]
 
     def check_fh(self, fh: Union[List[int], int, np.array]) -> np.array:
         """
@@ -2309,12 +2349,13 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         estimator: Optional[Any] = None,
         plot: Optional[str] = None,
         return_data: bool = False,
+        verbose: bool = False,
         display_format: Optional[str] = None,
         data_kwargs: Optional[Dict] = None,
         fig_kwargs: Optional[Dict] = None,
         system: bool = True,
         save: Union[str, bool] = False,
-    ) -> str:
+    ) -> Tuple[str, Any]:
 
         """
         This function analyzes the performance of a trained model on holdout set.
@@ -2340,8 +2381,8 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
 
         plot: str, default = None
-            Default is 'ts' when estimator is None, When estimator is not None, 
-            default is changed to 'forecast'. List of available plots (ID - Name): 
+            Default is 'ts' when estimator is None, When estimator is not None,
+            default is changed to 'forecast'. List of available plots (ID - Name):
 
             * 'ts' - Time Series Plot
             * 'train_test_split' - Train Test Split
@@ -2357,6 +2398,10 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         return_data: bool, default = False
             When set to True, it returns the data for plotting.
+
+
+        verbose: bool, default = True
+            Unused for now
 
 
         display_format: str, default = None
@@ -2493,7 +2538,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                     f"Plot type '{plot}' is not supported when estimator is provided. Available plots are: {', '.join(plots_formatted_model)}"
                 )
 
-        plot_data = plot_(
+        fig, plot_data = plot_(
             plot=plot,
             data=data,
             train=train,
@@ -2501,14 +2546,30 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             predictions=predictions,
             cv=cv,
             model_name=model_name,
-            return_data=return_data,
-            show=system,
             return_pred_int=return_pred_int,
             data_kwargs=data_kwargs,
             fig_kwargs=fig_kwargs,
         )
 
-        return plot_data
+        if system:
+            fig.show()
+
+        plot_name = self._available_plots[plot]
+        plot_filename = f"{plot_name}.html"
+
+        if save:
+            if not isinstance(save, bool):
+                plot_filename = os.path.join(save, plot_filename)
+
+            self.logger.info(f"Saving '{plot_filename}'")
+            fig.write_html(plot_filename)
+
+        self.logger.info("Visual Rendered Successfully")
+
+        if return_data:
+            return plot_filename, plot_data
+        else:
+            return plot_filename
 
     # def evaluate_model(
     #     self,
