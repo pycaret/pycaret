@@ -1,4 +1,4 @@
-![alt text](https://github.com/pycaret/pycaret/blob/master/pycaret_234.jfif)
+![alt text](https://github.com/pycaret/pycaret/blob/master/quick_start.gif)
 
 # PyCaret 2.3
 [![Python](https://img.shields.io/badge/Python-3.6%20%7C%203.7%20%7C%203.8-blue)](https://badge.fury.io/py/pycaret) 
