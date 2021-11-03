@@ -14,7 +14,7 @@
 
 </p>
 
-# PyCaret 2.3
+
 [![Python](https://img.shields.io/badge/Python-3.6%20%7C%203.7%20%7C%203.8-blue)](https://badge.fury.io/py/pycaret) 
 ![pytest on push](https://github.com/pycaret/pycaret/workflows/pytest%20on%20push/badge.svg) 
 [![Documentation Status](https://readthedocs.org/projects/pip/badge/?version=stable)](http://pip.pypa.io/en/stable/?badge=stable) 
@@ -40,7 +40,7 @@ PyCaret is a great library which not only simplifies the machine learning tasks 
 - Documentation: https://pycaret.readthedocs.io/en/latest/
 
 <div align="center">
-<img src="pycaret-features.png" alt="drawing" width="600" height="400"/>
+<img src="pycaret-features.png" alt="drawing" width="600" height="350"/>
 <div align="left">
 
 ## Current Release
