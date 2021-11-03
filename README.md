@@ -1,3 +1,19 @@
+<div align="center">
+  
+<img src="logo.png" alt="drawing" width="200"/>
+
+**An open-source, low-code machine learning library in Python.**
+  
+<p align="center">
+  <a href="https://www.pycaret.org">Official</a> •
+  <a href="https://pycaret.readthedocs.io/en/latest/index.html">Docs</a> •
+  <a href="https://pycaret.readthedocs.io/en/latest/installation.html">Install</a> •
+  <a href="https://github.com/pycaret/pycaret/tree/master/tutorials">Tutorials</a> •
+  <a href="https://pycaret.readthedocs.io/en/latest/contribute.html">Contribute</a> •
+  <a href="https://join.slack.com/t/pycaret/shared_invite/zt-row9phbm-BoJdEVPYnGf7_NxNBP307w">Slack</a>
+
+</p>
+
 # PyCaret 2.3
 [![Python](https://img.shields.io/badge/Python-3.6%20%7C%203.7%20%7C%203.8-blue)](https://badge.fury.io/py/pycaret) 
 ![pytest on push](https://github.com/pycaret/pycaret/workflows/pytest%20on%20push/badge.svg) 
@@ -9,6 +25,8 @@
 
 ![alt text](https://github.com/pycaret/pycaret/blob/master/quick_start.gif)
 
+<div align="left">
+  
 ## What is PyCaret?
 PyCaret is an open-source, low-code machine learning library in Python that automates machine learning workflows. It is an end-to-end machine learning and model management tool that speeds up the experiment cycle exponentially and makes you more productive.
 
@@ -21,7 +39,9 @@ PyCaret is a great library which not only simplifies the machine learning tasks 
 - Official Website: https://www.pycaret.org
 - Documentation: https://pycaret.readthedocs.io/en/latest/
 
-![alt text](https://github.com/pycaret/pycaret/blob/master/pycaret2-features.png)
+<div align="center">
+<img src="pycaret2-features.png" alt="drawing" width="600" height="400"/>
+<div align="left">
 
 ## Current Release
 PyCaret `2.3.4` is now available. See `2.3.4` release notes. The easiest way to install pycaret is using pip.
