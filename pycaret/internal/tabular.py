@@ -7433,10 +7433,12 @@ def plot_model(
 
         # execute the plot method
         ret = locals()[plot]()
-        if plot!='miss_classified':
+        if plot !='miss_classified':
             if ret:
                 plot_filename = ret
-
+        else:
+            return ret
+            
         try:
             plt.close()
         except:
@@ -7451,9 +7453,6 @@ def plot_model(
     if save:
         return plot_filename
 
-    if plot=='miss_classified':
-            return ret
-        
 def evaluate_model(
     estimator,
     fold: Optional[Union[int, Any]] = None,
