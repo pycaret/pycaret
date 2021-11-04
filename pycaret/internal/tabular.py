@@ -5707,6 +5707,9 @@ def plot_model(
     display: Optional[Display] = None,  # added in pycaret==2.2.0
     display_format: Optional[str] = None,
     is_in_evaluate: bool = False,
+    prediction_df=None,
+    target_column: Optional[str]  =None,
+    categorical_limit:Optional[Union[int, Any]]=20
 ) -> str:
 
     """
@@ -5740,7 +5743,8 @@ def plot_model(
         * 'threshold' - Discrimination Threshold           
         * 'pr' - Precision Recall Curve                  
         * 'confusion_matrix' - Confusion Matrix    
-        * 'error' - Class Prediction Error                
+        * 'error' - Class Prediction Error          
+        * 'miss_classified' - Number of Miss Classified By Categorical Features Value        
         * 'class_report' - Classification Report        
         * 'boundary' - Decision Boundary            
         * 'rfe' - Recursive Feature Selection                 
@@ -5787,14 +5791,26 @@ def plot_model(
     display_format: str, default = None
         To display plots in Streamlit (https://www.streamlit.io/), set this to 'streamlit'.
         Currently, not all plots are supported.
-
+        
+    prediction_df= dataframe, default = None
+        To have  plot='miss_classified', It is needed to pass prediction dataframe to prediction_df 
+        
+    target_column: str, default =None
+        To have  plot='miss_classified', It is needed to set target column name
+        
+    categorical_limit:int, default =20
+        To have  plot='miss_classified', It is needed to set number of categorical values per each feature
+        
     Returns
     -------
     Visual_Plot
         Prints the visual plot.
     str:
         If save param is True, will return the name of the saved file.
-
+        
+    DataFrame:
+        if plot='miss_classified' it will return Miss-Classified DataFrame
+        
     Warnings
     --------
     -  'svm' and 'ridge' doesn't support the predict_proba method. As such, AUC and
@@ -5806,7 +5822,16 @@ def plot_model(
     -   'calibration', 'threshold', 'manifold' and 'rfe' plots are not available for
          multiclass problems.
 
-
+    - If plot='miss_classified' it is needed to set  prediction_df, target_column variables. Example:
+     
+             >>> from pycaret.datasets import get_data
+            >>> data = get_data('credit')
+            >>> from pycaret.classification import *
+            >>> s = setup(data = data, target = 'default', session_id=123, silent=True)
+            >>> lightgbm = create_model('lightgbm')
+            >>> pred=predict_model(lightgbm,data,raw_score=True)
+            >>> miss_classified_df=plot_model(lightgbm, pred_df=pred,target='default',plot='miss_classified')
+            
     """
 
     function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
@@ -6206,7 +6231,7 @@ def plot_model(
             else:
                 return _tsne_anomaly()
 
-        def _tsne_anomaly():
+        def tsne_anomaly():
             logger.info(
                 "SubProcess assign_model() called =================================="
             )
@@ -6285,7 +6310,7 @@ def plot_model(
             logger.info("Visual Rendered Successfully")
             return plot_filename
 
-        def _tsne_clustering():
+        def tsne_clustering():
             logger.info(
                 "SubProcess assign_model() called =================================="
             )
@@ -6659,6 +6684,60 @@ def plot_model(
                 display=display,
                 display_format=display_format,
             )
+            
+        def miss_classified():   
+            if _ml_usecase == MLUsecase.CLASSIFICATION:
+                prediction_df.loc[prediction_df[target_column]!=prediction_df['Label'],'error_pred']='# Miss Classified'
+                prediction_df.loc[prediction_df[target_column]==prediction_df['Label'],'error_pred']='# Correct Classified'
+
+                col_dict={}
+                # Create Miss classification df
+                for col in prediction_df.columns:
+                    if prediction_df[col].nunique()<categorical_limit and not col in [target_column,'Label','error_pred']:
+                        col_val_list=list(prediction_df[col].unique())
+                        for val in col_val_list:
+                            _dict={}
+                            _dict=dict(prediction_df.loc[prediction_df[col]==val,'error_pred'].value_counts())
+                            _dict['Total']=len(prediction_df[prediction_df[col]==val])
+                            col_dict[col+'_'+str(val)]=_dict
+                error_df=pd.DataFrame(col_dict).T
+
+                # Add correct/miss classified ratio
+                error_df['% Correct Classified']=(100*error_df['# Correct Classified']/error_df['Total']).round(2)
+                error_df['% Miss Classified']=(100*error_df['# Miss Classified']/error_df['Total']).round(2)
+                error_df.fillna(0,inplace=True)
+                error_df = error_df.reset_index()
+                # update columns to strings in case they are numbers
+                error_df.columns = [str(c) for c in error_df.columns]  
+
+
+                # Create chart df
+                chart_data = pd.concat([
+                    error_df['index'],
+                    error_df['# Miss Classified'],
+                ], axis=1)
+
+                chart_data = chart_data.sort_values(['index'])
+                chart_data = chart_data.rename(columns={'index': 'x'})
+                chart_data = chart_data.dropna()
+                
+                #Plot df
+                import plotly.graph_objs as go
+                fig = go.Figure()
+                fig.add_trace(go.Bar(
+                    x=chart_data['# Miss Classified'],
+                    y=chart_data['x'],
+                    name='Miss Classified',
+                    orientation='h',
+                    marker=dict(
+                        color='rgba(246, 78, 139, 0.6)'#,
+                        #line=dict(color='rgba(246, 78, 139, 1.0)', width=3)
+                    )
+                ))
+                # Adoptive chart height
+                fig.update_layout(height=300+len(chart_data['x'])*14)
+                fig.show()
+                return error_df
 
         def cooks():
 
@@ -7261,7 +7340,7 @@ def plot_model(
         def feature_all():
             _feature(len(data_X.columns))
 
-        def _feature(n: int):
+        def feature(n: int):
             variables = None
             temp_model = pipeline_with_model
             if hasattr(pipeline_with_model, "steps"):
@@ -7353,7 +7432,7 @@ def plot_model(
 
         # execute the plot method
         ret = locals()[plot]()
-        if ret:
+        if len(ret):
             plot_filename = ret
 
         try:
@@ -7370,7 +7449,9 @@ def plot_model(
     if save:
         return plot_filename
 
-
+    if plot=='miss_classified':
+            return ret
+        
 def evaluate_model(
     estimator,
     fold: Optional[Union[int, Any]] = None,

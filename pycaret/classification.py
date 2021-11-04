@@ -572,7 +572,8 @@ def setup(
         "lift": "Lift Chart",
         "gain": "Gain Chart",
         "tree": "Decision Tree",
-        "ks" : "KS Statistic Plot"
+        "ks" : "KS Statistic Plot",
+        "miss_classified":"miss_classified"
     }
 
     if log_plots == True:
@@ -1434,7 +1435,10 @@ def plot_model(
     groups: Optional[Union[str, Any]] = None,
     use_train_data: bool = False,
     verbose: bool = True,
-    display_format: Optional[str] = None,
+    display_format: Optional[str] = None,   
+    prediction_df=None,
+    target_column: Optional[str]  =None,
+    categorical_limit:Optional[Union[int, Any]]=20
 ) -> str:
 
     """
@@ -1463,6 +1467,7 @@ def plot_model(
         * 'pr' - Precision Recall Curve
         * 'confusion_matrix' - Confusion Matrix
         * 'error' - Class Prediction Error
+        * 'miss_classified' - Number of Miss Classified By Categorical Features Value
         * 'class_report' - Classification Report
         * 'boundary' - Decision Boundary
         * 'rfe' - Recursive Feature Selection
@@ -1519,10 +1524,25 @@ def plot_model(
         To display plots in Streamlit (https://www.streamlit.io/), set this to 'streamlit'.
         Currently, not all plots are supported.
 
-
-    Returns:
-        None
+    prediction_df= dataframe, default = None
+        To have  plot='miss_classified', It is needed to pass prediction dataframe to prediction_df 
         
+    target_column: str, default =None
+        To have  plot='miss_classified', It is needed to set target column name
+        
+    categorical_limit:int, default =20
+        To have  plot='miss_classified', It is needed to set number of categorical values per each feature
+    
+    Returns:
+    --------
+    Visual_Plot
+        Prints the visual plot.
+        
+    str:
+        If save param is True, will return the name of the saved file.
+
+    DataFrame:
+        if plot='miss_classified' it will return Miss-Classified DataFrame       
 
     Warnings
     --------
@@ -1534,6 +1554,17 @@ def plot_model(
 
     -   When the 'max_features' parameter of a trained model object is not equal to 
         the number of samples in training set, the 'rfe' plot is not available.
+        
+     - If plot='miss_classified' it is needed to set  prediction_df, target_column variables. Example:
+     
+             >>> from pycaret.datasets import get_data
+            >>> data = get_data('credit')
+            >>> from pycaret.classification import *
+            >>> s = setup(data = data, target = 'default', session_id=123, silent=True)
+            >>> lightgbm = create_model('lightgbm')
+            >>> pred=predict_model(lightgbm,data,raw_score=True)
+            >>> miss_classified_df=plot_model(lightgbm, pred_df=pred,target='default',plot='miss_classified')
+        
 
     """
 
@@ -1549,6 +1580,9 @@ def plot_model(
         use_train_data=use_train_data,
         system=True,
         display_format=display_format,
+        prediction_df=prediction_df,
+        target_column =target_column,
+        categorical_limit=categorical_limit
     )
 
 
