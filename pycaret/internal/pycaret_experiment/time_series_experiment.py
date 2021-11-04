@@ -2427,6 +2427,18 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             None
 
         """
+        # checking display_format parameter
+        self.plot_model_check_display_format_(display_format=display_format)
+        
+        # Import required libraries ----
+        if display_format == "streamlit":
+            try:
+                import streamlit as st
+            except ImportError:
+                raise ImportError(
+                    "It appears that streamlit is not installed. Do: pip install hpbandster ConfigSpace"
+                )
+
         if data_kwargs is None:
             data_kwargs = {}
         if fig_kwargs is None:
@@ -2563,6 +2575,11 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
             self.logger.info(f"Saving '{plot_filename}'")
             fig.write_html(plot_filename)
+        elif system:
+            if display_format == "streamlit":
+                st.write(fig)
+            else:
+                fig.show()
 
         self.logger.info("Visual Rendered Successfully")
 

@@ -1860,6 +1860,14 @@ class _TabularExperiment(_PyCaretExperiment):
     def create_model(self, *args, **kwargs):
         return
 
+    @staticmethod
+    def plot_model_check_display_format_(display_format: Optional[str]):
+        """Checks if the display format is in the allowed list"""
+        plot_formats = [None, "streamlit"]
+
+        if display_format not in plot_formats:
+            raise ValueError("display_format can only be None or 'streamlit'.")
+
     def plot_model(
         self,
         estimator,
@@ -1996,11 +2004,9 @@ class _TabularExperiment(_PyCaretExperiment):
             )
 
         # checking display_format parameter
-        plot_formats = [None, "streamlit"]
+        self.plot_model_check_display_format_(display_format=display_format)
 
-        if display_format not in plot_formats:
-            raise ValueError("display_format can only be None or 'streamlit'.")
-
+        # Import required libraries ----
         if display_format == "streamlit":
             try:
                 import streamlit as st
