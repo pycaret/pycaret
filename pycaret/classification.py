@@ -1438,7 +1438,7 @@ def plot_model(
     display_format: Optional[str] = None,   
     prediction_df=None,
     target_column: Optional[str]  =None,
-    categorical_limit:Optional[Union[int, Any]]=20
+    top:Optional[Union[int, Any]]=20
 ) -> str:
 
     """
@@ -1530,8 +1530,8 @@ def plot_model(
     target_column: str, default =None
         To have  plot='miss_classified', It is needed to set target column name
         
-    categorical_limit:int, default =20
-        To have  plot='miss_classified', It is needed to set number of categorical values per each feature
+    top: int, default =20
+        Top most 'miss classified' features
     
     Returns:
     --------
@@ -1582,7 +1582,7 @@ def plot_model(
         display_format=display_format,
         prediction_df=prediction_df,
         target_column =target_column,
-        categorical_limit=categorical_limit
+        top=top
     )
 
 

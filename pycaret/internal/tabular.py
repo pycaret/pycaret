@@ -5709,7 +5709,7 @@ def plot_model(
     is_in_evaluate: bool = False,
     prediction_df=None,
     target_column: Optional[str]  =None,
-    categorical_limit:Optional[Union[int, Any]]=20
+    top:Optional[Union[int, Any]]=20
 ) -> str:
 
     """
@@ -5798,8 +5798,8 @@ def plot_model(
     target_column: str, default =None
         To have  plot='miss_classified', It is needed to set target column name
         
-    categorical_limit:int, default =20
-        To have  plot='miss_classified', It is needed to set number of categorical values per each feature
+    top: int, default =20
+        Top most 'miss classified' features
         
     Returns
     -------
@@ -6686,6 +6686,7 @@ def plot_model(
             )
             
         def miss_classified():   
+            categorical_limit = 20
             if _ml_usecase == MLUsecase.CLASSIFICATION:
                 prediction_df.loc[prediction_df[target_column]!=prediction_df['Label'],'error_pred']='# Miss Classified'
                 prediction_df.loc[prediction_df[target_column]==prediction_df['Label'],'error_pred']='# Correct Classified'
@@ -6717,7 +6718,7 @@ def plot_model(
                     error_df['# Miss Classified'],
                 ], axis=1)
 
-                chart_data = chart_data.sort_values(['index'])
+                chart_data = chart_data.sort_values(['# Miss Classified']).tail(top)
                 chart_data = chart_data.rename(columns={'index': 'x'})
                 chart_data = chart_data.dropna()
                 
