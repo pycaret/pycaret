@@ -6231,7 +6231,7 @@ def plot_model(
             else:
                 return _tsne_anomaly()
 
-        def tsne_anomaly():
+        def _tsne_anomaly():
             logger.info(
                 "SubProcess assign_model() called =================================="
             )
@@ -6310,7 +6310,7 @@ def plot_model(
             logger.info("Visual Rendered Successfully")
             return plot_filename
 
-        def tsne_clustering():
+        def _tsne_clustering():
             logger.info(
                 "SubProcess assign_model() called =================================="
             )
@@ -7334,7 +7334,7 @@ def plot_model(
                 display_format=display_format,
             )
 
-        def feature():
+        def _feature():
             _feature(10)
 
         def feature_all():
