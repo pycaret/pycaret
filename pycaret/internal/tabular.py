@@ -7334,13 +7334,13 @@ def plot_model(
                 display_format=display_format,
             )
 
-        def _feature():
+        def feature():
             _feature(10)
 
         def feature_all():
             _feature(len(data_X.columns))
 
-        def feature(n: int):
+        def _feature(n: int):
             variables = None
             temp_model = pipeline_with_model
             if hasattr(pipeline_with_model, "steps"):
