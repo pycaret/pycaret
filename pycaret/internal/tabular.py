@@ -7433,8 +7433,9 @@ def plot_model(
 
         # execute the plot method
         ret = locals()[plot]()
-        if len(ret):
-            plot_filename = ret
+        if plot!='miss_classified':
+            if ret:
+                plot_filename = ret
 
         try:
             plt.close()
