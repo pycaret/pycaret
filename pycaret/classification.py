@@ -1563,7 +1563,7 @@ def plot_model(
             >>> s = setup(data = data, target = 'default', session_id=123, silent=True)
             >>> lightgbm = create_model('lightgbm')
             >>> pred=predict_model(lightgbm,data,raw_score=True)
-            >>> miss_classified_df=plot_model(lightgbm, pred_df=pred,target='default',plot='miss_classified')
+            >>> miss_classified_df=plot_model(lightgbm, prediction_df=pred, target_column='default',plot='miss_classified')
         
 
     """
