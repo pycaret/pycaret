@@ -9,6 +9,7 @@
   <a href="https://pycaret.readthedocs.io/en/latest/index.html">Docs</a> •
   <a href="https://pycaret.readthedocs.io/en/latest/installation.html">Install</a> •
   <a href="https://github.com/pycaret/pycaret/tree/master/tutorials">Tutorials</a> •
+  <a href="https://github.com/pycaret/pycaret/discussions">Discussions</a> •
   <a href="https://pycaret.readthedocs.io/en/latest/contribute.html">Contribute</a> •
   <a href="https://join.slack.com/t/pycaret/shared_invite/zt-row9phbm-BoJdEVPYnGf7_NxNBP307w">Slack</a>
 
