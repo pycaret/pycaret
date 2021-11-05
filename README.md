@@ -38,20 +38,30 @@ The design and simplicity of PyCaret are inspired by the emerging role of citize
 
 ## Installation
 
+PyCaret's default installation only installs hard dependencies as listed in the [requirements.txt](requirements.txt) file. 
+
 ```python
 pip install pycaret
 ```
-
-PyCaret's default installation is a slim version of pycaret which only installs hard dependencies that are listed in `requirements.txt`. To install the full version of pycaret, use the following command:
+To install the full version:
 
 ```python
 pip install pycaret[full]
 ```
-  
-## Workflow in PyCaret
 
 <div align="center">
-<img src="simple_workflow.png" alt="drawing"/ width="550"/ >
+
+## Supervised Workflow
+  
+  Classification           |  Regression
+:-------------------------:|:-------------------------:
+![](pycaret_classification.png)  | ![](pycaret_regression.png)
+
+ ## Unsupervised Workflow
+  
+  Clustering               |  Anomaly Detection
+:-------------------------:|:-------------------------:
+![](pycaret_clustering.png)  |  ![](pycaret_anomaly.png)  
   
 <div align="left">
 
