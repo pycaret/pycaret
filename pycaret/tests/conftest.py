@@ -7,8 +7,6 @@ from pycaret.datasets import get_data
 from pycaret.internal.pycaret_experiment import TimeSeriesExperiment
 from pycaret.containers.models.time_series import get_all_model_containers
 
-from .time_series_test_utils import _BLEND_TEST_MODELS
-
 #############################
 #### Fixtures Start Here ####
 #############################
@@ -59,6 +57,8 @@ def load_ts_models(load_setup):
     }
     ts_models = get_all_model_containers(globals_dict)
     ts_experiment = load_setup
+    from .time_series_test_utils import _BLEND_TEST_MODELS  # TODO Put it back once preprocessing supports series as X
+
     ts_estimators = [
         ts_experiment.create_model(key)
         for key in ts_models.keys()
