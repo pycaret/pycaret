@@ -2,7 +2,7 @@
   
 <img src="logo.png" alt="drawing" width="200"/>
 
-**An open-source, low-code machine learning library in Python.**
+**An open-source, low-code machine learning library in Python 🚀**
   
 <p align="center">
   <a href="https://www.pycaret.org">Official</a> •
@@ -11,6 +11,7 @@
   <a href="https://github.com/pycaret/pycaret/tree/master/tutorials">Tutorials</a> •
   <a href="https://github.com/pycaret/pycaret/discussions">Discussions</a> •
   <a href="https://pycaret.readthedocs.io/en/latest/contribute.html">Contribute</a> •
+  <a href="https://github.com/pycaret/pycaret/tree/master/resources">Resources</a> •
   <a href="https://join.slack.com/t/pycaret/shared_invite/zt-row9phbm-BoJdEVPYnGf7_NxNBP307w">Slack</a>
 
 </p>
@@ -35,17 +36,7 @@ In comparison with the other open-source machine learning libraries, PyCaret is 
 
 The design and simplicity of PyCaret are inspired by the emerging role of citizen data scientists, a term first used by Gartner. Citizen Data Scientists are power users who can perform both simple and moderately sophisticated analytical tasks that would previously have required more expertise. Seasoned data scientists are often difficult to find and expensive to hire but citizen data scientists can be an effective way to mitigate this gap and address data-related challenges in the business setting.
 
-PyCaret is a great library which not only simplifies the machine learning tasks for citizen data scientists but also helps new startups to reduce the cost of investing in a team of data scientists. Therefore, this library has not only helped the citizen data scientists but has also helped individuals who want to start exploring the field of data science, having no prior knowledge in this field. The Initial idea of PyCaret was inspired by Caret library in R.
-
-- Official Website: https://www.pycaret.org
-- Documentation: https://pycaret.readthedocs.io/en/latest/
-
-<div align="center">
-<img src="simple_workflow.png" alt="drawing"/>
-<div align="left">
-
-## Current Release
-PyCaret `2.3.4` is now available. See `2.3.4` release notes. The easiest way to install pycaret is using pip.
+## Installation
 
 ```python
 pip install pycaret
@@ -56,6 +47,14 @@ PyCaret's default installation is a slim version of pycaret which only installs 
 ```python
 pip install pycaret[full]
 ```
+  
+## Workflow in PyCaret
+
+<div align="center">
+<img src="simple_workflow.png" alt="drawing"/ width="550"/ >
+<div align="left">
+
+
 
 ## PyCaret on GPU
 PyCaret >= 2.2 provides the option to use GPU for select model training and hyperparameter tuning. There is no change in the use of the API, however, in some cases, additional libraries have to be installed as they are not installed with the default slim version or the full version. The following estimators can be trained on GPU.
@@ -84,16 +83,6 @@ cuML >= 0.15 cannot be installed on Google Colab. Instead use blazingSQL (https:
 # install pycaret on blazingSQL
 !/opt/conda-environments/rapids-stable/bin/python -m pip install --upgrade pycaret
 ```
-
-## Important Links
-- Release notes: https://github.com/pycaret/pycaret/releases
-- Docs: https://pycaret.readthedocs.io/en/latest/
-- Tutorials: https://pycaret.readthedocs.io/en/latest/tutorials.html
-- Example Notebooks: https://github.com/pycaret/pycaret/tree/master/examples
-- Other Resources: https://github.com/pycaret/pycaret/tree/master/resources
-- Issue Logs: https://github.com/pycaret/pycaret/issues
-- Contribute: https://pycaret.readthedocs.io/en/latest/contribute.html
-- Join Slack Community: https://join.slack.com/t/pycaret/shared_invite/zt-row9phbm-BoJdEVPYnGf7_NxNBP307w
 
 ## Who should use PyCaret?
 PyCaret is an open source library that anybody can use. In our view the ideal target audience of PyCaret is: <br />
