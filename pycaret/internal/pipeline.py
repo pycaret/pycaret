@@ -8,7 +8,11 @@
 
 # This pipeline is only to be used internally.
 
+from copy import deepcopy
+from typing import Union
 import imblearn.pipeline
+from joblib.memory import Memory
+import tempfile
 from sklearn.utils import _print_elapsed_time
 from sklearn.base import clone
 from sklearn.utils.metaestimators import if_delegate_has_method
@@ -392,10 +396,12 @@ class estimator_pipeline(object):
     """
 
     def __init__(self, pipeline: Pipeline, estimator):
-        self.pipeline = clone(pipeline)
+        self.pipeline = deepcopy(pipeline)
         self.estimator = estimator
 
     def __enter__(self):
+        if isinstance(self.estimator, Pipeline):
+            return self.estimator
         add_estimator_to_pipeline(self.pipeline, self.estimator)
         return self.pipeline
 
@@ -445,3 +451,16 @@ def get_pipeline_fit_kwargs(pipeline: Pipeline, fit_kwargs: dict) -> dict:
         return fit_kwargs
 
     return {f"{model_step[0]}__{k}": v for k, v in fit_kwargs.items()}
+
+
+def get_memory(memory: Union[bool, str, Memory]) -> Memory:
+    if memory is None or isinstance(memory, (str, Memory)):
+        return memory
+    if isinstance(memory, bool):
+        if not memory:
+            return None
+        if memory:
+            return Memory(tempfile.gettempdir())
+    raise TypeError(
+        f"memory must be a bool, str or joblib.Memory object, got {type(memory)}"
+    )

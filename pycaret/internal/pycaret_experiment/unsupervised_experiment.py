@@ -717,7 +717,7 @@ class _UnsupervisedExperiment(_TabularExperiment):
                     source="tune_model",
                     runtime=runtime,
                     model_fit_time=best_model_fit_time,
-                    _prep_pipe=self._internal_pipeline,
+                    _internal_pipeline=self._internal_pipeline,
                     log_plots=self.log_plots_param,
                     display=display,
                 )
@@ -1271,7 +1271,7 @@ class _UnsupervisedExperiment(_TabularExperiment):
                     source="create_model",
                     runtime=runtime,
                     model_fit_time=model_fit_time,
-                    _prep_pipe=self._internal_pipeline,
+                    _internal_pipeline=self._internal_pipeline,
                     log_plots=self.log_plots_param,
                     display=display,
                 )
