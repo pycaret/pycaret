@@ -105,8 +105,8 @@ PyCaret is an open source library that anybody can use. In our view the ideal ta
 - Data Science Students.
 - Data Science Professionals who want to build rapid prototypes.
   
-## PyCaret now available on GPU
-PyCaret >= 2.2 provides the option to use GPU for select model training and hyperparameter tuning. There is no change in the use of the API, however, in some cases, additional libraries have to be installed as they are not installed with the default slim version or the full version. The following estimators can be trained on GPU.
+## PyCaret on GPU
+With PyCaret >= 2.2, you can train models on GPU and speed up your workflow by 10x. To train models on GPU simply pass `use_gpu = True` in the setup function. There is no change in the use of the API, however, in some cases, additional libraries have to be installed as they are not installed with the default version or the full version. As of the latest release, the following models can be trained on GPU:
 
 - Extreme Gradient Boosting (requires no further installation)
 - CatBoost (requires no further installation)
