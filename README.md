@@ -113,6 +113,8 @@ With PyCaret >= 2.2, you can train models on GPU and speed up your workflow by 1
 - Light Gradient Boosting Machine requires [GPU installation](https://lightgbm.readthedocs.io/en/latest/GPU-Tutorial.html)
 - Logistic Regression, Ridge Classifier, Random Forest, K Neighbors Classifier, K Neighbors Regressor, Support Vector Machine, Linear Regression, Ridge Regression, Lasso Regression requires [cuML >= 0.15](https://github.com/rapidsai/cuml)
 
+## License
+PyCaret is completely free and open-source and licensed under the [MIT](https://github.com/pycaret/pycaret/blob/master/LICENSE) license. 
 
 ## Contributors
 <a href="https://github.com/pycaret/pycaret/graphs/contributors">
