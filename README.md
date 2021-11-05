@@ -52,9 +52,8 @@ pip install pycaret[full]
 
 <div align="center">
 <img src="simple_workflow.png" alt="drawing"/ width="550"/ >
+  
 <div align="left">
-
-
 
 ## PyCaret on GPU
 PyCaret >= 2.2 provides the option to use GPU for select model training and hyperparameter tuning. There is no change in the use of the API, however, in some cases, additional libraries have to be installed as they are not installed with the default slim version or the full version. The following estimators can be trained on GPU.
