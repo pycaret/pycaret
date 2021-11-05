@@ -35,6 +35,26 @@ In comparison with the other open-source machine learning libraries, PyCaret is 
 
 The design and simplicity of PyCaret are inspired by the emerging role of citizen data scientists, a term first used by Gartner. Citizen Data Scientists are power users who can perform both simple and moderately sophisticated analytical tasks that would previously have required more expertise. Seasoned data scientists are often difficult to find and expensive to hire but citizen data scientists can be an effective way to mitigate this gap and address data-related challenges in the business setting.
 
+| Documentation              |                                                                |
+| -------------------------- | -------------------------------------------------------------- |
+| :star: **[Tutorials]**        | New to PyCaret? Checkout our official notebooks!            |
+| :clipboard: **[Example Notebooks]** | Example notebooks created by community.               |
+| :orange_book: **[Blog]** | Tutorials and articles by contributors.                      |
+| :books: **[Documentation]**      | The detailed API docs of PyCaret                         |
+| :tv: **[Video Tutorials]**            | Our video tutorial from various events.             |
+| :loudspeaker: **[Discussions]**        | Have questions? Engage with community and contributors.|
+| :hammer_and_wrench: **[Changelog]**          | Changes and version history.                 |
+| :deciduous_tree: **[Roadmap]**          | PyCaret's software and community development plan.|
+  
+[tutorials]: https://github.com/pycaret/pycaret/tree/master/tutorials
+[Example notebooks]: https://github.com/pycaret/pycaret/tree/master/examples
+[Blog]: https://github.com/pycaret/pycaret/tree/master/resources
+[Documentation]: https://pycaret.readthedocs.io/en/latest/index.html
+[video tutorials]: https://www.youtube.com/channel/UCxA1YTYJ9BEeo50lxyI_B3g
+[Discussions]: https://github.com/pycaret/pycaret/discussions
+[changelog]: https://github.com/pycaret/pycaret/blob/master/CHANGELOG.md
+[roadmap]: https://github.com/pycaret/pycaret/issues/1756
+ 
 ## Installation
 
 PyCaret's default installation only installs hard dependencies as listed in the [requirements.txt](requirements.txt) file. 
