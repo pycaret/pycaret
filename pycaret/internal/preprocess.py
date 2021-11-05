@@ -163,7 +163,7 @@ class DataTypes_Auto_infer(BaseEstimator, TransformerMixin):
         # we canc check if somehow everything is object, we can try converting them in float
         for i in data.select_dtypes(include=["object"]).columns:
             try:
-                data[i] = data[i].astype("int64")
+                data[i] = data[i].astype("float64")
             except:
                 None
 
