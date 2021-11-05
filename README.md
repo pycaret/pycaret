@@ -16,7 +16,6 @@
 
 </p>
 
-
 [![Python](https://img.shields.io/badge/Python-3.6%20%7C%203.7%20%7C%203.8-blue)](https://badge.fury.io/py/pycaret) 
 ![pytest on push](https://github.com/pycaret/pycaret/workflows/pytest%20on%20push/badge.svg) 
 [![Documentation Status](https://readthedocs.org/projects/pip/badge/?version=stable)](http://pip.pypa.io/en/stable/?badge=stable) 
@@ -64,6 +63,22 @@ pip install pycaret[full]
 ![](pycaret_clustering.png)  |  ![](pycaret_anomaly.png)  
   
 <div align="left">
+
+## PyCaret ⚡NEW⚡ Time Series Module
+  
+PyCaret new time series module is now available in beta. Staying true to simplicity of PyCaret, it is consistent with our existing API and fully loaded with functionalities. Statistical testing, model training and selection (30+ algorithms), model analysis, automated hyperparameter tuning, experiment logging, deployment on cloud, and more. All of this with only few lines of code (just like the other modules of pycaret). If you would like to give it a try, checkout our official [quick start](https://github.com/pycaret/pycaret/blob/time_series/time_series_101.ipynb) notebook.
+  
+The module is still in beta. We are adding new functionalities every day and doing weekly pip releases. Please ensure to create a separate python environment to avoid dependency conflicts with main pycaret. The final release of this module will be merged with the main pycaret in next major release.
+  
+ ### Install Now 👇
+  
+ ```
+ pip install pycaret-ts-alpha
+ ```  
+  
+
+
+![alt text](pycaret_ts_quickdemo.gif)  
 
 ## PyCaret on GPU
 PyCaret >= 2.2 provides the option to use GPU for select model training and hyperparameter tuning. There is no change in the use of the API, however, in some cases, additional libraries have to be installed as they are not installed with the default slim version or the full version. The following estimators can be trained on GPU.
