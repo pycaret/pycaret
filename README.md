@@ -41,7 +41,7 @@ PyCaret is a great library which not only simplifies the machine learning tasks 
 - Documentation: https://pycaret.readthedocs.io/en/latest/
 
 <div align="center">
-<img src="pycaret-features.png" alt="drawing" width="600" height="350"/>
+<img src="simple_workflow.png" alt="drawing"/>
 <div align="left">
 
 ## Current Release
