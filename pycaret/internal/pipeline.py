@@ -87,9 +87,11 @@ class Pipeline(imblearn.pipeline.Pipeline):
         if filter_train_only:
             out = []
             for idx, name, trans in it:
-                if hasattr(trans, "transformer"):
+                if hasattr(trans, "transformer"):  # Is of class TransformerWrapper
                     if trans.transformer.__class__.__name__ not in train_only:
                         out.append((idx, name, trans))
+                else:
+                    out.append((idx, name, trans))
 
             return out
         else:

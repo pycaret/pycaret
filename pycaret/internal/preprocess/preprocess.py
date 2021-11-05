@@ -53,7 +53,7 @@ class TransfomerWrapper(BaseEstimator):
     def __repr__(self, N_CHAR_MAX=1400):
         return self.transformer.__repr__()
 
-    def fit(self, X, y=None, **fit_params):
+    def fit(self, X=None, y=None, **fit_params):
         args = []
         if "X" in signature(self.transformer.fit).parameters:
             if self._include is None:
@@ -69,7 +69,7 @@ class TransfomerWrapper(BaseEstimator):
         self.transformer.fit(*args, **fit_params)
         return self
 
-    def transform(self, X, y=None):
+    def transform(self, X=None, y=None):
 
         def name_cols(array, df):
             """Get the column names after a transformation.

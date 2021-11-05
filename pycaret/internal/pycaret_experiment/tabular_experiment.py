@@ -510,9 +510,6 @@ class _TabularExperiment(_PyCaretExperiment):
         self.seed = random.randint(150, 9000) if session_id is None else session_id
         np.random.seed(self.seed)
 
-        if log_plots:
-            log_plots = self._get_default_plots_to_log()
-
         # Initialization =========================================== >>
 
         runtime_start = time.time()
@@ -675,7 +672,7 @@ class _TabularExperiment(_PyCaretExperiment):
         # Standardize dataframe types to save memory
         self.data = df_shrink_dtypes(self.data)
 
-        # Features to be ignored (are not read by self.X, self.X_train, etc...)
+        # Features to be ignored (are not read by self.dataset, self.X, etc...)
         self._ign_cols = ignore_features if ignore_features else []
 
         # Ordinal features
