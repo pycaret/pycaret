@@ -898,7 +898,7 @@ class _SupervisedExperiment(_TabularExperiment):
                             source="compare_models",
                             runtime=row["runtime"],
                             model_fit_time=row["TT (Sec)"],
-                            _prep_pipe=self._internal_pipeline,
+                            _internal_pipeline=self._internal_pipeline,
                             log_plots=self.log_plots_param if full_logging else False,
                             log_holdout=full_logging,
                             URI=URI,
@@ -1467,7 +1467,7 @@ class _SupervisedExperiment(_TabularExperiment):
                     source="create_model",
                     runtime=runtime,
                     model_fit_time=model_fit_time,
-                    _prep_pipe=self._internal_pipeline,
+                    _internal_pipeline=self._internal_pipeline,
                     log_plots=self.log_plots_param,
                     display=display,
                 )
@@ -2497,7 +2497,7 @@ class _SupervisedExperiment(_TabularExperiment):
                     source="tune_model",
                     runtime=runtime,
                     model_fit_time=model_fit_time,
-                    _prep_pipe=self._internal_pipeline,
+                    _internal_pipeline=self._internal_pipeline,
                     log_plots=self.log_plots_param,
                     tune_cv_results=cv_results,
                     display=display,
@@ -2852,7 +2852,7 @@ class _SupervisedExperiment(_TabularExperiment):
                     source="ensemble_model",
                     runtime=runtime,
                     model_fit_time=model_fit_time,
-                    _prep_pipe=self._internal_pipeline,
+                    _internal_pipeline=self._internal_pipeline,
                     log_plots=self.log_plots_param,
                     display=display,
                 )
@@ -3228,7 +3228,7 @@ class _SupervisedExperiment(_TabularExperiment):
                     source="blend_models",
                     runtime=runtime,
                     model_fit_time=model_fit_time,
-                    _prep_pipe=self._internal_pipeline,
+                    _internal_pipeline=self._internal_pipeline,
                     log_plots=self.log_plots_param,
                     display=display,
                 )
@@ -3591,7 +3591,7 @@ class _SupervisedExperiment(_TabularExperiment):
                     source="stack_models",
                     runtime=runtime,
                     model_fit_time=model_fit_time,
-                    _prep_pipe=self._internal_pipeline,
+                    _internal_pipeline=self._internal_pipeline,
                     log_plots=self.log_plots_param,
                     display=display,
                 )
@@ -4447,7 +4447,7 @@ class _SupervisedExperiment(_TabularExperiment):
                     source="finalize_model",
                     runtime=runtime,
                     model_fit_time=model_fit_time,
-                    _prep_pipe=self._internal_pipeline,
+                    _internal_pipeline=self._internal_pipeline,
                     log_plots=self.log_plots_param,
                     display=display,
                 )
@@ -4606,6 +4606,7 @@ class _SupervisedExperiment(_TabularExperiment):
             display = Display(verbose=False, html_param=False,)
 
         dtypes = None
+        print(self._internal_pipeline)
 
         # dataset
         if data is None:
@@ -4616,7 +4617,7 @@ class _SupervisedExperiment(_TabularExperiment):
             X_test_ = self.X_test.copy()
             y_test_ = self.y_test.copy()
 
-            dtypes = self._internal_pipeline.named_steps["dtypes"]
+            dtypes = self._internal_pipeline.named_steps["label_encoder"]
 
             X_test_.reset_index(drop=True, inplace=True)
             y_test_.reset_index(drop=True, inplace=True)
@@ -4627,7 +4628,7 @@ class _SupervisedExperiment(_TabularExperiment):
                 dtypes = estimator.named_steps["dtypes"]
             else:
                 try:
-                    dtypes = self._internal_pipeline.named_steps["dtypes"]
+                    dtypes = self._internal_pipeline.named_steps["label_encoder"]
 
                     estimator_ = deepcopy(self._internal_pipeline)
                     if is_sklearn_pipeline(estimator):
@@ -4652,11 +4653,13 @@ class _SupervisedExperiment(_TabularExperiment):
         # function to replace encoded labels with their original values
         # will not run if categorical_labels is false
         def replace_lables_in_column(label_column):
-            if dtypes and hasattr(dtypes, "replacement"):
-                replacement_mapper = {int(v): k for k, v in dtypes.replacement.items()}
-                label_column.replace(replacement_mapper, inplace=True)
+            if dtypes:
+                return pd.Series(dtypes.transform(label_column), name=label_column.name)
+            return label_column
 
         # prediction starts here
+
+        X_test_ = self._internal_pipeline.transform(X_test_)
 
         pred = np.nan_to_num(estimator.predict(X_test_))
 
@@ -4694,8 +4697,8 @@ class _SupervisedExperiment(_TabularExperiment):
 
         label = pd.DataFrame(pred)
         label.columns = ["Label"]
-        if not encoded_labels:
-            replace_lables_in_column(label["Label"])
+        if encoded_labels:
+            label["Label"] = replace_lables_in_column(label["Label"])
         if ml_usecase == MLUsecase.CLASSIFICATION:
             try:
                 label["Label"] = label["Label"].astype(int)
@@ -4703,7 +4706,7 @@ class _SupervisedExperiment(_TabularExperiment):
                 pass
 
         if data is None:
-            if not encoded_labels:
+            if encoded_labels:
                 replace_lables_in_column(y_test_)  # type: ignore
             X_test_ = pd.concat([X_test_, y_test_, label], axis=1)  # type: ignore
         else:
@@ -4718,7 +4721,7 @@ class _SupervisedExperiment(_TabularExperiment):
                 score = pd.DataFrame(score)
                 if raw_score:
                     score_columns = pd.Series(range(score.shape[1]))
-                    if not encoded_labels:
+                    if encoded_labels:
                         replace_lables_in_column(score_columns)
                     score.columns = [f"Score_{label}" for label in score_columns]
                 else:

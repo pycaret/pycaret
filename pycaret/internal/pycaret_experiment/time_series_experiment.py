@@ -2014,7 +2014,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                     source="tune_model",
                     runtime=runtime,
                     model_fit_time=model_fit_time,
-                    _prep_pipe=self._internal_pipeline,
+                    _internal_pipeline=self._internal_pipeline,
                     log_plots=self.log_plots_param,
                     tune_cv_results=cv_results,
                     display=display,
