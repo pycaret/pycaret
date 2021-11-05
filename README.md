@@ -2,7 +2,8 @@
   
 <img src="logo.png" alt="drawing" width="200"/>
 
-**An open-source, low-code machine learning library in Python 🚀**
+**An open-source, low-code machine learning library in Python** </br>
+:rocket: **Version 2.3.4 out now!** [Check out the release notes here](https://github.com/pycaret/pycaret/releases).
   
 <p align="center">
   <a href="https://www.pycaret.org">Official</a> •
@@ -28,7 +29,7 @@
 
 <div align="left">
   
-## What is PyCaret?
+## Welcome to PyCaret
 PyCaret is an open-source, low-code machine learning library in Python that automates machine learning workflows. It is an end-to-end machine learning and model management tool that speeds up the experiment cycle exponentially and makes you more productive.
 
 In comparison with the other open-source machine learning libraries, PyCaret is an alternate low-code library that can be used to replace hundreds of lines of code with few words only. This makes experiments exponentially fast and efficient. PyCaret is essentially a Python wrapper around several machine learning libraries and frameworks such as scikit-learn, XGBoost, LightGBM, CatBoost, spaCy, Optuna, Hyperopt, Ray, and many more.
@@ -90,43 +91,11 @@ PyCaret new time series module is now available in beta. Staying true to simplic
   
 The module is still in beta. We are adding new functionalities every day and doing weekly pip releases. Please ensure to create a separate python environment to avoid dependency conflicts with main pycaret. The final release of this module will be merged with the main pycaret in next major release.
   
- ### Install Now 👇
-  
  ```
  pip install pycaret-ts-alpha
  ```  
-  
-
 
 ![alt text](pycaret_ts_quickdemo.gif)  
-
-## PyCaret on GPU
-PyCaret >= 2.2 provides the option to use GPU for select model training and hyperparameter tuning. There is no change in the use of the API, however, in some cases, additional libraries have to be installed as they are not installed with the default slim version or the full version. The following estimators can be trained on GPU.
-
-- Extreme Gradient Boosting (requires no further installation)
-
-- CatBoost (requires no further installation)
-
-- Light Gradient Boosting Machine (requires GPU installation: https://lightgbm.readthedocs.io/en/latest/GPU-Tutorial.html)
-
-- Logistic Regression, Ridge Classifier, Random Forest, K Neighbors Classifier, K Neighbors Regressor, Support Vector Machine, Linear Regression, Ridge Regression, Lasso Regression (requires cuML >= 0.15 https://github.com/rapidsai/cuml)
-
-If you are using Google Colab you can install Light Gradient Boosting Machine for GPU but first you have to uninstall LightGBM on CPU. Use the below command to do that:
-
-```python
-pip uninstall lightgbm -y
-
-# install lightgbm GPU
-pip install lightgbm --install-option=--gpu --install-option="--opencl-include-dir=/usr/local/cuda/include/" --install-option="--opencl-library=/usr/local/cuda/lib64/libOpenCL.so"
-```
-CatBoost is only enabled on GPU when dataset has > 50,000 rows.
-
-cuML >= 0.15 cannot be installed on Google Colab. Instead use blazingSQL (https://blazingsql.com/) which comes pre-installed with cuML 0.15. Use following command to install pycaret:
-
-```python
-# install pycaret on blazingSQL
-!/opt/conda-environments/rapids-stable/bin/python -m pip install --upgrade pycaret
-```
 
 ## Who should use PyCaret?
 PyCaret is an open source library that anybody can use. In our view the ideal target audience of PyCaret is: <br />
@@ -135,10 +104,17 @@ PyCaret is an open source library that anybody can use. In our view the ideal ta
 - Citizen Data Scientists who prefer a low code machine learning solution.
 - Data Science Students.
 - Data Science Professionals who want to build rapid prototypes.
+  
+## PyCaret now available on GPU
+PyCaret >= 2.2 provides the option to use GPU for select model training and hyperparameter tuning. There is no change in the use of the API, however, in some cases, additional libraries have to be installed as they are not installed with the default slim version or the full version. The following estimators can be trained on GPU.
+
+- Extreme Gradient Boosting (requires no further installation)
+- CatBoost (requires no further installation)
+- Light Gradient Boosting Machine requires [GPU installation](https://lightgbm.readthedocs.io/en/latest/GPU-Tutorial.html)
+- Logistic Regression, Ridge Classifier, Random Forest, K Neighbors Classifier, K Neighbors Regressor, Support Vector Machine, Linear Regression, Ridge Regression, Lasso Regression requires [cuML >= 0.15](https://github.com/rapidsai/cuml)
+
 
 ## Contributors
 <a href="https://github.com/pycaret/pycaret/graphs/contributors">
-  <img src="https://contributors-img.web.app/image?repo=pycaret/pycaret" />
+  <img src="https://contributors-img.web.app/image?repo=pycaret/pycaret" width = 500/>
 </a>
-
-Made with [contributors-img](https://contributors-img.web.app).
