@@ -1,6 +1,6 @@
 <div align="center">
   
-<img src="logo.png" alt="drawing" width="200"/>
+<img src="docs/images/logo.png" alt="drawing" width="200"/>
 
 **An open-source, low-code machine learning library in Python** </br>
 :rocket: **Version 2.3.4 out now!** [Check out the release notes here](https://github.com/pycaret/pycaret/releases).
@@ -25,7 +25,7 @@
 <!-- [![Git count](http://hits.dwyl.com/pycaret/pycaret/pycaret.svg)](http://hits.dwyl.com/pycaret/pycaret/pycaret) -->
 [![Slack](https://img.shields.io/badge/slack-chat-green.svg?logo=slack)](https://join.slack.com/t/pycaret/shared_invite/zt-row9phbm-BoJdEVPYnGf7_NxNBP307w)
 
-![alt text](https://github.com/pycaret/pycaret/blob/master/quick_start.gif)
+![alt text](docs/images/quick_start.gif)
 
 <div align="left">
   
@@ -75,13 +75,13 @@ pip install pycaret[full]
   
   Classification           |  Regression
 :-------------------------:|:-------------------------:
-![](pycaret_classification.png)  | ![](pycaret_regression.png)
+![](docs/images/pycaret_classification.png)  | ![](docs/images/pycaret_regression.png)
 
  ## Unsupervised Workflow
   
   Clustering               |  Anomaly Detection
 :-------------------------:|:-------------------------:
-![](pycaret_clustering.png)  |  ![](pycaret_anomaly.png)  
+![](docs/images/pycaret_clustering.png)  |  ![](docs/images/pycaret_anomaly.png)  
   
 <div align="left">
 
@@ -95,7 +95,7 @@ The module is still in beta. We are adding new functionalities every day and doi
  pip install pycaret-ts-alpha
  ```  
 
-![alt text](pycaret_ts_quickdemo.gif)  
+![alt text](docs/images/pycaret_ts_quickdemo.gif)  
 
 ## Who should use PyCaret?
 PyCaret is an open source library that anybody can use. In our view the ideal target audience of PyCaret is: <br />
