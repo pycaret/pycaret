@@ -173,6 +173,17 @@ def _return_data_with_without_period_index():
     return datasets
 
 
+def _return_model_names_for_plots():
+    """Returns models to be used for testing plots. Needs
+        - 1 model that has prediction interval ("theta")
+        - 1 model that does not have prediction interval ("lr_cds_dt")
+        - 1 model that has in-sample forecasts ("theta")
+        - 1 model that does not have in-sample forecasts ("lr_cds_dt")
+    """
+    model_names = ["theta", "lr_cds_dt"]
+    return model_names
+
+
 def _return_data_big_small():
     """Returns one dataset with 144 data points and one with < 12 data points"""
     data = get_data("airline")
