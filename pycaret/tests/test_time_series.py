@@ -841,17 +841,20 @@ def test_tune_custom_grid_and_choose_better(load_pos_and_neg_data):
     # Custom Grid
     only_strategy = "mean"
     custom_grid = {"strategy": [only_strategy]}
+
+    # By default choose_better = True
     tuned_model1 = exp.tune_model(model, custom_grid=custom_grid)
 
-    # Choose Better
-    tuned_model2 = exp.tune_model(model, custom_grid=custom_grid, choose_better=True)
+    # Choose Better = False
+    tuned_model2 = exp.tune_model(model, custom_grid=custom_grid, choose_better=False)
 
-    # Different strategy should be picked since grid is limited (verified manually)
-    assert tuned_model1.strategy != model.strategy
+    # Same strategy should be chosen since choose_better = True by default
+    assert tuned_model1.strategy == model.strategy
     # should pick only value in custom grid
-    assert tuned_model1.strategy == only_strategy
-    # tuned model does improve score (verified manually), so pick original
-    assert tuned_model2.strategy == model.strategy
+    assert tuned_model2.strategy == only_strategy
+    # tuned model does improve score (verified manually), and choose_better
+    # set to False. So pick worse value itself.
+    assert tuned_model2.strategy != model.strategy
 
 
 def test_tune_model_custom_folds(load_pos_and_neg_data):
