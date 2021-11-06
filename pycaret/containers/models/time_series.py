@@ -296,6 +296,55 @@ class NaiveContainer(TimeSeriesContainer):
         return tune_grid
 
 
+class GrandMeansContainer(TimeSeriesContainer):
+    model_type = TSModelTypes.BASELINE
+
+    def __init__(self, globals_dict: dict) -> None:
+        logger = get_logger()
+        np.random.seed(globals_dict["seed"])
+        self.gpu_imported = False
+
+        from sktime.forecasting.naive import NaiveForecaster  # type: ignore
+
+        dummy = NaiveForecaster()
+        self.active = self.disable_pred_int_enforcement(
+            forecaster=dummy, enforce_pi=globals_dict["enforce_pi"]
+        )
+        if not self.active:
+            return
+
+        self.seasonality_present = globals_dict.get("seasonality_present")
+        sp = globals_dict.get("seasonal_period")
+        self.sp = sp if sp is not None else 1
+
+        args = self._set_args
+        tune_args = self._set_tune_args
+        tune_grid = self._set_tune_grid
+        tune_distributions = self._set_tune_distributions
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+
+        super().__init__(
+            id="grand_means",
+            name="Grand Means Forecaster",
+            class_def=NaiveForecaster,
+            args=args,
+            tune_grid=tune_grid,
+            tune_distribution=tune_distributions,
+            tune_args=tune_args,
+            is_gpu_enabled=self.gpu_imported,
+        )
+
+    @property
+    def _set_args(self) -> Dict[str, Any]:
+        args = {"strategy": "mean", "window_length": None}
+        return args
+
+    # @property
+    # def _set_tune_grid(self) -> Dict[str, List[Any]]:
+    #     tune_grid = {"strategy": ["mean"], "window_length": [None]}
+    #     return tune_grid
+
+
 class SeasonalNaiveContainer(TimeSeriesContainer):
     model_type = TSModelTypes.BASELINE
 
