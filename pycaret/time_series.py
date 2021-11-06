@@ -478,7 +478,7 @@ def tune_model(
     optimize: str = "SMAPE",
     custom_scorer=None,
     search_algorithm: Optional[str] = None,
-    choose_better: bool = False,
+    choose_better: bool = True,
     fit_kwargs: Optional[dict] = None,
     return_tuner: bool = False,
     verbose: bool = True,
@@ -547,7 +547,7 @@ def tune_model(
         use 'random' for random grid search and 'grid' for complete grid search. 
 
 
-    choose_better: bool, default = False
+    choose_better: bool, default = True
         When set to True, the returned object is always better performing. The
         metric used for comparison is defined by the ``optimize`` parameter.
 
