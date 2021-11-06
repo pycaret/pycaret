@@ -339,11 +339,6 @@ class GrandMeansContainer(TimeSeriesContainer):
         args = {"strategy": "mean", "window_length": None}
         return args
 
-    # @property
-    # def _set_tune_grid(self) -> Dict[str, List[Any]]:
-    #     tune_grid = {"strategy": ["mean"], "window_length": [None]}
-    #     return tune_grid
-
 
 class SeasonalNaiveContainer(TimeSeriesContainer):
     model_type = TSModelTypes.BASELINE

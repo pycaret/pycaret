@@ -1276,6 +1276,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             in the model library (ID - Name):
 
             * 'naive' - Naive Forecaster
+            * 'grand_means' - Grand Means Forecaster
             * 'snaive' - Seasonal Naive Forecaster
             * 'polytrend' - Polynomial Trend Forecaster
             * 'arima' - ARIMA
