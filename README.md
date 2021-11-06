@@ -13,6 +13,9 @@
   <a href="https://github.com/pycaret/pycaret/discussions">Discussions</a> •
   <a href="https://pycaret.readthedocs.io/en/latest/contribute.html">Contribute</a> •
   <a href="https://github.com/pycaret/pycaret/tree/master/resources">Resources</a> •
+  <a href="https://moez-62905.medium.com/">Medium</a> •
+  <a href="https://www.linkedin.com/company/pycaret/">LinkedIn</a> • 
+  <a href="https://www.youtube.com/channel/UCxA1YTYJ9BEeo50lxyI_B3g">YouTube</a> • 
   <a href="https://join.slack.com/t/pycaret/shared_invite/zt-row9phbm-BoJdEVPYnGf7_NxNBP307w">Slack</a>
 
 </p>
