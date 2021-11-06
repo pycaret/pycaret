@@ -2395,7 +2395,8 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             * 'decomp_classical' - Decomposition Classical
             * 'decomp_stl' - Decomposition STL
             * 'diagnostics' - Diagnostics Plot
-            * 'forecast' - Forecast Plot
+            * 'forecast' - "Out-of-Sample" Forecast Plot
+            * 'insample' - "In-Sample" Forecast Plot
             * 'residuals' - Residuals Plot
 
 
