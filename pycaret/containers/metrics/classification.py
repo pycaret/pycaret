@@ -265,6 +265,15 @@ class MCCMetricContainer(ClassificationMetricContainer):
             score_func=metrics.matthews_corrcoef,
             scorer=metrics.make_scorer(metrics.matthews_corrcoef),
         )
+        
+class BrierMetricContainer(ClassificationMetricContainer):
+    def __init__(self, globals_dict: dict) -> None:
+        super().__init__(
+            id="brier",
+            name="Brier",
+            score_func=metrics.brier_score_loss,
+            scorer=metrics.make_scorer(metrics.brier_score_loss),
+        )
 
 
 def get_all_metric_containers(
