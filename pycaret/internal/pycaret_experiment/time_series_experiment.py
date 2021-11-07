@@ -600,7 +600,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         super().__init__()
         self._ml_usecase = MLUsecase.TIME_SERIES
         self.exp_name_log = "ts-default-name"
-        self._available_plots = {}
+
         # Values in variable_keys are accessible in globals
         self.variable_keys = self.variable_keys.difference(
             {
@@ -631,7 +631,8 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             "decomp_classical": "Decomposition Classical",
             "decomp_stl": "Decomposition STL",
             "diagnostics": "Diagnostics Plot",
-            "forecast": "Forecast Plot",
+            "forecast": "Out-of-Sample Forecast Plot",
+            "insample": "In-Sample Forecast Plot",
             "residuals": "Residuals Plot",
         }
 
@@ -656,6 +657,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             "decomp_stl",
             "diagnostics",
             "forecast",
+            "insample",
             "residuals",
         ]
 
@@ -1276,6 +1278,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             in the model library (ID - Name):
 
             * 'naive' - Naive Forecaster
+            * 'grand_means' - Grand Means Forecaster
             * 'snaive' - Seasonal Naive Forecaster
             * 'polytrend' - Polynomial Trend Forecaster
             * 'arima' - ARIMA
@@ -1541,7 +1544,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         optimize: str = "SMAPE",
         custom_scorer=None,
         search_algorithm: Optional[str] = None,
-        choose_better: bool = False,
+        choose_better: bool = True,
         fit_kwargs: Optional[dict] = None,
         return_tuner: bool = False,
         verbose: bool = True,
@@ -1611,7 +1614,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             use 'random' for random grid search and 'grid' for complete grid search. 
 
 
-        choose_better: bool, default = False
+        choose_better: bool, default = True
             When set to True, the returned object is always better performing. The
             metric used for comparison is defined by the ``optimize`` parameter.
 
@@ -2392,7 +2395,8 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             * 'decomp_classical' - Decomposition Classical
             * 'decomp_stl' - Decomposition STL
             * 'diagnostics' - Diagnostics Plot
-            * 'forecast' - Forecast Plot
+            * 'forecast' - "Out-of-Sample" Forecast Plot
+            * 'insample' - "In-Sample" Forecast Plot
             * 'residuals' - Residuals Plot
 
 
@@ -2429,7 +2433,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         """
         # checking display_format parameter
         self.plot_model_check_display_format_(display_format=display_format)
-        
+
         # Import required libraries ----
         if display_format == "streamlit":
             try:
@@ -2455,7 +2459,11 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             "decomp_stl",
         ]
         available_plots_data = available_plots_common
-        available_plots_model = available_plots_common + ["forecast", "residuals"]
+        available_plots_model = available_plots_common + [
+            "forecast",
+            "insample",
+            "residuals",
+        ]
 
         return_pred_int = False
 
@@ -2517,6 +2525,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 # it will not have self._get_model_name
                 model_name = estimator.__class__.__name__
 
+            require_insample_predictions = ["insample"]
             require_residuals = [
                 "residuals",
                 "diagnostics",
@@ -2538,6 +2547,18 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                     return_pred_int=return_pred_int,
                     verbose=False,
                 )
+            elif plot in require_insample_predictions:
+                # Try to get insample forecasts if possible
+                insample_predictions = self.get_insample_predictions(
+                    estimator=estimator
+                )
+                if insample_predictions is None:
+                    return
+                predictions = insample_predictions
+                data = self._get_y_data(split="all")
+                # Do not plot prediction interval for insample predictions
+                return_pred_int = False
+
             elif plot in require_residuals:
                 resid = self.get_residuals(estimator=estimator)
                 if resid is None:
@@ -2562,9 +2583,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             data_kwargs=data_kwargs,
             fig_kwargs=fig_kwargs,
         )
-
-        if system:
-            fig.show()
 
         plot_name = self._available_plots[plot]
         plot_filename = f"{plot_name}.html"
@@ -3535,6 +3553,27 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             )
 
         return resid
+
+    def get_insample_predictions(self, estimator) -> Optional[pd.Series]:
+        # https://github.com/alan-turing-institute/sktime/issues/1105#issuecomment-932216820
+        insample_predictions = None
+
+        estimator.check_is_fitted()
+        estimator_ = deep_clone(estimator)
+        y_used_to_train = estimator_._y
+        try:
+            insample_predictions = self.predict_model(
+                estimator, fh=-np.arange(0, len(y_used_to_train))
+            )
+        except NotImplementedError as exception:
+            self.logger.warning(exception)
+            print(
+                "In sample predictions has not been implemented for this estimator "
+                f"of type '{estimator_.__class__.__name__}' in `sktime`. When "
+                "this is implemented, it will be enabled by default in pycaret."
+            )
+
+        return insample_predictions
 
     def check_and_clean_resid(self, resid: pd.Series) -> pd.Series:
         """Checks to see if the residuals matches one of the test set or

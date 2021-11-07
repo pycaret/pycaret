@@ -387,6 +387,7 @@ def create_model(
         in the model library (ID - Name):
 
         * 'naive' - Naive Forecaster
+        * 'grand_means' - Grand Means Forecaster
         * 'snaive' - Seasonal Naive Forecaster
         * 'polytrend' - Polynomial Trend Forecaster
         * 'arima' - ARIMA
@@ -477,7 +478,7 @@ def tune_model(
     optimize: str = "SMAPE",
     custom_scorer=None,
     search_algorithm: Optional[str] = None,
-    choose_better: bool = False,
+    choose_better: bool = True,
     fit_kwargs: Optional[dict] = None,
     return_tuner: bool = False,
     verbose: bool = True,
@@ -546,7 +547,7 @@ def tune_model(
         use 'random' for random grid search and 'grid' for complete grid search. 
 
 
-    choose_better: bool, default = False
+    choose_better: bool, default = True
         When set to True, the returned object is always better performing. The
         metric used for comparison is defined by the ``optimize`` parameter.
 
@@ -919,7 +920,8 @@ def plot_model(
         * 'decomp_classical' - Decomposition Classical
         * 'decomp_stl' - Decomposition STL
         * 'diagnostics' - Diagnostics Plot
-        * 'forecast' - Forecast Plot
+        * 'forecast' - "Out-of-Sample" Forecast Plot
+        * 'insample' - "In-Sample" Forecast Plot
         * 'residuals' - Residuals Plot
 
 

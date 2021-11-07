@@ -172,6 +172,12 @@ class _SupervisedExperiment(_TabularExperiment):
             if not metric.greater_is_better:
                 result *= -1
             if best_result is None or best_result < result:
+                msg=(
+                    "Original model was better than the tuned model, hence it will be returned. "
+                    "NOTE: The display metrics are for the tuned model (not the original one)."
+                )
+                print(msg)
+                self.logger.info(msg)
                 best_result = result
                 best_model = model
 
@@ -327,9 +333,7 @@ class _SupervisedExperiment(_TabularExperiment):
             self.logger.info(
                 "SubProcess save_model() called =================================="
             )
-            self.save_model(
-                self.prep_pipe, "Transformation Pipeline", verbose=False
-            )
+            self.save_model(self.prep_pipe, "Transformation Pipeline", verbose=False)
             self.logger.info(
                 "SubProcess save_model() end =================================="
             )
@@ -782,9 +786,9 @@ class _SupervisedExperiment(_TabularExperiment):
                     model_results = self.pull(pop=True)
                     assert (
                         np.sum(
-                            model_results.drop(results_columns_to_ignore, axis=1, errors="ignore").iloc[
-                                0
-                            ]
+                            model_results.drop(
+                                results_columns_to_ignore, axis=1, errors="ignore"
+                            ).iloc[0]
                         )
                         != 0.0
                     )
@@ -806,7 +810,14 @@ class _SupervisedExperiment(_TabularExperiment):
                             refit=False,
                         )
                         model_results = self.pull(pop=True)
-                        assert np.sum(model_results.drop(results_columns_to_ignore, axis=1, errors="ignore").iloc[0]) != 0.0
+                        assert (
+                            np.sum(
+                                model_results.drop(
+                                    results_columns_to_ignore, axis=1, errors="ignore"
+                                ).iloc[0]
+                            )
+                            != 0.0
+                        )
                     except Exception:
                         self.logger.error(
                             f"create_model() for {model} raised an exception or returned all 0.0:"
@@ -964,7 +975,16 @@ class _SupervisedExperiment(_TabularExperiment):
                                 groups=groups,
                             )
                             sorted_models.append(model)
-                            assert np.sum(model_results.drop(results_columns_to_ignore, axis=1, errors="ignore").iloc[0]) != 0.0
+                            assert (
+                                np.sum(
+                                    model_results.drop(
+                                        results_columns_to_ignore,
+                                        axis=1,
+                                        errors="ignore",
+                                    ).iloc[0]
+                                )
+                                != 0.0
+                            )
                         except Exception:
                             self.logger.error(
                                 f"create_model() for {model} raised an exception or returned all 0.0:"
@@ -2252,7 +2272,9 @@ class _SupervisedExperiment(_TabularExperiment):
                     )
                 except TypeError:
                     # constant_liar added in 2.8.0
-                    tpe_sampler = optuna.samplers.TPESampler(seed=self.seed, multivariate=True)
+                    tpe_sampler = optuna.samplers.TPESampler(
+                        seed=self.seed, multivariate=True
+                    )
                 return tpe_sampler
 
             if search_library == "optuna":
@@ -2409,7 +2431,10 @@ class _SupervisedExperiment(_TabularExperiment):
                         self.logger.info(
                             f"Initializing tune_sklearn.TuneSearchCV, {search_algorithm}"
                         )
-                        if search_algorithm == "optuna" and not "sampler" in search_kwargs:
+                        if (
+                            search_algorithm == "optuna"
+                            and not "sampler" in search_kwargs
+                        ):
                             import optuna
 
                             search_kwargs["sampler"] = get_optuna_tpe_sampler()
@@ -3909,7 +3934,9 @@ class _SupervisedExperiment(_TabularExperiment):
             # Storing X_train and y_train in data_X and data_y parameter
             test_X = self.X_train if use_train_data else self.X_test
             if plot == "pfi":
-                test_y = self.y_train if use_train_data else self.y_test  # add for pfi explainer
+                test_y = (
+                    self.y_train if use_train_data else self.y_test
+                )  # add for pfi explainer
 
         np.random.seed(self.seed)
 
@@ -4100,7 +4127,9 @@ class _SupervisedExperiment(_TabularExperiment):
                     predict_fn=model.predict_proba, data=test_X
                 )  # classification
             except AttributeError:
-                pdp = PartialDependence(predict_fn=model.predict, data=test_X)  # regression
+                pdp = PartialDependence(
+                    predict_fn=model.predict, data=test_X
+                )  # regression
 
             pdp_global = pdp.explain_global()
             pdp_plot = pdp_global.visualize(list(test_X.columns).index(pdp_feature))
@@ -4122,7 +4151,9 @@ class _SupervisedExperiment(_TabularExperiment):
                     predict_fn=model.predict_proba, data=test_X
                 )  # classification
             except AttributeError:
-                msa = MorrisSensitivity(predict_fn=model.predict, data=test_X)  # regression
+                msa = MorrisSensitivity(
+                    predict_fn=model.predict, data=test_X
+                )  # regression
             msa_global = msa.explain_global()
             msa_plot = msa_global.visualize()
             if save:
@@ -4837,12 +4868,20 @@ class _SupervisedExperiment(_TabularExperiment):
         model_container = self.master_model_container
 
         if not display:
-            progress_args = {"max": len(model_container)+1}
+            progress_args = {"max": len(model_container) + 1}
             timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
             monitor_rows = [
                 ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
-                ["Status", ". . . . . . . . . . . . . . . . . .", "Loading Dependencies"],
-                ["Estimator", ". . . . . . . . . . . . . . . . . .", "Compiling Library"],
+                [
+                    "Status",
+                    ". . . . . . . . . . . . . . . . . .",
+                    "Loading Dependencies",
+                ],
+                [
+                    "Estimator",
+                    ". . . . . . . . . . . . . . . . . .",
+                    "Compiling Library",
+                ],
             ]
             display = Display(
                 verbose=verbose,
@@ -4857,7 +4896,9 @@ class _SupervisedExperiment(_TabularExperiment):
         result_container_mean = []
         finalized_models = []
 
-        display.update_monitor(1, "Finalizing models" if finalize_models else "Collecting models")
+        display.update_monitor(
+            1, "Finalizing models" if finalize_models else "Collecting models"
+        )
         for i, model_results_tuple in enumerate(model_container):
 
             model_results = model_results_tuple["scores"]
@@ -4868,13 +4909,8 @@ class _SupervisedExperiment(_TabularExperiment):
             mean_scores["Model Name"] = model_name
             display.update_monitor(2, model_name)
             if finalize_models:
-                model = (
-                    self.finalize_model(
-                        model,
-                        fit_kwargs=fit_kwargs,
-                        groups=groups,
-                        model_only=model_only,
-                    )
+                model = self.finalize_model(
+                    model, fit_kwargs=fit_kwargs, groups=groups, model_only=model_only,
                 )
             else:
                 model = deepcopy(model)

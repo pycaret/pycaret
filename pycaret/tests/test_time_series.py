@@ -1,6 +1,5 @@
 """Module to test time_series functionality
 """
-import os
 from random import uniform
 import pytest
 
@@ -18,12 +17,8 @@ from .time_series_test_utils import (
     _return_splitter_args,
     _return_compare_model_args,
     _return_setup_args_raises,
-    _return_data_with_without_period_index,
     _return_data_big_small,
     _ALL_METRICS,
-    _ALL_PLOTS_DATA,
-    _ALL_PLOTS_ESTIMATOR,
-    _ALL_PLOTS_ESTIMATOR_NOT_DATA,
     _ALL_STATS_TESTS,
 )
 
@@ -43,7 +38,6 @@ pytestmark = pytest.mark.filterwarnings("ignore::UserWarning")
 _model_parameters = _return_model_parameters()
 _splitter_args = _return_splitter_args()
 _setup_args_raises = _return_setup_args_raises()
-_data_with_without_period_index = _return_data_with_without_period_index()
 _compare_model_args = _return_compare_model_args()
 _data_big_small = _return_data_big_small()
 
@@ -272,182 +266,6 @@ def test_check_stats_alpha(load_pos_and_neg_data):
         results.query("Test == 'Stationarity'").iloc[0]["Setting"].get("alpha") == alpha
     )
     assert results.query("Test == 'Normality'").iloc[0]["Setting"].get("alpha") == alpha
-
-
-@pytest.mark.parametrize("data", _data_with_without_period_index)
-@pytest.mark.parametrize("plot", _ALL_PLOTS_DATA)
-def test_plot_model_data(data, plot):
-    """Tests the plot_model functionality on original dataset
-    NOTE: Want to show multiplicative plot here so can not take data with negative values
-    """
-    exp = TimeSeriesExperiment()
-    fh = np.arange(1, 13)
-    fold = 2
-    sp = 1 if isinstance(data.index, pd.RangeIndex) else None
-
-    ######################
-    #### OOP Approach ####
-    ######################
-
-    exp.setup(
-        data=data,
-        fh=fh,
-        fold=fold,
-        fold_strategy="sliding",
-        verbose=False,
-        session_id=42,
-        seasonal_period=sp,
-    )
-
-    exp.plot_model(plot=plot, system=False)
-
-    ########################
-    #### Functional API ####
-    ########################
-    from pycaret.time_series import setup, plot_model
-
-    os.environ["PYCARET_TESTING"] = "1"
-
-    _ = setup(
-        data=data,
-        fh=fh,
-        fold=fold,
-        fold_strategy="expanding",
-        session_id=42,
-        n_jobs=-1,
-        seasonal_period=sp,
-    )
-    plot_model(plot=plot)
-
-
-@pytest.mark.parametrize("data", _data_with_without_period_index)
-@pytest.mark.parametrize("plot", _ALL_PLOTS_ESTIMATOR)
-def test_plot_model_estimator(data, plot):
-    """Tests the plot_model functionality on estimators
-    NOTE: Want to show multiplicative plot here so can not take data with negative values
-    """
-    exp = TimeSeriesExperiment()
-
-    fh = np.arange(1, 13)
-    fold = 2
-
-    sp = 1 if isinstance(data.index, pd.RangeIndex) else None
-
-    ######################
-    #### OOP Approach ####
-    ######################
-
-    exp.setup(
-        data=data,
-        fh=fh,
-        fold=fold,
-        fold_strategy="sliding",
-        verbose=False,
-        session_id=42,
-        seasonal_period=sp,
-    )
-
-    model = exp.create_model("naive")
-    exp.plot_model(estimator=model, plot=plot, system=False)
-
-    ########################
-    #### Functional API ####
-    ########################
-    from pycaret.time_series import setup, create_model, plot_model
-
-    os.environ["PYCARET_TESTING"] = "1"
-
-    _ = setup(
-        data=data,
-        fh=fh,
-        fold=fold,
-        fold_strategy="expanding",
-        session_id=42,
-        n_jobs=-1,
-        seasonal_period=sp,
-    )
-    model = create_model("naive")
-    plot_model(estimator=model, plot=plot)
-
-
-@pytest.mark.parametrize("plot", _ALL_PLOTS_ESTIMATOR_NOT_DATA)
-def test_plot_model_data_raises(load_pos_and_neg_data, plot):
-    """Tests the plot_model functionality when it raises an exception
-    """
-    exp = TimeSeriesExperiment()
-    fh = np.arange(1, 13)
-    fold = 2
-
-    ######################
-    #### OOP Approach ####
-    ######################
-
-    exp.setup(
-        data=load_pos_and_neg_data,
-        fh=fh,
-        fold=fold,
-        fold_strategy="sliding",
-        verbose=False,
-        session_id=42,
-    )
-
-    with pytest.raises(ValueError) as errmsg:
-        # Some code that produces a value error
-        exp.plot_model(plot=plot, system=False)
-
-    # Capture Error message
-    exceptionmsg = errmsg.value.args[0]
-
-    # Check exact error received
-    assert (
-        f"Plot type '{plot}' is not supported when estimator is not provided"
-        in exceptionmsg
-    )
-
-
-@pytest.mark.parametrize("data", _data_with_without_period_index)
-def test_plot_model_customization(data):
-    """Tests the customization of plot_model
-    NOTE: Want to show multiplicative plot here so can not take data with negative values
-    """
-    exp = TimeSeriesExperiment()
-
-    fh = np.arange(1, 13)
-    fold = 2
-
-    sp = 1 if isinstance(data.index, pd.RangeIndex) else None
-
-    exp.setup(
-        data=data,
-        fh=fh,
-        fold=fold,
-        fold_strategy="sliding",
-        verbose=False,
-        session_id=42,
-        seasonal_period=sp,
-    )
-
-    model = exp.create_model("naive")
-
-    #######################
-    #### Customization ####
-    #######################
-
-    print("\n\n==== Testing Customization ON DATA ====")
-    exp.plot_model(
-        plot="pacf",
-        data_kwargs={"nlags": 36,},
-        fig_kwargs={"fig_size": [800, 500], "fig_template": "simple_white"},
-        system=False,
-    )
-    exp.plot_model(
-        plot="decomp_classical", data_kwargs={"type": "multiplicative"}, system=False
-    )
-
-    print("\n\n====  Testing Customization ON ESTIMATOR ====")
-    exp.plot_model(
-        estimator=model, plot="forecast", data_kwargs={"fh": 24}, system=False
-    )
 
 
 @pytest.mark.parametrize("seasonal_period, seasonal_value", _get_seasonal_values())
@@ -841,17 +659,20 @@ def test_tune_custom_grid_and_choose_better(load_pos_and_neg_data):
     # Custom Grid
     only_strategy = "mean"
     custom_grid = {"strategy": [only_strategy]}
+
+    # By default choose_better = True
     tuned_model1 = exp.tune_model(model, custom_grid=custom_grid)
 
-    # Choose Better
-    tuned_model2 = exp.tune_model(model, custom_grid=custom_grid, choose_better=True)
+    # Choose Better = False
+    tuned_model2 = exp.tune_model(model, custom_grid=custom_grid, choose_better=False)
 
-    # Different strategy should be picked since grid is limited (verified manually)
-    assert tuned_model1.strategy != model.strategy
+    # Same strategy should be chosen since choose_better = True by default
+    assert tuned_model1.strategy == model.strategy
     # should pick only value in custom grid
-    assert tuned_model1.strategy == only_strategy
-    # tuned model does improve score (verified manually), so pick original
-    assert tuned_model2.strategy == model.strategy
+    assert tuned_model2.strategy == only_strategy
+    # tuned model does improve score (verified manually), and choose_better
+    # set to False. So pick worse value itself.
+    assert tuned_model2.strategy != model.strategy
 
 
 def test_tune_model_custom_folds(load_pos_and_neg_data):

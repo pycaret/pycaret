@@ -98,7 +98,7 @@ def plot_(
             data_kwargs=data_kwargs,
             fig_kwargs=fig_kwargs,
         )
-    elif plot == "forecast":
+    elif plot in ["forecast", "insample"]:
         if return_pred_int:
             fig, plot_data = plot_predictions_with_confidence(
                 data=data,
@@ -113,6 +113,7 @@ def plot_(
             fig, plot_data = plot_predictions(
                 data=data,
                 predictions=predictions,
+                type_=plot,
                 model_name=model_name,
                 data_kwargs=data_kwargs,
                 fig_kwargs=fig_kwargs,
@@ -536,6 +537,7 @@ def plot_pacf(
 def plot_predictions(
     data: pd.Series,
     predictions: pd.Series,
+    type_: str,
     model_name: Optional[str] = None,
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
@@ -548,7 +550,8 @@ def plot_predictions(
     if fig_kwargs is None:
         fig_kwargs = {}
 
-    title = "Actual vs. Forecast"
+    key = "Out-of-Sample" if type_ == "forecast" else "In-Sample"
+    title = f"Actual vs. '{key}' Forecast"
     time_series_name = data.name
     if time_series_name is not None:
         title = f"{title} | {time_series_name}"
@@ -802,7 +805,7 @@ def plot_predictions_with_confidence(
     if fig_kwargs is None:
         fig_kwargs = {}
 
-    title = "Actual vs. Forecast"
+    title = "Actual vs. 'Out-of-Sample' Forecast"
     time_series_name = data.name
     if time_series_name is not None:
         title = f"{title} | {time_series_name}"
@@ -819,7 +822,7 @@ def plot_predictions_with_confidence(
         mode="lines",
         marker=dict(color="#68BBE3"),
         line=dict(width=0),
-        fillcolor="#68BBE3",
+        fillcolor="rgba(104,187,227,0.5)",  # eq to # fillcolor="#68BBE3" with alpha,
         showlegend=True,
         fill="tonexty",
     )
@@ -869,6 +872,7 @@ def plot_predictions_with_confidence(
     )
 
     data = [mean, lower_bound, upper_bound, original]
+
     layout = go.Layout(
         yaxis=dict(title="Values"), xaxis=dict(title="Time"), title=title,
     )
