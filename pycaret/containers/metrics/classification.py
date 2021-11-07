@@ -273,6 +273,9 @@ class BrierMetricContainer(ClassificationMetricContainer):
             name="Brier",
             score_func=metrics.brier_score_loss,
             scorer=metrics.make_scorer(metrics.brier_score_loss),
+            target="pred_proba",
+            greater_is_better=False,
+            is_multiclass=False
         )
 
 
