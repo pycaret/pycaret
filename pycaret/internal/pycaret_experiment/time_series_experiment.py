@@ -2587,24 +2587,36 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         plot_name = self._available_plots[plot]
         plot_filename = f"{plot_name}.html"
 
+        # Per https://github.com/pycaret/pycaret/issues/1699#issuecomment-962460539
         if save:
             if not isinstance(save, bool):
                 plot_filename = os.path.join(save, plot_filename)
 
             self.logger.info(f"Saving '{plot_filename}'")
             fig.write_html(plot_filename)
+
+            if return_data:
+                return plot_filename, plot_data
+            else:
+                return plot_filename
+
         elif system:
             if display_format == "streamlit":
                 st.write(fig)
+                return fig
+            # else:
+            #     fig.show()
+            self.logger.info("Visual Rendered Successfully")
+
+            if return_data:
+                return fig, plot_data
             else:
-                fig.show()
+                return fig
 
-        self.logger.info("Visual Rendered Successfully")
-
-        if return_data:
-            return plot_filename, plot_data
-        else:
-            return plot_filename
+        # if return_data:
+        #     return plot_filename, plot_data
+        # else:
+        #     return plot_filename
 
     # def evaluate_model(
     #     self,
