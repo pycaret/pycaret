@@ -2604,19 +2604,18 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             if display_format == "streamlit":
                 st.write(fig)
                 return fig
-            # else:
-            #     fig.show()
+            else:
+                fig.show()
             self.logger.info("Visual Rendered Successfully")
 
+            # Not returning figure here since we are showing it now.
+            # If we do not show but return instead, then the issue is that
+            # we can not have 2 plot_model calls in a single cell in jupyter
+            # since the first returned figure will be overwritten and not shown.
+            # Showing the figure and returning the object is also not an option
+            # as it will display the plot twice.
             if return_data:
-                return fig, plot_data
-            else:
-                return fig
-
-        # if return_data:
-        #     return plot_filename, plot_data
-        # else:
-        #     return plot_filename
+                return plot_data
 
     # def evaluate_model(
     #     self,
