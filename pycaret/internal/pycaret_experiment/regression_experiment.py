@@ -137,7 +137,10 @@ class RegressionExperiment(_SupervisedExperiment):
                         "Multicollinearity Threshold",
                         kwargs["multicollinearity_threshold_grid"],
                     ],
-                    ["Remove Perfect Collinearity", kwargs["remove_perfect_collinearity"]],
+                    [
+                        "Remove Perfect Collinearity",
+                        kwargs["remove_perfect_collinearity"],
+                    ],
                     [
                         "Columns Removed Due to Multicollinearity",
                         kwargs["multicollinearity_removed_columns"],
@@ -1073,7 +1076,7 @@ class RegressionExperiment(_SupervisedExperiment):
         search_algorithm: Optional[str] = None,
         early_stopping: Any = False,
         early_stopping_max_iters: int = 10,
-        choose_better: bool = False,
+        choose_better: bool = True,
         fit_kwargs: Optional[dict] = None,
         groups: Optional[Union[str, Any]] = None,
         return_tuner: bool = False,
@@ -1197,7 +1200,7 @@ class RegressionExperiment(_SupervisedExperiment):
             Ignored if ``early_stopping`` is False or None.
 
 
-        choose_better: bool, default = False
+        choose_better: bool, default = True
             When set to True, the returned object is always better performing. The
             metric used for comparison is defined by the ``optimize`` parameter.
 

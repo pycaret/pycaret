@@ -387,6 +387,7 @@ def create_model(
         in the model library (ID - Name):
 
         * 'naive' - Naive Forecaster
+        * 'grand_means' - Grand Means Forecaster
         * 'snaive' - Seasonal Naive Forecaster
         * 'polytrend' - Polynomial Trend Forecaster
         * 'arima' - ARIMA
@@ -474,10 +475,10 @@ def tune_model(
     round: int = 4,
     n_iter: int = 10,
     custom_grid: Optional[Union[Dict[str, list], Any]] = None,
-    optimize: str = 'SMAPE',
-    custom_scorer = None,
+    optimize: str = "SMAPE",
+    custom_scorer=None,
     search_algorithm: Optional[str] = None,
-    choose_better: bool = False,
+    choose_better: bool = True,
     fit_kwargs: Optional[dict] = None,
     return_tuner: bool = False,
     verbose: bool = True,
@@ -546,7 +547,7 @@ def tune_model(
         use 'random' for random grid search and 'grid' for complete grid search. 
 
 
-    choose_better: bool, default = False
+    choose_better: bool, default = True
         When set to True, the returned object is always better performing. The
         metric used for comparison is defined by the ``optimize`` parameter.
 
@@ -687,11 +688,11 @@ def tune_model(
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def blend_models(
     estimator_list: list,
-    method: str = 'mean',
+    method: str = "mean",
     fold: Optional[Union[int, Any]] = None,
     round: int = 4,
     choose_better: bool = False,
-    optimize: str = 'SMAPE',
+    optimize: str = "SMAPE",
     weights: Optional[List[float]] = None,
     fit_kwargs: Optional[dict] = None,
     verbose: bool = True,
@@ -877,16 +878,17 @@ def plot_model(
     estimator: Optional[Any] = None,
     plot: Optional[str] = None,
     return_data: bool = False,
+    verbose: bool = False,
     display_format: Optional[str] = None,
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
     save: Union[str, bool] = False,
-) -> str:
+) -> Tuple[str, Any]:
 
     """
     This function analyzes the performance of a trained model on holdout set.
-    When used without any estimator, this function generates plots on the 
-    original data set. When used with an estimator, it will generate plots on 
+    When used without any estimator, this function generates plots on the
+    original data set. When used with an estimator, it will generate plots on
     the model residuals.
 
 
@@ -918,12 +920,17 @@ def plot_model(
         * 'decomp_classical' - Decomposition Classical
         * 'decomp_stl' - Decomposition STL
         * 'diagnostics' - Diagnostics Plot
-        * 'forecast' - Forecast Plot
+        * 'forecast' - "Out-of-Sample" Forecast Plot
+        * 'insample' - "In-Sample" Forecast Plot
         * 'residuals' - Residuals Plot
 
-        
+
     return_data: bool, default = False
         When set to True, it returns the data for plotting.
+
+
+    verbose: bool, default = True
+            Unused for now
 
 
     display_format: str, default = None
@@ -1107,9 +1114,9 @@ def plot_model(
 # not using check_if_global_is_not_none on purpose
 def predict_model(
     estimator,
-    fh = None,
-    return_pred_int = False,
-    alpha = 0.05,
+    fh=None,
+    return_pred_int=False,
+    alpha=0.05,
     round: int = 4,
     verbose: bool = True,
 ) -> pd.DataFrame:

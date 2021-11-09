@@ -1,6 +1,5 @@
 """Module to test time_series functionality
 """
-import os
 from random import uniform
 import pytest
 
@@ -18,7 +17,6 @@ from .time_series_test_utils import (
     _return_splitter_args,
     _return_compare_model_args,
     _return_setup_args_raises,
-    _return_data_with_without_period_index,
     _return_data_big_small,
     _ALL_METRICS,
     _ALL_STATS_TESTS,
@@ -40,7 +38,6 @@ pytestmark = pytest.mark.filterwarnings("ignore::UserWarning")
 _model_parameters = _return_model_parameters()
 _splitter_args = _return_splitter_args()
 _setup_args_raises = _return_setup_args_raises()
-_data_with_without_period_index = _return_data_with_without_period_index()
 _compare_model_args = _return_compare_model_args()
 _data_big_small = _return_data_big_small()
 
@@ -271,121 +268,6 @@ def test_check_stats_alpha(load_pos_and_neg_data):
     assert results.query("Test == 'Normality'").iloc[0]["Setting"].get("alpha") == alpha
 
 
-@pytest.mark.parametrize("data", _data_with_without_period_index)
-def test_plot_model(data):
-    """Tests the plot_model functionality
-    NOTE: Want to show multiplicative plot here so can not take data with negative values
-    """
-    exp = TimeSeriesExperiment()
-
-    fh = np.arange(1, 13)
-    fold = 2
-
-    sp = 1 if isinstance(data.index, pd.RangeIndex) else None
-
-    ######################
-    #### OOP Approach ####
-    ######################
-
-    exp.setup(
-        data=data,
-        fh=fh,
-        fold=fold,
-        fold_strategy="sliding",
-        verbose=False,
-        session_id=42,
-        seasonal_period=sp,
-    )
-
-    model = exp.create_model("naive")
-
-    print("\n\n==== ON DATA (using OOP) ====")
-    exp.plot_model(system=False)
-    exp.plot_model(plot="ts", system=False)
-    exp.plot_model(plot="train_test_split", system=False)
-    exp.plot_model(plot="cv", system=False)
-    exp.plot_model(plot="acf", system=False)
-    exp.plot_model(plot="pacf", system=False)
-    exp.plot_model(plot="diagnostics", system=False)
-    exp.plot_model(plot="decomp_classical", system=False)
-    exp.plot_model(plot="decomp_stl", system=False)
-
-    print("\n\n==== ON ESTIMATOR (using OOP) ====")
-    exp.plot_model(estimator=model, system=False)
-    exp.plot_model(estimator=model, plot="ts", system=False)
-    exp.plot_model(estimator=model, plot="train_test_split", system=False)
-    exp.plot_model(estimator=model, plot="cv", system=False)
-    exp.plot_model(estimator=model, plot="acf", system=False)
-    exp.plot_model(estimator=model, plot="pacf", system=False)
-    exp.plot_model(estimator=model, plot="diagnostics", system=False)
-    exp.plot_model(estimator=model, plot="decomp_classical", system=False)
-    exp.plot_model(estimator=model, plot="decomp_stl", system=False)
-    exp.plot_model(estimator=model, plot="forecast", system=False)
-    exp.plot_model(estimator=model, plot="residuals", system=False)
-
-    ########################
-    #### Functional API ####
-    ########################
-    from pycaret.time_series import setup, create_model, plot_model
-
-    _ = setup(
-        data=data,
-        fh=fh,
-        fold=fold,
-        fold_strategy="expanding",
-        session_id=42,
-        n_jobs=-1,
-        seasonal_period=sp,
-    )
-    model = create_model("naive")
-
-    os.environ["PYCARET_TESTING"] = "1"
-
-    print("\n\n==== ON DATA (using Functional API) ====")
-    plot_model()
-    plot_model(plot="ts")
-    plot_model(plot="train_test_split")
-    plot_model(plot="cv")
-    plot_model(plot="acf")
-    plot_model(plot="pacf")
-    plot_model(plot="diagnostics")
-    plot_model(plot="decomp_classical")
-    plot_model(plot="decomp_stl")
-
-    print("\n\n==== ON ESTIMATOR (using Functional API) ====")
-    plot_model(estimator=model)
-    plot_model(estimator=model, plot="ts")
-    plot_model(estimator=model, plot="train_test_split")
-    plot_model(estimator=model, plot="cv")
-    plot_model(estimator=model, plot="acf")
-    plot_model(estimator=model, plot="pacf")
-    plot_model(estimator=model, plot="diagnostics")
-    plot_model(estimator=model, plot="decomp_classical")
-    plot_model(estimator=model, plot="decomp_stl")
-    plot_model(estimator=model, plot="forecast")
-    plot_model(estimator=model, plot="residuals")
-
-    #######################
-    #### Customization ####
-    #######################
-
-    print("\n\n==== Testing Customization ON DATA ====")
-    exp.plot_model(
-        plot="pacf",
-        data_kwargs={"nlags": 36,},
-        fig_kwargs={"fig_size": [800, 500], "fig_template": "simple_white"},
-        system=False,
-    )
-    exp.plot_model(
-        plot="decomp_classical", data_kwargs={"type": "multiplicative"}, system=False
-    )
-
-    print("\n\n====  Testing Customization ON ESTIMATOR ====")
-    exp.plot_model(
-        estimator=model, plot="forecast", data_kwargs={"fh": 24}, system=False
-    )
-
-
 @pytest.mark.parametrize("seasonal_period, seasonal_value", _get_seasonal_values())
 def test_setup_seasonal_period_str(
     load_pos_and_neg_data, seasonal_period, seasonal_value
@@ -446,6 +328,55 @@ def test_enforce_pi(load_pos_and_neg_data):
     # We know that some models do not offer PI capability to the following
     # check is valid for now.
     assert num_models1 < num_models2
+
+
+def test_mlflow_logging(load_pos_and_neg_data):
+    """Tests the logging of MLFlow experiment"""
+    data = load_pos_and_neg_data
+
+    exp = TimeSeriesExperiment()
+    exp.setup(
+        data=data,
+        fh=12,
+        session_id=42,
+        log_experiment=True,
+        experiment_name="ts_unit_test",
+        log_plots=True,
+    )
+
+    model = exp.create_model("naive")
+    _ = exp.tune_model(model)
+    _ = exp.compare_models(include=["naive", "ets"])
+
+    mlflow_logs = exp.get_logs()
+
+    # When running locally, there can be multiple experiments with the same name
+    # Just get he last one so that the asserts work (otherwise, the count of the
+    # various function calls will not match)
+    last_start = mlflow_logs["start_time"].max()
+    last_experiment_usi = mlflow_logs.query("start_time == @last_start")[
+        "tags.USI"
+    ].unique()[0]
+
+    num_create_models = len(
+        mlflow_logs.query(
+            "`tags.USI` == @last_experiment_usi & `tags.Source` == 'create_model'"
+        )
+    )
+    num_tune_models = len(
+        mlflow_logs.query(
+            "`tags.USI` == @last_experiment_usi &`tags.Source` == 'tune_model'"
+        )
+    )
+    num_compare_models = len(
+        mlflow_logs.query(
+            "`tags.USI` == @last_experiment_usi &`tags.Source` == 'compare_models'"
+        )
+    )
+
+    assert num_create_models == 1
+    assert num_tune_models == 1
+    assert num_compare_models == 2
 
 
 @pytest.mark.parametrize("name, fh", _model_parameters)
@@ -728,17 +659,20 @@ def test_tune_custom_grid_and_choose_better(load_pos_and_neg_data):
     # Custom Grid
     only_strategy = "mean"
     custom_grid = {"strategy": [only_strategy]}
+
+    # By default choose_better = True
     tuned_model1 = exp.tune_model(model, custom_grid=custom_grid)
 
-    # Choose Better
-    tuned_model2 = exp.tune_model(model, custom_grid=custom_grid, choose_better=True)
+    # Choose Better = False
+    tuned_model2 = exp.tune_model(model, custom_grid=custom_grid, choose_better=False)
 
-    # Different strategy should be picked since grid is limited (verified manually)
-    assert tuned_model1.strategy != model.strategy
+    # Same strategy should be chosen since choose_better = True by default
+    assert tuned_model1.strategy == model.strategy
     # should pick only value in custom grid
-    assert tuned_model1.strategy == only_strategy
-    # tuned model does improve score (verified manually), so pick original
-    assert tuned_model2.strategy == model.strategy
+    assert tuned_model2.strategy == only_strategy
+    # tuned model does improve score (verified manually), and choose_better
+    # set to False. So pick worse value itself.
+    assert tuned_model2.strategy != model.strategy
 
 
 def test_tune_model_custom_folds(load_pos_and_neg_data):
