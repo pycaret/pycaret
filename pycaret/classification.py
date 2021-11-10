@@ -45,10 +45,6 @@ def setup(
     text_features_method: str = "tf-idf",
     max_encoding_ohe: int = 5,
     encoding_method: Optional[Any] = None,
-    transformation: bool = False,
-    transformation_method: str = "yeo-johnson",
-    normalize: bool = False,
-    normalize_method: str = "zscore",
     low_variance_threshold: float = 0,
     remove_multicollinearity: bool = False,
     multicollinearity_threshold: float = 0.9,
@@ -60,6 +56,10 @@ def setup(
     polynomial_degree: int = 2,
     fix_imbalance: bool = False,
     fix_imbalance_method: Optional[Any] = None,
+    transformation: bool = False,
+    transformation_method: str = "yeo-johnson",
+    normalize: bool = False,
+    normalize_method: str = "zscore",
     pca: bool = False,
     pca_method: str = "linear",
     pca_components: Union[int, float] = 1.0,
@@ -220,37 +220,6 @@ def setup(
         `category_encoders.leave_one_out.LeaveOneOutEncoder` is used.
 
 
-    transformation: bool, default = False
-        When set to True, it applies the power transform to make data more Gaussian-like.
-        Type of transformation is defined by the ``transformation_method`` parameter.
-
-
-    transformation_method: str, default = 'yeo-johnson'
-        Defines the method for transformation. By default, the transformation method is
-        set to 'yeo-johnson'. The other available option for transformation is 'quantile'.
-        Ignored when ``transformation`` is not True.
-
-
-    normalize: bool, default = False
-        When set to True, it transforms the features by scaling them to a given
-        range. Type of scaling is defined by the ``normalize_method`` parameter.
-
-
-    normalize_method: str, default = 'zscore'
-        Defines the method for scaling. By default, normalize method is set to 'zscore'
-        The standard zscore is calculated as z = (x - u) / s. Ignored when ``normalize`` 
-        is not True. The other options are:
-    
-        - minmax: scales and translates each feature individually such that it is in 
-          the range of 0 - 1.
-        - maxabs: scales and translates each feature individually such that the 
-          maximal absolute value of each feature will be 1.0. It does not 
-          shift/center the data, and thus does not destroy any sparsity.
-        - robust: scales and translates each feature according to the Interquartile 
-          range. When the dataset contains outliers, robust scaler often gives 
-          better results.
-
-
     low_variance_threshold: float or None, default = 0
         Remove features with a training-set variance lower than the provided
         threshold. The default is to keep all features with non-zero variance,
@@ -314,6 +283,37 @@ def setup(
         When ``fix_imbalance`` is True, `imblearn` compatible estimator with a
         `fit_resample` method can be passed. If None, `imblearn.over_sampling.SMOTE`
         is used.
+
+
+    transformation: bool, default = False
+        When set to True, it applies the power transform to make data more Gaussian-like.
+        Type of transformation is defined by the ``transformation_method`` parameter.
+
+
+    transformation_method: str, default = 'yeo-johnson'
+        Defines the method for transformation. By default, the transformation method is
+        set to 'yeo-johnson'. The other available option for transformation is 'quantile'.
+        Ignored when ``transformation`` is not True.
+
+
+    normalize: bool, default = False
+        When set to True, it transforms the features by scaling them to a given
+        range. Type of scaling is defined by the ``normalize_method`` parameter.
+
+
+    normalize_method: str, default = 'zscore'
+        Defines the method for scaling. By default, normalize method is set to 'zscore'
+        The standard zscore is calculated as z = (x - u) / s. Ignored when ``normalize``
+        is not True. The other options are:
+
+        - minmax: scales and translates each feature individually such that it is in
+          the range of 0 - 1.
+        - maxabs: scales and translates each feature individually such that the
+          maximal absolute value of each feature will be 1.0. It does not
+          shift/center the data, and thus does not destroy any sparsity.
+        - robust: scales and translates each feature according to the Interquartile
+          range. When the dataset contains outliers, robust scaler often gives
+          better results.
 
 
     pca: bool, default = False
@@ -518,10 +518,6 @@ def setup(
         text_features_method=text_features_method,
         max_encoding_ohe=max_encoding_ohe,
         encoding_method=encoding_method,
-        transformation=transformation,
-        transformation_method=transformation_method,
-        normalize=normalize,
-        normalize_method=normalize_method,
         low_variance_threshold=low_variance_threshold,
         remove_multicollinearity=remove_multicollinearity,
         multicollinearity_threshold=multicollinearity_threshold,
@@ -533,6 +529,10 @@ def setup(
         polynomial_degree=polynomial_degree,
         fix_imbalance=fix_imbalance,
         fix_imbalance_method=fix_imbalance_method,
+        transformation=transformation,
+        transformation_method=transformation_method,
+        normalize=normalize,
+        normalize_method=normalize_method,
         pca=pca,
         pca_method=pca_method,
         pca_components=pca_components,

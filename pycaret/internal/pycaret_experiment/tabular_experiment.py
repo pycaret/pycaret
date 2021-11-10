@@ -431,10 +431,6 @@ class _TabularExperiment(_PyCaretExperiment):
         text_features_method: str = "tf-idf",
         max_encoding_ohe: int = 5,
         encoding_method: Optional[Any] = None,
-        transformation: bool = False,
-        transformation_method: str = "yeo-johnson",
-        normalize: bool = False,
-        normalize_method: str = "zscore",
         low_variance_threshold: float = 0,
         remove_multicollinearity: bool = False,
         multicollinearity_threshold: float = 0.9,
@@ -446,6 +442,10 @@ class _TabularExperiment(_PyCaretExperiment):
         polynomial_degree: int = 2,
         fix_imbalance: bool = False,
         fix_imbalance_method: Optional[Any] = None,
+        transformation: bool = False,
+        transformation_method: str = "yeo-johnson",
+        normalize: bool = False,
+        normalize_method: str = "zscore",
         pca: bool = False,
         pca_method: str = "linear",
         pca_components: Union[int, float] = 1.0,
@@ -991,50 +991,6 @@ class _TabularExperiment(_PyCaretExperiment):
                         ("rest_encoding", rest_estimator)
                     )
 
-            # Transformation ======================================= >>
-
-            if transformation:
-                self.logger.info("Setting up column transformation")
-                if transformation_method == "yeo-johnson":
-                    transformation_estimator = PowerTransformer(
-                        method="yeo-johnson", standardize=False, copy=True
-                    )
-                elif transformation_method == "quantile":
-                    transformation_estimator = QuantileTransformer(
-                        random_state=self.seed,
-                        output_distribution="normal",
-                    )
-                else:
-                    raise ValueError(
-                        "Invalid value for the transformation_method parameter. "
-                        "The value should be either yeo-johnson or quantile, "
-                        f"got {transformation_method}."
-                    )
-
-                self._internal_pipeline.steps.append(
-                    ("transformation", TransfomerWrapper(transformation_estimator))
-                )
-
-            # Normalization ======================================== >>
-
-            if normalize:
-                self.logger.info("Setting up feature normalization")
-                norm_dict = {
-                    "zscore": StandardScaler(),
-                    "minmax": MinMaxScaler(),
-                    "maxabs": MaxAbsScaler(),
-                    "robust": RobustScaler(),
-                }
-                if normalize_method in norm_dict:
-                    normalize_estimator = TransfomerWrapper(norm_dict[normalize_method])
-                else:
-                    raise ValueError(
-                        "Invalid value for the normalize_method parameter, got "
-                        f"{normalize_method}. Possible values are: {' '.join(norm_dict)}."
-                    )
-
-                self._internal_pipeline.steps.append(("normalize", normalize_estimator))
-
             # Low variance ========================================= >>
 
             if low_variance_threshold:
@@ -1145,6 +1101,50 @@ class _TabularExperiment(_PyCaretExperiment):
 
                 balance_estimator = TransfomerWrapper(balance_estimator)
                 self._internal_pipeline.steps.append(("balance", balance_estimator))
+
+            # Transformation ======================================= >>
+
+            if transformation:
+                self.logger.info("Setting up column transformation")
+                if transformation_method == "yeo-johnson":
+                    transformation_estimator = PowerTransformer(
+                        method="yeo-johnson", standardize=False, copy=True
+                    )
+                elif transformation_method == "quantile":
+                    transformation_estimator = QuantileTransformer(
+                        random_state=self.seed,
+                        output_distribution="normal",
+                    )
+                else:
+                    raise ValueError(
+                        "Invalid value for the transformation_method parameter. "
+                        "The value should be either yeo-johnson or quantile, "
+                        f"got {transformation_method}."
+                    )
+
+                self._internal_pipeline.steps.append(
+                    ("transformation", TransfomerWrapper(transformation_estimator))
+                )
+
+            # Normalization ======================================== >>
+
+            if normalize:
+                self.logger.info("Setting up feature normalization")
+                norm_dict = {
+                    "zscore": StandardScaler(),
+                    "minmax": MinMaxScaler(),
+                    "maxabs": MaxAbsScaler(),
+                    "robust": RobustScaler(),
+                }
+                if normalize_method in norm_dict:
+                    normalize_estimator = TransfomerWrapper(norm_dict[normalize_method])
+                else:
+                    raise ValueError(
+                        "Invalid value for the normalize_method parameter, got "
+                        f"{normalize_method}. Possible values are: {' '.join(norm_dict)}."
+                    )
+
+                self._internal_pipeline.steps.append(("normalize", normalize_estimator))
 
             # PCA ================================================== >>
 
