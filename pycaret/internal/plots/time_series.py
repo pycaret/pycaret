@@ -585,13 +585,13 @@ def plot_predictions(
         showlegend=True,
     )
 
-    data = [mean, original]
+    data_for_fig = [mean, original]
 
     layout = go.Layout(
         yaxis=dict(title="Values"), xaxis=dict(title="Time"), title=title,
     )
 
-    fig = go.Figure(data=data, layout=layout)
+    fig = go.Figure(data=data_for_fig, layout=layout)
 
     fig_template = fig_kwargs.get("fig_template", "ggplot2")
     fig.update_layout(template=fig_template)
