@@ -853,8 +853,8 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         fh: int or list or np.array, default = 1
             The forecast horizon to be used for forecasting. Default is set to ``1`` i.e.
-            forecast one point ahead. When integer is passed it means N continious points 
-            in the future without any gap. If you want to forecast values with gaps, you 
+            forecast one point ahead. When integer is passed it means N continious points
+            in the future without any gap. If you want to forecast values with gaps, you
             must pass an array e.g. np.array([2, 5]) will forecast 2 and 5 points ahead.
 
 
@@ -878,7 +878,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         enforce_pi: bool, default = False
             When set to True, only models that support prediction intervals are
-            loaded in the environment. 
+            loaded in the environment.
 
 
         n_jobs: int, default = -1
@@ -908,7 +908,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
 
         system_log: bool or logging.Logger, default = True
-            Whether to save the system logging file (as logs.log). If the input already is a 
+            Whether to save the system logging file (as logs.log). If the input already is a
             logger object, that one is used instead.
 
 
@@ -1611,7 +1611,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
 
         search_algorithm: str, default = 'random'
-            use 'random' for random grid search and 'grid' for complete grid search. 
+            use 'random' for random grid search and 'grid' for complete grid search.
 
 
         choose_better: bool, default = True
@@ -2351,6 +2351,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         self,
         estimator: Optional[Any] = None,
         plot: Optional[str] = None,
+        return_fig: bool = False,
         return_data: bool = False,
         verbose: bool = False,
         display_format: Optional[str] = None,
@@ -2362,8 +2363,8 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         """
         This function analyzes the performance of a trained model on holdout set.
-        When used without any estimator, this function generates plots on the 
-        original data set. When used with an estimator, it will generate plots on 
+        When used without any estimator, this function generates plots on the
+        original data set. When used with an estimator, it will generate plots on
         the model residuals.
 
 
@@ -2400,8 +2401,14 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             * 'residuals' - Residuals Plot
 
 
+        return_fig: : bool, default = False
+            When set to True, it returns the figure used for plotting.
+
+
         return_data: bool, default = False
             When set to True, it returns the data for plotting.
+            If both return_fig and return_data is set to True, order of return
+            is figure then data.
 
 
         verbose: bool, default = True
@@ -2466,6 +2473,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         ]
 
         return_pred_int = False
+        return_obj = []
 
         # Type checks
         if estimator is not None and isinstance(estimator, str):
@@ -2595,28 +2603,29 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             self.logger.info(f"Saving '{plot_filename}'")
             fig.write_html(plot_filename)
 
-            if return_data:
-                return plot_filename, plot_data
-            else:
-                return plot_filename
+            ### Add file name to return object ----
+            return_obj.append(plot_filename)
 
         elif system:
             if display_format == "streamlit":
                 st.write(fig)
-                return fig
-            # else:
-            #     fig.show()
+            else:
+                fig.show()
             self.logger.info("Visual Rendered Successfully")
 
-            if return_data:
-                return fig, plot_data
-            else:
-                return fig
+        ### Add figure and data to return object if required ----
+        if return_fig:
+            return_obj.append(fig)
+        if return_data:
+            return_obj.append(plot_data)
 
-        # if return_data:
-        #     return plot_filename, plot_data
-        # else:
-        #     return plot_filename
+        #### Return None if empty, return as list if more than one object,
+        # else return object directly ----
+        if len(return_obj) == 0:
+            return_obj = None
+        elif len(return_obj) == 1:
+            return_obj = return_obj[0]
+        return return_obj
 
     # def evaluate_model(
     #     self,
@@ -2746,8 +2755,8 @@ class TimeSeriesExperiment(_SupervisedExperiment):
     ) -> pd.DataFrame:
 
         """
-        This function forecast using a trained model. When ``fh`` is None, 
-        it forecasts using the same forecast horizon used during the 
+        This function forecast using a trained model. When ``fh`` is None,
+        it forecasts using the same forecast horizon used during the
         training.
 
 
@@ -2768,7 +2777,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         fh: int, default = None
             Number of points from the last date of training to forecast.
-            When fh is None, it forecasts using the same forecast horizon 
+            When fh is None, it forecasts using the same forecast horizon
             used during the training.
 
 
@@ -3423,7 +3432,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         >>> from pycaret.time_series import *
         >>> exp_name = setup(data = data, fh = 12)
         >>> best = compare_models()
-        >>> exp_logs = get_logs()   
+        >>> exp_logs = get_logs()
 
 
         experiment_name: str, default = None

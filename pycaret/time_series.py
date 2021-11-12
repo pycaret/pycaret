@@ -877,6 +877,7 @@ def blend_models(
 def plot_model(
     estimator: Optional[Any] = None,
     plot: Optional[str] = None,
+    return_fig: bool = False,
     return_data: bool = False,
     verbose: bool = False,
     display_format: Optional[str] = None,
@@ -925,8 +926,14 @@ def plot_model(
         * 'residuals' - Residuals Plot
 
 
+    return_fig: : bool, default = False
+            When set to True, it returns the figure used for plotting.
+
+
     return_data: bool, default = False
         When set to True, it returns the data for plotting.
+        If both return_fig and return_data is set to True, order of return
+        is figure then data.
 
 
     verbose: bool, default = True
@@ -963,6 +970,7 @@ def plot_model(
     return _CURRENT_EXPERIMENT.plot_model(
         estimator=estimator,
         plot=plot,
+        return_fig=return_fig,
         return_data=return_data,
         display_format=display_format,
         data_kwargs=data_kwargs,
