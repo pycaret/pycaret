@@ -1313,6 +1313,7 @@ def blend_models(
 def stack_models(
     estimator_list: list,
     meta_model=None,
+    meta_model_fold: Optional[Union[int, Any]] = 5,
     fold: Optional[Union[int, Any]] = None,
     round: int = 4,
     method: str = "auto",
@@ -1349,6 +1350,13 @@ def stack_models(
 
     meta_model: scikit-learn compatible object, default = None
         When None, Logistic Regression is trained as a meta model.
+
+
+    meta_model_fold: integer or scikit-learn compatible CV generator, default = 5
+        Controls internal cross-validation. Can be an integer or a scikit-learn
+        CV generator. If set to an integer, will use (Stratifed)KFold CV with
+        that many folds. See scikit-learn documentation on Stacking for 
+        more details.
 
 
     fold: int or scikit-learn compatible CV generator, default = None
@@ -1412,6 +1420,7 @@ def stack_models(
     return pycaret.internal.tabular.stack_models(
         estimator_list=estimator_list,
         meta_model=meta_model,
+        meta_model_fold=meta_model_fold,
         fold=fold,
         round=round,
         method=method,
