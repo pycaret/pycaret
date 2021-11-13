@@ -77,7 +77,12 @@ class _SupervisedExperiment(_TabularExperiment):
         return
 
     def _calculate_metrics(
-        self, y_test, pred, pred_prob, weights: Optional[list] = None,
+        self,
+        y_test,
+        pred,
+        pred_prob,
+        weights: Optional[list] = None,
+        additional_kwargs=None,
     ) -> dict:
         """
         Calculate all metrics in _all_metrics.
@@ -91,16 +96,21 @@ class _SupervisedExperiment(_TabularExperiment):
                 pred=pred,
                 pred_proba=pred_prob,
                 weights=weights,
+                additional_kwargs=additional_kwargs,
             )
         except Exception:
             ml_usecase = get_ml_task(y_test)
             if ml_usecase == MLUsecase.CLASSIFICATION:
-                metrics = pycaret.containers.metrics.classification.get_all_metric_containers(
-                    self.variables, True
+                metrics = (
+                    pycaret.containers.metrics.classification.get_all_metric_containers(
+                        self.variables, True
+                    )
                 )
             elif ml_usecase == MLUsecase.REGRESSION:
-                metrics = pycaret.containers.metrics.regression.get_all_metric_containers(
-                    self.variables, True
+                metrics = (
+                    pycaret.containers.metrics.regression.get_all_metric_containers(
+                        self.variables, True
+                    )
                 )
             return calculate_metrics(
                 metrics=metrics,  # type: ignore
@@ -108,6 +118,7 @@ class _SupervisedExperiment(_TabularExperiment):
                 pred=pred,
                 pred_proba=pred_prob,
                 weights=weights,
+                additional_kwargs=additional_kwargs,
             )
 
     def _is_unsupervised(self) -> bool:

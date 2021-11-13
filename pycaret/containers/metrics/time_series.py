@@ -82,6 +82,7 @@ class TimeSeriesMetricContainer(MetricContainer):
         score_func: type,
         scorer: Optional[Union[str, _BaseScorer]] = None,
         target: str = "pred",
+        additional_kwargs_keys: set = None,
         args: Dict[str, Any] = None,
         display_name: Optional[str] = None,
         greater_is_better: bool = True,
@@ -94,8 +95,12 @@ class TimeSeriesMetricContainer(MetricContainer):
 
         if not args:
             args = {}
+        if not additional_kwargs_keys:
+            additional_kwargs_keys = set()
         if not isinstance(args, dict):
             raise TypeError("args needs to be a dictionary.")
+        if not isinstance(additional_kwargs_keys, set):
+            raise TypeError("additional_kwargs_keys needs to be a set.")
 
         scorer = (
             scorer
@@ -120,6 +125,7 @@ class TimeSeriesMetricContainer(MetricContainer):
         )
 
         self.target = target
+        self.additional_kwargs_keys = additional_kwargs_keys
 
     def get_dict(self, internal: bool = True) -> Dict[str, Any]:
         """
@@ -141,6 +147,7 @@ class TimeSeriesMetricContainer(MetricContainer):
             "Score Function": self.score_func,
             "Scorer": self.scorer,
             "Target": self.target,
+            "Additional Kwargs Keys": self.additional_kwargs_keys,
             "Args": self.args,
             "Greater is Better": self.greater_is_better,
             "Custom": self.is_custom,

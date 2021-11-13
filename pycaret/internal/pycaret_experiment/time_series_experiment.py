@@ -100,6 +100,7 @@ def cross_validate_ts(
     return_train_score,
     error_score=0,
     verbose: int = 0,
+    additional_kwargs_keys_metrics: Optional[dict] = None,
 ) -> Dict[str, np.array]:
     """Performs Cross Validation on time series data
 
@@ -146,6 +147,7 @@ def cross_validate_ts(
         # # For Debug
         # n_jobs = 1
         scoring = _get_metrics_dict_ts(scoring)
+        additional_kwargs_keys_metrics = additional_kwargs_keys_metrics or {}
         parallel = Parallel(n_jobs=n_jobs)
 
         out = parallel(
@@ -160,6 +162,7 @@ def cross_validate_ts(
                 fit_params=fit_params,
                 return_train_score=return_train_score,
                 error_score=error_score,
+                additional_kwargs_keys_metrics=additional_kwargs_keys_metrics,
             )
             for train, test in get_folds(cv, y)
         )
@@ -207,6 +210,7 @@ def _fit_and_score(
     fit_params,
     return_train_score,
     error_score=0,
+    additional_kwargs_keys_metrics: Optional[dict] = None,
 ):
     """Fits the forecaster on a single train split and scores on the test split
     Similar to _fit_and_score from `sklearn` [1] (and to some extent `sktime` [2]).
@@ -248,6 +252,8 @@ def _fit_and_score(
     if parameters is not None:
         forecaster.set_params(**parameters)
 
+    additional_kwargs_keys_metrics = additional_kwargs_keys_metrics or {}
+
     y_train, y_test = y[train], y[test]
     X_train = None if X is None else X[train]
     X_test = None if X is None else X[test]
@@ -287,7 +293,16 @@ def _fit_and_score(
     scoring = _get_metrics_dict_ts(scoring)
     for scorer_name, scorer in scoring.items():
         if forecaster.is_fitted:
-            metric = scorer._score_func(y_true=y_test, y_pred=y_pred, **scorer._kwargs)
+            additional_kwargs = {"y_train": y_train}
+            kwargs = {
+                **{
+                    k: v
+                    for k, v in additional_kwargs.items()
+                    if k in additional_kwargs_keys_metrics.get("scorer_name", [])
+                },
+                **scorer._kwargs,
+            }
+            metric = scorer._score_func(y_true=y_test, y_pred=y_pred, **kwargs)
         else:
             metric = None
         fold_scores[scorer_name] = metric
@@ -2919,17 +2934,18 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             y_test_pred_common = y_test_and_pred[y_test_and_pred.columns[0]]
             y_test_common = y_test_and_pred[y_test_and_pred.columns[1]]
 
+            additional_kwargs = {}
             if len(y_test_and_pred) == 0:
                 self.logger.warning(
                     "predict_model >> No indices matched between test set and prediction. "
                     "You are most likely calling predict_model after finalizing model. "
                     "Metrics will not be displayed"
                 )
-                metrics = self._calculate_metrics(y_test=[], pred=[], pred_prob=None)  # type: ignore
+                metrics = self._calculate_metrics(y_test=[], pred=[], pred_prob=None, additional_kwargs=additional_kwargs)  # type: ignore
                 metrics = {metric_name: np.nan for metric_name, _ in metrics.items()}
                 verbose = False
             else:
-                metrics = self._calculate_metrics(y_test=y_test_common, pred=y_test_pred_common, pred_prob=None)  # type: ignore
+                metrics = self._calculate_metrics(y_test=y_test_common, pred=y_test_pred_common, pred_prob=None, additional_kwargs=additional_kwargs)  # type: ignore
 
             # Display Test Score
             # model name

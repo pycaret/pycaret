@@ -396,9 +396,11 @@ def calculate_metrics(
     pred_proba: Optional[float] = None,
     score_dict: Optional[Dict[str, np.array]] = None,
     weights: Optional[list] = None,
+    additional_kwargs: Optional[dict] = None,
 ) -> Dict[str, np.array]:
 
     score_dict = []
+    additional_kwargs = additional_kwargs or {}
 
     for k, v in metrics.items():
         score_dict.append(
@@ -410,6 +412,7 @@ def calculate_metrics(
                 pred,
                 pred_proba,
                 weights,
+                additional_kwargs=additional_kwargs,
             )
         )
 
@@ -418,18 +421,33 @@ def calculate_metrics(
 
 
 def _calculate_metric(
-    container, score_func, display_name, y_test, pred_, pred_proba, weights
+    container,
+    score_func,
+    display_name,
+    y_test,
+    pred_,
+    pred_proba,
+    weights,
+    additional_kwargs,
 ):
     if not score_func:
         return None
     target = pred_proba if container.target == "pred_proba" else pred_
+
+    kwargs = {
+        **{
+            k: v
+            for k, v in additional_kwargs.items()
+            if k in getattr(container, "additional_kwargs_keys", {})
+        },
+        **container.args,
+    }
+
     try:
-        calculated_metric = score_func(
-            y_test, target, sample_weight=weights, **container.args
-        )
+        calculated_metric = score_func(y_test, target, sample_weight=weights, **kwargs)
     except:
         try:
-            calculated_metric = score_func(y_test, target, **container.args)
+            calculated_metric = score_func(y_test, target, **kwargs)
         except:
             calculated_metric = 0
 
