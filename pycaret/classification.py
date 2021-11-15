@@ -669,6 +669,7 @@ def compare_models(
     errors: str = "ignore",
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
+    probability_threshold: Optional[float] = None,
     verbose: bool = True,
 ) -> Union[Any, List[Any]]:
 
@@ -752,6 +753,12 @@ def compare_models(
         as the column name in the dataset containing group labels.
 
 
+    probability_threshold: float, default = None
+        Threshold for converting predicted probability to class label.
+        It defaults to 0.5 for all classifiers unless explicitly defined 
+        in this parameter. Only applicable for binary classification.
+
+
     verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
     
@@ -782,6 +789,7 @@ def compare_models(
         errors=errors,
         fit_kwargs=fit_kwargs,
         groups=groups,
+        probability_threshold=probability_threshold,
         verbose=verbose,
     )
 
@@ -793,6 +801,7 @@ def create_model(
     cross_validation: bool = True,
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
+    probability_threshold: Optional[float] = None,
     verbose: bool = True,
     **kwargs,
 ) -> Any:
@@ -866,6 +875,12 @@ def create_model(
         the column name in the dataset containing group labels.
 
 
+    probability_threshold: float, default = None
+        Threshold for converting predicted probability to class label.
+        It defaults to 0.5 for all classifiers unless explicitly defined 
+        in this parameter. Only applicable for binary classification.
+
+
     verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
 
@@ -894,6 +909,7 @@ def create_model(
         cross_validation=cross_validation,
         fit_kwargs=fit_kwargs,
         groups=groups,
+        probability_threshold=probability_threshold,
         verbose=verbose,
         **kwargs,
     )
@@ -1114,6 +1130,7 @@ def ensemble_model(
     optimize: str = "Accuracy",
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
+    probability_threshold: Optional[float] = None,
     verbose: bool = True,
 ) -> Any:
 
@@ -1178,6 +1195,12 @@ def ensemble_model(
         the column name in the dataset containing group labels.
 
 
+    probability_threshold: float, default = None
+        Threshold for converting predicted probability to class label.
+        It defaults to 0.5 for all classifiers unless explicitly defined 
+        in this parameter. Only applicable for binary classification.
+
+
     verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
 
@@ -1204,6 +1227,7 @@ def ensemble_model(
         fit_kwargs=fit_kwargs,
         groups=groups,
         verbose=verbose,
+        probability_threshold=probability_threshold,
     )
 
 
@@ -1217,6 +1241,7 @@ def blend_models(
     weights: Optional[List[float]] = None,
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
+    probability_threshold: Optional[float] = None,
     verbose: bool = True,
 ) -> Any:
 
@@ -1287,6 +1312,12 @@ def blend_models(
         the column name in the dataset containing group labels.
 
 
+    probability_threshold: float, default = None
+        Threshold for converting predicted probability to class label.
+        It defaults to 0.5 for all classifiers unless explicitly defined 
+        in this parameter. Only applicable for binary classification.
+
+
     verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
 
@@ -1307,6 +1338,7 @@ def blend_models(
         fit_kwargs=fit_kwargs,
         groups=groups,
         verbose=verbose,
+        probability_threshold=probability_threshold,
     )
 
 
@@ -1322,6 +1354,7 @@ def stack_models(
     optimize: str = "Accuracy",
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
+    probability_threshold: Optional[float] = None,
     verbose: bool = True,
 ) -> Any:
 
@@ -1401,6 +1434,12 @@ def stack_models(
         the column name in the dataset containing group labels.
 
 
+    probability_threshold: float, default = None
+        Threshold for converting predicted probability to class label.
+        It defaults to 0.5 for all classifiers unless explicitly defined 
+        in this parameter. Only applicable for binary classification.
+
+
     verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
 
@@ -1429,6 +1468,7 @@ def stack_models(
         optimize=optimize,
         fit_kwargs=fit_kwargs,
         groups=groups,
+        probability_threshold=probability_threshold,
         verbose=verbose,
     )
 
@@ -1735,6 +1775,7 @@ def interpret_model(
 def calibrate_model(
     estimator,
     method: str = "sigmoid",
+    calibrate_fold: Optional[Union[int, Any]] = 5,
     fold: Optional[Union[int, Any]] = None,
     round: int = 4,
     fit_kwargs: Optional[dict] = None,
@@ -1762,11 +1803,18 @@ def calibrate_model(
 
     estimator: scikit-learn compatible object
         Trained model object
-    
+
 
     method: str, default = 'sigmoid'
         The method to use for calibration. Can be 'sigmoid' which corresponds to 
         Platt's method or 'isotonic' which is a non-parametric approach. 
+
+
+    calibrate_fold: integer or scikit-learn compatible CV generator, default = 5
+        Controls internal cross-validation. Can be an integer or a scikit-learn
+        CV generator. If set to an integer, will use (Stratifed)KFold CV with
+        that many folds. See scikit-learn documentation on Stacking for 
+        more details.
 
 
     fold: int or scikit-learn compatible CV generator, default = None
@@ -1809,6 +1857,7 @@ def calibrate_model(
     return pycaret.internal.tabular.calibrate_model(
         estimator=estimator,
         method=method,
+        calibrate_fold=calibrate_fold,
         fold=fold,
         round=round,
         fit_kwargs=fit_kwargs,
@@ -1915,12 +1964,13 @@ def predict_model(
     data: pandas.DataFrame
         Shape (n_samples, n_features). All features used during training 
         must be available in the unseen dataset.
-    
+
 
     probability_threshold: float, default = None
         Threshold for converting predicted probability to class label.
-        It defaults to 0.5 for all classifiers unless explicitly defined 
-        in this parameter. 
+        Unless this parameter is set, it will default to the value set
+        during model creation. If that wasn't set, the default will be 0.5
+        for all classifiers. Only applicable for binary classification.
 
 
     encoded_labels: bool, default = False
