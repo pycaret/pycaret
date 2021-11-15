@@ -58,8 +58,8 @@ class PowerTransformedTargetRegressor(sklearn.compose.TransformedTargetRegressor
         # this also happens in pure scikit-learn
         y = y.astype("float64")
 
-        r = super().fit(X, y, **fit_params)
-        return r
+        super().fit(X, y, **fit_params)
+        return self
 
     def set_params(self, **params):
         """

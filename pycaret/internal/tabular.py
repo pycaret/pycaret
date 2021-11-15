@@ -6017,6 +6017,9 @@ def plot_model(
     ), patch(
         "yellowbrick.utils.helpers.is_estimator",
         pycaret.internal.patches.yellowbrick.is_estimator,
+    ), patch(
+        "yellowbrick.utils.helpers.get_model_name",
+        pycaret.internal.patches.yellowbrick.get_model_name,
     ), estimator_pipeline(
         _internal_pipeline, model
     ) as pipeline_with_model:
