@@ -45,7 +45,7 @@ jobs:
     runs-on: windows-latest
     strategy:
       matrix:
-        python-version: [3.7, 3.8, 3.9]
+        python-version: [3.6, 3.7, 3.8]
 
     steps:
     - uses: actions/checkout@v2
@@ -61,7 +61,6 @@ jobs:
         pip install -r requirements.txt
         pip install -r requirements-optional.txt
         pip install -r requirements-test.txt
-        pip install ipywidgets
         pip install https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.0.0/en_core_web_sm-3.0.0-py3-none-any.whl
     - name: Remove tests
       run: |
