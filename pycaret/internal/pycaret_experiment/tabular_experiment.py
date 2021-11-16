@@ -431,6 +431,8 @@ class _TabularExperiment(_PyCaretExperiment):
         text_features_method: str = "tf-idf",
         max_encoding_ohe: int = 5,
         encoding_method: Optional[Any] = None,
+        polynomial_features: bool = False,
+        polynomial_degree: int = 2,
         low_variance_threshold: float = 0,
         remove_multicollinearity: bool = False,
         multicollinearity_threshold: float = 0.9,
@@ -438,8 +440,6 @@ class _TabularExperiment(_PyCaretExperiment):
         remove_outliers: bool = False,
         outliers_method: str = "iforest",
         outliers_threshold: float = 0.05,
-        polynomial_features: bool = False,
-        polynomial_degree: int = 2,
         fix_imbalance: bool = False,
         fix_imbalance_method: Optional[Any] = None,
         transformation: bool = False,
@@ -717,49 +717,27 @@ class _TabularExperiment(_PyCaretExperiment):
         # Features to keep during all preprocessing
         keep_features = keep_features if keep_features else []
 
-        if test_data is None:
-            if self._ml_usecase == MLUsecase.TIME_SERIES:
-                # TODO: Fix time series for new data properties!
-                from sktime.forecasting.model_selection import (
-                    temporal_train_test_split,
-                )  # sktime is an optional dependency
-
-                X_train, X_test, y_train, y_test = temporal_train_test_split(
-                    X=self.X,
-                    y=self.y,
-                    fh=fh,  # if fh is provided it splits by it
-                )
-
-                y_train, y_test = pd.DataFrame(y_train), pd.DataFrame(y_test)
-
-                self.data = pd.concat([X_train, X_test]).reset_index(drop=True)
-                self.idx = [len(X_train), len(X_test)]
-
-            else:
-                train, test = train_test_split(
-                    self.data,
-                    test_size=1 - train_size,
-                    stratify=get_columns_to_stratify_by(
-                        self.X, self.y, data_split_stratify
-                    ),
-                    random_state=self.seed,
-                    shuffle=data_split_shuffle,
-                )
-                self.data = pd.concat([train, test]).reset_index(drop=True)
-                self.idx = (len(train), len(test))
-
-        else:  # test_data is provided
-            self.data = pd.concat([data, test_data]).reset_index(drop=True)
-            self.idx = [len(data), len(test_data)]
+        if self._ml_usecase == MLUsecase.TIME_SERIES:
+            pass #self.data, self.idx = self._get_data_and_idx()  # TODO: Make method
+        else:
+            self.data, self.idx = self._get_data_and_idx(
+                train_size=train_size,
+                test_data=test_data,
+                shuffle=data_split_shuffle,
+                stratify=data_split_stratify,
+            )
 
         # Preprocessing ============================================ >>
 
-        self.logger.info("Preparing preprocessing pipeline...")
-
         # Initialize empty pipeline
-        self._internal_pipeline = InternalPipeline(steps=[("placeholder", None)], memory=self.memory)
+        self._internal_pipeline = InternalPipeline(
+            steps=[("placeholder", None)],
+            memory=self.memory,
+        )
 
         if preprocess:
+
+            self.logger.info("Preparing preprocessing pipeline...")
 
             # Encode target variable =============================== >>
 
@@ -991,6 +969,23 @@ class _TabularExperiment(_PyCaretExperiment):
                         ("rest_encoding", rest_estimator)
                     )
 
+            # Polynomial features ================================== >>
+
+            if polynomial_features:
+                self.logger.info("Setting up polynomial features")
+                polynomial = TransfomerWrapper(
+                    transformer=PolynomialFeatures(
+                        degree=polynomial_degree,
+                        interaction_only=False,
+                        include_bias=False,
+                        order="C",
+                    ),
+                )
+
+                self._internal_pipeline.steps.append(
+                    ("polynomial_features", polynomial)
+                )
+
             # Low variance ========================================= >>
 
             if low_variance_threshold:
@@ -1065,23 +1060,6 @@ class _TabularExperiment(_PyCaretExperiment):
 
                 self._internal_pipeline.steps.append(
                     ("remove_outliers", outliers)
-                )
-
-            # Polynomial features ================================== >>
-
-            if polynomial_features:
-                self.logger.info("Setting up polynomial features")
-                polynomial = TransfomerWrapper(
-                    transformer=PolynomialFeatures(
-                        degree=polynomial_degree,
-                        interaction_only=False,
-                        include_bias=False,
-                        order="C",
-                    ),
-                )
-
-                self._internal_pipeline.steps.append(
-                    ("polynomial_features", polynomial)
                 )
 
             # Balance the dataset ================================== >>

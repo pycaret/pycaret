@@ -70,7 +70,6 @@ class _SupervisedExperiment(_TabularExperiment):
                 "fold_groups_param_full",
             }
         )
-        return
 
     def _calculate_metrics(
         self, y_test, pred, pred_prob, weights: Optional[list] = None,

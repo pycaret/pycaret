@@ -119,12 +119,20 @@ class TransfomerWrapper(BaseEstimator):
                 Original dataframe (states the order).
 
             """
-            temp_df = pd.DataFrame()
+            temp_df = pd.DataFrame(index=df.index)
             for col in list(dict.fromkeys(list(original_df.columns) + list(df.columns))):
                 if col in df.columns:
                     temp_df[col] = df[col]
                 elif col not in self._include:
-                    temp_df[col] = original_df[col]
+                    if len(df) != len(original_df):
+                        raise ValueError(
+                            f"Length of values ({len(df)}) does not match length of "
+                            f"index ({len(original_df)}). This might happen when "
+                            "transformations that drop rows aren't applied on all "
+                            "the columns."
+                        )
+
+                    temp_df[col] = original_df[col].tolist()  # List to adopt to index
 
                 # Derivative cols are added after original
                 for col_derivative in df.columns:
@@ -132,6 +140,20 @@ class TransfomerWrapper(BaseEstimator):
                         temp_df[col_derivative] = df[col_derivative]
 
             return temp_df
+
+        def prepare_df(out):
+            """Convert to df and set correct column names and order."""
+            # Convert to pandas and assign proper column names
+            if not isinstance(out, pd.DataFrame):
+                if issparse(out):
+                    out = out.toarray()
+
+                out = to_df(out, columns=name_cols(out, X))
+
+            # Reorder columns in case only a subset was used
+            return reorder_cols(out, X)
+
+        X, y = to_df(X), to_series(y)
 
         args = []
         if "X" in signature(self.transformer.transform).parameters:
@@ -147,29 +169,15 @@ class TransfomerWrapper(BaseEstimator):
 
         # Transform can return X, y or both
         if isinstance(output, tuple):
-            new_X, new_y = output[0], output[1]
+            new_X = prepare_df(output[0])
+            new_y = to_series(output[1], name=y.name)
         else:
             if len(output.shape) > 1:
-                new_X, new_y = output, None
+                new_X = prepare_df(output)
+                new_y = y if y is None else y.set_axis(new_X.index)
             else:
-                new_X, new_y = None, output
-
-        # Convert to pandas and assign proper column names
-        if new_X is not None:
-            if not isinstance(new_X, pd.DataFrame):
-                # If sparse matrix, convert back to array
-                if issparse(new_X):
-                    new_X = new_X.toarray()
-
-                new_X = to_df(new_X, columns=name_cols(new_X, X))
-
-            # Reorder columns in case only a subset was used
-            new_X = reorder_cols(new_X, X)
-
-        if hasattr(y, "name"):
-            new_y = to_series(new_y, name=y.name)
-        else:
-            new_y = to_series(new_y)
+                new_y = to_series(output, name=y.name)
+                new_X = X if X is None else X.set_index(new_y.index)
 
         return variable_return(new_X, new_y)
 

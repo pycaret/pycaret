@@ -1,6 +1,6 @@
 from pycaret.internal.pycaret_experiment.utils import highlight_setup, MLUsecase
-from pycaret.internal.pycaret_experiment.supervised_experiment import (
-    _SupervisedExperiment,
+from pycaret.internal.pycaret_experiment.class_reg_experiment import (
+    ClassRegExperiment,
 )
 from pycaret.internal.utils import color_df
 import pycaret.internal.patches.sklearn
@@ -30,7 +30,7 @@ warnings.filterwarnings("ignore")
 LOGGER = get_logger()
 
 
-class ClassificationExperiment(_SupervisedExperiment):
+class ClassificationExperiment(ClassRegExperiment):
     def __init__(self) -> None:
         super().__init__()
         self._ml_usecase = MLUsecase.CLASSIFICATION
@@ -100,13 +100,13 @@ class ClassificationExperiment(_SupervisedExperiment):
                         ["Text features embedding method", kwargs["text_features_method"]],
                         ["Maximum one-hot encoding", kwargs["max_encoding_ohe"]],
                         ["Encoding method", kwargs["encoding_method"]],
+                        ["Polynomial features", kwargs["polynomial_features"]],
+                        ["Polynomial degree", kwargs["polynomial_degree"]],
                         ["Low variance threshold", kwargs["low_variance_threshold"]],
                         ["Remove multicollinearity", kwargs["remove_multicollinearity"]],
                         ["Multicollinearity threshold", kwargs["multicollinearity_threshold"]],
                         ["Remove outliers", kwargs["remove_outliers"]],
                         ["Outliers threshold", kwargs["outliers_threshold"]],
-                        ["Polynomial features", kwargs["polynomial_features"]],
-                        ["Polynomial degree", kwargs["polynomial_degree"]],
                         ["Fix imbalance", kwargs["fix_imbalance"]],
                         ["Fix imbalance method", kwargs["fix_imbalance_method"]],
                         ["Transformation", kwargs["transformation"]],

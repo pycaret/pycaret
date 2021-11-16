@@ -422,12 +422,12 @@ class _PyCaretExperiment:
     @property
     def train(self):
         """Training set."""
-        return self.dataset[:self.idx[0]]
+        return self.dataset.loc[self.idx[0], :]
 
     @property
     def test(self):
         """Test set."""
-        return self.dataset[-self.idx[1]:]
+        return self.dataset.loc[self.idx[1], :]
 
     @property
     def X(self):

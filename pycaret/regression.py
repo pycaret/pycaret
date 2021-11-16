@@ -48,6 +48,8 @@ def setup(
     text_features_method: str = "tf-idf",
     max_encoding_ohe: int = 5,
     encoding_method: Optional[Any] = None,
+    polynomial_features: bool = False,
+    polynomial_degree: int = 2,
     low_variance_threshold: float = 0,
     remove_multicollinearity: bool = False,
     multicollinearity_threshold: float = 0.9,
@@ -55,8 +57,6 @@ def setup(
     remove_outliers: bool = False,
     outliers_method: str = "iforest",
     outliers_threshold: float = 0.05,
-    polynomial_features: bool = False,
-    polynomial_degree: int = 2,
     transformation: bool = False,
     transformation_method: str = "yeo-johnson",
     normalize: bool = False,
@@ -222,6 +222,16 @@ def setup(
         `category_encoders.leave_one_out.LeaveOneOutEncoder` is used.
 
 
+    polynomial_features: bool, default = False
+        When set to True, new features are derived using existing numeric features.
+
+
+    polynomial_degree: int, default = 2
+        Degree of polynomial features. For example, if an input sample is two dimensional
+        and of the form [a, b], the polynomial features with degree = 2 are:
+        [1, a, b, a^2, ab, b^2]. Ignored when ``polynomial_features`` is not True.
+
+
     low_variance_threshold: float or None, default = 0
         Remove features with a training-set variance lower than the provided
         threshold. The default is to keep all features with non-zero variance,
@@ -264,16 +274,6 @@ def setup(
     outliers_threshold: float, default = 0.05
         The percentage outliers to be removed from the dataset. Ignored
         when ``remove_outliers=False``.
-
-
-    polynomial_features: bool, default = False
-        When set to True, new features are derived using existing numeric features.
-
-
-    polynomial_degree: int, default = 2
-        Degree of polynomial features. For example, if an input sample is two dimensional
-        and of the form [a, b], the polynomial features with degree = 2 are:
-        [1, a, b, a^2, ab, b^2]. Ignored when ``polynomial_features`` is not True.
 
 
     transformation: bool, default = False
@@ -522,6 +522,8 @@ def setup(
         text_features_method=text_features_method,
         max_encoding_ohe=max_encoding_ohe,
         encoding_method=encoding_method,
+        polynomial_features=polynomial_features,
+        polynomial_degree=polynomial_degree,
         low_variance_threshold=low_variance_threshold,
         remove_multicollinearity=remove_multicollinearity,
         multicollinearity_threshold=multicollinearity_threshold,
@@ -529,8 +531,6 @@ def setup(
         remove_outliers=remove_outliers,
         outliers_method=outliers_method,
         outliers_threshold=outliers_threshold,
-        polynomial_features=polynomial_features,
-        polynomial_degree=polynomial_degree,
         transformation=transformation,
         transformation_method=transformation_method,
         normalize=normalize,
