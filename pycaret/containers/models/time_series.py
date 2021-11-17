@@ -1319,7 +1319,12 @@ class CdsDtContainer(TimeSeriesContainer):
 
     @property
     def _set_args(self) -> Dict[str, Any]:
-        args: Dict[str, Any] = {"regressor": self.regressor}
+        # Set sp based on seasonal period and window length to 'sp'
+        args: Dict[str, Any] = {
+            "regressor": self.regressor,
+            "sp": self.sp,
+            "window_length": self.sp,
+        }
         return args
 
 
