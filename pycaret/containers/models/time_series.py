@@ -250,6 +250,12 @@ class NaiveContainer(TimeSeriesContainer):
     model_type = TSModelTypes.BASELINE
 
     def __init__(self, globals_dict: dict) -> None:
+        """
+        For Naive Forecaster,
+          - `sp` must always be 1
+          - `strategy` can be either 'last' or 'drift' but not 'mean'
+             'mean' is reserved for Grand Means Model
+        """
         logger = get_logger()
         np.random.seed(globals_dict["seed"])
         self.gpu_imported = False
@@ -263,15 +269,17 @@ class NaiveContainer(TimeSeriesContainer):
         if not self.active:
             return
 
-        self.seasonality_present = globals_dict.get("seasonality_present")
-        sp = globals_dict.get("seasonal_period")
-        self.sp = sp if sp is not None else 1
-
         args = self._set_args
         tune_args = self._set_tune_args
         tune_grid = self._set_tune_grid
         tune_distributions = self._set_tune_distributions
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+
+        eq_function = (
+            lambda x: type(x) is NaiveForecaster
+            and x.sp == 1
+            and (x.strategy == "last" or x.strategy == "drift")
+        )
 
         super().__init__(
             id="naive",
@@ -282,16 +290,19 @@ class NaiveContainer(TimeSeriesContainer):
             tune_distribution=tune_distributions,
             tune_args=tune_args,
             is_gpu_enabled=self.gpu_imported,
+            eq_function=eq_function,
         )
+
+    @property
+    def _set_args(self) -> Dict[str, Any]:
+        args = {"strategy": "last", "sp": 1}
+        return args
 
     @property
     def _set_tune_grid(self) -> Dict[str, List[Any]]:
         tune_grid = {
-            "strategy": ["last", "mean", "drift"],
+            "strategy": ["last", "drift"],
             "sp": [1],
-            # Removing fh for now since it can be less than sp which causes an error
-            # Will need to add checks for it later if we want to incorporate it
-            "window_length": [None],  # , len(fh)]
         }
         return tune_grid
 
@@ -300,6 +311,11 @@ class GrandMeansContainer(TimeSeriesContainer):
     model_type = TSModelTypes.BASELINE
 
     def __init__(self, globals_dict: dict) -> None:
+        """
+        For Grand Means Forecaster,
+          - `sp` must always be 1
+          - `strategy` must always be 'mean'
+        """
         logger = get_logger()
         np.random.seed(globals_dict["seed"])
         self.gpu_imported = False
@@ -313,15 +329,17 @@ class GrandMeansContainer(TimeSeriesContainer):
         if not self.active:
             return
 
-        self.seasonality_present = globals_dict.get("seasonality_present")
-        sp = globals_dict.get("seasonal_period")
-        self.sp = sp if sp is not None else 1
-
         args = self._set_args
         tune_args = self._set_tune_args
         tune_grid = self._set_tune_grid
         tune_distributions = self._set_tune_distributions
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+
+        eq_function = (
+            lambda x: type(x) is NaiveForecaster
+            and x.sp == 1
+            and (x.strategy == "mean")
+        )
 
         super().__init__(
             id="grand_means",
@@ -332,18 +350,32 @@ class GrandMeansContainer(TimeSeriesContainer):
             tune_distribution=tune_distributions,
             tune_args=tune_args,
             is_gpu_enabled=self.gpu_imported,
+            eq_function=eq_function,
         )
 
     @property
     def _set_args(self) -> Dict[str, Any]:
-        args = {"strategy": "mean", "window_length": None}
+        args = {"strategy": "mean", "sp": 1}
         return args
+
+    @property
+    def _set_tune_grid(self) -> Dict[str, List[Any]]:
+        tune_grid = {
+            "strategy": ["mean"],
+            "sp": [1],
+        }
+        return tune_grid
 
 
 class SeasonalNaiveContainer(TimeSeriesContainer):
     model_type = TSModelTypes.BASELINE
 
     def __init__(self, globals_dict: dict) -> None:
+        """
+        For Seasonal Naive Model,
+          - `sp` must NOT be 1
+          - `strategy` can be either 'last' or 'mean'
+        """
         logger = get_logger()
         np.random.seed(globals_dict["seed"])
         self.gpu_imported = False
@@ -367,6 +399,8 @@ class SeasonalNaiveContainer(TimeSeriesContainer):
         tune_distributions = self._set_tune_distributions
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
+        eq_function = lambda x: type(x) is NaiveForecaster and x.sp != 1
+
         super().__init__(
             id="snaive",
             name="Seasonal Naive Forecaster",
@@ -376,31 +410,23 @@ class SeasonalNaiveContainer(TimeSeriesContainer):
             tune_distribution=tune_distributions,
             tune_args=tune_args,
             is_gpu_enabled=self.gpu_imported,
+            eq_function=eq_function,
         )
 
     @property
     def _set_args(self) -> Dict[str, Any]:
-        args = {"sp": self.sp} if self.seasonality_present else {}
+        args = {"sp": self.sp}
         return args
 
     @property
     def _set_tune_grid(self) -> Dict[str, List[Any]]:
-        if self.seasonality_present:
-            tune_grid = {
-                "strategy": ["last", "mean", "drift"],
-                "sp": [self.sp, 2 * self.sp],
-                # Removing fh for now since it can be less than sp which causes an error
-                # Will need to add checks for it later if we want to incorporate it
-                "window_length": [None],  # , len(fh)]
-            }
-        else:
-            tune_grid = {
-                "strategy": ["last", "mean", "drift"],
-                "sp": [1],
-                # Removing fh for now since it can be less than sp which causes an error
-                # Will need to add checks for it later if we want to incorporate it
-                "window_length": [None],  # , len(fh)]
-            }
+        tune_grid = {
+            "strategy": ["last", "mean"],
+            "sp": [self.sp, 2 * self.sp],
+            # Removing fh for now since it can be less than sp which causes an error
+            # Will need to add checks for it later if we want to incorporate it
+            "window_length": [None],  # , len(fh)]
+        }
         return tune_grid
 
 
