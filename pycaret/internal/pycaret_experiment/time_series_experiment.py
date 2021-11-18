@@ -2857,12 +2857,18 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             # result = result.join(return_vals[1])
             result = pd.concat(return_vals, axis=1)
             result.columns = ["y_pred", "lower", "upper"]
+            result["within_pi"] = result.apply(
+                lambda row: (row["y_pred"] >= row["lower"])
+                and (row["y_pred"] <= row["upper"]),
+                axis=1,
+            )
         else:
             # Prediction interval is not returned (not implemented)
             if return_pred_int:
                 result = pd.DataFrame(return_vals, columns=["y_pred"])
                 result["lower"] = np.nan
                 result["upper"] = np.nan
+                result["within_pi"] = np.nan
             else:
                 # Leave as series
                 result = return_vals
@@ -2875,7 +2881,14 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                         pass
 
         # Converting to float since rounding does not support int
-        result = result.astype(float).round(round)
+        if isinstance(result, pd.Series):
+            result = result.astype(float).round(round)
+        else:
+            # Pandas DataFrame
+            cols_to_round = [["y_pred", "lower", "upper"]]
+            for col in cols_to_round:
+                if col in result.columns.to_list():
+                    result[col] = result[col].astype(float).round(round)
 
         if isinstance(result.index, pd.DatetimeIndex):
             result.index = (
