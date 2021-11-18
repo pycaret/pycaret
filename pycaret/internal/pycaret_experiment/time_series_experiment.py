@@ -2857,10 +2857,8 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             # result = result.join(return_vals[1])
             result = pd.concat(return_vals, axis=1)
             result.columns = ["y_pred", "lower", "upper"]
-            result["within_pi"] = result.apply(
-                lambda row: (row["y_pred"] >= row["lower"])
-                and (row["y_pred"] <= row["upper"]),
-                axis=1,
+            result["within_pi"] = (result["y_pred"] >= result["lower"]) & (
+                result["y_pred"] <= result["upper"]
             )
         else:
             # Prediction interval is not returned (not implemented)
