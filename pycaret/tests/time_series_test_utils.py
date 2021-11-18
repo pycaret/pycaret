@@ -99,6 +99,7 @@ def _return_model_names():
         "gpu_param": False,
         "X_train": pd.DataFrame(get_data("airline")),
         "enforce_pi": False,
+        "seasonal_period": 2,
     }
     model_containers = get_all_model_containers(globals_dict)
 
