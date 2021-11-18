@@ -407,15 +407,16 @@ def test_create_predict_finalize_model(name, fh, load_pos_and_neg_data):
     assert np.all(y_pred.index == expected_period_index)
 
     # With Prediction Interval (default alpha = 0.05)
+    expected_cols_with_pi = ["y_pred", "lower", "upper", "within_pi"]
     y_pred = exp.predict_model(model, return_pred_int=True)
     assert isinstance(y_pred, pd.DataFrame)
-    assert np.all(y_pred.columns == ["y_pred", "lower", "upper"])
+    assert np.all(y_pred.columns == expected_cols_with_pi)
     assert np.all(y_pred.index == expected_period_index)
 
     # With Prediction Interval (alpha = 0.2)
     y_pred2 = exp.predict_model(model, return_pred_int=True, alpha=0.2)
     assert isinstance(y_pred2, pd.DataFrame)
-    assert np.all(y_pred2.columns == ["y_pred", "lower", "upper"])
+    assert np.all(y_pred2.columns == expected_cols_with_pi)
     assert np.all(y_pred2.index == expected_period_index)
 
     # Increased forecast horizon to 2 years instead of the original 1 year
@@ -525,6 +526,7 @@ def test_prediction_interval_na(load_pos_and_neg_data):
     y_pred = exp.predict_model(model, return_pred_int=True)
     assert y_pred["lower"].isnull().all()
     assert y_pred["upper"].isnull().all()
+    assert y_pred["within_pi"].isnull().all()
 
 
 @pytest.mark.parametrize("cross_validation, log_experiment", _compare_model_args)
