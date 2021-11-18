@@ -388,9 +388,9 @@ def create_model(
 
         * 'naive' - Naive Forecaster
         * 'grand_means' - Grand Means Forecaster
-        * 'snaive' - Seasonal Naive Forecaster
+        * 'snaive' - Seasonal Naive Forecaster (disabled when seasonal_period = 1)
         * 'polytrend' - Polynomial Trend Forecaster
-        * 'arima' - ARIMA
+        * 'arima' - ARIMA family of models (ARIMA, SARIMA, SARIMAX)
         * 'auto_arima' - Auto ARIMA
         * 'arima' - ARIMA
         * 'exp_smooth' - Exponential Smoothing
