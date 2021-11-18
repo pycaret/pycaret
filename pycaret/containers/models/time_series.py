@@ -255,6 +255,8 @@ class NaiveContainer(TimeSeriesContainer):
           - `sp` must always be 1
           - `strategy` can be either 'last' or 'drift' but not 'mean'
              'mean' is reserved for Grand Means Model
+        `sp` is hard coded to 1 irrespective of the `sp` value or whether
+        seasonality is detected or not.
         """
         logger = get_logger()
         np.random.seed(globals_dict["seed"])
@@ -315,6 +317,8 @@ class GrandMeansContainer(TimeSeriesContainer):
         For Grand Means Forecaster,
           - `sp` must always be 1
           - `strategy` must always be 'mean'
+        `sp` is hard coded to 1 irrespective of the `sp` value or whether
+        seasonality is detected or not.
         """
         logger = get_logger()
         np.random.seed(globals_dict["seed"])
@@ -375,6 +379,8 @@ class SeasonalNaiveContainer(TimeSeriesContainer):
         For Seasonal Naive Model,
           - `sp` must NOT be 1
           - `strategy` can be either 'last' or 'mean'
+        If sp = 1, this model is disabled.
+        If sp != 1, model is enabled even when seasonality is not detected.
         """
         logger = get_logger()
         np.random.seed(globals_dict["seed"])
@@ -392,6 +398,10 @@ class SeasonalNaiveContainer(TimeSeriesContainer):
         self.seasonality_present = globals_dict.get("seasonality_present")
         sp = globals_dict.get("seasonal_period")
         self.sp = sp if sp is not None else 1
+
+        if self.sp == 1:
+            self.active = False
+            return
 
         args = self._set_args
         tune_args = self._set_tune_args

@@ -750,3 +750,28 @@ def test_tune_model_raises(load_pos_and_neg_data):
         exceptionmsg
         == f"`search_algorithm` must be one of 'None, random, grid'. You passed '{search_algorithm}'."
     )
+
+
+def test_naive_models(load_pos_and_neg_data):
+    """Tests enabling and disabling of naive models"""
+
+    exp = TimeSeriesExperiment()
+    data = load_pos_and_neg_data
+
+    #### Seasonal Period != 1 ----
+    #### All naive models should be enabled here
+    exp.setup(data=data, verbose=False)
+    expected = ["naive", "grand_means", "snaive"]
+    for model in expected:
+        assert model in exp.models().index
+
+    #### Seasonal Period == 1 ----
+    #### snaive should be disabled here
+    exp.setup(data=data, seasonal_period=1, verbose=False)
+    expected = ["naive", "grand_means"]
+    for model in expected:
+        assert model in exp.models().index
+    not_expected = ["snaive"]
+    for model in not_expected:
+        assert model not in exp.models().index
+
