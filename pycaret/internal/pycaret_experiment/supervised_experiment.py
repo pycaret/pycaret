@@ -27,7 +27,6 @@ from pycaret.internal.tunable import TunableMixin
 import pycaret.internal.preprocess
 import pycaret.internal.persistence
 import pandas as pd  # type ignore
-from pandas.io.formats.style import Styler
 import numpy as np  # type: ignore
 import os
 import datetime
@@ -182,15 +181,9 @@ class _SupervisedExperiment(_TabularExperiment):
             fold, default=self.fold_generator, X=X, y=y, groups=groups
         )
 
-    def _set_up_mlflow(
-        self, functions, runtime, log_profile, profile_kwargs, log_data, display,
-    ) -> None:
-        functions_styler = functions
-        if isinstance(functions, Styler):
-            functions = functions.data
-
+    def _set_up_mlflow(self, runtime, log_data, log_profile):
         # log into experiment
-        self.experiment__.append(("Setup Config", functions))
+        self.experiment__.append(("Setup Config", self.display_container))
         self.experiment__.append(("X_training Set", self.X_train))
         self.experiment__.append(("y_training Set", self.y_train))
         self.experiment__.append(("X_test Set", self.X_test))
@@ -221,7 +214,7 @@ class _SupervisedExperiment(_TabularExperiment):
             # Get active run to log as tag
             RunID = mlflow.active_run().info.run_id
 
-            k = functions.copy()
+            k = self.display_container.copy()
             k.set_index("Description", drop=True, inplace=True)
             kdict = k.to_dict()
             params = kdict.get("Value")
@@ -253,19 +246,15 @@ class _SupervisedExperiment(_TabularExperiment):
             os.remove("Transformation Pipeline.pkl")
 
             # Log pandas profile
-            if log_profile:
-                import pandas_profiling
-
-                pf = pandas_profiling.ProfileReport(self.data, **profile_kwargs)
-                pf.to_file("Data Profile.html")
+            if log_profile and self.report is not None:
+                self.report.to_file("Data Profile.html")
                 mlflow.log_artifact("Data Profile.html")
                 os.remove("Data Profile.html")
-                display.display(functions_styler, clear=True)
 
             # Log training and testing set
             if log_data:
-                self.X_train.join(self.y_train).to_csv("Train.csv")
-                self.X_test.join(self.y_test).to_csv("Test.csv")
+                self.train.to_csv("Train.csv")
+                self.test.to_csv("Test.csv")
                 mlflow.log_artifact("Train.csv")
                 mlflow.log_artifact("Test.csv")
                 os.remove("Train.csv")
@@ -3735,7 +3724,7 @@ class _SupervisedExperiment(_TabularExperiment):
             try:
                 import shap
             except ImportError:
-                logger.error(
+                self.logger.error(
                     "shap library not found. pip install shap to use interpret_model function."
                 )
                 raise ImportError(

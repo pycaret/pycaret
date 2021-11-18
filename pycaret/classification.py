@@ -5,11 +5,12 @@
 import logging
 import warnings
 import pandas as pd
+from joblib.memory import Memory
 
 from pycaret.internal.pycaret_experiment import ClassificationExperiment
 from pycaret.internal.utils import check_if_global_is_not_none
 
-from typing import List, Tuple, Any, Union, Optional, Dict
+from typing import List, Any, Union, Optional, Dict
 
 warnings.filterwarnings("ignore")
 
@@ -84,8 +85,8 @@ def setup(
     log_plots: Union[bool, list] = False,
     log_profile: bool = False,
     log_data: bool = False,
-    silent: bool = False,
     verbose: bool = True,
+    memory: Union[bool, str, Memory] = True,
     profile: bool = False,
     profile_kwargs: Dict[str, Any] = None,
 ):
@@ -469,15 +470,17 @@ def setup(
     log_data: bool, default = False
         When set to True, dataset is logged on the ``MLflow`` server as a csv file.
         Ignored when ``log_experiment`` is not True.
-        
 
-    silent: bool, default = False
-        Controls the confirmation input of data types when ``setup`` is executed. When
-        executing in completely automated mode or on a remote kernel, this must be True.
 
-    
     verbose: bool, default = True
         When set to False, Information grid is not printed.
+
+
+    memory: str, bool or Memory, default=True
+        Used to cache the fitted transformers of the pipeline.
+            If False: No caching is performed.
+            If True: A default temp directory is used.
+            If str: Path to the caching directory.
 
 
     profile: bool, default = False
@@ -541,6 +544,8 @@ def setup(
         feature_selection_estimator=feature_selection_estimator,
         n_features_to_select=n_features_to_select,
         custom_pipeline=custom_pipeline,
+        transform_target=False,  # Always False for classification
+        transform_target_method="box-cox",
         data_split_shuffle=data_split_shuffle,
         data_split_stratify=data_split_stratify,
         fold_strategy=fold_strategy,
@@ -557,8 +562,8 @@ def setup(
         log_plots=log_plots,
         log_profile=log_profile,
         log_data=log_data,
-        silent=silent,
         verbose=verbose,
+        memory=memory,
         profile=profile,
         profile_kwargs=profile_kwargs,
     )

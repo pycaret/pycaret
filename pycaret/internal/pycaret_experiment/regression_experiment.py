@@ -1,4 +1,4 @@
-from pycaret.internal.pycaret_experiment.utils import highlight_setup, MLUsecase
+from pycaret.internal.pycaret_experiment.utils import MLUsecase
 from pycaret.internal.pycaret_experiment.class_reg_experiment import (
     ClassRegExperiment,
 )
@@ -10,7 +10,6 @@ import pycaret.containers.models.regression
 import pycaret.internal.preprocess
 import pycaret.internal.persistence
 import pandas as pd  # type ignore
-from pandas.io.formats.style import Styler
 import numpy as np  # type: ignore
 from typing import List, Tuple, Any, Union, Optional, Dict
 import warnings
@@ -44,95 +43,6 @@ class RegressionExperiment(ClassRegExperiment):
             "tree": "Decision Tree",
             "residuals_interactive": "Interactive Residuals",
         }
-        return
-
-    def _get_setup_display(self, **kwargs) -> Styler:
-        """Display overview of the setup."""
-        transform_target = (
-            self.transform_target_param
-            if not self.transform_target_param
-            else self.transform_target_method
-        )
-        overview = pd.DataFrame(columns=["Description", "Value"])
-        overview = overview.append(
-            pd.DataFrame(
-                [
-                    ["session_id", self.seed],
-                    ["Target", self.target_param],
-                    ["Target type", kwargs["target_type"]],
-                    ["Data shape", self.data.shape],
-                    ["Train size", kwargs["train_size"]],
-                    ["Ordinal features", kwargs["ordinal_features"]],
-                    ["Numerical features", kwargs["numerical_features"]],
-                    ["Categorical features", kwargs["categorical_features"]],
-                    ["Date features", kwargs["date_features"]],
-                    ["Text features", kwargs["text_features"]],
-                    ["Ignored features", kwargs["ignore_features"]],
-                    ["Kept features", kwargs["keep_features"]],
-                    ["Missing Values", kwargs["missing_values"]],
-                    ["Transform Target", transform_target],
-                    ["Preprocess", kwargs["preprocess"]],
-                ],
-                columns=overview.columns,
-            ),
-            ignore_index=True,
-        )
-
-        if kwargs["preprocess"]:
-            overview = overview.append(
-                pd.DataFrame(
-                    [
-                        ["Imputation type", kwargs["imputation_type"]],
-                        ["Numeric imputation", kwargs["numeric_imputation"]],
-                        ["Categorical imputation", kwargs["categorical_imputation"]],
-                        ["Iterative imputation iterations", kwargs["iterative_imputation_iters"]],
-                        ["Numeric iterative imputer", kwargs["numeric_iterative_imputer"]],
-                        ["Categorical iterative imputer", kwargs["categorical_iterative_imputer"]],
-                        ["Text features embedding method", kwargs["text_features_method"]],
-                        ["Maximum one-hot encoding", kwargs["max_encoding_ohe"]],
-                        ["Encoding method", kwargs["encoding_method"]],
-                        ["Polynomial features", kwargs["polynomial_features"]],
-                        ["Polynomial degree", kwargs["polynomial_degree"]],
-                        ["Low variance threshold", kwargs["low_variance_threshold"]],
-                        ["Remove multicollinearity", kwargs["remove_multicollinearity"]],
-                        ["Multicollinearity threshold", kwargs["multicollinearity_threshold"]],
-                        ["Remove outliers", kwargs["remove_outliers"]],
-                        ["Outliers threshold", kwargs["outliers_threshold"]],
-                        ["Transformation", kwargs["transformation"]],
-                        ["Transformation method", kwargs["transformation_method"]],
-                        ["Normalize", kwargs["normalize"]],
-                        ["Normalize method", kwargs["normalize_method"]],
-                        ["PCA", kwargs["pca"]],
-                        ["PCA method", kwargs["pca_method"]],
-                        ["PCA components", kwargs["pca_components"]],
-                        ["Feature selection", kwargs["feature_selection"]],
-                        ["Feature selection method", kwargs["feature_selection_method"]],
-                        ["Feature selection estimator", kwargs["feature_selection_estimator"]],
-                        ["Number of features selected", kwargs["n_features_to_select"]],
-                    ],
-                    columns=overview.columns,
-                ),
-                ignore_index=True,
-            )
-
-        overview = overview.append(
-            pd.DataFrame(
-                [
-                    ["Custom pipeline", "Yes" if kwargs["custom_pipeline"] else "No"],
-                    ["Fold Generator", type(self.fold_generator).__name__],
-                    ["Fold Number", self.fold_param],
-                    ["CPU Jobs", self.n_jobs_param],
-                    ["Use GPU", self.gpu_param],
-                    ["Log Experiment", self.logging_param],
-                    ["Experiment Name", self.exp_name_log],
-                    ["USI", self.USI],
-                ],
-                columns=overview.columns,
-            ),
-            ignore_index=True,
-        )
-
-        return overview.style.apply(highlight_setup)
 
     def _get_models(self, raise_errors: bool = True) -> Tuple[dict, dict]:
         all_models = {
@@ -151,11 +61,6 @@ class RegressionExperiment(ClassRegExperiment):
         return pycaret.containers.metrics.regression.get_all_metric_containers(
             self.variables, raise_errors=raise_errors
         )
-
-    def setup(self, *args, **kwargs):
-        if kwargs["log_plots"] is True:
-            kwargs["log_plots"] = ["residuals", "error", "feature"]
-        return super().setup(*args, **kwargs)
 
     def compare_models(
         self,

@@ -1,16 +1,14 @@
-import pycaret.internal.patches.sklearn
-import pycaret.internal.patches.yellowbrick
-from pycaret.internal.logging import get_logger
-from pycaret.internal.distributions import *
-from pycaret.internal.validation import *
-import pycaret.internal.preprocess
-import pycaret.internal.persistence
+import warnings
 import pandas as pd  # type ignore
 import numpy as np  # type: ignore
-from typing import List, Tuple, Any, Union, Optional, Dict
-import warnings
+from typing import Any, Optional, Dict
 import plotly.express as px  # type: ignore
 import plotly.graph_objects as go  # type: ignore
+
+import pycaret.internal.patches.sklearn
+import pycaret.internal.patches.yellowbrick
+from pycaret.internal.validation import *
+import pycaret.internal.persistence
 
 
 warnings.filterwarnings("ignore")
@@ -22,17 +20,23 @@ class _PyCaretExperiment:
         self._ml_usecase = None
         self._available_plots = {}
         self.variable_keys = set()
-        self._setup_ran = False
-        self.display_container = []
         self.exp_id = None
         self.gpu_param = False
         self.n_jobs_param = -1
         self.logger = LOGGER
+        self.experiment__ = []
+        self.master_model_container = []
 
         # Data attrs
         self.data = None
         self.target_param = None
-        self.idx = [0, 0]  # Train and test sizes
+        self.idx = [None, None]  # Train and test indices
+
+        # Setup attrs
+        self.fold_generator = None
+        self._internal_pipeline = None
+        self.display_container = None
+        self._setup_ran = False
 
     @property
     def _gpu_n_jobs_param(self) -> int:

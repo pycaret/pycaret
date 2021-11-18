@@ -1028,6 +1028,67 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         self.enforce_pi = enforce_pi
 
+        if not (
+                fold_strategy in possible_time_series_fold_strategies
+                or is_sklearn_cv_generator(fold_strategy)
+        ):
+            raise TypeError(
+                f"fold_strategy parameter must be either a sktime compatible CV generator object or one of '{', '.join(possible_time_series_fold_strategies)}'."
+            )
+
+        # Set splitter
+        self.fold_generator = None
+        if fold_strategy in possible_time_series_fold_strategies:
+            self.fold_strategy = fold_strategy  # save for use in methods later
+            self.fold_generator = self.get_fold_generator(fold=self.fold_param)
+        else:
+            self.fold_generator = fold_strategy
+
+            # Number of folds
+            self.fold_param = fold_strategy.get_n_splits(y=self.y_train)
+
+        from pycaret.internal.tests.time_series import (
+            recommend_uppercase_d,
+            recommend_lowercase_d,
+        )
+
+        self.white_noise = None
+        wn_results = self.check_stats(test="white_noise")
+        wn_values = wn_results.query("Property == 'White Noise'")["Value"]
+
+        # There can be multiple lags values tested.
+        # Checking the percent of lag values that indicate white noise
+        percent_white_noise = sum(wn_values) / len(wn_values)
+        if percent_white_noise == 0:
+            self.white_noise = "No"
+        elif percent_white_noise == 1.00:
+            self.white_noise = "Yes"
+        else:
+            self.white_noise = "Maybe"
+
+        self.lowercase_d = recommend_lowercase_d(data=self.y)
+        # TODO: Should sp this overrise the self.seasonal_period since sp
+        # will be used for all models and the same checks will need to be
+        # done there as well
+        sp = self.seasonal_period if self.seasonality_present else 1
+        self.uppercase_d = (
+            recommend_uppercase_d(data=self.y, sp=sp) if sp > 1 else 0
+        )
+
+        self._setup_ran = True
+
+        ## Disabling of certain metrics.
+        ## NOTE: This must be run after _setup_ran has been set, else metrics can
+        # not be retrieved.
+        if (
+                self._ml_usecase == MLUsecase.TIME_SERIES
+                and len(self.fh) == 1
+                and "r2" in self._get_metrics()
+        ):
+            # disable R2 metric if it exists in the metrics since R2 needs
+            # at least 2 values
+            self.remove_metric("R2")
+
         return super().setup(
             data=data_,
             target=data_.columns[0],
