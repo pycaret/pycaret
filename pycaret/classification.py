@@ -15,6 +15,7 @@ from IPython.utils import io
 import traceback
 
 from pycaret.internal.tabular import MLUsecase
+from pycaret.internal.utils import global_create_report
 
 warnings.filterwarnings("ignore")
 
@@ -2739,3 +2740,7 @@ def get_leaderboard(
         groups=groups,
         verbose=verbose,
     )
+
+# pycaret report changes
+def create_report(model,report_name,export_as):
+    global_create_report(model,report_name,export_as,"classification")
