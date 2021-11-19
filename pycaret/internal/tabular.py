@@ -247,6 +247,12 @@ def setup(
         from sklearn import __version__
 
         logger.info(f"sklearn=={__version__}")
+
+        if version.parse(__version__) != version.parse("0.23.2"):
+            raise RuntimeError(
+                f"This version of PyCaret requires scikit-learn==0.23.2, got {__version__}. Support for newer scikit-learn versions will be added in a future release."
+            )
+
     except ImportError:
         logger.warning("sklearn not found")
 
