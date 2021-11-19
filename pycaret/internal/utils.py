@@ -10,12 +10,16 @@ import pandas as pd
 import pandas.io.formats.style
 import ipywidgets as ipw
 from IPython.display import display, HTML, clear_output, update_display
+
+from pycaret.internal import helper
 from pycaret.internal.logging import get_logger
+from pycaret.internal.tabular import plot_model
 from pycaret.internal.validation import *
 from typing import Any, List, Optional, Dict, Tuple, Union
 from sklearn import clone
 from sklearn.model_selection import KFold, StratifiedKFold, BaseCrossValidator
 from sklearn.model_selection._split import _BaseKFold
+from pycaret.internal.helper import *
 
 
 def get_config(variable: str, globals_d: dict):
@@ -701,7 +705,8 @@ def create_markdown_report(model, report_name,model_type):
     # Model Hyper parameters
     mdFile.new_header(level=2, title='Model Hyperparameters', style='setext')
     mdFile.new_paragraph(
-        text=" Hyper-parameters by definition are input parameters which are necessarily required by an algorithm to learn from data. They are tuned from the model itself.")
+        text="Hyper-parameters by definition are input parameters which are necessarily required by an algorithm to "
+             "learn from data. They are tuned from the model itself.")
 
     # Model Hyper parameters - Table #TODO
     paramlist = model.get_params()
