@@ -1464,6 +1464,7 @@ class RegressionExperiment(_SupervisedExperiment):
         self,
         estimator_list: list,
         meta_model=None,
+        meta_model_fold: Optional[Union[int, Any]] = 5,
         fold: Optional[Union[int, Any]] = None,
         round: int = 4,
         restack: bool = False,
@@ -1499,6 +1500,13 @@ class RegressionExperiment(_SupervisedExperiment):
 
         meta_model: scikit-learn compatible object, default = None
             When None, Linear Regression is trained as a meta model.
+
+
+        meta_model_fold: integer or scikit-learn compatible CV generator, default = 5
+            Controls internal cross-validation. Can be an integer or a scikit-learn
+            CV generator. If set to an integer, will use (Stratifed)KFold CV with
+            that many folds. See scikit-learn documentation on Stacking for
+            more details.
 
 
         fold: int or scikit-learn compatible CV generator, default = None
@@ -1549,6 +1557,7 @@ class RegressionExperiment(_SupervisedExperiment):
         return super().stack_models(
             estimator_list=estimator_list,
             meta_model=meta_model,
+            meta_model_fold=meta_model_fold,
             fold=fold,
             round=round,
             method="auto",
