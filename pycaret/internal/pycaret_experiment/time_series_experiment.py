@@ -256,10 +256,12 @@ def _fit_and_score(
     start = time.time()
     try:
         forecaster.fit(y_train, X_train, **fit_params)
-    except ValueError as error:
-        ## Currently only catching ValueError. Can catch more later if needed.
+    except Exception as error:
         logging.error(f"Fit failed on {forecaster}")
         logging.error(error)
+
+        if error_score == "raise":
+            raise
 
     fit_time = time.time() - start
 
@@ -1492,7 +1494,21 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         self.logger.info("Calculating mean and std")
 
-        avgs_dict = {k: [np.mean(v), np.std(v)] for k, v in score_dict.items()}
+        try:
+            avgs_dict = {k: [np.mean(v), np.std(v)] for k, v in score_dict.items()}
+        except TypeError:
+            # When there is an error in model creation, score_dict values are None.
+            # e.g.
+            #   {
+            #       'MAE': [None, None, None],
+            #       'RMSE': [None, None, None],
+            #       'MAPE': [None, None, None],
+            #       'SMAPE': [None, None, None],
+            #       'R2': [None, None, None]
+            #   }
+            # Hence, mean and sd can not be computed
+            # TypeError: unsupported operand type(s) for +: 'NoneType' and 'NoneType'
+            avgs_dict = {k: [np.nan, np.nan] for k, v in score_dict.items()}
 
         display.move_progress()
 
