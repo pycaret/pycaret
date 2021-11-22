@@ -1438,13 +1438,14 @@ class CatBoostClassifierContainer(ClassifierContainer):
             is_gpu_enabled=use_gpu,
         )
 
+
 class DummyClassifierContainer(ClassifierContainer):
-    def __init__(self, globals_dict: dict) -> None:
+    def __init__(self, experiment):
         logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+        np.random.seed(experiment.seed)
         from sklearn.dummy import DummyClassifier
 
-        args = {"strategy":"prior","random_state": globals_dict["seed"]}
+        args = {"strategy": "prior", "random_state": experiment.seed}
         tune_args = {}
         tune_grid = {}
         tune_distributions = {}
@@ -1461,7 +1462,8 @@ class DummyClassifierContainer(ClassifierContainer):
             tune_args=tune_args,
             shap=False,
         )
-        
+
+
 class BaggingClassifierContainer(ClassifierContainer):
     def __init__(self, experiment):
         logger = get_logger()

@@ -1,15 +1,12 @@
-## Related Issue or bug
-  - Info about Issue or bug
+## Related Issuse or bug
 
-Fixes: #[issue number that will be closed through this PR]
+Info about Issue or bug
+
+Closes #[issue number that will be closed through this PR]
 
 #### Describe the changes you've made
+
 A clear and concise description of what you have done to successfully close your assigned issue. Any new files? or anything you feel to let us know!
-
-
-
-
-
 
 ## Type of change
 
@@ -29,9 +26,11 @@ Example how to mark a checkbox :-
 Please describe the tests that you ran to verify your changes. Provide instructions so we can reproduce. 
 
 #### Describe if there is any unusual behaviour of your code(Write `NA` if there isn't)
+
 A clear and concise description of it.
 
 ## Checklist:
+
 <!--
 Example how to mark a checkbox :-
 - [x] My code follows the code style of this project.
