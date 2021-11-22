@@ -1896,8 +1896,14 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         if search_algorithm is None:
             search_algorithm = "random"  # Defaults to Random
 
+        ###########################
+        #### Define Param Grid ----
+        ###########################
         param_grid = None
-        if search_library == "pycaret":
+        if custom_grid is not None:
+            param_grid = custom_grid
+            self.logger.info(f"custom_grid: {param_grid}")
+        elif search_library == "pycaret":
             if search_algorithm == "grid":
                 param_grid = estimator_definition.tune_grid
             elif search_algorithm == "random":
@@ -1953,10 +1959,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             else:
                 search_kwargs = {}
                 n_jobs = self.n_jobs_param
-
-            if custom_grid is not None:
-                param_grid = custom_grid
-                self.logger.info(f"custom_grid: {param_grid}")
 
             self.logger.info(f"Tuning with n_jobs={n_jobs}")
 
