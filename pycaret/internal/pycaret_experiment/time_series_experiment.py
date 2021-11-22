@@ -853,9 +853,11 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         fh: int or list or np.array, default = 1
             The forecast horizon to be used for forecasting. Default is set to ``1`` i.e.
-            forecast one point ahead. When integer is passed it means N continious points
+            forecast one point ahead. When integer is passed it means N continuous points
             in the future without any gap. If you want to forecast values with gaps, you
-            must pass an array e.g. np.array([2, 5]) will forecast 2 and 5 points ahead.
+            must pass an array e.g. np.arange([13, 25]) will skip the first 12 future
+            points and forecast from the 13th point till the 24th point ahead (note in
+            numpy right value is inclusive and left is exclusive).
 
 
         seasonal_period: int or str, default = None
@@ -3490,9 +3492,17 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         else:
             # Get new cv object based on the fold parameter
             y_size = len(self.y_train)
-            window_length = len(self.fh)
+
+            # Changes to Max to take into account gaps in fh
+            # e.g. fh=np.arange(25,73)
+            # - see https://github.com/pycaret/pycaret/issues/1865
+            fh_max_length = max(self.fh)
+
+            # Step length will always end up being <= fh_max_length
+            # since it is based on fh
             step_length = len(self.fh)
-            initial_window = y_size - (fold * window_length)
+
+            initial_window = y_size - ((fold - 1) * step_length + 1 * fh_max_length)
 
             if initial_window < 1:
                 raise ValueError(
@@ -3507,14 +3517,12 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 fold_generator = ExpandingWindowSplitter(
                     initial_window=initial_window,
                     step_length=step_length,
-                    # window_length=window_length,
                     fh=self.fh,
                     start_with_window=True,
                 )
 
             if fold_strategy == "sliding":
                 fold_generator = SlidingWindowSplitter(
-                    # initial_window=initial_window,
                     step_length=step_length,
                     window_length=initial_window,
                     fh=self.fh,

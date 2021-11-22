@@ -53,7 +53,8 @@ _data_big_small = _return_data_big_small()
 
 @pytest.mark.parametrize("fold, fh, fold_strategy", _splitter_args)
 def test_splitter_using_fold_and_fh(fold, fh, fold_strategy, load_pos_and_neg_data):
-    """Tests the splitter creation using fold, fh and a string value for fold_strategy."""
+    """Tests the splitter creation using fold, fh and a string value for fold_strategy.
+    """
 
     from pycaret.time_series import setup
     from sktime.forecasting.model_selection._split import (
@@ -72,12 +73,21 @@ def test_splitter_using_fold_and_fh(fold, fh, fold_strategy, load_pos_and_neg_da
         elif fold_strategy == "sliding":
             assert isinstance(exp_name.fold_generator, SlidingWindowSplitter)
 
-        assert np.all(exp_name.fold_generator.fh == np.arange(1, fh + 1))
-        assert exp_name.fold_generator.step_length == fh  # Since fh is an int
+        if isinstance(fh, int):
+            # Since fh is an int, we can check as follows ----
+            assert np.all(exp_name.fold_generator.fh == np.arange(1, fh + 1))
+            assert exp_name.fold_generator.step_length == fh
+        else:
+            # fh is np.array
+            assert np.all(exp_name.fold_generator.fh == fh)
+
+            # When fh has np gaps: e.g. fh = np.arange(1, 37), step length = 36
+            # When fh has gaps, e.g. fh = np.arange(25, 37), step length = 12
+            assert exp_name.fold_generator.step_length == len(fh)
 
 
 def test_splitter_pass_cv_object(load_pos_and_neg_data):
-    """Tests the passing of a cv splitter to fold_strategy"""
+    """Tests the passing of a `sktime` cv splitter to fold_strategy"""
 
     from pycaret.time_series import setup
     from sktime.forecasting.model_selection._split import (
@@ -395,12 +405,20 @@ def test_create_predict_finalize_model(name, fh, load_pos_and_neg_data):
     #######################
     model = exp.create_model(name)
 
+    #########################
+    #### Expected Values ####
+    #########################
+    # Only forcasted values
+    fh_index = fh if isinstance(fh, int) else len(fh)
+    # Full forecasting window
+    fh_max_window = fh if isinstance(fh, int) else max(fh)
+
+    expected_period_index = load_pos_and_neg_data.iloc[-fh_index:].index
+    final_expected_period_index = expected_period_index.shift(fh_max_window)
+
     ########################
     ## Test Predict Model ##
     ########################
-    fh_index = fh if isinstance(fh, int) else fh[-1]
-    expected_period_index = load_pos_and_neg_data.iloc[-fh_index:].index
-
     # Default prediction
     y_pred = exp.predict_model(model)
     assert isinstance(y_pred, pd.Series)
@@ -429,7 +447,6 @@ def test_create_predict_finalize_model(name, fh, load_pos_and_neg_data):
     final_model = exp.finalize_model(model)
     y_pred = exp.predict_model(final_model)
 
-    final_expected_period_index = expected_period_index.shift(fh_index)
     assert np.all(y_pred.index == final_expected_period_index)
 
 
