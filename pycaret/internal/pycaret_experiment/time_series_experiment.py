@@ -1,4 +1,5 @@
 from copy import deepcopy
+import os
 
 from sktime.forecasting.model_selection import (
     ExpandingWindowSplitter,
@@ -599,7 +600,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         super().__init__()
         self._ml_usecase = MLUsecase.TIME_SERIES
         self.exp_name_log = "ts-default-name"
-        self._available_plots = {}
+
         # Values in variable_keys are accessible in globals
         self.variable_keys = self.variable_keys.difference(
             {
@@ -621,6 +622,44 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 "enforce_pi",
             }
         )
+        self._available_plots = {
+            "ts": "Time Series Plot",
+            "train_test_split": "Train Test Split",
+            "cv": "Cross Validation",
+            "acf": "Auto Correlation (ACF)",
+            "pacf": "Partial Auto Correlation (PACF)",
+            "decomp_classical": "Decomposition Classical",
+            "decomp_stl": "Decomposition STL",
+            "diagnostics": "Diagnostics Plot",
+            "forecast": "Out-of-Sample Forecast Plot",
+            "insample": "In-Sample Forecast Plot",
+            "residuals": "Residuals Plot",
+        }
+
+        self._available_plots_data_keys = [
+            "ts",
+            "train_test_split",
+            "cv",
+            "acf",
+            "pacf",
+            "decomp_classical",
+            "decomp_stl",
+            "diagnostics",
+        ]
+
+        self._available_plots_estimator_keys = [
+            "ts",
+            "train_test_split",
+            "cv",
+            "acf",
+            "pacf",
+            "decomp_classical",
+            "decomp_stl",
+            "diagnostics",
+            "forecast",
+            "insample",
+            "residuals",
+        ]
 
     def _get_setup_display(self, **kwargs) -> Styler:
         # define highlight function for function grid to display
@@ -696,6 +735,9 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         return pycaret.containers.metrics.time_series.get_all_metric_containers(
             self.variables, raise_errors=raise_errors
         )
+
+    def _get_default_plots_to_log(self) -> List[str]:
+        return ["forecast", "residuals", "diagnostics"]
 
     def check_fh(self, fh: Union[List[int], int, np.array]) -> np.array:
         """
@@ -811,8 +853,8 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         fh: int or list or np.array, default = 1
             The forecast horizon to be used for forecasting. Default is set to ``1`` i.e.
-            forecast one point ahead. When integer is passed it means N continious points 
-            in the future without any gap. If you want to forecast values with gaps, you 
+            forecast one point ahead. When integer is passed it means N continious points
+            in the future without any gap. If you want to forecast values with gaps, you
             must pass an array e.g. np.array([2, 5]) will forecast 2 and 5 points ahead.
 
 
@@ -836,7 +878,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         enforce_pi: bool, default = False
             When set to True, only models that support prediction intervals are
-            loaded in the environment. 
+            loaded in the environment.
 
 
         n_jobs: int, default = -1
@@ -866,7 +908,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
 
         system_log: bool or logging.Logger, default = True
-            Whether to save the system logging file (as logs.log). If the input already is a 
+            Whether to save the system logging file (as logs.log). If the input already is a
             logger object, that one is used instead.
 
 
@@ -1288,9 +1330,10 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             in the model library (ID - Name):
 
             * 'naive' - Naive Forecaster
-            * 'snaive' - Seasonal Naive Forecaster
+            * 'grand_means' - Grand Means Forecaster
+            * 'snaive' - Seasonal Naive Forecaster (disabled when seasonal_period = 1)
             * 'polytrend' - Polynomial Trend Forecaster
-            * 'arima' - ARIMA
+            * 'arima' - ARIMA family of models (ARIMA, SARIMA, SARIMAX)
             * 'auto_arima' - Auto ARIMA
             * 'arima' - ARIMA
             * 'exp_smooth' - Exponential Smoothing
@@ -1553,7 +1596,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         optimize: str = "SMAPE",
         custom_scorer=None,
         search_algorithm: Optional[str] = None,
-        choose_better: bool = False,
+        choose_better: bool = True,
         fit_kwargs: Optional[dict] = None,
         return_tuner: bool = False,
         verbose: bool = True,
@@ -1620,10 +1663,10 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
 
         search_algorithm: str, default = 'random'
-            use 'random' for random grid search and 'grid' for complete grid search. 
+            use 'random' for random grid search and 'grid' for complete grid search.
 
 
-        choose_better: bool, default = False
+        choose_better: bool, default = True
             When set to True, the returned object is always better performing. The
             metric used for comparison is defined by the ``optimize`` parameter.
 
@@ -2360,18 +2403,20 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         self,
         estimator: Optional[Any] = None,
         plot: Optional[str] = None,
+        return_fig: bool = False,
         return_data: bool = False,
+        verbose: bool = False,
         display_format: Optional[str] = None,
         data_kwargs: Optional[Dict] = None,
         fig_kwargs: Optional[Dict] = None,
         system: bool = True,
         save: Union[str, bool] = False,
-    ) -> str:
+    ) -> Tuple[str, Any]:
 
         """
         This function analyzes the performance of a trained model on holdout set.
-        When used without any estimator, this function generates plots on the 
-        original data set. When used with an estimator, it will generate plots on 
+        When used without any estimator, this function generates plots on the
+        original data set. When used with an estimator, it will generate plots on
         the model residuals.
 
 
@@ -2392,8 +2437,8 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
 
         plot: str, default = None
-            Default is 'ts' when estimator is None, When estimator is not None, 
-            default is changed to 'forecast'. List of available plots (ID - Name): 
+            Default is 'ts' when estimator is None, When estimator is not None,
+            default is changed to 'forecast'. List of available plots (ID - Name):
 
             * 'ts' - Time Series Plot
             * 'train_test_split' - Train Test Split
@@ -2403,12 +2448,23 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             * 'decomp_classical' - Decomposition Classical
             * 'decomp_stl' - Decomposition STL
             * 'diagnostics' - Diagnostics Plot
-            * 'forecast' - Forecast Plot
+            * 'forecast' - "Out-of-Sample" Forecast Plot
+            * 'insample' - "In-Sample" Forecast Plot
             * 'residuals' - Residuals Plot
+
+
+        return_fig: : bool, default = False
+            When set to True, it returns the figure used for plotting.
 
 
         return_data: bool, default = False
             When set to True, it returns the data for plotting.
+            If both return_fig and return_data is set to True, order of return
+            is figure then data.
+
+
+        verbose: bool, default = True
+            Unused for now
 
 
         display_format: str, default = None
@@ -2434,6 +2490,18 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             None
 
         """
+        # checking display_format parameter
+        self.plot_model_check_display_format_(display_format=display_format)
+
+        # Import required libraries ----
+        if display_format == "streamlit":
+            try:
+                import streamlit as st
+            except ImportError:
+                raise ImportError(
+                    "It appears that streamlit is not installed. Do: pip install hpbandster ConfigSpace"
+                )
+
         if data_kwargs is None:
             data_kwargs = {}
         if fig_kwargs is None:
@@ -2450,9 +2518,14 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             "decomp_stl",
         ]
         available_plots_data = available_plots_common
-        available_plots_model = available_plots_common + ["forecast", "residuals"]
+        available_plots_model = available_plots_common + [
+            "forecast",
+            "insample",
+            "residuals",
+        ]
 
         return_pred_int = False
+        return_obj = []
 
         # Type checks
         if estimator is not None and isinstance(estimator, str):
@@ -2512,6 +2585,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 # it will not have self._get_model_name
                 model_name = estimator.__class__.__name__
 
+            require_insample_predictions = ["insample"]
             require_residuals = [
                 "residuals",
                 "diagnostics",
@@ -2533,6 +2607,18 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                     return_pred_int=return_pred_int,
                     verbose=False,
                 )
+            elif plot in require_insample_predictions:
+                # Try to get insample forecasts if possible
+                insample_predictions = self.get_insample_predictions(
+                    estimator=estimator
+                )
+                if insample_predictions is None:
+                    return
+                predictions = insample_predictions
+                data = self._get_y_data(split="all")
+                # Do not plot prediction interval for insample predictions
+                return_pred_int = False
+
             elif plot in require_residuals:
                 resid = self.get_residuals(estimator=estimator)
                 if resid is None:
@@ -2545,7 +2631,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                     f"Plot type '{plot}' is not supported when estimator is provided. Available plots are: {', '.join(plots_formatted_model)}"
                 )
 
-        plot_data = plot_(
+        fig, plot_data = plot_(
             plot=plot,
             data=data,
             train=train,
@@ -2553,14 +2639,45 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             predictions=predictions,
             cv=cv,
             model_name=model_name,
-            return_data=return_data,
-            show=system,
             return_pred_int=return_pred_int,
             data_kwargs=data_kwargs,
             fig_kwargs=fig_kwargs,
         )
 
-        return plot_data
+        plot_name = self._available_plots[plot]
+        plot_filename = f"{plot_name}.html"
+
+        # Per https://github.com/pycaret/pycaret/issues/1699#issuecomment-962460539
+        if save:
+            if not isinstance(save, bool):
+                plot_filename = os.path.join(save, plot_filename)
+
+            self.logger.info(f"Saving '{plot_filename}'")
+            fig.write_html(plot_filename)
+
+            ### Add file name to return object ----
+            return_obj.append(plot_filename)
+
+        elif system:
+            if display_format == "streamlit":
+                st.write(fig)
+            else:
+                fig.show()
+            self.logger.info("Visual Rendered Successfully")
+
+        ### Add figure and data to return object if required ----
+        if return_fig:
+            return_obj.append(fig)
+        if return_data:
+            return_obj.append(plot_data)
+
+        #### Return None if empty, return as list if more than one object,
+        # else return object directly ----
+        if len(return_obj) == 0:
+            return_obj = None
+        elif len(return_obj) == 1:
+            return_obj = return_obj[0]
+        return return_obj
 
     # def evaluate_model(
     #     self,
@@ -2690,8 +2807,8 @@ class TimeSeriesExperiment(_SupervisedExperiment):
     ) -> pd.DataFrame:
 
         """
-        This function forecast using a trained model. When ``fh`` is None, 
-        it forecasts using the same forecast horizon used during the 
+        This function forecast using a trained model. When ``fh`` is None,
+        it forecasts using the same forecast horizon used during the
         training.
 
 
@@ -2712,7 +2829,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         fh: int, default = None
             Number of points from the last date of training to forecast.
-            When fh is None, it forecasts using the same forecast horizon 
+            When fh is None, it forecasts using the same forecast horizon
             used during the training.
 
 
@@ -3367,7 +3484,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         >>> from pycaret.time_series import *
         >>> exp_name = setup(data = data, fh = 12)
         >>> best = compare_models()
-        >>> exp_logs = get_logs()   
+        >>> exp_logs = get_logs()
 
 
         experiment_name: str, default = None
@@ -3509,6 +3626,27 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             )
 
         return resid
+
+    def get_insample_predictions(self, estimator) -> Optional[pd.Series]:
+        # https://github.com/alan-turing-institute/sktime/issues/1105#issuecomment-932216820
+        insample_predictions = None
+
+        estimator.check_is_fitted()
+        estimator_ = deep_clone(estimator)
+        y_used_to_train = estimator_._y
+        try:
+            insample_predictions = self.predict_model(
+                estimator, fh=-np.arange(0, len(y_used_to_train))
+            )
+        except NotImplementedError as exception:
+            self.logger.warning(exception)
+            print(
+                "In sample predictions has not been implemented for this estimator "
+                f"of type '{estimator_.__class__.__name__}' in `sktime`. When "
+                "this is implemented, it will be enabled by default in pycaret."
+            )
+
+        return insample_predictions
 
     def check_and_clean_resid(self, resid: pd.Series) -> pd.Series:
         """Checks to see if the residuals matches one of the test set or

@@ -325,7 +325,7 @@ class RegressionExperiment(ClassRegExperiment):
         search_algorithm: Optional[str] = None,
         early_stopping: Any = False,
         early_stopping_max_iters: int = 10,
-        choose_better: bool = False,
+        choose_better: bool = True,
         fit_kwargs: Optional[dict] = None,
         groups: Optional[Union[str, Any]] = None,
         return_tuner: bool = False,
@@ -449,7 +449,7 @@ class RegressionExperiment(ClassRegExperiment):
             Ignored if ``early_stopping`` is False or None.
 
 
-        choose_better: bool, default = False
+        choose_better: bool, default = True
             When set to True, the returned object is always better performing. The
             metric used for comparison is defined by the ``optimize`` parameter.
 
@@ -713,6 +713,7 @@ class RegressionExperiment(ClassRegExperiment):
         self,
         estimator_list: list,
         meta_model=None,
+        meta_model_fold: Optional[Union[int, Any]] = 5,
         fold: Optional[Union[int, Any]] = None,
         round: int = 4,
         restack: bool = False,
@@ -748,6 +749,13 @@ class RegressionExperiment(ClassRegExperiment):
 
         meta_model: scikit-learn compatible object, default = None
             When None, Linear Regression is trained as a meta model.
+
+
+        meta_model_fold: integer or scikit-learn compatible CV generator, default = 5
+            Controls internal cross-validation. Can be an integer or a scikit-learn
+            CV generator. If set to an integer, will use (Stratifed)KFold CV with
+            that many folds. See scikit-learn documentation on Stacking for
+            more details.
 
 
         fold: int or scikit-learn compatible CV generator, default = None
@@ -798,6 +806,7 @@ class RegressionExperiment(ClassRegExperiment):
         return super().stack_models(
             estimator_list=estimator_list,
             meta_model=meta_model,
+            meta_model_fold=meta_model_fold,
             fold=fold,
             round=round,
             method="auto",

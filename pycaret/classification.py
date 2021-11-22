@@ -92,8 +92,8 @@ def setup(
 ):
 
     """
-    This function initializes the training environment and creates the transformation 
-    pipeline. Setup function must be called before executing any other function. It takes 
+    This function initializes the training environment and creates the transformation
+    pipeline. Setup function must be called before executing any other function. It takes
     two mandatory parameters: ``data`` and ``target``. All the other parameters are
     optional.
 
@@ -169,10 +169,10 @@ def setup(
 
 
     preprocess: bool, default = True
-        When set to False, no transformations are applied except for missing
-        values imputation, train_test_split and custom transformations passed
-        in ``custom_pipeline`` param. When False, the data must be ready for
-        modeling (no dates, categorical data encoding, etc...).
+        When set to False, no transformations are applied except for train_test_split
+        and custom transformations passed in ``custom_pipeline`` param. Data must be
+        ready for modeling (no missing values, no dates, categorical data encoding),
+        when preprocess is set to False.
 
 
     imputation_type: str, default = 'simple'
@@ -370,8 +370,8 @@ def setup(
 
 
     data_split_stratify: bool or list, default = False
-        Controls stratification during 'train_test_split'. When set to True, will 
-        stratify by target column. To stratify on any other columns, pass a list of 
+        Controls stratification during 'train_test_split'. When set to True, will
+        stratify by target column. To stratify on any other columns, pass a list of
         column names. Ignored when ``data_split_shuffle`` is False.
 
 
@@ -396,50 +396,50 @@ def setup(
         is 'kfold' or 'stratifiedkfold'. Ignored when ``fold_strategy`` is a custom
         object.
 
-    
+
     fold_groups: str or array-like, with shape (n_samples,), default = None
         Optional group labels when 'GroupKFold' is used for the cross validation.
         It takes an array with shape (n_samples, ) where n_samples is the number
-        of rows in the training dataset. When string is passed, it is interpreted 
+        of rows in the training dataset. When string is passed, it is interpreted
         as the column name in the dataset containing group labels.
 
 
     n_jobs: int, default = -1
-        The number of jobs to run in parallel (for functions that supports parallel 
-        processing) -1 means using all processors. To run all functions on single 
+        The number of jobs to run in parallel (for functions that supports parallel
+        processing) -1 means using all processors. To run all functions on single
         processor set n_jobs to None.
 
 
     use_gpu: bool or str, default = False
-        When set to True, it will use GPU for training with algorithms that support it, 
+        When set to True, it will use GPU for training with algorithms that support it,
         and fall back to CPU if they are unavailable. When set to 'force', it will only
-        use GPU-enabled algorithms and raise exceptions when they are unavailable. When 
+        use GPU-enabled algorithms and raise exceptions when they are unavailable. When
         False, all algorithms are trained using CPU only.
 
         GPU enabled algorithms:
-        
+
         - Extreme Gradient Boosting, requires no further installation
 
         - CatBoost Classifier, requires no further installation
-          (GPU is only enabled when data > 50,000 rows)  
-        
+          (GPU is only enabled when data > 50,000 rows)
+
         - Light Gradient Boosting Machine, requires GPU installation
           https://lightgbm.readthedocs.io/en/latest/GPU-Tutorial.html
 
         - Logistic Regression, Ridge Classifier, Random Forest, K Neighbors Classifier,
-          Support Vector Machine, requires cuML >= 0.15 
+          Support Vector Machine, requires cuML >= 0.15
           https://github.com/rapidsai/cuml
 
 
     html: bool, default = True
         When set to False, prevents runtime display of monitor. This must be set to False
         when the environment does not support IPython. For example, command line terminal,
-        Databricks Notebook, Spyder and other similar IDEs. 
+        Databricks Notebook, Spyder and other similar IDEs.
 
 
     session_id: int, default = None
         Controls the randomness of experiment. It is equivalent to 'random_state' in
-        scikit-learn. When None, a pseudo random number is generated. This can be used 
+        scikit-learn. When None, a pseudo random number is generated. This can be used
         for later reproducibility of the entire experiment.
 
 
@@ -457,14 +457,14 @@ def setup(
 
 
     log_plots: bool or list, default = False
-        When set to True, certain plots are logged automatically in the ``MLFlow`` server. 
+        When set to True, certain plots are logged automatically in the ``MLFlow`` server.
         To change the type of plots to be logged, pass a list containing plot IDs. Refer
         to documentation of ``plot_model``. Ignored when ``log_experiment`` is not True.
 
 
     log_profile: bool, default = False
         When set to True, data profile is logged on the ``MLflow`` server as a html file.
-        Ignored when ``log_experiment`` is not True. 
+        Ignored when ``log_experiment`` is not True.
 
 
     log_data: bool, default = False
@@ -484,7 +484,7 @@ def setup(
 
 
     profile: bool, default = False
-        When set to True, an interactive EDA report is displayed. 
+        When set to True, an interactive EDA report is displayed.
 
 
     profile_kwargs: dict, default = {} (empty dict)
@@ -494,7 +494,7 @@ def setup(
 
     Returns:
         Global variables that can be changed using the ``set_config`` function.
-        
+
     """
 
     exp = _EXPERIMENT_CLASS()
@@ -583,14 +583,15 @@ def compare_models(
     errors: str = "ignore",
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
+    probability_threshold: Optional[float] = None,
     verbose: bool = True,
 ) -> Union[Any, List[Any]]:
 
     """
-    This function trains and evaluates performance of all estimators available in the 
-    model library using cross validation. The output of this function is a score grid 
-    with average cross validated scores. Metrics evaluated during CV can be accessed 
-    using the ``get_metrics`` function. Custom metrics can be added or removed using 
+    This function trains and evaluates performance of all estimators available in the
+    model library using cross validation. The output of this function is a score grid
+    with average cross validated scores. Metrics evaluated during CV can be accessed
+    using the ``get_metrics`` function. Custom metrics can be added or removed using
     ``add_metric`` and ``remove_metric`` function.
 
     Example
@@ -599,25 +600,25 @@ def compare_models(
     >>> juice = get_data('juice')
     >>> from pycaret.classification import *
     >>> exp_name = setup(data = juice,  target = 'Purchase')
-    >>> best_model = compare_models() 
+    >>> best_model = compare_models()
 
 
     include: list of str or scikit-learn compatible object, default = None
-        To train and evaluate select models, list containing model ID or scikit-learn 
-        compatible object can be passed in include param. To see a list of all models 
-        available in the model library use the ``models`` function. 
+        To train and evaluate select models, list containing model ID or scikit-learn
+        compatible object can be passed in include param. To see a list of all models
+        available in the model library use the ``models`` function.
 
 
     exclude: list of str, default = None
-        To omit certain models from training and evaluation, pass a list containing 
+        To omit certain models from training and evaluation, pass a list containing
         model id in the exclude parameter. To see a list of all models available
-        in the model library use the ``models`` function. 
+        in the model library use the ``models`` function.
 
 
     fold: int or scikit-learn compatible CV generator, default = None
-        Controls cross-validation. If None, the CV generator in the ``fold_strategy`` 
-        parameter of the ``setup`` function is used. When an integer is passed, 
-        it is interpreted as the 'n_splits' parameter of the CV generator in the 
+        Controls cross-validation. If None, the CV generator in the ``fold_strategy``
+        parameter of the ``setup`` function is used. When an integer is passed,
+        it is interpreted as the 'n_splits' parameter of the CV generator in the
         ``setup`` function.
 
 
@@ -641,7 +642,7 @@ def compare_models(
 
 
     budget_time: int or float, default = None
-        If not None, will terminate execution of the function after budget_time 
+        If not None, will terminate execution of the function after budget_time
         minutes have passed and return results up to that point.
 
 
@@ -662,23 +663,29 @@ def compare_models(
     groups: str or array-like, with shape (n_samples,), default = None
         Optional group labels when 'GroupKFold' is used for the cross validation.
         It takes an array with shape (n_samples, ) where n_samples is the number
-        of rows in the training dataset. When string is passed, it is interpreted 
+        of rows in the training dataset. When string is passed, it is interpreted
         as the column name in the dataset containing group labels.
+
+
+    probability_threshold: float, default = None
+        Threshold for converting predicted probability to class label.
+        It defaults to 0.5 for all classifiers unless explicitly defined
+        in this parameter. Only applicable for binary classification.
 
 
     verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
-    
-    
+
+
     Returns:
         Trained model or list of trained models, depending on the ``n_select`` param.
 
     Warnings
     --------
-    - Changing turbo parameter to False may result in very high training times with 
+    - Changing turbo parameter to False may result in very high training times with
       datasets exceeding 10,000 rows.
 
-    - AUC for estimators that does not support 'predict_proba' is shown as 0.0000. 
+    - AUC for estimators that does not support 'predict_proba' is shown as 0.0000.
 
     - No models are logged in ``MLFlow`` when ``cross_validation`` parameter is False.
     """
@@ -696,6 +703,7 @@ def compare_models(
         errors=errors,
         fit_kwargs=fit_kwargs,
         groups=groups,
+        probability_threshold=probability_threshold,
         verbose=verbose,
     )
 
@@ -708,15 +716,16 @@ def create_model(
     cross_validation: bool = True,
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
+    probability_threshold: Optional[float] = None,
     verbose: bool = True,
     **kwargs,
 ) -> Any:
 
-    """  
-    This function trains and evaluates the performance of a given estimator 
-    using cross validation. The output of this function is a score grid with 
-    CV scores by fold. Metrics evaluated during CV can be accessed using the 
-    ``get_metrics`` function. Custom metrics can be added or removed using 
+    """
+    This function trains and evaluates the performance of a given estimator
+    using cross validation. The output of this function is a score grid with
+    CV scores by fold. Metrics evaluated during CV can be accessed using the
+    ``get_metrics`` function. Custom metrics can be added or removed using
     ``add_metric`` and ``remove_metric`` function. All the available models
     can be accessed using the ``models`` function.
 
@@ -730,39 +739,39 @@ def create_model(
 
 
     estimator: str or scikit-learn compatible object
-        ID of an estimator available in model library or pass an untrained 
-        model object consistent with scikit-learn API. Estimators available  
+        ID of an estimator available in model library or pass an untrained
+        model object consistent with scikit-learn API. Estimators available
         in the model library (ID - Name):
 
-        * 'lr' - Logistic Regression             
-        * 'knn' - K Neighbors Classifier          
-        * 'nb' - Naive Bayes             
-        * 'dt' - Decision Tree Classifier                   
-        * 'svm' - SVM - Linear Kernel	            
-        * 'rbfsvm' - SVM - Radial Kernel               
-        * 'gpc' - Gaussian Process Classifier                  
-        * 'mlp' - MLP Classifier                  
-        * 'ridge' - Ridge Classifier                
-        * 'rf' - Random Forest Classifier                   
-        * 'qda' - Quadratic Discriminant Analysis                  
-        * 'ada' - Ada Boost Classifier                 
-        * 'gbc' - Gradient Boosting Classifier                  
-        * 'lda' - Linear Discriminant Analysis                  
-        * 'et' - Extra Trees Classifier                   
-        * 'xgboost' - Extreme Gradient Boosting              
-        * 'lightgbm' - Light Gradient Boosting Machine             
-        * 'catboost' - CatBoost Classifier       
+        * 'lr' - Logistic Regression
+        * 'knn' - K Neighbors Classifier
+        * 'nb' - Naive Bayes
+        * 'dt' - Decision Tree Classifier
+        * 'svm' - SVM - Linear Kernel
+        * 'rbfsvm' - SVM - Radial Kernel
+        * 'gpc' - Gaussian Process Classifier
+        * 'mlp' - MLP Classifier
+        * 'ridge' - Ridge Classifier
+        * 'rf' - Random Forest Classifier
+        * 'qda' - Quadratic Discriminant Analysis
+        * 'ada' - Ada Boost Classifier
+        * 'gbc' - Gradient Boosting Classifier
+        * 'lda' - Linear Discriminant Analysis
+        * 'et' - Extra Trees Classifier
+        * 'xgboost' - Extreme Gradient Boosting
+        * 'lightgbm' - Light Gradient Boosting Machine
+        * 'catboost' - CatBoost Classifier
 
 
     fold: int or scikit-learn compatible CV generator, default = None
-        Controls cross-validation. If None, the CV generator in the ``fold_strategy`` 
-        parameter of the ``setup`` function is used. When an integer is passed, 
-        it is interpreted as the 'n_splits' parameter of the CV generator in the 
+        Controls cross-validation. If None, the CV generator in the ``fold_strategy``
+        parameter of the ``setup`` function is used. When an integer is passed,
+        it is interpreted as the 'n_splits' parameter of the CV generator in the
         ``setup`` function.
-        
+
 
     round: int, default = 4
-        Number of decimal places the metrics in the score grid will be rounded to. 
+        Number of decimal places the metrics in the score grid will be rounded to.
 
 
     cross_validation: bool, default = True
@@ -777,15 +786,21 @@ def create_model(
     groups: str or array-like, with shape (n_samples,), default = None
         Optional group labels when GroupKFold is used for the cross validation.
         It takes an array with shape (n_samples, ) where n_samples is the number
-        of rows in training dataset. When string is passed, it is interpreted as 
+        of rows in training dataset. When string is passed, it is interpreted as
         the column name in the dataset containing group labels.
+
+
+    probability_threshold: float, default = None
+        Threshold for converting predicted probability to class label.
+        It defaults to 0.5 for all classifiers unless explicitly defined
+        in this parameter. Only applicable for binary classification.
 
 
     verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
 
 
-    **kwargs: 
+    **kwargs:
         Additional keyword arguments to pass to the estimator.
 
 
@@ -809,6 +824,7 @@ def create_model(
         cross_validation=cross_validation,
         fit_kwargs=fit_kwargs,
         groups=groups,
+        probability_threshold=probability_threshold,
         verbose=verbose,
         **kwargs,
     )
@@ -827,7 +843,7 @@ def tune_model(
     search_algorithm: Optional[str] = None,
     early_stopping: Any = False,
     early_stopping_max_iters: int = 10,
-    choose_better: bool = False,
+    choose_better: bool = True,
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
     return_tuner: bool = False,
@@ -838,10 +854,10 @@ def tune_model(
 
     """
     This function tunes the hyperparameters of a given estimator. The output of
-    this function is a score grid with CV scores by fold of the best selected 
-    model based on ``optimize`` parameter. Metrics evaluated during CV can be 
+    this function is a score grid with CV scores by fold of the best selected
+    model based on ``optimize`` parameter. Metrics evaluated during CV can be
     accessed using the ``get_metrics`` function. Custom metrics can be added
-    or removed using ``add_metric`` and ``remove_metric`` function. 
+    or removed using ``add_metric`` and ``remove_metric`` function.
 
     Example
     -------
@@ -850,7 +866,7 @@ def tune_model(
     >>> from pycaret.classification import *
     >>> exp_name = setup(data = juice,  target = 'Purchase')
     >>> lr = create_model('lr')
-    >>> tuned_lr = tune_model(lr) 
+    >>> tuned_lr = tune_model(lr)
 
 
     estimator: scikit-learn compatible object
@@ -858,37 +874,37 @@ def tune_model(
 
 
     fold: int or scikit-learn compatible CV generator, default = None
-        Controls cross-validation. If None, the CV generator in the ``fold_strategy`` 
-        parameter of the ``setup`` function is used. When an integer is passed, 
-        it is interpreted as the 'n_splits' parameter of the CV generator in the 
+        Controls cross-validation. If None, the CV generator in the ``fold_strategy``
+        parameter of the ``setup`` function is used. When an integer is passed,
+        it is interpreted as the 'n_splits' parameter of the CV generator in the
         ``setup`` function.
-        
+
 
     round: int, default = 4
-        Number of decimal places the metrics in the score grid will be rounded to. 
+        Number of decimal places the metrics in the score grid will be rounded to.
 
 
     n_iter: int, default = 10
-        Number of iterations in the grid search. Increasing 'n_iter' may improve 
+        Number of iterations in the grid search. Increasing 'n_iter' may improve
         model performance but also increases the training time.
 
 
     custom_grid: dictionary, default = None
-        To define custom search space for hyperparameters, pass a dictionary with 
-        parameter name and values to be iterated. Custom grids must be in a format 
+        To define custom search space for hyperparameters, pass a dictionary with
+        parameter name and values to be iterated. Custom grids must be in a format
         supported by the defined ``search_library``.
 
 
     optimize: str, default = 'Accuracy'
-        Metric name to be evaluated for hyperparameter tuning. It also accepts custom 
+        Metric name to be evaluated for hyperparameter tuning. It also accepts custom
         metrics that are added through the ``add_metric`` function.
 
 
     custom_scorer: object, default = None
-        custom scoring strategy can be passed to tune hyperparameters of the model. 
+        custom scoring strategy can be passed to tune hyperparameters of the model.
         It must be created using ``sklearn.make_scorer``. It is equivalent of adding
         custom metric using the ``add_metric`` function and passing the name of the
-        custom metric in the ``optimize`` parameter. 
+        custom metric in the ``optimize`` parameter.
         Will be deprecated in future.
 
 
@@ -898,13 +914,13 @@ def tune_model(
         - 'scikit-learn' - default, requires no further installation
             https://github.com/scikit-learn/scikit-learn
 
-        - 'scikit-optimize' - ``pip install scikit-optimize`` 
+        - 'scikit-optimize' - ``pip install scikit-optimize``
             https://scikit-optimize.github.io/stable/
 
-        - 'tune-sklearn' - ``pip install tune-sklearn ray[tune]`` 
+        - 'tune-sklearn' - ``pip install tune-sklearn ray[tune]``
             https://github.com/ray-project/tune-sklearn
 
-        - 'optuna' - ``pip install optuna`` 
+        - 'optuna' - ``pip install optuna``
             https://optuna.org/
 
 
@@ -934,10 +950,10 @@ def tune_model(
 
 
     early_stopping: bool or str or object, default = False
-        Use early stopping to stop fitting to a hyperparameter configuration 
-        if it performs poorly. Ignored when ``search_library`` is scikit-learn, 
-        or if the estimator does not have 'partial_fit' attribute. If False or 
-        None, early stopping will not be used. Can be either an object accepted 
+        Use early stopping to stop fitting to a hyperparameter configuration
+        if it performs poorly. Ignored when ``search_library`` is scikit-learn,
+        or if the estimator does not have 'partial_fit' attribute. If False or
+        None, early stopping will not be used. Can be either an object accepted
         by the search library or one of the following:
 
         - 'asha' for Asynchronous Successive Halving Algorithm
@@ -951,9 +967,9 @@ def tune_model(
         Ignored if ``early_stopping`` is False or None.
 
 
-    choose_better: bool, default = False
+    choose_better: bool, default = True
         When set to True, the returned object is always better performing. The
-        metric used for comparison is defined by the ``optimize`` parameter.  
+        metric used for comparison is defined by the ``optimize`` parameter.
 
 
     fit_kwargs: dict, default = {} (empty dict)
@@ -963,12 +979,12 @@ def tune_model(
     groups: str or array-like, with shape (n_samples,), default = None
         Optional group labels when GroupKFold is used for the cross validation.
         It takes an array with shape (n_samples, ) where n_samples is the number
-        of rows in training dataset. When string is passed, it is interpreted as 
+        of rows in training dataset. When string is passed, it is interpreted as
         the column name in the dataset containing group labels.
 
 
     return_tuner: bool, default = False
-        When set to True, will return a tuple of (model, tuner_object). 
+        When set to True, will return a tuple of (model, tuner_object).
 
 
     verbose: bool, default = True
@@ -980,12 +996,12 @@ def tune_model(
         print more messages. Ignored when ``verbose`` param is False.
 
 
-    **kwargs: 
+    **kwargs:
         Additional keyword arguments to pass to the optimizer.
 
 
     Returns:
-        Trained Model and Optional Tuner Object when ``return_tuner`` is True. 
+        Trained Model and Optional Tuner Object when ``return_tuner`` is True.
 
 
     Warnings
@@ -1031,14 +1047,15 @@ def ensemble_model(
     optimize: str = "Accuracy",
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
+    probability_threshold: Optional[float] = None,
     verbose: bool = True,
 ) -> Any:
 
-    """  
-    This function ensembles a given estimator. The output of this function is 
-    a score grid with CV scores by fold. Metrics evaluated during CV can be 
+    """
+    This function ensembles a given estimator. The output of this function is
+    a score grid with CV scores by fold. Metrics evaluated during CV can be
     accessed using the ``get_metrics`` function. Custom metrics can be added
-    or removed using ``add_metric`` and ``remove_metric`` function. 
+    or removed using ``add_metric`` and ``remove_metric`` function.
 
 
     Example
@@ -1049,35 +1066,35 @@ def ensemble_model(
     >>> exp_name = setup(data = juice,  target = 'Purchase')
     >>> dt = create_model('dt')
     >>> bagged_dt = ensemble_model(dt, method = 'Bagging')
-    
+
 
     estimator: scikit-learn compatible object
         Trained model object
 
 
     method: str, default = 'Bagging'
-        Method for ensembling base estimator. It can be 'Bagging' or 'Boosting'. 
+        Method for ensembling base estimator. It can be 'Bagging' or 'Boosting'.
 
 
     fold: int or scikit-learn compatible CV generator, default = None
-        Controls cross-validation. If None, the CV generator in the ``fold_strategy`` 
-        parameter of the ``setup`` function is used. When an integer is passed, 
-        it is interpreted as the 'n_splits' parameter of the CV generator in the 
+        Controls cross-validation. If None, the CV generator in the ``fold_strategy``
+        parameter of the ``setup`` function is used. When an integer is passed,
+        it is interpreted as the 'n_splits' parameter of the CV generator in the
         ``setup`` function.
-        
+
 
     n_estimators: int, default = 10
-        The number of base estimators in the ensemble. In case of perfect fit, the 
+        The number of base estimators in the ensemble. In case of perfect fit, the
         learning procedure is stopped early.
 
-        
+
     round: int, default = 4
-        Number of decimal places the metrics in the score grid will be rounded to. 
+        Number of decimal places the metrics in the score grid will be rounded to.
 
 
     choose_better: bool, default = False
         When set to True, the returned object is always better performing. The
-        metric used for comparison is defined by the ``optimize`` parameter. 
+        metric used for comparison is defined by the ``optimize`` parameter.
 
 
     optimize: str, default = 'Accuracy'
@@ -1091,8 +1108,14 @@ def ensemble_model(
     groups: str or array-like, with shape (n_samples,), default = None
         Optional group labels when GroupKFold is used for the cross validation.
         It takes an array with shape (n_samples, ) where n_samples is the number
-        of rows in training dataset. When string is passed, it is interpreted as 
+        of rows in training dataset. When string is passed, it is interpreted as
         the column name in the dataset containing group labels.
+
+
+    probability_threshold: float, default = None
+        Threshold for converting predicted probability to class label.
+        It defaults to 0.5 for all classifiers unless explicitly defined
+        in this parameter. Only applicable for binary classification.
 
 
     verbose: bool, default = True
@@ -1105,8 +1128,8 @@ def ensemble_model(
 
     Warnings
     --------
-    - Method 'Boosting' is not supported for estimators that do not have 'class_weights' 
-      or 'predict_proba' attributes. 
+    - Method 'Boosting' is not supported for estimators that do not have 'class_weights'
+      or 'predict_proba' attributes.
 
     """
 
@@ -1121,6 +1144,7 @@ def ensemble_model(
         fit_kwargs=fit_kwargs,
         groups=groups,
         verbose=verbose,
+        probability_threshold=probability_threshold,
     )
 
 
@@ -1135,13 +1159,14 @@ def blend_models(
     weights: Optional[List[float]] = None,
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
+    probability_threshold: Optional[float] = None,
     verbose: bool = True,
 ) -> Any:
 
     """
     This function trains a Soft Voting / Majority Rule classifier for select
-    models passed in the ``estimator_list`` param. The output of this function 
-    is a score grid with CV scores by fold. Metrics evaluated during CV can be 
+    models passed in the ``estimator_list`` param. The output of this function
+    is a score grid with CV scores by fold. Metrics evaluated during CV can be
     accessed using the ``get_metrics`` function. Custom metrics can be added
     or removed using ``add_metric`` and ``remove_metric`` function.
 
@@ -1161,9 +1186,9 @@ def blend_models(
 
 
     fold: int or scikit-learn compatible CV generator, default = None
-        Controls cross-validation. If None, the CV generator in the ``fold_strategy`` 
-        parameter of the ``setup`` function is used. When an integer is passed, 
-        it is interpreted as the 'n_splits' parameter of the CV generator in the 
+        Controls cross-validation. If None, the CV generator in the ``fold_strategy``
+        parameter of the ``setup`` function is used. When an integer is passed,
+        it is interpreted as the 'n_splits' parameter of the CV generator in the
         ``setup`` function.
 
 
@@ -1173,7 +1198,7 @@ def blend_models(
 
     choose_better: bool, default = False
         When set to True, the returned object is always better performing. The
-        metric used for comparison is defined by the ``optimize`` parameter. 
+        metric used for comparison is defined by the ``optimize`` parameter.
 
 
     optimize: str, default = 'Accuracy'
@@ -1181,16 +1206,16 @@ def blend_models(
 
 
     method: str, default = 'auto'
-        'hard' uses predicted class labels for majority rule voting. 'soft', predicts 
-        the class label based on the argmax of the sums of the predicted probabilities, 
-        which is recommended for an ensemble of well-calibrated classifiers. Default 
-        value, 'auto', will try to use 'soft' and fall back to 'hard' if the former is 
+        'hard' uses predicted class labels for majority rule voting. 'soft', predicts
+        the class label based on the argmax of the sums of the predicted probabilities,
+        which is recommended for an ensemble of well-calibrated classifiers. Default
+        value, 'auto', will try to use 'soft' and fall back to 'hard' if the former is
         not supported.
 
 
     weights: list, default = None
-        Sequence of weights (float or int) to weight the occurrences of predicted class 
-        labels (hard voting) or class probabilities before averaging (soft voting). Uses 
+        Sequence of weights (float or int) to weight the occurrences of predicted class
+        labels (hard voting) or class probabilities before averaging (soft voting). Uses
         uniform weights when None.
 
 
@@ -1201,8 +1226,14 @@ def blend_models(
     groups: str or array-like, with shape (n_samples,), default = None
         Optional group labels when GroupKFold is used for the cross validation.
         It takes an array with shape (n_samples, ) where n_samples is the number
-        of rows in training dataset. When string is passed, it is interpreted as 
+        of rows in training dataset. When string is passed, it is interpreted as
         the column name in the dataset containing group labels.
+
+
+    probability_threshold: float, default = None
+        Threshold for converting predicted probability to class label.
+        It defaults to 0.5 for all classifiers unless explicitly defined
+        in this parameter. Only applicable for binary classification.
 
 
     verbose: bool, default = True
@@ -1225,6 +1256,7 @@ def blend_models(
         fit_kwargs=fit_kwargs,
         groups=groups,
         verbose=verbose,
+        probability_threshold=probability_threshold,
     )
 
 
@@ -1232,6 +1264,7 @@ def blend_models(
 def stack_models(
     estimator_list: list,
     meta_model=None,
+    meta_model_fold: Optional[Union[int, Any]] = 5,
     fold: Optional[Union[int, Any]] = None,
     round: int = 4,
     method: str = "auto",
@@ -1240,18 +1273,19 @@ def stack_models(
     optimize: str = "Accuracy",
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
+    probability_threshold: Optional[float] = None,
     verbose: bool = True,
 ) -> Any:
 
     """
-    This function trains a meta model over select estimators passed in 
-    the ``estimator_list`` parameter. The output of this function is a 
-    score grid with CV scores by fold. Metrics evaluated during CV can 
-    be accessed using the ``get_metrics`` function. Custom metrics 
-    can be added or removed using ``add_metric`` and ``remove_metric`` 
+    This function trains a meta model over select estimators passed in
+    the ``estimator_list`` parameter. The output of this function is a
+    score grid with CV scores by fold. Metrics evaluated during CV can
+    be accessed using the ``get_metrics`` function. Custom metrics
+    can be added or removed using ``add_metric`` and ``remove_metric``
     function.
 
-    
+
     Example
     -------
     >>> from pycaret.datasets import get_data
@@ -1270,10 +1304,17 @@ def stack_models(
         When None, Logistic Regression is trained as a meta model.
 
 
+    meta_model_fold: integer or scikit-learn compatible CV generator, default = 5
+        Controls internal cross-validation. Can be an integer or a scikit-learn
+        CV generator. If set to an integer, will use (Stratifed)KFold CV with
+        that many folds. See scikit-learn documentation on Stacking for
+        more details.
+
+
     fold: int or scikit-learn compatible CV generator, default = None
-        Controls cross-validation. If None, the CV generator in the ``fold_strategy`` 
-        parameter of the ``setup`` function is used. When an integer is passed, 
-        it is interpreted as the 'n_splits' parameter of the CV generator in the 
+        Controls cross-validation. If None, the CV generator in the ``fold_strategy``
+        parameter of the ``setup`` function is used. When an integer is passed,
+        it is interpreted as the 'n_splits' parameter of the CV generator in the
         ``setup`` function.
 
 
@@ -1284,17 +1325,17 @@ def stack_models(
     method: str, default = 'auto'
         When set to 'auto', it will invoke, for each estimator, 'predict_proba',
         'decision_function' or 'predict' in that order. Other, manually pass one
-        of the value from 'predict_proba', 'decision_function' or 'predict'. 
-        
-        
+        of the value from 'predict_proba', 'decision_function' or 'predict'.
+
+
     restack: bool, default = True
-        When set to False, only the predictions of estimators will be used as 
+        When set to False, only the predictions of estimators will be used as
         training data for the ``meta_model``.
 
 
     choose_better: bool, default = False
         When set to True, the returned object is always better performing. The
-        metric used for comparison is defined by the ``optimize`` parameter. 
+        metric used for comparison is defined by the ``optimize`` parameter.
 
 
     optimize: str, default = 'Accuracy'
@@ -1308,8 +1349,14 @@ def stack_models(
     groups: str or array-like, with shape (n_samples,), default = None
         Optional group labels when GroupKFold is used for the cross validation.
         It takes an array with shape (n_samples, ) where n_samples is the number
-        of rows in training dataset. When string is passed, it is interpreted as 
+        of rows in training dataset. When string is passed, it is interpreted as
         the column name in the dataset containing group labels.
+
+
+    probability_threshold: float, default = None
+        Threshold for converting predicted probability to class label.
+        It defaults to 0.5 for all classifiers unless explicitly defined
+        in this parameter. Only applicable for binary classification.
 
 
     verbose: bool, default = True
@@ -1323,7 +1370,7 @@ def stack_models(
     Warnings
     --------
     - When ``method`` is not set to 'auto', it will check if the defined method
-      is available for all estimators passed in ``estimator_list``. If the method is 
+      is available for all estimators passed in ``estimator_list``. If the method is
       not implemented by any estimator, it will raise an error.
 
     """
@@ -1331,6 +1378,7 @@ def stack_models(
     return _CURRENT_EXPERIMENT.stack_models(
         estimator_list=estimator_list,
         meta_model=meta_model,
+        meta_model_fold=meta_model_fold,
         fold=fold,
         round=round,
         method=method,
@@ -1339,6 +1387,7 @@ def stack_models(
         optimize=optimize,
         fit_kwargs=fit_kwargs,
         groups=groups,
+        probability_threshold=probability_threshold,
         verbose=verbose,
     )
 
@@ -1358,7 +1407,7 @@ def plot_model(
 ) -> str:
 
     """
-    This function analyzes the performance of a trained model on holdout set. 
+    This function analyzes the performance of a trained model on holdout set.
     It may require re-training the model in certain cases.
 
     Example
@@ -1409,9 +1458,9 @@ def plot_model(
 
 
     fold: int or scikit-learn compatible CV generator, default = None
-        Controls cross-validation. If None, the CV generator in the ``fold_strategy`` 
-        parameter of the ``setup`` function is used. When an integer is passed, 
-        it is interpreted as the 'n_splits' parameter of the CV generator in the 
+        Controls cross-validation. If None, the CV generator in the ``fold_strategy``
+        parameter of the ``setup`` function is used. When an integer is passed,
+        it is interpreted as the 'n_splits' parameter of the CV generator in the
         ``setup`` function.
 
 
@@ -1422,7 +1471,7 @@ def plot_model(
     groups: str or array-like, with shape (n_samples,), default = None
         Optional group labels when GroupKFold is used for the cross validation.
         It takes an array with shape (n_samples, ) where n_samples is the number
-        of rows in training dataset. When string is passed, it is interpreted as 
+        of rows in training dataset. When string is passed, it is interpreted as
         the column name in the dataset containing group labels.
 
 
@@ -1442,17 +1491,17 @@ def plot_model(
 
     Returns:
         None
-        
+
 
     Warnings
     --------
     -   Estimators that does not support 'predict_proba' attribute cannot be used for
-        'AUC' and 'calibration' plots. 
-              
-    -   When the target is multiclass, 'calibration', 'threshold', 'manifold' and 'rfe' 
+        'AUC' and 'calibration' plots.
+
+    -   When the target is multiclass, 'calibration', 'threshold', 'manifold' and 'rfe'
         plots are not available.
 
-    -   When the 'max_features' parameter of a trained model object is not equal to 
+    -   When the 'max_features' parameter of a trained model object is not equal to
         the number of samples in training set, the 'rfe' plot is not available.
 
     """
@@ -1482,8 +1531,8 @@ def evaluate_model(
 
     """
     This function displays a user interface for analyzing performance of a trained
-    model. It calls the ``plot_model`` function internally. 
-    
+    model. It calls the ``plot_model`` function internally.
+
 
     Example
     -------
@@ -1493,16 +1542,16 @@ def evaluate_model(
     >>> exp_name = setup(data = juice,  target = 'Purchase')
     >>> lr = create_model('lr')
     >>> evaluate_model(lr)
-    
+
 
     estimator: scikit-learn compatible object
         Trained model object
 
 
     fold: int or scikit-learn compatible CV generator, default = None
-        Controls cross-validation. If None, the CV generator in the ``fold_strategy`` 
-        parameter of the ``setup`` function is used. When an integer is passed, 
-        it is interpreted as the 'n_splits' parameter of the CV generator in the 
+        Controls cross-validation. If None, the CV generator in the ``fold_strategy``
+        parameter of the ``setup`` function is used. When an integer is passed,
+        it is interpreted as the 'n_splits' parameter of the CV generator in the
         ``setup`` function.
 
 
@@ -1513,7 +1562,7 @@ def evaluate_model(
     groups: str or array-like, with shape (n_samples,), default = None
         Optional group labels when GroupKFold is used for the cross validation.
         It takes an array with shape (n_samples, ) where n_samples is the number
-        of rows in training dataset. When string is passed, it is interpreted as 
+        of rows in training dataset. When string is passed, it is interpreted as
         the column name in the dataset containing group labels.
 
 
@@ -1554,7 +1603,7 @@ def interpret_model(
     **kwargs,
 ):
 
-    """ 
+    """
     This function takes a trained model object and returns an interpretation plot
     based on the test / hold-out set. It only supports tree based algorithms.
 
@@ -1657,6 +1706,7 @@ def interpret_model(
 def calibrate_model(
     estimator,
     method: str = "sigmoid",
+    calibrate_fold: Optional[Union[int, Any]] = 5,
     fold: Optional[Union[int, Any]] = None,
     round: int = 4,
     fit_kwargs: Optional[dict] = None,
@@ -1664,12 +1714,12 @@ def calibrate_model(
     verbose: bool = True,
 ) -> Any:
 
-    """  
+    """
     This function calibrates the probability of a given estimator using isotonic
-    or logistic regression. The output of this function is a score grid with CV 
-    scores by fold. Metrics evaluated during CV can be accessed using the 
-    ``get_metrics`` function. Custom metrics can be added or removed using 
-    ``add_metric`` and ``remove_metric`` function. 
+    or logistic regression. The output of this function is a score grid with CV
+    scores by fold. Metrics evaluated during CV can be accessed using the
+    ``get_metrics`` function. Custom metrics can be added or removed using
+    ``add_metric`` and ``remove_metric`` function.
 
 
     Example
@@ -1684,22 +1734,29 @@ def calibrate_model(
 
     estimator: scikit-learn compatible object
         Trained model object
-    
+
 
     method: str, default = 'sigmoid'
-        The method to use for calibration. Can be 'sigmoid' which corresponds to 
-        Platt's method or 'isotonic' which is a non-parametric approach. 
+        The method to use for calibration. Can be 'sigmoid' which corresponds to
+        Platt's method or 'isotonic' which is a non-parametric approach.
+
+
+    calibrate_fold: integer or scikit-learn compatible CV generator, default = 5
+        Controls internal cross-validation. Can be an integer or a scikit-learn
+        CV generator. If set to an integer, will use (Stratifed)KFold CV with
+        that many folds. See scikit-learn documentation on Stacking for
+        more details.
 
 
     fold: int or scikit-learn compatible CV generator, default = None
-        Controls cross-validation. If None, the CV generator in the ``fold_strategy`` 
-        parameter of the ``setup`` function is used. When an integer is passed, 
-        it is interpreted as the 'n_splits' parameter of the CV generator in the 
+        Controls cross-validation. If None, the CV generator in the ``fold_strategy``
+        parameter of the ``setup`` function is used. When an integer is passed,
+        it is interpreted as the 'n_splits' parameter of the CV generator in the
         ``setup`` function.
 
 
     round: int, default = 4
-        Number of decimal places the metrics in the score grid will be rounded to. 
+        Number of decimal places the metrics in the score grid will be rounded to.
 
 
     fit_kwargs: dict, default = {} (empty dict)
@@ -1709,7 +1766,7 @@ def calibrate_model(
     groups: str or array-like, with shape (n_samples,), default = None
         Optional group labels when GroupKFold is used for the cross validation.
         It takes an array with shape (n_samples, ) where n_samples is the number
-        of rows in training dataset. When string is passed, it is interpreted as 
+        of rows in training dataset. When string is passed, it is interpreted as
         the column name in the dataset containing group labels.
 
 
@@ -1723,7 +1780,7 @@ def calibrate_model(
 
     Warnings
     --------
-    - Avoid isotonic calibration with too few calibration samples (< 1000) since it 
+    - Avoid isotonic calibration with too few calibration samples (< 1000) since it
       tends to overfit.
 
     """
@@ -1731,6 +1788,7 @@ def calibrate_model(
     return _CURRENT_EXPERIMENT.calibrate_model(
         estimator=estimator,
         method=method,
+        calibrate_fold=calibrate_fold,
         fold=fold,
         round=round,
         fit_kwargs=fit_kwargs,
@@ -1749,10 +1807,10 @@ def optimize_threshold(
 ):
 
     """
-    This function optimizes probability threshold for a given estimator using 
+    This function optimizes probability threshold for a given estimator using
     custom cost function. The function displays a plot of optimized cost as a
-    function of probability threshold between 0.0 to 1.0 and returns the 
-    optimized threshold value as a numpy float. 
+    function of probability threshold between 0.0 to 1.0 and returns the
+    optimized threshold value as a numpy float.
 
 
     Example
@@ -1767,31 +1825,31 @@ def optimize_threshold(
 
     estimator: scikit-learn compatible object
         Trained model object
-    
+
 
     true_positive: int, default = 0
-        Cost function or returns for true positive.  
-    
+        Cost function or returns for true positive.
+
 
     true_negative: int, default = 0
         Cost function or returns for true negative.
-    
+
 
     false_positive: int, default = 0
-        Cost function or returns for false positive.    
-    
+        Cost function or returns for false positive.
+
 
     false_negative: int, default = 0
-        Cost function or returns for false negative.       
-    
+        Cost function or returns for false negative.
+
 
     Returns:
-        numpy.float64 
+        numpy.float64
 
 
     Warnings
     --------
-    - This function is not supported when target is multiclass. 
+    - This function is not supported when target is multiclass.
 
     """
 
@@ -1816,11 +1874,11 @@ def predict_model(
 ) -> pd.DataFrame:
 
     """
-    This function predicts ``Label`` and ``Score`` (probability of predicted 
-    class) using a trained model. When ``data`` is None, it predicts label and 
+    This function predicts ``Label`` and ``Score`` (probability of predicted
+    class) using a trained model. When ``data`` is None, it predicts label and
     score on the holdout set.
-    
-    
+
+
     Example
     -------
     >>> from pycaret.datasets import get_data
@@ -1830,21 +1888,22 @@ def predict_model(
     >>> lr = create_model('lr')
     >>> pred_holdout = predict_model(lr)
     >>> pred_unseen = predict_model(lr, data = unseen_dataframe)
-        
+
 
     estimator: scikit-learn compatible object
         Trained model object
 
 
     data: pandas.DataFrame
-        Shape (n_samples, n_features). All features used during training 
+        Shape (n_samples, n_features). All features used during training
         must be available in the unseen dataset.
-    
+
 
     probability_threshold: float, default = None
         Threshold for converting predicted probability to class label.
-        It defaults to 0.5 for all classifiers unless explicitly defined 
-        in this parameter. 
+        Unless this parameter is set, it will default to the value set
+        during model creation. If that wasn't set, the default will be 0.5
+        for all classifiers. Only applicable for binary classification.
 
 
     encoded_labels: bool, default = False
@@ -1856,7 +1915,7 @@ def predict_model(
 
 
     round: int, default = 4
-        Number of decimal places the metrics in the score grid will be rounded to. 
+        Number of decimal places the metrics in the score grid will be rounded to.
 
 
     verbose: bool, default = True
@@ -1869,9 +1928,9 @@ def predict_model(
 
     Warnings
     --------
-    - The behavior of the ``predict_model`` is changed in version 2.1 without backward 
-      compatibility. As such, the pipelines trained using the version (<= 2.0), may not 
-      work for inference with version >= 2.1. You can either retrain your models with a 
+    - The behavior of the ``predict_model`` is changed in version 2.1 without backward
+      compatibility. As such, the pipelines trained using the version (<= 2.0), may not
+      work for inference with version >= 2.1. You can either retrain your models with a
       newer version or downgrade the version for inference.
 
     """
@@ -1900,10 +1959,10 @@ def finalize_model(
 ) -> Any:
 
     """
-    This function trains a given estimator on the entire dataset including the 
-    holdout set. 
-    
-    
+    This function trains a given estimator on the entire dataset including the
+    holdout set.
+
+
     Example
     -------
     >>> from pycaret.datasets import get_data
@@ -1912,7 +1971,7 @@ def finalize_model(
     >>> exp_name = setup(data = juice,  target = 'Purchase')
     >>> lr = create_model('lr')
     >>> final_lr = finalize_model(lr)
-    
+
 
     estimator: scikit-learn compatible object
         Trained model object
@@ -1925,18 +1984,18 @@ def finalize_model(
     groups: str or array-like, with shape (n_samples,), default = None
         Optional group labels when GroupKFold is used for the cross validation.
         It takes an array with shape (n_samples, ) where n_samples is the number
-        of rows in training dataset. When string is passed, it is interpreted as 
+        of rows in training dataset. When string is passed, it is interpreted as
         the column name in the dataset containing group labels.
 
 
     model_only: bool, default = True
-        When set to False, only model object is re-trained and all the 
+        When set to False, only model object is re-trained and all the
         transformations in Pipeline are ignored.
 
 
     Returns:
         Trained Model
-      
+
     """
 
     return _CURRENT_EXPERIMENT.finalize_model(
@@ -2043,9 +2102,9 @@ def save_model(
 ):
 
     """
-    This function saves the transformation pipeline and trained model object 
-    into the current working directory as a pickle file for later use. 
-    
+    This function saves the transformation pipeline and trained model object
+    into the current working directory as a pickle file for later use.
+
     Example
     -------
     >>> from pycaret.datasets import get_data
@@ -2054,18 +2113,18 @@ def save_model(
     >>> exp_name = setup(data = juice,  target = 'Purchase')
     >>> lr = create_model('lr')
     >>> save_model(lr, 'saved_lr_model')
-    
+
 
     model: scikit-learn compatible object
         Trained model object
-    
+
 
     model_name: str
         Name of the model.
-    
+
 
     model_only: bool, default = False
-        When set to True, only trained model object is saved instead of the 
+        When set to True, only trained model object is saved instead of the
         entire pipeline.
 
 
@@ -2073,7 +2132,7 @@ def save_model(
         Success message is not printed when verbose is set to False.
 
 
-    **kwargs: 
+    **kwargs:
         Additional keyword arguments to pass to joblib.dump().
 
 
@@ -2101,7 +2160,7 @@ def load_model(
 
     """
     This function loads a previously saved pipeline.
-    
+
 
     Example
     -------
@@ -2111,12 +2170,12 @@ def load_model(
 
     model_name: str
         Name of the model.
-      
+
 
     platform: str, default = None
-        Name of the cloud platform. Currently supported platforms: 
+        Name of the cloud platform. Currently supported platforms:
         'aws', 'gcp' and 'azure'.
-    
+
 
     authentication: dict, default = None
         dictionary of applicable authentication tokens.
@@ -2129,7 +2188,7 @@ def load_model(
 
         when platform = 'azure':
         {'container': 'azure-container-name'}
-    
+
 
     verbose: bool, default = True
         Success message is not printed when verbose is set to False.
@@ -2157,12 +2216,12 @@ def automl(
     optimize: str = "Accuracy", use_holdout: bool = False, turbo: bool = True
 ) -> Any:
 
-    """ 
+    """
     This function returns the best model out of all trained models in
     current session based on the ``optimize`` parameter. Metrics
-    evaluated can be accessed using the ``get_metrics`` function. 
+    evaluated can be accessed using the ``get_metrics`` function.
 
-    
+
     Example
     -------
     >>> from pycaret.datasets import get_data
@@ -2178,7 +2237,7 @@ def automl(
 
     optimize: str, default = 'Accuracy'
         Metric to use for model selection. It also accepts custom metrics
-        added using the ``add_metric`` function. 
+        added using the ``add_metric`` function.
 
 
     use_holdout: bool, default = False
@@ -2204,7 +2263,7 @@ def automl(
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def pull(pop: bool = False) -> pd.DataFrame:
 
-    """  
+    """
     Returns last printed score grid. Use ``pull`` function after
     any training function to store the score grid in pandas.DataFrame.
 
@@ -2234,7 +2293,7 @@ def models(
     >>> from pycaret.datasets import get_data
     >>> juice = get_data('juice')
     >>> from pycaret.classification import *
-    >>> exp_name = setup(data = juice,  target = 'Purchase')    
+    >>> exp_name = setup(data = juice,  target = 'Purchase')
     >>> all_models = models()
 
 
@@ -2242,7 +2301,7 @@ def models(
         - linear : filters and only return linear models
         - tree : filters and only return tree based models
         - ensemble : filters and only return ensemble models
-    
+
 
     internal: bool, default = False
         When True, will return extra columns and rows used internally.
@@ -2276,12 +2335,12 @@ def get_metrics(
     >>> from pycaret.datasets import get_data
     >>> juice = get_data('juice')
     >>> from pycaret.classification import *
-    >>> exp_name = setup(data = juice,  target = 'Purchase')    
+    >>> exp_name = setup(data = juice,  target = 'Purchase')
     >>> all_metrics = get_metrics()
 
 
     reset: bool, default = False
-        When True, will reset all changes made using the ``add_metric`` 
+        When True, will reset all changes made using the ``add_metric``
         and ``remove_metric`` function.
 
 
@@ -2315,7 +2374,7 @@ def add_metric(
     **kwargs,
 ) -> pd.Series:
 
-    """ 
+    """
     Adds a custom metric to be used for CV.
 
 
@@ -2324,7 +2383,7 @@ def add_metric(
     >>> from pycaret.datasets import get_data
     >>> juice = get_data('juice')
     >>> from pycaret.classification import *
-    >>> exp_name = setup(data = juice,  target = 'Purchase') 
+    >>> exp_name = setup(data = juice,  target = 'Purchase')
     >>> from sklearn.metrics import log_loss
     >>> add_metric('logloss', 'Log Loss', log_loss, greater_is_better = False)
 
@@ -2380,7 +2439,7 @@ def add_metric(
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def remove_metric(name_or_id: str):
 
-    """  
+    """
     Removes a metric from CV.
 
 
@@ -2389,14 +2448,14 @@ def remove_metric(name_or_id: str):
     >>> from pycaret.datasets import get_data
     >>> juice = get_data('juice')
     >>> from pycaret.classification import *
-    >>> exp_name = setup(data = juice,  target = 'Purchase') 
+    >>> exp_name = setup(data = juice,  target = 'Purchase')
     >>> remove_metric('MCC')
 
 
     name_or_id: str
         Display name or ID of the metric.
 
-    
+
     Returns:
         None
 
@@ -2417,7 +2476,7 @@ def get_logs(experiment_name: Optional[str] = None, save: bool = False) -> pd.Da
     >>> from pycaret.datasets import get_data
     >>> juice = get_data('juice')
     >>> from pycaret.classification import *
-    >>> exp_name = setup(data = juice,  target = 'Purchase', log_experiment = True) 
+    >>> exp_name = setup(data = juice,  target = 'Purchase', log_experiment = True)
     >>> best = compare_models()
     >>> exp_logs = get_logs()
 
@@ -2442,11 +2501,11 @@ def get_logs(experiment_name: Optional[str] = None, save: bool = False) -> pd.Da
 def get_config(variable: str):
 
     """
-    This function retrieves the global variables created when initializing the 
+    This function retrieves the global variables created when initializing the
     ``setup`` function. Following variables are accessible:
 
     - X: Transformed dataset (X)
-    - y: Transformed dataset (y)  
+    - y: Transformed dataset (y)
     - X_train: Transformed train dataset (X)
     - X_test: Transformed test/holdout dataset (X)
     - y_train: Transformed train dataset (y)
@@ -2478,8 +2537,8 @@ def get_config(variable: str):
     >>> from pycaret.datasets import get_data
     >>> juice = get_data('juice')
     >>> from pycaret.classification import *
-    >>> exp_name = setup(data = juice,  target = 'Purchase') 
-    >>> X_train = get_config('X_train') 
+    >>> exp_name = setup(data = juice,  target = 'Purchase')
+    >>> X_train = get_config('X_train')
 
 
     Returns:
@@ -2494,11 +2553,11 @@ def get_config(variable: str):
 def set_config(variable: str, value):
 
     """
-    This function resets the global variables. Following variables are 
+    This function resets the global variables. Following variables are
     accessible:
 
     - X: Transformed dataset (X)
-    - y: Transformed dataset (y)  
+    - y: Transformed dataset (y)
     - X_train: Transformed train dataset (X)
     - X_test: Transformed test/holdout dataset (X)
     - y_train: Transformed train dataset (y)
@@ -2529,8 +2588,8 @@ def set_config(variable: str, value):
     >>> from pycaret.datasets import get_data
     >>> juice = get_data('juice')
     >>> from pycaret.classification import *
-    >>> exp_name = setup(data = juice,  target = 'Purchase') 
-    >>> set_config('seed', 123) 
+    >>> exp_name = setup(data = juice,  target = 'Purchase')
+    >>> set_config('seed', 123)
 
 
     Returns:
@@ -2554,8 +2613,8 @@ def save_config(file_name: str):
     >>> from pycaret.datasets import get_data
     >>> juice = get_data('juice')
     >>> from pycaret.classification import *
-    >>> exp_name = setup(data = juice,  target = 'Purchase') 
-    >>> save_config('myvars.pkl') 
+    >>> exp_name = setup(data = juice,  target = 'Purchase')
+    >>> save_config('myvars.pkl')
 
 
     Returns:
@@ -2577,7 +2636,7 @@ def load_config(file_name: str):
     Example
     -------
     >>> from pycaret.classification import load_config
-    >>> load_config('myvars.pkl') 
+    >>> load_config('myvars.pkl')
 
 
     Returns:

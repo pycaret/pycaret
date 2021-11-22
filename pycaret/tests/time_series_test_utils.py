@@ -31,6 +31,39 @@ _ALL_STATS_TESTS = [
 ]
 
 
+def _get_all_plots():
+    exp = TimeSeriesExperiment()
+    data = get_data("airline")
+    exp.setup(data=data)
+    all_plots = list(exp._available_plots.keys())
+    all_plots = [None] + all_plots
+    return all_plots
+
+
+def _get_all_plots_data():
+    exp = TimeSeriesExperiment()
+    data = get_data("airline")
+    exp.setup(data=data)
+    all_plots = exp._available_plots_data_keys
+    all_plots = [None] + all_plots
+    return all_plots
+
+
+def _get_all_plots_estimator():
+    exp = TimeSeriesExperiment()
+    data = get_data("airline")
+    exp.setup(data=data)
+    all_plots = exp._available_plots_estimator_keys
+    all_plots = [None] + all_plots
+    return all_plots
+
+
+_ALL_PLOTS = _get_all_plots()
+_ALL_PLOTS_DATA = _get_all_plots_data()
+_ALL_PLOTS_ESTIMATOR = _get_all_plots_estimator()
+_ALL_PLOTS_ESTIMATOR_NOT_DATA = list(set(_ALL_PLOTS_ESTIMATOR) - set(_ALL_PLOTS_DATA))
+
+
 def _get_all_metrics():
     exp = TimeSeriesExperiment()
     data = get_data("airline")
@@ -66,6 +99,7 @@ def _return_model_names():
         "gpu_param": False,
         "X_train": pd.DataFrame(get_data("airline")),
         "enforce_pi": False,
+        "seasonal_period": 2,
     }
     model_containers = get_all_model_containers(globals_dict)
 
@@ -138,6 +172,17 @@ def _return_data_with_without_period_index():
         get_data("10", folder="time_series/white_noise"),
     ]
     return datasets
+
+
+def _return_model_names_for_plots():
+    """Returns models to be used for testing plots. Needs
+        - 1 model that has prediction interval ("theta")
+        - 1 model that does not have prediction interval ("lr_cds_dt")
+        - 1 model that has in-sample forecasts ("theta")
+        - 1 model that does not have in-sample forecasts ("lr_cds_dt")
+    """
+    model_names = ["theta", "lr_cds_dt"]
+    return model_names
 
 
 def _return_data_big_small():

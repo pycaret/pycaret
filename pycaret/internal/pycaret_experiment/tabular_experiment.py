@@ -605,11 +605,9 @@ class _TabularExperiment(_PyCaretExperiment):
             )
 
         # checking display_format parameter
-        plot_formats = [None, "streamlit"]
+        self.plot_model_check_display_format_(display_format=display_format)
 
-        if display_format not in plot_formats:
-            raise ValueError("display_format can only be None or 'streamlit'.")
-
+        # Import required libraries ----
         if display_format == "streamlit":
             try:
                 import streamlit as st

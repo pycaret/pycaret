@@ -2,6 +2,7 @@ from pycaret.internal.pycaret_experiment.utils import get_ml_task, MLUsecase
 from pycaret.internal.pycaret_experiment.tabular_experiment import _TabularExperiment
 from pycaret.internal.meta_estimators import (
     PowerTransformedTargetRegressor,
+    CustomProbabilityThresholdClassifier,
     get_estimator_from_meta_estimator,
 )
 from pycaret.internal.pipeline import (
@@ -166,6 +167,12 @@ class _SupervisedExperiment(_TabularExperiment):
             if not metric.greater_is_better:
                 result *= -1
             if best_result is None or best_result < result:
+                msg=(
+                    "Original model was better than the tuned model, hence it will be returned. "
+                    "NOTE: The display metrics are for the tuned model (not the original one)."
+                )
+                print(msg)
+                self.logger.info(msg)
                 best_result = result
                 best_model = model
 
@@ -278,6 +285,7 @@ class _SupervisedExperiment(_TabularExperiment):
         errors: str = "ignore",
         fit_kwargs: Optional[dict] = None,
         groups: Optional[Union[str, Any]] = None,
+        probability_threshold: Optional[float] = None,
         verbose: bool = True,
         display: Optional[Display] = None,
     ) -> List[Any]:
@@ -652,41 +660,36 @@ class _SupervisedExperiment(_TabularExperiment):
             self.logger.info(
                 "SubProcess create_model() called =================================="
             )
+            create_model_args = dict(
+                estimator=model,
+                system=False,
+                verbose=False,
+                display=display,
+                fold=fold,
+                round=round,
+                cross_validation=cross_validation,
+                fit_kwargs=fit_kwargs,
+                groups=groups,
+                probability_threshold=probability_threshold,
+                refit=False,
+            )
             results_columns_to_ignore = ["Object", "runtime", "cutoff"]
             if errors == "raise":
                 model, model_fit_time = self.create_model(
-                    estimator=model,
-                    system=False,
-                    verbose=False,
-                    display=display,
-                    fold=fold,
-                    round=round,
-                    cross_validation=cross_validation,
-                    fit_kwargs=fit_kwargs,
-                    groups=groups,
-                    refit=False,
+                    **create_model_args
                 )
                 model_results = self.pull(pop=True)
             else:
                 try:
                     model, model_fit_time = self.create_model(
-                        estimator=model,
-                        system=False,
-                        verbose=False,
-                        display=display,
-                        fold=fold,
-                        round=round,
-                        cross_validation=cross_validation,
-                        fit_kwargs=fit_kwargs,
-                        groups=groups,
-                        refit=False,
+                        **create_model_args
                     )
                     model_results = self.pull(pop=True)
                     assert (
                         np.sum(
-                            model_results.drop(results_columns_to_ignore, axis=1, errors="ignore").iloc[
-                                0
-                            ]
+                            model_results.drop(
+                                results_columns_to_ignore, axis=1, errors="ignore"
+                            ).iloc[0]
                         )
                         != 0.0
                     )
@@ -697,18 +700,17 @@ class _SupervisedExperiment(_TabularExperiment):
                     self.logger.warning(traceback.format_exc())
                     try:
                         model, model_fit_time = self.create_model(
-                            estimator=model,
-                            system=False,
-                            verbose=False,
-                            display=display,
-                            fold=fold,
-                            round=round,
-                            cross_validation=cross_validation,
-                            groups=groups,
-                            refit=False,
+                            **create_model_args
                         )
                         model_results = self.pull(pop=True)
-                        assert np.sum(model_results.drop(results_columns_to_ignore, axis=1, errors="ignore").iloc[0]) != 0.0
+                        assert (
+                            np.sum(
+                                model_results.drop(
+                                    results_columns_to_ignore, axis=1, errors="ignore"
+                                ).iloc[0]
+                            )
+                            != 0.0
+                        )
                     except Exception:
                         self.logger.error(
                             f"create_model() for {model} raised an exception or returned all 0.0:"
@@ -839,34 +841,39 @@ class _SupervisedExperiment(_TabularExperiment):
                 if index in n_select_range:
                     display.update_monitor(2, self._get_model_name(model))
                     display.display_monitor()
+                    create_model_args = dict(
+                        estimator=model,
+                        system=False,
+                        verbose=False,
+                        fold=fold,
+                        round=round,
+                        cross_validation=False,
+                        predict=False,
+                        fit_kwargs=fit_kwargs,
+                        groups=groups,
+                        probability_threshold=probability_threshold,
+                    )
                     if errors == "raise":
                         model, model_fit_time = self.create_model(
-                            estimator=model,
-                            system=False,
-                            verbose=False,
-                            fold=fold,
-                            round=round,
-                            cross_validation=False,
-                            predict=False,
-                            fit_kwargs=fit_kwargs,
-                            groups=groups,
+                            **create_model_args
                         )
                         sorted_models.append(model)
                     else:
                         try:
                             model, model_fit_time = self.create_model(
-                                estimator=model,
-                                system=False,
-                                verbose=False,
-                                fold=fold,
-                                round=round,
-                                cross_validation=False,
-                                predict=False,
-                                fit_kwargs=fit_kwargs,
-                                groups=groups,
+                                **create_model_args
                             )
                             sorted_models.append(model)
-                            assert np.sum(model_results.drop(results_columns_to_ignore, axis=1, errors="ignore").iloc[0]) != 0.0
+                            assert (
+                                np.sum(
+                                    model_results.drop(
+                                        results_columns_to_ignore,
+                                        axis=1,
+                                        errors="ignore",
+                                    ).iloc[0]
+                                )
+                                != 0.0
+                            )
                         except Exception:
                             self.logger.error(
                                 f"create_model() for {model} raised an exception or returned all 0.0:"
@@ -1062,6 +1069,7 @@ class _SupervisedExperiment(_TabularExperiment):
         fit_kwargs: Optional[dict] = None,
         groups: Optional[Union[str, Any]] = None,
         refit: bool = True,
+        probability_threshold: Optional[float] = None,
         verbose: bool = True,
         system: bool = True,
         add_to_model_list: bool = True,
@@ -1387,7 +1395,18 @@ class _SupervisedExperiment(_TabularExperiment):
                 regressor=model,
                 power_transformer_method=self.transform_target_method_param,
             )
-
+        if (
+            probability_threshold
+            and self._ml_usecase == MLUsecase.CLASSIFICATION
+            and not self._is_multiclass()
+        ):
+            if not isinstance(model, CustomProbabilityThresholdClassifier):
+                model = CustomProbabilityThresholdClassifier(
+                    classifier=model,
+                    probability_threshold=probability_threshold,
+                )
+            elif probability_threshold is not None:
+                model.set_params(probability_threshold=probability_threshold)
         self.logger.info(f"{full_name} Imported successfully")
 
         display.move_progress()
@@ -2154,7 +2173,9 @@ class _SupervisedExperiment(_TabularExperiment):
                     )
                 except TypeError:
                     # constant_liar added in 2.8.0
-                    tpe_sampler = optuna.samplers.TPESampler(seed=self.seed, multivariate=True)
+                    tpe_sampler = optuna.samplers.TPESampler(
+                        seed=self.seed, multivariate=True
+                    )
                 return tpe_sampler
 
             if search_library == "optuna":
@@ -2311,7 +2332,10 @@ class _SupervisedExperiment(_TabularExperiment):
                         self.logger.info(
                             f"Initializing tune_sklearn.TuneSearchCV, {search_algorithm}"
                         )
-                        if search_algorithm == "optuna" and not "sampler" in search_kwargs:
+                        if (
+                            search_algorithm == "optuna"
+                            and not "sampler" in search_kwargs
+                        ):
                             import optuna
 
                             search_kwargs["sampler"] = get_optuna_tpe_sampler()
@@ -2524,6 +2548,7 @@ class _SupervisedExperiment(_TabularExperiment):
         optimize: str = "Accuracy",
         fit_kwargs: Optional[dict] = None,
         groups: Optional[Union[str, Any]] = None,
+        probability_threshold: Optional[float] = None,
         verbose: bool = True,
         display: Optional[Display] = None,  # added in pycaret==2.2.0
     ) -> Any:
@@ -2816,6 +2841,7 @@ class _SupervisedExperiment(_TabularExperiment):
             round=round,
             fit_kwargs=fit_kwargs,
             groups=groups,
+            probability_threshold=probability_threshold,
         )
         best_model = model
         model_results = self.pull()
@@ -2886,6 +2912,7 @@ class _SupervisedExperiment(_TabularExperiment):
         weights: Optional[List[float]] = None,  # added in pycaret==2.2.0
         fit_kwargs: Optional[dict] = None,
         groups: Optional[Union[str, Any]] = None,
+        probability_threshold: Optional[float] = None,
         verbose: bool = True,
         display: Optional[Display] = None,  # added in pycaret==2.2.0
     ) -> Any:
@@ -3192,6 +3219,7 @@ class _SupervisedExperiment(_TabularExperiment):
             round=round,
             fit_kwargs=fit_kwargs,
             groups=groups,
+            probability_threshold=probability_threshold,
         )
 
         model_results = self.pull()
@@ -3255,6 +3283,7 @@ class _SupervisedExperiment(_TabularExperiment):
         self,
         estimator_list: list,
         meta_model=None,
+        meta_model_fold: Optional[Union[int, Any]] = 5,
         fold: Optional[Union[int, Any]] = None,
         round: int = 4,
         method: str = "auto",
@@ -3263,6 +3292,7 @@ class _SupervisedExperiment(_TabularExperiment):
         optimize: str = "Accuracy",
         fit_kwargs: Optional[dict] = None,
         groups: Optional[Union[str, Any]] = None,
+        probability_threshold: Optional[float] = None,
         verbose: bool = True,
         display: Optional[Display] = None,
     ) -> Any:
@@ -3301,6 +3331,12 @@ class _SupervisedExperiment(_TabularExperiment):
 
         meta_model : object, default = None
             If set to None, Logistic Regression is used as a meta model.
+
+        fold: int or scikit-learn compatible CV generator, default = None
+            Controls cross-validation. If None, the CV generator in the ``fold_strategy``
+            parameter of the ``setup`` function is used. When an integer is passed,
+            it is interpreted as the 'n_splits' parameter of the CV generator in the
+            ``setup`` function.
 
         fold: integer or scikit-learn compatible CV generator, default = None
             Controls cross-validation. If None, will use the CV generator defined in setup().
@@ -3526,7 +3562,7 @@ class _SupervisedExperiment(_TabularExperiment):
             model = stacking_model_definition.class_def(
                 estimators=estimator_list,
                 final_estimator=meta_model,
-                cv=fold,
+                cv=meta_model_fold,
                 stack_method=method,
                 n_jobs=self._gpu_n_jobs_param,
                 passthrough=restack,
@@ -3535,7 +3571,7 @@ class _SupervisedExperiment(_TabularExperiment):
             model = stacking_model_definition.class_def(
                 estimators=estimator_list,
                 final_estimator=meta_model,
-                cv=fold,
+                cv=meta_model_fold,
                 n_jobs=self._gpu_n_jobs_param,
                 passthrough=restack,
             )
@@ -3556,6 +3592,7 @@ class _SupervisedExperiment(_TabularExperiment):
             round=round,
             fit_kwargs=fit_kwargs,
             groups=groups,
+            probability_threshold=probability_threshold,
         )
         model_results = self.pull()
         self.logger.info(
@@ -3811,7 +3848,9 @@ class _SupervisedExperiment(_TabularExperiment):
             # Storing X_train and y_train in data_X and data_y parameter
             test_X = self.X_train if use_train_data else self.X_test
             if plot == "pfi":
-                test_y = self.y_train if use_train_data else self.y_test  # add for pfi explainer
+                test_y = (
+                    self.y_train if use_train_data else self.y_test
+                )  # add for pfi explainer
 
         np.random.seed(self.seed)
 
@@ -4002,7 +4041,9 @@ class _SupervisedExperiment(_TabularExperiment):
                     predict_fn=model.predict_proba, data=test_X
                 )  # classification
             except AttributeError:
-                pdp = PartialDependence(predict_fn=model.predict, data=test_X)  # regression
+                pdp = PartialDependence(
+                    predict_fn=model.predict, data=test_X
+                )  # regression
 
             pdp_global = pdp.explain_global()
             pdp_plot = pdp_global.visualize(list(test_X.columns).index(pdp_feature))
@@ -4024,7 +4065,9 @@ class _SupervisedExperiment(_TabularExperiment):
                     predict_fn=model.predict_proba, data=test_X
                 )  # classification
             except AttributeError:
-                msa = MorrisSensitivity(predict_fn=model.predict, data=test_X)  # regression
+                msa = MorrisSensitivity(
+                    predict_fn=model.predict, data=test_X
+                )  # regression
             msa_global = msa.explain_global()
             msa_plot = msa_global.visualize()
             if save:
@@ -4562,17 +4605,11 @@ class _SupervisedExperiment(_TabularExperiment):
         if probability_threshold is not None:
             # probability_threshold allowed types
             allowed_types = [int, float]
-            if type(probability_threshold) not in allowed_types:
-                raise TypeError(
-                    "probability_threshold parameter only accepts value between 0 to 1."
-                )
-
-            if probability_threshold > 1:
-                raise TypeError(
-                    "probability_threshold parameter only accepts value between 0 to 1."
-                )
-
-            if probability_threshold < 0:
+            if (
+                type(probability_threshold) not in allowed_types
+                or probability_threshold > 1
+                or probability_threshold < 0
+            ):
                 raise TypeError(
                     "probability_threshold parameter only accepts value between 0 to 1."
                 )
@@ -4646,6 +4683,10 @@ class _SupervisedExperiment(_TabularExperiment):
             return label_column
 
         # prediction starts here
+        if isinstance(estimator, CustomProbabilityThresholdClassifier):
+            if probability_threshold is None:
+                probability_threshold = estimator.probability_threshold
+            estimator = get_estimator_from_meta_estimator(estimator)
 
         X_test_ = self._internal_pipeline.transform(X_test_)
 
@@ -4742,12 +4783,20 @@ class _SupervisedExperiment(_TabularExperiment):
         model_container = self.master_model_container
 
         if not display:
-            progress_args = {"max": len(model_container)+1}
+            progress_args = {"max": len(model_container) + 1}
             timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
             monitor_rows = [
                 ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
-                ["Status", ". . . . . . . . . . . . . . . . . .", "Loading Dependencies"],
-                ["Estimator", ". . . . . . . . . . . . . . . . . .", "Compiling Library"],
+                [
+                    "Status",
+                    ". . . . . . . . . . . . . . . . . .",
+                    "Loading Dependencies",
+                ],
+                [
+                    "Estimator",
+                    ". . . . . . . . . . . . . . . . . .",
+                    "Compiling Library",
+                ],
             ]
             display = Display(
                 verbose=verbose,
@@ -4762,7 +4811,9 @@ class _SupervisedExperiment(_TabularExperiment):
         result_container_mean = []
         finalized_models = []
 
-        display.update_monitor(1, "Finalizing models" if finalize_models else "Collecting models")
+        display.update_monitor(
+            1, "Finalizing models" if finalize_models else "Collecting models"
+        )
         for i, model_results_tuple in enumerate(model_container):
 
             model_results = model_results_tuple["scores"]
@@ -4773,13 +4824,8 @@ class _SupervisedExperiment(_TabularExperiment):
             mean_scores["Model Name"] = model_name
             display.update_monitor(2, model_name)
             if finalize_models:
-                model = (
-                    self.finalize_model(
-                        model,
-                        fit_kwargs=fit_kwargs,
-                        groups=groups,
-                        model_only=model_only,
-                    )
+                model = self.finalize_model(
+                    model, fit_kwargs=fit_kwargs, groups=groups, model_only=model_only,
                 )
             else:
                 model = deepcopy(model)
