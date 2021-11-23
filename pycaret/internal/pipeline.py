@@ -22,7 +22,6 @@ from inspect import signature
 
 from pycaret.internal.utils import (
     get_all_object_vars_and_properties,
-    is_fit_var,
     variable_return,
 )
 

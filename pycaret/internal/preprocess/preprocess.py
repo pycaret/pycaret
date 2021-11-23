@@ -153,7 +153,8 @@ class TransfomerWrapper(BaseEstimator):
             # Reorder columns in case only a subset was used
             return reorder_cols(out, X)
 
-        X, y = to_df(X), to_series(y)
+        X = to_df(X, index=getattr(y, "index", None))
+        y = to_series(y, index=getattr(X, "index", None))
 
         args = []
         if "X" in signature(self.transformer.transform).parameters:
