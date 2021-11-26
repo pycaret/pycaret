@@ -15,7 +15,12 @@ from pycaret.internal.pipeline import (
     estimator_pipeline,
     get_pipeline_fit_kwargs,
 )
-from pycaret.internal.utils import color_df, SeasonalPeriod, TSModelTypes
+from pycaret.internal.utils import (
+    color_df,
+    SeasonalPeriod,
+    TSModelTypes,
+    get_function_params,
+)
 import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
 from pycaret.internal.logging import get_logger
@@ -287,9 +292,21 @@ def _fit_and_score(
     start = time.time()
     fold_scores = {}
     scoring = _get_metrics_dict_ts(scoring)
+    additional_kwargs = {"y_train": y_train}
     for scorer_name, scorer in scoring.items():
         if forecaster.is_fitted:
-            metric = scorer._score_func(y_true=y_test, y_pred=y_pred, **scorer._kwargs)
+            # get all kwargs in additional_kwargs
+            # that correspond to parameters in function signature
+            kwargs = {
+                **{
+                    k: v
+                    for k, v in additional_kwargs.items()
+                    if k
+                    in get_function_params(scorer._score_func)
+                },
+                **scorer._kwargs,
+            }
+            metric = scorer._score_func(y_true=y_test, y_pred=y_pred, **kwargs)
         else:
             metric = None
         fold_scores[scorer_name] = metric
@@ -2949,7 +2966,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 metrics = {metric_name: np.nan for metric_name, _ in metrics.items()}
                 verbose = False
             else:
-                metrics = self._calculate_metrics(y_test=y_test_common, pred=y_test_pred_common, pred_prob=None)  # type: ignore
+                metrics = self._calculate_metrics(y_test=y_test_common, pred=y_test_pred_common, pred_prob=None, y_train=self.y_train)  # type: ignore
 
             # Display Test Score
             # model name

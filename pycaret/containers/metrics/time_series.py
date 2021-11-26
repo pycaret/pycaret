@@ -103,7 +103,7 @@ class TimeSeriesMetricContainer(MetricContainer):
             else pycaret.internal.metrics.make_scorer_with_error_score(
                 score_func,
                 greater_is_better=greater_is_better,
-                errors_score=0.0,
+                error_score=0.0,
                 **args,
             )
         )
@@ -167,13 +167,13 @@ def _mape_loss(y_true, y_pred, **kwargs):
     )
 
 
-# def _mase_loss(y_true, y_pred, y_train):
-#     """Wrapper for sktime metrics"""
-#     return mase_loss(
-#         y_test=_check_series(y_true),
-#         y_pred=_check_series(y_pred),
-#         y_train=_check_series(y_train),
-#     )
+def _mase_loss(y_true, y_pred, y_train):
+    """Wrapper for sktime metrics"""
+    return mean_absolute_scaled_error(
+        y_true=_check_series(y_true),
+        y_pred=_check_series(y_pred),
+        y_train=_check_series(y_train),
+    )
 
 
 def _check_series(y):
@@ -197,11 +197,12 @@ def _set_y_as_series(y):
 # MASEMetricContainer: Special Case: Needs y_train
 # MAEMetricContainer: _scorer_func turns out to be a string instead of a func
 
-# class MASEMetricContainer(TimeSeriesMetricContainer):
-#     def __init__(self, globals_dict: dict) -> None:
-#         super().__init__(
-#             id="mase", name="MASE", score_func=_mase_loss, greater_is_better=False
-#         )
+
+class MASEMetricContainer(TimeSeriesMetricContainer):
+    def __init__(self, globals_dict: dict) -> None:
+        super().__init__(
+            id="mase", name="MASE", score_func=_mase_loss, greater_is_better=False
+        )
 
 
 class MAEMetricContainer(TimeSeriesMetricContainer):
@@ -231,14 +232,20 @@ class RMSEMetricContainer(TimeSeriesMetricContainer):
 class MAPEMetricContainer(TimeSeriesMetricContainer):
     def __init__(self, globals_dict: dict) -> None:
         super().__init__(
-            id="mape", name="MAPE", score_func=_mape_loss, greater_is_better=False,
+            id="mape",
+            name="MAPE",
+            score_func=_mape_loss,
+            greater_is_better=False,
         )
 
 
 class SMAPEMetricContainer(TimeSeriesMetricContainer):
     def __init__(self, globals_dict: dict) -> None:
         super().__init__(
-            id="smape", name="SMAPE", score_func=_smape_loss, greater_is_better=False,
+            id="smape",
+            name="SMAPE",
+            score_func=_smape_loss,
+            greater_is_better=False,
         )
 
 
