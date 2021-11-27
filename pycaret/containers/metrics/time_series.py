@@ -12,7 +12,8 @@ from typing import Optional, Union, Dict, Any
 from pycaret.containers.metrics.base_metric import MetricContainer
 from sklearn.metrics._scorer import _BaseScorer  # type: ignore
 import pycaret.internal.metrics
-from pandas import DataFrame, Series  # type: ignore
+import numpy as np
+import pandas as pd
 from sklearn import metrics  # type: ignore
 from sktime.performance_metrics.forecasting._functions import (  # type: ignore
     mean_absolute_scaled_error,
@@ -176,26 +177,55 @@ def _mase_loss(y_true, y_pred, y_train):
     )
 
 
+def _inpi_loss(y_true, y_pred, lower: pd.Series, upper: pd.Series):
+    """Returns the percentage of actual values that are within the
+    prediction interval. Higher score is better.
+    NOTE: If lower and upper have NAN values, it returns np.nan
+    """
+    y_true = _check_series(y_true)
+    y_pred = _check_series(y_pred)
+    lower = _check_series(lower)
+    upper = _check_series(upper)
+
+    # First combine the true, upper and lower values and keep only those values
+    # that match the y_true indices. Then if any of the values have NAN in them,
+    # return NAN, else proceed to calculating metric.
+
+    # NAN's can occur due to following reasons:
+    # (1) Indices match between y_true and (lower or upper) but lower or upper
+    # values have NAN (i.e. forecaster does not support prediction intervals)
+    # (2) y_true is NAN (i.e. model has been finalized)
+    # (3) Indices do not match up between y_true and (lower or upper) - failsafe
+
+    combined = pd.concat([y_true, lower, upper], axis=1)
+    combined.columns = ["y_true", "lower", "upper"]
+    combined.dropna(subset=["y_true"], inplace=True)
+
+    ## Override lower and upper to only those indices that match y_true indices
+    lower = combined["lower"]
+    upper = combined["upper"]
+
+    if y_true.isna().any() or lower.isna().any() or upper.isna().any():
+        return np.nan
+
+    in_limits = np.logical_and(y_true > lower, y_true < upper)
+    return sum(in_limits) / len(in_limits)
+
+
 def _check_series(y):
     """
     Check whether or not y is pandas.Series. Pycaret Experiment
     internally converts data to pandas.DataFrame.
     """
-    if isinstance(y, Series):
+    if isinstance(y, pd.Series):
         return y
-    elif isinstance(y, DataFrame):
+    elif isinstance(y, pd.DataFrame):
         return _set_y_as_series(y)
 
 
 def _set_y_as_series(y):
     """Set first column of a DataFrame as pandas.Series"""
-    return Series(y.iloc[:, 0])
-
-
-# TODO: Disabling for now since need to determine how these special cases will
-# be handles in manually generated function cross_validate_ts
-# MASEMetricContainer: Special Case: Needs y_train
-# MAEMetricContainer: _scorer_func turns out to be a string instead of a func
+    return pd.Series(y.iloc[:, 0])
 
 
 class MASEMetricContainer(TimeSeriesMetricContainer):
@@ -232,20 +262,14 @@ class RMSEMetricContainer(TimeSeriesMetricContainer):
 class MAPEMetricContainer(TimeSeriesMetricContainer):
     def __init__(self, globals_dict: dict) -> None:
         super().__init__(
-            id="mape",
-            name="MAPE",
-            score_func=_mape_loss,
-            greater_is_better=False,
+            id="mape", name="MAPE", score_func=_mape_loss, greater_is_better=False,
         )
 
 
 class SMAPEMetricContainer(TimeSeriesMetricContainer):
     def __init__(self, globals_dict: dict) -> None:
         super().__init__(
-            id="smape",
-            name="SMAPE",
-            score_func=_smape_loss,
-            greater_is_better=False,
+            id="smape", name="SMAPE", score_func=_smape_loss, greater_is_better=False,
         )
 
 
@@ -258,6 +282,13 @@ class R2MetricContainer(TimeSeriesMetricContainer):
             score_func=metrics.r2_score,
             greater_is_better=True,
             scorer="r2",
+        )
+
+
+class INPIMetricContainer(TimeSeriesMetricContainer):
+    def __init__(self, globals_dict: dict) -> None:
+        super().__init__(
+            id="inpi", name="INPI", score_func=_inpi_loss, greater_is_better=True,
         )
 
 

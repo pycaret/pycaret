@@ -276,7 +276,9 @@ def _fit_and_score(
 
     #### Score the model ----
     if forecaster.is_fitted:
-        y_pred = forecaster.predict(X_test)
+        y_pred, lower, upper = get_predictions_with_intervals(
+            forecaster=forecaster, X_test=X_test
+        )
 
         if (y_test.index.values != y_pred.index.values).any():
             print(
@@ -292,7 +294,11 @@ def _fit_and_score(
     start = time.time()
     fold_scores = {}
     scoring = _get_metrics_dict_ts(scoring)
-    additional_kwargs = {"y_train": y_train}
+    additional_kwargs = {
+        "y_train": y_train,
+        "lower": lower,
+        "upper": upper,
+    }
     for scorer_name, scorer in scoring.items():
         if forecaster.is_fitted:
             # get all kwargs in additional_kwargs
@@ -301,8 +307,7 @@ def _fit_and_score(
                 **{
                     k: v
                     for k, v in additional_kwargs.items()
-                    if k
-                    in get_function_params(scorer._score_func)
+                    if k in get_function_params(scorer._score_func)
                 },
                 **scorer._kwargs,
             }
@@ -2890,8 +2895,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             # Prediction Interval is returned
             #   First Value is a series of predictions
             #   Second Value is a dataframe of lower and upper bounds
-            # result = pd.DataFrame(return_vals[0], columns=["y_pred"])
-            # result = result.join(return_vals[1])
             result = pd.concat(return_vals, axis=1)
             result.columns = ["y_pred", "lower", "upper"]
         else:
@@ -2938,9 +2941,10 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 X_test_ = None
             y_test_ = self.y_test.copy()
 
-            y_test_pred = estimator_.predict(
-                X=X_test_, fh=fh, return_pred_int=False, alpha=alpha
+            y_test_pred, lower, upper = get_predictions_with_intervals(
+                forecaster=estimator_, X_test=X_test_, fh=fh, alpha=alpha
             )
+
             if len(y_test_pred) != len(y_test_):
                 msg = (
                     "predict_model >> Forecast Horizon does not match the horizon length "
@@ -2960,13 +2964,24 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 self.logger.warning(
                     "predict_model >> No indices matched between test set and prediction. "
                     "You are most likely calling predict_model after finalizing model. "
-                    "Metrics will not be displayed"
+                    "Metrics will not be displayed."
                 )
                 metrics = self._calculate_metrics(y_test=[], pred=[], pred_prob=None)  # type: ignore
                 metrics = {metric_name: np.nan for metric_name, _ in metrics.items()}
                 verbose = False
             else:
-                metrics = self._calculate_metrics(y_test=y_test_common, pred=y_test_pred_common, pred_prob=None, y_train=self.y_train)  # type: ignore
+                # Pass additional keyword arguments (like y_train, lower, upper) to
+                # method since they need to be passed to certain metrics like MASE,
+                # INPI, etc. This method will internally orchestrate the passing of
+                # the right arguments to the scorers.
+                metrics = self._calculate_metrics(
+                    y_test=y_test_common,
+                    pred=y_test_pred_common,
+                    pred_prob=None,
+                    y_train=self.y_train,
+                    lower=lower,
+                    upper=upper,
+                )  # type: ignore
 
             # Display Test Score
             # model name
@@ -3690,3 +3705,50 @@ def deep_clone(estimator):
     # https://stackoverflow.com/a/33576345/8925915
     estimator_ = deepcopy(estimator)
     return estimator_
+
+
+def get_predictions_with_intervals(
+    forecaster, X_test: pd.DataFrame, fh=None, alpha: float = 0.05
+) -> Tuple[pd.Series, pd.Series, pd.Series]:
+    """Returns the predictions, lower and upper interval values for a
+    forecaster. If the forecaster does not support prediction intervals,
+    then NAN is returned for lower and upper intervals.
+
+    Parameters
+    ----------
+    forecaster : sktime compatible forecaster
+        Forecaster to be used to get the predictions
+    X_test : pd.DataFrame
+        Test dataset
+    alpha : float, default = 0.05
+        alpha value for prediction interval
+
+    Returns
+    -------
+    Tuple[pd.Series, pd.Series, pd.Series]
+        Predictions, Lower and Upper Interval Values
+    """
+    # Predict and get lower and upper intervals
+    return_pred_int = forecaster.get_tag("capability:pred_int")
+
+    if fh is None:
+        return_values = forecaster.predict(
+            X_test, return_pred_int=return_pred_int, alpha=alpha
+        )
+    else:
+        return_values = forecaster.predict(
+            X_test, fh=fh, return_pred_int=return_pred_int, alpha=alpha
+        )
+
+    if return_pred_int:
+        y_pred = return_values[0]
+        lower = return_values[1]["lower"]
+        upper = return_values[1]["upper"]
+    else:
+        y_pred = return_values
+        lower = pd.Series([np.nan] * len(y_pred))
+        upper = pd.Series([np.nan] * len(y_pred))
+        lower.index = y_pred.index
+        upper.index = y_pred.index
+
+    return y_pred, lower, upper
