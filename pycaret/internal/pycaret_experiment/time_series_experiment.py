@@ -275,6 +275,8 @@ def _fit_and_score(
     cutoff = forecaster.cutoff
 
     #### Score the model ----
+    lower = pd.Series([])
+    upper = pd.Series([])
     if forecaster.is_fitted:
         y_pred, lower, upper = get_predictions_with_intervals(
             forecaster=forecaster, X_test=X_test
@@ -3750,5 +3752,10 @@ def get_predictions_with_intervals(
         upper = pd.Series([np.nan] * len(y_pred))
         lower.index = y_pred.index
         upper.index = y_pred.index
+
+    # Prophet with return_pred_int = True returns datetime index.
+    for series in [y_pred, lower, upper]:
+        if isinstance(series.index, pd.DatetimeIndex):
+            series.index = series.index.to_period()
 
     return y_pred, lower, upper
