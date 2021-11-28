@@ -105,6 +105,7 @@ def cross_validate_ts(
     return_train_score,
     error_score=0,
     verbose: int = 0,
+    **additional_scorer_kwargs,
 ) -> Dict[str, np.array]:
     """Performs Cross Validation on time series data
 
@@ -136,6 +137,8 @@ def cross_validate_ts(
         Unused for now, by default 0
     verbose : int
         Sets the verbosity level. Unused for now
+    additional_scorer_kwargs: Dict[str, Any]
+        Additional scorer kwargs such as {`sp`:12} required by metrics like MASE
 
     Returns
     -------
@@ -165,6 +168,7 @@ def cross_validate_ts(
                 fit_params=fit_params,
                 return_train_score=return_train_score,
                 error_score=error_score,
+                **additional_scorer_kwargs,
             )
             for train, test in get_folds(cv, y)
         )
@@ -212,6 +216,7 @@ def _fit_and_score(
     fit_params,
     return_train_score,
     error_score=0,
+    **additional_scorer_kwargs,
 ):
     """Fits the forecaster on a single train split and scores on the test split
     Similar to _fit_and_score from `sklearn` [1] (and to some extent `sktime` [2]).
@@ -243,6 +248,8 @@ def _fit_and_score(
         Should the training scores be returned. Unused for now.
     error_score : int, optional
         Unused for now, by default 0
+    **additional_scorer_kwargs: Dict[str, Any]
+            Additional scorer kwargs such as {`sp`:12} required by metrics like MASE
 
     Raises
     ------
@@ -296,19 +303,18 @@ def _fit_and_score(
     start = time.time()
     fold_scores = {}
     scoring = _get_metrics_dict_ts(scoring)
-    additional_kwargs = {
-        "y_train": y_train,
-        "lower": lower,
-        "upper": upper,
-    }
+    # SP should be passed from outside in additional_scorer_kwargs already
+    additional_scorer_kwargs.update(
+        {"y_train": y_train, "lower": lower, "upper": upper,}
+    )
     for scorer_name, scorer in scoring.items():
         if forecaster.is_fitted:
-            # get all kwargs in additional_kwargs
+            # get all kwargs in additional_scorer_kwargs
             # that correspond to parameters in function signature
             kwargs = {
                 **{
                     k: v
-                    for k, v in additional_kwargs.items()
+                    for k, v in additional_scorer_kwargs.items()
                     if k in get_function_params(scorer._score_func)
                 },
                 **scorer._kwargs,
@@ -358,7 +364,39 @@ class BaseGridSearch:
         self.best_params_ = {}
         self.cv_results_ = {}
 
-    def fit(self, y, X=None, **fit_params):
+    def fit(
+        self,
+        y: pd.Series,
+        X: Optional[pd.DataFrame] = None,
+        additional_scorer_kwargs: Optional[Dict[str, Any]] = None,
+        **fit_params,
+    ):
+        """[summary]
+
+        Parameters
+        ----------
+        y : pd.Series
+            Target
+        X : Optional[pd.DataFrame], optional
+            Exogenous Variables, by default None
+        additional_scorer_kwargs: Dict[str, Any]
+            Additional scorer kwargs such as {`sp`:12} required by metrics like MASE
+        **fit_params: Dict[str, Any]
+            Additional params to pass to fit
+
+        Returns
+        -------
+        [type]
+            [description]
+
+        Raises
+        ------
+        ValueError
+            [description]
+        """
+        if additional_scorer_kwargs is None:
+            additional_scorer_kwargs = {}
+
         y, X = check_y_X(y, X)
 
         # validate cross-validator
@@ -409,6 +447,7 @@ class BaseGridSearch:
                     fit_params=fit_params,
                     return_train_score=self.return_train_score,
                     error_score=self.error_score,
+                    **additional_scorer_kwargs,
                 )
                 for parameters in candidate_params
                 for train, test in get_folds(cv, y)
@@ -644,6 +683,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 "fh",
                 "seasonal_period",
                 "seasonality_present",
+                "sp_to_use",
                 "strictly_positive",
                 "enforce_pi",
             }
@@ -706,6 +746,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                     ["Enforce Prediction Interval", self.enforce_pi],
                     ["Seasonal Period Tested", self.seasonal_period],
                     ["Seasonality Detected", self.seasonality_present],
+                    ["Seasonality Used in Models", self.sp_to_use],
                     ["Target Strictly Positive", self.strictly_positive],
                     ["Target White Noise", self.white_noise],
                     ["Recommended d", self.lowercase_d],
@@ -900,7 +941,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             * 'A': 1
             * 'Y': 1
 
-            Alternatively you can provide a custom `seasonal_parameter` by passing
+            Alternatively you can provide a custom `seasonal_period` by passing
             it as an integer.
 
 
@@ -1087,11 +1128,12 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             raise ValueError("Index may not have duplicate values!")
 
         # check valid seasonal parameter
-        valid_seasonality = autocorrelation_seasonality_test(
+        self.seasonality_present = autocorrelation_seasonality_test(
             data_[target_name], self.seasonal_period
         )
 
-        self.seasonality_present = True if valid_seasonality else False
+        # What seasonal period should be used for modeling?
+        self.sp_to_use = self.seasonal_period if self.seasonality_present else 1
 
         # Should multiplicative components be allowed in models that support it
         self.strictly_positive = np.all(data_[target_name] > 0)
@@ -1496,6 +1538,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         model_fit_start = time.time()
 
+        additional_scorer_kwargs = self.get_additional_scorer_kwargs()
         scores, cutoffs = cross_validate_ts(
             # Commented out since supervised_experiment also does not clone
             # when doing cross_validate
@@ -1510,6 +1553,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             fit_params=fit_kwargs,
             return_train_score=False,
             error_score=0,
+            **additional_scorer_kwargs,
         )
 
         model_fit_end = time.time()
@@ -2034,7 +2078,13 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                         f"Search type '{search_algorithm}' is not supported"
                     )
 
-            model_grid.fit(y=data_y, X=data_X, **fit_kwargs)
+            additional_scorer_kwargs = self.get_additional_scorer_kwargs()
+            model_grid.fit(
+                y=data_y,
+                X=data_X,
+                additional_scorer_kwargs=additional_scorer_kwargs,
+                **fit_kwargs,
+            )
 
             best_params = model_grid.best_params_
             self.logger.info(f"best_params: {best_params}")
@@ -2983,6 +3033,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                     y_train=self.y_train,
                     lower=lower,
                     upper=upper,
+                    sp=self.sp_to_use,
                 )  # type: ignore
 
             # Display Test Score
@@ -3697,6 +3748,20 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             )
         resid.dropna(inplace=True)
         return resid
+
+    def get_additional_scorer_kwargs(self) -> Dict[str, Any]:
+        """Returns additional kwargs required by some scorers (such as MASE).
+
+        NOTE: These are kwargs that are experiment specific (can only be derived
+        from the experiment), e.g. `sp` and not fold specific like `y_train`
+
+        Returns
+        -------
+        Dict[str, Any]
+            Additional kwargs to pass to scorers
+        """
+        additional_scorer_kwargs = {"sp": self.sp_to_use}
+        return additional_scorer_kwargs
 
 
 # TODO: Add to pycaret utils or some common location

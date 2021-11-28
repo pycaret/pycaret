@@ -6,7 +6,7 @@ import pytest
 import numpy as np  # type: ignore
 import pandas as pd  # type: ignore
 
-
+from pycaret.datasets import get_data
 from pycaret.internal.pycaret_experiment import TimeSeriesExperiment
 from pycaret.internal.ensemble import _ENSEMBLE_METHODS
 
@@ -321,6 +321,27 @@ def test_setup_seasonal_period_int(load_pos_and_neg_data, seasonal_key, seasonal
     )
 
     assert exp.seasonal_period == seasonal_value
+
+
+def test_seasonal_period_to_use():
+
+    exp = TimeSeriesExperiment()
+    fh = 12
+
+    # Airline Data with seasonality of 12
+    data = get_data("airline", verbose=False)
+    exp.setup(
+        data=data, fh=fh, verbose=False, session_id=42,
+    )
+    assert exp.sp_to_use == 12
+
+    # WhiteAirline Data with seasonality of 12
+    data = get_data("1", folder="time_series/white_noise", verbose=False)
+    exp.setup(
+        data=data, fh=fh, seasonal_period=12, verbose=False, session_id=42,
+    )
+    # Should get 1 even though we passed 12
+    assert exp.sp_to_use == 1
 
 
 def test_enforce_pi(load_pos_and_neg_data):

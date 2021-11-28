@@ -168,11 +168,12 @@ def _mape_loss(y_true, y_pred, **kwargs):
     )
 
 
-def _mase_loss(y_true, y_pred, y_train):
+def _mase_loss(y_true, y_pred, y_train, sp):
     """Wrapper for sktime metrics"""
     return mean_absolute_scaled_error(
         y_true=_check_series(y_true),
         y_pred=_check_series(y_pred),
+        sp=sp,
         y_train=_check_series(y_train),
     )
 
