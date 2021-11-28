@@ -303,9 +303,13 @@ def _fit_and_score(
     start = time.time()
     fold_scores = {}
     scoring = _get_metrics_dict_ts(scoring)
+
     # SP should be passed from outside in additional_scorer_kwargs already
-    additional_scorer_kwargs.update(
-        {"y_train": y_train, "lower": lower, "upper": upper,}
+    additional_scorer_kwargs = update_additional_scorer_kwargs(
+        initial_kwargs=additional_scorer_kwargs,
+        y_train=y_train,
+        lower=lower,
+        upper=upper,
     )
     for scorer_name, scorer in scoring.items():
         if forecaster.is_fitted:
@@ -2994,6 +2998,9 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 X_test_ = None
             y_test_ = self.y_test.copy()
 
+            # y_train for finalized model is different from self.y_train
+            # Hence, better to get this from the estimator directly.
+            y_train = estimator_._y
             y_test_pred, lower, upper = get_predictions_with_intervals(
                 forecaster=estimator_, X_test=X_test_, fh=fh, alpha=alpha
             )
@@ -3027,14 +3034,18 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 # method since they need to be passed to certain metrics like MASE,
                 # INPI, etc. This method will internally orchestrate the passing of
                 # the right arguments to the scorers.
+                initial_kwargs = self.get_additional_scorer_kwargs()
+                additional_scorer_kwargs = update_additional_scorer_kwargs(
+                    initial_kwargs=initial_kwargs,
+                    y_train=y_train,
+                    lower=lower,
+                    upper=upper,
+                )
                 metrics = self._calculate_metrics(
                     y_test=y_test_common,
                     pred=y_test_pred_common,
                     pred_prob=None,
-                    y_train=self.y_train,
-                    lower=lower,
-                    upper=upper,
-                    sp=self.sp_to_use,
+                    **additional_scorer_kwargs,
                 )  # type: ignore
 
             # Display Test Score
@@ -3754,7 +3765,9 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         """Returns additional kwargs required by some scorers (such as MASE).
 
         NOTE: These are kwargs that are experiment specific (can only be derived
-        from the experiment), e.g. `sp` and not fold specific like `y_train`
+        from the experiment), e.g. `sp` and not fold specific like `y_train`. In
+        other words, these kwargs are applicable to all folds. Fold specific kwargs
+        such as `y_train`, `lower`, `upper`, etc. must be updated dynamically.
 
         Returns
         -------
@@ -3825,3 +3838,39 @@ def get_predictions_with_intervals(
             series.index = series.index.to_period()
 
     return y_pred, lower, upper
+
+
+def update_additional_scorer_kwargs(
+    initial_kwargs: Dict[str, Any],
+    y_train: pd.Series,
+    lower: pd.Series,
+    upper: pd.Series,
+) -> Dict[str, Any]:
+    """Updates the initial kwargs with additional scorer kwargs
+    NOTE: Initial kwargs are obtained from experiment, e.g. {"sp": 12} and
+    are common to all folds.
+    The additional kwargs such as y_train, lower, upper are specific to each
+    fold and must be updated dynamically as such.
+
+    Parameters
+    ----------
+    initial_kwargs : Dict[str, Any]
+        Initial kwargs are obtained from experiment, e.g. {"sp": 12} and
+        are common to all folds
+    y_train : pd.Series
+        Training Data. Used in metrics such as MASE
+    lower : pd.Series
+        Lower Limits of Predictions. Used in metrics such as INPI
+    upper : pd.Series
+        Upper Limits of Predictions. Used in metrics such as INPI
+
+    Returns
+    -------
+    Dict[str, Any]
+        Updated kwargs dictionary
+    """
+    additional_scorer_kwargs = initial_kwargs.copy()
+    additional_scorer_kwargs.update(
+        {"y_train": y_train, "lower": lower, "upper": upper,}
+    )
+    return additional_scorer_kwargs
