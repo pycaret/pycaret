@@ -111,7 +111,7 @@ def setup(
 
     seasonal_period: int or str, default = None
         Seasonal period in timeseries data. If not provided the frequency of the data
-        index is map to a seasonal period as follows:
+        index is mapped to a seasonal period as follows:
 
         * 'S': 60
         * 'T': 60
@@ -123,8 +123,9 @@ def setup(
         * 'A': 1
         * 'Y': 1
 
-        Alternatively you can provide a custom `seasonal_parameter` by passing
-        it as an integer.
+        Alternatively you can provide a custom `seasonal_period` by passing
+        it as an integer or a string corresponding to the keys above (e.g.
+        'W' for weekly data, 'M' for monthly data, etc.).
 
 
     enforce_pi: bool, default = False
