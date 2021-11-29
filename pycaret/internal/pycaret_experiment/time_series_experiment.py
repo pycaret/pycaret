@@ -15,7 +15,12 @@ from pycaret.internal.pipeline import (
     estimator_pipeline,
     get_pipeline_fit_kwargs,
 )
-from pycaret.internal.utils import color_df, SeasonalPeriod, TSModelTypes
+from pycaret.internal.utils import (
+    color_df,
+    SeasonalPeriod,
+    TSModelTypes,
+    get_function_params,
+)
 import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
 from pycaret.internal.logging import get_logger
@@ -100,6 +105,7 @@ def cross_validate_ts(
     return_train_score,
     error_score=0,
     verbose: int = 0,
+    **additional_scorer_kwargs,
 ) -> Dict[str, np.array]:
     """Performs Cross Validation on time series data
 
@@ -131,6 +137,8 @@ def cross_validate_ts(
         Unused for now, by default 0
     verbose : int
         Sets the verbosity level. Unused for now
+    additional_scorer_kwargs: Dict[str, Any]
+        Additional scorer kwargs such as {`sp`:12} required by metrics like MASE
 
     Returns
     -------
@@ -160,6 +168,7 @@ def cross_validate_ts(
                 fit_params=fit_params,
                 return_train_score=return_train_score,
                 error_score=error_score,
+                **additional_scorer_kwargs,
             )
             for train, test in get_folds(cv, y)
         )
@@ -207,6 +216,7 @@ def _fit_and_score(
     fit_params,
     return_train_score,
     error_score=0,
+    **additional_scorer_kwargs,
 ):
     """Fits the forecaster on a single train split and scores on the test split
     Similar to _fit_and_score from `sklearn` [1] (and to some extent `sktime` [2]).
@@ -238,6 +248,8 @@ def _fit_and_score(
         Should the training scores be returned. Unused for now.
     error_score : int, optional
         Unused for now, by default 0
+    **additional_scorer_kwargs: Dict[str, Any]
+            Additional scorer kwargs such as {`sp`:12} required by metrics like MASE
 
     Raises
     ------
@@ -270,8 +282,12 @@ def _fit_and_score(
     cutoff = forecaster.cutoff
 
     #### Score the model ----
+    lower = pd.Series([])
+    upper = pd.Series([])
     if forecaster.is_fitted:
-        y_pred = forecaster.predict(X_test)
+        y_pred, lower, upper = get_predictions_with_intervals(
+            forecaster=forecaster, X_test=X_test
+        )
 
         if (y_test.index.values != y_pred.index.values).any():
             print(
@@ -287,9 +303,27 @@ def _fit_and_score(
     start = time.time()
     fold_scores = {}
     scoring = _get_metrics_dict_ts(scoring)
+
+    # SP should be passed from outside in additional_scorer_kwargs already
+    additional_scorer_kwargs = update_additional_scorer_kwargs(
+        initial_kwargs=additional_scorer_kwargs,
+        y_train=y_train,
+        lower=lower,
+        upper=upper,
+    )
     for scorer_name, scorer in scoring.items():
         if forecaster.is_fitted:
-            metric = scorer._score_func(y_true=y_test, y_pred=y_pred, **scorer._kwargs)
+            # get all kwargs in additional_scorer_kwargs
+            # that correspond to parameters in function signature
+            kwargs = {
+                **{
+                    k: v
+                    for k, v in additional_scorer_kwargs.items()
+                    if k in get_function_params(scorer._score_func)
+                },
+                **scorer._kwargs,
+            }
+            metric = scorer._score_func(y_true=y_test, y_pred=y_pred, **kwargs)
         else:
             metric = None
         fold_scores[scorer_name] = metric
@@ -334,7 +368,39 @@ class BaseGridSearch:
         self.best_params_ = {}
         self.cv_results_ = {}
 
-    def fit(self, y, X=None, **fit_params):
+    def fit(
+        self,
+        y: pd.Series,
+        X: Optional[pd.DataFrame] = None,
+        additional_scorer_kwargs: Optional[Dict[str, Any]] = None,
+        **fit_params,
+    ):
+        """[summary]
+
+        Parameters
+        ----------
+        y : pd.Series
+            Target
+        X : Optional[pd.DataFrame], optional
+            Exogenous Variables, by default None
+        additional_scorer_kwargs: Dict[str, Any]
+            Additional scorer kwargs such as {`sp`:12} required by metrics like MASE
+        **fit_params: Dict[str, Any]
+            Additional params to pass to fit
+
+        Returns
+        -------
+        [type]
+            [description]
+
+        Raises
+        ------
+        ValueError
+            [description]
+        """
+        if additional_scorer_kwargs is None:
+            additional_scorer_kwargs = {}
+
         y, X = check_y_X(y, X)
 
         # validate cross-validator
@@ -385,6 +451,7 @@ class BaseGridSearch:
                     fit_params=fit_params,
                     return_train_score=self.return_train_score,
                     error_score=self.error_score,
+                    **additional_scorer_kwargs,
                 )
                 for parameters in candidate_params
                 for train, test in get_folds(cv, y)
@@ -620,6 +687,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 "fh",
                 "seasonal_period",
                 "seasonality_present",
+                "sp_to_use",
                 "strictly_positive",
                 "enforce_pi",
             }
@@ -682,6 +750,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                     ["Enforce Prediction Interval", self.enforce_pi],
                     ["Seasonal Period Tested", self.seasonal_period],
                     ["Seasonality Detected", self.seasonality_present],
+                    ["Seasonality Used in Models", self.sp_to_use],
                     ["Target Strictly Positive", self.strictly_positive],
                     ["Target White Noise", self.white_noise],
                     ["Recommended d", self.lowercase_d],
@@ -864,7 +933,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         seasonal_period: int or str, default = None
             Seasonal period in timeseries data. If not provided the frequency of the data
-            index is map to a seasonal period as follows:
+            index is mapped to a seasonal period as follows:
 
             * 'S': 60
             * 'T': 60
@@ -876,8 +945,9 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             * 'A': 1
             * 'Y': 1
 
-            Alternatively you can provide a custom `seasonal_parameter` by passing
-            it as an integer.
+            Alternatively you can provide a custom `seasonal_period` by passing
+            it as an integer or a string corresponding to the keys above (e.g.
+            'W' for weekly data, 'M' for monthly data, etc.).
 
 
         enforce_pi: bool, default = False
@@ -1063,11 +1133,12 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             raise ValueError("Index may not have duplicate values!")
 
         # check valid seasonal parameter
-        valid_seasonality = autocorrelation_seasonality_test(
+        self.seasonality_present = autocorrelation_seasonality_test(
             data_[target_name], self.seasonal_period
         )
 
-        self.seasonality_present = True if valid_seasonality else False
+        # What seasonal period should be used for modeling?
+        self.sp_to_use = self.seasonal_period if self.seasonality_present else 1
 
         # Should multiplicative components be allowed in models that support it
         self.strictly_positive = np.all(data_[target_name] > 0)
@@ -1472,6 +1543,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         model_fit_start = time.time()
 
+        additional_scorer_kwargs = self.get_additional_scorer_kwargs()
         scores, cutoffs = cross_validate_ts(
             # Commented out since supervised_experiment also does not clone
             # when doing cross_validate
@@ -1486,6 +1558,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             fit_params=fit_kwargs,
             return_train_score=False,
             error_score=0,
+            **additional_scorer_kwargs,
         )
 
         model_fit_end = time.time()
@@ -2010,7 +2083,13 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                         f"Search type '{search_algorithm}' is not supported"
                     )
 
-            model_grid.fit(y=data_y, X=data_X, **fit_kwargs)
+            additional_scorer_kwargs = self.get_additional_scorer_kwargs()
+            model_grid.fit(
+                y=data_y,
+                X=data_X,
+                additional_scorer_kwargs=additional_scorer_kwargs,
+                **fit_kwargs,
+            )
 
             best_params = model_grid.best_params_
             self.logger.info(f"best_params: {best_params}")
@@ -2873,8 +2952,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             # Prediction Interval is returned
             #   First Value is a series of predictions
             #   Second Value is a dataframe of lower and upper bounds
-            # result = pd.DataFrame(return_vals[0], columns=["y_pred"])
-            # result = result.join(return_vals[1])
             result = pd.concat(return_vals, axis=1)
             result.columns = ["y_pred", "lower", "upper"]
         else:
@@ -2921,9 +2998,13 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 X_test_ = None
             y_test_ = self.y_test.copy()
 
-            y_test_pred = estimator_.predict(
-                X=X_test_, fh=fh, return_pred_int=False, alpha=alpha
+            # y_train for finalized model is different from self.y_train
+            # Hence, better to get this from the estimator directly.
+            y_train = estimator_._y
+            y_test_pred, lower, upper = get_predictions_with_intervals(
+                forecaster=estimator_, X_test=X_test_, fh=fh, alpha=alpha
             )
+
             if len(y_test_pred) != len(y_test_):
                 msg = (
                     "predict_model >> Forecast Horizon does not match the horizon length "
@@ -2943,13 +3024,29 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 self.logger.warning(
                     "predict_model >> No indices matched between test set and prediction. "
                     "You are most likely calling predict_model after finalizing model. "
-                    "Metrics will not be displayed"
+                    "Metrics will not be displayed."
                 )
                 metrics = self._calculate_metrics(y_test=[], pred=[], pred_prob=None)  # type: ignore
                 metrics = {metric_name: np.nan for metric_name, _ in metrics.items()}
                 verbose = False
             else:
-                metrics = self._calculate_metrics(y_test=y_test_common, pred=y_test_pred_common, pred_prob=None)  # type: ignore
+                # Pass additional keyword arguments (like y_train, lower, upper) to
+                # method since they need to be passed to certain metrics like MASE,
+                # INPI, etc. This method will internally orchestrate the passing of
+                # the right arguments to the scorers.
+                initial_kwargs = self.get_additional_scorer_kwargs()
+                additional_scorer_kwargs = update_additional_scorer_kwargs(
+                    initial_kwargs=initial_kwargs,
+                    y_train=y_train,
+                    lower=lower,
+                    upper=upper,
+                )
+                metrics = self._calculate_metrics(
+                    y_test=y_test_common,
+                    pred=y_test_pred_common,
+                    pred_prob=None,
+                    **additional_scorer_kwargs,
+                )  # type: ignore
 
             # Display Test Score
             # model name
@@ -3664,6 +3761,22 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         resid.dropna(inplace=True)
         return resid
 
+    def get_additional_scorer_kwargs(self) -> Dict[str, Any]:
+        """Returns additional kwargs required by some scorers (such as MASE).
+
+        NOTE: These are kwargs that are experiment specific (can only be derived
+        from the experiment), e.g. `sp` and not fold specific like `y_train`. In
+        other words, these kwargs are applicable to all folds. Fold specific kwargs
+        such as `y_train`, `lower`, `upper`, etc. must be updated dynamically.
+
+        Returns
+        -------
+        Dict[str, Any]
+            Additional kwargs to pass to scorers
+        """
+        additional_scorer_kwargs = {"sp": self.sp_to_use}
+        return additional_scorer_kwargs
+
 
 # TODO: Add to pycaret utils or some common location
 def deep_clone(estimator):
@@ -3673,3 +3786,91 @@ def deep_clone(estimator):
     # https://stackoverflow.com/a/33576345/8925915
     estimator_ = deepcopy(estimator)
     return estimator_
+
+
+def get_predictions_with_intervals(
+    forecaster, X_test: pd.DataFrame, fh=None, alpha: float = 0.05
+) -> Tuple[pd.Series, pd.Series, pd.Series]:
+    """Returns the predictions, lower and upper interval values for a
+    forecaster. If the forecaster does not support prediction intervals,
+    then NAN is returned for lower and upper intervals.
+
+    Parameters
+    ----------
+    forecaster : sktime compatible forecaster
+        Forecaster to be used to get the predictions
+    X_test : pd.DataFrame
+        Test dataset
+    alpha : float, default = 0.05
+        alpha value for prediction interval
+
+    Returns
+    -------
+    Tuple[pd.Series, pd.Series, pd.Series]
+        Predictions, Lower and Upper Interval Values
+    """
+    # Predict and get lower and upper intervals
+    return_pred_int = forecaster.get_tag("capability:pred_int")
+
+    if fh is None:
+        return_values = forecaster.predict(
+            X_test, return_pred_int=return_pred_int, alpha=alpha
+        )
+    else:
+        return_values = forecaster.predict(
+            X_test, fh=fh, return_pred_int=return_pred_int, alpha=alpha
+        )
+
+    if return_pred_int:
+        y_pred = return_values[0]
+        lower = return_values[1]["lower"]
+        upper = return_values[1]["upper"]
+    else:
+        y_pred = return_values
+        lower = pd.Series([np.nan] * len(y_pred))
+        upper = pd.Series([np.nan] * len(y_pred))
+        lower.index = y_pred.index
+        upper.index = y_pred.index
+
+    # Prophet with return_pred_int = True returns datetime index.
+    for series in [y_pred, lower, upper]:
+        if isinstance(series.index, pd.DatetimeIndex):
+            series.index = series.index.to_period()
+
+    return y_pred, lower, upper
+
+
+def update_additional_scorer_kwargs(
+    initial_kwargs: Dict[str, Any],
+    y_train: pd.Series,
+    lower: pd.Series,
+    upper: pd.Series,
+) -> Dict[str, Any]:
+    """Updates the initial kwargs with additional scorer kwargs
+    NOTE: Initial kwargs are obtained from experiment, e.g. {"sp": 12} and
+    are common to all folds.
+    The additional kwargs such as y_train, lower, upper are specific to each
+    fold and must be updated dynamically as such.
+
+    Parameters
+    ----------
+    initial_kwargs : Dict[str, Any]
+        Initial kwargs are obtained from experiment, e.g. {"sp": 12} and
+        are common to all folds
+    y_train : pd.Series
+        Training Data. Used in metrics such as MASE
+    lower : pd.Series
+        Lower Limits of Predictions. Used in metrics such as INPI
+    upper : pd.Series
+        Upper Limits of Predictions. Used in metrics such as INPI
+
+    Returns
+    -------
+    Dict[str, Any]
+        Updated kwargs dictionary
+    """
+    additional_scorer_kwargs = initial_kwargs.copy()
+    additional_scorer_kwargs.update(
+        {"y_train": y_train, "lower": lower, "upper": upper,}
+    )
+    return additional_scorer_kwargs

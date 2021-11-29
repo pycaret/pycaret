@@ -1,7 +1,7 @@
 # Module: internal.utils
 # Author: Moez Ali <moez.ali@queensu.ca> and Antoni Baum (Yard1) <antoni.baum@protonmail.com>
 # License: MIT
-
+import inspect
 import os
 import numpy as np
 
@@ -13,7 +13,7 @@ import ipywidgets as ipw
 from IPython.display import display, HTML, clear_output, update_display
 from pycaret.internal.logging import get_logger
 from pycaret.internal.validation import *
-from typing import Any, List, Optional, Dict, Tuple, Union
+from typing import Any, Callable, List, Optional, Dict, Set, Tuple, Union
 from sklearn import clone
 from sklearn.model_selection import KFold, StratifiedKFold, BaseCrossValidator
 from sklearn.model_selection._split import _BaseKFold
@@ -389,6 +389,10 @@ def _calculate_unsupervised_metric(
     return (display_name, calculated_metric)
 
 
+def get_function_params(function: Callable) -> Set[str]:
+    return inspect.signature(function).parameters
+
+
 def calculate_metrics(
     metrics: Dict[str, "pycaret.containers.metrics.base_metric.MetricContainer"],
     y_test,
@@ -396,6 +400,7 @@ def calculate_metrics(
     pred_proba: Optional[float] = None,
     score_dict: Optional[Dict[str, np.array]] = None,
     weights: Optional[list] = None,
+    **additional_kwargs,
 ) -> Dict[str, np.array]:
 
     score_dict = []
@@ -410,6 +415,7 @@ def calculate_metrics(
                 pred,
                 pred_proba,
                 weights,
+                **additional_kwargs,
             )
         )
 
@@ -418,18 +424,22 @@ def calculate_metrics(
 
 
 def _calculate_metric(
-    container, score_func, display_name, y_test, pred_, pred_proba, weights
+    container, score_func, display_name, y_test, pred_, pred_proba, weights, **kwargs
 ):
     if not score_func:
         return None
+    # get all kwargs in additional_kwargs
+    # that correspond to parameters in function signature
+    kwargs = {
+        **{k: v for k, v in kwargs.items() if k in get_function_params(score_func)},
+        **container.args,
+    }
     target = pred_proba if container.target == "pred_proba" else pred_
     try:
-        calculated_metric = score_func(
-            y_test, target, sample_weight=weights, **container.args
-        )
+        calculated_metric = score_func(y_test, target, sample_weight=weights, **kwargs)
     except:
         try:
-            calculated_metric = score_func(y_test, target, **container.args)
+            calculated_metric = score_func(y_test, target, **kwargs)
         except:
             calculated_metric = 0
 
