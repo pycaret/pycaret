@@ -159,7 +159,7 @@ def _smape_loss(y_true, y_pred, **kwargs):
     )
 
 
-def _mape_loss(y_true, y_pred, **kwargs):
+def mape(y_true, y_pred, **kwargs):
     """Wrapper for sktime metrics"""
     y_true = _check_series(y_true)
     y_pred = _check_series(y_pred)
@@ -168,7 +168,7 @@ def _mape_loss(y_true, y_pred, **kwargs):
     )
 
 
-def _mase_loss(y_true, y_pred, y_train, sp):
+def mase(y_true, y_pred, y_train, sp):
     """Wrapper for sktime metrics"""
     return mean_absolute_scaled_error(
         y_true=_check_series(y_true),
@@ -178,7 +178,7 @@ def _mase_loss(y_true, y_pred, y_train, sp):
     )
 
 
-def _inpi_loss(y_true, y_pred, lower: pd.Series, upper: pd.Series):
+def inpi(y_true, y_pred, lower: pd.Series, upper: pd.Series):
     """Returns the percentage of actual values that are within the
     prediction interval. Higher score is better.
     NOTE: If lower and upper have NAN values, it returns np.nan
@@ -229,13 +229,6 @@ def _set_y_as_series(y):
     return pd.Series(y.iloc[:, 0])
 
 
-class MASEMetricContainer(TimeSeriesMetricContainer):
-    def __init__(self, globals_dict: dict) -> None:
-        super().__init__(
-            id="mase", name="MASE", score_func=_mase_loss, greater_is_better=False
-        )
-
-
 class MAEMetricContainer(TimeSeriesMetricContainer):
     def __init__(self, globals_dict: dict) -> None:
         super().__init__(
@@ -263,7 +256,7 @@ class RMSEMetricContainer(TimeSeriesMetricContainer):
 class MAPEMetricContainer(TimeSeriesMetricContainer):
     def __init__(self, globals_dict: dict) -> None:
         super().__init__(
-            id="mape", name="MAPE", score_func=_mape_loss, greater_is_better=False,
+            id="mape", name="MAPE", score_func=mape, greater_is_better=False,
         )
 
 
@@ -271,6 +264,13 @@ class SMAPEMetricContainer(TimeSeriesMetricContainer):
     def __init__(self, globals_dict: dict) -> None:
         super().__init__(
             id="smape", name="SMAPE", score_func=_smape_loss, greater_is_better=False,
+        )
+
+
+class MASEMetricContainer(TimeSeriesMetricContainer):
+    def __init__(self, globals_dict: dict) -> None:
+        super().__init__(
+            id="mase", name="MASE", score_func=mase, greater_is_better=False
         )
 
 
@@ -289,7 +289,7 @@ class R2MetricContainer(TimeSeriesMetricContainer):
 class INPIMetricContainer(TimeSeriesMetricContainer):
     def __init__(self, globals_dict: dict) -> None:
         super().__init__(
-            id="inpi", name="INPI", score_func=_inpi_loss, greater_is_better=True,
+            id="inpi", name="INPI", score_func=inpi, greater_is_better=True,
         )
 
 
