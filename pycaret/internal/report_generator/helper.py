@@ -1,253 +1,21 @@
 # report helper
 
-
 # Specific to model type
 def get_plot_list(model_name, model_type):
     plot_list = ''
     if model_type == 'regression':
-        plot_list = get_plot_list_regression(model_name)
+        plot_list = ['residuals','error','cooks','rfe','learning','manifold','feature','feature_all','parameter','tree','vc']
     elif model_type == 'classification':
-        plot_list = get_plot_list_classification(model_name)
+        plot_list = ['auc', 'pr', 'confusion_matrix', 'error', 'class_report', 'boundary', 'learning', 'vc', 'dimension', 'feature', 'feature_all']
     elif model_type == 'clustering':
-        plot_list = get_plot_list_clustering(model_name)
+        plot_list = ['cluster','tsne', 'elbow', 'silhouette', 'distance', 'distribution']
     elif model_type == 'anomaly_detection':
-        plot_list == get_plot_list_anomaly_detection(model_name)
+        plot_list == ['tsne','umap']
     elif model_type == 'nlp':
-        plot_list = get_plot_list_nlp(model_name)
+        plot_list = ['frequency','distribution','bigram','trigram','sentiment','tsne','topic_distribution','wordcloud']
     return plot_list
 
 
-def get_plot_list_regression(model_name):
-    plot_list_dict = {
-        'lr ': ['residuals', 'error', 'cooks', 'rfe', 'learning', 'manifold', 'feature', 'feature_all'],
-        'lasso ': ['residuals', 'error', 'cooks', 'rfe', 'learning', 'vc', 'manifold', 'feature', 'feature_all'],
-        'ridge ': ['residuals', 'error', 'cooks', 'rfe', 'learning', 'vc', 'manifold', 'feature', 'feature_all'],
-        'en ': ['residuals', 'error', 'cooks', 'rfe', 'learning', 'vc', 'manifold', 'feature', 'feature_all'],
-        'lar ': ['residuals', 'error', 'cooks', 'rfe', 'learning', 'vc', 'manifold', 'feature', 'feature_all'],
-        'llar ': ['residuals', 'error', 'cooks', 'rfe', 'learning', 'vc', 'manifold', 'feature', 'feature_all'],
-        'omp ': ['residuals', 'error', 'cooks', 'rfe', 'learning', 'vc', 'manifold', 'feature', 'feature_all'],
-        'br ': ['residuals', 'error', 'cooks', 'rfe', 'learning', 'vc', 'manifold', 'feature', 'feature_all'],
-        'ard ': ['residuals', 'error', 'cooks', 'rfe', 'learning', 'vc', 'manifold', 'feature', 'feature_all'],
-        'par ': ['residuals', 'error', 'cooks', 'rfe', 'learning', 'vc', 'manifold', 'feature', 'feature_all'],
-        'ransac ': ['residuals', 'error', 'cooks', 'learning', 'manifold'],
-        'tr ': ['residuals', 'error', 'cooks', 'rfe', 'learning', 'vc', 'manifold', 'feature', 'feature_all'],
-        'huber ': ['residuals', 'error', 'cooks', 'rfe', 'learning', 'vc', 'manifold', 'feature', 'feature_all'],
-        'kr ': ['residuals', 'error', 'cooks', 'learning', 'manifold'],
-        'svm ': ['residuals', 'error', 'cooks', 'learning', 'manifold'],
-        'knn ': ['residuals', 'error', 'cooks', 'learning', 'manifold'],
-        'dt ': ['residuals', 'error', 'cooks', 'rfe', 'learning', 'vc', 'manifold', 'feature', 'feature_all', 'tree'],
-        'rf ': ['residuals', 'error', 'cooks', 'rfe', 'learning', 'vc', 'manifold', 'feature', 'feature_all', 'tree'],
-        'et ': ['residuals', 'error', 'cooks', 'rfe', 'learning', 'vc', 'manifold', 'feature', 'feature_all', 'tree'],
-        'ada ': ['residuals', 'error', 'cooks', 'rfe', 'learning', 'vc', 'manifold', 'feature', 'feature_all', 'tree'],
-        'gbr ': ['residuals', 'error', 'cooks', 'rfe', 'learning', 'vc', 'manifold', 'feature', 'feature_all', 'tree'],
-        'mlp ': ['residuals', 'error', 'cooks', 'rfe', 'learning', 'vc', 'manifold', 'feature', 'feature_all', 'tree'],
-        'xgboost ': ['residuals', 'error', 'cooks', 'rfe', 'learning', 'vc', 'manifold', 'feature', 'feature_all','tree'],
-        'lightgbm ': ['residuals', 'error', 'cooks', 'rfe', 'learning', 'vc', 'manifold', 'feature', 'feature_all','tree'],
-        'catboost ': ['residuals', 'error', 'cooks', 'rfe', 'learning', 'vc', 'manifold', 'feature', 'feature_all','tree']
-    }
-    return plot_list_dict[model_name]
-
-
-def get_plot_list_classification(model_name):
-    plot_list_dict = {
-        'lr  ': ['auc', 'pr', 'confusion_matrix', 'error', 'class_report', 'boundary', 'learning', 'vc', 'dimension',
-                 'feature', 'feature_all'],
-        'knn  ': ['auc', 'pr', 'confusion_matrix', 'error', 'class_report', 'boundary', 'learning', 'vc', 'dimension'],
-        'nb  ': ['auc', 'pr', 'confusion_matrix', 'error', 'class_report', 'boundary', 'learning', 'vc', 'dimension'],
-        'dt  ': ['auc', 'pr', 'confusion_matrix', 'error', 'class_report', 'boundary', 'learning', 'vc', 'dimension',
-                 'feature', 'feature_all', 'tree'],
-        'svm  ': ['pr', 'confusion_matrix', 'error', 'class_report', 'boundary', 'learning', 'vc', 'dimension',
-                  'feature', 'feature_all'],
-        'rbfsvm  ': ['auc', 'pr', 'confusion_matrix', 'error', 'class_report', 'boundary', 'learning', 'vc',
-                     'dimension'],
-        'gpc  ': ['auc', 'pr', 'confusion_matrix', 'error', 'class_report', 'boundary', 'learning', 'vc', 'dimension'],
-        'mlp  ': ['auc', 'pr', 'confusion_matrix', 'error', 'class_report', 'boundary', 'learning', 'vc', 'dimension'],
-        'ridge  ': ['pr', 'confusion_matrix', 'error', 'class_report', 'boundary', 'learning', 'vc', 'dimension',
-                    'feature', 'feature_all'],
-        'rf': ['auc', 'pr', 'confusion_matrix', 'error', 'class_report', 'boundary', 'learning', 'vc', 'dimension',
-               'feature', 'feature_all', 'tree'],
-        'qda  ': ['auc', 'pr', 'confusion_matrix', 'error', 'class_report', 'boundary', 'learning', 'vc'],
-        'ada  ': ['auc', 'pr', 'confusion_matrix', 'error', 'class_report', 'boundary', 'learning', 'vc', 'dimension',
-                  'feature', 'feature_all'],
-        'gbc  ': ['auc', 'pr', 'confusion_matrix', 'error', 'class_report', 'boundary', 'learning', 'vc', 'dimension',
-                  'feature', 'feature_all'],
-        'lda  ': ['auc', 'pr', 'confusion_matrix', 'error', 'class_report', 'boundary', 'learning', 'vc', 'dimension',
-                  'feature', 'feature_all', 'tree'],
-        'et ': ['auc', 'pr', 'confusion_matrix', 'error', 'class_report', 'boundary', 'learning', 'vc', 'dimension',
-                'feature', 'feature_all', 'tree'],
-        'xgboost ': ['auc', 'pr', 'confusion_matrix', 'error', 'class_report', 'boundary', 'learning', 'vc',
-                     'dimension', 'feature', 'feature_all', 'tree'],
-        'lightgbm  ': ['auc', 'pr', 'confusion_matrix', 'error', 'class_report', 'boundary', 'learning', 'vc',
-                       'dimension', 'feature', 'feature_all'],
-        'catboost  ': ['auc', 'pr', 'confusion_matrix', 'error', 'class_report', 'boundary', 'learning', 'vc',
-                       'dimension', 'feature', 'feature_all']
-    }
-    return plot_list_dict[model_name]
-
-
-def get_plot_list_clustering(model_name):
-    plot_list_dict = {
-        'kmeans ': ['cluster', 'tsne', 'elbow', 'silhouette', 'distance', 'distribution'],
-        'ap ': ['cluster', 'tsne', 'distance', 'distribution'],
-        'meanshift ': ['cluster', 'tsne', 'distance', 'distribution'],
-        'sc ': ['cluster', 'tsne', 'elbow', 'distribution'],
-        'hclust ': ['cluster', 'tsne', 'elbow', 'distribution'],
-        'dbscan ': ['cluster', 'tsne', 'distribution'],
-        'optics ': ['cluster', 'tsne', 'distribution'],
-        'birch ': ['cluster', 'tsne', 'elbow', 'silhouette', 'distribution'],
-        'kmodes ': ['cluster', 'tsne', 'elbow', 'silhouette', 'distribution']
-    }
-    return plot_list_dict[model_name]
-
-
-def get_plot_list_anomaly_detection(model_name):
-    plot_list_dict = {
-        'abod ': ['tsne'],
-        'cluster ': ['tsne'],
-        'cof ': ['tsne'],
-        'histogram ': ['tsne'],
-        'knn ': ['tsne'],
-        'lof ': ['tsne'],
-        'svm ': ['tsne'],
-        'pca ': ['tsne'],
-        'mcd ': ['tsne'],
-        'sod ': ['tsne'],
-        'sos ': ['tsne']
-    }
-    return plot_list_dict[model_name]
-
-
-def get_plot_list_nlp(model_name):
-    plot_list_dict = {
-        'lda ': ['frequency', 'distribution', 'bigram', 'trigram', 'sentiment', 'tsne', 'topic_distribution',
-                 'wordcloud'],
-        'lsi ': ['frequency', 'distribution', 'bigram', 'trigram', 'sentiment', 'tsne', 'topic_distribution',
-                 'wordcloud'],
-        'hdp ': ['frequency', 'distribution', 'bigram', 'trigram', 'sentiment', 'tsne', 'topic_distribution',
-                 'wordcloud'],
-        'rp ': ['frequency', 'distribution', 'bigram', 'trigram', 'sentiment', 'tsne', 'topic_distribution',
-                'wordcloud'],
-        'nmf ': ['frequency', 'distribution', 'bigram', 'trigram', 'sentiment', 'tsne', 'topic_distribution',
-                 'wordcloud']
-    }
-    return plot_list_dict[model_name]
-
-
-def get_report_name(report_type, model_type):
-    report_name = ''
-    if model_type == 'regression':
-        report_name = get_report_name_regression(report_type)
-    elif model_type == 'classification':
-        report_name = get_report_name_classification(report_type)
-    elif model_type == 'clustering':
-        report_name = get_report_name_clustering(report_type)
-    elif model_type == 'anomaly_detection':
-        report_name == get_report_name_anomaly_detection(report_type)
-    elif model_type == 'nlp':
-        report_name = get_report_name_nlp(report_type)
-    return report_name
-
-
-# Specific to each model type
-def get_report_name_regression(report_type):
-    report_dict = {
-        'lr': ' Linear Regression',
-        'lasso': ' Lasso Regression',
-        'ridge': ' Ridge Regression',
-        'en': ' Elastic Net',
-        'lar': ' Least Angle Regression',
-        'llar': ' Lasso Least Angle Regression',
-        'omp': ' Orthogonal Matching Pursuit',
-        'br': ' Bayesian Ridge',
-        'ard': ' Automatic Relevance Determination',
-        'par': ' Passive Aggressive Regressor',
-        'ransac': ' Random Sample Consensus',
-        'tr': ' TheilSen Regressor',
-        'huber': ' Huber Regressor',
-        'kr': ' Kernel Ridge',
-        'svm': ' Support Vector Regression',
-        'knn': ' K Neighbors Regressor',
-        'dt': ' Decision Tree Regressor',
-        'rf': ' Random Forest Regressor',
-        'et': ' Extra Trees Regressor',
-        'ada': ' AdaBoost Regressor',
-        'gbr': ' Gradient Boosting Regressor',
-        'mlp': ' MLP Regressor',
-        'xgboost': ' Extreme Gradient Boosting',
-        'lightgbm': ' Light Gradient Boosting Machine',
-        'catboost': ' CatBoost Regressor'
-    }
-    return report_dict[report_type]
-
-
-def get_report_name_classification(report_type):
-    report_dict = {
-        'lr': 'Logistic Regression',
-        'knn': 'K Neighbors Classifier',
-        'nb': 'Naive Bayes',
-        'dt': 'Decision Tree Classifier',
-        'svm': 'SVM - Linear Kernel',
-        'rbfsvm': 'SVM - Radial Kernel',
-        'gpc': 'Gaussian Process Classifier',
-        'mlp': 'MLP Classifier',
-        'ridge': 'Ridge Classifier',
-        'rf': ' Random Forest Classifier',
-        'qda': 'Quadratic Discriminant Analysis',
-        'ada': 'Ada Boost Classifier',
-        'gbc': 'Gradient Boosting Classifier',
-        'lda': 'Linear Discriminant Analysis',
-        'et': ' Extra Trees Classifier',
-        'xgboost': ' Extreme Gradient Boosting',
-        'lightgbm': 'Light Gradient Boosting Machine',
-        'catboost': 'CatBoost Classifier'
-    }
-    return report_dict[report_type]
-
-
-def get_report_name_clustering(report_type):
-    report_dict = {
-        'kmeans': ' K -Means Clustering',
-        'ap': ' Affinity Propagation',
-        'meanshift': ' Mean shift Clustering',
-        'sc': ' Spectral Clustering',
-        'hclust': ' Agglomerative Clustering',
-        'dbscan': ' Density -Based Spatial Clustering',
-        'optics': ' OPTICS Clustering',
-        'birch': ' Birch Clustering',
-        'kmodes': ' K -Modes Clustering'
-    }
-    return report_dict[report_type]
-
-
-def get_report_name_anomaly_detection(report_type):
-    report_dict = {
-        'abod': ' Angle - base Outlier Detection',
-        'cluster': ' Clustering -Based Local Outlier',
-        'cof': ' Connectivity - Based Outlier Factor',
-        'histogram': ' Histogram -based Outlier Detection',
-        'knn': ' k - Nearest Neighbors Detector',
-        'lof': ' Local Outlier Factor',
-        'svm': ' One - class SVM detector',
-        'pca': ' Principal Component Analysis',
-        'mcd': ' Minimum Covariance Determinant',
-        'sod': ' Subspace Outlier Detection',
-        'sos': ' Stochastic Outlier Selection'
-    }
-    return report_dict[report_type]
-
-
-def get_report_name_nlp(report_type):
-    report_dict = {
-        'lda ': ' Latent Dirichlet Allocation',
-        'lsi ': ' Latent Semantic Indexing',
-        'hdp ': ' Hierarchical Dirichlet Process',
-        'rp ': ' Random Projections',
-        'nmf ': ' Non - Negative Matrix Factorization'
-    }
-    return report_dict[report_type]
-
-
-# TODO -- This will be as per model_type
 def get_model_definition(model_name, model_type):
     model_definition = ''
     if model_type == 'regression':
@@ -474,7 +242,6 @@ def get_model_definition_nlp(model_name):
     return model_name_dict[model_name]
 
 
-# Plot name is same for all models -- completed
 def get_plot_name(plot):
     plot_dict = {
         'auc': ' Area Under the Curve',
@@ -518,7 +285,6 @@ def get_plot_name(plot):
     return plot_dict[plot]
 
 
-# Plot definition is same for all models -- completed
 def get_plot_definition(plot):
     plot_definition = {
         'auc': 'Area under the curve is calculated by different methods, of which the antiderivative method of '
@@ -630,7 +396,7 @@ def get_plot_definition(plot):
     return plot_definition[plot]
 
 
-# Image name is same for all models -- completed
+
 def get_image_name(plot):
     image_name_dict = {
         'residuals ': 'Residuals.png',
