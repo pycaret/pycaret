@@ -102,14 +102,16 @@ def setup(
 
     fh: int or list or np.array, default = 1
         The forecast horizon to be used for forecasting. Default is set to ``1`` i.e.
-        forecast one point ahead. When integer is passed it means N continious points 
-        in the future without any gap. If you want to forecast values with gaps, you 
-        must pass an array e.g. np.array([2, 5]) will forecast 2 and 5 points ahead.
+        forecast one point ahead. When integer is passed it means N continuous points
+        in the future without any gap. If you want to forecast values with gaps, you
+        must pass an array e.g. np.arange([13, 25]) will skip the first 12 future
+        points and forecast from the 13th point till the 24th point ahead (note in
+        numpy right value is inclusive and left is exclusive).
 
 
     seasonal_period: int or str, default = None
         Seasonal period in timeseries data. If not provided the frequency of the data
-        index is map to a seasonal period as follows:
+        index is mapped to a seasonal period as follows:
 
         * 'S': 60
         * 'T': 60
@@ -121,8 +123,9 @@ def setup(
         * 'A': 1
         * 'Y': 1
 
-        Alternatively you can provide a custom `seasonal_parameter` by passing
-        it as an integer.
+        Alternatively you can provide a custom `seasonal_period` by passing
+        it as an integer or a string corresponding to the keys above (e.g.
+        'W' for weekly data, 'M' for monthly data, etc.).
 
 
     enforce_pi: bool, default = False
@@ -388,9 +391,9 @@ def create_model(
 
         * 'naive' - Naive Forecaster
         * 'grand_means' - Grand Means Forecaster
-        * 'snaive' - Seasonal Naive Forecaster
+        * 'snaive' - Seasonal Naive Forecaster (disabled when seasonal_period = 1)
         * 'polytrend' - Polynomial Trend Forecaster
-        * 'arima' - ARIMA
+        * 'arima' - ARIMA family of models (ARIMA, SARIMA, SARIMAX)
         * 'auto_arima' - Auto ARIMA
         * 'arima' - ARIMA
         * 'exp_smooth' - Exponential Smoothing

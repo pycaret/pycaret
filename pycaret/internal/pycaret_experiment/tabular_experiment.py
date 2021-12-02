@@ -1834,14 +1834,18 @@ class _TabularExperiment(_PyCaretExperiment):
         ## Disabling of certain metrics.
         ## NOTE: This must be run after _setup_ran has been set, else metrics can
         # not be retrieved.
-        if (
-            self._ml_usecase == MLUsecase.TIME_SERIES
-            and len(self.fh) == 1
-            and "r2" in self._get_metrics()
-        ):
-            # disable R2 metric if it exists in the metrics since R2 needs
-            # at least 2 values
-            self.remove_metric("R2")
+        if self._ml_usecase == MLUsecase.TIME_SERIES:
+            #### Disable R2 when fh = 1 ----
+            if len(self.fh) == 1 and "r2" in self._get_metrics():
+                # disable R2 metric if it exists in the metrics since R2 needs
+                # at least 2 values
+                self.remove_metric("R2")
+
+            #### Remove INPI when enforce_pi is False ----
+            # User can add it manually if they want when enforce_pi is set to False.
+            # Refer: https://github.com/pycaret/pycaret/issues/1900
+            if not self.enforce_pi and "inpi" in self._get_metrics():
+                self.remove_metric("INPI")
 
         self.logger.info(
             f"self.master_model_container: {len(self.master_model_container)}"

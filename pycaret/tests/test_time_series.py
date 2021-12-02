@@ -6,7 +6,7 @@ import pytest
 import numpy as np  # type: ignore
 import pandas as pd  # type: ignore
 
-
+from pycaret.datasets import get_data
 from pycaret.internal.pycaret_experiment import TimeSeriesExperiment
 from pycaret.internal.ensemble import _ENSEMBLE_METHODS
 
@@ -53,7 +53,8 @@ _data_big_small = _return_data_big_small()
 
 @pytest.mark.parametrize("fold, fh, fold_strategy", _splitter_args)
 def test_splitter_using_fold_and_fh(fold, fh, fold_strategy, load_pos_and_neg_data):
-    """Tests the splitter creation using fold, fh and a string value for fold_strategy."""
+    """Tests the splitter creation using fold, fh and a string value for fold_strategy.
+    """
 
     from pycaret.time_series import setup
     from sktime.forecasting.model_selection._split import (
@@ -72,12 +73,21 @@ def test_splitter_using_fold_and_fh(fold, fh, fold_strategy, load_pos_and_neg_da
         elif fold_strategy == "sliding":
             assert isinstance(exp_name.fold_generator, SlidingWindowSplitter)
 
-        assert np.all(exp_name.fold_generator.fh == np.arange(1, fh + 1))
-        assert exp_name.fold_generator.step_length == fh  # Since fh is an int
+        if isinstance(fh, int):
+            # Since fh is an int, we can check as follows ----
+            assert np.all(exp_name.fold_generator.fh == np.arange(1, fh + 1))
+            assert exp_name.fold_generator.step_length == fh
+        else:
+            # fh is np.array
+            assert np.all(exp_name.fold_generator.fh == fh)
+
+            # When fh has np gaps: e.g. fh = np.arange(1, 37), step length = 36
+            # When fh has gaps, e.g. fh = np.arange(25, 37), step length = 12
+            assert exp_name.fold_generator.step_length == len(fh)
 
 
 def test_splitter_pass_cv_object(load_pos_and_neg_data):
-    """Tests the passing of a cv splitter to fold_strategy"""
+    """Tests the passing of a `sktime` cv splitter to fold_strategy"""
 
     from pycaret.time_series import setup
     from sktime.forecasting.model_selection._split import (
@@ -313,6 +323,27 @@ def test_setup_seasonal_period_int(load_pos_and_neg_data, seasonal_key, seasonal
     assert exp.seasonal_period == seasonal_value
 
 
+def test_seasonal_period_to_use():
+
+    exp = TimeSeriesExperiment()
+    fh = 12
+
+    # Airline Data with seasonality of 12
+    data = get_data("airline", verbose=False)
+    exp.setup(
+        data=data, fh=fh, verbose=False, session_id=42,
+    )
+    assert exp.sp_to_use == 12
+
+    # WhiteAirline Data with seasonality of 12
+    data = get_data("1", folder="time_series/white_noise", verbose=False)
+    exp.setup(
+        data=data, fh=fh, seasonal_period=12, verbose=False, session_id=42,
+    )
+    # Should get 1 even though we passed 12
+    assert exp.sp_to_use == 1
+
+
 def test_enforce_pi(load_pos_and_neg_data):
     """Tests the enforcement of prediction interval"""
     data = load_pos_and_neg_data
@@ -395,12 +426,20 @@ def test_create_predict_finalize_model(name, fh, load_pos_and_neg_data):
     #######################
     model = exp.create_model(name)
 
+    #########################
+    #### Expected Values ####
+    #########################
+    # Only forcasted values
+    fh_index = fh if isinstance(fh, int) else len(fh)
+    # Full forecasting window
+    fh_max_window = fh if isinstance(fh, int) else max(fh)
+
+    expected_period_index = load_pos_and_neg_data.iloc[-fh_index:].index
+    final_expected_period_index = expected_period_index.shift(fh_max_window)
+
     ########################
     ## Test Predict Model ##
     ########################
-    fh_index = fh if isinstance(fh, int) else fh[-1]
-    expected_period_index = load_pos_and_neg_data.iloc[-fh_index:].index
-
     # Default prediction
     y_pred = exp.predict_model(model)
     assert isinstance(y_pred, pd.Series)
@@ -429,7 +468,6 @@ def test_create_predict_finalize_model(name, fh, load_pos_and_neg_data):
     final_model = exp.finalize_model(model)
     y_pred = exp.predict_model(final_model)
 
-    final_expected_period_index = expected_period_index.shift(fh_index)
     assert np.all(y_pred.index == final_expected_period_index)
 
 
@@ -750,3 +788,88 @@ def test_tune_model_raises(load_pos_and_neg_data):
         exceptionmsg
         == f"`search_algorithm` must be one of 'None, random, grid'. You passed '{search_algorithm}'."
     )
+
+
+def test_naive_models(load_pos_and_neg_data):
+    """Tests enabling and disabling of naive models"""
+
+    exp = TimeSeriesExperiment()
+    data = load_pos_and_neg_data
+
+    #### Seasonal Period != 1 ----
+    #### All naive models should be enabled here
+    exp.setup(data=data, verbose=False)
+    expected = ["naive", "grand_means", "snaive"]
+    for model in expected:
+        assert model in exp.models().index
+
+    #### Seasonal Period == 1 ----
+    #### snaive should be disabled here
+    exp.setup(data=data, seasonal_period=1, verbose=False)
+    expected = ["naive", "grand_means"]
+    for model in expected:
+        assert model in exp.models().index
+    not_expected = ["snaive"]
+    for model in not_expected:
+        assert model not in exp.models().index
+
+
+def test_custom_models(load_pos_data):
+    """Tests working with custom models"""
+
+    exp = TimeSeriesExperiment()
+    data = load_pos_data
+
+    exp.setup(
+        data=data, fh=12, session_id=42,
+    )
+
+    #### Create a sktime pipeline with preprocessing ----
+    from sktime.transformations.series.impute import Imputer
+    from sktime.transformations.series.boxcox import LogTransformer
+    from sktime.forecasting.compose import TransformedTargetForecaster
+    from sktime.forecasting.arima import ARIMA
+
+    forecaster = TransformedTargetForecaster(
+        [
+            ("impute", Imputer()),
+            ("log", LogTransformer()),
+            ("model", ARIMA(seasonal_order=(0, 1, 0, 12))),
+        ]
+    )
+
+    ##################################
+    #### Test Create Custom Model ----
+    ##################################
+    my_custom_model = exp.create_model(forecaster)
+    assert type(my_custom_model) == type(forecaster)
+
+    ################################
+    #### Test Tune Custom Model ----
+    ################################
+    impute_values = ["drift", "bfill", "ffill"]
+    my_grid = {"impute__method": impute_values}
+    tuned_model, tuner = exp.tune_model(
+        my_custom_model, custom_grid=my_grid, return_tuner=True,
+    )
+    assert type(tuned_model) == type(forecaster)
+    assert "param_impute__method" in pd.DataFrame(tuner.cv_results_)
+    for index, method in enumerate(tuner.cv_results_.get("param_impute__method")):
+        assert method == impute_values[index]
+
+    ############################
+    #### Test Tuning raises ----
+    ############################
+    # No custom grid passed when tuning custom model
+    with pytest.raises(ValueError) as errmsg:
+        _ = exp.tune_model(my_custom_model)
+
+    # Capture Error message
+    exceptionmsg = errmsg.value.args[0]
+
+    # Check exact error received
+    assert (
+        f"When passing a model not in PyCaret's model library, the custom_grid parameter must be provided."
+        in exceptionmsg
+    )
+

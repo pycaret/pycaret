@@ -99,6 +99,7 @@ def _return_model_names():
         "gpu_param": False,
         "X_train": pd.DataFrame(get_data("airline")),
         "enforce_pi": False,
+        "seasonal_period": 2,
     }
     model_containers = get_all_model_containers(globals_dict)
 
@@ -120,24 +121,47 @@ def _return_model_names():
 def _return_model_parameters():
     """Parameterize individual models.
     Returns the model names and the corresponding forecast horizons.
-    Horizons are alternately picked to be either integers or numpy arrays
+    Horizons are alternately picked to be either
+        (1) integers or
+        (2) numpy arrays (continuous)
+        (3) numpy arrays (with gaps)
     """
     model_names = _return_model_names()
-    parameters = [
-        (name, np.arange(1, randint(6, 24)) if i % 2 == 0 else randint(6, 24))
-        for i, name in enumerate(model_names)
-    ]
+
+    parameters = []
+    for i, name in enumerate(model_names):
+        if i % 3 == 0:
+            # Integer
+            fh = randint(6, 24)
+        elif i % 3 == 1:
+            # numpy arrays (continuous)
+            fh = np.arange(1, randint(13, 25))
+        else:
+            # i%3 = 2
+            # numpy arrays (with gaps)
+            fh = np.arange(randint(6, 12), randint(13, 25))
+
+        parameters.append((name, fh))
 
     return parameters
 
 
 def _return_splitter_args():
-    """[summary]
+    """fold, fh, fold_strategy
     """
     parametrize_list = [
+        ## fh: Integer
         (randint(2, 5), randint(5, 10), "expanding"),
         (randint(2, 5), randint(5, 10), "rolling"),
         (randint(2, 5), randint(5, 10), "sliding"),
+        ## fh: Continuous np.array
+        (randint(2, 5), np.arange(1, randint(5, 10)), "expanding"),
+        (randint(2, 5), np.arange(1, randint(5, 10)), "rolling"),
+        (randint(2, 5), np.arange(1, randint(5, 10)), "sliding"),
+        # Non continuous np.array
+        (randint(2, 5), np.arange(randint(3, 5), randint(6, 10)), "expanding"),
+        (randint(2, 5), np.arange(randint(3, 5), randint(6, 10)), "rolling"),
+        (randint(2, 5), np.arange(randint(3, 5), randint(6, 10)), "sliding"),
     ]
     return parametrize_list
 

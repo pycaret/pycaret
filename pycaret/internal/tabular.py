@@ -180,6 +180,7 @@ def compare_models(
     errors: str = "ignore",
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
+    probability_threshold: Optional[float] = None,
     verbose: bool = True,
     display: Optional[Display] = None,
 ) -> List[Any]:
@@ -532,34 +533,25 @@ def compare_models(
         logger.info(
             "SubProcess create_model() called =================================="
         )
+        create_model_args = dict(
+            estimator=model,
+            system=False,
+            verbose=False,
+            display=display,
+            fold=fold,
+            round=round,
+            cross_validation=cross_validation,
+            fit_kwargs=fit_kwargs,
+            groups=groups,
+            probability_threshold=probability_threshold,
+            refit=False,
+        )
         if errors == "raise":
-            model, model_fit_time = create_model_supervised(
-                estimator=model,
-                system=False,
-                verbose=False,
-                display=display,
-                fold=fold,
-                round=round,
-                cross_validation=cross_validation,
-                fit_kwargs=fit_kwargs,
-                groups=groups,
-                refit=False,
-            )
+            model, model_fit_time = create_model_supervised(**create_model_args)
             model_results = pull(pop=True)
         else:
             try:
-                model, model_fit_time = create_model_supervised(
-                    estimator=model,
-                    system=False,
-                    verbose=False,
-                    display=display,
-                    fold=fold,
-                    round=round,
-                    cross_validation=cross_validation,
-                    fit_kwargs=fit_kwargs,
-                    groups=groups,
-                    refit=False,
-                )
+                model, model_fit_time = create_model_supervised(**create_model_args)
                 model_results = pull(pop=True)
                 assert np.sum(model_results.iloc[0]) != 0.0
             except:
@@ -568,17 +560,7 @@ def compare_models(
                 )
                 logger.warning(traceback.format_exc())
                 try:
-                    model, model_fit_time = create_model_supervised(
-                        estimator=model,
-                        system=False,
-                        verbose=False,
-                        display=display,
-                        fold=fold,
-                        round=round,
-                        cross_validation=cross_validation,
-                        groups=groups,
-                        refit=False,
-                    )
+                    model, model_fit_time = create_model_supervised(**create_model_args)
                     model_results = pull(pop=True)
                     assert np.sum(model_results.iloc[0]) != 0.0
                 except:
@@ -693,31 +675,25 @@ def compare_models(
             if index in n_select_range:
                 display.update_monitor(2, _get_model_name(model))
                 display.display_monitor()
+                create_model_args = dict(
+                    estimator=model,
+                    system=False,
+                    verbose=False,
+                    fold=fold,
+                    round=round,
+                    cross_validation=False,
+                    predict=False,
+                    fit_kwargs=fit_kwargs,
+                    groups=groups,
+                    probability_threshold=probability_threshold,
+                )
                 if errors == "raise":
-                    model, model_fit_time = create_model_supervised(
-                        estimator=model,
-                        system=False,
-                        verbose=False,
-                        fold=fold,
-                        round=round,
-                        cross_validation=False,
-                        predict=False,
-                        fit_kwargs=fit_kwargs,
-                        groups=groups,
-                    )
+                    model, model_fit_time = create_model_supervised(**create_model_args)
                     sorted_models.append(model)
                 else:
                     try:
                         model, model_fit_time = create_model_supervised(
-                            estimator=model,
-                            system=False,
-                            verbose=False,
-                            fold=fold,
-                            round=round,
-                            cross_validation=False,
-                            predict=False,
-                            fit_kwargs=fit_kwargs,
-                            groups=groups,
+                            **create_model_args
                         )
                         sorted_models.append(model)
                         assert np.sum(model_results.iloc[0]) != 0.0
@@ -1164,6 +1140,7 @@ def create_model_supervised(
     y_train_data: Optional[pd.DataFrame] = None,  # added in pycaret==2.2.0
     metrics=None,
     add_to_model_list: bool = True,
+    probability_threshold: Optional[float] = None,
     display: Optional[Display] = None,  # added in pycaret==2.2.0
     **kwargs,
 ) -> Any:
@@ -1436,6 +1413,18 @@ def create_model_supervised(
         model = PowerTransformedTargetRegressor(
             regressor=model, power_transformer_method=transform_target_method_param
         )
+    if (
+        probability_threshold
+        and _ml_usecase == MLUsecase.CLASSIFICATION
+        and not _is_multiclass()
+    ):
+        if not isinstance(model, CustomProbabilityThresholdClassifier):
+            model = CustomProbabilityThresholdClassifier(
+                classifier=model,
+                probability_threshold=probability_threshold,
+            )
+        elif probability_threshold is not None:
+            model.set_params(probability_threshold=probability_threshold)
 
     logger.info(f"{full_name} Imported succesfully")
 
@@ -1556,7 +1545,10 @@ def create_model_supervised(
         logger.info("Creating metrics dataframe")
 
         model_results = pd.DataFrame(score_dict)
-        model_avgs = pd.DataFrame(avgs_dict, index=["Mean", "SD"],)
+        model_avgs = pd.DataFrame(
+            avgs_dict,
+            index=["Mean", "SD"],
+        )
 
         model_results = model_results.append(model_avgs)
         model_results = model_results.round(round)
@@ -1699,23 +1691,26 @@ def tune_model_unsupervised(
         metrics = pycaret.containers.metrics.classification.get_all_metric_containers(
             temp_globals, raise_errors=True
         )
-        available_estimators = pycaret.containers.models.classification.get_all_model_containers(
-            temp_globals, raise_errors=True
+        available_estimators = (
+            pycaret.containers.models.classification.get_all_model_containers(
+                temp_globals, raise_errors=True
+            )
         )
         ml_usecase = MLUsecase.CLASSIFICATION
     elif supervised_type == "regression":
         metrics = pycaret.containers.metrics.regression.get_all_metric_containers(
             temp_globals, raise_errors=True
         )
-        available_estimators = pycaret.containers.models.regression.get_all_model_containers(
-            temp_globals, raise_errors=True
+        available_estimators = (
+            pycaret.containers.models.regression.get_all_model_containers(
+                temp_globals, raise_errors=True
+            )
         )
         ml_usecase = MLUsecase.REGRESSION
     else:
         raise ValueError(
             f"supervised_type param must be either 'classification' or 'regression'."
         )
-
     fold = _get_cv_splitter(fold, ml_usecase)
 
     if isinstance(supervised_estimator, str):
@@ -1775,39 +1770,6 @@ def tune_model_unsupervised(
             ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
             ["Status", ". . . . . . . . . . . . . . . . . .", "Loading Dependencies"],
             ["Estimator", ". . . . . . . . . . . . . . . . . .", "Compiling Library"],
-        ]
-        display = Display(
-            verbose=verbose,
-            html_param=html_param,
-            progress_args=progress_args,
-            master_display_columns=master_display_columns,
-            monitor_rows=monitor_rows,
-        )
-
-        display.display_progress()
-        display.display_monitor()
-        display.display_master_display()
-
-    unsupervised_models = {}
-    unsupervised_models_results = {}
-    unsupervised_grids = {0: data_X}
-
-    logger.info("Fitting unsupervised models")
-
-    for k in param_grid:
-        if _ml_usecase == MLUsecase.CLUSTERING:
-            try:
-                new_model, _ = create_model_unsupervised(
-                    model,
-                    num_clusters=k,
-                    X_data=data_X,
-                    display=display,
-                    system=False,
-                    ground_truth=ground_truth,
-                    round=round,
-                    fit_kwargs=fit_kwargs,
-                    raise_num_clusters=True,
-                    **kwargs,
                 )
             except ValueError:
                 raise ValueError(
@@ -1834,7 +1796,8 @@ def tune_model_unsupervised(
         )
         if _ml_usecase == MLUsecase.CLUSTERING:
             unsupervised_grids[k] = pd.get_dummies(
-                unsupervised_grids[k], columns=["Cluster"],
+                unsupervised_grids[k],
+                columns=["Cluster"],
             )
         elif method == "drop":
             unsupervised_grids[k] = unsupervised_grids[k][
@@ -3019,6 +2982,7 @@ def ensemble_model(
     optimize: str = "Accuracy",
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
+    probability_threshold: Optional[float] = None,
     verbose: bool = True,
     display: Optional[Display] = None,  # added in pycaret==2.2.0
 ) -> Any:
@@ -3303,6 +3267,7 @@ def ensemble_model(
         round=round,
         fit_kwargs=fit_kwargs,
         groups=groups,
+        probability_threshold=probability_threshold,
     )
     best_model = model
     model_results = pull()
@@ -3370,6 +3335,7 @@ def blend_models(
     weights: Optional[List[float]] = None,  # added in pycaret==2.2.0
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
+    probability_threshold: Optional[float] = None,
     verbose: bool = True,
     display: Optional[Display] = None,  # added in pycaret==2.2.0
 ) -> Any:
@@ -3650,6 +3616,7 @@ def blend_models(
         round=round,
         fit_kwargs=fit_kwargs,
         groups=groups,
+        probability_threshold=probability_threshold,
     )
     model_results = pull()
     logger.info("SubProcess create_model() end ==================================")
@@ -3709,6 +3676,7 @@ def blend_models(
 def stack_models(
     estimator_list: list,
     meta_model=None,
+    meta_model_fold: Optional[Union[int, Any]] = 5,
     fold: Optional[Union[int, Any]] = None,
     round: int = 4,
     method: str = "auto",
@@ -3717,6 +3685,7 @@ def stack_models(
     optimize: str = "Accuracy",
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
+    probability_threshold: Optional[float] = None,
     verbose: bool = True,
     display: Optional[Display] = None,
 ) -> Any:
@@ -3755,6 +3724,12 @@ def stack_models(
 
     meta_model : object, default = None
         If set to None, Logistic Regression is used as a meta model.
+
+    meta_model_fold: integer or scikit-learn compatible CV generator, default = 5
+        Controls internal cross-validation. Can be an integer or a scikit-learn
+        CV generator. If set to an integer, will use (Stratifed)KFold CV with
+        that many folds. See scikit-learn documentation on Stacking for
+        more details.
 
     fold: integer or scikit-learn compatible CV generator, default = None
         Controls cross-validation. If None, will use the CV generator defined in setup().
@@ -3972,7 +3947,7 @@ def stack_models(
         model = stacking_model_definition.class_def(
             estimators=estimator_list,
             final_estimator=meta_model,
-            cv=fold,
+            cv=meta_model_fold,
             stack_method=method,
             n_jobs=_gpu_n_jobs_param,
             passthrough=restack,
@@ -3981,7 +3956,7 @@ def stack_models(
         model = stacking_model_definition.class_def(
             estimators=estimator_list,
             final_estimator=meta_model,
-            cv=fold,
+            cv=meta_model_fold,
             n_jobs=_gpu_n_jobs_param,
             passthrough=restack,
         )
@@ -4000,6 +3975,7 @@ def stack_models(
         round=round,
         fit_kwargs=fit_kwargs,
         groups=groups,
+        probability_threshold=probability_threshold,
     )
     model_results = pull()
     logger.info("SubProcess create_model() end ==================================")
@@ -4102,19 +4078,19 @@ def plot_model(
 
         * 'residuals_interactive' - Interactive Residual plots
         * 'auc' - Area Under the Curve
-        * 'threshold' - Discrimination Threshold           
-        * 'pr' - Precision Recall Curve                  
-        * 'confusion_matrix' - Confusion Matrix    
-        * 'error' - Class Prediction Error                
-        * 'class_report' - Classification Report        
-        * 'boundary' - Decision Boundary            
-        * 'rfe' - Recursive Feature Selection                 
-        * 'learning' - Learning Curve             
-        * 'manifold' - Manifold Learning            
-        * 'calibration' - Calibration Curve         
-        * 'vc' - Validation Curve                  
-        * 'dimension' - Dimension Learning           
-        * 'feature' - Feature Importance              
+        * 'threshold' - Discrimination Threshold
+        * 'pr' - Precision Recall Curve
+        * 'confusion_matrix' - Confusion Matrix
+        * 'error' - Class Prediction Error
+        * 'class_report' - Classification Report
+        * 'boundary' - Decision Boundary
+        * 'rfe' - Recursive Feature Selection
+        * 'learning' - Learning Curve
+        * 'manifold' - Manifold Learning
+        * 'calibration' - Calibration Curve
+        * 'vc' - Validation Curve
+        * 'dimension' - Dimension Learning
+        * 'feature' - Feature Importance
         * 'feature_all' - Feature Importance (All)
         * 'parameter' - Model Hyperparameter
         * 'lift' - Lift Curve
@@ -4366,6 +4342,9 @@ def plot_model(
     ), patch(
         "yellowbrick.utils.helpers.is_estimator",
         pycaret.internal.patches.yellowbrick.is_estimator,
+    ), patch(
+        "yellowbrick.utils.helpers.get_model_name",
+        pycaret.internal.patches.yellowbrick.get_model_name,
     ), estimator_pipeline(
         _internal_pipeline, model
     ) as pipeline_with_model:
@@ -4655,7 +4634,10 @@ def plot_model(
                 "SubProcess assign_model() called =================================="
             )
             b = assign_model(
-                pipeline_with_model, verbose=False, score=False, transformation=True,
+                pipeline_with_model,
+                verbose=False,
+                score=False,
+                transformation=True,
             ).reset_index(drop=True)
             logger.info(
                 "SubProcess assign_model() end =================================="
@@ -4799,7 +4781,9 @@ def plot_model(
                 hover_data=d.columns,
             )
 
-            fig.update_layout(height=600 * scale,)
+            fig.update_layout(
+                height=600 * scale,
+            )
 
             plot_filename = f"{plot_name}.html"
 
@@ -4979,7 +4963,10 @@ def plot_model(
             from yellowbrick.classifier import ConfusionMatrix
 
             visualizer = ConfusionMatrix(
-                pipeline_with_model, random_state=seed, fontsize=15, cmap="Greens",
+                pipeline_with_model,
+                random_state=seed,
+                fontsize=15,
+                cmap="Greens",
             )
             show_yellowbrick_plot(
                 visualizer=visualizer,
@@ -5162,7 +5149,7 @@ def plot_model(
             with fit_if_not_fitted(
                 pipeline_with_model, data_X, data_y, groups=groups, **fit_kwargs
             ) as fitted_pipeline_with_model:
-                y_test__ = test_y #fitted_pipeline_with_model.predict(X_test)
+                y_test__ = test_y  # fitted_pipeline_with_model.predict(X_test)
                 predict_proba__ = fitted_pipeline_with_model.predict_proba(X_test)
             display.move_progress()
             display.move_progress()
@@ -5191,7 +5178,7 @@ def plot_model(
             with fit_if_not_fitted(
                 pipeline_with_model, data_X, data_y, groups=groups, **fit_kwargs
             ) as fitted_pipeline_with_model:
-                y_test__ = test_y #fitted_pipeline_with_model.predict(X_test)
+                y_test__ = test_y  # fitted_pipeline_with_model.predict(X_test)
                 predict_proba__ = fitted_pipeline_with_model.predict_proba(X_test)
             display.move_progress()
             display.move_progress()
@@ -5400,7 +5387,7 @@ def plot_model(
                 if not isinstance(save, bool):
                     plot_filename = os.path.join(save, plot_name)
                 else:
-                    plot_filename = plot
+                    plot_filename = plot_name
                 logger.info(f"Saving '{plot_filename}.png'")
                 plt.savefig(f"{plot_filename}.png", bbox_inches="tight")
             elif system:
@@ -5664,7 +5651,7 @@ def plot_model(
                 if not isinstance(save, bool):
                     plot_filename = os.path.join(save, plot_name)
                 else:
-                    plot_filename = plot
+                    plot_filename = plot_name
                 logger.info(f"Saving '{plot_filename}.png'")
                 plt.savefig(f"{plot_filename}.png", bbox_inches="tight")
             elif system:
@@ -6278,6 +6265,7 @@ def interpret_model(
 def calibrate_model(
     estimator,
     method: str = "sigmoid",
+    calibrate_fold: Optional[Union[int, Any]] = None,
     fold: Optional[Union[int, Any]] = None,
     round: int = 4,
     fit_kwargs: Optional[dict] = None,
@@ -6425,6 +6413,11 @@ def calibrate_model(
 
     np.random.seed(seed)
 
+    probability_threshold = None
+    if isinstance(estimator, CustomProbabilityThresholdClassifier):
+        probability_threshold = estimator.probability_threshold
+        estimator = get_estimator_from_meta_estimator(estimator)
+
     logger.info("Getting model name")
 
     full_name = _get_model_name(estimator)
@@ -6453,7 +6446,7 @@ def calibrate_model(
     model = calibrated_model_definition.class_def(
         base_estimator=estimator,
         method=method,
-        cv=fold,
+        cv=calibrate_fold,
         **calibrated_model_definition.args,
     )
 
@@ -6468,6 +6461,7 @@ def calibrate_model(
         round=round,
         fit_kwargs=fit_kwargs,
         groups=groups,
+        probability_threshold=probability_threshold,
     )
     model_results = pull()
     logger.info("SubProcess create_model() end ==================================")
@@ -6626,7 +6620,7 @@ def optimize_threshold(
     """
 
     # define model as estimator
-    model = estimator
+    model = get_estimator_from_meta_estimator(estimator)
 
     model_name = _get_model_name(model)
 
@@ -6838,7 +6832,9 @@ def assign_model(
 
 
 def predict_model_unsupervised(
-    estimator, data: pd.DataFrame, ml_usecase: Optional[MLUsecase] = None,
+    estimator,
+    data: pd.DataFrame,
+    ml_usecase: Optional[MLUsecase] = None,
 ) -> pd.DataFrame:
     function_params_str = ", ".join(
         [f"{k}={v}" for k, v in locals().items() if k != "data"]
@@ -6984,17 +6980,11 @@ def predict_model(
     if probability_threshold is not None:
         # probability_threshold allowed types
         allowed_types = [int, float]
-        if type(probability_threshold) not in allowed_types:
-            raise TypeError(
-                "probability_threshold parameter only accepts value between 0 to 1."
-            )
-
-        if probability_threshold > 1:
-            raise TypeError(
-                "probability_threshold parameter only accepts value between 0 to 1."
-            )
-
-        if probability_threshold < 0:
+        if (
+            type(probability_threshold) not in allowed_types
+            or probability_threshold > 1
+            or probability_threshold < 0
+        ):
             raise TypeError(
                 "probability_threshold parameter only accepts value between 0 to 1."
             )
@@ -7011,9 +7001,15 @@ def predict_model(
     try:
         np.random.seed(seed)
         if not display:
-            display = Display(verbose=verbose, html_param=html_param,)
+            display = Display(
+                verbose=verbose,
+                html_param=html_param,
+            )
     except:
-        display = Display(verbose=False, html_param=False,)
+        display = Display(
+            verbose=False,
+            html_param=False,
+        )
 
     dtypes = None
 
@@ -7064,6 +7060,10 @@ def predict_model(
             label_column.replace(replacement_mapper, inplace=True)
 
     # prediction starts here
+    if isinstance(estimator, CustomProbabilityThresholdClassifier):
+        if probability_threshold is None:
+            probability_threshold = estimator.probability_threshold
+        estimator = get_estimator_from_meta_estimator(estimator)
 
     pred = np.nan_to_num(estimator.predict(X_test_))
 
@@ -7217,7 +7217,10 @@ def finalize_model(
     groups = _get_groups(groups, data=X, fold_groups=fold_groups_param_full)
 
     if not display:
-        display = Display(verbose=False, html_param=html_param,)
+        display = Display(
+            verbose=False,
+            html_param=html_param,
+        )
 
     np.random.seed(seed)
 
@@ -7390,32 +7393,32 @@ def deploy_model(
 
 def create_webservice(model, model_endopoint, api_key=True, pydantic_payload=None):
     """
-    (In Preview)
+     (In Preview)
 
-    This function deploys the transformation pipeline and trained model object as api. Rest api base on FastAPI and could run on localhost, it uses
-   the model name as a path to POST endpoint. The endpoint can be protected by api key generated by pycaret and return for the user.
-    Create_webservice uses pydantic style input/output model.
-    Parameters
-    ----------
-    model : object
-        A trained model object should be passed as an estimator.
+     This function deploys the transformation pipeline and trained model object as api. Rest api base on FastAPI and could run on localhost, it uses
+    the model name as a path to POST endpoint. The endpoint can be protected by api key generated by pycaret and return for the user.
+     Create_webservice uses pydantic style input/output model.
+     Parameters
+     ----------
+     model : object
+         A trained model object should be passed as an estimator.
 
-    model_endopoint : string
-        Name of model to be passed as a string.
+     model_endopoint : string
+         Name of model to be passed as a string.
 
-    api_key: bool, default = True
-        Security for API, if True Pycaret generates api key and print in console,
-        else user can post data without header but it not safe if application will
-        expose external.
+     api_key: bool, default = True
+         Security for API, if True Pycaret generates api key and print in console,
+         else user can post data without header but it not safe if application will
+         expose external.
 
-    pydantic_payload: pydantic.main.ModelMetaclass, default = None
-        Pycaret allows us to automatically generate a schema for the input model,
-        thanks to which can prevent incorrect requests. User can generate own pydantic model and use it as an input model.
+     pydantic_payload: pydantic.main.ModelMetaclass, default = None
+         Pycaret allows us to automatically generate a schema for the input model,
+         thanks to which can prevent incorrect requests. User can generate own pydantic model and use it as an input model.
 
-    Returns
-    -------
-    Dictionary with api_key: FastAPI application class which is ready to run with console
-    if api_key is set to False, the dictionary key is set to 'Not_exist'.
+     Returns
+     -------
+     Dictionary with api_key: FastAPI application class which is ready to run with console
+     if api_key is set to False, the dictionary key is set to 'Not_exist'.
 
     """
 
@@ -7624,7 +7627,7 @@ def save_model(
         When set to True, only trained model object is saved and all the
         transformations are ignored.
 
-    **kwargs: 
+    **kwargs:
         Additional keyword arguments to pass to joblib.dump().
 
     verbose: bool, default = True
@@ -7816,7 +7819,9 @@ def pull(pop=False) -> pd.DataFrame:  # added in pycaret==2.2.0
 
 
 def models(
-    type: Optional[str] = None, internal: bool = False, raise_errors: bool = True,
+    type: Optional[str] = None,
+    internal: bool = False,
+    raise_errors: bool = True,
 ) -> pd.DataFrame:
 
     """
@@ -7878,6 +7883,7 @@ def models(
             "catboost",
             "ada",
         ],
+        "dummy": ["dummy"],
     }
 
     def filter_model_df_by_type(df):
@@ -7894,16 +7900,22 @@ def models(
     logger.info(f"gpu_param set to {gpu_param}")
 
     if _ml_usecase == MLUsecase.CLASSIFICATION:
-        model_containers = pycaret.containers.models.classification.get_all_model_containers(
-            globals(), raise_errors
+        model_containers = (
+            pycaret.containers.models.classification.get_all_model_containers(
+                globals(), raise_errors
+            )
         )
     elif _ml_usecase == MLUsecase.REGRESSION:
-        model_containers = pycaret.containers.models.regression.get_all_model_containers(
-            globals(), raise_errors
+        model_containers = (
+            pycaret.containers.models.regression.get_all_model_containers(
+                globals(), raise_errors
+            )
         )
     elif _ml_usecase == MLUsecase.CLUSTERING:
-        model_containers = pycaret.containers.models.clustering.get_all_model_containers(
-            globals(), raise_errors
+        model_containers = (
+            pycaret.containers.models.clustering.get_all_model_containers(
+                globals(), raise_errors
+            )
         )
     elif _ml_usecase == MLUsecase.ANOMALY:
         model_containers = pycaret.containers.models.anomaly.get_all_model_containers(
@@ -7922,7 +7934,9 @@ def models(
 
 
 def get_metrics(
-    reset: bool = False, include_custom: bool = True, raise_errors: bool = True,
+    reset: bool = False,
+    include_custom: bool = True,
+    raise_errors: bool = True,
 ) -> pd.DataFrame:
     """
     Returns table of metrics available.
@@ -7959,12 +7973,16 @@ def get_metrics(
 
     if reset:
         if _ml_usecase == MLUsecase.CLASSIFICATION:
-            _all_metrics = pycaret.containers.metrics.classification.get_all_metric_containers(
-                globals(), raise_errors
+            _all_metrics = (
+                pycaret.containers.metrics.classification.get_all_metric_containers(
+                    globals(), raise_errors
+                )
             )
         elif _ml_usecase == MLUsecase.REGRESSION:
-            _all_metrics = pycaret.containers.metrics.regression.get_all_metric_containers(
-                globals(), raise_errors
+            _all_metrics = (
+                pycaret.containers.metrics.regression.get_all_metric_containers(
+                    globals(), raise_errors
+                )
             )
 
     metric_containers = _all_metrics
@@ -8059,16 +8077,18 @@ def add_metric(
         raise ValueError("id already present in metrics dataframe.")
 
     if _ml_usecase == MLUsecase.CLASSIFICATION:
-        new_metric = pycaret.containers.metrics.classification.ClassificationMetricContainer(
-            id=id,
-            name=name,
-            score_func=score_func,
-            target=target,
-            args=kwargs,
-            display_name=name,
-            greater_is_better=greater_is_better,
-            is_multiclass=bool(multiclass),
-            is_custom=True,
+        new_metric = (
+            pycaret.containers.metrics.classification.ClassificationMetricContainer(
+                id=id,
+                name=name,
+                score_func=score_func,
+                target=target,
+                args=kwargs,
+                display_name=name,
+                greater_is_better=greater_is_better,
+                is_multiclass=bool(multiclass),
+                is_custom=True,
+            )
         )
     else:
         new_metric = pycaret.containers.metrics.regression.RegressionMetricContainer(
@@ -8308,11 +8328,15 @@ def load_config(file_name: str):
             ).items()
             if not v.is_special
         }
-        _all_models_internal = pycaret.containers.models.classification.get_all_model_containers(
-            globals(), raise_errors=True
+        _all_models_internal = (
+            pycaret.containers.models.classification.get_all_model_containers(
+                globals(), raise_errors=True
+            )
         )
-        _all_metrics = pycaret.containers.metrics.classification.get_all_metric_containers(
-            globals(), raise_errors=True
+        _all_metrics = (
+            pycaret.containers.metrics.classification.get_all_metric_containers(
+                globals(), raise_errors=True
+            )
         )
     elif _ml_usecase == MLUsecase.REGRESSION:
         _all_models = {
@@ -8322,8 +8346,10 @@ def load_config(file_name: str):
             ).items()
             if not v.is_special
         }
-        _all_models_internal = pycaret.containers.models.regression.get_all_model_containers(
-            globals(), raise_errors=True
+        _all_models_internal = (
+            pycaret.containers.models.regression.get_all_model_containers(
+                globals(), raise_errors=True
+            )
         )
         _all_metrics = pycaret.containers.metrics.regression.get_all_metric_containers(
             globals(), raise_errors=True
@@ -8336,8 +8362,10 @@ def load_config(file_name: str):
             ).items()
             if not v.is_special
         }
-        _all_models_internal = pycaret.containers.models.clustering.get_all_model_containers(
-            globals(), raise_errors=True
+        _all_models_internal = (
+            pycaret.containers.models.clustering.get_all_model_containers(
+                globals(), raise_errors=True
+            )
         )
         _all_metrics = pycaret.containers.metrics.clustering.get_all_metric_containers(
             globals(), raise_errors=True
@@ -8351,8 +8379,10 @@ def load_config(file_name: str):
             ).items()
             if not v.is_special
         }
-        _all_models_internal = pycaret.containers.models.anomaly.get_all_model_containers(
-            globals(), raise_errors=True
+        _all_models_internal = (
+            pycaret.containers.models.anomaly.get_all_model_containers(
+                globals(), raise_errors=True
+            )
         )
         _all_metrics = pycaret.containers.metrics.anomaly.get_all_metric_containers(
             globals(), raise_errors=True
@@ -8381,7 +8411,7 @@ def get_leaderboard(
     result_container = get_config("create_model_container")
 
     if not display:
-        progress_args = {"max": len(model_container)+1}
+        progress_args = {"max": len(model_container) + 1}
         timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
         monitor_rows = [
             ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
@@ -8401,7 +8431,9 @@ def get_leaderboard(
     result_container_mean = []
     finalized_models = []
 
-    display.update_monitor(1, "Finalizing models" if finalize_models else "Collecting models")
+    display.update_monitor(
+        1, "Finalizing models" if finalize_models else "Collecting models"
+    )
     for i in range(len(result_container)):
         model_results = result_container[i]
         mean_scores = model_results[-2:-1]
@@ -8410,13 +8442,11 @@ def get_leaderboard(
         mean_scores["Model Name"] = model_name
         display.update_monitor(2, model_name)
         if finalize_models:
-            model = (
-                finalize_model(
-                    model_container[i],
-                    fit_kwargs=fit_kwargs,
-                    groups=groups,
-                    model_only=model_only,
-                )
+            model = finalize_model(
+                model_container[i],
+                fit_kwargs=fit_kwargs,
+                groups=groups,
+                model_only=model_only,
             )
         else:
             model = deepcopy(model_container[i])
@@ -8568,7 +8598,10 @@ def _is_special_model(e, models=None) -> bool:
 
 
 def _calculate_metrics_supervised(
-    y_test, pred, pred_prob, weights: Optional[list] = None,
+    y_test,
+    pred,
+    pred_prob,
+    weights: Optional[list] = None,
 ) -> dict:
     """
     Calculate all metrics in _all_metrics.
@@ -8586,8 +8619,10 @@ def _calculate_metrics_supervised(
     except:
         ml_usecase = get_ml_task(y_test)
         if ml_usecase == MLUsecase.CLASSIFICATION:
-            metrics = pycaret.containers.metrics.classification.get_all_metric_containers(
-                globals(), True
+            metrics = (
+                pycaret.containers.metrics.classification.get_all_metric_containers(
+                    globals(), True
+                )
             )
         elif ml_usecase == MLUsecase.REGRESSION:
             metrics = pycaret.containers.metrics.regression.get_all_metric_containers(

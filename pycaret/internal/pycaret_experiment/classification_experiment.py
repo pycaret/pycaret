@@ -2,6 +2,10 @@ from pycaret.internal.pycaret_experiment.utils import highlight_setup, MLUsecase
 from pycaret.internal.pycaret_experiment.supervised_experiment import (
     _SupervisedExperiment,
 )
+from pycaret.internal.meta_estimators import (
+    CustomProbabilityThresholdClassifier,
+    get_estimator_from_meta_estimator,
+)
 from pycaret.internal.utils import color_df
 import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
@@ -851,6 +855,7 @@ class ClassificationExperiment(_SupervisedExperiment):
         errors: str = "ignore",
         fit_kwargs: Optional[dict] = None,
         groups: Optional[Union[str, Any]] = None,
+        probability_threshold: Optional[float] = None,
         verbose: bool = True,
     ) -> Union[Any, List[Any]]:
 
@@ -934,6 +939,12 @@ class ClassificationExperiment(_SupervisedExperiment):
             as the column name in the dataset containing group labels.
 
 
+        probability_threshold: float, default = None
+            Threshold for converting predicted probability to class label.
+            It defaults to 0.5 for all classifiers unless explicitly defined 
+            in this parameter. Only applicable for binary classification.
+
+
         verbose: bool, default = True
             Score grid is not printed when verbose is set to False.
 
@@ -965,6 +976,7 @@ class ClassificationExperiment(_SupervisedExperiment):
             fit_kwargs=fit_kwargs,
             groups=groups,
             verbose=verbose,
+            probability_threshold=probability_threshold,
         )
 
     def create_model(
@@ -975,6 +987,7 @@ class ClassificationExperiment(_SupervisedExperiment):
         cross_validation: bool = True,
         fit_kwargs: Optional[dict] = None,
         groups: Optional[Union[str, Any]] = None,
+        probability_threshold: Optional[float] = None,
         verbose: bool = True,
         **kwargs,
     ) -> Any:
@@ -1048,6 +1061,12 @@ class ClassificationExperiment(_SupervisedExperiment):
             the column name in the dataset containing group labels.
 
 
+        probability_threshold: float, default = None
+            Threshold for converting predicted probability to class label.
+            It defaults to 0.5 for all classifiers unless explicitly defined 
+            in this parameter. Only applicable for binary classification.
+
+
         verbose: bool, default = True
             Score grid is not printed when verbose is set to False.
 
@@ -1077,6 +1096,7 @@ class ClassificationExperiment(_SupervisedExperiment):
             fit_kwargs=fit_kwargs,
             groups=groups,
             verbose=verbose,
+            probability_threshold=probability_threshold,
             **kwargs,
         )
 
@@ -1295,6 +1315,7 @@ class ClassificationExperiment(_SupervisedExperiment):
         optimize: str = "Accuracy",
         fit_kwargs: Optional[dict] = None,
         groups: Optional[Union[str, Any]] = None,
+        probability_threshold: Optional[float] = None,
         verbose: bool = True,
     ) -> Any:
 
@@ -1359,6 +1380,12 @@ class ClassificationExperiment(_SupervisedExperiment):
             the column name in the dataset containing group labels.
 
 
+        probability_threshold: float, default = None
+            Threshold for converting predicted probability to class label.
+            It defaults to 0.5 for all classifiers unless explicitly defined 
+            in this parameter. Only applicable for binary classification.
+
+
         verbose: bool, default = True
             Score grid is not printed when verbose is set to False.
 
@@ -1384,6 +1411,7 @@ class ClassificationExperiment(_SupervisedExperiment):
             optimize=optimize,
             fit_kwargs=fit_kwargs,
             groups=groups,
+            probability_threshold=probability_threshold,
             verbose=verbose,
         )
 
@@ -1398,6 +1426,7 @@ class ClassificationExperiment(_SupervisedExperiment):
         weights: Optional[List[float]] = None,
         fit_kwargs: Optional[dict] = None,
         groups: Optional[Union[str, Any]] = None,
+        probability_threshold: Optional[float] = None,
         verbose: bool = True,
     ) -> Any:
 
@@ -1468,6 +1497,12 @@ class ClassificationExperiment(_SupervisedExperiment):
             the column name in the dataset containing group labels.
 
 
+        probability_threshold: float, default = None
+            Threshold for converting predicted probability to class label.
+            It defaults to 0.5 for all classifiers unless explicitly defined 
+            in this parameter. Only applicable for binary classification.
+
+
         verbose: bool, default = True
             Score grid is not printed when verbose is set to False.
 
@@ -1488,12 +1523,14 @@ class ClassificationExperiment(_SupervisedExperiment):
             fit_kwargs=fit_kwargs,
             groups=groups,
             verbose=verbose,
+            probability_threshold=probability_threshold,
         )
 
     def stack_models(
         self,
         estimator_list: list,
         meta_model=None,
+        meta_model_fold: Optional[Union[int, Any]] = 5,
         fold: Optional[Union[int, Any]] = None,
         round: int = 4,
         method: str = "auto",
@@ -1502,6 +1539,7 @@ class ClassificationExperiment(_SupervisedExperiment):
         optimize: str = "Accuracy",
         fit_kwargs: Optional[dict] = None,
         groups: Optional[Union[str, Any]] = None,
+        probability_threshold: Optional[float] = None,
         verbose: bool = True,
     ) -> Any:
 
@@ -1530,6 +1568,13 @@ class ClassificationExperiment(_SupervisedExperiment):
 
         meta_model: scikit-learn compatible object, default = None
             When None, Logistic Regression is trained as a meta model.
+
+
+        meta_model_fold: integer or scikit-learn compatible CV generator, default = 5
+            Controls internal cross-validation. Can be an integer or a scikit-learn
+            CV generator. If set to an integer, will use (Stratifed)KFold CV with
+            that many folds. See scikit-learn documentation on Stacking for
+            more details.
 
 
         fold: int or scikit-learn compatible CV generator, default = None
@@ -1574,6 +1619,12 @@ class ClassificationExperiment(_SupervisedExperiment):
             the column name in the dataset containing group labels.
 
 
+        probability_threshold: float, default = None
+            Threshold for converting predicted probability to class label.
+            It defaults to 0.5 for all classifiers unless explicitly defined 
+            in this parameter. Only applicable for binary classification.
+
+
         verbose: bool, default = True
             Score grid is not printed when verbose is set to False.
 
@@ -1593,6 +1644,7 @@ class ClassificationExperiment(_SupervisedExperiment):
         return super().stack_models(
             estimator_list=estimator_list,
             meta_model=meta_model,
+            meta_model_fold=meta_model_fold,
             fold=fold,
             round=round,
             method=method,
@@ -1602,6 +1654,7 @@ class ClassificationExperiment(_SupervisedExperiment):
             fit_kwargs=fit_kwargs,
             groups=groups,
             verbose=verbose,
+            probability_threshold=probability_threshold,
         )
 
     def plot_model(
@@ -1917,6 +1970,7 @@ class ClassificationExperiment(_SupervisedExperiment):
         self,
         estimator,
         method: str = "sigmoid",
+        calibrate_fold: Optional[Union[int, Any]] = 5,
         fold: Optional[Union[int, Any]] = None,
         round: int = 4,
         fit_kwargs: Optional[dict] = None,
@@ -1954,6 +2008,12 @@ class ClassificationExperiment(_SupervisedExperiment):
             The method to use for calibration. Can be 'sigmoid' which corresponds to Platt's
             method or 'isotonic' which is a non-parametric approach. It is not advised to use
             isotonic calibration with too few calibration samples
+
+        calibrate_fold: integer or scikit-learn compatible CV generator, default = 5
+            Controls internal cross-validation. Can be an integer or a scikit-learn
+            CV generator. If set to an integer, will use (Stratifed)KFold CV with
+            that many folds. See scikit-learn documentation on Stacking for 
+            more details.
 
         fold: integer or scikit-learn compatible CV generator, default = None
             Controls cross-validation. If None, will use the CV generator defined in setup().
@@ -2076,6 +2136,11 @@ class ClassificationExperiment(_SupervisedExperiment):
 
         np.random.seed(self.seed)
 
+        probability_threshold = None
+        if isinstance(estimator, CustomProbabilityThresholdClassifier):
+            probability_threshold = estimator.probability_threshold
+            estimator = get_estimator_from_meta_estimator(estimator)
+
         self.logger.info("Getting model name")
 
         full_name = self._get_model_name(estimator)
@@ -2104,7 +2169,7 @@ class ClassificationExperiment(_SupervisedExperiment):
         model = calibrated_model_definition.class_def(
             base_estimator=estimator,
             method=method,
-            cv=fold,
+            cv=calibrate_fold,
             **calibrated_model_definition.args,
         )
 
@@ -2121,6 +2186,7 @@ class ClassificationExperiment(_SupervisedExperiment):
             round=round,
             fit_kwargs=fit_kwargs,
             groups=groups,
+            probability_threshold=probability_threshold,
         )
         model_results = self.pull()
         self.logger.info(
@@ -2288,7 +2354,7 @@ class ClassificationExperiment(_SupervisedExperiment):
         """
 
         # define model as estimator
-        model = estimator
+        model = get_estimator_from_meta_estimator(estimator)
 
         model_name = self._get_model_name(model)
 
