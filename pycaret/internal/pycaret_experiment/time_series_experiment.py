@@ -1,5 +1,6 @@
 from copy import deepcopy
 import os
+import re
 
 from sktime.forecasting.model_selection import (
     ExpandingWindowSplitter,
@@ -1082,6 +1083,17 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
             index_freq = data_.index.freqstr
             index_freq = index_freq.split("-")[0] or index_freq
+            # Checking whether the index_freq contains both digit and alphabet
+            if bool(re.search(r'\d', index_freq)):
+                temp = re.compile("([0-9]+)([a-zA-Z]+)")
+                res = temp.match(index_freq).groups()
+                # separating the digits and alphabets
+                if res[1] in SeasonalPeriod.__members__:
+                    self.seasonal_period = int(res[0]) * SeasonalPeriod[res[1]].value
+                else:
+                    raise ValueError(
+                    f"Unsupported Period frequency: {index_freq}, valid Period frequencies: {', '.join(SeasonalPeriod.__members__.keys())}"
+                )
 
             if index_freq in SeasonalPeriod.__members__:
                 self.seasonal_period = SeasonalPeriod[index_freq].value
