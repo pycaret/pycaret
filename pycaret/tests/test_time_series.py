@@ -106,18 +106,18 @@ def test_splitter_pass_cv_object(load_pos_and_neg_data):
         start_with_window=True,
     )
 
-    exp_name = setup(
+    exp = setup(
         data=load_pos_and_neg_data,
         fold=fold,  # should be ignored since we are passing explicit fold_strategy
         fh=fh_extended,  # should be ignored since we are passing explicit fold_strategy
         fold_strategy=fold_strategy,
     )
 
-    assert exp_name.fold_generator.initial_window == fold_strategy.initial_window
-    assert np.all(exp_name.fold_generator.fh == fold_strategy.fh)
-    assert exp_name.fold_generator.step_length == fold_strategy.step_length
-    num_folds = exp_name.get_config("fold_param")
-    y_train = exp_name.get_config("y_train")
+    assert exp.fold_generator.initial_window == fold_strategy.initial_window
+    assert np.all(exp.fold_generator.fh == fold_strategy.fh)
+    assert exp.fold_generator.step_length == fold_strategy.step_length
+    num_folds = exp.get_config("fold_param")
+    y_train = exp.get_config("y_train")
 
     expected = fold_strategy.get_n_splits(y=y_train)
     assert num_folds == expected

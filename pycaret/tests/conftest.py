@@ -48,20 +48,16 @@ def load_setup(load_pos_and_neg_data):
 @pytest.fixture(scope="session", name="load_models")
 def load_ts_models(load_setup):
     """Load all time series module models"""
-    globals_dict = {
-        "seed": 0,
-        "n_jobs_param": -1,
-        "gpu_param": False,
-        "X_train": pd.DataFrame(get_data("airline")),
-        "enforce_pi": False,
-    }
-    ts_models = get_all_model_containers(globals_dict)
-    ts_experiment = load_setup
-    from .time_series_test_utils import _BLEND_TEST_MODELS  # TODO Put it back once preprocessing supports series as X
+    exp = load_setup
+    model_containers = get_all_model_containers(exp)
+
+    from .time_series_test_utils import (
+        _BLEND_TEST_MODELS,
+    )  # TODO Put it back once preprocessing supports series as X
 
     ts_estimators = [
-        ts_experiment.create_model(key)
-        for key in ts_models.keys()
+        exp.create_model(key)
+        for key in model_containers.keys()
         if key in _BLEND_TEST_MODELS
     ]
 
