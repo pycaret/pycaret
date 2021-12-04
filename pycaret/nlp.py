@@ -3,7 +3,7 @@
 # License: MIT
 # Release: PyCaret 2.2.0
 # Last modified : 25/10/2020
-
+from pycaret.internal.utils import global_create_report
 
 def setup(
     data,
@@ -4753,3 +4753,7 @@ def get_topics(data, text, model=None, num_topics=4):
     c = create_model(model=model, num_topics=num_topics, verbose=False)
     dataset = assign_model(c, verbose=False)
     return dataset
+
+# pycaret report changes
+def create_report(model,report_name,export_as):
+	global_create_report(model,report_name,export_as,"nlp")

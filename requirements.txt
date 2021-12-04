@@ -27,3 +27,4 @@ imbalanced-learn==0.7.0
 scikit-plot #for lift and gain charts
 Boruta
 #numba<0.54
+mdutils
