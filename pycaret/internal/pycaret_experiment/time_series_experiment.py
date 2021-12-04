@@ -765,7 +765,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             display_container.extend([["Imputation Type", self.imputation_type]])
 
         display_container = pd.DataFrame(
-            display_container, columns=["Parameter", "Value"]
+            display_container, columns=["Description", "Value"]
         )
 
         return display_container
@@ -1037,6 +1037,12 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         self.preprocess = preprocess
         self.imputation_type = imputation_type
 
+        # Needed for compatibility with Regression and Classification.
+        # Not used in Time Series
+        self.fold_groups_param = None
+        self.fold_groups_param_full = None
+        self.transform_target_param = None
+
         # For later when we have multivariate time series
         ignore_features: Optional[List[str]] = None
         # Features to be ignored (are not read by self.dataset, self.X, etc...)
@@ -1211,9 +1217,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         # If `fh` is provided it splits by it
         y = data_[self.target_param]
         X = data_.drop(self.target_param, axis=1)
-        # # If no columns are left (i.e. univariate time series)
-        # if X.shape[1] == 0:
-        #     X = None
 
         y_train, y_test, X_train, X_test = temporal_train_test_split(y=y, X=X, fh=fh)
 
@@ -1290,11 +1293,11 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         #######################
 
         self.logger.info("Creating final display dataframe.")
-        self.display_container = self._get_setup_display()
-        self.logger.info(f"self.display_container: {self.display_container}")
+        setup_display_container: pd.DataFrame = self._get_setup_display()
+        self.logger.info(f"Setup Display Container: {setup_display_container}")
         if self.verbose:
             pd.set_option("display.max_rows", 100)
-            print(self.display_container.style.apply(highlight_setup))
+            print(setup_display_container)
             pd.reset_option("display.max_rows")  # Reset option
 
         #################
@@ -1309,7 +1312,14 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         self._all_metrics = self._get_metrics()
 
         runtime = np.array(time.time() - runtime_start).round(2)
+
+        #### Set self.display_container since it is needed for mlflow setup ----
+        # NOTE: It must be a dataframe at this point.
+        self.display_container = setup_display_container
         self._set_up_mlflow(runtime, log_data, log_profile)
+
+        # Convert display_container to list (containing styler) ----
+        self.display_container = [self.display_container.style.apply(highlight_setup)]
 
         self._setup_ran = True
 
@@ -1334,6 +1344,8 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             self.remove_metric("INPI")
 
         self.logger.info(f"setup() successfully completed in {runtime}s...............")
+
+        return self
 
     def compare_models(
         self,

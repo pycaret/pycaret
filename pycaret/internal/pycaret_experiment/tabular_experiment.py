@@ -26,7 +26,7 @@ from pycaret.internal.pipeline import (
     estimator_pipeline,
     get_pipeline_estimator_label,
     get_pipeline_fit_kwargs,
-    get_memory
+    get_memory,
 )
 from pycaret.internal.plots.helper import MatplotlibDefaultDPI
 from pycaret.internal.plots.yellowbrick import show_yellowbrick_plot
@@ -333,17 +333,13 @@ class _TabularExperiment(_PyCaretExperiment):
             from mlflow.models.signature import infer_signature
 
             try:
-                signature = infer_signature(
-                    self.data.drop([self.target_param], axis=1)
-                )
+                signature = infer_signature(self.data.drop([self.target_param], axis=1))
             except Exception:
                 self.logger.warning("Couldn't infer MLFlow signature.")
                 signature = None
             if not self._is_unsupervised():
                 input_example = (
-                    self.data.drop([self.target_param], axis=1)
-                    .iloc[0]
-                    .to_dict()
+                    self.data.drop([self.target_param], axis=1).iloc[0].to_dict()
                 )
             else:
                 input_example = self.data.iloc[0].to_dict()
@@ -370,7 +366,9 @@ class _TabularExperiment(_PyCaretExperiment):
             try:
                 import pandas_profiling
 
-                self.report = pandas_profiling.ProfileReport(self.data, **profile_kwargs)
+                self.report = pandas_profiling.ProfileReport(
+                    self.data, **profile_kwargs
+                )
             except Exception as ex:
                 print("Profiler Failed. No output to show, continue with modeling.")
                 self.logger.error(
@@ -468,6 +466,14 @@ class _TabularExperiment(_PyCaretExperiment):
                     raise ImportError(message)
                 else:
                     self.logger.warning(message)
+
+    @staticmethod
+    def plot_model_check_display_format_(display_format: Optional[str]):
+        """Checks if the display format is in the allowed list"""
+        plot_formats = [None, "streamlit"]
+
+        if display_format not in plot_formats:
+            raise ValueError("display_format can only be None or 'streamlit'.")
 
     def plot_model(
         self,
@@ -844,9 +850,7 @@ class _TabularExperiment(_PyCaretExperiment):
                             if feature_name is not None:
                                 pca_["Feature"] = self.data[feature_name]
                             else:
-                                pca_["Feature"] = self.data[
-                                    self.data.columns[0]
-                                ]
+                                pca_["Feature"] = self.data[self.data.columns[0]]
 
                             if label:
                                 pca_["Label"] = pca_["Feature"]
@@ -947,9 +951,7 @@ class _TabularExperiment(_PyCaretExperiment):
                             if feature_name is not None:
                                 df["Feature"] = self.data[feature_name]
                             else:
-                                df["Feature"] = self.data[
-                                    self.data.columns[0]
-                                ]
+                                df["Feature"] = self.data[self.data.columns[0]]
 
                             display.clear_output()
 
@@ -1019,9 +1021,7 @@ class _TabularExperiment(_PyCaretExperiment):
                             if feature_name is not None:
                                 X["Feature"] = self.data[feature_name]
                             else:
-                                X["Feature"] = self.data[
-                                    self.data.columns[0]
-                                ]
+                                X["Feature"] = self.data[self.data.columns[0]]
 
                             df = X
 
@@ -1102,13 +1102,9 @@ class _TabularExperiment(_PyCaretExperiment):
                             X_embedded["Cluster"] = cluster
 
                             if feature_name is not None:
-                                X_embedded["Feature"] = self.data[
-                                    feature_name
-                                ]
+                                X_embedded["Feature"] = self.data[feature_name]
                             else:
-                                X_embedded["Feature"] = self.data[
-                                    data_X.columns[0]
-                                ]
+                                X_embedded["Feature"] = self.data[data_X.columns[0]]
 
                             if label:
                                 X_embedded["Label"] = X_embedded["Feature"]
@@ -1118,7 +1114,9 @@ class _TabularExperiment(_PyCaretExperiment):
                             """
                             self.logger.info("Sorting dataframe")
 
-                            clus_num = [int(i.split()[1]) for i in X_embedded["Cluster"]]
+                            clus_num = [
+                                int(i.split()[1]) for i in X_embedded["Cluster"]
+                            ]
 
                             X_embedded["cnum"] = clus_num
                             X_embedded.sort_values(by="cnum", inplace=True)
@@ -1283,7 +1281,9 @@ class _TabularExperiment(_PyCaretExperiment):
                             except:
                                 self.logger.error("Elbow plot failed. Exception:")
                                 self.logger.error(traceback.format_exc())
-                                raise TypeError("Plot Type not supported for this model.")
+                                raise TypeError(
+                                    "Plot Type not supported for this model."
+                                )
 
                         def silhouette():
                             from yellowbrick.cluster import SilhouetteVisualizer
@@ -1310,7 +1310,9 @@ class _TabularExperiment(_PyCaretExperiment):
                             except:
                                 self.logger.error("Silhouette plot failed. Exception:")
                                 self.logger.error(traceback.format_exc())
-                                raise TypeError("Plot Type not supported for this model.")
+                                raise TypeError(
+                                    "Plot Type not supported for this model."
+                                )
 
                         def distance():
                             from yellowbrick.cluster import InterclusterDistance
@@ -1335,7 +1337,9 @@ class _TabularExperiment(_PyCaretExperiment):
                             except:
                                 self.logger.error("Distance plot failed. Exception:")
                                 self.logger.error(traceback.format_exc())
-                                raise TypeError("Plot Type not supported for this model.")
+                                raise TypeError(
+                                    "Plot Type not supported for this model."
+                                )
 
                         def residuals():
 
@@ -1504,7 +1508,9 @@ class _TabularExperiment(_PyCaretExperiment):
                             from yellowbrick.classifier import ClassificationReport
 
                             visualizer = ClassificationReport(
-                                pipeline_with_model, random_state=self.seed, support=True
+                                pipeline_with_model,
+                                random_state=self.seed,
+                                support=True,
                             )
                             show_yellowbrick_plot(
                                 visualizer=visualizer,
@@ -1619,9 +1625,7 @@ class _TabularExperiment(_PyCaretExperiment):
                                 "Generating predictions / predict_proba on X_test"
                             )
                             y_test__ = test_y
-                            predict_proba__ = pipeline_with_model.predict_proba(
-                                test_X
-                            )
+                            predict_proba__ = pipeline_with_model.predict_proba(test_X)
                             display.move_progress()
                             display.move_progress()
                             display.clear_output()
@@ -1634,7 +1638,9 @@ class _TabularExperiment(_PyCaretExperiment):
                                 if save:
                                     plot_filename = f"{plot_name}.png"
                                     if not isinstance(save, bool):
-                                        plot_filename = os.path.join(save, plot_filename)
+                                        plot_filename = os.path.join(
+                                            save, plot_filename
+                                        )
                                     self.logger.info(f"Saving '{plot_filename}'")
                                     plt.savefig(plot_filename, bbox_inches="tight")
                                 elif system:
@@ -1650,9 +1656,7 @@ class _TabularExperiment(_PyCaretExperiment):
                                 "Generating predictions / predict_proba on X_test"
                             )
                             y_test__ = test_y
-                            predict_proba__ = pipeline_with_model.predict_proba(
-                                test_X
-                            )
+                            predict_proba__ = pipeline_with_model.predict_proba(test_X)
                             display.move_progress()
                             display.move_progress()
                             display.clear_output()
@@ -1665,7 +1669,9 @@ class _TabularExperiment(_PyCaretExperiment):
                                 if save:
                                     plot_filename = f"{plot_name}.png"
                                     if not isinstance(save, bool):
-                                        plot_filename = os.path.join(save, plot_filename)
+                                        plot_filename = os.path.join(
+                                            save, plot_filename
+                                        )
                                     self.logger.info(f"Saving '{plot_filename}'")
                                     plt.savefig(plot_filename, bbox_inches="tight")
                                 elif system:
@@ -1679,7 +1685,9 @@ class _TabularExperiment(_PyCaretExperiment):
                             from yellowbrick.features import Manifold
 
                             data_X_transformed = data_X.select_dtypes(include="float32")
-                            visualizer = Manifold(manifold="tsne", random_state=self.seed)
+                            visualizer = Manifold(
+                                manifold="tsne", random_state=self.seed
+                            )
                             show_yellowbrick_plot(
                                 visualizer=visualizer,
                                 X_train=data_X_transformed,
@@ -1725,7 +1733,9 @@ class _TabularExperiment(_PyCaretExperiment):
                                 )
                                 is_ensemble_of_forests = True
                             elif "n_estimators" in tree_estimator.get_params():
-                                n_estimators = tree_estimator.get_params()["n_estimators"]
+                                n_estimators = tree_estimator.get_params()[
+                                    "n_estimators"
+                                ]
                             else:
                                 n_estimators = 1
                             if n_estimators > 10:
@@ -1759,9 +1769,7 @@ class _TabularExperiment(_PyCaretExperiment):
                                 }
                             else:
                                 class_names = None
-                            fitted_tree_estimator = pipeline_with_model.steps[
-                                -1
-                            ][1]
+                            fitted_tree_estimator = pipeline_with_model.steps[-1][1]
                             if is_stacked_model:
                                 stacked_feature_names = []
                                 if self._ml_usecase == MLUsecase.CLASSIFICATION:
@@ -1841,15 +1849,14 @@ class _TabularExperiment(_PyCaretExperiment):
                             ax1.plot([0, 1], [0, 1], "k:", label="Perfectly calibrated")
                             display.move_progress()
                             self.logger.info("Scoring test/hold-out set")
-                            prob_pos = pipeline_with_model.predict_proba(test_X)[
-                                :, 1
-                            ]
+                            prob_pos = pipeline_with_model.predict_proba(test_X)[:, 1]
                             prob_pos = (prob_pos - prob_pos.min()) / (
                                 prob_pos.max() - prob_pos.min()
                             )
-                            fraction_of_positives, mean_predicted_value = calibration_curve(
-                                test_y, prob_pos, n_bins=10
-                            )
+                            (
+                                fraction_of_positives,
+                                mean_predicted_value,
+                            ) = calibration_curve(test_y, prob_pos, n_bins=10)
                             display.move_progress()
                             ax1.plot(
                                 mean_predicted_value,
@@ -1913,23 +1920,34 @@ class _TabularExperiment(_PyCaretExperiment):
                                 # Catboost
                                 if "depth" in model_params:
                                     param_name = f"{actual_estimator_label}__depth"
-                                    param_range = np.arange(1, 8 if self.gpu_param else 11)
+                                    param_range = np.arange(
+                                        1, 8 if self.gpu_param else 11
+                                    )
 
                                 # SGD Classifier
-                                elif f"{actual_estimator_label}__l1_ratio" in model_params:
+                                elif (
+                                    f"{actual_estimator_label}__l1_ratio"
+                                    in model_params
+                                ):
                                     param_name = f"{actual_estimator_label}__l1_ratio"
                                     param_range = np.arange(0, 1, 0.01)
 
                                 # tree based models
-                                elif f"{actual_estimator_label}__max_depth" in model_params:
+                                elif (
+                                    f"{actual_estimator_label}__max_depth"
+                                    in model_params
+                                ):
                                     param_name = f"{actual_estimator_label}__max_depth"
                                     param_range = np.arange(1, 11)
 
                                 # knn
                                 elif (
-                                    f"{actual_estimator_label}__n_neighbors" in model_params
+                                    f"{actual_estimator_label}__n_neighbors"
+                                    in model_params
                                 ):
-                                    param_name = f"{actual_estimator_label}__n_neighbors"
+                                    param_name = (
+                                        f"{actual_estimator_label}__n_neighbors"
+                                    )
                                     param_range = np.arange(1, 11)
 
                                 # MLP / Ridge
@@ -1947,7 +1965,9 @@ class _TabularExperiment(_PyCaretExperiment):
                                     f"{actual_estimator_label}__n_estimators"
                                     in model_params
                                 ):
-                                    param_name = f"{actual_estimator_label}__n_estimators"
+                                    param_name = (
+                                        f"{actual_estimator_label}__n_estimators"
+                                    )
                                     param_range = np.arange(1, 1000, 10)
 
                                 # Naive Bayes
@@ -1955,11 +1975,16 @@ class _TabularExperiment(_PyCaretExperiment):
                                     f"{actual_estimator_label}__var_smoothing"
                                     in model_params
                                 ):
-                                    param_name = f"{actual_estimator_label}__var_smoothing"
+                                    param_name = (
+                                        f"{actual_estimator_label}__var_smoothing"
+                                    )
                                     param_range = np.arange(0.1, 1, 0.01)
 
                                 # QDA
-                                elif f"{actual_estimator_label}__reg_param" in model_params:
+                                elif (
+                                    f"{actual_estimator_label}__reg_param"
+                                    in model_params
+                                ):
                                     param_name = f"{actual_estimator_label}__reg_param"
                                     param_range = np.arange(0, 1, 0.1)
 
@@ -1984,14 +2009,18 @@ class _TabularExperiment(_PyCaretExperiment):
                                 # Catboost
                                 if "depth" in model_params:
                                     param_name = f"{actual_estimator_label}__depth"
-                                    param_range = np.arange(1, 8 if self.gpu_param else 11)
+                                    param_range = np.arange(
+                                        1, 8 if self.gpu_param else 11
+                                    )
 
                                 # lasso/ridge/en/llar/huber/kr/mlp/br/ard
                                 elif f"{actual_estimator_label}__alpha" in model_params:
                                     param_name = f"{actual_estimator_label}__alpha"
                                     param_range = np.arange(0, 1, 0.1)
 
-                                elif f"{actual_estimator_label}__alpha_1" in model_params:
+                                elif (
+                                    f"{actual_estimator_label}__alpha_1" in model_params
+                                ):
                                     param_name = f"{actual_estimator_label}__alpha_1"
                                     param_range = np.arange(0, 1, 0.1)
 
@@ -2001,15 +2030,21 @@ class _TabularExperiment(_PyCaretExperiment):
                                     param_range = np.arange(1, 11)
 
                                 # tree based models (dt/rf/et)
-                                elif f"{actual_estimator_label}__max_depth" in model_params:
+                                elif (
+                                    f"{actual_estimator_label}__max_depth"
+                                    in model_params
+                                ):
                                     param_name = f"{actual_estimator_label}__max_depth"
                                     param_range = np.arange(1, 11)
 
                                 # knn
                                 elif (
-                                    f"{actual_estimator_label}__n_neighbors" in model_params
+                                    f"{actual_estimator_label}__n_neighbors"
+                                    in model_params
                                 ):
-                                    param_name = f"{actual_estimator_label}__n_neighbors"
+                                    param_name = (
+                                        f"{actual_estimator_label}__n_neighbors"
+                                    )
                                     param_range = np.arange(1, 11)
 
                                 # Bagging / Boosting (ada/gbr)
@@ -2017,7 +2052,9 @@ class _TabularExperiment(_PyCaretExperiment):
                                     f"{actual_estimator_label}__n_estimators"
                                     in model_params
                                 ):
-                                    param_name = f"{actual_estimator_label}__n_estimators"
+                                    param_name = (
+                                        f"{actual_estimator_label}__n_estimators"
+                                    )
                                     param_range = np.arange(1, 1000, 10)
 
                                 # Bagging / Boosting (ada/gbr)
@@ -2048,7 +2085,8 @@ class _TabularExperiment(_PyCaretExperiment):
                                     param_range = np.arange(1000, 100000, 2000)
 
                                 elif (
-                                    f"{actual_estimator_label}__min_samples" in model_params
+                                    f"{actual_estimator_label}__min_samples"
+                                    in model_params
                                 ):
                                     param_name = (
                                         f"{actual_estimator_label}__max_subpopulation"
@@ -2166,9 +2204,14 @@ class _TabularExperiment(_PyCaretExperiment):
                             )
                             my_range = range(1, len(sorted_df.index) + 1)
                             display.move_progress()
-                            plt.figure(figsize=(8, 5 * (n // 10)), dpi=_base_dpi * scale)
+                            plt.figure(
+                                figsize=(8, 5 * (n // 10)), dpi=_base_dpi * scale
+                            )
                             plt.hlines(
-                                y=my_range, xmin=0, xmax=sorted_df["Value"], color="skyblue"
+                                y=my_range,
+                                xmin=0,
+                                xmax=sorted_df["Value"],
+                                color="skyblue",
                             )
                             plt.plot(sorted_df["Value"], my_range, "o")
                             display.move_progress()
@@ -2211,9 +2254,7 @@ class _TabularExperiment(_PyCaretExperiment):
                             self.logger.info(
                                 "Generating predictions / predict_proba on X_test"
                             )
-                            predict_proba__ = pipeline_with_model.predict_proba(
-                                data_X
-                            )
+                            predict_proba__ = pipeline_with_model.predict_proba(data_X)
                             display.move_progress()
                             display.move_progress()
                             display.clear_output()
@@ -2226,7 +2267,9 @@ class _TabularExperiment(_PyCaretExperiment):
                                 if save:
                                     plot_filename = f"{plot_name}.png"
                                     if not isinstance(save, bool):
-                                        plot_filename = os.path.join(save, plot_filename)
+                                        plot_filename = os.path.join(
+                                            save, plot_filename
+                                        )
                                     self.logger.info(f"Saving '{plot_filename}'")
                                     plt.savefig(plot_filename, bbox_inches="tight")
                                 elif system:
@@ -2688,7 +2731,11 @@ class _TabularExperiment(_PyCaretExperiment):
 
         """
         return pycaret.internal.persistence.save_model(
-            model, model_name, None if model_only else self._internal_pipeline, verbose, **kwargs
+            model,
+            model_name,
+            None if model_only else self._internal_pipeline,
+            verbose,
+            **kwargs,
         )
 
     def load_model(
