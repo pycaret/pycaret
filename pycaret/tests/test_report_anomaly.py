@@ -1,6 +1,6 @@
 import os, sys
 from pycaret.datasets import get_data
-from pycaret.anomaly import setup, create_model, create_report
+import pycaret.anomaly
 
 sys.path.insert(0, os.path.abspath(".."))
 
@@ -11,72 +11,72 @@ def _setup():
     data_unseen = dataset.drop(data.index)
     data.reset_index(drop=True, inplace=True)
     data_unseen.reset_index(drop=True, inplace=True)
-    exp_ano101 = setup(
+    exp_ano101 = pycaret.anomaly.setup(
         data, normalize=True, ignore_features=["MouseID"], session_id=123
     )
 
 
 def test_report_abod():
     _setup()
-    model = create_model("abod")
-    create_report(model, "report_anomaly_abod", "html")
+    model = pycaret.anomaly.create_model("abod")
+    pycaret.anomaly.create_report(model, "report_anomaly_abod", "html")
 
 
 def test_report_cluster():
     _setup()
-    model = create_model("cluster")
-    create_report(model, "report_anomaly_cluster", "html")
+    model = pycaret.anomaly.create_model("cluster")
+    pycaret.anomaly.create_report(model, "report_anomaly_cluster", "html")
 
 
 def test_report_cof():
     _setup()
-    model = create_model("cof")
-    create_report(model, "report_anomaly_cof", "html")
+    model = pycaret.anomaly.create_model("cof")
+    pycaret.anomaly.create_report(model, "report_anomaly_cof", "html")
 
 
 def test_report_histogram():
     _setup()
-    model = create_model("histogram")
-    create_report(model, "report_anomaly_histogram", "html")
+    model = pycaret.anomaly.create_model("histogram")
+    pycaret.anomaly.create_report(model, "report_anomaly_histogram", "html")
 
 
 def test_report_knn():
     _setup()
-    model = create_model("knn")
-    create_report(model, "report_anomaly_knn", "html")
+    model = pycaret.anomaly.create_model("knn")
+    pycaret.anomaly.create_report(model, "report_anomaly_knn", "html")
 
 
 def test_report_lof():
     _setup()
-    model = create_model("lof")
-    create_report(model, "report_anomaly_lof", "html")
+    model = pycaret.anomaly.create_model("lof")
+    pycaret.anomaly.create_report(model, "report_anomaly_lof", "html")
 
 
 def test_report_svm():
     _setup()
-    model = create_model("svm")
-    create_report(model, "report_anomaly_svm", "html")
+    model = pycaret.anomaly.create_model("svm")
+    pycaret.anomaly.create_report(model, "report_anomaly_svm", "html")
 
 
 def test_report_pca():
     _setup()
-    model = create_model("pca")
-    create_report(model, "report_anomaly_pca", "html")
+    model = pycaret.anomaly.create_model("pca")
+    pycaret.anomaly.create_report(model, "report_anomaly_pca", "html")
 
 
 def test_report_mcd():
     _setup()
-    model = create_model("mcd")
-    create_report(model, "report_anomaly_mcd", "html")
+    model = pycaret.anomaly.create_model("mcd")
+    pycaret.anomaly.create_report(model, "report_anomaly_mcd", "html")
 
 
 def test_report_sod():
     _setup()
-    model = create_model("sod")
-    create_report(model, "report_anomaly_sod", "html")
+    model = pycaret.anomaly.create_model("sod")
+    pycaret.anomaly.create_report(model, "report_anomaly_sod", "html")
 
 
 def test_report_sos():
     _setup()
-    model = create_model("sos")
-    create_report(model, "report_anomaly_sos", "html")
+    model = pycaret.anomaly.create_model("sos")
+    pycaret.anomaly.create_report(model, "report_anomaly_sos", "html")
