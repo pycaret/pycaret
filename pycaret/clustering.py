@@ -16,7 +16,7 @@ from typing import List, Tuple, Any, Union, Optional, Dict
 import pycaret.internal.tabular
 
 from pycaret.internal.tabular import MLUsecase
-from pycaret.internal.utils import global_create_report
+from pycaret.internal.report_generator import global_create_report
 
 warnings.filterwarnings("ignore")
 
@@ -1551,6 +1551,16 @@ def get_clusters(
     dataset = assign_model(c, verbose=False)
     return dataset
 
+
 # pycaret report changes
-def create_report(model,report_name,export_as):
-    global_create_report(model,report_name,export_as,"clustering")
+def create_report(model, report_name, export_as):
+    global_create_report(
+        model,
+        report_name,
+        export_as,
+        MLUsecase.CLUSTERING,
+        plot_model,
+        pycaret.internal.tabular._get_model_id,
+        pycaret.internal.tabular._get_model_name,
+        pycaret.internal.tabular._available_plots,
+    )

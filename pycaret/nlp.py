@@ -3,7 +3,8 @@
 # License: MIT
 # Release: PyCaret 2.2.0
 # Last modified : 25/10/2020
-from pycaret.internal.utils import global_create_report
+from pycaret.internal.report_generator import global_create_report
+
 
 def setup(
     data,
@@ -4754,6 +4755,59 @@ def get_topics(data, text, model=None, num_topics=4):
     dataset = assign_model(c, verbose=False)
     return dataset
 
+
 # pycaret report changes
-def create_report(model,report_name,export_as):
-	global_create_report(model,report_name,export_as,"nlp")
+def create_report(model, report_name, export_as):
+    def get_model_id(model) -> str:
+        from gensim.models.ldamulticore import LdaMulticore
+        from gensim.models.ldamodel import LdaModel
+        from gensim.models.lsimodel import LsiModel
+        from gensim.models import HdpModel
+        from gensim.models import RpModel
+        from sklearn.decomposition import NMF
+
+        if isinstance(model, (LdaMulticore, LdaModel)):
+            return "lda"
+        if isinstance(model, LsiModel):
+            return "lsi"
+        if isinstance(model, HdpModel):
+            return "hdp"
+        if isinstance(model, RpModel):
+            return "rp"
+        if isinstance(model, NMF):
+            return "nmf"
+        return None
+
+    def get_model_name(model: str) -> str:
+        return {
+            "lda": "Latent Dirichlet Allocation",
+            "lsi": "Latent Semantic Indexing",
+            "hdp": "Hierarchical Dirichlet Process",
+            "rp": "Random Projections",
+            "nmf": "Non-Negative Matrix Factorization",
+        }.get(get_model_id(model), model.__class__.__name__)
+
+    allowed_plots = {
+        "frequency": "Word Token Frequency",
+        "distribution": "Word Distribution Plot",
+        "bigram": "Bigram Frequency Plot",
+        "trigram": "Trigram Frequency Plot",
+        "sentiment": "Sentiment Polarity Plot",
+        "pos": "Part of Speech Frequency",
+        "tsne": "t-SNE (3d) Dimension Plot",
+        "topic_model": "Topic Model (pyLDAvis)",
+        "topic_distribution": "Topic Infer Distribution",
+        "wordcloud": "Wordcloud",
+        "umap": "UMAP Dimensionality Plot",
+    }
+
+    global_create_report(
+        model,
+        report_name,
+        export_as,
+        "nlp",
+        plot_model,
+        get_model_id,
+        get_model_name,
+        allowed_plots,
+    )
