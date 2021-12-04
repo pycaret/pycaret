@@ -38,6 +38,7 @@ from pycaret.internal.distributions import (
     CategoricalDistribution,
 )
 from pycaret.internal.utils import TSModelTypes
+
 # from pycaret.internal.pycaret_experiment import PyCaretExperiment
 import pycaret.containers.base_container
 
@@ -1193,7 +1194,7 @@ class ProphetContainer(TimeSeriesContainer):
         self.sp = sp if sp is not None else 1
 
         self.seasonality_present = experiment.seasonality_present
-        self.freq = experiment.get("freq")
+        # self.freq = experiment.get("freq")
 
         args = self._set_args
         tune_args = self._set_tune_args
