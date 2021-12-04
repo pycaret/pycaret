@@ -1,5 +1,6 @@
 from copy import deepcopy
 import os
+from joblib.memory import Memory
 
 from sktime.forecasting.model_selection import (
     ExpandingWindowSplitter,
@@ -731,51 +732,43 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             "residuals",
         ]
 
-    def _get_setup_display(self, **kwargs) -> Styler:
-        # define highlight function for function grid to display
+    def _get_setup_display(self, **kwargs) -> pd.DataFrame:
+        """Returns the dataframe to be displayed at the end of setup"""
 
-        functions = pd.DataFrame(
-            [
-                ["session_id", self.seed],
-                # ["Target", self.target_param],
-                ["Original Data", self.data_before_preprocess.shape],
-                ["Missing Values", kwargs["missing_flag"]],
-            ]
-            + (
-                [
-                    ["Transformed Train Set", self.y_train.shape],
-                    ["Transformed Test Set", self.y_test.shape],
-                    ["Fold Generator", type(self.fold_generator).__name__],
-                    ["Fold Number", self.fold_param],
-                    ["Enforce Prediction Interval", self.enforce_pi],
-                    ["Seasonal Period Tested", self.seasonal_period],
-                    ["Seasonality Detected", self.seasonality_present],
-                    ["Seasonality Used in Models", self.sp_to_use],
-                    ["Target Strictly Positive", self.strictly_positive],
-                    ["Target White Noise", self.white_noise],
-                    ["Recommended d", self.lowercase_d],
-                    ["Recommended Seasonal D", self.uppercase_d],
-                    ["CPU Jobs", self.n_jobs_param],
-                    ["Use GPU", self.gpu_param],
-                    ["Log Experiment", self.logging_param],
-                    ["Experiment Name", self.exp_name_log],
-                    ["USI", self.USI],
-                ]
-            )
-            + (
-                [["Imputation Type", kwargs["imputation_type"]],]
-                if self.preprocess
-                else []
-            ),
-            # + (
-            #    [
-            #        ["Transform Target", self.transform_target_param],
-            #        ["Transform Target Method", self.transform_target_method_param],
-            #    ]
-            # ),
-            columns=["Description", "Value"],
+        display_container = [
+            ["session_id", self.seed],
+            ["Target", self.target_param],
+            ["Target type", "Univariate Time Series Forecasting"],
+            ["Data shape", self.data.shape],
+            ["Train data shape", self.train.shape],
+            ["Test data shape", self.test.shape],
+            ["Fold Generator", type(self.fold_generator).__name__],
+            ["Fold Number", self.fold_param],
+            ["Enforce Prediction Interval", self.enforce_pi],
+            ["Seasonal Period Tested", self.seasonal_period],
+            ["Seasonality Detected", self.seasonality_present],
+            ["Seasonality Used in Models", self.sp_to_use],
+            ["Target Strictly Positive", self.strictly_positive],
+            ["Target White Noise", self.white_noise],
+            ["Recommended d", self.lowercase_d],
+            ["Recommended Seasonal D", self.uppercase_d],
+            ["Missing Values", self.data.isna().sum().sum()],
+            ["Preprocess", self.preprocess],
+            ["CPU Jobs", self.n_jobs_param],
+            ["Use GPU", self.gpu_param],
+            ["Log Experiment", self.logging_param],
+            ["Experiment Name", self.exp_name_log],
+            ["USI", self.USI],
+        ]
+
+        if self.preprocess:
+            display_container.extend([["Imputation Type", self.imputation_type]])
+
+        display_container = pd.DataFrame(
+            display_container, columns=["Parameter", "Value"]
         )
-        return functions.style.apply(highlight_setup)
+
+        return display_container
 
     def _get_models(self, raise_errors: bool = True) -> Tuple[dict, dict]:
         all_models = {
@@ -1028,24 +1021,122 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
 
         """
-        from sktime.utils.seasonality import (
-            autocorrelation_seasonality_test,
-        )  # only needed in setup
+        # sktime is an optional dependency
+        from sktime.utils.seasonality import autocorrelation_seasonality_test
+        from sktime.forecasting.model_selection import temporal_train_test_split
 
-        ## Make a local copy so as not to perfrom inplace operation on the
-        ## original dataset
+        ##############################
+        #### Setup initialization ####
+        ##############################
+
+        runtime_start = time.time()
+
+        # Define parameter attrs
+        self.log_plots_param = log_plots
+        self.enforce_pi = enforce_pi
+        self.preprocess = preprocess
+        self.imputation_type = imputation_type
+
+        # For later when we have multivariate time series
+        ignore_features: Optional[List[str]] = None
+        # Features to be ignored (are not read by self.dataset, self.X, etc...)
+        self._ign_cols = ignore_features or []
+
+        ## Make a local copy (to perfrom inplace operation on the original dataset)
         data_ = data.copy()
 
+        # TODO: What is memory and is it needed as an argument to the setup?
+        # https://github.com/pycaret/pycaret/blob/eb3a958ea159c600eb8d536cb902d309aa18ebcb/pycaret/internal/pycaret_experiment/class_reg_experiment.py#L138
+        memory: Union[bool, str, Memory] = True
+
+        self._initialize_setup(
+            n_jobs=n_jobs,
+            use_gpu=use_gpu,
+            html=html,
+            session_id=session_id,
+            system_log=system_log,
+            log_experiment=log_experiment,
+            experiment_name=experiment_name,
+            memory=memory,
+            verbose=verbose,
+        )
+
+        ####################
+        #### Clean Data ####
+        ####################
+
+        #### Check type of data ----
+        if isinstance(data_, (pd.Series, pd.DataFrame)):
+            if isinstance(data_, pd.DataFrame):
+                if data_.shape[1] != 1:
+                    raise ValueError(
+                        f"data must be a pandas Series or DataFrame with one column, got {data_.shape[1]} columns!"
+                    )
+                data_ = data_.copy()
+            else:
+                data_ = pd.DataFrame(data_)  # Force convertion to DataFrame
+        else:
+            raise ValueError(
+                f"data must be a pandas Series or DataFrame, got object of {type(data_)} type!"
+            )
+
+        #### Clean column names ----
+        data_.columns = [str(x) for x in data_.columns]
+
+        #### Get Target Name ----
+        # TODO: later, ask from user so that we can take exogenous variables
+        target = data_.columns[0]
+        self.target_param = target
+
+        #### Check type of target values - must be numeric ----
+        if not np.issubdtype(data_[self.target_param].dtype, np.number):
+            raise TypeError(
+                f"Data must be of 'numpy.number' subtype, got {data_[self.target_param].dtype}!"
+            )
+
+        #### Set data name is not already set ----
         if isinstance(data_, pd.Series) and data_.name is None:
             data_.name = "Time Series"
 
-        # Forecast Horizon Checks
+        ######################
+        #### Index checks ####
+        ######################
+
+        #### Data must not have duplicate indices ----
+        if len(data_.index) != len(set(data_.index)):
+            raise ValueError("Index may not have duplicate values!")
+
+        #### Check Index Type ----
+        allowed_freq_index_types = (pd.PeriodIndex, pd.DatetimeIndex)
+        if (
+            not isinstance(data_.index, allowed_freq_index_types)
+            and seasonal_period is None
+        ):
+            # https://stackoverflow.com/questions/3590165/join-a-list-of-items-with-different-types-as-string-in-python
+            raise ValueError(
+                f"The index of your 'data' is of type '{type(data_.index)}'. "
+                "If the 'data' index is not of one of the following types: "
+                f"{', '.join(str(type) for type in allowed_freq_index_types)}, "
+                "then 'seasonal_period' must be provided. Refer to docstring for options."
+            )
+
+        #### Convert DateTimeIndex index to PeriodIndex ----
+        if isinstance(data_.index, pd.DatetimeIndex):
+            data_.index = data_.index.to_period()
+
+        ##############################
+        #### Set Forecast Horizon ####
+        ##############################
+
+        self.logger.info("Set Forecast Horizon.")
+
+        #### Forecast Horizon Checks ----
         if fh is None and isinstance(fold_strategy, str):
             raise ValueError(
                 f"The forecast horizon `fh` must be provided when fold_strategy is of type 'string'"
             )
 
-        # Check Fold Strategy
+        #### Check Fold Strategy ----
         if not isinstance(fold_strategy, str):
             self.logger.info(
                 f"fh parameter {fh} will be ignored since fold_strategy has been provided. "
@@ -1061,25 +1152,13 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         fh = self.check_fh(fh)
         self.fh = fh
 
-        # Check Index
-        allowed_freq_index_types = (pd.PeriodIndex, pd.DatetimeIndex)
-        if (
-            not isinstance(data_.index, allowed_freq_index_types)
-            and seasonal_period is None
-        ):
-            # https://stackoverflow.com/questions/3590165/join-a-list-of-items-with-different-types-as-string-in-python
-            raise ValueError(
-                f"The index of your 'data' is of type '{type(data_.index)}'. "
-                "If the 'data' index is not of one of the following types: "
-                f"{', '.join(str(type) for type in allowed_freq_index_types)}, "
-                "then 'seasonal_period' must be provided. Refer to docstring for options."
-            )
+        ################################
+        #### Set up Seasonal Period ####
+        ################################
 
-        if isinstance(data_.index, pd.DatetimeIndex):
-            data_.index = data_.index.to_period()
+        self.logger.info("Set up Seasonal Period.")
 
         if seasonal_period is None:
-
             index_freq = data_.index.freqstr
             index_freq = index_freq.split("-")[0] or index_freq
 
@@ -1091,7 +1170,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 )
 
         else:
-
             if not isinstance(seasonal_period, (int, str)):
                 raise ValueError(
                     f"seasonal_period parameter must be an int or str, got {type(seasonal_period)}"
@@ -1107,62 +1185,79 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             else:
                 self.seasonal_period = seasonal_period
 
-        if isinstance(data_, (pd.Series, pd.DataFrame)):
-            if isinstance(data_, pd.DataFrame):
-                if data_.shape[1] != 1:
-                    raise ValueError(
-                        f"data must be a pandas Series or DataFrame with one column, got {data_.shape[1]} columns!"
-                    )
-                data_ = data_.copy()
-            else:
-                data_ = pd.DataFrame(data_)  # Force convertion to DataFrame
-        else:
-            raise ValueError(
-                f"data must be a pandas Series or DataFrame, got object of {type(data_)} type!"
-            )
-
-        data_.columns = [str(x) for x in data_.columns]
-
-        target_name = data_.columns[0]
-        if not np.issubdtype(data_[target_name].dtype, np.number):
-            raise TypeError(
-                f"Data must be of 'numpy.number' subtype, got {data_[target_name].dtype}!"
-            )
-
-        if len(data_.index) != len(set(data_.index)):
-            raise ValueError("Index may not have duplicate values!")
-
         # check valid seasonal parameter
         self.seasonality_present = autocorrelation_seasonality_test(
-            data_[target_name], self.seasonal_period
+            data_[self.target_param], self.seasonal_period
         )
 
         # What seasonal period should be used for modeling?
         self.sp_to_use = self.seasonal_period if self.seasonality_present else 1
 
+        ############################################
+        #### Multiplicative components allowed? ####
+        ############################################
+
+        self.logger.info("Set up whether Multiplicative components allowed.")
+
         # Should multiplicative components be allowed in models that support it
-        self.strictly_positive = np.all(data_[target_name] > 0)
+        self.strictly_positive = np.all(data_[self.target_param] > 0)
 
-        self.enforce_pi = enforce_pi
+        ###############################
+        #### Set Train Test Splits ####
+        ###############################
 
+        self.logger.info("Set up Train-Test Splits.")
+
+        # If `fh` is provided it splits by it
+        y = data_[self.target_param]
+        X = data_.drop(self.target_param, axis=1)
+        # # If no columns are left (i.e. univariate time series)
+        # if X.shape[1] == 0:
+        #     X = None
+
+        y_train, y_test, X_train, X_test = temporal_train_test_split(y=y, X=X, fh=fh)
+
+        # Coerce y into a dataframes ----
+        # TODO: Is this needed here since we are not explicitly setting y_train and y_test?
+        y_train, y_test = (
+            pd.DataFrame(y_train),
+            pd.DataFrame(y_test),
+        )
+
+        self.data = data_
+        # idx contains train, test indices.
+        # Setting of self.y_train, self.y_test, self.X_train and self.X_test
+        # will be handled internally based on these indices and self.data
+        self.idx = [y_train.index, y_test.index]
+
+        ######################################
+        #### Setup Cross Validation Folds ####
+        ######################################
+
+        possible_time_series_fold_strategies = ["expanding", "sliding", "rolling"]
+        #### TODO: Change is_sklearn_cv_generator to check for sktime instead
         if not (
-                fold_strategy in possible_time_series_fold_strategies
-                or is_sklearn_cv_generator(fold_strategy)
+            fold_strategy in possible_time_series_fold_strategies
+            or is_sklearn_cv_generator(fold_strategy)
         ):
             raise TypeError(
                 f"fold_strategy parameter must be either a sktime compatible CV generator object or one of '{', '.join(possible_time_series_fold_strategies)}'."
             )
 
-        # Set splitter
-        self.fold_generator = None
         if fold_strategy in possible_time_series_fold_strategies:
             self.fold_strategy = fold_strategy  # save for use in methods later
+            # Number of folds
+            self.fold_param = fold
             self.fold_generator = self.get_fold_generator(fold=self.fold_param)
         else:
+            # TODO: Add the correct self.fold_strategy here based type of fold_strategy
             self.fold_generator = fold_strategy
-
             # Number of folds
             self.fold_param = fold_strategy.get_n_splits(y=self.y_train)
+
+        ############################################
+        #### Initial EDA in Setup (for display) ####
+        ############################################
 
         from pycaret.internal.tests.time_series import (
             recommend_uppercase_d,
@@ -1184,71 +1279,61 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             self.white_noise = "Maybe"
 
         self.lowercase_d = recommend_lowercase_d(data=self.y)
-        # TODO: Should sp this overrise the self.seasonal_period since sp
+        # TODO: Should sp this override the self.seasonal_period since sp
         # will be used for all models and the same checks will need to be
         # done there as well
         sp = self.seasonal_period if self.seasonality_present else 1
-        self.uppercase_d = (
-            recommend_uppercase_d(data=self.y, sp=sp) if sp > 1 else 0
-        )
+        self.uppercase_d = recommend_uppercase_d(data=self.y, sp=sp) if sp > 1 else 0
+
+        #######################
+        #### Final display ####
+        #######################
+
+        self.logger.info("Creating final display dataframe.")
+        self.display_container = self._get_setup_display()
+        self.logger.info(f"self.display_container: {self.display_container}")
+        if self.verbose:
+            pd.set_option("display.max_rows", 100)
+            print(self.display_container.style.apply(highlight_setup))
+            pd.reset_option("display.max_rows")  # Reset option
+
+        #################
+        #### Wrap-up ####
+        #################
+
+        # Create a profile report
+        self._profile(profile, profile_kwargs)
+
+        # Define models and metrics
+        self._all_models, self._all_models_internal = self._get_models()
+        self._all_metrics = self._get_metrics()
+
+        runtime = np.array(time.time() - runtime_start).round(2)
+        self._set_up_mlflow(runtime, log_data, log_profile)
 
         self._setup_ran = True
 
-        ## Disabling of certain metrics.
+        #############################
+        #### Cleanup after Setup ####
+        #############################
+
+        #### Disabling of certain metrics. ----
         ## NOTE: This must be run after _setup_ran has been set, else metrics can
         # not be retrieved.
-        if (
-                self._ml_usecase == MLUsecase.TIME_SERIES
-                and len(self.fh) == 1
-                and "r2" in self._get_metrics()
-        ):
+
+        #### Disable R2 when fh = 1 ----
+        if len(self.fh) == 1 and "r2" in self._get_metrics():
             # disable R2 metric if it exists in the metrics since R2 needs
             # at least 2 values
             self.remove_metric("R2")
 
-        return super().setup(
-            data=data_,
-            target=data_.columns[0],
-            test_data=None,
-            preprocess=preprocess,
-            imputation_type=imputation_type,
-            categorical_features=None,
-            ordinal_features=None,
-            numeric_features=None,
-            date_features=None,
-            ignore_features=None,
-            normalize=False,
-            transformation=False,
-            pca=False,
-            bin_numeric_features=None,
-            remove_outliers=False,
-            remove_multicollinearity=False,
-            polynomial_features=False,
-            feature_selection=False,
-            transform_target=False,
-            data_split_shuffle=False,
-            data_split_stratify=False,
-            fold_strategy=fold_strategy,
-            fold=fold,
-            fh=fh,
-            seasonal_period=seasonal_period,
-            fold_shuffle=False,
-            n_jobs=n_jobs,
-            use_gpu=use_gpu,
-            custom_pipeline=custom_pipeline,
-            html=html,
-            session_id=session_id,
-            system_log=system_log,
-            log_experiment=log_experiment,
-            experiment_name=experiment_name,
-            log_plots=log_plots,
-            log_profile=log_profile,
-            log_data=log_data,
-            silent=True,
-            verbose=verbose,
-            profile=profile,
-            profile_kwargs=profile_kwargs,
-        )
+        #### Remove INPI when enforce_pi is False ----
+        # User can add it manually if they want when enforce_pi is set to False.
+        # Refer: https://github.com/pycaret/pycaret/issues/1900
+        if not self.enforce_pi and "inpi" in self._get_metrics():
+            self.remove_metric("INPI")
+
+        self.logger.info(f"setup() successfully completed in {runtime}s...............")
 
     def compare_models(
         self,

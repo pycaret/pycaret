@@ -38,6 +38,7 @@ from pycaret.internal.distributions import (
     CategoricalDistribution,
 )
 from pycaret.internal.utils import TSModelTypes
+# from pycaret.internal.pycaret_experiment import PyCaretExperiment
 import pycaret.containers.base_container
 
 
@@ -249,7 +250,7 @@ class TimeSeriesContainer(ModelContainer):
 class NaiveContainer(TimeSeriesContainer):
     model_type = TSModelTypes.BASELINE
 
-    def __init__(self, globals_dict: dict) -> None:
+    def __init__(self, experiment) -> None:
         """
         For Naive Forecaster,
           - `sp` must always be 1
@@ -259,14 +260,14 @@ class NaiveContainer(TimeSeriesContainer):
         seasonality is detected or not.
         """
         logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+        np.random.seed(experiment.seed)
         self.gpu_imported = False
 
         from sktime.forecasting.naive import NaiveForecaster  # type: ignore
 
         dummy = NaiveForecaster()
         self.active = self.disable_pred_int_enforcement(
-            forecaster=dummy, enforce_pi=globals_dict["enforce_pi"]
+            forecaster=dummy, enforce_pi=experiment.enforce_pi
         )
         if not self.active:
             return
@@ -312,7 +313,7 @@ class NaiveContainer(TimeSeriesContainer):
 class GrandMeansContainer(TimeSeriesContainer):
     model_type = TSModelTypes.BASELINE
 
-    def __init__(self, globals_dict: dict) -> None:
+    def __init__(self, experiment) -> None:
         """
         For Grand Means Forecaster,
           - `sp` must always be 1
@@ -321,14 +322,14 @@ class GrandMeansContainer(TimeSeriesContainer):
         seasonality is detected or not.
         """
         logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+        np.random.seed(experiment.seed)
         self.gpu_imported = False
 
         from sktime.forecasting.naive import NaiveForecaster  # type: ignore
 
         dummy = NaiveForecaster()
         self.active = self.disable_pred_int_enforcement(
-            forecaster=dummy, enforce_pi=globals_dict["enforce_pi"]
+            forecaster=dummy, enforce_pi=experiment.enforce_pi
         )
         if not self.active:
             return
@@ -374,7 +375,7 @@ class GrandMeansContainer(TimeSeriesContainer):
 class SeasonalNaiveContainer(TimeSeriesContainer):
     model_type = TSModelTypes.BASELINE
 
-    def __init__(self, globals_dict: dict) -> None:
+    def __init__(self, experiment) -> None:
         """
         For Seasonal Naive Model,
           - `sp` must NOT be 1
@@ -383,20 +384,20 @@ class SeasonalNaiveContainer(TimeSeriesContainer):
         If sp != 1, model is enabled even when seasonality is not detected.
         """
         logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+        np.random.seed(experiment.seed)
         self.gpu_imported = False
 
         from sktime.forecasting.naive import NaiveForecaster  # type: ignore
 
         dummy = NaiveForecaster()
         self.active = self.disable_pred_int_enforcement(
-            forecaster=dummy, enforce_pi=globals_dict["enforce_pi"]
+            forecaster=dummy, enforce_pi=experiment.enforce_pi
         )
         if not self.active:
             return
 
-        self.seasonality_present = globals_dict.get("seasonality_present")
-        sp = globals_dict.get("seasonal_period")
+        self.seasonality_present = experiment.seasonality_present
+        sp = experiment.seasonal_period
         self.sp = sp if sp is not None else 1
 
         if self.sp == 1:
@@ -443,16 +444,16 @@ class SeasonalNaiveContainer(TimeSeriesContainer):
 class PolyTrendContainer(TimeSeriesContainer):
     model_type = TSModelTypes.BASELINE
 
-    def __init__(self, globals_dict: dict) -> None:
+    def __init__(self, experiment) -> None:
         logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+        np.random.seed(experiment.seed)
         self.gpu_imported = False
 
         from sktime.forecasting.trend import PolynomialTrendForecaster  # type: ignore
 
         dummy = PolynomialTrendForecaster()
         self.active = self.disable_pred_int_enforcement(
-            forecaster=dummy, enforce_pi=globals_dict["enforce_pi"]
+            forecaster=dummy, enforce_pi=experiment.enforce_pi
         )
         if not self.active:
             return
@@ -496,23 +497,23 @@ class PolyTrendContainer(TimeSeriesContainer):
 class ArimaContainer(TimeSeriesContainer):
     model_type = TSModelTypes.CLASSICAL
 
-    def __init__(self, globals_dict: dict) -> None:
+    def __init__(self, experiment) -> None:
         logger = get_logger()
-        random.seed(globals_dict["seed"])
-        np.random.seed(globals_dict["seed"])
+        random.seed(experiment.seed)
+        np.random.seed(experiment.seed)
         self.gpu_imported = False
 
         from sktime.forecasting.arima import ARIMA  # type: ignore
 
         dummy = ARIMA()
         self.active = self.disable_pred_int_enforcement(
-            forecaster=dummy, enforce_pi=globals_dict["enforce_pi"]
+            forecaster=dummy, enforce_pi=experiment.enforce_pi
         )
         if not self.active:
             return
 
-        seasonality_present = globals_dict.get("seasonality_present")
-        sp = globals_dict.get("seasonal_period")
+        seasonality_present = experiment.seasonality_present
+        sp = experiment.seasonal_period
         sp = sp if sp is not None else 1
 
         # args = self._set_args
@@ -541,8 +542,8 @@ class ArimaContainer(TimeSeriesContainer):
             seasonal_max_multiplier: int,
         ) -> Tuple[List[Tuple[int, int, int]], List[Tuple[int, int, int, int]]]:
 
-            random.seed(globals_dict["seed"])
-            np.random.seed(globals_dict["seed"])
+            random.seed(experiment.seed)
+            np.random.seed(experiment.seed)
             p_values = [random.randint(p_start, p_end) for _ in range(n_samples)]
             q_values = [random.randint(q_start, q_end) for _ in range(n_samples)]
             d_values = [random.randint(d_start, d_end) for _ in range(n_samples)]
@@ -640,7 +641,7 @@ class ArimaContainer(TimeSeriesContainer):
         }
 
         if not self.gpu_imported:
-            args["n_jobs"] = globals_dict["n_jobs_param"]
+            args["n_jobs"] = experiment.n_jobs_param
 
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
@@ -659,9 +660,9 @@ class ArimaContainer(TimeSeriesContainer):
 class AutoArimaContainer(TimeSeriesContainer):
     model_type = TSModelTypes.CLASSICAL
 
-    def __init__(self, globals_dict: dict) -> None:
+    def __init__(self, experiment) -> None:
         logger = get_logger()
-        self.seed = globals_dict["seed"]
+        self.seed = experiment.seed
         np.random.seed(self.seed)
         self.gpu_imported = False
 
@@ -669,13 +670,13 @@ class AutoArimaContainer(TimeSeriesContainer):
 
         dummy = AutoARIMA()
         self.active = self.disable_pred_int_enforcement(
-            forecaster=dummy, enforce_pi=globals_dict["enforce_pi"]
+            forecaster=dummy, enforce_pi=experiment.enforce_pi
         )
         if not self.active:
             return
 
-        self.seasonality_present = globals_dict.get("seasonality_present")
-        sp = globals_dict.get("seasonal_period")
+        self.seasonality_present = experiment.seasonality_present
+        sp = experiment.seasonal_period
         self.sp = sp if sp is not None else 1
 
         args = self._set_args
@@ -732,25 +733,25 @@ class AutoArimaContainer(TimeSeriesContainer):
 class ExponentialSmoothingContainer(TimeSeriesContainer):
     model_type = TSModelTypes.CLASSICAL
 
-    def __init__(self, globals_dict: dict) -> None:
+    def __init__(self, experiment) -> None:
         logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+        np.random.seed(experiment.seed)
         self.gpu_imported = False
 
         from sktime.forecasting.exp_smoothing import ExponentialSmoothing  # type: ignore
 
         dummy = ExponentialSmoothing()
         self.active = self.disable_pred_int_enforcement(
-            forecaster=dummy, enforce_pi=globals_dict["enforce_pi"]
+            forecaster=dummy, enforce_pi=experiment.enforce_pi
         )
         if not self.active:
             return
 
-        self.seasonality_present = globals_dict.get("seasonality_present")
-        sp = globals_dict.get("seasonal_period")
+        self.seasonality_present = experiment.seasonality_present
+        sp = experiment.seasonal_period
         self.sp = sp if sp is not None else 1
 
-        self.strictly_positive = globals_dict.get("strictly_positive")
+        self.strictly_positive = experiment.strictly_positive
 
         args = self._set_args
         tune_args = self._set_tune_args
@@ -860,25 +861,25 @@ class ExponentialSmoothingContainer(TimeSeriesContainer):
 class ETSContainer(TimeSeriesContainer):
     model_type = TSModelTypes.CLASSICAL
 
-    def __init__(self, globals_dict: dict) -> None:
+    def __init__(self, experiment) -> None:
         logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+        np.random.seed(experiment.seed)
         self.gpu_imported = False
 
         from sktime.forecasting.ets import AutoETS  # type: ignore
 
         dummy = AutoETS()
         self.active = self.disable_pred_int_enforcement(
-            forecaster=dummy, enforce_pi=globals_dict["enforce_pi"]
+            forecaster=dummy, enforce_pi=experiment.enforce_pi
         )
         if not self.active:
             return
 
-        self.seasonality_present = globals_dict.get("seasonality_present")
-        sp = globals_dict.get("seasonal_period")
+        self.seasonality_present = experiment.seasonality_present
+        sp = experiment.seasonal_period
         self.sp = sp if sp is not None else 1
 
-        self.strictly_positive = globals_dict.get("strictly_positive")
+        self.strictly_positive = experiment.strictly_positive
 
         args = self._set_args
         tune_args = self._set_tune_args
@@ -939,25 +940,25 @@ class ETSContainer(TimeSeriesContainer):
 class ThetaContainer(TimeSeriesContainer):
     model_type = TSModelTypes.CLASSICAL
 
-    def __init__(self, globals_dict: dict) -> None:
+    def __init__(self, experiment) -> None:
         logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+        np.random.seed(experiment.seed)
         self.gpu_imported = False
 
         from sktime.forecasting.theta import ThetaForecaster  # type: ignore
 
         dummy = ThetaForecaster()
         self.active = self.disable_pred_int_enforcement(
-            forecaster=dummy, enforce_pi=globals_dict["enforce_pi"]
+            forecaster=dummy, enforce_pi=experiment.enforce_pi
         )
         if not self.active:
             return
 
-        self.seasonality_present = globals_dict.get("seasonality_present")
-        sp = globals_dict.get("seasonal_period")
+        self.seasonality_present = experiment.seasonality_present
+        sp = experiment.seasonal_period
         self.sp = sp if sp is not None else 1
 
-        self.strictly_positive = globals_dict.get("strictly_positive")
+        self.strictly_positive = experiment.strictly_positive
 
         args = self._set_args
         tune_args = self._set_tune_args
@@ -1029,9 +1030,9 @@ class ThetaContainer(TimeSeriesContainer):
 class TBATSContainer(TimeSeriesContainer):
     model_type = TSModelTypes.CLASSICAL
 
-    def __init__(self, globals_dict: dict) -> None:
+    def __init__(self, experiment) -> None:
         logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+        np.random.seed(experiment.seed)
         self.gpu_imported = False
 
         try:
@@ -1043,15 +1044,15 @@ class TBATSContainer(TimeSeriesContainer):
 
         dummy = TBATS()
         self.active = self.disable_pred_int_enforcement(
-            forecaster=dummy, enforce_pi=globals_dict["enforce_pi"]
+            forecaster=dummy, enforce_pi=experiment.enforce_pi
         )
         if not self.active:
             return
 
-        sp = globals_dict.get("seasonal_period")
+        sp = experiment.seasonal_period
         self.sp = sp if sp is not None else 1
 
-        self.seasonality_present = globals_dict.get("seasonality_present")
+        self.seasonality_present = experiment.seasonality_present
 
         args = self._set_args
         tune_args = self._set_tune_args
@@ -1099,9 +1100,9 @@ class TBATSContainer(TimeSeriesContainer):
 class BATSContainer(TimeSeriesContainer):
     model_type = TSModelTypes.CLASSICAL
 
-    def __init__(self, globals_dict: dict) -> None:
+    def __init__(self, experiment) -> None:
         logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+        np.random.seed(experiment.seed)
         self.gpu_imported = False
 
         try:
@@ -1113,15 +1114,15 @@ class BATSContainer(TimeSeriesContainer):
 
         dummy = BATS()
         self.active = self.disable_pred_int_enforcement(
-            forecaster=dummy, enforce_pi=globals_dict["enforce_pi"]
+            forecaster=dummy, enforce_pi=experiment.enforce_pi
         )
         if not self.active:
             return
 
-        sp = globals_dict.get("seasonal_period")
+        sp = experiment.seasonal_period
         self.sp = sp if sp is not None else 1
 
-        self.seasonality_present = globals_dict.get("seasonality_present")
+        self.seasonality_present = experiment.seasonality_present
 
         args = self._set_args
         tune_args = self._set_tune_args
@@ -1169,9 +1170,9 @@ class BATSContainer(TimeSeriesContainer):
 class ProphetContainer(TimeSeriesContainer):
     model_type = TSModelTypes.LINEAR
 
-    def __init__(self, globals_dict: dict) -> None:
+    def __init__(self, experiment) -> None:
         logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+        np.random.seed(experiment.seed)
         self.gpu_imported = False
 
         if not ProphetPeriodPatched:
@@ -1183,16 +1184,16 @@ class ProphetContainer(TimeSeriesContainer):
 
         dummy = Prophet()
         self.active = self.disable_pred_int_enforcement(
-            forecaster=dummy, enforce_pi=globals_dict["enforce_pi"]
+            forecaster=dummy, enforce_pi=experiment.enforce_pi
         )
         if not self.active:
             return
 
-        sp = globals_dict.get("seasonal_period")
+        sp = experiment.seasonal_period
         self.sp = sp if sp is not None else 1
 
-        self.seasonality_present = globals_dict.get("seasonality_present")
-        self.freq = globals_dict.get("freq")
+        self.seasonality_present = experiment.seasonality_present
+        self.freq = experiment.get("freq")
 
         args = self._set_args
         tune_args = self._set_tune_args
@@ -1253,15 +1254,15 @@ class CdsDtContainer(TimeSeriesContainer):
     active = False
     model_type = None
 
-    def __init__(self, globals_dict: dict) -> None:
+    def __init__(self, experiment) -> None:
         self.logger = get_logger()
-        self.seed = globals_dict["seed"]
+        self.seed = experiment.seed
         np.random.seed(self.seed)
 
         # Import the right regressor
         self.gpu_imported = False
-        self.gpu_param = globals_dict["gpu_param"]
-        self.n_jobs_param = globals_dict["n_jobs_param"]
+        self.gpu_param = experiment.gpu_param
+        self.n_jobs_param = experiment.n_jobs_param
 
         regressor_class = self.return_regressor_class()  # e.g. LinearRegression
         regressor_args = self._set_regressor_args
@@ -1276,16 +1277,16 @@ class CdsDtContainer(TimeSeriesContainer):
 
         dummy = BaseCdsDtForecaster(regressor=self.regressor)
         self.active = self.disable_pred_int_enforcement(
-            forecaster=dummy, enforce_pi=globals_dict["enforce_pi"]
+            forecaster=dummy, enforce_pi=experiment.enforce_pi
         )
         if not self.active:
             return
 
         # Set the model hyperparameters
-        sp = globals_dict.get("seasonal_period")
+        sp = experiment.seasonal_period
         self.sp = sp if sp is not None else 1
 
-        self.strictly_positive = globals_dict.get("strictly_positive")
+        self.strictly_positive = experiment.strictly_positive
 
         args = self._set_args
         tune_args = self._set_tune_args
@@ -1844,9 +1845,9 @@ class OrthogonalMatchingPursuitCdsDtContainer(CdsDtContainer):
     active = True  # set back to True as the parent has False
     model_type = TSModelTypes.LINEAR
 
-    def __init__(self, globals_dict: dict) -> None:
-        self.num_features = len(globals_dict["X_train"].columns)
-        super().__init__(globals_dict=globals_dict)
+    def __init__(self, experiment) -> None:
+        self.num_features = len(experiment.X_train.columns)
+        super().__init__(experiment=experiment)
 
     def return_regressor_class(self):
         from sklearn.linear_model import OrthogonalMatchingPursuit
@@ -1896,9 +1897,9 @@ class KNeighborsCdsDtContainer(CdsDtContainer):
     active = True  # set back to True as the parent has False
     model_type = TSModelTypes.NEIGHBORS
 
-    def __init__(self, globals_dict: dict) -> None:
-        self.num_features = len(globals_dict["X_train"].columns)
-        super().__init__(globals_dict=globals_dict)
+    def __init__(self, experiment) -> None:
+        self.num_features = len(experiment.X_train.columns)
+        super().__init__(experiment=experiment)
 
     def return_regressor_class(self):
         from sklearn.neighbors import KNeighborsRegressor
@@ -2373,15 +2374,15 @@ class CatBoostCdsDtContainer(CdsDtContainer):
     active = True  # set back to True as the parent has False
     model_type = TSModelTypes.TREE
 
-    def __init__(self, globals_dict: dict) -> None:
+    def __init__(self, experiment) -> None:
         # suppress output
         logging.getLogger("catboost").setLevel(logging.ERROR)
 
-        self.use_gpu = globals_dict["gpu_param"] == "force" or (
-            globals_dict["gpu_param"] and len(globals_dict["X_train"]) >= 50000
+        self.use_gpu = experiment.gpu_param == "force" or (
+            experiment.gpu_param and len(experiment.X_train) >= 50000
         )
 
-        super().__init__(globals_dict=globals_dict)
+        super().__init__(experiment=experiment)
 
     def return_regressor_class(self):
         try:
@@ -2472,7 +2473,7 @@ class BaseCdsDtForecaster(BaseForecaster):
 
     _tags = {
         "scitype:y": "univariate",  # which y are fine? univariate/multivariate/both
-        "univariate-only": True,  # does estimator use the exogeneous X?
+        "univariate-only": True,  # does estimator use the exogenous X?
         "handles-missing-data": False,  # can estimator handle missing data?
         "y_inner_mtype": "pd.Series",  # which types do _fit, _predict, assume for y?
         "X_inner_mtype": "pd.DataFrame",  # which types do _fit, _predict, assume for X?
@@ -2581,9 +2582,9 @@ except ImportError:
 class EnsembleTimeSeriesContainer(TimeSeriesContainer):
     model_type = "ensemble"
 
-    def __init__(self, globals_dict: dict) -> None:
+    def __init__(self, experiment) -> None:
         logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+        np.random.seed(experiment.seed)
         self.gpu_imported = False
 
         from pycaret.internal.ensemble import _EnsembleForecasterWithVoting
@@ -2594,7 +2595,7 @@ class EnsembleTimeSeriesContainer(TimeSeriesContainer):
         tune_distributions = {}
 
         # if not self.gpu_imported:
-        #     args["n_jobs"] = globals_dict["n_jobs_param"]
+        #     args["n_jobs"] = experiment.n_jobs_param
 
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
@@ -2611,8 +2612,8 @@ class EnsembleTimeSeriesContainer(TimeSeriesContainer):
 
 
 def get_all_model_containers(
-    globals_dict: dict, raise_errors: bool = True
+    experiment, raise_errors: bool = True
 ) -> Dict[str, TimeSeriesContainer]:
     return pycaret.containers.base_container.get_all_containers(
-        globals(), globals_dict, TimeSeriesContainer, raise_errors
+        globals(), experiment, TimeSeriesContainer, raise_errors
     )
