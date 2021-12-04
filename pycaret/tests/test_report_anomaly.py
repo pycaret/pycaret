@@ -1,6 +1,6 @@
 import os, sys
 from pycaret.datasets import get_data
-from pycaret.anomaly import *
+from pycaret.anomaly import setup, create_model, create_report
 
 sys.path.insert(0, os.path.abspath(".."))
 
