@@ -947,7 +947,7 @@ class ClassRegExperiment(_SupervisedExperiment):
             )
 
         self.display_container = pd.DataFrame(
-            display_container, columns=["Parameter", "Value"]
+            display_container, columns=["Description", "Value"]
         )
         self.logger.info(f"self.display_container: {self.display_container}")
         if self.verbose:
