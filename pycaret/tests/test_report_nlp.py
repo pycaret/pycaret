@@ -35,8 +35,8 @@ def _setup():
             "child",
             "school",
         ],
-        log_experiment=True,
         experiment_name="kiva1",
+        html=False,
     )
 
 

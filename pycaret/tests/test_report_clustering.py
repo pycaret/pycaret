@@ -12,7 +12,12 @@ def _setup():
     data.reset_index(drop=True, inplace=True)
     data_unseen.reset_index(drop=True, inplace=True)
     exp_clu101 = pycaret.clustering.setup(
-        data, normalize=True, ignore_features=["MouseID"], session_id=123
+        data,
+        normalize=True,
+        ignore_features=["MouseID"],
+        session_id=123,
+        silent=True,
+        html=False,
     )
 
 

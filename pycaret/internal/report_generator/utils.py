@@ -75,10 +75,13 @@ def create_markdown_report(
     )
 
     # Model Hyper parameters
-    paramlist = model.get_params()
-    paramlist = pd.DataFrame.from_dict(paramlist, orient="index")
-    mdFile.insert_code(paramlist.to_markdown(), language="python")
-    mdFile.new_paragraph()
+    try:
+        paramlist = model.get_params()
+        paramlist = pd.DataFrame.from_dict(paramlist, orient="index")
+        mdFile.insert_code(paramlist.to_markdown(), language="python")
+        mdFile.new_paragraph()
+    except AttributeError:
+        pass
 
     # Model Plots
     mdFile.new_header(level=2, title="Model Plots")
