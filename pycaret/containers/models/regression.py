@@ -1131,6 +1131,7 @@ class RandomForestRegressorContainer(RegressorContainer):
             }
         else:
             import cuml
+
             if version.parse(cuml.__version__) >= version.parse("0.19"):
                 args = {"random_state": experiment.seed}
             else:
@@ -1694,9 +1695,9 @@ class LGBMRegressorContainer(RegressorContainer):
                             f"LightGBM GPU mode not available. Consult https://lightgbm.readthedocs.io/en/latest/GPU-Tutorial.html."
                         )
 
-        if is_gpu_enabled=="gpu":
+        if is_gpu_enabled == "gpu":
             args["device"] = "gpu"
-        elif is_gpu_enabled=="cuda":
+        elif is_gpu_enabled == "cuda":
             args["device"] = "cuda"
 
         super().__init__(
@@ -1795,13 +1796,14 @@ class CatBoostRegressorContainer(RegressorContainer):
             is_gpu_enabled=use_gpu,
         )
 
+
 class DummyRegressorContainer(RegressorContainer):
-    def __init__(self, globals_dict: dict) -> None:
+    def __init__(self, experiment) -> None:
         logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+        np.random.seed(experiment.seed)
         from sklearn.dummy import DummyRegressor
 
-        args = {"strategy":"mean"}
+        args = {"strategy": "mean"}
         tune_args = {}
         tune_grid = {}
         tune_distributions = {}
@@ -1818,7 +1820,8 @@ class DummyRegressorContainer(RegressorContainer):
             tune_args=tune_args,
             shap=False,
         )
-        
+
+
 class BaggingRegressorContainer(RegressorContainer):
     def __init__(self, experiment):
         logger = get_logger()
