@@ -28,3 +28,4 @@ scikit-plot #for lift and gain charts
 Boruta
 #numba<0.54
 mdutils
+markdown
