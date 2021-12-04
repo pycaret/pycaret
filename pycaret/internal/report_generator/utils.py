@@ -1,11 +1,11 @@
 from typing import Any, Callable, Dict
 import pandas as pd
-import pycaret.internal.report_generator.helper as helper
 from mdutils import MdUtils
 from markdown import markdown
 import os
 
 from pycaret.internal.tabular import MLUsecase
+from .helper import get_model_definition, get_plot_definition
 
 
 def global_create_report(
@@ -55,7 +55,7 @@ def create_markdown_report(
 
     model_id = get_model_id(model)
     model_name = get_model_name(model)
-    model_definition = helper.get_model_definition(model_id, report_type)
+    model_definition = get_model_definition(model_id, report_type)
 
     # Set the report title
     mdFile.new_header(level=1, title=f"{model_name} Report", style="setext")
@@ -97,7 +97,7 @@ def create_markdown_report(
         mdFile.new_header(level=3, title=plot_name)
 
         # Get Plot definition
-        plot_definition = helper.get_plot_definition(plot_type)
+        plot_definition = get_plot_definition(plot_type)
         mdFile.new_paragraph(plot_definition)
 
         # Display Plot Image
