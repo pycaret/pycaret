@@ -85,6 +85,7 @@ def setup(
     log_plots: Union[bool, list] = False,
     log_profile: bool = False,
     log_data: bool = False,
+    silent: bool = False,
     verbose: bool = True,
     memory: Union[bool, str, Memory] = True,
     profile: bool = False,
@@ -472,6 +473,11 @@ def setup(
         Ignored when ``log_experiment`` is not True.
 
 
+    silent: bool, default = False
+        When executing in completely automated mode or on a remote kernel, this must be True.
+        Leave False otherwise
+        
+        
     verbose: bool, default = True
         When set to False, Information grid is not printed.
 
@@ -562,6 +568,7 @@ def setup(
         log_plots=log_plots,
         log_profile=log_profile,
         log_data=log_data,
+        silent=silent,
         verbose=verbose,
         memory=memory,
         profile=profile,

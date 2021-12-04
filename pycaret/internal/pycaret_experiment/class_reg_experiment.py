@@ -46,9 +46,15 @@ from sklearn.preprocessing import (
 from pycaret.internal.logging import get_logger
 from pycaret.internal.pipeline import Pipeline as InternalPipeline
 from pycaret.internal.pycaret_experiment.utils import MLUsecase, highlight_setup
-from pycaret.internal.pycaret_experiment.supervised_experiment import _SupervisedExperiment
-from pycaret.containers.models.classification import get_all_model_containers as get_classifiers
-from pycaret.containers.models.regression import get_all_model_containers as get_regressors
+from pycaret.internal.pycaret_experiment.supervised_experiment import (
+    _SupervisedExperiment,
+)
+from pycaret.containers.models.classification import (
+    get_all_model_containers as get_classifiers,
+)
+from pycaret.containers.models.regression import (
+    get_all_model_containers as get_regressors,
+)
 from pycaret.internal.preprocess import (
     TransfomerWrapper,
     ExtractDateTimeFeatures,
@@ -69,7 +75,6 @@ LOGGER = get_logger()
 
 
 class ClassRegExperiment(_SupervisedExperiment):
-
     def setup(
         self,
         data: pd.DataFrame,
@@ -134,6 +139,7 @@ class ClassRegExperiment(_SupervisedExperiment):
         log_plots: Union[bool, list] = False,
         log_profile: bool = False,
         log_data: bool = False,
+        silent: bool = False,
         verbose: bool = True,
         memory: Union[bool, str, Memory] = True,
         profile: bool = False,
@@ -317,7 +323,8 @@ class ClassRegExperiment(_SupervisedExperiment):
         else:
             # Default should exclude datetime and text columns
             categorical_features = [
-                col for col in self.X.select_dtypes(include=["object", "category"]).columns
+                col
+                for col in self.X.select_dtypes(include=["object", "category"]).columns
                 if col not in date_features + text_features
             ]
 
@@ -328,8 +335,7 @@ class ClassRegExperiment(_SupervisedExperiment):
 
         # Initialize empty pipeline
         self._internal_pipeline = InternalPipeline(
-            steps=[("placeholder", None)],
-            memory=self.memory,
+            steps=[("placeholder", None)], memory=self.memory,
         )
 
         if preprocess:
@@ -347,8 +353,7 @@ class ClassRegExperiment(_SupervisedExperiment):
             if date_features:
                 self.logger.info("Extracting features from datetime columns")
                 date_estimator = TransfomerWrapper(
-                    transformer=ExtractDateTimeFeatures(),
-                    include=date_features,
+                    transformer=ExtractDateTimeFeatures(), include=date_features,
                 )
 
                 self._internal_pipeline.steps.append(
@@ -380,8 +385,7 @@ class ClassRegExperiment(_SupervisedExperiment):
 
                     num_estimator = TransfomerWrapper(
                         transformer=SimpleImputer(
-                            strategy=num_dict[numeric_imputation],
-                            fill_value=0,
+                            strategy=num_dict[numeric_imputation], fill_value=0,
                         ),
                         include=numeric_features,
                     )
@@ -399,7 +403,11 @@ class ClassRegExperiment(_SupervisedExperiment):
                     # TODO: Fix iterative imputer for categorical columns
 
                     # Dict of all regressor models available
-                    regressors = {k: v for k, v in get_regressors(self).items() if not v.is_special}
+                    regressors = {
+                        k: v
+                        for k, v in get_regressors(self).items()
+                        if not v.is_special
+                    }
 
                     if isinstance(numeric_iterative_imputer, str):
                         if numeric_iterative_imputer not in regressors:
@@ -408,7 +416,9 @@ class ClassRegExperiment(_SupervisedExperiment):
                                 f"parameter, got {numeric_iterative_imputer}. "
                                 f"Allowed estimators are: {', '.join(regressors)}."
                             )
-                        numeric_iterative_imputer = regressors[numeric_iterative_imputer].class_def()
+                        numeric_iterative_imputer = regressors[
+                            numeric_iterative_imputer
+                        ].class_def()
                     elif not hasattr(numeric_iterative_imputer, "predict"):
                         raise ValueError(
                             "Invalid value for the numeric_iterative_imputer "
@@ -423,7 +433,9 @@ class ClassRegExperiment(_SupervisedExperiment):
                                 "parameter, got {categorical_iterative_imputer}. "
                                 f"Allowed estimators are: {', '.join(regressors)}."
                             )
-                        categorical_iterative_imputer = regressors[categorical_iterative_imputer].class_def()
+                        categorical_iterative_imputer = regressors[
+                            categorical_iterative_imputer
+                        ].class_def()
                     elif not hasattr(categorical_iterative_imputer, "predict"):
                         raise ValueError(
                             "Invalid value for the categorical_iterative_imputer "
@@ -520,7 +532,9 @@ class ClassRegExperiment(_SupervisedExperiment):
 
                 ord_estimator = TransfomerWrapper(
                     transformer=OrdinalEncoder(
-                        mapping=[{"col": k, "mapping": val} for k, val in mapping.items()],
+                        mapping=[
+                            {"col": k, "mapping": val} for k, val in mapping.items()
+                        ],
                         handle_missing="return_nan",
                         handle_unknown="value",
                     ),
@@ -558,8 +572,7 @@ class ClassRegExperiment(_SupervisedExperiment):
                         )
 
                     rest_estimator = TransfomerWrapper(
-                        transformer=encoding_method,
-                        include=rest_cols,
+                        transformer=encoding_method, include=rest_cols,
                     )
 
                     self._internal_pipeline.steps.append(
@@ -650,14 +663,11 @@ class ClassRegExperiment(_SupervisedExperiment):
 
                 outliers = TransfomerWrapper(
                     RemoveOutliers(
-                        method=outliers_method,
-                        threshold=outliers_threshold,
+                        method=outliers_method, threshold=outliers_threshold,
                     ),
                 )
 
-                self._internal_pipeline.steps.append(
-                    ("remove_outliers", outliers)
-                )
+                self._internal_pipeline.steps.append(("remove_outliers", outliers))
 
             # Balance the dataset ================================== >>
 
@@ -687,8 +697,7 @@ class ClassRegExperiment(_SupervisedExperiment):
                     )
                 elif transformation_method == "quantile":
                     transformation_estimator = QuantileTransformer(
-                        random_state=self.seed,
-                        output_distribution="normal",
+                        random_state=self.seed, output_distribution="normal",
                     )
                 else:
                     raise ValueError(
@@ -748,8 +757,7 @@ class ClassRegExperiment(_SupervisedExperiment):
                 }
                 if pca_method in pca_dict:
                     pca_estimator = TransfomerWrapper(
-                        transformer=pca_dict[pca_method],
-                        exclude=keep_features,
+                        transformer=pca_dict[pca_method], exclude=keep_features,
                     )
                 else:
                     raise ValueError(
@@ -806,8 +814,7 @@ class ClassRegExperiment(_SupervisedExperiment):
                     # TODO: Fix
                     feature_selector = TransfomerWrapper(
                         transformer=BorutaPy(
-                            estimator=fs_estimator,
-                            n_estimators="auto",
+                            estimator=fs_estimator, n_estimators="auto",
                         ),
                         exclude=keep_features,
                     )
@@ -939,7 +946,9 @@ class ClassRegExperiment(_SupervisedExperiment):
                 ]
             )
 
-        self.display_container = pd.DataFrame(display_container, columns=["Parameter", "Value"])
+        self.display_container = pd.DataFrame(
+            display_container, columns=["Parameter", "Value"]
+        )
         self.logger.info(f"self.display_container: {self.display_container}")
         if self.verbose:
             pd.set_option("display.max_rows", 100)
