@@ -874,6 +874,7 @@ class CrostonContainer(TimeSeriesContainer):
             return
 
         # self.seasonality_present = globals_dict.get("seasonality_present")
+        # TODO: Not sure if this is required.
         sp = globals_dict.get("seasonal_period")
         self.sp = sp if sp is not None else 1
 
@@ -906,13 +907,14 @@ class CrostonContainer(TimeSeriesContainer):
 
     @property
     def _set_tune_grid(self) -> Dict[str, List[Any]]:
-        tune_grid = {"smoothing" : [0.01,0.05, 0.009,0.5,0.9]}
+        # TODO: Lack of documentation here, SKtime and R implementations are default 0.1
+        tune_grid = {"smoothing" : [0.01,0.05, 0.001,0.5,0.9]}
         return tune_grid
 
     @property
     def _set_tune_distributions(self) -> Dict[str, List[Any]]:
         tune_distributions = {"smoothing": UniformDistribution(
-                lower=0.001, upper=0.9, log=True
+                lower=0.01, upper=0.9, log=False
             )}
         return tune_distributions
 
