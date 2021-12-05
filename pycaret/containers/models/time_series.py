@@ -856,6 +856,67 @@ class ExponentialSmoothingContainer(TimeSeriesContainer):
             }
         return tune_distributions
 
+class CrostonContainer(TimeSeriesContainer):
+    model_type = TSModelTypes.CLASSICAL
+
+    def __init__(self, globals_dict: dict) -> None:
+        logger = get_logger()
+        np.random.seed(globals_dict["seed"])
+        self.gpu_imported = False
+
+        from sktime.forecasting.croston import Croston  # type: ignore
+
+        dummy = Croston()
+        self.active:bool = self.disable_pred_int_enforcement(
+            forecaster=dummy, enforce_pi=globals_dict["enforce_pi"]
+        )
+        if not self.active:
+            return
+
+        # self.seasonality_present = globals_dict.get("seasonality_present")
+        sp = globals_dict.get("seasonal_period")
+        self.sp = sp if sp is not None else 1
+
+        self.strictly_positive = globals_dict.get("strictly_positive")
+
+        args = self._set_args
+        tune_args = self._set_tune_args
+        tune_grid = self._set_tune_grid
+        tune_distributions = self._set_tune_distributions
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+
+        eq_function = lambda x: type(x) is Croston
+
+        super().__init__(
+            id="croston",
+            name="Croston",
+            class_def=Croston,
+            args=args,
+            tune_grid=tune_grid,
+            tune_distribution=tune_distributions,
+            tune_args=tune_args,
+            is_gpu_enabled=self.gpu_imported,
+            eq_function=eq_function,  # Added to differentiate between ExponentialSmoothing and Theta which are of same parent class
+        )
+
+    @property
+    def _set_args(self) -> Dict[str, Any]:
+        args = {"smoothing" : 0.1} # just use the default : smoothing = 0.1 
+        return args
+
+    @property
+    def _set_tune_grid(self) -> Dict[str, List[Any]]:
+        tune_grid = {"smoothing" : [0.01,0.05, 0.009,0.5,0.9]}
+        return tune_grid
+
+    @property
+    def _set_tune_distributions(self) -> Dict[str, List[Any]]:
+        tune_distributions = {"smoothing": UniformDistribution(
+                lower=0.001, upper=0.9, log=True
+            )}
+        return tune_distributions
+
+
 
 class ETSContainer(TimeSeriesContainer):
     model_type = TSModelTypes.CLASSICAL
@@ -2616,3 +2677,5 @@ def get_all_model_containers(
     return pycaret.containers.base_container.get_all_containers(
         globals(), globals_dict, TimeSeriesContainer, raise_errors
     )
+
+
