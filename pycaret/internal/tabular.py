@@ -10165,6 +10165,31 @@ def get_leaderboard(
     display.clear_output()
     return results
 
+def dashboard(estimator, display_format = 'dash',  dashboard_kwargs = {}, run_kwargs = {}, **kwargs):
+    """
+    function to launch ExplainerDashboard.
+    """
+    if _ml_usecase == MLUsecase.CLASSIFICATION:
+        _create_classification_dashboard(model=estimator, mode=display_format, dashboard_kwargs=dashboard_kwargs, run_kwargs=run_kwargs, **kwargs)
+
+    elif _ml_usecase == MLUsecase.REGRESSION:
+        _create_regression_dashboard(model=estimator, mode=display_format, dashboard_kwargs=dashboard_kwargs, run_kwargs=run_kwargs, **kwargs)
+
+def _create_regression_dashboard(model, mode = 'dash', dashboard_kwargs = {}, run_kwargs = {}, **kwargs):
+    from explainerdashboard import ExplainerDashboard, RegressionExplainer, ClassifierExplainer
+    explainer = RegressionExplainer(model, get_config('X_test'), get_config('y_test'), **kwargs)
+    ExplainerDashboard(explainer, mode=mode, **dashboard_kwargs).run(**run_kwargs)
+
+def _create_classification_dashboard(model, mode = 'dash', dashboard_kwargs = {}, run_kwargs = {}, **kwargs):
+    from explainerdashboard import ExplainerDashboard, ClassifierExplainer
+    try:
+        labels_ = list(get_config('prep_pipe').steps[0][1].le.classes_)
+    except:
+        labels_ = None
+    explainer = ClassifierExplainer(model, get_config('X_test'), get_config('y_test'),
+                                    labels = labels_, **kwargs)
+    ExplainerDashboard(explainer, mode=mode, **dashboard_kwargs).run(**run_kwargs)
+
 
 def _choose_better(
     models_and_results: list,
@@ -10598,3 +10623,5 @@ def _get_groups(
     fold_groups = fold_groups if fold_groups is not None else fold_groups_param
 
     return pycaret.internal.utils.get_groups(groups, data, fold_groups)
+
+
