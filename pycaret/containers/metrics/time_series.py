@@ -268,20 +268,14 @@ class RMSEMetricContainer(TimeSeriesMetricContainer):
 class MAPEMetricContainer(TimeSeriesMetricContainer):
     def __init__(self, globals_dict: dict) -> None:
         super().__init__(
-            id="mape",
-            name="MAPE",
-            score_func=mape,
-            greater_is_better=False,
+            id="mape", name="MAPE", score_func=mape, greater_is_better=False
         )
 
 
 class SMAPEMetricContainer(TimeSeriesMetricContainer):
     def __init__(self, globals_dict: dict) -> None:
         super().__init__(
-            id="smape",
-            name="SMAPE",
-            score_func=_smape_loss,
-            greater_is_better=False,
+            id="smape", name="SMAPE", score_func=_smape_loss, greater_is_better=False
         )
 
 
@@ -314,10 +308,7 @@ class R2MetricContainer(TimeSeriesMetricContainer):
 class INPIMetricContainer(TimeSeriesMetricContainer):
     def __init__(self, globals_dict: dict) -> None:
         super().__init__(
-            id="inpi",
-            name="INPI",
-            score_func=inpi,
-            greater_is_better=True,
+            id="inpi", name="INPI", score_func=inpi, greater_is_better=True
         )
 
 
