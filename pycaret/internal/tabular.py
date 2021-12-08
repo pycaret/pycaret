@@ -8199,6 +8199,7 @@ def optimize_threshold(
     true_negative: int = 0,
     false_positive: int = 0,
     false_negative: int = 0,
+    grid_interval: float = 0.0001,
 ):
 
     """
@@ -8236,6 +8237,8 @@ def optimize_threshold(
     false_negative : int, default = 0
         Cost function or returns when prediction is false negative.
 
+    grid_interval : float, default = 0.0001
+        Grid inerval for threshold grid search. Iteration count = 1.0/grid_interval. Default 10000 iterations.
 
     Returns
     -------
@@ -8296,6 +8299,9 @@ def optimize_threshold(
     if type(false_negative) not in allowed_types:
         raise TypeError("false_negative parameter only accepts float or integer value.")
 
+    if type(grid_interval) not in allowed_types and grid_interval < 1.0:
+        raise TypeError("grid_interval should be float and less than 1.0.")
+
     """
     ERROR HANDLING ENDS HERE
     """
@@ -8354,7 +8360,7 @@ def optimize_threshold(
     internal function to calculate loss ends here
     """
 
-    grid = np.arange(0, 1, 0.0001)
+    grid = np.arange(0, 1, grid_interval)
 
     # loop starts here
 
