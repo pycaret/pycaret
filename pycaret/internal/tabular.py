@@ -8885,7 +8885,7 @@ def _create_regression_drift_report(estimator):
     dashboard.calculate(reference_data, current_data, column_mapping = column_mapping)
     report_name = _get_model_name(estimator) + '_' + 'Drift_Report_Regression' + '.html'
     dashboard.save(report_name)
-    print(report_name + 'saved successfully.')
+    print(report_name + ' saved successfully.')
 
 
 def finalize_model(
