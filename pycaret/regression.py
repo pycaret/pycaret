@@ -1687,6 +1687,7 @@ def interpret_model(
 def predict_model(
     estimator,
     data: Optional[pd.DataFrame] = None,
+    drift_report: bool = False,
     round: int = 4,
     verbose: bool = True,
 ) -> pd.DataFrame:
@@ -1716,6 +1717,10 @@ def predict_model(
         must be available in the unseen dataset.
         
     
+    drift_report: bool, default = False
+        When set to True, interactive drift report is generated on test set.
+
+
     round: int, default = 4
         Number of decimal places to round predictions to.
 
@@ -1741,6 +1746,7 @@ def predict_model(
     return pycaret.internal.tabular.predict_model(
         estimator=estimator,
         data=data,
+        drift_report=drift_report,
         probability_threshold=None,
         encoded_labels=True,
         round=round,
