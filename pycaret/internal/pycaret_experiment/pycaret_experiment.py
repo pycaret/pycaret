@@ -400,7 +400,7 @@ class _PyCaretExperiment:
 
     def pull(self, pop=False) -> pd.DataFrame:  # added in pycaret==2.2.0
         """
-        Returns latest displayed table.
+        Returns the latest displayed table.
 
         Parameters
         ----------
@@ -414,8 +414,6 @@ class _PyCaretExperiment:
             Equivalent to get_config('display_container')[-1]
 
         """
-        if not self.display_container:
-            return None
         return self.display_container.pop(-1) if pop else self.display_container[-1]
 
     @property

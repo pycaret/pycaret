@@ -946,13 +946,13 @@ class ClassRegExperiment(_SupervisedExperiment):
                 ]
             )
 
-        self.display_container = pd.DataFrame(
-            display_container, columns=["Description", "Value"]
-        )
+        self.display_container = [
+            pd.DataFrame(display_container, columns=["Description", "Value"])
+        ]
         self.logger.info(f"self.display_container: {self.display_container}")
         if self.verbose:
             pd.set_option("display.max_rows", 100)
-            print(self.display_container.style.apply(highlight_setup))
+            print(self.display_container[0].style.apply(highlight_setup))
             pd.reset_option("display.max_rows")  # Reset option
 
         # Wrap-up ================================================== >>

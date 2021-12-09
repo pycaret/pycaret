@@ -201,7 +201,7 @@ class _SupervisedExperiment(_TabularExperiment):
 
     def _set_up_mlflow(self, runtime, log_data, log_profile):
         # log into experiment
-        self.experiment__.append(("Setup Config", self.display_container))
+        self.experiment__.append(("Setup Config", self.display_container[0]))
         self.experiment__.append(("X_training Set", self.X_train))
         self.experiment__.append(("y_training Set", self.y_train))
         self.experiment__.append(("X_test Set", self.X_test))
@@ -232,7 +232,7 @@ class _SupervisedExperiment(_TabularExperiment):
             # Get active run to log as tag
             RunID = mlflow.active_run().info.run_id
 
-            k = self.display_container.copy()
+            k = self.display_container[0].copy()
             k.set_index("Description", drop=True, inplace=True)
             kdict = k.to_dict()
             params = kdict.get("Value")
