@@ -345,7 +345,9 @@ class ClassRegExperiment(_SupervisedExperiment):
             # Encode target variable =============================== >>
 
             if self.y.dtype.kind not in "ifu":
-                self._internal_pipeline.steps.append(("label_encoder", LabelEncoder()))
+                self._internal_pipeline.steps.append(
+                    ("label_encoder", TransfomerWrapper(LabelEncoder()))
+                )
 
             # Date feature engineering ============================= >>
 
@@ -949,7 +951,7 @@ class ClassRegExperiment(_SupervisedExperiment):
         self.display_container = [
             pd.DataFrame(display_container, columns=["Description", "Value"])
         ]
-        self.logger.info(f"self.display_container: {self.display_container}")
+        self.logger.info(f"Setup display_container: {self.display_container[0]}")
         if self.verbose:
             pd.set_option("display.max_rows", 100)
             print(self.display_container[0].style.apply(highlight_setup))

@@ -83,20 +83,9 @@ class Pipeline(imblearn.pipeline.Pipeline):
         want to keep the original distribution of target classes.
 
         """
-        # Class names used only for training (not predicting)
-        train_only = ("RemoveOutliers", "FixImbalancer")
-
         it = super()._iter(with_final, filter_passthrough)
         if filter_train_only:
-            out = []
-            for idx, name, trans in it:
-                if hasattr(trans, "transformer"):  # Is of class TransformerWrapper
-                    if trans.transformer.__class__.__name__ not in train_only:
-                        out.append((idx, name, trans))
-                else:
-                    out.append((idx, name, trans))
-
-            return out
+            return filter(lambda x: not getattr(x[-1], "_train_only", False), it)
         else:
             return it
 
@@ -196,11 +185,6 @@ class Pipeline(imblearn.pipeline.Pipeline):
             X, y = _transform_one(transformer, X, y)
 
         return self.steps[-1][-1].score(X, y, sample_weight=sample_weight)
-
-    def _can_transform(self):
-        return self._final_estimator == "passthrough" or hasattr(
-            self._final_estimator, "transform"
-        )
 
     def transform(self, X=None, y=None):
         for _, _, transformer in self._iter():

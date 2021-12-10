@@ -1293,11 +1293,11 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         #######################
 
         self.logger.info("Creating final display dataframe.")
-        setup_display_container: pd.DataFrame = self._get_setup_display()
-        self.logger.info(f"Setup Display Container: {setup_display_container}")
+        self.display_container = [self._get_setup_display()]
+        self.logger.info(f"Setup Display Container: {self.display_container[0]}")
         if self.verbose:
             pd.set_option("display.max_rows", 100)
-            print(setup_display_container)
+            print(self.display_container[0].style.apply(highlight_setup))
             pd.reset_option("display.max_rows")  # Reset option
 
         #################
@@ -1313,13 +1313,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         runtime = np.array(time.time() - runtime_start).round(2)
 
-        #### Set self.display_container since it is needed for mlflow setup ----
-        # NOTE: It must be a dataframe at this point.
-        self.display_container = setup_display_container
         self._set_up_mlflow(runtime, log_data, log_profile)
-
-        # Convert display_container to list (containing styler) ----
-        self.display_container = [self.display_container.style.apply(highlight_setup)]
 
         self._setup_ran = True
 

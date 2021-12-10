@@ -11,7 +11,7 @@ import pycaret.datasets
 def test():
     # loading dataset
     data = pycaret.datasets.get_data("jewellery")
-    assert isinstance(data, pd.core.frame.DataFrame)
+    assert isinstance(data, pd.DataFrame)
 
     # init setup
     clu1 = pycaret.clustering.setup(
@@ -32,8 +32,8 @@ def test():
     # assign model
     kmeans_results = pycaret.clustering.assign_model(kmeans)
     kmodes_results = pycaret.clustering.assign_model(kmodes)
-    assert isinstance(kmeans_results, pd.core.frame.DataFrame)
-    assert isinstance(kmodes_results, pd.core.frame.DataFrame)
+    assert isinstance(kmeans_results, pd.DataFrame)
+    assert isinstance(kmodes_results, pd.DataFrame)
 
     # save model
     pycaret.clustering.save_model(kmeans, "kmeans_model_23122019")
@@ -43,16 +43,16 @@ def test():
 
     # predict model
     kmeans_predictions = pycaret.clustering.predict_model(model=kmeans, data=data)
-    assert isinstance(kmeans_predictions, pd.core.frame.DataFrame)
+    assert isinstance(kmeans_predictions, pd.DataFrame)
 
     # returns table of models
     all_models = pycaret.clustering.models()
-    assert isinstance(all_models, pd.core.frame.DataFrame)
+    assert isinstance(all_models, pd.DataFrame)
 
     # get config
     X = pycaret.clustering.get_config("X")
     seed = pycaret.clustering.get_config("seed")
-    assert isinstance(X, pd.core.frame.DataFrame)
+    assert isinstance(X, pd.DataFrame)
     assert isinstance(seed, int)
 
     # set config

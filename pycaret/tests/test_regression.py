@@ -11,7 +11,7 @@ import pycaret.datasets
 def test():
     # loading dataset
     data = pycaret.datasets.get_data("boston")
-    assert isinstance(data, pd.core.frame.DataFrame)
+    assert isinstance(data, pd.DataFrame)
 
     # init setup
     reg1 = pycaret.regression.setup(
@@ -59,11 +59,11 @@ def test():
 
     # hold out predictions
     predict_holdout = pycaret.regression.predict_model(best)
-    assert isinstance(predict_holdout, pd.core.frame.DataFrame)
+    assert isinstance(predict_holdout, pd.DataFrame)
 
     # predictions on new dataset
     predict_holdout = pycaret.regression.predict_model(best, data=data)
-    assert isinstance(predict_holdout, pd.core.frame.DataFrame)
+    assert isinstance(predict_holdout, pd.DataFrame)
 
     # finalize model
     final_best = pycaret.regression.finalize_model(best)
@@ -76,17 +76,17 @@ def test():
 
     # returns table of models
     all_models = pycaret.regression.models()
-    assert isinstance(all_models, pd.core.frame.DataFrame)
+    assert isinstance(all_models, pd.DataFrame)
 
     # get config
     X_train = pycaret.regression.get_config("X_train")
     X_test = pycaret.regression.get_config("X_test")
     y_train = pycaret.regression.get_config("y_train")
     y_test = pycaret.regression.get_config("y_test")
-    assert isinstance(X_train, pd.core.frame.DataFrame)
-    assert isinstance(X_test, pd.core.frame.DataFrame)
-    assert isinstance(y_train, pd.core.series.Series)
-    assert isinstance(y_test, pd.core.series.Series)
+    assert isinstance(X_train, pd.DataFrame)
+    assert isinstance(X_test, pd.DataFrame)
+    assert isinstance(y_train, pd.Series)
+    assert isinstance(y_test, pd.Series)
 
     # set config
     pycaret.regression.set_config("seed", 124)

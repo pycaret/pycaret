@@ -2,13 +2,12 @@
 # Author: Moez Ali <moez.ali@queensu.ca> and Antoni Baum (Yard1) <antoni.baum@protonmail.com>
 # License: MIT
 import inspect
-import os
 import numpy as np
 import pandas as pd
+from scipy import sparse
 import pandas.io.formats.style
 from pycaret.internal.validation import *
 from typing import Any, Callable, List, Optional, Dict, Set, Tuple, Union
-from sklearn import clone
 from sklearn.model_selection import KFold, StratifiedKFold, BaseCrossValidator
 from sklearn.model_selection._split import _BaseKFold
 from enum import IntEnum, Enum
@@ -35,14 +34,14 @@ class TSModelTypes(Enum):
     TREE = "tree"
 
 
-def to_df(data, index=None, columns=None, pca=False):
+def to_df(data, index=None, columns=None, dtypes=None):
     """Convert a dataset to pd.Dataframe.
 
     Parameters
     ----------
-    data: list, tuple, dict, np.ndarray, pd.DataFrame or None
-        Dataset to convert to a dataframe.  If None, return
-        unchanged.
+    data: list, tuple, dict, np.array, sps.matrix, pd.DataFrame or None
+        Dataset to convert to a dataframe.  If already a dataframe
+        or None, return unchanged.
 
     index: sequence or Index
         Values for the dataframe's index.
@@ -50,8 +49,9 @@ def to_df(data, index=None, columns=None, pca=False):
     columns: sequence or None, optional (default=None)
         Name of the columns. Use None for automatic naming.
 
-    pca: bool, optional (default=False)
-        Whether the columns are Features or Components.
+    dtypes: str, dict, np.dtype or None, optional (default=None)
+        Data types for the output columns. If None, the types are
+        inferred from the data.
 
     Returns
     -------
@@ -61,11 +61,13 @@ def to_df(data, index=None, columns=None, pca=False):
     """
     if data is not None and not isinstance(data, pd.DataFrame):
         if not isinstance(data, dict):  # Dict already has column names
+            if sparse.issparse(data):
+                data = data.toarray()
             if columns is None:
                 columns = [f"Feature {str(i)}" for i in range(1, len(data[0]) + 1)]
-            elif columns is None:
-                columns = [f"Component {str(i)}" for i in range(1, len(data[0]) + 1)]
         data = pd.DataFrame(data, index=index, columns=columns)
+        if dtypes is not None:
+            data = data.astype(dtypes)
 
     return data
 

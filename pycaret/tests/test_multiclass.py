@@ -11,7 +11,7 @@ import pycaret.datasets
 def test():
     # loading dataset
     data = pycaret.datasets.get_data("iris")
-    assert isinstance(data, pd.core.frame.DataFrame)
+    assert isinstance(data, pd.DataFrame)
 
     # init setup
     clf1 = pycaret.classification.setup(
@@ -52,11 +52,11 @@ def test():
 
     # hold out predictions
     predict_holdout = pycaret.classification.predict_model(best)
-    assert isinstance(predict_holdout, pd.core.frame.DataFrame)
+    assert isinstance(predict_holdout, pd.DataFrame)
 
     # predictions on new dataset
     predict_holdout = pycaret.classification.predict_model(best, data=data)
-    assert isinstance(predict_holdout, pd.core.frame.DataFrame)
+    assert isinstance(predict_holdout, pd.DataFrame)
 
     # calibrate model
     calibrated_best = pycaret.classification.calibrate_model(best)
@@ -72,17 +72,17 @@ def test():
 
     # returns table of models
     all_models = pycaret.classification.models()
-    assert isinstance(all_models, pd.core.frame.DataFrame)
+    assert isinstance(all_models, pd.DataFrame)
 
     # get config
     X_train = pycaret.classification.get_config("X_train")
     X_test = pycaret.classification.get_config("X_test")
     y_train = pycaret.classification.get_config("y_train")
     y_test = pycaret.classification.get_config("y_test")
-    assert isinstance(X_train, pd.core.frame.DataFrame)
-    assert isinstance(X_test, pd.core.frame.DataFrame)
-    assert isinstance(y_train, pd.core.series.Series)
-    assert isinstance(y_test, pd.core.series.Series)
+    assert isinstance(X_train, pd.DataFrame)
+    assert isinstance(X_test, pd.DataFrame)
+    assert isinstance(y_train, pd.Series)
+    assert isinstance(y_test, pd.Series)
 
     # set config
     pycaret.classification.set_config("seed", 124)

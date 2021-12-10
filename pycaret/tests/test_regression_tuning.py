@@ -12,7 +12,7 @@ from pycaret.internal.utils import can_early_stop
 def test():
     # loading dataset
     data = pycaret.datasets.get_data("boston")
-    assert isinstance(data, pd.core.frame.DataFrame)
+    assert isinstance(data, pd.DataFrame)
 
     # init setup
     reg = pycaret.regression.setup(

@@ -11,7 +11,7 @@ import pycaret.datasets
 def test():
     # loading dataset
     data = pycaret.datasets.get_data("boston")
-    assert isinstance(data, pd.core.frame.DataFrame)
+    assert isinstance(data, pd.DataFrame)
 
     # init setup
     reg1 = pycaret.regression.setup(

@@ -23,7 +23,7 @@ class TransfomerWrapper(BaseEstimator):
     dataframe instead of a numpy array. Note that, in order to
     keep the correct column names, the underlying transformer is
     only allowed to add or remove columns, never both.
-    From: https://github.com/tvdboom/ATOM/blob/master/atom/pipeline.py
+    From: https://github.com/tvdboom/ATOM/blob/master/atom/utils.py
 
     Parameters
     ----------
@@ -47,6 +47,7 @@ class TransfomerWrapper(BaseEstimator):
         self.include = include
         self.exclude = exclude
 
+        self._train_only = getattr(transformer, "_train_only", False)
         self._include = self.include
         self._exclude = self.exclude or []
 
@@ -55,7 +56,8 @@ class TransfomerWrapper(BaseEstimator):
 
     def fit(self, X=None, y=None, **fit_params):
         args = []
-        if "X" in signature(self.transformer.fit).parameters:
+        transformer_params = signature(self.transformer.fit).parameters
+        if "X" in transformer_params and X is not None:
             if self._include is None:
                 self._include = [c for c in X.columns if c in X and c not in self._exclude]
             elif not self._include:  # Don't fit if empty list
@@ -63,7 +65,7 @@ class TransfomerWrapper(BaseEstimator):
             else:
                 self._include = [c for c in self._include if c in X and c not in self._exclude]
             args.append(X[self._include])
-        if "y" in signature(self.transformer.fit).parameters:
+        if "y" in transformer_params and y is not None:
             args.append(y)
 
         self.transformer.fit(*args, **fit_params)
@@ -98,8 +100,7 @@ class TransfomerWrapper(BaseEstimator):
                 if any(mask) and mask[mask].index.values[0] not in temp_cols:
                     temp_cols.append(mask[mask].index.values[0])
                 else:
-                    diff = len(df.columns) - len(self._include)
-                    temp_cols.append(f"Feature {str(i + diff)}")
+                    temp_cols.append(f"Feature {i + df.shape[1] - len(self._include)}")
 
             return temp_cols
 
@@ -113,7 +114,7 @@ class TransfomerWrapper(BaseEstimator):
             Parameters
             ----------
             df: pd.DataFrame
-                DataFrame to reorder.
+                Dataset to reorder.
 
             original_df: pd.DataFrame
                 Original dataframe (states the order).
@@ -132,11 +133,12 @@ class TransfomerWrapper(BaseEstimator):
                             "the columns."
                         )
 
-                    temp_df[col] = original_df[col].tolist()  # List to adopt to index
+                    temp_df[col] = original_df[col].tolist()  # List to adapt to index
 
                 # Derivative cols are added after original
                 for col_derivative in df.columns:
-                    if col_derivative.startswith(col):
+                    # Exclude cols with default naming (Feature 1 -> Feature 10, etc...)
+                    if col_derivative.startswith(col) and not col.startswith("Feature"):
                         temp_df[col_derivative] = df[col_derivative]
 
             return temp_df
@@ -148,7 +150,7 @@ class TransfomerWrapper(BaseEstimator):
                 if issparse(out):
                     out = out.toarray()
 
-                out = to_df(out, columns=name_cols(out, X))
+                out = to_df(out, index=X.index, columns=name_cols(out, X))
 
             # Reorder columns in case only a subset was used
             return reorder_cols(out, X)
@@ -157,13 +159,19 @@ class TransfomerWrapper(BaseEstimator):
         y = to_series(y, index=getattr(X, "index", None))
 
         args = []
-        if "X" in signature(self.transformer.transform).parameters:
+        transform_params = signature(self.transformer.transform).parameters
+
+        # Skip transformers that transform only y when it's not provided
+        if list(transform_params.keys()) == ["y"] and y is None:
+            return variable_return(X, y)
+
+        if "X" in transform_params and X is not None:
             if self._include is None:
                 self._include = [c for c in X.columns if c in X and c not in self._exclude]
             elif not self._include:  # Don't transform if empty list
                 return variable_return(X, y)
             args.append(X[self._include])
-        if "y" in signature(self.transformer.transform).parameters:
+        if "y" in transform_params and y is not None:
             args.append(y)
 
         output = self.transformer.transform(*args)
@@ -171,13 +179,13 @@ class TransfomerWrapper(BaseEstimator):
         # Transform can return X, y or both
         if isinstance(output, tuple):
             new_X = prepare_df(output[0])
-            new_y = to_series(output[1], name=y.name)
+            new_y = to_series(output[1], index=new_X.index, name=y.name)
         else:
             if len(output.shape) > 1:
                 new_X = prepare_df(output)
                 new_y = y if y is None else y.set_axis(new_X.index)
             else:
-                new_y = to_series(output, name=y.name)
+                new_y = to_series(output, index=y.index, name=y.name)
                 new_X = X if X is None else X.set_index(new_y.index)
 
         return variable_return(new_X, new_y)
@@ -274,7 +282,13 @@ class RemoveOutliers(BaseEstimator):
         self.n_jobs = n_jobs
         self.random_state = random_state
 
+        self._estimator = None
+        self._train_only = True
+
     def fit(self, X, y):
+        return self
+
+    def transform(self, X, y):
         if self.method.lower() == "iforest":
             self._estimator = IsolationForest(
                 n_estimators=100,
@@ -293,9 +307,6 @@ class RemoveOutliers(BaseEstimator):
                 n_jobs=self.n_jobs,
             )
 
-        return self
-
-    def transform(self, X, y):
         mask = self._estimator.fit_predict(X) != -1
         return X[mask], y[mask]
 
@@ -311,6 +322,7 @@ class FixImbalancer(BaseEstimator):
 
     def __init__(self, estimator):
         self.estimator = estimator
+        self._train_only = True
 
     def fit(self, X, y):
         return self

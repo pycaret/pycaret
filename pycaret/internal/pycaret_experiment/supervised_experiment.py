@@ -1528,7 +1528,7 @@ class _SupervisedExperiment(_TabularExperiment):
         gc.collect()
 
         if not system:
-            return (model, model_fit_time)
+            return model, model_fit_time
 
         return model
 
@@ -3863,6 +3863,8 @@ class _SupervisedExperiment(_TabularExperiment):
                     self.y_train if use_train_data else self.y_test
                 )  # add for pfi explainer
 
+            test_X = self._internal_pipeline.transform(test_X)
+
         np.random.seed(self.seed)
 
         # storing estimator in model variable
@@ -4449,9 +4451,7 @@ class _SupervisedExperiment(_TabularExperiment):
         if not fit_kwargs:
             fit_kwargs = {}
 
-        groups = self._get_groups(
-            groups, data=self.X, fold_groups=self.fold_groups_param_full
-        )
+        groups = self._get_groups(groups, data=self.X)
 
         if not display:
             display = Display(verbose=False, html_param=self.html_param,)
@@ -4642,64 +4642,19 @@ class _SupervisedExperiment(_TabularExperiment):
             display = Display(verbose=False, html_param=False,)
 
         dtypes = None
-        print(self._internal_pipeline)
 
         # dataset
         if data is None:
-
-            if is_sklearn_pipeline(estimator):
-                estimator = estimator.steps[-1][1]
-
-            X_test_ = self.X_test.copy()
-            y_test_ = self.y_test.copy()
-
-            dtypes = self._internal_pipeline.named_steps["label_encoder"]
-
-            X_test_.reset_index(drop=True, inplace=True)
-            y_test_.reset_index(drop=True, inplace=True)
+            X_test_, y_test_ = self._internal_pipeline.transform(self.X_test, self.y_test)
 
         else:
-
-            if is_sklearn_pipeline(estimator) and hasattr(estimator, "predict"):
-                dtypes = estimator.named_steps["dtypes"]
-            else:
-                try:
-                    dtypes = self._internal_pipeline.named_steps["label_encoder"]
-
-                    estimator_ = deepcopy(self._internal_pipeline)
-                    if is_sklearn_pipeline(estimator):
-                        merge_pipelines(estimator_, estimator)
-                        estimator_.steps[-1] = (
-                            "trained_model",
-                            estimator_.steps[-1][1],
-                        )
-                    else:
-                        add_estimator_to_pipeline(
-                            estimator_, estimator, name="trained_model"
-                        )
-                    estimator = estimator_
-
-                except:
-                    self.logger.error("Pipeline not found. Exception:")
-                    self.logger.error(traceback.format_exc())
-                    raise ValueError("Pipeline not found")
-
-            X_test_ = data.copy()
-
-        # function to replace encoded labels with their original values
-        # will not run if categorical_labels is false
-        def replace_lables_in_column(label_column):
-            if dtypes:
-                return pd.Series(dtypes.transform(label_column), name=label_column.name)
-            return label_column
+            X_test_ = self._internal_pipeline.transform(data)
 
         # prediction starts here
         if isinstance(estimator, CustomProbabilityThresholdClassifier):
             if probability_threshold is None:
                 probability_threshold = estimator.probability_threshold
             estimator = get_estimator_from_meta_estimator(estimator)
-
-        X_test_ = self._internal_pipeline.transform(X_test_)
 
         pred = np.nan_to_num(estimator.predict(X_test_))
 
