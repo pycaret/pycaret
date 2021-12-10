@@ -18,7 +18,6 @@ from imblearn.over_sampling import ADASYN
 import pycaret.datasets
 import pycaret.regression
 import pycaret.classification
-from pycaret.internal.preprocess import TransformedTargetClassifier
 
 
 def test_select_target_by_index():
@@ -111,7 +110,10 @@ def test_ordinal_features():
     )
     X, _ = pc._internal_pipeline.fit_transform(pc.X, pc.y)
     mapping = pc._internal_pipeline.steps[0][1].transformer.mapping
-    assert mapping[0]["mapping"] == {np.nan: -1, "high": 2, "low": 0, "medium": 1}
+    assert mapping[0]["mapping"][np.nan] == -1
+    assert mapping[0]["mapping"]["low"] == 0
+    assert mapping[0]["mapping"]["medium"] == 1
+    assert mapping[0]["mapping"]["high"] == 2
 
 
 def test_categorical_features():
