@@ -8299,7 +8299,7 @@ def optimize_threshold(
     if type(false_negative) not in allowed_types:
         raise TypeError("false_negative parameter only accepts float or integer value.")
 
-    if type(grid_interval) not in allowed_types and grid_interval < 1.0:
+    if type(grid_interval) not in allowed_types or grid_interval < 1.0:
         raise TypeError("grid_interval should be float and less than 1.0.")
 
     """

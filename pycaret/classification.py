@@ -1872,6 +1872,7 @@ def optimize_threshold(
     true_negative: int = 0,
     false_positive: int = 0,
     false_negative: int = 0,
+    grid_interval: float = 0.0001,
 ):
 
     """
@@ -1909,7 +1910,11 @@ def optimize_threshold(
 
     false_negative: int, default = 0
         Cost function or returns for false negative.       
-    
+
+
+    grid_interval: float, default = 0.0001
+        Grid inerval for threshold grid search. Iteration count = 1.0/grid_interval. Default 10000 iterations.
+
 
     Returns:
         numpy.float64 
@@ -1927,6 +1932,7 @@ def optimize_threshold(
         true_negative=true_negative,
         false_positive=false_positive,
         false_negative=false_negative,
+        grid_interval=grid_interval,
     )
 
 
