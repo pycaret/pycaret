@@ -65,7 +65,7 @@ from collections import Iterable
 import warnings
 from IPython.utils import io
 import traceback
-from unittest.mock import patch
+from unittest.mock import NonCallableMock, patch
 import plotly.express as px
 import plotly.graph_objects as go
 import scikitplot as skplt
@@ -5720,6 +5720,7 @@ def plot_model(
     save: Union[str, bool] = False,
     fold: Optional[Union[int, Any]] = None,
     fit_kwargs: Optional[dict] = None,
+    plot_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
     feature_name: Optional[str] = None,
     label: bool = False,
@@ -5793,6 +5794,9 @@ def plot_model(
     fit_kwargs: dict, default = {} (empty dict)
         Dictionary of arguments passed to the fit method of the model.
 
+    plot_kwargs: dict, default = {} (empty dict)
+        Dictionary of arguments passed to the visualizer class.
+
     groups: str or array-like, with shape (n_samples,), default = None
         Optional Group labels for the samples used while splitting the dataset into train/test set.
         If string is passed, will use the data column with that name as the groups.
@@ -5842,6 +5846,9 @@ def plot_model(
 
     if not fit_kwargs:
         fit_kwargs = {}
+
+    if not plot_kwargs:
+        plot_kwargs = {}
 
     if not hasattr(estimator, "fit"):
         raise ValueError(
@@ -6583,7 +6590,16 @@ def plot_model(
 
             from yellowbrick.classifier import ROCAUC
 
-            visualizer = ROCAUC(pipeline_with_model)
+            try:
+                dtype_object = get_config('prep_pipe').steps[0][1]
+                encoder_labels = dtype_object.le.transform(dtype_object.le.classes_)
+                encoder_classes = dtype_object.le.classes_
+                encoder_dictionary = dict(zip(encoder_labels,encoder_classes))
+            except:
+                encoder_dictionary = None
+
+            visualizer = ROCAUC(pipeline_with_model, encoder=encoder_dictionary, **plot_kwargs)
+
             show_yellowbrick_plot(
                 visualizer=visualizer,
                 X_train=data_X,
@@ -6643,11 +6659,21 @@ def plot_model(
 
             from yellowbrick.classifier import ConfusionMatrix
 
+            try:
+                dtype_object = get_config('prep_pipe').steps[0][1]
+                encoder_labels = dtype_object.le.transform(dtype_object.le.classes_)
+                encoder_classes = dtype_object.le.classes_
+                encoder_dictionary = dict(zip(encoder_labels,encoder_classes))
+            except:
+                encoder_dictionary = None
+
             visualizer = ConfusionMatrix(
                 pipeline_with_model,
                 random_state=seed,
                 fontsize=15,
                 cmap="Greens",
+                encoder=encoder_dictionary,
+                **plot_kwargs
             )
             show_yellowbrick_plot(
                 visualizer=visualizer,
