@@ -30,7 +30,7 @@ jobs:
         python -m spacy download en_core_web_sm
     - name: Test with pytest
       run: |
-        pytest -o log_cli=true
+        pytest
 
   test_windows:
 
@@ -56,7 +56,7 @@ jobs:
         python -m spacy download en_core_web_sm
     - name: Test with pytest
       run: |
-        pytest -o log_cli=true
+        pytest
 
   # test_tuning:
 
