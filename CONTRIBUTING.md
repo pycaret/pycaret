@@ -43,14 +43,12 @@ pre-commit install
 Install development version of the package with additional extra dependencies required for unit testing:
 ```shell
 pip install -e .[test]
+python -m spacy download en_core_web_sm
 ```
 We use [`pytest`](https://docs.pytest.org/en/latest/) for unit testing.
 
-To run tests, except for a few ones, run:
+To run tests, except skipped ones (search for `@pytest.mark.skip` decorator over test functions), run:
 ```shell
-python -m spacy download en_core_web_sm
-rm pycaret/tests/test_classification_tuning.py
-rm pycaret/tests/test_regression_tuning.py
 pytest pycaret
 ```
 
