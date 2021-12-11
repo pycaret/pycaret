@@ -24,17 +24,13 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        python -m pip install -U pytest
-        python -m pip install codecov
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
         if [ -f requirements-optional.txt ]; then pip install -r requirements-optional.txt; fi
         if [ -f requirements-test.txt ]; then pip install -r requirements-test.txt; fi
-        pip install https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.0.0/en_core_web_sm-3.0.0-py3-none-any.whl
+        python -m spacy download en_core_web_sm
     - name: Remove tests
       run: |
         rm pycaret/tests/test_classification_tuning.py
-        rm pycaret/tests/test_classification_plots.py
-        rm pycaret/tests/test_regression_plots.py
         rm pycaret/tests/test_regression_tuning.py
     - name: Test with pytest
       run: |
