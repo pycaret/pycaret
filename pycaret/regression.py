@@ -1718,7 +1718,8 @@ def predict_model(
         
     
     drift_report: bool, default = False
-        When set to True, interactive drift report is generated on test set.
+        When set to True, interactive drift report is generated on test set
+        with the evidently library.
 
 
     round: int, default = 4

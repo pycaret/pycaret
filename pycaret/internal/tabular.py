@@ -37,6 +37,10 @@ from pycaret.internal.Display import Display, is_in_colab
 from pycaret.internal.distributions import *
 from pycaret.internal.validation import *
 from pycaret.internal.tunable import TunableMixin
+from pycaret.internal.drift_report import (
+    create_classification_drift_report,
+    create_regression_drift_report,
+)
 import pycaret.containers.metrics.classification
 import pycaret.containers.metrics.regression
 import pycaret.containers.metrics.clustering
@@ -8734,6 +8738,26 @@ def predict_model(
 
         X_test_ = data.copy()
 
+    # generate drift report
+    if drift_report:
+        if ml_usecase == MLUsecase.CLASSIFICATION:
+            create_classification_drift_report(
+                _get_model_name(estimator),
+                prep_pipe,
+                data_before_preprocess,
+                X_train,
+                X_test_,
+            )
+
+        elif ml_usecase == MLUsecase.REGRESSION:
+            create_regression_drift_report(
+                _get_model_name(estimator),
+                prep_pipe,
+                data_before_preprocess,
+                X_train,
+                X_test_,
+            )
+
     # function to replace encoded labels with their original values
     # will not run if categorical_labels is false
     def replace_lables_in_column(label_column):
@@ -8822,70 +8846,8 @@ def predict_model(
     if df_score is not None:
         display_container.append(df_score)
 
-    # generate drift report
-    if drift_report:
-        if ml_usecase == MLUsecase.CLASSIFICATION:
-            _create_classification_drift_report(estimator)
-
-        elif ml_usecase == MLUsecase.REGRESSION:
-            _create_regression_drift_report(estimator)
-
     gc.collect()
     return X_test_
-
-def _create_classification_drift_report(estimator):
-    
-    from evidently.dashboard import Dashboard
-    from evidently.tabs import DataDriftTab, CatTargetDriftTab
-    from evidently.pipeline.column_mapping import ColumnMapping
-
-    p = get_config('prep_pipe').steps[0][1].learned_dtypes
-    numeric_features = list(p[(p=='float32') | (p=='float64')].index)
-    categorical_features = list(p[p=='object'].index)
-
-    reference_data = get_config('data_before_preprocess').iloc[get_config('X_train').index]
-    current_data = get_config('data_before_preprocess').iloc[get_config('X_test').index]
-
-    column_mapping = ColumnMapping()
-    column_mapping.target = get_config('prep_pipe').steps[0][1].target
-    column_mapping.prediction = None
-    column_mapping.datetime = None
-
-    column_mapping.numerical_features = numeric_features
-    column_mapping.categorical_features = categorical_features
-
-    dashboard = Dashboard(tabs=[DataDriftTab(), CatTargetDriftTab()])
-    dashboard.calculate(reference_data, current_data, column_mapping = column_mapping)
-    report_name = _get_model_name(estimator) + '_' + 'Drift_Report_Classification' + '.html'
-    dashboard.save(report_name)
-    print(report_name + ' saved successfully.')
-
-def _create_regression_drift_report(estimator):
-    
-    from evidently.dashboard import Dashboard
-    from evidently.tabs import DataDriftTab, NumTargetDriftTab
-    from evidently.pipeline.column_mapping import ColumnMapping
-
-    p = get_config('prep_pipe').steps[0][1].learned_dtypes
-    numeric_features = list(p[(p=='float32') | (p=='float64')].index)
-    categorical_features = list(p[p=='object'].index)
-
-    reference_data = get_config('data_before_preprocess').iloc[get_config('X_train').index]
-    current_data = get_config('data_before_preprocess').iloc[get_config('X_test').index]
-
-    column_mapping = ColumnMapping()
-    column_mapping.target = get_config('prep_pipe').steps[0][1].target
-    column_mapping.prediction = None
-    column_mapping.datetime = None
-
-    column_mapping.numerical_features = numeric_features
-    column_mapping.categorical_features = categorical_features
-
-    dashboard = Dashboard(tabs=[DataDriftTab(), NumTargetDriftTab()])
-    dashboard.calculate(reference_data, current_data, column_mapping = column_mapping)
-    report_name = _get_model_name(estimator) + '_' + 'Drift_Report_Regression' + '.html'
-    dashboard.save(report_name)
-    print(report_name + ' saved successfully.')
 
 
 def finalize_model(
