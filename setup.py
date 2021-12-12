@@ -38,7 +38,6 @@ setup(
     ],
     packages=find_packages(include=["pycaret*"]),
     include_package_data=True,
-    python_requires=">=3.6, <3.10",
     install_requires=required,
     extras_require={"full": optional_required,
                     "test": test_required + optional_required},
