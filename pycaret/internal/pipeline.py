@@ -445,7 +445,7 @@ def get_memory(memory: Union[bool, str, Memory]) -> Memory:
         if not memory:
             return None
         if memory:
-            return Memory(tempfile.gettempdir())
+            return Memory(tempfile.gettempdir(), verbose=0)
     raise TypeError(
         f"memory must be a bool, str or joblib.Memory object, got {type(memory)}"
     )
