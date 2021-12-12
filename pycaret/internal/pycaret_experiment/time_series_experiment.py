@@ -1,6 +1,7 @@
 from copy import deepcopy
 import os
 import re
+import math
 
 from sktime.forecasting.model_selection import (
     ExpandingWindowSplitter,
@@ -1082,25 +1083,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         if seasonal_period is None:
 
             index_freq = data_.index.freqstr
-            index_freq = index_freq.split("-")[0] or index_freq
-            # Checking whether the index_freq contains both digit and alphabet
-            if bool(re.search(r'\d', index_freq)):
-                temp = re.compile("([0-9]+)([a-zA-Z]+)")
-                res = temp.match(index_freq).groups()
-                # separating the digits and alphabets
-                if res[1] in SeasonalPeriod.__members__:
-                    self.seasonal_period = int(res[0]) * SeasonalPeriod[res[1]].value
-                else:
-                    raise ValueError(
-                    f"Unsupported Period frequency: {index_freq}, valid Period frequencies: {', '.join(SeasonalPeriod.__members__.keys())}"
-                )
-
-            if index_freq in SeasonalPeriod.__members__:
-                self.seasonal_period = SeasonalPeriod[index_freq].value
-            else:
-                raise ValueError(
-                    f"Unsupported Period frequency: {index_freq}, valid Period frequencies: {', '.join(SeasonalPeriod.__members__.keys())}"
-                )
+            self.seasonal_period = get_sp_from_str(str_freq = index_freq)
 
         else:
 
@@ -1110,12 +1093,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 )
 
             if isinstance(seasonal_period, str):
-                try:
-                    self.seasonal_period = SeasonalPeriod[seasonal_period]
-                except KeyError:
-                    raise ValueError(
-                        f"Unsupported Period frequency: {seasonal_period}, valid Period frequencies: {', '.join(SeasonalPeriod.__members__.keys())}"
-                    )
+                self.seasonal_period = get_sp_from_str(str_freq = seasonal_period)
             else:
                 self.seasonal_period = seasonal_period
 
@@ -3886,3 +3864,52 @@ def update_additional_scorer_kwargs(
         {"y_train": y_train, "lower": lower, "upper": upper,}
     )
     return additional_scorer_kwargs
+
+def get_sp_from_str(str_freq:str)->int:
+    """Takes the seasonal period as string detects if it is alphaneumeric and returns its integer equivalent. 
+        For example - 
+        input - '30W'
+        output - 26 
+        explaination - we take the lcm of 30 and 52 ( as W = 52) which in this case is 780. 
+        And the output is ( lcm / prefix). Here, 780 / 30 = 26. 
+
+    Parameters
+    ----------
+    str_freq : str
+        frequency of the dataset passed as a string
+
+    Returns
+    -------
+    int
+        integer equivalent of the string frequency
+
+    Raises
+    ------
+    ValueError
+        if the frequency suffix does not correspond to any of the values in the class SeasonalPeriod then the error is thrown. 
+    """
+    str_freq = str_freq.split("-")[0] or str_freq
+    # Checking whether the index_freq contains both digit and alphabet
+    if bool(re.search(r'\d', str_freq)):
+        temp = re.compile("([0-9]+)([a-zA-Z]+)")
+        res = temp.match(str_freq).groups()
+        # separating the digits and alphabets
+        if res[1] in SeasonalPeriod.__members__:
+            prefix = int(res[0])
+            value = SeasonalPeriod[res[1]].value
+            lcm = abs(value*prefix)//math.gcd(value,prefix)
+            seasonal_period = int(lcm/prefix)
+            return seasonal_period
+        else:
+            raise ValueError(
+            f"Unsupported Period frequency: {str_freq}, valid Period frequency suffixes are: {', '.join(SeasonalPeriod.__members__.keys())}"
+        )
+    else:
+
+        if str_freq in SeasonalPeriod.__members__:
+            seasonal_period = SeasonalPeriod[str_freq].value
+            return seasonal_period
+        else:
+            raise ValueError(
+                f"Unsupported Period frequency: {str_freq}, valid Period frequency suffixes are: {', '.join(SeasonalPeriod.__members__.keys())}"
+            )

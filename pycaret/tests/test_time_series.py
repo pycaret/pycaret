@@ -2,7 +2,7 @@
 """
 from random import uniform
 import pytest
-
+import math
 import numpy as np  # type: ignore
 import pandas as pd  # type: ignore
 
@@ -13,6 +13,7 @@ from pycaret.internal.ensemble import _ENSEMBLE_METHODS
 
 from .time_series_test_utils import (
     _get_seasonal_values,
+    _get_seasonal_values_alphanumeric,
     _return_model_parameters,
     _return_splitter_args,
     _return_compare_model_args,
@@ -282,7 +283,6 @@ def test_check_stats_alpha(load_pos_and_neg_data):
 def test_setup_seasonal_period_str(
     load_pos_and_neg_data, seasonal_period, seasonal_value
 ):
-
     exp = TimeSeriesExperiment()
 
     fh = np.arange(1, 13)
@@ -302,8 +302,34 @@ def test_setup_seasonal_period_str(
     assert exp.seasonal_period == seasonal_value
 
 
+@pytest.mark.parametrize("prefix, seasonal_period, seasonal_value", _get_seasonal_values_alphanumeric())
+def test_setup_seasonal_period_alphaneumeric(load_pos_and_neg_data,prefix,seasonal_period, seasonal_value):
+    """ Tests the get_sp_from_str function with different values of frequency """
+
+    seasonal_period = prefix + seasonal_period
+    prefix = int(prefix)
+    lcm = abs(seasonal_value*prefix)//math.gcd(seasonal_value,prefix)
+    expected_seasonal_value = int(lcm/prefix)
+
+    exp = TimeSeriesExperiment()
+
+    fh = np.arange(1, 13)
+    fold = 2
+    data = load_pos_and_neg_data
+
+    exp.setup(
+        data=data,
+        fh=fh,
+        fold=fold,
+        fold_strategy="sliding",
+        verbose=False,
+        seasonal_period=seasonal_period,
+    )
+
+    assert exp.seasonal_period == expected_seasonal_value
+
 @pytest.mark.parametrize("seasonal_key, seasonal_value", _get_seasonal_values())
-def test_setup_seasonal_period_int(load_pos_and_neg_data, seasonal_key, seasonal_value):
+def test_setup_seasonal_period_int(load_pos_and_neg_data,seasonal_key, seasonal_value):
 
     exp = TimeSeriesExperiment()
 
@@ -321,6 +347,7 @@ def test_setup_seasonal_period_int(load_pos_and_neg_data, seasonal_key, seasonal
     )
 
     assert exp.seasonal_period == seasonal_value
+
 
 
 def test_seasonal_period_to_use():
