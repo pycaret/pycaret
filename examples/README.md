@@ -1,6 +1,5 @@
 # Examples Index
 
-### This module contains some basic examples 
 |Topic|Notebook Link|Topic|Notebook Link|
 | :---:|:---:|:---:|:---:|   
 | Fetal State Classification | [link](https://github.com/pycaret/pycaret/blob/master/examples/Fetal%20State%20Classification%20Tutorial%20-FSC101.ipynb)| Classification | [link](https://github.com/pycaret/pycaret/blob/master/examples/PyCaret%202%20Classification.ipynb)|  
