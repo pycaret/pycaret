@@ -499,6 +499,7 @@ class ClassRegExperiment(_SupervisedExperiment):
                         transformer=IterativeImputer(
                             num_estimator=numeric_iterative_imputer,
                             cat_estimator=categorical_iterative_imputer,
+                            skip_complete=True,
                             max_iter=iterative_imputation_iters,
                             random_state=self.seed,
                             categorical_indices=categorical_indices,

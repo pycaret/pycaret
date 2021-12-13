@@ -1,7 +1,9 @@
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import List, Optional
 import numpy as np
 from time import time
 import warnings
+import pandas as pd
+
 from sklearn.compose import ColumnTransformer
 from sklearn.experimental import enable_iterative_imputer
 from sklearn.impute import IterativeImputer as SklearnIterativeImputer, SimpleImputer
@@ -19,9 +21,11 @@ from sklearn.preprocessing import (
     OrdinalEncoder as SklearnOrdinalEncoder,
     OneHotEncoder as SklearnOneHotEncoder,
 )
-from sklearn.base import BaseEstimator, ClassifierMixin, RegressorMixin, clone
+from sklearn.base import BaseEstimator, clone
 from sklearn.utils import check_random_state
 from sklearn.exceptions import ConvergenceWarning
+from sklearn.utils.validation import check_is_fitted
+from sklearn.dummy import DummyClassifier
 
 # Handle categorical columns. Special cases for some models.
 # TODO make "has own cat encoding a container feature"
@@ -66,6 +70,17 @@ def prepare_estimator_for_categoricals(
     elif preparation_type:
         raise ValueError(f"Unknown preparation_type {preparation_type}")
     return estimator, fit_params
+
+
+def _inverse_map_pd(
+    Xt: pd.DataFrame, mappings: dict, feature_name_in: list
+) -> pd.DataFrame:
+    Xt = pd.DataFrame(Xt, columns=feature_name_in)
+    Xt = Xt.astype({col: "category" for col in mappings})
+    for col in Xt.select_dtypes("category").columns:
+        inverse_mapping = {i: k for k, i in mappings[col].items()}
+        Xt[col] = Xt[col].cat.rename_categories(inverse_mapping)
+    return Xt
 
 
 class IterativeImputer(SklearnIterativeImputer):
@@ -167,6 +182,7 @@ class IterativeImputer(SklearnIterativeImputer):
         X_missing_mask = _get_mask(X, self.missing_values)
         mask_missing_values = X_missing_mask.copy()
         categorical_indices = sorted(self.categorical_indices) or []
+        num_indices = [i for i in range(X.shape[1]) if i not in categorical_indices]
         if self.initial_imputer_ is None:
             self.initial_imputer_ = ColumnTransformer(
                 [
@@ -176,7 +192,7 @@ class IterativeImputer(SklearnIterativeImputer):
                             missing_values=self.missing_values,
                             strategy=self.num_initial_strategy,
                         ),
-                        [i for i in range(X.shape[1]) if i not in categorical_indices],
+                        num_indices,
                     ),
                     (
                         "cat_imputer",
@@ -193,6 +209,15 @@ class IterativeImputer(SklearnIterativeImputer):
             X_filled = self.initial_imputer_.fit_transform(X)
         else:
             X_filled = self.initial_imputer_.transform(X)
+
+        reorder_indices_mapping = {
+            **{v: i for i, v in enumerate(num_indices)},
+            **{v: i + len(num_indices) - 1 for i, v in enumerate(categorical_indices)},
+        }
+        reorder_indices = [
+            reorder_indices_mapping[i] for i in range(len(reorder_indices_mapping))
+        ]
+        X_filled = X_filled[:, reorder_indices]
 
         combined_statistics = np.zeros(X.shape[1])
         num_statistics = list(
@@ -233,6 +258,9 @@ class IterativeImputer(SklearnIterativeImputer):
         if self.n_nearest_features is not None:
             raise NotImplementedError("n_nearest_features is not implemented")
 
+        if self.add_indicator:
+            raise NotImplementedError("add_indicator is not implemented")
+
         self.random_state_ = getattr(
             self, "random_state_", check_random_state(self.random_state)
         )
@@ -262,6 +290,19 @@ class IterativeImputer(SklearnIterativeImputer):
             self._cat_estimator = RandomForestClassifier()
         else:
             self._cat_estimator = clone(self.cat_estimator)
+
+        self.mappings_ = {}
+        if isinstance(X, pd.DataFrame):
+            cat_indices = self.categorical_indices or []
+            columns_to_encode = [
+                col for i, col in enumerate(X.columns) if i in cat_indices
+            ]
+            X = X.astype({col: "category" for col in columns_to_encode})
+            for col in X.select_dtypes("category").columns:
+                self.mappings_[col] = {
+                    k: i for i, k in enumerate(X[col].cat.categories)
+                }
+                X[col] = X[col].cat.rename_categories(self.mappings_[col])
 
         self.imputation_sequence_ = []
 
@@ -353,7 +394,21 @@ class IterativeImputer(SklearnIterativeImputer):
                     ConvergenceWarning,
                 )
         Xt[~mask_missing_values] = X[~mask_missing_values]
-        return super()._concatenate_indicator(Xt, X_indicator)
+        if self.mappings_:
+            Xt = _inverse_map_pd(Xt, self.mappings_, self.feature_names_in_)
+        # return super()._concatenate_indicator(Xt, X_indicator)
+        return Xt
+
+    def transform(self, X):
+        check_is_fitted(self)
+        if self.mappings_:
+            X = X.astype({col: "category" for col in self.mappings_})
+            for col in X.select_dtypes("category").columns:
+                X[col] = X[col].cat.rename_categories(self.mappings_[col])
+        Xt = super().transform(X)
+        if self.mappings_:
+            Xt = _inverse_map_pd(Xt, self.mappings_, self.feature_names_in_)
+        return Xt
 
     def _impute_one_feature(
         self,
@@ -364,45 +419,6 @@ class IterativeImputer(SklearnIterativeImputer):
         estimator=None,
         fit_mode=True,
     ):
-        """Impute a single feature from the others provided.
-
-        This function predicts the missing values of one of the features using
-        the current estimates of all the other features. The `estimator` must
-        support `return_std=True` in its `predict` method for this function
-        to work.
-
-        Parameters
-        ----------
-        X_filled : ndarray
-            Input data with the most recent imputations.
-
-        mask_missing_values : ndarray
-            Input data's missing indicator matrix.
-
-        feat_idx : int
-            Index of the feature currently being imputed.
-
-        neighbor_feat_idx : ndarray
-            Indices of the features to be used in imputing `feat_idx`.
-
-        estimator : object
-            The estimator to use at this step of the round-robin imputation.
-            If `sample_posterior=True`, the estimator must support
-            `return_std` in its `predict` method.
-            If None, it will be cloned from self._estimator.
-
-        fit_mode : boolean, default=True
-            Whether to fit and predict with the estimator or just predict.
-
-        Returns
-        -------
-        X_filled : ndarray
-            Input data with `X_filled[missing_row_mask, feat_idx]` updated.
-
-        estimator : estimator with sklearn API
-            The fitted estimator used to impute
-            `X_filled[missing_row_mask, feat_idx]`.
-        """
         if estimator is None and fit_mode is False:
             raise ValueError(
                 "If fit_mode is False, then an already-fitted "
@@ -445,6 +461,25 @@ class IterativeImputer(SklearnIterativeImputer):
             fit_params = {**fit_params, **prep_fit_params}
             X_train = _safe_indexing(X_filled[:, neighbor_feat_idx], ~missing_row_mask)
             y_train = _safe_indexing(X_filled[:, feat_idx], ~missing_row_mask)
+            # required for catboost
+            X_train = pd.DataFrame(X_train).astype(
+                {col: int for col in categorical_indices}
+            )
+            if is_categorical_feat:
+                y_train = y_train.astype(int)
+
+            # workaround for catboost failing with one unique target value
+            try:
+                from catboost import CatBoostClassifier
+
+                if (
+                    isinstance(estimator, CatBoostClassifier)
+                    and len(np.unique(y_train)) == 1
+                ):
+                    estimator = DummyClassifier(strategy="most_frequent")
+            except ImportError:
+                pass
+
             estimator.fit(X_train, y_train, **fit_params)
 
         # if no missing values, don't predict
@@ -453,6 +488,8 @@ class IterativeImputer(SklearnIterativeImputer):
 
         # get posterior samples if there is at least one missing value
         X_test = _safe_indexing(X_filled[:, neighbor_feat_idx], missing_row_mask)
+        # required for catboost
+        X_test = pd.DataFrame(X_test).astype({col: int for col in categorical_indices})
         if self.sample_posterior:
             mus, sigmas = estimator.predict(X_test, return_std=True)
             imputed_values = np.zeros(mus.shape, dtype=X_filled.dtype)
