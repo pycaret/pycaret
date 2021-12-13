@@ -1465,7 +1465,7 @@ class ClassificationExperiment(ClassRegExperiment):
                     source="calibrate_models",
                     runtime=runtime,
                     model_fit_time=model_fit_time,
-                    _internal_pipeline=self._internal_pipeline,
+                    pipeline=self.pipeline,
                     log_plots=self.log_plots_param,
                     display=display,
                 )

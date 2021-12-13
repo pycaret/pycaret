@@ -2224,14 +2224,14 @@ def get_config(variable: str):
     This function retrieves the global variables created when initializing the
     ``setup`` function. Following variables are accessible:
 
-    - X: Transformed dataset (X)
-    - y: Transformed dataset (y)
-    - X_train: Transformed train dataset (X)
-    - X_test: Transformed test/holdout dataset (X)
-    - y_train: Transformed train dataset (y)
-    - y_test: Transformed test/holdout dataset (y)
+    - dataset: Transformed dataset
+    - train: Transformed training set
+    - test: Transformed test set
+    - X: Transformed feature set
+    - y: Transformed target column
+    - X_train, X_test, y_train, y_test: Subsets of the train and test sets.
     - seed: random state set through session_id
-    - prep_pipe: Transformation pipeline
+    - pipeline: Transformation pipeline configured through setup
     - fold_shuffle_param: shuffle parameter used in Kfolds
     - n_jobs_param: n_jobs parameter used in model training
     - html_param: html_param configured through setup

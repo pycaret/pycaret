@@ -34,7 +34,7 @@ class _PyCaretExperiment:
 
         # Setup attrs
         self.fold_generator = None
-        self._internal_pipeline = None
+        self.pipeline = None
         self.display_container = None
         self._setup_ran = False
 
@@ -279,7 +279,6 @@ class _PyCaretExperiment:
         variable
 
         """
-
         function_params_str = ", ".join(
             [f"{k}={v}" for k, v in locals().items() if not k == "globals_d"]
         )
@@ -291,11 +290,15 @@ class _PyCaretExperiment:
             raise ValueError(
                 f"Variable {variable} not found. Possible variables are: {list(self.variables)}"
             )
+
+        if any(variable.endswith(attr) for attr in ("train", "test", "dataset")):
+            variable += "_transformed"
+
         var = getattr(self, variable)
 
-        self.logger.info(f"Variable: {variable} returned as {var}")
+        self.logger.info(f"Variable: {variable[:-12]} returned as {var}")
         self.logger.info(
-            "get_config() succesfully completed......................................"
+            "get_config() successfully completed......................................"
         )
 
         return var
@@ -460,3 +463,48 @@ class _PyCaretExperiment:
     def y_test(self):
         """Target column of the test set."""
         return self.test[self.target_param]
+
+    @property
+    def dataset_transformed(self):
+        """Transformed dataset."""
+        return pd.concat([*self.pipeline.transform(self.X, self.y)])
+
+    @property
+    def train_transformed(self):
+        """Transformed training set."""
+        return pd.concat([*self.pipeline.transform(self.X_train, self.y_train)])
+
+    @property
+    def test_transformed(self):
+        """Transformed test set."""
+        return pd.concat([*self.pipeline.transform(self.X_test, self.y_test)])
+
+    @property
+    def X_transformed(self):
+        """Transformed feature set."""
+        return self.pipeline.transform(self.X, self.y)[0]
+
+    @property
+    def y_transformed(self):
+        """Transformed target column."""
+        return self.pipeline.transform(self.X, self.y)[1]
+
+    @property
+    def X_train_transformed(self):
+        """Transformed feature set of the training set."""
+        return self.pipeline.transform(self.X_train, self.y_train)[0]
+
+    @property
+    def X_test_transformed(self):
+        """Transformed feature set of the test set."""
+        return self.pipeline.transform(self.X_test, self.y_test)[0]
+
+    @property
+    def y_train_transformed(self):
+        """Transformed target column of the training set."""
+        return self.pipeline.transform(self.X_train, self.y_train)[1]
+
+    @property
+    def y_test_transformed(self):
+        """Transformed target column of the test set."""
+        return self.pipeline.transform(self.X_test, self.y_test)[1]
