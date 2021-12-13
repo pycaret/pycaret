@@ -295,7 +295,8 @@ def test_iterative_imputer():
     data = pycaret.datasets.get_data("juice")
     categories = {}
     for i, col in enumerate(data.columns):
-        if col == "STORE":
+        # leave two columns and target filled
+        if col in ("STORE", "PriceCH", "DiscMM"):
             continue
         if col in ("Purchase", "Store7"):
             categories[col] = set(data[col].unique())
