@@ -468,19 +468,16 @@ class IterativeImputer(SklearnIterativeImputer):
             if is_categorical_feat:
                 y_train = y_train.astype(int)
 
-            # workaround for catboost failing with one unique target value
             try:
-                from catboost import CatBoostClassifier
-
-                if (
-                    isinstance(estimator, CatBoostClassifier)
-                    and len(np.unique(y_train)) == 1
-                ):
+                estimator.fit(X_train, y_train, **fit_params)
+            except Exception:
+                # some classifiers raise exceptions if there is only one
+                # target value
+                if is_categorical_feat and len(np.unique(y_train)) == 1:
                     estimator = DummyClassifier(strategy="most_frequent")
-            except ImportError:
-                pass
-
-            estimator.fit(X_train, y_train, **fit_params)
+                    estimator.fit(X_train, y_train)
+                else:
+                    raise
 
         # if no missing values, don't predict
         if np.sum(missing_row_mask) == 0:
