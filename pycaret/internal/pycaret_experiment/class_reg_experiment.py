@@ -334,7 +334,7 @@ class ClassRegExperiment(_SupervisedExperiment):
         # Preprocessing ============================================ >>
 
         # Initialize empty pipeline
-        self._internal_pipeline = InternalPipeline(
+        self.pipeline = InternalPipeline(
             steps=[("placeholder", None)], memory=self.memory,
         )
 
@@ -345,7 +345,7 @@ class ClassRegExperiment(_SupervisedExperiment):
             # Encode target variable =============================== >>
 
             if self.y.dtype.kind not in "ifu":
-                self._internal_pipeline.steps.append(
+                self.pipeline.steps.append(
                     ("label_encoder", TransfomerWrapper(LabelEncoder()))
                 )
 
@@ -358,7 +358,7 @@ class ClassRegExperiment(_SupervisedExperiment):
                     transformer=ExtractDateTimeFeatures(), include=date_features,
                 )
 
-                self._internal_pipeline.steps.append(
+                self.pipeline.steps.append(
                     ("date_feature_extractor", date_estimator),
                 )
 
@@ -400,8 +400,8 @@ class ClassRegExperiment(_SupervisedExperiment):
                     )
                     self._internal_pipeline.steps.extend(
                         [
-                            ("num_imputer", num_estimator),
-                            ("cat_imputer", cat_estimator),
+                            ("numerical_imputer", num_estimator),
+                            ("categorical_imputer", cat_estimator),
                         ],
                     )
                 elif imputation_type == "iterative":
@@ -539,7 +539,7 @@ class ClassRegExperiment(_SupervisedExperiment):
                         f"or tf-idf, got {text_features_method}."
                     )
 
-                self._internal_pipeline.steps.append(
+                self.pipeline.steps.append(
                     ("text_embedding", embed_estimator)
                 )
 
@@ -591,7 +591,7 @@ class ClassRegExperiment(_SupervisedExperiment):
                     include=list(ordinal_features.keys()),
                 )
 
-                self._internal_pipeline.steps.append(
+                self.pipeline.steps.append(
                     ("ordinal_encoding", ord_estimator)
                 )
 
@@ -608,7 +608,7 @@ class ClassRegExperiment(_SupervisedExperiment):
                         include=one_hot_cols,
                     )
 
-                    self._internal_pipeline.steps.append(
+                    self.pipeline.steps.append(
                         ("onehot_encoding", onehot_estimator)
                     )
 
@@ -625,7 +625,7 @@ class ClassRegExperiment(_SupervisedExperiment):
                         transformer=encoding_method, include=rest_cols,
                     )
 
-                    self._internal_pipeline.steps.append(
+                    self.pipeline.steps.append(
                         ("rest_encoding", rest_estimator)
                     )
 
@@ -642,7 +642,7 @@ class ClassRegExperiment(_SupervisedExperiment):
                     ),
                 )
 
-                self._internal_pipeline.steps.append(
+                self.pipeline.steps.append(
                     ("polynomial_features", polynomial)
                 )
 
@@ -661,7 +661,7 @@ class ClassRegExperiment(_SupervisedExperiment):
                         exclude=keep_features,
                     )
 
-                self._internal_pipeline.steps.append(
+                self.pipeline.steps.append(
                     ("low_variance", variance_estimator)
                 )
 
@@ -681,7 +681,7 @@ class ClassRegExperiment(_SupervisedExperiment):
                     exclude=keep_features,
                 )
 
-                self._internal_pipeline.steps.append(
+                self.pipeline.steps.append(
                     ("remove_multicollinearity", multicollinearity)
                 )
 
@@ -696,7 +696,7 @@ class ClassRegExperiment(_SupervisedExperiment):
                     include=bin_numeric_features,
                 )
 
-                self._internal_pipeline.steps.append(
+                self.pipeline.steps.append(
                     ("bin_numeric_features", binning_estimator)
                 )
 
@@ -717,7 +717,7 @@ class ClassRegExperiment(_SupervisedExperiment):
                     ),
                 )
 
-                self._internal_pipeline.steps.append(("remove_outliers", outliers))
+                self.pipeline.steps.append(("remove_outliers", outliers))
 
             # Balance the dataset ================================== >>
 
@@ -735,7 +735,7 @@ class ClassRegExperiment(_SupervisedExperiment):
                     balance_estimator = FixImbalancer(fix_imbalance_method)
 
                 balance_estimator = TransfomerWrapper(balance_estimator)
-                self._internal_pipeline.steps.append(("balance", balance_estimator))
+                self.pipeline.steps.append(("balance", balance_estimator))
 
             # Transformation ======================================= >>
 
@@ -756,7 +756,7 @@ class ClassRegExperiment(_SupervisedExperiment):
                         f"got {transformation_method}."
                     )
 
-                self._internal_pipeline.steps.append(
+                self.pipeline.steps.append(
                     ("transformation", TransfomerWrapper(transformation_estimator))
                 )
 
@@ -778,7 +778,7 @@ class ClassRegExperiment(_SupervisedExperiment):
                         f"{normalize_method}. Possible values are: {' '.join(norm_dict)}."
                     )
 
-                self._internal_pipeline.steps.append(("normalize", normalize_estimator))
+                self.pipeline.steps.append(("normalize", normalize_estimator))
 
             # PCA ================================================== >>
 
@@ -815,7 +815,7 @@ class ClassRegExperiment(_SupervisedExperiment):
                         f"{pca_method}. Possible values are: {' '.join(pca_dict)}."
                     )
 
-                self._internal_pipeline.steps.append(("pca", pca_estimator))
+                self.pipeline.steps.append(("pca", pca_estimator))
 
             # Feature selection ==================================== >>
 
@@ -875,7 +875,7 @@ class ClassRegExperiment(_SupervisedExperiment):
                         "'classic' or 'boruta'."
                     )
 
-                self._internal_pipeline.steps.append(
+                self.pipeline.steps.append(
                     ("feature_selection", feature_selector)
                 )
 
@@ -884,18 +884,18 @@ class ClassRegExperiment(_SupervisedExperiment):
         if custom_pipeline:
             self.logger.info("Setting up custom pipeline")
             for name, estimator in normalize_custom_transformers(custom_pipeline):
-                self._internal_pipeline.steps.append(
+                self.pipeline.steps.append(
                     (name, TransfomerWrapper(estimator))
                 )
 
         # Remove placeholder step
-        if len(self._internal_pipeline) > 1:
-            self._internal_pipeline.steps.pop(0)
+        if len(self.pipeline) > 1:
+            self.pipeline.steps.pop(0)
 
-        self._internal_pipeline.fit(self.X_train, self.y_train)
+        self.pipeline.fit(self.X_train, self.y_train)
 
         self.logger.info(f"Finished creating preprocessing pipeline.")
-        self.logger.info(f"Pipeline: {self._internal_pipeline}")
+        self.logger.info(f"Pipeline: {self.pipeline}")
 
         # Final display ============================================ >>
 

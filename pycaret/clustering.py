@@ -1330,10 +1330,14 @@ def get_config(variable: str):
     This function retrieves the global variables created when initializing the 
     ``setup`` function. Following variables are accessible:
 
-    - X: Transformed dataset (X)
-    - data_before_preprocess: data before preprocessing
+    - dataset: Transformed dataset
+    - train: Transformed training set
+    - test: Transformed test set
+    - X: Transformed feature set
+    - y: Transformed target column
+    - X_train, X_test, y_train, y_test: Subsets of the train and test sets.
     - seed: random state set through session_id
-    - prep_pipe: Transformation pipeline configured through setup
+    - pipeline: Transformation pipeline configured through setup
     - n_jobs_param: n_jobs parameter used in model training
     - html_param: html_param configured through setup
     - master_model_container: model storage container

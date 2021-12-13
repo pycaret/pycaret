@@ -34,7 +34,7 @@ def pipeline():
         verbose=False,
     )
 
-    return pc._internal_pipeline
+    return pc.pipeline
 
 
 def test_fit(pipeline):
@@ -51,7 +51,7 @@ def test_transforms_only_y():
         preprocess=False,
         custom_pipeline=("label_encoder", LabelEncoder()),
     )
-    y = pc._internal_pipeline.fit_transform(y=data.iloc[:, -1])
+    y = pc.pipeline.fit_transform(y=data.iloc[:, -1])
     assert isinstance(y, pd.Series)
 
 

@@ -57,7 +57,7 @@ class _TabularExperiment(_PyCaretExperiment):
                 "USI",
                 "html_param",
                 "seed",
-                "_internal_pipeline",
+                "pipeline",
                 "experiment__",
                 "n_jobs_param",
                 "_gpu_n_jobs_param",
@@ -73,7 +73,7 @@ class _TabularExperiment(_PyCaretExperiment):
                 "_all_models",
                 "_all_models_internal",
                 "_all_metrics",
-                "_internal_pipeline",
+                "pipeline",
                 "memory",
                 "imputation_regressor",
                 "imputation_classifier",
@@ -171,7 +171,7 @@ class _TabularExperiment(_PyCaretExperiment):
         source: str,
         runtime: float,
         model_fit_time: float,
-        _internal_pipeline,
+        pipeline,
         log_holdout: bool = True,
         log_plots: bool = False,
         tune_cv_results=None,
@@ -283,7 +283,6 @@ class _TabularExperiment(_PyCaretExperiment):
                         self.logger.warning(traceback.format_exc())
 
             # Log AUC and Confusion Matrix plot
-
             if log_plots:
 
                 self.logger.info(
@@ -344,16 +343,16 @@ class _TabularExperiment(_PyCaretExperiment):
                 input_example = self.data.iloc[0].to_dict()
 
             # log model as sklearn flavor
-            _internal_pipeline_temp = deepcopy(_internal_pipeline)
-            _internal_pipeline_temp.steps.append(["trained_model", model])
+            pipeline_temp = deepcopy(pipeline)
+            pipeline_temp.steps.append(["trained_model", model])
             mlflow.sklearn.log_model(
-                _internal_pipeline_temp,
+                pipeline_temp,
                 "model",
                 conda_env=default_conda_env,
                 signature=signature,
                 input_example=input_example,
             )
-            del _internal_pipeline_temp
+            del pipeline_temp
         gc.collect()
 
     def _profile(self, profile, profile_kwargs):
@@ -736,12 +735,9 @@ class _TabularExperiment(_PyCaretExperiment):
 
         self.logger.info("Copying training dataset")
 
+        data_X, test_X = self.X_train_transformed, self.X_test_transformed
         if self._is_unsupervised():
-            data_X = self._internal_pipeline.transform(self.X_train)
-            test_X = self._internal_pipeline.transform(self.X_test)
-        else:
-            data_X, data_y = self._internal_pipeline.transform(self.X_train, self.y_train)
-            test_X, test_y = self._internal_pipeline.transform(self.X_test, self.y_test)
+            data_y, test_y = self.y_train_transformed, self.y_test_transformed
 
         self.logger.info(f"Plot type: {plot}")
         plot_name = self._available_plots[plot]
@@ -1730,7 +1726,7 @@ class _TabularExperiment(_PyCaretExperiment):
                     if self._ml_usecase == MLUsecase.CLASSIFICATION:
                         class_names = {
                             v: k
-                            for k, v in self._internal_pipeline.named_steps[
+                            for k, v in self.pipeline.named_steps[
                                 "dtypes"
                             ].replacement.items()
                         }
@@ -2583,7 +2579,7 @@ class _TabularExperiment(_PyCaretExperiment):
 
         """
         return pycaret.internal.persistence.deploy_model(
-            model, model_name, authentication, platform, self._internal_pipeline
+            model, model_name, authentication, platform, self.pipeline
         )
 
     def save_model(
@@ -2632,7 +2628,7 @@ class _TabularExperiment(_PyCaretExperiment):
         return pycaret.internal.persistence.save_model(
             model,
             model_name,
-            None if model_only else self._internal_pipeline,
+            None if model_only else self.pipeline,
             verbose,
             **kwargs,
         )

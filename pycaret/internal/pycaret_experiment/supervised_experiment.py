@@ -206,7 +206,7 @@ class _SupervisedExperiment(_TabularExperiment):
         self.experiment__.append(("y_training Set", self.y_train))
         self.experiment__.append(("X_test Set", self.X_test))
         self.experiment__.append(("y_test Set", self.y_test))
-        self.experiment__.append(("Transformation Pipeline", self._internal_pipeline))
+        self.experiment__.append(("Transformation Pipeline", self.pipeline))
 
         if self.logging_param:
 
@@ -255,7 +255,7 @@ class _SupervisedExperiment(_TabularExperiment):
                 "SubProcess save_model() called =================================="
             )
             self.save_model(
-                self._internal_pipeline, "Transformation Pipeline", verbose=False
+                self.pipeline, "Transformation Pipeline", verbose=False
             )
             self.logger.info(
                 "SubProcess save_model() end =================================="
@@ -904,7 +904,7 @@ class _SupervisedExperiment(_TabularExperiment):
                             source="compare_models",
                             runtime=row["runtime"],
                             model_fit_time=row["TT (Sec)"],
-                            _internal_pipeline=self._internal_pipeline,
+                            pipeline=self.pipeline,
                             log_plots=self.log_plots_param if full_logging else False,
                             log_holdout=full_logging,
                             URI=URI,
@@ -939,7 +939,7 @@ class _SupervisedExperiment(_TabularExperiment):
     def _create_model_without_cv(
         self, model, data_X, data_y, fit_kwargs, predict, system, display
     ):
-        with estimator_pipeline(self._internal_pipeline, model) as pipeline_with_model:
+        with estimator_pipeline(self.pipeline, model) as pipeline_with_model:
             fit_kwargs = get_pipeline_fit_kwargs(pipeline_with_model, fit_kwargs)
             self.logger.info("Cross validation set to False")
 
@@ -1009,7 +1009,7 @@ class _SupervisedExperiment(_TabularExperiment):
         if isinstance(model, (GaussianProcessClassifier, GaussianProcessRegressor)):
             n_jobs = 1
 
-        with estimator_pipeline(self._internal_pipeline, model) as pipeline_with_model:
+        with estimator_pipeline(self.pipeline, model) as pipeline_with_model:
             fit_kwargs = get_pipeline_fit_kwargs(pipeline_with_model, fit_kwargs)
             self.logger.info(f"Cross validating with {cv}, n_jobs={n_jobs}")
 
@@ -1485,7 +1485,7 @@ class _SupervisedExperiment(_TabularExperiment):
                     source="create_model",
                     runtime=runtime,
                     model_fit_time=model_fit_time,
-                    _internal_pipeline=self._internal_pipeline,
+                    pipeline=self.pipeline,
                     log_plots=self.log_plots_param,
                     display=display,
                 )
@@ -2142,7 +2142,7 @@ class _SupervisedExperiment(_TabularExperiment):
 
         gc.collect()
 
-        with estimator_pipeline(self._internal_pipeline, model) as pipeline_with_model:
+        with estimator_pipeline(self.pipeline, model) as pipeline_with_model:
             extra_params = {}
 
             fit_kwargs = get_pipeline_fit_kwargs(pipeline_with_model, fit_kwargs)
@@ -2520,7 +2520,7 @@ class _SupervisedExperiment(_TabularExperiment):
                     source="tune_model",
                     runtime=runtime,
                     model_fit_time=model_fit_time,
-                    _internal_pipeline=self._internal_pipeline,
+                    pipeline=self.pipeline,
                     log_plots=self.log_plots_param,
                     tune_cv_results=cv_results,
                     display=display,
@@ -2877,7 +2877,7 @@ class _SupervisedExperiment(_TabularExperiment):
                     source="ensemble_model",
                     runtime=runtime,
                     model_fit_time=model_fit_time,
-                    _internal_pipeline=self._internal_pipeline,
+                    pipeline=self.pipeline,
                     log_plots=self.log_plots_param,
                     display=display,
                 )
@@ -3255,7 +3255,7 @@ class _SupervisedExperiment(_TabularExperiment):
                     source="blend_models",
                     runtime=runtime,
                     model_fit_time=model_fit_time,
-                    _internal_pipeline=self._internal_pipeline,
+                    pipeline=self.pipeline,
                     log_plots=self.log_plots_param,
                     display=display,
                 )
@@ -3627,7 +3627,7 @@ class _SupervisedExperiment(_TabularExperiment):
                     source="stack_models",
                     runtime=runtime,
                     model_fit_time=model_fit_time,
-                    _internal_pipeline=self._internal_pipeline,
+                    pipeline=self.pipeline,
                     log_plots=self.log_plots_param,
                     display=display,
                 )
@@ -3852,18 +3852,20 @@ class _SupervisedExperiment(_TabularExperiment):
 
         # Storing X_train and y_train in data_X and data_y parameter
         if X_new_sample is not None:
-            test_X = self._internal_pipeline.transform(X_new_sample)
+            test_X = self.pipeline.transform(X_new_sample)
             if plot == "pfi":
-                test_y = self._internal_pipeline.transform(y_new_sample)  # add for pfi explainer
+                test_y = self.pipeline.transform(y_new_sample)  # add for pfi explainer
         else:
             # Storing X_train and y_train in data_X and data_y parameter
-            test_X = self.X_train if use_train_data else self.X_test
+            if use_train_data:
+                test_X = self.X_train_transformed
+            else:
+                test_X = self.X_test_transformed
             if plot == "pfi":
-                test_y = (
-                    self.y_train if use_train_data else self.y_test
-                )  # add for pfi explainer
-
-            test_X = self._internal_pipeline.transform(test_X)
+                if use_train_data:
+                    test_y = self.y_train_transformed
+                else:
+                    test_y = self.y_test_transformed
 
         np.random.seed(self.seed)
 
@@ -4489,7 +4491,7 @@ class _SupervisedExperiment(_TabularExperiment):
                     source="finalize_model",
                     runtime=runtime,
                     model_fit_time=model_fit_time,
-                    _internal_pipeline=self._internal_pipeline,
+                    pipeline=self.pipeline,
                     log_plots=self.log_plots_param,
                     display=display,
                 )
@@ -4513,7 +4515,7 @@ class _SupervisedExperiment(_TabularExperiment):
 
         gc.collect()
         if not model_only:
-            pipeline_final = deepcopy(self._internal_pipeline)
+            pipeline_final = deepcopy(self.pipeline)
             pipeline_final.steps.append(["trained_model", model_final])
             return pipeline_final
 
@@ -4645,10 +4647,9 @@ class _SupervisedExperiment(_TabularExperiment):
 
         # dataset
         if data is None:
-            X_test_, y_test_ = self._internal_pipeline.transform(self.X_test, self.y_test)
-
+            X_test_, y_test_ = self.X_test_transformed, self.y_test_transformed
         else:
-            X_test_ = self._internal_pipeline.transform(data)
+            X_test_ = self.pipeline.transform(data)
 
         # prediction starts here
         if isinstance(estimator, CustomProbabilityThresholdClassifier):

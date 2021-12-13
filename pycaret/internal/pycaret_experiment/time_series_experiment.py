@@ -1601,7 +1601,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
     def _create_model_without_cv(
         self, model, data_X, data_y, fit_kwargs, predict, system, display: Display
     ):
-        # with estimator_pipeline(self._internal_pipeline, model) as pipeline_with_model:
+        # with estimator_pipeline(self.pipeline, model) as pipeline_with_model:
 
         self.logger.info(
             "Support for Exogenous variables not yet supported. Switching X, y order"
@@ -2144,7 +2144,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         gc.collect()
 
-        # with estimator_pipeline(self._internal_pipeline, model) as pipeline_with_model:
+        # with estimator_pipeline(self.pipeline, model) as pipeline_with_model:
         if True:
 
             # fit_kwargs = get_pipeline_fit_kwargs(pipeline_with_model, fit_kwargs)
@@ -2308,7 +2308,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                     source="tune_model",
                     runtime=runtime,
                     model_fit_time=model_fit_time,
-                    _internal_pipeline=self._internal_pipeline,
+                    pipeline=self.pipeline,
                     log_plots=self.log_plots_param,
                     tune_cv_results=cv_results,
                     display=display,
