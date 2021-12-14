@@ -16,13 +16,12 @@ from category_encoders.leave_one_out import LeaveOneOutEncoder
 from boruta import BorutaPy
 from imblearn.over_sampling import SMOTE
 from sklearn.decomposition import PCA, IncrementalPCA, KernelPCA
-from sklearn.experimental import enable_iterative_imputer
 from sklearn.feature_selection import (
     VarianceThreshold,
     SelectFromModel,
     SequentialFeatureSelector,
 )
-from sklearn.impute import IterativeImputer, SimpleImputer
+from sklearn.impute import SimpleImputer
 from sklearn.model_selection import (
     GroupKFold,
     KFold,
@@ -62,6 +61,7 @@ from pycaret.internal.preprocess import (
     RemoveMulticollinearity,
     RemoveOutliers,
     FixImbalancer,
+    IterativeImputer,
 )
 from pycaret.internal.utils import (
     get_columns_to_stratify_by,
@@ -398,7 +398,12 @@ class ClassRegExperiment(_SupervisedExperiment):
                         ),
                         include=categorical_features,
                     )
-
+                    self._internal_pipeline.steps.extend(
+                        [
+                            ("numerical_imputer", num_estimator),
+                            ("categorical_imputer", cat_estimator),
+                        ],
+                    )
                 elif imputation_type == "iterative":
                     self.logger.info("Setting up iterative imputation")
 
@@ -408,6 +413,12 @@ class ClassRegExperiment(_SupervisedExperiment):
                     regressors = {
                         k: v
                         for k, v in get_regressors(self).items()
+                        if not v.is_special
+                    }
+                    # Dict of all classifier models available
+                    classifiers = {
+                        k: v
+                        for k, v in get_classifiers(self).items()
                         if not v.is_special
                     }
 
@@ -420,7 +431,7 @@ class ClassRegExperiment(_SupervisedExperiment):
                             )
                         numeric_iterative_imputer = regressors[
                             numeric_iterative_imputer
-                        ].class_def()
+                        ].class_def(**regressors[numeric_iterative_imputer].args)
                     elif not hasattr(numeric_iterative_imputer, "predict"):
                         raise ValueError(
                             "Invalid value for the numeric_iterative_imputer "
@@ -429,15 +440,15 @@ class ClassRegExperiment(_SupervisedExperiment):
                         )
 
                     if isinstance(categorical_iterative_imputer, str):
-                        if categorical_iterative_imputer not in regressors:
+                        if categorical_iterative_imputer not in classifiers:
                             raise ValueError(
                                 "Invalid value for the categorical_iterative_imputer "
                                 "parameter, got {categorical_iterative_imputer}. "
-                                f"Allowed estimators are: {', '.join(regressors)}."
+                                f"Allowed estimators are: {', '.join(classifiers)}."
                             )
-                        categorical_iterative_imputer = regressors[
+                        categorical_iterative_imputer = classifiers[
                             categorical_iterative_imputer
-                        ].class_def()
+                        ].class_def(**classifiers[categorical_iterative_imputer].args)
                     elif not hasattr(categorical_iterative_imputer, "predict"):
                         raise ValueError(
                             "Invalid value for the categorical_iterative_imputer "
@@ -445,35 +456,72 @@ class ClassRegExperiment(_SupervisedExperiment):
                             "to sklearn's API."
                         )
 
-                    num_estimator = TransfomerWrapper(
+                    categorical_indices = [
+                        i
+                        for i in range(len(self.X.columns))
+                        if self.X.columns[i] in categorical_features
+                    ]
+
+                    def get_prepare_estimator_for_categoricals_type(
+                        estimator, estimators_dict
+                    ):
+                        # See pycaret.internal.preprocess.iterative_imputer
+                        fit_params = {}
+                        if not categorical_indices:
+                            return estimator, fit_params
+                        if isinstance(estimator, estimators_dict["lightgbm"].class_def):
+                            return "fit_params_categorical_feature"
+                        elif isinstance(
+                            estimator, estimators_dict["catboost"].class_def
+                        ):
+                            return "params_cat_features"
+                        elif isinstance(
+                            estimator,
+                            (
+                                estimators_dict["xgboost"].class_def,
+                                estimators_dict["rf"].class_def,
+                                estimators_dict["et"].class_def,
+                                estimators_dict["dt"].class_def,
+                                estimators_dict["ada"].class_def,
+                                estimators_dict.get(
+                                    "gbr",
+                                    estimators_dict.get(
+                                        "gbc", estimators_dict["xgboost"]
+                                    ),
+                                ).class_def,
+                            ),
+                        ):
+                            return "ordinal"
+                        else:
+                            return "one_hot"
+
+                    imputer = TransfomerWrapper(
                         transformer=IterativeImputer(
-                            estimator=numeric_iterative_imputer,
+                            num_estimator=numeric_iterative_imputer,
+                            cat_estimator=categorical_iterative_imputer,
+                            skip_complete=True,
                             max_iter=iterative_imputation_iters,
                             random_state=self.seed,
+                            categorical_indices=categorical_indices,
+                            num_estimator_prepare_for_categoricals_type=get_prepare_estimator_for_categoricals_type(
+                                numeric_iterative_imputer, estimators_dict=regressors
+                            ),
+                            cat_estimator_prepare_for_categoricals_type=get_prepare_estimator_for_categoricals_type(
+                                categorical_iterative_imputer,
+                                estimators_dict=classifiers,
+                            ),
                         ),
-                        include=numeric_features,
                     )
-                    cat_estimator = TransfomerWrapper(
-                        transformer=IterativeImputer(
-                            estimator=categorical_iterative_imputer,
-                            max_iter=iterative_imputation_iters,
-                            initial_strategy="most_frequent",
-                            random_state=self.seed,
-                        ),
-                        include=categorical_features,
+                    self._internal_pipeline.steps.extend(
+                        [
+                            ("imputer", imputer),
+                        ],
                     )
                 else:
                     raise ValueError(
                         "Invalid value for the imputation_type parameter, got "
                         f"{imputation_type}. Possible values are: simple, iterative."
                     )
-
-                self.pipeline.steps.extend(
-                    [
-                        ("numerical_imputer", num_estimator),
-                        ("categorical_imputer", cat_estimator),
-                    ],
-                )
 
             # Text embedding ======================================= >>
 

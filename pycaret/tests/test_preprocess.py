@@ -283,11 +283,36 @@ def test_custom_pipeline_is_pipeline():
     pc = pycaret.classification.setup(
         data=data,
         custom_pipeline=Pipeline(
-            [
-                ("scaler", StandardScaler()),
-                ("pca", PCA(n_components=5))
-            ]
+            [("scaler", StandardScaler()), ("pca", PCA(n_components=5))]
         ),
     )
     X, _ = pc.pipeline.fit_transform(pc.X, pc.y)
     assert X.shape[1] == 5
+
+
+def test_iterative_imputer():
+    """Test iterative imputer"""
+    data = pycaret.datasets.get_data("juice")
+    categories = {}
+    for i, col in enumerate(data.columns):
+        # leave two columns and target filled
+        if col in ("STORE", "PriceCH", "DiscMM"):
+            continue
+        if col in ("Purchase", "Store7"):
+            categories[col] = set(data[col].unique())
+        data.loc[data.sample(frac=0.1, random_state=i).index, col] = pd.np.nan
+    for imputer in ["catboost", "lightgbm", "rf", "lr"]:
+        data = data.copy()
+        pc = pycaret.classification.setup(
+            data=data,
+            imputation_type="iterative",
+            numeric_iterative_imputer=imputer,
+            categorical_iterative_imputer=imputer,
+        )
+        transformer = pc._internal_pipeline.named_steps["imputer"]
+        df = transformer.fit_transform(data, data["STORE"])[0]
+        assert not df.isnull().values.any()
+        assert all(categories[col] == set(df[col].unique()) for col in categories)
+        df = transformer.transform(data, data["STORE"])[0]
+        assert not df.isnull().values.any()
+        assert all(categories[col] == set(df[col].unique()) for col in categories)
