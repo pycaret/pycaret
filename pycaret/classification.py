@@ -671,6 +671,7 @@ def compare_models(
     groups: Optional[Union[str, Any]] = None,
     probability_threshold: Optional[float] = None,
     verbose: bool = True,
+    return_train_score: bool = False,
 ) -> Union[Any, List[Any]]:
 
     """
@@ -761,6 +762,11 @@ def compare_models(
 
     verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
+
+
+    return_train_score: bool, default = False
+        If not False, will evaluate the train value scores.
+        Intended to be fed as an input from the user.
     
     
     Returns:
@@ -790,6 +796,7 @@ def compare_models(
         fit_kwargs=fit_kwargs,
         groups=groups,
         probability_threshold=probability_threshold,
+        return_train_score=return_train_score,
         verbose=verbose,
     )
 
@@ -803,6 +810,7 @@ def create_model(
     groups: Optional[Union[str, Any]] = None,
     probability_threshold: Optional[float] = None,
     verbose: bool = True,
+    return_train_score: bool = False,
     **kwargs,
 ) -> Any:
 
@@ -885,6 +893,11 @@ def create_model(
         Score grid is not printed when verbose is set to False.
 
 
+    return_train_score: bool, default = False
+        If not False, will evaluate the train value scores.
+        Intended to be fed as an input from the user.
+
+
     **kwargs: 
         Additional keyword arguments to pass to the estimator.
 
@@ -911,6 +924,7 @@ def create_model(
         groups=groups,
         probability_threshold=probability_threshold,
         verbose=verbose,
+        return_train_score = return_train_score,
         **kwargs,
     )
 

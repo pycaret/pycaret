@@ -166,21 +166,31 @@ class ClassificationMetricContainer(MetricContainer):
         return d
 
 
-class AccuracyMetricContainer(ClassificationMetricContainer):
+class TrainAccuracyMetricContainer(ClassificationMetricContainer):
     def __init__(self, globals_dict: dict) -> None:
         super().__init__(
-            id="acc",
-            name="Accuracy",
+            id="train_acc",
+            name="Train_Accuracy",
             score_func=metrics.accuracy_score,
             scorer="accuracy",
         )
 
 
-class ROCAUCMetricContainer(ClassificationMetricContainer):
+class TestAccuracyMetricContainer(ClassificationMetricContainer):
     def __init__(self, globals_dict: dict) -> None:
         super().__init__(
-            id="auc",
-            name="AUC",
+            id="test_acc",
+            name="Test_Accuracy",
+            score_func=metrics.accuracy_score,
+            scorer="accuracy",
+        )
+
+
+class TrainROCAUCMetricContainer(ClassificationMetricContainer):
+    def __init__(self, globals_dict: dict) -> None:
+        super().__init__(
+            id="train_auc",
+            name="Train_AUC",
             score_func=metrics.roc_auc_score,
             scorer=pycaret.internal.metrics.make_scorer_with_error_score(
                 metrics.roc_auc_score,
@@ -194,11 +204,29 @@ class ROCAUCMetricContainer(ClassificationMetricContainer):
         )
 
 
-class RecallMetricContainer(ClassificationMetricContainer):
+class TestROCAUCMetricContainer(ClassificationMetricContainer):
     def __init__(self, globals_dict: dict) -> None:
         super().__init__(
-            id="recall",
-            name="Recall",
+            id="test_auc",
+            name="Test_AUC",
+            score_func=metrics.roc_auc_score,
+            scorer=pycaret.internal.metrics.make_scorer_with_error_score(
+                metrics.roc_auc_score,
+                needs_proba=True,
+                error_score=0.0,
+                average="weighted",
+                multi_class="ovr",
+            ),
+            target="pred_proba",
+            args={"average": "weighted", "multi_class": "ovr"},
+        )
+
+
+class TrainRecallMetricContainer(ClassificationMetricContainer):
+    def __init__(self, globals_dict: dict) -> None:
+        super().__init__(
+            id="train_recall",
+            name="Train_Recall",
             score_func=pycaret.internal.metrics.BinaryMulticlassScoreFunc(
                 metrics.recall_score
             ),
@@ -212,11 +240,29 @@ class RecallMetricContainer(ClassificationMetricContainer):
         )
 
 
-class PrecisionMetricContainer(ClassificationMetricContainer):
+class TestRecallMetricContainer(ClassificationMetricContainer):
     def __init__(self, globals_dict: dict) -> None:
         super().__init__(
-            id="precision",
-            name="Precision",
+            id="test_recall",
+            name="Test_Recall",
+            score_func=pycaret.internal.metrics.BinaryMulticlassScoreFunc(
+                metrics.recall_score
+            ),
+            scorer=metrics.make_scorer(
+                pycaret.internal.metrics.BinaryMulticlassScoreFunc(
+                    metrics.recall_score
+                ),
+                average="macro",
+            ),
+            args={"average": "macro"},
+        )
+
+
+class TrainPrecisionMetricContainer(ClassificationMetricContainer):
+    def __init__(self, globals_dict: dict) -> None:
+        super().__init__(
+            id="train_precision",
+            name="Train_Precision",
             display_name="Prec.",
             score_func=pycaret.internal.metrics.BinaryMulticlassScoreFunc(
                 metrics.precision_score
@@ -231,11 +277,30 @@ class PrecisionMetricContainer(ClassificationMetricContainer):
         )
 
 
-class F1MetricContainer(ClassificationMetricContainer):
+class TestPrecisionMetricContainer(ClassificationMetricContainer):
     def __init__(self, globals_dict: dict) -> None:
         super().__init__(
-            id="f1",
-            name="F1",
+            id="test_precision",
+            name="Test_Precision",
+            display_name="Prec.",
+            score_func=pycaret.internal.metrics.BinaryMulticlassScoreFunc(
+                metrics.precision_score
+            ),
+            scorer=metrics.make_scorer(
+                pycaret.internal.metrics.BinaryMulticlassScoreFunc(
+                    metrics.precision_score
+                ),
+                average="weighted",
+            ),
+            args={"average": "weighted"},
+        )
+
+
+class TrainF1MetricContainer(ClassificationMetricContainer):
+    def __init__(self, globals_dict: dict) -> None:
+        super().__init__(
+            id="train_f1",
+            name="Train_F1",
             score_func=pycaret.internal.metrics.BinaryMulticlassScoreFunc(
                 metrics.f1_score
             ),
@@ -247,21 +312,58 @@ class F1MetricContainer(ClassificationMetricContainer):
         )
 
 
-class KappaMetricContainer(ClassificationMetricContainer):
+class TestF1MetricContainer(ClassificationMetricContainer):
     def __init__(self, globals_dict: dict) -> None:
         super().__init__(
-            id="kappa",
-            name="Kappa",
+            id="test_f1",
+            name="Test_F1",
+            score_func=pycaret.internal.metrics.BinaryMulticlassScoreFunc(
+                metrics.f1_score
+            ),
+            scorer=metrics.make_scorer(
+                pycaret.internal.metrics.BinaryMulticlassScoreFunc(metrics.f1_score),
+                average="weighted",
+            ),
+            args={"average": "weighted"},
+        )
+
+
+class TrainKappaMetricContainer(ClassificationMetricContainer):
+    def __init__(self, globals_dict: dict) -> None:
+        super().__init__(
+            id="train_kappa",
+            name="Train_Kappa",
             score_func=metrics.cohen_kappa_score,
             scorer=metrics.make_scorer(metrics.cohen_kappa_score),
         )
 
 
-class MCCMetricContainer(ClassificationMetricContainer):
+class TestKappaMetricContainer(ClassificationMetricContainer):
     def __init__(self, globals_dict: dict) -> None:
         super().__init__(
-            id="mcc",
-            name="MCC",
+            id="test_kappa",
+            name="Test_Kappa",
+            score_func=metrics.cohen_kappa_score,
+            scorer=metrics.make_scorer(metrics.cohen_kappa_score),
+        )
+
+
+
+class TrainMCCMetricContainer(ClassificationMetricContainer):
+    def __init__(self, globals_dict: dict) -> None:
+        super().__init__(
+            id="train_mcc",
+            name="Train_MCC",
+            score_func=metrics.matthews_corrcoef,
+            scorer=metrics.make_scorer(metrics.matthews_corrcoef),
+        )
+
+
+class TestMCCMetricContainer(ClassificationMetricContainer):
+    def __init__(self, globals_dict: dict) -> None:
+        super().__init__(
+            id="test_mcc",
+            name="Test_MCC",
             score_func=metrics.matthews_corrcoef,
             scorer=metrics.make_scorer(metrics.matthews_corrcoef),
         )

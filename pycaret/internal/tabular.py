@@ -1831,6 +1831,7 @@ def compare_models(
     probability_threshold: Optional[float] = None,
     verbose: bool = True,
     display: Optional[Display] = None,
+    return_train_score: bool = False,
 ) -> List[Any]:
 
     """
@@ -1926,6 +1927,10 @@ def compare_models(
 
     verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
+
+    return_train_score: bool, default = False
+        If not False, will evaluate the train value scores.
+        Intended to be fed as an input from the user.
 
     Returns
     -------
@@ -2029,6 +2034,11 @@ def compare_models(
                 f"{sort} metric not supported for multiclass problems. See docstring for list of other optimization parameters."
             )
 
+
+    # checking return_train_score parameter
+    if type(return_train_score) is not bool:
+        raise TypeError("return_train_score can only take argument as True or False")
+
     """
 
     ERROR HANDLING ENDS HERE
@@ -2056,9 +2066,19 @@ def compare_models(
 
     if not display:
         progress_args = {"max": (4 * len_mod) + 4 + len_mod}
-        master_display_columns = (
-            ["Model"] + [v.display_name for k, v in _all_metrics.items()] + ["TT (Sec)"]
-        )
+        if return_train_score:
+            master_display_columns = (
+                ["Model"] + [v.display_name for k, v in _all_metrics.items()] + ["TT (Sec)"]
+            )
+        else:
+            master_display_columns = (["Model"])
+            for k, v in _all_metrics.items():
+                if "Test" in v.display_name:
+                    master_display_columns.extend(
+                        [v.display_name]
+                    )
+            master_display_columns.extend(["TT (Sec)"])
+
         timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
         monitor_rows = [
             ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
@@ -2193,6 +2213,7 @@ def compare_models(
             groups=groups,
             probability_threshold=probability_threshold,
             refit=False,
+            return_train_score = return_train_score,
         )
         if errors == "raise":
             model, model_fit_time = create_model_supervised(**create_model_args)
@@ -2790,6 +2811,7 @@ def create_model_supervised(
     add_to_model_list: bool = True,
     probability_threshold: Optional[float] = None,
     display: Optional[Display] = None,  # added in pycaret==2.2.0
+    return_train_score: bool = False,
     **kwargs,
 ) -> Any:
 
@@ -2882,6 +2904,10 @@ def create_model_supervised(
         If not None, will use this dataframe as training target.
         Intended to be only changed by internal functions.
 
+    return_train_score: bool, default = False
+        If not False, will evaluate the train value scores.
+        Intended to be fed as an input from the user.
+
     **kwargs:
         Additional keyword arguments to pass to the estimator.
 
@@ -2970,6 +2996,10 @@ def create_model_supervised(
             "cross_validation parameter can only take argument as True or False."
         )
 
+    # checking return_train_score parameter
+    if type(return_train_score) is not bool:
+        raise TypeError("return_train_score can only take argument as True or False")
+
     """
 
     ERROR HANDLING ENDS HERE
@@ -2980,7 +3010,15 @@ def create_model_supervised(
 
     if not display:
         progress_args = {"max": 4}
-        master_display_columns = [v.display_name for k, v in _all_metrics.items()]
+        if return_train_score:
+            master_display_columns = [
+                v.display_name for k, v in _all_metrics.items()
+            ]
+        else:
+            master_display_columns = []
+            for k, v in _all_metrics.items():
+                if "Test" in v.display_name: 
+                    master_display_columns.append(v.display_name)
         timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
         monitor_rows = [
             ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
@@ -3145,7 +3183,7 @@ def create_model_supervised(
 
     from sklearn.model_selection import cross_validate
 
-    metrics_dict = dict([(k, v.scorer) for k, v in metrics.items()])
+    metrics_dict = dict([(k.split('_')[1], v.scorer) for k, v in metrics.items()])
 
     logger.info("Starting cross validation")
 
@@ -3173,16 +3211,18 @@ def create_model_supervised(
             scoring=metrics_dict,
             fit_params=fit_kwargs,
             n_jobs=n_jobs,
-            return_train_score=False,
+            return_train_score=return_train_score,
             error_score=0,
         )
         model_fit_end = time.time()
         model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
 
-        score_dict = {
-            v.display_name: scores[f"test_{k}"] * (1 if v.greater_is_better else -1)
-            for k, v in metrics.items()
-        }
+        score_dict = {}
+        for k, v in metrics.items():
+            if not return_train_score:
+                if "train" in k:
+                    continue
+            score_dict[v.display_name] = scores[f"{k}"]
 
         logger.info("Calculating mean and std")
 
@@ -3659,6 +3699,7 @@ def tune_model_supervised(
     verbose: bool = True,
     tuner_verbose: Union[int, bool] = True,
     display: Optional[Display] = None,
+    return_train_score: bool = False,
     **kwargs,
 ) -> Any:
 
@@ -3799,6 +3840,10 @@ def tune_model_supervised(
     tuner_verbose: bool or in, default = True
         If True or above 0, will print messages from the tuner. Higher values
         print more messages. Ignored if verbose param is False.
+
+    return_train_score: bool, default = False
+        If not False, will evaluate the train value scores.
+        Intended to be fed as an input from the user.
 
     **kwargs:
         Additional keyword arguments to pass to the optimizer.
@@ -4051,6 +4096,10 @@ def tune_model_supervised(
     elif tuner_verbose > 2:
         tuner_verbose = 2
 
+    # checking return_train_score parameter
+    if type(return_train_score) is not bool:
+        raise TypeError("return_train_score can only take argument as True or False")
+
     """
 
     ERROR HANDLING ENDS HERE
@@ -4063,7 +4112,15 @@ def tune_model_supervised(
 
     if not display:
         progress_args = {"max": 3 + 4}
-        master_display_columns = [v.display_name for k, v in _all_metrics.items()]
+        if return_train_score:
+            master_display_columns = [
+                v.display_name for k, v in _all_metrics.items()
+            ]
+        else:
+            master_display_columns = []
+            for k, v in _all_metrics.items():
+                if "Test" in v.display_name: 
+                    master_display_columns.append(v.display_name)
         timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
         monitor_rows = [
             ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
@@ -4593,6 +4650,7 @@ def tune_model_supervised(
         round=round,
         groups=groups,
         fit_kwargs=fit_kwargs,
+        return_train_score=return_train_score,
         **best_params,
     )
     model_results = pull()
