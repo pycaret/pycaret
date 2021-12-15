@@ -662,7 +662,7 @@ def compare_models(
     fold: Optional[Union[int, Any]] = None,
     round: int = 4,
     cross_validation: bool = True,
-    sort: str = "Accuracy",
+    sort: str = "Test_Accuracy",
     n_select: int = 1,
     budget_time: Optional[float] = None,
     turbo: bool = True,
@@ -718,7 +718,7 @@ def compare_models(
         is ignored when cross_validation is set to False.
 
 
-    sort: str, default = 'Accuracy'
+    sort: str, default = 'Test_Accuracy'
         The sort order of the score grid. It also accepts custom metrics that are
         added through the ``add_metric`` function.
 
@@ -935,7 +935,7 @@ def tune_model(
     round: int = 4,
     n_iter: int = 10,
     custom_grid: Optional[Union[Dict[str, list], Any]] = None,
-    optimize: str = "Accuracy",
+    optimize: str = "Test_Accuracy",
     custom_scorer=None,
     search_library: str = "scikit-learn",
     search_algorithm: Optional[str] = None,
@@ -947,6 +947,7 @@ def tune_model(
     return_tuner: bool = False,
     verbose: bool = True,
     tuner_verbose: Union[int, bool] = True,
+    return_train_score: bool = False,
     **kwargs,
 ) -> Any:
 
@@ -993,7 +994,7 @@ def tune_model(
         supported by the defined ``search_library``.
 
 
-    optimize: str, default = 'Accuracy'
+    optimize: str, default = 'Test_Accuracy'
         Metric name to be evaluated for hyperparameter tuning. It also accepts custom 
         metrics that are added through the ``add_metric`` function.
 
@@ -1094,6 +1095,11 @@ def tune_model(
         print more messages. Ignored when ``verbose`` param is False.
 
 
+    return_train_score: bool, default = False
+        If not False, will evaluate the train value scores.
+        Intended to be fed as an input from the user.
+
+
     **kwargs: 
         Additional keyword arguments to pass to the optimizer.
 
@@ -1130,6 +1136,7 @@ def tune_model(
         return_tuner=return_tuner,
         verbose=verbose,
         tuner_verbose=tuner_verbose,
+        return_train_score=return_train_score,
         **kwargs,
     )
 
@@ -1141,11 +1148,12 @@ def ensemble_model(
     n_estimators: int = 10,
     round: int = 4,
     choose_better: bool = False,
-    optimize: str = "Accuracy",
+    optimize: str = "Test_Accuracy",
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
     probability_threshold: Optional[float] = None,
     verbose: bool = True,
+    return_train_score: bool = False,
 ) -> Any:
 
     """  
@@ -1194,7 +1202,7 @@ def ensemble_model(
         metric used for comparison is defined by the ``optimize`` parameter. 
 
 
-    optimize: str, default = 'Accuracy'
+    optimize: str, default = 'Test_Accuracy'
         Metric to compare for model selection when ``choose_better`` is True.
 
 
@@ -1217,6 +1225,11 @@ def ensemble_model(
 
     verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
+
+
+    return_train_score: bool, default = False
+        If not False, will evaluate the train value scores.
+        Intended to be fed as an input from the user.
 
 
     Returns:
@@ -1242,6 +1255,7 @@ def ensemble_model(
         groups=groups,
         verbose=verbose,
         probability_threshold=probability_threshold,
+        return_train_score=return_train_score,
     )
 
 
@@ -1250,13 +1264,14 @@ def blend_models(
     fold: Optional[Union[int, Any]] = None,
     round: int = 4,
     choose_better: bool = False,
-    optimize: str = "Accuracy",
+    optimize: str = "Test_Accuracy",
     method: str = "auto",
     weights: Optional[List[float]] = None,
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
     probability_threshold: Optional[float] = None,
     verbose: bool = True,
+    return_train_score: bool = False,
 ) -> Any:
 
     """
@@ -1297,7 +1312,7 @@ def blend_models(
         metric used for comparison is defined by the ``optimize`` parameter. 
 
 
-    optimize: str, default = 'Accuracy'
+    optimize: str, default = 'Test_Accuracy'
         Metric to compare for model selection when ``choose_better`` is True.
 
 
@@ -1336,6 +1351,11 @@ def blend_models(
         Score grid is not printed when verbose is set to False.
 
 
+    return_train_score: bool, default = False
+        If not False, will evaluate the train value scores.
+        Intended to be fed as an input from the user.
+
+
     Returns:
         Trained Model
 
@@ -1353,6 +1373,7 @@ def blend_models(
         groups=groups,
         verbose=verbose,
         probability_threshold=probability_threshold,
+        return_train_score=return_train_score,
     )
 
 
@@ -1365,11 +1386,12 @@ def stack_models(
     method: str = "auto",
     restack: bool = True,
     choose_better: bool = False,
-    optimize: str = "Accuracy",
+    optimize: str = "Test_Accuracy",
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
     probability_threshold: Optional[float] = None,
     verbose: bool = True,
+    return_train_score: bool = False,
 ) -> Any:
 
     """
@@ -1433,7 +1455,7 @@ def stack_models(
         metric used for comparison is defined by the ``optimize`` parameter. 
 
 
-    optimize: str, default = 'Accuracy'
+    optimize: str, default = 'Test_Accuracy'
         Metric to compare for model selection when ``choose_better`` is True.
 
 
@@ -1456,6 +1478,11 @@ def stack_models(
 
     verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
+
+
+    return_train_score: bool, default = False
+        If not False, will evaluate the train value scores.
+        Intended to be fed as an input from the user.
 
 
     Returns:
@@ -1484,6 +1511,7 @@ def stack_models(
         groups=groups,
         probability_threshold=probability_threshold,
         verbose=verbose,
+        return_train_score=return_train_score,
     )
 
 
@@ -1795,6 +1823,7 @@ def calibrate_model(
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
     verbose: bool = True,
+    return_train_score: bool = False,
 ) -> Any:
 
     """  
@@ -1857,6 +1886,11 @@ def calibrate_model(
         Score grid is not printed when verbose is set to False.
 
 
+    return_train_score: bool, default = False
+        If not False, will evaluate the train value scores.
+        Intended to be fed as an input from the user.
+
+
     Returns:
         Trained Model
 
@@ -1877,6 +1911,7 @@ def calibrate_model(
         fit_kwargs=fit_kwargs,
         groups=groups,
         verbose=verbose,
+        return_train_score=return_train_score,
     )
 
 
@@ -2039,6 +2074,7 @@ def finalize_model(
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
     model_only: bool = True,
+    return_train_score: bool = False,
 ) -> Any:
 
     """
@@ -2076,6 +2112,11 @@ def finalize_model(
         transformations in Pipeline are ignored.
 
 
+    return_train_score: bool, default = False
+        If not False, will evaluate the train value scores.
+        Intended to be fed as an input from the user.
+
+
     Returns:
         Trained Model
       
@@ -2086,6 +2127,7 @@ def finalize_model(
         fit_kwargs=fit_kwargs,
         groups=groups,
         model_only=model_only,
+        return_train_score=return_train_score,
     )
 
 
@@ -2287,7 +2329,7 @@ def load_model(
     )
 
 
-def automl(optimize: str = "Accuracy", use_holdout: bool = False) -> Any:
+def automl(optimize: str = "Test_Accuracy", use_holdout: bool = False, return_train_score: bool = False) -> Any:
 
     """ 
     This function returns the best model out of all trained models in
@@ -2308,20 +2350,25 @@ def automl(optimize: str = "Accuracy", use_holdout: bool = False) -> Any:
     >>> best_auc_model = automl(optimize = 'AUC')
 
 
-    optimize: str, default = 'Accuracy'
+    optimize: str, default = 'Test_Accuracy'
         Metric to use for model selection. It also accepts custom metrics
         added using the ``add_metric`` function. 
 
 
     use_holdout: bool, default = False
         When set to True, metrics are evaluated on holdout set instead of CV.
+
+
+    return_train_score: bool, default = False
+        If not False, will evaluate the train value scores.
+        Intended to be fed as an input from the user.
       
 
     Returns:
         Trained Model
 
     """
-    return pycaret.internal.tabular.automl(optimize=optimize, use_holdout=use_holdout)
+    return pycaret.internal.tabular.automl(optimize=optimize, use_holdout=use_holdout, return_train_score=return_train_score)
 
 
 def pull(pop: bool = False) -> pd.DataFrame:

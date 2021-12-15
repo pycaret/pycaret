@@ -1821,7 +1821,7 @@ def compare_models(
     fold: Optional[Union[int, Any]] = None,
     round: int = 4,
     cross_validation: bool = True,
-    sort: str = "Accuracy",
+    sort: str = "Test_Accuracy",
     n_select: int = 1,
     budget_time: Optional[float] = None,  # added in pycaret==2.1.0
     turbo: bool = True,
@@ -2355,6 +2355,7 @@ def compare_models(
                     fit_kwargs=fit_kwargs,
                     groups=groups,
                     probability_threshold=probability_threshold,
+                    return_train_score = return_train_score,
                 )
                 if errors == "raise":
                     model, model_fit_time = create_model_supervised(**create_model_args)
@@ -3686,7 +3687,7 @@ def tune_model_supervised(
     round: int = 4,
     n_iter: int = 10,
     custom_grid: Optional[Union[Dict[str, list], Any]] = None,
-    optimize: str = "Accuracy",
+    optimize: str = "Test_Accuracy",
     custom_scorer=None,  # added in pycaret==2.1 - depreciated
     search_library: str = "scikit-learn",
     search_algorithm: Optional[str] = None,
@@ -3743,7 +3744,7 @@ def tune_model_supervised(
         and values to be iterated. When set to None it uses pre-defined tuning grid.
         Custom grids must be in a format supported by the chosen search library.
 
-    optimize: str, default = 'Accuracy'
+    optimize: str, default = 'Test_Accuracy'
         Measure used to select the best model through hyperparameter tuning.
         Can be either a string representing a metric or a custom scorer object
         created using sklearn.make_scorer.
@@ -4718,12 +4719,13 @@ def ensemble_model(
     n_estimators: int = 10,
     round: int = 4,
     choose_better: bool = False,
-    optimize: str = "Accuracy",
+    optimize: str = "Test_Accuracy",
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
     probability_threshold: Optional[float] = None,
     verbose: bool = True,
     display: Optional[Display] = None,  # added in pycaret==2.2.0
+    return_train_score: bool = False,
 ) -> Any:
     """
     This function ensembles the trained base estimator using the method defined in
@@ -4775,7 +4777,7 @@ def ensemble_model(
         atleast equivalent to base estimator created using create_model or model
         returned by compare_models.
 
-    optimize: str, default = 'Accuracy'
+    optimize: str, default = 'Test_Accuracy'
         Only used when choose_better is set to True. optimize parameter is used
         to compare emsembled model with base estimator. Values accepted in
         optimize parameter are 'Accuracy', 'AUC', 'Recall', 'Precision', 'F1',
@@ -4792,6 +4794,10 @@ def ensemble_model(
 
     verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
+
+    return_train_score: bool, default = False
+        If not False, will evaluate the train value scores.
+        Intended to be fed as an input from the user.
 
     Returns
     -------
@@ -4892,6 +4898,10 @@ def ensemble_model(
                 f"Optimization metric not supported for multiclass problems. See docstring for list of other optimization parameters."
             )
 
+    # checking return_train_score parameter
+    if type(return_train_score) is not bool:
+        raise TypeError("return_train_score can only take argument as True or False")
+
     """
 
     ERROR HANDLING ENDS HERE
@@ -4904,7 +4914,19 @@ def ensemble_model(
 
     if not display:
         progress_args = {"max": 2 + 4}
-        master_display_columns = [v.display_name for k, v in _all_metrics.items()]
+        if return_train_score:
+            master_display_columns = (
+                ["Model"] + [v.display_name for k, v in _all_metrics.items()] + ["TT (Sec)"]
+            )
+        else:
+            master_display_columns = (["Model"])
+            for k, v in _all_metrics.items():
+                if "Test" in v.display_name:
+                    master_display_columns.extend(
+                        [v.display_name]
+                    )
+            master_display_columns.extend(["TT (Sec)"])
+
         timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
         monitor_rows = [
             ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
@@ -5007,6 +5029,7 @@ def ensemble_model(
         fit_kwargs=fit_kwargs,
         groups=groups,
         probability_threshold=probability_threshold,
+        return_train_score=return_train_score,
     )
     best_model = model
     model_results = pull()
@@ -5069,7 +5092,7 @@ def blend_models(
     fold: Optional[Union[int, Any]] = None,
     round: int = 4,
     choose_better: bool = False,
-    optimize: str = "Accuracy",
+    optimize: str = "Test_Accuracy",
     method: str = "auto",
     weights: Optional[List[float]] = None,  # added in pycaret==2.2.0
     fit_kwargs: Optional[dict] = None,
@@ -5077,6 +5100,7 @@ def blend_models(
     probability_threshold: Optional[float] = None,
     verbose: bool = True,
     display: Optional[Display] = None,  # added in pycaret==2.2.0
+    return_train_score: bool = False,
 ) -> Any:
 
     """
@@ -5116,7 +5140,7 @@ def blend_models(
         atleast equivalent to base estimator created using create_model or model
         returned by compare_models.
 
-    optimize: str, default = 'Accuracy'
+    optimize: str, default = 'Test_Accuracy'
         Only used when choose_better is set to True. optimize parameter is used
         to compare emsembled model with base estimator. Values accepted in
         optimize parameter are 'Accuracy', 'AUC', 'Recall', 'Precision', 'F1',
@@ -5143,6 +5167,10 @@ def blend_models(
 
     verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
+
+    return_train_score: bool, default = False
+        If not False, will evaluate the train value scores.
+        Intended to be fed as an input from the user.
 
     Returns
     -------
@@ -5256,6 +5284,10 @@ def blend_models(
                 f"Optimization metric not supported for multiclass problems. See docstring for list of other optimization parameters."
             )
 
+    # checking return_train_score parameter
+    if type(return_train_score) is not bool:
+        raise TypeError("return_train_score can only take argument as True or False")
+
     """
 
     ERROR HANDLING ENDS HERE
@@ -5268,7 +5300,15 @@ def blend_models(
 
     if not display:
         progress_args = {"max": 2 + 4}
-        master_display_columns = [v.display_name for k, v in _all_metrics.items()]
+        if return_train_score:
+            master_display_columns = [
+                v.display_name for k, v in _all_metrics.items()
+            ]
+        else:
+            master_display_columns = []
+            for k, v in _all_metrics.items():
+                if "Test" in v.display_name: 
+                    master_display_columns.append(v.display_name)
         timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
         monitor_rows = [
             ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
@@ -5356,6 +5396,7 @@ def blend_models(
         fit_kwargs=fit_kwargs,
         groups=groups,
         probability_threshold=probability_threshold,
+        return_train_score=return_train_score,
     )
     model_results = pull()
     logger.info("SubProcess create_model() end ==================================")
@@ -5421,12 +5462,13 @@ def stack_models(
     method: str = "auto",
     restack: bool = True,
     choose_better: bool = False,
-    optimize: str = "Accuracy",
+    optimize: str = "Test_Accuracy",
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
     probability_threshold: Optional[float] = None,
     verbose: bool = True,
     display: Optional[Display] = None,
+    return_train_score: bool = False,
 ) -> Any:
 
     """
@@ -5495,7 +5537,7 @@ def stack_models(
         atleast equivalent to base estimator created using create_model or model
         returned by compare_models.
 
-    optimize: str, default = 'Accuracy'
+    optimize: str, default = 'Test_Accuracy'
         Only used when choose_better is set to True. optimize parameter is used
         to compare emsembled model with base estimator. Values accepted in
         optimize parameter are 'Accuracy', 'AUC', 'Recall', 'Precision', 'F1',
@@ -5512,6 +5554,10 @@ def stack_models(
 
     verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
+
+    return_train_score: bool, default = False
+        If not False, will evaluate the train value scores.
+        Intended to be fed as an input from the user.
 
     Returns
     -------
@@ -5597,6 +5643,10 @@ def stack_models(
                 f"Optimization metric not supported for multiclass problems. See docstring for list of other optimization parameters."
             )
 
+    # checking return_train_score parameter
+    if type(return_train_score) is not bool:
+        raise TypeError("return_train_score can only take argument as True or False")
+
     """
 
     ERROR HANDLING ENDS HERE
@@ -5619,7 +5669,15 @@ def stack_models(
 
     if not display:
         progress_args = {"max": 2 + 4}
-        master_display_columns = [v.display_name for k, v in _all_metrics.items()]
+        if return_train_score:
+            master_display_columns = [
+                v.display_name for k, v in _all_metrics.items()
+            ]
+        else:
+            master_display_columns = []
+            for k, v in _all_metrics.items():
+                if "Test" in v.display_name: 
+                    master_display_columns.append(v.display_name)
         timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
         monitor_rows = [
             ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
@@ -5715,6 +5773,7 @@ def stack_models(
         fit_kwargs=fit_kwargs,
         groups=groups,
         probability_threshold=probability_threshold,
+        return_train_score=return_train_score,
     )
     model_results = pull()
     logger.info("SubProcess create_model() end ==================================")
@@ -8011,6 +8070,7 @@ def calibrate_model(
     groups: Optional[Union[str, Any]] = None,
     verbose: bool = True,
     display: Optional[Display] = None,  # added in pycaret==2.2.0
+    return_train_score: bool = False,
 ) -> Any:
 
     """
@@ -8063,6 +8123,10 @@ def calibrate_model(
     verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
 
+    return_train_score: bool, default = False
+        If not False, will evaluate the train value scores.
+        Intended to be fed as an input from the user.
+
     Returns
     -------
     score_grid
@@ -8113,6 +8177,10 @@ def calibrate_model(
     if type(verbose) is not bool:
         raise TypeError("Verbose parameter can only take argument as True or False.")
 
+    # checking return_train_score parameter
+    if type(return_train_score) is not bool:
+        raise TypeError("return_train_score can only take argument as True or False")
+
     """
 
     ERROR HANDLING ENDS HERE
@@ -8131,7 +8199,15 @@ def calibrate_model(
 
     if not display:
         progress_args = {"max": 2 + 4}
-        master_display_columns = [v.display_name for k, v in _all_metrics.items()]
+        if return_train_score:
+            master_display_columns = [
+                v.display_name for k, v in _all_metrics.items()
+            ]
+        else:
+            master_display_columns = []
+            for k, v in _all_metrics.items():
+                if "Test" in v.display_name: 
+                    master_display_columns.append(v.display_name)
         timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
         monitor_rows = [
             ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
@@ -8201,6 +8277,7 @@ def calibrate_model(
         fit_kwargs=fit_kwargs,
         groups=groups,
         probability_threshold=probability_threshold,
+        return_train_score=return_train_score,
     )
     model_results = pull()
     logger.info("SubProcess create_model() end ==================================")
@@ -8895,6 +8972,7 @@ def finalize_model(
     groups: Optional[Union[str, Any]] = None,
     model_only: bool = True,
     display: Optional[Display] = None,
+    return_train_score: bool = False,
 ) -> Any:  # added in pycaret==2.2.0
 
     """
@@ -8929,6 +9007,10 @@ def finalize_model(
     model_only : bool, default = True
         When set to True, only trained model object is saved and all the
         transformations are ignored.
+
+    return_train_score: bool, default = False
+        If not False, will evaluate the train value scores.
+        Intended to be fed as an input from the user.
 
     Returns
     -------
@@ -8980,6 +9062,7 @@ def finalize_model(
         fit_kwargs=fit_kwargs,
         groups=groups,
         add_to_model_list=False,
+        return_train_score=return_train_score,
     )
     model_results = pull(pop=True)
 
@@ -9448,7 +9531,7 @@ def load_model(
     )
 
 
-def automl(optimize: str = "Accuracy", use_holdout: bool = False) -> Any:
+def automl(optimize: str = "Test_Accuracy", use_holdout: bool = False, return_train_score: bool = False) -> Any:
 
     """
     This function returns the best model out of all models created in
@@ -9456,12 +9539,16 @@ def automl(optimize: str = "Accuracy", use_holdout: bool = False) -> Any:
 
     Parameters
     ----------
-    optimize : str, default = 'Accuracy'
-        Other values you can pass in optimize param are 'AUC', 'Recall', 'Precision',
-        'F1', 'Kappa', and 'MCC'.
+    optimize: str, default = 'Test_Accuracy'
+        Other values you can pass in optimize param are 'Test_AUC', 'Test_Recall', 'Test_Precision',
+        'Test_F1', 'Test_Kappa', and 'Test_MCC', and train scores of the same.
 
     use_holdout: bool, default = False
         When set to True, metrics are evaluated on holdout set instead of CV.
+
+    return_train_score: bool, default = False
+        If not False, will evaluate the train value scores.
+        Intended to be fed as an input from the user.
 
     """
 
@@ -9506,6 +9593,7 @@ def automl(optimize: str = "Accuracy", use_holdout: bool = False) -> Any:
                     cross_validation=False,
                     predict=False,
                     groups=fold_groups_param,
+                    return_train_score=return_train_score,
                 )
                 pull(pop=True)
                 pred_holdout = predict_model(i, verbose=False)
@@ -9535,6 +9623,7 @@ def automl(optimize: str = "Accuracy", use_holdout: bool = False) -> Any:
         cross_validation=False,
         predict=False,
         groups=fold_groups_param,
+        return_train_score=return_train_score,
     )
 
     logger.info(str(automl_model))
@@ -10237,6 +10326,7 @@ def _choose_better(
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
     display: Optional[Display] = None,
+    return_train_score: bool = False,
 ):
     """
     When choose_better is set to True, optimize metric in scoregrid is
@@ -10279,6 +10369,7 @@ def _choose_better(
                 fold=fold,
                 fit_kwargs=fit_kwargs,
                 groups=groups,
+                return_train_score=return_train_score,
             )
             logger.info(
                 "SubProcess create_model() end =================================="

@@ -654,7 +654,7 @@ def compare_models(
     fold: Optional[Union[int, Any]] = None,
     round: int = 4,
     cross_validation: bool = True,
-    sort: str = "R2",
+    sort: str = "Test_R2",
     n_select: int = 1,
     budget_time: Optional[float] = None,
     turbo: bool = True,
@@ -662,6 +662,7 @@ def compare_models(
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
     verbose: bool = True,
+    return_train_score: bool = False,
 ):
 
     """
@@ -747,6 +748,11 @@ def compare_models(
 
     verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
+
+
+    return_train_score: bool, default = False
+        If not False, will evaluate the train value scores.
+        Intended to be fed as an input from the user.
     
     
     Returns:
@@ -776,6 +782,7 @@ def compare_models(
         fit_kwargs=fit_kwargs,
         groups=groups,
         verbose=verbose,
+        return_train_score=return_train_score,
     )
 
 
@@ -787,6 +794,7 @@ def create_model(
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
     verbose: bool = True,
+    return_train_score: bool = False,
     **kwargs,
 ):
 
@@ -871,6 +879,11 @@ def create_model(
         Score grid is not printed when verbose is set to False.
 
 
+    return_train_score: bool, default = False
+        If not False, will evaluate the train value scores.
+        Intended to be fed as an input from the user.
+
+
     **kwargs: 
         Additional keyword arguments to pass to the estimator.
 
@@ -894,6 +907,7 @@ def create_model(
         fit_kwargs=fit_kwargs,
         groups=groups,
         verbose=verbose,
+        return_train_score=return_train_score,
         **kwargs,
     )
 
@@ -904,7 +918,7 @@ def tune_model(
     round: int = 4,
     n_iter: int = 10,
     custom_grid: Optional[Union[Dict[str, list], Any]] = None,
-    optimize: str = "R2",
+    optimize: str = "Test_R2",
     custom_scorer=None,
     search_library: str = "scikit-learn",
     search_algorithm: Optional[str] = None,
@@ -916,6 +930,7 @@ def tune_model(
     return_tuner: bool = False,
     verbose: bool = True,
     tuner_verbose: Union[int, bool] = True,
+    return_train_score: bool = False,
     **kwargs,
 ):
 
@@ -963,7 +978,7 @@ def tune_model(
         supported by the defined ``search_library``.
 
 
-    optimize: str, default = 'R2'
+    optimize: str, default = 'Test_R2'
         Metric name to be evaluated for hyperparameter tuning. It also accepts custom 
         metrics that are added through the ``add_metric`` function.
 
@@ -1064,6 +1079,11 @@ def tune_model(
         print more messages. Ignored when ``verbose`` param is False.
 
 
+    return_train_score: bool, default = False
+        If not False, will evaluate the train value scores.
+        Intended to be fed as an input from the user.
+
+
     **kwargs: 
         Additional keyword arguments to pass to the optimizer.
 
@@ -1100,6 +1120,7 @@ def tune_model(
         return_tuner=return_tuner,
         verbose=verbose,
         tuner_verbose=tuner_verbose,
+        return_train_score=return_train_score,
         **kwargs,
     )
 
@@ -1111,10 +1132,11 @@ def ensemble_model(
     n_estimators: int = 10,
     round: int = 4,
     choose_better: bool = False,
-    optimize: str = "R2",
+    optimize: str = "Test_R2",
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
     verbose: bool = True,
+    return_train_score: bool = False,
 ) -> Any:
 
     """
@@ -1163,7 +1185,7 @@ def ensemble_model(
         metric used for comparison is defined by the ``optimize`` parameter. 
 
 
-    optimize: str, default = 'R2'
+    optimize: str, default = 'Test_R2'
         Metric to compare for model selection when ``choose_better`` is True.
 
 
@@ -1182,6 +1204,11 @@ def ensemble_model(
         Score grid is not printed when verbose is set to False.
 
 
+    return_train_score: bool, default = False
+        If not False, will evaluate the train value scores.
+        Intended to be fed as an input from the user.
+
+
     Returns:
         Trained Model
       
@@ -1198,6 +1225,7 @@ def ensemble_model(
         fit_kwargs=fit_kwargs,
         groups=groups,
         verbose=verbose,
+        return_train_score=return_train_score,
     )
 
 
@@ -1206,11 +1234,12 @@ def blend_models(
     fold: Optional[Union[int, Any]] = None,
     round: int = 4,
     choose_better: bool = False,
-    optimize: str = "R2",
+    optimize: str = "Test_R2",
     weights: Optional[List[float]] = None,
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
     verbose: bool = True,
+    return_train_score: bool = False,
 ):
 
     """
@@ -1251,7 +1280,7 @@ def blend_models(
         metric used for comparison is defined by the ``optimize`` parameter. 
 
 
-    optimize: str, default = 'R2'
+    optimize: str, default = 'Test_R2'
         Metric to compare for model selection when ``choose_better`` is True.
 
 
@@ -1276,6 +1305,11 @@ def blend_models(
         Score grid is not printed when verbose is set to False.
 
 
+    return_train_score: bool, default = False
+        If not False, will evaluate the train value scores.
+        Intended to be fed as an input from the user.
+
+
     Returns:
         Trained Model
        
@@ -1293,6 +1327,7 @@ def blend_models(
         fit_kwargs=fit_kwargs,
         groups=groups,
         verbose=verbose,
+        return_train_score=return_train_score,
     )
 
 
@@ -1304,10 +1339,11 @@ def stack_models(
     round: int = 4,
     restack: bool = True,
     choose_better: bool = False,
-    optimize: str = "R2",
+    optimize: str = "Test_R2",
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
     verbose: bool = True,
+    return_train_score: bool = False,
 ):
 
     """
@@ -1365,7 +1401,7 @@ def stack_models(
         metric used for comparison is defined by the ``optimize`` parameter. 
 
 
-    optimize: str, default = 'R2'
+    optimize: str, default = 'Test_R2'
         Metric to compare for model selection when ``choose_better`` is True.
 
 
@@ -1382,6 +1418,11 @@ def stack_models(
 
     verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
+
+
+    return_train_score: bool, default = False
+        If not False, will evaluate the train value scores.
+        Intended to be fed as an input from the user.
 
 
     Returns:
@@ -1402,6 +1443,7 @@ def stack_models(
         fit_kwargs=fit_kwargs,
         groups=groups,
         verbose=verbose,
+        return_train_score=return_train_score,
     )
 
 
@@ -1754,6 +1796,7 @@ def finalize_model(
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
     model_only: bool = True,
+    return_train_score: bool = False,
 ) -> Any:
 
     """
@@ -1791,6 +1834,11 @@ def finalize_model(
         transformations in Pipeline are ignored.
 
 
+    return_train_score: bool, default = False
+        If not False, will evaluate the train value scores.
+        Intended to be fed as an input from the user.
+
+
     Returns:
         Trained Model
        
@@ -1802,6 +1850,7 @@ def finalize_model(
         fit_kwargs=fit_kwargs,
         groups=groups,
         model_only=model_only,
+        return_train_score=return_train_score,
     )
 
 
@@ -2002,7 +2051,7 @@ def load_model(
     )
 
 
-def automl(optimize: str = "R2", use_holdout: bool = False) -> Any:
+def automl(optimize: str = "Test_R2", use_holdout: bool = False, return_train_score: bool = False) -> Any:
 
     """
     This function returns the best model out of all trained models in
@@ -2023,13 +2072,18 @@ def automl(optimize: str = "R2", use_holdout: bool = False) -> Any:
     >>> best_mae_model = automl(optimize = 'MAE')
 
 
-    optimize: str, default = 'R2'
+    optimize: str, default = 'Test_R2'
         Metric to use for model selection. It also accepts custom metrics
         added using the ``add_metric`` function. 
 
 
     use_holdout: bool, default = False
         When set to True, metrics are evaluated on holdout set instead of CV.
+
+
+    return_train_score: bool, default = False
+        If not False, will evaluate the train value scores.
+        Intended to be fed as an input from the user.
       
 
     Returns:
@@ -2038,7 +2092,7 @@ def automl(optimize: str = "R2", use_holdout: bool = False) -> Any:
 
     """
 
-    return pycaret.internal.tabular.automl(optimize=optimize, use_holdout=use_holdout)
+    return pycaret.internal.tabular.automl(optimize=optimize, use_holdout=use_holdout, return_train_score=return_train_score)
 
 
 def pull(pop: bool = False) -> pd.DataFrame:

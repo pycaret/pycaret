@@ -263,7 +263,7 @@ class TrainPrecisionMetricContainer(ClassificationMetricContainer):
         super().__init__(
             id="train_precision",
             name="Train_Precision",
-            display_name="Prec.",
+            # display_name="Prec.",
             score_func=pycaret.internal.metrics.BinaryMulticlassScoreFunc(
                 metrics.precision_score
             ),
@@ -282,7 +282,7 @@ class TestPrecisionMetricContainer(ClassificationMetricContainer):
         super().__init__(
             id="test_precision",
             name="Test_Precision",
-            display_name="Prec.",
+            # display_name="Prec.",
             score_func=pycaret.internal.metrics.BinaryMulticlassScoreFunc(
                 metrics.precision_score
             ),

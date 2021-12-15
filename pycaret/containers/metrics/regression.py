@@ -154,34 +154,56 @@ class RegressionMetricContainer(MetricContainer):
         return d
 
 
-class MAEMetricContainer(RegressionMetricContainer):
+class TrainMAEMetricContainer(RegressionMetricContainer):
     def __init__(self, globals_dict: dict) -> None:
         super().__init__(
-            id="mae",
-            name="MAE",
+            id="train_mae",
+            name="Train_MAE",
             score_func=metrics.mean_absolute_error,
             greater_is_better=False,
             scorer="neg_mean_absolute_error",
         )
 
 
-class MSEMetricContainer(RegressionMetricContainer):
+class TestMAEMetricContainer(RegressionMetricContainer):
     def __init__(self, globals_dict: dict) -> None:
         super().__init__(
-            id="mse",
-            name="MSE",
+            id="test_mae",
+            name="Test_MAE",
+            score_func=metrics.mean_absolute_error,
+            greater_is_better=False,
+            scorer="neg_mean_absolute_error",
+        )
+
+
+class TrainMSEMetricContainer(RegressionMetricContainer):
+    def __init__(self, globals_dict: dict) -> None:
+        super().__init__(
+            id="train_mse",
+            name="Train_MSE",
             score_func=metrics.mean_squared_error,
             greater_is_better=False,
             scorer="neg_mean_squared_error",
         )
 
 
-class RMSEMetricContainer(RegressionMetricContainer):
+class TestMSEMetricContainer(RegressionMetricContainer):
+    def __init__(self, globals_dict: dict) -> None:
+        super().__init__(
+            id="test_mse",
+            name="Test_MSE",
+            score_func=metrics.mean_squared_error,
+            greater_is_better=False,
+            scorer="neg_mean_squared_error",
+        )
+
+
+class TrainRMSEMetricContainer(RegressionMetricContainer):
     def __init__(self, globals_dict: dict) -> None:
 
         super().__init__(
-            id="rmse",
-            name="RMSE",
+            id="train_rmse",
+            name="Train_RMSE",
             score_func=metrics.mean_squared_error,
             greater_is_better=False,
             args={"squared": False},
@@ -189,19 +211,44 @@ class RMSEMetricContainer(RegressionMetricContainer):
         )
 
 
-class R2MetricContainer(RegressionMetricContainer):
+class TestRMSEMetricContainer(RegressionMetricContainer):
     def __init__(self, globals_dict: dict) -> None:
 
         super().__init__(
-            id="r2",
-            name="R2",
+            id="test_rmse",
+            name="Test_RMSE",
+            score_func=metrics.mean_squared_error,
+            greater_is_better=False,
+            args={"squared": False},
+            scorer="neg_root_mean_squared_error",
+        )
+
+
+class TrainR2MetricContainer(RegressionMetricContainer):
+    def __init__(self, globals_dict: dict) -> None:
+
+        super().__init__(
+            id="train_r2",
+            name="Train_R2",
             score_func=metrics.r2_score,
             greater_is_better=True,
             scorer="r2",
         )
 
 
-class RMSLEMetricContainer(RegressionMetricContainer):
+class TestR2MetricContainer(RegressionMetricContainer):
+    def __init__(self, globals_dict: dict) -> None:
+
+        super().__init__(
+            id="test_r2",
+            name="Test_R2",
+            score_func=metrics.r2_score,
+            greater_is_better=True,
+            scorer="r2",
+        )
+
+
+class TrainRMSLEMetricContainer(RegressionMetricContainer):
     def __init__(self, globals_dict: dict) -> None:
         def root_mean_squared_log_error(
             y_true, y_pred, *, sample_weight=None, multioutput="uniform_average"
@@ -216,8 +263,8 @@ class RMSLEMetricContainer(RegressionMetricContainer):
             )
 
         super().__init__(
-            id="rmsle",
-            name="RMSLE",
+            id="train_rmsle",
+            name="Train_RMSLE",
             score_func=root_mean_squared_log_error,
             scorer=pycaret.internal.metrics.make_scorer_with_error_score(
                 root_mean_squared_log_error, error_score=0.0, greater_is_better=False
@@ -226,7 +273,32 @@ class RMSLEMetricContainer(RegressionMetricContainer):
         )
 
 
-class MAPEMetricContainer(RegressionMetricContainer):
+class TestRMSLEMetricContainer(RegressionMetricContainer):
+    def __init__(self, globals_dict: dict) -> None:
+        def root_mean_squared_log_error(
+            y_true, y_pred, *, sample_weight=None, multioutput="uniform_average"
+        ):
+            return np.sqrt(
+                metrics.mean_squared_log_error(
+                    np.abs(y_true),
+                    np.abs(y_pred),
+                    sample_weight=sample_weight,
+                    multioutput=multioutput,
+                )
+            )
+
+        super().__init__(
+            id="test_rmsle",
+            name="Test_RMSLE",
+            score_func=root_mean_squared_log_error,
+            scorer=pycaret.internal.metrics.make_scorer_with_error_score(
+                root_mean_squared_log_error, error_score=0.0, greater_is_better=False
+            ),
+            greater_is_better=False,
+        )
+
+
+class TrainMAPEMetricContainer(RegressionMetricContainer):
     def __init__(self, globals_dict: dict) -> None:
         def mean_absolute_percentage_error(
             y_true, y_pred, sample_weight=None, multioutput="uniform_average"
@@ -250,8 +322,39 @@ class MAPEMetricContainer(RegressionMetricContainer):
             return np.average(output_errors, weights=multioutput)
 
         super().__init__(
-            id="mape",
-            name="MAPE",
+            id="train_mape",
+            name="Train_MAPE",
+            score_func=mean_absolute_percentage_error,
+            greater_is_better=False,
+        )
+
+
+class TestMAPEMetricContainer(RegressionMetricContainer):
+    def __init__(self, globals_dict: dict) -> None:
+        def mean_absolute_percentage_error(
+            y_true, y_pred, sample_weight=None, multioutput="uniform_average"
+        ):
+            y_type, y_true, y_pred, multioutput = _check_reg_targets(
+                y_true, y_pred, multioutput
+            )
+            check_consistent_length(y_true, y_pred, sample_weight)
+            mask = y_true != 0
+            y_true = y_true[mask]
+            y_pred = y_pred[mask]
+            mape = np.abs(y_pred - y_true) / np.abs(y_true)
+            output_errors = np.average(mape, weights=sample_weight, axis=0)
+            if isinstance(multioutput, str):
+                if multioutput == "raw_values":
+                    return output_errors
+                elif multioutput == "uniform_average":
+                    # pass None as weights to np.average: uniform mean
+                    multioutput = None
+
+            return np.average(output_errors, weights=multioutput)
+
+        super().__init__(
+            id="test_mape",
+            name="Test_MAPE",
             score_func=mean_absolute_percentage_error,
             greater_is_better=False,
         )
