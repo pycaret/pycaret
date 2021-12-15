@@ -857,6 +857,11 @@ class ExponentialSmoothingContainer(TimeSeriesContainer):
         return tune_distributions
 
 class CrostonContainer(TimeSeriesContainer):
+    """
+    SKtime documentation:
+    https://www.sktime.org/en/latest/api_reference/auto_generated/sktime.forecasting.croston.Croston.html
+
+    """
     model_type = TSModelTypes.CLASSICAL
 
     def __init__(self, globals_dict: dict) -> None:
@@ -873,15 +878,8 @@ class CrostonContainer(TimeSeriesContainer):
         if not self.active:
             return
 
-        # self.seasonality_present = globals_dict.get("seasonality_present")
-        # TODO: Not sure if this is required.
-        sp = globals_dict.get("seasonal_period")
-        self.sp = sp if sp is not None else 1
-
         self.strictly_positive = globals_dict.get("strictly_positive")
 
-        args = self._set_args
-        tune_args = self._set_tune_args
         tune_grid = self._set_tune_grid
         tune_distributions = self._set_tune_distributions
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
@@ -890,31 +888,23 @@ class CrostonContainer(TimeSeriesContainer):
             id="croston",
             name="Croston",
             class_def=Croston,
-            args=args,
             tune_grid=tune_grid,
             tune_distribution=tune_distributions,
-            tune_args=tune_args,
             is_gpu_enabled=self.gpu_imported
         )
-
-    @property
-    def _set_args(self) -> Dict[str, Any]:
-        # leaving blank- this will just use the sktime default
-        # smoothing = 0.1
-        args = {} 
-        return args
 
     @property
     def _set_tune_grid(self) -> Dict[str, List[Any]]:
         # Lack of documentation here, SKtime and R implementations are default 0.1
         # using : np.logspace(start=0.01,stop=1.0,endpoint=True, base=100, num=8)/100
-        tune_grid = {"smoothing" : [0.01 , 0.02 , 0.039, 0.074, 0.142, 0.272, 0.521, 1.   ]}
+        smoothing_grid: List[float] = [0.01 , 0.02 , 0.039, 0.074, 0.142, 0.272, 0.521, 1.   ]
+        tune_grid = {"smoothing" : smoothing_grid}
         return tune_grid
 
     @property
     def _set_tune_distributions(self) -> Dict[str, List[Any]]:
         tune_distributions = {"smoothing": UniformDistribution(
-                lower=0.01, upper=0.1, log=False
+                lower=0.01, upper=1, log=True
             )}
         return tune_distributions
 
