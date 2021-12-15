@@ -899,19 +899,22 @@ class CrostonContainer(TimeSeriesContainer):
 
     @property
     def _set_args(self) -> Dict[str, Any]:
-        args = {"smoothing" : 0.1} # just use the default : smoothing = 0.1 
+        # leaving blank- this will just use the sktime default
+        # smoothing = 0.1
+        args = {} 
         return args
 
     @property
     def _set_tune_grid(self) -> Dict[str, List[Any]]:
-        # TODO: Lack of documentation here, SKtime and R implementations are default 0.1
-        tune_grid = {"smoothing" : [0.01,0.05, 0.001,0.5,0.9]}
+        # Lack of documentation here, SKtime and R implementations are default 0.1
+        # using : np.logspace(start=0.01,stop=1.0,endpoint=True, base=100, num=8)/100
+        tune_grid = {"smoothing" : [0.01 , 0.02 , 0.039, 0.074, 0.142, 0.272, 0.521, 1.   ]}
         return tune_grid
 
     @property
     def _set_tune_distributions(self) -> Dict[str, List[Any]]:
         tune_distributions = {"smoothing": UniformDistribution(
-                lower=0.01, upper=0.9, log=False
+                lower=0.01, upper=0.1, log=False
             )}
         return tune_distributions
 
