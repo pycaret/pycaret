@@ -10171,6 +10171,47 @@ def get_leaderboard(
     display.clear_output()
     return results
 
+def convert_model(estimator, language: str = "python"):
+    """
+    This function transpiles trained machine learning models into native 
+    inference script in different programming languages (Python, C, Java, 
+    Go, JavaScript, Visual Basic, C#, PowerShell, R, PHP, Dart, Haskell, 
+    Ruby, F#). This functionality is very useful if you want to deploy models 
+    into environments where you can't install your normal Python stack to 
+    support model inference.
+    """
+
+    import m2cgen as m2c
+
+    if language == "python":
+        return m2c.export_to_python(estimator)
+    elif language == 'java':
+        return m2c.export_to_java(estimator)
+    elif language == 'c':
+        return m2c.export_to_c(estimator)
+    elif language == 'c#':
+        return m2c.export_to_c_sharp(estimator)
+    elif language == 'dart':
+        return m2c.export_to_dart(estimator)
+    elif language == 'f#':
+        return m2c.export_to_f_sharp(estimator)
+    elif language == 'go':
+        return m2c.export_to_go(estimator)
+    elif language == 'haskell':
+        return m2c.export_to_haskell(estimator)
+    elif language == 'javascript':
+        return m2c.export_to_javascript(estimator)
+    elif language == 'php':
+        return m2c.export_to_php(estimator)
+    elif language == 'powershell':
+        return m2c.export_to_powershell(estimator)
+    elif language == 'r':
+        return m2c.export_to_r(estimator)
+    elif language == 'ruby':
+        return m2c.export_to_ruby(estimator)
+    elif language == 'vb':
+        return m2c.export_to_visual_basic(estimator)
+    
 
 def _choose_better(
     models_and_results: list,
