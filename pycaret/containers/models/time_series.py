@@ -886,8 +886,6 @@ class CrostonContainer(TimeSeriesContainer):
         tune_distributions = self._set_tune_distributions
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
-        eq_function = lambda x: type(x) is Croston
-
         super().__init__(
             id="croston",
             name="Croston",
@@ -896,8 +894,7 @@ class CrostonContainer(TimeSeriesContainer):
             tune_grid=tune_grid,
             tune_distribution=tune_distributions,
             tune_args=tune_args,
-            is_gpu_enabled=self.gpu_imported,
-            eq_function=eq_function,  # Added to differentiate between ExponentialSmoothing and Theta which are of same parent class
+            is_gpu_enabled=self.gpu_imported
         )
 
     @property
