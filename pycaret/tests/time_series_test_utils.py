@@ -1,9 +1,10 @@
 """Helper functions for time series tests
 """
-from random import choice, uniform, randint
+import random
 
 import numpy as np  # type: ignore
-import pandas as pd  # type: ignore
+import pandas as pd
+from pandas.core.indexes import period  # type: ignore
 
 from pycaret.internal.pycaret_experiment import TimeSeriesExperiment
 from pycaret.datasets import get_data
@@ -80,7 +81,13 @@ def _get_seasonal_values():
 
     return [(k, v.value) for k, v in SeasonalPeriod.__members__.items()]
 
-
+def _get_seasonal_values_alphanumeric():
+    """ Check if frequency is alphanumeric and process it as needed """
+    from pycaret.internal.utils import SeasonalPeriod
+    choice_list = ['10','20','30','40','50','60']
+    #prefix = random.choice(choice_list)
+    return [(random.choice(choice_list),k,v.value) for k, v in SeasonalPeriod.__members__.items()]
+ 
 def _check_windows():
     """Check if the system is Windows."""
     import sys
@@ -130,14 +137,14 @@ def _return_model_parameters():
     for i, name in enumerate(model_names):
         if i % 3 == 0:
             # Integer
-            fh = randint(6, 24)
+            fh = random.randint(6, 24)
         elif i % 3 == 1:
             # numpy arrays (continuous)
-            fh = np.arange(1, randint(13, 25))
+            fh = np.arange(1, random.randint(13, 25))
         else:
             # i%3 = 2
             # numpy arrays (with gaps)
-            fh = np.arange(randint(6, 12), randint(13, 25))
+            fh = np.arange(random.randint(6, 12), random.randint(13, 25))
 
         parameters.append((name, fh))
 
@@ -149,17 +156,17 @@ def _return_splitter_args():
     """
     parametrize_list = [
         ## fh: Integer
-        (randint(2, 5), randint(5, 10), "expanding"),
-        (randint(2, 5), randint(5, 10), "rolling"),
-        (randint(2, 5), randint(5, 10), "sliding"),
+        (random.randint(2, 5), random.randint(5, 10), "expanding"),
+        (random.randint(2, 5), random.randint(5, 10), "rolling"),
+        (random.randint(2, 5), random.randint(5, 10), "sliding"),
         ## fh: Continuous np.array
-        (randint(2, 5), np.arange(1, randint(5, 10)), "expanding"),
-        (randint(2, 5), np.arange(1, randint(5, 10)), "rolling"),
-        (randint(2, 5), np.arange(1, randint(5, 10)), "sliding"),
+        (random.randint(2, 5), np.arange(1, random.randint(5, 10)), "expanding"),
+        (random.randint(2, 5), np.arange(1, random.randint(5, 10)), "rolling"),
+        (random.randint(2, 5), np.arange(1, random.randint(5, 10)), "sliding"),
         # Non continuous np.array
-        (randint(2, 5), np.arange(randint(3, 5), randint(6, 10)), "expanding"),
-        (randint(2, 5), np.arange(randint(3, 5), randint(6, 10)), "rolling"),
-        (randint(2, 5), np.arange(randint(3, 5), randint(6, 10)), "sliding"),
+        (random.randint(2, 5), np.arange(random.randint(3, 5), random.randint(6, 10)), "expanding"),
+        (random.randint(2, 5), np.arange(random.randint(3, 5), random.randint(6, 10)), "rolling"),
+        (random.randint(2, 5), np.arange(random.randint(3, 5), random.randint(6, 10)), "sliding"),
     ]
     return parametrize_list
 
@@ -179,9 +186,9 @@ def _return_setup_args_raises():
     """
     """
     setup_raises_list = [
-        (randint(50, 100), randint(10, 20), "expanding"),
-        (randint(50, 100), randint(10, 20), "rolling"),
-        (randint(50, 100), randint(10, 20), "sliding"),
+        (random.randint(50, 100), random.randint(10, 20), "expanding"),
+        (random.randint(50, 100), random.randint(10, 20), "rolling"),
+        (random.randint(50, 100), random.randint(10, 20), "sliding"),
     ]
     return setup_raises_list
 
