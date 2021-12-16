@@ -735,10 +735,6 @@ class _TabularExperiment(_PyCaretExperiment):
 
         self.logger.info("Copying training dataset")
 
-        data_X, test_X = self.X_train_transformed, self.X_test_transformed
-        if self._is_unsupervised():
-            data_y, test_y = self.y_train_transformed, self.y_test_transformed
-
         self.logger.info(f"Plot type: {plot}")
         plot_name = self._available_plots[plot]
         display.move_progress()
@@ -767,10 +763,10 @@ class _TabularExperiment(_PyCaretExperiment):
                     )
 
                     resplots = InteractiveResidualsPlot(
-                        x=data_X,
-                        y=data_y,
-                        x_test=test_X,
-                        y_test=test_y,
+                        x=self.X_train_transformed,
+                        y=self.y_train_transformed,
+                        x_test=self.X_test_transformed,
+                        y_test=self.y_test_transformed,
                         model=estimator,
                         display=display,
                     )
@@ -1070,7 +1066,7 @@ class _TabularExperiment(_PyCaretExperiment):
                     if feature_name is not None:
                         X_embedded["Feature"] = self.data[feature_name]
                     else:
-                        X_embedded["Feature"] = self.data[data_X.columns[0]]
+                        X_embedded["Feature"] = self.data[self.data.columns[0]]
 
                     if label:
                         X_embedded["Label"] = X_embedded["Feature"]
@@ -1230,7 +1226,7 @@ class _TabularExperiment(_PyCaretExperiment):
                         )
                         show_yellowbrick_plot(
                             visualizer=visualizer,
-                            X_train=data_X,
+                            X_train=self.X_train_transformed,
                             y_train=None,
                             X_test=None,
                             y_test=None,
@@ -1260,7 +1256,7 @@ class _TabularExperiment(_PyCaretExperiment):
                         )
                         show_yellowbrick_plot(
                             visualizer=visualizer,
-                            X_train=data_X,
+                            X_train=self.X_train_transformed,
                             y_train=None,
                             X_test=None,
                             y_test=None,
@@ -1287,7 +1283,7 @@ class _TabularExperiment(_PyCaretExperiment):
                         visualizer = InterclusterDistance(estimator)
                         show_yellowbrick_plot(
                             visualizer=visualizer,
-                            X_train=data_X,
+                            X_train=self.X_train_transformed,
                             y_train=None,
                             X_test=None,
                             y_test=None,
@@ -1314,10 +1310,10 @@ class _TabularExperiment(_PyCaretExperiment):
                     visualizer = ResidualsPlot(estimator)
                     show_yellowbrick_plot(
                         visualizer=visualizer,
-                        X_train=data_X,
-                        y_train=data_y,
-                        X_test=test_X,
-                        y_test=test_y,
+                        X_train=self.X_train_transformed,
+                        y_train=self.y_train_transformed,
+                        X_test=self.X_test_transformed,
+                        y_test=self.y_test_transformed,
                         name=plot_name,
                         scale=scale,
                         save=save,
@@ -1334,10 +1330,10 @@ class _TabularExperiment(_PyCaretExperiment):
                     visualizer = ROCAUC(estimator)
                     show_yellowbrick_plot(
                         visualizer=visualizer,
-                        X_train=data_X,
-                        y_train=data_y,
-                        X_test=test_X,
-                        y_test=test_y,
+                        X_train=self.X_train_transformed,
+                        y_train=self.y_train_transformed,
+                        X_test=self.X_test_transformed,
+                        y_test=self.y_test_transformed,
                         name=plot_name,
                         scale=scale,
                         save=save,
@@ -1356,10 +1352,10 @@ class _TabularExperiment(_PyCaretExperiment):
                     )
                     show_yellowbrick_plot(
                         visualizer=visualizer,
-                        X_train=data_X,
-                        y_train=data_y,
-                        X_test=test_X,
-                        y_test=test_y,
+                        X_train=self.X_train_transformed,
+                        y_train=self.y_train_transformed,
+                        X_test=self.X_test_transformed,
+                        y_test=self.y_test_transformed,
                         name=plot_name,
                         scale=scale,
                         save=save,
@@ -1378,10 +1374,10 @@ class _TabularExperiment(_PyCaretExperiment):
                     )
                     show_yellowbrick_plot(
                         visualizer=visualizer,
-                        X_train=data_X,
-                        y_train=data_y,
-                        X_test=test_X,
-                        y_test=test_y,
+                        X_train=self.X_train_transformed,
+                        y_train=self.y_train_transformed,
+                        X_test=self.X_test_transformed,
+                        y_test=self.y_test_transformed,
                         name=plot_name,
                         scale=scale,
                         save=save,
@@ -1403,10 +1399,10 @@ class _TabularExperiment(_PyCaretExperiment):
                     )
                     show_yellowbrick_plot(
                         visualizer=visualizer,
-                        X_train=data_X,
-                        y_train=data_y,
-                        X_test=test_X,
-                        y_test=test_y,
+                        X_train=self.X_train_transformed,
+                        y_train=self.y_train_transformed,
+                        X_test=self.X_test_transformed,
+                        y_test=self.y_test_transformed,
                         name=plot_name,
                         scale=scale,
                         save=save,
@@ -1434,10 +1430,10 @@ class _TabularExperiment(_PyCaretExperiment):
 
                     show_yellowbrick_plot(
                         visualizer=visualizer,  # type: ignore
-                        X_train=data_X,
-                        y_train=data_y,
-                        X_test=test_X,
-                        y_test=test_y,
+                        X_train=self.X_train_transformed,
+                        y_train=self.y_train_transformed,
+                        X_test=self.X_test_transformed,
+                        y_test=self.y_test_transformed,
                         name=plot_name,
                         scale=scale,
                         save=save,
@@ -1456,8 +1452,8 @@ class _TabularExperiment(_PyCaretExperiment):
                         visualizer=visualizer,
                         X_train=self.X,
                         y_train=self.y,
-                        X_test=test_X,
-                        y_test=test_y,
+                        X_test=self.X_test_transformed,
+                        y_test=self.y_test_transformed,
                         name=plot_name,
                         scale=scale,
                         save=save,
@@ -1479,10 +1475,10 @@ class _TabularExperiment(_PyCaretExperiment):
                     )
                     show_yellowbrick_plot(
                         visualizer=visualizer,
-                        X_train=data_X,
-                        y_train=data_y,
-                        X_test=test_X,
-                        y_test=test_y,
+                        X_train=self.X_train_transformed,
+                        y_train=self.y_train_transformed,
+                        X_test=self.X_test_transformed,
+                        y_test=self.y_test_transformed,
                         name=plot_name,
                         scale=scale,
                         save=save,
@@ -1498,8 +1494,8 @@ class _TabularExperiment(_PyCaretExperiment):
                     from sklearn.preprocessing import StandardScaler
                     from yellowbrick.contrib.classifier import DecisionViz
 
-                    data_X_transformed = data_X.select_dtypes(include="number")
-                    test_X_transformed = test_X.select_dtypes(include="number")
+                    data_X_transformed = self.X_train_transformed.select_dtypes(include="number")
+                    test_X_transformed = self.X_test_transformed.select_dtypes(include="number")
                     self.logger.info("Fitting StandardScaler()")
                     data_X_transformed = StandardScaler().fit_transform(
                         data_X_transformed
@@ -1512,16 +1508,13 @@ class _TabularExperiment(_PyCaretExperiment):
                     data_X_transformed = pca.fit_transform(data_X_transformed)
                     test_X_transformed = pca.fit_transform(test_X_transformed)
 
-                    data_y_transformed = np.array(data_y)
-                    test_y_transformed = np.array(test_y)
-
                     viz_ = DecisionViz(estimator)
                     show_yellowbrick_plot(
                         visualizer=viz_,
                         X_train=data_X_transformed,
-                        y_train=data_y_transformed,
+                        y_train=np.array(self.y_train_transformed),
                         X_test=test_X_transformed,
-                        y_test=test_y_transformed,
+                        y_test=np.array(self.y_test_transformed),
                         name=plot_name,
                         scale=scale,
                         handle_test="draw",
@@ -1541,10 +1534,10 @@ class _TabularExperiment(_PyCaretExperiment):
                     visualizer = RFECV(estimator, cv=cv)
                     show_yellowbrick_plot(
                         visualizer=visualizer,
-                        X_train=data_X,
-                        y_train=data_y,
-                        X_test=test_X,
-                        y_test=test_y,
+                        X_train=self.X_train_transformed,
+                        y_train=self.y_train_transformed,
+                        X_test=self.X_test_transformed,
+                        y_test=self.y_test_transformed,
                         handle_test="",
                         name=plot_name,
                         scale=scale,
@@ -1569,10 +1562,10 @@ class _TabularExperiment(_PyCaretExperiment):
                     )
                     show_yellowbrick_plot(
                         visualizer=visualizer,
-                        X_train=data_X,
-                        y_train=data_y,
-                        X_test=test_X,
-                        y_test=test_y,
+                        X_train=self.X_train_transformed,
+                        y_train=self.y_train_transformed,
+                        X_test=self.X_test_transformed,
+                        y_test=self.y_test_transformed,
                         handle_test="",
                         name=plot_name,
                         scale=scale,
@@ -1589,8 +1582,8 @@ class _TabularExperiment(_PyCaretExperiment):
                     self.logger.info(
                         "Generating predictions / predict_proba on X_test"
                     )
-                    y_test__ = test_y
-                    predict_proba__ = estimator.predict_proba(test_X)
+                    y_test__ = self.y_test_transformed
+                    predict_proba__ = estimator.predict_proba(self.X_test_transformed)
                     display.move_progress()
                     display.move_progress()
                     display.clear_output()
@@ -1620,8 +1613,8 @@ class _TabularExperiment(_PyCaretExperiment):
                     self.logger.info(
                         "Generating predictions / predict_proba on X_test"
                     )
-                    y_test__ = test_y
-                    predict_proba__ = estimator.predict_proba(test_X)
+                    y_test__ = self.y_test_transformed
+                    predict_proba__ = estimator.predict_proba(self.X_test_transformed)
                     display.move_progress()
                     display.move_progress()
                     display.clear_output()
@@ -1649,16 +1642,16 @@ class _TabularExperiment(_PyCaretExperiment):
 
                     from yellowbrick.features import Manifold
 
-                    data_X_transformed = data_X.select_dtypes(include="number")
+                    data_X_transformed = self.X_train_transformed.select_dtypes(include="number")
                     visualizer = Manifold(
                         manifold="tsne", random_state=self.seed
                     )
                     show_yellowbrick_plot(
                         visualizer=visualizer,
                         X_train=data_X_transformed,
-                        y_train=data_y,
-                        X_test=test_X,
-                        y_test=test_y,
+                        y_train=self.y_train_transformed,
+                        X_test=self.X_test_transformed,
+                        y_test=self.y_test_transformed,
                         handle_train="fit_transform",
                         handle_test="",
                         name=plot_name,
@@ -1722,7 +1715,7 @@ class _TabularExperiment(_PyCaretExperiment):
                     display.move_progress()
                     self.logger.info("Plotting decision trees")
                     trees = []
-                    feature_names = list(data_X.columns)
+                    feature_names = list(self.X_train_transformed.columns)
                     if self._ml_usecase == MLUsecase.CLASSIFICATION:
                         class_names = {
                             v: k
@@ -1736,7 +1729,7 @@ class _TabularExperiment(_PyCaretExperiment):
                     if is_stacked_model:
                         stacked_feature_names = []
                         if self._ml_usecase == MLUsecase.CLASSIFICATION:
-                            classes = list(data_y.unique())
+                            classes = list(self.y_train_transformed.unique())
                             if len(classes) == 2:
                                 classes.pop()
                             for c in classes:
@@ -1812,14 +1805,14 @@ class _TabularExperiment(_PyCaretExperiment):
                     ax1.plot([0, 1], [0, 1], "k:", label="Perfectly calibrated")
                     display.move_progress()
                     self.logger.info("Scoring test/hold-out set")
-                    prob_pos = estimator.predict_proba(test_X)[:, 1]
+                    prob_pos = estimator.predict_proba(self.X_test_transformed)[:, 1]
                     prob_pos = (prob_pos - prob_pos.min()) / (
                         prob_pos.max() - prob_pos.min()
                     )
                     (
                         fraction_of_positives,
                         mean_predicted_value,
-                    ) = calibration_curve(test_y, prob_pos, n_bins=10)
+                    ) = calibration_curve(self.y_test_transformed, prob_pos, n_bins=10)
                     display.move_progress()
                     ax1.plot(
                         mean_predicted_value,
@@ -1970,10 +1963,10 @@ class _TabularExperiment(_PyCaretExperiment):
                         # Bagging / Boosting (ada/gbr)
                         elif "n_nonzero_coefs" in model_params:
                             param_name = "n_nonzero_coefs"
-                            if len(data_X.columns) >= 10:
+                            if len(self.X_train_transformed.columns) >= 10:
                                 param_max = 11
                             else:
-                                param_max = len(data_X.columns) + 1
+                                param_max = len(self.X_train_transformed.columns) + 1
                             param_range = np.arange(1, param_max, 1)
 
                         elif "eps" in model_params:
@@ -2010,10 +2003,10 @@ class _TabularExperiment(_PyCaretExperiment):
                     )
                     show_yellowbrick_plot(
                         visualizer=viz,
-                        X_train=data_X,
-                        y_train=data_y,
-                        X_test=test_X,
-                        y_test=test_y,
+                        X_train=self.X_train_transformed,
+                        y_train=self.y_train_transformed,
+                        X_test=self.X_test_transformed,
+                        y_test=self.y_test_transformed,
                         handle_train="fit",
                         handle_test="",
                         name=plot_name,
@@ -2031,29 +2024,28 @@ class _TabularExperiment(_PyCaretExperiment):
                     from sklearn.preprocessing import StandardScaler
                     from yellowbrick.features import RadViz
 
-                    data_X_transformed = data_X.select_dtypes(include="number")
+                    data_X_transformed = self.X_train_transformed.select_dtypes(include="number")
                     self.logger.info("Fitting StandardScaler()")
                     data_X_transformed = StandardScaler().fit_transform(
                         data_X_transformed
                     )
-                    data_y_transformed = np.array(data_y)
 
-                    features = min(round(len(data_X.columns) * 0.3, 0), 5)
+                    features = min(round(len(self.X_train_transformed.columns) * 0.3, 0), 5)
                     features = int(features)
 
                     pca = PCA(n_components=features, random_state=self.seed)
                     self.logger.info("Fitting PCA()")
                     data_X_transformed = pca.fit_transform(data_X_transformed)
                     display.move_progress()
-                    classes = data_y.unique().tolist()
+                    classes = self.y_train_transformed.unique().tolist()
                     visualizer = RadViz(classes=classes, alpha=0.25)
 
                     show_yellowbrick_plot(
                         visualizer=visualizer,
                         X_train=data_X_transformed,
-                        y_train=data_y_transformed,
-                        X_test=test_X,
-                        y_test=test_y,
+                        y_train=np.array(self.y_train_transformed),
+                        X_test=self.X_test_transformed,
+                        y_test=self.y_test_transformed,
                         handle_train="fit_transform",
                         handle_test="",
                         name=plot_name,
@@ -2069,7 +2061,7 @@ class _TabularExperiment(_PyCaretExperiment):
                     _feature(10)
 
                 def feature_all():
-                    _feature(len(data_X.columns))
+                    _feature(len(self.X_train_transformed.columns))
 
                 def _feature(n: int):
                     variables = None
@@ -2079,8 +2071,8 @@ class _TabularExperiment(_PyCaretExperiment):
                     if hasattr(temp_model, "coef_"):
                         try:
                             coef = temp_model.coef_.flatten()
-                            if len(coef) > len(data_X.columns):
-                                coef = coef[: len(data_X.columns)]
+                            if len(coef) > len(self.X_train_transformed.columns):
+                                coef = coef[: len(self.X_train_transformed.columns)]
                             variables = abs(coef)
                         except:
                             pass
@@ -2090,7 +2082,7 @@ class _TabularExperiment(_PyCaretExperiment):
                         )
                         variables = abs(temp_model.feature_importances_)
                     coef_df = pd.DataFrame(
-                        {"Variable": data_X.columns, "Value": variables}
+                        {"Variable": self.X_train_transformed.columns, "Value": variables}
                     )
                     sorted_df = (
                         coef_df.sort_values(by="Value", ascending=False)
@@ -2149,7 +2141,7 @@ class _TabularExperiment(_PyCaretExperiment):
                     self.logger.info(
                         "Generating predictions / predict_proba on X_test"
                     )
-                    predict_proba__ = estimator.predict_proba(data_X)
+                    predict_proba__ = estimator.predict_proba(self.X_train_transformed)
                     display.move_progress()
                     display.move_progress()
                     display.clear_output()
@@ -2157,7 +2149,7 @@ class _TabularExperiment(_PyCaretExperiment):
                         base_dpi=_base_dpi, scale_to_set=scale
                     ):
                         fig = skplt.metrics.plot_ks_statistic(
-                            data_y, predict_proba__, figsize=(10, 6)
+                            self.y_train_transformed, predict_proba__, figsize=(10, 6)
                         )
                         if save:
                             plot_filename = f"{plot_name}.png"

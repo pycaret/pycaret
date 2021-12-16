@@ -346,7 +346,7 @@ class ClassRegExperiment(_SupervisedExperiment):
 
             if self.y.dtype.kind not in "ifu":
                 self.pipeline.steps.append(
-                    ("label_encoder", TransfomerWrapper(LabelEncoder()))
+                    ("label_encoding", TransfomerWrapper(LabelEncoder()))
                 )
 
             # Date feature engineering ============================= >>
