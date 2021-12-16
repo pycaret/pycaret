@@ -872,13 +872,13 @@ class CrostonContainer(TimeSeriesContainer):
         from sktime.forecasting.croston import Croston  # type: ignore
 
         dummy = Croston()
+        # check if pi is enforced.
         self.active:bool = self.disable_pred_int_enforcement(
-            forecaster=dummy, enforce_pi=globals_dict["enforce_pi"]
-        )
+            forecaster=dummy, enforce_pi=globals_dict["enforce_pi"])
+
+        # if not, make the model unavailiable
         if not self.active:
             return
-
-        self.strictly_positive = globals_dict.get("strictly_positive")
 
         tune_grid = self._set_tune_grid
         tune_distributions = self._set_tune_distributions
@@ -895,9 +895,9 @@ class CrostonContainer(TimeSeriesContainer):
 
     @property
     def _set_tune_grid(self) -> Dict[str, List[Any]]:
-        # Lack of documentation here, SKtime and R implementations are default 0.1
-        # using : np.logspace(start=0.01,stop=1.0,endpoint=True, base=100, num=8)/100
-        smoothing_grid: List[float] = [0.01 , 0.02 , 0.039, 0.074, 0.142, 0.272, 0.521, 1.   ]
+        # lack of research/evidence for suitable range here,
+        # SKtime and R implementations are default 0.1
+        smoothing_grid: List[float] = [0.01, 0.03, 0.1, 0.2, 0.4, 0.6, 0.8, 1.0]
         tune_grid = {"smoothing" : smoothing_grid}
         return tune_grid
 
