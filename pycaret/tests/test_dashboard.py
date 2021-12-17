@@ -9,7 +9,6 @@ import pycaret.classification
 import pycaret.regression
 import pycaret.datasets
 
-
 def test_classification_dashboard():
 
     # loading dataset
@@ -33,29 +32,5 @@ def test_classification_dashboard():
     # assert statement
     assert 1 == 1
 
-def test_regression_dashboard():
-
-    # loading dataset
-    data = pycaret.datasets.get_data("boston")
-
-    # setup environment
-    reg1 = pycaret.regression.setup(
-        data,
-        target="medv",
-        silent=True,
-        html=False,
-        n_jobs=1,
-    )
-   
-    # train model
-    dt = pycaret.regression.create_model("dt")
-
-    # run dashboard
-    pycaret.regression.dashboard(dt, display_format = 'dash')
-
-    # assert statement
-    assert 1 == 1
-
 if __name__ == "__main__":
     test_classification_dashboard()
-    test_regression_dashboard()
