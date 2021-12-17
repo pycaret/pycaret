@@ -6,6 +6,7 @@ import pandas as pd
 import numpy as np
 import pytest
 import pycaret.classification
+import pycaret.regression
 import pycaret.datasets
 
 
@@ -27,7 +28,7 @@ def test_classification_dashboard():
     lr = pycaret.classification.create_model("lr")
 
     # run dashboard
-    pycaret.classification.dashboard(lr, display_format = 'inline')
+    pycaret.classification.dashboard(lr, display_format = 'dash')
 
     # assert statement
     assert 1 == 1
@@ -50,7 +51,7 @@ def test_regression_dashboard():
     dt = pycaret.regression.create_model("dt")
 
     # run dashboard
-    pycaret.regression.dashboard(dt, display_format = 'inline')
+    pycaret.regression.dashboard(dt, display_format = 'dash')
 
     # assert statement
     assert 1 == 1
