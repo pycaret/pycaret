@@ -10169,6 +10169,15 @@ def dashboard(estimator, display_format = 'dash',  dashboard_kwargs = {}, run_kw
     """
     function to launch ExplainerDashboard.
     """
+
+    try:
+        import explainerdashboard
+    except ImportError:
+        raise ImportError(
+            "It appears that explainerdashboard library is not installed. "
+            "Do: pip install explainerdashboard"
+        )
+
     if _ml_usecase == MLUsecase.CLASSIFICATION:
         _create_classification_dashboard(model=estimator, mode=display_format, dashboard_kwargs=dashboard_kwargs, run_kwargs=run_kwargs, **kwargs)
 
