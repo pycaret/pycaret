@@ -1144,6 +1144,10 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         self.enforce_pi = enforce_pi
 
+        # set clamps if passed in constructor
+        self.upper_clamp: Optional[Union[float,int]] = upper_clamp
+        self.lower_clamp: Optional[Union[float,int]] = lower_clamp
+
         return super().setup(
             data=data_,
             target=data_.columns[0],
