@@ -239,7 +239,7 @@ def setup(
         verbose=verbose,
         profile=profile,
         profile_kwargs=profile_kwargs,
-        upper_clamp=upper_clamp
+        upper_clamp=upper_clamp,
         lower_clamp=lower_clamp
     )
 
