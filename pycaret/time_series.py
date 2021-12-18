@@ -16,7 +16,6 @@ from pycaret.internal.utils import check_if_global_is_not_none
 
 from typing import List, Tuple, Any, Union, Optional, Dict
 import warnings
-import time
 
 warnings.filterwarnings("ignore")
 
