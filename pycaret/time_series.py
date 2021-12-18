@@ -206,7 +206,7 @@ def setup(
 
     upper_clamp: int or float, default = None
         Upper limit (inclusive) of values predicted/forecasted by models.
-        
+
 
     lower_clamp: int or float:, default = None
         Lower limit (inclusive) of values predicted/forecasted by models.
@@ -242,6 +242,8 @@ def setup(
         verbose=verbose,
         profile=profile,
         profile_kwargs=profile_kwargs,
+        lower_clamp: Optional[Union[float,int]] = None,
+        upper_clamp: Optional[Union[float,int]] = None,
     )
 
 

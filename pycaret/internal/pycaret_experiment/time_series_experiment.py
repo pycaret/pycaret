@@ -879,7 +879,9 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         verbose: bool = True,
         profile: bool = False,
         profile_kwargs: Dict[str, Any] = None,
-    ):
+        lower_clamp: Optional[Union[float,int]] = None,
+        upper_clamp: Optional[Union[float,int]] = None,
+        ):
         """
         This function initializes the training environment and creates the transformation
         pipeline. Setup function must be called before executing any other function. It takes
@@ -1024,6 +1026,14 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             Dictionary of arguments passed to the ProfileReport method used
             to create the EDA report. Ignored if ``profile`` is False.
 
+        
+        upper_clamp: int or float, default = None
+            Upper limit (inclusive) of values predicted/forecasted by models.
+
+
+        lower_clamp: int or float:, default = None
+            Lower limit (inclusive) of values predicted/forecasted by models.
+
 
         Returns:
             Global variables that can be changed using the ``set_config`` function.
@@ -1134,6 +1144,10 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         self.strictly_positive = np.all(data_[target_name] > 0)
 
         self.enforce_pi = enforce_pi
+
+        # set clamp values
+        self.upper_clamp: Optional[Union[float,int]] = upper_clamp
+        self.lower_clamp: Optional[Union[float,int]] = lower_clamp
 
         return super().setup(
             data=data_,
@@ -2963,6 +2977,11 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         # Converting to float since rounding does not support int
         result = result.astype(float).round(round)
+
+        # apply clamp - None is default for upper and lower
+        result = result.clip(upper = self.upper_clamp,lower=self.lower_clamp, axis=0)
+
+
 
         if isinstance(result.index, pd.DatetimeIndex):
             result.index = (
