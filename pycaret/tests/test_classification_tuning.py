@@ -18,7 +18,7 @@ def test():
     clf1 = pycaret.classification.setup(
         data,
         target="Purchase",
-        train_size=0.99,
+        train_size=0.7,
         fold=2,
         silent=True,
         html=False,

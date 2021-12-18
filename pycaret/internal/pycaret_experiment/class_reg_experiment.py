@@ -398,7 +398,7 @@ class ClassRegExperiment(_SupervisedExperiment):
                         ),
                         include=categorical_features,
                     )
-                    self._internal_pipeline.steps.extend(
+                    self.pipeline.steps.extend(
                         [
                             ("numerical_imputer", num_estimator),
                             ("categorical_imputer", cat_estimator),
@@ -512,7 +512,7 @@ class ClassRegExperiment(_SupervisedExperiment):
                             ),
                         ),
                     )
-                    self._internal_pipeline.steps.extend(
+                    self.pipeline.steps.extend(
                         [
                             ("imputer", imputer),
                         ],

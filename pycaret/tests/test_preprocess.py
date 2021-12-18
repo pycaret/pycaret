@@ -309,7 +309,7 @@ def test_iterative_imputer():
             numeric_iterative_imputer=imputer,
             categorical_iterative_imputer=imputer,
         )
-        transformer = pc._internal_pipeline.named_steps["imputer"]
+        transformer = pc.pipeline.named_steps["imputer"]
         df = transformer.fit_transform(data, data["STORE"])[0]
         assert not df.isnull().values.any()
         assert all(categories[col] == set(df[col].unique()) for col in categories)
