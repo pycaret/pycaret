@@ -2982,9 +2982,9 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 result.index.to_period()
             )  # Prophet with return_pred_int = True returns datetime index.
 
-        if self.upper_clamp is not None:
-            # this is verbose but value for either clamp could be 0 (Falsy)
-            result = result.clip(upper=self.upper_clamp)
+        # apply clamps
+        # pandas default for both upper and lower is None
+        result = result.clip(upper=self.upper_clamp, lower=self.lower_clamp)
 
         if self.lower_clamp is not None:
             result = result.clip(upper=self.lower_clamp)
