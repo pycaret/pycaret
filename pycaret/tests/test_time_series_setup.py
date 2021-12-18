@@ -248,7 +248,7 @@ def test_setup_upper_and_lower_clamps_is_non_breaking(
     lower_clamp: Optional[Union[float,int]]
     ):
     """ Tests that the clamp values are set 
-    correctly in the constuctor """
+    correctly in the constuctor, and that no errors are raised. """
     
 
     exp = TimeSeriesExperiment()
@@ -273,6 +273,47 @@ def test_setup_upper_and_lower_clamps_is_non_breaking(
 
     except Exception as exc:
         assert False, f"'sum_x_y' raised an exception {exc}"
+
+
+@pytest.mark.parametrize("upper_clamp, lower_clamp",_get_clamp_values())
+def test_clamp_is_enforced(
+    load_pos_and_neg_data,
+    upper_clamp: Optional[Union[float,int]], 
+    lower_clamp: Optional[Union[float,int]]
+    ):
+    """ Tests that the clamp values are set 
+    correctly in the constuctor """
+    
+
+    exp = TimeSeriesExperiment()
+    fh = np.arange(1, 13)
+    fold = 2
+    data = load_pos_and_neg_data
+
+
+    exp.setup(
+    data=data,
+    fh=fh,
+    fold=fold,
+    fold_strategy="sliding",
+    verbose=False,
+    upper_clamp=upper_clamp,
+    lower_clamp=lower_clamp)
+
+    best_model = exp.compare_models()
+
+    df = exp.predict_model(best_model, fh=fh, return_pred_int=True)
+
+    cols = ['y_pred','lower','upper']
+    for col in cols:
+        if upper_clamp is not None:
+            assert df[col].max() <= upper_clamp
+        if lower_clamp is not None:
+            assert df[col].min() >= lower_clamp
+        
+
+
+
 
 
 # @pytest.mark.parametrize("upper_clamp, lower_clamp",[('hello',0.0),(0.0,'hello')])
