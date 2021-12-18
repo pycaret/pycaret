@@ -34,3 +34,5 @@ trained_models/
 /mlruns.db-journal
 mlflow_backend.py
 demo4.py
+/.venv
+/.devcontainer

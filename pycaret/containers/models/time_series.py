@@ -856,6 +856,59 @@ class ExponentialSmoothingContainer(TimeSeriesContainer):
             }
         return tune_distributions
 
+class CrostonContainer(TimeSeriesContainer):
+    """
+    SKtime documentation:
+    https://www.sktime.org/en/latest/api_reference/auto_generated/sktime.forecasting.croston.Croston.html
+
+    """
+    model_type = TSModelTypes.CLASSICAL
+
+    def __init__(self, globals_dict: dict) -> None:
+        logger = get_logger()
+        np.random.seed(globals_dict["seed"])
+        self.gpu_imported = False
+
+        from sktime.forecasting.croston import Croston  # type: ignore
+
+        dummy = Croston()
+        # check if pi is enforced.
+        self.active:bool = self.disable_pred_int_enforcement(
+            forecaster=dummy, enforce_pi=globals_dict["enforce_pi"])
+
+        # if not, make the model unavailiable
+        if not self.active:
+            return
+
+        tune_grid = self._set_tune_grid
+        tune_distributions = self._set_tune_distributions
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+
+        super().__init__(
+            id="croston",
+            name="Croston",
+            class_def=Croston,
+            tune_grid=tune_grid,
+            tune_distribution=tune_distributions,
+            is_gpu_enabled=self.gpu_imported
+        )
+
+    @property
+    def _set_tune_grid(self) -> Dict[str, List[Any]]:
+        # lack of research/evidence for suitable range here,
+        # SKtime and R implementations are default 0.1
+        smoothing_grid: List[float] = [0.01, 0.03, 0.1, 0.2, 0.4, 0.6, 0.8, 1.0]
+        tune_grid = {"smoothing" : smoothing_grid}
+        return tune_grid
+
+    @property
+    def _set_tune_distributions(self) -> Dict[str, List[Any]]:
+        tune_distributions = {"smoothing": UniformDistribution(
+                lower=0.01, upper=1, log=True
+            )}
+        return tune_distributions
+
+
 
 class ETSContainer(TimeSeriesContainer):
     model_type = TSModelTypes.CLASSICAL
@@ -2616,3 +2669,5 @@ def get_all_model_containers(
     return pycaret.containers.base_container.get_all_containers(
         globals(), globals_dict, TimeSeriesContainer, raise_errors
     )
+
+
