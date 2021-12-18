@@ -131,7 +131,7 @@ def setup(
 
     enforce_pi: bool, default = False
         When set to True, only models that support prediction intervals are
-        loaded in the environment. 
+        loaded in the environment.
 
 
     n_jobs: int, default = -1
@@ -161,7 +161,7 @@ def setup(
 
 
     system_log: bool or logging.Logger, default = True
-        Whether to save the system logging file (as logs.log). If the input already is a 
+        Whether to save the system logging file (as logs.log). If the input already is a
         logger object, that one is used instead.
 
 
@@ -556,7 +556,7 @@ def tune_model(
 
 
     search_algorithm: str, default = 'random'
-        use 'random' for random grid search and 'grid' for complete grid search. 
+        use 'random' for random grid search and 'grid' for complete grid search.
 
 
     choose_better: bool, default = True
@@ -922,8 +922,8 @@ def plot_model(
 
 
     plot: str, default = None
-        Default is 'ts' when estimator is None, When estimator is not None, 
-        default is changed to 'forecast'. List of available plots (ID - Name): 
+        Default is 'ts' when estimator is None, When estimator is not None,
+        default is changed to 'forecast'. List of available plots (ID - Name):
 
         * 'ts' - Time Series Plot
         * 'train_test_split' - Train Test Split
