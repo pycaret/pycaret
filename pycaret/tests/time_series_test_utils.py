@@ -1,6 +1,7 @@
 """Helper functions for time series tests
 """
 import random
+from typing import List, Tuple, Optional, Union
 
 import numpy as np  # type: ignore
 import pandas as pd
@@ -230,3 +231,17 @@ def _return_data_big_small():
 #     if mdl_name == "prophet":
 #         data = data.to_timestamp(freq="M")
 #     return data
+
+def _get_clamp_values()->List[Tuple[Optional[Union[int,float]]]]:
+    """
+    creates values for testing clamps
+    """
+    test_clamps = [
+        (None,None), # both none
+        (None,2.0), # upper none
+        (0.0,0.0), # both 0.0
+        (None,2), # same but ints
+        (0,0) # same but ints
+        ] 
+
+    return test_clamps

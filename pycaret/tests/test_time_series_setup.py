@@ -2,6 +2,7 @@
 """
 import math
 import pytest
+from typing import Optional, Union
 import numpy as np  # type: ignore
 
 from pycaret.datasets import get_data
@@ -12,6 +13,7 @@ from .time_series_test_utils import (
     _return_setup_args_raises,
     _get_seasonal_values,
     _get_seasonal_values_alphanumeric,
+    _get_clamp_values
 )
 
 
@@ -237,4 +239,42 @@ def test_setup_seasonal_period_alphanumeric(
     )
 
     assert exp.seasonal_period == expected_seasonal_value
+
+
+@pytest.mark.parametrize("upper_clamp, lower_clamp",_get_clamp_values())
+def test_setup_upper_and_lower_clamps_is_non_breaking(
+    load_pos_and_neg_data,
+    upper_clamp: Optional[Union[float,int]], 
+    lower_clamp: Optional[Union[float,int]]
+    ):
+    """ Tests the get_sp_from_str 
+    function with different values of frequency """
+    
+
+    exp = TimeSeriesExperiment()
+    fh = np.arange(1, 13)
+    fold = 2
+    data = load_pos_and_neg_data
+
+    try:
+        # set up the experiment
+        exp.setup(
+        data=data,
+        fh=fh,
+        fold=fold,
+        fold_strategy="sliding",
+        verbose=False,
+        upper_clamp=upper_clamp,
+        lower_clamp=lower_clamp)
+
+        # check the instance variables are set correctly.
+        assert exp.lower_clamp == lower_clamp   
+        assert exp.upper_clamp == upper_clamp
+
+    except Exception as exc:
+        assert False, f"'sum_x_y' raised an exception {exc}"
+
+
+
+
 
