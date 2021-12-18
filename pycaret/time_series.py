@@ -55,6 +55,9 @@ def setup(
     verbose: bool = True,
     profile: bool = False,
     profile_kwargs: Dict[str, Any] = None,
+    lower_clamp: Optional[Union[float,int]] = None,
+    upper_clamp: Optional[Union[float,int]] = None,
+
 ):
     """
     This function initializes the training environment and creates the transformation
@@ -199,6 +202,14 @@ def setup(
     profile_kwargs: dict, default = {} (empty dict)
         Dictionary of arguments passed to the ProfileReport method used
         to create the EDA report. Ignored if ``profile`` is False.
+    
+
+    upper_clamp: int or float, default = None
+        Upper limit (inclusive) of values predicted/forecasted by models.
+        
+
+    lower_clamp: int or float:, default = None
+        Lower limit (inclusive) of values predicted/forecasted by models.
 
 
     Returns:
