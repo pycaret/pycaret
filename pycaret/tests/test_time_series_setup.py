@@ -247,8 +247,8 @@ def test_setup_upper_and_lower_clamps_is_non_breaking(
     upper_clamp: Optional[Union[float,int]], 
     lower_clamp: Optional[Union[float,int]]
     ):
-    """ Tests the get_sp_from_str 
-    function with different values of frequency """
+    """ Tests that the clamp values are set 
+    correctly in the constuctor """
     
 
     exp = TimeSeriesExperiment()
@@ -274,6 +274,34 @@ def test_setup_upper_and_lower_clamps_is_non_breaking(
     except Exception as exc:
         assert False, f"'sum_x_y' raised an exception {exc}"
 
+
+# @pytest.mark.parametrize("upper_clamp, lower_clamp",[('hello',0.0),(0.0,'hello')])
+# def test_setup_clamps_invalid_value_fails(
+#     load_pos_and_neg_data,
+#     upper_clamp: Optional[Union[float,int]], 
+#     lower_clamp: Optional[Union[float,int]]
+#     ):
+#     """ Tests the get_sp_from_str 
+#     function with different values of frequency """
+    
+
+#     exp = TimeSeriesExperiment()
+#     fh = np.arange(1, 13)
+#     fold = 2
+#     data = load_pos_and_neg_data
+
+#     # with pytest.raises(TypeError):
+#     # set up the experiment
+#     exp.setup(
+#     data=data,
+#     fh=fh,
+#     fold=fold,
+#     fold_strategy="sliding",
+#     verbose=False,
+#     upper_clamp=upper_clamp,
+#     lower_clamp=lower_clamp)
+
+#     exp.compare_models(turbo=True)
 
 
 
