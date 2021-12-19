@@ -2746,7 +2746,7 @@ def get_leaderboard(
         verbose=verbose,
     )
 
-def convert_model(estimator, language = 'python') -> str:
+def convert_model(estimator, language: str = "python") -> str:
 
     """
     This function transpiles trained machine learning models into native 
