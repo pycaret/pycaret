@@ -2979,14 +2979,17 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         result = result.astype(float).round(round)
 
         # apply clamp - None is default for upper and lower
-
-        for clamp in ({"upper":self.upper_clamp},{"lower":self.lower_clamp}):
-            try:
-                result = result.clip(axis=0, **clamp)
-            except TypeError:
-                # argument does not get raised until predict
-                self.logger.error(f"Invalid value in experiment setup: {clamp} must be numeric.")
-                pass
+        # these are only applied/initialised in setup.
+        # suggest adding these options in predict_model()
+        # or wholly implementing in predict_model
+        if self._setup_ran:
+            for clamp in ({"upper":self.upper_clamp},{"lower":self.lower_clamp}):
+                try:
+                    result = result.clip(axis=0, **clamp)
+                except TypeError:
+                    # argument does not get raised until predict
+                    self.logger.error(f"Invalid value in experiment setup: {clamp} must be numeric.")
+                    pass
 
 
 
