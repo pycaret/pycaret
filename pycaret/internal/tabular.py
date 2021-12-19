@@ -6492,7 +6492,9 @@ def plot_model(
             try:
                 from yellowbrick.cluster import KElbowVisualizer
 
-                visualizer = KElbowVisualizer(pipeline_with_model, timings=False, **plot_kwargs)
+                visualizer = KElbowVisualizer(
+                    pipeline_with_model, timings=False, **plot_kwargs
+                )
                 show_yellowbrick_plot(
                     visualizer=visualizer,
                     X_train=data_X,
@@ -6591,14 +6593,16 @@ def plot_model(
             from yellowbrick.classifier import ROCAUC
 
             try:
-                dtype_object = get_config('prep_pipe').steps[0][1]
+                dtype_object = get_config("prep_pipe").steps[0][1]
                 encoder_labels = dtype_object.le.transform(dtype_object.le.classes_)
                 encoder_classes = dtype_object.le.classes_
-                encoder_dictionary = dict(zip(encoder_labels,encoder_classes))
+                encoder_dictionary = dict(zip(encoder_labels, encoder_classes))
             except:
                 encoder_dictionary = None
 
-            visualizer = ROCAUC(pipeline_with_model, encoder=encoder_dictionary, **plot_kwargs)
+            visualizer = ROCAUC(
+                pipeline_with_model, encoder=encoder_dictionary, **plot_kwargs
+            )
 
             show_yellowbrick_plot(
                 visualizer=visualizer,
@@ -6619,7 +6623,9 @@ def plot_model(
 
             from yellowbrick.classifier import DiscriminationThreshold
 
-            visualizer = DiscriminationThreshold(pipeline_with_model, random_state=seed, **plot_kwargs)
+            visualizer = DiscriminationThreshold(
+                pipeline_with_model, random_state=seed, **plot_kwargs
+            )
             show_yellowbrick_plot(
                 visualizer=visualizer,
                 X_train=data_X,
@@ -6639,7 +6645,9 @@ def plot_model(
 
             from yellowbrick.classifier import PrecisionRecallCurve
 
-            visualizer = PrecisionRecallCurve(pipeline_with_model, random_state=seed, **plot_kwargs)
+            visualizer = PrecisionRecallCurve(
+                pipeline_with_model, random_state=seed, **plot_kwargs
+            )
             show_yellowbrick_plot(
                 visualizer=visualizer,
                 X_train=data_X,
@@ -6660,31 +6668,31 @@ def plot_model(
             from yellowbrick.classifier import ConfusionMatrix
 
             try:
-                dtype_object = get_config('prep_pipe').steps[0][1]
+                dtype_object = get_config("prep_pipe").steps[0][1]
                 encoder_labels = dtype_object.le.transform(dtype_object.le.classes_)
                 encoder_classes = dtype_object.le.classes_
-                encoder_dictionary = dict(zip(encoder_labels,encoder_classes))
+                encoder_dictionary = dict(zip(encoder_labels, encoder_classes))
             except:
                 encoder_dictionary = None
 
             # temp patching for rendering purposes
             try:
-                cmap_user_defined = plot_kwargs['cmap']
+                cmap_user_defined = plot_kwargs["cmap"]
             except:
-                plot_kwargs['cmap'] = "Greens"
+                plot_kwargs["cmap"] = "Greens"
 
             try:
-                fontsize_user_defined = plot_kwargs['fontsize']
+                fontsize_user_defined = plot_kwargs["fontsize"]
             except:
-                plot_kwargs['fontsize'] = 15
+                plot_kwargs["fontsize"] = 15
 
             visualizer = ConfusionMatrix(
                 pipeline_with_model,
                 random_state=seed,
-                #fontsize=fontsize_user_defined,
-                #cmap=cmap_user_defined,
+                # fontsize=fontsize_user_defined,
+                # cmap=cmap_user_defined,
                 encoder=encoder_dictionary,
-                **plot_kwargs
+                **plot_kwargs,
             )
             show_yellowbrick_plot(
                 visualizer=visualizer,
@@ -6707,20 +6715,26 @@ def plot_model(
                 from yellowbrick.classifier import ClassPredictionError
 
                 try:
-                    dtype_object = get_config('prep_pipe').steps[0][1]
+                    dtype_object = get_config("prep_pipe").steps[0][1]
                     encoder_labels = dtype_object.le.transform(dtype_object.le.classes_)
                     encoder_classes = dtype_object.le.classes_
-                    encoder_dictionary = dict(zip(encoder_labels,encoder_classes))
+                    encoder_dictionary = dict(zip(encoder_labels, encoder_classes))
                 except:
                     encoder_dictionary = None
 
                 visualizer = ClassPredictionError(
-                    pipeline_with_model, random_state=seed, encoder = encoder_dictionary, **plot_kwargs)
+                    pipeline_with_model,
+                    random_state=seed,
+                    encoder=encoder_dictionary,
+                    **plot_kwargs,
+                )
 
             elif _ml_usecase == MLUsecase.REGRESSION:
                 from yellowbrick.regressor import PredictionError
 
-                visualizer = PredictionError(pipeline_with_model, random_state=seed, **plot_kwargs)
+                visualizer = PredictionError(
+                    pipeline_with_model, random_state=seed, **plot_kwargs
+                )
 
             show_yellowbrick_plot(
                 visualizer=visualizer,
@@ -6763,15 +6777,20 @@ def plot_model(
             from yellowbrick.classifier import ClassificationReport
 
             try:
-                dtype_object = get_config('prep_pipe').steps[0][1]
+                dtype_object = get_config("prep_pipe").steps[0][1]
                 encoder_labels = dtype_object.le.transform(dtype_object.le.classes_)
                 encoder_classes = dtype_object.le.classes_
-                encoder_dictionary = dict(zip(encoder_labels,encoder_classes))
+                encoder_dictionary = dict(zip(encoder_labels, encoder_classes))
             except:
                 encoder_dictionary = None
 
             visualizer = ClassificationReport(
-                pipeline_with_model, random_state=seed, support=True, encoder = encoder_dictionary, **plot_kwargs)
+                pipeline_with_model,
+                random_state=seed,
+                support=True,
+                encoder=encoder_dictionary,
+                **plot_kwargs,
+            )
 
             show_yellowbrick_plot(
                 visualizer=visualizer,
@@ -6808,14 +6827,16 @@ def plot_model(
             test_y_transformed = np.array(test_y)
 
             try:
-                dtype_object = get_config('prep_pipe').steps[0][1]
+                dtype_object = get_config("prep_pipe").steps[0][1]
                 encoder_labels = dtype_object.le.transform(dtype_object.le.classes_)
                 encoder_classes = dtype_object.le.classes_
-                encoder_dictionary = dict(zip(encoder_labels,encoder_classes))
+                encoder_dictionary = dict(zip(encoder_labels, encoder_classes))
             except:
                 encoder_dictionary = None
 
-            viz_ = DecisionViz(pipeline_with_model, encoder = encoder_dictionary, **plot_kwargs)
+            viz_ = DecisionViz(
+                pipeline_with_model, encoder=encoder_dictionary, **plot_kwargs
+            )
             show_yellowbrick_plot(
                 visualizer=viz_,
                 X_train=data_X_transformed,
@@ -6866,7 +6887,7 @@ def plot_model(
                 train_sizes=sizes,
                 n_jobs=_gpu_n_jobs_param,
                 random_state=seed,
-                **plot_kwargs
+                **plot_kwargs,
             )
             show_yellowbrick_plot(
                 visualizer=visualizer,
@@ -7294,7 +7315,7 @@ def plot_model(
                 cv=cv,
                 random_state=seed,
                 n_jobs=_gpu_n_jobs_param,
-                **plot_kwargs
+                **plot_kwargs,
             )
             show_yellowbrick_plot(
                 visualizer=viz,
