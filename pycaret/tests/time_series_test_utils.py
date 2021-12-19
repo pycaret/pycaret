@@ -236,12 +236,14 @@ def _get_clamp_values()->List[Tuple[Optional[Union[int,float]]]]:
     """
     creates values for testing clamps
     """
-    test_clamps = [ #TODO: Set additional test values
+    # (upper_clamp, lower_clamp)
+    test_clamps = [ 
         (None,None), # both none
         (None,2.0), # upper none
         (0.0,0.0), # both 0.0
         (None,2), # same but ints
-        (0,0) # same but ints
-        ] 
+        (0,0), # same but ints
+        (-1.0,-1.0)
+        ] # negative values 
 
     return test_clamps
