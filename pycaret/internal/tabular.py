@@ -65,7 +65,7 @@ from collections import Iterable
 import warnings
 from IPython.utils import io
 import traceback
-from unittest.mock import NonCallableMock, patch
+from unittest.mock import patch
 import plotly.express as px
 import plotly.graph_objects as go
 import scikitplot as skplt
