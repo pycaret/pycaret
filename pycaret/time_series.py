@@ -242,8 +242,8 @@ def setup(
         verbose=verbose,
         profile=profile,
         profile_kwargs=profile_kwargs,
-        lower_clamp: Optional[Union[float,int]] = None,
-        upper_clamp: Optional[Union[float,int]] = None,
+        lower_clamp= upper_clamp,
+        upper_clamp= upper_clamp,
     )
 
 
