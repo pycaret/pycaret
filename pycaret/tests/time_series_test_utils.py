@@ -243,7 +243,9 @@ def _get_clamp_values()->List[Tuple[Optional[Union[int,float]]]]:
         (0.0,0.0), # both 0.0
         (None,2), # same but ints
         (0,0), # same but ints
-        (-1.0,-1.0)
+        (-1.0,-1.0),
+        ('hello',50),
+        (245.5, 'jello')
         ] # negative values 
 
     return test_clamps
