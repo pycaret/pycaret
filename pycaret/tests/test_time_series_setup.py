@@ -307,21 +307,26 @@ def test_clamp_is_enforced_on_predictions(
     cols = ['y_pred','lower','upper']
     for col in cols:
         if upper_clamp is not None:
-            max_pred_or_upper = df[col].max()
-            if np.isnan(max_pred_or_upper):
-                assert True # pass if NaN 
+            if isinstance(upper_clamp, float) or isinstance(upper_clamp, int):
+                max_pred_or_upper = df[col].max()
+                if np.isnan(max_pred_or_upper):
+                    assert True # pass if NaN 
+                else:
+                    assert max_pred_or_upper <= upper_clamp
             else:
-                assert max_pred_or_upper <= upper_clamp
+                assert True # pass if not a float or int, error should be handled in predict()
         else:
             assert True
         if lower_clamp is not None:
-            min_pred_or_lower = df[col].min()
-            if np.isnan(min_pred_or_lower):
-                assert True
+            if isinstance(lower_clamp, float) or isinstance(lower_clamp, int):
+                min_pred_or_lower = df[col].min()
+                if np.isnan(min_pred_or_lower):
+                    assert True 
+                else:
+                    assert min_pred_or_lower >= lower_clamp       
             else:
-                assert min_pred_or_lower >= lower_clamp
-        
-        
+                assert True
+
 
 
 
