@@ -276,7 +276,7 @@ def test_setup_upper_and_lower_clamps_is_non_breaking(
 
 
 @pytest.mark.parametrize("upper_clamp, lower_clamp",_get_clamp_values())
-def test_clamp_is_enforced(
+def test_clamp_is_enforced_on_predictions(
     load_pos_and_neg_data,
     upper_clamp: Optional[Union[float,int]], 
     lower_clamp: Optional[Union[float,int]]
@@ -307,9 +307,20 @@ def test_clamp_is_enforced(
     cols = ['y_pred','lower','upper']
     for col in cols:
         if upper_clamp is not None:
-            assert df[col].max() <= upper_clamp
+            max_pred_or_upper = df[col].max()
+            if np.isnan(max_pred_or_upper):
+                assert True # pass if NaN 
+            else:
+                assert max_pred_or_upper <= upper_clamp
+        else:
+            assert True
         if lower_clamp is not None:
-            assert df[col].min() >= lower_clamp
+            min_pred_or_lower = df[col].min()
+            if np.isnan(min_pred_or_lower):
+                assert True
+            else:
+                assert min_pred_or_lower >= lower_clamp
+        
         
 
 
