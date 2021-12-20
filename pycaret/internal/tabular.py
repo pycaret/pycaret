@@ -37,6 +37,10 @@ from pycaret.internal.Display import Display, is_in_colab
 from pycaret.internal.distributions import *
 from pycaret.internal.validation import *
 from pycaret.internal.tunable import TunableMixin
+from pycaret.internal.drift_report import (
+    create_classification_drift_report,
+    create_regression_drift_report,
+)
 import pycaret.containers.metrics.classification
 import pycaret.containers.metrics.regression
 import pycaret.containers.metrics.clustering
@@ -8574,6 +8578,7 @@ def predict_model(
     data: Optional[pd.DataFrame] = None,
     probability_threshold: Optional[float] = None,
     encoded_labels: bool = False,  # added in pycaret==2.1.0
+    drift_report: bool = False,
     raw_score: bool = False,
     round: int = 4,  # added in pycaret==2.2.0
     verbose: bool = True,
@@ -8738,6 +8743,26 @@ def predict_model(
                 raise ValueError("Pipeline not found")
 
         X_test_ = data.copy()
+
+    # generate drift report
+    if drift_report:
+        if ml_usecase == MLUsecase.CLASSIFICATION:
+            create_classification_drift_report(
+                _get_model_name(estimator),
+                prep_pipe,
+                data_before_preprocess,
+                X_train,
+                X_test_,
+            )
+
+        elif ml_usecase == MLUsecase.REGRESSION:
+            create_regression_drift_report(
+                _get_model_name(estimator),
+                prep_pipe,
+                data_before_preprocess,
+                X_train,
+                X_test_,
+            )
 
     # function to replace encoded labels with their original values
     # will not run if categorical_labels is false
