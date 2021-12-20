@@ -2752,3 +2752,54 @@ def get_leaderboard(
         groups=groups,
         verbose=verbose,
     )
+
+def convert_model(estimator, language: str = "python") -> str:
+
+    """
+    This function transpiles trained machine learning models into native 
+    inference script in different programming languages (Python, C, Java, 
+    Go, JavaScript, Visual Basic, C#, PowerShell, R, PHP, Dart, Haskell, 
+    Ruby, F#). This functionality is very useful if you want to deploy models 
+    into environments where you can't install your normal Python stack to 
+    support model inference.
+
+
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> juice = get_data('juice')
+    >>> from pycaret.classification import *
+    >>> exp_name = setup(data = juice,  target = 'Purchase') 
+    >>> lr = create_model('lr')
+    >>> lr_java = export_model(lr, 'java')
+
+
+    estimator: scikit-learn compatible object
+        Trained model object
+
+
+    language: str, default = 'python'
+        Language in which inference script to be generated. Following
+        options are available:
+
+        * 'python'
+        * 'java'
+        * 'javascript'
+        * 'c'
+        * 'c#'
+        * 'f#'
+        * 'go'
+        * 'haskell'
+        * 'php'
+        * 'powershell'
+        * 'r'
+        * 'ruby'
+        * 'vb'
+        * 'dart'
+
+
+    Returns:
+        str
+
+    """
+    return pycaret.internal.tabular.convert_model(estimator, language)
