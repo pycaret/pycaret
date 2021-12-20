@@ -5724,6 +5724,7 @@ def plot_model(
     save: Union[str, bool] = False,
     fold: Optional[Union[int, Any]] = None,
     fit_kwargs: Optional[dict] = None,
+    plot_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
     feature_name: Optional[str] = None,
     label: bool = False,
@@ -5797,6 +5798,9 @@ def plot_model(
     fit_kwargs: dict, default = {} (empty dict)
         Dictionary of arguments passed to the fit method of the model.
 
+    plot_kwargs: dict, default = {} (empty dict)
+        Dictionary of arguments passed to the visualizer class.
+
     groups: str or array-like, with shape (n_samples,), default = None
         Optional Group labels for the samples used while splitting the dataset into train/test set.
         If string is passed, will use the data column with that name as the groups.
@@ -5846,6 +5850,9 @@ def plot_model(
 
     if not fit_kwargs:
         fit_kwargs = {}
+
+    if not plot_kwargs:
+        plot_kwargs = {}
 
     if not hasattr(estimator, "fit"):
         raise ValueError(
@@ -6489,7 +6496,9 @@ def plot_model(
             try:
                 from yellowbrick.cluster import KElbowVisualizer
 
-                visualizer = KElbowVisualizer(pipeline_with_model, timings=False)
+                visualizer = KElbowVisualizer(
+                    pipeline_with_model, timings=False, **plot_kwargs
+                )
                 show_yellowbrick_plot(
                     visualizer=visualizer,
                     X_train=data_X,
@@ -6516,7 +6525,7 @@ def plot_model(
 
             try:
                 visualizer = SilhouetteVisualizer(
-                    pipeline_with_model, colors="yellowbrick"
+                    pipeline_with_model, colors="yellowbrick", **plot_kwargs
                 )
                 show_yellowbrick_plot(
                     visualizer=visualizer,
@@ -6542,7 +6551,7 @@ def plot_model(
             from yellowbrick.cluster import InterclusterDistance
 
             try:
-                visualizer = InterclusterDistance(pipeline_with_model)
+                visualizer = InterclusterDistance(pipeline_with_model, **plot_kwargs)
                 show_yellowbrick_plot(
                     visualizer=visualizer,
                     X_train=data_X,
@@ -6567,7 +6576,7 @@ def plot_model(
 
             from yellowbrick.regressor import ResidualsPlot
 
-            visualizer = ResidualsPlot(pipeline_with_model)
+            visualizer = ResidualsPlot(pipeline_with_model, **plot_kwargs)
             show_yellowbrick_plot(
                 visualizer=visualizer,
                 X_train=data_X,
@@ -6587,7 +6596,18 @@ def plot_model(
 
             from yellowbrick.classifier import ROCAUC
 
-            visualizer = ROCAUC(pipeline_with_model)
+            try:
+                dtype_object = get_config("prep_pipe").steps[0][1]
+                encoder_labels = dtype_object.le.transform(dtype_object.le.classes_)
+                encoder_classes = dtype_object.le.classes_
+                encoder_dictionary = dict(zip(encoder_labels, encoder_classes))
+            except:
+                encoder_dictionary = None
+
+            visualizer = ROCAUC(
+                pipeline_with_model, encoder=encoder_dictionary, **plot_kwargs
+            )
+
             show_yellowbrick_plot(
                 visualizer=visualizer,
                 X_train=data_X,
@@ -6607,7 +6627,9 @@ def plot_model(
 
             from yellowbrick.classifier import DiscriminationThreshold
 
-            visualizer = DiscriminationThreshold(pipeline_with_model, random_state=seed)
+            visualizer = DiscriminationThreshold(
+                pipeline_with_model, random_state=seed, **plot_kwargs
+            )
             show_yellowbrick_plot(
                 visualizer=visualizer,
                 X_train=data_X,
@@ -6627,7 +6649,9 @@ def plot_model(
 
             from yellowbrick.classifier import PrecisionRecallCurve
 
-            visualizer = PrecisionRecallCurve(pipeline_with_model, random_state=seed)
+            visualizer = PrecisionRecallCurve(
+                pipeline_with_model, random_state=seed, **plot_kwargs
+            )
             show_yellowbrick_plot(
                 visualizer=visualizer,
                 X_train=data_X,
@@ -6647,11 +6671,32 @@ def plot_model(
 
             from yellowbrick.classifier import ConfusionMatrix
 
+            try:
+                dtype_object = get_config("prep_pipe").steps[0][1]
+                encoder_labels = dtype_object.le.transform(dtype_object.le.classes_)
+                encoder_classes = dtype_object.le.classes_
+                encoder_dictionary = dict(zip(encoder_labels, encoder_classes))
+            except:
+                encoder_dictionary = None
+
+            # temp patching for rendering purposes
+            try:
+                cmap_user_defined = plot_kwargs["cmap"]
+            except:
+                plot_kwargs["cmap"] = "Greens"
+
+            try:
+                fontsize_user_defined = plot_kwargs["fontsize"]
+            except:
+                plot_kwargs["fontsize"] = 15
+
             visualizer = ConfusionMatrix(
                 pipeline_with_model,
                 random_state=seed,
-                fontsize=15,
-                cmap="Greens",
+                # fontsize=fontsize_user_defined,
+                # cmap=cmap_user_defined,
+                encoder=encoder_dictionary,
+                **plot_kwargs,
             )
             show_yellowbrick_plot(
                 visualizer=visualizer,
@@ -6673,14 +6718,27 @@ def plot_model(
             if _ml_usecase == MLUsecase.CLASSIFICATION:
                 from yellowbrick.classifier import ClassPredictionError
 
+                try:
+                    dtype_object = get_config("prep_pipe").steps[0][1]
+                    encoder_labels = dtype_object.le.transform(dtype_object.le.classes_)
+                    encoder_classes = dtype_object.le.classes_
+                    encoder_dictionary = dict(zip(encoder_labels, encoder_classes))
+                except:
+                    encoder_dictionary = None
+
                 visualizer = ClassPredictionError(
-                    pipeline_with_model, random_state=seed
+                    pipeline_with_model,
+                    random_state=seed,
+                    encoder=encoder_dictionary,
+                    **plot_kwargs,
                 )
 
             elif _ml_usecase == MLUsecase.REGRESSION:
                 from yellowbrick.regressor import PredictionError
 
-                visualizer = PredictionError(pipeline_with_model, random_state=seed)
+                visualizer = PredictionError(
+                    pipeline_with_model, random_state=seed, **plot_kwargs
+                )
 
             show_yellowbrick_plot(
                 visualizer=visualizer,
@@ -6722,9 +6780,22 @@ def plot_model(
 
             from yellowbrick.classifier import ClassificationReport
 
+            try:
+                dtype_object = get_config("prep_pipe").steps[0][1]
+                encoder_labels = dtype_object.le.transform(dtype_object.le.classes_)
+                encoder_classes = dtype_object.le.classes_
+                encoder_dictionary = dict(zip(encoder_labels, encoder_classes))
+            except:
+                encoder_dictionary = None
+
             visualizer = ClassificationReport(
-                pipeline_with_model, random_state=seed, support=True
+                pipeline_with_model,
+                random_state=seed,
+                support=True,
+                encoder=encoder_dictionary,
+                **plot_kwargs,
             )
+
             show_yellowbrick_plot(
                 visualizer=visualizer,
                 X_train=data_X,
@@ -6759,7 +6830,17 @@ def plot_model(
             data_y_transformed = np.array(data_y)
             test_y_transformed = np.array(test_y)
 
-            viz_ = DecisionViz(pipeline_with_model)
+            try:
+                dtype_object = get_config("prep_pipe").steps[0][1]
+                encoder_labels = dtype_object.le.transform(dtype_object.le.classes_)
+                encoder_classes = dtype_object.le.classes_
+                encoder_dictionary = dict(zip(encoder_labels, encoder_classes))
+            except:
+                encoder_dictionary = None
+
+            viz_ = DecisionViz(
+                pipeline_with_model, encoder=encoder_dictionary, **plot_kwargs
+            )
             show_yellowbrick_plot(
                 visualizer=viz_,
                 X_train=data_X_transformed,
@@ -6782,7 +6863,7 @@ def plot_model(
 
             from yellowbrick.model_selection import RFECV
 
-            visualizer = RFECV(pipeline_with_model, cv=cv)
+            visualizer = RFECV(pipeline_with_model, cv=cv, **plot_kwargs)
             show_yellowbrick_plot(
                 visualizer=visualizer,
                 X_train=data_X,
@@ -6810,6 +6891,7 @@ def plot_model(
                 train_sizes=sizes,
                 n_jobs=_gpu_n_jobs_param,
                 random_state=seed,
+                **plot_kwargs,
             )
             show_yellowbrick_plot(
                 visualizer=visualizer,
@@ -6890,7 +6972,8 @@ def plot_model(
             from yellowbrick.features import Manifold
 
             data_X_transformed = data_X.select_dtypes(include="float32")
-            visualizer = Manifold(manifold="tsne", random_state=seed)
+            visualizer = Manifold(manifold="tsne", random_state=seed, **plot_kwargs)
+
             show_yellowbrick_plot(
                 visualizer=visualizer,
                 X_train=data_X_transformed,
@@ -7236,6 +7319,7 @@ def plot_model(
                 cv=cv,
                 random_state=seed,
                 n_jobs=_gpu_n_jobs_param,
+                **plot_kwargs,
             )
             show_yellowbrick_plot(
                 visualizer=viz,
@@ -7273,7 +7357,7 @@ def plot_model(
             data_X_transformed = pca.fit_transform(data_X_transformed)
             display.move_progress()
             classes = data_y.unique().tolist()
-            visualizer = RadViz(classes=classes, alpha=0.25)
+            visualizer = RadViz(classes=classes, alpha=0.25, **plot_kwargs)
 
             show_yellowbrick_plot(
                 visualizer=visualizer,
