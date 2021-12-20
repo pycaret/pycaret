@@ -9,7 +9,8 @@ scikit-optimize>=0.8.1
 psutil
 catboost>=0.23.2
 xgboost>=1.1.0
-m2cgen
+m2cgen # for model conversion
+evidently # for drift reporting
 
 # for cloud deployment
 boto3
