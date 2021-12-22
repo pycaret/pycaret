@@ -2525,3 +2525,43 @@ def convert_model(estimator, language: str = "python") -> str:
 
     """
     return pycaret.internal.tabular.convert_model(estimator, language)
+
+def eda(data = None, target: str = None, display_format:str = 'bokeh', **kwargs):
+
+    """
+    This function generates AutoEDA using AutoVIZ library. You must
+    install Autoviz separately ``pip install autoviz`` to use this 
+    function.
+
+
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> juice = get_data('boston')
+    >>> from pycaret.regression import *
+    >>> exp_name = setup(data = data,  target = 'medv') 
+    >>> eda(display_format = 'bokeh')
+
+
+    data: pandas.DataFrame
+        DataFrame with (n_samples, n_features).
+
+
+    target: str
+        Name of the target column to be passed in as a string. 
+
+
+    display_format: str, default = 'bokeh'
+        When set to 'bokeh' the plots are interactive. Other option is ``svg`` for static 
+        plots that are generated using matplotlib and seaborn. 
+
+
+    **kwargs: 
+        Additional keyword arguments to pass to the AutoVIZ class.
+
+
+    Returns:
+        None
+    """
+
+    return pycaret.internal.tabular.eda(data=data, target=target, display_format=display_format, **kwargs)
