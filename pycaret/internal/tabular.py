@@ -7044,8 +7044,12 @@ def plot_model(
             ) as fitted_pipeline_with_model:
                 trees = []
                 feature_names = list(data_X.columns)
-                if _ml_usecase == MLUsecase.CLASSIFICATION and hasattr(prep_pipe.named_steps["dtypes"], "replacement"):
-                    class_names = list(prep_pipe.named_steps["dtypes"].replacement.keys())
+                if _ml_usecase == MLUsecase.CLASSIFICATION and hasattr(
+                    prep_pipe.named_steps["dtypes"], "replacement"
+                ):
+                    class_names = list(
+                        prep_pipe.named_steps["dtypes"].replacement.keys()
+                    )
                 else:
                     class_names = None
                 fitted_tree_estimator = fitted_pipeline_with_model.steps[-1][1]
