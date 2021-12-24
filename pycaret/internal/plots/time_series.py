@@ -936,10 +936,17 @@ def plot_time_series_decomposition(
     decomp_result = None
     data_ = data.to_timestamp() if isinstance(data.index, pd.PeriodIndex) else data
 
+    sp_to_use = data_kwargs.get("sp_to_use", None)
     if plot == "decomp_classical":
-        decomp_result = seasonal_decompose(data_, model=classical_decomp_type)
+        if sp_to_use is None:
+            decomp_result = seasonal_decompose(data_, model=classical_decomp_type)
+        else:
+            decomp_result = seasonal_decompose(data_, period=sp_to_use, model=classical_decomp_type)
     elif plot == "decomp_stl":
-        decomp_result = STL(data_).fit()
+        if sp_to_use is None:
+            decomp_result = STL(data_).fit()
+        else:
+            decomp_result = STL(data_, period=sp_to_use).fit()
 
     fig = make_subplots(
         rows=4,
