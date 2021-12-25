@@ -19,12 +19,12 @@ def test():
         data,
         target="Class",
         silent=True,
-        html=True,
+        html=False,
         n_jobs=1,
     )
 
     # EDA
-    pycaret.classification.eda()
+    pycaret.classification.eda(display_format = 'svg')
 
     # assert    
     assert 1 == 1
