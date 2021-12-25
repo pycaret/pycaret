@@ -341,9 +341,10 @@ def plot_cv(
 
     train_windows, test_windows = get_windows(data, cv)
     fig = plot_windows(data, train_windows, test_windows)
-
     return_data_dict = {
         "data": data,
+        "train_windows": train_windows,
+        "test_windows": test_windows
     }
 
     return fig, return_data_dict
@@ -701,6 +702,7 @@ def plot_diagnostics(
         )
         fig.update_xaxes(title_text="Theoretical Quantities", row=2, col=2)
         fig.update_yaxes(title_text="Sample Quantities", row=2, col=2)
+        return qqplot_data
 
     def dist_plot(fig):
 
@@ -763,7 +765,7 @@ def plot_diagnostics(
         fig.update_yaxes(zerolinecolor="#000000", row=2, col=1)
         fig.update_xaxes(title_text="Lags", row=2, col=1)
         fig.update_yaxes(title_text="ACF", row=2, col=1)
-
+        return corr_array
         # fig.update_layout(title=title)
 
     fig.update_layout(showlegend=False)
@@ -776,13 +778,15 @@ def plot_diagnostics(
             autosize=False, width=fig_size[0], height=fig_size[1],
         )
 
-    qq(fig)
+    qqplot_data = qq(fig)
     dist_plot(fig)
-    plot_acf(fig)
+    corr_array = plot_acf(fig)
     time_plot(fig)
 
     return_data_dict = {
         "data": data,
+        "qqplot": qqplot_data,
+        "acf": corr_array[0]
     }
 
     return fig, return_data_dict
