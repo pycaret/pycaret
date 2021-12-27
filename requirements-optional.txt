@@ -11,7 +11,8 @@ catboost>=0.23.2
 xgboost>=1.1.0
 m2cgen # for model conversion
 evidently # for drift reporting
-
+fairlearn # for check_fairness function
+ 
 # for cloud deployment
 boto3
 azure-storage-blob

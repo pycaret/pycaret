@@ -2525,3 +2525,42 @@ def convert_model(estimator, language: str = "python") -> str:
 
     """
     return pycaret.internal.tabular.convert_model(estimator, language)
+
+def check_fairness(estimator, sensitive_features: list, plot_kwargs: dict = {}):
+
+    """
+    There are many approaches to conceptualizing fairness. This function follows 
+    the approach known as group fairness, which asks: Which groups of individuals 
+    are at risk for experiencing harms. This function provides fairness-related 
+    metrics between different groups (also called subpopulation). 
+
+    
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> boston = get_data('boston')
+    >>> from pycaret.regression import *
+    >>> exp_name = setup(data = boston,  target = 'medv') 
+    >>> lr = create_model('lr')
+    >>> lr_fairness = check_fairness(lr, sensitive_features = ['chas'])
+    
+    
+    estimator: scikit-learn compatible object
+        Trained model object
+    
+    
+    sensitive_features: list
+        Sensitive features are relevant groups (also called subpopulations). 
+        You must pass a list of column names that are present in the dataset
+        as string.  
+    
+    
+    plot_kwargs: dict, default = {} (empty dict)
+        Dictionary of arguments passed to the matplotlib plot. 
+    
+
+    Returns:
+        pandas.DataFrame
+
+    """
+    return pycaret.internal.tabular.check_fairness(estimator=estimator, sensitive_features=sensitive_features, plot_kwargs=plot_kwargs)
