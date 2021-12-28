@@ -1511,6 +1511,7 @@ def plot_model(
         save=save,
         fold=fold,
         fit_kwargs=fit_kwargs,
+        plot_kwargs=plot_kwargs,
         groups=groups,
         verbose=verbose,
         use_train_data=use_train_data,
