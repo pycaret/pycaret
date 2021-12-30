@@ -10404,6 +10404,14 @@ if __name__ == '__main__':
     f.write(query)
     f.close()
 
+    message = """
+API sucessfully created. This function only creates a POST API, it doesn't run it automatically.
+
+To run your API, please run this command --> !python {API_NAME}.py
+    """.format(API_NAME = API_NAME)
+    
+    print(message)
+
 
 def _choose_better(
     models_and_results: list,
