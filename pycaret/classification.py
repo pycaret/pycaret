@@ -2817,6 +2817,39 @@ def eda(data = None, target: str = None, display_format:str = 'bokeh', **kwargs)
     This function generates AutoEDA using AutoVIZ library. You must
     install Autoviz separately ``pip install autoviz`` to use this 
     function.
+    
+    
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> juice = get_data('juice')
+    >>> from pycaret.classification import *
+    >>> exp_name = setup(data = juice,  target = 'Purchase') 
+    >>> eda(display_format = 'bokeh')
+
+
+    data: pandas.DataFrame
+        DataFrame with (n_samples, n_features).
+
+
+    target: str
+        Name of the target column to be passed in as a string. 
+
+
+    display_format: str, default = 'bokeh'
+        When set to 'bokeh' the plots are interactive. Other option is ``svg`` for static 
+        plots that are generated using matplotlib and seaborn. 
+
+
+    **kwargs: 
+        Additional keyword arguments to pass to the AutoVIZ class.
+
+
+    Returns:
+        None
+    """    
+    return pycaret.internal.tabular.eda(data=data, target=target, display_format=display_format, **kwargs)
+
 
 def check_fairness(estimator, sensitive_features: list, plot_kwargs: dict = {}):
 
@@ -2855,6 +2888,7 @@ def check_fairness(estimator, sensitive_features: list, plot_kwargs: dict = {}):
 
     """
     return pycaret.internal.tabular.check_fairness(estimator=estimator, sensitive_features=sensitive_features, plot_kwargs=plot_kwargs)
+
 
 def create_api(estimator, api_name: str, host: str = '127.0.0.1', port: int = 8000) -> None:
 
@@ -2912,8 +2946,5 @@ def create_api(estimator, api_name: str, host: str = '127.0.0.1', port: int = 80
 
     Returns:
         None
-    """
-    return pycaret.internal.tabular.eda(data=data, target=target, display_format=display_format, **kwargs)
-
     """
     return pycaret.internal.tabular.create_api(estimator=estimator, api_name = api_name, host = host, port = port)
