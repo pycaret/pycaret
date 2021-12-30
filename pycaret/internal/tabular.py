@@ -7044,11 +7044,12 @@ def plot_model(
             ) as fitted_pipeline_with_model:
                 trees = []
                 feature_names = list(data_X.columns)
-                if _ml_usecase == MLUsecase.CLASSIFICATION:
-                    class_names = {
-                        v: k
-                        for k, v in prep_pipe.named_steps["dtypes"].replacement.items()
-                    }
+                if _ml_usecase == MLUsecase.CLASSIFICATION and hasattr(
+                    prep_pipe.named_steps["dtypes"], "replacement"
+                ):
+                    class_names = list(
+                        prep_pipe.named_steps["dtypes"].replacement.keys()
+                    )
                 else:
                     class_names = None
                 fitted_tree_estimator = fitted_pipeline_with_model.steps[-1][1]
@@ -7082,8 +7083,6 @@ def plot_model(
                         trees = fitted_tree_estimator.estimators_
                     except:
                         trees = [fitted_tree_estimator]
-                if _ml_usecase == MLUsecase.CLASSIFICATION:
-                    class_names = list(class_names.values())
                 for i, tree in enumerate(trees):
                     logger.info(f"Plotting tree {i}")
                     plot_tree(
@@ -10383,6 +10382,85 @@ def check_fairness(estimator, sensitive_features: list, plot_kwargs: dict = {}):
     
     return pd.DataFrame(multi_metric.by_group)
 
+def create_api(estimator, api_name, host = '127.0.0.1', port = 8000):
+    
+    """
+    This function creates API and write it as a python file using FastAPI
+    """
+    
+    try:
+        import fastapi
+    except ImportError:
+        raise ImportError(
+            "It appears that FastAPI is not installed. Do: pip install fastapi"
+        )
+
+    try:
+        import uvicorn
+    except ImportError:
+        raise ImportError(
+            "It appears that uvicorn is not installed. Do: pip install uvicorn"
+        )
+
+    target_name = get_config('prep_pipe')[0].target
+    raw_data = get_config('data_before_preprocess').copy()
+    raw_data.drop(target_name, axis=1, inplace=True)
+    input_cols = list(raw_data.columns)
+
+    MODULE = get_config('prep_pipe')[0].ml_usecase
+    INPUT_COLS = input_cols
+    INPUT_COLS_FORMATTED = ', '.join(tuple(INPUT_COLS)).replace("'", "")
+    INPUT_COLS_WITHOUT_SPACES = [i.replace(' ','_') for i in input_cols]
+    INPUT_COLS_WITHOUT_SPACES = [i.replace('-','_') for i in INPUT_COLS_WITHOUT_SPACES]
+    INPUT_COLS_WITHOUT_SPACES_FORMATTED = ', '.join(tuple(INPUT_COLS_WITHOUT_SPACES)).replace("'", "")
+    API_NAME = api_name
+    HOST = host
+
+    save_model(estimator, model_name = api_name, verbose=False)
+    
+    query = """
+import pandas as pd
+from pycaret.{MODULE_NAME} import load_model, predict_model
+from fastapi import FastAPI
+import uvicorn
+
+# Create the app
+app = FastAPI()
+
+# Load trained Pipeline
+model = load_model('{API_NAME}')
+
+# Define predict function
+@app.post('/predict')
+def predict({INPUT_COLS}):
+    data = pd.DataFrame([[{DATAFRAME}]])
+    data.columns = {COLUMNS}
+    predictions = predict_model(model, data=data) 
+    return {D1}'prediction': list(predictions['Label']){D2}
+
+if __name__ == '__main__':
+    uvicorn.run(app, host='{HOST}', port={PORT})""".format(MODULE_NAME = MODULE,\
+                                                        API_NAME = API_NAME,\
+                                                        INPUT_COLS = INPUT_COLS_WITHOUT_SPACES_FORMATTED,\
+                                                        DATAFRAME = INPUT_COLS_WITHOUT_SPACES_FORMATTED,\
+                                                        COLUMNS =  INPUT_COLS,
+                                                        D1 = '{', D2 = '}',\
+                                                        HOST = HOST,\
+                                                        PORT = port)
+    
+    file_name = str(api_name) + '.py'
+    
+    f = open(file_name, "w")
+    f.write(query)
+    f.close()
+
+    message = """
+API sucessfully created. This function only creates a POST API, it doesn't run it automatically.
+
+To run your API, please run this command --> !python {API_NAME}.py
+    """.format(API_NAME = API_NAME)
+    
+    print(message)
 
 def _choose_better(
     models_and_results: list,

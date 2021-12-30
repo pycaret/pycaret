@@ -1511,6 +1511,7 @@ def plot_model(
         save=save,
         fold=fold,
         fit_kwargs=fit_kwargs,
+        plot_kwargs=plot_kwargs,
         groups=groups,
         verbose=verbose,
         use_train_data=use_train_data,
@@ -2535,6 +2536,15 @@ def check_fairness(estimator, sensitive_features: list, plot_kwargs: dict = {}):
     metrics between different groups (also called subpopulation). 
 
     
+
+def create_api(estimator, api_name: str, host: str = '127.0.0.1', port: int = 8000) -> None:
+
+    """
+    This function takes an input ``estimator`` and creates a POST API for 
+    inference. It only creates the API and doesn't run it automatically. 
+    To run the API, you must run the Python file using ``!python``. 
+
+
     Example
     -------
     >>> from pycaret.datasets import get_data
@@ -2564,3 +2574,29 @@ def check_fairness(estimator, sensitive_features: list, plot_kwargs: dict = {}):
 
     """
     return pycaret.internal.tabular.check_fairness(estimator=estimator, sensitive_features=sensitive_features, plot_kwargs=plot_kwargs)
+
+    >>> create_api(lr, 'lr_api')
+    >>> !python lr_api.py #to run the API
+    
+
+    estimator: scikit-learn compatible object
+        Trained model object
+
+
+    api_name: str
+        Name of the api as a string.
+
+
+    host: str, default = '127.0.0.1'
+        API host address.
+
+
+    port: int, default = 8000
+        port for API.
+
+
+    Returns:
+        None
+
+    """
+    return pycaret.internal.tabular.create_api(estimator=estimator, api_name = api_name, host = host, port = port)
