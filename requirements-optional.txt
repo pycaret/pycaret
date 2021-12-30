@@ -12,6 +12,9 @@ xgboost>=1.1.0
 m2cgen # for model conversion
 evidently # for drift reporting
 autoviz # for EDA visualization
+fairlearn # for check_fairness function 
+fastapi # for web api
+uvicorn # for web api
 
 # for cloud deployment
 boto3

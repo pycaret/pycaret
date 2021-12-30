@@ -2818,6 +2818,51 @@ def eda(data = None, target: str = None, display_format:str = 'bokeh', **kwargs)
     install Autoviz separately ``pip install autoviz`` to use this 
     function.
 
+def check_fairness(estimator, sensitive_features: list, plot_kwargs: dict = {}):
+
+    """
+    There are many approaches to conceptualizing fairness. This function follows 
+    the approach known as group fairness, which asks: Which groups of individuals 
+    are at risk for experiencing harms. This function provides fairness-related 
+    metrics between different groups (also called subpopulation). 
+
+    
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> income = get_data('income')
+    >>> from pycaret.classification import *
+    >>> exp_name = setup(data = income,  target = 'income >50K') 
+    >>> lr = create_model('lr')
+    >>> lr_fairness = check_fairness(lr, sensitive_features = ['sex', 'race'])
+    
+    
+    estimator: scikit-learn compatible object
+        Trained model object
+    
+    
+    sensitive_features: list
+        List of column names as present in the original dataset before any
+        transformations. 
+    
+    
+    plot_kwargs: dict, default = {} (empty dict)
+        Dictionary of arguments passed to the matplotlib plot. 
+    
+
+    Returns:
+        pandas.DataFrame
+
+    """
+    return pycaret.internal.tabular.check_fairness(estimator=estimator, sensitive_features=sensitive_features, plot_kwargs=plot_kwargs)
+
+def create_api(estimator, api_name: str, host: str = '127.0.0.1', port: int = 8000) -> None:
+
+    """
+    This function takes an input ``estimator`` and creates a POST API for 
+    inference. It only creates the API and doesn't run it automatically. 
+    To run the API, you must run the Python file using ``!python``. 
+
 
     Example
     -------
@@ -2844,9 +2889,31 @@ def eda(data = None, target: str = None, display_format:str = 'bokeh', **kwargs)
     **kwargs: 
         Additional keyword arguments to pass to the AutoVIZ class.
 
+    >>> lr = create_model('lr')
+    >>> create_api(lr, 'lr_api')
+    >>> !python lr_api.py #to run the API
+    
+
+    estimator: scikit-learn compatible object
+        Trained model object
+
+
+    api_name: str
+        Name of the api as a string.
+
+
+    host: str, default = '127.0.0.1'
+        API host address.
+
+
+    port: int, default = 8000
+        port for API.
+
 
     Returns:
         None
     """
-
     return pycaret.internal.tabular.eda(data=data, target=target, display_format=display_format, **kwargs)
+
+    """
+    return pycaret.internal.tabular.create_api(estimator=estimator, api_name = api_name, host = host, port = port)
