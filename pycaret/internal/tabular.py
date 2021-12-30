@@ -10332,6 +10332,48 @@ def convert_model(estimator, language: str = "python") -> str:
         )
 
 
+def eda(
+    data: Optional[pd.DataFrame] = None,
+    target: Optional[str] = None,
+    display_format: str = "bokeh",
+    **kwargs
+):
+
+    """
+    Function to generate EDA using AutoVIZ library.
+    """
+
+    try:
+        from autoviz.AutoViz_Class import AutoViz_Class
+    except ImportError:
+        raise ImportError(
+            "It appears that Autoviz is not installed. Do: pip install autoviz"
+        )
+
+    if data is None:
+        try:
+            data = get_config("data_before_preprocess")
+        except:
+            raise ValueError(
+                "When running EDA function before setup, you must pass the pandas.DataFrame explicitly."
+            )
+
+    if target is None:
+        try:
+            target = get_config("prep_pipe")[0].target
+        except:
+            raise ValueError(
+                "When running EDA function before setup, you must pass the target column name explicitly."
+            )
+
+    from autoviz.AutoViz_Class import AutoViz_Class
+
+    AV = AutoViz_Class()
+    AV.AutoViz(
+        filename="", dfte=data, depVar=target, chart_format=display_format, **kwargs
+    )
+
+
 def check_fairness(estimator, sensitive_features: list, plot_kwargs: dict = {}):
 
     """
