@@ -9,6 +9,7 @@ scikit-optimize>=0.8.1
 psutil
 catboost>=0.23.2
 xgboost>=1.1.0
+explainerdashboard #for dashboard
 m2cgen # for model conversion
 evidently # for drift reporting
 autoviz # for EDA visualization
