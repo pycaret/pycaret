@@ -10333,7 +10333,12 @@ def convert_model(estimator, language: str = "python") -> str:
         )
 
 
-def eda(data=None, target=None, display_format="bokeh", **kwargs):
+def eda(
+    data: Optional[pd.DataFrame] = None,
+    target: Optional[str] = None,
+    display_format: str = "bokeh",
+    **kwargs
+):
 
     """
     Function to generate EDA using AutoVIZ library.
