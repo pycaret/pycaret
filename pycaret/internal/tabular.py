@@ -10367,7 +10367,7 @@ def check_fairness(estimator, sensitive_features: list, plot_kwargs: dict = {}):
     try:
         multi_metric = MetricFrame(metrics=metric_dict, y_true=y_true, y_pred=y_pred, 
                              sensitive_features=X_test_before_transform[sensitive_features])
-    except:
+    except Exception:
         if MLUsecase.CLASSIFICATION:
             metric_dict.pop('AUC')
             multi_metric = MetricFrame(metrics=metric_dict, y_true=y_true, y_pred=y_pred, 
