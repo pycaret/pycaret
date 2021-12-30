@@ -2527,37 +2527,21 @@ def convert_model(estimator, language: str = "python") -> str:
     """
     return pycaret.internal.tabular.convert_model(estimator, language)
 
+
 def eda(data = None, target: str = None, display_format:str = 'bokeh', **kwargs):
 
     """
     This function generates AutoEDA using AutoVIZ library. You must
     install Autoviz separately ``pip install autoviz`` to use this 
     function.
-
-def check_fairness(estimator, sensitive_features: list, plot_kwargs: dict = {}):
-
-    """
-    There are many approaches to conceptualizing fairness. This function follows 
-    the approach known as group fairness, which asks: Which groups of individuals 
-    are at risk for experiencing harms. This function provides fairness-related 
-    metrics between different groups (also called subpopulation). 
-
     
-
-def create_api(estimator, api_name: str, host: str = '127.0.0.1', port: int = 8000) -> None:
-
-    """
-    This function takes an input ``estimator`` and creates a POST API for 
-    inference. It only creates the API and doesn't run it automatically. 
-    To run the API, you must run the Python file using ``!python``. 
-
-
+    
     Example
     -------
     >>> from pycaret.datasets import get_data
-    >>> juice = get_data('boston')
+    >>> boston = get_data('boston')
     >>> from pycaret.regression import *
-    >>> exp_name = setup(data = data,  target = 'medv') 
+    >>> exp_name = setup(data = boston,  target = 'medv') 
     >>> eda(display_format = 'bokeh')
 
 
@@ -2577,6 +2561,25 @@ def create_api(estimator, api_name: str, host: str = '127.0.0.1', port: int = 80
     **kwargs: 
         Additional keyword arguments to pass to the AutoVIZ class.
 
+
+    Returns:
+        None
+    """    
+    return pycaret.internal.tabular.eda(data=data, target=target, display_format=display_format, **kwargs)
+   
+
+def check_fairness(estimator, sensitive_features: list, plot_kwargs: dict = {}):
+
+    """
+    There are many approaches to conceptualizing fairness. This function follows 
+    the approach known as group fairness, which asks: Which groups of individuals 
+    are at risk for experiencing harms. This function provides fairness-related 
+    metrics between different groups (also called subpopulation). 
+
+    
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
     >>> boston = get_data('boston')
     >>> from pycaret.regression import *
     >>> exp_name = setup(data = boston,  target = 'medv') 
@@ -2602,8 +2605,24 @@ def create_api(estimator, api_name: str, host: str = '127.0.0.1', port: int = 80
         pandas.DataFrame
 
     """
-    return pycaret.internal.tabular.check_fairness(estimator=estimator, sensitive_features=sensitive_features, plot_kwargs=plot_kwargs)
+    return pycaret.internal.tabular.check_fairness(estimator=estimator, sensitive_features=sensitive_features, plot_kwargs=plot_kwargs)  
 
+
+def create_api(estimator, api_name: str, host: str = '127.0.0.1', port: int = 8000) -> None:
+
+    """
+    This function takes an input ``estimator`` and creates a POST API for 
+    inference. It only creates the API and doesn't run it automatically. 
+    To run the API, you must run the Python file using ``!python``. 
+
+
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> boston = get_data('boston')
+    >>> from pycaret.regression import *
+    >>> exp_name = setup(data = boston,  target = 'medv') 
+    >>> lr = create_model('lr')
     >>> create_api(lr, 'lr_api')
     >>> !python lr_api.py #to run the API
     
@@ -2626,9 +2645,6 @@ def create_api(estimator, api_name: str, host: str = '127.0.0.1', port: int = 80
 
     Returns:
         None
-    """
-
-    return pycaret.internal.tabular.eda(data=data, target=target, display_format=display_format, **kwargs)
 
     """
     return pycaret.internal.tabular.create_api(estimator=estimator, api_name = api_name, host = host, port = port)
