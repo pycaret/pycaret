@@ -26,7 +26,7 @@ def test():
     # EDA
     pycaret.classification.eda(display_format = 'svg')
 
-    # assert    
+    # assert
     assert 1 == 1
 
 if __name__ == "__main__":
