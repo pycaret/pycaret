@@ -10332,6 +10332,56 @@ def convert_model(estimator, language: str = "python") -> str:
         )
 
 
+def check_fairness(estimator, sensitive_features: list, plot_kwargs: dict = {}):
+
+    """
+    There are many approaches to conceptualizing fairness. This function follows 
+    the approach known as group fairness, which asks: Which groups of individuals 
+    are at risk for experiencing harms. This function provides fairness-related 
+    metrics between different groups (also called subpopulation). 
+    """
+
+    try:
+        import fairlearn
+    except ImportError:
+        raise ImportError(
+            "It appears that fairlearn is not installed. Do: pip install fairlearn"
+        )
+
+    from fairlearn.metrics import MetricFrame, count, selection_rate
+
+    all_metrics = get_metrics()[['Name', 'Score Function']].set_index('Name')
+    metric_dict = {}
+    metric_dict['Samples'] = count
+    for i in all_metrics.index:
+        metric_dict[i] = all_metrics.loc[i][0]
+    
+    if _ml_usecase == MLUsecase.CLASSIFICATION:
+        metric_dict['Selection Rate'] = selection_rate
+
+    y_pred = estimator.predict(get_config('X_test'))
+    y_true = np.array(get_config('y_test'))
+    X_test_before_transform = get_config('data_before_preprocess').iloc[get_config('X_test').index]
+
+    try:
+        multi_metric = MetricFrame(metrics=metric_dict, y_true=y_true, y_pred=y_pred, 
+                             sensitive_features=X_test_before_transform[sensitive_features])
+    except Exception:
+        if MLUsecase.CLASSIFICATION:
+            metric_dict.pop('AUC')
+            multi_metric = MetricFrame(metrics=metric_dict, y_true=y_true, y_pred=y_pred, 
+                            sensitive_features=X_test_before_transform[sensitive_features])
+            
+    multi_metric.by_group.plot.bar(
+    subplots=True,
+    layout=[3, 3],
+    legend=False,
+    figsize=[16, 8],
+    title="Performance Metrics by Sensitive Features",
+    **plot_kwargs);
+    
+    return pd.DataFrame(multi_metric.by_group)
+
 def create_api(estimator, api_name, host = '127.0.0.1', port = 8000):
     
     """
@@ -10411,7 +10461,6 @@ To run your API, please run this command --> !python {API_NAME}.py
     """.format(API_NAME = API_NAME)
     
     print(message)
-
 
 def _choose_better(
     models_and_results: list,
