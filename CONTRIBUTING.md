@@ -1,6 +1,6 @@
 # Contribution Guidelines
 
-Thank you for choosing to contribute in PyCaret. There are a ton of great open-source projects out there, so we appreciate your interest in contributing to PyCaret. It is an open-source, low-code machine learning library in Python developed and open-sourced in April 2020 by Moez Ali <moez.ali@queensu.ca> and is now maintained by awesome community members just like you. In this documentation we will cover couple of ways you can contribute to this project.
+Thank you for choosing to contribute in PyCaret. There are a ton of great open-source projects out there, so we appreciate your interest in contributing to PyCaret. It is an open-source, low-code machine learning library in Python developed and open-sourced in April 2020 by Moez Ali <moez.ali@queensu.ca> and is now maintained by awesome community members just like you. In this documentation we will cover a couple of ways you can contribute to this project.
 
 ## Documentation
 There is always a room for improvement in documentation. We welcome all the pull requests to fix typo / improve grammar or semantic structuring of documents. Here are few documents you can work on:
@@ -20,5 +20,48 @@ If you are willing to make major contribution you can always look out for the ac
 
 ## What we currently need help on?
 - Improving unit-test cases https://github.com/pycaret/pycaret/tree/master/pycaret/tests
-- Major refactoring in `preprocess.py` to accomodate distributed processing
+- Major refactoring in `preprocess.py` to accommodate distributed processing
 - Example Notebooks required. Send PR to https://github.com/pycaret/pycaret/tree/master/examples
+
+## Development setup
+Follow [installation instructions](https://pycaret.readthedocs.io/en/latest/installation.html#installing-the-latest-release) to first create a virtual environment. Then, install development version of the package:
+```shell
+pip install -e .[test]
+```
+We use [pre-commit](https://pre-commit.com) with [black](https://github.com/psf/black) for code formatting. It runs automatically before you make a new commit. To set up pre-commit, follow these steps:
+
+1. Install pre-commit:
+```shell
+pip install pre-commit
+```
+2. Set up pre-commit:
+```shell
+pre-commit install
+```
+
+## Unit testing
+Install development version of the package with additional extra dependencies required for unit testing:
+```shell
+pip install -e .[test]
+python -m spacy download en_core_web_sm
+```
+We use [`pytest`](https://docs.pytest.org/en/latest/) for unit testing.
+
+To run tests, except skipped ones (search for `@pytest.mark.skip` decorator over test functions), run:
+```shell
+pytest pycaret
+```
+
+## Documentation
+We use [`sphinx`](https://www.sphinx-doc.org/) to build our documentation and [readthedocs](https://pycaret.readthedocs.io/en/latest/index.html) to host it. The source files can be found in [`docs/source/`](docs/source). The main configuration file for sphinx is [`conf.py`](docs/source/conf.py) and the main page is [`index.rst`](docs/source/index.rst).
+
+To build the documentation locally, you need to install a few extra dependencies listed in
+[`docs/source/requirements.txt`](docs/source/requirements.txt):
+```shell
+pip install -r docs/source/requirements.txt
+```
+To build the website locally, run:
+```shell
+sh make.sh
+```
+You can find the generated files in the `docs/build/` folder. To view the website, open `docs/build/index.html` with your preferred web browser.

@@ -37,6 +37,10 @@ from pycaret.internal.Display import Display, is_in_colab
 from pycaret.internal.distributions import *
 from pycaret.internal.validation import *
 from pycaret.internal.tunable import TunableMixin
+from pycaret.internal.drift_report import (
+    create_classification_drift_report,
+    create_regression_drift_report,
+)
 import pycaret.containers.metrics.classification
 import pycaret.containers.metrics.regression
 import pycaret.containers.metrics.clustering
@@ -5720,6 +5724,7 @@ def plot_model(
     save: Union[str, bool] = False,
     fold: Optional[Union[int, Any]] = None,
     fit_kwargs: Optional[dict] = None,
+    plot_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
     feature_name: Optional[str] = None,
     label: bool = False,
@@ -5793,6 +5798,9 @@ def plot_model(
     fit_kwargs: dict, default = {} (empty dict)
         Dictionary of arguments passed to the fit method of the model.
 
+    plot_kwargs: dict, default = {} (empty dict)
+        Dictionary of arguments passed to the visualizer class.
+
     groups: str or array-like, with shape (n_samples,), default = None
         Optional Group labels for the samples used while splitting the dataset into train/test set.
         If string is passed, will use the data column with that name as the groups.
@@ -5842,6 +5850,9 @@ def plot_model(
 
     if not fit_kwargs:
         fit_kwargs = {}
+
+    if not plot_kwargs:
+        plot_kwargs = {}
 
     if not hasattr(estimator, "fit"):
         raise ValueError(
@@ -6485,7 +6496,9 @@ def plot_model(
             try:
                 from yellowbrick.cluster import KElbowVisualizer
 
-                visualizer = KElbowVisualizer(pipeline_with_model, timings=False)
+                visualizer = KElbowVisualizer(
+                    pipeline_with_model, timings=False, **plot_kwargs
+                )
                 show_yellowbrick_plot(
                     visualizer=visualizer,
                     X_train=data_X,
@@ -6512,7 +6525,7 @@ def plot_model(
 
             try:
                 visualizer = SilhouetteVisualizer(
-                    pipeline_with_model, colors="yellowbrick"
+                    pipeline_with_model, colors="yellowbrick", **plot_kwargs
                 )
                 show_yellowbrick_plot(
                     visualizer=visualizer,
@@ -6538,7 +6551,7 @@ def plot_model(
             from yellowbrick.cluster import InterclusterDistance
 
             try:
-                visualizer = InterclusterDistance(pipeline_with_model)
+                visualizer = InterclusterDistance(pipeline_with_model, **plot_kwargs)
                 show_yellowbrick_plot(
                     visualizer=visualizer,
                     X_train=data_X,
@@ -6563,7 +6576,7 @@ def plot_model(
 
             from yellowbrick.regressor import ResidualsPlot
 
-            visualizer = ResidualsPlot(pipeline_with_model)
+            visualizer = ResidualsPlot(pipeline_with_model, **plot_kwargs)
             show_yellowbrick_plot(
                 visualizer=visualizer,
                 X_train=data_X,
@@ -6583,7 +6596,18 @@ def plot_model(
 
             from yellowbrick.classifier import ROCAUC
 
-            visualizer = ROCAUC(pipeline_with_model)
+            try:
+                dtype_object = get_config("prep_pipe").steps[0][1]
+                encoder_labels = dtype_object.le.transform(dtype_object.le.classes_)
+                encoder_classes = dtype_object.le.classes_
+                encoder_dictionary = dict(zip(encoder_labels, encoder_classes))
+            except:
+                encoder_dictionary = None
+
+            visualizer = ROCAUC(
+                pipeline_with_model, encoder=encoder_dictionary, **plot_kwargs
+            )
+
             show_yellowbrick_plot(
                 visualizer=visualizer,
                 X_train=data_X,
@@ -6603,7 +6627,9 @@ def plot_model(
 
             from yellowbrick.classifier import DiscriminationThreshold
 
-            visualizer = DiscriminationThreshold(pipeline_with_model, random_state=seed)
+            visualizer = DiscriminationThreshold(
+                pipeline_with_model, random_state=seed, **plot_kwargs
+            )
             show_yellowbrick_plot(
                 visualizer=visualizer,
                 X_train=data_X,
@@ -6623,7 +6649,9 @@ def plot_model(
 
             from yellowbrick.classifier import PrecisionRecallCurve
 
-            visualizer = PrecisionRecallCurve(pipeline_with_model, random_state=seed)
+            visualizer = PrecisionRecallCurve(
+                pipeline_with_model, random_state=seed, **plot_kwargs
+            )
             show_yellowbrick_plot(
                 visualizer=visualizer,
                 X_train=data_X,
@@ -6643,11 +6671,32 @@ def plot_model(
 
             from yellowbrick.classifier import ConfusionMatrix
 
+            try:
+                dtype_object = get_config("prep_pipe").steps[0][1]
+                encoder_labels = dtype_object.le.transform(dtype_object.le.classes_)
+                encoder_classes = dtype_object.le.classes_
+                encoder_dictionary = dict(zip(encoder_labels, encoder_classes))
+            except:
+                encoder_dictionary = None
+
+            # temp patching for rendering purposes
+            try:
+                cmap_user_defined = plot_kwargs["cmap"]
+            except:
+                plot_kwargs["cmap"] = "Greens"
+
+            try:
+                fontsize_user_defined = plot_kwargs["fontsize"]
+            except:
+                plot_kwargs["fontsize"] = 15
+
             visualizer = ConfusionMatrix(
                 pipeline_with_model,
                 random_state=seed,
-                fontsize=15,
-                cmap="Greens",
+                # fontsize=fontsize_user_defined,
+                # cmap=cmap_user_defined,
+                encoder=encoder_dictionary,
+                **plot_kwargs,
             )
             show_yellowbrick_plot(
                 visualizer=visualizer,
@@ -6669,14 +6718,27 @@ def plot_model(
             if _ml_usecase == MLUsecase.CLASSIFICATION:
                 from yellowbrick.classifier import ClassPredictionError
 
+                try:
+                    dtype_object = get_config("prep_pipe").steps[0][1]
+                    encoder_labels = dtype_object.le.transform(dtype_object.le.classes_)
+                    encoder_classes = dtype_object.le.classes_
+                    encoder_dictionary = dict(zip(encoder_labels, encoder_classes))
+                except:
+                    encoder_dictionary = None
+
                 visualizer = ClassPredictionError(
-                    pipeline_with_model, random_state=seed
+                    pipeline_with_model,
+                    random_state=seed,
+                    encoder=encoder_dictionary,
+                    **plot_kwargs,
                 )
 
             elif _ml_usecase == MLUsecase.REGRESSION:
                 from yellowbrick.regressor import PredictionError
 
-                visualizer = PredictionError(pipeline_with_model, random_state=seed)
+                visualizer = PredictionError(
+                    pipeline_with_model, random_state=seed, **plot_kwargs
+                )
 
             show_yellowbrick_plot(
                 visualizer=visualizer,
@@ -6718,9 +6780,22 @@ def plot_model(
 
             from yellowbrick.classifier import ClassificationReport
 
+            try:
+                dtype_object = get_config("prep_pipe").steps[0][1]
+                encoder_labels = dtype_object.le.transform(dtype_object.le.classes_)
+                encoder_classes = dtype_object.le.classes_
+                encoder_dictionary = dict(zip(encoder_labels, encoder_classes))
+            except:
+                encoder_dictionary = None
+
             visualizer = ClassificationReport(
-                pipeline_with_model, random_state=seed, support=True
+                pipeline_with_model,
+                random_state=seed,
+                support=True,
+                encoder=encoder_dictionary,
+                **plot_kwargs,
             )
+
             show_yellowbrick_plot(
                 visualizer=visualizer,
                 X_train=data_X,
@@ -6755,7 +6830,17 @@ def plot_model(
             data_y_transformed = np.array(data_y)
             test_y_transformed = np.array(test_y)
 
-            viz_ = DecisionViz(pipeline_with_model)
+            try:
+                dtype_object = get_config("prep_pipe").steps[0][1]
+                encoder_labels = dtype_object.le.transform(dtype_object.le.classes_)
+                encoder_classes = dtype_object.le.classes_
+                encoder_dictionary = dict(zip(encoder_labels, encoder_classes))
+            except:
+                encoder_dictionary = None
+
+            viz_ = DecisionViz(
+                pipeline_with_model, encoder=encoder_dictionary, **plot_kwargs
+            )
             show_yellowbrick_plot(
                 visualizer=viz_,
                 X_train=data_X_transformed,
@@ -6778,7 +6863,7 @@ def plot_model(
 
             from yellowbrick.model_selection import RFECV
 
-            visualizer = RFECV(pipeline_with_model, cv=cv)
+            visualizer = RFECV(pipeline_with_model, cv=cv, **plot_kwargs)
             show_yellowbrick_plot(
                 visualizer=visualizer,
                 X_train=data_X,
@@ -6806,6 +6891,7 @@ def plot_model(
                 train_sizes=sizes,
                 n_jobs=_gpu_n_jobs_param,
                 random_state=seed,
+                **plot_kwargs,
             )
             show_yellowbrick_plot(
                 visualizer=visualizer,
@@ -6886,7 +6972,8 @@ def plot_model(
             from yellowbrick.features import Manifold
 
             data_X_transformed = data_X.select_dtypes(include="float32")
-            visualizer = Manifold(manifold="tsne", random_state=seed)
+            visualizer = Manifold(manifold="tsne", random_state=seed, **plot_kwargs)
+
             show_yellowbrick_plot(
                 visualizer=visualizer,
                 X_train=data_X_transformed,
@@ -6957,11 +7044,12 @@ def plot_model(
             ) as fitted_pipeline_with_model:
                 trees = []
                 feature_names = list(data_X.columns)
-                if _ml_usecase == MLUsecase.CLASSIFICATION:
-                    class_names = {
-                        v: k
-                        for k, v in prep_pipe.named_steps["dtypes"].replacement.items()
-                    }
+                if _ml_usecase == MLUsecase.CLASSIFICATION and hasattr(
+                    prep_pipe.named_steps["dtypes"], "replacement"
+                ):
+                    class_names = list(
+                        prep_pipe.named_steps["dtypes"].replacement.keys()
+                    )
                 else:
                     class_names = None
                 fitted_tree_estimator = fitted_pipeline_with_model.steps[-1][1]
@@ -6995,8 +7083,6 @@ def plot_model(
                         trees = fitted_tree_estimator.estimators_
                     except:
                         trees = [fitted_tree_estimator]
-                if _ml_usecase == MLUsecase.CLASSIFICATION:
-                    class_names = list(class_names.values())
                 for i, tree in enumerate(trees):
                     logger.info(f"Plotting tree {i}")
                     plot_tree(
@@ -7232,6 +7318,7 @@ def plot_model(
                 cv=cv,
                 random_state=seed,
                 n_jobs=_gpu_n_jobs_param,
+                **plot_kwargs,
             )
             show_yellowbrick_plot(
                 visualizer=viz,
@@ -7269,7 +7356,7 @@ def plot_model(
             data_X_transformed = pca.fit_transform(data_X_transformed)
             display.move_progress()
             classes = data_y.unique().tolist()
-            visualizer = RadViz(classes=classes, alpha=0.25)
+            visualizer = RadViz(classes=classes, alpha=0.25, **plot_kwargs)
 
             show_yellowbrick_plot(
                 visualizer=visualizer,
@@ -8199,6 +8286,7 @@ def optimize_threshold(
     true_negative: int = 0,
     false_positive: int = 0,
     false_negative: int = 0,
+    grid_interval: float = 0.0001,
 ):
 
     """
@@ -8236,6 +8324,8 @@ def optimize_threshold(
     false_negative : int, default = 0
         Cost function or returns when prediction is false negative.
 
+    grid_interval : float, default = 0.0001
+        Grid inerval for threshold grid search. Iteration count = 1.0/grid_interval. Default 10000 iterations.
 
     Returns
     -------
@@ -8296,6 +8386,9 @@ def optimize_threshold(
     if type(false_negative) not in allowed_types:
         raise TypeError("false_negative parameter only accepts float or integer value.")
 
+    if type(grid_interval) not in allowed_types or grid_interval > 1.0:
+        raise TypeError("grid_interval should be float and less than 1.0.")
+
     """
     ERROR HANDLING ENDS HERE
     """
@@ -8354,7 +8447,7 @@ def optimize_threshold(
     internal function to calculate loss ends here
     """
 
-    grid = np.arange(0, 1, 0.0001)
+    grid = np.arange(0, 1, grid_interval)
 
     # loop starts here
 
@@ -8568,6 +8661,7 @@ def predict_model(
     data: Optional[pd.DataFrame] = None,
     probability_threshold: Optional[float] = None,
     encoded_labels: bool = False,  # added in pycaret==2.1.0
+    drift_report: bool = False,
     raw_score: bool = False,
     round: int = 4,  # added in pycaret==2.2.0
     verbose: bool = True,
@@ -8732,6 +8826,26 @@ def predict_model(
                 raise ValueError("Pipeline not found")
 
         X_test_ = data.copy()
+
+    # generate drift report
+    if drift_report:
+        if ml_usecase == MLUsecase.CLASSIFICATION:
+            create_classification_drift_report(
+                _get_model_name(estimator),
+                prep_pipe,
+                data_before_preprocess,
+                X_train,
+                X_test_,
+            )
+
+        elif ml_usecase == MLUsecase.REGRESSION:
+            create_regression_drift_report(
+                _get_model_name(estimator),
+                prep_pipe,
+                data_before_preprocess,
+                X_train,
+                X_test_,
+            )
 
     # function to replace encoded labels with their original values
     # will not run if categorical_labels is false
@@ -10199,6 +10313,230 @@ def _create_classification_dashboard(model, mode = 'dash', dashboard_kwargs = {}
                                     labels = labels_, **kwargs)
     ExplainerDashboard(explainer, mode=mode, **dashboard_kwargs).run(**run_kwargs)
 
+
+def convert_model(estimator, language: str = "python") -> str:
+    """
+    This function transpiles trained machine learning models into native
+    inference script in different programming languages (Python, C, Java,
+    Go, JavaScript, Visual Basic, C#, PowerShell, R, PHP, Dart, Haskell,
+    Ruby, F#). This functionality is very useful if you want to deploy models
+    into environments where you can't install your normal Python stack to
+    support model inference.
+    """
+
+    try:
+        import m2cgen as m2c
+    except ImportError:
+        raise ImportError(
+            "It appears that m2cgen is not installed. Do: pip install m2cgen"
+        )
+
+    if language == "python":
+        return m2c.export_to_python(estimator)
+    elif language == "java":
+        return m2c.export_to_java(estimator)
+    elif language == "c":
+        return m2c.export_to_c(estimator)
+    elif language == "c#":
+        return m2c.export_to_c_sharp(estimator)
+    elif language == "dart":
+        return m2c.export_to_dart(estimator)
+    elif language == "f#":
+        return m2c.export_to_f_sharp(estimator)
+    elif language == "go":
+        return m2c.export_to_go(estimator)
+    elif language == "haskell":
+        return m2c.export_to_haskell(estimator)
+    elif language == "javascript":
+        return m2c.export_to_javascript(estimator)
+    elif language == "php":
+        return m2c.export_to_php(estimator)
+    elif language == "powershell":
+        return m2c.export_to_powershell(estimator)
+    elif language == "r":
+        return m2c.export_to_r(estimator)
+    elif language == "ruby":
+        return m2c.export_to_ruby(estimator)
+    elif language == "vb":
+        return m2c.export_to_visual_basic(estimator)
+    else:
+        raise ValueError(
+            f"Wrong language {language}. Expected one of 'python', 'java', 'c', 'c#', 'dart', "
+            "'f#', 'go', 'haskell', 'javascript', 'php', 'powershell', 'r', 'ruby', 'vb'."
+        )
+
+
+def eda(
+    data: Optional[pd.DataFrame] = None,
+    target: Optional[str] = None,
+    display_format: str = "bokeh",
+    **kwargs
+):
+
+    """
+    Function to generate EDA using AutoVIZ library.
+    """
+
+    try:
+        from autoviz.AutoViz_Class import AutoViz_Class
+    except ImportError:
+        raise ImportError(
+            "It appears that Autoviz is not installed. Do: pip install autoviz"
+        )
+
+    if data is None:
+        try:
+            data = get_config("data_before_preprocess")
+        except:
+            raise ValueError(
+                "When running EDA function before setup, you must pass the pandas.DataFrame explicitly."
+            )
+
+    if target is None:
+        try:
+            target = get_config("prep_pipe")[0].target
+        except:
+            raise ValueError(
+                "When running EDA function before setup, you must pass the target column name explicitly."
+            )
+
+    from autoviz.AutoViz_Class import AutoViz_Class
+
+    AV = AutoViz_Class()
+    AV.AutoViz(
+        filename="", dfte=data, depVar=target, chart_format=display_format, **kwargs
+    )
+
+
+def check_fairness(estimator, sensitive_features: list, plot_kwargs: dict = {}):
+
+    """
+    There are many approaches to conceptualizing fairness. This function follows 
+    the approach known as group fairness, which asks: Which groups of individuals 
+    are at risk for experiencing harms. This function provides fairness-related 
+    metrics between different groups (also called subpopulation). 
+    """
+
+    try:
+        import fairlearn
+    except ImportError:
+        raise ImportError(
+            "It appears that fairlearn is not installed. Do: pip install fairlearn"
+        )
+
+    from fairlearn.metrics import MetricFrame, count, selection_rate
+
+    all_metrics = get_metrics()[['Name', 'Score Function']].set_index('Name')
+    metric_dict = {}
+    metric_dict['Samples'] = count
+    for i in all_metrics.index:
+        metric_dict[i] = all_metrics.loc[i][0]
+    
+    if _ml_usecase == MLUsecase.CLASSIFICATION:
+        metric_dict['Selection Rate'] = selection_rate
+
+    y_pred = estimator.predict(get_config('X_test'))
+    y_true = np.array(get_config('y_test'))
+    X_test_before_transform = get_config('data_before_preprocess').iloc[get_config('X_test').index]
+
+    try:
+        multi_metric = MetricFrame(metrics=metric_dict, y_true=y_true, y_pred=y_pred, 
+                             sensitive_features=X_test_before_transform[sensitive_features])
+    except Exception:
+        if MLUsecase.CLASSIFICATION:
+            metric_dict.pop('AUC')
+            multi_metric = MetricFrame(metrics=metric_dict, y_true=y_true, y_pred=y_pred, 
+                            sensitive_features=X_test_before_transform[sensitive_features])
+            
+    multi_metric.by_group.plot.bar(
+    subplots=True,
+    layout=[3, 3],
+    legend=False,
+    figsize=[16, 8],
+    title="Performance Metrics by Sensitive Features",
+    **plot_kwargs);
+    
+    return pd.DataFrame(multi_metric.by_group)
+
+def create_api(estimator, api_name, host = '127.0.0.1', port = 8000):
+    
+    """
+    This function creates API and write it as a python file using FastAPI
+    """
+    
+    try:
+        import fastapi
+    except ImportError:
+        raise ImportError(
+            "It appears that FastAPI is not installed. Do: pip install fastapi"
+        )
+
+    try:
+        import uvicorn
+    except ImportError:
+        raise ImportError(
+            "It appears that uvicorn is not installed. Do: pip install uvicorn"
+        )
+
+    target_name = get_config('prep_pipe')[0].target
+    raw_data = get_config('data_before_preprocess').copy()
+    raw_data.drop(target_name, axis=1, inplace=True)
+    input_cols = list(raw_data.columns)
+
+    MODULE = get_config('prep_pipe')[0].ml_usecase
+    INPUT_COLS = input_cols
+    INPUT_COLS_FORMATTED = ', '.join(tuple(INPUT_COLS)).replace("'", "")
+    INPUT_COLS_WITHOUT_SPACES = [i.replace(' ','_') for i in input_cols]
+    INPUT_COLS_WITHOUT_SPACES = [i.replace('-','_') for i in INPUT_COLS_WITHOUT_SPACES]
+    INPUT_COLS_WITHOUT_SPACES_FORMATTED = ', '.join(tuple(INPUT_COLS_WITHOUT_SPACES)).replace("'", "")
+    API_NAME = api_name
+    HOST = host
+
+    save_model(estimator, model_name = api_name, verbose=False)
+    
+    query = """
+import pandas as pd
+from pycaret.{MODULE_NAME} import load_model, predict_model
+from fastapi import FastAPI
+import uvicorn
+
+# Create the app
+app = FastAPI()
+
+# Load trained Pipeline
+model = load_model('{API_NAME}')
+
+# Define predict function
+@app.post('/predict')
+def predict({INPUT_COLS}):
+    data = pd.DataFrame([[{DATAFRAME}]])
+    data.columns = {COLUMNS}
+    predictions = predict_model(model, data=data) 
+    return {D1}'prediction': list(predictions['Label']){D2}
+
+if __name__ == '__main__':
+    uvicorn.run(app, host='{HOST}', port={PORT})""".format(MODULE_NAME = MODULE,\
+                                                        API_NAME = API_NAME,\
+                                                        INPUT_COLS = INPUT_COLS_WITHOUT_SPACES_FORMATTED,\
+                                                        DATAFRAME = INPUT_COLS_WITHOUT_SPACES_FORMATTED,\
+                                                        COLUMNS =  INPUT_COLS,
+                                                        D1 = '{', D2 = '}',\
+                                                        HOST = HOST,\
+                                                        PORT = port)
+    
+    file_name = str(api_name) + '.py'
+    
+    f = open(file_name, "w")
+    f.write(query)
+    f.close()
+
+    message = """
+API sucessfully created. This function only creates a POST API, it doesn't run it automatically.
+
+To run your API, please run this command --> !python {API_NAME}.py
+    """.format(API_NAME = API_NAME)
+    
+    print(message)
 
 def _choose_better(
     models_and_results: list,

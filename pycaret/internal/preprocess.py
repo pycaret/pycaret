@@ -992,7 +992,7 @@ class Zroe_NearZero_Variance(BaseEstimator, TransformerMixin):
             else:
                 second = u.iloc[0, 0] / u.iloc[1, 0]
             # if both conditions are true then drop the column, however, we dont want to alter column that indicate NA's
-            if (first <= 0.10) and (second >= 20) and (i[-10:] != "_surrogate"):
+            if (first <= self.threshold_1) and (second >= self.threshold_2) and (i[-10:] != "_surrogate"):
                 self.to_drop.append(i)
             # now drop if the column has zero variance
             if (second == 100) and (i[-10:] != "_surrogate"):

@@ -1412,6 +1412,7 @@ def plot_model(
     save: bool = False,
     fold: Optional[Union[int, Any]] = None,
     fit_kwargs: Optional[dict] = None,
+    plot_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
     use_train_data: bool = False,
     verbose: bool = True,
@@ -1473,6 +1474,10 @@ def plot_model(
         Dictionary of arguments passed to the fit method of the model.
 
 
+    plot_kwargs: dict, default = {} (empty dict)
+        Dictionary of arguments passed to the visualizer class. 
+        
+
     groups: str or array-like, with shape (n_samples,), default = None
         Optional group labels when GroupKFold is used for the cross validation.
         It takes an array with shape (n_samples, ) where n_samples is the number
@@ -1506,6 +1511,7 @@ def plot_model(
         save=save,
         fold=fold,
         fit_kwargs=fit_kwargs,
+        plot_kwargs=plot_kwargs,
         groups=groups,
         verbose=verbose,
         use_train_data=use_train_data,
@@ -1687,6 +1693,7 @@ def interpret_model(
 def predict_model(
     estimator,
     data: Optional[pd.DataFrame] = None,
+    drift_report: bool = False,
     round: int = 4,
     verbose: bool = True,
 ) -> pd.DataFrame:
@@ -1716,6 +1723,11 @@ def predict_model(
         must be available in the unseen dataset.
         
     
+    drift_report: bool, default = False
+        When set to True, interactive drift report is generated on test set
+        with the evidently library.
+
+
     round: int, default = 4
         Number of decimal places to round predictions to.
 
@@ -1741,6 +1753,7 @@ def predict_model(
     return pycaret.internal.tabular.predict_model(
         estimator=estimator,
         data=data,
+        drift_report=drift_report,
         probability_threshold=None,
         encoded_labels=True,
         round=round,
@@ -2463,6 +2476,7 @@ def get_leaderboard(
         verbose=verbose,
     )
 
+
 def dashboard(estimator, display_format = 'dash',  dashboard_kwargs = {}, run_kwargs = {}, **kwargs):
     """
     This function generates the interactive dashboard for a trained model. The
@@ -2510,3 +2524,177 @@ def dashboard(estimator, display_format = 'dash',  dashboard_kwargs = {}, run_kw
         None
     """
     return pycaret.internal.tabular.dashboard(estimator, display_format, dashboard_kwargs, run_kwargs, **kwargs)
+
+  
+def convert_model(estimator, language: str = "python") -> str:
+
+    """
+    This function transpiles trained machine learning models into native 
+    inference script in different programming languages (Python, C, Java, 
+    Go, JavaScript, Visual Basic, C#, PowerShell, R, PHP, Dart, Haskell, 
+    Ruby, F#). This functionality is very useful if you want to deploy models 
+    into environments where you can't install your normal Python stack to 
+    support model inference.
+
+
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> boston = get_data('boston')
+    >>> from pycaret.regression import *
+    >>> exp_name = setup(data = boston,  target = 'medv') 
+    >>> lr = create_model('lr')
+    >>> lr_java = export_model(lr, 'java')
+
+
+    estimator: scikit-learn compatible object
+        Trained model object
+
+
+    language: str, default = 'python'
+        Language in which inference script to be generated. Following
+        options are available:
+
+        * 'python'
+        * 'java'
+        * 'javascript'
+        * 'c'
+        * 'c#'
+        * 'f#'
+        * 'go'
+        * 'haskell'
+        * 'php'
+        * 'powershell'
+        * 'r'
+        * 'ruby'
+        * 'vb'
+        * 'dart'
+
+
+    Returns:
+        str
+
+    """
+    return pycaret.internal.tabular.convert_model(estimator, language)
+
+
+def eda(data = None, target: str = None, display_format:str = 'bokeh', **kwargs):
+
+    """
+    This function generates AutoEDA using AutoVIZ library. You must
+    install Autoviz separately ``pip install autoviz`` to use this 
+    function.
+    
+    
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> boston = get_data('boston')
+    >>> from pycaret.regression import *
+    >>> exp_name = setup(data = boston,  target = 'medv') 
+    >>> eda(display_format = 'bokeh')
+
+
+    data: pandas.DataFrame
+        DataFrame with (n_samples, n_features).
+
+
+    target: str
+        Name of the target column to be passed in as a string. 
+
+
+    display_format: str, default = 'bokeh'
+        When set to 'bokeh' the plots are interactive. Other option is ``svg`` for static 
+        plots that are generated using matplotlib and seaborn. 
+
+
+    **kwargs: 
+        Additional keyword arguments to pass to the AutoVIZ class.
+
+
+    Returns:
+        None
+    """    
+    return pycaret.internal.tabular.eda(data=data, target=target, display_format=display_format, **kwargs)
+   
+
+def check_fairness(estimator, sensitive_features: list, plot_kwargs: dict = {}):
+
+    """
+    There are many approaches to conceptualizing fairness. This function follows 
+    the approach known as group fairness, which asks: Which groups of individuals 
+    are at risk for experiencing harms. This function provides fairness-related 
+    metrics between different groups (also called subpopulation). 
+
+    
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> boston = get_data('boston')
+    >>> from pycaret.regression import *
+    >>> exp_name = setup(data = boston,  target = 'medv') 
+    >>> lr = create_model('lr')
+    >>> lr_fairness = check_fairness(lr, sensitive_features = ['chas'])
+    
+    
+    estimator: scikit-learn compatible object
+        Trained model object
+    
+    
+    sensitive_features: list
+        Sensitive features are relevant groups (also called subpopulations). 
+        You must pass a list of column names that are present in the dataset
+        as string.  
+    
+    
+    plot_kwargs: dict, default = {} (empty dict)
+        Dictionary of arguments passed to the matplotlib plot. 
+    
+
+    Returns:
+        pandas.DataFrame
+
+    """
+    return pycaret.internal.tabular.check_fairness(estimator=estimator, sensitive_features=sensitive_features, plot_kwargs=plot_kwargs)  
+
+
+def create_api(estimator, api_name: str, host: str = '127.0.0.1', port: int = 8000) -> None:
+
+    """
+    This function takes an input ``estimator`` and creates a POST API for 
+    inference. It only creates the API and doesn't run it automatically. 
+    To run the API, you must run the Python file using ``!python``. 
+
+
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> boston = get_data('boston')
+    >>> from pycaret.regression import *
+    >>> exp_name = setup(data = boston,  target = 'medv') 
+    >>> lr = create_model('lr')
+    >>> create_api(lr, 'lr_api')
+    >>> !python lr_api.py #to run the API
+    
+
+    estimator: scikit-learn compatible object
+        Trained model object
+
+
+    api_name: str
+        Name of the api as a string.
+
+
+    host: str, default = '127.0.0.1'
+        API host address.
+
+
+    port: int, default = 8000
+        port for API.
+
+
+    Returns:
+        None
+
+    """
+    return pycaret.internal.tabular.create_api(estimator=estimator, api_name = api_name, host = host, port = port)
