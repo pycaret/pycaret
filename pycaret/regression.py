@@ -2476,6 +2476,56 @@ def get_leaderboard(
         verbose=verbose,
     )
 
+
+def dashboard(estimator, display_format = 'dash',  dashboard_kwargs = {}, run_kwargs = {}, **kwargs):
+    """
+    This function generates the interactive dashboard for a trained model. The
+    dashboard is implemented using ExplainerDashboard (explainerdashboard.readthedocs.io)
+
+
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> juice = get_data('juice')
+    >>> from pycaret.classification import *
+    >>> exp_name = setup(data = juice,  target = 'Purchase')
+    >>> lr = create_model('lr')
+    >>> dashboard(lr)
+
+
+    estimator: scikit-learn compatible object
+        Trained model object
+
+
+    display_format: str, default = 'dash'
+        Render mode for the dashboard. The default is set to ``dash`` which will 
+        render a dashboard in browser. There are four possible options:
+
+        - 'dash' - displays the dashboard in browser
+        - 'inline' - displays the dashboard in the jupyter notebook cell.
+        - 'jupyterlab' - displays the dashboard in jupyterlab pane.
+        - 'external' - displays the dashboard in a separate tab. (use in Colab)
+
+
+    dashboard_kwargs: dict, default = {} (empty dict)
+        Dictionary of arguments passed to the ``ExplainerDashboard`` class.
+
+
+    run_kwargs: dict, default = {} (empty dict)
+        Dictionary of arguments passed to the ``run`` method of ``ExplainerDashboard``.
+
+
+    **kwargs: 
+        Additional keyword arguments to pass to the ``ClassifierExplainer`` or 
+        ``RegressionExplainer`` class.
+
+
+    Returns:
+        None
+    """
+    return pycaret.internal.tabular.dashboard(estimator, display_format, dashboard_kwargs, run_kwargs, **kwargs)
+
+  
 def convert_model(estimator, language: str = "python") -> str:
 
     """
