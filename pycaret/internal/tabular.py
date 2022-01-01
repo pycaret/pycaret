@@ -10538,6 +10538,49 @@ To run your API, please run this command --> !python {API_NAME}.py
     
     print(message)
 
+
+def create_docker(api_name: str, base_image: str ='python:3.8-slim', expose_port: int = 8000):
+    
+    """
+    reserve for docstring
+    """
+
+    requirements = """
+pycaret
+fastapi
+uvicorn
+"""
+    print('Writing requirements.txt')
+    f = open("requirements.txt", "w")
+    f.write(requirements)
+    f.close
+    
+    print('Writing Dockerfile')
+    docker = """
+    
+FROM {BASE_IMAGE}
+
+WORKDIR /app
+
+ADD . /app
+
+RUN apt-get update && apt-get install -y libgomp1
+
+RUN pip install -r requirements.txt
+
+EXPOSE {PORT}
+
+CMD ["python", "{API_NAME}.py"]    
+""".format(BASE_IMAGE=base_image, PORT=expose_port, API_NAME=api_name)
+    
+    f = open("Dockerfile", "w")
+    f.write(docker)
+    f.close
+    
+    print("""Dockerfile and requirements.txt successfully created.
+To build image you have to run --> !docker image build -f "Dockerfile" -t IMAGE_NAME:IMAGE_TAG .
+        """)
+
 def _choose_better(
     models_and_results: list,
     compare_dimension: str,
