@@ -6933,7 +6933,10 @@ def plot_model(
                     logger.info(f"Saving '{plot_filename}.png'")
                     plt.savefig(f"{plot_filename}.png", bbox_inches="tight")
                 elif system:
-                    plt.show()
+                    if display_format == 'streamlit':
+                        st.pyplot(plt, clear_figure=True)
+                    else:
+                        plt.show()
                 plt.close()
 
             logger.info("Visual Rendered Successfully")
@@ -6962,7 +6965,10 @@ def plot_model(
                     logger.info(f"Saving '{plot_filename}.png'")
                     plt.savefig(f"{plot_filename}.png", bbox_inches="tight")
                 elif system:
-                    plt.show()
+                    if display_format == 'streamlit':
+                        st.pyplot(plt, clear_figure=True)
+                    else:
+                        plt.show()
                 plt.close()
 
             logger.info("Visual Rendered Successfully")
@@ -7109,7 +7115,10 @@ def plot_model(
                 logger.info(f"Saving '{plot_filename}.png'")
                 plt.savefig(f"{plot_filename}.png", bbox_inches="tight")
             elif system:
-                plt.show()
+                if display_format == 'streamlit':
+                    st.pyplot(plt, clear_figure=True)
+                else:
+                    plt.show()
             plt.close()
 
             logger.info("Visual Rendered Successfully")
@@ -7423,7 +7432,10 @@ def plot_model(
                 logger.info(f"Saving '{plot_filename}.png'")
                 plt.savefig(f"{plot_filename}.png", bbox_inches="tight")
             elif system:
-                plt.show()
+                if display_format == 'streamlit':
+                    st.pyplot(plt, clear_figure=True)
+                else:
+                    plt.show()
             plt.close()
 
             logger.info("Visual Rendered Successfully")
@@ -7466,7 +7478,10 @@ def plot_model(
                     logger.info(f"Saving '{plot_filename}.png'")
                     plt.savefig(f"{plot_filename}.png", bbox_inches="tight")
                 elif system:
-                    plt.show()
+                    if display_format == 'streamlit':
+                        st.pyplot(plt, clear_figure=True)
+                    else:
+                        plt.show()
                 plt.close()
 
             logger.info("Visual Rendered Successfully")
