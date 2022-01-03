@@ -5,6 +5,8 @@
 # Last modified : 25/10/2020
 
 from typing import Optional, Dict, Any, Dict
+
+
 def setup(
     data,
     target=None,
@@ -20,8 +22,8 @@ def setup(
 ):
 
     """
-    This function initializes the training environment and creates the transformation 
-    pipeline. Setup function must be called before executing any other function. It takes 
+    This function initializes the training environment and creates the transformation
+    pipeline. Setup function must be called before executing any other function. It takes
     one mandatory parameter only: ``data``. All the other parameters are optional.
 
 
@@ -32,14 +34,14 @@ def setup(
     >>> from pycaret.nlp import *
     >>> exp_name = setup(data = kiva, target = 'en')
 
-    
+
     data: pandas.Dataframe or list
         pandas.Dataframe with shape (n_samples, n_features) or a list.
 
 
     target: str
-        When ``data`` is pandas.Dataframe, name of column containing text. 
-    
+        When ``data`` is pandas.Dataframe, name of column containing text.
+
 
     custom_stopwords: list, default = None
         List of stopwords.
@@ -48,12 +50,12 @@ def setup(
     html: bool, default = True
         When set to False, prevents runtime display of monitor. This must be set to False
         when the environment does not support IPython. For example, command line terminal,
-        Databricks Notebook, Spyder and other similar IDEs. 
+        Databricks Notebook, Spyder and other similar IDEs.
 
 
     session_id: int, default = None
         Controls the randomness of experiment. It is equivalent to 'random_state' in
-        scikit-learn. When None, a pseudo random number is generated. This can be used 
+        scikit-learn. When None, a pseudo random number is generated. This can be used
         for later reproducibility of the entire experiment.
 
 
@@ -65,7 +67,7 @@ def setup(
         Name of the experiment for logging. Ignored when ``log_experiment`` is not True.
 
     experiment_custom_tags: dict, default = None
-        Dictionary of tag_name: String -> value: (String, but will be string-ified 
+        Dictionary of tag_name: String -> value: (String, but will be string-ified
         if not) passed to the mlflow.set_tags to add new custom tags for the experiment.
 
 
@@ -88,11 +90,11 @@ def setup(
 
     Warnings
     --------
-    - pycaret.nlp requires following language models: 
-      
+    - pycaret.nlp requires following language models:
+
         ``python -m spacy download en_core_web_sm``
         ``python -m textblob.download_corpora``
-        
+
     """
 
     # exception checking
@@ -328,7 +330,7 @@ def setup(
     # log_experiment
     if type(log_experiment) is not bool:
         sys.exit("(Type Error): log_experiment parameter only accepts True or False.")
-    
+
     # experiment custom tags
     if experiment_custom_tags is not None:
         if not isinstance(experiment_custom_tags, dict):
@@ -959,71 +961,72 @@ def setup(
         mlflow.set_experiment(exp_name_log)
 
         run_name_ = "Session Initialized " + str(USI)
-        with mlflow.start_run(run_name=run_name_) as run:
+        mlflow.end_run()
+        mlflow.start_run(run_name=run_name_)
 
-            # Get active run to log as tag
-            RunID = mlflow.active_run().info.run_id
+        # Get active run to log as tag
+        RunID = mlflow.active_run().info.run_id
 
-            k = functions.copy()
-            k.set_index("Description", drop=True, inplace=True)
-            kdict = k.to_dict()
-            params = kdict.get("Value")
-            mlflow.log_params(params)
+        k = functions.copy()
+        k.set_index("Description", drop=True, inplace=True)
+        kdict = k.to_dict()
+        params = kdict.get("Value")
+        mlflow.log_params(params)
 
-            # set tag of compare_models
-            mlflow.set_tag("Source", "setup")
+        # set tag of compare_models
+        mlflow.set_tag("Source", "setup")
 
-            # set custom tags if applicable
-            if isinstance(experiment_custom_tags, dict):
-                mlflow.set_tags(experiment_custom_tags)
+        # set custom tags if applicable
+        if isinstance(experiment_custom_tags, dict):
+            mlflow.set_tags(experiment_custom_tags)
 
-            import secrets
+        import secrets
 
-            URI = secrets.token_hex(nbytes=4)
-            mlflow.set_tag("URI", URI)
-            mlflow.set_tag("USI", USI)
-            mlflow.set_tag("Run Time", runtime)
-            mlflow.set_tag("Run ID", RunID)
+        URI = secrets.token_hex(nbytes=4)
+        mlflow.set_tag("URI", URI)
+        mlflow.set_tag("USI", USI)
+        mlflow.set_tag("Run Time", runtime)
+        mlflow.set_tag("Run ID", RunID)
 
-            # Log gensim id2word
-            id2word.save("id2word")
-            mlflow.log_artifact("id2word")
-            import os
+        # Log gensim id2word
+        id2word.save("id2word")
+        mlflow.log_artifact("id2word")
+        import os
 
-            os.remove("id2word")
+        os.remove("id2word")
 
-            # Log data
-            if log_data:
-                data_.to_csv("data.csv")
-                mlflow.log_artifact("data.csv")
-                os.remove("data.csv")
+        # Log data
+        if log_data:
+            data_.to_csv("data.csv")
+            mlflow.log_artifact("data.csv")
+            os.remove("data.csv")
 
-            # Log plots
-            if log_plots:
+        # Log plots
+        if log_plots:
 
-                logger.info(
-                    "SubProcess plot_model() called =================================="
-                )
+            logger.info(
+                "SubProcess plot_model() called =================================="
+            )
 
-                plot_model(plot="frequency", save=True, system=False)
-                mlflow.log_artifact("Word Frequency.html")
-                os.remove("Word Frequency.html")
+            plot_model(plot="frequency", save=True, system=False)
+            mlflow.log_artifact("Word Frequency.html")
+            os.remove("Word Frequency.html")
 
-                plot_model(plot="bigram", save=True, system=False)
-                mlflow.log_artifact("Bigram.html")
-                os.remove("Bigram.html")
+            plot_model(plot="bigram", save=True, system=False)
+            mlflow.log_artifact("Bigram.html")
+            os.remove("Bigram.html")
 
-                plot_model(plot="trigram", save=True, system=False)
-                mlflow.log_artifact("Trigram.html")
-                os.remove("Trigram.html")
+            plot_model(plot="trigram", save=True, system=False)
+            mlflow.log_artifact("Trigram.html")
+            os.remove("Trigram.html")
 
-                plot_model(plot="pos", save=True, system=False)
-                mlflow.log_artifact("POS.html")
-                os.remove("POS.html")
+            plot_model(plot="pos", save=True, system=False)
+            mlflow.log_artifact("POS.html")
+            os.remove("POS.html")
 
-                logger.info(
-                    "SubProcess plot_model() end =================================="
-                )
+            logger.info(
+                "SubProcess plot_model() end =================================="
+            )
 
     if verbose:
         clear_output()
@@ -1051,17 +1054,17 @@ def setup(
 
 
 def create_model(
-    model=None, 
-    multi_core=False, 
-    num_topics=None, 
-    verbose=True, 
-    system=True, 
+    model=None,
+    multi_core=False,
+    num_topics=None,
+    verbose=True,
+    system=True,
     experiment_custom_tags: Optional[Dict[str, Any]] = None,
-    **kwargs
+    **kwargs,
 ):
 
     """
-    
+
     This function trains a given topic model. All the available models
     can be accessed using the ``models`` function.
 
@@ -1078,12 +1081,12 @@ def create_model(
     model: str, default = None
         Models available in the model library (ID - Name):
 
-        * 'lda' - Latent Dirichlet Allocation         
-        * 'lsi' - Latent Semantic Indexing           
+        * 'lda' - Latent Dirichlet Allocation
+        * 'lsi' - Latent Semantic Indexing
         * 'hdp' - Hierarchical Dirichlet Process
         * 'rp' - Random Projections
         * 'nmf' - Non-Negative Matrix Factorization
-   
+
 
     multi_core: bool, default = False
         True would utilize all CPU cores to parallelize and speed up model training.
@@ -1102,17 +1105,17 @@ def create_model(
         Must remain True all times. Only to be changed by internal functions.
 
     experiment_custom_tags: dict, default = None
-        Dictionary of tag_name: String -> value: (String, but will be string-ified 
+        Dictionary of tag_name: String -> value: (String, but will be string-ified
         if not) passed to the mlflow.set_tags to add new custom tags for the experiment.
 
 
-    **kwargs: 
+    **kwargs:
         Additional keyword arguments to pass to the estimator.
 
 
     Returns:
         Trained Model
-     
+
     """
 
     # exception checking
@@ -1298,7 +1301,7 @@ def create_model(
                 passes=10,
                 alpha="symmetric",
                 per_word_topics=True,
-                **kwargs
+                **kwargs,
             )
 
             logger.info("LdaMulticore trained successfully")
@@ -1321,7 +1324,7 @@ def create_model(
                 passes=10,
                 alpha="auto",
                 per_word_topics=True,
-                **kwargs
+                **kwargs,
             )
 
             logger.info("LdaModel trained successfully")
@@ -1352,7 +1355,7 @@ def create_model(
             random_state=seed,
             chunksize=100,
             T=n_topics,
-            **kwargs
+            **kwargs,
         )
 
         logger.info("HdpModel trained successfully")
@@ -1427,7 +1430,7 @@ def create_model(
 
         mlflow.set_experiment(exp_name_log)
 
-        with mlflow.start_run(run_name=topic_model_name) as run:
+        with mlflow.start_run(run_name=topic_model_name, nested=True) as run:
 
             # Get active run to log as tag
             RunID = mlflow.active_run().info.run_id
@@ -1543,18 +1546,18 @@ def create_model(
 def assign_model(model, verbose=True):
 
     """
-    This function assigns topic labels to the dataset for a given model. 
+    This function assigns topic labels to the dataset for a given model.
 
-    
+
     Example
     -------
     >>> from pycaret.datasets import get_data
     >>> kiva = get_data('kiva')
     >>> from pycaret.nlp import *
-    >>> exp_name = setup(data = kiva, target = 'en')        
+    >>> exp_name = setup(data = kiva, target = 'en')
     >>> lda = create_model('lda')
     >>> lda_df = assign_model(lda)
-    
+
 
     model: trained model object, default = None
         Trained model object
@@ -1566,7 +1569,7 @@ def assign_model(model, verbose=True):
 
     Returns:
         pandas.DataFrame
-      
+
     """
 
     # exception checking
@@ -1894,16 +1897,23 @@ def assign_model(model, verbose=True):
     return bb_
 
 
-def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=True, display_format = None):
+def plot_model(
+    model=None,
+    plot="frequency",
+    topic_num=None,
+    save=False,
+    system=True,
+    display_format=None,
+):
 
     """
-    This function takes a trained model object (optional) and returns a plot based 
+    This function takes a trained model object (optional) and returns a plot based
     on the inferred dataset by internally calling assign_model before generating a
-    plot. Where a model parameter is not passed, a plot on the entire dataset will 
-    be returned instead of one at the topic level. As such, plot_model can be used 
-    with or without model. All plots with a model parameter passed as a trained 
-    model object will return a plot based on the first topic i.e.  'Topic 0'. This 
-    can be changed using the topic_num param. 
+    plot. Where a model parameter is not passed, a plot on the entire dataset will
+    be returned instead of one at the topic level. As such, plot_model can be used
+    with or without model. All plots with a model parameter passed as a trained
+    model object will return a plot based on the first topic i.e.  'Topic 0'. This
+    can be changed using the topic_num param.
 
 
     Example
@@ -1911,7 +1921,7 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
     >>> from pycaret.datasets import get_data
     >>> kiva = get_data('kiva')
     >>> from pycaret.nlp import *
-    >>> exp = setup(data = kiva, target = 'en')        
+    >>> exp = setup(data = kiva, target = 'en')
     >>> lda = create_model('lda')
     >>> plot_model(lda, plot = 'frequency')
 
@@ -1923,9 +1933,9 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
     plot: str, default = 'frequency'
         List of available plots (ID - Name):
 
-        * Word Token Frequency - 'frequency'              
+        * Word Token Frequency - 'frequency'
         * Word Distribution Plot - 'distribution'
-        * Bigram Frequency Plot - 'bigram' 
+        * Bigram Frequency Plot - 'bigram'
         * Trigram Frequency Plot - 'trigram'
         * Sentiment Polarity Plot - 'sentiment'
         * Part of Speech Frequency - 'pos'
@@ -1937,12 +1947,13 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
 
 
     topic_num : str, default = None
-        Topic number to be passed as a string. If set to None, default generation will 
+        Topic number to be passed as a string. If set to None, default generation will
         be on 'Topic 0'
-    
 
-    save: bool, default = False
+
+    save: string or bool, default = False
         Plot is saved as png file in local directory when save parameter set to True.
+        Plot is saved as png file in the specified directory when the path to the directory is specified.
 
 
     system: bool, default = True
@@ -1960,13 +1971,13 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
 
     Warnings
     --------
-    -  'pos' and 'umap' plot not available at model level. Hence the model parameter is 
+    -  'pos' and 'umap' plot not available at model level. Hence the model parameter is
        ignored. The result will always be based on the entire training corpus.
-    
+
     -  'topic_model' plot is based on pyLDAVis implementation. Hence its not available
        for model = 'lsi', 'rp' and 'nmf'.
-         
-    
+
+
     """
 
     # exception checking
@@ -2080,7 +2091,7 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
 
     # checking display_format parameter
     plot_formats = [None, "streamlit"]
-    
+
     if display_format not in plot_formats:
         raise ValueError("display_format can only be None or 'streamlit'.")
 
@@ -2141,8 +2152,8 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
                 logger.warning("topic_num set to None. Plot generated at corpus level.")
                 common_words = get_top_n_words(data_[target_], n=100)
                 df2 = pd.DataFrame(common_words, columns=["Text", "count"])
-                
-                if display_format=="streamlit":
+
+                if display_format == "streamlit":
                     df3 = (
                         df2.groupby("Text")
                         .sum()["count"]
@@ -2152,12 +2163,12 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
                             yTitle="Count",
                             linecolor="black",
                             title="Top 100 words after removing stop words",
-                            asFigure=True # plotly obj needs to be returned for streamlit to interpret
+                            asFigure=True,  # plotly obj needs to be returned for streamlit to interpret
                         )
                     )
-                    
+
                     st.write(df3)
-                    
+
                 else:
                     df3 = (
                         df2.groupby("Text")
@@ -2188,8 +2199,8 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
                 ]
                 common_words = get_top_n_words(filtered_df[target_], n=100)
                 df2 = pd.DataFrame(common_words, columns=["Text", "count"])
-                
-                if display_format=="streamlit":
+
+                if display_format == "streamlit":
                     df3 = (
                         df2.groupby("Text")
                         .sum()["count"]
@@ -2199,12 +2210,12 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
                             yTitle="Count",
                             linecolor="black",
                             title=title,
-                            asFigure=True # plotly obj needs to be returned for streamlit to interpret
+                            asFigure=True,  # plotly obj needs to be returned for streamlit to interpret
                         )
                     )
-                    
+
                     st.write(df3)
-                    
+
                 else:
                     df3 = (
                         df2.groupby("Text")
@@ -2222,8 +2233,12 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
             logger.info("Visual Rendered Successfully")
 
             if save:
-                df3.write_html("Word Frequency.html")
-                logger.info("Saving 'Word Frequency.html' in current active directory")
+                if not isinstance(save, bool):
+                    plot_filename = os.path.join(save, "Word Frequency.html")
+                else:
+                    plot_filename = "Word Frequency.html"
+                logger.info(f"Saving '{plot_filename}'")
+                df3.write_html(plot_filename)
 
         except:
             logger.warning(
@@ -2242,8 +2257,8 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
                 b = data_[target_].apply(lambda x: len(str(x).split()))
                 b = pd.DataFrame(b)
                 logger.info("Rendering Visual")
-                
-                if display_format=="streamlit":
+
+                if display_format == "streamlit":
                     b = b[target_].iplot(
                         kind="hist",
                         bins=100,
@@ -2251,11 +2266,11 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
                         linecolor="black",
                         yTitle="count",
                         title="Word Count Distribution",
-                        asFigure=True # plotly obj needs to be returned for streamlit to interpret
+                        asFigure=True,  # plotly obj needs to be returned for streamlit to interpret
                     )
-                    
+
                     st.write(b)
-                    
+
                 else:
                     b = b[target_].iplot(
                         kind="hist",
@@ -2264,7 +2279,7 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
                         linecolor="black",
                         yTitle="count",
                         title="Word Count Distribution",
-                        asFigure=save_param
+                        asFigure=save_param,
                     )
 
             else:
@@ -2283,8 +2298,8 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
                 b = filtered_df[target_].apply(lambda x: len(str(x).split()))
                 b = pd.DataFrame(b)
                 logger.info("Rendering Visual")
-                
-                if display_format=="streamlit":
+
+                if display_format == "streamlit":
                     b = b[target_].iplot(
                         kind="hist",
                         bins=100,
@@ -2292,11 +2307,11 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
                         linecolor="black",
                         yTitle="count",
                         title=title,
-                        asFigure=True # plotly obj needs to be returned for streamlit to interpret
+                        asFigure=True,  # plotly obj needs to be returned for streamlit to interpret
                     )
-                    
+
                     st.write(b)
-                    
+
                 else:
                     b = b[target_].iplot(
                         kind="hist",
@@ -2305,14 +2320,18 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
                         linecolor="black",
                         yTitle="count",
                         title=title,
-                        asFigure=save_param
+                        asFigure=save_param,
                     )
 
             logger.info("Visual Rendered Successfully")
 
             if save:
-                b.write_html("Distribution.html")
-                logger.info("Saving 'Distribution.html' in current active directory")
+                if not isinstance(save, bool):
+                    plot_filename = os.path.join(save, "Distribution.html")
+                else:
+                    plot_filename = "Distribution.html"
+                logger.info(f"Saving '{plot_filename}'")
+                b.write_html(plot_filename)
 
         except:
             logger.warning(
@@ -2344,8 +2363,8 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
                 common_words = get_top_n_bigram(data_[target_], 100)
                 df3 = pd.DataFrame(common_words, columns=["Text", "count"])
                 logger.info("Rendering Visual")
-                
-                if display_format=="streamlit":
+
+                if display_format == "streamlit":
                     df3 = (
                         df3.groupby("Text")
                         .sum()["count"]
@@ -2355,12 +2374,12 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
                             yTitle="Count",
                             linecolor="black",
                             title="Top 100 bigrams after removing stop words",
-                            asFigure=True # plotly obj needs to be returned for streamlit to interpret
+                            asFigure=True,  # plotly obj needs to be returned for streamlit to interpret
                         )
                     )
-                    
+
                     st.write(df3)
-                    
+
                 else:
                     df3 = (
                         df3.groupby("Text")
@@ -2371,7 +2390,7 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
                             yTitle="Count",
                             linecolor="black",
                             title="Top 100 bigrams after removing stop words",
-                            asFigure=save_param
+                            asFigure=save_param,
                         )
                     )
 
@@ -2392,8 +2411,8 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
                 common_words = get_top_n_bigram(filtered_df[target_], 100)
                 df3 = pd.DataFrame(common_words, columns=["Text", "count"])
                 logger.info("Rendering Visual")
-                
-                if display_format=="streamlit":
+
+                if display_format == "streamlit":
                     df3 = (
                         df3.groupby("Text")
                         .sum()["count"]
@@ -2403,12 +2422,12 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
                             yTitle="Count",
                             linecolor="black",
                             title=title,
-                            asFigure=True # plotly obj needs to be returned for streamlit to interpret
+                            asFigure=True,  # plotly obj needs to be returned for streamlit to interpret
                         )
                     )
-                    
+
                     st.write(df3)
-                    
+
                 else:
                     df3 = (
                         df3.groupby("Text")
@@ -2419,15 +2438,19 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
                             yTitle="Count",
                             linecolor="black",
                             title=title,
-                            asFigure=save_param
+                            asFigure=save_param,
                         )
                     )
 
             logger.info("Visual Rendered Successfully")
 
             if save:
-                df3.write_html("Bigram.html")
-                logger.info("Saving 'Bigram.html' in current active directory")
+                if not isinstance(save, bool):
+                    plot_filename = os.path.join(save, "Bigram.html")
+                else:
+                    plot_filename = "Bigram.html"
+                logger.info(f"Saving '{plot_filename}'")
+                df3.write_html(plot_filename)
 
         except:
             logger.warning(
@@ -2459,8 +2482,8 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
                 common_words = get_top_n_trigram(data_[target_], 100)
                 df3 = pd.DataFrame(common_words, columns=["Text", "count"])
                 logger.info("Rendering Visual")
-                
-                if display_format=="streamlit":
+
+                if display_format == "streamlit":
                     df3 = (
                         df3.groupby("Text")
                         .sum()["count"]
@@ -2470,12 +2493,12 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
                             yTitle="Count",
                             linecolor="black",
                             title="Top 100 trigrams after removing stop words",
-                            asFigure=True # plotly obj needs to be returned for streamlit to interpret
+                            asFigure=True,  # plotly obj needs to be returned for streamlit to interpret
                         )
                     )
-                    
+
                     st.write(df3)
-                    
+
                 else:
                     df3 = (
                         df3.groupby("Text")
@@ -2486,10 +2509,10 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
                             yTitle="Count",
                             linecolor="black",
                             title="Top 100 trigrams after removing stop words",
-                            asFigure=save_param
+                            asFigure=save_param,
                         )
                     )
-                    
+
             else:
                 title = (
                     str(topic_num) + ": " + "Top 100 trigrams after removing stop words"
@@ -2507,8 +2530,8 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
                 common_words = get_top_n_trigram(filtered_df[target_], 100)
                 df3 = pd.DataFrame(common_words, columns=["Text", "count"])
                 logger.info("Rendering Visual")
-                
-                if display_format=="streamlit":
+
+                if display_format == "streamlit":
                     df3 = (
                         df3.groupby("Text")
                         .sum()["count"]
@@ -2518,12 +2541,12 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
                             yTitle="Count",
                             linecolor="black",
                             title=title,
-                            asFigure=True # plotly obj needs to be returned for streamlit to interpret
+                            asFigure=True,  # plotly obj needs to be returned for streamlit to interpret
                         )
                     )
-                    
+
                     st.write(df3)
-                    
+
                 else:
                     df3 = (
                         df3.groupby("Text")
@@ -2534,15 +2557,19 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
                             yTitle="Count",
                             linecolor="black",
                             title=title,
-                            asFigure=save_param
+                            asFigure=save_param,
                         )
                     )
-                    
+
             logger.info("Visual Rendered Successfully")
 
             if save:
-                df3.write_html("Trigram.html")
-                logger.info("Saving 'Trigram.html' in current active directory")
+                if not isinstance(save, bool):
+                    plot_filename = os.path.join(save, "Trigram.html")
+                else:
+                    plot_filename = "Trigram.html"
+                logger.info(f"Saving '{plot_filename}'")
+                df3.write_html(plot_filename)
 
         except:
             logger.warning(
@@ -2567,8 +2594,8 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
                 )
                 sentiments = pd.DataFrame(sentiments)
                 logger.info("Rendering Visual")
-                
-                if display_format=="streamlit":
+
+                if display_format == "streamlit":
                     sentiments = sentiments[target_].iplot(
                         kind="hist",
                         bins=50,
@@ -2576,11 +2603,11 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
                         linecolor="black",
                         yTitle="count",
                         title="Sentiment Polarity Distribution",
-                        asFigure=True # plotly obj needs to be returned for streamlit to interpret
+                        asFigure=True,  # plotly obj needs to be returned for streamlit to interpret
                     )
-                    
+
                     st.write(sentiments)
-                    
+
                 else:
                     sentiments = sentiments[target_].iplot(
                         kind="hist",
@@ -2589,9 +2616,9 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
                         linecolor="black",
                         yTitle="count",
                         title="Sentiment Polarity Distribution",
-                        asFigure=save_param
+                        asFigure=save_param,
                     )
-                    
+
             else:
                 title = str(topic_num) + ": " + "Sentiment Polarity Distribution"
                 logger.info(
@@ -2609,8 +2636,8 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
                 )
                 sentiments = pd.DataFrame(sentiments)
                 logger.info("Rendering Visual")
-                
-                if display_format=="streamlit":
+
+                if display_format == "streamlit":
                     sentiments = sentiments[target_].iplot(
                         kind="hist",
                         bins=50,
@@ -2618,11 +2645,11 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
                         linecolor="black",
                         yTitle="count",
                         title=title,
-                        asFigure=True # plotly obj needs to be returned for streamlit to interpret
+                        asFigure=True,  # plotly obj needs to be returned for streamlit to interpret
                     )
-                    
+
                     st.write(sentiments)
-                    
+
                 else:
                     sentiments = sentiments[target_].iplot(
                         kind="hist",
@@ -2631,14 +2658,18 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
                         linecolor="black",
                         yTitle="count",
                         title=title,
-                        asFigure=save_param
+                        asFigure=save_param,
                     )
-                    
+
             logger.info("Visual Rendered Successfully")
 
             if save:
-                sentiments.write_html("Sentiments.html")
-                logger.info("Saving 'Sentiments.html' in current active directory")
+                if not isinstance(save, bool):
+                    plot_filename = os.path.join(save, "Sentiments.html")
+                else:
+                    plot_filename = "Sentiments.html"
+                logger.info(f"Saving '{plot_filename}'")
+                sentiments.write_html(plot_filename)
 
         except:
             logger.warning(
@@ -2659,32 +2690,36 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
         pos_df = pos_df.loc[pos_df["pos"] != "POS"]
         pos_df = pos_df.pos.value_counts()[:20]
         logger.info("Rendering Visual")
-        
-        if display_format=="streamlit":
+
+        if display_format == "streamlit":
             pos_df = pos_df.iplot(
                 kind="bar",
                 xTitle="POS",
                 yTitle="count",
                 title="Top 20 Part-of-speech tagging for review corpus",
-                asFigure=True # plotly obj needs to be returned for streamlit to interpret
+                asFigure=True,  # plotly obj needs to be returned for streamlit to interpret
             )
-            
+
             st.write(pos_df)
-            
+
         else:
             pos_df = pos_df.iplot(
                 kind="bar",
                 xTitle="POS",
                 yTitle="count",
                 title="Top 20 Part-of-speech tagging for review corpus",
-                asFigure=save_param
+                asFigure=save_param,
             )
-            
+
         logger.info("Visual Rendered Sucessfully")
 
         if save:
-            pos_df.write_html("POS.html")
-            logger.info("Saving 'POS.html' in current active directory")
+            if not isinstance(save, bool):
+                plot_filename = os.path.join(save, "POS.html")
+            else:
+                plot_filename = "POS.html"
+            logger.info(f"Saving '{plot_filename}'")
+            pos_df.write_html(plot_filename)
 
     elif plot == "tsne":
 
@@ -2731,7 +2766,7 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
         )
 
         if system:
-            if display_format=="streamlit":
+            if display_format == "streamlit":
                 st.write(fig)
             else:
                 fig.show()
@@ -2739,8 +2774,12 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
         logger.info("Visual Rendered Successfully")
 
         if save:
-            fig.write_html("TSNE.html")
-            logger.info("Saving 'TSNE.html' in current active directory")
+            if not isinstance(save, bool):
+                plot_filename = os.path.join(save, "TSNE.html")
+            else:
+                plot_filename = "TSNE.html"
+            logger.info(f"Saving '{plot_filename}'")
+            fig.write_html(plot_filename)
 
     elif plot == "topic_model":
 
@@ -2857,7 +2896,7 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
         )
 
         if system:
-            if display_format=="streamlit":
+            if display_format == "streamlit":
                 st.write(fig)
             else:
                 fig.show()
@@ -2865,8 +2904,12 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
         logger.info("Visual Rendered Successfully")
 
         if save:
-            fig.write_html("Topic Distribution.html")
-            logger.info("Saving 'Topic Distribution.html' in current active directory")
+            if not isinstance(save, bool):
+                plot_filename = os.path.join(save, "Topic Distribution.html")
+            else:
+                plot_filename = "Topic Distribution.html"
+            logger.info(f"Saving '{plot_filename}'")
+            fig.write_html(plot_filename)
 
     elif plot == "wordcloud":
 
@@ -2922,7 +2965,7 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
                 logger.info("Saving 'Wordcloud.png' in current active directory")
 
             else:
-                if display_format=="streamlit":
+                if display_format == "streamlit":
                     st.write(plt)
                 else:
                     plt.show()
@@ -2976,7 +3019,7 @@ def plot_model(model=None, plot="frequency", topic_num=None, save=False, system=
             logger.info("Saving 'UMAP.png' in current active directory")
 
         else:
-            if display_format=="streamlit":
+            if display_format == "streamlit":
                 st.write(umap)
             else:
                 umap.show()
@@ -3001,7 +3044,7 @@ def tune_model(
 ):
 
     """
-    This function tunes the ``num_topics`` parameter of a given model. 
+    This function tunes the ``num_topics`` parameter of a given model.
 
 
     Example
@@ -3009,106 +3052,106 @@ def tune_model(
     >>> from pycaret.datasets import get_data
     >>> kiva = get_data('kiva')
     >>> from pycaret.nlp import *
-    >>> exp_name = setup(data = kiva, target = 'en')        
-    >>> tuned_lda = tune_model(model = 'lda', supervised_target = 'status') 
+    >>> exp_name = setup(data = kiva, target = 'en')
+    >>> tuned_lda = tune_model(model = 'lda', supervised_target = 'status')
 
 
     model: str, default = None
         Enter ID of the models available in model library (ID - Model):
 
-        * 'lda' - Latent Dirichlet Allocation         
-        * 'lsi' - Latent Semantic Indexing           
+        * 'lda' - Latent Dirichlet Allocation
+        * 'lsi' - Latent Semantic Indexing
         * 'hdp' - Hierarchical Dirichlet Process
         * 'rp' - Random Projections
         * 'nmf' - Non-Negative Matrix Factorization
 
 
     multi_core: bool, default = False
-        True would utilize all CPU cores to parallelize and speed up model 
+        True would utilize all CPU cores to parallelize and speed up model
         training. Ignored when ``model`` is not 'lda'.
 
 
     supervised_target: str
-        Name of the target column for supervised learning. If None, the model 
+        Name of the target column for supervised learning. If None, the model
         coherence value is used as the objective function.
 
 
     estimator: str, default = None
         Classification (ID - Name):
-            * 'lr' - Logistic Regression (Default)             
-            * 'knn' - K Nearest Neighbour             
-            * 'nb' - Naive Bayes                                 
-            * 'dt' - Decision Tree Classifier                           
-            * 'svm' - SVM - Linear Kernel             	            
-            * 'rbfsvm' - SVM - Radial Kernel                            
-            * 'gpc' - Gaussian Process Classifier                       
-            * 'mlp' - Multi Level Perceptron                            
-            * 'ridge' - Ridge Classifier                
-            * 'rf' - Random Forest Classifier                           
-            * 'qda' - Quadratic Discriminant Analysis                   
-            * 'ada' - Ada Boost Classifier                             
-            * 'gbc' - Gradient Boosting Classifier                              
-            * 'lda' - Linear Discriminant Analysis                      
-            * 'et' - Extra Trees Classifier                             
-            * 'xgboost' - Extreme Gradient Boosting                     
-            * 'lightgbm' - Light Gradient Boosting                       
-            * 'catboost' - CatBoost Classifier             
+            * 'lr' - Logistic Regression (Default)
+            * 'knn' - K Nearest Neighbour
+            * 'nb' - Naive Bayes
+            * 'dt' - Decision Tree Classifier
+            * 'svm' - SVM - Linear Kernel
+            * 'rbfsvm' - SVM - Radial Kernel
+            * 'gpc' - Gaussian Process Classifier
+            * 'mlp' - Multi Level Perceptron
+            * 'ridge' - Ridge Classifier
+            * 'rf' - Random Forest Classifier
+            * 'qda' - Quadratic Discriminant Analysis
+            * 'ada' - Ada Boost Classifier
+            * 'gbc' - Gradient Boosting Classifier
+            * 'lda' - Linear Discriminant Analysis
+            * 'et' - Extra Trees Classifier
+            * 'xgboost' - Extreme Gradient Boosting
+            * 'lightgbm' - Light Gradient Boosting
+            * 'catboost' - CatBoost Classifier
 
         Regression (ID - Name):
-            * 'lr' - Linear Regression (Default)                                
-            * 'lasso' - Lasso Regression              
-            * 'ridge' - Ridge Regression              
-            * 'en' - Elastic Net                   
-            * 'lar' - Least Angle Regression                
-            * 'llar' - Lasso Least Angle Regression                     
-            * 'omp' - Orthogonal Matching Pursuit                        
-            * 'br' - Bayesian Ridge                                   
-            * 'ard' - Automatic Relevance Determ.                     
-            * 'par' - Passive Aggressive Regressor                      
-            * 'ransac' - Random Sample Consensus              
-            * 'tr' - TheilSen Regressor                               
-            * 'huber' - Huber Regressor                                              
-            * 'kr' - Kernel Ridge                                                       
-            * 'svm' - Support Vector Machine                                   
-            * 'knn' - K Neighbors Regressor                                    
-            * 'dt' - Decision Tree                                                     
-            * 'rf' - Random Forest                                                     
-            * 'et' - Extra Trees Regressor                                     
-            * 'ada' - AdaBoost Regressor                                               
-            * 'gbr' - Gradient Boosting                                            
-            * 'mlp' - Multi Level Perceptron                                  
-            * 'xgboost' - Extreme Gradient Boosting                                   
-            * 'lightgbm' - Light Gradient Boosting                           
-            * 'catboost' - CatBoost Regressor               
+            * 'lr' - Linear Regression (Default)
+            * 'lasso' - Lasso Regression
+            * 'ridge' - Ridge Regression
+            * 'en' - Elastic Net
+            * 'lar' - Least Angle Regression
+            * 'llar' - Lasso Least Angle Regression
+            * 'omp' - Orthogonal Matching Pursuit
+            * 'br' - Bayesian Ridge
+            * 'ard' - Automatic Relevance Determ.
+            * 'par' - Passive Aggressive Regressor
+            * 'ransac' - Random Sample Consensus
+            * 'tr' - TheilSen Regressor
+            * 'huber' - Huber Regressor
+            * 'kr' - Kernel Ridge
+            * 'svm' - Support Vector Machine
+            * 'knn' - K Neighbors Regressor
+            * 'dt' - Decision Tree
+            * 'rf' - Random Forest
+            * 'et' - Extra Trees Regressor
+            * 'ada' - AdaBoost Regressor
+            * 'gbr' - Gradient Boosting
+            * 'mlp' - Multi Level Perceptron
+            * 'xgboost' - Extreme Gradient Boosting
+            * 'lightgbm' - Light Gradient Boosting
+            * 'catboost' - CatBoost Regressor
 
 
     optimize: str, default = None
         For Classification tasks:
             Accuracy, AUC, Recall, Precision, F1, Kappa (default = 'Accuracy')
-        
+
         For Regression tasks:
             MAE, MSE, RMSE, R2, RMSLE, MAPE (default = 'R2')
 
 
     custom_grid: list, default = None
-        By default, a pre-defined number of topics is iterated over to 
+        By default, a pre-defined number of topics is iterated over to
         optimize the supervised objective. To overwrite default iteration,
         pass a list of num_topics to iterate over in custom_grid param.
 
 
     auto_fe: bool, default = True
-        Automatic text feature engineering. When set to True, it will generate 
-        text based features such as polarity, subjectivity, wordcounts. Ignored 
+        Automatic text feature engineering. When set to True, it will generate
+        text based features such as polarity, subjectivity, wordcounts. Ignored
         when ``supervised_target`` is None.
 
 
     fold: int, default = 10
-        Number of folds to be used in Kfold CV. Must be at least 2. 
+        Number of folds to be used in Kfold CV. Must be at least 2.
 
 
     verbose: bool, default = True
         Status update is not printed when verbose is set to False.
-    
+
 
     Returns:
         Trained Model with optimized ``num_topics`` parameter.
@@ -3120,12 +3163,12 @@ def tune_model(
       is not available for unsupervised learning. Error is raised when 'rp' or
       'nmf' is passed without supervised_target.
 
-    - Estimators using kernel based methods such as Kernel Ridge Regressor, 
+    - Estimators using kernel based methods such as Kernel Ridge Regressor,
       Automatic Relevance Determinant, Gaussian Process Classifier, Radial Basis
-      Support Vector Machine and Multi Level Perceptron may have longer training 
+      Support Vector Machine and Multi Level Perceptron may have longer training
       times.
-     
-    
+
+
     """
 
     import logging
@@ -4237,25 +4280,25 @@ def evaluate_model(model):
 
     """
     This function displays a user interface for analyzing performance of a trained
-    model. It calls the ``plot_model`` function internally. 
-    
+    model. It calls the ``plot_model`` function internally.
+
 
     Example
     -------
     >>> from pycaret.datasets import get_data
     >>> kiva = get_data('kiva')
-    >>> experiment_name = setup(data = kiva, target = 'en')     
+    >>> experiment_name = setup(data = kiva, target = 'en')
     >>> lda = create_model('lda')
     >>> evaluate_model(lda)
-    
+
 
     model: object, default = none
-        A trained model object should be passed. 
+        A trained model object should be passed.
 
 
     Returns:
         None
-           
+
     """
 
     from ipywidgets import widgets
@@ -4309,9 +4352,9 @@ def evaluate_model(model):
 def save_model(model, model_name, verbose=True, **kwargs):
 
     """
-    This function saves the trained model object into the current active 
-    directory as a pickle file for later use. 
-    
+    This function saves the trained model object into the current active
+    directory as a pickle file for later use.
+
 
     Example
     -------
@@ -4320,11 +4363,11 @@ def save_model(model, model_name, verbose=True, **kwargs):
     >>> experiment_name = setup(data = kiva, target = 'en')
     >>> lda = create_model('lda')
     >>> save_model(lda, 'saved_lda_model')
-    
+
 
     model: object
         A trained model object should be passed.
-    
+
 
     model_name: str
         Name of pickle file to be passed as a string.
@@ -4334,7 +4377,7 @@ def save_model(model, model_name, verbose=True, **kwargs):
         When set to False, success message is not printed.
 
 
-    **kwargs: 
+    **kwargs:
         Additional keyword arguments to pass to joblib.dump().
 
 
@@ -4392,13 +4435,13 @@ def load_model(model_name, verbose=True):
 
     """
     This function loads a previously saved model.
-    
-    
+
+
     Example
     -------
     >>> from pycaret.nlp import load_model
     >>> saved_lda = load_model('saved_lda_model')
-    
+
 
     model_name: str
         Name of pickle file to be passed as a string.
@@ -4410,7 +4453,7 @@ def load_model(model_name, verbose=True):
 
     Returns:
         Trained Model
-         
+
     """
 
     import joblib
@@ -4477,7 +4520,7 @@ def get_logs(experiment_name=None, save=False):
     >>> from pycaret.datasets import get_data
     >>> kiva = get_data('kiva')
     >>> from pycaret.nlp import *
-    >>> exp_name = setup(data = kiva, target = 'en', log_experiment = True) 
+    >>> exp_name = setup(data = kiva, target = 'en', log_experiment = True)
     >>> lda = create_model('lda')
     >>> exp_logs = get_logs()
 
@@ -4524,13 +4567,13 @@ def get_logs(experiment_name=None, save=False):
 def get_config(variable):
 
     """
-    This function retrieves the global variables created when initializing the 
+    This function retrieves the global variables created when initializing the
     ``setup`` function. Following variables are accessible:
 
     - text: Tokenized words as a list with length = # documents
     - data_: pandas.DataFrame containing text after all processing
     - corpus: List containing tuples of id to word mapping
-    - id2word: gensim.corpora.dictionary.Dictionary  
+    - id2word: gensim.corpora.dictionary.Dictionary
     - seed: random state set through session_id
     - target_: Name of column containing text. 'en' by default.
     - html_param: html_param configured through setup
@@ -4539,14 +4582,14 @@ def get_config(variable):
     - log_plots_param: log_plots param set through setup
     - USI: Unique session ID parameter set through setup
 
-    
+
     Example
     -------
     >>> from pycaret.datasets import get_data
     >>> kiva = get_data('kiva')
     >>> from pycaret.nlp import *
     >>> exp_name = setup(data = kiva, target = 'en')
-    >>> text = get_config('text') 
+    >>> text = get_config('text')
 
 
     Returns:
@@ -4625,13 +4668,13 @@ def get_config(variable):
 def set_config(variable, value):
 
     """
-    This function resets the global variables. Following variables are 
+    This function resets the global variables. Following variables are
     accessible:
 
     - text: Tokenized words as a list with length = # documents
     - data_: pandas.DataFrame containing text after all processing
     - corpus: List containing tuples of id to word mapping
-    - id2word: gensim.corpora.dictionary.Dictionary 
+    - id2word: gensim.corpora.dictionary.Dictionary
     - seed: random state set through session_id
     - target_: Name of column containing text. 'en' by default.
     - html_param: html_param configured through setup
@@ -4733,7 +4776,7 @@ def set_config(variable, value):
 def get_topics(data, text, model=None, num_topics=4):
 
     """
-    Callable from any external environment without requiring setup initialization.    
+    Callable from any external environment without requiring setup initialization.
     """
 
     if model is None:

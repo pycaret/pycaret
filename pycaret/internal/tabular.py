@@ -10,6 +10,7 @@ import math
 from traitlets.traitlets import Instance
 from pycaret.internal.meta_estimators import (
     PowerTransformedTargetRegressor,
+    CustomProbabilityThresholdClassifier,
     get_estimator_from_meta_estimator,
 )
 from pycaret.internal.pipeline import (
@@ -38,6 +39,10 @@ from pycaret.internal.Display import Display, is_in_colab
 from pycaret.internal.distributions import *
 from pycaret.internal.validation import *
 from pycaret.internal.tunable import TunableMixin
+from pycaret.internal.drift_report import (
+    create_classification_drift_report,
+    create_regression_drift_report,
+)
 import pycaret.containers.metrics.classification
 import pycaret.containers.metrics.regression
 import pycaret.containers.metrics.clustering
@@ -249,6 +254,12 @@ def setup(
         from sklearn import __version__
 
         logger.info(f"sklearn=={__version__}")
+
+        if version.parse(__version__) != version.parse("0.23.2"):
+            raise RuntimeError(
+                f"This version of PyCaret requires scikit-learn==0.23.2, got {__version__}. Support for newer scikit-learn versions will be added in a future release."
+            )
+
     except ImportError:
         logger.warning("sklearn not found")
 
@@ -621,33 +632,45 @@ def setup(
     if categorical_features is not None:
         for i in categorical_features:
             if i not in all_cols:
-                raise ValueError(
-                    "Column type forced is either target column or doesn't exist in the dataset."
-                )
+                if i == target:
+                    raise ValueError(f"Column type forced  >> {i} << is target column.")
+                else:
+                    raise ValueError(
+                        f"Column type forced  >> {i} << doesn't exist in the dataset."
+                    )
 
     # numeric
     if numeric_features is not None:
         for i in numeric_features:
             if i not in all_cols:
-                raise ValueError(
-                    "Column type forced is either target column or doesn't exist in the dataset."
-                )
+                if i == target:
+                    raise ValueError(f"Column type forced  >> {i} << is target column.")
+                else:
+                    raise ValueError(
+                        f"Column type forced  >> {i} <<  doesn't exist in the dataset."
+                    )
 
     # date features
     if date_features is not None:
         for i in date_features:
             if i not in all_cols:
-                raise ValueError(
-                    "Column type forced is either target column or doesn't exist in the dataset."
-                )
+                if i == target:
+                    raise ValueError(f"Column type forced  >> {i} << is target column.")
+                else:
+                    raise ValueError(
+                        f"Column type forced  >> {i} <<  doesn't exist in the dataset."
+                    )
 
     # drop features
     if ignore_features is not None:
         for i in ignore_features:
             if i not in all_cols:
-                raise ValueError(
-                    "Feature ignored is either target column or doesn't exist in the dataset."
-                )
+                if i == target:
+                    raise ValueError(f"Column type forced  >> {i} << is target column.")
+                else:
+                    raise ValueError(
+                        f"Column type forced  >> {i} <<  doesn't exist in the dataset."
+                    )
 
     # log_experiment
     if type(log_experiment) is not bool:
@@ -661,7 +684,7 @@ def setup(
     if experiment_name is not None:
         if type(experiment_name) is not str:
             raise TypeError("experiment_name parameter must be str if not None.")
-    
+
     # experiment custom tags
     if experiment_custom_tags is not None:
         if not isinstance(experiment_custom_tags, dict):
@@ -1020,13 +1043,15 @@ def setup(
     if use_gpu:
         try:
             from cuml import __version__
- 
+
             cuml_version = __version__
             logger.info(f"cuml=={cuml_version}")
         except:
             logger.warning(f"cuML not found")
 
-        if cuml_version is None or not version.parse(cuml_version) >= version.parse("0.15"):
+        if cuml_version is None or not version.parse(cuml_version) >= version.parse(
+            "0.15"
+        ):
             message = f"cuML is outdated or not found. Required version is >=0.15, got {__version__}"
             if use_gpu == "force":
                 raise ImportError(message)
@@ -1391,11 +1416,15 @@ def setup(
             ).items()
             if not v.is_special
         }
-        _all_models_internal = pycaret.containers.models.classification.get_all_model_containers(
-            globals(), raise_errors=True
+        _all_models_internal = (
+            pycaret.containers.models.classification.get_all_model_containers(
+                globals(), raise_errors=True
+            )
         )
-        _all_metrics = pycaret.containers.metrics.classification.get_all_metric_containers(
-            globals(), raise_errors=True
+        _all_metrics = (
+            pycaret.containers.metrics.classification.get_all_metric_containers(
+                globals(), raise_errors=True
+            )
         )
     elif _ml_usecase == MLUsecase.REGRESSION:
         _all_models = {
@@ -1405,8 +1434,10 @@ def setup(
             ).items()
             if not v.is_special
         }
-        _all_models_internal = pycaret.containers.models.regression.get_all_model_containers(
-            globals(), raise_errors=True
+        _all_models_internal = (
+            pycaret.containers.models.regression.get_all_model_containers(
+                globals(), raise_errors=True
+            )
         )
         _all_metrics = pycaret.containers.metrics.regression.get_all_metric_containers(
             globals(), raise_errors=True
@@ -1419,8 +1450,10 @@ def setup(
             ).items()
             if not v.is_special
         }
-        _all_models_internal = pycaret.containers.models.clustering.get_all_model_containers(
-            globals(), raise_errors=True
+        _all_models_internal = (
+            pycaret.containers.models.clustering.get_all_model_containers(
+                globals(), raise_errors=True
+            )
         )
         _all_metrics = pycaret.containers.metrics.clustering.get_all_metric_containers(
             globals(), raise_errors=True
@@ -1433,8 +1466,10 @@ def setup(
             ).items()
             if not v.is_special
         }
-        _all_models_internal = pycaret.containers.models.anomaly.get_all_model_containers(
-            globals(), raise_errors=True
+        _all_models_internal = (
+            pycaret.containers.models.anomaly.get_all_model_containers(
+                globals(), raise_errors=True
+            )
         )
         _all_metrics = pycaret.containers.metrics.anomaly.get_all_metric_containers(
             globals(), raise_errors=True
@@ -1543,10 +1578,15 @@ def setup(
     exp_name_log = exp_name_
 
     functions = pd.DataFrame(
-        [["session_id", seed],]
+        [
+            ["session_id", seed],
+        ]
         + ([["Target", target]] if not _is_unsupervised(_ml_usecase) else [])
         + (
-            [["Target Type", target_type], ["Label Encoded", label_encoded],]
+            [
+                ["Target Type", target_type],
+                ["Label Encoded", label_encoded],
+            ]
             if _ml_usecase == MLUsecase.CLASSIFICATION
             else []
         )
@@ -1717,68 +1757,65 @@ def setup(
 
         run_name_ = f"Session Initialized {USI}"
 
-        with mlflow.start_run(run_name=run_name_) as run:
+        mlflow.end_run()
+        mlflow.start_run(run_name=run_name_)
 
-            # Get active run to log as tag
-            RunID = mlflow.active_run().info.run_id
+        # Get active run to log as tag
+        RunID = mlflow.active_run().info.run_id
 
-            k = functions.copy()
-            k.set_index("Description", drop=True, inplace=True)
-            kdict = k.to_dict()
-            params = kdict.get("Value")
-            mlflow.log_params(params)
+        k = functions.copy()
+        k.set_index("Description", drop=True, inplace=True)
+        kdict = k.to_dict()
+        params = kdict.get("Value")
+        mlflow.log_params(params)
 
-            # set tag of compare_models
-            mlflow.set_tag("Source", "setup")
+        # set tag of compare_models
+        mlflow.set_tag("Source", "setup")
 
-            # set custom tags if applicable
-            if isinstance(experiment_custom_tags, dict):
-                mlflow.set_tags(experiment_custom_tags)
+        # set custom tags if applicable
+        if isinstance(experiment_custom_tags, dict):
+            mlflow.set_tags(experiment_custom_tags)
 
-            import secrets
+        import secrets
 
-            URI = secrets.token_hex(nbytes=4)
-            mlflow.set_tag("URI", URI)
-            mlflow.set_tag("USI", USI)
-            mlflow.set_tag("Run Time", runtime)
-            mlflow.set_tag("Run ID", RunID)
+        URI = secrets.token_hex(nbytes=4)
+        mlflow.set_tag("URI", URI)
+        mlflow.set_tag("USI", USI)
+        mlflow.set_tag("Run Time", runtime)
+        mlflow.set_tag("Run ID", RunID)
 
-            # Log the transformation pipeline
-            logger.info(
-                "SubProcess save_model() called =================================="
+        # Log the transformation pipeline
+        logger.info("SubProcess save_model() called ==================================")
+        save_model(prep_pipe, "Transformation Pipeline", verbose=False)
+        logger.info("SubProcess save_model() end ==================================")
+        mlflow.log_artifact("Transformation Pipeline.pkl")
+        os.remove("Transformation Pipeline.pkl")
+
+        # Log pandas profile
+        if log_profile:
+            import pandas_profiling
+
+            pf = pandas_profiling.ProfileReport(
+                data_before_preprocess, **profile_kwargs
             )
-            save_model(prep_pipe, "Transformation Pipeline", verbose=False)
-            logger.info(
-                "SubProcess save_model() end =================================="
-            )
-            mlflow.log_artifact("Transformation Pipeline.pkl")
-            os.remove("Transformation Pipeline.pkl")
+            pf.to_file("Data Profile.html")
+            mlflow.log_artifact("Data Profile.html")
+            os.remove("Data Profile.html")
+            display.display(functions_, clear=True)
 
-            # Log pandas profile
-            if log_profile:
-                import pandas_profiling
-
-                pf = pandas_profiling.ProfileReport(
-                    data_before_preprocess, **profile_kwargs
-                )
-                pf.to_file("Data Profile.html")
-                mlflow.log_artifact("Data Profile.html")
-                os.remove("Data Profile.html")
-                display.display(functions_, clear=True)
-
-            # Log training and testing set
-            if log_data:
-                if not _is_unsupervised(_ml_usecase):
-                    X_train.join(y_train).to_csv("Train.csv")
-                    X_test.join(y_test).to_csv("Test.csv")
-                    mlflow.log_artifact("Train.csv")
-                    mlflow.log_artifact("Test.csv")
-                    os.remove("Train.csv")
-                    os.remove("Test.csv")
-                else:
-                    X.to_csv("Dataset.csv")
-                    mlflow.log_artifact("Dataset.csv")
-                    os.remove("Dataset.csv")
+        # Log training and testing set
+        if log_data:
+            if not _is_unsupervised(_ml_usecase):
+                X_train.join(y_train).to_csv("Train.csv")
+                X_test.join(y_test).to_csv("Test.csv")
+                mlflow.log_artifact("Train.csv")
+                mlflow.log_artifact("Test.csv")
+                os.remove("Train.csv")
+                os.remove("Test.csv")
+            else:
+                X.to_csv("Dataset.csv")
+                mlflow.log_artifact("Dataset.csv")
+                os.remove("Dataset.csv")
 
     logger.info(f"create_model_container: {len(create_model_container)}")
     logger.info(f"master_model_container: {len(master_model_container)}")
@@ -1808,6 +1845,7 @@ def compare_models(
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
     experiment_custom_tags: Optional[Dict[str, Any]] = None,
+    probability_threshold: Optional[float] = None,
     verbose: bool = True,
     display: Optional[Display] = None,
 ) -> List[Any]:
@@ -1904,7 +1942,7 @@ def compare_models(
         If None, will use the value set in fold_groups param in setup().
 
     experiment_custom_tags: dict, default = None
-        Dictionary of tag_name: String -> value: (String, but will be string-ified if not) 
+        Dictionary of tag_name: String -> value: (String, but will be string-ified if not)
         passed to the mlflow.set_tags to add new custom tags for the experiment.
 
     verbose: bool, default = True
@@ -1982,7 +2020,7 @@ def compare_models(
             "fold parameter must be either None, an integer or a scikit-learn compatible CV generator object."
         )
 
-    # checking experiment_custom_tags parameter 
+    # checking experiment_custom_tags parameter
     if experiment_custom_tags is not None:
         if not isinstance(experiment_custom_tags, dict):
             raise TypeError("experiment_custom_tags parameter must be dict if not None")
@@ -2169,36 +2207,26 @@ def compare_models(
         logger.info(
             "SubProcess create_model() called =================================="
         )
+        create_model_args = dict(
+            estimator=model,
+            system=False,
+            verbose=False,
+            display=display,
+            fold=fold,
+            round=round,
+            cross_validation=cross_validation,
+            fit_kwargs=fit_kwargs,
+            groups=groups,
+            probability_threshold=probability_threshold,
+            experiment_custom_tags=experiment_custom_tags,
+            refit=False,
+        )
         if errors == "raise":
-            model, model_fit_time = create_model_supervised(
-                estimator=model,
-                system=False,
-                verbose=False,
-                display=display,
-                fold=fold,
-                round=round,
-                cross_validation=cross_validation,
-                fit_kwargs=fit_kwargs,
-                groups=groups,
-                refit=False,
-                experiment_custom_tags=experiment_custom_tags
-            )
+            model, model_fit_time = create_model_supervised(**create_model_args)
             model_results = pull(pop=True)
         else:
             try:
-                model, model_fit_time = create_model_supervised(
-                    estimator=model,
-                    system=False,
-                    verbose=False,
-                    display=display,
-                    fold=fold,
-                    round=round,
-                    cross_validation=cross_validation,
-                    fit_kwargs=fit_kwargs,
-                    groups=groups,
-                    refit=False,
-                    experiment_custom_tags=experiment_custom_tags
-                )
+                model, model_fit_time = create_model_supervised(**create_model_args)
                 model_results = pull(pop=True)
                 assert np.sum(model_results.iloc[0]) != 0.0
             except:
@@ -2207,21 +2235,13 @@ def compare_models(
                 )
                 logger.warning(traceback.format_exc())
                 try:
-                    model, model_fit_time = create_model_supervised(
-                        estimator=model,
-                        system=False,
-                        verbose=False,
-                        display=display,
-                        fold=fold,
-                        round=round,
-                        cross_validation=cross_validation,
-                        groups=groups,
-                        refit=False,
-                        experiment_custom_tags=experiment_custom_tags
-                    )
+                    model, model_fit_time = create_model_supervised(**create_model_args)
                     model_results = pull(pop=True)
+                    assert np.sum(model_results.iloc[0]) != 0.0
                 except:
-                    logger.error(f"create_model() for {model} raised an exception:")
+                    logger.error(
+                        f"create_model() for {model} raised an exception or returned all 0.0:"
+                    )
                     logger.error(traceback.format_exc())
                     continue
         logger.info("SubProcess create_model() end ==================================")
@@ -2330,37 +2350,33 @@ def compare_models(
             if index in n_select_range:
                 display.update_monitor(2, _get_model_name(model))
                 display.display_monitor()
+                create_model_args = dict(
+                    estimator=model,
+                    system=False,
+                    verbose=False,
+                    fold=fold,
+                    round=round,
+                    cross_validation=False,
+                    predict=False,
+                    fit_kwargs=fit_kwargs,
+                    groups=groups,
+                    probability_threshold=probability_threshold,
+                    experiment_custom_tags=experiment_custom_tags,
+                )
                 if errors == "raise":
-                    model, model_fit_time = create_model_supervised(
-                        estimator=model,
-                        system=False,
-                        verbose=False,
-                        fold=fold,
-                        round=round,
-                        cross_validation=False,
-                        predict=False,
-                        fit_kwargs=fit_kwargs,
-                        groups=groups,
-                        experiment_custom_tags=experiment_custom_tags
-                    )
+                    model, model_fit_time = create_model_supervised(**create_model_args)
                     sorted_models.append(model)
                 else:
                     try:
                         model, model_fit_time = create_model_supervised(
-                            estimator=model,
-                            system=False,
-                            verbose=False,
-                            fold=fold,
-                            round=round,
-                            cross_validation=False,
-                            predict=False,
-                            fit_kwargs=fit_kwargs,
-                            groups=groups,
-                            experiment_custom_tags=experiment_custom_tags
+                            **create_model_args
                         )
                         sorted_models.append(model)
+                        assert np.sum(model_results.iloc[0]) != 0.0
                     except Exception:
-                        logger.error(f"create_model() for {model} raised an exception:")
+                        logger.error(
+                            f"create_model() for {model} raised an exception or returned all 0.0:"
+                        )
                         logger.error(traceback.format_exc())
                         model = None
                         continue
@@ -2420,6 +2436,7 @@ def create_model_unsupervised(
     fit_kwargs: Optional[dict] = None,
     verbose: bool = True,
     system: bool = True,
+    add_to_model_list: bool = True,
     raise_num_clusters: bool = False,
     X_data: Optional[pd.DataFrame] = None,  # added in pycaret==2.2.0
     experiment_custom_tags: Optional[Dict[str, Any]] = None,
@@ -2580,7 +2597,6 @@ def create_model_unsupervised(
     if experiment_custom_tags is not None:
         if not isinstance(experiment_custom_tags, dict):
             raise TypeError("experiment_custom_tags parameter must be dict if not None")
-
 
     """
 
@@ -2759,13 +2775,15 @@ def create_model_unsupervised(
     model_results = pd.DataFrame(metrics, index=[0])
     model_results = model_results.round(round)
 
-    # storing results in create_model_container
-    create_model_container.append(model_results)
     display_container.append(model_results)
 
-    # storing results in master_model_container
-    logger.info("Uploading model into container now")
-    master_model_container.append(model)
+    if add_to_model_list:
+        # storing results in create_model_container
+        create_model_container.append(model_results)
+
+        # storing results in master_model_container
+        logger.info("Uploading model into container now")
+        master_model_container.append(model)
 
     if _ml_usecase == MLUsecase.CLUSTERING:
         display.display(
@@ -2805,6 +2823,8 @@ def create_model_supervised(
     y_train_data: Optional[pd.DataFrame] = None,  # added in pycaret==2.2.0
     metrics=None,
     experiment_custom_tags: Optional[Dict[str, Any]] = None,
+    add_to_model_list: bool = True,
+    probability_threshold: Optional[float] = None,
     display: Optional[Display] = None,  # added in pycaret==2.2.0
     **kwargs,
 ) -> Any:
@@ -3081,6 +3101,18 @@ def create_model_supervised(
         model = PowerTransformedTargetRegressor(
             regressor=model, power_transformer_method=transform_target_method_param
         )
+    if (
+        probability_threshold
+        and _ml_usecase == MLUsecase.CLASSIFICATION
+        and not _is_multiclass()
+    ):
+        if not isinstance(model, CustomProbabilityThresholdClassifier):
+            model = CustomProbabilityThresholdClassifier(
+                classifier=model,
+                probability_threshold=probability_threshold,
+            )
+        elif probability_threshold is not None:
+            model.set_params(probability_threshold=probability_threshold)
 
     logger.info(f"{full_name} Imported succesfully")
 
@@ -3201,7 +3233,10 @@ def create_model_supervised(
         logger.info("Creating metrics dataframe")
 
         model_results = pd.DataFrame(score_dict)
-        model_avgs = pd.DataFrame(avgs_dict, index=["Mean", "SD"],)
+        model_avgs = pd.DataFrame(
+            avgs_dict,
+            index=["Mean", "SD"],
+        )
 
         model_results = model_results.append(model_avgs)
         model_results = model_results.round(round)
@@ -3253,15 +3288,17 @@ def create_model_supervised(
 
     display.move_progress()
 
-    logger.info("Uploading results into container")
-
-    # storing results in create_model_container
-    create_model_container.append(model_results.data)
     display_container.append(model_results.data)
 
-    # storing results in master_model_container
-    logger.info("Uploading model into container now")
-    master_model_container.append(model)
+    if add_to_model_list:
+        logger.info("Uploading results into container")
+
+        # storing results in create_model_container
+        create_model_container.append(model_results.data)
+
+        # storing results in master_model_container
+        logger.info("Uploading model into container now")
+        master_model_container.append(model)
 
     display.display(model_results, clear=system, override=False if not system else None)
 
@@ -3343,16 +3380,20 @@ def tune_model_unsupervised(
         metrics = pycaret.containers.metrics.classification.get_all_metric_containers(
             temp_globals, raise_errors=True
         )
-        available_estimators = pycaret.containers.models.classification.get_all_model_containers(
-            temp_globals, raise_errors=True
+        available_estimators = (
+            pycaret.containers.models.classification.get_all_model_containers(
+                temp_globals, raise_errors=True
+            )
         )
         ml_usecase = MLUsecase.CLASSIFICATION
     elif supervised_type == "regression":
         metrics = pycaret.containers.metrics.regression.get_all_metric_containers(
             temp_globals, raise_errors=True
         )
-        available_estimators = pycaret.containers.models.regression.get_all_model_containers(
-            temp_globals, raise_errors=True
+        available_estimators = (
+            pycaret.containers.models.regression.get_all_model_containers(
+                temp_globals, raise_errors=True
+            )
         )
         ml_usecase = MLUsecase.REGRESSION
     else:
@@ -3478,7 +3519,8 @@ def tune_model_unsupervised(
         )
         if _ml_usecase == MLUsecase.CLUSTERING:
             unsupervised_grids[k] = pd.get_dummies(
-                unsupervised_grids[k], columns=["Cluster"],
+                unsupervised_grids[k],
+                columns=["Cluster"],
             )
         elif method == "drop":
             unsupervised_grids[k] = unsupervised_grids[k][
@@ -4662,6 +4704,7 @@ def ensemble_model(
     optimize: str = "Accuracy",
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
+    probability_threshold: Optional[float] = None,
     verbose: bool = True,
     display: Optional[Display] = None,  # added in pycaret==2.2.0
 ) -> Any:
@@ -4946,6 +4989,7 @@ def ensemble_model(
         round=round,
         fit_kwargs=fit_kwargs,
         groups=groups,
+        probability_threshold=probability_threshold,
     )
     best_model = model
     model_results = pull()
@@ -5013,6 +5057,7 @@ def blend_models(
     weights: Optional[List[float]] = None,  # added in pycaret==2.2.0
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
+    probability_threshold: Optional[float] = None,
     verbose: bool = True,
     display: Optional[Display] = None,  # added in pycaret==2.2.0
 ) -> Any:
@@ -5293,6 +5338,7 @@ def blend_models(
         round=round,
         fit_kwargs=fit_kwargs,
         groups=groups,
+        probability_threshold=probability_threshold,
     )
     model_results = pull()
     logger.info("SubProcess create_model() end ==================================")
@@ -5352,6 +5398,7 @@ def blend_models(
 def stack_models(
     estimator_list: list,
     meta_model=None,
+    meta_model_fold: Optional[Union[int, Any]] = 5,
     fold: Optional[Union[int, Any]] = None,
     round: int = 4,
     method: str = "auto",
@@ -5360,6 +5407,7 @@ def stack_models(
     optimize: str = "Accuracy",
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
+    probability_threshold: Optional[float] = None,
     verbose: bool = True,
     display: Optional[Display] = None,
 ) -> Any:
@@ -5398,6 +5446,12 @@ def stack_models(
 
     meta_model : object, default = None
         If set to None, Logistic Regression is used as a meta model.
+
+    meta_model_fold: integer or scikit-learn compatible CV generator, default = 5
+        Controls internal cross-validation. Can be an integer or a scikit-learn
+        CV generator. If set to an integer, will use (Stratifed)KFold CV with
+        that many folds. See scikit-learn documentation on Stacking for
+        more details.
 
     fold: integer or scikit-learn compatible CV generator, default = None
         Controls cross-validation. If None, will use the CV generator defined in setup().
@@ -5615,7 +5669,7 @@ def stack_models(
         model = stacking_model_definition.class_def(
             estimators=estimator_list,
             final_estimator=meta_model,
-            cv=fold,
+            cv=meta_model_fold,
             stack_method=method,
             n_jobs=_gpu_n_jobs_param,
             passthrough=restack,
@@ -5624,7 +5678,7 @@ def stack_models(
         model = stacking_model_definition.class_def(
             estimators=estimator_list,
             final_estimator=meta_model,
-            cv=fold,
+            cv=meta_model_fold,
             n_jobs=_gpu_n_jobs_param,
             passthrough=restack,
         )
@@ -5643,6 +5697,7 @@ def stack_models(
         round=round,
         fit_kwargs=fit_kwargs,
         groups=groups,
+        probability_threshold=probability_threshold,
     )
     model_results = pull()
     logger.info("SubProcess create_model() end ==================================")
@@ -5703,9 +5758,10 @@ def plot_model(
     estimator,
     plot: str = "auc",
     scale: float = 1,  # added in pycaret==2.1.0
-    save: bool = False,
+    save: Union[str, bool] = False,
     fold: Optional[Union[int, Any]] = None,
     fit_kwargs: Optional[dict] = None,
+    plot_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
     feature_name: Optional[str] = None,
     label: bool = False,
@@ -5745,19 +5801,19 @@ def plot_model(
 
         * 'residuals_interactive' - Interactive Residual plots
         * 'auc' - Area Under the Curve
-        * 'threshold' - Discrimination Threshold           
-        * 'pr' - Precision Recall Curve                  
-        * 'confusion_matrix' - Confusion Matrix    
-        * 'error' - Class Prediction Error                
-        * 'class_report' - Classification Report        
-        * 'boundary' - Decision Boundary            
-        * 'rfe' - Recursive Feature Selection                 
-        * 'learning' - Learning Curve             
-        * 'manifold' - Manifold Learning            
-        * 'calibration' - Calibration Curve         
-        * 'vc' - Validation Curve                  
-        * 'dimension' - Dimension Learning           
-        * 'feature' - Feature Importance              
+        * 'threshold' - Discrimination Threshold
+        * 'pr' - Precision Recall Curve
+        * 'confusion_matrix' - Confusion Matrix
+        * 'error' - Class Prediction Error
+        * 'class_report' - Classification Report
+        * 'boundary' - Decision Boundary
+        * 'rfe' - Recursive Feature Selection
+        * 'learning' - Learning Curve
+        * 'manifold' - Manifold Learning
+        * 'calibration' - Calibration Curve
+        * 'vc' - Validation Curve
+        * 'dimension' - Dimension Learning
+        * 'feature' - Feature Importance
         * 'feature_all' - Feature Importance (All)
         * 'parameter' - Model Hyperparameter
         * 'lift' - Lift Curve
@@ -5767,8 +5823,9 @@ def plot_model(
     scale: float, default = 1
         The resolution scale of the figure.
 
-    save: bool, default = False
+    save: string or bool, default = False
         When set to True, Plot is saved as a 'png' file in current working directory.
+        When a path destination is given, Plot is saved as a 'png' file the given path to the directory of choice.
 
     fold: integer or scikit-learn compatible CV generator, default = None
         Controls cross-validation used in certain plots. If None, will use the CV generator
@@ -5777,6 +5834,9 @@ def plot_model(
 
     fit_kwargs: dict, default = {} (empty dict)
         Dictionary of arguments passed to the fit method of the model.
+
+    plot_kwargs: dict, default = {} (empty dict)
+        Dictionary of arguments passed to the visualizer class.
 
     groups: str or array-like, with shape (n_samples,), default = None
         Optional Group labels for the samples used while splitting the dataset into train/test set.
@@ -5827,6 +5887,9 @@ def plot_model(
 
     if not fit_kwargs:
         fit_kwargs = {}
+
+    if not plot_kwargs:
+        plot_kwargs = {}
 
     if not hasattr(estimator, "fit"):
         raise ValueError(
@@ -6008,6 +6071,9 @@ def plot_model(
     ), patch(
         "yellowbrick.utils.helpers.is_estimator",
         pycaret.internal.patches.yellowbrick.is_estimator,
+    ), patch(
+        "yellowbrick.utils.helpers.get_model_name",
+        pycaret.internal.patches.yellowbrick.get_model_name,
     ), estimator_pipeline(
         _internal_pipeline, model
     ) as pipeline_with_model:
@@ -6034,8 +6100,12 @@ def plot_model(
             plot_filename = f"{plot_name}.html"
 
             if save:
+                if not isinstance(save, bool):
+                    plot_filename = os.path.join(save, plot_filename)
+                else:
+                    plot_filename = plot
+                logger.info(f"Saving '{plot_filename}'")
                 resplots.write_html(plot_filename)
-                logger.info(f"Saving '{plot_filename}' in current active directory")
 
             logger.info("Visual Rendered Successfully")
             return plot_filename
@@ -6121,9 +6191,12 @@ def plot_model(
             plot_filename = f"{plot_name}.html"
 
             if save:
+                if not isinstance(save, bool):
+                    plot_filename = os.path.join(save, plot_filename)
+                else:
+                    plot_filename = plot
+                logger.info(f"Saving '{plot_filename}'")
                 fig.write_html(plot_filename)
-                logger.info(f"Saving '{plot_filename}' in current active directory")
-
             elif system:
                 if display_format == "streamlit":
                     st.write(fig)
@@ -6185,8 +6258,12 @@ def plot_model(
             plot_filename = f"{plot_name}.html"
 
             if save:
-                fig.write_html(f"{plot_filename}")
-                logger.info(f"Saving '{plot_filename}' in current active directory")
+                if not isinstance(save, bool):
+                    plot_filename = os.path.join(save, plot_filename)
+                else:
+                    plot_filename = plot
+                logger.info(f"Saving '{plot_filename}'")
+                fig.write_html(plot_filename)
             elif system:
                 if display_format == "streamlit":
                     st.write(fig)
@@ -6266,8 +6343,12 @@ def plot_model(
             plot_filename = f"{plot_name}.html"
 
             if save:
-                fig.write_html(f"{plot_filename}")
-                logger.info(f"Saving '{plot_filename}' in current active directory")
+                if not isinstance(save, bool):
+                    plot_filename = os.path.join(save, plot_filename)
+                else:
+                    plot_filename = plot
+                logger.info(f"Saving '{plot_filename}'")
+                fig.write_html(plot_filename)
             elif system:
                 if display_format == "streamlit":
                     st.write(fig)
@@ -6282,7 +6363,10 @@ def plot_model(
                 "SubProcess assign_model() called =================================="
             )
             b = assign_model(
-                pipeline_with_model, verbose=False, score=False, transformation=True,
+                pipeline_with_model,
+                verbose=False,
+                score=False,
+                transformation=True,
             ).reset_index(drop=True)
             logger.info(
                 "SubProcess assign_model() end =================================="
@@ -6358,8 +6442,12 @@ def plot_model(
             plot_filename = f"{plot_name}.html"
 
             if save:
-                fig.write_html(f"{plot_filename}")
-                logger.info(f"Saving '{plot_filename}' in current active directory")
+                if not isinstance(save, bool):
+                    plot_filename = os.path.join(save, plot_filename)
+                else:
+                    plot_filename = plot
+                logger.info(f"Saving '{plot_filename}'")
+                fig.write_html(plot_filename)
             elif system:
                 if display_format == "streamlit":
                     st.write(fig)
@@ -6422,13 +6510,19 @@ def plot_model(
                 hover_data=d.columns,
             )
 
-            fig.update_layout(height=600 * scale,)
+            fig.update_layout(
+                height=600 * scale,
+            )
 
             plot_filename = f"{plot_name}.html"
 
             if save:
-                fig.write_html(f"{plot_filename}")
-                logger.info(f"Saving '{plot_filename}' in current active directory")
+                if not isinstance(save, bool):
+                    plot_filename = os.path.join(save, plot_filename)
+                else:
+                    plot_filename = plot
+                logger.info(f"Saving '{plot_filename}'")
+                fig.write_html(plot_filename)
             elif system:
                 fig.show()
 
@@ -6439,7 +6533,9 @@ def plot_model(
             try:
                 from yellowbrick.cluster import KElbowVisualizer
 
-                visualizer = KElbowVisualizer(pipeline_with_model, timings=False)
+                visualizer = KElbowVisualizer(
+                    pipeline_with_model, timings=False, **plot_kwargs
+                )
                 show_yellowbrick_plot(
                     visualizer=visualizer,
                     X_train=data_X,
@@ -6466,7 +6562,7 @@ def plot_model(
 
             try:
                 visualizer = SilhouetteVisualizer(
-                    pipeline_with_model, colors="yellowbrick"
+                    pipeline_with_model, colors="yellowbrick", **plot_kwargs
                 )
                 show_yellowbrick_plot(
                     visualizer=visualizer,
@@ -6492,7 +6588,7 @@ def plot_model(
             from yellowbrick.cluster import InterclusterDistance
 
             try:
-                visualizer = InterclusterDistance(pipeline_with_model)
+                visualizer = InterclusterDistance(pipeline_with_model, **plot_kwargs)
                 show_yellowbrick_plot(
                     visualizer=visualizer,
                     X_train=data_X,
@@ -6517,7 +6613,7 @@ def plot_model(
 
             from yellowbrick.regressor import ResidualsPlot
 
-            visualizer = ResidualsPlot(pipeline_with_model)
+            visualizer = ResidualsPlot(pipeline_with_model, **plot_kwargs)
             show_yellowbrick_plot(
                 visualizer=visualizer,
                 X_train=data_X,
@@ -6537,7 +6633,18 @@ def plot_model(
 
             from yellowbrick.classifier import ROCAUC
 
-            visualizer = ROCAUC(pipeline_with_model)
+            try:
+                dtype_object = get_config("prep_pipe").steps[0][1]
+                encoder_labels = dtype_object.le.transform(dtype_object.le.classes_)
+                encoder_classes = dtype_object.le.classes_
+                encoder_dictionary = dict(zip(encoder_labels, encoder_classes))
+            except:
+                encoder_dictionary = None
+
+            visualizer = ROCAUC(
+                pipeline_with_model, encoder=encoder_dictionary, **plot_kwargs
+            )
+
             show_yellowbrick_plot(
                 visualizer=visualizer,
                 X_train=data_X,
@@ -6557,7 +6664,9 @@ def plot_model(
 
             from yellowbrick.classifier import DiscriminationThreshold
 
-            visualizer = DiscriminationThreshold(pipeline_with_model, random_state=seed)
+            visualizer = DiscriminationThreshold(
+                pipeline_with_model, random_state=seed, **plot_kwargs
+            )
             show_yellowbrick_plot(
                 visualizer=visualizer,
                 X_train=data_X,
@@ -6577,7 +6686,9 @@ def plot_model(
 
             from yellowbrick.classifier import PrecisionRecallCurve
 
-            visualizer = PrecisionRecallCurve(pipeline_with_model, random_state=seed)
+            visualizer = PrecisionRecallCurve(
+                pipeline_with_model, random_state=seed, **plot_kwargs
+            )
             show_yellowbrick_plot(
                 visualizer=visualizer,
                 X_train=data_X,
@@ -6597,8 +6708,32 @@ def plot_model(
 
             from yellowbrick.classifier import ConfusionMatrix
 
+            try:
+                dtype_object = get_config("prep_pipe").steps[0][1]
+                encoder_labels = dtype_object.le.transform(dtype_object.le.classes_)
+                encoder_classes = dtype_object.le.classes_
+                encoder_dictionary = dict(zip(encoder_labels, encoder_classes))
+            except:
+                encoder_dictionary = None
+
+            # temp patching for rendering purposes
+            try:
+                cmap_user_defined = plot_kwargs["cmap"]
+            except:
+                plot_kwargs["cmap"] = "Greens"
+
+            try:
+                fontsize_user_defined = plot_kwargs["fontsize"]
+            except:
+                plot_kwargs["fontsize"] = 15
+
             visualizer = ConfusionMatrix(
-                pipeline_with_model, random_state=seed, fontsize=15, cmap="Greens",
+                pipeline_with_model,
+                random_state=seed,
+                # fontsize=fontsize_user_defined,
+                # cmap=cmap_user_defined,
+                encoder=encoder_dictionary,
+                **plot_kwargs,
             )
             show_yellowbrick_plot(
                 visualizer=visualizer,
@@ -6620,14 +6755,27 @@ def plot_model(
             if _ml_usecase == MLUsecase.CLASSIFICATION:
                 from yellowbrick.classifier import ClassPredictionError
 
+                try:
+                    dtype_object = get_config("prep_pipe").steps[0][1]
+                    encoder_labels = dtype_object.le.transform(dtype_object.le.classes_)
+                    encoder_classes = dtype_object.le.classes_
+                    encoder_dictionary = dict(zip(encoder_labels, encoder_classes))
+                except:
+                    encoder_dictionary = None
+
                 visualizer = ClassPredictionError(
-                    pipeline_with_model, random_state=seed
+                    pipeline_with_model,
+                    random_state=seed,
+                    encoder=encoder_dictionary,
+                    **plot_kwargs,
                 )
 
             elif _ml_usecase == MLUsecase.REGRESSION:
                 from yellowbrick.regressor import PredictionError
 
-                visualizer = PredictionError(pipeline_with_model, random_state=seed)
+                visualizer = PredictionError(
+                    pipeline_with_model, random_state=seed, **plot_kwargs
+                )
 
             show_yellowbrick_plot(
                 visualizer=visualizer,
@@ -6669,9 +6817,22 @@ def plot_model(
 
             from yellowbrick.classifier import ClassificationReport
 
+            try:
+                dtype_object = get_config("prep_pipe").steps[0][1]
+                encoder_labels = dtype_object.le.transform(dtype_object.le.classes_)
+                encoder_classes = dtype_object.le.classes_
+                encoder_dictionary = dict(zip(encoder_labels, encoder_classes))
+            except:
+                encoder_dictionary = None
+
             visualizer = ClassificationReport(
-                pipeline_with_model, random_state=seed, support=True
+                pipeline_with_model,
+                random_state=seed,
+                support=True,
+                encoder=encoder_dictionary,
+                **plot_kwargs,
             )
+
             show_yellowbrick_plot(
                 visualizer=visualizer,
                 X_train=data_X,
@@ -6706,7 +6867,17 @@ def plot_model(
             data_y_transformed = np.array(data_y)
             test_y_transformed = np.array(test_y)
 
-            viz_ = DecisionViz(pipeline_with_model)
+            try:
+                dtype_object = get_config("prep_pipe").steps[0][1]
+                encoder_labels = dtype_object.le.transform(dtype_object.le.classes_)
+                encoder_classes = dtype_object.le.classes_
+                encoder_dictionary = dict(zip(encoder_labels, encoder_classes))
+            except:
+                encoder_dictionary = None
+
+            viz_ = DecisionViz(
+                pipeline_with_model, encoder=encoder_dictionary, **plot_kwargs
+            )
             show_yellowbrick_plot(
                 visualizer=viz_,
                 X_train=data_X_transformed,
@@ -6729,7 +6900,7 @@ def plot_model(
 
             from yellowbrick.model_selection import RFECV
 
-            visualizer = RFECV(pipeline_with_model, cv=cv)
+            visualizer = RFECV(pipeline_with_model, cv=cv, **plot_kwargs)
             show_yellowbrick_plot(
                 visualizer=visualizer,
                 X_train=data_X,
@@ -6757,6 +6928,7 @@ def plot_model(
                 train_sizes=sizes,
                 n_jobs=_gpu_n_jobs_param,
                 random_state=seed,
+                **plot_kwargs,
             )
             show_yellowbrick_plot(
                 visualizer=visualizer,
@@ -6781,7 +6953,7 @@ def plot_model(
             with fit_if_not_fitted(
                 pipeline_with_model, data_X, data_y, groups=groups, **fit_kwargs
             ) as fitted_pipeline_with_model:
-                y_test__ = test_y #fitted_pipeline_with_model.predict(X_test)
+                y_test__ = test_y  # fitted_pipeline_with_model.predict(X_test)
                 predict_proba__ = fitted_pipeline_with_model.predict_proba(X_test)
             display.move_progress()
             display.move_progress()
@@ -6791,10 +6963,17 @@ def plot_model(
                     y_test__, predict_proba__, figsize=(10, 6)
                 )
                 if save:
-                    logger.info(f"Saving '{plot_name}.png' in current active directory")
-                    plt.savefig(f"{plot_name}.png", bbox_inches="tight")
+                    if not isinstance(save, bool):
+                        plot_filename = os.path.join(save, plot_name)
+                    else:
+                        plot_filename = plot
+                    logger.info(f"Saving '{plot_filename}.png'")
+                    plt.savefig(f"{plot_filename}.png", bbox_inches="tight")
                 elif system:
-                    plt.show()
+                    if display_format == "streamlit":
+                        st.pyplot(plt, clear_figure=True)
+                    else:
+                        plt.show()
                 plt.close()
 
             logger.info("Visual Rendered Successfully")
@@ -6806,7 +6985,7 @@ def plot_model(
             with fit_if_not_fitted(
                 pipeline_with_model, data_X, data_y, groups=groups, **fit_kwargs
             ) as fitted_pipeline_with_model:
-                y_test__ = test_y #fitted_pipeline_with_model.predict(X_test)
+                y_test__ = test_y  # fitted_pipeline_with_model.predict(X_test)
                 predict_proba__ = fitted_pipeline_with_model.predict_proba(X_test)
             display.move_progress()
             display.move_progress()
@@ -6816,10 +6995,17 @@ def plot_model(
                     y_test__, predict_proba__, figsize=(10, 6)
                 )
                 if save:
-                    logger.info(f"Saving '{plot_name}.png' in current active directory")
-                    plt.savefig(f"{plot_name}.png", bbox_inches="tight")
+                    if not isinstance(save, bool):
+                        plot_filename = os.path.join(save, plot_name)
+                    else:
+                        plot_filename = plot
+                    logger.info(f"Saving '{plot_filename}.png'")
+                    plt.savefig(f"{plot_filename}.png", bbox_inches="tight")
                 elif system:
-                    plt.show()
+                    if display_format == "streamlit":
+                        st.pyplot(plt, clear_figure=True)
+                    else:
+                        plt.show()
                 plt.close()
 
             logger.info("Visual Rendered Successfully")
@@ -6829,7 +7015,8 @@ def plot_model(
             from yellowbrick.features import Manifold
 
             data_X_transformed = data_X.select_dtypes(include="float32")
-            visualizer = Manifold(manifold="tsne", random_state=seed)
+            visualizer = Manifold(manifold="tsne", random_state=seed, **plot_kwargs)
+
             show_yellowbrick_plot(
                 visualizer=visualizer,
                 X_train=data_X_transformed,
@@ -6900,11 +7087,12 @@ def plot_model(
             ) as fitted_pipeline_with_model:
                 trees = []
                 feature_names = list(data_X.columns)
-                if _ml_usecase == MLUsecase.CLASSIFICATION:
-                    class_names = {
-                        v: k
-                        for k, v in prep_pipe.named_steps["dtypes"].replacement.items()
-                    }
+                if _ml_usecase == MLUsecase.CLASSIFICATION and hasattr(
+                    prep_pipe.named_steps["dtypes"], "replacement"
+                ):
+                    class_names = list(
+                        prep_pipe.named_steps["dtypes"].replacement.keys()
+                    )
                 else:
                     class_names = None
                 fitted_tree_estimator = fitted_pipeline_with_model.steps[-1][1]
@@ -6938,8 +7126,6 @@ def plot_model(
                         trees = fitted_tree_estimator.estimators_
                     except:
                         trees = [fitted_tree_estimator]
-                if _ml_usecase == MLUsecase.CLASSIFICATION:
-                    class_names = list(class_names.values())
                 for i, tree in enumerate(trees):
                     logger.info(f"Plotting tree {i}")
                     plot_tree(
@@ -6959,10 +7145,17 @@ def plot_model(
             display.move_progress()
             display.clear_output()
             if save:
-                logger.info(f"Saving '{plot_name}.png' in current active directory")
-                plt.savefig(f"{plot_name}.png", bbox_inches="tight")
+                if not isinstance(save, bool):
+                    plot_filename = os.path.join(save, plot_name)
+                else:
+                    plot_filename = plot
+                logger.info(f"Saving '{plot_filename}.png'")
+                plt.savefig(f"{plot_filename}.png", bbox_inches="tight")
             elif system:
-                plt.show()
+                if display_format == "streamlit":
+                    st.pyplot(plt, clear_figure=True)
+                else:
+                    plt.show()
             plt.close()
 
             logger.info("Visual Rendered Successfully")
@@ -7004,8 +7197,12 @@ def plot_model(
             display.move_progress()
             display.clear_output()
             if save:
-                logger.info(f"Saving '{plot_name}.png' in current active directory")
-                plt.savefig(f"{plot_name}.png", bbox_inches="tight")
+                if not isinstance(save, bool):
+                    plot_filename = os.path.join(save, plot_name)
+                else:
+                    plot_filename = plot_name
+                logger.info(f"Saving '{plot_filename}.png'")
+                plt.savefig(f"{plot_filename}.png", bbox_inches="tight")
             elif system:
                 plt.show()
             plt.close()
@@ -7167,6 +7364,7 @@ def plot_model(
                 cv=cv,
                 random_state=seed,
                 n_jobs=_gpu_n_jobs_param,
+                **plot_kwargs,
             )
             show_yellowbrick_plot(
                 visualizer=viz,
@@ -7204,7 +7402,7 @@ def plot_model(
             data_X_transformed = pca.fit_transform(data_X_transformed)
             display.move_progress()
             classes = data_y.unique().tolist()
-            visualizer = RadViz(classes=classes, alpha=0.25)
+            visualizer = RadViz(classes=classes, alpha=0.25, **plot_kwargs)
 
             show_yellowbrick_plot(
                 visualizer=visualizer,
@@ -7264,10 +7462,17 @@ def plot_model(
             display.move_progress()
             display.clear_output()
             if save:
-                logger.info(f"Saving '{plot_name}.png' in current active directory")
-                plt.savefig(f"{plot_name}.png", bbox_inches="tight")
+                if not isinstance(save, bool):
+                    plot_filename = os.path.join(save, plot_name)
+                else:
+                    plot_filename = plot_name
+                logger.info(f"Saving '{plot_filename}.png'")
+                plt.savefig(f"{plot_filename}.png", bbox_inches="tight")
             elif system:
-                plt.show()
+                if display_format == "streamlit":
+                    st.pyplot(plt, clear_figure=True)
+                else:
+                    plt.show()
             plt.close()
 
             logger.info("Visual Rendered Successfully")
@@ -7303,10 +7508,17 @@ def plot_model(
                     data_y, predict_proba__, figsize=(10, 6)
                 )
                 if save:
-                    logger.info(f"Saving '{plot_name}.png' in current active directory")
-                    plt.savefig(f"{plot_name}.png", bbox_inches="tight")
+                    if not isinstance(save, bool):
+                        plot_filename = os.path.join(save, plot_name)
+                    else:
+                        plot_filename = plot
+                    logger.info(f"Saving '{plot_filename}.png'")
+                    plt.savefig(f"{plot_filename}.png", bbox_inches="tight")
                 elif system:
-                    plt.show()
+                    if display_format == "streamlit":
+                        st.pyplot(plt, clear_figure=True)
+                    else:
+                        plt.show()
                 plt.close()
 
             logger.info("Visual Rendered Successfully")
@@ -7335,6 +7547,7 @@ def evaluate_model(
     estimator,
     fold: Optional[Union[int, Any]] = None,
     fit_kwargs: Optional[dict] = None,
+    plot_kwargs: Optional[dict] = None,
     feature_name: Optional[str] = None,
     groups: Optional[Union[str, Any]] = None,
     use_train_data: bool = False,
@@ -7394,6 +7607,9 @@ def evaluate_model(
     if not fit_kwargs:
         fit_kwargs = {}
 
+    if not plot_kwargs:
+        plot_kwargs = {}
+
     a = widgets.ToggleButtons(
         options=[(v, k) for k, v in _available_plots.items()],
         description="Plot Type:",
@@ -7415,6 +7631,7 @@ def evaluate_model(
         scale=fixed(1),
         fold=fixed(fold),
         fit_kwargs=fixed(fit_kwargs),
+        plot_kwargs=fixed(plot_kwargs),
         feature_name=fixed(feature_name),
         label=fixed(False),
         groups=fixed(groups),
@@ -7434,7 +7651,7 @@ def interpret_model(
     use_train_data: Optional[bool] = False,
     X_new_sample: Optional[pd.DataFrame] = None,
     y_new_sample: Optional[pd.DataFrame] = None,  # add for pfi explainer
-    save: bool = False,
+    save: Union[str, bool] = False,
     **kwargs,  # added in pycaret==2.1
 ):
 
@@ -7503,8 +7720,9 @@ def interpret_model(
         The sample must have the same columns as the raw input label data, and it is transformed
         by the preprocessing pipeline automatically before plotting.
 
-    save: bool, default = False
+    save: string or bool, default = False
         When set to True, Plot is saved as a 'png' file in current working directory.
+        When a path destination is given, Plot is saved as a 'png' file the given path to the directory of choice.
 
     **kwargs:
         Additional keyword arguments to pass to the plot.
@@ -7648,7 +7866,13 @@ def interpret_model(
             shap_plot = shap.summary_plot(shap_values, test_X, show=show, **kwargs)
 
         if save:
-            plt.savefig(f"SHAP {plot}.png", bbox_inches="tight")
+            plot_filename = f"SHAP {plot}.png"
+            if not isinstance(save, bool):
+                plot_filename = os.path.join(save, plot_filename)
+            logger.info(f"Saving '{plot_filename}'")
+            plt.savefig(plot_filename, bbox_inches="tight")
+            plt.close()
+
         return shap_plot
 
     def correlation(show: bool = True):
@@ -7681,7 +7905,13 @@ def interpret_model(
             logger.info("model type detected: type 2")
             shap.dependence_plot(dependence, shap_values, test_X, show=show, **kwargs)
         if save:
-            plt.savefig(f"SHAP {plot}.png", bbox_inches="tight")
+            plot_filename = f"SHAP {plot}.png"
+            if not isinstance(save, bool):
+                plot_filename = os.path.join(save, plot_filename)
+            logger.info(f"Saving '{plot_filename}'")
+            plt.savefig(plot_filename, bbox_inches="tight")
+            plt.close()
+
         return None
 
     def reason(show: bool = True):
@@ -7767,7 +7997,11 @@ def interpret_model(
                     **kwargs,
                 )
         if save:
-            shap.save_html(f"SHAP {plot}.html", shap_plot)
+            plot_filename = f"SHAP {plot}.html"
+            if not isinstance(save, bool):
+                plot_filename = os.path.join(save, plot_filename)
+            logger.info(f"Saving '{plot_filename}'")
+            shap.save_html(plot_filename, shap_plot)
         return shap_plot
 
     def pdp(show: bool = True):
@@ -7797,7 +8031,11 @@ def interpret_model(
         if save:
             import plotly.io as pio
 
-            pio.write_html(pdp_plot, f"PDP {plot}.html")
+            plot_filename = f"PDP {plot}.html"
+            if not isinstance(save, bool):
+                plot_filename = os.path.join(save, plot_filename)
+            logger.info(f"Saving '{plot_filename}'")
+            pio.write_html(pdp_plot, plot_filename)
         return pdp_plot
 
     def msa(show: bool = True):
@@ -7814,7 +8052,11 @@ def interpret_model(
         if save:
             import plotly.io as pio
 
-            pio.write_html(msa_plot, f"MSA {plot}.html")
+            plot_filename = f"MSA {plot}.html"
+            if not isinstance(save, bool):
+                plot_filename = os.path.join(save, plot_filename)
+            logger.info(f"Saving '{plot_filename}'")
+            pio.write_html(msa_plot, plot_filename)
         return msa_plot
 
     def pfi(show: bool = True):
@@ -7826,7 +8068,11 @@ def interpret_model(
         if save:
             import plotly.io as pio
 
-            pio.write_html(pfi_plot, f"PFI {plot}.html")
+            plot_filename = f"PFI {plot}.html"
+            if not isinstance(save, bool):
+                plot_filename = os.path.join(save, plot_filename)
+            logger.info(f"Saving '{plot_filename}'")
+            pio.write_html(pfi_plot, plot_filename)
         return pfi_plot
 
     shap_plot = locals()[plot](show=not save)
@@ -7844,6 +8090,7 @@ def interpret_model(
 def calibrate_model(
     estimator,
     method: str = "sigmoid",
+    calibrate_fold: Optional[Union[int, Any]] = None,
     fold: Optional[Union[int, Any]] = None,
     round: int = 4,
     fit_kwargs: Optional[dict] = None,
@@ -7991,6 +8238,11 @@ def calibrate_model(
 
     np.random.seed(seed)
 
+    probability_threshold = None
+    if isinstance(estimator, CustomProbabilityThresholdClassifier):
+        probability_threshold = estimator.probability_threshold
+        estimator = get_estimator_from_meta_estimator(estimator)
+
     logger.info("Getting model name")
 
     full_name = _get_model_name(estimator)
@@ -8019,7 +8271,7 @@ def calibrate_model(
     model = calibrated_model_definition.class_def(
         base_estimator=estimator,
         method=method,
-        cv=fold,
+        cv=calibrate_fold,
         **calibrated_model_definition.args,
     )
 
@@ -8034,6 +8286,7 @@ def calibrate_model(
         round=round,
         fit_kwargs=fit_kwargs,
         groups=groups,
+        probability_threshold=probability_threshold,
     )
     model_results = pull()
     logger.info("SubProcess create_model() end ==================================")
@@ -8090,6 +8343,7 @@ def optimize_threshold(
     true_negative: int = 0,
     false_positive: int = 0,
     false_negative: int = 0,
+    grid_interval: float = 0.0001,
 ):
 
     """
@@ -8127,6 +8381,8 @@ def optimize_threshold(
     false_negative : int, default = 0
         Cost function or returns when prediction is false negative.
 
+    grid_interval : float, default = 0.0001
+        Grid inerval for threshold grid search. Iteration count = 1.0/grid_interval. Default 10000 iterations.
 
     Returns
     -------
@@ -8187,12 +8443,15 @@ def optimize_threshold(
     if type(false_negative) not in allowed_types:
         raise TypeError("false_negative parameter only accepts float or integer value.")
 
+    if type(grid_interval) not in allowed_types or grid_interval > 1.0:
+        raise TypeError("grid_interval should be float and less than 1.0.")
+
     """
     ERROR HANDLING ENDS HERE
     """
 
     # define model as estimator
-    model = estimator
+    model = get_estimator_from_meta_estimator(estimator)
 
     model_name = _get_model_name(model)
 
@@ -8245,7 +8504,7 @@ def optimize_threshold(
     internal function to calculate loss ends here
     """
 
-    grid = np.arange(0, 1, 0.0001)
+    grid = np.arange(0, 1, grid_interval)
 
     # loop starts here
 
@@ -8404,7 +8663,9 @@ def assign_model(
 
 
 def predict_model_unsupervised(
-    estimator, data: pd.DataFrame, ml_usecase: Optional[MLUsecase] = None,
+    estimator,
+    data: pd.DataFrame,
+    ml_usecase: Optional[MLUsecase] = None,
 ) -> pd.DataFrame:
     function_params_str = ", ".join(
         [f"{k}={v}" for k, v in locals().items() if k != "data"]
@@ -8457,6 +8718,7 @@ def predict_model(
     data: Optional[pd.DataFrame] = None,
     probability_threshold: Optional[float] = None,
     encoded_labels: bool = False,  # added in pycaret==2.1.0
+    drift_report: bool = False,
     raw_score: bool = False,
     round: int = 4,  # added in pycaret==2.2.0
     verbose: bool = True,
@@ -8550,17 +8812,11 @@ def predict_model(
     if probability_threshold is not None:
         # probability_threshold allowed types
         allowed_types = [int, float]
-        if type(probability_threshold) not in allowed_types:
-            raise TypeError(
-                "probability_threshold parameter only accepts value between 0 to 1."
-            )
-
-        if probability_threshold > 1:
-            raise TypeError(
-                "probability_threshold parameter only accepts value between 0 to 1."
-            )
-
-        if probability_threshold < 0:
+        if (
+            type(probability_threshold) not in allowed_types
+            or probability_threshold > 1
+            or probability_threshold < 0
+        ):
             raise TypeError(
                 "probability_threshold parameter only accepts value between 0 to 1."
             )
@@ -8577,9 +8833,15 @@ def predict_model(
     try:
         np.random.seed(seed)
         if not display:
-            display = Display(verbose=verbose, html_param=html_param,)
+            display = Display(
+                verbose=verbose,
+                html_param=html_param,
+            )
     except:
-        display = Display(verbose=False, html_param=False,)
+        display = Display(
+            verbose=False,
+            html_param=False,
+        )
 
     dtypes = None
 
@@ -8622,6 +8884,26 @@ def predict_model(
 
         X_test_ = data.copy()
 
+    # generate drift report
+    if drift_report:
+        if ml_usecase == MLUsecase.CLASSIFICATION:
+            create_classification_drift_report(
+                _get_model_name(estimator),
+                prep_pipe,
+                data_before_preprocess,
+                X_train,
+                X_test_,
+            )
+
+        elif ml_usecase == MLUsecase.REGRESSION:
+            create_regression_drift_report(
+                _get_model_name(estimator),
+                prep_pipe,
+                data_before_preprocess,
+                X_train,
+                X_test_,
+            )
+
     # function to replace encoded labels with their original values
     # will not run if categorical_labels is false
     def replace_lables_in_column(label_column):
@@ -8630,6 +8912,10 @@ def predict_model(
             label_column.replace(replacement_mapper, inplace=True)
 
     # prediction starts here
+    if isinstance(estimator, CustomProbabilityThresholdClassifier):
+        if probability_threshold is None:
+            probability_threshold = estimator.probability_threshold
+        estimator = get_estimator_from_meta_estimator(estimator)
 
     pred = np.nan_to_num(estimator.predict(X_test_))
 
@@ -8716,7 +9002,7 @@ def finalize_model(
     groups: Optional[Union[str, Any]] = None,
     model_only: bool = True,
     display: Optional[Display] = None,
-    experiment_custom_tags: Optional[Dict[str, Any]] = None
+    experiment_custom_tags: Optional[Dict[str, Any]] = None,
 ) -> Any:  # added in pycaret==2.2.0
 
     """
@@ -8753,7 +9039,7 @@ def finalize_model(
         transformations are ignored.
 
     experiment_custom_tags: dict, default = None
-        Dictionary of tag_name: String -> value: (String, but will be string-ified if not) 
+        Dictionary of tag_name: String -> value: (String, but will be string-ified if not)
         passed to the mlflow.set_tags to add new custom tags for the experiment.
 
     Returns
@@ -8788,7 +9074,10 @@ def finalize_model(
     groups = _get_groups(groups, data=X, fold_groups=fold_groups_param_full)
 
     if not display:
-        display = Display(verbose=False, html_param=html_param,)
+        display = Display(
+            verbose=False,
+            html_param=html_param,
+        )
 
     np.random.seed(seed)
 
@@ -8802,7 +9091,8 @@ def finalize_model(
         y_train_data=y,
         fit_kwargs=fit_kwargs,
         groups=groups,
-        experiment_custom_tags=experiment_custom_tags
+        experiment_custom_tags=experiment_custom_tags,
+        add_to_model_list=False,
     )
     model_results = pull(pop=True)
 
@@ -8962,32 +9252,32 @@ def deploy_model(
 
 def create_webservice(model, model_endopoint, api_key=True, pydantic_payload=None):
     """
-    (In Preview)
+     (In Preview)
 
-    This function deploys the transformation pipeline and trained model object as api. Rest api base on FastAPI and could run on localhost, it uses
-   the model name as a path to POST endpoint. The endpoint can be protected by api key generated by pycaret and return for the user.
-    Create_webservice uses pydantic style input/output model.
-    Parameters
-    ----------
-    model : object
-        A trained model object should be passed as an estimator.
+     This function deploys the transformation pipeline and trained model object as api. Rest api base on FastAPI and could run on localhost, it uses
+    the model name as a path to POST endpoint. The endpoint can be protected by api key generated by pycaret and return for the user.
+     Create_webservice uses pydantic style input/output model.
+     Parameters
+     ----------
+     model : object
+         A trained model object should be passed as an estimator.
 
-    model_endopoint : string
-        Name of model to be passed as a string.
+     model_endopoint : string
+         Name of model to be passed as a string.
 
-    api_key: bool, default = True
-        Security for API, if True Pycaret generates api key and print in console,
-        else user can post data without header but it not safe if application will
-        expose external.
+     api_key: bool, default = True
+         Security for API, if True Pycaret generates api key and print in console,
+         else user can post data without header but it not safe if application will
+         expose external.
 
-    pydantic_payload: pydantic.main.ModelMetaclass, default = None
-        Pycaret allows us to automatically generate a schema for the input model,
-        thanks to which can prevent incorrect requests. User can generate own pydantic model and use it as an input model.
+     pydantic_payload: pydantic.main.ModelMetaclass, default = None
+         Pycaret allows us to automatically generate a schema for the input model,
+         thanks to which can prevent incorrect requests. User can generate own pydantic model and use it as an input model.
 
-    Returns
-    -------
-    Dictionary with api_key: FastAPI application class which is ready to run with console
-    if api_key is set to False, the dictionary key is set to 'Not_exist'.
+     Returns
+     -------
+     Dictionary with api_key: FastAPI application class which is ready to run with console
+     if api_key is set to False, the dictionary key is set to 'Not_exist'.
 
     """
 
@@ -9196,7 +9486,7 @@ def save_model(
         When set to True, only trained model object is saved and all the
         transformations are ignored.
 
-    **kwargs: 
+    **kwargs:
         Additional keyword arguments to pass to joblib.dump().
 
     verbose: bool, default = True
@@ -9389,7 +9679,9 @@ def pull(pop=False) -> pd.DataFrame:  # added in pycaret==2.2.0
 
 
 def models(
-    type: Optional[str] = None, internal: bool = False, raise_errors: bool = True,
+    type: Optional[str] = None,
+    internal: bool = False,
+    raise_errors: bool = True,
 ) -> pd.DataFrame:
 
     """
@@ -9451,6 +9743,7 @@ def models(
             "catboost",
             "ada",
         ],
+        "dummy": ["dummy"],
     }
 
     def filter_model_df_by_type(df):
@@ -9467,16 +9760,22 @@ def models(
     logger.info(f"gpu_param set to {gpu_param}")
 
     if _ml_usecase == MLUsecase.CLASSIFICATION:
-        model_containers = pycaret.containers.models.classification.get_all_model_containers(
-            globals(), raise_errors
+        model_containers = (
+            pycaret.containers.models.classification.get_all_model_containers(
+                globals(), raise_errors
+            )
         )
     elif _ml_usecase == MLUsecase.REGRESSION:
-        model_containers = pycaret.containers.models.regression.get_all_model_containers(
-            globals(), raise_errors
+        model_containers = (
+            pycaret.containers.models.regression.get_all_model_containers(
+                globals(), raise_errors
+            )
         )
     elif _ml_usecase == MLUsecase.CLUSTERING:
-        model_containers = pycaret.containers.models.clustering.get_all_model_containers(
-            globals(), raise_errors
+        model_containers = (
+            pycaret.containers.models.clustering.get_all_model_containers(
+                globals(), raise_errors
+            )
         )
     elif _ml_usecase == MLUsecase.ANOMALY:
         model_containers = pycaret.containers.models.anomaly.get_all_model_containers(
@@ -9495,7 +9794,9 @@ def models(
 
 
 def get_metrics(
-    reset: bool = False, include_custom: bool = True, raise_errors: bool = True,
+    reset: bool = False,
+    include_custom: bool = True,
+    raise_errors: bool = True,
 ) -> pd.DataFrame:
     """
     Returns table of metrics available.
@@ -9532,12 +9833,16 @@ def get_metrics(
 
     if reset:
         if _ml_usecase == MLUsecase.CLASSIFICATION:
-            _all_metrics = pycaret.containers.metrics.classification.get_all_metric_containers(
-                globals(), raise_errors
+            _all_metrics = (
+                pycaret.containers.metrics.classification.get_all_metric_containers(
+                    globals(), raise_errors
+                )
             )
         elif _ml_usecase == MLUsecase.REGRESSION:
-            _all_metrics = pycaret.containers.metrics.regression.get_all_metric_containers(
-                globals(), raise_errors
+            _all_metrics = (
+                pycaret.containers.metrics.regression.get_all_metric_containers(
+                    globals(), raise_errors
+                )
             )
 
     metric_containers = _all_metrics
@@ -9632,16 +9937,18 @@ def add_metric(
         raise ValueError("id already present in metrics dataframe.")
 
     if _ml_usecase == MLUsecase.CLASSIFICATION:
-        new_metric = pycaret.containers.metrics.classification.ClassificationMetricContainer(
-            id=id,
-            name=name,
-            score_func=score_func,
-            target=target,
-            args=kwargs,
-            display_name=name,
-            greater_is_better=greater_is_better,
-            is_multiclass=bool(multiclass),
-            is_custom=True,
+        new_metric = (
+            pycaret.containers.metrics.classification.ClassificationMetricContainer(
+                id=id,
+                name=name,
+                score_func=score_func,
+                target=target,
+                args=kwargs,
+                display_name=name,
+                greater_is_better=greater_is_better,
+                is_multiclass=bool(multiclass),
+                is_custom=True,
+            )
         )
     else:
         new_metric = pycaret.containers.metrics.regression.RegressionMetricContainer(
@@ -9881,11 +10188,15 @@ def load_config(file_name: str):
             ).items()
             if not v.is_special
         }
-        _all_models_internal = pycaret.containers.models.classification.get_all_model_containers(
-            globals(), raise_errors=True
+        _all_models_internal = (
+            pycaret.containers.models.classification.get_all_model_containers(
+                globals(), raise_errors=True
+            )
         )
-        _all_metrics = pycaret.containers.metrics.classification.get_all_metric_containers(
-            globals(), raise_errors=True
+        _all_metrics = (
+            pycaret.containers.metrics.classification.get_all_metric_containers(
+                globals(), raise_errors=True
+            )
         )
     elif _ml_usecase == MLUsecase.REGRESSION:
         _all_models = {
@@ -9895,8 +10206,10 @@ def load_config(file_name: str):
             ).items()
             if not v.is_special
         }
-        _all_models_internal = pycaret.containers.models.regression.get_all_model_containers(
-            globals(), raise_errors=True
+        _all_models_internal = (
+            pycaret.containers.models.regression.get_all_model_containers(
+                globals(), raise_errors=True
+            )
         )
         _all_metrics = pycaret.containers.metrics.regression.get_all_metric_containers(
             globals(), raise_errors=True
@@ -9909,8 +10222,10 @@ def load_config(file_name: str):
             ).items()
             if not v.is_special
         }
-        _all_models_internal = pycaret.containers.models.clustering.get_all_model_containers(
-            globals(), raise_errors=True
+        _all_models_internal = (
+            pycaret.containers.models.clustering.get_all_model_containers(
+                globals(), raise_errors=True
+            )
         )
         _all_metrics = pycaret.containers.metrics.clustering.get_all_metric_containers(
             globals(), raise_errors=True
@@ -9924,8 +10239,10 @@ def load_config(file_name: str):
             ).items()
             if not v.is_special
         }
-        _all_models_internal = pycaret.containers.models.anomaly.get_all_model_containers(
-            globals(), raise_errors=True
+        _all_models_internal = (
+            pycaret.containers.models.anomaly.get_all_model_containers(
+                globals(), raise_errors=True
+            )
         )
         _all_metrics = pycaret.containers.metrics.anomaly.get_all_metric_containers(
             globals(), raise_errors=True
@@ -9937,6 +10254,402 @@ def load_config(file_name: str):
     display_container = []
 
     return r
+
+
+def get_leaderboard(
+    finalize_models: bool = False,
+    model_only: bool = False,
+    fit_kwargs: Optional[dict] = None,
+    groups: Optional[Union[str, Any]] = None,
+    verbose: bool = True,
+    display: Optional[Display] = None,
+):
+    """
+    generates leaderboard for all models run in current run.
+    """
+    model_container = get_config("master_model_container")
+    result_container = get_config("create_model_container")
+
+    if not display:
+        progress_args = {"max": len(model_container) + 1}
+        timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
+        monitor_rows = [
+            ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
+            ["Status", ". . . . . . . . . . . . . . . . . .", "Loading Dependencies"],
+            ["Estimator", ". . . . . . . . . . . . . . . . . .", "Compiling Library"],
+        ]
+        display = Display(
+            verbose=verbose,
+            html_param=html_param,
+            progress_args=progress_args,
+            monitor_rows=monitor_rows,
+        )
+
+        display.display_progress()
+        display.display_monitor()
+
+    result_container_mean = []
+    finalized_models = []
+
+    display.update_monitor(
+        1, "Finalizing models" if finalize_models else "Collecting models"
+    )
+    for i in range(len(result_container)):
+        model_results = result_container[i]
+        mean_scores = model_results[-2:-1]
+        model_name = _get_model_name(model_container[i])
+        mean_scores["Index"] = i
+        mean_scores["Model Name"] = model_name
+        display.update_monitor(2, model_name)
+        if finalize_models:
+            model = finalize_model(
+                model_container[i],
+                fit_kwargs=fit_kwargs,
+                groups=groups,
+                model_only=model_only,
+            )
+        else:
+            model = deepcopy(model_container[i])
+            if not is_fitted(model):
+                model, _ = create_model_supervised(
+                    estimator=model,
+                    verbose=False,
+                    system=False,
+                    fit_kwargs=fit_kwargs,
+                    groups=groups,
+                    add_to_model_list=False,
+                )
+            if not model_only:
+                pipeline = deepcopy(prep_pipe)
+                pipeline.steps.append(["trained_model", model])
+                model = pipeline
+        display.move_progress()
+        finalized_models.append(model)
+        result_container_mean.append(mean_scores)
+
+    display.update_monitor(1, "Creating dataframe")
+    results = pd.concat(result_container_mean)
+    results["Model"] = list(range(len(results)))
+    results["Model"] = results["Model"].astype("object")
+    model_loc = results.columns.get_loc("Model")
+    for x in range(len(results)):
+        results.iat[x, model_loc] = finalized_models[x]
+    rearranged_columns = list(results.columns)
+    rearranged_columns.remove("Model")
+    rearranged_columns.remove("Model Name")
+    rearranged_columns = ["Model Name", "Model"] + rearranged_columns
+    results = results[rearranged_columns]
+    results.set_index("Index", inplace=True, drop=True)
+    display.clear_output()
+    return results
+
+
+def dashboard(
+    estimator, display_format="dash", dashboard_kwargs={}, run_kwargs={}, **kwargs
+):
+    """
+    function to launch ExplainerDashboard.
+    """
+
+    try:
+        import explainerdashboard
+    except ImportError:
+        raise ImportError(
+            "It appears that explainerdashboard library is not installed. "
+            "Do: pip install explainerdashboard"
+        )
+
+    if _ml_usecase == MLUsecase.CLASSIFICATION:
+        _create_classification_dashboard(
+            model=estimator,
+            mode=display_format,
+            dashboard_kwargs=dashboard_kwargs,
+            run_kwargs=run_kwargs,
+            **kwargs,
+        )
+
+    elif _ml_usecase == MLUsecase.REGRESSION:
+        _create_regression_dashboard(
+            model=estimator,
+            mode=display_format,
+            dashboard_kwargs=dashboard_kwargs,
+            run_kwargs=run_kwargs,
+            **kwargs,
+        )
+
+
+def _create_regression_dashboard(
+    model, mode="dash", dashboard_kwargs={}, run_kwargs={}, **kwargs
+):
+    from explainerdashboard import (
+        ExplainerDashboard,
+        RegressionExplainer,
+        ClassifierExplainer,
+    )
+
+    explainer = RegressionExplainer(
+        model, get_config("X_test"), get_config("y_test"), **kwargs
+    )
+    ExplainerDashboard(explainer, mode=mode, **dashboard_kwargs).run(**run_kwargs)
+
+
+def _create_classification_dashboard(
+    model, mode="dash", dashboard_kwargs={}, run_kwargs={}, **kwargs
+):
+    from explainerdashboard import ExplainerDashboard, ClassifierExplainer
+
+    try:
+        labels_ = list(get_config("prep_pipe").steps[0][1].le.classes_)
+    except:
+        labels_ = None
+    explainer = ClassifierExplainer(
+        model, get_config("X_test"), get_config("y_test"), labels=labels_, **kwargs
+    )
+    ExplainerDashboard(explainer, mode=mode, **dashboard_kwargs).run(**run_kwargs)
+
+
+def convert_model(estimator, language: str = "python") -> str:
+    """
+    This function transpiles trained machine learning models into native
+    inference script in different programming languages (Python, C, Java,
+    Go, JavaScript, Visual Basic, C#, PowerShell, R, PHP, Dart, Haskell,
+    Ruby, F#). This functionality is very useful if you want to deploy models
+    into environments where you can't install your normal Python stack to
+    support model inference.
+    """
+
+    try:
+        import m2cgen as m2c
+    except ImportError:
+        raise ImportError(
+            "It appears that m2cgen is not installed. Do: pip install m2cgen"
+        )
+
+    if language == "python":
+        return m2c.export_to_python(estimator)
+    elif language == "java":
+        return m2c.export_to_java(estimator)
+    elif language == "c":
+        return m2c.export_to_c(estimator)
+    elif language == "c#":
+        return m2c.export_to_c_sharp(estimator)
+    elif language == "dart":
+        return m2c.export_to_dart(estimator)
+    elif language == "f#":
+        return m2c.export_to_f_sharp(estimator)
+    elif language == "go":
+        return m2c.export_to_go(estimator)
+    elif language == "haskell":
+        return m2c.export_to_haskell(estimator)
+    elif language == "javascript":
+        return m2c.export_to_javascript(estimator)
+    elif language == "php":
+        return m2c.export_to_php(estimator)
+    elif language == "powershell":
+        return m2c.export_to_powershell(estimator)
+    elif language == "r":
+        return m2c.export_to_r(estimator)
+    elif language == "ruby":
+        return m2c.export_to_ruby(estimator)
+    elif language == "vb":
+        return m2c.export_to_visual_basic(estimator)
+    else:
+        raise ValueError(
+            f"Wrong language {language}. Expected one of 'python', 'java', 'c', 'c#', 'dart', "
+            "'f#', 'go', 'haskell', 'javascript', 'php', 'powershell', 'r', 'ruby', 'vb'."
+        )
+
+
+def eda(
+    data: Optional[pd.DataFrame] = None,
+    target: Optional[str] = None,
+    display_format: str = "bokeh",
+    **kwargs,
+):
+
+    """
+    Function to generate EDA using AutoVIZ library.
+    """
+
+    try:
+        from autoviz.AutoViz_Class import AutoViz_Class
+    except ImportError:
+        raise ImportError(
+            "It appears that Autoviz is not installed. Do: pip install autoviz"
+        )
+
+    if data is None:
+        try:
+            data = get_config("data_before_preprocess")
+        except:
+            raise ValueError(
+                "When running EDA function before setup, you must pass the pandas.DataFrame explicitly."
+            )
+
+    if target is None:
+        try:
+            target = get_config("prep_pipe")[0].target
+        except:
+            raise ValueError(
+                "When running EDA function before setup, you must pass the target column name explicitly."
+            )
+
+    from autoviz.AutoViz_Class import AutoViz_Class
+
+    AV = AutoViz_Class()
+    AV.AutoViz(
+        filename="", dfte=data, depVar=target, chart_format=display_format, **kwargs
+    )
+
+
+def check_fairness(estimator, sensitive_features: list, plot_kwargs: dict = {}):
+
+    """
+    There are many approaches to conceptualizing fairness. This function follows
+    the approach known as group fairness, which asks: Which groups of individuals
+    are at risk for experiencing harms. This function provides fairness-related
+    metrics between different groups (also called subpopulation).
+    """
+
+    try:
+        import fairlearn
+    except ImportError:
+        raise ImportError(
+            "It appears that fairlearn is not installed. Do: pip install fairlearn"
+        )
+
+    from fairlearn.metrics import MetricFrame, count, selection_rate
+
+    all_metrics = get_metrics()[["Name", "Score Function"]].set_index("Name")
+    metric_dict = {}
+    metric_dict["Samples"] = count
+    for i in all_metrics.index:
+        metric_dict[i] = all_metrics.loc[i][0]
+
+    if _ml_usecase == MLUsecase.CLASSIFICATION:
+        metric_dict["Selection Rate"] = selection_rate
+
+    y_pred = estimator.predict(get_config("X_test"))
+    y_true = np.array(get_config("y_test"))
+    X_test_before_transform = get_config("data_before_preprocess").iloc[
+        get_config("X_test").index
+    ]
+
+    try:
+        multi_metric = MetricFrame(
+            metrics=metric_dict,
+            y_true=y_true,
+            y_pred=y_pred,
+            sensitive_features=X_test_before_transform[sensitive_features],
+        )
+    except Exception:
+        if MLUsecase.CLASSIFICATION:
+            metric_dict.pop("AUC")
+            multi_metric = MetricFrame(
+                metrics=metric_dict,
+                y_true=y_true,
+                y_pred=y_pred,
+                sensitive_features=X_test_before_transform[sensitive_features],
+            )
+
+    multi_metric.by_group.plot.bar(
+        subplots=True,
+        layout=[3, 3],
+        legend=False,
+        figsize=[16, 8],
+        title="Performance Metrics by Sensitive Features",
+        **plot_kwargs,
+    )
+
+    return pd.DataFrame(multi_metric.by_group)
+
+
+def create_api(estimator, api_name, host="127.0.0.1", port=8000):
+
+    """
+    This function creates API and write it as a python file using FastAPI
+    """
+
+    try:
+        import fastapi
+    except ImportError:
+        raise ImportError(
+            "It appears that FastAPI is not installed. Do: pip install fastapi"
+        )
+
+    try:
+        import uvicorn
+    except ImportError:
+        raise ImportError(
+            "It appears that uvicorn is not installed. Do: pip install uvicorn"
+        )
+
+    target_name = get_config("prep_pipe")[0].target
+    raw_data = get_config("data_before_preprocess").copy()
+    raw_data.drop(target_name, axis=1, inplace=True)
+    input_cols = list(raw_data.columns)
+
+    MODULE = get_config("prep_pipe")[0].ml_usecase
+    INPUT_COLS = input_cols
+    INPUT_COLS_FORMATTED = ", ".join(tuple(INPUT_COLS)).replace("'", "")
+    INPUT_COLS_WITHOUT_SPACES = [i.replace(" ", "_") for i in input_cols]
+    INPUT_COLS_WITHOUT_SPACES = [i.replace("-", "_") for i in INPUT_COLS_WITHOUT_SPACES]
+    INPUT_COLS_WITHOUT_SPACES_FORMATTED = ", ".join(
+        tuple(INPUT_COLS_WITHOUT_SPACES)
+    ).replace("'", "")
+    API_NAME = api_name
+    HOST = host
+
+    save_model(estimator, model_name=api_name, verbose=False)
+
+    query = """
+import pandas as pd
+from pycaret.{MODULE_NAME} import load_model, predict_model
+from fastapi import FastAPI
+import uvicorn
+
+# Create the app
+app = FastAPI()
+
+# Load trained Pipeline
+model = load_model('{API_NAME}')
+
+# Define predict function
+@app.post('/predict')
+def predict({INPUT_COLS}):
+    data = pd.DataFrame([[{DATAFRAME}]])
+    data.columns = {COLUMNS}
+    predictions = predict_model(model, data=data) 
+    return {D1}'prediction': list(predictions['Label']){D2}
+
+if __name__ == '__main__':
+    uvicorn.run(app, host='{HOST}', port={PORT})""".format(
+        MODULE_NAME=MODULE,
+        API_NAME=API_NAME,
+        INPUT_COLS=INPUT_COLS_WITHOUT_SPACES_FORMATTED,
+        DATAFRAME=INPUT_COLS_WITHOUT_SPACES_FORMATTED,
+        COLUMNS=INPUT_COLS,
+        D1="{",
+        D2="}",
+        HOST=HOST,
+        PORT=port,
+    )
+
+    file_name = str(api_name) + ".py"
+
+    f = open(file_name, "w")
+    f.write(query)
+    f.close()
+
+    message = """
+API sucessfully created. This function only creates a POST API, it doesn't run it automatically.
+
+To run your API, please run this command --> !python {API_NAME}.py
+    """.format(
+        API_NAME=API_NAME
+    )
+
+    print(message)
 
 
 def _choose_better(
@@ -10053,7 +10766,10 @@ def _is_special_model(e, models=None) -> bool:
 
 
 def _calculate_metrics_supervised(
-    y_test, pred, pred_prob, weights: Optional[list] = None,
+    y_test,
+    pred,
+    pred_prob,
+    weights: Optional[list] = None,
 ) -> dict:
     """
     Calculate all metrics in _all_metrics.
@@ -10071,8 +10787,10 @@ def _calculate_metrics_supervised(
     except:
         ml_usecase = get_ml_task(y_test)
         if ml_usecase == MLUsecase.CLASSIFICATION:
-            metrics = pycaret.containers.metrics.classification.get_all_metric_containers(
-                globals(), True
+            metrics = (
+                pycaret.containers.metrics.classification.get_all_metric_containers(
+                    globals(), True
+                )
             )
         elif ml_usecase == MLUsecase.REGRESSION:
             metrics = pycaret.containers.metrics.regression.get_all_metric_containers(
@@ -10156,7 +10874,7 @@ def _mlflow_log_model(
     full_name = _get_model_name(model)
     logger.info(f"Model: {full_name}")
 
-    with mlflow.start_run(run_name=full_name) as run:
+    with mlflow.start_run(run_name=full_name, nested=True) as run:
 
         # Get active run to log as tag
         RunID = mlflow.active_run().info.run_id

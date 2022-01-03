@@ -1796,7 +1796,30 @@ class CatBoostRegressorContainer(RegressorContainer):
             is_gpu_enabled=use_gpu,
         )
 
+class DummyRegressorContainer(RegressorContainer):
+    def __init__(self, globals_dict: dict) -> None:
+        logger = get_logger()
+        np.random.seed(globals_dict["seed"])
+        from sklearn.dummy import DummyRegressor
 
+        args = {"strategy":"mean"}
+        tune_args = {}
+        tune_grid = {}
+        tune_distributions = {}
+
+        leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
+
+        super().__init__(
+            id="dummy",
+            name="Dummy Regressor",
+            class_def=DummyRegressor,
+            args=args,
+            tune_grid=tune_grid,
+            tune_distribution=tune_distributions,
+            tune_args=tune_args,
+            shap=False,
+        )
+        
 class BaggingRegressorContainer(RegressorContainer):
     def __init__(self, globals_dict: dict) -> None:
         logger = get_logger()

@@ -1,6 +1,25 @@
-![alt text](https://github.com/pycaret/pycaret/blob/master/pycaret_233.jfif)
+<div align="center">
+  
+<img src="docs/images/logo.png" alt="drawing" width="200"/>
 
-# PyCaret 2.3
+**An open-source, low-code machine learning library in Python** </br>
+:rocket: **Version 2.3.5 out now!** [Check out the release notes here](https://github.com/pycaret/pycaret/releases).
+  
+<p align="center">
+  <a href="https://www.pycaret.org">Official</a> •
+  <a href="https://pycaret.readthedocs.io/en/latest/index.html">Docs</a> •
+  <a href="https://pycaret.readthedocs.io/en/latest/installation.html">Install</a> •
+  <a href="https://github.com/pycaret/pycaret/tree/master/tutorials">Tutorials</a> •
+  <a href="https://github.com/pycaret/pycaret/discussions">Discussions</a> •
+  <a href="https://pycaret.readthedocs.io/en/latest/contribute.html">Contribute</a> •
+  <a href="https://github.com/pycaret/pycaret/tree/master/resources">Resources</a> •
+  <a href="https://moez-62905.medium.com/">Medium</a> •
+  <a href="https://www.linkedin.com/company/pycaret/">LinkedIn</a> • 
+  <a href="https://www.youtube.com/channel/UCxA1YTYJ9BEeo50lxyI_B3g">YouTube</a> • 
+  <a href="https://join.slack.com/t/pycaret/shared_invite/zt-row9phbm-BoJdEVPYnGf7_NxNBP307w">Slack</a>
+
+</p>
+
 [![Python](https://img.shields.io/badge/Python-3.6%20%7C%203.7%20%7C%203.8-blue)](https://badge.fury.io/py/pycaret) 
 ![pytest on push](https://github.com/pycaret/pycaret/workflows/pytest%20on%20push/badge.svg) 
 [![Documentation Status](https://readthedocs.org/projects/pip/badge/?version=stable)](http://pip.pypa.io/en/stable/?badge=stable) 
@@ -9,82 +28,104 @@
 <!-- [![Git count](http://hits.dwyl.com/pycaret/pycaret/pycaret.svg)](http://hits.dwyl.com/pycaret/pycaret/pycaret) -->
 [![Slack](https://img.shields.io/badge/slack-chat-green.svg?logo=slack)](https://join.slack.com/t/pycaret/shared_invite/zt-row9phbm-BoJdEVPYnGf7_NxNBP307w)
 
-## What is PyCaret?
+![alt text](docs/images/quick_start.gif)
+
+<div align="left">
+  
+## Welcome to PyCaret
 PyCaret is an open-source, low-code machine learning library in Python that automates machine learning workflows. It is an end-to-end machine learning and model management tool that speeds up the experiment cycle exponentially and makes you more productive.
 
-In comparison with the other open-source machine learning libraries, PyCaret is an alternate low-code library that can be used to replace hundreds of lines of code with few words only. This makes experiments exponentially fast and efficient. PyCaret is essentially a Python wrapper around several machine learning libraries and frameworks such as scikit-learn, XGBoost, LightGBM, CatBoost, spaCy, Optuna, Hyperopt, Ray, and many more.
+In comparison with the other open-source machine learning libraries, PyCaret is an alternate low-code library that can be used to replace hundreds of lines of code with few lines only. This makes experiments exponentially fast and efficient. PyCaret is essentially a Python wrapper around several machine learning libraries and frameworks such as scikit-learn, XGBoost, LightGBM, CatBoost, spaCy, Optuna, Hyperopt, Ray, and few more.
 
-The design and simplicity of PyCaret are inspired by the emerging role of citizen data scientists, a term first used by Gartner. Citizen Data Scientists are power users who can perform both simple and moderately sophisticated analytical tasks that would previously have required more expertise. Seasoned data scientists are often difficult to find and expensive to hire but citizen data scientists can be an effective way to mitigate this gap and address data-related challenges in the business setting.
+The design and simplicity of PyCaret are inspired by the emerging role of citizen data scientists, a term first used by Gartner. Citizen Data Scientists are power users who can perform both simple and moderately sophisticated analytical tasks that would previously have required more technical expertise.
 
-PyCaret is a great library which not only simplifies the machine learning tasks for citizen data scientists but also helps new startups to reduce the cost of investing in a team of data scientists. Therefore, this library has not only helped the citizen data scientists but has also helped individuals who want to start exploring the field of data science, having no prior knowledge in this field. Iniitial idea of PyCaret was inspired by Caret library in R.
+| Important Links              |                                                                |
+| -------------------------- | -------------------------------------------------------------- |
+| :star: **[Tutorials]**        | New to PyCaret? Checkout our official notebooks!            |
+| :clipboard: **[Example Notebooks]** | Example notebooks created by community.               |
+| :orange_book: **[Blog]** | Tutorials and articles by contributors.                      |
+| :books: **[Documentation]**      | The detailed API docs of PyCaret                         |
+| :tv: **[Video Tutorials]**            | Our video tutorial from various events.             |
+| :loudspeaker: **[Discussions]**        | Have questions? Engage with community and contributors.|
+| :hammer_and_wrench: **[Changelog]**          | Changes and version history.                 |
+| :deciduous_tree: **[Roadmap]**          | PyCaret's software and community development plan.|
+  
+[tutorials]: https://github.com/pycaret/pycaret/tree/master/tutorials
+[Example notebooks]: https://github.com/pycaret/pycaret/tree/master/examples
+[Blog]: https://github.com/pycaret/pycaret/tree/master/resources
+[Documentation]: https://pycaret.readthedocs.io/en/latest/index.html
+[video tutorials]: https://www.youtube.com/channel/UCxA1YTYJ9BEeo50lxyI_B3g
+[Discussions]: https://github.com/pycaret/pycaret/discussions
+[changelog]: https://github.com/pycaret/pycaret/blob/master/CHANGELOG.md
+[roadmap]: https://github.com/pycaret/pycaret/issues/1756
+ 
+## Installation
 
-- Official Website: https://www.pycaret.org
-- Documentation: https://pycaret.readthedocs.io/en/latest/
-
-![alt text](https://github.com/pycaret/pycaret/blob/master/pycaret2-features.png)
-
-## Current Release
-PyCaret `2.3.3` is now available. See `2.3.3` release notes. The easiest way to install pycaret is using pip.
+PyCaret's default installation only installs hard dependencies as listed in the [requirements.txt](requirements.txt) file. 
 
 ```python
 pip install pycaret
 ```
-
-PyCaret's default installation is a slim version of pycaret which only installs hard dependencies that are listed in `requirements.txt`. To install the full version of pycaret, use the following command:
+To install the full version:
 
 ```python
 pip install pycaret[full]
 ```
 
-## PyCaret on GPU
-PyCaret >= 2.2 provides the option to use GPU for select model training and hyperparameter tuning. There is no change in the use of the API, however, in some cases, additional libraries have to be installed as they are not installed with the default slim version or the full version. The following estimators can be trained on GPU.
+<div align="center">
 
-- Extreme Gradient Boosting (requires no further installation)
+## Supervised Workflow
+  
+  Classification           |  Regression
+:-------------------------:|:-------------------------:
+![](docs/images/pycaret_classification.png)  | ![](docs/images/pycaret_regression.png)
 
-- CatBoost (requires no further installation)
+ ## Unsupervised Workflow
+  
+  Clustering               |  Anomaly Detection
+:-------------------------:|:-------------------------:
+![](docs/images/pycaret_clustering.png)  |  ![](docs/images/pycaret_anomaly.png)  
+  
+<div align="left">
 
-- Light Gradient Boosting Machine (requires GPU installation: https://lightgbm.readthedocs.io/en/latest/GPU-Tutorial.html)
+## PyCaret ⚡NEW⚡ Time Series Module
+  
+PyCaret new time series module is now available in beta. Staying true to simplicity of PyCaret, it is consistent with our existing API and fully loaded with functionalities. Statistical testing, model training and selection (30+ algorithms), model analysis, automated hyperparameter tuning, experiment logging, deployment on cloud, and more. All of this with only few lines of code (just like the other modules of pycaret). If you would like to give it a try, checkout our official [quick start](https://nbviewer.org/github/pycaret/pycaret/blob/time_series_beta/time_series_101.ipynb) notebook.
+  
+:books: [Time Series Docs](https://pycaret.readthedocs.io/en/time_series/api/time_series.html)
+  
+:question: [Time Series FAQs](https://github.com/pycaret/pycaret/discussions/categories/faqs?discussions_q=category%3AFAQs+label%3Atime_series)
+  
+:rocket: [Features and Roadmap](https://github.com/pycaret/pycaret/issues/1648)
+  
+The module is still in beta. We are adding new functionalities every day and doing weekly pip releases. Please ensure to create a separate python environment to avoid dependency conflicts with main pycaret. The final release of this module will be merged with the main pycaret in next major release.
+  
+ ```
+ pip install pycaret-ts-alpha
+ ```  
 
-- Logistic Regression, Ridge Classifier, Random Forest, K Neighbors Classifier, K Neighbors Regressor, Support Vector Machine, Linear Regression, Ridge Regression, Lasso Regression (requires cuML >= 0.15 https://github.com/rapidsai/cuml)
-
-If you are using Google Colab you can install Light Gradient Boosting Machine for GPU but first you have to uninstall LightGBM on CPU. Use the below command to do that:
-
-```python
-pip uninstall lightgbm -y
-
-# install lightgbm GPU
-pip install lightgbm --install-option=--gpu --install-option="--opencl-include-dir=/usr/local/cuda/include/" --install-option="--opencl-library=/usr/local/cuda/lib64/libOpenCL.so"
-```
-CatBoost is only enabled on GPU when dataset has > 50,000 rows.
-
-cuML >= 0.15 cannot be installed on Google Colab. Instead use blazingSQL (https://blazingsql.com/) which comes pre-installed with cuML 0.15. Use following command to install pycaret:
-
-```python
-# install pycaret on blazingSQL
-!/opt/conda-environments/rapids-stable/bin/python -m pip install --upgrade pycaret
-```
-
-## Important Links
-- Release notes: https://github.com/pycaret/pycaret/releases
-- Docs: https://pycaret.readthedocs.io/en/latest/
-- Tutorials: https://pycaret.readthedocs.io/en/latest/tutorials.html
-- Example Notebooks: https://github.com/pycaret/pycaret/tree/master/examples
-- Other Resources: https://github.com/pycaret/pycaret/tree/master/resources
-- Issue Logs: https://github.com/pycaret/pycaret/issues
-- Contribute: https://pycaret.readthedocs.io/en/latest/contribute.html
-- Join Slack Community: https://join.slack.com/t/pycaret/shared_invite/zt-row9phbm-BoJdEVPYnGf7_NxNBP307w
+![alt text](docs/images/pycaret_ts_quickdemo.gif)  
 
 ## Who should use PyCaret?
 PyCaret is an open source library that anybody can use. In our view the ideal target audience of PyCaret is: <br />
 
 - Experienced Data Scientists who want to increase productivity.
 - Citizen Data Scientists who prefer a low code machine learning solution.
-- Data Science Students.
 - Data Science Professionals who want to build rapid prototypes.
+- Data Science and Machine Learning students and enthusiasts.
+  
+## PyCaret on GPU
+With PyCaret >= 2.2, you can train models on GPU and speed up your workflow by 10x. To train models on GPU simply pass `use_gpu = True` in the setup function. There is no change in the use of the API, however, in some cases, additional libraries have to be installed as they are not installed with the default version or the full version. As of the latest release, the following models can be trained on GPU:
+
+- Extreme Gradient Boosting (requires no further installation)
+- CatBoost (requires no further installation)
+- Light Gradient Boosting Machine requires [GPU installation](https://lightgbm.readthedocs.io/en/latest/GPU-Tutorial.html)
+- Logistic Regression, Ridge Classifier, Random Forest, K Neighbors Classifier, K Neighbors Regressor, Support Vector Machine, Linear Regression, Ridge Regression, Lasso Regression requires [cuML >= 0.15](https://github.com/rapidsai/cuml)
+
+## License
+PyCaret is completely free and open-source and licensed under the [MIT](https://github.com/pycaret/pycaret/blob/master/LICENSE) license. 
 
 ## Contributors
 <a href="https://github.com/pycaret/pycaret/graphs/contributors">
-  <img src="https://contributors-img.web.app/image?repo=pycaret/pycaret" />
+  <img src="https://contributors-img.web.app/image?repo=pycaret/pycaret" width = 500/>
 </a>
-
-Made with [contributors-img](https://contributors-img.web.app).

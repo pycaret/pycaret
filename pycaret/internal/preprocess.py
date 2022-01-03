@@ -992,7 +992,7 @@ class Zroe_NearZero_Variance(BaseEstimator, TransformerMixin):
             else:
                 second = u.iloc[0, 0] / u.iloc[1, 0]
             # if both conditions are true then drop the column, however, we dont want to alter column that indicate NA's
-            if (first <= 0.10) and (second >= 20) and (i[-10:] != "_surrogate"):
+            if (first <= self.threshold_1) and (second >= self.threshold_2) and (i[-10:] != "_surrogate"):
                 self.to_drop.append(i)
             # now drop if the column has zero variance
             if (second == 100) and (i[-10:] != "_surrogate"):
@@ -2512,8 +2512,8 @@ class Fix_multicollinearity(BaseEstimator, TransformerMixin):
             None
         """
 
-        if data[self.target_variable].dtype not in ["int32", "int64"]:
-            raise ValueError('dtype for the target variable should be int32 or int64 only')
+        if data[self.target_variable].dtype not in ["int32", "int64", "float32", "float64"]:
+            raise ValueError('dtype for the target variable should be int32, int64, float32, or float64 only')
 
         # global data1
         data1 = data.select_dtypes(include=["int32", "int64", "float32", "float64"])
