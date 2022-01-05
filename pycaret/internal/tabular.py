@@ -11040,3 +11040,17 @@ def _get_groups(
     fold_groups = fold_groups if fold_groups is not None else fold_groups_param
 
     return pycaret.internal.utils.get_groups(groups, data, fold_groups)
+
+
+def _append_display_container(df:pd.DataFrame) -> None:
+    global display_container
+    display_container.append(df)
+
+def _create_display(progress:int, verbose:bool, monitor_rows:Any) -> Display:
+    progress_args = {"max": progress}
+    return Display(
+        verbose=verbose,
+        html_param=html_param,
+        progress_args=progress_args,
+        monitor_rows=monitor_rows,
+    )

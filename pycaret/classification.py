@@ -9,18 +9,19 @@ import numpy as np
 
 import pycaret.internal.tabular
 from pycaret.internal.Display import Display, is_in_colab, enable_colab
-from typing import List, Tuple, Any, Union, Optional, Dict
+from typing import List, Tuple, Any, Union, Optional, Dict, Callable
 import warnings
 from IPython.utils import io
 import traceback
 
 from pycaret.internal.tabular import MLUsecase
+from pycaret.internal.fugue_backend import _CompareModelsWrapper, _NoDisplay
 
 warnings.filterwarnings("ignore")
 
 
 def setup(
-    data: pd.DataFrame,
+    data: Union[pd.DataFrame, Callable[[], pd.DataFrame]],
     target: str,
     train_size: float = 0.7,
     test_data: Optional[pd.DataFrame] = None,
@@ -110,9 +111,12 @@ def setup(
     >>> exp_name = setup(data = juice,  target = 'Purchase')
 
 
-    data: pandas.DataFrame
+    data: Union[pd.DataFrame, Callable[[], pd.DataFrame]]
         Shape (n_samples, n_features), where n_samples is the number of samples and
-        n_features is the number of features.
+        n_features is the number of features. If data is a function, then it should
+        generate the pandas dataframe. If you want to use distributed PyCaret, it is
+        recommended to provide a function to avoid broadcasting large datasets from
+        the driver to workers.
 
 
     target: str
@@ -552,6 +556,9 @@ def setup(
 
     """
 
+    global _pycaret_setup_call
+    _pycaret_setup_call = dict(func=setup, params=locals())
+
     available_plots = {
         "parameter": "Hyperparameters",
         "auc": "AUC",
@@ -574,6 +581,9 @@ def setup(
         "tree": "Decision Tree",
         "ks": "KS Statistic Plot",
     }
+
+    if not isinstance(data, pd.DataFrame):
+        data = data()
 
     if log_plots == True:
         log_plots = ["auc", "confusion_matrix", "feature"]
@@ -671,6 +681,9 @@ def compare_models(
     groups: Optional[Union[str, Any]] = None,
     probability_threshold: Optional[float] = None,
     verbose: bool = True,
+    fugue_engine: Any = None,
+    fugue_conf: Any = None,
+    batch_size: int = 1,
 ) -> Union[Any, List[Any]]:
 
     """
@@ -762,6 +775,19 @@ def compare_models(
     verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
 
+    fugue_engine: Any
+        A ``SparkSession`` instance or "spark" to get the current ``SparkSession``.
+        "dask" to get the current Dask client. "native" to test locally using single
+        thread.
+
+    fugue_conf: Any
+        Fugue ExecutionEngine configs.
+
+    batch_size: int, default = 1
+        Batch size to partition the tasks. For example if there are 16 tasks,
+        and with ``batch_size=3`` we will have 6 batches to be processed
+        distributedly. Smaller batch sizes will have better load balance but
+        worse overhead, and vise versa.
 
     Returns:
         Trained model or list of trained models, depending on the ``n_select`` param.
@@ -775,6 +801,19 @@ def compare_models(
 
     - No models are logged in ``MLFlow`` when ``cross_validation`` parameter is False.
     """
+
+    if fugue_engine is not None and fugue_engine != "remote":
+        params = dict(locals())
+        global _pycaret_setup_call
+        if params.get("include", None) is None:
+            params["include"] = models().index.tolist()
+        del params["fugue_engine"]
+        del params["fugue_conf"]
+        wrapper = _CompareModelsWrapper(
+            _pycaret_setup_call,
+            dict(func=compare_models, params=params),
+        )
+        return wrapper.compare_models(fugue_engine, fugue_conf, batch_size=batch_size)
 
     return pycaret.internal.tabular.compare_models(
         include=include,
@@ -791,6 +830,7 @@ def compare_models(
         groups=groups,
         probability_threshold=probability_threshold,
         verbose=verbose,
+        display=None if fugue_engine != "remote" else _NoDisplay(),
     )
 
 
