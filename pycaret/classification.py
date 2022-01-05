@@ -684,6 +684,7 @@ def compare_models(
     fugue_engine: Any = None,
     fugue_conf: Any = None,
     batch_size: int = 1,
+    display_remote: bool = False,
 ) -> Union[Any, List[Any]]:
 
     """
@@ -789,6 +790,12 @@ def compare_models(
         distributedly. Smaller batch sizes will have better load balance but
         worse overhead, and vise versa.
 
+    display_remote: bool, default = False
+        Whether show progress bar and metrics table when using a distributed
+        backend. By setting it to True, you must also enable the
+        `callback settings <https://fugue-project.github.io/tutorials/tutorials/advanced/rpc.html>`_
+        to receive realtime updates.
+
     Returns:
         Trained model or list of trained models, depending on the ``n_select`` param.
 
@@ -813,7 +820,12 @@ def compare_models(
             _pycaret_setup_call,
             dict(func=compare_models, params=params),
         )
-        return wrapper.compare_models(fugue_engine, fugue_conf, batch_size=batch_size)
+        return wrapper.compare_models(
+            fugue_engine,
+            fugue_conf,
+            batch_size=batch_size,
+            display_remote=display_remote,
+        )
 
     return pycaret.internal.tabular.compare_models(
         include=include,
