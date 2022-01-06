@@ -2981,36 +2981,17 @@ def create_api(
     >>> juice = get_data('juice')
     >>> from pycaret.classification import *
     >>> exp_name = setup(data = juice,  target = 'Purchase')
-    >>> eda(display_format = 'bokeh')
-
-
-    data: pandas.DataFrame
-        DataFrame with (n_samples, n_features).
-
-
-    target: str
-        Name of the target column to be passed in as a string.
-
-
-    display_format: str, default = 'bokeh'
-        When set to 'bokeh' the plots are interactive. Other option is ``svg`` for static
-        plots that are generated using matplotlib and seaborn.
-
-
-    **kwargs:
-        Additional keyword arguments to pass to the AutoVIZ class.
-
     >>> lr = create_model('lr')
-    >>> create_api(lr, 'lr_api')
-    >>> !python lr_api.py #to run the API
+    >>> create_api(lr, 'lr_api'
+    >>> !python lr_api.py
 
 
     estimator: scikit-learn compatible object
         Trained model object
 
 
-    api_name: str
-        Name of the api as a string.
+    api_name: scikit-learn compatible object
+        Trained model object
 
 
     host: str, default = '127.0.0.1'
@@ -3033,7 +3014,35 @@ def create_docker(
 ) -> None:
 
     """
-    creates docker image
+    This function creates a ``Dockerfile`` and ``requirements.txt`` for 
+    productionalizing API end-point. 
+
+
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> juice = get_data('juice')
+    >>> from pycaret.classification import *
+    >>> exp_name = setup(data = juice,  target = 'Purchase')
+    >>> lr = create_model('lr')
+    >>> create_api(lr, 'lr_api')
+    >>> create_docker('lr_api')
+
+
+    api_name: str
+        Name of API. Must be saved as a .py file in the same folder.
+
+
+    base_image: str, default = "python:3.8-slim"
+        Name of the base image for Dockerfile.
+
+
+    expose_port: int, default = 8000
+        port for expose for API in the Dockerfile.
+
+
+    Returns:
+        None
     """
     return pycaret.internal.tabular.create_docker(
         api_name=api_name, base_image=base_image, expose_port=expose_port
