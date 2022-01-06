@@ -10573,9 +10573,8 @@ EXPOSE {PORT}
 CMD ["python", "{API_NAME}.py"]    
 """.format(BASE_IMAGE=base_image, PORT=expose_port, API_NAME=api_name)
     
-    f = open("Dockerfile", "w")
-    f.write(docker)
-    f.close
+    with open("Dockerfile", "w") as f:
+        f.write(docker)
     
     print("""Dockerfile and requirements.txt successfully created.
 To build image you have to run --> !docker image build -f "Dockerfile" -t IMAGE_NAME:IMAGE_TAG .
