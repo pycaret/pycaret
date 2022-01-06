@@ -10608,6 +10608,76 @@ To run your API, please run this command --> !python {API_NAME}.py
     print(message)
 
 
+def create_docker(api_name: str, base_image: str ='python:3.8-slim', expose_port: int = 8000):
+    
+    """
+    This function creates a ``Dockerfile`` and ``requirements.txt`` for 
+    productionalizing API end-point. 
+
+
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> juice = get_data('juice')
+    >>> from pycaret.classification import *
+    >>> exp_name = setup(data = juice,  target = 'Purchase')
+    >>> lr = create_model('lr')
+    >>> create_api(lr, 'lr_api')
+    >>> create_docker('lr_api')
+
+
+    api_name: str
+        Name of API. Must be saved as a .py file in the same folder.
+
+
+    base_image: str, default = "python:3.8-slim"
+        Name of the base image for Dockerfile.
+
+
+    expose_port: int, default = 8000
+        port for expose for API in the Dockerfile.
+
+
+    Returns:
+        None
+    """
+
+    requirements = """
+pycaret
+fastapi
+uvicorn
+"""
+    print('Writing requirements.txt')
+    f = open("requirements.txt", "w")
+    f.write(requirements)
+    f.close
+    
+    print('Writing Dockerfile')
+    docker = """
+    
+FROM {BASE_IMAGE}
+
+WORKDIR /app
+
+ADD . /app
+
+RUN apt-get update && apt-get install -y libgomp1
+
+RUN pip install -r requirements.txt
+
+EXPOSE {PORT}
+
+CMD ["python", "{API_NAME}.py"]    
+""".format(BASE_IMAGE=base_image, PORT=expose_port, API_NAME=api_name)
+    
+    with open("Dockerfile", "w") as f:
+        f.write(docker)
+    
+    print("""Dockerfile and requirements.txt successfully created.
+To build image you have to run --> !docker image build -f "Dockerfile" -t IMAGE_NAME:IMAGE_TAG .
+        """)
+
+
 def _choose_better(
     models_and_results: list,
     compare_dimension: str,
