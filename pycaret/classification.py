@@ -1611,6 +1611,7 @@ def evaluate_model(
     estimator,
     fold: Optional[Union[int, Any]] = None,
     fit_kwargs: Optional[dict] = None,
+    plot_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
     use_train_data: bool = False,
 ):
@@ -1645,6 +1646,10 @@ def evaluate_model(
         Dictionary of arguments passed to the fit method of the model.
 
 
+    plot_kwargs: dict, default = {} (empty dict)
+        Dictionary of arguments passed to the visualizer class.
+
+
     groups: str or array-like, with shape (n_samples,), default = None
         Optional group labels when GroupKFold is used for the cross validation.
         It takes an array with shape (n_samples, ) where n_samples is the number
@@ -1671,6 +1676,7 @@ def evaluate_model(
         estimator=estimator,
         fold=fold,
         fit_kwargs=fit_kwargs,
+        plot_kwargs=plot_kwargs,
         groups=groups,
         use_train_data=use_train_data,
     )
@@ -3021,7 +3027,6 @@ def create_api(
     return pycaret.internal.tabular.create_api(
         estimator=estimator, api_name=api_name, host=host, port=port
     )
-
 
 def create_docker(
     api_name: str, base_image: str = "python:3.8-slim", expose_port: int = 8000

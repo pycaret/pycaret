@@ -6933,7 +6933,10 @@ def plot_model(
                     logger.info(f"Saving '{plot_filename}.png'")
                     plt.savefig(f"{plot_filename}.png", bbox_inches="tight")
                 elif system:
-                    plt.show()
+                    if display_format == 'streamlit':
+                        st.pyplot(plt, clear_figure=True)
+                    else:
+                        plt.show()
                 plt.close()
 
             logger.info("Visual Rendered Successfully")
@@ -6962,7 +6965,10 @@ def plot_model(
                     logger.info(f"Saving '{plot_filename}.png'")
                     plt.savefig(f"{plot_filename}.png", bbox_inches="tight")
                 elif system:
-                    plt.show()
+                    if display_format == 'streamlit':
+                        st.pyplot(plt, clear_figure=True)
+                    else:
+                        plt.show()
                 plt.close()
 
             logger.info("Visual Rendered Successfully")
@@ -7109,7 +7115,10 @@ def plot_model(
                 logger.info(f"Saving '{plot_filename}.png'")
                 plt.savefig(f"{plot_filename}.png", bbox_inches="tight")
             elif system:
-                plt.show()
+                if display_format == 'streamlit':
+                    st.pyplot(plt, clear_figure=True)
+                else:
+                    plt.show()
             plt.close()
 
             logger.info("Visual Rendered Successfully")
@@ -7423,7 +7432,10 @@ def plot_model(
                 logger.info(f"Saving '{plot_filename}.png'")
                 plt.savefig(f"{plot_filename}.png", bbox_inches="tight")
             elif system:
-                plt.show()
+                if display_format == 'streamlit':
+                    st.pyplot(plt, clear_figure=True)
+                else:
+                    plt.show()
             plt.close()
 
             logger.info("Visual Rendered Successfully")
@@ -7466,7 +7478,10 @@ def plot_model(
                     logger.info(f"Saving '{plot_filename}.png'")
                     plt.savefig(f"{plot_filename}.png", bbox_inches="tight")
                 elif system:
-                    plt.show()
+                    if display_format == 'streamlit':
+                        st.pyplot(plt, clear_figure=True)
+                    else:
+                        plt.show()
                 plt.close()
 
             logger.info("Visual Rendered Successfully")
@@ -7495,6 +7510,7 @@ def evaluate_model(
     estimator,
     fold: Optional[Union[int, Any]] = None,
     fit_kwargs: Optional[dict] = None,
+    plot_kwargs: Optional[dict] = None,
     feature_name: Optional[str] = None,
     groups: Optional[Union[str, Any]] = None,
     use_train_data: bool = False,
@@ -7554,6 +7570,9 @@ def evaluate_model(
     if not fit_kwargs:
         fit_kwargs = {}
 
+    if not plot_kwargs:
+        plot_kwargs = {}
+
     a = widgets.ToggleButtons(
         options=[(v, k) for k, v in _available_plots.items()],
         description="Plot Type:",
@@ -7575,6 +7594,7 @@ def evaluate_model(
         scale=fixed(1),
         fold=fixed(fold),
         fit_kwargs=fixed(fit_kwargs),
+        plot_kwargs=fixed(plot_kwargs),
         feature_name=fixed(feature_name),
         label=fixed(False),
         groups=fixed(groups),
@@ -10279,7 +10299,10 @@ def get_leaderboard(
     display.clear_output()
     return results
 
-def dashboard(estimator, display_format = 'dash',  dashboard_kwargs = {}, run_kwargs = {}, **kwargs):
+
+def dashboard(
+    estimator, display_format="dash", dashboard_kwargs={}, run_kwargs={}, **kwargs
+):
     """
     function to launch ExplainerDashboard.
     """
@@ -10293,24 +10316,51 @@ def dashboard(estimator, display_format = 'dash',  dashboard_kwargs = {}, run_kw
         )
 
     if _ml_usecase == MLUsecase.CLASSIFICATION:
-        _create_classification_dashboard(model=estimator, mode=display_format, dashboard_kwargs=dashboard_kwargs, run_kwargs=run_kwargs, **kwargs)
+        _create_classification_dashboard(
+            model=estimator,
+            mode=display_format,
+            dashboard_kwargs=dashboard_kwargs,
+            run_kwargs=run_kwargs,
+            **kwargs,
+        )
 
     elif _ml_usecase == MLUsecase.REGRESSION:
-        _create_regression_dashboard(model=estimator, mode=display_format, dashboard_kwargs=dashboard_kwargs, run_kwargs=run_kwargs, **kwargs)
+        _create_regression_dashboard(
+            model=estimator,
+            mode=display_format,
+            dashboard_kwargs=dashboard_kwargs,
+            run_kwargs=run_kwargs,
+            **kwargs,
+        )
 
-def _create_regression_dashboard(model, mode = 'dash', dashboard_kwargs = {}, run_kwargs = {}, **kwargs):
-    from explainerdashboard import ExplainerDashboard, RegressionExplainer, ClassifierExplainer
-    explainer = RegressionExplainer(model, get_config('X_test'), get_config('y_test'), **kwargs)
+
+def _create_regression_dashboard(
+    model, mode="dash", dashboard_kwargs={}, run_kwargs={}, **kwargs
+):
+    from explainerdashboard import (
+        ExplainerDashboard,
+        RegressionExplainer,
+        ClassifierExplainer,
+    )
+
+    explainer = RegressionExplainer(
+        model, get_config("X_test"), get_config("y_test"), **kwargs
+    )
     ExplainerDashboard(explainer, mode=mode, **dashboard_kwargs).run(**run_kwargs)
 
-def _create_classification_dashboard(model, mode = 'dash', dashboard_kwargs = {}, run_kwargs = {}, **kwargs):
+
+def _create_classification_dashboard(
+    model, mode="dash", dashboard_kwargs={}, run_kwargs={}, **kwargs
+):
     from explainerdashboard import ExplainerDashboard, ClassifierExplainer
+
     try:
-        labels_ = list(get_config('prep_pipe').steps[0][1].le.classes_)
+        labels_ = list(get_config("prep_pipe").steps[0][1].le.classes_)
     except:
         labels_ = None
-    explainer = ClassifierExplainer(model, get_config('X_test'), get_config('y_test'),
-                                    labels = labels_, **kwargs)
+    explainer = ClassifierExplainer(
+        model, get_config("X_test"), get_config("y_test"), labels=labels_, **kwargs
+    )
     ExplainerDashboard(explainer, mode=mode, **dashboard_kwargs).run(**run_kwargs)
 
 
@@ -10370,7 +10420,7 @@ def eda(
     data: Optional[pd.DataFrame] = None,
     target: Optional[str] = None,
     display_format: str = "bokeh",
-    **kwargs
+    **kwargs,
 ):
 
     """
@@ -10411,10 +10461,10 @@ def eda(
 def check_fairness(estimator, sensitive_features: list, plot_kwargs: dict = {}):
 
     """
-    There are many approaches to conceptualizing fairness. This function follows 
-    the approach known as group fairness, which asks: Which groups of individuals 
-    are at risk for experiencing harms. This function provides fairness-related 
-    metrics between different groups (also called subpopulation). 
+    There are many approaches to conceptualizing fairness. This function follows
+    the approach known as group fairness, which asks: Which groups of individuals
+    are at risk for experiencing harms. This function provides fairness-related
+    metrics between different groups (also called subpopulation).
     """
 
     try:
@@ -10426,44 +10476,56 @@ def check_fairness(estimator, sensitive_features: list, plot_kwargs: dict = {}):
 
     from fairlearn.metrics import MetricFrame, count, selection_rate
 
-    all_metrics = get_metrics()[['Name', 'Score Function']].set_index('Name')
+    all_metrics = get_metrics()[["Name", "Score Function"]].set_index("Name")
     metric_dict = {}
-    metric_dict['Samples'] = count
+    metric_dict["Samples"] = count
     for i in all_metrics.index:
         metric_dict[i] = all_metrics.loc[i][0]
-    
-    if _ml_usecase == MLUsecase.CLASSIFICATION:
-        metric_dict['Selection Rate'] = selection_rate
 
-    y_pred = estimator.predict(get_config('X_test'))
-    y_true = np.array(get_config('y_test'))
-    X_test_before_transform = get_config('data_before_preprocess').iloc[get_config('X_test').index]
+    if _ml_usecase == MLUsecase.CLASSIFICATION:
+        metric_dict["Selection Rate"] = selection_rate
+
+    y_pred = estimator.predict(get_config("X_test"))
+    y_true = np.array(get_config("y_test"))
+    X_test_before_transform = get_config("data_before_preprocess").iloc[
+        get_config("X_test").index
+    ]
 
     try:
-        multi_metric = MetricFrame(metrics=metric_dict, y_true=y_true, y_pred=y_pred, 
-                             sensitive_features=X_test_before_transform[sensitive_features])
+        multi_metric = MetricFrame(
+            metrics=metric_dict,
+            y_true=y_true,
+            y_pred=y_pred,
+            sensitive_features=X_test_before_transform[sensitive_features],
+        )
     except Exception:
         if MLUsecase.CLASSIFICATION:
-            metric_dict.pop('AUC')
-            multi_metric = MetricFrame(metrics=metric_dict, y_true=y_true, y_pred=y_pred, 
-                            sensitive_features=X_test_before_transform[sensitive_features])
-            
+            metric_dict.pop("AUC")
+            multi_metric = MetricFrame(
+                metrics=metric_dict,
+                y_true=y_true,
+                y_pred=y_pred,
+                sensitive_features=X_test_before_transform[sensitive_features],
+            )
+
     multi_metric.by_group.plot.bar(
-    subplots=True,
-    layout=[3, 3],
-    legend=False,
-    figsize=[16, 8],
-    title="Performance Metrics by Sensitive Features",
-    **plot_kwargs);
-    
+        subplots=True,
+        layout=[3, 3],
+        legend=False,
+        figsize=[16, 8],
+        title="Performance Metrics by Sensitive Features",
+        **plot_kwargs,
+    )
+
     return pd.DataFrame(multi_metric.by_group)
 
-def create_api(estimator, api_name, host = '127.0.0.1', port = 8000):
-    
+
+def create_api(estimator, api_name, host="127.0.0.1", port=8000):
+
     """
     This function creates API and write it as a python file using FastAPI
     """
-    
+
     try:
         import fastapi
     except ImportError:
@@ -10478,22 +10540,24 @@ def create_api(estimator, api_name, host = '127.0.0.1', port = 8000):
             "It appears that uvicorn is not installed. Do: pip install uvicorn"
         )
 
-    target_name = get_config('prep_pipe')[0].target
-    raw_data = get_config('data_before_preprocess').copy()
+    target_name = get_config("prep_pipe")[0].target
+    raw_data = get_config("data_before_preprocess").copy()
     raw_data.drop(target_name, axis=1, inplace=True)
     input_cols = list(raw_data.columns)
 
-    MODULE = get_config('prep_pipe')[0].ml_usecase
+    MODULE = get_config("prep_pipe")[0].ml_usecase
     INPUT_COLS = input_cols
-    INPUT_COLS_FORMATTED = ', '.join(tuple(INPUT_COLS)).replace("'", "")
-    INPUT_COLS_WITHOUT_SPACES = [i.replace(' ','_') for i in input_cols]
-    INPUT_COLS_WITHOUT_SPACES = [i.replace('-','_') for i in INPUT_COLS_WITHOUT_SPACES]
-    INPUT_COLS_WITHOUT_SPACES_FORMATTED = ', '.join(tuple(INPUT_COLS_WITHOUT_SPACES)).replace("'", "")
+    INPUT_COLS_FORMATTED = ", ".join(tuple(INPUT_COLS)).replace("'", "")
+    INPUT_COLS_WITHOUT_SPACES = [i.replace(" ", "_") for i in input_cols]
+    INPUT_COLS_WITHOUT_SPACES = [i.replace("-", "_") for i in INPUT_COLS_WITHOUT_SPACES]
+    INPUT_COLS_WITHOUT_SPACES_FORMATTED = ", ".join(
+        tuple(INPUT_COLS_WITHOUT_SPACES)
+    ).replace("'", "")
     API_NAME = api_name
     HOST = host
 
-    save_model(estimator, model_name = api_name, verbose=False)
-    
+    save_model(estimator, model_name=api_name, verbose=False)
+
     query = """
 import pandas as pd
 from pycaret.{MODULE_NAME} import load_model, predict_model
@@ -10515,17 +10579,20 @@ def predict({INPUT_COLS}):
     return {D1}'prediction': list(predictions['Label']){D2}
 
 if __name__ == '__main__':
-    uvicorn.run(app, host='{HOST}', port={PORT})""".format(MODULE_NAME = MODULE,\
-                                                        API_NAME = API_NAME,\
-                                                        INPUT_COLS = INPUT_COLS_WITHOUT_SPACES_FORMATTED,\
-                                                        DATAFRAME = INPUT_COLS_WITHOUT_SPACES_FORMATTED,\
-                                                        COLUMNS =  INPUT_COLS,
-                                                        D1 = '{', D2 = '}',\
-                                                        HOST = HOST,\
-                                                        PORT = port)
-    
-    file_name = str(api_name) + '.py'
-    
+    uvicorn.run(app, host='{HOST}', port={PORT})""".format(
+        MODULE_NAME=MODULE,
+        API_NAME=API_NAME,
+        INPUT_COLS=INPUT_COLS_WITHOUT_SPACES_FORMATTED,
+        DATAFRAME=INPUT_COLS_WITHOUT_SPACES_FORMATTED,
+        COLUMNS=INPUT_COLS,
+        D1="{",
+        D2="}",
+        HOST=HOST,
+        PORT=port,
+    )
+
+    file_name = str(api_name) + ".py"
+
     f = open(file_name, "w")
     f.write(query)
     f.close()
@@ -10534,8 +10601,10 @@ if __name__ == '__main__':
 API sucessfully created. This function only creates a POST API, it doesn't run it automatically.
 
 To run your API, please run this command --> !python {API_NAME}.py
-    """.format(API_NAME = API_NAME)
-    
+    """.format(
+        API_NAME=API_NAME
+    )
+
     print(message)
 
 
@@ -10579,6 +10648,7 @@ CMD ["python", "{API_NAME}.py"]
     print("""Dockerfile and requirements.txt successfully created.
 To build image you have to run --> !docker image build -f "Dockerfile" -t IMAGE_NAME:IMAGE_TAG .
         """)
+
 
 def _choose_better(
     models_and_results: list,
@@ -11012,5 +11082,3 @@ def _get_groups(
     fold_groups = fold_groups if fold_groups is not None else fold_groups_param
 
     return pycaret.internal.utils.get_groups(groups, data, fold_groups)
-
-
