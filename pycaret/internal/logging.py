@@ -17,7 +17,7 @@ def get_logger() -> logging.Logger:
 
 def create_logger() -> logging.Logger:
     logger = logging.getLogger("logs")
-    level = os.getenv("CUSTOM_LOGGING_LEVEL", "DEBUG")
+    level = os.getenv("PYCARET_CUSTOM_LOGGING_LEVEL", "DEBUG")
     logger.setLevel(level)
 
     # create console handler and set level to debug
