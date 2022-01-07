@@ -15,7 +15,6 @@ from IPython.utils import io
 import traceback
 
 from pycaret.internal.tabular import MLUsecase
-from pycaret.internal.fugue_backend import _CompareModelsWrapper, _NoDisplay
 
 warnings.filterwarnings("ignore")
 
@@ -808,24 +807,30 @@ def compare_models(
 
     - No models are logged in ``MLFlow`` when ``cross_validation`` parameter is False.
     """
+    params = dict(locals())
+    _display: Any = None
 
-    if fugue_engine is not None and fugue_engine != "remote":
-        params = dict(locals())
-        global _pycaret_setup_call
-        if params.get("include", None) is None:
-            params["include"] = models().index.tolist()
-        del params["fugue_engine"]
-        del params["fugue_conf"]
-        wrapper = _CompareModelsWrapper(
-            _pycaret_setup_call,
-            dict(func=compare_models, params=params),
-        )
-        return wrapper.compare_models(
-            fugue_engine,
-            fugue_conf,
-            batch_size=batch_size,
-            display_remote=display_remote,
-        )
+    if fugue_engine is not None:
+        from pycaret.internal.fugue_backend import _CompareModelsWrapper, _NoDisplay
+
+        if fugue_engine == "remote":
+            _display = _NoDisplay()
+        else:
+            global _pycaret_setup_call
+            if params.get("include", None) is None:
+                params["include"] = models().index.tolist()
+            del params["fugue_engine"]
+            del params["fugue_conf"]
+            wrapper = _CompareModelsWrapper(
+                _pycaret_setup_call,
+                dict(func=compare_models, params=params),
+            )
+            return wrapper.compare_models(
+                fugue_engine,
+                fugue_conf,
+                batch_size=batch_size,
+                display_remote=display_remote,
+            )
 
     return pycaret.internal.tabular.compare_models(
         include=include,
@@ -842,7 +847,7 @@ def compare_models(
         groups=groups,
         probability_threshold=probability_threshold,
         verbose=verbose,
-        display=None if fugue_engine != "remote" else _NoDisplay(),
+        display=_display,
     )
 
 
