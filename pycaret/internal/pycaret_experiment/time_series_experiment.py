@@ -2686,26 +2686,29 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             fig_kwargs=fig_kwargs,
         )
 
-        plot_name = self._available_plots[plot]
-        plot_filename = f"{plot_name}.html"
+        # Sometimes the plot is not successful, such as decomp with RangeIndex.
+        # In such cases, plotting should be bypassed.
+        if fig is not None:
+            plot_name = self._available_plots[plot]
+            plot_filename = f"{plot_name}.html"
 
-        # Per https://github.com/pycaret/pycaret/issues/1699#issuecomment-962460539
-        if save:
-            if not isinstance(save, bool):
-                plot_filename = os.path.join(save, plot_filename)
+            # Per https://github.com/pycaret/pycaret/issues/1699#issuecomment-962460539
+            if save:
+                if not isinstance(save, bool):
+                    plot_filename = os.path.join(save, plot_filename)
 
-            self.logger.info(f"Saving '{plot_filename}'")
-            fig.write_html(plot_filename)
+                self.logger.info(f"Saving '{plot_filename}'")
+                fig.write_html(plot_filename)
 
-            ### Add file name to return object ----
-            return_obj.append(plot_filename)
+                ### Add file name to return object ----
+                return_obj.append(plot_filename)
 
-        elif system:
-            if display_format == "streamlit":
-                st.write(fig)
-            else:
-                fig.show()
-            self.logger.info("Visual Rendered Successfully")
+            elif system:
+                if display_format == "streamlit":
+                    st.write(fig)
+                else:
+                    fig.show()
+                self.logger.info("Visual Rendered Successfully")
 
         ### Add figure and data to return object if required ----
         if return_fig:
