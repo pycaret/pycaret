@@ -680,8 +680,8 @@ def compare_models(
     groups: Optional[Union[str, Any]] = None,
     probability_threshold: Optional[float] = None,
     verbose: bool = True,
-    fugue_engine: Any = None,
-    fugue_conf: Any = None,
+    parallel_backend: Any = None,
+    parallel_conf: Any = None,
     batch_size: int = 1,
     display_remote: bool = False,
 ) -> Union[Any, List[Any]]:
@@ -775,13 +775,13 @@ def compare_models(
     verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
 
-    fugue_engine: Any
+    parallel_backend: Any, default = None
         A ``SparkSession`` instance or "spark" to get the current ``SparkSession``.
         "dask" to get the current Dask client. "native" to test locally using single
         thread.
 
-    fugue_conf: Any
-        Fugue ExecutionEngine configs.
+    parallel_conf: Any, default = None
+        The associated configs for the parallel backend.
 
     batch_size: int, default = 1
         Batch size to partition the tasks. For example if there are 16 tasks,
@@ -810,24 +810,24 @@ def compare_models(
     params = dict(locals())
     _display: Any = None
 
-    if fugue_engine is not None:
+    if parallel_backend is not None:
         from pycaret.internal.fugue_backend import _CompareModelsWrapper, _NoDisplay
 
-        if fugue_engine == "remote":
+        if parallel_backend == "remote":
             _display = _NoDisplay()
         else:
             global _pycaret_setup_call
             if params.get("include", None) is None:
                 params["include"] = models().index.tolist()
-            del params["fugue_engine"]
-            del params["fugue_conf"]
+            del params["parallel_backend"]
+            del params["parallel_conf"]
             wrapper = _CompareModelsWrapper(
                 _pycaret_setup_call,
                 dict(func=compare_models, params=params),
             )
             return wrapper.compare_models(
-                fugue_engine,
-                fugue_conf,
+                parallel_backend,
+                parallel_conf,
                 batch_size=batch_size,
                 display_remote=display_remote,
             )

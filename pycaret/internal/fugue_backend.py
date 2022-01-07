@@ -87,7 +87,7 @@ class _CompareModelsWrapper:
         >>> from pycaret.classification import *
         >>> exp_name = setup(data = juice,  target = 'Purchase')
         >>> session = SparkSessiong.builder.getOrCreate()
-        >>> best_model = compare_models(fugue_engine=session)
+        >>> best_model = compare_models(engine=session)
 
 
         engine: Any
@@ -168,7 +168,7 @@ class _CompareModelsWrapper:
         self._remote_setup()
         params = dict(self._params)
         params.pop("include")
-        params["fugue_engine"] = "remote"
+        params["parallel_backend"] = "remote"
         results: List[List[Any]] = []
         with _get_context_lock():
             if report is not None:  # best visual effect for realtime update
