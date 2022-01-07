@@ -2,11 +2,18 @@ from typing import Any, Callable, Dict, List, Optional, Union, Iterable
 
 import cloudpickle
 import pandas as pd
-from fugue import FugueWorkflow
-from pycaret.internal.tabular import _append_display_container, pull, _create_display
+from fugue import transform
+from pycaret.internal.tabular import (
+    _append_display_container,
+    pull,
+    _create_display,
+    _get_setup_signature,
+    _get_context_lock,
+)
 from pycaret.internal.Display import Display
 from threading import RLock
 from math import ceil
+import random
 
 try:
     import fugue_dask
@@ -36,7 +43,7 @@ class _DisplayUtil:
         self._df: Optional[pd.DataFrame] = None
         self._display.display_progress()
 
-    def update(self, df: pd.DataFrame):
+    def update(self, df: pd.DataFrame) -> None:
         with self._lock:
             if self._df is None:
                 self._df = df
@@ -48,11 +55,18 @@ class _DisplayUtil:
             self._display.replace_master_display(self._df)
             self._display.display_master_display()
 
+    def finish(self) -> None:
+        self._display.display_master_display()
+
 
 class _CompareModelsWrapper:
     def __init__(self, setup_call: Dict[str, Any], compare_models_call: Dict[str, Any]):
+        self._signature = _get_setup_signature()
         self._setup_func = setup_call["func"]
-        self._setup_params = dict(setup_call["params"])
+        # self._setup_params = dict(setup_call["params"])
+        self._setup_params = {
+            k: v for k, v in setup_call["params"].items() if v is not None
+        }
         self._func = compare_models_call["func"]
         self._params = dict(compare_models_call["params"])
         assert "include" in self._params
@@ -99,69 +113,84 @@ class _CompareModelsWrapper:
         Returns:
             Trained model or list of trained models, depending on the ``n_select`` param.
         """
-
-        include = pd.DataFrame(
-            dict(models=[cloudpickle.dumps(x) for x in self._params["include"]])
-        ).sample(
-            frac=1.0
-        )  # shuffle
+        shuffled_idx = pd.DataFrame(
+            dict(
+                idx=random.sample(
+                    range(len(self._params["include"])), len(self._params["include"])
+                )
+            )
+        )
         du: Optional[Display] = (
             None
             if not display_remote
             else _DisplayUtil(
                 self._params.get("display", None),
-                progress=include.shape[0],
+                progress=shuffled_idx.shape[0],
                 verbose=self._params.get("verbose", False),
                 sort=self._params["sort"],
             )
         )
-        dag = FugueWorkflow()
-        dag.df(include).partition(
-            num=ceil(include.shape[0] / batch_size), algo="even"
-        ).transform(
+        outputs = transform(
+            shuffled_idx,
             self._remote_compare_models,
             schema="output:binary",
+            partition={"num": ceil(shuffled_idx.shape[0] / batch_size), "algo": "even"},
+            engine=engine,
+            engine_conf=conf,
             callback=None if du is None else du.update,
-        ).persist().yield_dataframe_as(
-            "res"
-        )
-        outputs = dag.run(engine, conf)["res"].as_array()
+            force_output_fugue_dataframe=True,
+            as_local=True,
+        ).as_array()
         res = pd.concat(cloudpickle.loads(x[0]) for x in outputs)
         res = res.sort_values(self._params["sort"], ascending=False)
         top = res.head(self._params.get("n_select", 1))
         _append_display_container(res.iloc[:, :-1])
         top_models = [cloudpickle.loads(x) for x in top._model]
+        if du is not None:
+            du.finish()
         return top_models[0] if len(top_models) == 1 else top_models
 
+    def _is_remote(self) -> bool:
+        return self._signature != _get_setup_signature()
+
     def _remote_setup(self):
-        params = dict(self._setup_params)
-        params["silent"] = True
-        params["verbose"] = False
-        params["n_jobs"] = 1
-        params["html"] = False
-        self._setup_func(**params)
+        if self._is_remote():
+            params = dict(self._setup_params)
+            params["silent"] = True
+            params["verbose"] = False
+            params["html"] = False
+            self._setup_func(**params)
 
     def _remote_compare_models(
-        self, models: List[List[Any]], report: Optional[Callable]
-    ) -> Iterable[List[Any]]:
-        include = [cloudpickle.loads(x[0]) for x in models]
+        self, idx: List[List[Any]], report: Optional[Callable]
+    ) -> List[List[Any]]:
+        include = [self._params["include"][i[0]] for i in idx]
         self._remote_setup()
         params = dict(self._params)
         params.pop("include")
         params["fugue_engine"] = "remote"
-        if report is not None:  # best visual effect for realtime update
-            params["n_select"] = 1
-            for inc in include:
-                m = self._func(include=[inc], **params)
+        results: List[List[Any]] = []
+        with _get_context_lock():
+            if report is not None:  # best visual effect for realtime update
+                params["n_select"] = 1
+                for inc in include:
+                    m = self._func(include=[inc], **params)
+                    res = pull()
+                    report(res)
+                    results.append(
+                        [cloudpickle.dumps(res.assign(_model=[cloudpickle.dumps(m)]))]
+                    )
+            else:  # best performance
+                params["n_select"] = len(include)
+                m = self._func(include=include, **params)
+                if not isinstance(m, list):
+                    m = [m]
                 res = pull()
-                report(res)
-                yield [cloudpickle.dumps(res.assign(_model=[cloudpickle.dumps(m)]))]
-        else:  # best performance
-            params["n_select"] = len(include)
-            m = self._func(include=include, **params)
-            if not isinstance(m, list):
-                m = [m]
-            res = pull()
-            yield [
-                cloudpickle.dumps(res.assign(_model=[cloudpickle.dumps(x) for x in m]))
-            ]
+                results.append(
+                    [
+                        cloudpickle.dumps(
+                            res.assign(_model=[cloudpickle.dumps(x) for x in m])
+                        )
+                    ]
+                )
+        return results

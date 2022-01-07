@@ -74,6 +74,8 @@ import plotly.express as px
 import plotly.graph_objects as go
 import scikitplot as skplt
 from packaging import version
+from uuid import uuid4
+from threading import RLock
 
 warnings.filterwarnings("ignore")
 
@@ -184,6 +186,10 @@ def setup(
     All other parameters are optional.
 
     """
+    global _setup_signature, _context_lock
+
+    _setup_signature = str(uuid4())
+    _context_lock = RLock()
 
     function_params_str = ", ".join(
         [f"{k}={v}" for k, v in locals().items() if k != "data"]
@@ -6933,7 +6939,7 @@ def plot_model(
                     logger.info(f"Saving '{plot_filename}.png'")
                     plt.savefig(f"{plot_filename}.png", bbox_inches="tight")
                 elif system:
-                    if display_format == 'streamlit':
+                    if display_format == "streamlit":
                         st.pyplot(plt, clear_figure=True)
                     else:
                         plt.show()
@@ -6965,7 +6971,7 @@ def plot_model(
                     logger.info(f"Saving '{plot_filename}.png'")
                     plt.savefig(f"{plot_filename}.png", bbox_inches="tight")
                 elif system:
-                    if display_format == 'streamlit':
+                    if display_format == "streamlit":
                         st.pyplot(plt, clear_figure=True)
                     else:
                         plt.show()
@@ -7115,7 +7121,7 @@ def plot_model(
                 logger.info(f"Saving '{plot_filename}.png'")
                 plt.savefig(f"{plot_filename}.png", bbox_inches="tight")
             elif system:
-                if display_format == 'streamlit':
+                if display_format == "streamlit":
                     st.pyplot(plt, clear_figure=True)
                 else:
                     plt.show()
@@ -7432,7 +7438,7 @@ def plot_model(
                 logger.info(f"Saving '{plot_filename}.png'")
                 plt.savefig(f"{plot_filename}.png", bbox_inches="tight")
             elif system:
-                if display_format == 'streamlit':
+                if display_format == "streamlit":
                     st.pyplot(plt, clear_figure=True)
                 else:
                     plt.show()
@@ -7478,7 +7484,7 @@ def plot_model(
                     logger.info(f"Saving '{plot_filename}.png'")
                     plt.savefig(f"{plot_filename}.png", bbox_inches="tight")
                 elif system:
-                    if display_format == 'streamlit':
+                    if display_format == "streamlit":
                         st.pyplot(plt, clear_figure=True)
                     else:
                         plt.show()
@@ -11042,11 +11048,12 @@ def _get_groups(
     return pycaret.internal.utils.get_groups(groups, data, fold_groups)
 
 
-def _append_display_container(df:pd.DataFrame) -> None:
+def _append_display_container(df: pd.DataFrame) -> None:
     global display_container
     display_container.append(df)
 
-def _create_display(progress:int, verbose:bool, monitor_rows:Any) -> Display:
+
+def _create_display(progress: int, verbose: bool, monitor_rows: Any) -> Display:
     progress_args = {"max": progress}
     return Display(
         verbose=verbose,
@@ -11054,3 +11061,11 @@ def _create_display(progress:int, verbose:bool, monitor_rows:Any) -> Display:
         progress_args=progress_args,
         monitor_rows=monitor_rows,
     )
+
+
+def _get_setup_signature() -> Optional[str]:
+    return globals().get("_setup_signature", None)
+
+
+def _get_context_lock() -> RLock:
+    return globals()["_context_lock"]
