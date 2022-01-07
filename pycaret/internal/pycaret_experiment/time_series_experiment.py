@@ -1083,7 +1083,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         if seasonal_period is None:
 
             index_freq = data_.index.freqstr
-            self.seasonal_period = get_sp_from_str(str_freq = index_freq)
+            self.seasonal_period = get_sp_from_str(str_freq=index_freq)
 
         else:
 
@@ -1093,7 +1093,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 )
 
             if isinstance(seasonal_period, str):
-                self.seasonal_period = get_sp_from_str(str_freq = seasonal_period)
+                self.seasonal_period = get_sp_from_str(str_freq=seasonal_period)
             else:
                 self.seasonal_period = seasonal_period
 
@@ -2539,8 +2539,13 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                     "It appears that streamlit is not installed. Do: pip install hpbandster ConfigSpace"
                 )
 
+        # Add sp value (used in decomp plots)
+        sp_dict = {"sp_to_use": self.sp_to_use}
         if data_kwargs is None:
-            data_kwargs = {}
+            data_kwargs = sp_dict
+        else:
+            data_kwargs.update(sp_dict)
+
         if fig_kwargs is None:
             fig_kwargs = {}
 
@@ -3865,7 +3870,8 @@ def update_additional_scorer_kwargs(
     )
     return additional_scorer_kwargs
 
-def get_sp_from_str(str_freq:str)->int:
+
+def get_sp_from_str(str_freq: str) -> int:
     """Takes the seasonal period as string detects if it is alphaneumeric and returns its integer equivalent. 
         For example - 
         input - '30W'
@@ -3890,20 +3896,20 @@ def get_sp_from_str(str_freq:str)->int:
     """
     str_freq = str_freq.split("-")[0] or str_freq
     # Checking whether the index_freq contains both digit and alphabet
-    if bool(re.search(r'\d', str_freq)):
+    if bool(re.search(r"\d", str_freq)):
         temp = re.compile("([0-9]+)([a-zA-Z]+)")
         res = temp.match(str_freq).groups()
         # separating the digits and alphabets
         if res[1] in SeasonalPeriod.__members__:
             prefix = int(res[0])
             value = SeasonalPeriod[res[1]].value
-            lcm = abs(value*prefix)//math.gcd(value,prefix)
-            seasonal_period = int(lcm/prefix)
+            lcm = abs(value * prefix) // math.gcd(value, prefix)
+            seasonal_period = int(lcm / prefix)
             return seasonal_period
         else:
             raise ValueError(
-            f"Unsupported Period frequency: {str_freq}, valid Period frequency suffixes are: {', '.join(SeasonalPeriod.__members__.keys())}"
-        )
+                f"Unsupported Period frequency: {str_freq}, valid Period frequency suffixes are: {', '.join(SeasonalPeriod.__members__.keys())}"
+            )
     else:
 
         if str_freq in SeasonalPeriod.__members__:
