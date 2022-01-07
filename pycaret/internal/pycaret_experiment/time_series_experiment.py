@@ -1083,7 +1083,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         if seasonal_period is None:
 
             index_freq = data_.index.freqstr
-            self.seasonal_period = get_sp_from_str(str_freq = index_freq)
+            self.seasonal_period = get_sp_from_str(str_freq=index_freq)
 
         else:
 
@@ -1093,7 +1093,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 )
 
             if isinstance(seasonal_period, str):
-                self.seasonal_period = get_sp_from_str(str_freq = seasonal_period)
+                self.seasonal_period = get_sp_from_str(str_freq=seasonal_period)
             else:
                 self.seasonal_period = seasonal_period
 
@@ -2681,26 +2681,29 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             fig_kwargs=fig_kwargs,
         )
 
-        plot_name = self._available_plots[plot]
-        plot_filename = f"{plot_name}.html"
+        # Sometimes the plot is not successful, such as decomp with RangeIndex.
+        # In such cases, plotting should be bypassed.
+        if fig is not None:
+            plot_name = self._available_plots[plot]
+            plot_filename = f"{plot_name}.html"
 
-        # Per https://github.com/pycaret/pycaret/issues/1699#issuecomment-962460539
-        if save:
-            if not isinstance(save, bool):
-                plot_filename = os.path.join(save, plot_filename)
+            # Per https://github.com/pycaret/pycaret/issues/1699#issuecomment-962460539
+            if save:
+                if not isinstance(save, bool):
+                    plot_filename = os.path.join(save, plot_filename)
 
-            self.logger.info(f"Saving '{plot_filename}'")
-            fig.write_html(plot_filename)
+                self.logger.info(f"Saving '{plot_filename}'")
+                fig.write_html(plot_filename)
 
-            ### Add file name to return object ----
-            return_obj.append(plot_filename)
+                ### Add file name to return object ----
+                return_obj.append(plot_filename)
 
-        elif system:
-            if display_format == "streamlit":
-                st.write(fig)
-            else:
-                fig.show()
-            self.logger.info("Visual Rendered Successfully")
+            elif system:
+                if display_format == "streamlit":
+                    st.write(fig)
+                else:
+                    fig.show()
+                self.logger.info("Visual Rendered Successfully")
 
         ### Add figure and data to return object if required ----
         if return_fig:
@@ -3865,7 +3868,8 @@ def update_additional_scorer_kwargs(
     )
     return additional_scorer_kwargs
 
-def get_sp_from_str(str_freq:str)->int:
+
+def get_sp_from_str(str_freq: str) -> int:
     """Takes the seasonal period as string detects if it is alphaneumeric and returns its integer equivalent. 
         For example - 
         input - '30W'
@@ -3890,20 +3894,20 @@ def get_sp_from_str(str_freq:str)->int:
     """
     str_freq = str_freq.split("-")[0] or str_freq
     # Checking whether the index_freq contains both digit and alphabet
-    if bool(re.search(r'\d', str_freq)):
+    if bool(re.search(r"\d", str_freq)):
         temp = re.compile("([0-9]+)([a-zA-Z]+)")
         res = temp.match(str_freq).groups()
         # separating the digits and alphabets
         if res[1] in SeasonalPeriod.__members__:
             prefix = int(res[0])
             value = SeasonalPeriod[res[1]].value
-            lcm = abs(value*prefix)//math.gcd(value,prefix)
-            seasonal_period = int(lcm/prefix)
+            lcm = abs(value * prefix) // math.gcd(value, prefix)
+            seasonal_period = int(lcm / prefix)
             return seasonal_period
         else:
             raise ValueError(
-            f"Unsupported Period frequency: {str_freq}, valid Period frequency suffixes are: {', '.join(SeasonalPeriod.__members__.keys())}"
-        )
+                f"Unsupported Period frequency: {str_freq}, valid Period frequency suffixes are: {', '.join(SeasonalPeriod.__members__.keys())}"
+            )
     else:
 
         if str_freq in SeasonalPeriod.__members__:
