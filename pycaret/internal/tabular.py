@@ -6348,7 +6348,7 @@ def plot_model(
             if feature_name is not None:
                 X_embedded["Feature"] = data_before_preprocess[feature_name]
             else:
-                X_embedded["Feature"] = data_before_preprocess[data_X.columns[0]]
+                X_embedded["Feature"] = data_before_preprocess.iloc[:, 0]
 
             if label:
                 X_embedded["Label"] = X_embedded["Feature"]
@@ -6933,7 +6933,7 @@ def plot_model(
                     logger.info(f"Saving '{plot_filename}.png'")
                     plt.savefig(f"{plot_filename}.png", bbox_inches="tight")
                 elif system:
-                    if display_format == 'streamlit':
+                    if display_format == "streamlit":
                         st.pyplot(plt, clear_figure=True)
                     else:
                         plt.show()
@@ -6965,7 +6965,7 @@ def plot_model(
                     logger.info(f"Saving '{plot_filename}.png'")
                     plt.savefig(f"{plot_filename}.png", bbox_inches="tight")
                 elif system:
-                    if display_format == 'streamlit':
+                    if display_format == "streamlit":
                         st.pyplot(plt, clear_figure=True)
                     else:
                         plt.show()
@@ -7115,7 +7115,7 @@ def plot_model(
                 logger.info(f"Saving '{plot_filename}.png'")
                 plt.savefig(f"{plot_filename}.png", bbox_inches="tight")
             elif system:
-                if display_format == 'streamlit':
+                if display_format == "streamlit":
                     st.pyplot(plt, clear_figure=True)
                 else:
                     plt.show()
@@ -7432,7 +7432,7 @@ def plot_model(
                 logger.info(f"Saving '{plot_filename}.png'")
                 plt.savefig(f"{plot_filename}.png", bbox_inches="tight")
             elif system:
-                if display_format == 'streamlit':
+                if display_format == "streamlit":
                     st.pyplot(plt, clear_figure=True)
                 else:
                     plt.show()
@@ -7478,7 +7478,7 @@ def plot_model(
                     logger.info(f"Saving '{plot_filename}.png'")
                     plt.savefig(f"{plot_filename}.png", bbox_inches="tight")
                 elif system:
-                    if display_format == 'streamlit':
+                    if display_format == "streamlit":
                         st.pyplot(plt, clear_figure=True)
                     else:
                         plt.show()
@@ -10608,11 +10608,13 @@ To run your API, please run this command --> !python {API_NAME}.py
     print(message)
 
 
-def create_docker(api_name: str, base_image: str ='python:3.8-slim', expose_port: int = 8000):
-    
+def create_docker(
+    api_name: str, base_image: str = "python:3.8-slim", expose_port: int = 8000
+):
+
     """
-    This function creates a ``Dockerfile`` and ``requirements.txt`` for 
-    productionalizing API end-point. 
+    This function creates a ``Dockerfile`` and ``requirements.txt`` for
+    productionalizing API end-point.
 
 
     Example
@@ -10647,12 +10649,12 @@ pycaret
 fastapi
 uvicorn
 """
-    print('Writing requirements.txt')
+    print("Writing requirements.txt")
     f = open("requirements.txt", "w")
     f.write(requirements)
     f.close
-    
-    print('Writing Dockerfile')
+
+    print("Writing Dockerfile")
     docker = """
     
 FROM {BASE_IMAGE}
@@ -10668,14 +10670,18 @@ RUN pip install -r requirements.txt
 EXPOSE {PORT}
 
 CMD ["python", "{API_NAME}.py"]    
-""".format(BASE_IMAGE=base_image, PORT=expose_port, API_NAME=api_name)
-    
+""".format(
+        BASE_IMAGE=base_image, PORT=expose_port, API_NAME=api_name
+    )
+
     with open("Dockerfile", "w") as f:
         f.write(docker)
-    
-    print("""Dockerfile and requirements.txt successfully created.
+
+    print(
+        """Dockerfile and requirements.txt successfully created.
 To build image you have to run --> !docker image build -f "Dockerfile" -t IMAGE_NAME:IMAGE_TAG .
-        """)
+        """
+    )
 
 
 def _choose_better(
