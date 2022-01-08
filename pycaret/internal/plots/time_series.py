@@ -1028,7 +1028,7 @@ def plot_time_series_decomposition(
 
 def plot_multiple_predictions(
         data: pd.Series,
-        predictions: List,
+        predictions: Union[pd.Series, List[pd.Series]],
         model_name: List = None,
         data_kwargs: Optional[Dict] = None,
         fig_kwargs: Optional[Dict] = None,
@@ -1098,6 +1098,7 @@ def plot_multiple_predictions(
     return_data_dict = {
         "data": data,
         "predictions": predictions,
+        "model_name":model_name
     }
 
     return fig, return_data_dict
@@ -1105,7 +1106,7 @@ def plot_multiple_predictions(
 
 def plot_multiple_predictions_with_confidence(
         data: pd.Series,
-        predictions: List,
+        predictions: Union[pd.Series, List[pd.Series]],
         upper_interval: List = None,
         lower_interval: List = None,
         model_name: List = None,
@@ -1212,6 +1213,7 @@ def plot_multiple_predictions_with_confidence(
     return_data_dict = {
         "data": data,
         "predictions": predictions,
+        "model_name":model_name,
         "upper_interval": upper_interval,
         "lower_interval": lower_interval,
     }
