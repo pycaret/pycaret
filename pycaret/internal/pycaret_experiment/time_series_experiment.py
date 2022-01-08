@@ -979,7 +979,9 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         return data
 
     def __check_and_set_fh(
-        self, fh: Optional[Union[List[int], int, np.array]], fold_strategy: Union[str, Any]
+        self,
+        fh: Optional[Union[List[int], int, np.array]],
+        fold_strategy: Union[str, Any],
     ):
         """Checks and sets the forecast horizon class attribute based on the user inputs.
         (1) If fold_strategy is of type string, then fh must be provided
@@ -1057,7 +1059,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         self.logger.info("Set up Seasonal Period.")
 
         if seasonal_period is None:
-            index_freq = data_.index.freqstr
+            index_freq = data.index.freqstr
             self.seasonal_period = get_sp_from_str(str_freq=index_freq)
         else:
             if not isinstance(seasonal_period, (int, str)):
@@ -1072,7 +1074,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         # check valid seasonal parameter
         self.seasonality_present = autocorrelation_seasonality_test(
-            data_[self.target_param], self.seasonal_period
+            data[self.target_param], self.seasonal_period
         )
 
         # What seasonal period should be used for modeling?
