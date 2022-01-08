@@ -1026,11 +1026,9 @@ def plot_time_series_decomposition(
     return fig, return_data_dict
 
 
-def plot_multiple_predictions_with_confidence(
+def plot_multiple_predictions(
         data: pd.Series,
         predictions: List,
-        upper_interval: List = None,
-        lower_interval: List = None,
         model_name: List = None,
         data_kwargs: Optional[Dict] = None,
         fig_kwargs: Optional[Dict] = None,
@@ -1042,9 +1040,6 @@ def plot_multiple_predictions_with_confidence(
         data_kwargs = {}
     if fig_kwargs is None:
         fig_kwargs = {}
-
-    if upper_interval is not None or lower_interval is not None:
-        raise NotImplementedError("Prediction Intervals are not supported yet")
 
     title = "Actual vs. 'Out-of-Sample' Forecast"
     time_series_name = data.name
@@ -1103,11 +1098,122 @@ def plot_multiple_predictions_with_confidence(
     return_data_dict = {
         "data": data,
         "predictions": predictions,
-        "upper_interval": upper_interval,
-        "lower_interval": lower_interval,
     }
 
     return fig, return_data_dict
 
 
+def plot_multiple_predictions_with_confidence(
+        data: pd.Series,
+        predictions: List,
+        upper_interval: List = None,
+        lower_interval: List = None,
+        model_name: List = None,
+        data_kwargs: Optional[Dict] = None,
+        fig_kwargs: Optional[Dict] = None,
+):
+    """Plots the original data and the predictions provided with confidence"""
+    fig, return_data_dict = None, None
 
+    if data_kwargs is None:
+        data_kwargs = {}
+    if fig_kwargs is None:
+        fig_kwargs = {}
+
+    title = "Actual vs. 'Out-of-Sample' Forecast"
+    time_series_name = data.name
+    if time_series_name is not None:
+        title = f"{title} | {time_series_name}"
+
+    fig_data = []
+    CONF_INT_SET = False
+    for index_iterator, prediction in enumerate(predictions):
+        x = (
+            prediction.index.to_timestamp()
+            if isinstance(prediction.index, pd.PeriodIndex)
+            else prediction.index
+        )
+        mean = go.Scatter(
+            name=f"Forecast | {model_name[index_iterator]}",
+            x=x,
+            y=prediction,
+            mode="lines+markers",
+            showlegend=True,
+        )
+
+        if not CONF_INT_SET:
+            x = (
+                upper_interval[index_iterator].index.to_timestamp()
+                if isinstance(upper_interval[index_iterator].index, pd.PeriodIndex)
+                else upper_interval.index
+            )
+            upper_bound = go.Scatter(
+                name=f"Prediction Interval | {model_name[index_iterator]}",
+                x=x,
+                y=upper_interval[index_iterator],
+                mode="lines",
+                line=dict(width=0),
+                showlegend=True,
+                fill="tonexty",
+            )
+
+            x = (
+                lower_interval[index_iterator].index.to_timestamp()
+                if isinstance(lower_interval[index_iterator].index, pd.PeriodIndex)
+                else lower_interval[index_iterator].index
+            )
+            lower_bound = go.Scatter(
+                name="Lower Interval",
+                x=x,
+                y=lower_interval[index_iterator],
+                line=dict(width=0),
+                mode="lines",
+                showlegend=False,
+            )
+            fig_data.extend([mean, lower_bound, upper_bound])
+
+            CONF_INT_SET = True
+
+        else:
+            fig_data.extend([mean])
+
+    x = (
+        data.index.to_timestamp()
+        if isinstance(data.index, pd.PeriodIndex)
+        else data.index
+    )
+
+    original = go.Scatter(
+        name="Original",
+        x=x,
+        y=data,
+        marker=dict(size=5, color="#3f3f3f"),
+        mode="lines+markers",
+        showlegend=True,
+    )
+    fig_data.append(original)
+
+    layout = go.Layout(
+        yaxis=dict(title="Values"), xaxis=dict(title="Time"), title=title,
+    )
+
+    fig = go.Figure(data=fig_data, layout=layout)
+
+    fig_template = fig_kwargs.get("fig_template", "ggplot2")
+    fig.update_layout(template=fig_template)
+    fig.update_layout(showlegend=True)
+
+    fig_size = fig_kwargs.get("fig_size", None)
+    if fig_size is not None:
+        fig.update_layout(
+            autosize=False, width=fig_size[0], height=fig_size[1],
+        )
+
+    return_data_dict = {
+        "data": data,
+        "predictions": predictions,
+        "upper_interval": upper_interval,
+        "lower_interval": lower_interval,
+    }
+
+    return fig, return_data_dict
