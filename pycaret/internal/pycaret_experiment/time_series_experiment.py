@@ -982,6 +982,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         self,
         fh: Optional[Union[List[int], int, np.array]],
         fold_strategy: Union[str, Any],
+        fold: int,
     ):
         """Checks and sets the forecast horizon class attribute based on the user inputs.
         (1) If fold_strategy is of type string, then fh must be provided
@@ -992,9 +993,11 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         Parameters
         ----------
         fh : Optional[Union[List[int], int, np.array]]
-            Forecast Horizon
+            Forecast Horizon specified by user
         fold_strategy : Union[str, Any]
-            Fold Strategy
+            Fold Strategy specified by user
+        fold : int
+            Number of folds specified by user
 
         Raises
         ------
@@ -1023,7 +1026,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             )
             fh = fold_strategy.fh
             self.logger.info(
-                f"fold parameter {fold} will be ignored since fold_strategy has been provided. "
+                f"fold parameter '{fold}' will be ignored since fold_strategy has been provided. "
                 f"fold based on fold_strategy will be used instead."
             )
             # fold value will be reset after the data is split in the parent class setup
@@ -1285,7 +1288,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         self.__check_and_set_targets(data=data_)
 
         #### Set Forecast Horizon ----
-        self.__check_and_set_fh(fh=fh, fold_strategy=fold_strategy)
+        self.__check_and_set_fh(fh=fh, fold_strategy=fold_strategy, fold=fold)
 
         #### Set up Seasonal Period ----
         self.__check_and_set_seasonal_period(
