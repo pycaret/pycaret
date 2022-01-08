@@ -1030,72 +1030,22 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
 
         """
-        from sktime.utils.seasonality import (
-            autocorrelation_seasonality_test,
-        )  # only needed in setup
+        # sktime is an optional dependency
+        from sktime.utils.seasonality import autocorrelation_seasonality_test
 
-        ## Make a local copy so as not to perfrom inplace operation on the
-        ## original dataset
+        ##############################
+        #### Setup initialization ####
+        ##############################
+
+        # Define parameter attrs
+        self.enforce_pi = enforce_pi
+
+        ## Make a local copy (to perfrom inplace operation on the original dataset)
         data_ = data.copy()
 
-        if isinstance(data_, pd.Series) and data_.name is None:
-            data_.name = "Time Series"
-
-        # Forecast Horizon Checks
-        if fh is None and isinstance(fold_strategy, str):
-            raise ValueError(
-                f"The forecast horizon `fh` must be provided when fold_strategy is of type 'string'"
-            )
-
-        # Check Fold Strategy
-        if not isinstance(fold_strategy, str):
-            self.logger.info(
-                f"fh parameter {fh} will be ignored since fold_strategy has been provided. "
-                f"fh from fold_strategy will be used instead."
-            )
-            fh = fold_strategy.fh
-            self.logger.info(
-                f"fold parameter {fold} will be ignored since fold_strategy has been provided. "
-                f"fold based on fold_strategy will be used instead."
-            )
-            # fold value will be reset after the data is split in the parent class setup
-
-        fh = self.check_fh(fh)
-        self.fh = fh
-
-        # Check Index
-        allowed_freq_index_types = (pd.PeriodIndex, pd.DatetimeIndex)
-        if (
-            not isinstance(data_.index, allowed_freq_index_types)
-            and seasonal_period is None
-        ):
-            # https://stackoverflow.com/questions/3590165/join-a-list-of-items-with-different-types-as-string-in-python
-            raise ValueError(
-                f"The index of your 'data' is of type '{type(data_.index)}'. "
-                "If the 'data' index is not of one of the following types: "
-                f"{', '.join(str(type) for type in allowed_freq_index_types)}, "
-                "then 'seasonal_period' must be provided. Refer to docstring for options."
-            )
-
-        if isinstance(data_.index, pd.DatetimeIndex):
-            data_.index = data_.index.to_period()
-
-        if seasonal_period is None:
-
-            index_freq = data_.index.freqstr
-            self.seasonal_period = get_sp_from_str(str_freq=index_freq)
-
-        else:
-
-            if not isinstance(seasonal_period, (int, str)):
-                raise ValueError(
-                    f"seasonal_period parameter must be an int or str, got {type(seasonal_period)}"
-                )
-
-            if isinstance(seasonal_period, str):
-                self.seasonal_period = get_sp_from_str(str_freq=seasonal_period)
-            else:
-                self.seasonal_period = seasonal_period
+        ####################
+        #### Clean Data ####
+        ####################
 
         if isinstance(data_, (pd.Series, pd.DataFrame)):
             if isinstance(data_, pd.DataFrame):
@@ -1111,29 +1061,114 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 f"data must be a pandas Series or DataFrame, got object of {type(data_)} type!"
             )
 
+        #### Clean column names ----
         data_.columns = [str(x) for x in data_.columns]
 
-        target_name = data_.columns[0]
-        if not np.issubdtype(data_[target_name].dtype, np.number):
+        #### Get Target Name ----
+        # TODO: later, ask from user so that we can take exogenous variables
+        target = data_.columns[0]
+        self.target_param = target
+
+        #### Check type of target values - must be numeric ----
+        if not np.issubdtype(data_[self.target_param].dtype, np.number):
             raise TypeError(
-                f"Data must be of 'numpy.number' subtype, got {data_[target_name].dtype}!"
+                f"Data must be of 'numpy.number' subtype, got {data_[self.target_param].dtype}!"
             )
 
+        #### Set data name is not already set ----
+        if isinstance(data_, pd.Series) and data_.name is None:
+            data_.name = "Time Series"
+
+        ######################
+        #### Index checks ####
+        ######################
+
+        #### Data must not have duplicate indices ----
         if len(data_.index) != len(set(data_.index)):
             raise ValueError("Index may not have duplicate values!")
 
+        #### Check Index Type ----
+        allowed_freq_index_types = (pd.PeriodIndex, pd.DatetimeIndex)
+        if (
+            not isinstance(data_.index, allowed_freq_index_types)
+            and seasonal_period is None
+        ):
+            # https://stackoverflow.com/questions/3590165/join-a-list-of-items-with-different-types-as-string-in-python
+            raise ValueError(
+                f"The index of your 'data' is of type '{type(data_.index)}'. "
+                "If the 'data' index is not of one of the following types: "
+                f"{', '.join(str(type) for type in allowed_freq_index_types)}, "
+                "then 'seasonal_period' must be provided. Refer to docstring for options."
+            )
+
+        #### Convert DateTimeIndex index to PeriodIndex ----
+        if isinstance(data_.index, pd.DatetimeIndex):
+            data_.index = data_.index.to_period()
+
+        ##############################
+        #### Set Forecast Horizon ####
+        ##############################
+
+        self.logger.info("Set Forecast Horizon.")
+
+        #### Forecast Horizon Checks ----
+        if fh is None and isinstance(fold_strategy, str):
+            raise ValueError(
+                f"The forecast horizon `fh` must be provided when fold_strategy is of type 'string'"
+            )
+
+        #### Check Fold Strategy ----
+        if not isinstance(fold_strategy, str):
+            self.logger.info(
+                f"fh parameter {fh} will be ignored since fold_strategy has been provided. "
+                f"fh from fold_strategy will be used instead."
+            )
+            fh = fold_strategy.fh
+            self.logger.info(
+                f"fold parameter {fold} will be ignored since fold_strategy has been provided. "
+                f"fold based on fold_strategy will be used instead."
+            )
+            # fold value will be reset after the data is split in the parent class setup
+
+        fh = self.check_fh(fh)
+        self.fh = fh
+
+        ################################
+        #### Set up Seasonal Period ####
+        ################################
+
+        self.logger.info("Set up Seasonal Period.")
+
+        if seasonal_period is None:
+            index_freq = data_.index.freqstr
+            self.seasonal_period = get_sp_from_str(str_freq=index_freq)
+        else:
+            if not isinstance(seasonal_period, (int, str)):
+                raise ValueError(
+                    f"seasonal_period parameter must be an int or str, got {type(seasonal_period)}"
+                )
+
+            if isinstance(seasonal_period, str):
+                self.seasonal_period = get_sp_from_str(str_freq=seasonal_period)
+            else:
+                self.seasonal_period = seasonal_period
+
         # check valid seasonal parameter
         self.seasonality_present = autocorrelation_seasonality_test(
-            data_[target_name], self.seasonal_period
+            data_[self.target_param], self.seasonal_period
         )
 
         # What seasonal period should be used for modeling?
         self.sp_to_use = self.seasonal_period if self.seasonality_present else 1
 
-        # Should multiplicative components be allowed in models that support it
-        self.strictly_positive = np.all(data_[target_name] > 0)
+        ############################################
+        #### Multiplicative components allowed? ####
+        ############################################
 
-        self.enforce_pi = enforce_pi
+        self.logger.info("Set up whether Multiplicative components allowed.")
+
+        # Should multiplicative components be allowed in models that support it
+        self.strictly_positive = np.all(data_[self.target_param] > 0)
 
         return super().setup(
             data=data_,
