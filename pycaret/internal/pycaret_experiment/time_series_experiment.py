@@ -1058,6 +1058,9 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         """
         self.logger.info("Set up Seasonal Period.")
 
+        # sktime is an optional dependency
+        from sktime.utils.seasonality import autocorrelation_seasonality_test
+
         if seasonal_period is None:
             index_freq = data.index.freqstr
             self.seasonal_period = get_sp_from_str(str_freq=index_freq)
@@ -1262,8 +1265,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
 
         """
-        # sktime is an optional dependency
-        from sktime.utils.seasonality import autocorrelation_seasonality_test
 
         ##############################
         #### Setup initialization ####
