@@ -238,3 +238,69 @@ def test_setup_seasonal_period_alphanumeric(
 
     assert exp.seasonal_period == expected_seasonal_value
 
+
+def test_train_test_split(load_pos_and_neg_data):
+    """Tests the enforcement of prediction interval"""
+    data = load_pos_and_neg_data
+
+    ####################################
+    #### Continuous fh without Gaps ####
+    ####################################
+
+    #### Integer fh ----
+    exp = TimeSeriesExperiment()
+    fh = 12
+    exp.setup(data=data, fh=fh, session_id=42)
+    y_test = exp.get_config("y_test")
+    assert len(y_test) == fh
+
+    #### Numpy fh ----
+    exp = TimeSeriesExperiment()
+    fh = np.arange(1, 10)  # 9 values
+    exp.setup(data=data, fh=fh, session_id=42)
+    y_test = exp.get_config("y_test")
+    assert len(y_test) == len(fh)
+
+    #### List fh ----
+    exp = TimeSeriesExperiment()
+    fh = [1, 2, 3, 4, 5, 6]
+    exp.setup(data=data, fh=fh, session_id=42)
+    y_test = exp.get_config("y_test")
+    assert len(y_test) == len(fh)
+
+    #################################
+    #### Continuous fh with Gaps ####
+    #################################
+
+    #### Numpy fh ----
+    exp = TimeSeriesExperiment()
+    fh = np.arange(7, 13)  # 6 values
+    exp.setup(data=data, fh=fh, session_id=42)
+    y_test = exp.get_config("y_test")
+    assert len(y_test) == len(fh)
+
+    #### List fh ----
+    exp = TimeSeriesExperiment()
+    fh = [4, 5, 6]
+    exp.setup(data=data, fh=fh, session_id=42)
+    y_test = exp.get_config("y_test")
+    assert len(y_test) == len(fh)
+
+    ####################################
+    #### Discontinuous fh with Gaps ####
+    ####################################
+
+    #### Numpy fh ----
+    exp = TimeSeriesExperiment()
+    fh = np.array([4, 5, 6, 10, 11, 12])  # 6 values
+    exp.setup(data=data, fh=fh, session_id=42)
+    y_test = exp.get_config("y_test")
+    assert len(y_test) == len(fh)
+
+    #### List fh ----
+    exp = TimeSeriesExperiment()
+    fh = [4, 5, 6, 10, 11, 12]
+    exp.setup(data=data, fh=fh, session_id=42)
+    y_test = exp.get_config("y_test")
+    assert len(y_test) == len(fh)
+

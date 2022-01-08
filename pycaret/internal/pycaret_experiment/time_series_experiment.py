@@ -1334,7 +1334,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             data_split_stratify=False,
             fold_strategy=fold_strategy,
             fold=fold,
-            fh=fh,
+            fh=self.fh,
             fold_shuffle=False,
             n_jobs=n_jobs,
             use_gpu=use_gpu,
