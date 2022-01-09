@@ -706,6 +706,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             "forecast": "Out-of-Sample Forecast Plot",
             "insample": "In-Sample Forecast Plot",
             "residuals": "Residuals Plot",
+            "diff": "Difference Plot",
         }
 
         self._available_plots_data_keys = [
@@ -717,6 +718,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             "decomp_classical",
             "decomp_stl",
             "diagnostics",
+            "diff",
         ]
 
         self._available_plots_estimator_keys = [
@@ -728,6 +730,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             "decomp_classical",
             "decomp_stl",
             "diagnostics",
+            "diff",
             "forecast",
             "insample",
             "residuals",
@@ -2558,6 +2561,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             "diagnostics",
             "decomp_classical",
             "decomp_stl",
+            "diff",
         ]
         available_plots_data = available_plots_common
         available_plots_model = available_plots_common + [
@@ -2601,12 +2605,14 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             data = self._get_y_data(split="train")
             cv = self.get_fold_generator()
         elif estimator is None:
+            # Estimator is not provided
             require_full_data = [
                 "acf",
                 "pacf",
                 "diagnostics",
                 "decomp_classical",
                 "decomp_stl",
+                "diff",
             ]
             if plot in require_full_data:
                 data = self._get_y_data(split="all")
@@ -2635,6 +2641,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 "pacf",
                 "decomp_classical",
                 "decomp_stl",
+                "diff",
             ]
             if plot == "forecast":
                 data = self._get_y_data(split="all")

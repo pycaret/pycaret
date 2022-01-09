@@ -1,18 +1,24 @@
-from typing import Optional, Any, Union, Dict
-import pandas as pd
-import plotly.graph_objects as go
+from typing import Optional, Any, Union, Dict, List, Tuple
+
 import numpy as np
-from plotly.subplots import make_subplots
-from statsmodels.tsa.stattools import pacf, acf
-import plotly.express as px
-from statsmodels.graphics.gofplots import qqplot
+import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib
+
+import plotly.express as px
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+
+from statsmodels.tsa.stattools import pacf, acf
+from statsmodels.graphics.gofplots import qqplot
+from statsmodels.tsa.seasonal import seasonal_decompose, STL
+
+
 from sktime.forecasting.model_selection import (
     ExpandingWindowSplitter,
     SlidingWindowSplitter,
 )
-from statsmodels.tsa.seasonal import seasonal_decompose, STL
+from sktime.transformations.series.difference import Differencer
 
 __author__ = ["satya-pattnaik", "ngupta23"]
 #################
@@ -118,6 +124,13 @@ def plot_(
                 data_kwargs=data_kwargs,
                 fig_kwargs=fig_kwargs,
             )
+    elif plot == "diff":
+        fig, plot_data = plot_time_series_differences(
+            data=data,
+            model_name=model_name,
+            data_kwargs=data_kwargs,
+            fig_kwargs=fig_kwargs,
+        )
     else:
         raise ValueError(f"Plot: '{plot}' is not supported.")
 
@@ -344,7 +357,7 @@ def plot_cv(
     return_data_dict = {
         "data": data,
         "train_windows": train_windows,
-        "test_windows": test_windows
+        "test_windows": test_windows,
     }
 
     return fig, return_data_dict
@@ -783,11 +796,7 @@ def plot_diagnostics(
     corr_array = plot_acf(fig)
     time_plot(fig)
 
-    return_data_dict = {
-        "data": data,
-        "qqplot": qqplot_data,
-        "acf": corr_array[0]
-    }
+    return_data_dict = {"data": data, "qqplot": qqplot_data, "acf": corr_array[0]}
 
     return fig, return_data_dict
 
@@ -945,7 +954,9 @@ def plot_time_series_decomposition(
         if sp_to_use is None:
             decomp_result = seasonal_decompose(data_, model=classical_decomp_type)
         else:
-            decomp_result = seasonal_decompose(data_, period=sp_to_use, model=classical_decomp_type)
+            decomp_result = seasonal_decompose(
+                data_, period=sp_to_use, model=classical_decomp_type
+            )
     elif plot == "decomp_stl":
         if sp_to_use is None:
             decomp_result = STL(data_).fit()
@@ -1035,4 +1046,193 @@ def plot_time_series_decomposition(
     }
 
     return fig, return_data_dict
+
+
+def plot_time_series_differences(
+    data: pd.Series,
+    model_name: Optional[str] = None,
+    data_kwargs: Optional[Dict] = None,
+    fig_kwargs: Optional[Dict] = None,
+):
+    fig, return_data_dict = None, None
+
+    if data_kwargs is None:
+        data_kwargs = {}
+    if fig_kwargs is None:
+        fig_kwargs = {}
+
+    order_list = data_kwargs.get("order_list", None)
+    lags_list = data_kwargs.get("lags_list", None)
+
+    title_name = f"Difference Plot"
+    data_name = data.name if model_name is None else f"'{model_name}' Residuals"
+
+    if model_name is None:
+        title = f"{title_name}" if data.name is None else f"{title_name} | {data_name}"
+    else:
+        title = f"{title_name} | {data_name}"
+
+    diff_list, name_list = get_diffs(
+        data=data, order_list=order_list, lags_list=lags_list
+    )
+
+    if len(diff_list) == 0:
+        # Issue with reconciliation of orders and diffs
+        return fig, return_data_dict
+
+    diff_list = [data] + diff_list
+    name_list = ["Actual" if model_name is None else "Residuals"] + name_list
+
+    rows = len(diff_list)
+    fig = make_subplots(rows=rows, cols=1, row_titles=name_list, shared_xaxes=True,)
+
+    for i, subplot_data in enumerate(diff_list):
+        x = (
+            subplot_data.index.to_timestamp()
+            if isinstance(data.index, pd.PeriodIndex)
+            else data.index
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=x,
+                y=subplot_data.values,
+                line=dict(color="#1f77b4", width=2),
+                mode="lines+markers",
+                name=name_list[i],
+                marker=dict(size=5,),
+            ),
+            row=i + 1,
+            col=1,
+        )
+
+    fig.update_layout(title=title)
+    fig.update_layout(showlegend=False)
+    fig_template = fig_kwargs.get("fig_template", "ggplot2")
+    fig.update_layout(template=fig_template)
+
+    fig_size = fig_kwargs.get("fig_size", [800, 200 * rows])
+    if fig_size is not None:
+        fig.update_layout(
+            autosize=False, width=fig_size[0], height=fig_size[1],
+        )
+
+    return_data_dict = {
+        "data": data,
+        "diff_list": diff_list,
+        "name_list": name_list,
+    }
+
+    return fig, return_data_dict
+
+
+##########################
+#### Helper Functions ####
+##########################
+
+
+def __reconcile_order_and_lags(
+    order_list: Optional[List[Any]] = None, lags_list: Optional[List[Any]] = None
+) -> Tuple[List[int], List[str]]:
+    """Reconciles the differences to lags and returns the names
+    If order_list is provided, it is converted to lags_list.
+    If lags_list is provided, it is uses as is.
+    If none are provided, assumes order = [1]
+    If both are provided, returns empty lists
+
+    Parameters
+    ----------
+    order_list : Optional[List[Any]], optional
+        order of the differences, by default None
+    lags_list : Optional[List[Any]], optional
+        lags of the differences, by default None
+
+    Returns
+    -------
+    Tuple[List[int], List[str]]
+        (1) Reconciled lags_list AND
+        (2) Names corresponding to the difference lags
+    """
+
+    return_lags = []
+    return_names = []
+
+    if order_list is not None and lags_list is not None:
+        print(
+            "ERROR: Can not specify both 'order_list' and 'lags_list'. Please specify only one."
+        )
+        return return_lags, return_names
+    elif order_list is not None:
+        for order in order_list:
+            return_lags.append([1] * order)
+            return_names.append("Order=" + str(order))
+    elif lags_list is not None:
+        return_lags = lags_list
+        for lags in lags_list:
+            return_names.append("Lags=" + str(lags))
+    else:
+        # order_list is None and lags_list is None
+        # Only perform first difference by default
+        return_lags.append([1])
+        return_names.append("Order=1")
+
+    return return_lags, return_names
+
+
+def __get_diffs(data: pd.Series, lags_list: List[Any]) -> List[pd.Series]:
+    """Returns the requested differences of the provided `data`
+
+    Parameters
+    ----------
+    data : pd.Series
+        Data whose differences have to be computed
+    lags_list : List[Any]
+        lags of the differences
+
+    Returns
+    -------
+    List[pd.Series]
+        List of differences per the lags_list
+    """
+
+    diffs = []
+    for lags in lags_list:
+        transformer = Differencer(lags=lags)
+        diff = transformer.fit_transform(data)
+        diffs.append(diff)
+    return diffs
+
+
+def get_diffs(
+    data: pd.Series,
+    order_list: Optional[List[Any]] = None,
+    lags_list: Optional[List[Any]] = None,
+) -> Tuple[List[pd.Series], List[str]]:
+    """Returns the requested differences of the provided `data`
+    Either `order_list` or `lags_list` can be provided but not both.
+
+    Refer to the following for more details:
+    https://www.sktime.org/en/latest/api_reference/auto_generated/sktime.transformations.series.difference.Differencer.html
+    Note: order = 2 is equivalent to lags = [1, 1]
+
+    Parameters
+    ----------
+    data : pd.Series
+        Data whose differences have to be computed
+    order_list : Optional[List[Any]], optional
+        order of the differences, by default None
+    lags_list : Optional[List[Any]], optional
+        lags of the differences, by default None
+
+    Returns
+    -------
+    Tuple[List[pd.Series], List[str]]
+        (1) List of differences per the order_list or lags_list AND
+        (2) Names corresponding to the differences
+    """
+
+    lags_list_, names = __reconcile_order_and_lags(
+        order_list=order_list, lags_list=lags_list
+    )
+    diffs = __get_diffs(data=data, lags_list=lags_list_)
+    return diffs, names
 
