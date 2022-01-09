@@ -8302,20 +8302,19 @@ def calibrate_model(
 
 def optimize_threshold(
     estimator,
-    true_positive: int = 0,
-    true_negative: int = 0,
-    false_positive: int = 0,
-    false_negative: int = 0,
-    grid_interval: float = 0.0001,
+    optimize: str = "Accuracy",
+    grid_interval: float = 0.1,
+    return_data: bool = False, 
+    plot_kwargs: dict = {},
 ):
 
     """
-    This function optimizes probability threshold for a trained model using custom cost
-    function that can be defined using combination of True Positives, True Negatives,
-    False Positives (also known as Type I error), and False Negatives (Type II error).
+    This function optimizes probability threshold for a trained classifier. It 
+    iterates over performance metrics at different ``probability_threshold`` with
+    a step size defined in ``grid_interval`` parameter. This function will display
+    a plot of the performance metrics at each probability threshold and returns the
+    best model based on the metric defined under ``optimize`` parameter.
 
-    This function returns a plot of optimized cost as a function of probability
-    threshold between 0 to 100.
 
     Example
     -------
@@ -8323,40 +8322,39 @@ def optimize_threshold(
     >>> juice = get_data('juice')
     >>> experiment_name = setup(data = juice,  target = 'Purchase')
     >>> lr = create_model('lr')
-    >>> optimize_threshold(lr, true_negative = 10, false_negative = -100)
+    >>> best_lr_threshold = optimize_threshold(lr)
 
-    This will return a plot of optimized cost as a function of probability threshold.
 
     Parameters
     ----------
     estimator : object
         A trained model object should be passed as an estimator.
 
-    true_positive : int, default = 0
-        Cost function or returns when prediction is true positive.
 
-    true_negative : int, default = 0
-        Cost function or returns when prediction is true negative.
+    optimize : str, default = 'Accuracy'
+        Metric to be used for selecting best model. 
 
-    false_positive : int, default = 0
-        Cost function or returns when prediction is false positive.
-
-    false_negative : int, default = 0
-        Cost function or returns when prediction is false negative.
 
     grid_interval : float, default = 0.0001
-        Grid inerval for threshold grid search. Iteration count = 1.0/grid_interval. Default 10000 iterations.
+        Grid interval for threshold grid search. Default 10 iterations.
+
+
+    return_data :  bool, default = False
+        When set to True, data used for visualization is also returned.
+
+
+    plot_kwargs :  dict, default = {} (empty dict)
+        Dictionary of arguments passed to the visualizer class.
+
 
     Returns
     -------
-    Visual_Plot
-        Prints the visual plot.
+    Trained Model
+
 
     Warnings
     --------
-    - This function is not supported for multiclass problems.
-
-
+    - This function does not support multiclass classification problems.
     """
 
     function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
@@ -8391,139 +8389,71 @@ def optimize_threshold(
                 "Estimator doesn't support predict_proba function and cannot be used in optimize_threshold()."
             )
 
-    # check cost function type
     allowed_types = [int, float]
-
-    if type(true_positive) not in allowed_types:
-        raise TypeError("true_positive parameter only accepts float or integer value.")
-
-    if type(true_negative) not in allowed_types:
-        raise TypeError("true_negative parameter only accepts float or integer value.")
-
-    if type(false_positive) not in allowed_types:
-        raise TypeError("false_positive parameter only accepts float or integer value.")
-
-    if type(false_negative) not in allowed_types:
-        raise TypeError("false_negative parameter only accepts float or integer value.")
 
     if type(grid_interval) not in allowed_types or grid_interval > 1.0:
         raise TypeError("grid_interval should be float and less than 1.0.")
+
+    if isinstance(optimize, str):
+        # checking optimize parameter
+        optimize = _get_metric(optimize).display_name
+        if optimize is None:
+            raise ValueError(
+                "Optimize method not supported. See docstring for list of available parameters."
+            )
 
     """
     ERROR HANDLING ENDS HERE
     """
 
-    # define model as estimator
-    model = get_estimator_from_meta_estimator(estimator)
+    logger.info("defining variables")
+    # get estimator name
+    model_name = _get_model_name(estimator)
 
-    model_name = _get_model_name(model)
+    # defines grid
+    grid = np.arange(0, 1.0001, grid_interval)
 
-    # generate predictions and store actual on y_test in numpy array
-    actual = np.array(y_test)
+    # defines empty list
+    models_by_threshold = []
+    results_df = []
 
-    predicted = model.predict_proba(X_test)
-    predicted = predicted[:, 1]
-
-    """
-    internal function to calculate loss starts here
-    """
-
-    logger.info("Defining loss function")
-
-    def calculate_loss(
-        actual,
-        predicted,
-        tp_cost=true_positive,
-        tn_cost=true_negative,
-        fp_cost=false_positive,
-        fn_cost=false_negative,
-    ):
-
-        # true positives
-        tp = predicted + actual
-        tp = np.where(tp == 2, 1, 0)
-        tp = tp.sum()
-
-        # true negative
-        tn = predicted + actual
-        tn = np.where(tn == 0, 1, 0)
-        tn = tn.sum()
-
-        # false positive
-        fp = (predicted > actual).astype(int)
-        fp = np.where(fp == 1, 1, 0)
-        fp = fp.sum()
-
-        # false negative
-        fn = (predicted < actual).astype(int)
-        fn = np.where(fn == 1, 1, 0)
-        fn = fn.sum()
-
-        total_cost = (tp_cost * tp) + (tn_cost * tn) + (fp_cost * fp) + (fn_cost * fn)
-
-        return total_cost
-
-    """
-    internal function to calculate loss ends here
-    """
-
-    grid = np.arange(0, 1, grid_interval)
-
+    logger.info("starting optimization loop")
     # loop starts here
-
-    cost = []
-    # global optimize_results
-
-    logger.info("Iteration starts at 0")
-
     for i in grid:
+        model = create_model_supervised(estimator, verbose=False, system=False, probability_threshold=i)
+        try:
+            models_by_threshold.append(model[0])
+        except:
+            models_by_threshold.append(model)
+        model_results = pull().loc[['Mean']]
+        model_results['probability_threshold'] = i
+        results_df.append(model_results)
 
-        pred_prob = (predicted >= i).astype(int)
-        cost.append(calculate_loss(actual, pred_prob))
+    logger.info("optimization loop finished successfully")
 
-    optimize_results = pd.DataFrame(
-        {"Probability Threshold": grid, "Cost Function": cost}
-    )
-    fig = px.line(
-        optimize_results,
-        x="Probability Threshold",
-        y="Cost Function",
-        line_shape="linear",
-    )
-    fig.update_layout(plot_bgcolor="rgb(245,245,245)")
-    title = f"{model_name} Probability Threshold Optimization"
+    results_concat = pd.concat(results_df, axis=0)
+    results_concat_melted = results_concat.melt(id_vars = ['probability_threshold'], value_vars=list(results_concat.columns[:-1]))
+    optimized_metric_index = np.array(results_concat_melted[results_concat_melted['variable'] == optimize]['value']).argmax()
+    best_model_by_metric = models_by_threshold[optimized_metric_index]
 
-    # calculate vertical line
-    y0 = optimize_results["Cost Function"].min()
-    y1 = optimize_results["Cost Function"].max()
-    x0 = optimize_results.sort_values(by="Cost Function", ascending=False).iloc[0][0]
-    x1 = x0
+    logger.info("plotting optimizartion threshold using plotly")
 
-    t = x0
-    if html_param:
+    # plotting threshold
+    import plotly.express as px
+    title = str(model_name) + " Probability Threshold Optimization (default = 0.5) "
+    fig = px.line(results_concat_melted, x="probability_threshold", y="value", title = title,\
+                    color='variable', **plot_kwargs)
+    logger.info("Figure ready for render")
+    fig.show()
 
-        fig.add_shape(
-            dict(
-                type="line", x0=x0, y0=y0, x1=x1, y1=y1, line=dict(color="red", width=2)
-            )
-        )
-        fig.update_layout(
-            title={
-                "text": title,
-                "y": 0.95,
-                "x": 0.45,
-                "xanchor": "center",
-                "yanchor": "top",
-            }
-        )
-        logger.info("Figure ready for render")
-        fig.show()
-    print(f"Optimized Probability Threshold: {t} | Optimized Cost Function: {y1}")
-    logger.info(
-        "optimize_threshold() succesfully completed......................................"
-    )
-
-    return float(t)
+    logger.info("returning model with best metric")
+    if return_data:
+        logger.info("also returning data as return_data = True")
+        logger.info("optimize_threshold() succesfully completed......................................")
+        return (results_concat_melted, best_model_by_metric)
+    else:
+        logger.info("optimize_threshold() succesfully completed......................................")
+        return best_model_by_metric
 
 
 def assign_model(
