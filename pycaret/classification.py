@@ -3043,3 +3043,34 @@ def create_docker(
     return pycaret.internal.tabular.create_docker(
         api_name=api_name, base_image=base_image, expose_port=expose_port
     )
+
+def create_app(estimator, app_kwargs: dict = {})-> None:
+
+    """
+    This function creates a basic gradio app for inference.
+    It will later be expanded for other app types such as 
+    Streamlit.
+
+
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> juice = get_data('juice')
+    >>> from pycaret.classification import *
+    >>> exp_name = setup(data = juice,  target = 'Purchase')
+    >>> lr = create_model('lr')
+    >>> create_app(lr)
+
+
+    estimator: scikit-learn compatible object
+        Trained model object
+
+
+    app_kwargs: dict, default = {}
+        arguments to be passed to app class.
+
+
+    Returns:
+        None
+    """
+    return pycaret.internal.tabular.create_app(estimator=estimator, app_kwargs=app_kwargs)
