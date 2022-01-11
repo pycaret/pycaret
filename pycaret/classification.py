@@ -1883,7 +1883,7 @@ def optimize_threshold(
     optimize: str = "Accuracy",
     grid_interval: float = 0.1,
     return_data: bool = False, 
-    plot_kwargs: dict = {},
+    plot_kwargs: Optional[dict] = None,
 ):
 
     """

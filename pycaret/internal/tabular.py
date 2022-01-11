@@ -8305,7 +8305,7 @@ def optimize_threshold(
     optimize: str = "Accuracy",
     grid_interval: float = 0.1,
     return_data: bool = False, 
-    plot_kwargs: dict = {},
+    plot_kwargs: Optional[dict] = None,
 ):
 
     """
@@ -8396,11 +8396,12 @@ def optimize_threshold(
 
     if isinstance(optimize, str):
         # checking optimize parameter
-        optimize = _get_metric(optimize).display_name
+        optimize = _get_metric(optimize)
         if optimize is None:
             raise ValueError(
                 "Optimize method not supported. See docstring for list of available parameters."
             )
+        optimize = optimize.display_name
 
     """
     ERROR HANDLING ENDS HERE
@@ -8436,11 +8437,12 @@ def optimize_threshold(
     optimized_metric_index = np.array(results_concat_melted[results_concat_melted['variable'] == optimize]['value']).argmax()
     best_model_by_metric = models_by_threshold[optimized_metric_index]
 
-    logger.info("plotting optimizartion threshold using plotly")
+    logger.info("plotting optimization threshold using plotly")
 
     # plotting threshold
     import plotly.express as px
-    title = str(model_name) + " Probability Threshold Optimization (default = 0.5) "
+    title = f"{model_name} Probability Threshold Optimization (default = 0.5)"
+    plot_kwargs = plot_kwargs or {}
     fig = px.line(results_concat_melted, x="probability_threshold", y="value", title = title,\
                     color='variable', **plot_kwargs)
     logger.info("Figure ready for render")
