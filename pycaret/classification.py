@@ -2182,7 +2182,7 @@ def load_model(
         dictionary of applicable authentication tokens.
 
         when platform = 'aws':
-        {'bucket' : 'S3-bucket-name'}
+        {'bucket' : 'Name of Bucket on S3', 'path': (optional) folder name under the bucket}
 
         when platform = 'gcp':
         {'project': 'gcp-project-name', 'bucket' : 'gcp-bucket-name'}
