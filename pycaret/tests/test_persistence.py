@@ -2,7 +2,7 @@ import os
 import pytest
 import boto3
 from moto import mock_s3
-from pycaret.internal.persistence import deploy_model
+from pycaret.internal.persistence import deploy_model, load_model
 
 
 @pytest.fixture(scope='function')
@@ -29,5 +29,8 @@ def test_deploy_model(s3):
     model_name = 'test'
 
     deploy_model(model, model_name=model_name, platform='aws', authentication=authentication)
+
     s3.head_object(Bucket=authentication.get("bucket"),
                    Key=os.path.join(authentication.get("path"), f"{model_name}.pkl"))
+
+    _ = load_model(model_name=model_name, platform='aws', authentication=authentication, verbose=True)

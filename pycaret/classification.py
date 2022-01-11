@@ -1883,7 +1883,7 @@ def optimize_threshold(
     optimize: str = "Accuracy",
     grid_interval: float = 0.1,
     return_data: bool = False, 
-    plot_kwargs: dict = {},
+    plot_kwargs: Optional[dict] = None,
 ):
 
     """
@@ -2265,7 +2265,7 @@ def load_model(
         dictionary of applicable authentication tokens.
 
         when platform = 'aws':
-        {'bucket' : 'S3-bucket-name'}
+        {'bucket' : 'Name of Bucket on S3', 'path': (optional) folder name under the bucket}
 
         when platform = 'gcp':
         {'project': 'gcp-project-name', 'bucket' : 'gcp-bucket-name'}
