@@ -2,7 +2,7 @@
 All notable changes to this project will be documented in this file.
 <br/><br/>
 
-#### Release: PyCaret 2.3.6 | Release Date: January 10th, 2022 (NEW FEATURES, BUG FIXES)
+#### Release: PyCaret 2.3.6 | Release Date: January 11th, 2022 (NEW FEATURES, BUG FIXES)
 - Added new function `create_docker` (https://github.com/pycaret/pycaret/pull/2005)
 - Added new function `create_api` (https://github.com/pycaret/pycaret/pull/2000)
 - Added new function `check_fairness` (https://github.com/pycaret/pycaret/pull/1997)
