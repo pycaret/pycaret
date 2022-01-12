@@ -812,7 +812,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
     def _get_default_plots_to_log(self) -> List[str]:
         return ["forecast", "residuals", "diagnostics"]
 
-    def check_fh(self, fh: Union[List[int], int, np.array]) -> np.array:
+    def __check_fh(self, fh: Union[List[int], int, np.array]) -> np.array:
         """
         Checks fh for validity and converts fh into an appropriate forecasting
         horizon compatible with sktime (if necessary)
@@ -851,6 +851,241 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             )
         return fh
 
+    @staticmethod
+    def __check_and_clean_data(data: Union[pd.Series, pd.DataFrame]) -> pd.DataFrame:
+        """Check that the data is of the correct type (Pandas Series or DataFrame).
+        Also cleans the data before coercing it into a dataframe which is used
+        internally for all future tasks.
+
+        Parameters
+        ----------
+        data : Union[pd.Series, pd.DataFrame]
+            Input data
+
+        Returns
+        -------
+        pd.DataFrame
+            Checked and Cleaned version of the data
+
+        Raises
+        ------
+        ValueError
+            Raised if data is not of the correct type
+
+        """
+        if not isinstance(data, (pd.Series, pd.DataFrame)):
+            raise ValueError(
+                f"Data must be a pandas Series or DataFrame, got object of {type(data)} type!"
+            )
+
+        ## Make a local copy (to perfrom inplace operation on the original dataset)
+        data_ = data.copy()
+
+        if isinstance(data_, pd.DataFrame):
+            if data_.shape[1] != 1:
+                raise ValueError(
+                    f"Currently only Univariate forecasting without exogenous variables is supported. ",
+                    f"Hence if data is a pandas DataFrame, it must have only 1 column. Got {data_.shape[1]} columns!",
+                )
+        else:
+            # Pandas Series
+            data_.name = "Time Series"  # Set data name is not already set
+            data_ = pd.DataFrame(data_)  # Force convertion to DataFrame
+
+        #### Clean column names ----
+        data_.columns = [str(x) for x in data_.columns]
+
+        return data_
+
+    def __check_and_set_targets(self, data: pd.DataFrame):
+        """Checks that the targets are of correct type and sets class
+        attributes related to target(s)
+
+        Parameters
+        ----------
+        data : pd.DataFrame
+            Data from which the targets have to be extracted
+
+        Raises
+        ------
+        TypeError
+            If the target(s) are not of numeric type
+        """
+
+        #### Get Target Name ----
+        # TODO: later, ask from user so that we can take exogenous variables
+        target = data.columns[0]
+
+        #### Check type of target values - must be numeric ----
+        if not np.issubdtype(data[target].dtype, np.number):
+            raise TypeError(
+                f"Data must be of 'numpy.number' subtype, got {data[target].dtype}!"
+            )
+
+        self.target_param = target
+
+    @staticmethod
+    def __check_and_clean_index(
+        data: pd.DataFrame, seasonal_period: Optional[Union[int, str]]
+    ) -> pd.DataFrame:
+        """
+        Checks if the index is one of the allowed types (pd.PeriodIndex,
+        pd.DatetimeIndex). If it is not one of the allowed types, then seasonal
+        period must be provided. This check is also performed. Finally, index is
+        coerced into period index which is used in subsequent steps.
+
+        Parameters
+        ----------
+        data : pd.DataFrame
+            Data Frame whose index has to be checked and cleaned
+        seasonal_period : Optional[Union[int, str]]
+            Seasonal Period specified by user
+
+        Returns
+        -------
+        pd.DataFrame
+            Data with checked and cleaned version of the index
+
+        Raises
+        ------
+        ValueError
+            Raised when
+            (1) Index has duplicate values.
+            (2) Index is not one of the allowed types and seasonal period is not provided
+        """
+
+        #### Data must not have duplicate indices ----
+        if len(data.index) != len(set(data.index)):
+            raise ValueError("Index may not have duplicate values!")
+
+        #### Check Index Type ----
+        allowed_freq_index_types = (pd.PeriodIndex, pd.DatetimeIndex)
+        if (
+            not isinstance(data.index, allowed_freq_index_types)
+            and seasonal_period is None
+        ):
+            # https://stackoverflow.com/questions/3590165/join-a-list-of-items-with-different-types-as-string-in-python
+            raise ValueError(
+                f"The index of your 'data' is of type '{type(data.index)}'. "
+                "If the 'data' index is not of one of the following types: "
+                f"{', '.join(str(type) for type in allowed_freq_index_types)}, "
+                "then 'seasonal_period' must be provided. Refer to docstring for options."
+            )
+
+        #### Convert DateTimeIndex index to PeriodIndex ----
+        if isinstance(data.index, pd.DatetimeIndex):
+            data.index = data.index.to_period()
+
+        return data
+
+    def __check_and_set_fh(
+        self,
+        fh: Optional[Union[List[int], int, np.array]],
+        fold_strategy: Union[str, Any],
+        fold: int,
+    ):
+        """Checks and sets the forecast horizon class attribute based on the user inputs.
+        (1) If fold_strategy is of type string, then fh must be provided
+            and is used to set the forecast horizon.
+        (2) If fold_strategy is not of type string, then forecast horizon is
+            derived from the fold_strategy object's internal fh
+
+        Parameters
+        ----------
+        fh : Optional[Union[List[int], int, np.array]]
+            Forecast Horizon specified by user
+        fold_strategy : Union[str, Any]
+            Fold Strategy specified by user
+        fold : int
+            Number of folds specified by user
+
+        Raises
+        ------
+        ValueError
+            fold_strategy is of type string and fh is not provided.
+        """
+
+        self.logger.info("Set Forecast Horizon.")
+
+        #### Forecast Horizon Checks ----
+        if fh is None:
+            if isinstance(fold_strategy, str):
+                raise ValueError(
+                    f"The forecast horizon `fh` must be provided when fold_strategy is of type 'string'"
+                )
+        elif not isinstance(fh, (int, list, np.ndarray)):
+            raise TypeError(
+                f"fh parameter accepts integer. list or np.array value. Provided values is {type(fh)}"
+            )
+
+        #### Check Fold Strategy ----
+        if not isinstance(fold_strategy, str):
+            self.logger.info(
+                f"fh parameter {fh} will be ignored since fold_strategy has been provided. "
+                f"fh from fold_strategy will be used instead."
+            )
+            fh = fold_strategy.fh
+            self.logger.info(
+                f"fold parameter '{fold}' will be ignored since fold_strategy has been provided. "
+                f"fold based on fold_strategy will be used instead."
+            )
+            # fold value will be reset after the data is split in the parent class setup
+
+        fh = self.__check_fh(fh)
+        self.fh = fh
+
+    def __check_and_set_seasonal_period(
+        self, data: pd.DataFrame, seasonal_period: Optional[Union[int, str]]
+    ):
+        """Derived the seasonal period by either
+        (1) Extracting it from data's index (if seasonal period is not provided), or
+        (2) Extracting it from the seasonal_period if it is of type string, or
+        (3) Using seasonal_period as is if it is of type int.
+
+        After deriving the seasonal period, a seasonality test is performed.
+        Final seasonal period class attribute value is set equal to
+        (1) 1 if seasonality is not detected at the derived seasonal period, or
+        (2) the derived seasonal period if seasonality is detected at that value.
+
+        Parameters
+        ----------
+        data : pd.DataFrame
+            Data used index can be used to extract the seasonal period information
+        seasonal_period : Optional[Union[int, str]]
+            Seasonal Period specified by user
+
+        Raises
+        ------
+        ValueError
+            If seasonal period is provided but is not of type int or string
+        """
+        self.logger.info("Set up Seasonal Period.")
+
+        # sktime is an optional dependency
+        from sktime.utils.seasonality import autocorrelation_seasonality_test
+
+        if seasonal_period is None:
+            index_freq = data.index.freqstr
+            self.seasonal_period = get_sp_from_str(str_freq=index_freq)
+        else:
+            if not isinstance(seasonal_period, (int, str)):
+                raise ValueError(
+                    f"seasonal_period parameter must be an int or str, got {type(seasonal_period)}"
+                )
+
+            if isinstance(seasonal_period, str):
+                self.seasonal_period = get_sp_from_str(str_freq=seasonal_period)
+            else:
+                self.seasonal_period = seasonal_period
+
+        # check valid seasonal parameter
+        self.seasonality_present = autocorrelation_seasonality_test(
+            data[self.target_param], self.seasonal_period
+        )
+
+        # What seasonal period should be used for modeling?
+        self.sp_to_use = self.seasonal_period if self.seasonality_present else 1
+
     def setup(
         self,
         data: Union[pd.Series, pd.DataFrame],
@@ -860,7 +1095,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         #        transform_target_method: str = "box-cox",
         fold_strategy: Union[str, Any] = "expanding",
         fold: int = 3,
-        fh: Union[List[int], int, np.array] = 1,
+        fh: Optional[Union[List[int], int, np.array]] = 1,
         seasonal_period: Optional[Union[int, str]] = None,
         enforce_pi: bool = False,
         n_jobs: Optional[int] = -1,
@@ -924,13 +1159,16 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             parameter. Ignored when ``fold_strategy`` is a custom object.
 
 
-        fh: int or list or np.array, default = 1
+        fh: Optional[int or list or np.array], default = 1
             The forecast horizon to be used for forecasting. Default is set to ``1`` i.e.
             forecast one point ahead. When integer is passed it means N continuous points
             in the future without any gap. If you want to forecast values with gaps, you
             must pass an array e.g. np.arange([13, 25]) will skip the first 12 future
             points and forecast from the 13th point till the 24th point ahead (note in
             numpy right value is inclusive and left is exclusive).
+
+            If fh = None, then fold_strategy must be a sktime compatible cross validation
+            object. In this case, fh is derived from this object.
 
 
         seasonal_period: int or str, default = None
@@ -1030,114 +1268,42 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
 
         """
-        from sktime.utils.seasonality import (
-            autocorrelation_seasonality_test,
-        )  # only needed in setup
 
-        ## Make a local copy so as not to perfrom inplace operation on the
-        ## original dataset
-        data_ = data.copy()
+        ##############################
+        #### Setup initialization ####
+        ##############################
 
-        if isinstance(data_, pd.Series) and data_.name is None:
-            data_.name = "Time Series"
+        # Define parameter attrs ----
+        self.enforce_pi = enforce_pi
 
-        # Forecast Horizon Checks
-        if fh is None and isinstance(fold_strategy, str):
-            raise ValueError(
-                f"The forecast horizon `fh` must be provided when fold_strategy is of type 'string'"
-            )
+        #### Check and Clean Data ----
+        data_ = self.__check_and_clean_data(data)
 
-        # Check Fold Strategy
-        if not isinstance(fold_strategy, str):
-            self.logger.info(
-                f"fh parameter {fh} will be ignored since fold_strategy has been provided. "
-                f"fh from fold_strategy will be used instead."
-            )
-            fh = fold_strategy.fh
-            self.logger.info(
-                f"fold parameter {fold} will be ignored since fold_strategy has been provided. "
-                f"fold based on fold_strategy will be used instead."
-            )
-            # fold value will be reset after the data is split in the parent class setup
-
-        fh = self.check_fh(fh)
-        self.fh = fh
-
-        # Check Index
-        allowed_freq_index_types = (pd.PeriodIndex, pd.DatetimeIndex)
-        if (
-            not isinstance(data_.index, allowed_freq_index_types)
-            and seasonal_period is None
-        ):
-            # https://stackoverflow.com/questions/3590165/join-a-list-of-items-with-different-types-as-string-in-python
-            raise ValueError(
-                f"The index of your 'data' is of type '{type(data_.index)}'. "
-                "If the 'data' index is not of one of the following types: "
-                f"{', '.join(str(type) for type in allowed_freq_index_types)}, "
-                "then 'seasonal_period' must be provided. Refer to docstring for options."
-            )
-
-        if isinstance(data_.index, pd.DatetimeIndex):
-            data_.index = data_.index.to_period()
-
-        if seasonal_period is None:
-
-            index_freq = data_.index.freqstr
-            self.seasonal_period = get_sp_from_str(str_freq=index_freq)
-
-        else:
-
-            if not isinstance(seasonal_period, (int, str)):
-                raise ValueError(
-                    f"seasonal_period parameter must be an int or str, got {type(seasonal_period)}"
-                )
-
-            if isinstance(seasonal_period, str):
-                self.seasonal_period = get_sp_from_str(str_freq=seasonal_period)
-            else:
-                self.seasonal_period = seasonal_period
-
-        if isinstance(data_, (pd.Series, pd.DataFrame)):
-            if isinstance(data_, pd.DataFrame):
-                if data_.shape[1] != 1:
-                    raise ValueError(
-                        f"data must be a pandas Series or DataFrame with one column, got {data_.shape[1]} columns!"
-                    )
-                data_ = data_.copy()
-            else:
-                data_ = pd.DataFrame(data_)  # Force convertion to DataFrame
-        else:
-            raise ValueError(
-                f"data must be a pandas Series or DataFrame, got object of {type(data_)} type!"
-            )
-
-        data_.columns = [str(x) for x in data_.columns]
-
-        target_name = data_.columns[0]
-        if not np.issubdtype(data_[target_name].dtype, np.number):
-            raise TypeError(
-                f"Data must be of 'numpy.number' subtype, got {data_[target_name].dtype}!"
-            )
-
-        if len(data_.index) != len(set(data_.index)):
-            raise ValueError("Index may not have duplicate values!")
-
-        # check valid seasonal parameter
-        self.seasonality_present = autocorrelation_seasonality_test(
-            data_[target_name], self.seasonal_period
+        #### Check and Clean Index ----
+        data_ = self.__check_and_clean_index(
+            data=data_, seasonal_period=seasonal_period
         )
 
-        # What seasonal period should be used for modeling?
-        self.sp_to_use = self.seasonal_period if self.seasonality_present else 1
+        #### Check and Set Targets ----
+        self.__check_and_set_targets(data=data_)
+
+        #### Set Forecast Horizon ----
+        self.__check_and_set_fh(fh=fh, fold_strategy=fold_strategy, fold=fold)
+
+        #### Set up Seasonal Period ----
+        self.__check_and_set_seasonal_period(
+            data=data_, seasonal_period=seasonal_period
+        )
+
+        #### Multiplicative components allowed? ----
+        self.logger.info("Set up whether Multiplicative components allowed.")
 
         # Should multiplicative components be allowed in models that support it
-        self.strictly_positive = np.all(data_[target_name] > 0)
-
-        self.enforce_pi = enforce_pi
+        self.strictly_positive = np.all(data_[self.target_param] > 0)
 
         return super().setup(
             data=data_,
-            target=data_.columns[0],
+            target=self.target_param,
             test_data=None,
             preprocess=preprocess,
             imputation_type=imputation_type,
@@ -1168,8 +1334,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             data_split_stratify=False,
             fold_strategy=fold_strategy,
             fold=fold,
-            fh=fh,
-            seasonal_period=seasonal_period,
+            fh=self.fh,
             fold_shuffle=False,
             n_jobs=n_jobs,
             use_gpu=use_gpu,
@@ -2930,7 +3095,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 fh = estimator_.fh
         else:
             # Get the fh in the right format for sktime
-            fh = self.check_fh(fh)
+            fh = self.__check_fh(fh)
 
         try:
             return_vals = estimator_.predict(
@@ -3779,7 +3944,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 # TODO: Add to pycaret utils or some common location
 def deep_clone(estimator):
     # Cloning since setting fh to another value replaces it inplace
-    # Note cloning does not copy the fitted model (only model hyperparams)
+    # Note cloning does not copy the fitted model (only model hyperparameters)
     # Hence, we need to do deep copy per
     # https://stackoverflow.com/a/33576345/8925915
     estimator_ = deepcopy(estimator)
@@ -3875,12 +4040,12 @@ def update_additional_scorer_kwargs(
 
 
 def get_sp_from_str(str_freq: str) -> int:
-    """Takes the seasonal period as string detects if it is alphaneumeric and returns its integer equivalent. 
-        For example - 
+    """Takes the seasonal period as string detects if it is alphanumeric and returns its integer equivalent.
+        For example -
         input - '30W'
-        output - 26 
-        explaination - we take the lcm of 30 and 52 ( as W = 52) which in this case is 780. 
-        And the output is ( lcm / prefix). Here, 780 / 30 = 26. 
+        output - 26
+        explanation - we take the lcm of 30 and 52 ( as W = 52) which in this case is 780.
+        And the output is ( lcm / prefix). Here, 780 / 30 = 26.
 
     Parameters
     ----------
@@ -3895,7 +4060,7 @@ def get_sp_from_str(str_freq: str) -> int:
     Raises
     ------
     ValueError
-        if the frequency suffix does not correspond to any of the values in the class SeasonalPeriod then the error is thrown. 
+        if the frequency suffix does not correspond to any of the values in the class SeasonalPeriod then the error is thrown.
     """
     str_freq = str_freq.split("-")[0] or str_freq
     # Checking whether the index_freq contains both digit and alphabet

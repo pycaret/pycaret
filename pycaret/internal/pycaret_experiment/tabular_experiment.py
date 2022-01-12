@@ -457,7 +457,7 @@ class _TabularExperiment(_PyCaretExperiment):
         data_split_stratify: Union[bool, List[str]] = False,  # added in pycaret==2.2
         fold_strategy: Union[str, Any] = "kfold",  # added in pycaret==2.2
         fold: int = 10,  # added in pycaret==2.2
-        fh: Union[List[int], int, np.array] = 1,
+        fh: Optional[Union[List[int], int, np.array]] = 1,
         fold_shuffle: bool = False,
         fold_groups: Optional[Union[str, pd.DataFrame]] = None,
         n_jobs: Optional[int] = -1,
@@ -474,7 +474,6 @@ class _TabularExperiment(_PyCaretExperiment):
         log_profile: bool = False,
         log_data: bool = False,
         silent: bool = False,
-        seasonal_period: Optional[int] = None,
         verbose: bool = True,
         profile: bool = False,
         profile_kwargs: Dict[str, Any] = None,
@@ -960,12 +959,6 @@ class _TabularExperiment(_PyCaretExperiment):
         # checking fold parameter
         if not isinstance(fold, int):
             raise TypeError("fold parameter only accepts integer value.")
-
-        # checking fh parameter
-        if not isinstance(fh, (int, list, np.ndarray)):
-            raise TypeError(
-                f"fh parameter accepts integer. list or np.array value. Provided values is {type(fh)}"
-            )
 
         # fold_shuffle
         if type(fold_shuffle) is not bool:
@@ -1738,12 +1731,10 @@ class _TabularExperiment(_PyCaretExperiment):
                 self.white_noise = "Maybe"
 
             self.lowercase_d = recommend_lowercase_d(data=self.y)
-            # TODO: Should sp this overrise the self.seasonal_period since sp
-            # will be used for all models and the same checks will need to be
-            # done there as well
-            sp = self.seasonal_period if self.seasonality_present else 1
             self.uppercase_d = (
-                recommend_uppercase_d(data=self.y, sp=sp) if sp > 1 else 0
+                recommend_uppercase_d(data=self.y, sp=self.sp_to_use)
+                if self.sp_to_use > 1
+                else 0
             )
 
         self.preprocess = preprocess
