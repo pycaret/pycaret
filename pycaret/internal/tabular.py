@@ -10615,7 +10615,7 @@ To build image you have to run --> !docker image build -f "Dockerfile" -t IMAGE_
         """
     )
 
-def create_app(estimator, app_kwargs):
+def create_app(estimator, app_kwargs: Optional[dict]):
     """
     This function creates a basic gradio app for inference.
     It will later be expanded for other app types such as 
@@ -10644,13 +10644,18 @@ def create_app(estimator, app_kwargs):
         None
     """
 
-    import gradio as gr
+    try:
+        import gradio as gr
+    except ImportError:
+        raise ImportError(
+            "It appears that gradio is not installed. Do: pip install gradio"
+        )
 
     all_inputs = []
+    app_kwargs = app_kwargs or {}
 
-    data_without_target = get_config('data_before_preprocess').copy()
+    data_without_target = get_config('data_before_preprocess').drop(target_name, axis=1)
     target_name = get_config('prep_pipe')[0].target
-    data_without_target.drop(target_name, axis=1, inplace=True)
     
     try:
         for i in get_config('prep_pipe')[0].features_todrop:

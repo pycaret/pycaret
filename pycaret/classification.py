@@ -3044,7 +3044,7 @@ def create_docker(
         api_name=api_name, base_image=base_image, expose_port=expose_port
     )
 
-def create_app(estimator, app_kwargs: dict = {})-> None:
+def create_app(estimator, app_kwargs: Optional[dict] = None)-> None:
 
     """
     This function creates a basic gradio app for inference.
