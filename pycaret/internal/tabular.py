@@ -10654,25 +10654,13 @@ def create_app(estimator, app_kwargs: Optional[dict]):
     all_inputs = []
     app_kwargs = app_kwargs or {}
 
-    data_without_target = get_config('data_before_preprocess').drop(target_name, axis=1)
-    target_name = get_config('prep_pipe')[0].target
-    
-    try:
-        for i in get_config('prep_pipe')[0].features_todrop:
-            data_without_target.drop(i, axis=1, inplace=True)
-    except:
-        pass
-
-    try:
-        for i in get_config('prep_pipe')[0].id_columns:
-            data_without_target.drop(i, axis=1, inplace=True)
-    except:
-        pass
+    data_without_target = get_config('data_before_preprocess').copy()
+    cols_to_drop = [get_config('prep_pipe')[0].target] + get_config('prep_pipe')[0].features_todrop + get_config('prep_pipe')[0].id_columns
+    data_without_target.drop(cols_to_drop, axis=1, errors="ignore", inplace=True)
     
     for i in data_without_target.columns:
         if data_without_target[i].dtype == 'object':
             all_inputs.append(gr.inputs.Dropdown(list(data_without_target[i].unique()), label=i)) 
-        
         else:
             all_inputs.append(gr.inputs.Textbox(label=i))
             
