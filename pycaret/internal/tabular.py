@@ -10419,7 +10419,7 @@ def check_fairness(estimator, sensitive_features: list, plot_kwargs: dict = {}):
 
     y_pred = estimator.predict(get_config("X_test"))
     y_true = np.array(get_config("y_test"))
-    X_test_before_transform = get_config("data_before_preprocess").iloc[
+    X_test_before_transform = get_config("data_before_preprocess").loc[
         get_config("X_test").index
     ]
 
