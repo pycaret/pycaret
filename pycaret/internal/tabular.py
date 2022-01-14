@@ -10290,8 +10290,11 @@ def _create_classification_dashboard(
         labels_ = list(get_config("prep_pipe").steps[0][1].le.classes_)
     except:
         labels_ = None
+    # Replaceing chars which dash doesnt accept for column name `.` , `{`, `}`
+    X_test=get_config("X_test")
+    X_test.columns = [col.replace('.','__').replace('{','__').replace('}','__') for col in X_test.columns]
     explainer = ClassifierExplainer(
-        model, get_config("X_test"), get_config("y_test"), labels=labels_, **kwargs
+        model, X_test, get_config("y_test"), labels=labels_, **kwargs
     )
     ExplainerDashboard(explainer, mode=mode, **dashboard_kwargs).run(**run_kwargs)
 
