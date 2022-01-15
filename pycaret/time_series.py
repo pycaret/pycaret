@@ -1202,7 +1202,9 @@ def predict_model(
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def finalize_model(
-    estimator, fit_kwargs: Optional[dict] = None, model_only: bool = True,
+    estimator,
+    fit_kwargs: Optional[dict] = None,
+    model_only: bool = True,
 ) -> Any:
 
     """
@@ -1239,13 +1241,18 @@ def finalize_model(
     """
 
     return _CURRENT_EXPERIMENT.finalize_model(
-        estimator=estimator, fit_kwargs=fit_kwargs, model_only=model_only,
+        estimator=estimator,
+        fit_kwargs=fit_kwargs,
+        model_only=model_only,
     )
 
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def deploy_model(
-    model, model_name: str, authentication: dict, platform: str = "aws",
+    model,
+    model_name: str,
+    authentication: dict,
+    platform: str = "aws",
 ):
 
     """
@@ -1503,7 +1510,9 @@ def pull(pop: bool = False) -> pd.DataFrame:
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def models(
-    type: Optional[str] = None, internal: bool = False, raise_errors: bool = True,
+    type: Optional[str] = None,
+    internal: bool = False,
+    raise_errors: bool = True,
 ) -> pd.DataFrame:
 
     """
@@ -1546,7 +1555,9 @@ def models(
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def get_metrics(
-    reset: bool = False, include_custom: bool = True, raise_errors: bool = True,
+    reset: bool = False,
+    include_custom: bool = True,
+    raise_errors: bool = True,
 ) -> pd.DataFrame:
 
     """
@@ -1582,13 +1593,19 @@ def get_metrics(
     """
 
     return _CURRENT_EXPERIMENT.get_metrics(
-        reset=reset, include_custom=include_custom, raise_errors=raise_errors,
+        reset=reset,
+        include_custom=include_custom,
+        raise_errors=raise_errors,
     )
 
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def add_metric(
-    id: str, name: str, score_func: type, greater_is_better: bool = True, **kwargs,
+    id: str,
+    name: str,
+    score_func: type,
+    greater_is_better: bool = True,
+    **kwargs,
 ) -> pd.Series:
 
     """
@@ -1861,12 +1878,51 @@ def set_current_experiment(experiment: TimeSeriesExperiment):
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def check_stats(
     estimator: Optional[Any] = None,
-    test: str = "all",
+    test: str = "all", 
     alpha: float = 0.05,
-    split: str = "all",
+    split: str = "all", #train, test
 ) -> pd.DataFrame:
 
-    return _CURRENT_EXPERIMENT.check_stats(
-        estimator=estimator, test=test, alpha=alpha, split=split,
-    )
+    """
+    This function computes the common statistical tests and returns
+    a pd.DataFrame with the results.
 
+
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> airline = get_data('airline')
+    >>> from pycaret.time_series import *
+    >>> exp_name = setup(data = airline,  fh = 12)
+    >>> stats = check_stats()
+
+
+    estimator: Optional, default = None
+        sktime compatible object. If ``estimator`` is not None, 
+        tests are generated on residuals of the estimator, otherwise
+        on the original data.
+
+
+    test: str, default = 'all'
+        Type of test. When set to ``all``, all available tests are computed.
+
+
+    alpha: float, default = 0.05
+        alpha value uses in statistical tests.
+
+
+    split: str, default = 'all'
+        Data to be used for tests. When set to ``all``, all available data are used.
+        Other options are ``train`` and ``test``.
+
+
+    Returns:
+        panadas.DataFrame
+
+    """
+    return _CURRENT_EXPERIMENT.check_stats(
+        estimator=estimator,
+        test=test,
+        alpha=alpha,
+        split=split,
+    )

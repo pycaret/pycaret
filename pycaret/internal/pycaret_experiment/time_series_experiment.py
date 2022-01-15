@@ -3815,6 +3815,44 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         alpha: float = 0.05,
         split: str = "all",
     ) -> pd.DataFrame:
+
+    """
+    This function computes the common statistical tests and returns
+    a pd.DataFrame with the results.
+
+
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> airline = get_data('airline')
+    >>> from pycaret.time_series import *
+    >>> exp_name = setup(data = airline,  fh = 12)
+    >>> stats = check_stats()
+
+
+    estimator: Optional, default = None
+        sktime compatible object. If ``estimator`` is not None, 
+        tests are generated on residuals of the estimator, otherwise
+        on the original data.
+
+
+    test: str, default = 'all'
+        Type of test. When set to ``all``, all available tests are computed.
+
+
+    alpha: float, default = 0.05
+        alpha value uses in statistical tests.
+
+
+    split: str, default = 'all'
+        Data to be used for tests. When set to ``all``, all available data are used.
+        Other options are ``train`` and ``test``.
+
+
+    Returns:
+        panadas.DataFrame
+
+    """
         #### Step 1: Get the data to be tested ----
         if estimator is None:
             data = self._get_y_data(split=split)
