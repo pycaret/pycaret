@@ -10274,6 +10274,7 @@ def _create_regression_dashboard(
         RegressionExplainer,
         ClassifierExplainer,
     )
+    # Replaceing chars which dash doesnt accept for column name `.` , `{`, `}`
     X_test_df=get_config("X_test")
     X_test_df.columns = [col.replace('.','__').replace('{','__').replace('}','__') for col in X_test_df.columns]
     explainer = RegressionExplainer(
