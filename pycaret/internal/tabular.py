@@ -10274,9 +10274,10 @@ def _create_regression_dashboard(
         RegressionExplainer,
         ClassifierExplainer,
     )
-
+    X_test_df=get_config("X_test")
+    X_test_df.columns = [col.replace('.','__').replace('{','__').replace('}','__') for col in X_test_df.columns]
     explainer = RegressionExplainer(
-        model, get_config("X_test"), get_config("y_test"), **kwargs
+        model, X_test_df, get_config("y_test"), **kwargs
     )
     ExplainerDashboard(explainer, mode=mode, **dashboard_kwargs).run(**run_kwargs)
 
