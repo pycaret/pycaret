@@ -1127,7 +1127,7 @@ def plot_multiple_predictions_with_confidence(
         title = f"{title} | {time_series_name}"
 
     fig_data = []
-    CONF_INT_SET = False
+
     for index_iterator, prediction in enumerate(predictions):
         x = (
             prediction.index.to_timestamp()
@@ -1142,7 +1142,7 @@ def plot_multiple_predictions_with_confidence(
             showlegend=True,
         )
 
-        if not CONF_INT_SET:
+        if len(predictions)==1:
             x = (
                 upper_interval[index_iterator].index.to_timestamp()
                 if isinstance(upper_interval[index_iterator].index, pd.PeriodIndex)
@@ -1173,7 +1173,7 @@ def plot_multiple_predictions_with_confidence(
             )
             fig_data.extend([mean, lower_bound, upper_bound])
 
-            CONF_INT_SET = True
+
 
         else:
             fig_data.extend([mean])
