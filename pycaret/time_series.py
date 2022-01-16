@@ -1878,9 +1878,9 @@ def set_current_experiment(experiment: TimeSeriesExperiment):
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def check_stats(
     estimator: Optional[Any] = None,
-    test: str = "all", 
+    test: str = "all",
     alpha: float = 0.05,
-    split: str = "all", #train, test
+    split: str = "all",
 ) -> pd.DataFrame:
 
     """
@@ -1898,7 +1898,7 @@ def check_stats(
 
 
     estimator: Optional, default = None
-        sktime compatible object. If ``estimator`` is not None, 
+        sktime compatible object. If ``estimator`` is not None,
         tests are generated on residuals of the estimator, otherwise
         on the original data.
 

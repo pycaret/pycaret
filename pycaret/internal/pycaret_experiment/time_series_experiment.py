@@ -3853,19 +3853,19 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         panadas.DataFrame
 
     """
-        #### Step 1: Get the data to be tested ----
-        if estimator is None:
-            data = self._get_y_data(split=split)
-        else:
-            data = self.get_residuals(estimator=estimator)
-            if data is None:
-                return
-            data = self.check_and_clean_resid(resid=data)
+    #### Step 1: Get the data to be tested ----
+    if estimator is None:
+        data = self._get_y_data(split=split)
+    else:
+        data = self.get_residuals(estimator=estimator)
+        if data is None:
+            return
+        data = self.check_and_clean_resid(resid=data)
 
-        #### Step 2: Test ----
-        results = test_(data=data, test=test, alpha=alpha)
-        results.reset_index(inplace=True, drop=True)
-        return results
+    #### Step 2: Test ----
+    results = test_(data=data, test=test, alpha=alpha)
+    results.reset_index(inplace=True, drop=True)
+    return results
 
     def _get_y_data(self, split="all"):
         if split == "all":
