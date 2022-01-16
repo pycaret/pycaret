@@ -815,7 +815,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
     def _get_default_plots_to_log(self) -> List[str]:
         return ["forecast", "residuals", "diagnostics"]
 
-    def __check_fh(self, fh: Union[List[int], int, np.array]) -> np.array:
+    def _check_fh(self, fh: Union[List[int], int, np.array]) -> np.array:
         """
         Checks fh for validity and converts fh into an appropriate forecasting
         horizon compatible with sktime (if necessary)
@@ -855,7 +855,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         return fh
 
     @staticmethod
-    def __check_and_clean_data(data: Union[pd.Series, pd.DataFrame]) -> pd.DataFrame:
+    def _check_and_clean_data(data: Union[pd.Series, pd.DataFrame]) -> pd.DataFrame:
         """Check that the data is of the correct type (Pandas Series or DataFrame).
         Also cleans the data before coercing it into a dataframe which is used
         internally for all future tasks.
@@ -911,7 +911,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             target = [target]
         return target
 
-    def __check_and_set_targets(
+    def _check_and_set_targets(
         self, data: pd.DataFrame, target: Optional[Union[str, List[str]]] = None
     ):
         """Checks that the targets are of correct type and sets class
@@ -951,7 +951,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         self.target_param = target
 
     @staticmethod
-    def __check_and_clean_index(
+    def _check_and_clean_index(
         data: pd.DataFrame,
         index: Optional[str] = None,
         seasonal_period: Optional[Union[int, str]] = None,
@@ -1022,7 +1022,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         return data
 
-    def __check_and_set_fh(
+    def _check_and_set_fh(
         self,
         fh: Optional[Union[List[int], int, np.array]],
         fold_strategy: Union[str, Any],
@@ -1075,10 +1075,10 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             )
             # fold value will be reset after the data is split in the parent class setup
 
-        fh = self.__check_fh(fh)
+        fh = self._check_fh(fh)
         self.fh = fh
 
-    def __check_and_set_seasonal_period(
+    def _check_and_set_seasonal_period(
         self, data: pd.DataFrame, seasonal_period: Optional[Union[int, str]]
     ):
         """Derived the seasonal period by either
@@ -1144,6 +1144,27 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         exo_variables = [item for item in exo_variables if item not in target]
 
         return exo_variables
+
+    def _check_and_set_forecsting_type(self):
+        """Checks & sets the the forecasting type based on the number of Targets
+        and Exogenous Variables.
+
+        Raises
+        ------
+        ValueError
+            If Forecasting type is unsupported (e.g. Multivariate Forecasting)
+        """
+        if isinstance(self.target_param, str):
+            if len(self.exogenous_variables) > 0:
+                self.forecasting_type = "Univariate with Exogenous Variables"
+            else:
+                self.forecasting_type = "Univariate without Exogenous Variables"
+        elif isinstance(self.target_param, list):
+            if len(self.exogenous_variables) > 0:
+                self.forecasting_type = "Multivariate with Exogenous Variables"
+            else:
+                self.forecasting_type = "Multivariate without Exogenous Variables"
+            raise ValueError("Multivariate forecasting is currently not supported")
 
     def setup(
         self,
@@ -1357,47 +1378,35 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         self.enforce_pi = enforce_pi
 
         #### Check and Clean Data ----
-        data_ = self.__check_and_clean_data(data)
+        data_ = self._check_and_clean_data(data)
 
         #### Check and Clean Index ----
-        data_ = self.__check_and_clean_index(
+        data_ = self._check_and_clean_index(
             data=data_, index=index, seasonal_period=seasonal_period
         )
 
         #### Check and Set Targets ----
-        self.__check_and_set_targets(data=data_, target=target)
+        self._check_and_set_targets(data=data_, target=target)
 
-        #### Check and Set Targets ----
-        exogenous_variables = self._return_exogenous_names(
+        #### Check and Set Exogenous Variables ----
+        self.exogenous_variables = self._return_exogenous_names(
             data=data_, target=self.target_param, ignore_features=ignore_features
         )
 
+        #### Set type of forecasting ----
+        self._check_and_set_forecsting_type()
+
         #### Set Forecast Horizon ----
-        self.__check_and_set_fh(fh=fh, fold_strategy=fold_strategy, fold=fold)
+        self._check_and_set_fh(fh=fh, fold_strategy=fold_strategy, fold=fold)
 
         #### Set up Seasonal Period ----
-        self.__check_and_set_seasonal_period(
-            data=data_, seasonal_period=seasonal_period
-        )
+        self._check_and_set_seasonal_period(data=data_, seasonal_period=seasonal_period)
 
         #### Multiplicative components allowed? ----
         self.logger.info("Set up whether Multiplicative components allowed.")
 
         # Should multiplicative components be allowed in models that support it
         self.strictly_positive = np.all(data_[self.target_param] > 0)
-
-        #### Set type of forecasting ----
-        if isinstance(self.target_param, str):
-            if len(exogenous_variables) > 0:
-                self.forecasting_type = "Univariate with Exogenous Variables"
-            else:
-                self.forecasting_type = "Univariate without Exogenous Variables"
-        elif isinstance(self.target_param, list):
-            if len(exogenous_variables) > 0:
-                self.forecasting_type = "Multivariate with Exogenous Variables"
-            else:
-                self.forecasting_type = "Multivariate without Exogenous Variables"
-            raise ValueError("Multivariate forecasting is currently not supported")
 
         return super().setup(
             data=data_,
@@ -3195,7 +3204,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 fh = estimator_.fh
         else:
             # Get the fh in the right format for sktime
-            fh = self.__check_fh(fh)
+            fh = self._check_fh(fh)
 
         if hasattr(self, "X_test"):
             if data is None:
