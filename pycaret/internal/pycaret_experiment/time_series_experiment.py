@@ -2906,7 +2906,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 alpha = data_kwargs.get("alpha", 0.05)
                 X_test = data_kwargs.get("X_test", None)
                 return_pred_int = estimator.get_tag("capability:pred_int")
-                
+
                 predictions = self.predict_model(
                     estimator,
                     fh=fh,
@@ -3202,12 +3202,17 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 # Predict Test Set
                 X_test = self.X_test
             else:
-                X_test = data.copy()
+                X_test = data
         else:
-            if data is None:
-                raise ValueError("Test 'data' has not been provided.")
-            else:
-                X_test = data.copy()
+            # Loaded in different environment
+            # NOTE: If the model was built using exogenous variables, then user
+            # must make sure that this is provided, else the predictions will fail.
+            X_test = data
+
+        #### Convert to None if empty dataframe
+        # Some predict methods in sktime expect None (not an empty dataframe as
+        # returned by pycaret). Hence converting to None.
+        X_test = _coerce_empty_dataframe_to_none(data=X_test)
 
         try:
             return_vals = estimator_.predict(
@@ -3266,10 +3271,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         # of y_test_pred will not match y_test.
 
         if loaded_in_same_env:
-            # Some predict methods in sktime expect None (not an empty dataframe as
-            # returned by pycaret). Hence converting to None.
-            if X_test.shape[0] == 0 or X_test.shape[1] == 0:
-                X_test = None
             y_test = self.y_test
 
             # y_train for finalized model is different from self.y_train
@@ -4195,3 +4196,26 @@ def get_sp_from_str(str_freq: str) -> int:
             raise ValueError(
                 f"Unsupported Period frequency: {str_freq}, valid Period frequency suffixes are: {', '.join(SeasonalPeriod.__members__.keys())}"
             )
+
+
+def _coerce_empty_dataframe_to_none(
+    data: Optional[pd.DataFrame],
+) -> Optional[pd.DataFrame]:
+    """Returns None if the data is an empty dataframe or None,
+    else return the dataframe as is.
+
+    Parameters
+    ----------
+    data : Optional[pd.DataFrame]
+        Dataframe to be checked or None
+
+    Returns
+    -------
+    Optional[pd.DataFrame]
+        Returned Dataframe OR None (if dataframe is empty or None)
+    """
+    if isinstance(data, pd.DataFrame) and data.empty:
+        return None
+    else:
+        return data
+
