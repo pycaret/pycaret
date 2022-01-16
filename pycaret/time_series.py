@@ -32,6 +32,9 @@ _CURRENT_EXPERIMENT_DECORATOR_DICT = {
 
 def setup(
     data: Union[pd.Series, pd.DataFrame],
+    target: Optional[str] = None,
+    index: Optional[str] = None,
+    ignore_features: Optional[List] = None,
     preprocess: bool = True,
     imputation_type: str = "simple",
     fold_strategy: Union[str, Any] = "expanding",
@@ -71,6 +74,24 @@ def setup(
 
     data : pandas.Series or pandas.DataFrame
         Shape (n_samples, 1), when pandas.DataFrame, otherwise (n_samples, ).
+
+
+    target : Optional[str], default = None
+        Target name to be forecasted. Must be specified when data is a pandas
+        DataFrame with more than 1 column. When data is a pandas Series or
+        pandas DataFrame with 1 column, this can be left as None.
+
+
+    index: Optional[str], default = None
+        Column name to be used as the datetime index for modeling. Column is
+        internally converted to datetime using `pd.to_datetime()`. If None,
+        then the data's index is used as is for modeling.
+
+
+    ignore_features: Optional[List], default = None
+        List of features to ignore for modeling when the data is a pandas
+        Dataframe with more than 1 column. Ignored when data is a pandas Series
+        or Dataframe with 1 column.
 
 
     preprocess: bool, default = True
@@ -213,6 +234,9 @@ def setup(
     set_current_experiment(exp)
     return exp.setup(
         data=data,
+        target=target,
+        index=index,
+        ignore_features=ignore_features,
         preprocess=preprocess,
         imputation_type=imputation_type,
         fold_strategy=fold_strategy,
