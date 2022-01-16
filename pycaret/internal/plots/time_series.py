@@ -206,7 +206,7 @@ def plot_splits_train_test_split(
 
     data_kwargs = data_kwargs or {}
     fig_kwargs = fig_kwargs or {}
-    
+
     fig = go.Figure()
 
     x = (
@@ -1040,7 +1040,6 @@ def plot_time_series_differences(
     data_kwargs = data_kwargs or {}
     fig_kwargs = fig_kwargs or {}
 
-    
     order_list = data_kwargs.get("order_list", None)
     lags_list = data_kwargs.get("lags_list", None)
 
@@ -1138,8 +1137,7 @@ def _reconcile_order_and_lags(
 
     if order_list is not None and lags_list is not None:
         msg = "ERROR: Can not specify both 'order_list' and 'lags_list'. Please specify only one."
-        warnings.warn(msg)
-        print(msg) # Also show on screen
+        warnings.warn(msg)  # print on screen
         return return_lags, return_names
     elif order_list is not None:
         for order in order_list:
