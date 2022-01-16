@@ -37,12 +37,10 @@ def plot_(
     return_pred_int: bool = False,
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
-) -> Any:
+) -> Tuple[Optional[go.Figure], Optional[Dict[str, Any]]]:
 
-    if data_kwargs is None:
-        data_kwargs = {}
-    if fig_kwargs is None:
-        fig_kwargs = {}
+    data_kwargs = data_kwargs or {}
+    fig_kwargs = fig_kwargs or {}
 
     if plot == "ts":
         fig, plot_data = plot_series(
@@ -142,14 +140,12 @@ def plot_series(
     model_name: Optional[str] = None,
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
-):
+) -> Tuple[Optional[go.Figure], Optional[Dict[str, Any]]]:
     """Plots the original time series"""
     fig, return_data_dict = None, None
 
-    if data_kwargs is None:
-        data_kwargs = {}
-    if fig_kwargs is None:
-        fig_kwargs = {}
+    data_kwargs = data_kwargs or {}
+    fig_kwargs = fig_kwargs or {}
 
     time_series_name = data.name
     if model_name is not None:
@@ -204,14 +200,13 @@ def plot_splits_train_test_split(
     test: pd.Series,
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
-):
+) -> Tuple[Optional[go.Figure], Optional[Dict[str, Any]]]:
     """Plots the train-test split for the time serirs"""
     fig, return_data_dict = None, None
 
-    if data_kwargs is None:
-        data_kwargs = {}
-    if fig_kwargs is None:
-        fig_kwargs = {}
+    data_kwargs = data_kwargs or {}
+    fig_kwargs = fig_kwargs or {}
+    
     fig = go.Figure()
 
     x = (
@@ -265,14 +260,12 @@ def plot_cv(
     cv,
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
-):
+) -> Tuple[Optional[go.Figure], Optional[Dict[str, Any]]]:
     """Plots the cv splits used on the training split"""
     fig, return_data_dict = None, None
 
-    if data_kwargs is None:
-        data_kwargs = {}
-    if fig_kwargs is None:
-        fig_kwargs = {}
+    data_kwargs = data_kwargs or {}
+    fig_kwargs = fig_kwargs or {}
 
     def get_windows(y, cv):
         """
@@ -368,14 +361,12 @@ def plot_acf(
     model_name: Optional[str] = None,
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
-):
+) -> Tuple[Optional[go.Figure], Optional[Dict[str, Any]]]:
     """Plots the ACF on the data provided"""
     fig, return_data_dict = None, None
 
-    if data_kwargs is None:
-        data_kwargs = {}
-    if fig_kwargs is None:
-        fig_kwargs = {}
+    data_kwargs = data_kwargs or {}
+    fig_kwargs = fig_kwargs or {}
 
     nlags = data_kwargs.get("nlags", None)
     corr_array = acf(data, alpha=0.05, nlags=nlags)
@@ -460,14 +451,12 @@ def plot_pacf(
     model_name: Optional[str] = None,
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
-):
+) -> Tuple[Optional[go.Figure], Optional[Dict[str, Any]]]:
     """Plots the PACF on the data provided"""
     fig, return_data_dict = None, None
 
-    if data_kwargs is None:
-        data_kwargs = {}
-    if fig_kwargs is None:
-        fig_kwargs = {}
+    data_kwargs = data_kwargs or {}
+    fig_kwargs = fig_kwargs or {}
 
     nlags = data_kwargs.get("nlags", None)
     corr_array = pacf(data, alpha=0.05, nlags=nlags)
@@ -555,14 +544,12 @@ def plot_predictions(
     model_name: Optional[str] = None,
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
-):
+) -> Tuple[Optional[go.Figure], Optional[Dict[str, Any]]]:
     """Plots the original data and the predictions provided"""
     fig, return_data_dict = None, None
 
-    if data_kwargs is None:
-        data_kwargs = {}
-    if fig_kwargs is None:
-        fig_kwargs = {}
+    data_kwargs = data_kwargs or {}
+    fig_kwargs = fig_kwargs or {}
 
     key = "Out-of-Sample" if type_ == "forecast" else "In-Sample"
     title = f"Actual vs. '{key}' Forecast"
@@ -630,14 +617,12 @@ def plot_diagnostics(
     model_name: Optional[str] = None,
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
-):
+) -> Tuple[Optional[go.Figure], Optional[Dict[str, Any]]]:
     """Plots the diagnostic data such as ACF, Histogram, QQ plot on the data provided"""
     fig, return_data_dict = None, None
 
-    if data_kwargs is None:
-        data_kwargs = {}
-    if fig_kwargs is None:
-        fig_kwargs = {}
+    data_kwargs = data_kwargs or {}
+    fig_kwargs = fig_kwargs or {}
 
     time_series_name = data.name
     title = "Diagnostics"
@@ -809,14 +794,12 @@ def plot_predictions_with_confidence(
     model_name: Optional[str] = None,
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
-):
+) -> Tuple[Optional[go.Figure], Optional[Dict[str, Any]]]:
     """Plots the original data and the predictions provided with confidence"""
     fig, return_data_dict = None, None
 
-    if data_kwargs is None:
-        data_kwargs = {}
-    if fig_kwargs is None:
-        fig_kwargs = {}
+    data_kwargs = data_kwargs or {}
+    fig_kwargs = fig_kwargs or {}
 
     title = "Actual vs. 'Out-of-Sample' Forecast"
     time_series_name = data.name
@@ -918,7 +901,7 @@ def plot_time_series_decomposition(
     plot: str = "decomp_classical",
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
-):
+) -> Tuple[Optional[go.Figure], Optional[Dict[str, Any]]]:
     fig, return_data_dict = None, None
 
     if not isinstance(data.index, (pd.PeriodIndex, pd.DatetimeIndex)):
@@ -929,10 +912,8 @@ def plot_time_series_decomposition(
         )
         return fig, return_data_dict
 
-    if data_kwargs is None:
-        data_kwargs = {}
-    if fig_kwargs is None:
-        fig_kwargs = {}
+    data_kwargs = data_kwargs or {}
+    fig_kwargs = fig_kwargs or {}
 
     classical_decomp_type = data_kwargs.get("type", "additive")
 
@@ -1053,18 +1034,17 @@ def plot_time_series_differences(
     model_name: Optional[str] = None,
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
-):
+) -> Tuple[Optional[go.Figure], Optional[Dict[str, Any]]]:
     fig, return_data_dict = None, None
 
-    if data_kwargs is None:
-        data_kwargs = {}
-    if fig_kwargs is None:
-        fig_kwargs = {}
+    data_kwargs = data_kwargs or {}
+    fig_kwargs = fig_kwargs or {}
 
+    
     order_list = data_kwargs.get("order_list", None)
     lags_list = data_kwargs.get("lags_list", None)
 
-    title_name = f"Difference Plot"
+    title_name = "Difference Plot"
     data_name = data.name if model_name is None else f"'{model_name}' Residuals"
 
     if model_name is None:
@@ -1130,7 +1110,7 @@ def plot_time_series_differences(
 ##########################
 
 
-def __reconcile_order_and_lags(
+def _reconcile_order_and_lags(
     order_list: Optional[List[Any]] = None, lags_list: Optional[List[Any]] = None
 ) -> Tuple[List[int], List[str]]:
     """Reconciles the differences to lags and returns the names
@@ -1157,9 +1137,9 @@ def __reconcile_order_and_lags(
     return_names = []
 
     if order_list is not None and lags_list is not None:
-        print(
-            "ERROR: Can not specify both 'order_list' and 'lags_list'. Please specify only one."
-        )
+        msg = "ERROR: Can not specify both 'order_list' and 'lags_list'. Please specify only one."
+        warnings.warn(msg)
+        print(msg) # Also show on screen
         return return_lags, return_names
     elif order_list is not None:
         for order in order_list:
@@ -1178,7 +1158,7 @@ def __reconcile_order_and_lags(
     return return_lags, return_names
 
 
-def __get_diffs(data: pd.Series, lags_list: List[Any]) -> List[pd.Series]:
+def _get_diffs(data: pd.Series, lags_list: List[Any]) -> List[pd.Series]:
     """Returns the requested differences of the provided `data`
 
     Parameters
@@ -1230,9 +1210,9 @@ def get_diffs(
         (2) Names corresponding to the differences
     """
 
-    lags_list_, names = __reconcile_order_and_lags(
+    lags_list_, names = _reconcile_order_and_lags(
         order_list=order_list, lags_list=lags_list
     )
-    diffs = __get_diffs(data=data, lags_list=lags_list_)
+    diffs = _get_diffs(data=data, lags_list=lags_list_)
     return diffs, names
 
