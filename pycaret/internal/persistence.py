@@ -348,7 +348,7 @@ def load_model(
         dictionary of applicable authentication tokens.
 
         When platform = 'aws':
-        {'bucket' : 'Name of Bucket on S3'}
+        {'bucket' : 'Name of Bucket on S3', 'path': (optional) folder name under the bucket}
 
         When platform = 'gcp':
         {'project': 'gcp_pycaret', 'bucket' : 'pycaret-test'}
@@ -415,11 +415,17 @@ def load_model(
             raise ValueError('S3 bucket name missing. Provide `bucket` name as part of authentication parameter')
 
         filename = f"{model_name}.pkl"
+
+        if "path" in authentication:
+            key = os.path.join(authentication.get("path"), filename)
+        else:
+            key = filename
+
         index = filename.rfind("/")
         s3 = boto3.resource("s3")
 
         if index == -1:
-            s3.Bucket(bucketname).download_file(filename, filename)
+            s3.Bucket(bucketname).download_file(key, filename)
         else:
             path, key = filename[: index + 1], filename[index + 1:]
             if not os.path.exists(path):

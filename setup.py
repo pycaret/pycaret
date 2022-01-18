@@ -21,7 +21,7 @@ with open("requirements-test.txt") as f:
 
 setup(
     name="pycaret",
-    version="2.3.5",
+    version="2.3.6",
     description="PyCaret - An open source, low-code machine learning library in Python.",
     long_description=readme(),
     long_description_content_type="text/markdown",
@@ -34,6 +34,7 @@ setup(
         "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
     ],
     packages=find_packages(include=["pycaret*"]),
     include_package_data=True,
