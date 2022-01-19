@@ -11,6 +11,7 @@
   <a href="https://pycaret.gitbook.io/docs/get-started/installation">Install</a> •
   <a href="https://pycaret.gitbook.io/docs/get-started/tutorials">Tutorials</a> •
   <a href="https://pycaret.gitbook.io/docs/learn-pycaret/faqs">FAQs</a> •
+  <a href="https://pycaret.gitbook.io/docs/learn-pycaret/cheat-sheet">Cheat sheet</a> •
   <a href="https://github.com/pycaret/pycaret/discussions">Discussions</a> •
   <a href="https://pycaret.readthedocs.io/en/latest/contribute.html">Contribute</a> •
   <a href="https://github.com/pycaret/pycaret/tree/master/resources">Resources</a> •
