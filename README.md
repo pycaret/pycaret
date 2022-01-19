@@ -10,6 +10,7 @@
   <a href="https://pycaret.gitbook.io/">Docs</a> •
   <a href="https://pycaret.gitbook.io/docs/get-started/installation">Install</a> •
   <a href="https://pycaret.gitbook.io/docs/get-started/tutorials">Tutorials</a> •
+  <a href="https://pycaret.gitbook.io/docs/learn-pycaret/faqs">FAQs</a> •
   <a href="https://github.com/pycaret/pycaret/discussions">Discussions</a> •
   <a href="https://pycaret.readthedocs.io/en/latest/contribute.html">Contribute</a> •
   <a href="https://github.com/pycaret/pycaret/tree/master/resources">Resources</a> •
@@ -54,9 +55,9 @@ The design and simplicity of PyCaret are inspired by the emerging role of citize
 [Example notebooks]: https://github.com/pycaret/pycaret/tree/master/examples
 [Blog]: https://pycaret.gitbook.io/docs/learn-pycaret/official-blog
 [Documentation]: https://pycaret.gitbook.io
-[video tutorials]: https://www.youtube.com/channel/UCxA1YTYJ9BEeo50lxyI_B3g
+[video tutorials]: https://pycaret.gitbook.io/docs/learn-pycaret/videos
 [Discussions]: https://github.com/pycaret/pycaret/discussions
-[changelog]: https://github.com/pycaret/pycaret/blob/master/CHANGELOG.md
+[changelog]: https://pycaret.gitbook.io/docs/get-started/release-notes
 [roadmap]: https://github.com/pycaret/pycaret/issues/1756
  
 ## Installation
