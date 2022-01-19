@@ -45,7 +45,7 @@ The design and simplicity of PyCaret are inspired by the emerging role of citize
 | -------------------------- | -------------------------------------------------------------- |
 | :star: **[Tutorials]**        | New to PyCaret? Checkout our official notebooks!            |
 | :clipboard: **[Example Notebooks]** | Example notebooks created by community.               |
-| :orange_book: **[Blog]** | Tutorials and articles by contributors.                      |
+| :orange_book: **[Official Blog]** | Tutorials and articles by contributors.                      |
 | :books: **[Documentation]**      | The detailed API docs of PyCaret                         |
 | :tv: **[Video Tutorials]**            | Our video tutorial from various events.             |
 | ✈️ **[Cheat sheet]**            | Cheat sheet for all functions across modules.             |
@@ -55,7 +55,7 @@ The design and simplicity of PyCaret are inspired by the emerging role of citize
   
 [tutorials]: https://pycaret.gitbook.io/docs/get-started/tutorials
 [Example notebooks]: https://github.com/pycaret/pycaret/tree/master/examples
-[Blog]: https://pycaret.gitbook.io/docs/learn-pycaret/official-blog
+[Official Blog]: https://pycaret.gitbook.io/docs/learn-pycaret/official-blog
 [Documentation]: https://pycaret.gitbook.io
 [video tutorials]: https://pycaret.gitbook.io/docs/learn-pycaret/videos
 [Cheat sheet]: https://pycaret.gitbook.io/docs/learn-pycaret/cheat-sheet
