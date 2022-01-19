@@ -7,13 +7,13 @@
   
 <p align="center">
   <a href="https://www.pycaret.org">Official</a> •
-  <a href="https://pycaret.readthedocs.io/en/latest/index.html">Docs</a> •
-  <a href="https://pycaret.readthedocs.io/en/latest/installation.html">Install</a> •
-  <a href="https://github.com/pycaret/pycaret/tree/master/tutorials">Tutorials</a> •
+  <a href="https://pycaret.gitbook.io/">Docs</a> •
+  <a href="https://pycaret.gitbook.io/docs/get-started/installation">Install</a> •
+  <a href="https://pycaret.gitbook.io/docs/get-started/tutorials">Tutorials</a> •
   <a href="https://github.com/pycaret/pycaret/discussions">Discussions</a> •
   <a href="https://pycaret.readthedocs.io/en/latest/contribute.html">Contribute</a> •
   <a href="https://github.com/pycaret/pycaret/tree/master/resources">Resources</a> •
-  <a href="https://moez-62905.medium.com/">Medium</a> •
+  <a href="https://pycaret.gitbook.io/docs/learn-pycaret/official-blog">Medium</a> •
   <a href="https://www.linkedin.com/company/pycaret/">LinkedIn</a> • 
   <a href="https://www.youtube.com/channel/UCxA1YTYJ9BEeo50lxyI_B3g">YouTube</a> • 
   <a href="https://join.slack.com/t/pycaret/shared_invite/zt-row9phbm-BoJdEVPYnGf7_NxNBP307w">Slack</a>
@@ -50,10 +50,10 @@ The design and simplicity of PyCaret are inspired by the emerging role of citize
 | :hammer_and_wrench: **[Changelog]**          | Changes and version history.                 |
 | :deciduous_tree: **[Roadmap]**          | PyCaret's software and community development plan.|
   
-[tutorials]: https://github.com/pycaret/pycaret/tree/master/tutorials
+[tutorials]: https://pycaret.gitbook.io/docs/get-started/tutorials
 [Example notebooks]: https://github.com/pycaret/pycaret/tree/master/examples
-[Blog]: https://github.com/pycaret/pycaret/tree/master/resources
-[Documentation]: https://pycaret.readthedocs.io/en/latest/index.html
+[Blog]: https://pycaret.gitbook.io/docs/learn-pycaret/official-blog
+[Documentation]: https://pycaret.gitbook.io
 [video tutorials]: https://www.youtube.com/channel/UCxA1YTYJ9BEeo50lxyI_B3g
 [Discussions]: https://github.com/pycaret/pycaret/discussions
 [changelog]: https://github.com/pycaret/pycaret/blob/master/CHANGELOG.md
