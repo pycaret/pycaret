@@ -39,17 +39,17 @@ def to_df(data, index=None, columns=None, dtypes=None):
 
     Parameters
     ----------
-    data: list, tuple, dict, np.array, sps.matrix, pd.DataFrame or None
-        Dataset to convert to a dataframe.  If already a dataframe
-        or None, return unchanged.
+    data: list, tuple, dict, np.array, sp.matrix, pd.DataFrame or None
+        Dataset to convert to a dataframe.  If None or already a
+        dataframe, return unchanged.
 
-    index: sequence or Index
+    index: sequence or pd.Index
         Values for the dataframe's index.
 
     columns: sequence or None, optional (default=None)
         Name of the columns. Use None for automatic naming.
 
-    dtypes: str, dict, np.dtype or None, optional (default=None)
+    dtypes: str, dict, dtype or None, optional (default=None)
         Data types for the output columns. If None, the types are
         inferred from the data.
 
@@ -59,13 +59,20 @@ def to_df(data, index=None, columns=None, dtypes=None):
         Transformed dataframe.
 
     """
-    if data is not None and not isinstance(data, pd.DataFrame):
-        if not isinstance(data, dict):  # Dict already has column names
-            if sparse.issparse(data):
-                data = data.toarray()
-            if columns is None:
-                columns = [f"Feature {str(i)}" for i in range(1, len(data[0]) + 1)]
-        data = pd.DataFrame(data, index=index, columns=columns)
+    # Get number of columns (list/tuple have no shape and sp.matrix has no index)
+    n_cols = lambda data: data.shape[1] if hasattr(data, "shape") else len(data[0])
+
+    if not isinstance(data, pd.DataFrame) and data is not None:
+        # Assign default column names (dict already has column names)
+        if not isinstance(data, dict) and columns is None:
+            columns = [f"Feature {str(i)}" for i in range(1, n_cols(data) + 1)]
+
+        # Create dataframe from sparse matrix or directly from data
+        if sparse.issparse(data):
+            data = pd.DataFrame.sparse.from_spmatrix(data, index, columns)
+        else:
+            data = pd.DataFrame(data, index, columns)
+
         if dtypes is not None:
             data = data.astype(dtypes)
 

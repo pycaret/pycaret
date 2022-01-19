@@ -96,7 +96,7 @@ class TransfomerWrapper(BaseEstimator):
             # If columns were added or removed
             temp_cols = []
             for i, col in enumerate(array.T, start=1):
-                mask = df.apply(lambda c: all(c == col))
+                mask = df.apply(lambda c: np.array_equal(c, col, equal_nan=True))
                 if any(mask) and mask[mask].index.values[0] not in temp_cols:
                     temp_cols.append(mask[mask].index.values[0])
                 else:
@@ -147,13 +147,13 @@ class TransfomerWrapper(BaseEstimator):
             """Convert to df and set correct column names and order."""
             # Convert to pandas and assign proper column names
             if not isinstance(out, pd.DataFrame):
-                if issparse(out):
-                    out = out.toarray()
-
                 out = to_df(out, index=X.index, columns=name_cols(out, X))
 
-            # Reorder columns in case only a subset was used
-            return reorder_cols(out, X)
+            # Reorder columns if only a subset was used
+            if len(self._include) != X.shape[1]:
+                return reorder_cols(out, X)
+            else:
+                return out
 
         X = to_df(X, index=getattr(y, "index", None))
         y = to_series(y, index=getattr(X, "index", None))
