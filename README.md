@@ -92,7 +92,7 @@ pip install pycaret[full]
   
 <div align="left">
 
-## PyCaret ⚡NEW⚡ Time Series Module
+## ⚡ PyCaret Time Series Module (beta)
   
 PyCaret new time series module is now available in beta. Staying true to simplicity of PyCaret, it is consistent with our existing API and fully loaded with functionalities. Statistical testing, model training and selection (30+ algorithms), model analysis, automated hyperparameter tuning, experiment logging, deployment on cloud, and more. All of this with only few lines of code (just like the other modules of pycaret). If you would like to give it a try, checkout our official [quick start](https://nbviewer.org/github/pycaret/pycaret/blob/time_series_beta/time_series_101.ipynb) notebook.
   
@@ -118,7 +118,7 @@ PyCaret is an open source library that anybody can use. In our view the ideal ta
 - Data Science Professionals who want to build rapid prototypes.
 - Data Science and Machine Learning students and enthusiasts.
   
-## PyCaret on GPU
+## PyCaret GPU support
 With PyCaret >= 2.2, you can train models on GPU and speed up your workflow by 10x. To train models on GPU simply pass `use_gpu = True` in the setup function. There is no change in the use of the API, however, in some cases, additional libraries have to be installed as they are not installed with the default version or the full version. As of the latest release, the following models can be trained on GPU:
 
 - Extreme Gradient Boosting (requires no further installation)
