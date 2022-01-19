@@ -48,6 +48,7 @@ The design and simplicity of PyCaret are inspired by the emerging role of citize
 | :orange_book: **[Blog]** | Tutorials and articles by contributors.                      |
 | :books: **[Documentation]**      | The detailed API docs of PyCaret                         |
 | :tv: **[Video Tutorials]**            | Our video tutorial from various events.             |
+| ✈️ **[Cheat sheet]**            | Cheat sheet for all functions across modules.             |
 | :loudspeaker: **[Discussions]**        | Have questions? Engage with community and contributors.|
 | :hammer_and_wrench: **[Changelog]**          | Changes and version history.                 |
 | :deciduous_tree: **[Roadmap]**          | PyCaret's software and community development plan.|
@@ -57,6 +58,7 @@ The design and simplicity of PyCaret are inspired by the emerging role of citize
 [Blog]: https://pycaret.gitbook.io/docs/learn-pycaret/official-blog
 [Documentation]: https://pycaret.gitbook.io
 [video tutorials]: https://pycaret.gitbook.io/docs/learn-pycaret/videos
+[Cheat sheet]: https://pycaret.gitbook.io/docs/learn-pycaret/cheat-sheet
 [Discussions]: https://github.com/pycaret/pycaret/discussions
 [changelog]: https://pycaret.gitbook.io/docs/get-started/release-notes
 [roadmap]: https://github.com/pycaret/pycaret/issues/1756
