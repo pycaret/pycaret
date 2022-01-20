@@ -93,7 +93,7 @@ class Pipeline(imblearn.pipeline.Pipeline):
         self.steps = list(self.steps)
         self._validate_steps()
 
-        # Setup the memory
+        # Set up the memory
         memory = check_memory(self.memory).cache(_fit_transform_one)
 
         for (step_idx, name, transformer) in self._iter(False, False, False):
@@ -115,7 +115,7 @@ class Pipeline(imblearn.pipeline.Pipeline):
                     X=X,
                     y=y,
                     message=self._log_message(step_idx),
-                    **fit_params_steps[name],
+                    **fit_params_steps.get(name, {}),
                 )
 
             # Replace the transformer of the step with the fitted
@@ -125,7 +125,7 @@ class Pipeline(imblearn.pipeline.Pipeline):
         if self._final_estimator == "passthrough":
             return X, y, {}
 
-        return X, y, fit_params_steps[self.steps[-1][0]]
+        return X, y, fit_params_steps.get(self.steps[-1][0], {})
 
     def fit(self, X=None, y=None, **fit_params):
         fit_params_steps = self._check_fit_params(**fit_params)

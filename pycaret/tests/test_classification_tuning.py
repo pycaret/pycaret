@@ -34,70 +34,71 @@ def test():
 
     for model in models:
         print(f"Testing model {model}")
-        pycaret.classification.tune_model(
-            model,
-            fold=2,
-            n_iter=2,
-            search_library="scikit-learn",
-            search_algorithm="random",
-            early_stopping=False,
-        )
-        pycaret.classification.tune_model(
-            model,
-            fold=2,
-            n_iter=2,
-            search_library="scikit-optimize",
-            search_algorithm="bayesian",
-            early_stopping=False,
-        )
+        # pycaret.classification.tune_model(
+        #     model,
+        #     fold=2,
+        #     n_iter=2,
+        #     search_library="scikit-learn",
+        #     search_algorithm="random",
+        #     early_stopping=False,
+        # )
+        # pycaret.classification.tune_model(
+        #     model,
+        #     fold=2,
+        #     n_iter=2,
+        #     search_library="scikit-optimize",
+        #     search_algorithm="bayesian",
+        #     early_stopping=False,
+        # )
+        # pycaret.classification.tune_model(
+        #     model,
+        #     fold=2,
+        #     n_iter=2,
+        #     search_library="optuna",
+        #     search_algorithm="tpe",
+        #     early_stopping=False,
+        # )
+        # TODO: Enable ray after fix is released
+        # pycaret.classification.tune_model(
+        #     model,
+        #     fold=2,
+        #     n_iter=2,
+        #     search_library="tune-sklearn",
+        #     search_algorithm="random",
+        #     early_stopping=False,
+        # )
+        # pycaret.classification.tune_model(
+        #     model,
+        #     fold=2,
+        #     n_iter=2,
+        #     search_library="tune-sklearn",
+        #     search_algorithm="optuna",
+        #     early_stopping=False,
+        # )
         pycaret.classification.tune_model(
             model,
             fold=2,
             n_iter=2,
             search_library="optuna",
             search_algorithm="tpe",
-            early_stopping=False,
-        )
-        pycaret.classification.tune_model(
-            model,
-            fold=2,
-            n_iter=2,
-            search_library="tune-sklearn",
-            search_algorithm="random",
-            early_stopping=False,
-        )
-        pycaret.classification.tune_model(
-            model,
-            fold=2,
-            n_iter=2,
-            search_library="tune-sklearn",
-            search_algorithm="optuna",
-            early_stopping=False,
-        )
-        pycaret.classification.tune_model(
-            model,
-            fold=2,
-            n_iter=2,
-            search_library="optuna",
-            search_algorithm="tpe",
             early_stopping="asha",
         )
-        pycaret.classification.tune_model(
-            model,
-            fold=2,
-            n_iter=2,
-            search_library="tune-sklearn",
-            search_algorithm="hyperopt",
-            early_stopping="asha",
-        )
-        pycaret.classification.tune_model(
-            model,
-            fold=2,
-            n_iter=2,
-            search_library="tune-sklearn",
-            search_algorithm="bayesian",
-            early_stopping="asha",
-        )
+        # pycaret.classification.tune_model(
+        #     model,
+        #     fold=2,
+        #     n_iter=2,
+        #     search_library="tune-sklearn",
+        #     search_algorithm="hyperopt",
+        #     early_stopping="asha",
+        # )
+        # pycaret.classification.tune_model(
+        #     model,
+        #     fold=2,
+        #     n_iter=2,
+        #     search_library="tune-sklearn",
+        #     search_algorithm="bayesian",
+        #     early_stopping="asha",
+        # )
         if can_early_stop(model, True, True, True, {}):
             pycaret.classification.tune_model(
                 model,
