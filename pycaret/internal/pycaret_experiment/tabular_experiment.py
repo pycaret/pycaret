@@ -1731,11 +1731,26 @@ class _TabularExperiment(_PyCaretExperiment):
                 self.white_noise = "Maybe"
 
             self.lowercase_d = recommend_lowercase_d(data=self.y)
-            self.uppercase_d = (
-                recommend_uppercase_d(data=self.y, sp=self.sp_to_use)
-                if self.sp_to_use > 1
-                else 0
-            )
+
+            if self.sp_to_use > 1:
+                try:
+                    max_D = 2
+                    uppercase_d = recommend_uppercase_d(
+                        data=self.y, sp=self.sp_to_use, max_D=max_D
+                    )
+                except ValueError as error:
+                    self.logger.info(f"Test for computing 'D' failed at max_D = 2.")
+                    try:
+                        max_D = 1
+                        uppercase_d = recommend_uppercase_d(
+                            data=self.y, sp=self.sp_to_use, max_D=max_D
+                        )
+                    except ValueError:
+                        self.logger.info(f"Test for computing 'D' failed at max_D = 1.")
+                        uppercase_d = 0
+            else:
+                uppercase_d = 0
+            self.uppercase_d = uppercase_d
 
         self.preprocess = preprocess
         functions = self._get_setup_display(
