@@ -1,16 +1,13 @@
-from typing import Optional, Any, Union, Dict, List, Tuple
+from typing import Optional, Any, Union, Dict, Tuple
 
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-import matplotlib
 
-import plotly.express as px
+
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 from statsmodels.tsa.stattools import pacf, acf
-from statsmodels.graphics.gofplots import qqplot
 from statsmodels.tsa.seasonal import seasonal_decompose, STL
 
 
@@ -18,15 +15,19 @@ from sktime.forecasting.model_selection import (
     ExpandingWindowSplitter,
     SlidingWindowSplitter,
 )
-from sktime.transformations.series.difference import Differencer
+
+from pycaret.internal.plots.utils.time_series import (
+    get_diffs,
+    time_series_subplot,
+    corr_subplot,
+    dist_subplot,
+    qq_subplot,
+)
 
 __author__ = ["satya-pattnaik", "ngupta23"]
-#################
-#### Helpers ####
-#################
 
 
-def plot_(
+def _plot(
     plot: str,
     data: Optional[pd.Series] = None,
     train: Optional[pd.Series] = None,
@@ -440,7 +441,7 @@ def plot_acf(
     fig.update_layout(title=title)
 
     return_data_dict = {
-        "acf": corr_array[0],
+        "acf": corr_array,
     }
 
     return fig, return_data_dict
@@ -531,7 +532,7 @@ def plot_pacf(
     fig.update_layout(title=title)
 
     return_data_dict = {
-        "pacf": corr_array[0],
+        "pacf": corr_array,
     }
 
     return fig, return_data_dict
@@ -644,128 +645,6 @@ def plot_diagnostics(
         x_title=title,
     )
 
-    def time_plot(fig):
-        x = (
-            data.index.to_timestamp()
-            if isinstance(data.index, pd.PeriodIndex)
-            else data.index
-        )
-        fig.add_trace(
-            go.Scatter(
-                x=x,
-                y=data,
-                mode="lines+markers",
-                marker_color="#1f77b4",
-                marker_size=2,
-                name="Time Plot",
-            ),
-            row=1,
-            col=1,
-        )
-
-        fig.update_xaxes(title_text="Time", row=1, col=1)
-        fig.update_yaxes(title_text="Value", row=1, col=1)
-
-    def qq(fig):
-
-        matplotlib.use("Agg")
-        qqplot_data = qqplot(data, line="s")
-        plt.close(qqplot_data)
-        qqplot_data = qqplot_data.gca().lines
-
-        fig.add_trace(
-            {
-                "type": "scatter",
-                "x": qqplot_data[0].get_xdata(),
-                "y": qqplot_data[0].get_ydata(),
-                "mode": "markers",
-                "marker": {"color": "#1f77b4"},
-                "name": data.name,
-            },
-            row=2,
-            col=2,
-        )
-
-        fig.add_trace(
-            {
-                "type": "scatter",
-                "x": qqplot_data[1].get_xdata(),
-                "y": qqplot_data[1].get_ydata(),
-                "mode": "lines",
-                "line": {"color": "#3f3f3f"},
-                "name": data.name,
-            },
-            row=2,
-            col=2,
-        )
-        fig.update_xaxes(title_text="Theoretical Quantities", row=2, col=2)
-        fig.update_yaxes(title_text="Sample Quantities", row=2, col=2)
-        return qqplot_data
-
-    def dist_plot(fig):
-
-        temp_fig = px.histogram(data, color_discrete_sequence=["#1f77b4"])
-        fig.add_trace(temp_fig.data[0], row=1, col=2)
-
-        fig.update_xaxes(title_text="Range of Values", row=1, col=2)
-        fig.update_yaxes(title_text="PDF", row=1, col=2)
-
-    def plot_acf(fig):
-        corr_array = acf(data, alpha=0.05)
-
-        lower_y = corr_array[1][:, 0] - corr_array[0]
-        upper_y = corr_array[1][:, 1] - corr_array[0]
-
-        [
-            fig.add_scatter(
-                x=(x, x),
-                y=(0, corr_array[0][x]),
-                mode="lines",
-                line_color="#3f3f3f",
-                row=2,
-                col=1,
-                name="ACF",
-            )
-            for x in range(len(corr_array[0]))
-        ]
-        fig.add_scatter(
-            x=np.arange(len(corr_array[0])),
-            y=corr_array[0],
-            mode="markers",
-            marker_color="#1f77b4",
-            marker_size=6,
-            row=2,
-            col=1,
-        )
-
-        fig.add_scatter(
-            x=np.arange(len(corr_array[0])),
-            y=upper_y,
-            mode="lines",
-            line_color="rgba(255,255,255,0)",
-            row=2,
-            col=1,
-            name="UC",
-        )
-        fig.add_scatter(
-            x=np.arange(len(corr_array[0])),
-            y=lower_y,
-            mode="lines",
-            fillcolor="rgba(32, 146, 230,0.3)",
-            fill="tonexty",
-            line_color="rgba(255,255,255,0)",
-            row=2,
-            col=1,
-            name="LC",
-        )
-        fig.update_traces(showlegend=False)
-        fig.update_xaxes(range=[-1, 42], row=2, col=1)
-        fig.update_yaxes(zerolinecolor="#000000", row=2, col=1)
-        fig.update_xaxes(title_text="Lags", row=2, col=1)
-        fig.update_yaxes(title_text="ACF", row=2, col=1)
-        return corr_array
-        # fig.update_layout(title=title)
-
     fig.update_layout(showlegend=False)
     fig_template = fig_kwargs.get("fig_template", "ggplot2")
     fig.update_layout(template=fig_template)
@@ -776,12 +655,15 @@ def plot_diagnostics(
             autosize=False, width=fig_size[0], height=fig_size[1],
         )
 
-    qqplot_data = qq(fig)
-    dist_plot(fig)
-    corr_array = plot_acf(fig)
-    time_plot(fig)
+    #### Add diagnostic plots ----
+    fig = time_series_subplot(fig=fig, data=data, row=1, col=1, name="Time Plot")
+    fig = dist_subplot(fig=fig, data=data, row=1, col=2)
+    fig, acf_data = corr_subplot(
+        fig=fig, data=data, row=2, col=1, name="ACF", plot_acf=True,
+    )
+    fig, qqplot_data = qq_subplot(fig=fig, data=data, row=2, col=2)
 
-    return_data_dict = {"data": data, "qqplot": qqplot_data, "acf": corr_array[0]}
+    return_data_dict = {"data": data, "qqplot": qqplot_data, "acf": acf_data}
 
     return fig, return_data_dict
 
@@ -1043,6 +925,9 @@ def plot_time_series_differences(
     order_list = data_kwargs.get("order_list", None)
     lags_list = data_kwargs.get("lags_list", None)
 
+    plot_acf = data_kwargs.get("acf", False)
+    plot_pacf = data_kwargs.get("pacf", False)
+
     title_name = "Difference Plot"
     data_name = data.name if model_name is None else f"'{model_name}' Residuals"
 
@@ -1062,34 +947,64 @@ def plot_time_series_differences(
     diff_list = [data] + diff_list
     name_list = ["Actual" if model_name is None else "Residuals"] + name_list
 
+    column_titles = ["Time Series"]
     rows = len(diff_list)
-    fig = make_subplots(rows=rows, cols=1, row_titles=name_list, shared_xaxes=True,)
+    cols = 1
+    if plot_acf:
+        cols = cols + 1
+        column_titles.append("ACF")
+    if plot_pacf:
+        cols = cols + 1
+        column_titles.append("PACF")
+
+    fig = make_subplots(
+        rows=rows,
+        cols=cols,
+        row_titles=name_list,
+        column_titles=column_titles,
+        shared_xaxes=True,
+    )
+
+    # Should the following be plotted - Time Series, ACF, PACF
+    plots = [True, plot_acf, plot_pacf]
+
+    # Which column should the plots be in
+    plot_cols = np.cumsum(plots).tolist()
 
     for i, subplot_data in enumerate(diff_list):
-        x = (
-            subplot_data.index.to_timestamp()
-            if isinstance(data.index, pd.PeriodIndex)
-            else data.index
+
+        #### Add difference data ----
+        fig = time_series_subplot(
+            fig=fig, data=subplot_data, row=i + 1, col=plot_cols[0], name=name_list[i]
         )
-        fig.add_trace(
-            go.Scatter(
-                x=x,
-                y=subplot_data.values,
-                line=dict(color="#1f77b4", width=2),
-                mode="lines+markers",
+
+        #### Add diagnostics if requested ----
+        if plot_acf:
+            fig, acf_data = corr_subplot(
+                fig=fig,
+                data=subplot_data,
+                row=i + 1,
+                col=plot_cols[1],
                 name=name_list[i],
-                marker=dict(size=5,),
-            ),
-            row=i + 1,
-            col=1,
-        )
+                plot_acf=True,
+            )
+
+        if plot_pacf:
+            fig, pacf_data = corr_subplot(
+                fig=fig,
+                data=subplot_data,
+                row=i + 1,
+                col=plot_cols[2],
+                name=name_list[i],
+                plot_acf=False,
+            )
 
     fig.update_layout(title=title)
     fig.update_layout(showlegend=False)
     fig_template = fig_kwargs.get("fig_template", "ggplot2")
     fig.update_layout(template=fig_template)
 
-    fig_size = fig_kwargs.get("fig_size", [800, 200 * rows])
+    fig_size = fig_kwargs.get("fig_size", [400 * cols, 200 * rows])
     if fig_size is not None:
         fig.update_layout(
             autosize=False, width=fig_size[0], height=fig_size[1],
@@ -1101,116 +1016,10 @@ def plot_time_series_differences(
         "name_list": name_list,
     }
 
+    if plot_acf:
+        return_data_dict.update({"acf": acf_data})
+    if plot_pacf:
+        return_data_dict.update({"pacf": pacf_data})
+
     return fig, return_data_dict
-
-
-##########################
-#### Helper Functions ####
-##########################
-
-
-def _reconcile_order_and_lags(
-    order_list: Optional[List[Any]] = None, lags_list: Optional[List[Any]] = None
-) -> Tuple[List[int], List[str]]:
-    """Reconciles the differences to lags and returns the names
-    If order_list is provided, it is converted to lags_list.
-    If lags_list is provided, it is uses as is.
-    If none are provided, assumes order = [1]
-    If both are provided, returns empty lists
-
-    Parameters
-    ----------
-    order_list : Optional[List[Any]], optional
-        order of the differences, by default None
-    lags_list : Optional[List[Any]], optional
-        lags of the differences, by default None
-
-    Returns
-    -------
-    Tuple[List[int], List[str]]
-        (1) Reconciled lags_list AND
-        (2) Names corresponding to the difference lags
-    """
-
-    return_lags = []
-    return_names = []
-
-    if order_list is not None and lags_list is not None:
-        msg = "ERROR: Can not specify both 'order_list' and 'lags_list'. Please specify only one."
-        warnings.warn(msg)  # print on screen
-        return return_lags, return_names
-    elif order_list is not None:
-        for order in order_list:
-            return_lags.append([1] * order)
-            return_names.append("Order=" + str(order))
-    elif lags_list is not None:
-        return_lags = lags_list
-        for lags in lags_list:
-            return_names.append("Lags=" + str(lags))
-    else:
-        # order_list is None and lags_list is None
-        # Only perform first difference by default
-        return_lags.append([1])
-        return_names.append("Order=1")
-
-    return return_lags, return_names
-
-
-def _get_diffs(data: pd.Series, lags_list: List[Any]) -> List[pd.Series]:
-    """Returns the requested differences of the provided `data`
-
-    Parameters
-    ----------
-    data : pd.Series
-        Data whose differences have to be computed
-    lags_list : List[Any]
-        lags of the differences
-
-    Returns
-    -------
-    List[pd.Series]
-        List of differences per the lags_list
-    """
-
-    diffs = []
-    for lags in lags_list:
-        transformer = Differencer(lags=lags)
-        diff = transformer.fit_transform(data)
-        diffs.append(diff)
-    return diffs
-
-
-def get_diffs(
-    data: pd.Series,
-    order_list: Optional[List[Any]] = None,
-    lags_list: Optional[List[Any]] = None,
-) -> Tuple[List[pd.Series], List[str]]:
-    """Returns the requested differences of the provided `data`
-    Either `order_list` or `lags_list` can be provided but not both.
-
-    Refer to the following for more details:
-    https://www.sktime.org/en/latest/api_reference/auto_generated/sktime.transformations.series.difference.Differencer.html
-    Note: order = 2 is equivalent to lags = [1, 1]
-
-    Parameters
-    ----------
-    data : pd.Series
-        Data whose differences have to be computed
-    order_list : Optional[List[Any]], optional
-        order of the differences, by default None
-    lags_list : Optional[List[Any]], optional
-        lags of the differences, by default None
-
-    Returns
-    -------
-    Tuple[List[pd.Series], List[str]]
-        (1) List of differences per the order_list or lags_list AND
-        (2) Names corresponding to the differences
-    """
-
-    lags_list_, names = _reconcile_order_and_lags(
-        order_list=order_list, lags_list=lags_list
-    )
-    diffs = _get_diffs(data=data, lags_list=lags_list_)
-    return diffs, names
 
