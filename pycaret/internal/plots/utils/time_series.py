@@ -50,7 +50,7 @@ def _reconcile_order_and_lags(
     elif order_list is not None:
         for order in order_list:
             return_lags.append([1] * order)
-            return_names.append("Order=" + str(order))
+            return_names.append(f"Order={order}")
     elif lags_list is not None:
         return_lags = lags_list
         for lags in lags_list:
@@ -81,11 +81,7 @@ def _get_diffs(data: pd.Series, lags_list: List[Any]) -> List[pd.Series]:
         List of differences per the lags_list
     """
 
-    diffs = []
-    for lags in lags_list:
-        transformer = Differencer(lags=lags)
-        diff = transformer.fit_transform(data)
-        diffs.append(diff)
+    diffs = [Differencer(lags=lags).fit_transform(data) for lags in lags_list]
     return diffs
 
 
