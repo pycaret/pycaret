@@ -936,7 +936,7 @@ def plot_time_series_decomposition(
     decomp_result = None
     data_ = data.to_timestamp() if isinstance(data.index, pd.PeriodIndex) else data
 
-    if plot == "decomp_classical":
+    if plot == "decomp":
         decomp_result = seasonal_decompose(data_, model=classical_decomp_type)
     elif plot == "decomp_stl":
         decomp_result = STL(data_).fit()
