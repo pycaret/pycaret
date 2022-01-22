@@ -1142,7 +1142,7 @@ def plot_multiple_predictions_with_confidence(
             showlegend=True,
         )
 
-        if len(predictions)==1:
+        if len(upper_interval)==1 and len(lower_interval)==1:
             x = (
                 upper_interval[index_iterator].index.to_timestamp()
                 if isinstance(upper_interval[index_iterator].index, pd.PeriodIndex)
