@@ -1153,6 +1153,7 @@ def plot_model(
 def predict_model(
     estimator,
     fh=None,
+    X=None,
     return_pred_int=False,
     alpha=0.05,
     round: int = 4,
@@ -1186,6 +1187,15 @@ def predict_model(
         used during the training.
 
 
+    X: pd.DataFrame, default = None
+        Exogenous Variables to be used for prediction.
+        Before finalizing the estimator, X need not be passed even when the
+        estimator is built using exogenous variables (since this is taken
+        care of internally by using the exogenous variables from test split).
+        When estimator has been finalized and estimator used exogenous
+        variables, then X must be passed.
+
+
     return_pred_int: bool, default = False
         When set to True, it returns lower bound and upper bound
         prediction interval, in addition to the point prediction.
@@ -1215,8 +1225,8 @@ def predict_model(
 
     return experiment.predict_model(
         estimator=estimator,
-        # data=data,
         fh=fh,
+        X=X,
         return_pred_int=return_pred_int,
         alpha=alpha,
         round=round,

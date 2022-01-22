@@ -288,7 +288,7 @@ def _fit_and_score(
     upper = pd.Series([])
     if forecaster.is_fitted:
         y_pred, lower, upper = get_predictions_with_intervals(
-            forecaster=forecaster, X_test=X_test
+            forecaster=forecaster, X=X_test
         )
 
         if (y_test.index.values != y_pred.index.values).any():
@@ -1741,6 +1741,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         display.move_progress()
 
         if predict:
+            # TODO: Add X here ---
             self.predict_model(model, verbose=False)
             model_results = self.pull(pop=True).drop("Model", axis=1)
 
@@ -2913,13 +2914,13 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
                 fh = data_kwargs.get("fh", None)
                 alpha = data_kwargs.get("alpha", 0.05)
-                X_test = data_kwargs.get("X_test", None)
+                X = data_kwargs.get("X", None)
                 return_pred_int = estimator.get_tag("capability:pred_int")
 
                 predictions = self.predict_model(
                     estimator,
                     fh=fh,
-                    data=X_test,
+                    X=X,
                     alpha=alpha,
                     return_pred_int=return_pred_int,
                     verbose=False,
@@ -3120,7 +3121,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         self,
         estimator,
         fh=None,
-        data=None,
+        X=None,
         return_pred_int=False,
         alpha=0.05,
         round: int = 4,
@@ -3152,6 +3153,15 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             Number of points from the last date of training to forecast.
             When fh is None, it forecasts using the same forecast horizon
             used during the training.
+
+
+        X: pd.DataFrame, default = None
+            Exogenous Variables to be used for prediction.
+            Before finalizing the estimator, X need not be passed even when the
+            estimator is built using exogenous variables (since this is taken
+            care of internally by using the exogenous variables from test split).
+            When estimator has been finalized and estimator used exogenous
+            variables, then X must be passed.
 
 
         return_pred_int: bool, default = False
@@ -3206,26 +3216,30 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             # Get the fh in the right format for sktime
             fh = self._check_fh(fh)
 
+        # NOTE: User does not need to pass X before finalizing the model even when
+        # building models with exogenous variables
+
+        # Loaded in the same environment as experiment
         if hasattr(self, "X_test"):
-            if data is None:
-                # Predict Test Set
-                X_test = self.X_test
-            else:
-                X_test = data
-        else:
-            # Loaded in different environment
-            # NOTE: If the model was built using exogenous variables, then user
-            # must make sure that this is provided, else the predictions will fail.
-            X_test = data
+            # model has not been finalized & X has not been passed
+            if estimator._y.index[-1] == self.y_train.index[-1] and X is None:
+                X = self.X_test  # Predict Test Set
+        # else: # Loaded in different environment
+        # NOTE: If the model was built using exogenous variables, then user
+        # must make sure that this is provided, else the predictions will fail.
 
         #### Convert to None if empty dataframe
         # Some predict methods in sktime expect None (not an empty dataframe as
         # returned by pycaret). Hence converting to None.
-        X_test = _coerce_empty_dataframe_to_none(data=X_test)
+        X = _coerce_empty_dataframe_to_none(data=X)
 
         try:
+            # TODO: Replace estimator_.predict() with
+            # y_test_pred, lower, upper = get_predictions_with_intervals(
+            #     forecaster=estimator_, X=X, fh=fh, alpha=alpha
+            # )
             return_vals = estimator_.predict(
-                fh=fh, X=X_test, return_pred_int=return_pred_int, alpha=alpha
+                fh=fh, X=X, return_pred_int=return_pred_int, alpha=alpha
             )
         except NotImplementedError as error:
             self.logger.warning(error)
@@ -3235,7 +3249,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 "NaN values will be returned for the prediction intervals instead."
             )
             return_vals = estimator_.predict(
-                fh=fh, X=X_test, return_pred_int=False, alpha=alpha
+                fh=fh, X=X, return_pred_int=False, alpha=alpha
             )
         if isinstance(return_vals, tuple):
             # Prediction Interval is returned
@@ -3286,7 +3300,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             # Hence, better to get this from the estimator directly.
             y_train = estimator_._y
             y_test_pred, lower, upper = get_predictions_with_intervals(
-                forecaster=estimator_, X_test=X_test, fh=fh, alpha=alpha
+                forecaster=estimator_, X=X, fh=fh, alpha=alpha
             )
 
             if len(y_test_pred) != len(y_test):
@@ -3992,6 +4006,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         estimator_ = deep_clone(estimator)
         y_used_to_train = estimator_._y
         try:
+            # TODO: Add X here ----
             insample_predictions = self.predict_model(
                 estimator, fh=-np.arange(0, len(y_used_to_train))
             )
@@ -4075,7 +4090,7 @@ def deep_clone(estimator):
 
 
 def get_predictions_with_intervals(
-    forecaster, X_test: pd.DataFrame, fh=None, alpha: float = 0.05
+    forecaster, X: pd.DataFrame, fh=None, alpha: float = 0.05
 ) -> Tuple[pd.Series, pd.Series, pd.Series]:
     """Returns the predictions, lower and upper interval values for a
     forecaster. If the forecaster does not support prediction intervals,
@@ -4085,8 +4100,8 @@ def get_predictions_with_intervals(
     ----------
     forecaster : sktime compatible forecaster
         Forecaster to be used to get the predictions
-    X_test : pd.DataFrame
-        Test dataset
+    X : pd.DataFrame
+        Exogenous Variables
     alpha : float, default = 0.05
         alpha value for prediction interval
 
@@ -4099,7 +4114,7 @@ def get_predictions_with_intervals(
     return_pred_int = forecaster.get_tag("capability:pred_int")
 
     return_values = forecaster.predict(
-        fh=fh, X=X_test, return_pred_int=return_pred_int, alpha=alpha
+        fh=fh, X=X, return_pred_int=return_pred_int, alpha=alpha
     )
 
     if return_pred_int:

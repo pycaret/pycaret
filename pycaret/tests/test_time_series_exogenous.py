@@ -79,7 +79,7 @@ def test_create_tune_predict_finalize_model(load_uni_exo_data_target):
     #########################
 
     final_model = exp.finalize_model(tuned_model)
-    y_pred = exp.predict_model(final_model, data=future_exog)
+    y_pred = exp.predict_model(final_model, X=future_exog)
 
     assert np.all(y_pred.index == final_expected_period_index)
 
@@ -118,6 +118,6 @@ def test_blend_models(load_uni_exo_data_target, load_models_uni_mix_exo_noexo):
     #########################
 
     final_model = exp.finalize_model(blender)
-    y_pred = exp.predict_model(final_model, data=future_exog)
+    y_pred = exp.predict_model(final_model, X=future_exog)
 
     assert np.all(y_pred.index == final_expected_period_index)
