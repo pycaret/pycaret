@@ -1004,7 +1004,7 @@ def plot_time_series_differences(
     fig_template = fig_kwargs.get("fig_template", "ggplot2")
     fig.update_layout(template=fig_template)
 
-    fig_size = fig_kwargs.get("fig_size", [800 * cols, 200 * rows])
+    fig_size = fig_kwargs.get("fig_size", [400 * cols, 200 * rows])
     if fig_size is not None:
         fig.update_layout(
             autosize=False, width=fig_size[0], height=fig_size[1],
