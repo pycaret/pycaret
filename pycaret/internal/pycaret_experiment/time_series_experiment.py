@@ -703,10 +703,10 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             "decomp_classical": "Decomposition Classical",
             "decomp_stl": "Decomposition STL",
             "diagnostics": "Diagnostics Plot",
+            "diff": "Difference Plot",
             "forecast": "Out-of-Sample Forecast Plot",
             "insample": "In-Sample Forecast Plot",
             "residuals": "Residuals Plot",
-            "diff": "Difference Plot",
         }
 
         self._available_plots_data_keys = [
@@ -2631,6 +2631,8 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         >>> airline = get_data('airline')
         >>> from pycaret.time_series import *
         >>> exp_name = setup(data = airline,  fh = 12)
+        >>> plot_model(plot="diff", data_kwargs={"order_list": [1, 2], "acf": True, "pacf": True})
+        >>> plot_model(plot="diff", data_kwargs={"lags_list": [[1], [1, 12]], "acf": True, "pacf": True})
         >>> arima = create_model('arima')
         >>> plot_model(plot = 'ts')
         >>> plot_model(plot = 'decomp_classical', data_kwargs = {'type' : 'multiplicative'})
@@ -2653,6 +2655,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             * 'decomp_classical' - Decomposition Classical
             * 'decomp_stl' - Decomposition STL
             * 'diagnostics' - Diagnostics Plot
+            * 'diff' - Difference Plot
             * 'forecast' - "Out-of-Sample" Forecast Plot
             * 'insample' - "In-Sample" Forecast Plot
             * 'residuals' - Residuals Plot
