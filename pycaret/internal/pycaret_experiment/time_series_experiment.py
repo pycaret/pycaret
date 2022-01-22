@@ -22,6 +22,7 @@ from pycaret.internal.utils import (
     SeasonalPeriod,
     TSModelTypes,
     get_function_params,
+    deep_clone,
 )
 import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
@@ -71,19 +72,6 @@ from pycaret.internal.plots.time_series import plot_
 
 warnings.filterwarnings("ignore")
 LOGGER = get_logger()
-
-
-# def _get_cv_n_folds(y, cv) -> int:
-#     """
-#     Get the number of folds for time series
-#     cv must be of type SlidingWindowSplitter or ExpandingWindowSplitter
-#     TODO: Fix this inside sktime and replace this with sktime method [1]
-
-#     Ref:
-#     [1] https://github.com/alan-turing-institute/sktime/issues/632
-#     """
-#     n_folds = int((len(y) - cv.initial_window) / cv.step_length)
-#     return n_folds
 
 
 def get_folds(cv, y) -> Generator[Tuple[pd.Series, pd.Series], None, None]:
@@ -1720,20 +1708,13 @@ class TimeSeriesExperiment(_SupervisedExperiment):
     def _create_model_without_cv(
         self, model, data_X, data_y, fit_kwargs, predict, system, display: Display
     ):
-        # with estimator_pipeline(self._internal_pipeline, model) as pipeline_with_model:
-
-        self.logger.info(
-            "Support for Exogenous variables not yet supported. Switching X, y order"
-        )
-        data_X, data_y = data_y, data_X
-
         fit_kwargs = get_pipeline_fit_kwargs(model, fit_kwargs)
         self.logger.info("Cross validation set to False")
 
         self.logger.info("Fitting Model")
         model_fit_start = time.time()
         with io.capture_output():
-            model.fit(data_X, data_y, **fit_kwargs)
+            model.fit(data_y, data_X, **fit_kwargs)
         model_fit_end = time.time()
 
         model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
@@ -1741,7 +1722,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         display.move_progress()
 
         if predict:
-            # TODO: Add X here ---
+            # X is not passed here so predict_model picks X_test by default.
             self.predict_model(model, verbose=False)
             model_results = self.pull(pop=True).drop("Model", axis=1)
 
@@ -3186,7 +3167,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
 
         """
-
+        # Deep Cloning to prevent overwriting the fh when user specifies their own fh
         estimator_ = deep_clone(estimator)
 
         loaded_in_same_env = True
@@ -3980,6 +3961,8 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         resid = None
 
         estimator.check_is_fitted()
+
+        # Deep Cloning to prevent overwriting the fh when getting insample predictions
         estimator_ = deep_clone(estimator)
         y_used_to_train = estimator_._y
         X_used_to_train = estimator_._X
@@ -4003,13 +3986,16 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         insample_predictions = None
 
         estimator.check_is_fitted()
+
+        # Deep Cloning to prevent overwriting the fh when getting insample predictions
         estimator_ = deep_clone(estimator)
         y_used_to_train = estimator_._y
+        X_used_to_train = estimator_._X
         try:
-            # TODO: Add X here ----
             insample_predictions = self.predict_model(
-                estimator, fh=-np.arange(0, len(y_used_to_train))
+                estimator_, fh=-np.arange(0, len(y_used_to_train)), X=X_used_to_train
             )
+
         except NotImplementedError as exception:
             self.logger.warning(exception)
             print(
@@ -4077,16 +4063,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         """
         additional_scorer_kwargs = {"sp": self.sp_to_use}
         return additional_scorer_kwargs
-
-
-# TODO: Add to pycaret utils or some common location
-def deep_clone(estimator):
-    # Cloning since setting fh to another value replaces it inplace
-    # Note cloning does not copy the fitted model (only model hyperparameters)
-    # Hence, we need to do deep copy per
-    # https://stackoverflow.com/a/33576345/8925915
-    estimator_ = deepcopy(estimator)
-    return estimator_
 
 
 def get_predictions_with_intervals(
