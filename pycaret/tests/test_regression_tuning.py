@@ -33,6 +33,8 @@ def test():
 
     for model in models:
         print(f"Testing model {model}")
+        if "Dummy" in str(model):
+            continue
         pycaret.regression.tune_model(
             model,
             fold=2,

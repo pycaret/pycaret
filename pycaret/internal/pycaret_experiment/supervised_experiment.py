@@ -2035,7 +2035,6 @@ class _SupervisedExperiment(_TabularExperiment):
         else:
             self.logger.info("Model has a special tunable class, using that")
             model = clone(estimator_definition.tunable(**estimator.get_params()))
-        is_stacked_model = False
 
         base_estimator = model
 
