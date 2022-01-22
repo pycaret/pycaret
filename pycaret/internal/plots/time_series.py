@@ -1047,16 +1047,16 @@ def plot_multiple_predictions(
         title = f"{title} | {time_series_name}"
 
     fig_data = []
-    for index_iterator in range(len(predictions)):
+    for index_iterator, prediction in enumerate(predictions):
         x = (
-            predictions[index_iterator].index.to_timestamp()
-            if isinstance(predictions[index_iterator].index, pd.PeriodIndex)
-            else predictions[index_iterator].index
+            prediction.index.to_timestamp()
+            if isinstance(prediction.index, pd.PeriodIndex)
+            else prediction.index
         )
         mean = go.Scatter(
             name=f"Forecast | {model_name[index_iterator]}",
             x=x,
-            y=predictions[index_iterator],
+            y=prediction,
             mode="lines+markers",
             showlegend=True,
         )
