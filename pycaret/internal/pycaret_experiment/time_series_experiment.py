@@ -886,17 +886,31 @@ class TimeSeriesExperiment(_SupervisedExperiment):
     def _return_target_names(
         data: pd.DataFrame, target: Optional[Union[str, List[str]]] = None
     ) -> List[str]:
+
         cols = data.shape[1]
-        if cols == 1:
-            # Ignore target and just use the available column
-            target = [data.columns[0]]
-        elif target is None:
+
+        #### target can not be None if there are multiple columns ----
+        if cols > 1 and target is None:
             raise ValueError(
                 f"Data has {cols} columns, but the target has not been specified."
             )
-        elif isinstance(target, str):
+
+        #### Set target if there is only 1 column ----
+        if cols == 1:
+            if target is not None and target != data.columns[0]:
+                raise ValueError(
+                    f"Target = '{target}', but data only has '{data.columns[0]}'. "
+                    "If you are passing a series (or a dataframe with 1 column) "
+                    "to setup, you can leave `target=None`"
+                )
+            elif target is None:
+                # Use the available column
+                target = [data.columns[0]]
+
+        if isinstance(target, str):
             # Coerce to list
             target = [target]
+
         return target
 
     def _check_and_set_targets(
@@ -979,7 +993,14 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         #### Set Index if necessary ----
         if index is not None:
             if index in data.columns.to_list():
+                unique_index_before = len(data[index]) == len(set(data[index]))
                 data[index] = pd.to_datetime(data[index])
+                unique_index_after = len(data[index]) == len(set(data[index]))
+                if unique_index_before and not unique_index_after:
+                    raise ValueError(
+                        f"Coresion of Index column '{index}' to datetime led to duplicates!"
+                        " Consider setting the data index outside pycaret before passing to setup()."
+                    )
                 data.set_index(index, inplace=True)
             else:
                 raise ValueError(
