@@ -3,9 +3,16 @@ from typing import Optional, List, Tuple, Any
 
 import numpy as np
 import pandas as pd
+import matplotlib
+import matplotlib.pyplot as plt
+
+
+import plotly.express as px
 import plotly.graph_objects as go
 
+from statsmodels.graphics.gofplots import qqplot
 from statsmodels.tsa.stattools import pacf, acf
+
 from sktime.transformations.series.difference import Differencer
 
 
@@ -118,7 +125,7 @@ def get_diffs(
     return diffs, names
 
 
-def _time_series_subplot(
+def time_series_subplot(
     fig: go.Figure, data: pd.Series, row: int, col: int, name: Optional[str] = None
 ) -> go.Figure:
     """Function to add a time series to a Plotly subplot
@@ -161,7 +168,7 @@ def _time_series_subplot(
     return fig
 
 
-def _corr_subplot(
+def corr_subplot(
     fig: go.Figure,
     data: pd.Series,
     row: int,
@@ -256,4 +263,95 @@ def _corr_subplot(
     fig.update_xaxes(title_text="Lags", row=row, col=col)
     fig.update_yaxes(title_text=default_name, row=row, col=col)
     return fig, corr_array
+
+
+def qq_subplot(
+    fig: go.Figure, data: pd.Series, row: int, col: int, name: Optional[str] = None,
+) -> Tuple[go.Figure, List[matplotlib.lines.Line2D]]:
+    """Function to add QQ plot to a Plotly subplot
+
+    Parameters
+    ----------
+    fig : go.Figure
+        Plotly figure to which the ACF needs to be added
+    data : pd.Series
+        Data whose ACF needs to be computed
+    row : int
+        Row of the figure where the plot needs to be inserted. Starts from 1.
+    col : int
+        Column of the figure where the plot needs to be inserted. Starts from 1.
+    name : Optional[str], optional
+        Name to show when hovering over plot, by default None
+
+    Returns
+    -------
+    Tuple[go.Figure, List[matplotlib.lines.Line2D]]
+        Returns back the plotly figure with QQ plot inserted along with the QQ
+        plot data.
+    """
+    matplotlib.use("Agg")
+    qqplot_data = qqplot(data, line="s")
+    plt.close(qqplot_data)
+    qqplot_data = qqplot_data.gca().lines
+
+    name = name or data.name
+
+    fig.add_trace(
+        {
+            "type": "scatter",
+            "x": qqplot_data[0].get_xdata(),
+            "y": qqplot_data[0].get_ydata(),
+            "mode": "markers",
+            "marker": {"color": "#1f77b4"},
+            "name": name,
+        },
+        row=row,
+        col=col,
+    )
+
+    fig.add_trace(
+        {
+            "type": "scatter",
+            "x": qqplot_data[1].get_xdata(),
+            "y": qqplot_data[1].get_ydata(),
+            "mode": "lines",
+            "line": {"color": "#3f3f3f"},
+            "name": name,
+        },
+        row=row,
+        col=col,
+    )
+    fig.update_xaxes(title_text="Theoretical Quantities", row=2, col=2)
+    fig.update_yaxes(title_text="Sample Quantities", row=2, col=2)
+    return fig, qqplot_data
+
+
+def dist_subplot(fig: go.Figure, data: pd.Series, row: int, col: int,) -> go.Figure:
+    """Function to add a histogram to a Plotly subplot
+
+    Parameters
+    ----------
+    fig : go.Figure
+        Plotly figure to which the ACF needs to be added
+    data : pd.Series
+        Data whose ACF needs to be computed
+    row : int
+        Row of the figure where the plot needs to be inserted. Starts from 1.
+    col : int
+        Column of the figure where the plot needs to be inserted. Starts from 1.
+    name : Optional[str], optional
+        Name to show when hovering over plot, by default None
+
+    Returns
+    -------
+    go.Figure
+        Returns back the plotly figure with histogram inserted.
+    """
+
+    temp_fig = px.histogram(data, color_discrete_sequence=["#1f77b4"])
+    fig.add_trace(temp_fig.data[0], row=row, col=col)
+
+    fig.update_xaxes(title_text="Range of Values", row=row, col=col)
+    fig.update_yaxes(title_text="PDF", row=row, col=col)
+    return fig
 

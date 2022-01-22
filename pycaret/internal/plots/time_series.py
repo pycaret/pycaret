@@ -1,16 +1,13 @@
-from typing import Optional, Any, Union, Dict, List, Tuple
+from typing import Optional, Any, Union, Dict, Tuple
 
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-import matplotlib
 
-import plotly.express as px
+
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 from statsmodels.tsa.stattools import pacf, acf
-from statsmodels.graphics.gofplots import qqplot
 from statsmodels.tsa.seasonal import seasonal_decompose, STL
 
 
@@ -21,8 +18,10 @@ from sktime.forecasting.model_selection import (
 
 from pycaret.internal.plots.utils.time_series import (
     get_diffs,
-    _time_series_subplot,
-    _corr_subplot,
+    time_series_subplot,
+    corr_subplot,
+    dist_subplot,
+    qq_subplot,
 )
 
 __author__ = ["satya-pattnaik", "ngupta23"]
@@ -646,128 +645,6 @@ def plot_diagnostics(
         x_title=title,
     )
 
-    def time_plot(fig):
-        x = (
-            data.index.to_timestamp()
-            if isinstance(data.index, pd.PeriodIndex)
-            else data.index
-        )
-        fig.add_trace(
-            go.Scatter(
-                x=x,
-                y=data,
-                mode="lines+markers",
-                marker_color="#1f77b4",
-                marker_size=2,
-                name="Time Plot",
-            ),
-            row=1,
-            col=1,
-        )
-
-        fig.update_xaxes(title_text="Time", row=1, col=1)
-        fig.update_yaxes(title_text="Value", row=1, col=1)
-
-    def qq(fig):
-
-        matplotlib.use("Agg")
-        qqplot_data = qqplot(data, line="s")
-        plt.close(qqplot_data)
-        qqplot_data = qqplot_data.gca().lines
-
-        fig.add_trace(
-            {
-                "type": "scatter",
-                "x": qqplot_data[0].get_xdata(),
-                "y": qqplot_data[0].get_ydata(),
-                "mode": "markers",
-                "marker": {"color": "#1f77b4"},
-                "name": data.name,
-            },
-            row=2,
-            col=2,
-        )
-
-        fig.add_trace(
-            {
-                "type": "scatter",
-                "x": qqplot_data[1].get_xdata(),
-                "y": qqplot_data[1].get_ydata(),
-                "mode": "lines",
-                "line": {"color": "#3f3f3f"},
-                "name": data.name,
-            },
-            row=2,
-            col=2,
-        )
-        fig.update_xaxes(title_text="Theoretical Quantities", row=2, col=2)
-        fig.update_yaxes(title_text="Sample Quantities", row=2, col=2)
-        return qqplot_data
-
-    def dist_plot(fig):
-
-        temp_fig = px.histogram(data, color_discrete_sequence=["#1f77b4"])
-        fig.add_trace(temp_fig.data[0], row=1, col=2)
-
-        fig.update_xaxes(title_text="Range of Values", row=1, col=2)
-        fig.update_yaxes(title_text="PDF", row=1, col=2)
-
-    def plot_acf(fig):
-        corr_array = acf(data, alpha=0.05)
-
-        lower_y = corr_array[1][:, 0] - corr_array[0]
-        upper_y = corr_array[1][:, 1] - corr_array[0]
-
-        [
-            fig.add_scatter(
-                x=(x, x),
-                y=(0, corr_array[0][x]),
-                mode="lines",
-                line_color="#3f3f3f",
-                row=2,
-                col=1,
-                name="ACF",
-            )
-            for x in range(len(corr_array[0]))
-        ]
-        fig.add_scatter(
-            x=np.arange(len(corr_array[0])),
-            y=corr_array[0],
-            mode="markers",
-            marker_color="#1f77b4",
-            marker_size=6,
-            row=2,
-            col=1,
-        )
-
-        fig.add_scatter(
-            x=np.arange(len(corr_array[0])),
-            y=upper_y,
-            mode="lines",
-            line_color="rgba(255,255,255,0)",
-            row=2,
-            col=1,
-            name="UC",
-        )
-        fig.add_scatter(
-            x=np.arange(len(corr_array[0])),
-            y=lower_y,
-            mode="lines",
-            fillcolor="rgba(32, 146, 230,0.3)",
-            fill="tonexty",
-            line_color="rgba(255,255,255,0)",
-            row=2,
-            col=1,
-            name="LC",
-        )
-        fig.update_traces(showlegend=False)
-        fig.update_xaxes(range=[-1, 42], row=2, col=1)
-        fig.update_yaxes(zerolinecolor="#000000", row=2, col=1)
-        fig.update_xaxes(title_text="Lags", row=2, col=1)
-        fig.update_yaxes(title_text="ACF", row=2, col=1)
-        return corr_array
-        # fig.update_layout(title=title)
-
     fig.update_layout(showlegend=False)
     fig_template = fig_kwargs.get("fig_template", "ggplot2")
     fig.update_layout(template=fig_template)
@@ -778,12 +655,15 @@ def plot_diagnostics(
             autosize=False, width=fig_size[0], height=fig_size[1],
         )
 
-    qqplot_data = qq(fig)
-    dist_plot(fig)
-    corr_array = plot_acf(fig)
-    time_plot(fig)
+    #### Add diagnostic plots ----
+    fig = time_series_subplot(fig=fig, data=data, row=1, col=1, name="Time Plot")
+    fig = dist_subplot(fig=fig, data=data, row=1, col=2)
+    fig, acf_data = corr_subplot(
+        fig=fig, data=data, row=2, col=1, name="ACF", plot_acf=True,
+    )
+    fig, qqplot_data = qq_subplot(fig=fig, data=data, row=2, col=2)
 
-    return_data_dict = {"data": data, "qqplot": qqplot_data, "acf": corr_array[0]}
+    return_data_dict = {"data": data, "qqplot": qqplot_data, "acf": acf_data}
 
     return fig, return_data_dict
 
@@ -1094,13 +974,13 @@ def plot_time_series_differences(
     for i, subplot_data in enumerate(diff_list):
 
         #### Add difference data ----
-        fig = _time_series_subplot(
+        fig = time_series_subplot(
             fig=fig, data=subplot_data, row=i + 1, col=plot_cols[0], name=name_list[i]
         )
 
         #### Add diagnostics if requested ----
         if plot_acf:
-            fig, acf_data = _corr_subplot(
+            fig, acf_data = corr_subplot(
                 fig=fig,
                 data=subplot_data,
                 row=i + 1,
@@ -1110,7 +990,7 @@ def plot_time_series_differences(
             )
 
         if plot_pacf:
-            fig, pacf_data = _corr_subplot(
+            fig, pacf_data = corr_subplot(
                 fig=fig,
                 data=subplot_data,
                 row=i + 1,
