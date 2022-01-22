@@ -27,7 +27,7 @@ def create_classification_drift_report(
     categorical_features = list(p[p == "object"].index)
     
     #filter out cases with object dtype
-    categorical_features= unprocessed_data[categorical_features].select_dtypes(exclude=["object"]).columns
+    categorical_features= unprocessed_data[categorical_features].select_dtypes(exclude=["object"]).columns.to_list()
 
     reference_data = unprocessed_data.iloc[X_train.index]
     current_data = unprocessed_data.iloc[X_test.index]
@@ -73,7 +73,7 @@ def create_regression_drift_report(
     categorical_features = list(p[p == "object"].index)
     
     #filter out cases with object dtype
-    categorical_features= unprocessed_data[categorical_features].select_dtypes(exclude=["object"]).columns
+    categorical_features= unprocessed_data[categorical_features].select_dtypes(exclude=["object"]).columns.to_list()
     
     reference_data = unprocessed_data.iloc[X_train.index]
     current_data = unprocessed_data.iloc[X_test.index]
