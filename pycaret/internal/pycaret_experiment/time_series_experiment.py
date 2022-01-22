@@ -66,7 +66,7 @@ from sktime.utils.validation.forecasting import check_y_X  # type: ignore
 from sktime.forecasting.model_selection import SlidingWindowSplitter  # type: ignore
 
 from pycaret.internal.tests.time_series import test_
-from pycaret.internal.plots.time_series import plot_
+from pycaret.internal.plots.time_series import _plot
 
 
 warnings.filterwarnings("ignore")
@@ -2845,7 +2845,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                     f"Plot type '{plot}' is not supported when estimator is provided. Available plots are: {', '.join(plots_formatted_model)}"
                 )
 
-        fig, plot_data = plot_(
+        fig, plot_data = _plot(
             plot=plot,
             data=data,
             train=train,
