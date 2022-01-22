@@ -1847,11 +1847,11 @@ class _TabularExperiment(_PyCaretExperiment):
                 # at least 2 values
                 self.remove_metric("R2")
 
-            #### Remove INPI when enforce_pi is False ----
+            #### Remove COV_PROB when enforce_pi is False ----
             # User can add it manually if they want when enforce_pi is set to False.
             # Refer: https://github.com/pycaret/pycaret/issues/1900
-            if not self.enforce_pi and "inpi" in self._get_metrics():
-                self.remove_metric("INPI")
+            if not self.enforce_pi and "cov_prob" in self._get_metrics():
+                self.remove_metric("COV_PROB")
 
         self.logger.info(
             f"self.master_model_container: {len(self.master_model_container)}"
