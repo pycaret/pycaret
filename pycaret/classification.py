@@ -1937,71 +1937,67 @@ def calibrate_model(
 
 def optimize_threshold(
     estimator,
-    true_positive: int = 0,
-    true_negative: int = 0,
-    false_positive: int = 0,
-    false_negative: int = 0,
-    grid_interval: float = 0.0001,
+    optimize: str = "Accuracy",
+    grid_interval: float = 0.1,
+    return_data: bool = False, 
+    plot_kwargs: Optional[dict] = None,
 ):
 
     """
-    This function optimizes probability threshold for a given estimator using
-    custom cost function. The function displays a plot of optimized cost as a
-    function of probability threshold between 0.0 to 1.0 and returns the
-    optimized threshold value as a numpy float.
+    This function optimizes probability threshold for a trained classifier. It 
+    iterates over performance metrics at different ``probability_threshold`` with
+    a step size defined in ``grid_interval`` parameter. This function will display
+    a plot of the performance metrics at each probability threshold and returns the
+    best model based on the metric defined under ``optimize`` parameter.
 
 
     Example
     -------
     >>> from pycaret.datasets import get_data
     >>> juice = get_data('juice')
-    >>> from pycaret.classification import *
-    >>> exp_name = setup(data = juice,  target = 'Purchase')
+    >>> experiment_name = setup(data = juice,  target = 'Purchase')
     >>> lr = create_model('lr')
-    >>> optimize_threshold(lr, true_negative = 10, false_negative = -100)
+    >>> best_lr_threshold = optimize_threshold(lr)
 
 
-    estimator: scikit-learn compatible object
-        Trained model object
+    Parameters
+    ----------
+    estimator : object
+        A trained model object should be passed as an estimator.
 
 
-    true_positive: int, default = 0
-        Cost function or returns for true positive.
+    optimize : str, default = 'Accuracy'
+        Metric to be used for selecting best model. 
 
 
-    true_negative: int, default = 0
-        Cost function or returns for true negative.
+    grid_interval : float, default = 0.0001
+        Grid interval for threshold grid search. Default 10 iterations.
 
 
-    false_positive: int, default = 0
-        Cost function or returns for false positive.
+    return_data :  bool, default = False
+        When set to True, data used for visualization is also returned.
 
 
-    false_negative: int, default = 0
-        Cost function or returns for false negative.
+    plot_kwargs :  dict, default = {} (empty dict)
+        Dictionary of arguments passed to the visualizer class.
 
 
-    grid_interval: float, default = 0.0001
-        Grid inerval for threshold grid search. Iteration count = 1.0/grid_interval. Default 10000 iterations.
-
-
-    Returns:
-        numpy.float64
+    Returns
+    -------
+    Trained Model
 
 
     Warnings
     --------
-    - This function is not supported when target is multiclass.
-
+    - This function does not support multiclass classification problems.
     """
 
     return pycaret.internal.tabular.optimize_threshold(
         estimator=estimator,
-        true_positive=true_positive,
-        true_negative=true_negative,
-        false_positive=false_positive,
-        false_negative=false_negative,
+        optimize=optimize,
         grid_interval=grid_interval,
+        return_data=return_data,
+        plot_kwargs=plot_kwargs
     )
 
 
@@ -2326,7 +2322,7 @@ def load_model(
         dictionary of applicable authentication tokens.
 
         when platform = 'aws':
-        {'bucket' : 'S3-bucket-name'}
+        {'bucket' : 'Name of Bucket on S3', 'path': (optional) folder name under the bucket}
 
         when platform = 'gcp':
         {'project': 'gcp-project-name', 'bucket' : 'gcp-bucket-name'}
@@ -3038,36 +3034,17 @@ def create_api(
     >>> juice = get_data('juice')
     >>> from pycaret.classification import *
     >>> exp_name = setup(data = juice,  target = 'Purchase')
-    >>> eda(display_format = 'bokeh')
-
-
-    data: pandas.DataFrame
-        DataFrame with (n_samples, n_features).
-
-
-    target: str
-        Name of the target column to be passed in as a string.
-
-
-    display_format: str, default = 'bokeh'
-        When set to 'bokeh' the plots are interactive. Other option is ``svg`` for static
-        plots that are generated using matplotlib and seaborn.
-
-
-    **kwargs:
-        Additional keyword arguments to pass to the AutoVIZ class.
-
     >>> lr = create_model('lr')
-    >>> create_api(lr, 'lr_api')
-    >>> !python lr_api.py #to run the API
+    >>> create_api(lr, 'lr_api'
+    >>> !python lr_api.py
 
 
     estimator: scikit-learn compatible object
         Trained model object
 
 
-    api_name: str
-        Name of the api as a string.
+    api_name: scikit-learn compatible object
+        Trained model object
 
 
     host: str, default = '127.0.0.1'
@@ -3084,3 +3061,73 @@ def create_api(
     return pycaret.internal.tabular.create_api(
         estimator=estimator, api_name=api_name, host=host, port=port
     )
+
+def create_docker(
+    api_name: str, base_image: str = "python:3.8-slim", expose_port: int = 8000
+) -> None:
+
+    """
+    This function creates a ``Dockerfile`` and ``requirements.txt`` for 
+    productionalizing API end-point. 
+
+
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> juice = get_data('juice')
+    >>> from pycaret.classification import *
+    >>> exp_name = setup(data = juice,  target = 'Purchase')
+    >>> lr = create_model('lr')
+    >>> create_api(lr, 'lr_api')
+    >>> create_docker('lr_api')
+
+
+    api_name: str
+        Name of API. Must be saved as a .py file in the same folder.
+
+
+    base_image: str, default = "python:3.8-slim"
+        Name of the base image for Dockerfile.
+
+
+    expose_port: int, default = 8000
+        port for expose for API in the Dockerfile.
+
+
+    Returns:
+        None
+    """
+    return pycaret.internal.tabular.create_docker(
+        api_name=api_name, base_image=base_image, expose_port=expose_port
+    )
+
+def create_app(estimator, app_kwargs: Optional[dict] = None)-> None:
+
+    """
+    This function creates a basic gradio app for inference.
+    It will later be expanded for other app types such as 
+    Streamlit.
+
+
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> juice = get_data('juice')
+    >>> from pycaret.classification import *
+    >>> exp_name = setup(data = juice,  target = 'Purchase')
+    >>> lr = create_model('lr')
+    >>> create_app(lr)
+
+
+    estimator: scikit-learn compatible object
+        Trained model object
+
+
+    app_kwargs: dict, default = {}
+        arguments to be passed to app class.
+
+
+    Returns:
+        None
+    """
+    return pycaret.internal.tabular.create_app(estimator=estimator, app_kwargs=app_kwargs)

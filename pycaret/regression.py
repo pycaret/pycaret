@@ -1998,7 +1998,7 @@ def load_model(
         dictionary of applicable authentication tokens.
 
         when platform = 'aws':
-        {'bucket' : 'S3-bucket-name'}
+        {'bucket' : 'Name of Bucket on S3', 'path': (optional) folder name under the bucket}
 
         when platform = 'gcp':
         {'project': 'gcp-project-name', 'bucket' : 'gcp-bucket-name'}
@@ -2731,3 +2731,75 @@ def create_api(
     return pycaret.internal.tabular.create_api(
         estimator=estimator, api_name=api_name, host=host, port=port
     )
+
+
+def create_docker(
+    api_name: str, base_image: str = "python:3.8-slim", expose_port: int = 8000
+) -> None:
+
+    """
+    This function creates a ``Dockerfile`` and ``requirements.txt`` for 
+    productionalizing API end-point. 
+
+
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> boston = get_data('boston')
+    >>> from pycaret.regression import *
+    >>> exp_name = setup(data = boston,  target = 'medv')
+    >>> lr = create_model('lr')
+    >>> create_api(lr, 'lr_api')
+    >>> create_docker('lr_api')
+
+
+    api_name: str
+        Name of API. Must be saved as a .py file in the same folder.
+
+
+    base_image: str, default = "python:3.8-slim"
+        Name of the base image for Dockerfile.
+
+
+    expose_port: int, default = 8000
+        port for expose for API in the Dockerfile.
+
+
+    Returns:
+        None
+    """
+    return pycaret.internal.tabular.create_docker(
+        api_name=api_name, base_image=base_image, expose_port=expose_port
+    )
+
+
+def create_app(estimator, app_kwargs: Optional[dict] = None)-> None:
+
+    """
+    This function creates a basic gradio app for inference.
+    It will later be expanded for other app types such as 
+    Streamlit.
+
+
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> boston = get_data('boston')
+    >>> from pycaret.regression import *
+    >>> exp_name = setup(data = boston,  target = 'medv')
+    >>> lr = create_model('lr')
+    >>> create_app(lr)
+
+
+    estimator: scikit-learn compatible object
+        Trained model object
+
+
+    app_kwargs: dict, default = {}
+        arguments to be passed to app class.
+
+
+    Returns:
+        None
+    """
+    return pycaret.internal.tabular.create_app(estimator=estimator, app_kwargs=app_kwargs)

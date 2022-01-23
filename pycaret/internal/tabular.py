@@ -6354,7 +6354,7 @@ def plot_model(
             if feature_name is not None:
                 X_embedded["Feature"] = data_before_preprocess[feature_name]
             else:
-                X_embedded["Feature"] = data_before_preprocess[data_X.columns[0]]
+                X_embedded["Feature"] = data_before_preprocess.iloc[:, 0]
 
             if label:
                 X_embedded["Label"] = X_embedded["Feature"]
@@ -8308,20 +8308,19 @@ def calibrate_model(
 
 def optimize_threshold(
     estimator,
-    true_positive: int = 0,
-    true_negative: int = 0,
-    false_positive: int = 0,
-    false_negative: int = 0,
-    grid_interval: float = 0.0001,
+    optimize: str = "Accuracy",
+    grid_interval: float = 0.1,
+    return_data: bool = False, 
+    plot_kwargs: Optional[dict] = None,
 ):
 
     """
-    This function optimizes probability threshold for a trained model using custom cost
-    function that can be defined using combination of True Positives, True Negatives,
-    False Positives (also known as Type I error), and False Negatives (Type II error).
+    This function optimizes probability threshold for a trained classifier. It 
+    iterates over performance metrics at different ``probability_threshold`` with
+    a step size defined in ``grid_interval`` parameter. This function will display
+    a plot of the performance metrics at each probability threshold and returns the
+    best model based on the metric defined under ``optimize`` parameter.
 
-    This function returns a plot of optimized cost as a function of probability
-    threshold between 0 to 100.
 
     Example
     -------
@@ -8329,40 +8328,39 @@ def optimize_threshold(
     >>> juice = get_data('juice')
     >>> experiment_name = setup(data = juice,  target = 'Purchase')
     >>> lr = create_model('lr')
-    >>> optimize_threshold(lr, true_negative = 10, false_negative = -100)
+    >>> best_lr_threshold = optimize_threshold(lr)
 
-    This will return a plot of optimized cost as a function of probability threshold.
 
     Parameters
     ----------
     estimator : object
         A trained model object should be passed as an estimator.
 
-    true_positive : int, default = 0
-        Cost function or returns when prediction is true positive.
 
-    true_negative : int, default = 0
-        Cost function or returns when prediction is true negative.
+    optimize : str, default = 'Accuracy'
+        Metric to be used for selecting best model. 
 
-    false_positive : int, default = 0
-        Cost function or returns when prediction is false positive.
-
-    false_negative : int, default = 0
-        Cost function or returns when prediction is false negative.
 
     grid_interval : float, default = 0.0001
-        Grid inerval for threshold grid search. Iteration count = 1.0/grid_interval. Default 10000 iterations.
+        Grid interval for threshold grid search. Default 10 iterations.
+
+
+    return_data :  bool, default = False
+        When set to True, data used for visualization is also returned.
+
+
+    plot_kwargs :  dict, default = {} (empty dict)
+        Dictionary of arguments passed to the visualizer class.
+
 
     Returns
     -------
-    Visual_Plot
-        Prints the visual plot.
+    Trained Model
+
 
     Warnings
     --------
-    - This function is not supported for multiclass problems.
-
-
+    - This function does not support multiclass classification problems.
     """
 
     function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
@@ -8397,139 +8395,73 @@ def optimize_threshold(
                 "Estimator doesn't support predict_proba function and cannot be used in optimize_threshold()."
             )
 
-    # check cost function type
     allowed_types = [int, float]
-
-    if type(true_positive) not in allowed_types:
-        raise TypeError("true_positive parameter only accepts float or integer value.")
-
-    if type(true_negative) not in allowed_types:
-        raise TypeError("true_negative parameter only accepts float or integer value.")
-
-    if type(false_positive) not in allowed_types:
-        raise TypeError("false_positive parameter only accepts float or integer value.")
-
-    if type(false_negative) not in allowed_types:
-        raise TypeError("false_negative parameter only accepts float or integer value.")
 
     if type(grid_interval) not in allowed_types or grid_interval > 1.0:
         raise TypeError("grid_interval should be float and less than 1.0.")
+
+    if isinstance(optimize, str):
+        # checking optimize parameter
+        optimize = _get_metric(optimize)
+        if optimize is None:
+            raise ValueError(
+                "Optimize method not supported. See docstring for list of available parameters."
+            )
+        optimize = optimize.display_name
 
     """
     ERROR HANDLING ENDS HERE
     """
 
-    # define model as estimator
-    model = get_estimator_from_meta_estimator(estimator)
+    logger.info("defining variables")
+    # get estimator name
+    model_name = _get_model_name(estimator)
 
-    model_name = _get_model_name(model)
+    # defines grid
+    grid = np.arange(0, 1.0001, grid_interval)
 
-    # generate predictions and store actual on y_test in numpy array
-    actual = np.array(y_test)
+    # defines empty list
+    models_by_threshold = []
+    results_df = []
 
-    predicted = model.predict_proba(X_test)
-    predicted = predicted[:, 1]
-
-    """
-    internal function to calculate loss starts here
-    """
-
-    logger.info("Defining loss function")
-
-    def calculate_loss(
-        actual,
-        predicted,
-        tp_cost=true_positive,
-        tn_cost=true_negative,
-        fp_cost=false_positive,
-        fn_cost=false_negative,
-    ):
-
-        # true positives
-        tp = predicted + actual
-        tp = np.where(tp == 2, 1, 0)
-        tp = tp.sum()
-
-        # true negative
-        tn = predicted + actual
-        tn = np.where(tn == 0, 1, 0)
-        tn = tn.sum()
-
-        # false positive
-        fp = (predicted > actual).astype(int)
-        fp = np.where(fp == 1, 1, 0)
-        fp = fp.sum()
-
-        # false negative
-        fn = (predicted < actual).astype(int)
-        fn = np.where(fn == 1, 1, 0)
-        fn = fn.sum()
-
-        total_cost = (tp_cost * tp) + (tn_cost * tn) + (fp_cost * fp) + (fn_cost * fn)
-
-        return total_cost
-
-    """
-    internal function to calculate loss ends here
-    """
-
-    grid = np.arange(0, 1, grid_interval)
-
+    logger.info("starting optimization loop")
     # loop starts here
-
-    cost = []
-    # global optimize_results
-
-    logger.info("Iteration starts at 0")
-
     for i in grid:
+        model = create_model_supervised(estimator, verbose=False, system=False, probability_threshold=i)
+        try:
+            models_by_threshold.append(model[0])
+        except:
+            models_by_threshold.append(model)
+        model_results = pull().loc[['Mean']]
+        model_results['probability_threshold'] = i
+        results_df.append(model_results)
 
-        pred_prob = (predicted >= i).astype(int)
-        cost.append(calculate_loss(actual, pred_prob))
+    logger.info("optimization loop finished successfully")
 
-    optimize_results = pd.DataFrame(
-        {"Probability Threshold": grid, "Cost Function": cost}
-    )
-    fig = px.line(
-        optimize_results,
-        x="Probability Threshold",
-        y="Cost Function",
-        line_shape="linear",
-    )
-    fig.update_layout(plot_bgcolor="rgb(245,245,245)")
-    title = f"{model_name} Probability Threshold Optimization"
+    results_concat = pd.concat(results_df, axis=0)
+    results_concat_melted = results_concat.melt(id_vars = ['probability_threshold'], value_vars=list(results_concat.columns[:-1]))
+    optimized_metric_index = np.array(results_concat_melted[results_concat_melted['variable'] == optimize]['value']).argmax()
+    best_model_by_metric = models_by_threshold[optimized_metric_index]
 
-    # calculate vertical line
-    y0 = optimize_results["Cost Function"].min()
-    y1 = optimize_results["Cost Function"].max()
-    x0 = optimize_results.sort_values(by="Cost Function", ascending=False).iloc[0][0]
-    x1 = x0
+    logger.info("plotting optimization threshold using plotly")
 
-    t = x0
-    if html_param:
+    # plotting threshold
+    import plotly.express as px
+    title = f"{model_name} Probability Threshold Optimization (default = 0.5)"
+    plot_kwargs = plot_kwargs or {}
+    fig = px.line(results_concat_melted, x="probability_threshold", y="value", title = title,\
+                    color='variable', **plot_kwargs)
+    logger.info("Figure ready for render")
+    fig.show()
 
-        fig.add_shape(
-            dict(
-                type="line", x0=x0, y0=y0, x1=x1, y1=y1, line=dict(color="red", width=2)
-            )
-        )
-        fig.update_layout(
-            title={
-                "text": title,
-                "y": 0.95,
-                "x": 0.45,
-                "xanchor": "center",
-                "yanchor": "top",
-            }
-        )
-        logger.info("Figure ready for render")
-        fig.show()
-    print(f"Optimized Probability Threshold: {t} | Optimized Cost Function: {y1}")
-    logger.info(
-        "optimize_threshold() succesfully completed......................................"
-    )
-
-    return float(t)
+    logger.info("returning model with best metric")
+    if return_data:
+        logger.info("also returning data as return_data = True")
+        logger.info("optimize_threshold() succesfully completed......................................")
+        return (results_concat_melted, best_model_by_metric)
+    else:
+        logger.info("optimize_threshold() succesfully completed......................................")
+        return best_model_by_metric
 
 
 def assign_model(
@@ -10348,9 +10280,11 @@ def _create_regression_dashboard(
         RegressionExplainer,
         ClassifierExplainer,
     )
-
+    # Replaceing chars which dash doesnt accept for column name `.` , `{`, `}`
+    X_test_df=get_config("X_test")
+    X_test_df.columns = [col.replace('.','__').replace('{','__').replace('}','__') for col in X_test_df.columns]
     explainer = RegressionExplainer(
-        model, get_config("X_test"), get_config("y_test"), **kwargs
+        model, X_test_df, get_config("y_test"), **kwargs
     )
     ExplainerDashboard(explainer, mode=mode, **dashboard_kwargs).run(**run_kwargs)
 
@@ -10364,8 +10298,11 @@ def _create_classification_dashboard(
         labels_ = list(get_config("prep_pipe").steps[0][1].le.classes_)
     except:
         labels_ = None
+    # Replaceing chars which dash doesnt accept for column name `.` , `{`, `}`
+    X_test_df=get_config("X_test")
+    X_test_df.columns = [col.replace('.','__').replace('{','__').replace('}','__') for col in X_test_df.columns]
     explainer = ClassifierExplainer(
-        model, get_config("X_test"), get_config("y_test"), labels=labels_, **kwargs
+        model, X_test_df, get_config("y_test"), labels=labels_, **kwargs
     )
     ExplainerDashboard(explainer, mode=mode, **dashboard_kwargs).run(**run_kwargs)
 
@@ -10493,7 +10430,7 @@ def check_fairness(estimator, sensitive_features: list, plot_kwargs: dict = {}):
 
     y_pred = estimator.predict(get_config("X_test"))
     y_true = np.array(get_config("y_test"))
-    X_test_before_transform = get_config("data_before_preprocess").iloc[
+    X_test_before_transform = get_config("data_before_preprocess").loc[
         get_config("X_test").index
     ]
 
@@ -10613,6 +10550,141 @@ To run your API, please run this command --> !python {API_NAME}.py
 
     print(message)
 
+
+def create_docker(
+    api_name: str, base_image: str = "python:3.8-slim", expose_port: int = 8000
+):
+
+    """
+    This function creates a ``Dockerfile`` and ``requirements.txt`` for
+    productionalizing API end-point.
+
+
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> juice = get_data('juice')
+    >>> from pycaret.classification import *
+    >>> exp_name = setup(data = juice,  target = 'Purchase')
+    >>> lr = create_model('lr')
+    >>> create_api(lr, 'lr_api')
+    >>> create_docker('lr_api')
+
+
+    api_name: str
+        Name of API. Must be saved as a .py file in the same folder.
+
+
+    base_image: str, default = "python:3.8-slim"
+        Name of the base image for Dockerfile.
+
+
+    expose_port: int, default = 8000
+        port for expose for API in the Dockerfile.
+
+
+    Returns:
+        None
+    """
+
+    requirements = """
+pycaret
+fastapi
+uvicorn
+"""
+    print("Writing requirements.txt")
+    f = open("requirements.txt", "w")
+    f.write(requirements)
+    f.close
+
+    print("Writing Dockerfile")
+    docker = """
+    
+FROM {BASE_IMAGE}
+
+WORKDIR /app
+
+ADD . /app
+
+RUN apt-get update && apt-get install -y libgomp1
+
+RUN pip install -r requirements.txt
+
+EXPOSE {PORT}
+
+CMD ["python", "{API_NAME}.py"]    
+""".format(
+        BASE_IMAGE=base_image, PORT=expose_port, API_NAME=api_name
+    )
+
+    with open("Dockerfile", "w") as f:
+        f.write(docker)
+
+    print(
+        """Dockerfile and requirements.txt successfully created.
+To build image you have to run --> !docker image build -f "Dockerfile" -t IMAGE_NAME:IMAGE_TAG .
+        """
+    )
+
+def create_app(estimator, app_kwargs: Optional[dict]):
+    """
+    This function creates a basic gradio app for inference.
+    It will later be expanded for other app types such as 
+    Streamlit.
+
+
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> juice = get_data('juice')
+    >>> from pycaret.classification import *
+    >>> exp_name = setup(data = juice,  target = 'Purchase')
+    >>> lr = create_model('lr')
+    >>> create_app(lr)
+
+
+    estimator: scikit-learn compatible object
+        Trained model object
+
+
+    app_kwargs: dict, default = {}
+        arguments to be passed to app class.
+
+
+    Returns:
+        None
+    """
+
+    try:
+        import gradio as gr
+    except ImportError:
+        raise ImportError(
+            "It appears that gradio is not installed. Do: pip install gradio"
+        )
+
+    all_inputs = []
+    app_kwargs = app_kwargs or {}
+
+    data_without_target = get_config('data_before_preprocess').copy()
+    cols_to_drop = [get_config('prep_pipe')[0].target] + get_config('prep_pipe')[0].features_todrop + get_config('prep_pipe')[0].id_columns
+    data_without_target.drop(cols_to_drop, axis=1, errors="ignore", inplace=True)
+    
+    for i in data_without_target.columns:
+        if data_without_target[i].dtype == 'object':
+            all_inputs.append(gr.inputs.Dropdown(list(data_without_target[i].unique()), label=i)) 
+        else:
+            all_inputs.append(gr.inputs.Textbox(label=i))
+            
+    def predict(*dict_input):
+    
+        input_df = pd.DataFrame.from_dict([dict_input])
+        input_df.columns = list(data_without_target.columns)
+        if _ml_usecase == MLUsecase.CLASSIFICATION:
+            return predict_model(estimator, data=input_df, raw_score=True).iloc[0].to_dict()
+        if _ml_usecase == MLUsecase.REGRESSION:
+            return predict_model(estimator, data=input_df).iloc[0].to_dict()
+
+    return gr.Interface(fn = predict, inputs = all_inputs, outputs = "text", live=False, **app_kwargs).launch()
 
 def _choose_better(
     models_and_results: list,

@@ -16,6 +16,7 @@ autoviz # for EDA visualization
 fairlearn # for check_fairness function 
 fastapi # for web api
 uvicorn # for web api
+gradio # for gradio app
 
 # for cloud deployment
 boto3
