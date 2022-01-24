@@ -6,8 +6,6 @@
 
 from enum import Enum, auto
 import math
-
-from traitlets.traitlets import Instance
 from pycaret.internal.meta_estimators import (
     PowerTransformedTargetRegressor,
     get_estimator_from_meta_estimator,
