@@ -1180,12 +1180,13 @@ def ensemble_model(
          Number of decimal places the metrics in the score grid will be rounded to.
 
 
-    optimize: str, default = 'Test_R2'
-        Metric to compare for model selection when ``choose_better`` is True.
-
-
-     optimize: str, default = 'R2'
+     optimize: str, default = 'Test_R2'
          Metric to compare for model selection when ``choose_better`` is True.
+        
+        
+     choose_better: bool, default = False
+         When set to True, the returned object is always better performing. The
+         metric used for comparison is defined by the ``optimize`` parameter.
 
 
      fit_kwargs: dict, default = {} (empty dict)
@@ -1204,9 +1205,12 @@ def ensemble_model(
         Intended to be fed as an input from the user.
 
 
-    Returns:
-        Trained Model
-      
+     verbose: bool, default = True
+         Score grid is not printed when verbose is set to False.
+
+
+     Returns:
+         Trained Model
     """
 
     return pycaret.internal.tabular.ensemble_model(
