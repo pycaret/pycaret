@@ -48,7 +48,7 @@ def test():
     pycaret.classification.plot_model(lr, save=True, scale=5)
 
     # select best model
-    best = pycaret.classification.automl(optimize="MCC")
+    best = pycaret.classification.automl(optimize="Test_MCC")
 
     # hold out predictions
     predict_holdout = pycaret.classification.predict_model(best)

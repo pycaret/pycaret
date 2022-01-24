@@ -52,7 +52,7 @@ def test():
     )  # scale removed because build failed due to large image size
 
     # select best model
-    best = pycaret.regression.automl(optimize="MAPE")
+    best = pycaret.regression.automl(optimize="Test_MAPE")
 
     # hold out predictions
     predict_holdout = pycaret.regression.predict_model(best)
