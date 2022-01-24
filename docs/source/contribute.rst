@@ -52,3 +52,61 @@ What we currently need help on?
    https://github.com/pycaret/pycaret/tree/master/pycaret/tests
 -  Refactor preprocessing pipeline to support GPU
 -  Dask Integration
+
+Development setup
+-----------------
+Follow `installation instructions <https://pycaret.readthedocs.io/en/latest/installation.html#installing-the-latest-release>`_ to first create a virtual environment. Then, install development version of the package:
+
+.. code-block:: shell
+
+    pip install -e .[test]
+
+We use `pre-commit <https://pre-commit.com>`_ with `black <https://github.com/psf/black>`_ for code formatting. It runs automatically before you make a new commit. To set up pre-commit, follow these steps:
+
+1. Install pre-commit:
+
+.. code-block:: shell
+
+    pip install pre-commit
+
+2. Set up pre-commit:
+
+.. code-block:: shell
+
+    pre-commit install
+
+Unit testing
+------------
+Install development version of the package with additional extra dependencies required for unit testing:
+
+.. code-block:: shell
+
+    pip install -e .[test]
+    python -m spacy download en_core_web_sm
+
+We use `pytest <https://docs.pytest.org/en/latest/>`_ for unit testing.
+
+To run tests, except skipped ones (search for ``@pytest.mark.skip`` decorator over test functions), run:
+
+.. code-block:: shell
+
+    pytest pycaret
+
+Documentation
+-------------
+We use `sphinx <https://www.sphinx-doc.org/>`_ to build our documentation and `readthedocs <https://pycaret.readthedocs.io/en/latest/index.html>`_ to host it. The source files can be found in ``docs/source/``. The main configuration file for sphinx is ``conf.py`` and the main page is ``index.rst``.
+
+To build the documentation locally, you need to install a few extra dependencies listed in
+``docs/source/requirements.txt``:
+
+.. code-block:: shell
+
+    pip install -r docs/source/requirements.txt
+
+To build the website locally, run:
+
+.. code-block:: shell
+
+    sh make.sh
+
+You can find the generated files in the ``docs/build/`` folder. To view the website, open  ``docs/build/index.html`` with your preferred web browser.

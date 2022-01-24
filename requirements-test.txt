@@ -1,3 +1,4 @@
 # for testing
 pytest
 moto
+codecov

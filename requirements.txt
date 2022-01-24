@@ -1,6 +1,5 @@
 pandas
 scipy<=1.5.4
-numpy==1.19.5
 seaborn
 matplotlib
 IPython
@@ -27,4 +26,4 @@ imbalanced-learn==0.7.0
 scikit-plot #for lift and gain charts
 Boruta
 pyyaml<6.0.0
-#numba<0.54
+numba<0.55
