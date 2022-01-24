@@ -19,7 +19,7 @@ def create_classification_drift_report(
         )
 
     from evidently.dashboard import Dashboard
-    from evidently.tabs import DataDriftTab, CatTargetDriftTab
+    from evidently.dashboard.tabs import DataDriftTab, CatTargetDriftTab
     from evidently.pipeline.column_mapping import ColumnMapping
 
     p = prep_pipe.steps[0][1].learned_dtypes

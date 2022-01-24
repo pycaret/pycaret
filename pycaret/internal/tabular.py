@@ -1899,9 +1899,9 @@ def compare_models(
         When cross_validation set to False fold parameter is ignored and models are trained
         on entire training dataset, returning metrics calculated using the train (holdout) set.
 
-    sort: str, default = 'Accuracy'
+    sort: str, default = 'Test_Accuracy'
         The scoring measure specified is used for sorting the average score grid
-        Other options are 'AUC', 'Recall', 'Precision', 'F1', 'Kappa' and 'MCC'.
+        Other options are 'Test_AUC', 'Test_Recall', 'Test_Precision', 'Test_F1', 'Test_Kappa' and 'Test_MCC'.
 
     n_select: int, default = 1
         Number of top_n models to return. use negative argument for bottom selection.
@@ -3425,7 +3425,7 @@ def tune_model_unsupervised(
     )
 
     if optimize is None:
-        optimize = "Accuracy" if supervised_type == "classification" else "R2"
+        optimize = "Test_Accuracy" if supervised_type == "classification" else "Test_R2"
     optimize = _get_metric(optimize, metrics=metrics)
     if optimize is None:
         raise ValueError(
@@ -4784,8 +4784,8 @@ def ensemble_model(
     optimize: str, default = 'Test_Accuracy'
         Only used when choose_better is set to True. optimize parameter is used
         to compare emsembled model with base estimator. Values accepted in
-        optimize parameter are 'Accuracy', 'AUC', 'Recall', 'Precision', 'F1',
-        'Kappa', 'MCC'.
+        optimize parameter are 'Test_Accuracy', 'Test_AUC', 'Test_Recall', 'Test_Precision', 'Test_F1',
+        'Test_Kappa', 'Test_MCC'.
 
     fit_kwargs: dict, default = {} (empty dict)
         Dictionary of arguments passed to the fit method of the model.
@@ -5147,8 +5147,8 @@ def blend_models(
     optimize: str, default = 'Test_Accuracy'
         Only used when choose_better is set to True. optimize parameter is used
         to compare emsembled model with base estimator. Values accepted in
-        optimize parameter are 'Accuracy', 'AUC', 'Recall', 'Precision', 'F1',
-        'Kappa', 'MCC'.
+        optimize parameter are 'Test_Accuracy', 'Test_AUC', 'Test_Recall', 'Test_Precision', 'Test_F1',
+        'Test_Kappa', 'Test_MCC'.
 
     method: str, default = 'auto'
         'hard' uses predicted class labels for majority rule voting. 'soft', predicts
@@ -5544,8 +5544,8 @@ def stack_models(
     optimize: str, default = 'Test_Accuracy'
         Only used when choose_better is set to True. optimize parameter is used
         to compare emsembled model with base estimator. Values accepted in
-        optimize parameter are 'Accuracy', 'AUC', 'Recall', 'Precision', 'F1',
-        'Kappa', 'MCC'.
+        optimize parameter are 'Test_Accuracy', 'Test_AUC', 'Test_Recall', 'Test_Precision', 'Test_F1',
+        'Test_Kappa', 'Test_MCC'.
 
     fit_kwargs: dict, default = {} (empty dict)
         Dictionary of arguments passed to the fit method of the model.
@@ -8437,7 +8437,7 @@ def calibrate_model(
 
 def optimize_threshold(
     estimator,
-    optimize: str = "Accuracy",
+    optimize: str = "Test_Accuracy",
     grid_interval: float = 0.1,
     return_data: bool = False, 
     plot_kwargs: Optional[dict] = None,
@@ -8466,7 +8466,7 @@ def optimize_threshold(
         A trained model object should be passed as an estimator.
 
 
-    optimize : str, default = 'Accuracy'
+    optimize : str, default = 'Test_Accuracy'
         Metric to be used for selecting best model. 
 
 
@@ -10584,17 +10584,18 @@ def check_fairness(estimator, sensitive_features: list, plot_kwargs: dict = {}):
         )
     except Exception:
         if MLUsecase.CLASSIFICATION:
-            metric_dict.pop("AUC")
+            metric_dict.pop("Test_AUC")
             multi_metric = MetricFrame(
                 metrics=metric_dict,
                 y_true=y_true,
                 y_pred=y_pred,
                 sensitive_features=X_test_before_transform[sensitive_features],
             )
+    # import pdb; pdb.set_trace()
 
     multi_metric.by_group.plot.bar(
         subplots=True,
-        layout=[3, 3],
+        layout=[4, 4],
         legend=False,
         figsize=[16, 8],
         title="Performance Metrics by Sensitive Features",

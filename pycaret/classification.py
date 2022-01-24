@@ -1929,7 +1929,7 @@ def calibrate_model(
 
 def optimize_threshold(
     estimator,
-    optimize: str = "Accuracy",
+    optimize: str = "Test_Accuracy",
     grid_interval: float = 0.1,
     return_data: bool = False, 
     plot_kwargs: Optional[dict] = None,
@@ -1958,7 +1958,7 @@ def optimize_threshold(
         A trained model object should be passed as an estimator.
 
 
-    optimize : str, default = 'Accuracy'
+    optimize : str, default = 'Test_Accuracy'
         Metric to be used for selecting best model. 
 
 

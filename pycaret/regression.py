@@ -710,7 +710,7 @@ def compare_models(
         is ignored when cross_validation is set to False.
 
 
-    sort: str, default = 'R2'
+    sort: str, default = 'Test_R2'
         The sort order of the score grid. It also accepts custom metrics that are
         added through the ``add_metric`` function.
 
