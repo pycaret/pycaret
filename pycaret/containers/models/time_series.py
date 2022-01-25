@@ -396,8 +396,7 @@ class SeasonalNaiveContainer(TimeSeriesContainer):
             return
 
         self.seasonality_present = globals_dict.get("seasonality_present")
-        sp = globals_dict.get("seasonal_period")
-        self.sp = sp if sp is not None else 1
+        self.sp = globals_dict.get("sp_to_use") or 1
 
         if self.sp == 1:
             self.active = False
@@ -512,8 +511,7 @@ class ArimaContainer(TimeSeriesContainer):
             return
 
         seasonality_present = globals_dict.get("seasonality_present")
-        sp = globals_dict.get("seasonal_period")
-        sp = sp if sp is not None else 1
+        self.sp = globals_dict.get("sp_to_use") or 1
 
         # args = self._set_args
         # tune_args = self._set_tune_args
@@ -675,8 +673,7 @@ class AutoArimaContainer(TimeSeriesContainer):
             return
 
         self.seasonality_present = globals_dict.get("seasonality_present")
-        sp = globals_dict.get("seasonal_period")
-        self.sp = sp if sp is not None else 1
+        self.sp = globals_dict.get("sp_to_use") or 1
 
         args = self._set_args
         tune_args = self._set_tune_args
@@ -747,8 +744,7 @@ class ExponentialSmoothingContainer(TimeSeriesContainer):
             return
 
         self.seasonality_present = globals_dict.get("seasonality_present")
-        sp = globals_dict.get("seasonal_period")
-        self.sp = sp if sp is not None else 1
+        self.sp = globals_dict.get("sp_to_use") or 1
 
         self.strictly_positive = globals_dict.get("strictly_positive")
 
@@ -930,8 +926,7 @@ class ETSContainer(TimeSeriesContainer):
             return
 
         self.seasonality_present = globals_dict.get("seasonality_present")
-        sp = globals_dict.get("seasonal_period")
-        self.sp = sp if sp is not None else 1
+        self.sp = globals_dict.get("sp_to_use") or 1
 
         self.strictly_positive = globals_dict.get("strictly_positive")
 
@@ -1009,8 +1004,7 @@ class ThetaContainer(TimeSeriesContainer):
             return
 
         self.seasonality_present = globals_dict.get("seasonality_present")
-        sp = globals_dict.get("seasonal_period")
-        self.sp = sp if sp is not None else 1
+        self.sp = globals_dict.get("sp_to_use") or 1
 
         self.strictly_positive = globals_dict.get("strictly_positive")
 
@@ -1103,8 +1097,7 @@ class TBATSContainer(TimeSeriesContainer):
         if not self.active:
             return
 
-        sp = globals_dict.get("seasonal_period")
-        self.sp = sp if sp is not None else 1
+        self.sp = globals_dict.get("sp_to_use") or 1
 
         self.seasonality_present = globals_dict.get("seasonality_present")
 
@@ -1173,8 +1166,7 @@ class BATSContainer(TimeSeriesContainer):
         if not self.active:
             return
 
-        sp = globals_dict.get("seasonal_period")
-        self.sp = sp if sp is not None else 1
+        self.sp = globals_dict.get("sp_to_use") or 1
 
         self.seasonality_present = globals_dict.get("seasonality_present")
 
@@ -1243,8 +1235,7 @@ class ProphetContainer(TimeSeriesContainer):
         if not self.active:
             return
 
-        sp = globals_dict.get("seasonal_period")
-        self.sp = sp if sp is not None else 1
+        self.sp = globals_dict.get("sp_to_use") or 1
 
         self.seasonality_present = globals_dict.get("seasonality_present")
         self.freq = globals_dict.get("freq")
@@ -1337,8 +1328,7 @@ class CdsDtContainer(TimeSeriesContainer):
             return
 
         # Set the model hyperparameters
-        sp = globals_dict.get("seasonal_period")
-        self.sp = sp if sp is not None else 1
+        self.sp = globals_dict.get("sp_to_use") or 1
 
         self.strictly_positive = globals_dict.get("strictly_positive")
 
