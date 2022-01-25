@@ -773,7 +773,7 @@ def setup(
 
     # pandas option
     pd.set_option("display.max_columns", 500)
-    pd.set_option("display.max_rows", 500)
+    pd.set_option("display.max_rows", 1000)
 
     # generate USI for mlflow tracking
     import secrets
@@ -1225,10 +1225,6 @@ def setup(
     """
     preprocessing ends here
     """
-
-    # reset pandas option
-    pd.reset_option("display.max_rows")
-    pd.reset_option("display.max_columns")
 
     logger.info("Creating global containers")
 
