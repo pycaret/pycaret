@@ -319,7 +319,14 @@ class DataTypes_Auto_infer(BaseEstimator, TransformerMixin):
             # if we added the dummy  target column , then drop it
             dt_print_out.drop(index="dummy_target", errors="ignore", inplace=True)
 
+            # increase maximum displayed rows to 1000
+            pd.set_option("display.max_rows", 1000)
+
             display(dt_print_out[["Data Type"]])
+
+            # reset pandas option
+            pd.reset_option("display.max_rows")
+            
             self.response = input()
 
             if self.response in [
