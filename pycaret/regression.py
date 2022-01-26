@@ -72,7 +72,7 @@ def setup(
     custom_pipeline: Any = None,
     data_split_shuffle: bool = True,
     data_split_stratify: Union[bool, List[str]] = False,
-    fold_strategy: Union[str, Any] = "stratifiedkfold",
+    fold_strategy: Union[str, Any] = "kfold",
     fold: int = 10,
     fold_shuffle: bool = False,
     fold_groups: Optional[Union[str, pd.DataFrame]] = None,

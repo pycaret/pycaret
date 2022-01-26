@@ -407,8 +407,6 @@ class ClassRegExperiment(_SupervisedExperiment):
                 elif imputation_type == "iterative":
                     self.logger.info("Setting up iterative imputation")
 
-                    # TODO: Fix iterative imputer for categorical columns
-
                     # Dict of all regressor models available
                     regressors = {
                         k: v

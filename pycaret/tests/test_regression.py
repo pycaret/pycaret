@@ -27,7 +27,7 @@ def test():
     )
 
     # compare models
-    top3 = pycaret.regression.compare_models(n_select=100, exclude=["catboost"])[:3]
+    top3 = pycaret.regression.compare_models(n_select=100, exclude=["catboost"], errors="raise")[:3]
     assert isinstance(top3, list)
 
     # tune model

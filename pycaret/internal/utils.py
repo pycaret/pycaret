@@ -65,7 +65,7 @@ def to_df(data, index=None, columns=None, dtypes=None):
     if not isinstance(data, pd.DataFrame) and data is not None:
         # Assign default column names (dict already has column names)
         if not isinstance(data, dict) and columns is None:
-            columns = [f"Feature {str(i)}" for i in range(1, n_cols(data) + 1)]
+            columns = [f"feature {str(i)}" for i in range(1, n_cols(data) + 1)]
 
         # Create dataframe from sparse matrix or directly from data
         if sparse.issparse(data):
@@ -79,7 +79,7 @@ def to_df(data, index=None, columns=None, dtypes=None):
     return data
 
 
-def to_series(data, index=None, name="Target"):
+def to_series(data, index=None, name="target"):
     """Convert a column to pd.Series.
 
     Parameters
@@ -90,7 +90,7 @@ def to_series(data, index=None, name="Target"):
     index: sequence or Index, optional (default=None)
         Values for the indices.
 
-    name: string, optional (default="Target")
+    name: string, optional (default="target")
         Name of the target column.
 
     Returns

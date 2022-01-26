@@ -420,7 +420,6 @@ class _SupervisedExperiment(_TabularExperiment):
         - If cross_validation parameter is set to False, no models will be logged with MLFlow.
 
         """
-
         function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
 
         self.logger.info("Initializing compare_models()")
@@ -504,7 +503,6 @@ class _SupervisedExperiment(_TabularExperiment):
 
         if self._ml_usecase != MLUsecase.TIME_SERIES:
             fold = self._get_cv_splitter(fold)
-        # else keep fold as integer
 
         groups = self._get_groups(groups)
 
@@ -1212,7 +1210,6 @@ class _SupervisedExperiment(_TabularExperiment):
         - If cross_validation parameter is set to False, model will not be logged with MLFlow.
 
         """
-
         function_params_str = ", ".join(
             [
                 f"{k}={v}"

@@ -114,9 +114,7 @@ class _TabularExperiment(_PyCaretExperiment):
             default=self.fold_generator,
             seed=self.seed,
             shuffle=self.fold_shuffle_param,
-            int_default="stratifiedkfold"
-            if ml_usecase == MLUsecase.CLASSIFICATION
-            else "kfold",
+            int_default="stratifiedkfold" if ml_usecase == MLUsecase.CLASSIFICATION else "kfold",
         )
 
     def _is_unsupervised(self) -> bool:

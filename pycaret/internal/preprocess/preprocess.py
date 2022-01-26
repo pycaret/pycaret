@@ -6,7 +6,6 @@
 import pandas as pd
 import numpy as np
 from inspect import signature
-from scipy.sparse import issparse
 from sklearn.base import clone, BaseEstimator
 from sklearn.ensemble import IsolationForest
 from sklearn.covariance import EllipticEnvelope
@@ -120,25 +119,33 @@ class TransfomerWrapper(BaseEstimator):
                 Original dataframe (states the order).
 
             """
+            # Check if columns returned by the transformer are already in the dataset
+            for col in df.columns:
+                if col in original_df.columns and col not in self._include:
+                    raise RuntimeError(
+                        f"Column '{col}' returned by the transformer "
+                        "already exists in the original dataset."
+                    )
+
             temp_df = pd.DataFrame(index=df.index)
-            for col in list(dict.fromkeys(list(original_df.columns) + list(df.columns))):
+            for col in dict.fromkeys(list(original_df.columns) + list(df.columns)):
                 if col in df.columns:
                     temp_df[col] = df[col]
                 elif col not in self._include:
                     if len(df) != len(original_df):
                         raise ValueError(
                             f"Length of values ({len(df)}) does not match length of "
-                            f"index ({len(original_df)}). This might happen when "
+                            f"index ({len(original_df)}). This usually happens when "
                             "transformations that drop rows aren't applied on all "
                             "the columns."
                         )
 
-                    temp_df[col] = original_df[col].tolist()  # List to adapt to index
+                    # Take values to adapt to new index
+                    temp_df[col] = original_df[col].values
 
-                # Derivative cols are added after original
+                # Derivative cols are added after original (e.g. for one-hot encoding)
                 for col_derivative in df.columns:
-                    # Exclude cols with default naming (Feature 1 -> Feature 10, etc...)
-                    if col_derivative.startswith(col) and not col.startswith("Feature"):
+                    if str(col_derivative).startswith(f"{col}_"):
                         temp_df[col_derivative] = df[col_derivative]
 
             return temp_df

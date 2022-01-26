@@ -61,22 +61,22 @@ def test():
             early_stopping=False,
         )
         # TODO: Enable ray after fix is released
-        pycaret.classification.tune_model(
-            model,
-            fold=2,
-            n_iter=2,
-            search_library="tune-sklearn",
-            search_algorithm="random",
-            early_stopping=False,
-        )
-        pycaret.classification.tune_model(
-            model,
-            fold=2,
-            n_iter=2,
-            search_library="tune-sklearn",
-            search_algorithm="optuna",
-            early_stopping=False,
-        )
+        # pycaret.classification.tune_model(
+        #     model,
+        #     fold=2,
+        #     n_iter=2,
+        #     search_library="tune-sklearn",
+        #     search_algorithm="random",
+        #     early_stopping=False,
+        # )
+        # pycaret.classification.tune_model(
+        #     model,
+        #     fold=2,
+        #     n_iter=2,
+        #     search_library="tune-sklearn",
+        #     search_algorithm="optuna",
+        #     early_stopping=False,
+        # )
         pycaret.classification.tune_model(
             model,
             fold=2,
