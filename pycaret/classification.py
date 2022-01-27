@@ -8,6 +8,7 @@ import pandas as pd
 import numpy as np
 
 import pycaret.internal.tabular
+from pycaret.parallel_backends import NoDisplay, ParallelBackend
 from pycaret.internal.Display import Display, is_in_colab, enable_colab
 from typing import List, Tuple, Any, Union, Optional, Dict, Callable
 import warnings
@@ -558,6 +559,9 @@ def setup(
     global _pycaret_setup_call
     _pycaret_setup_call = dict(func=setup, params=locals())
 
+    if not isinstance(data, pd.DataFrame):
+        data = data()
+
     available_plots = {
         "parameter": "Hyperparameters",
         "auc": "AUC",
@@ -580,9 +584,6 @@ def setup(
         "tree": "Decision Tree",
         "ks": "KS Statistic Plot",
     }
-
-    if not isinstance(data, pd.DataFrame):
-        data = data()
 
     if log_plots == True:
         log_plots = ["auc", "confusion_matrix", "feature"]
@@ -680,10 +681,8 @@ def compare_models(
     groups: Optional[Union[str, Any]] = None,
     probability_threshold: Optional[float] = None,
     verbose: bool = True,
-    parallel_backend: Any = None,
-    parallel_conf: Any = None,
-    batch_size: int = 1,
-    display_remote: bool = False,
+    display: Optional[Display] = None,
+    parallel_backend: Optional[ParallelBackend] = None,
 ) -> Union[Any, List[Any]]:
 
     """
@@ -775,25 +774,14 @@ def compare_models(
     verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
 
+    display: Display, default = None
+        Custom display object
+
     parallel_backend: Any, default = None
-        A ``SparkSession`` instance or "spark" to get the current ``SparkSession``.
-        "dask" to get the current Dask client. "native" to test locally using single
-        thread.
-
-    parallel_conf: Any, default = None
-        The associated configs for the parallel backend.
-
-    batch_size: int, default = 1
-        Batch size to partition the tasks. For example if there are 16 tasks,
-        and with ``batch_size=3`` we will have 6 batches to be processed
-        distributedly. Smaller batch sizes will have better load balance but
-        worse overhead, and vise versa.
-
-    display_remote: bool, default = False
-        Whether show progress bar and metrics table when using a distributed
-        backend. By setting it to True, you must also enable the
-        `callback settings <https://fugue-project.github.io/tutorials/tutorials/advanced/rpc.html>`_
-        to receive realtime updates.
+        A ParallelBackend instance. For example if you have a SparkSession ``session``,
+        you can use ``FugueBackend(session)`` to make this function running using
+        Spark. For more details, see
+        :class:`~pycaret.parallel_backends.fugue_backend.FugueBackend`
 
     Returns:
         Trained model or list of trained models, depending on the ``n_select`` param.
@@ -808,29 +796,13 @@ def compare_models(
     - No models are logged in ``MLFlow`` when ``cross_validation`` parameter is False.
     """
     params = dict(locals())
-    _display: Any = None
-
     if parallel_backend is not None:
-        from pycaret.internal.fugue_backend import _CompareModelsWrapper, _NoDisplay
-
-        if parallel_backend == "remote":
-            _display = _NoDisplay()
-        else:
-            global _pycaret_setup_call
-            if params.get("include", None) is None:
-                params["include"] = models().index.tolist()
-            del params["parallel_backend"]
-            del params["parallel_conf"]
-            wrapper = _CompareModelsWrapper(
-                _pycaret_setup_call,
-                dict(func=compare_models, params=params),
-            )
-            return wrapper.compare_models(
-                parallel_backend,
-                parallel_conf,
-                batch_size=batch_size,
-                display_remote=display_remote,
-            )
+        global _pycaret_setup_call
+        parallel_backend.attach(_pycaret_setup_call["func"], _pycaret_setup_call["params"])
+        if params.get("include", None) is None:
+            params["include"] = models().index.tolist()
+        del params["parallel_backend"]
+        return parallel_backend.compare_models(compare_models, params)
 
     return pycaret.internal.tabular.compare_models(
         include=include,
@@ -847,7 +819,7 @@ def compare_models(
         groups=groups,
         probability_threshold=probability_threshold,
         verbose=verbose,
-        display=_display,
+        display=display,
     )
 
 
@@ -1939,12 +1911,12 @@ def optimize_threshold(
     estimator,
     optimize: str = "Accuracy",
     grid_interval: float = 0.1,
-    return_data: bool = False, 
+    return_data: bool = False,
     plot_kwargs: Optional[dict] = None,
 ):
 
     """
-    This function optimizes probability threshold for a trained classifier. It 
+    This function optimizes probability threshold for a trained classifier. It
     iterates over performance metrics at different ``probability_threshold`` with
     a step size defined in ``grid_interval`` parameter. This function will display
     a plot of the performance metrics at each probability threshold and returns the
@@ -1967,7 +1939,7 @@ def optimize_threshold(
 
 
     optimize : str, default = 'Accuracy'
-        Metric to be used for selecting best model. 
+        Metric to be used for selecting best model.
 
 
     grid_interval : float, default = 0.0001
@@ -1997,7 +1969,7 @@ def optimize_threshold(
         optimize=optimize,
         grid_interval=grid_interval,
         return_data=return_data,
-        plot_kwargs=plot_kwargs
+        plot_kwargs=plot_kwargs,
     )
 
 
@@ -3062,13 +3034,14 @@ def create_api(
         estimator=estimator, api_name=api_name, host=host, port=port
     )
 
+
 def create_docker(
     api_name: str, base_image: str = "python:3.8-slim", expose_port: int = 8000
 ) -> None:
 
     """
-    This function creates a ``Dockerfile`` and ``requirements.txt`` for 
-    productionalizing API end-point. 
+    This function creates a ``Dockerfile`` and ``requirements.txt`` for
+    productionalizing API end-point.
 
 
     Example
@@ -3101,11 +3074,12 @@ def create_docker(
         api_name=api_name, base_image=base_image, expose_port=expose_port
     )
 
-def create_app(estimator, app_kwargs: Optional[dict] = None)-> None:
+
+def create_app(estimator, app_kwargs: Optional[dict] = None) -> None:
 
     """
     This function creates a basic gradio app for inference.
-    It will later be expanded for other app types such as 
+    It will later be expanded for other app types such as
     Streamlit.
 
 
@@ -3130,4 +3104,6 @@ def create_app(estimator, app_kwargs: Optional[dict] = None)-> None:
     Returns:
         None
     """
-    return pycaret.internal.tabular.create_app(estimator=estimator, app_kwargs=app_kwargs)
+    return pycaret.internal.tabular.create_app(
+        estimator=estimator, app_kwargs=app_kwargs
+    )
