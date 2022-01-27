@@ -194,11 +194,11 @@ class ClassRegExperiment(_SupervisedExperiment):
                 shuffle=data_split_shuffle,
             )
             self.data = pd.concat([train, test]).reset_index(drop=True)
-            self.idx = [train.index, test.index]
+            self.idx = [self.data.index[:len(train)], self.data.index[-len(test):]]
 
         else:  # test_data is provided
             self.data = pd.concat([data, test_data]).reset_index(drop=True)
-            self.idx = [data.index, test_data.index]
+            self.idx = [self.data.index[:len(data)], self.data.index[-len(test_data):]]
 
         # Set up folding strategy ================================== >>
 

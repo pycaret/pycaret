@@ -4684,7 +4684,6 @@ class _SupervisedExperiment(_TabularExperiment):
             pred_prob = pred
 
         df_score = None
-
         if data is None:
             # model name
             full_name = self._get_model_name(estimator)

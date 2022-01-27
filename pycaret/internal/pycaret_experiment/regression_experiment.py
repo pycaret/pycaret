@@ -1162,7 +1162,7 @@ class RegressionExperiment(ClassRegExperiment):
             estimator=estimator,
             data=data,
             probability_threshold=None,
-            encoded_labels=True,
+            encoded_labels=False,
             round=round,
             verbose=verbose,
         )

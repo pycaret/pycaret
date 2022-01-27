@@ -94,7 +94,7 @@ class TransfomerWrapper(BaseEstimator):
 
             # If columns were added or removed
             temp_cols = []
-            for i, col in enumerate(array.T, start=1):
+            for i, col in enumerate(array.T, start=2):
                 mask = df.apply(lambda c: np.array_equal(c, col, equal_nan=True))
                 if any(mask) and mask[mask].index.values[0] not in temp_cols:
                     temp_cols.append(mask[mask].index.values[0])
@@ -167,19 +167,20 @@ class TransfomerWrapper(BaseEstimator):
 
         args = []
         transform_params = signature(self.transformer.transform).parameters
-
-        # Skip transformers that transform only y when it's not provided
-        if list(transform_params.keys()) == ["y"] and y is None:
-            return variable_return(X, y)
-
-        if "X" in transform_params and X is not None:
-            if self._include is None:
-                self._include = [c for c in X.columns if c in X and c not in self._exclude]
-            elif not self._include:  # Don't transform if empty list
+        if "X" in transform_params:
+            if X is not None:
+                if self._include is None:
+                    self._include = [c for c in X.columns if c in X and c not in self._exclude]
+                elif not self._include:  # Don't transform if empty list
+                    return variable_return(X, y)
+            else:
                 return variable_return(X, y)
             args.append(X[self._include])
-        if "y" in transform_params and y is not None:
-            args.append(y)
+        if "y" in transform_params:
+            if y is not None:
+                args.append(y)
+            elif "X" not in transform_params:
+                return X, y
 
         output = self.transformer.transform(*args)
 
