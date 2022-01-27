@@ -6,6 +6,7 @@ import logging
 import warnings
 import pandas as pd
 from joblib.memory import Memory
+from pycaret.internal.data_profiling.abstract_profiler import AbstractDataProfiler
 
 from pycaret.internal.pycaret_experiment import ClassificationExperiment
 from pycaret.internal.utils import check_if_global_is_not_none
@@ -88,7 +89,7 @@ def setup(
     silent: bool = False,
     verbose: bool = True,
     memory: Union[bool, str, Memory] = True,
-    profile: bool = False,
+    profile: Union[bool, AbstractDataProfiler] = False,
     profile_kwargs: Dict[str, Any] = None,
 ):
 

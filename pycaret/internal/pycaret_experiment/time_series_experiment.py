@@ -9,6 +9,7 @@ from sktime.forecasting.model_selection import (
     ExpandingWindowSplitter,
     SlidingWindowSplitter,
 )
+from pycaret.internal.data_profiling.abstract_profiler import AbstractDataProfiler
 
 
 from pycaret.internal.pycaret_experiment.utils import highlight_setup, MLUsecase
@@ -871,7 +872,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         log_profile: bool = False,
         log_data: bool = False,
         verbose: bool = True,
-        profile: bool = False,
+        profile: Union[bool, AbstractDataProfiler] = False,
         profile_kwargs: Dict[str, Any] = None,
     ):
         """

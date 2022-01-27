@@ -1,3 +1,4 @@
+from pycaret.internal.data_profiling.abstract_profiler import AbstractDataProfiler
 from pycaret.internal.pycaret_experiment.utils import highlight_setup, MLUsecase
 from pycaret.internal.pycaret_experiment.tabular_experiment import _TabularExperiment
 from pycaret.internal.pipeline import (
@@ -331,7 +332,7 @@ class _UnsupervisedExperiment(_TabularExperiment):
         log_data: bool = False,
         silent: bool = False,
         verbose: bool = True,
-        profile: bool = False,
+        profile: Union[bool, AbstractDataProfiler] = False,
         profile_kwargs: Dict[str, Any] = None,
         display: Optional[Display] = None,
     ):

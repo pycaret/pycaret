@@ -7,6 +7,7 @@
 import logging
 import pandas as pd
 import numpy as np
+from pycaret.internal.data_profiling.abstract_profiler import AbstractDataProfiler
 
 from pycaret.internal.pycaret_experiment import ClusteringExperiment
 from pycaret.internal.utils import check_if_global_is_not_none
@@ -73,7 +74,7 @@ def setup(
     log_data: bool = False,
     silent: bool = False,
     verbose: bool = True,
-    profile: bool = False,
+    profile: Union[bool, AbstractDataProfiler] = False,
     profile_kwargs: Dict[str, Any] = None,
 ):
 

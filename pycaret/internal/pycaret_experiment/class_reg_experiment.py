@@ -40,6 +40,7 @@ from sklearn.preprocessing import (
     StandardScaler,
     KBinsDiscretizer,
 )
+from pycaret.internal.data_profiling.abstract_profiler import AbstractDataProfiler
 
 # Internal imports
 from pycaret.internal.logging import get_logger
@@ -142,7 +143,7 @@ class ClassRegExperiment(_SupervisedExperiment):
         silent: bool = False,
         verbose: bool = True,
         memory: Union[bool, str, Memory] = True,
-        profile: bool = False,
+        profile: Union[bool, AbstractDataProfiler] = False,
         profile_kwargs: Dict[str, Any] = None,
     ):
         # Setup initialization ===================================== >>

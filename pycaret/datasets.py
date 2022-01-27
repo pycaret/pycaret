@@ -1,16 +1,21 @@
 """Module to get datasets in pycaret
 """
-from typing import Optional
+from typing import Optional, Union, Dict, Any
 import requests
+from pycaret.internal.Display import Display
+
+from pycaret.internal.data_profiling.abstract_profiler import AbstractDataProfiler
+from pycaret.internal.data_profiling.pandas_profiler import PandasProfilingProfiler
 
 
 def get_data(
     dataset: str = "index",
     folder: Optional[str] = None,
     save_copy: bool = False,
-    profile: bool = False,
     verbose: bool = True,
     address: Optional[str] = None,
+    profile: Union[bool, AbstractDataProfiler] = False,
+    profile_kwargs: Dict[str, Any] = None,
 ):
 
     """
@@ -51,10 +56,6 @@ def get_data(
         When set to true, it saves a copy in current working directory.
 
 
-    profile: bool, default = False
-        When set to true, an interactive EDA report is displayed.
-
-
     verbose: bool, default = True
         When set to False, head of data is not displayed.
 
@@ -64,6 +65,15 @@ def get_data(
         having difficulty linking to github, they can change the default address
         to their own
         (e.g. "https://gitee.com/IncubatorShokuhou/pycaret/raw/master/datasets/")
+
+
+    profile: bool, default = False
+        When set to true, an interactive EDA report is displayed.
+
+
+    profile_kwargs: dict, default = {} (empty dict)
+        Dictionary of arguments passed to the ProfileReport method used
+        to create the EDA report. Ignored if ``profile`` is False.
 
 
     Returns:
@@ -85,7 +95,6 @@ def get_data(
 
     import pandas as pd
     import os.path
-    from IPython.display import display
 
     root = (
         "https://raw.githubusercontent.com/pycaret/datasets/main/"
@@ -141,18 +150,23 @@ def get_data(
         save_name = filename
         data.to_csv(save_name, index=False)
 
+    display = Display(
+        verbose=verbose,
+        #html_param=html_param,
+    )
+
     if dataset == "index":
-        display(data)
-
-    else:
+        display.display(data)
+    elif verbose:
         if profile:
-            import pandas_profiling
+            if not isinstance(profile, AbstractDataProfiler):
+                profile = PandasProfilingProfiler()
 
-            pf = pandas_profiling.ProfileReport(data_for_profiling)
-            display(pf)
+            profile_kwargs = profile_kwargs or {}
+            pf = profile(data_for_profiling, **profile_kwargs)
+            display.display(pf)
 
         else:
-            if verbose:
-                display(data.head())
+            display.display(data.head())
 
     return data

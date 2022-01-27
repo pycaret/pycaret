@@ -9,7 +9,8 @@ import time
 import logging
 
 import numpy as np  # type: ignore
-import pandas as pd  # type: ignore
+import pandas as pd
+from pycaret.internal.data_profiling.abstract_profiler import AbstractDataProfiler  # type: ignore
 
 from pycaret.internal.pycaret_experiment import TimeSeriesExperiment
 from pycaret.internal.utils import check_if_global_is_not_none
@@ -51,7 +52,7 @@ def setup(
     log_profile: bool = False,
     log_data: bool = False,
     verbose: bool = True,
-    profile: bool = False,
+    profile: Union[bool, AbstractDataProfiler] = False,
     profile_kwargs: Dict[str, Any] = None,
 ):
     """

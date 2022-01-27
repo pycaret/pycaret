@@ -20,6 +20,8 @@ import pycaret.internal.preprocess
 import scikitplot as skplt  # type: ignore
 from pandas.io.formats.style import Styler
 from pycaret.internal.logging import create_logger
+from pycaret.internal.data_profiling.abstract_profiler import AbstractDataProfiler
+from pycaret.internal.data_profiling.pandas_profiler import PandasProfilingProfiler
 from pycaret.internal.meta_estimators import get_estimator_from_meta_estimator
 from pycaret.internal.pipeline import Pipeline as InternalPipeline
 from pycaret.internal.pipeline import (
@@ -114,7 +116,9 @@ class _TabularExperiment(_PyCaretExperiment):
             default=self.fold_generator,
             seed=self.seed,
             shuffle=self.fold_shuffle_param,
-            int_default="stratifiedkfold" if ml_usecase == MLUsecase.CLASSIFICATION else "kfold",
+            int_default="stratifiedkfold"
+            if ml_usecase == MLUsecase.CLASSIFICATION
+            else "kfold",
         )
 
     def _is_unsupervised(self) -> bool:
@@ -353,24 +357,19 @@ class _TabularExperiment(_PyCaretExperiment):
             del pipeline_temp
         gc.collect()
 
-    def _profile(self, profile, profile_kwargs):
+    def _profile(
+        self, profile: Union[bool, AbstractDataProfiler], profile_kwargs: Dict[str, Any]
+    ):
+        profile_kwargs = profile_kwargs or {}
+        report = None
         if profile:
-            profile_kwargs = profile_kwargs or {}
-
-            if self.verbose:
-                print("Loading profile... Please Wait!")
-            try:
-                import pandas_profiling
-
-                self.report = pandas_profiling.ProfileReport(
-                    self.data, **profile_kwargs
-                )
-            except Exception as ex:
-                print("Profiler Failed. No output to show, continue with modeling.")
-                self.logger.error(
-                    f"Data Failed with exception:\n {ex}\n"
-                    "No output to show, continue with modeling."
-                )
+            if not isinstance(profile, AbstractDataProfiler):
+                profile = PandasProfilingProfiler()
+            report = profile.profile(
+                self.data, self.verbose, self.logger, **profile_kwargs
+            )
+        if report:
+            self.report = report
 
     def _initialize_setup(
         self,
@@ -967,9 +966,7 @@ class _TabularExperiment(_PyCaretExperiment):
                     b.dropna(axis=0, inplace=True)  # droping rows with NA's
                     b.drop("Anomaly", axis=1, inplace=True)
 
-                    self.logger.info(
-                        "Getting dummies to cast categorical variables"
-                    )
+                    self.logger.info("Getting dummies to cast categorical variables")
 
                     from sklearn.manifold import TSNE
 
@@ -1074,9 +1071,7 @@ class _TabularExperiment(_PyCaretExperiment):
                     """
                     self.logger.info("Sorting dataframe")
 
-                    clus_num = [
-                        int(i.split()[1]) for i in X_embedded["Cluster"]
-                    ]
+                    clus_num = [int(i.split()[1]) for i in X_embedded["Cluster"]]
 
                     X_embedded["cnum"] = clus_num
                     X_embedded.sort_values(by="cnum", inplace=True)
@@ -1194,7 +1189,9 @@ class _TabularExperiment(_PyCaretExperiment):
                         hover_data=d.columns,
                     )
 
-                    fig.update_layout(height=600 * scale,)
+                    fig.update_layout(
+                        height=600 * scale,
+                    )
 
                     plot_filename = f"{plot_name}.html"
 
@@ -1219,9 +1216,7 @@ class _TabularExperiment(_PyCaretExperiment):
                     try:
                         from yellowbrick.cluster import KElbowVisualizer
 
-                        visualizer = KElbowVisualizer(
-                            estimator, timings=False
-                        )
+                        visualizer = KElbowVisualizer(estimator, timings=False)
                         show_yellowbrick_plot(
                             visualizer=visualizer,
                             X_train=self.X_train_transformed,
@@ -1241,9 +1236,7 @@ class _TabularExperiment(_PyCaretExperiment):
                     except:
                         self.logger.error("Elbow plot failed. Exception:")
                         self.logger.error(traceback.format_exc())
-                        raise TypeError(
-                            "Plot Type not supported for this model."
-                        )
+                        raise TypeError("Plot Type not supported for this model.")
 
                 def silhouette():
                     from yellowbrick.cluster import SilhouetteVisualizer
@@ -1270,9 +1263,7 @@ class _TabularExperiment(_PyCaretExperiment):
                     except:
                         self.logger.error("Silhouette plot failed. Exception:")
                         self.logger.error(traceback.format_exc())
-                        raise TypeError(
-                            "Plot Type not supported for this model."
-                        )
+                        raise TypeError("Plot Type not supported for this model.")
 
                 def distance():
                     from yellowbrick.cluster import InterclusterDistance
@@ -1297,9 +1288,7 @@ class _TabularExperiment(_PyCaretExperiment):
                     except:
                         self.logger.error("Distance plot failed. Exception:")
                         self.logger.error(traceback.format_exc())
-                        raise TypeError(
-                            "Plot Type not supported for this model."
-                        )
+                        raise TypeError("Plot Type not supported for this model.")
 
                 def residuals():
 
@@ -1367,9 +1356,7 @@ class _TabularExperiment(_PyCaretExperiment):
 
                     from yellowbrick.classifier import PrecisionRecallCurve
 
-                    visualizer = PrecisionRecallCurve(
-                        estimator, random_state=self.seed
-                    )
+                    visualizer = PrecisionRecallCurve(estimator, random_state=self.seed)
                     show_yellowbrick_plot(
                         visualizer=visualizer,
                         X_train=self.X_train_transformed,
@@ -1422,9 +1409,7 @@ class _TabularExperiment(_PyCaretExperiment):
                     elif self._ml_usecase == MLUsecase.REGRESSION:
                         from yellowbrick.regressor import PredictionError
 
-                        visualizer = PredictionError(
-                            estimator, random_state=self.seed
-                        )
+                        visualizer = PredictionError(estimator, random_state=self.seed)
 
                     show_yellowbrick_plot(
                         visualizer=visualizer,  # type: ignore
@@ -1492,8 +1477,12 @@ class _TabularExperiment(_PyCaretExperiment):
                     from sklearn.preprocessing import StandardScaler
                     from yellowbrick.contrib.classifier import DecisionViz
 
-                    data_X_transformed = self.X_train_transformed.select_dtypes(include="number")
-                    test_X_transformed = self.X_test_transformed.select_dtypes(include="number")
+                    data_X_transformed = self.X_train_transformed.select_dtypes(
+                        include="number"
+                    )
+                    test_X_transformed = self.X_test_transformed.select_dtypes(
+                        include="number"
+                    )
                     self.logger.info("Fitting StandardScaler()")
                     data_X_transformed = StandardScaler().fit_transform(
                         data_X_transformed
@@ -1577,26 +1566,20 @@ class _TabularExperiment(_PyCaretExperiment):
                 def lift():
 
                     display.move_progress()
-                    self.logger.info(
-                        "Generating predictions / predict_proba on X_test"
-                    )
+                    self.logger.info("Generating predictions / predict_proba on X_test")
                     y_test__ = self.y_test_transformed
                     predict_proba__ = estimator.predict_proba(self.X_test_transformed)
                     display.move_progress()
                     display.move_progress()
                     display.clear_output()
-                    with MatplotlibDefaultDPI(
-                        base_dpi=_base_dpi, scale_to_set=scale
-                    ):
+                    with MatplotlibDefaultDPI(base_dpi=_base_dpi, scale_to_set=scale):
                         fig = skplt.metrics.plot_lift_curve(
                             y_test__, predict_proba__, figsize=(10, 6)
                         )
                         if save:
                             plot_filename = f"{plot_name}.png"
                             if not isinstance(save, bool):
-                                plot_filename = os.path.join(
-                                    save, plot_filename
-                                )
+                                plot_filename = os.path.join(save, plot_filename)
                             self.logger.info(f"Saving '{plot_filename}'")
                             plt.savefig(plot_filename, bbox_inches="tight")
                         elif system:
@@ -1608,26 +1591,20 @@ class _TabularExperiment(_PyCaretExperiment):
                 def gain():
 
                     display.move_progress()
-                    self.logger.info(
-                        "Generating predictions / predict_proba on X_test"
-                    )
+                    self.logger.info("Generating predictions / predict_proba on X_test")
                     y_test__ = self.y_test_transformed
                     predict_proba__ = estimator.predict_proba(self.X_test_transformed)
                     display.move_progress()
                     display.move_progress()
                     display.clear_output()
-                    with MatplotlibDefaultDPI(
-                        base_dpi=_base_dpi, scale_to_set=scale
-                    ):
+                    with MatplotlibDefaultDPI(base_dpi=_base_dpi, scale_to_set=scale):
                         fig = skplt.metrics.plot_cumulative_gain(
                             y_test__, predict_proba__, figsize=(10, 6)
                         )
                         if save:
                             plot_filename = f"{plot_name}.png"
                             if not isinstance(save, bool):
-                                plot_filename = os.path.join(
-                                    save, plot_filename
-                                )
+                                plot_filename = os.path.join(save, plot_filename)
                             self.logger.info(f"Saving '{plot_filename}'")
                             plt.savefig(plot_filename, bbox_inches="tight")
                         elif system:
@@ -1640,10 +1617,10 @@ class _TabularExperiment(_PyCaretExperiment):
 
                     from yellowbrick.features import Manifold
 
-                    data_X_transformed = self.X_train_transformed.select_dtypes(include="number")
-                    visualizer = Manifold(
-                        manifold="tsne", random_state=self.seed
+                    data_X_transformed = self.X_train_transformed.select_dtypes(
+                        include="number"
                     )
+                    visualizer = Manifold(manifold="tsne", random_state=self.seed)
                     show_yellowbrick_plot(
                         visualizer=visualizer,
                         X_train=data_X_transformed,
@@ -1676,20 +1653,15 @@ class _TabularExperiment(_PyCaretExperiment):
 
                     if (
                         "base_estimator" in estimator.get_params()
-                        and "n_estimators"
-                        in estimator.base_estimator.get_params()
+                        and "n_estimators" in estimator.base_estimator.get_params()
                     ):
                         n_estimators = (
                             estimator.get_params()["n_estimators"]
-                            * estimator.base_estimator.get_params()[
-                                "n_estimators"
-                            ]
+                            * estimator.base_estimator.get_params()["n_estimators"]
                         )
                         is_ensemble_of_forests = True
                     elif "n_estimators" in estimator.get_params():
-                        n_estimators = estimator.get_params()[
-                            "n_estimators"
-                        ]
+                        n_estimators = estimator.get_params()["n_estimators"]
                     else:
                         n_estimators = 1
                     if n_estimators > 10:
@@ -1739,20 +1711,13 @@ class _TabularExperiment(_PyCaretExperiment):
                                 )
                         else:
                             stacked_feature_names.extend(
-                                [
-                                    f"{k}"
-                                    for k, v in fitted_estimator.estimators
-                                ]
+                                [f"{k}" for k, v in fitted_estimator.estimators]
                             )
                         if not fitted_estimator.passthrough:
                             feature_names = stacked_feature_names
                         else:
-                            feature_names = (
-                                stacked_feature_names + feature_names
-                            )
-                        fitted_estimator = (
-                            fitted_estimator.final_estimator_
-                        )
+                            feature_names = stacked_feature_names + feature_names
+                        fitted_estimator = fitted_estimator.final_estimator_
                     if is_ensemble_of_forests:
                         for estimator in fitted_estimator.estimators_:
                             trees.extend(estimator.estimators_)
@@ -1867,9 +1832,7 @@ class _TabularExperiment(_PyCaretExperiment):
                         # Catboost
                         if "depth" in model_params:
                             param_name = "depth"
-                            param_range = np.arange(
-                                1, 8 if self.gpu_param else 11
-                            )
+                            param_range = np.arange(1, 8 if self.gpu_param else 11)
 
                         # SGD Classifier
                         elif "l1_ratio" in model_params:
@@ -2022,13 +1985,17 @@ class _TabularExperiment(_PyCaretExperiment):
                     from sklearn.preprocessing import StandardScaler
                     from yellowbrick.features import RadViz
 
-                    data_X_transformed = self.X_train_transformed.select_dtypes(include="number")
+                    data_X_transformed = self.X_train_transformed.select_dtypes(
+                        include="number"
+                    )
                     self.logger.info("Fitting StandardScaler()")
                     data_X_transformed = StandardScaler().fit_transform(
                         data_X_transformed
                     )
 
-                    features = min(round(len(self.X_train_transformed.columns) * 0.3, 0), 5)
+                    features = min(
+                        round(len(self.X_train_transformed.columns) * 0.3, 0), 5
+                    )
                     features = int(features)
 
                     pca = PCA(n_components=features, random_state=self.seed)
@@ -2080,7 +2047,10 @@ class _TabularExperiment(_PyCaretExperiment):
                         )
                         variables = abs(temp_model.feature_importances_)
                     coef_df = pd.DataFrame(
-                        {"Variable": self.X_train_transformed.columns, "Value": variables}
+                        {
+                            "Variable": self.X_train_transformed.columns,
+                            "Value": variables,
+                        }
                     )
                     sorted_df = (
                         coef_df.sort_values(by="Value", ascending=False)
@@ -2089,9 +2059,7 @@ class _TabularExperiment(_PyCaretExperiment):
                     )
                     my_range = range(1, len(sorted_df.index) + 1)
                     display.move_progress()
-                    plt.figure(
-                        figsize=(8, 5 * (n // 10)), dpi=_base_dpi * scale
-                    )
+                    plt.figure(figsize=(8, 5 * (n // 10)), dpi=_base_dpi * scale)
                     plt.hlines(
                         y=my_range,
                         xmin=0,
@@ -2136,25 +2104,19 @@ class _TabularExperiment(_PyCaretExperiment):
                 def ks():
 
                     display.move_progress()
-                    self.logger.info(
-                        "Generating predictions / predict_proba on X_test"
-                    )
+                    self.logger.info("Generating predictions / predict_proba on X_test")
                     predict_proba__ = estimator.predict_proba(self.X_train_transformed)
                     display.move_progress()
                     display.move_progress()
                     display.clear_output()
-                    with MatplotlibDefaultDPI(
-                        base_dpi=_base_dpi, scale_to_set=scale
-                    ):
+                    with MatplotlibDefaultDPI(base_dpi=_base_dpi, scale_to_set=scale):
                         fig = skplt.metrics.plot_ks_statistic(
                             self.y_train_transformed, predict_proba__, figsize=(10, 6)
                         )
                         if save:
                             plot_filename = f"{plot_name}.png"
                             if not isinstance(save, bool):
-                                plot_filename = os.path.join(
-                                    save, plot_filename
-                                )
+                                plot_filename = os.path.join(save, plot_filename)
                             self.logger.info(f"Saving '{plot_filename}'")
                             plt.savefig(plot_filename, bbox_inches="tight")
                         elif system:
