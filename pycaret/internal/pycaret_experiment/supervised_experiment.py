@@ -4590,6 +4590,13 @@ class _SupervisedExperiment(_TabularExperiment):
 
         """
 
+        # function to replace encoded labels with their original values
+        # will not run if categorical_labels is false
+        def replace_lables_in_column(label_column):
+            if dtypes and hasattr(dtypes, "replacement"):
+                replacement_mapper = {int(v): k for k, v in dtypes.replacement.items()}
+                label_column.replace(replacement_mapper, inplace=True)
+
         function_params_str = ", ".join(
             [f"{k}={v}" for k, v in locals().items() if k != "data"]
         )
