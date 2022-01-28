@@ -63,12 +63,12 @@ class FugueBackend(ParallelBackend):
 
     >>> from pycaret.datasets import get_data
     >>> from pyspark.sql import SparkSession
-    >>> from pycaret.parallel_backends import FugueBackend
+    >>> from pycaret.parallel import FugueBackend
     >>> juice = get_data('juice')
     >>> from pycaret.classification import *
     >>> exp_name = setup(data = juice,  target = 'Purchase')
     >>> session = SparkSessiong.builder.getOrCreate()
-    >>> best_model = compare_models(parallel_backend=FugueBackend(session))
+    >>> best_model = compare_models(parallel=FugueBackend(session))
 
 
     engine: Any

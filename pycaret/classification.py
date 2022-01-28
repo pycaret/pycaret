@@ -8,7 +8,7 @@ import pandas as pd
 import numpy as np
 
 import pycaret.internal.tabular
-from pycaret.parallel_backends import NoDisplay, ParallelBackend
+from pycaret.parallel import NoDisplay, ParallelBackend
 from pycaret.internal.Display import Display, is_in_colab, enable_colab
 from typing import List, Tuple, Any, Union, Optional, Dict, Callable
 import warnings
@@ -682,7 +682,7 @@ def compare_models(
     probability_threshold: Optional[float] = None,
     verbose: bool = True,
     display: Optional[Display] = None,
-    parallel_backend: Optional[ParallelBackend] = None,
+    parallel: Optional[ParallelBackend] = None,
 ) -> Union[Any, List[Any]]:
 
     """
@@ -777,11 +777,11 @@ def compare_models(
     display: Display, default = None
         Custom display object
 
-    parallel_backend: Any, default = None
+    parallel: Any, default = None
         A ParallelBackend instance. For example if you have a SparkSession ``session``,
         you can use ``FugueBackend(session)`` to make this function running using
         Spark. For more details, see
-        :class:`~pycaret.parallel_backends.fugue_backend.FugueBackend`
+        :class:`~pycaret.parallel.fugue_backend.FugueBackend`
 
     Returns:
         Trained model or list of trained models, depending on the ``n_select`` param.
@@ -796,13 +796,13 @@ def compare_models(
     - No models are logged in ``MLFlow`` when ``cross_validation`` parameter is False.
     """
     params = dict(locals())
-    if parallel_backend is not None:
+    if parallel is not None:
         global _pycaret_setup_call
-        parallel_backend.attach(_pycaret_setup_call["func"], _pycaret_setup_call["params"])
+        parallel.attach(_pycaret_setup_call["func"], _pycaret_setup_call["params"])
         if params.get("include", None) is None:
             params["include"] = models().index.tolist()
-        del params["parallel_backend"]
-        return parallel_backend.compare_models(compare_models, params)
+        del params["parallel"]
+        return parallel.compare_models(compare_models, params)
 
     return pycaret.internal.tabular.compare_models(
         include=include,
