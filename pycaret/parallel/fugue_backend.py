@@ -67,14 +67,15 @@ class FugueBackend(ParallelBackend):
     >>> juice = get_data('juice')
     >>> from pycaret.classification import *
     >>> exp_name = setup(data = juice,  target = 'Purchase')
-    >>> session = SparkSessiong.builder.getOrCreate()
-    >>> best_model = compare_models(parallel=FugueBackend(session))
+    >>> spark = SparkSessiong.builder.getOrCreate()
+    >>> best_model = compare_models(parallel=FugueBackend(spark))
 
 
-    engine: Any
+    engine: Any, default = None
         A ``SparkSession`` instance or "spark" to get the current ``SparkSession``.
         "dask" to get the current Dask client. "native" to test locally using single
-        thread.
+        thread. None means using Fugue's Native execution engine to run jobs
+        sequentially on local machine, it is for testing/development purpose.
 
     conf: Any, default = None
         Fugue ExecutionEngine configs.
@@ -98,7 +99,7 @@ class FugueBackend(ParallelBackend):
 
     def __init__(
         self,
-        engine: Any,
+        engine: Any = None,
         conf: Any = None,
         batch_size: int = 1,
         display_remote: bool = False,

@@ -8,7 +8,7 @@ import pandas as pd
 import numpy as np
 
 import pycaret.internal.tabular
-from pycaret.parallel import NoDisplay, ParallelBackend
+from pycaret.parallel import ParallelBackend
 from pycaret.internal.Display import Display, is_in_colab, enable_colab
 from typing import List, Tuple, Any, Union, Optional, Dict, Callable
 import warnings
@@ -113,7 +113,7 @@ def setup(
 
     data: Union[pd.DataFrame, Callable[[], pd.DataFrame]]
         Shape (n_samples, n_features), where n_samples is the number of samples and
-        n_features is the number of features. If data is a function, then it should
+        n_features is the number of features. If ``data`` is a function, then it should
         generate the pandas dataframe. If you want to use distributed PyCaret, it is
         recommended to provide a function to avoid broadcasting large datasets from
         the driver to workers.
@@ -774,10 +774,10 @@ def compare_models(
     verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
 
-    display: Display, default = None
+    display: pycaret.internal.Display.Display, default = None
         Custom display object
-
-    parallel: Any, default = None
+    
+    parallel: pycaret.parallel.parallel_backend.ParallelBackend, default = None
         A ParallelBackend instance. For example if you have a SparkSession ``session``,
         you can use ``FugueBackend(session)`` to make this function running using
         Spark. For more details, see

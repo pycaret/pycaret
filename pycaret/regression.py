@@ -8,8 +8,9 @@ import pandas as pd
 import numpy as np
 
 import pycaret.internal.tabular
+from pycaret.parallel import ParallelBackend
 from pycaret.internal.Display import Display, is_in_colab, enable_colab
-from typing import List, Tuple, Any, Union, Optional, Dict
+from typing import List, Tuple, Any, Union, Optional, Dict, Callable
 import warnings
 from IPython.utils import io
 
@@ -19,7 +20,7 @@ warnings.filterwarnings("ignore")
 
 
 def setup(
-    data: pd.DataFrame,
+    data: Union[pd.DataFrame, Callable[[], pd.DataFrame]],
     target: str,
     train_size: float = 0.7,
     test_data: Optional[pd.DataFrame] = None,
@@ -108,9 +109,12 @@ def setup(
     >>> exp_name = setup(data = boston,  target = 'medv')
 
 
-    data : pandas.DataFrame
+    data : Union[pd.DataFrame, Callable[[], pd.DataFrame]]
         Shape (n_samples, n_features), where n_samples is the number of samples and
-        n_features is the number of features.
+        n_features is the number of features. If ``data`` is a function, then it should
+        generate the pandas dataframe. If you want to use distributed PyCaret, it is
+        recommended to provide a function to avoid broadcasting large datasets from
+        the driver to workers.
 
 
     target: str
@@ -552,6 +556,13 @@ def setup(
         Global variables that can be changed using the ``set_config`` function.
 
     """
+
+    global _pycaret_setup_call
+    _pycaret_setup_call = dict(func=setup, params=locals())
+
+    if not isinstance(data, pd.DataFrame):
+        data = data()
+    
     available_plots = {
         "parameter": "Hyperparameters",
         "residuals": "Residuals",
@@ -662,6 +673,8 @@ def compare_models(
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
     verbose: bool = True,
+    display: Optional[Display] = None,
+    parallel: Optional[ParallelBackend] = None,
 ):
 
     """
@@ -737,6 +750,14 @@ def compare_models(
     fit_kwargs: dict, default = {} (empty dict)
         Dictionary of arguments passed to the fit method of the model.
 
+    display: pycaret.internal.Display.Display, default = None
+        Custom display object
+    
+    parallel: pycaret.parallel.parallel_backend.ParallelBackend, default = None
+        A ParallelBackend instance. For example if you have a SparkSession ``session``,
+        you can use ``FugueBackend(session)`` to make this function running using
+        Spark. For more details, see
+        :class:`~pycaret.parallel.fugue_backend.FugueBackend`
 
     groups: str or array-like, with shape (n_samples,), default = None
         Optional group labels when 'GroupKFold' is used for the cross validation.
@@ -761,6 +782,14 @@ def compare_models(
     - No models are logged in ``MLFlow`` when ``cross_validation`` parameter is False.
 
     """
+    params = dict(locals())
+    if parallel is not None:
+        global _pycaret_setup_call
+        parallel.attach(_pycaret_setup_call["func"], _pycaret_setup_call["params"])
+        if params.get("include", None) is None:
+            params["include"] = models().index.tolist()
+        del params["parallel"]
+        return parallel.compare_models(compare_models, params)
 
     return pycaret.internal.tabular.compare_models(
         include=include,
@@ -776,6 +805,7 @@ def compare_models(
         fit_kwargs=fit_kwargs,
         groups=groups,
         verbose=verbose,
+        display=display,
     )
 
 
