@@ -13,7 +13,9 @@ from pycaret.utils.time_series import get_diffs, _get_diff_name_list
 ##########################
 
 
-def summary_stats(data: pd.Series, data_kwargs: Optional[Dict] = None,) -> pd.DataFrame:
+def _summary_stats(
+    data: pd.Series, data_kwargs: Optional[Dict] = None,
+) -> pd.DataFrame:
     """Provides Summary Statistics for the data
 
     Parameters
@@ -25,8 +27,8 @@ def summary_stats(data: pd.Series, data_kwargs: Optional[Dict] = None,) -> pd.Da
         `order_list` to get summary statistics for the data as well as for its
         lagged versions, by default None
 
-        >>> summary_statistics(test=data, data_kwargs={"order_list": [1, 2]})
-        >>> summary_statistics(test=data, data_kwargs={"lags_list": [1, [1, 12]]})
+        >>> summary_statistics(data=data, data_kwargs={"order_list": [1, 2]})
+        >>> summary_statistics(data=data, data_kwargs={"lags_list": [1, [1, 12]]})
 
     Returns
     -------
@@ -75,7 +77,7 @@ def summary_stats(data: pd.Series, data_kwargs: Optional[Dict] = None,) -> pd.Da
     return results
 
 
-def is_gaussian(
+def _is_gaussian(
     data: pd.Series,
     alpha: float = 0.05,
     verbose: bool = False,
@@ -98,8 +100,8 @@ def is_gaussian(
         `order_list` to run the test for the data as well as for its lagged
         versions, by default None
 
-        >>> is_gaussian(test=data, data_kwargs={"order_list": [1, 2]})
-        >>> is_gaussian(test=data, data_kwargs={"lags_list": [1, [1, 12]]})
+        >>> _is_gaussian(data=data, data_kwargs={"order_list": [1, 2]})
+        >>> _is_gaussian(data=data, data_kwargs={"lags_list": [1, [1, 12]]})
 
     Returns
     -------
@@ -128,11 +130,11 @@ def is_gaussian(
     for data_, name_ in zip(diff_list, name_list):
         # Step 2A: Get Test Results ----
         p_value = shapiro(data_.values.squeeze())[1]
-        is_gaussian_ = True if p_value > alpha else False
+        is_gaussian = True if p_value > alpha else False
 
         #### Step 2B: Create Result DataFrame ----
         results = {
-            "Normality": is_gaussian_,
+            "Normality": is_gaussian,
             "p-value": p_value,
         }
         results = pd.DataFrame(results, index=["Value"]).T.reset_index()
@@ -140,7 +142,7 @@ def is_gaussian(
 
         #### Step 2C: Update list of all results ----
         results_list.append(results)
-        is_gaussian_list.append(is_gaussian_)
+        is_gaussian_list.append(is_gaussian)
 
     #### Step 3: Combine all results ----
     results = pd.concat(results_list)

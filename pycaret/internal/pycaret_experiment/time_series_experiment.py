@@ -65,7 +65,7 @@ from sktime.forecasting.base import ForecastingHorizon
 from sktime.utils.validation.forecasting import check_y_X  # type: ignore
 from sktime.forecasting.model_selection import SlidingWindowSplitter  # type: ignore
 
-from pycaret.internal.tests.time_series import _test
+from pycaret.internal.tests.time_series import run_test
 from pycaret.internal.plots.time_series import _plot
 
 
@@ -3823,7 +3823,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             data = self.check_and_clean_resid(resid=data)
 
         #### Step 2: Test ----
-        results = _test(data=data, test=test, alpha=alpha, data_kwargs=data_kwargs)
+        results = run_test(data=data, test=test, alpha=alpha, data_kwargs=data_kwargs)
         results.reset_index(inplace=True, drop=True)
         return results
 

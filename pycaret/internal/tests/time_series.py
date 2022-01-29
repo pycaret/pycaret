@@ -7,7 +7,7 @@ from statsmodels.tsa.api import kpss
 
 from pmdarima.arima.utils import ndiffs, nsdiffs
 
-from pycaret.internal.tests.stats import summary_stats, is_gaussian
+from pycaret.internal.tests.stats import _summary_stats, _is_gaussian
 from pycaret.internal.tests import _format_test_results
 
 from pycaret.utils.time_series import get_diffs, _get_diff_name_list
@@ -22,29 +22,67 @@ from pycaret.utils.time_series import get_diffs, _get_diff_name_list
 #################
 
 
-def _test(
-    data, test: str, alpha: float = 0.05, data_kwargs: Optional[Dict] = None, *kwargs
-):
+def run_test(
+    data: pd.Series,
+    test: str,
+    alpha: float = 0.05,
+    data_kwargs: Optional[Dict] = None,
+    *kwargs,
+) -> pd.DataFrame:
+    """Performs the specified test on the data.
+
+    Parameters
+    ----------
+    data : pd.Series
+        Time Series data on which the test needs to be performed
+    test : str
+        Test to run on the data. Allowed tests are
+        - "summary": Summary Statistics
+        - "white_noise": Ljung-Box Test for white noise
+        - "adf": ADF test for difference stationarity
+        - "kpss": KPSS test for trend stationarity
+        - "stationarity": ADF and KPSS test
+        - "normality": Shapiro Test for Normality
+        - "all": All of the above tests
+    alpha : float, optional
+        Significance Level, by default 0.05
+    data_kwargs : Optional[Dict], optional
+        Users can specify `lags list` or `order_list` to run the test for the
+        data as well as for its lagged versions, by default None
+
+        >>> run_test(data=data, test="white_noise", data_kwargs={"order_list": [1, 2]})
+        >>> run_test(data=data, test="white_noise", data_kwargs={"lags_list": [1, [1, 12]]})
+
+    Returns
+    -------
+    pd.DataFrame
+        Detailed results dataframe
+
+    Raises
+    ------
+    ValueError
+        Wrong test name provided
+    """
     if test == "all":
-        results = test_all(data=data, alpha=alpha, data_kwargs=data_kwargs)
+        results = _test_all(data=data, alpha=alpha, data_kwargs=data_kwargs)
     elif test == "summary":
-        results = summary_stats(data=data, data_kwargs=data_kwargs)
+        results = _summary_stats(data=data, data_kwargs=data_kwargs)
     elif test == "white_noise":
-        results = is_white_noise(
+        results = _is_white_noise(
             data=data, alpha=alpha, verbose=True, data_kwargs=data_kwargs, *kwargs
         )[1]
     elif test == "stationarity":
-        results = is_stationary(data=data, alpha=alpha, data_kwargs=data_kwargs)
+        results = _is_stationary(data=data, alpha=alpha, data_kwargs=data_kwargs)
     elif test == "adf":
-        results = is_stationary_adf(
+        results = _is_stationary_adf(
             data=data, alpha=alpha, verbose=True, data_kwargs=data_kwargs
         )[1]
     elif test == "kpss":
-        results = is_stationary_kpss(
+        results = _is_stationary_kpss(
             data=data, alpha=alpha, verbose=True, data_kwargs=data_kwargs
         )[1]
     elif test == "normality":
-        results = is_gaussian(
+        results = _is_gaussian(
             data=data, alpha=alpha, verbose=True, data_kwargs=data_kwargs
         )[1]
     else:
@@ -55,16 +93,46 @@ def _test(
 ########################
 #### Combined Tests ####
 ########################
-def test_all(data, alpha: float = 0.05, data_kwargs: Optional[Dict] = None):
-    result_summary_stats = summary_stats(data=data, data_kwargs=data_kwargs)
-    result_wn = is_white_noise(data, alpha=alpha, verbose=True, data_kwargs=data_kwargs)
-    result_adf = is_stationary_adf(
+def _test_all(
+    data: pd.Series, alpha: float = 0.05, data_kwargs: Optional[Dict] = None
+) -> pd.DataFrame:
+    """Performs several tests on on the time series data
+
+    - Summary Statistics
+    - Ljung-Box Test for white noise
+    - ADF test for difference stationarity
+    - KPSS test for trend stationarity
+    - Shapiro Test for Normality
+
+    Parameters
+    ----------
+    data : pd.Series
+        Time Series data on which the test needs to be performed
+    alpha : float, optional
+        Significance Level, by default 0.05
+    data_kwargs : Optional[Dict], optional
+        Users can specify `lags list` or `order_list` to run the test for the
+        data as well as for its lagged versions, by default None
+
+        >>> _test_all(data=data, data_kwargs={"order_list": [1, 2]})
+        >>> _test_all(data=data, data_kwargs={"lags_list": [1, [1, 12]]})
+
+    Returns
+    -------
+    pd.DataFrame
+        Detailed results dataframe
+    """
+    result_summary_stats = _summary_stats(data=data, data_kwargs=data_kwargs)
+    result_wn = _is_white_noise(
         data, alpha=alpha, verbose=True, data_kwargs=data_kwargs
     )
-    result_kpss = is_stationary_kpss(
+    result_adf = _is_stationary_adf(
         data, alpha=alpha, verbose=True, data_kwargs=data_kwargs
     )
-    result_normality = is_gaussian(
+    result_kpss = _is_stationary_kpss(
+        data, alpha=alpha, verbose=True, data_kwargs=data_kwargs
+    )
+    result_normality = _is_gaussian(
         data, alpha=alpha, verbose=True, data_kwargs=data_kwargs
     )
 
@@ -79,13 +147,36 @@ def test_all(data, alpha: float = 0.05, data_kwargs: Optional[Dict] = None):
     return final
 
 
-def is_stationary(
-    data, alpha: float = 0.05, data_kwargs: Optional[Dict] = None,
-):
-    result_adf = is_stationary_adf(
+def _is_stationary(
+    data: pd.Series, alpha: float = 0.05, data_kwargs: Optional[Dict] = None,
+) -> pd.DataFrame:
+    """Performs Stationarity tests on time series data
+
+    - ADF test for difference stationarity
+    - KPSS test for trend stationarity
+
+    Parameters
+    ----------
+    data : pd.Series
+        Time Series data on which the test needs to be performed
+    alpha : float, optional
+        Significance Level, by default 0.05
+    data_kwargs : Optional[Dict], optional
+        Users can specify `lags list` or `order_list` to run the test for the
+        data as well as for its lagged versions, by default None
+
+        >>> _is_stationary(data=data, data_kwargs={"order_list": [1, 2]})
+        >>> _is_stationary(data=data, data_kwargs={"lags_list": [1, [1, 12]]})
+
+    Returns
+    -------
+    pd.DataFrame
+        Detailed results dataframe
+    """
+    result_adf = _is_stationary_adf(
         data, alpha=alpha, verbose=True, data_kwargs=data_kwargs
     )
-    result_kpss = is_stationary_kpss(
+    result_kpss = _is_stationary_kpss(
         data, alpha=alpha, verbose=True, data_kwargs=data_kwargs
     )
 
@@ -102,7 +193,7 @@ def is_stationary(
 ##########################
 
 
-def is_stationary_adf(
+def _is_stationary_adf(
     data: pd.Series,
     alpha: float = 0.05,
     verbose: bool = False,
@@ -129,8 +220,8 @@ def is_stationary_adf(
         Users can specify `lags list` or `order_list` to run the test for the
         data as well as for its lagged versions, by default None
 
-        >>> is_stationary_adf(test=data, data_kwargs={"order_list": [1, 2]})
-        >>> is_stationary_adf(test=data, data_kwargs={"lags_list": [1, [1, 12]]})
+        >>> _is_stationary_adf(data=data, data_kwargs={"order_list": [1, 2]})
+        >>> _is_stationary_adf(data=data, data_kwargs={"lags_list": [1, [1, 12]]})
 
     Returns
     -------
@@ -162,11 +253,11 @@ def is_stationary_adf(
         test_statistic = results_[0]
         critical_values = results_[4]
         p_value = results_[1]
-        is_stationary_ = True if p_value < alpha else False
+        is_stationary = True if p_value < alpha else False
 
         #### Step 2B: Create Result DataFrame ----
         results = {
-            "Stationarity": is_stationary_,
+            "Stationarity": is_stationary,
             "p-value": p_value,
             "Test Statistic": test_statistic,
         }
@@ -179,7 +270,7 @@ def is_stationary_adf(
 
         #### Step 2C: Update list of all results ----
         results_list.append(results)
-        is_stationary_list.append(is_stationary_)
+        is_stationary_list.append(is_stationary)
 
     #### Step 3: Combine all results ----
     results = pd.concat(results_list)
@@ -202,7 +293,7 @@ def is_stationary_adf(
         return is_stationary_list
 
 
-def is_stationary_kpss(
+def _is_stationary_kpss(
     data: pd.Series,
     alpha: float = 0.05,
     verbose: bool = False,
@@ -229,8 +320,8 @@ def is_stationary_kpss(
         Users can specify `lags list` or `order_list` to run the test for the
         data as well as for its lagged versions, by default None
 
-        >>> is_stationary_kpss(test=data, data_kwargs={"order_list": [1, 2]})
-        >>> is_stationary_kpss(test=data, data_kwargs={"lags_list": [1, [1, 12]]})
+        >>> _is_stationary_kpss(data=data, data_kwargs={"order_list": [1, 2]})
+        >>> _is_stationary_kpss(data=data, data_kwargs={"lags_list": [1, [1, 12]]})
 
     Returns
     -------
@@ -262,11 +353,11 @@ def is_stationary_kpss(
         test_statistic = results_[0]
         p_value = results_[1]
         critical_values = results_[3]
-        is_stationary_ = False if p_value < alpha else True
+        is_stationary = False if p_value < alpha else True
 
         #### Step 2B: Create Result DataFrame ----
         results = {
-            "Trend Stationarity": is_stationary_,
+            "Trend Stationarity": is_stationary,
             "p-value": p_value,
             "Test Statistic": test_statistic,
         }
@@ -279,7 +370,7 @@ def is_stationary_kpss(
 
         #### Step 2C: Update list of all results ----
         results_list.append(results)
-        is_stationary_list.append(is_stationary_)
+        is_stationary_list.append(is_stationary)
 
     #### Step 3: Combine all results ----
     results = pd.concat(results_list)
@@ -302,7 +393,7 @@ def is_stationary_kpss(
         return is_stationary_list
 
 
-def is_white_noise(
+def _is_white_noise(
     data: pd.Series,
     lags: List[int] = [24, 48],
     alpha: float = 0.05,
@@ -330,8 +421,8 @@ def is_white_noise(
         Users can specify `lags list` or `order_list` to run the test for the
         data as well as for its lagged versions, by default None
 
-        >>> is_white_noise(test=data, data_kwargs={"order_list": [1, 2]})
-        >>> is_white_noise(test=data, data_kwargs={"lags_list": [1, [1, 12]]})
+        >>> _is_white_noise(data=data, data_kwargs={"order_list": [1, 2]})
+        >>> _is_white_noise(data=data, data_kwargs={"lags_list": [1, [1, 12]]})
 
     Returns
     -------
@@ -367,7 +458,7 @@ def is_white_noise(
 
         #### Step 2C: Cleanup results ----
         results[test_category] = results["lb_pvalue"] > alpha
-        is_white_noise_ = False if results[test_category].all() == False else True
+        is_white_noise = False if results[test_category].all() == False else True
         results.rename(
             columns={"lb_stat": "Test Statictic", "lb_pvalue": "p-value"}, inplace=True,
         )
@@ -382,7 +473,7 @@ def is_white_noise(
 
         #### Step 2D: Update list of all results ----
         results_list.append(results)
-        is_white_noise_list.append(is_white_noise_)
+        is_white_noise_list.append(is_white_noise)
 
     #### Step 3: Combine all results ----
     results = pd.concat(results_list)
