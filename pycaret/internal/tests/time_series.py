@@ -25,6 +25,7 @@ from pycaret.utils.time_series import get_diffs, _get_diff_name_list
 def run_test(
     data: pd.Series,
     test: str,
+    data_name: Optional[str] = None,
     alpha: float = 0.05,
     data_kwargs: Optional[Dict] = None,
     *kwargs,
@@ -64,26 +65,49 @@ def run_test(
         Wrong test name provided
     """
     if test == "all":
-        results = _test_all(data=data, alpha=alpha, data_kwargs=data_kwargs)
+        results = _test_all(
+            data=data, data_name=data_name, alpha=alpha, data_kwargs=data_kwargs
+        )
     elif test == "summary":
-        results = _summary_stats(data=data, data_kwargs=data_kwargs)
+        results = _summary_stats(
+            data=data, data_name=data_name, data_kwargs=data_kwargs
+        )
     elif test == "white_noise":
         results = _is_white_noise(
-            data=data, alpha=alpha, verbose=True, data_kwargs=data_kwargs, *kwargs
+            data=data,
+            data_name=data_name,
+            alpha=alpha,
+            verbose=True,
+            data_kwargs=data_kwargs,
+            *kwargs,
         )[1]
     elif test == "stationarity":
-        results = _is_stationary(data=data, alpha=alpha, data_kwargs=data_kwargs)
+        results = _is_stationary(
+            data=data, data_name=data_name, alpha=alpha, data_kwargs=data_kwargs
+        )
     elif test == "adf":
         results = _is_stationary_adf(
-            data=data, alpha=alpha, verbose=True, data_kwargs=data_kwargs
+            data=data,
+            data_name=data_name,
+            alpha=alpha,
+            verbose=True,
+            data_kwargs=data_kwargs,
         )[1]
     elif test == "kpss":
         results = _is_stationary_kpss(
-            data=data, alpha=alpha, verbose=True, data_kwargs=data_kwargs
+            data=data,
+            data_name=data_name,
+            alpha=alpha,
+            verbose=True,
+            data_kwargs=data_kwargs,
         )[1]
     elif test == "normality":
         results = _is_gaussian(
-            data=data, alpha=alpha, verbose=True, data_kwargs=data_kwargs
+            data=data,
+            data_name=data_name,
+            alpha=alpha,
+            verbose=True,
+            data_kwargs=data_kwargs,
         )[1]
     else:
         raise ValueError(f"Tests: '{test}' is not supported.")
@@ -94,7 +118,10 @@ def run_test(
 #### Combined Tests ####
 ########################
 def _test_all(
-    data: pd.Series, alpha: float = 0.05, data_kwargs: Optional[Dict] = None
+    data: pd.Series,
+    data_name: Optional[str] = None,
+    alpha: float = 0.05,
+    data_kwargs: Optional[Dict] = None,
 ) -> pd.DataFrame:
     """Performs several tests on on the time series data
 
@@ -122,18 +149,20 @@ def _test_all(
     pd.DataFrame
         Detailed results dataframe
     """
-    result_summary_stats = _summary_stats(data=data, data_kwargs=data_kwargs)
+    result_summary_stats = _summary_stats(
+        data=data, data_name=data_name, data_kwargs=data_kwargs
+    )
     result_wn = _is_white_noise(
-        data, alpha=alpha, verbose=True, data_kwargs=data_kwargs
+        data, data_name=data_name, alpha=alpha, verbose=True, data_kwargs=data_kwargs
     )
     result_adf = _is_stationary_adf(
-        data, alpha=alpha, verbose=True, data_kwargs=data_kwargs
+        data, data_name=data_name, alpha=alpha, verbose=True, data_kwargs=data_kwargs
     )
     result_kpss = _is_stationary_kpss(
-        data, alpha=alpha, verbose=True, data_kwargs=data_kwargs
+        data, data_name=data_name, alpha=alpha, verbose=True, data_kwargs=data_kwargs
     )
     result_normality = _is_gaussian(
-        data, alpha=alpha, verbose=True, data_kwargs=data_kwargs
+        data, data_name=data_name, alpha=alpha, verbose=True, data_kwargs=data_kwargs
     )
 
     all_dfs = [
@@ -148,7 +177,10 @@ def _test_all(
 
 
 def _is_stationary(
-    data: pd.Series, alpha: float = 0.05, data_kwargs: Optional[Dict] = None,
+    data: pd.Series,
+    data_name: Optional[str] = None,
+    alpha: float = 0.05,
+    data_kwargs: Optional[Dict] = None,
 ) -> pd.DataFrame:
     """Performs Stationarity tests on time series data
 
@@ -174,10 +206,10 @@ def _is_stationary(
         Detailed results dataframe
     """
     result_adf = _is_stationary_adf(
-        data, alpha=alpha, verbose=True, data_kwargs=data_kwargs
+        data, data_name=data_name, alpha=alpha, verbose=True, data_kwargs=data_kwargs
     )
     result_kpss = _is_stationary_kpss(
-        data, alpha=alpha, verbose=True, data_kwargs=data_kwargs
+        data, data_name=data_name, alpha=alpha, verbose=True, data_kwargs=data_kwargs
     )
 
     all_dfs = [
@@ -195,6 +227,7 @@ def _is_stationary(
 
 def _is_stationary_adf(
     data: pd.Series,
+    data_name: Optional[str] = None,
     alpha: float = 0.05,
     verbose: bool = False,
     data_kwargs: Optional[Dict] = None,
@@ -238,24 +271,27 @@ def _is_stationary_adf(
     test_category = "Stationarity"
 
     # Step 1: Get list of all data that needs to be tested ----
-    # TODO: Fix this
-    model_name = None
     diff_list, name_list = _get_diff_name_list(
-        data=data, model_name=model_name, data_kwargs=data_kwargs
+        data=data, data_name=data_name, data_kwargs=data_kwargs
     )
 
     #### Step 2: Test all data ----
     results_list = []
     is_stationary_list = []
     for data_, name_ in zip(diff_list, name_list):
-        # Step 2A: Get Test Results ----
+        #### Step 2A: Validate inputs and adjust as needed ----
+        if len(data_) == 0:
+            # Differencing led to no remaining data, hence skip it
+            continue
+
+        #### Step 2B: Get Test Results ----
         results_ = adfuller(data_, autolag="AIC", maxlag=None)
         test_statistic = results_[0]
         critical_values = results_[4]
         p_value = results_[1]
         is_stationary = True if p_value < alpha else False
 
-        #### Step 2B: Create Result DataFrame ----
+        #### Step 2C: Create Result DataFrame ----
         results = {
             "Stationarity": is_stationary,
             "p-value": p_value,
@@ -268,7 +304,7 @@ def _is_stationary_adf(
         results = pd.DataFrame(results, index=["Value"]).T.reset_index()
         results["Data"] = name_
 
-        #### Step 2C: Update list of all results ----
+        #### Step 2D: Update list of all results ----
         results_list.append(results)
         is_stationary_list.append(is_stationary)
 
@@ -295,6 +331,7 @@ def _is_stationary_adf(
 
 def _is_stationary_kpss(
     data: pd.Series,
+    data_name: Optional[str] = None,
     alpha: float = 0.05,
     verbose: bool = False,
     data_kwargs: Optional[Dict] = None,
@@ -338,24 +375,27 @@ def _is_stationary_kpss(
     test_category = "Stationarity"
 
     # Step 1: Get list of all data that needs to be tested ----
-    # TODO: Fix this
-    model_name = None
     diff_list, name_list = _get_diff_name_list(
-        data=data, model_name=model_name, data_kwargs=data_kwargs
+        data=data, data_name=data_name, data_kwargs=data_kwargs
     )
 
     #### Step 2: Test all data ----
     results_list = []
     is_stationary_list = []
     for data_, name_ in zip(diff_list, name_list):
-        # Step 2A: Get Test Results ----
+        #### Step 2A: Validate inputs and adjust as needed ----
+        if len(data_) == 0:
+            # Differencing led to no remaining data, hence skip it
+            continue
+
+        #### Step 2B: Get Test Results ----
         results_ = kpss(data_, regression="ct", nlags="auto")
         test_statistic = results_[0]
         p_value = results_[1]
         critical_values = results_[3]
         is_stationary = False if p_value < alpha else True
 
-        #### Step 2B: Create Result DataFrame ----
+        #### Step 2C: Create Result DataFrame ----
         results = {
             "Trend Stationarity": is_stationary,
             "p-value": p_value,
@@ -368,7 +408,7 @@ def _is_stationary_kpss(
         results = pd.DataFrame(results, index=["Value"]).T.reset_index()
         results["Data"] = name_
 
-        #### Step 2C: Update list of all results ----
+        #### Step 2D: Update list of all results ----
         results_list.append(results)
         is_stationary_list.append(is_stationary)
 
@@ -395,6 +435,7 @@ def _is_stationary_kpss(
 
 def _is_white_noise(
     data: pd.Series,
+    data_name: Optional[str] = None,
     lags: List[int] = [24, 48],
     alpha: float = 0.05,
     verbose: bool = False,
@@ -439,10 +480,8 @@ def _is_white_noise(
     test_category = "White Noise"
 
     # Step 1: Get list of all data that needs to be tested ----
-    # TODO: Fix this
-    model_name = None
     diff_list, name_list = _get_diff_name_list(
-        data=data, model_name=model_name, data_kwargs=data_kwargs
+        data=data, data_name=data_name, data_kwargs=data_kwargs
     )
 
     #### Step 2: Test all data ----
@@ -450,11 +489,15 @@ def _is_white_noise(
     is_white_noise_list = []
     for data_, name_ in zip(diff_list, name_list):
         #### Step 2A: Validate inputs and adjust as needed ----
-        lags = [lag for lag in lags if lag < len(data_)]
-        lags = None if len(lags) == 0 else lags
+        if len(data_) == 0:
+            # Differencing led to no remaining data, hence skip it
+            continue
+
+        lags_ = [lag for lag in lags if lag < len(data_)]
+        lags_ = None if len(lags_) == 0 else lags_
 
         #### Step 2B: Run test ----
-        results = sm.stats.acorr_ljungbox(data_, lags=lags, return_df=True)
+        results = sm.stats.acorr_ljungbox(data_, lags=lags_, return_df=True)
 
         #### Step 2C: Cleanup results ----
         results[test_category] = results["lb_pvalue"] > alpha

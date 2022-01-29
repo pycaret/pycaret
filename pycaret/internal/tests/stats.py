@@ -14,7 +14,9 @@ from pycaret.utils.time_series import get_diffs, _get_diff_name_list
 
 
 def _summary_stats(
-    data: pd.Series, data_kwargs: Optional[Dict] = None,
+    data: pd.Series,
+    data_name: Optional[str] = None,
+    data_kwargs: Optional[Dict] = None,
 ) -> pd.DataFrame:
     """Provides Summary Statistics for the data
 
@@ -38,15 +40,14 @@ def _summary_stats(
     test_category = "Summary"
 
     # Step 1: Get list of all data that needs to be tested ----
-    # TODO: Fix this
-    model_name = None
     diff_list, name_list = _get_diff_name_list(
-        data=data, model_name=model_name, data_kwargs=data_kwargs
+        data=data, data_name=data_name, data_kwargs=data_kwargs
     )
 
     #### Step 2: Test all data ----
     results_list = []
     for data_, name_ in zip(diff_list, name_list):
+        #### Step 2A: Get Test Results ----
         distinct_counts = dict(data_.value_counts(normalize=True))
         results = {
             "Length": len(data_),
@@ -79,6 +80,7 @@ def _summary_stats(
 
 def _is_gaussian(
     data: pd.Series,
+    data_name: Optional[str] = None,
     alpha: float = 0.05,
     verbose: bool = False,
     data_kwargs: Optional[Dict] = None,
@@ -118,21 +120,24 @@ def _is_gaussian(
     test_category = "Normality"
 
     # Step 1: Get list of all data that needs to be tested ----
-    # TODO: Fix this
-    model_name = None
     diff_list, name_list = _get_diff_name_list(
-        data=data, model_name=model_name, data_kwargs=data_kwargs
+        data=data, data_name=data_name, data_kwargs=data_kwargs
     )
 
     #### Step 2: Test all data ----
     results_list = []
     is_gaussian_list = []
     for data_, name_ in zip(diff_list, name_list):
-        # Step 2A: Get Test Results ----
+        #### Step 2A: Validate inputs and adjust as needed ----
+        if len(data_) == 0:
+            # Differencing led to no remaining data, hence skip it
+            continue
+
+        #### Step 2B: Get Test Results ----
         p_value = shapiro(data_.values.squeeze())[1]
         is_gaussian = True if p_value > alpha else False
 
-        #### Step 2B: Create Result DataFrame ----
+        #### Step 2C: Create Result DataFrame ----
         results = {
             "Normality": is_gaussian,
             "p-value": p_value,
@@ -140,7 +145,7 @@ def _is_gaussian(
         results = pd.DataFrame(results, index=["Value"]).T.reset_index()
         results["Data"] = name_
 
-        #### Step 2C: Update list of all results ----
+        #### Step 2D: Update list of all results ----
         results_list.append(results)
         is_gaussian_list.append(is_gaussian)
 

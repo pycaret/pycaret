@@ -110,10 +110,30 @@ def get_diffs(
     return diffs, names
 
 
-def _get_diff_name_list(data, model_name, data_kwargs):
-    # TODO: Fix this
-    # model_name = None
+def _get_diff_name_list(
+    data: pd.Series, data_name: Optional[str] = None, data_kwargs: Optional[Dict] = None
+) -> Tuple[List[pd.Series], List[str]]:
+    """Returns the data along with any differences that are requested
+    If no differences are requested, only the original data is returned.
 
+    Parameters
+    ----------
+    data : pd.Series
+        Data whose differences have to be (potentially) computed
+    data_name : Optional[str], optional
+        Name of the data, by default None
+    data_kwargs : Optional[Dict], optional
+        Can (optionally) contain keywords 'order_list' or 'lags_list' corresponding
+        to the difference order or lags that need to be used for differencing.
+        Can not specify both 'order_list' and 'lags_list', by default None
+
+    Returns
+    -------
+    Tuple[List[pd.Series], List[str]]
+        (1) Original Data + (optionally) List of differences per the order_list or
+            lags_list AND
+        (2) Names corresponding to the original data and the differences
+    """
     data_kwargs = data_kwargs or {}
     order_list = data_kwargs.get("order_list", None)
     lags_list = data_kwargs.get("lags_list", None)
@@ -127,10 +147,10 @@ def _get_diff_name_list(data, model_name, data_kwargs):
 
     if len(diff_list) != 0:
         diff_list = [data] + diff_list
-        name_list = ["Actual" if model_name is None else "Residuals"] + name_list
+        name_list = [data_name] + name_list
     else:
         # Issue with reconciliation of orders and diffs
         diff_list = [data]
-        name_list = ["Actual" if model_name is None else "Residuals"]
+        name_list = [data_name]
 
     return diff_list, name_list

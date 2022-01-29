@@ -3813,17 +3813,26 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         split: str = "all",
         data_kwargs: Optional[Dict] = None,
     ) -> pd.DataFrame:
+
         #### Step 1: Get the data to be tested ----
         if estimator is None:
             data = self._get_y_data(split=split)
+            data_name = "Actual"
         else:
             data = self.get_residuals(estimator=estimator)
             if data is None:
                 return
             data = self.check_and_clean_resid(resid=data)
+            data_name = "Residual"
 
         #### Step 2: Test ----
-        results = run_test(data=data, test=test, alpha=alpha, data_kwargs=data_kwargs)
+        results = run_test(
+            data=data,
+            test=test,
+            data_name=data_name,
+            alpha=alpha,
+            data_kwargs=data_kwargs,
+        )
         results.reset_index(inplace=True, drop=True)
         return results
 

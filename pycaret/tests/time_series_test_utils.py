@@ -25,10 +25,11 @@ _BLEND_TEST_MODELS = [
 _ALL_STATS_TESTS = [
     "summary",
     "white_noise",
-    "stationarity",
     "adf",
     "kpss",
     "normality",
+    "stationarity",
+    "all",
 ]
 
 
@@ -81,13 +82,19 @@ def _get_seasonal_values():
 
     return [(k, v.value) for k, v in SeasonalPeriod.__members__.items()]
 
+
 def _get_seasonal_values_alphanumeric():
     """ Check if frequency is alphanumeric and process it as needed """
     from pycaret.internal.utils import SeasonalPeriod
-    choice_list = ['10','20','30','40','50','60']
-    #prefix = random.choice(choice_list)
-    return [(random.choice(choice_list),k,v.value) for k, v in SeasonalPeriod.__members__.items()]
- 
+
+    choice_list = ["10", "20", "30", "40", "50", "60"]
+    # prefix = random.choice(choice_list)
+    return [
+        (random.choice(choice_list), k, v.value)
+        for k, v in SeasonalPeriod.__members__.items()
+    ]
+
+
 def _check_windows():
     """Check if the system is Windows."""
     import sys
@@ -166,9 +173,21 @@ def _return_splitter_args():
         (random.randint(2, 5), np.arange(1, random.randint(5, 10)), "rolling"),
         (random.randint(2, 5), np.arange(1, random.randint(5, 10)), "sliding"),
         # Non continuous np.array
-        (random.randint(2, 5), np.arange(random.randint(3, 5), random.randint(6, 10)), "expanding"),
-        (random.randint(2, 5), np.arange(random.randint(3, 5), random.randint(6, 10)), "rolling"),
-        (random.randint(2, 5), np.arange(random.randint(3, 5), random.randint(6, 10)), "sliding"),
+        (
+            random.randint(2, 5),
+            np.arange(random.randint(3, 5), random.randint(6, 10)),
+            "expanding",
+        ),
+        (
+            random.randint(2, 5),
+            np.arange(random.randint(3, 5), random.randint(6, 10)),
+            "rolling",
+        ),
+        (
+            random.randint(2, 5),
+            np.arange(random.randint(3, 5), random.randint(6, 10)),
+            "sliding",
+        ),
     ]
     return parametrize_list
 
@@ -204,7 +223,7 @@ def _return_data_with_without_period_index():
     return datasets
 
 
-def _return_model_names_for_plots():
+def _return_model_names_for_plots_stats():
     """Returns models to be used for testing plots. Needs
         - 1 model that has prediction interval ("theta")
         - 1 model that does not have prediction interval ("lr_cds_dt")

@@ -14,7 +14,7 @@ from pycaret.internal.ensemble import _ENSEMBLE_METHODS
 
 from .time_series_test_utils import (
     _return_data_with_without_period_index,
-    _return_model_names_for_plots,
+    _return_model_names_for_plots_stats,
     _ALL_PLOTS_DATA,
     _ALL_PLOTS_ESTIMATOR,
     _ALL_PLOTS_ESTIMATOR_NOT_DATA,
@@ -34,7 +34,7 @@ pytestmark = pytest.mark.filterwarnings("ignore::UserWarning")
 
 
 _data_with_without_period_index = _return_data_with_without_period_index()
-_model_names_for_plots = _return_model_names_for_plots()
+_model_names_for_plots = _return_model_names_for_plots_stats()
 
 ############################
 #### Functions End Here ####
@@ -139,7 +139,7 @@ def test_plot_model_estimator(model_name, data, plot):
         n_jobs=-1,
         seasonal_period=sp,
     )
-    model = create_model("naive")
+    model = create_model(model_name)
     plot_model(estimator=model, plot=plot)
 
 
