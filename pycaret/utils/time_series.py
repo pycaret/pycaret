@@ -1,7 +1,7 @@
 """Module containing utility functions for time series analysis"""
 
 import warnings
-from typing import Optional, List, Tuple, Any
+from typing import Optional, List, Tuple, Any, Dict
 
 import pandas as pd
 
