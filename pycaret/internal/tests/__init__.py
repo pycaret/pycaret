@@ -34,6 +34,6 @@ def _format_test_results(
     result["Test Name"] = test_name
     if "Setting" not in result.columns:
         result["Setting"] = ""
-    result = result[["Test", "Test Name", "Property", "Setting", "Value"]]
+    result = result[["Test", "Test Name", "Data", "Property", "Setting", "Value"]]
     result.reset_index(inplace=True, drop=True)
     return result

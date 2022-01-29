@@ -65,25 +65,12 @@ from sktime.forecasting.base import ForecastingHorizon
 from sktime.utils.validation.forecasting import check_y_X  # type: ignore
 from sktime.forecasting.model_selection import SlidingWindowSplitter  # type: ignore
 
-from pycaret.internal.tests.time_series import test_
+from pycaret.internal.tests.time_series import _test
 from pycaret.internal.plots.time_series import _plot
 
 
 warnings.filterwarnings("ignore")
 LOGGER = get_logger()
-
-
-# def _get_cv_n_folds(y, cv) -> int:
-#     """
-#     Get the number of folds for time series
-#     cv must be of type SlidingWindowSplitter or ExpandingWindowSplitter
-#     TODO: Fix this inside sktime and replace this with sktime method [1]
-
-#     Ref:
-#     [1] https://github.com/alan-turing-institute/sktime/issues/632
-#     """
-#     n_folds = int((len(y) - cv.initial_window) / cv.step_length)
-#     return n_folds
 
 
 def get_folds(cv, y) -> Generator[Tuple[pd.Series, pd.Series], None, None]:
@@ -3824,6 +3811,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         test: str = "all",
         alpha: float = 0.05,
         split: str = "all",
+        data_kwargs: Optional[Dict] = None,
     ) -> pd.DataFrame:
         #### Step 1: Get the data to be tested ----
         if estimator is None:
@@ -3835,7 +3823,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             data = self.check_and_clean_resid(resid=data)
 
         #### Step 2: Test ----
-        results = test_(data=data, test=test, alpha=alpha)
+        results = _test(data=data, test=test, alpha=alpha, data_kwargs=data_kwargs)
         results.reset_index(inplace=True, drop=True)
         return results
 

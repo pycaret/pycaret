@@ -48,7 +48,7 @@ def test_check_stats(data, test):
 
     # Individual Tests
     results = exp.check_stats(test=test)
-    expected_order = ["Test", "Test Name", "Property", "Setting", "Value"]
+    expected_order = ["Test", "Test Name", "Data", "Property", "Setting", "Value"]
     column_names = list(results.columns)
     for i, name in enumerate(expected_order):
         assert column_names[i] == name
@@ -72,7 +72,7 @@ def test_check_stats_combined(load_pos_and_neg_data):
         session_id=42,
     )
 
-    expected_order = ["Test", "Test Name", "Property", "Setting", "Value"]
+    expected_order = ["Test", "Test Name", "Data", "Property", "Setting", "Value"]
 
     results = exp.check_stats()
     column_names = list(results.columns)
