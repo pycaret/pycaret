@@ -1,7 +1,3 @@
-# Module: Utility
-# Author: Moez Ali <moez.ali@queensu.ca>
-# License: MIT
-
 import pandas as pd
 import numpy as np
 from typing import Optional

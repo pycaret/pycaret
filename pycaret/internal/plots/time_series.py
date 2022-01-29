@@ -16,8 +16,8 @@ from sktime.forecasting.model_selection import (
     SlidingWindowSplitter,
 )
 
+from pycaret.utils.time_series import get_diffs
 from pycaret.internal.plots.utils.time_series import (
-    get_diffs,
     time_series_subplot,
     corr_subplot,
     dist_subplot,
