@@ -812,18 +812,12 @@ def plot_time_series_decomposition(
     decomp_result = None
     data_ = data.to_timestamp() if isinstance(data.index, pd.PeriodIndex) else data
 
-    sp_to_use = data_kwargs.get("sp_to_use", None)
+    sp_to_use = data_kwargs.get("sp_to_use")
     if plot == "decomp_classical":
-        if sp_to_use is None:
-            decomp_result = seasonal_decompose(data_, model=classical_decomp_type)
-        else:
             decomp_result = seasonal_decompose(
                 data_, period=sp_to_use, model=classical_decomp_type
             )
     elif plot == "decomp_stl":
-        if sp_to_use is None:
-            decomp_result = STL(data_).fit()
-        else:
             decomp_result = STL(data_, period=sp_to_use).fit()
 
     fig = make_subplots(

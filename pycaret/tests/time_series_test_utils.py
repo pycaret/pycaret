@@ -87,7 +87,7 @@ def _get_seasonal_values_alphanumeric():
     choice_list = ['10','20','30','40','50','60']
     #prefix = random.choice(choice_list)
     return [(random.choice(choice_list),k,v.value) for k, v in SeasonalPeriod.__members__.items()]
- 
+
 def _check_windows():
     """Check if the system is Windows."""
     import sys
@@ -107,6 +107,7 @@ def _return_model_names():
         "X_train": pd.DataFrame(get_data("airline")),
         "enforce_pi": False,
         "seasonal_period": 2,
+        "sp_to_use": 2,
     }
     model_containers = get_all_model_containers(globals_dict)
 
@@ -206,10 +207,10 @@ def _return_data_with_without_period_index():
 
 def _return_model_names_for_plots():
     """Returns models to be used for testing plots. Needs
-        - 1 model that has prediction interval ("theta")
-        - 1 model that does not have prediction interval ("lr_cds_dt")
-        - 1 model that has in-sample forecasts ("theta")
-        - 1 model that does not have in-sample forecasts ("lr_cds_dt")
+    - 1 model that has prediction interval ("theta")
+    - 1 model that does not have prediction interval ("lr_cds_dt")
+    - 1 model that has in-sample forecasts ("theta")
+    - 1 model that does not have in-sample forecasts ("lr_cds_dt")
     """
     model_names = ["theta", "lr_cds_dt"]
     return model_names

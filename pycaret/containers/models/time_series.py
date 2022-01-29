@@ -396,7 +396,7 @@ class SeasonalNaiveContainer(TimeSeriesContainer):
             return
 
         self.seasonality_present = globals_dict.get("seasonality_present")
-        self.sp = globals_dict.get("sp_to_use") or 1
+        self.sp = globals_dict.get("sp_to_use")
 
         if self.sp == 1:
             self.active = False
@@ -511,14 +511,14 @@ class ArimaContainer(TimeSeriesContainer):
             return
 
         seasonality_present = globals_dict.get("seasonality_present")
-        self.sp = globals_dict.get("sp_to_use") or 1
+        self.sp = globals_dict.get("sp_to_use")
 
         # args = self._set_args
         # tune_args = self._set_tune_args
         # tune_grid = self._set_tune_grid
         # tune_distributions = self._set_tune_distributions
 
-        args = {"seasonal_order": (0, 1, 0, sp)} if seasonality_present else {}
+        args = {"seasonal_order": (0, 1, 0, self.sp)} if seasonality_present else {}
         tune_args = {}
 
         def return_order_related_params(
@@ -603,7 +603,7 @@ class ArimaContainer(TimeSeriesContainer):
             D_end=D_end,
             Q_start=Q_start,
             Q_end=Q_end,
-            sp=sp,
+            sp=self.sp,
             seasonal_max_multiplier=seasonal_max_multiplier,
         )
         tune_grid = {
@@ -628,7 +628,7 @@ class ArimaContainer(TimeSeriesContainer):
             D_end=D_end,
             Q_start=Q_start,
             Q_end=Q_end,
-            sp=sp,
+            sp=self.sp,
             seasonal_max_multiplier=seasonal_max_multiplier,
         )
         tune_distributions = {
@@ -673,7 +673,7 @@ class AutoArimaContainer(TimeSeriesContainer):
             return
 
         self.seasonality_present = globals_dict.get("seasonality_present")
-        self.sp = globals_dict.get("sp_to_use") or 1
+        self.sp = globals_dict.get("sp_to_use")
 
         args = self._set_args
         tune_args = self._set_tune_args
@@ -744,7 +744,7 @@ class ExponentialSmoothingContainer(TimeSeriesContainer):
             return
 
         self.seasonality_present = globals_dict.get("seasonality_present")
-        self.sp = globals_dict.get("sp_to_use") or 1
+        self.sp = globals_dict.get("sp_to_use")
 
         self.strictly_positive = globals_dict.get("strictly_positive")
 
@@ -926,7 +926,7 @@ class ETSContainer(TimeSeriesContainer):
             return
 
         self.seasonality_present = globals_dict.get("seasonality_present")
-        self.sp = globals_dict.get("sp_to_use") or 1
+        self.sp = globals_dict.get("sp_to_use")
 
         self.strictly_positive = globals_dict.get("strictly_positive")
 
@@ -1004,7 +1004,7 @@ class ThetaContainer(TimeSeriesContainer):
             return
 
         self.seasonality_present = globals_dict.get("seasonality_present")
-        self.sp = globals_dict.get("sp_to_use") or 1
+        self.sp = globals_dict.get("sp_to_use")
 
         self.strictly_positive = globals_dict.get("strictly_positive")
 
@@ -1097,7 +1097,7 @@ class TBATSContainer(TimeSeriesContainer):
         if not self.active:
             return
 
-        self.sp = globals_dict.get("sp_to_use") or 1
+        self.sp = globals_dict.get("sp_to_use")
 
         self.seasonality_present = globals_dict.get("seasonality_present")
 
@@ -1166,7 +1166,7 @@ class BATSContainer(TimeSeriesContainer):
         if not self.active:
             return
 
-        self.sp = globals_dict.get("sp_to_use") or 1
+        self.sp = globals_dict.get("sp_to_use")
 
         self.seasonality_present = globals_dict.get("seasonality_present")
 
@@ -1235,7 +1235,7 @@ class ProphetContainer(TimeSeriesContainer):
         if not self.active:
             return
 
-        self.sp = globals_dict.get("sp_to_use") or 1
+        self.sp = globals_dict.get("sp_to_use")
 
         self.seasonality_present = globals_dict.get("seasonality_present")
         self.freq = globals_dict.get("freq")
@@ -1328,7 +1328,7 @@ class CdsDtContainer(TimeSeriesContainer):
             return
 
         # Set the model hyperparameters
-        self.sp = globals_dict.get("sp_to_use") or 1
+        self.sp = globals_dict.get("sp_to_use")
 
         self.strictly_positive = globals_dict.get("strictly_positive")
 
