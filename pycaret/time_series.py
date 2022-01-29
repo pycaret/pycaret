@@ -36,7 +36,7 @@ def setup(
     imputation_type: str = "simple",
     fold_strategy: Union[str, Any] = "expanding",
     fold: int = 3,
-    fh: Union[List[int], int, np.array] = 1,
+    fh: Optional[Union[List[int], int, np.array]] = 1,
     seasonal_period: Optional[Union[int, str]] = None,
     enforce_pi: bool = False,
     n_jobs: Optional[int] = -1,
@@ -100,13 +100,16 @@ def setup(
         parameter. Ignored when ``fold_strategy`` is a custom object.
 
 
-    fh: int or list or np.array, default = 1
+    fh: Optional[int or list or np.array], default = 1
         The forecast horizon to be used for forecasting. Default is set to ``1`` i.e.
         forecast one point ahead. When integer is passed it means N continuous points
         in the future without any gap. If you want to forecast values with gaps, you
         must pass an array e.g. np.arange([13, 25]) will skip the first 12 future
         points and forecast from the 13th point till the 24th point ahead (note in
         numpy right value is inclusive and left is exclusive).
+
+        If fh = None, then fold_strategy must be a sktime compatible cross validation
+        object. In this case, fh is derived from this object.
 
 
     seasonal_period: int or str, default = None
@@ -130,7 +133,7 @@ def setup(
 
     enforce_pi: bool, default = False
         When set to True, only models that support prediction intervals are
-        loaded in the environment. 
+        loaded in the environment.
 
 
     n_jobs: int, default = -1
@@ -160,7 +163,7 @@ def setup(
 
 
     system_log: bool or logging.Logger, default = True
-        Whether to save the system logging file (as logs.log). If the input already is a 
+        Whether to save the system logging file (as logs.log). If the input already is a
         logger object, that one is used instead.
 
 
@@ -547,7 +550,7 @@ def tune_model(
 
 
     search_algorithm: str, default = 'random'
-        use 'random' for random grid search and 'grid' for complete grid search. 
+        use 'random' for random grid search and 'grid' for complete grid search.
 
 
     choose_better: bool, default = True
@@ -902,6 +905,8 @@ def plot_model(
     >>> airline = get_data('airline')
     >>> from pycaret.time_series import *
     >>> exp_name = setup(data = airline,  fh = 12)
+    >>> plot_model(plot="diff", data_kwargs={"order_list": [1, 2], "acf": True, "pacf": True})
+    >>> plot_model(plot="diff", data_kwargs={"lags_list": [[1], [1, 12]], "acf": True, "pacf": True})
     >>> arima = create_model('arima')
     >>> plot_model(plot = 'ts')
     >>> plot_model(plot = 'decomp_classical', data_kwargs = {'type' : 'multiplicative'})
@@ -913,8 +918,8 @@ def plot_model(
 
 
     plot: str, default = None
-        Default is 'ts' when estimator is None, When estimator is not None, 
-        default is changed to 'forecast'. List of available plots (ID - Name): 
+        Default is 'ts' when estimator is None, When estimator is not None,
+        default is changed to 'forecast'. List of available plots (ID - Name):
 
         * 'ts' - Time Series Plot
         * 'train_test_split' - Train Test Split
@@ -924,6 +929,7 @@ def plot_model(
         * 'decomp_classical' - Decomposition Classical
         * 'decomp_stl' - Decomposition STL
         * 'diagnostics' - Diagnostics Plot
+        * 'diff' - Difference Plot
         * 'forecast' - "Out-of-Sample" Forecast Plot
         * 'insample' - "In-Sample" Forecast Plot
         * 'residuals' - Residuals Plot
@@ -1133,8 +1139,8 @@ def predict_model(
 ) -> pd.DataFrame:
 
     """
-    This function forecast using a trained model. When ``fh`` is None, 
-    it forecasts using the same forecast horizon used during the 
+    This function forecast using a trained model. When ``fh`` is None,
+    it forecasts using the same forecast horizon used during the
     training.
 
 
@@ -1155,7 +1161,7 @@ def predict_model(
 
     fh: int, default = None
         Number of points from the last date of training to forecast.
-        When fh is None, it forecasts using the same forecast horizon 
+        When fh is None, it forecasts using the same forecast horizon
         used during the training.
 
 

@@ -1,26 +1,33 @@
-from typing import Optional, Any, Union, Dict
-import pandas as pd
-import plotly.graph_objects as go
+from typing import Optional, Any, Union, Dict, Tuple
+
 import numpy as np
+import pandas as pd
+
+
+import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+
 from statsmodels.tsa.stattools import pacf, acf
-import plotly.express as px
-from statsmodels.graphics.gofplots import qqplot
-import matplotlib.pyplot as plt
-import matplotlib
+from statsmodels.tsa.seasonal import seasonal_decompose, STL
+
+
 from sktime.forecasting.model_selection import (
     ExpandingWindowSplitter,
     SlidingWindowSplitter,
 )
-from statsmodels.tsa.seasonal import seasonal_decompose, STL
+
+from pycaret.internal.plots.utils.time_series import (
+    get_diffs,
+    time_series_subplot,
+    corr_subplot,
+    dist_subplot,
+    qq_subplot,
+)
 
 __author__ = ["satya-pattnaik", "ngupta23"]
-#################
-#### Helpers ####
-#################
 
 
-def plot_(
+def _plot(
     plot: str,
     data: Optional[pd.Series] = None,
     train: Optional[pd.Series] = None,
@@ -31,12 +38,10 @@ def plot_(
     return_pred_int: bool = False,
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
-) -> Any:
+) -> Tuple[Optional[go.Figure], Optional[Dict[str, Any]]]:
 
-    if data_kwargs is None:
-        data_kwargs = {}
-    if fig_kwargs is None:
-        fig_kwargs = {}
+    data_kwargs = data_kwargs or {}
+    fig_kwargs = fig_kwargs or {}
 
     if plot == "ts":
         fig, plot_data = plot_series(
@@ -118,6 +123,13 @@ def plot_(
                 data_kwargs=data_kwargs,
                 fig_kwargs=fig_kwargs,
             )
+    elif plot == "diff":
+        fig, plot_data = plot_time_series_differences(
+            data=data,
+            model_name=model_name,
+            data_kwargs=data_kwargs,
+            fig_kwargs=fig_kwargs,
+        )
     else:
         raise ValueError(f"Plot: '{plot}' is not supported.")
 
@@ -129,14 +141,12 @@ def plot_series(
     model_name: Optional[str] = None,
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
-):
+) -> Tuple[Optional[go.Figure], Optional[Dict[str, Any]]]:
     """Plots the original time series"""
     fig, return_data_dict = None, None
 
-    if data_kwargs is None:
-        data_kwargs = {}
-    if fig_kwargs is None:
-        fig_kwargs = {}
+    data_kwargs = data_kwargs or {}
+    fig_kwargs = fig_kwargs or {}
 
     time_series_name = data.name
     if model_name is not None:
@@ -191,14 +201,13 @@ def plot_splits_train_test_split(
     test: pd.Series,
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
-):
+) -> Tuple[Optional[go.Figure], Optional[Dict[str, Any]]]:
     """Plots the train-test split for the time serirs"""
     fig, return_data_dict = None, None
 
-    if data_kwargs is None:
-        data_kwargs = {}
-    if fig_kwargs is None:
-        fig_kwargs = {}
+    data_kwargs = data_kwargs or {}
+    fig_kwargs = fig_kwargs or {}
+
     fig = go.Figure()
 
     x = (
@@ -252,14 +261,12 @@ def plot_cv(
     cv,
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
-):
+) -> Tuple[Optional[go.Figure], Optional[Dict[str, Any]]]:
     """Plots the cv splits used on the training split"""
     fig, return_data_dict = None, None
 
-    if data_kwargs is None:
-        data_kwargs = {}
-    if fig_kwargs is None:
-        fig_kwargs = {}
+    data_kwargs = data_kwargs or {}
+    fig_kwargs = fig_kwargs or {}
 
     def get_windows(y, cv):
         """
@@ -341,9 +348,10 @@ def plot_cv(
 
     train_windows, test_windows = get_windows(data, cv)
     fig = plot_windows(data, train_windows, test_windows)
-
     return_data_dict = {
         "data": data,
+        "train_windows": train_windows,
+        "test_windows": test_windows,
     }
 
     return fig, return_data_dict
@@ -354,14 +362,12 @@ def plot_acf(
     model_name: Optional[str] = None,
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
-):
+) -> Tuple[Optional[go.Figure], Optional[Dict[str, Any]]]:
     """Plots the ACF on the data provided"""
     fig, return_data_dict = None, None
 
-    if data_kwargs is None:
-        data_kwargs = {}
-    if fig_kwargs is None:
-        fig_kwargs = {}
+    data_kwargs = data_kwargs or {}
+    fig_kwargs = fig_kwargs or {}
 
     nlags = data_kwargs.get("nlags", None)
     corr_array = acf(data, alpha=0.05, nlags=nlags)
@@ -435,7 +441,7 @@ def plot_acf(
     fig.update_layout(title=title)
 
     return_data_dict = {
-        "acf": corr_array[0],
+        "acf": corr_array,
     }
 
     return fig, return_data_dict
@@ -446,14 +452,12 @@ def plot_pacf(
     model_name: Optional[str] = None,
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
-):
+) -> Tuple[Optional[go.Figure], Optional[Dict[str, Any]]]:
     """Plots the PACF on the data provided"""
     fig, return_data_dict = None, None
 
-    if data_kwargs is None:
-        data_kwargs = {}
-    if fig_kwargs is None:
-        fig_kwargs = {}
+    data_kwargs = data_kwargs or {}
+    fig_kwargs = fig_kwargs or {}
 
     nlags = data_kwargs.get("nlags", None)
     corr_array = pacf(data, alpha=0.05, nlags=nlags)
@@ -528,7 +532,7 @@ def plot_pacf(
     fig.update_layout(title=title)
 
     return_data_dict = {
-        "pacf": corr_array[0],
+        "pacf": corr_array,
     }
 
     return fig, return_data_dict
@@ -541,14 +545,12 @@ def plot_predictions(
     model_name: Optional[str] = None,
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
-):
+) -> Tuple[Optional[go.Figure], Optional[Dict[str, Any]]]:
     """Plots the original data and the predictions provided"""
     fig, return_data_dict = None, None
 
-    if data_kwargs is None:
-        data_kwargs = {}
-    if fig_kwargs is None:
-        fig_kwargs = {}
+    data_kwargs = data_kwargs or {}
+    fig_kwargs = fig_kwargs or {}
 
     key = "Out-of-Sample" if type_ == "forecast" else "In-Sample"
     title = f"Actual vs. '{key}' Forecast"
@@ -616,14 +618,12 @@ def plot_diagnostics(
     model_name: Optional[str] = None,
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
-):
+) -> Tuple[Optional[go.Figure], Optional[Dict[str, Any]]]:
     """Plots the diagnostic data such as ACF, Histogram, QQ plot on the data provided"""
     fig, return_data_dict = None, None
 
-    if data_kwargs is None:
-        data_kwargs = {}
-    if fig_kwargs is None:
-        fig_kwargs = {}
+    data_kwargs = data_kwargs or {}
+    fig_kwargs = fig_kwargs or {}
 
     time_series_name = data.name
     title = "Diagnostics"
@@ -645,127 +645,6 @@ def plot_diagnostics(
         x_title=title,
     )
 
-    def time_plot(fig):
-        x = (
-            data.index.to_timestamp()
-            if isinstance(data.index, pd.PeriodIndex)
-            else data.index
-        )
-        fig.add_trace(
-            go.Scatter(
-                x=x,
-                y=data,
-                mode="lines+markers",
-                marker_color="#1f77b4",
-                marker_size=2,
-                name="Time Plot",
-            ),
-            row=1,
-            col=1,
-        )
-
-        fig.update_xaxes(title_text="Time", row=1, col=1)
-        fig.update_yaxes(title_text="Value", row=1, col=1)
-
-    def qq(fig):
-
-        matplotlib.use("Agg")
-        qqplot_data = qqplot(data, line="s")
-        plt.close(qqplot_data)
-        qqplot_data = qqplot_data.gca().lines
-
-        fig.add_trace(
-            {
-                "type": "scatter",
-                "x": qqplot_data[0].get_xdata(),
-                "y": qqplot_data[0].get_ydata(),
-                "mode": "markers",
-                "marker": {"color": "#1f77b4"},
-                "name": data.name,
-            },
-            row=2,
-            col=2,
-        )
-
-        fig.add_trace(
-            {
-                "type": "scatter",
-                "x": qqplot_data[1].get_xdata(),
-                "y": qqplot_data[1].get_ydata(),
-                "mode": "lines",
-                "line": {"color": "#3f3f3f"},
-                "name": data.name,
-            },
-            row=2,
-            col=2,
-        )
-        fig.update_xaxes(title_text="Theoretical Quantities", row=2, col=2)
-        fig.update_yaxes(title_text="Sample Quantities", row=2, col=2)
-
-    def dist_plot(fig):
-
-        temp_fig = px.histogram(data, color_discrete_sequence=["#1f77b4"])
-        fig.add_trace(temp_fig.data[0], row=1, col=2)
-
-        fig.update_xaxes(title_text="Range of Values", row=1, col=2)
-        fig.update_yaxes(title_text="PDF", row=1, col=2)
-
-    def plot_acf(fig):
-        corr_array = acf(data, alpha=0.05)
-
-        lower_y = corr_array[1][:, 0] - corr_array[0]
-        upper_y = corr_array[1][:, 1] - corr_array[0]
-
-        [
-            fig.add_scatter(
-                x=(x, x),
-                y=(0, corr_array[0][x]),
-                mode="lines",
-                line_color="#3f3f3f",
-                row=2,
-                col=1,
-                name="ACF",
-            )
-            for x in range(len(corr_array[0]))
-        ]
-        fig.add_scatter(
-            x=np.arange(len(corr_array[0])),
-            y=corr_array[0],
-            mode="markers",
-            marker_color="#1f77b4",
-            marker_size=6,
-            row=2,
-            col=1,
-        )
-
-        fig.add_scatter(
-            x=np.arange(len(corr_array[0])),
-            y=upper_y,
-            mode="lines",
-            line_color="rgba(255,255,255,0)",
-            row=2,
-            col=1,
-            name="UC",
-        )
-        fig.add_scatter(
-            x=np.arange(len(corr_array[0])),
-            y=lower_y,
-            mode="lines",
-            fillcolor="rgba(32, 146, 230,0.3)",
-            fill="tonexty",
-            line_color="rgba(255,255,255,0)",
-            row=2,
-            col=1,
-            name="LC",
-        )
-        fig.update_traces(showlegend=False)
-        fig.update_xaxes(range=[-1, 42], row=2, col=1)
-        fig.update_yaxes(zerolinecolor="#000000", row=2, col=1)
-        fig.update_xaxes(title_text="Lags", row=2, col=1)
-        fig.update_yaxes(title_text="ACF", row=2, col=1)
-
-        # fig.update_layout(title=title)
-
     fig.update_layout(showlegend=False)
     fig_template = fig_kwargs.get("fig_template", "ggplot2")
     fig.update_layout(template=fig_template)
@@ -776,14 +655,15 @@ def plot_diagnostics(
             autosize=False, width=fig_size[0], height=fig_size[1],
         )
 
-    qq(fig)
-    dist_plot(fig)
-    plot_acf(fig)
-    time_plot(fig)
+    #### Add diagnostic plots ----
+    fig = time_series_subplot(fig=fig, data=data, row=1, col=1, name="Time Plot")
+    fig = dist_subplot(fig=fig, data=data, row=1, col=2)
+    fig, acf_data = corr_subplot(
+        fig=fig, data=data, row=2, col=1, name="ACF", plot_acf=True,
+    )
+    fig, qqplot_data = qq_subplot(fig=fig, data=data, row=2, col=2)
 
-    return_data_dict = {
-        "data": data,
-    }
+    return_data_dict = {"data": data, "qqplot": qqplot_data, "acf": acf_data}
 
     return fig, return_data_dict
 
@@ -796,14 +676,12 @@ def plot_predictions_with_confidence(
     model_name: Optional[str] = None,
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
-):
+) -> Tuple[Optional[go.Figure], Optional[Dict[str, Any]]]:
     """Plots the original data and the predictions provided with confidence"""
     fig, return_data_dict = None, None
 
-    if data_kwargs is None:
-        data_kwargs = {}
-    if fig_kwargs is None:
-        fig_kwargs = {}
+    data_kwargs = data_kwargs or {}
+    fig_kwargs = fig_kwargs or {}
 
     title = "Actual vs. 'Out-of-Sample' Forecast"
     time_series_name = data.name
@@ -905,7 +783,7 @@ def plot_time_series_decomposition(
     plot: str = "decomp_classical",
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
-):
+) -> Tuple[Optional[go.Figure], Optional[Dict[str, Any]]]:
     fig, return_data_dict = None, None
 
     if not isinstance(data.index, (pd.PeriodIndex, pd.DatetimeIndex)):
@@ -916,10 +794,8 @@ def plot_time_series_decomposition(
         )
         return fig, return_data_dict
 
-    if data_kwargs is None:
-        data_kwargs = {}
-    if fig_kwargs is None:
-        fig_kwargs = {}
+    data_kwargs = data_kwargs or {}
+    fig_kwargs = fig_kwargs or {}
 
     classical_decomp_type = data_kwargs.get("type", "additive")
 
@@ -936,10 +812,19 @@ def plot_time_series_decomposition(
     decomp_result = None
     data_ = data.to_timestamp() if isinstance(data.index, pd.PeriodIndex) else data
 
+    sp_to_use = data_kwargs.get("sp_to_use", None)
     if plot == "decomp_classical":
-        decomp_result = seasonal_decompose(data_, model=classical_decomp_type)
+        if sp_to_use is None:
+            decomp_result = seasonal_decompose(data_, model=classical_decomp_type)
+        else:
+            decomp_result = seasonal_decompose(
+                data_, period=sp_to_use, model=classical_decomp_type
+            )
     elif plot == "decomp_stl":
-        decomp_result = STL(data_).fit()
+        if sp_to_use is None:
+            decomp_result = STL(data_).fit()
+        else:
+            decomp_result = STL(data_, period=sp_to_use).fit()
 
     fig = make_subplots(
         rows=4,
@@ -1022,6 +907,119 @@ def plot_time_series_decomposition(
         "trend": decomp_result.trend,
         "resid": decomp_result.resid,
     }
+
+    return fig, return_data_dict
+
+
+def plot_time_series_differences(
+    data: pd.Series,
+    model_name: Optional[str] = None,
+    data_kwargs: Optional[Dict] = None,
+    fig_kwargs: Optional[Dict] = None,
+) -> Tuple[Optional[go.Figure], Optional[Dict[str, Any]]]:
+    fig, return_data_dict = None, None
+
+    data_kwargs = data_kwargs or {}
+    fig_kwargs = fig_kwargs or {}
+
+    order_list = data_kwargs.get("order_list", None)
+    lags_list = data_kwargs.get("lags_list", None)
+
+    plot_acf = data_kwargs.get("acf", False)
+    plot_pacf = data_kwargs.get("pacf", False)
+
+    title_name = "Difference Plot"
+    data_name = data.name if model_name is None else f"'{model_name}' Residuals"
+
+    if model_name is None:
+        title = f"{title_name}" if data.name is None else f"{title_name} | {data_name}"
+    else:
+        title = f"{title_name} | {data_name}"
+
+    diff_list, name_list = get_diffs(
+        data=data, order_list=order_list, lags_list=lags_list
+    )
+
+    if len(diff_list) == 0:
+        # Issue with reconciliation of orders and diffs
+        return fig, return_data_dict
+
+    diff_list = [data] + diff_list
+    name_list = ["Actual" if model_name is None else "Residuals"] + name_list
+
+    column_titles = ["Time Series"]
+    rows = len(diff_list)
+    cols = 1
+    if plot_acf:
+        cols = cols + 1
+        column_titles.append("ACF")
+    if plot_pacf:
+        cols = cols + 1
+        column_titles.append("PACF")
+
+    fig = make_subplots(
+        rows=rows,
+        cols=cols,
+        row_titles=name_list,
+        column_titles=column_titles,
+        shared_xaxes=True,
+    )
+
+    # Should the following be plotted - Time Series, ACF, PACF
+    plots = [True, plot_acf, plot_pacf]
+
+    # Which column should the plots be in
+    plot_cols = np.cumsum(plots).tolist()
+
+    for i, subplot_data in enumerate(diff_list):
+
+        #### Add difference data ----
+        fig = time_series_subplot(
+            fig=fig, data=subplot_data, row=i + 1, col=plot_cols[0], name=name_list[i]
+        )
+
+        #### Add diagnostics if requested ----
+        if plot_acf:
+            fig, acf_data = corr_subplot(
+                fig=fig,
+                data=subplot_data,
+                row=i + 1,
+                col=plot_cols[1],
+                name=name_list[i],
+                plot_acf=True,
+            )
+
+        if plot_pacf:
+            fig, pacf_data = corr_subplot(
+                fig=fig,
+                data=subplot_data,
+                row=i + 1,
+                col=plot_cols[2],
+                name=name_list[i],
+                plot_acf=False,
+            )
+
+    fig.update_layout(title=title)
+    fig.update_layout(showlegend=False)
+    fig_template = fig_kwargs.get("fig_template", "ggplot2")
+    fig.update_layout(template=fig_template)
+
+    fig_size = fig_kwargs.get("fig_size", [400 * cols, 200 * rows])
+    if fig_size is not None:
+        fig.update_layout(
+            autosize=False, width=fig_size[0], height=fig_size[1],
+        )
+
+    return_data_dict = {
+        "data": data,
+        "diff_list": diff_list,
+        "name_list": name_list,
+    }
+
+    if plot_acf:
+        return_data_dict.update({"acf": acf_data})
+    if plot_pacf:
+        return_data_dict.update({"pacf": pacf_data})
 
     return fig, return_data_dict
 

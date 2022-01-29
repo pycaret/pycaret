@@ -222,3 +222,66 @@ def test_plot_model_customization(data):
     exp.plot_model(
         estimator=model, plot="forecast", data_kwargs={"fh": 24}, system=False
     )
+
+
+@pytest.mark.parametrize("data", _data_with_without_period_index)
+@pytest.mark.parametrize("plot", _ALL_PLOTS_DATA)
+def test_plot_model_return_data_original_data(data, plot):
+    """Tests whether the return_data parameter of the plot_model function works
+    properly or not for the original data
+    """
+    exp = TimeSeriesExperiment()
+
+    fh = np.arange(1, 13)
+    fold = 2
+
+    sp = 1 if isinstance(data.index, pd.RangeIndex) else None
+
+    exp.setup(
+        data=data,
+        fh=fh,
+        fold=fold,
+        fold_strategy="sliding",
+        verbose=False,
+        session_id=42,
+        seasonal_period=sp,
+    )
+
+    plot_data = exp.plot_model(plot=plot, return_data=True, system=False)
+    # If plot is successful, it will return a dictionary
+    # If plot is not possible (e.g. decomposition without index), then it will return None
+    assert isinstance(plot_data, dict) or plot_data is None
+
+
+@pytest.mark.parametrize("data", _data_with_without_period_index)
+@pytest.mark.parametrize("model_name", _model_names_for_plots)
+@pytest.mark.parametrize("plot", _ALL_PLOTS_ESTIMATOR)
+def test_plot_model_return_data_estimator(data, model_name, plot):
+    """Tests whether the return_data parameter of the plot_model function works
+    properly or not for the estimator
+    """
+    exp = TimeSeriesExperiment()
+
+    fh = np.arange(1, 13)
+    fold = 2
+
+    sp = 1 if isinstance(data.index, pd.RangeIndex) else None
+
+    exp.setup(
+        data=data,
+        fh=fh,
+        fold=fold,
+        fold_strategy="sliding",
+        verbose=False,
+        session_id=42,
+        seasonal_period=sp,
+    )
+
+    model = exp.create_model(model_name)
+
+    plot_data = exp.plot_model(
+        estimator=model, plot=plot, return_data=True, system=False
+    )
+    # If plot is successful, it will return a dictionary
+    # If plot is not possible (e.g. decomposition without index), then it will return None
+    assert isinstance(plot_data, dict) or plot_data is None
