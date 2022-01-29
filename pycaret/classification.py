@@ -800,7 +800,10 @@ def compare_models(
         global _pycaret_setup_call
         parallel.attach(_pycaret_setup_call["func"], _pycaret_setup_call["params"])
         if params.get("include", None) is None:
-            params["include"] = models().index.tolist()
+            _models = models()
+            if turbo:
+                _models = _models[_models.Turbo]
+            params["include"] = _models.index.tolist()
         del params["parallel"]
         return parallel.compare_models(compare_models, params)
 
