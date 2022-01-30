@@ -1,12 +1,9 @@
-# Module: internal.utils
-# Author: Moez Ali <moez.ali@queensu.ca> and Antoni Baum (Yard1) <antoni.baum@protonmail.com>
-# License: MIT
 import inspect
 import os
+from copy import deepcopy
+
 import numpy as np
 
-# from pycaret.containers.metrics.base_metric import MetricContainer  # Removed due to circular import
-# from pycaret.containers.models.base_model import ModelContainer  # Removed due to circular import
 import pandas as pd
 import pandas.io.formats.style
 import ipywidgets as ipw
@@ -368,12 +365,7 @@ def calculate_unsupervised_metrics(
 
 
 def _calculate_unsupervised_metric(
-    container,
-    score_func,
-    display_name,
-    X,
-    labels,
-    ground_truth,
+    container, score_func, display_name, X, labels, ground_truth,
 ):
     if not score_func:
         return None
@@ -706,11 +698,7 @@ def is_fit_var(key):
 
 
 def can_early_stop(
-    estimator,
-    consider_partial_fit,
-    consider_warm_start,
-    consider_xgboost,
-    params,
+    estimator, consider_partial_fit, consider_warm_start, consider_xgboost, params,
 ):
     """
     From https://github.com/ray-project/tune-sklearn/blob/master/tune_sklearn/tune_basesearch.py.
@@ -822,3 +810,25 @@ def check_if_global_is_not_none(globals_d: dict, global_names: dict):
 def mlflow_remove_bad_chars(string: str) -> str:
     """Leaves only alphanumeric, spaces _, -, ., / in a string"""
     return "".join(c for c in string if c.isalpha() or c in ("_", "-", ".", " ", "/"))
+
+
+def deep_clone(estimator: Any) -> Any:
+    """Does a deep clone of a model/estimator.
+
+    NOTE: A simple clone does not copy the fitted model (only model hyperparameters)
+    # In some cases when we need to copy the fitted parameters, and internal
+    # attributes as well. Deep Clone will do this per https://stackoverflow.com/a/33576345/8925915.
+    This will copy both model hyperparameters as well as all fitted properties.
+
+    Parameters
+    ----------
+    estimator : Any
+        Estimator to be copied
+
+    Returns
+    -------
+    Any
+        Cloned estimator
+    """
+    estimator_ = deepcopy(estimator)
+    return estimator_

@@ -22,6 +22,7 @@ from pycaret.internal.utils import (
     SeasonalPeriod,
     TSModelTypes,
     get_function_params,
+    deep_clone,
 )
 import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
@@ -71,19 +72,6 @@ from pycaret.internal.plots.time_series import _plot
 
 warnings.filterwarnings("ignore")
 LOGGER = get_logger()
-
-
-# def _get_cv_n_folds(y, cv) -> int:
-#     """
-#     Get the number of folds for time series
-#     cv must be of type SlidingWindowSplitter or ExpandingWindowSplitter
-#     TODO: Fix this inside sktime and replace this with sktime method [1]
-
-#     Ref:
-#     [1] https://github.com/alan-turing-institute/sktime/issues/632
-#     """
-#     n_folds = int((len(y) - cv.initial_window) / cv.step_length)
-#     return n_folds
 
 
 def get_folds(cv, y) -> Generator[Tuple[pd.Series, pd.Series], None, None]:
@@ -263,8 +251,8 @@ def _fit_and_score(
         forecaster.set_params(**parameters)
 
     y_train, y_test = y[train], y[test]
-    X_train = None if X is None else X[train]
-    X_test = None if X is None else X[test]
+    X_train = None if X is None else X.loc[train]
+    X_test = None if X is None else X.loc[test]
 
     #### Fit the forecaster ----
     start = time.time()
@@ -288,7 +276,7 @@ def _fit_and_score(
     upper = pd.Series([])
     if forecaster.is_fitted:
         y_pred, lower, upper = get_predictions_with_intervals(
-            forecaster=forecaster, X_test=X_test
+            forecaster=forecaster, X=X_test
         )
 
         if (y_test.index.values != y_pred.index.values).any():
@@ -748,8 +736,11 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             ]
             + (
                 [
-                    ["Transformed Train Set", self.y_train.shape],
-                    ["Transformed Test Set", self.y_test.shape],
+                    ["Forecasting Type", self.forecasting_type],
+                    ["Transformed Train Target", self.y_train.shape],
+                    ["Transformed Test Target", self.y_test.shape],
+                    ["Transformed Train Exogenous", self.X_train.shape],
+                    ["Transformed Test Exogenous", self.X_test.shape],
                     ["Fold Generator", type(self.fold_generator).__name__],
                     ["Fold Number", self.fold_param],
                     ["Enforce Prediction Interval", self.enforce_pi],
@@ -815,7 +806,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
     def _get_default_plots_to_log(self) -> List[str]:
         return ["forecast", "residuals", "diagnostics"]
 
-    def __check_fh(self, fh: Union[List[int], int, np.array]) -> np.array:
+    def _check_fh(self, fh: Union[List[int], int, np.array]) -> np.array:
         """
         Checks fh for validity and converts fh into an appropriate forecasting
         horizon compatible with sktime (if necessary)
@@ -855,7 +846,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         return fh
 
     @staticmethod
-    def __check_and_clean_data(data: Union[pd.Series, pd.DataFrame]) -> pd.DataFrame:
+    def _check_and_clean_data(data: Union[pd.Series, pd.DataFrame]) -> pd.DataFrame:
         """Check that the data is of the correct type (Pandas Series or DataFrame).
         Also cleans the data before coercing it into a dataframe which is used
         internally for all future tasks.
@@ -884,15 +875,9 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         ## Make a local copy (to perfrom inplace operation on the original dataset)
         data_ = data.copy()
 
-        if isinstance(data_, pd.DataFrame):
-            if data_.shape[1] != 1:
-                raise ValueError(
-                    f"Currently only Univariate forecasting without exogenous variables is supported. ",
-                    f"Hence if data is a pandas DataFrame, it must have only 1 column. Got {data_.shape[1]} columns!",
-                )
-        else:
-            # Pandas Series
-            data_.name = "Time Series"  # Set data name is not already set
+        if isinstance(data_, pd.Series):
+            # Set data name is not already set
+            data_.name = data_.name if data.name is not None else "Time Series"
             data_ = pd.DataFrame(data_)  # Force convertion to DataFrame
 
         #### Clean column names ----
@@ -900,7 +885,40 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         return data_
 
-    def __check_and_set_targets(self, data: pd.DataFrame):
+    @staticmethod
+    def _return_target_names(
+        data: pd.DataFrame, target: Optional[Union[str, List[str]]] = None
+    ) -> List[str]:
+
+        cols = data.shape[1]
+
+        #### target can not be None if there are multiple columns ----
+        if cols > 1 and target is None:
+            raise ValueError(
+                f"Data has {cols} columns, but the target has not been specified."
+            )
+
+        #### Set target if there is only 1 column ----
+        if cols == 1:
+            if target is not None and target != data.columns[0]:
+                raise ValueError(
+                    f"Target = '{target}', but data only has '{data.columns[0]}'. "
+                    "If you are passing a series (or a dataframe with 1 column) "
+                    "to setup, you can leave `target=None`"
+                )
+            elif target is None:
+                # Use the available column
+                target = [data.columns[0]]
+
+        if isinstance(target, str):
+            # Coerce to list
+            target = [target]
+
+        return target
+
+    def _check_and_set_targets(
+        self, data: pd.DataFrame, target: Optional[Union[str, List[str]]] = None
+    ):
         """Checks that the targets are of correct type and sets class
         attributes related to target(s)
 
@@ -909,6 +927,11 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         data : pd.DataFrame
             Data from which the targets have to be extracted
 
+        target : Optional[Union[str, List[str]]], default = None
+            Target name to be forecasted. Must be specified when data is a pandas
+            DataFrame with more than 1 column. When data is a pandas Series or
+            pandas DataFrame with 1 column, this can be left as None.
+
         Raises
         ------
         TypeError
@@ -916,8 +939,13 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         """
 
         #### Get Target Name ----
-        # TODO: later, ask from user so that we can take exogenous variables
-        target = data.columns[0]
+        target = self._return_target_names(data=data, target=target)
+
+        if isinstance(target, list) and len(target) == 1:
+            target = target[0]
+
+        if target not in data.columns.to_list():
+            raise ValueError(f"Target Column '{target}' is not present in the data.")
 
         #### Check type of target values - must be numeric ----
         if not np.issubdtype(data[target].dtype, np.number):
@@ -928,8 +956,10 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         self.target_param = target
 
     @staticmethod
-    def __check_and_clean_index(
-        data: pd.DataFrame, seasonal_period: Optional[Union[int, str]]
+    def _check_and_clean_index(
+        data: pd.DataFrame,
+        index: Optional[str] = None,
+        seasonal_period: Optional[Union[int, str]] = None,
     ) -> pd.DataFrame:
         """
         Checks if the index is one of the allowed types (pd.PeriodIndex,
@@ -941,7 +971,13 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         ----------
         data : pd.DataFrame
             Data Frame whose index has to be checked and cleaned
-        seasonal_period : Optional[Union[int, str]]
+
+        index: Optional[str], default = None
+            Column name to be used as the datetime index for modeling. Column is
+            internally converted to datetime using `pd.to_datetime()`. If None,
+            then the data's index is used as is for modeling.
+
+        seasonal_period : Optional[Union[int, str]], default = None
             Seasonal Period specified by user
 
         Returns
@@ -956,6 +992,23 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             (1) Index has duplicate values.
             (2) Index is not one of the allowed types and seasonal period is not provided
         """
+
+        #### Set Index if necessary ----
+        if index is not None:
+            if index in data.columns.to_list():
+                unique_index_before = len(data[index]) == len(set(data[index]))
+                data[index] = pd.to_datetime(data[index])
+                unique_index_after = len(data[index]) == len(set(data[index]))
+                if unique_index_before and not unique_index_after:
+                    raise ValueError(
+                        f"Coresion of Index column '{index}' to datetime led to duplicates!"
+                        " Consider setting the data index outside pycaret before passing to setup()."
+                    )
+                data.set_index(index, inplace=True)
+            else:
+                raise ValueError(
+                    f"Index '{index}' is not a column in the data provided."
+                )
 
         #### Data must not have duplicate indices ----
         if len(data.index) != len(set(data.index)):
@@ -981,7 +1034,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         return data
 
-    def __check_and_set_fh(
+    def _check_and_set_fh(
         self,
         fh: Optional[Union[List[int], int, np.array]],
         fold_strategy: Union[str, Any],
@@ -1034,10 +1087,10 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             )
             # fold value will be reset after the data is split in the parent class setup
 
-        fh = self.__check_fh(fh)
+        fh = self._check_fh(fh)
         self.fh = fh
 
-    def __check_and_set_seasonal_period(
+    def _check_and_set_seasonal_period(
         self, data: pd.DataFrame, seasonal_period: Optional[Union[int, str]]
     ):
         """Derived the seasonal period by either
@@ -1089,9 +1142,48 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         # What seasonal period should be used for modeling?
         self.sp_to_use = self.seasonal_period if self.seasonality_present else 1
 
+    @staticmethod
+    def _return_exogenous_names(
+        data: pd.DataFrame, target: List[str], ignore_features: Optional[List] = None,
+    ):
+
+        cols = data.columns.to_list()
+
+        ignore_features = ignore_features if ignore_features is not None else []
+        exo_variables = [item for item in cols if item not in ignore_features]
+
+        # Remove targets
+        exo_variables = [item for item in exo_variables if item not in target]
+
+        return exo_variables
+
+    def _check_and_set_forecsting_type(self):
+        """Checks & sets the the forecasting type based on the number of Targets
+        and Exogenous Variables.
+
+        Raises
+        ------
+        ValueError
+            If Forecasting type is unsupported (e.g. Multivariate Forecasting)
+        """
+        if isinstance(self.target_param, str):
+            if len(self.exogenous_variables) > 0:
+                self.forecasting_type = "Univariate with Exogenous Variables"
+            else:
+                self.forecasting_type = "Univariate without Exogenous Variables"
+        elif isinstance(self.target_param, list):
+            if len(self.exogenous_variables) > 0:
+                self.forecasting_type = "Multivariate with Exogenous Variables"
+            else:
+                self.forecasting_type = "Multivariate without Exogenous Variables"
+            raise ValueError("Multivariate forecasting is currently not supported")
+
     def setup(
         self,
         data: Union[pd.Series, pd.DataFrame],
+        target: Optional[str] = None,
+        index: Optional[str] = None,
+        ignore_features: Optional[List] = None,
         preprocess: bool = True,
         imputation_type: str = "simple",
         #        transform_target: bool = False,
@@ -1133,6 +1225,24 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         data : pandas.Series or pandas.DataFrame
             Shape (n_samples, 1), when pandas.DataFrame, otherwise (n_samples, ).
+
+
+        target : Optional[str], default = None
+            Target name to be forecasted. Must be specified when data is a pandas
+            DataFrame with more than 1 column. When data is a pandas Series or
+            pandas DataFrame with 1 column, this can be left as None.
+
+
+        index: Optional[str], default = None
+            Column name to be used as the datetime index for modeling. Column is
+            internally converted to datetime using `pd.to_datetime()`. If None,
+            then the data's index is used as is for modeling.
+
+
+        ignore_features: Optional[List], default = None
+            List of features to ignore for modeling when the data is a pandas
+            Dataframe with more than 1 column. Ignored when data is a pandas Series
+            or Dataframe with 1 column.
 
 
         preprocess: bool, default = True
@@ -1280,23 +1390,29 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         self.enforce_pi = enforce_pi
 
         #### Check and Clean Data ----
-        data_ = self.__check_and_clean_data(data)
+        data_ = self._check_and_clean_data(data)
 
         #### Check and Clean Index ----
-        data_ = self.__check_and_clean_index(
-            data=data_, seasonal_period=seasonal_period
+        data_ = self._check_and_clean_index(
+            data=data_, index=index, seasonal_period=seasonal_period
         )
 
         #### Check and Set Targets ----
-        self.__check_and_set_targets(data=data_)
+        self._check_and_set_targets(data=data_, target=target)
+
+        #### Check and Set Exogenous Variables ----
+        self.exogenous_variables = self._return_exogenous_names(
+            data=data_, target=self.target_param, ignore_features=ignore_features
+        )
+
+        #### Set type of forecasting ----
+        self._check_and_set_forecsting_type()
 
         #### Set Forecast Horizon ----
-        self.__check_and_set_fh(fh=fh, fold_strategy=fold_strategy, fold=fold)
+        self._check_and_set_fh(fh=fh, fold_strategy=fold_strategy, fold=fold)
 
         #### Set up Seasonal Period ----
-        self.__check_and_set_seasonal_period(
-            data=data_, seasonal_period=seasonal_period
-        )
+        self._check_and_set_seasonal_period(data=data_, seasonal_period=seasonal_period)
 
         #### Multiplicative components allowed? ----
         self.logger.info("Set up whether Multiplicative components allowed.")
@@ -1315,7 +1431,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             high_cardinality_features=None,
             numeric_features=None,
             date_features=None,
-            ignore_features=None,
+            ignore_features=ignore_features,
             normalize=False,
             transformation=False,
             handle_unknown_categorical=False,
@@ -1616,20 +1732,13 @@ class TimeSeriesExperiment(_SupervisedExperiment):
     def _create_model_without_cv(
         self, model, data_X, data_y, fit_kwargs, predict, system, display: Display
     ):
-        # with estimator_pipeline(self._internal_pipeline, model) as pipeline_with_model:
-
-        self.logger.info(
-            "Support for Exogenous variables not yet supported. Switching X, y order"
-        )
-        data_X, data_y = data_y, data_X
-
         fit_kwargs = get_pipeline_fit_kwargs(model, fit_kwargs)
         self.logger.info("Cross validation set to False")
 
         self.logger.info("Fitting Model")
         model_fit_start = time.time()
         with io.capture_output():
-            model.fit(data_X, data_y, **fit_kwargs)
+            model.fit(data_y, data_X, **fit_kwargs)
         model_fit_end = time.time()
 
         model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
@@ -1637,6 +1746,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         display.move_progress()
 
         if predict:
+            # X is not passed here so predict_model picks X_test by default.
             self.predict_model(model, verbose=False)
             model_results = self.pull(pop=True).drop("Model", axis=1)
 
@@ -2816,10 +2926,13 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
                 fh = data_kwargs.get("fh", None)
                 alpha = data_kwargs.get("alpha", 0.05)
+                X = data_kwargs.get("X", None)
                 return_pred_int = estimator.get_tag("capability:pred_int")
+
                 predictions = self.predict_model(
                     estimator,
                     fh=fh,
+                    X=X,
                     alpha=alpha,
                     return_pred_int=return_pred_int,
                     verbose=False,
@@ -3020,6 +3133,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         self,
         estimator,
         fh=None,
+        X=None,
         return_pred_int=False,
         alpha=0.05,
         round: int = 4,
@@ -3053,6 +3167,15 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             used during the training.
 
 
+        X: pd.DataFrame, default = None
+            Exogenous Variables to be used for prediction.
+            Before finalizing the estimator, X need not be passed even when the
+            estimator is built using exogenous variables (since this is taken
+            care of internally by using the exogenous variables from test split).
+            When estimator has been finalized and estimator used exogenous
+            variables, then X must be passed.
+
+
         return_pred_int: bool, default = False
             When set to True, it returns lower bound and upper bound
             prediction interval, in addition to the point prediction.
@@ -3075,9 +3198,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
 
         """
-
-        data = None  # TODO: Add back when we have support for multivariate TS
-
+        # Deep Cloning to prevent overwriting the fh when user specifies their own fh
         estimator_ = deep_clone(estimator)
 
         loaded_in_same_env = True
@@ -3105,11 +3226,32 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 fh = estimator_.fh
         else:
             # Get the fh in the right format for sktime
-            fh = self.__check_fh(fh)
+            fh = self._check_fh(fh)
+
+        # NOTE: User does not need to pass X before finalizing the model even when
+        # building models with exogenous variables
+
+        # Loaded in the same environment as experiment
+        if hasattr(self, "X_test"):
+            # model has not been finalized & X has not been passed
+            if estimator._y.index[-1] == self.y_train.index[-1] and X is None:
+                X = self.X_test  # Predict Test Set
+        # else: # Loaded in different environment
+        # NOTE: If the model was built using exogenous variables, then user
+        # must make sure that this is provided, else the predictions will fail.
+
+        #### Convert to None if empty dataframe
+        # Some predict methods in sktime expect None (not an empty dataframe as
+        # returned by pycaret). Hence converting to None.
+        X = _coerce_empty_dataframe_to_none(data=X)
 
         try:
+            # TODO: Replace estimator_.predict() with
+            # y_test_pred, lower, upper = get_predictions_with_intervals(
+            #     forecaster=estimator_, X=X, fh=fh, alpha=alpha
+            # )
             return_vals = estimator_.predict(
-                X=data, fh=fh, return_pred_int=return_pred_int, alpha=alpha
+                fh=fh, X=X, return_pred_int=return_pred_int, alpha=alpha
             )
         except NotImplementedError as error:
             self.logger.warning(error)
@@ -3119,7 +3261,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 "NaN values will be returned for the prediction intervals instead."
             )
             return_vals = estimator_.predict(
-                X=data, fh=fh, return_pred_int=False, alpha=alpha
+                fh=fh, X=X, return_pred_int=False, alpha=alpha
             )
         if isinstance(return_vals, tuple):
             # Prediction Interval is returned
@@ -3164,21 +3306,16 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         # of y_test_pred will not match y_test.
 
         if loaded_in_same_env:
-            X_test_ = self.X_test.copy()
-            # Some predict methods in sktime expect None (not an empty dataframe as
-            # returned by pycaret). Hence converting to None.
-            if X_test_.shape[0] == 0 or X_test_.shape[1] == 0:
-                X_test_ = None
-            y_test_ = self.y_test.copy()
+            y_test = self.y_test
 
             # y_train for finalized model is different from self.y_train
             # Hence, better to get this from the estimator directly.
             y_train = estimator_._y
             y_test_pred, lower, upper = get_predictions_with_intervals(
-                forecaster=estimator_, X_test=X_test_, fh=fh, alpha=alpha
+                forecaster=estimator_, X=X, fh=fh, alpha=alpha
             )
 
-            if len(y_test_pred) != len(y_test_):
+            if len(y_test_pred) != len(y_test):
                 msg = (
                     "predict_model >> Forecast Horizon does not match the horizon length "
                     "used during training. Metrics will not be displayed."
@@ -3187,7 +3324,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 verbose = False
 
             # concatenates by index
-            y_test_and_pred = pd.concat([y_test_pred, y_test_], axis=1)
+            y_test_and_pred = pd.concat([y_test_pred, y_test], axis=1)
             # Removes any indices that do not match
             y_test_and_pred.dropna(inplace=True)
             y_test_pred_common = y_test_and_pred[y_test_and_pred.columns[0]]
@@ -3855,11 +3992,15 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         resid = None
 
         estimator.check_is_fitted()
+
+        # Deep Cloning to prevent overwriting the fh when getting insample predictions
         estimator_ = deep_clone(estimator)
         y_used_to_train = estimator_._y
+        X_used_to_train = estimator_._X
         try:
             resid = y_used_to_train - estimator_.predict(
-                ForecastingHorizon(y_used_to_train.index, is_relative=False)
+                fh=ForecastingHorizon(y_used_to_train.index, is_relative=False),
+                X=X_used_to_train,
             )
         except NotImplementedError as exception:
             self.logger.warning(exception)
@@ -3876,12 +4017,16 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         insample_predictions = None
 
         estimator.check_is_fitted()
+
+        # Deep Cloning to prevent overwriting the fh when getting insample predictions
         estimator_ = deep_clone(estimator)
         y_used_to_train = estimator_._y
+        X_used_to_train = estimator_._X
         try:
             insample_predictions = self.predict_model(
-                estimator, fh=-np.arange(0, len(y_used_to_train))
+                estimator_, fh=-np.arange(0, len(y_used_to_train)), X=X_used_to_train
             )
+
         except NotImplementedError as exception:
             self.logger.warning(exception)
             print(
@@ -3951,18 +4096,8 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         return additional_scorer_kwargs
 
 
-# TODO: Add to pycaret utils or some common location
-def deep_clone(estimator):
-    # Cloning since setting fh to another value replaces it inplace
-    # Note cloning does not copy the fitted model (only model hyperparameters)
-    # Hence, we need to do deep copy per
-    # https://stackoverflow.com/a/33576345/8925915
-    estimator_ = deepcopy(estimator)
-    return estimator_
-
-
 def get_predictions_with_intervals(
-    forecaster, X_test: pd.DataFrame, fh=None, alpha: float = 0.05
+    forecaster, X: pd.DataFrame, fh=None, alpha: float = 0.05
 ) -> Tuple[pd.Series, pd.Series, pd.Series]:
     """Returns the predictions, lower and upper interval values for a
     forecaster. If the forecaster does not support prediction intervals,
@@ -3972,8 +4107,8 @@ def get_predictions_with_intervals(
     ----------
     forecaster : sktime compatible forecaster
         Forecaster to be used to get the predictions
-    X_test : pd.DataFrame
-        Test dataset
+    X : pd.DataFrame
+        Exogenous Variables
     alpha : float, default = 0.05
         alpha value for prediction interval
 
@@ -3985,14 +4120,9 @@ def get_predictions_with_intervals(
     # Predict and get lower and upper intervals
     return_pred_int = forecaster.get_tag("capability:pred_int")
 
-    if fh is None:
-        return_values = forecaster.predict(
-            X_test, return_pred_int=return_pred_int, alpha=alpha
-        )
-    else:
-        return_values = forecaster.predict(
-            X_test, fh=fh, return_pred_int=return_pred_int, alpha=alpha
-        )
+    return_values = forecaster.predict(
+        fh=fh, X=X, return_pred_int=return_pred_int, alpha=alpha
+    )
 
     if return_pred_int:
         y_pred = return_values[0]
@@ -4097,3 +4227,26 @@ def get_sp_from_str(str_freq: str) -> int:
             raise ValueError(
                 f"Unsupported Period frequency: {str_freq}, valid Period frequency suffixes are: {', '.join(SeasonalPeriod.__members__.keys())}"
             )
+
+
+def _coerce_empty_dataframe_to_none(
+    data: Optional[pd.DataFrame],
+) -> Optional[pd.DataFrame]:
+    """Returns None if the data is an empty dataframe or None,
+    else return the dataframe as is.
+
+    Parameters
+    ----------
+    data : Optional[pd.DataFrame]
+        Dataframe to be checked or None
+
+    Returns
+    -------
+    Optional[pd.DataFrame]
+        Returned Dataframe OR None (if dataframe is empty or None)
+    """
+    if isinstance(data, pd.DataFrame) and data.empty:
+        return None
+    else:
+        return data
+
