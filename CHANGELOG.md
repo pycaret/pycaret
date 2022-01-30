@@ -2,6 +2,29 @@
 All notable changes to this project will be documented in this file.
 <br/><br/>
 
+#### Release: PyCaret 2.3.6 | Release Date: January 12th, 2022 (NEW FEATURES, BUG FIXES)
+- Added new function `create_app` (https://github.com/pycaret/pycaret/pull/2044)
+- Refactored `optimize_threshold` function (https://github.com/pycaret/pycaret/pull/2041)
+- Added new function `create_docker` (https://github.com/pycaret/pycaret/pull/2005)
+- Added new function `create_api` (https://github.com/pycaret/pycaret/pull/2000)
+- Added new function `check_fairness` (https://github.com/pycaret/pycaret/pull/1997)
+- Added new function `eda` (https://github.com/pycaret/pycaret/pull/1983)
+- Added new function `convert_model` (https://github.com/pycaret/pycaret/pull/1959)
+- Added an ability to pass kwargs to plots in `plot_model` (https://github.com/pycaret/pycaret/pull/19400)
+- Added `drift_report` functionality to `predict_model` (https://github.com/pycaret/pycaret/pull/1935)
+- Added new function `create_dashboard` (https://github.com/pycaret/pycaret/pull/1925)
+- Added `grid_interval` parameter to `optimize_threshold` - thanks to @wolfryu (https://github.com/pycaret/pycaret/pull/1938)
+- Made logging level configurable by environment variable (https://github.com/pycaret/pycaret/pull/2026)
+- Made the optional path in AWS configurable (https://github.com/pycaret/pycaret/pull/2045)
+- Fixed TSNE plot with PCA (https://github.com/pycaret/pycaret/pull/2032)
+- Fixed rendering of streamlit plots (https://github.com/pycaret/pycaret/pull/2008)
+- Fixed class names in `tree` plot - thanks to @yamasakih (https://github.com/pycaret/pycaret/pull/1982)
+- Fixed NearZeroVariance preprocessor not being configurable - thanks to @Flyfoxs (https://github.com/pycaret/pycaret/pull/1952)
+- Removed duplicated code - thanks to @Flyfoxs (https://github.com/pycaret/pycaret/pull/1882)
+- Documentation improvements - thanks to @harsh204016, @khrapovs (https://github.com/pycaret/pycaret/pull/1931/files, https://github.com/pycaret/pycaret/pull/1956, https://github.com/pycaret/pycaret/pull/1946, https://github.com/pycaret/pycaret/pull/1949)
+- Pinned `pyyaml<6.0.0` to fix issues with Google Colab
+<br/><br/><br/>
+
 #### Release: PyCaret 2.3.5 | Release Date: November 19th, 2021 (NEW FEATURES, BUG FIXES)
 - Fixed an issue where `Fix_multicollinearity` would fail if the target was a float (https://github.com/pycaret/pycaret/pull/1640)
 - MLFlow runs are now nested - thanks to @jfagn (https://github.com/pycaret/pycaret/pull/1660)
