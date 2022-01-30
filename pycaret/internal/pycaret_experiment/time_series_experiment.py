@@ -3813,6 +3813,69 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         split: str = "all",
         data_kwargs: Optional[Dict] = None,
     ) -> pd.DataFrame:
+        """This function is used to get summary statistics and run statistical
+        tests on the original data or model residuals.
+
+        Example
+        --------
+        >>> from pycaret.datasets import get_data
+        >>> airline = get_data('airline')
+        >>> from pycaret.time_series import *
+        >>> exp_name = setup(data = airline,  fh = 12)
+        >>> check_stats(test="summary")
+        >>> check_stats(test="adf")
+        >>> arima = create_model('arima')
+        >>> check_stats(arima, test = 'white_noise')
+
+
+        Parameters
+        ----------
+        estimator : sktime compatible object, optional
+            Trained model object, by default None
+
+
+        test : str, optional
+            Name of the test to be performed, by default "all"
+
+            Options are:
+
+            * 'summary' - Summary Statistics
+            * 'white_noise' - Ljung-Box Test for white noise
+            * 'adf' - ADF test for difference stationarity
+            * 'kpss' - KPSS test for trend stationarity
+            * 'stationarity' - ADF and KPSS test
+            * 'normality' - Shapiro Test for Normality
+            * 'all' - All of the above tests
+
+
+        alpha : float, optional
+            Significance Level, by default 0.05
+
+
+        split : str, optional
+            The split of the original data to run the test on. Only applicable
+            when test is run on the original data (not residuals), by default "all"
+
+            Options are:
+
+            * 'all' - Complete Dataset
+            * 'train' - The Training Split of the dataset
+            * 'test' - The Test Split of the dataset
+
+
+        data_kwargs : Optional[Dict], optional
+            Users can specify `lags list` or `order_list` to run the test for the
+            data as well as for its lagged versions, by default None
+
+            >>> check_stats(test="white_noise", data_kwargs={"order_list": [1, 2]})
+            >>> check_stats(test="white_noise", data_kwargs={"lags_list": [1, [1, 12]]})
+
+
+        Returns:
+        --------
+        pd.DataFrame
+            Dataframe with the test results
+        """
 
         #### Step 1: Get the data to be tested ----
         if estimator is None:
