@@ -200,8 +200,8 @@ def _fit_and_score(
     y: pd.Series,
     X: Optional[Union[pd.Series, pd.DataFrame]],
     scoring: Dict[str, Union[str, _PredictScorer]],
-    train,
-    test,
+    train: np.ndarray,
+    test: np.ndarray,
     parameters,
     fit_params,
     return_train_score,
@@ -226,10 +226,10 @@ def _fit_and_score(
     scoring : Dict[str, Union[str, _PredictScorer]]
         Scoring Dictionary. Values can be valid strings that can be converted to
         callable metrics or the callable metrics directly
-    train : [type]
-        Indices of training samples.
-    test : [type]
-        Indices of test samples.
+    train : np.ndarray
+        Indices of training samples (integer based indexing).
+    test : np.ndarray
+        Indices of test samples (integer based indexing).
     parameters : [type]
         Parameter to set for the forecaster
     fit_params : [type]
@@ -251,8 +251,8 @@ def _fit_and_score(
         forecaster.set_params(**parameters)
 
     y_train, y_test = y[train], y[test]
-    X_train = None if X is None else X.loc[train]
-    X_test = None if X is None else X.loc[test]
+    X_train = None if X is None else X.iloc[train]
+    X_test = None if X is None else X.iloc[test]
 
     #### Fit the forecaster ----
     start = time.time()
@@ -364,8 +364,8 @@ class BaseGridSearch:
         X: Optional[pd.DataFrame] = None,
         additional_scorer_kwargs: Optional[Dict[str, Any]] = None,
         **fit_params,
-    ):
-        """[summary]
+    ) -> "BaseGridSearch":
+        """Run fit with all sets of parameters.
 
         Parameters
         ----------
@@ -376,17 +376,20 @@ class BaseGridSearch:
         additional_scorer_kwargs: Dict[str, Any]
             Additional scorer kwargs such as {`sp`:12} required by metrics like MASE
         **fit_params: Dict[str, Any]
-            Additional params to pass to fit
+            Parameters passed to the ``fit`` method of the estimator
 
         Returns
         -------
-        [type]
-            [description]
+        BaseGridSearch
+            Grid Search Object returned to allow chaining
 
         Raises
         ------
         ValueError
-            [description]
+            When any of the following is True
+            (1) Metric can not be found
+            (2) No candidate provided in search
+            (3) CV Iterator is empty
         """
         if additional_scorer_kwargs is None:
             additional_scorer_kwargs = {}
@@ -578,6 +581,12 @@ class BaseGridSearch:
 
 
 class ForecastingGridSearchCV(BaseGridSearch):
+    """Exhaustive search over specified parameter values for an estimator.
+
+    TODO: Add detailed docstring similar to the one available here:
+    https://github.com/scikit-learn/scikit-learn/blob/c6512929fbee7232949c0f18cfb28cf3b5959df9/sklearn/model_selection/_search.py#L972
+    """
+
     def __init__(
         self,
         forecaster,
@@ -613,6 +622,12 @@ class ForecastingGridSearchCV(BaseGridSearch):
 
 
 class ForecastingRandomizedSearchCV(BaseGridSearch):
+    """Randomized search on hyper parameters.
+
+    TODO: Add detailed docstring similar to the one available here:
+    https://github.com/scikit-learn/scikit-learn/blob/c6512929fbee7232949c0f18cfb28cf3b5959df9/sklearn/model_selection/_search.py#L1292
+    """
+
     def __init__(
         self,
         forecaster,
