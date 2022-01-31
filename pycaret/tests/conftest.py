@@ -81,6 +81,7 @@ def load_ts_models(load_setup):
         "gpu_param": False,
         "X_train": pd.DataFrame(get_data("airline")),
         "enforce_pi": False,
+        "sp_to_use": 12,
     }
     ts_models = get_all_model_containers(globals_dict)
     ts_experiment = load_setup

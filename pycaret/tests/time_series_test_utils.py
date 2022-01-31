@@ -87,7 +87,7 @@ def _get_seasonal_values_alphanumeric():
     choice_list = ['10','20','30','40','50','60']
     #prefix = random.choice(choice_list)
     return [(random.choice(choice_list),k,v.value) for k, v in SeasonalPeriod.__members__.items()]
- 
+
 def _check_windows():
     """Check if the system is Windows."""
     import sys
@@ -107,6 +107,7 @@ def _return_model_names():
         "X_train": pd.DataFrame(get_data("airline")),
         "enforce_pi": False,
         "seasonal_period": 2,
+        "sp_to_use": 2,
     }
     model_containers = get_all_model_containers(globals_dict)
 
