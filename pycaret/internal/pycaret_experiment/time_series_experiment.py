@@ -3339,8 +3339,8 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             # y_train for finalized model is different from self.y_train
             # Hence, better to get this from the estimator directly.
             y_train = estimator_._y
-            y_test_pred, lower, upper = get_predpredict(
-                fh=fh, X=X, return_pred_int=False, alpha=alpha
+            y_test_pred, lower, upper = get_predictions_with_intervals(
+                forecaster=estimator_, X=X, fh=fh, alpha=alpha
             )
         if isinstance(return_vals, tuple):
             # Prediction Interval is returned
