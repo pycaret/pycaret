@@ -2643,7 +2643,7 @@ try:
                 original_freq = X.index.freq
                 if isinstance(X.index, pd.PeriodIndex):
                     X.index = X.index.to_timestamp(freq=original_freq)
-                    
+
                     #### Corner Case Handling ----
                     # When X.index is of type Q-DEC with only 2 points, frequency
                     # is not set after conversion (details below). However, this

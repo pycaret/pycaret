@@ -3255,9 +3255,8 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             # But note that some models like Prophet train on Datetime Index
             # But pycaret stores all indices as PeriodIndex, so convert
             # appropriately before checking for the above condition
-            orig_freq = self.y_train.index.freq
             if isinstance(estimator._y.index, pd.DatetimeIndex):
-                #### Predictions & Prediction Intervals --------
+                orig_freq = self.y_train.index.freq
                 last_estimator_index = estimator._y.index.to_period(freq=orig_freq)[-1]
             else:
                 last_estimator_index = estimator._y.index[-1]
