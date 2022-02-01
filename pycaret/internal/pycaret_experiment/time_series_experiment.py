@@ -3316,57 +3316,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         # Converting to float since rounding does not support int
         result = result.astype(float).round(round)
 
-        if isinstance(result.index, pd.DatetimeIndex):
-            result.index = (
-                result.index.to_period()
-            )  # Prophet with return_pred_int = True returns datetime index.
-
-        #################
-        #### Metrics ####
-        #################
-        # Only display if loaded in same environment
-
-        # This is not technically y_test_pred in all cases.
-        # If the model has not been finalized, y_test_pred will match the indices from y_test
-        # If the model has been finalized, y_test_pred will not match the indices from y_test
-        # Also, the user can use a different fh length in predict in which case the length
-        # of y_test_pred will not match y_test.
-
-        if loaded_in_same_env:
-            y_test = self.y_test
-
-            # y_train for finalized model is different from self.y_train
-            # Hence, better to get this from the estimator directly.
-            y_train = estimator_._y
-            y_test_pred, lower, upper = get_predictions_with_intervals(
-                forecaster=estimator_, X=X, fh=fh, alpha=alpha
-            )
-        if isinstance(return_vals, tuple):
-            # Prediction Interval is returned
-            #   First Value is a series of predictions
-            #   Second Value is a dataframe of lower and upper bounds
-            result = pd.concat(return_vals, axis=1)
-            result.columns = ["y_pred", "lower", "upper"]
-        else:
-            # Prediction interval is not returned (not implemented)
-            if return_pred_int:
-                result = pd.DataFrame(return_vals, columns=["y_pred"])
-                result["lower"] = np.nan
-                result["upper"] = np.nan
-            else:
-                # Leave as series
-                result = return_vals
-                if result.name is None:
-                    if hasattr(self, "y"):
-                        result.name = self.y.name
-                    else:
-                        # If the model is saved and loaded afterwards,
-                        # it will not have self.y
-                        pass
-
-        # Converting to float since rounding does not support int
-        result = result.astype(float).round(round)
-
         # Prophet with return_pred_int = True returns datetime index.
         if isinstance(result.index, pd.DatetimeIndex):
             result.index = result.index.to_period()
