@@ -852,12 +852,14 @@ class ExponentialSmoothingContainer(TimeSeriesContainer):
             }
         return tune_distributions
 
+
 class CrostonContainer(TimeSeriesContainer):
     """
     SKtime documentation:
     https://www.sktime.org/en/latest/api_reference/auto_generated/sktime.forecasting.croston.Croston.html
 
     """
+
     model_type = TSModelTypes.CLASSICAL
 
     def __init__(self, globals_dict: dict) -> None:
@@ -869,8 +871,9 @@ class CrostonContainer(TimeSeriesContainer):
 
         dummy = Croston()
         # check if pi is enforced.
-        self.active:bool = self.disable_pred_int_enforcement(
-            forecaster=dummy, enforce_pi=globals_dict["enforce_pi"])
+        self.active: bool = self.disable_pred_int_enforcement(
+            forecaster=dummy, enforce_pi=globals_dict["enforce_pi"]
+        )
 
         # if not, make the model unavailiable
         if not self.active:
@@ -886,7 +889,7 @@ class CrostonContainer(TimeSeriesContainer):
             class_def=Croston,
             tune_grid=tune_grid,
             tune_distribution=tune_distributions,
-            is_gpu_enabled=self.gpu_imported
+            is_gpu_enabled=self.gpu_imported,
         )
 
     @property
@@ -894,16 +897,15 @@ class CrostonContainer(TimeSeriesContainer):
         # lack of research/evidence for suitable range here,
         # SKtime and R implementations are default 0.1
         smoothing_grid: List[float] = [0.01, 0.03, 0.1, 0.2, 0.4, 0.6, 0.8, 1.0]
-        tune_grid = {"smoothing" : smoothing_grid}
+        tune_grid = {"smoothing": smoothing_grid}
         return tune_grid
 
     @property
     def _set_tune_distributions(self) -> Dict[str, List[Any]]:
-        tune_distributions = {"smoothing": UniformDistribution(
-                lower=0.01, upper=1, log=True
-            )}
+        tune_distributions = {
+            "smoothing": UniformDistribution(lower=0.01, upper=1, log=True)
+        }
         return tune_distributions
-
 
 
 class ETSContainer(TimeSeriesContainer):
@@ -2599,18 +2601,75 @@ try:
 
     class ProphetPeriodPatched(Prophet):
         def fit(self, y, X=None, fh=None, **fit_params):
-            if isinstance(y, (pd.Series, pd.DataFrame)):
-                if isinstance(y.index, pd.PeriodIndex):
-                    y.index = y.index.to_timestamp(freq=y.index.freq)
+            #### sktime Prophet only supports DatetimeIndex
+            if isinstance(y, (pd.Series, pd.DataFrame)) and isinstance(
+                y.index, pd.PeriodIndex
+            ):
+                y.index = y.index.to_timestamp(freq=y.index.freq)
+            if isinstance(X, (pd.Series, pd.DataFrame)) and isinstance(
+                X.index, pd.PeriodIndex
+            ):
+                X.index = X.index.to_timestamp(freq=X.index.freq)
 
             return super().fit(y, X=X, fh=fh, **fit_params)
 
         def predict(self, fh=None, X=None, return_pred_int=False, alpha=DEFAULT_ALPHA):
+            """Forecast time series at future horizon.
+
+            Parameters
+            ----------
+            fh : int, list, np.ndarray or ForecastingHorizon
+                Forecasting horizon
+            X : pd.DataFrame, or 2D np.ndarray, optional (default=None)
+                Exogeneous time series to predict from
+                if self.get_tag("X-y-must-have-same-index"), X.index must contain fh.index
+            return_pred_int : bool, optional (default=False)
+                If True, returns prediction intervals for given alpha values.
+            alpha : float or list, optional (default=0.95)
+
+            Returns
+            -------
+            y_pred : pd.Series, pd.DataFrame, or np.ndarray (1D or 2D)
+                Point forecasts at fh, with same index as fh
+                y_pred has same type as y passed in fit (most recently)
+            y_pred_int : pd.DataFrame - only if return_pred_int=True
+                in this case, return is 2-tuple (otherwise a single y_pred)
+                Prediction intervals
+            """
+
+            #### sktime Prophet only supports DatetimeIndex ----
+            # Convert to DatetimeIndex if it is a PeriodIndex
+            if isinstance(X, (pd.DataFrame, pd.Series)):
+                original_freq = X.index.freq
+                if isinstance(X.index, pd.PeriodIndex):
+                    X.index = X.index.to_timestamp(freq=original_freq)
+                    
+                    #### Corner Case Handling ----
+                    # When X.index is of type Q-DEC with only 2 points, frequency
+                    # is not set after conversion (details below). However, this
+                    # works OK if there are more than 2 data points.
+                    # Before Conversion: PeriodIndex(['2018Q2', '2018Q3'], dtype='period[Q-DEC]', freq='Q-DEC')
+                    # After Conversion: DatetimeIndex(['2018-06-30', '2018-09-30'], dtype='datetime64[ns]', freq=None)
+                    # Hence, setting it manually if the frequency is not set
+                    # after conversion.
+                    if X.index.freq is None:
+                        X.index.freq = original_freq
+
             y = super().predict(
                 fh=fh, X=X, return_pred_int=return_pred_int, alpha=alpha
             )
+
+            #### Convert back to PeriodIndex for pycaret ----
             try:
-                y.index = y.index.to_period(freq=y.index.freq)
+                if isinstance(y, tuple):
+                    #### Predictions & Prediction Intervals --------
+                    # y[0] and y[1] have freq=None (from prophet). Hence using original_freq
+                    y[0].index = y[0].index.to_period(freq=original_freq)
+                    y[1].index = y[1].index.to_period(freq=original_freq)
+                else:
+                    #### Predictions only ----
+                    # y has freq=None. Hence using original_freq
+                    y.index = y.index.to_period(freq=original_freq)
             except Exception:
                 pass
             return y
@@ -2659,5 +2718,4 @@ def get_all_model_containers(
     return pycaret.containers.base_container.get_all_containers(
         globals(), globals_dict, TimeSeriesContainer, raise_errors
     )
-
 

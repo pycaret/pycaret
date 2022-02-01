@@ -275,6 +275,7 @@ def _fit_and_score(
     lower = pd.Series([])
     upper = pd.Series([])
     if forecaster.is_fitted:
+        # TODO: Add alpha here???
         y_pred, lower, upper = get_predictions_with_intervals(
             forecaster=forecaster, X=X_test
         )
@@ -3248,8 +3249,20 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         # Loaded in the same environment as experiment
         if hasattr(self, "X_test"):
-            # model has not been finalized & X has not been passed
-            if estimator._y.index[-1] == self.y_train.index[-1] and X is None:
+            # If model has not been finalized & X has not been passed, then
+            # set X = X_test.
+
+            # But note that some models like Prophet train on Datetime Index
+            # But pycaret stores all indices as PeriodIndex, so convert
+            # appropriately before checking for the above condition
+            orig_freq = self.y_train.index.freq
+            if isinstance(estimator._y.index, pd.DatetimeIndex):
+                #### Predictions & Prediction Intervals --------
+                last_estimator_index = estimator._y.index.to_period(freq=orig_freq)[-1]
+            else:
+                last_estimator_index = estimator._y.index[-1]
+
+            if last_estimator_index == self.y_train.index[-1] and X is None:
                 X = self.X_test  # Predict Test Set
         # else: # Loaded in different environment
         # NOTE: If the model was built using exogenous variables, then user
@@ -3308,6 +3321,56 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             result.index = (
                 result.index.to_period()
             )  # Prophet with return_pred_int = True returns datetime index.
+
+        #################
+        #### Metrics ####
+        #################
+        # Only display if loaded in same environment
+
+        # This is not technically y_test_pred in all cases.
+        # If the model has not been finalized, y_test_pred will match the indices from y_test
+        # If the model has been finalized, y_test_pred will not match the indices from y_test
+        # Also, the user can use a different fh length in predict in which case the length
+        # of y_test_pred will not match y_test.
+
+        if loaded_in_same_env:
+            y_test = self.y_test
+
+            # y_train for finalized model is different from self.y_train
+            # Hence, better to get this from the estimator directly.
+            y_train = estimator_._y
+            y_test_pred, lower, upper = get_predpredict(
+                fh=fh, X=X, return_pred_int=False, alpha=alpha
+            )
+        if isinstance(return_vals, tuple):
+            # Prediction Interval is returned
+            #   First Value is a series of predictions
+            #   Second Value is a dataframe of lower and upper bounds
+            result = pd.concat(return_vals, axis=1)
+            result.columns = ["y_pred", "lower", "upper"]
+        else:
+            # Prediction interval is not returned (not implemented)
+            if return_pred_int:
+                result = pd.DataFrame(return_vals, columns=["y_pred"])
+                result["lower"] = np.nan
+                result["upper"] = np.nan
+            else:
+                # Leave as series
+                result = return_vals
+                if result.name is None:
+                    if hasattr(self, "y"):
+                        result.name = self.y.name
+                    else:
+                        # If the model is saved and loaded afterwards,
+                        # it will not have self.y
+                        pass
+
+        # Converting to float since rounding does not support int
+        result = result.astype(float).round(round)
+
+        # Prophet with return_pred_int = True returns datetime index.
+        if isinstance(result.index, pd.DatetimeIndex):
+            result.index = result.index.to_period()
 
         #################
         #### Metrics ####
