@@ -28,10 +28,13 @@ def create_classification_drift_report(
     
     #filter out cases with object dtype
     categorical_features= unprocessed_data[categorical_features].select_dtypes(exclude=["object"]).columns.to_list()
-
-    reference_data = unprocessed_data.iloc[X_train.index]
-    current_data = unprocessed_data.iloc[X_test.index]
-
+    try:
+        reference_data = unprocessed_data.iloc[X_train.index]
+        current_data = unprocessed_data.iloc[X_test.index]
+    except:
+        # When df index is not ordinal
+        reference_data = unprocessed_data.loc[X_train.index]
+        current_data = unprocessed_data.loc[X_test.index]
     column_mapping = ColumnMapping()
     column_mapping.target = prep_pipe.steps[0][1].target
     column_mapping.prediction = None
