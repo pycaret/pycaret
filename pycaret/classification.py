@@ -8,8 +8,9 @@ import pandas as pd
 import numpy as np
 
 import pycaret.internal.tabular
+from pycaret.parallel import ParallelBackend
 from pycaret.internal.Display import Display, is_in_colab, enable_colab
-from typing import List, Tuple, Any, Union, Optional, Dict
+from typing import List, Tuple, Any, Union, Optional, Dict, Callable
 import warnings
 from IPython.utils import io
 import traceback
@@ -20,7 +21,7 @@ warnings.filterwarnings("ignore")
 
 
 def setup(
-    data: pd.DataFrame,
+    data: Union[pd.DataFrame, Callable[[], pd.DataFrame]],
     target: str,
     train_size: float = 0.7,
     test_data: Optional[pd.DataFrame] = None,
@@ -110,9 +111,12 @@ def setup(
     >>> exp_name = setup(data = juice,  target = 'Purchase')
 
 
-    data: pandas.DataFrame
+    data: Union[pd.DataFrame, Callable[[], pd.DataFrame]]
         Shape (n_samples, n_features), where n_samples is the number of samples and
-        n_features is the number of features.
+        n_features is the number of features. If ``data`` is a function, then it should
+        generate the pandas dataframe. If you want to use distributed PyCaret, it is
+        recommended to provide a function to avoid broadcasting large datasets from
+        the driver to workers.
 
 
     target: str
@@ -552,6 +556,12 @@ def setup(
 
     """
 
+    global _pycaret_setup_call
+    _pycaret_setup_call = dict(func=setup, params=locals())
+
+    if not isinstance(data, pd.DataFrame):
+        data = data()
+
     available_plots = {
         "parameter": "Hyperparameters",
         "auc": "AUC",
@@ -671,6 +681,8 @@ def compare_models(
     groups: Optional[Union[str, Any]] = None,
     probability_threshold: Optional[float] = None,
     verbose: bool = True,
+    display: Optional[Display] = None,
+    parallel: Optional[ParallelBackend] = None,
 ) -> Union[Any, List[Any]]:
 
     """
@@ -762,6 +774,14 @@ def compare_models(
     verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
 
+    display: pycaret.internal.Display.Display, default = None
+        Custom display object
+    
+    parallel: pycaret.parallel.parallel_backend.ParallelBackend, default = None
+        A ParallelBackend instance. For example if you have a SparkSession ``session``,
+        you can use ``FugueBackend(session)`` to make this function running using
+        Spark. For more details, see
+        :class:`~pycaret.parallel.fugue_backend.FugueBackend`
 
     Returns:
         Trained model or list of trained models, depending on the ``n_select`` param.
@@ -775,6 +795,17 @@ def compare_models(
 
     - No models are logged in ``MLFlow`` when ``cross_validation`` parameter is False.
     """
+    params = dict(locals())
+    if parallel is not None:
+        global _pycaret_setup_call
+        parallel.attach(_pycaret_setup_call["func"], _pycaret_setup_call["params"])
+        if params.get("include", None) is None:
+            _models = models()
+            if turbo:
+                _models = _models[_models.Turbo]
+            params["include"] = _models.index.tolist()
+        del params["parallel"]
+        return parallel.compare_models(compare_models, params)
 
     return pycaret.internal.tabular.compare_models(
         include=include,
@@ -791,6 +822,7 @@ def compare_models(
         groups=groups,
         probability_threshold=probability_threshold,
         verbose=verbose,
+        display=display,
     )
 
 
@@ -1882,12 +1914,12 @@ def optimize_threshold(
     estimator,
     optimize: str = "Accuracy",
     grid_interval: float = 0.1,
-    return_data: bool = False, 
+    return_data: bool = False,
     plot_kwargs: Optional[dict] = None,
 ):
 
     """
-    This function optimizes probability threshold for a trained classifier. It 
+    This function optimizes probability threshold for a trained classifier. It
     iterates over performance metrics at different ``probability_threshold`` with
     a step size defined in ``grid_interval`` parameter. This function will display
     a plot of the performance metrics at each probability threshold and returns the
@@ -1910,7 +1942,7 @@ def optimize_threshold(
 
 
     optimize : str, default = 'Accuracy'
-        Metric to be used for selecting best model. 
+        Metric to be used for selecting best model.
 
 
     grid_interval : float, default = 0.0001
@@ -1940,7 +1972,7 @@ def optimize_threshold(
         optimize=optimize,
         grid_interval=grid_interval,
         return_data=return_data,
-        plot_kwargs=plot_kwargs
+        plot_kwargs=plot_kwargs,
     )
 
 
@@ -3005,13 +3037,14 @@ def create_api(
         estimator=estimator, api_name=api_name, host=host, port=port
     )
 
+
 def create_docker(
     api_name: str, base_image: str = "python:3.8-slim", expose_port: int = 8000
 ) -> None:
 
     """
-    This function creates a ``Dockerfile`` and ``requirements.txt`` for 
-    productionalizing API end-point. 
+    This function creates a ``Dockerfile`` and ``requirements.txt`` for
+    productionalizing API end-point.
 
 
     Example
@@ -3044,11 +3077,12 @@ def create_docker(
         api_name=api_name, base_image=base_image, expose_port=expose_port
     )
 
-def create_app(estimator, app_kwargs: Optional[dict] = None)-> None:
+
+def create_app(estimator, app_kwargs: Optional[dict] = None) -> None:
 
     """
     This function creates a basic gradio app for inference.
-    It will later be expanded for other app types such as 
+    It will later be expanded for other app types such as
     Streamlit.
 
 
@@ -3073,4 +3107,6 @@ def create_app(estimator, app_kwargs: Optional[dict] = None)-> None:
     Returns:
         None
     """
-    return pycaret.internal.tabular.create_app(estimator=estimator, app_kwargs=app_kwargs)
+    return pycaret.internal.tabular.create_app(
+        estimator=estimator, app_kwargs=app_kwargs
+    )

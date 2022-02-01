@@ -2,3 +2,5 @@
 pytest
 moto
 codecov
+
+dask[dataframe]
