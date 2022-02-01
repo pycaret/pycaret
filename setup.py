@@ -5,7 +5,7 @@ from setuptools import setup, find_packages
 
 
 def readme():
-    with open("README.md") as f:
+    with open("README.md", encoding="utf8") as f:
         README = f.read()
     return README
 
