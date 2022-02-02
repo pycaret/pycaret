@@ -33,6 +33,8 @@ from pycaret.internal.distributions import *
 from pycaret.internal.validation import *
 from pycaret.internal.tunable import TunableMixin
 
+from pycaret.utils.datetime import coerce_datetime_to_period_index
+
 import pycaret.containers.metrics.time_series
 import pycaret.containers.models.time_series
 import pycaret.internal.preprocess
@@ -3255,11 +3257,12 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             # But note that some models like Prophet train on Datetime Index
             # But pycaret stores all indices as PeriodIndex, so convert
             # appropriately before checking for the above condition
+            orig_freq = None
             if isinstance(estimator._y.index, pd.DatetimeIndex):
                 orig_freq = self.y_train.index.freq
-                last_estimator_index = estimator._y.index.to_period(freq=orig_freq)[-1]
-            else:
-                last_estimator_index = estimator._y.index[-1]
+            last_estimator_index = coerce_datetime_to_period_index(
+                estimator._y, freq=orig_freq
+            ).index[-1]
 
             if last_estimator_index == self.y_train.index[-1] and X is None:
                 X = self.X_test  # Predict Test Set
@@ -3317,8 +3320,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         result = result.astype(float).round(round)
 
         # Prophet with return_pred_int = True returns datetime index.
-        if isinstance(result.index, pd.DatetimeIndex):
-            result.index = result.index.to_period()
+        result = coerce_datetime_to_period_index(result)
 
         #################
         #### Metrics ####

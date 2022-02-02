@@ -14,6 +14,7 @@ import random
 import numpy as np  # type: ignore
 import pandas as pd
 import logging
+import warnings
 
 from sktime.forecasting.base import BaseForecaster  # type: ignore
 from sktime.forecasting.compose import make_reduction, TransformedTargetForecaster  # type: ignore
@@ -39,6 +40,11 @@ from pycaret.internal.distributions import (
 )
 from pycaret.internal.utils import TSModelTypes
 import pycaret.containers.base_container
+
+from pycaret.utils.datetime import (
+    coerce_period_to_datetime_index,
+    coerce_datetime_to_period_index,
+)
 
 
 class TimeSeriesContainer(ModelContainer):
@@ -2602,15 +2608,9 @@ try:
     class ProphetPeriodPatched(Prophet):
         def fit(self, y, X=None, fh=None, **fit_params):
             #### sktime Prophet only supports DatetimeIndex
-            if isinstance(y, (pd.Series, pd.DataFrame)) and isinstance(
-                y.index, pd.PeriodIndex
-            ):
-                y.index = y.index.to_timestamp(freq=y.index.freq)
-            if isinstance(X, (pd.Series, pd.DataFrame)) and isinstance(
-                X.index, pd.PeriodIndex
-            ):
-                X.index = X.index.to_timestamp(freq=X.index.freq)
-
+            # Hence coerce the index if it is not DatetimeIndex
+            y = coerce_period_to_datetime_index(y)
+            X = coerce_period_to_datetime_index(X)
             return super().fit(y, X=X, fh=fh, **fit_params)
 
         def predict(self, fh=None, X=None, return_pred_int=False, alpha=DEFAULT_ALPHA):
@@ -2637,41 +2637,39 @@ try:
                 Prediction intervals
             """
 
-            #### sktime Prophet only supports DatetimeIndex ----
-            # Convert to DatetimeIndex if it is a PeriodIndex
+            #### Store original frequency setting for later ----
+            orig_freq = None
             if isinstance(X, (pd.DataFrame, pd.Series)):
-                original_freq = X.index.freq
-                if isinstance(X.index, pd.PeriodIndex):
-                    X.index = X.index.to_timestamp(freq=original_freq)
+                orig_freq = X.index.freq
 
-                    #### Corner Case Handling ----
-                    # When X.index is of type Q-DEC with only 2 points, frequency
-                    # is not set after conversion (details below). However, this
-                    # works OK if there are more than 2 data points.
-                    # Before Conversion: PeriodIndex(['2018Q2', '2018Q3'], dtype='period[Q-DEC]', freq='Q-DEC')
-                    # After Conversion: DatetimeIndex(['2018-06-30', '2018-09-30'], dtype='datetime64[ns]', freq=None)
-                    # Hence, setting it manually if the frequency is not set
-                    # after conversion.
-                    if X.index.freq is None:
-                        X.index.freq = original_freq
+            #### sktime Prophet only supports DatetimeIndex
+            # Hence coerce the index if it is not DatetimeIndex
+            X = coerce_period_to_datetime_index(X)
 
             y = super().predict(
                 fh=fh, X=X, return_pred_int=return_pred_int, alpha=alpha
             )
 
-            #### Convert back to PeriodIndex for pycaret ----
+            #### sktime Prophet returns back DatetimeIndex
+            #### Convert back to PeriodIndex for pycaret
             try:
                 if isinstance(y, tuple):
                     #### Predictions & Prediction Intervals --------
-                    # y[0] and y[1] have freq=None (from prophet). Hence using original_freq
-                    y[0].index = y[0].index.to_period(freq=original_freq)
-                    y[1].index = y[1].index.to_period(freq=original_freq)
+                    # y[0] and y[1] have freq=None (from prophet).
+                    # Hence passing using original_freq for conversion.
+                    # Note Tuple can not be assigned, hence performing inplace.
+                    coerce_datetime_to_period_index(y[0], freq=orig_freq, inplace=True)
+                    coerce_datetime_to_period_index(y[1], freq=orig_freq, inplace=True)
                 else:
                     #### Predictions only ----
-                    # y has freq=None. Hence using original_freq
-                    y.index = y.index.to_period(freq=original_freq)
-            except Exception:
-                pass
+                    # y has freq=None. Hence passing using original_freq for conversion.
+                    y = coerce_datetime_to_period_index(y, freq=orig_freq)
+            except Exception as exception:
+                warnings.warn(
+                    "Exception occurred in ProphetPeriodPatched predict method "
+                    "during conversion from DatetimeIndex to PeriodIndex: \n"
+                    f"{exception}"
+                )
             return y
 
 
