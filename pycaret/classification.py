@@ -88,6 +88,7 @@ def setup(
     session_id: Optional[int] = None,
     log_experiment: bool = False,
     experiment_name: Optional[str] = None,
+    experiment_custom_tags: Optional[Dict[str, Any]] = None,
     log_plots: Union[bool, list] = False,
     log_profile: bool = False,
     log_data: bool = False,
@@ -516,6 +517,9 @@ def setup(
     experiment_name: str, default = None
         Name of the experiment for logging. Ignored when ``log_experiment`` is not True.
 
+    experiment_custom_tags: dict, default = None
+        Dictionary of tag_name: String -> value: (String, but will be string-ified
+        if not) passed to the mlflow.set_tags to add new custom tags for the experiment.
 
     log_plots: bool or list, default = False
         When set to True, certain plots are logged automatically in the ``MLFlow`` server.
@@ -656,6 +660,7 @@ def setup(
         session_id=session_id,
         log_experiment=log_experiment,
         experiment_name=experiment_name,
+        experiment_custom_tags=experiment_custom_tags,
         log_plots=log_plots,
         log_profile=log_profile,
         log_data=log_data,
@@ -679,6 +684,7 @@ def compare_models(
     errors: str = "ignore",
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
+    experiment_custom_tags: Optional[Dict[str, Any]] = None,
     probability_threshold: Optional[float] = None,
     verbose: bool = True,
     display: Optional[Display] = None,
@@ -764,6 +770,9 @@ def compare_models(
         of rows in the training dataset. When string is passed, it is interpreted
         as the column name in the dataset containing group labels.
 
+    experiment_custom_tags: dict, default = None
+        Dictionary of tag_name: String -> value: (String, but will be string-ified
+        if not) passed to the mlflow.set_tags to add new custom tags for the experiment.
 
     probability_threshold: float, default = None
         Threshold for converting predicted probability to class label.
@@ -820,6 +829,7 @@ def compare_models(
         errors=errors,
         fit_kwargs=fit_kwargs,
         groups=groups,
+        experiment_custom_tags=experiment_custom_tags,
         probability_threshold=probability_threshold,
         verbose=verbose,
         display=display,
@@ -2072,6 +2082,7 @@ def finalize_model(
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
     model_only: bool = True,
+    experiment_custom_tags: Optional[Dict[str, Any]] = None,
 ) -> Any:
 
     """
@@ -2108,6 +2119,10 @@ def finalize_model(
         When set to False, only model object is re-trained and all the
         transformations in Pipeline are ignored.
 
+    experiment_custom_tags: dict, default = None
+        Dictionary of tag_name: String -> value: (String, but will be string-ified if
+        not) passed to the mlflow.set_tags to add new custom tags for the experiment.
+
 
     Returns:
         Trained Model
@@ -2119,6 +2134,7 @@ def finalize_model(
         fit_kwargs=fit_kwargs,
         groups=groups,
         model_only=model_only,
+        experiment_custom_tags=experiment_custom_tags,
     )
 
 
