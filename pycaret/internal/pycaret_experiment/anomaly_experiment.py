@@ -6,16 +6,13 @@ from pycaret.internal.pycaret_experiment.unsupervised_experiment import (
 )
 import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
-from pycaret.internal.logging import get_logger
-from pycaret.internal.distributions import *
 from pycaret.internal.validation import *
 import pycaret.containers.metrics.anomaly
 import pycaret.containers.models.anomaly
 import pycaret.internal.preprocess
 import pycaret.internal.persistence
-import pandas as pd  # type ignore
 import numpy as np  # type: ignore
-from typing import List, Tuple, Any, Union, Optional, Dict
+from typing import List, Tuple
 import warnings
 import plotly.express as px  # type: ignore
 import plotly.graph_objects as go  # type: ignore

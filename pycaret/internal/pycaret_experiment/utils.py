@@ -20,6 +20,5 @@ def get_ml_task(y):
     return ml_usecase
 
 
-def highlight_setup(s):
-    is_max = s is True
-    return ["background-color: lightgreen" if v else "" for v in is_max]
+def highlight_setup(column):
+    return ["background-color: lightgreen" if v else "" for v in column if v is True]

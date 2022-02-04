@@ -1,5 +1,4 @@
 # Author: Mavs (m.524687@gmail.com)
-# Last modified: 06/08/2021
 # License: MIT
 
 
