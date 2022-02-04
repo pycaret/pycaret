@@ -3322,7 +3322,8 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         result = result.astype(float).round(round)
 
         # Prophet with return_pred_int = True returns datetime index.
-        result = coerce_datetime_to_period_index(result)
+        # Not anymore, we changed the container to return back a period index
+        # result = coerce_datetime_to_period_index(result)
 
         #################
         #### Metrics ####
