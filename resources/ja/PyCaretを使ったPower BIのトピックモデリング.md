@@ -5,7 +5,7 @@
 
 ![Power BIのNLPダッシュボード](https://cdn-images-1.medium.com/max/2624/1*SyZczsDz5Pf-4Srfj_p8vQ.png)
 
-前回の投稿](https://towardsdatascience.com/how-to-implement-clustering-in-power-bi-using-pycaret-4b5e34b1405b)では、Power BIにPyCaretと連携してクラスタリング分析を実装する方法を紹介しました。これにより、アナリストやデータサイエンティストは、追加のライセンスコストなしに、レポートやダッシュボードに機械学習のレイヤーを追加することができます。
+[前回の投稿](https://towardsdatascience.com/how-to-implement-clustering-in-power-bi-using-pycaret-4b5e34b1405b)では、Power BIにPyCaretと連携してクラスタリング分析を実装する方法を紹介しました。これにより、アナリストやデータサイエンティストは、追加のライセンスコストなしに、レポートやダッシュボードに機械学習のレイヤーを追加ができます。
 
 今回の記事では、PyCaretを使ってPower BIにトピックモデリングを実装する方法をご紹介します。まだPyCaretを知らない方は、こちらの[お知らせ](https://towardsdatascience.com/announcing-pycaret-an-open-source-low-code-machine-learning-library-in-python-4a1f1aad8d46)を読んで詳細を確認してください。
 
@@ -21,7 +21,7 @@
 
 ## ♪ ♪ Before we start
 
-Pythonを使ったことがある方は、すでにAnaconda Distributionがインストールされていると思います。もしそうでなければ、[ここをクリック](https://www.anaconda.com/distribution/)して、Python 3.7 以上の Anaconda Distribution をダウンロードしてください。
+Pythonを使ったことがある方は、すでにAnaconda Distributionがインストールされていると思います。もしそうでなければ、[ここをクリック](https://www.anaconda.com/distribution/)して、Python 3.7以上のAnaconda Distributionをダウンロードしてください。
 
 ![[https://www.anaconda.com/products/individual](https://www.anaconda.com/products/individual)](https://cdn-images-1.medium.com/max/2612/1*sMceDxpwFVHDtdFi528jEg.png)
 
@@ -33,15 +33,15 @@ Power BIでPyCaretの機械学習機能を使い始める前に、仮想環境�
 
 スタートメニューから**Anaconda Prompt**を開き、以下のコードを実行します。
 
-    conda create --name **powerbi **python=3.7
+    conda create --name **powerbi** python=3.7
 
-conda create --name **powerbi **python=3.7 *"powerbi "はここで決めた環境の名前です。お好きな名前をつけてください。
+"powerbi "はここで決めた環境の名前です。お好きな名前をつけてください。
 
 [✅](https://fsymbols.com/signs/tick/) **Step 2 - PyCaret**のインストール
 
 Anaconda Promptで以下のコードを実行します。
 
-    pip install **pycaret**（ピップインストール
+    pip install **pycaret**
 
 インストールには15～20分程度かかる場合があります。インストールに問題がある場合は、[GitHub](https://www.github.com/pycaret/pycaret)のページにある既知の問題と解決策を参照してください。
 
@@ -49,7 +49,7 @@ Anaconda Promptで以下のコードを実行します。
 
 作成した仮想環境をPower BIと連携させる必要があります。これは、Power BI Desktopのグローバル設定（ファイル→オプション→グローバル→Pythonスクリプト）で行うことができます。Anaconda Environmentはデフォルトでは以下の場所にインストールされます。
 
-C:\Users\***username***\Anaconda3\envs\
+C:\Users\ **username** \Anaconda3\envs\
 
 ![File → Options → Global → Python scripting](https://cdn-images-1.medium.com/max/2000/1*3qTuOM-N6ekhoiQmDpHgXg.png)
 
@@ -59,7 +59,7 @@ NLPタスクを実行するためには、Anaconda Promptで以下のコード�
 
 まず、Anaconda Promptでconda環境を起動します。
 
-    conda activate **powerbi**.
+    conda activate **powerbi**
 
 英語の言語モデルをダウンロードします。
 
@@ -84,7 +84,7 @@ NLPを搭載したソフトウェアは、私たちの日常生活にさまざ�
 
 * **機械翻訳**。Google翻訳。
 
-* **Document Summarization Software: **テキストコンパクタ、Autosummarizer。
+* **Document Summarization Software:** テキストコンパクタ、Autosummarizer。
 
 ![出典 [https://clevertap.com/blog/natural-language-processing](https://clevertap.com/blog/natural-language-processing/)](https://cdn-images-1.medium.com/max/2800/1*IEuGZY5vaWoVnTqQpoZUvQ.jpeg)
 
@@ -98,9 +98,9 @@ NLPを搭載したソフトウェアは、私たちの日常生活にさまざ�
 
 * ドキュメントをトピックに分類することで、大規模なテキストデータを要約する（※考え方はクラスタリングに似ています）。
 
-* **Exploratory Data Analysis **顧客のフィードバックフォーム、amazonのレビュー、アンケート結果などのデータを理解する。
+* **Exploratory Data Analysis**顧客のフィードバックフォーム、amazonのレビュー、アンケート結果などのデータを理解する。
 
-* **Feature Engineering **分類や回帰などの教師付き機械学習実験のための特徴量の作成
+* **Feature Engineering**分類や回帰などの教師付き機械学習実験のための特徴量の作成
 
 トピックモデリングに使用されるアルゴリズムはいくつかあります。一般的なものとしては、LDA（Latent Dirichlet Allocation）、LSA（Latent Semantic Analysis）、NMF（Non-Negative Matrix Factorization）などがあります。各アルゴリズムにはそれぞれ数学的な詳細がありますが、このチュートリアルでは説明しません。このチュートリアルでは、PyCaretのNLPモジュールを使って、Power BIにLDA（Latent Dirichlet Allocation）モデルを実装します。
 
@@ -108,11 +108,11 @@ LDAアルゴリズムの技術的な詳細を知りたい方は、[この論文]
 
 ![出典：[https://springerplus.springeropen.com/articles/10.1186/s40064-016-3252-8](https://springerplus.springeropen.com/articles/10.1186/s40064-016-3252-8)](https://cdn-images-1.medium.com/max/2000/1*DYbV9YMI94QsUeRiiJyrSg.png)
 
-## **トピックモデリングのためのテキスト前処理**)
+## **トピックモデリングのためのテキスト前処理**
 
-トピックモデリングから意味のある結果を得るためには、テキストデータをアルゴリズムに与える前に処理する必要があります。これは、ほとんどすべてのNLPタスクに共通しています。テキストの前処理は、構造化されたデータ(行と列のデータ)を扱うときに機械学習でよく使われる古典的な前処理技術とは異なります。
+トピックモデリングから意味のある結果を得るためには、テキストデータをアルゴリズムに与えるまえに処理する必要があります。これは、ほとんどすべてのNLPタスクに共通しています。テキストの前処理は、構造化されたデータ(行と列のデータ)を扱うときに機械学習でよく使われる古典的な前処理技術とは異なります。
 
-PyCaretは、ストップワードの除去**、トークン化**、レンマタイズ**、バイグラム/トライグラムの抽出など、15種類以上の技術を適用してテキストデータを自動的に前処理します。PyCaretで利用できるテキスト前処理機能の詳細については、[こちら](https://www.pycaret.org/nlp)を参照してください。
+PyCaretは、**ストップワードの除去**、**トークン化**、**レンマタイズ**、バイグラム/トライグラムの抽出など、15種類以上の技術を適用してテキストデータを自動的に前処理します。PyCaretで利用できるテキスト前処理機能の詳細については、[こちら](https://www.pycaret.org/nlp)を参照してください。
 
 ## ビジネス・コンテクストの設定
 
@@ -128,7 +128,7 @@ Kivaは、2005年にサンフランシスコで設立された国際的な非営
 
 ## 👉始めよう
 
-Anaconda 環境のセットアップ、トピックモデリングの理解、そしてこのチュートリアルのビジネスコンテキストを理解したところで、早速始めましょう。
+Anaconda環境のセットアップ、トピックモデリングの理解、そしてこのチュートリアルのビジネスコンテキストを理解したところで、早速始めましょう。
 
 ## 1. データの取得
 
@@ -143,25 +143,25 @@ csvファイルへのリンクです。
 
 Power BIでトピックモデルを学習するには、Power Query EditorでPythonスクリプトを実行する必要があります（Power Query Editor → Transform → Run python script）。以下のコードをPythonスクリプトとして実行します。
 
-    from **pycaret.nlp **import *.
-    データセット = **get_topics**(データセット, text='en')
+from **pycaret.nlp** import *
+データセット = **get_topics**(dataset, text='en')
 
 ![Power Query Editor (Transform → Run python script)](https://cdn-images-1.medium.com/max/2000/1*EwC-QI4m6DORCtdakOAPmQ.png)
 
 PyCaretには、すぐに使える5つのトピックモデルが用意されています。
 
-![](https://cdn-images-1.medium.com/max/2000/1*LszI1w45K6i5pOBJ0ZmndA.png)
+![a](https://cdn-images-1.medium.com/max/2000/1*LszI1w45K6i5pOBJ0ZmndA.png)
 
-デフォルトでは、PyCaretは4つのトピックで**Latent Dirichlet Allocation (LDA) **モデルを学習します。デフォルト値は簡単に変更できます。
+デフォルトでは、PyCaretは4つのトピックで**Latent Dirichlet Allocation (LDA)** モデルを学習します。デフォルト値は簡単に変更できます。
 
-* モデルタイプを変更するには、**get_topics()**の**model ***パラメータを使用します。
+* モデルタイプを変更するには、**get_topics()** の**model**パラメーターを使用します。
 
-* トピックの数を変更するには、**num_topics ***パラメータを使用します。
+* トピックの数を変更するには、**num_topics**パラメーターを使用します。
 
 6つのトピックを持つ**Non-Negative Matrix Factorization**モデルのサンプルコードを参照してください。
 
-    from **pycaret.nlp **import *.
-    dataset = **get_topics**(Dataset, text='en', model='nmf', num_topics=6)
+from **pycaret.nlp** import *
+dataset = **get_topics**(Dataset, text='en', model='nmf', num_topics=6)
 
 **アウトプット:**
 
@@ -189,7 +189,7 @@ PyCaretを使ったJupyter notebookでのトピックモデリングの実装に
 
 トピックモデリングについてもっと知りたいという方は、初心者向けのNLP 101 [Notebook Tutorial](https://www.pycaret.org/nlp101)もご覧ください。
 
-LinkedIn](https://www.linkedin.com/company/pycaret/)をフォローしたり、[Youtube](https://www.youtube.com/channel/UCxA1YTYJ9BEeo50lxyI_B3g)のチャンネルを購読したりして、PyCaretについてもっと学びましょう。
+[LinkedIn](https://www.linkedin.com/company/pycaret/)をフォローしたり、[Youtube](https://www.youtube.com/channel/UCxA1YTYJ9BEeo50lxyI_B3g)のチャンネルを購読したりして、PyCaretについてもっと学びましょう。
 
 ## 重要なリンク
 
