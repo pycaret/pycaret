@@ -1241,6 +1241,13 @@ class ProphetContainer(TimeSeriesContainer):
         if not self.active:
             return
 
+        #### Disable Prophet if Index is not of allowed type (e.g. if it is RangeIndex)
+        allowed_index_types = [pd.PeriodIndex, pd.DatetimeIndex]
+        index_type = globals_dict.get("index_type")
+        self.active = True if index_type in allowed_index_types else False
+        if not self.active:
+            return
+
         self.sp = globals_dict.get("sp_to_use")
 
         self.seasonality_present = globals_dict.get("seasonality_present")

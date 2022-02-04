@@ -19,7 +19,7 @@ def create_models(exp: TimeSeriesExperiment, prophet: bool = True):
     exp.predict_model(model)
     exp.plot_model(model, system=False)
 
-    if prophet and "prophet" in exp.models().index:
+    if "prophet" in exp.models().index:
         model = exp.create_model("prophet")
         exp.predict_model(model)
         exp.plot_model(model, system=False)
@@ -51,7 +51,7 @@ def test_time_series_indices():
     data = get_data("airline")
     data.reset_index(drop=True, inplace=True)
     exp.setup(data=data, fh=12, fold=2, seasonal_period=12, session_id=42)
-    create_models(exp, prophet=False)
+    create_models(exp)
 
     #######################
     #### Multivariate  ####
@@ -71,7 +71,6 @@ def test_time_series_indices():
     create_models(exp)
 
     #### With Datetime Index ----
-    exp = TimeSeriesExperiment()
     data_temp = data.copy()
     data_temp.set_index("date", inplace=True)
     exp = TimeSeriesExperiment()
@@ -79,7 +78,6 @@ def test_time_series_indices():
     create_models(exp)
 
     #### With Period Index ----
-    exp = TimeSeriesExperiment()
     data_temp = data.copy()
     data_temp.set_index("date", inplace=True)
     data_temp.index = data_temp.index.to_period()
@@ -98,5 +96,5 @@ def test_time_series_indices():
         fold=2,
         session_id=42,
     )
-    create_models(exp, prophet=False)
+    create_models(exp)
 

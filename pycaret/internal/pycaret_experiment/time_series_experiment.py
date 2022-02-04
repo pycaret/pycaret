@@ -698,6 +698,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 "sp_to_use",
                 "strictly_positive",
                 "enforce_pi",
+                "index_type",
             }
         )
         self._available_plots = {
@@ -973,8 +974,8 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         self.target_param = target
 
-    @staticmethod
     def _check_and_clean_index(
+        self,
         data: pd.DataFrame,
         index: Optional[str] = None,
         seasonal_period: Optional[Union[int, str]] = None,
@@ -983,7 +984,9 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         Checks if the index is one of the allowed types (pd.PeriodIndex,
         pd.DatetimeIndex). If it is not one of the allowed types, then seasonal
         period must be provided. This check is also performed. Finally, index is
-        coerced into period index which is used in subsequent steps.
+        coerced into period index which is used in subsequent steps and the
+        appropriate class for data index is set so that it can be used to disable
+        certain models which do not support that type of index.
 
         Parameters
         ----------
@@ -1051,6 +1054,10 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         # Ref: https://github.com/alan-turing-institute/sktime/blob/v0.10.0/sktime/forecasting/base/_fh.py#L524
         if isinstance(data.index, pd.DatetimeIndex):
             data.index = data.index.to_period()
+
+        #### Save index type so that we can disable certain models ----
+        # E.g. Prophet when index if of type RangeIndex
+        self.index_type = type(data.index)
 
         return data
 
