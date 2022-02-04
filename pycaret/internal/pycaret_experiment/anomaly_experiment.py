@@ -26,7 +26,7 @@ LOGGER = get_logger()
 
 
 class AnomalyExperiment(_UnsupervisedExperiment):
-    def __init__(self) -> None:
+    def __init__(self):
         super().__init__()
         self._ml_usecase = MLUsecase.ANOMALY
         self.exp_name_log = "anomaly-default-name"
@@ -34,7 +34,6 @@ class AnomalyExperiment(_UnsupervisedExperiment):
             "tsne": "t-SNE (3d) Dimension Plot",
             "umap": "UMAP Dimensionality Plot",
         }
-        return
 
     def _get_models(self, raise_errors: bool = True) -> Tuple[dict, dict]:
         all_models = {

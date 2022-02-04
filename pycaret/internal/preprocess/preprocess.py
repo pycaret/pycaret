@@ -293,10 +293,10 @@ class RemoveOutliers(BaseEstimator):
         self._estimator = None
         self._train_only = True
 
-    def fit(self, X, y):
+    def fit(self, X, y=None):
         return self
 
-    def transform(self, X, y):
+    def transform(self, X, y=None):
         if self.method.lower() == "iforest":
             self._estimator = IsolationForest(
                 n_estimators=100,
@@ -316,7 +316,10 @@ class RemoveOutliers(BaseEstimator):
             )
 
         mask = self._estimator.fit_predict(X) != -1
-        return X[mask], y[mask]
+        if y is None:
+            return X[mask]
+        else:
+            return X[mask], y[mask]
 
 
 class FixImbalancer(BaseEstimator):

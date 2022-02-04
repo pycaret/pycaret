@@ -2,8 +2,8 @@ import pandas as pd
 import numpy as np
 import warnings
 
-from sklearn.base import BaseEstimator, TransformerMixin, ClassifierMixin, clone
-from sklearn.utils.validation import check_is_fitted, check_X_y, check_random_state
+from sklearn.base import BaseEstimator, ClassifierMixin, clone
+from sklearn.utils.validation import check_is_fitted, check_X_y
 from sklearn.utils.validation import _deprecate_positional_args
 from sklearn.utils import _safe_indexing
 from sklearn.exceptions import NotFittedError

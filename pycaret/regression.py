@@ -207,6 +207,9 @@ def setup(
     text_features_method: str, default = "tf-idf"
         Method with which to embed the text features in the dataset. Choose
         between "bow" (Bag of Words - CountVectorizer) or "tf-idf" (TfidfVectorizer).
+        Be aware that the sparse matrix output of the transformer is converted
+        internally to its full array. This can cause memory issues for large
+        text embeddings.
 
 
     max_encoding_ohe: int, default = 5

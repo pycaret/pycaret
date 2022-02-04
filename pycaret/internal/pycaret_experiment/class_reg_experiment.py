@@ -8,6 +8,7 @@ import warnings
 import numpy as np
 import pandas as pd
 from joblib.memory import Memory
+from IPython.display import display
 from typing import Optional, Union, Dict, List, Any
 
 from category_encoders.one_hot import OneHotEncoder
@@ -64,6 +65,7 @@ from pycaret.internal.preprocess import (
     IterativeImputer,
 )
 from pycaret.internal.utils import (
+    to_df,
     get_columns_to_stratify_by,
     df_shrink_dtypes,
     check_features_exist,
@@ -169,6 +171,7 @@ class ClassRegExperiment(_SupervisedExperiment):
         # Set up data ============================================== >>
 
         self.logger.info("Set up data.")
+        data = to_df(data)
 
         # Checking target parameter
         if isinstance(target, str):
@@ -1000,7 +1003,7 @@ class ClassRegExperiment(_SupervisedExperiment):
         self.logger.info(f"Setup display_container: {self.display_container[0]}")
         if self.verbose:
             pd.set_option("display.max_rows", 100)
-            print(self.display_container[0].style.apply(highlight_setup))
+            display(self.display_container[0].style.apply(highlight_setup))
             pd.reset_option("display.max_rows")  # Reset option
 
         # Wrap-up ================================================== >>
