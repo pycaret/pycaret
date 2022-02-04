@@ -19,7 +19,7 @@ def create_models(exp: TimeSeriesExperiment, prophet: bool = True):
     exp.predict_model(model)
     exp.plot_model(model, system=False)
 
-    if prophet:
+    if prophet and "prophet" in exp.models().index:
         model = exp.create_model("prophet")
         exp.predict_model(model)
         exp.plot_model(model, system=False)
