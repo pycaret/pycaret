@@ -36,7 +36,11 @@ def coerce_period_to_datetime_index(
 
         if isinstance(data_.index, pd.PeriodIndex):
             if freq is None:
+                # We can allow it to infer it by default but it can sometimes
+                # infer MonthStart as MonthEnd. Passing the frequency to the
+                # conversion explicitly makes it more robust.
                 freq = data_.index.freq
+
             data_.index = data_.index.to_timestamp(freq=freq)
 
             #### Corner Case Handling ----
@@ -87,8 +91,14 @@ def coerce_datetime_to_period_index(
 
         if isinstance(data_.index, pd.DatetimeIndex):
             if freq is None:
-                freq = data_.index.freq
-            data_.index = data_.index.to_period(freq=freq)
+                # Inferred by default
+                # Do not pass from freq=data_.index.freq. Let it infer by default
+                # since the data_ frequency could be MonthBegin which gives error
+                # if explicitly passed to `to_period`, but works ok if we allow
+                # it to infer automatically.
+                data_.index = data_.index.to_period()
+            else:
+                data_.index = data_.index.to_period(freq=freq)
 
         if not inplace:
             return data_

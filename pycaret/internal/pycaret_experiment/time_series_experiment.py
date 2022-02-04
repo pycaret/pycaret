@@ -1047,6 +1047,8 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             )
 
         #### Convert DateTimeIndex index to PeriodIndex ----
+        # We use PeriodIndex in PyCaret since it seems to be more robust per `sktime``
+        # Ref: https://github.com/alan-turing-institute/sktime/blob/v0.10.0/sktime/forecasting/base/_fh.py#L524
         if isinstance(data.index, pd.DatetimeIndex):
             data.index = data.index.to_period()
 

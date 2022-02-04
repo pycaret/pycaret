@@ -2642,8 +2642,13 @@ try:
             if isinstance(X, (pd.DataFrame, pd.Series)):
                 orig_freq = X.index.freq
 
-            #### sktime Prophet only supports DatetimeIndex
-            # Hence coerce the index if it is not DatetimeIndex
+            # TODO: Disable Prophet when Index is of any type other than DatetimeIndex or PeriodIndex
+            #### In that case, pycaret will always pass PeriodIndex from outside
+            # since Datetime index are converted to PeriodIndex in pycaret
+            # Ref: https://github.com/alan-turing-institute/sktime/blob/v0.10.0/sktime/forecasting/base/_fh.py#L524
+
+            # But sktime Prophet only supports DatetimeIndex
+            # Hence coerce the index internally if it is not DatetimeIndex
             X = coerce_period_to_datetime_index(X)
 
             y = super().predict(
