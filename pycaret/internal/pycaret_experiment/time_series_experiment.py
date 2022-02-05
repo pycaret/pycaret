@@ -33,6 +33,8 @@ from pycaret.internal.distributions import *
 from pycaret.internal.validation import *
 from pycaret.internal.tunable import TunableMixin
 
+from pycaret.utils.datetime import coerce_datetime_to_period_index
+
 import pycaret.containers.metrics.time_series
 import pycaret.containers.models.time_series
 import pycaret.internal.preprocess
@@ -275,6 +277,7 @@ def _fit_and_score(
     lower = pd.Series([])
     upper = pd.Series([])
     if forecaster.is_fitted:
+        # TODO: Add alpha here???
         y_pred, lower, upper = get_predictions_with_intervals(
             forecaster=forecaster, X=X_test
         )
@@ -695,6 +698,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 "sp_to_use",
                 "strictly_positive",
                 "enforce_pi",
+                "index_type",
             }
         )
         self._available_plots = {
@@ -970,8 +974,8 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         self.target_param = target
 
-    @staticmethod
     def _check_and_clean_index(
+        self,
         data: pd.DataFrame,
         index: Optional[str] = None,
         seasonal_period: Optional[Union[int, str]] = None,
@@ -980,7 +984,9 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         Checks if the index is one of the allowed types (pd.PeriodIndex,
         pd.DatetimeIndex). If it is not one of the allowed types, then seasonal
         period must be provided. This check is also performed. Finally, index is
-        coerced into period index which is used in subsequent steps.
+        coerced into period index which is used in subsequent steps and the
+        appropriate class for data index is set so that it can be used to disable
+        certain models which do not support that type of index.
 
         Parameters
         ----------
@@ -1044,8 +1050,14 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             )
 
         #### Convert DateTimeIndex index to PeriodIndex ----
+        # We use PeriodIndex in PyCaret since it seems to be more robust per `sktime``
+        # Ref: https://github.com/alan-turing-institute/sktime/blob/v0.10.0/sktime/forecasting/base/_fh.py#L524
         if isinstance(data.index, pd.DatetimeIndex):
             data.index = data.index.to_period()
+
+        #### Save index type so that we can disable certain models ----
+        # E.g. Prophet when index if of type RangeIndex
+        self.index_type = type(data.index)
 
         return data
 
@@ -3248,8 +3260,20 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         # Loaded in the same environment as experiment
         if hasattr(self, "X_test"):
-            # model has not been finalized & X has not been passed
-            if estimator._y.index[-1] == self.y_train.index[-1] and X is None:
+            # If model has not been finalized & X has not been passed, then
+            # set X = X_test.
+
+            # But note that some models like Prophet train on Datetime Index
+            # But pycaret stores all indices as PeriodIndex, so convert
+            # appropriately before checking for the above condition
+            orig_freq = None
+            if isinstance(estimator._y.index, pd.DatetimeIndex):
+                orig_freq = self.y_train.index.freq
+            last_estimator_index = coerce_datetime_to_period_index(
+                estimator._y, freq=orig_freq
+            ).index[-1]
+
+            if last_estimator_index == self.y_train.index[-1] and X is None:
                 X = self.X_test  # Predict Test Set
         # else: # Loaded in different environment
         # NOTE: If the model was built using exogenous variables, then user
@@ -3304,10 +3328,9 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         # Converting to float since rounding does not support int
         result = result.astype(float).round(round)
 
-        if isinstance(result.index, pd.DatetimeIndex):
-            result.index = (
-                result.index.to_period()
-            )  # Prophet with return_pred_int = True returns datetime index.
+        # Prophet with return_pred_int = True returns datetime index.
+        # Not anymore, we changed the container to return back a period index
+        # result = coerce_datetime_to_period_index(result)
 
         #################
         #### Metrics ####

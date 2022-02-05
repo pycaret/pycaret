@@ -1,7 +1,7 @@
 """Module containing utility functions for time series analysis"""
 
 import warnings
-from typing import Optional, List, Tuple, Any, Dict
+from typing import Optional, List, Tuple, Any, Dict, Union
 
 import pandas as pd
 
@@ -154,3 +154,4 @@ def _get_diff_name_list(
         name_list = [data_name]
 
     return diff_list, name_list
+
