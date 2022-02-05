@@ -714,30 +714,25 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             "forecast": "Out-of-Sample Forecast Plot",
             "insample": "In-Sample Forecast Plot",
             "residuals": "Residuals Plot",
+            "periodogram": "Frequency Components (Periodogram)",
+            "fft": "Frequency Components (FFT)",
         }
 
-        self._available_plots_data_keys = [
+        available_plots_common_keys = [
             "ts",
             "train_test_split",
             "cv",
             "acf",
             "pacf",
+            "diagnostics",
             "decomp_classical",
             "decomp_stl",
-            "diagnostics",
             "diff",
+            "periodogram",
+            "fft",
         ]
-
-        self._available_plots_estimator_keys = [
-            "ts",
-            "train_test_split",
-            "cv",
-            "acf",
-            "pacf",
-            "decomp_classical",
-            "decomp_stl",
-            "diagnostics",
-            "diff",
+        self._available_plots_data_keys = available_plots_common_keys
+        self._available_plots_estimator_keys = available_plots_common_keys + [
             "forecast",
             "insample",
             "residuals",
@@ -2753,7 +2748,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         fig_kwargs: Optional[Dict] = None,
         system: bool = True,
         save: Union[str, bool] = False,
-    ) -> Tuple[str, Any]:
+    ) -> Optional[Tuple[str, Any]]:
 
         """
         This function analyzes the performance of a trained model on holdout set.
@@ -2793,6 +2788,8 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             * 'decomp_stl' - Decomposition STL
             * 'diagnostics' - Diagnostics Plot
             * 'diff' - Difference Plot
+            * 'periodogram' - Frequency Components (Periodogram)
+            * 'fft' - Frequency Components (FFT)
             * 'forecast' - "Out-of-Sample" Forecast Plot
             * 'insample' - "In-Sample" Forecast Plot
             * 'residuals' - Residuals Plot
@@ -2832,7 +2829,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
 
         Returns:
-            None
+            Optional[Tuple[str, Any]]
 
         """
         # checking display_format parameter
@@ -2856,24 +2853,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         if fig_kwargs is None:
             fig_kwargs = {}
-
-        available_plots_common = [
-            "ts",
-            "train_test_split",
-            "cv",
-            "acf",
-            "pacf",
-            "diagnostics",
-            "decomp_classical",
-            "decomp_stl",
-            "diff",
-        ]
-        available_plots_data = available_plots_common
-        available_plots_model = available_plots_common + [
-            "forecast",
-            "insample",
-            "residuals",
-        ]
 
         return_pred_int = False
         return_obj = []
@@ -2918,11 +2897,15 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 "decomp_classical",
                 "decomp_stl",
                 "diff",
+                "periodogram",
+                "fft",
             ]
             if plot in require_full_data:
                 data = self._get_y_data(split="all")
             else:
-                plots_formatted_data = [f"'{plot}'" for plot in available_plots_data]
+                plots_formatted_data = [
+                    f"'{plot}'" for plot in self._available_plots_data_keys
+                ]
                 raise ValueError(
                     f"Plot type '{plot}' is not supported when estimator is not provided. Available plots are: {', '.join(plots_formatted_data)}"
                 )
@@ -2947,6 +2930,8 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 "decomp_classical",
                 "decomp_stl",
                 "diff",
+                "periodogram",
+                "fft",
             ]
             if plot == "forecast":
                 data = self._get_y_data(split="all")
@@ -2983,7 +2968,9 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 resid = self.check_and_clean_resid(resid=resid)
                 data = resid
             else:
-                plots_formatted_model = [f"'{plot}'" for plot in available_plots_model]
+                plots_formatted_model = [
+                    f"'{plot}'" for plot in self._available_plots_estimator_keys
+                ]
                 raise ValueError(
                     f"Plot type '{plot}' is not supported when estimator is provided. Available plots are: {', '.join(plots_formatted_model)}"
                 )
