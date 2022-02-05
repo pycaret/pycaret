@@ -22,9 +22,13 @@ from pycaret.internal.plots.utils.time_series import (
     corr_subplot,
     dist_subplot,
     qq_subplot,
+    frequency_components_subplot,
+    return_frequency_components,
 )
 
 __author__ = ["satya-pattnaik", "ngupta23"]
+
+PlotReturnType = Tuple[Optional[go.Figure], Optional[Dict[str, Any]]]
 
 
 def _plot(
@@ -38,7 +42,7 @@ def _plot(
     return_pred_int: bool = False,
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
-) -> Tuple[Optional[go.Figure], Optional[Dict[str, Any]]]:
+) -> PlotReturnType:
 
     data_kwargs = data_kwargs or {}
     fig_kwargs = fig_kwargs or {}
@@ -130,6 +134,14 @@ def _plot(
             data_kwargs=data_kwargs,
             fig_kwargs=fig_kwargs,
         )
+    elif plot == "periodogram" or plot == "fft":
+        fig, plot_data = plot_frequency_components(
+            data=data,
+            model_name=model_name,
+            plot=plot,
+            data_kwargs=data_kwargs,
+            fig_kwargs=fig_kwargs,
+        )
     else:
         raise ValueError(f"Plot: '{plot}' is not supported.")
 
@@ -141,7 +153,7 @@ def plot_series(
     model_name: Optional[str] = None,
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
-) -> Tuple[Optional[go.Figure], Optional[Dict[str, Any]]]:
+) -> PlotReturnType:
     """Plots the original time series"""
     fig, return_data_dict = None, None
 
@@ -201,7 +213,7 @@ def plot_splits_train_test_split(
     test: pd.Series,
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
-) -> Tuple[Optional[go.Figure], Optional[Dict[str, Any]]]:
+) -> PlotReturnType:
     """Plots the train-test split for the time serirs"""
     fig, return_data_dict = None, None
 
@@ -261,7 +273,7 @@ def plot_cv(
     cv,
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
-) -> Tuple[Optional[go.Figure], Optional[Dict[str, Any]]]:
+) -> PlotReturnType:
     """Plots the cv splits used on the training split"""
     fig, return_data_dict = None, None
 
@@ -362,7 +374,7 @@ def plot_acf(
     model_name: Optional[str] = None,
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
-) -> Tuple[Optional[go.Figure], Optional[Dict[str, Any]]]:
+) -> PlotReturnType:
     """Plots the ACF on the data provided"""
     fig, return_data_dict = None, None
 
@@ -452,7 +464,7 @@ def plot_pacf(
     model_name: Optional[str] = None,
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
-) -> Tuple[Optional[go.Figure], Optional[Dict[str, Any]]]:
+) -> PlotReturnType:
     """Plots the PACF on the data provided"""
     fig, return_data_dict = None, None
 
@@ -545,7 +557,7 @@ def plot_predictions(
     model_name: Optional[str] = None,
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
-) -> Tuple[Optional[go.Figure], Optional[Dict[str, Any]]]:
+) -> PlotReturnType:
     """Plots the original data and the predictions provided"""
     fig, return_data_dict = None, None
 
@@ -618,7 +630,7 @@ def plot_diagnostics(
     model_name: Optional[str] = None,
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
-) -> Tuple[Optional[go.Figure], Optional[Dict[str, Any]]]:
+) -> PlotReturnType:
     """Plots the diagnostic data such as ACF, Histogram, QQ plot on the data provided"""
     fig, return_data_dict = None, None
 
@@ -676,7 +688,7 @@ def plot_predictions_with_confidence(
     model_name: Optional[str] = None,
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
-) -> Tuple[Optional[go.Figure], Optional[Dict[str, Any]]]:
+) -> PlotReturnType:
     """Plots the original data and the predictions provided with confidence"""
     fig, return_data_dict = None, None
 
@@ -783,7 +795,7 @@ def plot_time_series_decomposition(
     plot: str = "decomp_classical",
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
-) -> Tuple[Optional[go.Figure], Optional[Dict[str, Any]]]:
+) -> PlotReturnType:
     fig, return_data_dict = None, None
 
     if not isinstance(data.index, (pd.PeriodIndex, pd.DatetimeIndex)):
@@ -814,11 +826,11 @@ def plot_time_series_decomposition(
 
     sp_to_use = data_kwargs.get("sp_to_use")
     if plot == "decomp_classical":
-            decomp_result = seasonal_decompose(
-                data_, period=sp_to_use, model=classical_decomp_type
-            )
+        decomp_result = seasonal_decompose(
+            data_, period=sp_to_use, model=classical_decomp_type
+        )
     elif plot == "decomp_stl":
-            decomp_result = STL(data_, period=sp_to_use).fit()
+        decomp_result = STL(data_, period=sp_to_use).fit()
 
     fig = make_subplots(
         rows=4,
@@ -910,7 +922,7 @@ def plot_time_series_differences(
     model_name: Optional[str] = None,
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
-) -> Tuple[Optional[go.Figure], Optional[Dict[str, Any]]]:
+) -> PlotReturnType:
     fig, return_data_dict = None, None
 
     data_kwargs = data_kwargs or {}
@@ -921,6 +933,8 @@ def plot_time_series_differences(
 
     plot_acf = data_kwargs.get("acf", False)
     plot_pacf = data_kwargs.get("pacf", False)
+    plot_periodogram = data_kwargs.get("periodogram", False)
+    plot_fft = data_kwargs.get("fft", False)
 
     title_name = "Difference Plot"
     data_name = data.name if model_name is None else f"'{model_name}' Residuals"
@@ -950,6 +964,12 @@ def plot_time_series_differences(
     if plot_pacf:
         cols = cols + 1
         column_titles.append("PACF")
+    if plot_periodogram:
+        cols = cols + 1
+        column_titles.append("Periodogram")
+    if plot_fft:
+        cols = cols + 1
+        column_titles.append("FFT")
 
     fig = make_subplots(
         rows=rows,
@@ -959,8 +979,8 @@ def plot_time_series_differences(
         shared_xaxes=True,
     )
 
-    # Should the following be plotted - Time Series, ACF, PACF
-    plots = [True, plot_acf, plot_pacf]
+    # Should the following be plotted - Time Series, ACF, PACF, Periodogram, FFT
+    plots = [True, plot_acf, plot_pacf, plot_periodogram, plot_fft]
 
     # Which column should the plots be in
     plot_cols = np.cumsum(plots).tolist()
@@ -993,12 +1013,32 @@ def plot_time_series_differences(
                 plot_acf=False,
             )
 
+        if plot_periodogram:
+            fig, periodogram_data = frequency_components_subplot(
+                fig=fig,
+                data=subplot_data,
+                row=i + 1,
+                col=plot_cols[3],
+                name=name_list[i],
+                type="periodogram",
+            )
+
+        if plot_fft:
+            fig, fft_data = frequency_components_subplot(
+                fig=fig,
+                data=subplot_data,
+                row=i + 1,
+                col=plot_cols[4],
+                name=name_list[i],
+                type="fft",
+            )
+
     fig.update_layout(title=title)
     fig.update_layout(showlegend=False)
     fig_template = fig_kwargs.get("fig_template", "ggplot2")
     fig.update_layout(template=fig_template)
 
-    fig_size = fig_kwargs.get("fig_size", [400 * cols, 200 * rows])
+    fig_size = fig_kwargs.get("fig_size", [max(1200, 400 * cols), 300 * rows])
     if fig_size is not None:
         fig.update_layout(
             autosize=False, width=fig_size[0], height=fig_size[1],
@@ -1014,6 +1054,76 @@ def plot_time_series_differences(
         return_data_dict.update({"acf": acf_data})
     if plot_pacf:
         return_data_dict.update({"pacf": pacf_data})
+    if plot_periodogram:
+        return_data_dict.update({"periodogram": periodogram_data})
+    if plot_fft:
+        return_data_dict.update({"fft": fft_data})
+
+    return fig, return_data_dict
+
+
+def plot_frequency_components(
+    data: pd.Series,
+    model_name: Optional[str] = None,
+    plot: str = "periodogram",
+    data_kwargs: Optional[Dict] = None,
+    fig_kwargs: Optional[Dict] = None,
+) -> PlotReturnType:
+    """Plots the frequency components in the data"""
+    fig, return_data_dict = None, None
+
+    data_kwargs = data_kwargs or {}
+    fig_kwargs = fig_kwargs or {}
+
+    if plot == "periodogram":
+        title = "Periodogram"
+    elif plot == "fft":
+        title = "FFT"
+    elif plot == "welch":
+        title = "FFT"
+
+    time_series_name = data.name
+    if model_name is not None:
+        legend = f"Residuals | {model_name}"
+    else:
+        if time_series_name is not None:
+            title = f"{title} | {time_series_name}"
+        legend = f"Time Series"
+
+    x, y = return_frequency_components(data=data, type=plot)
+    time_period = [round(1 / freq, 4) for freq in x]
+    freq_data = pd.DataFrame({"Freq": x, "Amplitude": y, "Time Period": time_period})
+
+    spectral_density = go.Scatter(
+        name=legend,
+        x=freq_data["Freq"],
+        y=freq_data["Amplitude"],
+        customdata=freq_data.to_numpy(),
+        hovertemplate="Freq:%{customdata[0]:.4f} <br>Ampl:%{customdata[1]:.4f}<br>Time Period: %{customdata[2]:.4f]}",
+        mode="lines+markers",
+        line=dict(color="#1f77b4", width=2),
+        marker=dict(size=5,),
+        showlegend=True,
+    )
+    plot_data = [spectral_density]
+
+    layout = go.Layout(
+        yaxis=dict(title="dB"), xaxis=dict(title="Frequency"), title=title,
+    )
+
+    fig = go.Figure(data=plot_data, layout=layout)
+
+    fig_template = fig_kwargs.get("fig_template", "ggplot2")
+    fig.update_layout(template=fig_template)
+    fig.update_layout(showlegend=True)
+
+    fig_size = fig_kwargs.get("fig_size", None)
+    if fig_size is not None:
+        fig.update_layout(
+            autosize=False, width=fig_size[0], height=fig_size[1],
+        )
+
+    return_data_dict = {"freq_data": freq_data}
 
     return fig, return_data_dict
 

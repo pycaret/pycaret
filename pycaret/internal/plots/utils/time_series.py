@@ -7,6 +7,9 @@ import matplotlib
 import matplotlib.pyplot as plt
 
 
+from scipy.signal import periodogram
+from scipy.fft import fft, fftfreq
+
 import plotly.express as px
 import plotly.graph_objects as go
 
@@ -244,3 +247,136 @@ def dist_subplot(fig: go.Figure, data: pd.Series, row: int, col: int,) -> go.Fig
     fig.update_yaxes(title_text="PDF", row=row, col=col)
     return fig
 
+
+def return_frequency_components(
+    data: pd.Series, type: str = "periodogram"
+) -> Tuple[np.ndarray, np.ndarray]:
+    """Return the Spectral Density using the specified method.
+    NOTE: Frequency = 0 is discarded
+
+    Parameters
+    ----------
+    data : pd.Series
+        Data for which the frequency components must be obtained
+    type : str, optional
+        Type of method to use to get the frequency components, by default "periodogram"
+        Allowed methods are: "periodogram", "fft"
+
+    Returns
+    -------
+    Tuple[np.ndarray, np.ndarray]
+        Frequency, Amplitude
+    """
+
+    if type == "periodogram":
+        freq, ampl = _return_periodogram(data=data)
+    elif type == "fft":
+        freq, ampl = _return_fft(data=data)
+    else:
+        raise ValueError(
+            f"Getting frequency component using type: {type} is not supported."
+        )
+
+    x = freq[1:]
+    y = ampl[1:]
+
+    return x, y
+
+
+def _return_periodogram(data: pd.Series) -> Tuple[np.ndarray, np.ndarray]:
+    """Returns the Periodgram data corresponding to the `data`
+
+    Parameters
+    ----------
+    data : pd.Series
+        Data for which the periodgram data must be obtained
+
+    Returns
+    -------
+    Tuple[np.ndarray, np.ndarray]
+        Frequency, Amplitude
+    """
+    freq, Pxx = periodogram(
+        data.values, return_onesided=True, scaling="density", window="parzen"
+    )
+    ampl = 10 * np.log10(Pxx)
+    return freq, ampl
+
+
+def _return_fft(data: pd.Series) -> Tuple[np.ndarray, np.ndarray]:
+    """Returns the FFT data corresponding to the `data`
+
+    Parameters
+    ----------
+    data : pd.Series
+        Data for which the FFT data must be obtained
+
+    Returns
+    -------
+    Tuple[np.ndarray, np.ndarray]
+        Frequency, Amplitude
+    """
+    sample_spacing = 1
+    fft_values = fft(data.values)
+    psd_values = np.abs(fft_values) ** 2
+    fft_frequencies = fftfreq(len(psd_values), 1.0 / sample_spacing)
+    pos_freq_ix = fft_frequencies > 0
+    freq = fft_frequencies[pos_freq_ix]
+    ampl = 10 * np.log10(psd_values[pos_freq_ix])
+    return freq, ampl
+
+
+def frequency_components_subplot(
+    fig: go.Figure,
+    data: pd.Series,
+    row: int,
+    col: int,
+    type: str = "periodogram",
+    name: Optional[str] = None,
+) -> go.Figure:
+    """Function to add a time series to a Plotly subplot
+
+    Parameters
+    ----------
+    fig : go.Figure
+        Plotly figure to which the time series needs to be added
+    freq : pd.Series
+        Time Series whose frequency components have to be plotted
+    row : int
+        Row of the figure where the plot needs to be inserted. Starts from 1.
+    col : int
+        Column of the figure where the plot needs to be inserted. Starts from 1.
+    type : str, optional
+        Type of method to use to get the frequency components, by default "periodogram"
+        Allowed methods are: "periodogram", "fft"
+    name : Optional[str], optional
+        Name to show when hovering over plot, by default None
+
+    Returns
+    -------
+    go.Figure
+        Returns back the plotly figure with time series inserted
+    """
+    x, y = return_frequency_components(data=data, type=type)
+    time_period = [round(1 / freq, 4) for freq in x]
+    freq_data = pd.DataFrame({"Freq": x, "Amplitude": y, "Time Period": time_period})
+
+    fig.add_trace(
+        go.Scatter(
+            name=name,
+            x=freq_data["Freq"],
+            y=freq_data["Amplitude"],
+            customdata=freq_data.to_numpy(),
+            hovertemplate="Freq:%{customdata[0]:.4f} <br>Ampl:%{customdata[1]:.4f}<br>Time Period: %{customdata[2]:.4f]}",
+            mode="lines+markers",
+            line=dict(color="#1f77b4", width=2),
+            marker=dict(size=5,),
+            showlegend=True,
+        ),
+        row=row,
+        col=col,
+    )
+    # X-axis is getting messed up when acf or pacf is being plotted along with this
+    # Hence setting explicitly per https://plotly.com/python/subplots/
+    fig.update_xaxes(range=[0, 0.5], row=row, col=col)
+    return fig, freq_data

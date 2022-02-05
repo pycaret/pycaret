@@ -914,7 +914,7 @@ def plot_model(
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
     save: Union[str, bool] = False,
-) -> Tuple[str, Any]:
+) -> Optional[Tuple[str, Any]]:
 
     """
     This function analyzes the performance of a trained model on holdout set.
@@ -954,6 +954,8 @@ def plot_model(
         * 'decomp_stl' - Decomposition STL
         * 'diagnostics' - Diagnostics Plot
         * 'diff' - Difference Plot
+        * 'periodogram' - Frequency Components (Periodogram)
+        * 'fft' - Frequency Components (FFT)
         * 'forecast' - "Out-of-Sample" Forecast Plot
         * 'insample' - "In-Sample" Forecast Plot
         * 'residuals' - Residuals Plot
@@ -993,7 +995,7 @@ def plot_model(
 
 
     Returns:
-        None
+        Optional[Tuple[str, Any]]
 
     """
 
