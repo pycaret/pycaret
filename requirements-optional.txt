@@ -13,7 +13,7 @@ LunarCalendar>=0.0.9
 convertdate>=2.1.2
 holidays>=0.10.2
 pystan~=2.19.1.1
-fbprophet>=0.7.1
+prophet>=1.0
 
 # for cloud deployment
 boto3
