@@ -13,8 +13,10 @@ from IPython.utils import io
 from pandas.io.formats.style import Styler
 from sklearn.base import clone  # type: ignore
 from sktime.forecasting.base import ForecastingHorizon
-from sktime.forecasting.model_selection import SlidingWindowSplitter  # type: ignore
-from sktime.forecasting.model_selection import ExpandingWindowSplitter
+from sktime.forecasting.model_selection import (  # type: ignore
+    ExpandingWindowSplitter,
+    SlidingWindowSplitter,
+)
 
 import pycaret.containers.metrics.time_series
 import pycaret.containers.models.time_series
@@ -22,7 +24,7 @@ import pycaret.internal.patches.sklearn
 import pycaret.internal.persistence
 import pycaret.internal.preprocess
 from pycaret.internal.Display import Display
-from pycaret.internal.distributions import *
+from pycaret.internal.distributions import get_base_distributions
 from pycaret.internal.logging import get_logger
 from pycaret.internal.pipeline import get_pipeline_fit_kwargs
 from pycaret.internal.plots.time_series import _plot
@@ -32,7 +34,8 @@ from pycaret.internal.pycaret_experiment.supervised_experiment import (
 from pycaret.internal.pycaret_experiment.utils import MLUsecase, highlight_setup
 from pycaret.internal.tests.time_series import run_test
 from pycaret.internal.tunable import TunableMixin
-from pycaret.internal.utils import color_df, deep_clone  # get_function_params,
+from pycaret.internal.utils import color_df, deep_clone
+from pycaret.internal.validation import is_sklearn_cv_generator
 from pycaret.utils import _coerce_empty_dataframe_to_none
 from pycaret.utils.datetime import coerce_datetime_to_period_index
 from pycaret.utils.time_series import TSModelTypes, get_sp_from_str
