@@ -4,19 +4,17 @@
 # Release: PyCaret 2.2.0
 # Last modified : 25/10/2020
 
+import logging
 import os
 import time
-import logging
+import warnings
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np  # type: ignore
 import pandas as pd  # type: ignore
 
 from pycaret.internal.pycaret_experiment import TimeSeriesExperiment
 from pycaret.internal.utils import check_if_global_is_not_none
-
-from typing import List, Tuple, Any, Union, Optional, Dict
-import warnings
-import time
 
 warnings.filterwarnings("ignore")
 
