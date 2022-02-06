@@ -1,20 +1,20 @@
+import functools
 import inspect
 import os
 from copy import deepcopy
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Union
 
+import ipywidgets as ipw
 import numpy as np
-
 import pandas as pd
 import pandas.io.formats.style
-import ipywidgets as ipw
-from IPython.display import display, HTML, clear_output, update_display
+from IPython.display import HTML, clear_output, display, update_display
+from sklearn import clone
+from sklearn.model_selection import BaseCrossValidator, KFold, StratifiedKFold
+from sklearn.model_selection._split import _BaseKFold
+
 from pycaret.internal.logging import get_logger
 from pycaret.internal.validation import *
-from typing import Any, Callable, List, Optional, Dict, Set, Tuple, Union
-from sklearn import clone
-from sklearn.model_selection import KFold, StratifiedKFold, BaseCrossValidator
-from sklearn.model_selection._split import _BaseKFold
-import functools
 
 
 def id_or_display_name(metric, input_ml_usecase, target_ml_usecase):
@@ -695,8 +695,8 @@ def can_early_stop(
 
     logger = get_logger()
 
-    from sklearn.tree import BaseDecisionTree
     from sklearn.ensemble import BaseEnsemble
+    from sklearn.tree import BaseDecisionTree
 
     try:
         base_estimator = estimator.steps[-1][1]

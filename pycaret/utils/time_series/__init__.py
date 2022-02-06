@@ -1,13 +1,11 @@
 """Module containing utility functions for time series analysis"""
 
+import re
 import warnings
-from typing import Optional, List, Tuple, Any, Dict, Union
+from enum import Enum, IntEnum
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import pandas as pd
-
-from enum import IntEnum, Enum
-import re
-
 from sktime.transformations.series.difference import Differencer
 
 

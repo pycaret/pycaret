@@ -1,78 +1,58 @@
+import datetime
+import gc
+import logging
 import os
+import time
+import traceback
+import warnings
+from typing import Any, Dict, Generator, List, Optional, Tuple, Union
 
-from sktime.forecasting.model_selection import (
-    ExpandingWindowSplitter,
-    SlidingWindowSplitter,
-)
-
-from pycaret.utils import _coerce_empty_dataframe_to_none
-from pycaret.utils.time_series import get_sp_from_str
-from pycaret.utils.time_series.forecasting import get_predictions_with_intervals
-
-from pycaret.utils.time_series.forecasting.model_selection import (
-    cross_validate,
-    ForecastingRandomizedSearchCV,
-    ForecastingGridSearchCV,
-)
-
-from pycaret.internal.pycaret_experiment.utils import highlight_setup, MLUsecase
-from pycaret.internal.pycaret_experiment.supervised_experiment import (
-    _SupervisedExperiment,
-)
-from pycaret.internal.pipeline import (
-    estimator_pipeline,
-    get_pipeline_fit_kwargs,
-)
-
-from pycaret.utils.time_series import SeasonalPeriod, TSModelTypes
-
-from pycaret.internal.utils import (
-    color_df,
-    # get_function_params,
-    deep_clone,
-)
-import pycaret.internal.patches.sklearn
-
-from pycaret.internal.logging import get_logger
-from pycaret.internal.Display import Display
-
-from pycaret.internal.distributions import *
-
-from pycaret.internal.tunable import TunableMixin
-
-from pycaret.utils.datetime import coerce_datetime_to_period_index
-
-from pycaret.utils.time_series.forecasting import update_additional_scorer_kwargs
+import numpy as np  # type: ignore
+import pandas as pd  # type: ignore
+from IPython.utils import io
+from pandas.io.formats.style import Styler
+from sklearn.base import clone  # type: ignore
+from sktime.forecasting.base import ForecastingHorizon
+from sktime.forecasting.model_selection import SlidingWindowSplitter  # type: ignore
+from sktime.forecasting.model_selection import ExpandingWindowSplitter
 
 import pycaret.containers.metrics.time_series
 import pycaret.containers.models.time_series
-import pycaret.internal.preprocess
+import pycaret.internal.patches.sklearn
 import pycaret.internal.persistence
-import pandas as pd  # type: ignore
-from pandas.io.formats.style import Styler
-import numpy as np  # type: ignore
-import datetime
-import time
-import gc
-from sklearn.base import clone  # type: ignore
-from typing import List, Tuple, Any, Union, Optional, Dict, Generator
-import warnings
-from IPython.utils import io
-import traceback
-
-import logging
+import pycaret.internal.preprocess
+from pycaret.internal.Display import Display
+from pycaret.internal.distributions import *
+from pycaret.internal.logging import get_logger
+from pycaret.internal.pipeline import estimator_pipeline, get_pipeline_fit_kwargs
+from pycaret.internal.plots.time_series import _plot
+from pycaret.internal.pycaret_experiment.supervised_experiment import (
+    _SupervisedExperiment,
+)
+from pycaret.internal.pycaret_experiment.utils import MLUsecase, highlight_setup
+from pycaret.internal.tests.time_series import run_test
+from pycaret.internal.tunable import TunableMixin
+from pycaret.internal.utils import color_df, deep_clone  # get_function_params,
+from pycaret.utils import _coerce_empty_dataframe_to_none
+from pycaret.utils.datetime import coerce_datetime_to_period_index
+from pycaret.utils.time_series import SeasonalPeriod, TSModelTypes, get_sp_from_str
+from pycaret.utils.time_series.forecasting import (
+    get_predictions_with_intervals,
+    update_additional_scorer_kwargs,
+)
+from pycaret.utils.time_series.forecasting.model_selection import (
+    ForecastingGridSearchCV,
+    ForecastingRandomizedSearchCV,
+    cross_validate,
+)
 
 # from sklearn.base import clone  # type: ignore
 
 # from sklearn.model_selection._search import _check_param_grid  # type: ignore
 
 
-from sktime.forecasting.base import ForecastingHorizon
 
-from sktime.forecasting.model_selection import SlidingWindowSplitter  # type: ignore
 
-from pycaret.internal.tests.time_series import run_test
-from pycaret.internal.plots.time_series import _plot
 
 
 warnings.filterwarnings("ignore")

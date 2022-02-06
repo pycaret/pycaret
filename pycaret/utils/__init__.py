@@ -1,10 +1,9 @@
-import pandas as pd
-import numpy as np
-from typing import Optional, Dict, Union
 import functools
+from typing import Dict, Optional, Union
 
-
-from sklearn.metrics._scorer import get_scorer, _PredictScorer  # type: ignore
+import numpy as np
+import pandas as pd
+from sklearn.metrics._scorer import _PredictScorer, get_scorer  # type: ignore
 
 version_ = "3.0.0"
 nightly_version_ = "3.0.0"
@@ -125,7 +124,7 @@ def _get_metrics_dict(
 
 
 def enable_colab():
-    from IPython.display import display, HTML, clear_output, update_display
+    from IPython.display import HTML, clear_output, display, update_display
 
     """
     Function to render plotly visuals in colab.
