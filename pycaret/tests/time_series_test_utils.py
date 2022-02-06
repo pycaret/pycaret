@@ -4,11 +4,11 @@ import random
 
 import numpy as np  # type: ignore
 import pandas as pd
-from pandas.core.indexes import period  # type: ignore
 
 from pycaret.internal.pycaret_experiment import TimeSeriesExperiment
 from pycaret.datasets import get_data
 from pycaret.containers.models.time_series import get_all_model_containers
+from pycaret.utils.time_series import SeasonalPeriod
 
 _BLEND_TEST_MODELS = [
     "naive",
@@ -78,15 +78,11 @@ _ALL_METRICS = _get_all_metrics()
 
 
 def _get_seasonal_values():
-    from pycaret.internal.utils import SeasonalPeriod
-
     return [(k, v.value) for k, v in SeasonalPeriod.__members__.items()]
 
 
 def _get_seasonal_values_alphanumeric():
     """ Check if frequency is alphanumeric and process it as needed """
-    from pycaret.internal.utils import SeasonalPeriod
-
     choice_list = ["10", "20", "30", "40", "50", "60"]
     return [
         (random.choice(choice_list), k, v.value)

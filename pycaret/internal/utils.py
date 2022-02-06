@@ -1,15 +1,11 @@
 import functools
 import inspect
-import os
 from copy import deepcopy
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Union
 
-import ipywidgets as ipw
 import numpy as np
 import pandas as pd
 import pandas.io.formats.style
-from IPython.display import HTML, clear_output, display, update_display
-from sklearn import clone
 from sklearn.model_selection import BaseCrossValidator, KFold, StratifiedKFold
 from sklearn.model_selection._split import _BaseKFold
 
@@ -430,7 +426,7 @@ def normalize_custom_transformers(
     else:
         _check_custom_transformer(transformers)
         if not isinstance(transformers, tuple):
-            transformers = (f"custom_step", transformers)
+            transformers = ("custom_step", transformers)
         if is_sklearn_pipeline(transformers[0]):
             return transformers.steps
         transformers = [transformers]

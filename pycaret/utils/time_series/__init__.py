@@ -1,9 +1,10 @@
 """Module containing utility functions for time series analysis"""
 
+import math
 import re
 import warnings
 from enum import Enum, IntEnum
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple
 
 import pandas as pd
 from sktime.transformations.series.difference import Differencer
@@ -178,7 +179,8 @@ def get_sp_from_str(str_freq: str) -> int:
     Raises
     ------
     ValueError
-        if the frequency suffix does not correspond to any of the values in the class SeasonalPeriod then the error is thrown.
+        If the frequency suffix does not correspond to any of the values in the
+        class SeasonalPeriod then the error is thrown.
     """
     str_freq = str_freq.split("-")[0] or str_freq
     # Checking whether the index_freq contains both digit and alphabet
@@ -194,7 +196,8 @@ def get_sp_from_str(str_freq: str) -> int:
             return seasonal_period
         else:
             raise ValueError(
-                f"Unsupported Period frequency: {str_freq}, valid Period frequency suffixes are: {', '.join(SeasonalPeriod.__members__.keys())}"
+                f"Unsupported Period frequency: {str_freq}, valid Period frequency "
+                f"suffixes are: {', '.join(SeasonalPeriod.__members__.keys())}"
             )
     else:
 
@@ -203,7 +206,8 @@ def get_sp_from_str(str_freq: str) -> int:
             return seasonal_period
         else:
             raise ValueError(
-                f"Unsupported Period frequency: {str_freq}, valid Period frequency suffixes are: {', '.join(SeasonalPeriod.__members__.keys())}"
+                f"Unsupported Period frequency: {str_freq}, valid Period frequency "
+                f"suffixes are: {', '.join(SeasonalPeriod.__members__.keys())}"
             )
 
 
