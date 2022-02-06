@@ -38,7 +38,9 @@ from pycaret.internal.distributions import (
     IntUniformDistribution,
     CategoricalDistribution,
 )
-from pycaret.internal.utils import TSModelTypes
+
+from pycaret.utils.time_series import TSModelTypes
+
 import pycaret.containers.base_container
 
 from pycaret.utils.datetime import (
