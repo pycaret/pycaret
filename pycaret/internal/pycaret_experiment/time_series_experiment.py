@@ -1907,7 +1907,11 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         else:
             # Set fh explicitly since we are not fitting explicitly
             # This is needed so that the model can be used later to predict, etc.
-            model._set_fh(fit_kwargs.get("fh"))
+
+            # Update: Do we really use a unfitted modelf for prediction later?
+            # Also as per sktime developers, it is not advisable to use private
+            # functions from sktime. Disabling for now.
+            # model._set_fh(fit_kwargs.get("fh"))
 
             # model_fit_time /= _get_cv_n_folds(data_y, cv)
             model_fit_time /= cv.get_n_splits(data_y)
