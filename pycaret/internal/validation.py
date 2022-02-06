@@ -1,10 +1,7 @@
 from copy import deepcopy
-from typing import Any, Optional, Union
 
 import pandas as pd
 from pycaret.internal.logging import get_logger
-from pycaret.internal.Display import Display
-from sklearn.base import clone
 from sklearn.utils.validation import check_is_fitted
 from sklearn.pipeline import Pipeline
 
