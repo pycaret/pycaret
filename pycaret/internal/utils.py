@@ -1,47 +1,22 @@
+import functools
 import inspect
-import os
 from copy import deepcopy
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Union
 
 import numpy as np
-
 import pandas as pd
 import pandas.io.formats.style
-import ipywidgets as ipw
-from IPython.display import display, HTML, clear_output, update_display
+from sklearn.model_selection import BaseCrossValidator, KFold, StratifiedKFold
+from sklearn.model_selection._split import _BaseKFold
+
 from pycaret.internal.logging import get_logger
 from pycaret.internal.validation import *
-from typing import Any, Callable, List, Optional, Dict, Set, Tuple, Union
-from sklearn import clone
-from sklearn.model_selection import KFold, StratifiedKFold, BaseCrossValidator
-from sklearn.model_selection._split import _BaseKFold
-from enum import IntEnum, Enum
-import functools
-
-
-class SeasonalPeriod(IntEnum):
-    S = 60  # second
-    T = 60  # minute
-    H = 24  # hour
-    D = 7  # day
-    W = 52  # week
-    M = 12  # month
-    Q = 4  # quarter
-    A = 1  # year
-    Y = 1  # year
-
-
-class TSModelTypes(Enum):
-    BASELINE = "baseline"
-    CLASSICAL = "classical"
-    LINEAR = "linear"
-    NEIGHBORS = "neighbors"
-    TREE = "tree"
 
 
 def id_or_display_name(metric, input_ml_usecase, target_ml_usecase):
     """
     Get id or display_name attribute from metric. In time series experiment
-    the pull() method retrieves the metrics idto name the columns of the results
+    the pull() method retrieves the metrics id to name the columns of the results
     """
 
     if input_ml_usecase == target_ml_usecase:
@@ -137,14 +112,14 @@ def set_config(variable: str, value, globals_d: dict):
 
 def save_config(file_name: str, globals_d: dict):
     """
-    This function is used to save all enviroment variables to file,
+    This function is used to save all environment variables to file,
     allowing to later resume modeling without rerunning setup().
 
     Example
     -------
     >>> save_config('myvars.pkl')
 
-    This will save all enviroment variables to 'myvars.pkl'.
+    This will save all environment variables to 'myvars.pkl'.
 
     """
 
@@ -226,7 +201,7 @@ def color_df(
     df: pd.DataFrame, color: str, names: list, axis: int = 1
 ) -> pandas.io.formats.style.Styler:
     return df.style.apply(
-        lambda x: [f"background: {color}" if (x.name in names) else "" for i in x],
+        lambda x: [f"background: {color}" if (x.name in names) else "" for _ in x],
         axis=axis,
     )
 
@@ -327,8 +302,8 @@ def np_list_arange(
         start = float(start)
         step = float(step)
     stop = stop + (step if inclusive else 0)
-    range = list(np.arange(start, stop, step))
-    range = [
+    range_ = list(np.arange(start, stop, step))
+    range_ = [
         start
         if x < start
         else stop
@@ -336,11 +311,11 @@ def np_list_arange(
         else float(round(x, 15))
         if isinstance(x, float)
         else x
-        for x in range
+        for x in range_
     ]
-    range[0] = start
-    range[-1] = stop - step
-    return range
+    range_[0] = start
+    range_[-1] = stop - step
+    return range_
 
 
 def calculate_unsupervised_metrics(
@@ -451,7 +426,7 @@ def normalize_custom_transformers(
     else:
         _check_custom_transformer(transformers)
         if not isinstance(transformers, tuple):
-            transformers = (f"custom_step", transformers)
+            transformers = ("custom_step", transformers)
         if is_sklearn_pipeline(transformers[0]):
             return transformers.steps
         transformers = [transformers]
@@ -662,7 +637,7 @@ def get_groups(
     else:
         if groups.shape[0] != X_train.shape[0]:
             raise ValueError(
-                f"groups has lenght {groups.shape[0]} which doesn't match X_train length of {len(X_train)}."
+                f"groups has length {groups.shape[0]} which doesn't match X_train length of {len(X_train)}."
             )
     return groups
 
@@ -716,8 +691,8 @@ def can_early_stop(
 
     logger = get_logger()
 
-    from sklearn.tree import BaseDecisionTree
     from sklearn.ensemble import BaseEnsemble
+    from sklearn.tree import BaseDecisionTree
 
     try:
         base_estimator = estimator.steps[-1][1]
