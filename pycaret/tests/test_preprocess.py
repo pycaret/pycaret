@@ -252,14 +252,14 @@ def test_keep_features():
     assert "Id" in X
 
 
-@pytest.mark.parametrize("feature_selection_method", ["classic", "sequential"])
-def test_feature_selection(feature_selection_method):
+@pytest.mark.parametrize("fs_method", ["univariate", "classic", "sequential"])
+def test_feature_selection(fs_method):
     """Assert that feature selection can be applied."""
     data = pycaret.datasets.get_data("juice")
     pc = pycaret.classification.setup(
         data=data,
         feature_selection=True,
-        feature_selection_method=feature_selection_method,
+        feature_selection_method=fs_method,
         feature_selection_estimator="rf",
         n_features_to_select=12,
     )

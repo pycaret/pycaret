@@ -6,10 +6,8 @@ from pycaret.internal.meta_estimators import (
     get_estimator_from_meta_estimator,
 )
 from pycaret.internal.pipeline import (
-    add_estimator_to_pipeline,
     get_pipeline_estimator_label,
     estimator_pipeline,
-    merge_pipelines,
     get_pipeline_fit_kwargs,
 )
 from pycaret.internal.utils import (
@@ -19,7 +17,7 @@ from pycaret.internal.utils import (
     true_warm_start,
     can_early_stop,
 )
-from pycaret.internal.utils import id_or_display_name
+from pycaret.internal.utils import id_or_display_name, to_df
 import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
 from pycaret.internal.distributions import *
@@ -37,7 +35,7 @@ from collections import Iterable
 from copy import deepcopy
 from sklearn.base import clone  # type: ignore
 from sklearn.compose import TransformedTargetRegressor  # type: ignore
-from typing import List, Tuple, Any, Union, Optional, Dict
+from typing import List, Any, Union, Optional, Dict
 import warnings
 from IPython.utils import io
 import traceback
@@ -2687,7 +2685,7 @@ class _SupervisedExperiment(_TabularExperiment):
                     **boosting_model_definition.args,
                 )
                 with io.capture_output():
-                    check_model.fit(self.X_train.values, self.y_train.values)
+                    check_model.fit(self.X_train_transformed, self.y_train_transformed)
             except:
                 raise TypeError(
                     "Estimator not supported for the Boosting method. Change the estimator or method to 'Bagging'."
@@ -4588,15 +4586,18 @@ class _SupervisedExperiment(_TabularExperiment):
         with version >= 2.1. You can either retrain your models with a newer version or downgrade
         the version for inference.
 
-
         """
 
-        # function to replace encoded labels with their original values
-        # will not run if categorical_labels is false
-        def replace_lables_in_column(label_column):
-            if dtypes and hasattr(dtypes, "replacement"):
-                replacement_mapper = {int(v): k for k, v in dtypes.replacement.items()}
-                label_column.replace(replacement_mapper, inplace=True)
+        def replace_labels_in_column(labels):
+            # Check if there is a LabelEncoder in the pipeline
+            try:
+                encoder = next(
+                    step[1] for step in self.pipeline.steps if step[0] == "label_encoding"
+                )
+                # encoder is a TransformerWrapper class
+                return encoder.transformer.inverse_transform(label["Label"])
+            except StopIteration:
+                return labels
 
         function_params_str = ", ".join(
             [f"{k}={v}" for k, v in locals().items() if k != "data"]
@@ -4637,9 +4638,6 @@ class _SupervisedExperiment(_TabularExperiment):
 
         self.logger.info("Preloading libraries")
 
-        # general dependencies
-        from sklearn import metrics
-
         try:
             np.random.seed(self.seed)
             if not display:
@@ -4647,12 +4645,10 @@ class _SupervisedExperiment(_TabularExperiment):
         except:
             display = Display(verbose=False, html_param=False,)
 
-        dtypes = None
-
-        # dataset
         if data is None:
             X_test_, y_test_ = self.X_test_transformed, self.y_test_transformed
         else:
+            data = to_df(data[self.X.columns])  # Ignore all column but the originals
             X_test_ = self.pipeline.transform(data)
 
         # prediction starts here
@@ -4694,10 +4690,7 @@ class _SupervisedExperiment(_TabularExperiment):
             df_score = df_score.round(round)
             display.display(df_score.style.set_precision(round), clear=False)
 
-        label = pd.DataFrame(pred)
-        label.columns = ["Label"]
-        if encoded_labels:
-            label["Label"] = replace_lables_in_column(label["Label"])
+        label = pd.DataFrame(pred, columns=["Label"])
         if ml_usecase == MLUsecase.CLASSIFICATION:
             try:
                 label["Label"] = label["Label"].astype(int)
@@ -4705,12 +4698,17 @@ class _SupervisedExperiment(_TabularExperiment):
                 pass
 
         if data is None:
+            label.index = self.test.index  # Adjust index to join successfully
             if encoded_labels:
-                replace_lables_in_column(y_test_)  # type: ignore
-            X_test_ = pd.concat([X_test_, y_test_, label], axis=1)  # type: ignore
+                label["Label"] = replace_labels_in_column(label["Label"])
+                X_test_ = pd.concat([self.test, label], axis=1)
+            else:
+                X_test_ = pd.concat([self.X_test, y_test_, label], axis=1)
         else:
-            X_test_ = data.copy()
-            X_test_["Label"] = label["Label"].values
+            label.index = data.index
+            if encoded_labels:
+                label["Label"] = replace_labels_in_column(label["Label"])
+            X_test_ = pd.concat([data, label], axis=1)
 
         if score is not None:
             pred = pred.astype(int)
@@ -4721,7 +4719,7 @@ class _SupervisedExperiment(_TabularExperiment):
                 if raw_score:
                     score_columns = pd.Series(range(score.shape[1]))
                     if encoded_labels:
-                        replace_lables_in_column(score_columns)
+                        score_columns = replace_labels_in_column(score_columns)
                     score.columns = [f"Score_{label}" for label in score_columns]
                 else:
                     score.columns = ["Score"]
@@ -4809,7 +4807,7 @@ class _SupervisedExperiment(_TabularExperiment):
                         add_to_model_list=False,
                     )
                 if not model_only:
-                    pipeline = deepcopy(self.prep_pipe)
+                    pipeline = deepcopy(self.pipeline)
                     pipeline.steps.append(["trained_model", model])
                     model = pipeline
             display.move_progress()

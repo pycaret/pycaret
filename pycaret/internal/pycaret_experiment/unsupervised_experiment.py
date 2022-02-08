@@ -24,7 +24,7 @@ from pycaret.internal.pipeline import (
     estimator_pipeline,
     get_pipeline_fit_kwargs,
 )
-from pycaret.internal.utils import infer_ml_usecase, mlflow_remove_bad_chars
+from pycaret.internal.utils import to_df, infer_ml_usecase, mlflow_remove_bad_chars
 import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
 from pycaret.internal.distributions import *
@@ -882,8 +882,10 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
         if ml_usecase is None:
             ml_usecase = self._ml_usecase
 
-        # copy data and model
-        data_transformed = data.copy()
+        if data is None:
+            data_transformed = self.X_transformed
+        else:
+            data_transformed = self.pipeline.transform(to_df(data[self.X.columns]))
 
         # exception checking for predict param
         if hasattr(estimator, "predict"):
@@ -891,25 +893,11 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
         else:
             raise TypeError("Model doesn't support predict parameter.")
 
-        pred_score = None
-
-        # predictions start here
-        if is_sklearn_pipeline(estimator):
-            pred = estimator.predict(data_transformed)
-            if ml_usecase == MLUsecase.ANOMALY:
-                pred_score = estimator.decision_function(data_transformed)
-        else:
-            pred = estimator.predict(self.pipeline.transform(data_transformed))
-            if ml_usecase == MLUsecase.ANOMALY:
-                pred_score = estimator.decision_function(
-                    self.pipeline.transform(data_transformed)
-                )
-
+        pred = estimator.predict(data_transformed)
         if ml_usecase == MLUsecase.CLUSTERING:
-            pred_list = [f"Cluster {i}" for i in pred]
-
-            data_transformed["Cluster"] = pred_list
+            data_transformed["Cluster"] = [f"Cluster {i}" for i in pred]
         else:
+            pred_score = estimator.decision_function(data_transformed)
             data_transformed["Anomaly"] = pred
             data_transformed["Anomaly_Score"] = pred_score
 
