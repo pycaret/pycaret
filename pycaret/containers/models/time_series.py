@@ -8,43 +8,44 @@ required parameters in the `__init__` and then call `super().__init__` to comple
 the process. Refer to the existing classes for examples.
 """
 
-from typing import Union, Dict, List, Tuple, Any, Optional
-from abc import abstractmethod
+import logging
 import random
+import warnings
+from abc import abstractmethod
+from typing import Any, Dict, List, Optional, Tuple, Union
+
 import numpy as np  # type: ignore
 import pandas as pd
-import logging
-import warnings
-
-from sktime.forecasting.base import BaseForecaster  # type: ignore
-from sktime.forecasting.compose import make_reduction, TransformedTargetForecaster  # type: ignore
-from sktime.forecasting.trend import PolynomialTrendForecaster  # type: ignore
-from sktime.transformations.series.detrend import ConditionalDeseasonalizer, Detrender  # type: ignore
-from sktime.forecasting.base._sktime import DEFAULT_ALPHA  # type: ignore
 from sklearn.utils.validation import check_is_fitted  # type: ignore
+from sktime.forecasting.base import BaseForecaster  # type: ignore
+from sktime.forecasting.base._sktime import DEFAULT_ALPHA  # type: ignore
+from sktime.forecasting.compose import (  # type: ignore
+    TransformedTargetForecaster,
+    make_reduction,
+)
+from sktime.forecasting.trend import PolynomialTrendForecaster  # type: ignore
+from sktime.transformations.series.detrend import (  # type: ignore
+    ConditionalDeseasonalizer,
+    Detrender,
+)
 
+import pycaret.containers.base_container
 from pycaret.containers.models.base_model import (
     ModelContainer,
     leftover_parameters_to_categorical_distributions,
 )
-from pycaret.internal.utils import (
-    param_grid_to_lists,
-    get_logger,
-    np_list_arange,
-)
 from pycaret.internal.distributions import (
-    Distribution,
-    UniformDistribution,
-    IntUniformDistribution,
     CategoricalDistribution,
+    Distribution,
+    IntUniformDistribution,
+    UniformDistribution,
 )
-from pycaret.internal.utils import TSModelTypes
-import pycaret.containers.base_container
-
+from pycaret.internal.utils import get_logger, np_list_arange, param_grid_to_lists
 from pycaret.utils.datetime import (
-    coerce_period_to_datetime_index,
     coerce_datetime_to_period_index,
+    coerce_period_to_datetime_index,
 )
+from pycaret.utils.time_series import TSModelTypes
 
 
 class TimeSeriesContainer(ModelContainer):
@@ -740,7 +741,9 @@ class ExponentialSmoothingContainer(TimeSeriesContainer):
         np.random.seed(globals_dict["seed"])
         self.gpu_imported = False
 
-        from sktime.forecasting.exp_smoothing import ExponentialSmoothing  # type: ignore
+        from sktime.forecasting.exp_smoothing import (
+            ExponentialSmoothing,  # type: ignore
+        )
 
         dummy = ExponentialSmoothing()
         self.active = self.disable_pred_int_enforcement(
@@ -2609,8 +2612,8 @@ class BaseCdsDtForecaster(BaseForecaster):
 
 
 try:
-    from sktime.forecasting.fbprophet import Prophet  # type: ignore
     from sktime.forecasting.base._base import DEFAULT_ALPHA
+    from sktime.forecasting.fbprophet import Prophet  # type: ignore
 
     class ProphetPeriodPatched(Prophet):
         def fit(self, y, X=None, fh=None, **fit_params):

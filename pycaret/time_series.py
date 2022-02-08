@@ -1,22 +1,13 @@
-# Module: Time Series
-# Author: Antoni Baum <antoni.baum@protonmail.com>
-# License: MIT
-# Release: PyCaret 2.2.0
-# Last modified : 25/10/2020
-
-import os
-import time
 import logging
+import os
+import warnings
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np  # type: ignore
 import pandas as pd  # type: ignore
 
 from pycaret.internal.pycaret_experiment import TimeSeriesExperiment
 from pycaret.internal.utils import check_if_global_is_not_none
-
-from typing import List, Tuple, Any, Union, Optional, Dict
-import warnings
-import time
 
 warnings.filterwarnings("ignore")
 
@@ -1298,7 +1289,10 @@ def deploy_model(
     >>> from pycaret.time_series import *
     >>> exp_name = setup(data = data, fh = 12)
     >>> arima = create_model('arima')
-    >>> deploy_model(model = arima, model_name = 'arima-for-deployment', platform = 'aws', authentication = {'bucket' : 'S3-bucket-name'})
+    >>> deploy_model(
+            model = arima, model_name = 'arima-for-deployment',
+            platform = 'aws', authentication = {'bucket' : 'S3-bucket-name'}
+        )
 
 
     Amazon Web Service (AWS) users:
@@ -1970,4 +1964,3 @@ def check_stats(
     return _CURRENT_EXPERIMENT.check_stats(
         estimator=estimator, test=test, alpha=alpha, split=split,
     )
-
