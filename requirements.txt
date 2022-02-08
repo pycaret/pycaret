@@ -28,7 +28,7 @@ category-encoders>=2.2.2
 scikit-plot #for lift and gain charts
 Boruta
 
-# Time- series
+# Time-series
 statsmodels~=0.12.1
 sktime>=0.8.0
 tbats>=1.1.0

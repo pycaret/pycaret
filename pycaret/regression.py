@@ -38,7 +38,7 @@ def setup(
     ignore_features: Optional[List[str]] = None,
     keep_features: Optional[List[str]] = None,
     preprocess: bool = True,
-    imputation_type: str = "simple",
+    imputation_type: Optional[str] = "simple",
     numeric_imputation: str = "mean",
     categorical_imputation: str = "constant",
     iterative_imputation_iters: int = 5,
@@ -106,7 +106,7 @@ def setup(
     >>> exp_name = setup(data = juice,  target = 'Purchase')
 
 
-    data: pandas.DataFrame
+    data: dataframe-like
         Shape (n_samples, n_features), where n_samples is the number of samples and 
         n_features is the number of features.
 
@@ -176,8 +176,9 @@ def setup(
         when preprocess is set to False.
 
 
-    imputation_type: str, default = 'simple'
+    imputation_type: str or None, default = 'simple'
         The type of imputation to use. Can be either 'simple' or 'iterative'.
+        If None, no imputation of missing values is performed.
 
 
     numeric_imputation: str, default = 'mean'
@@ -268,14 +269,15 @@ def setup(
 
 
     outliers_method: str, default = "iforest"
-        Method with which to remove outliers. Possible values are:
+        Method with which to remove outliers. Ignored when `remove_outliers=False`.
+        Possible values are:
             - 'iforest': Uses sklearn's IsolationForest.
             - 'ee': Uses sklearn's EllipticEnvelope.
             - 'lof': Uses sklearn's LocalOutlierFactor.
 
 
     outliers_threshold: float, default = 0.05
-        The percentage outliers to be removed from the dataset. Ignored
+        The percentage of outliers to be removed from the dataset. Ignored
         when ``remove_outliers=False``.
 
 
@@ -323,10 +325,10 @@ def setup(
 
 
     pca_components: int or float, default = 1.0
-        Number of components to keep. If >1, it select that number of components.
-        If <= 1, it selects that fraction of components from the original features.
-        The value must must be smaller than the number of original features.
-        Ignored when ``pca`` is not True.
+        Number of components to keep. If >1, it selects that number of
+        components. If <= 1, it selects that fraction of components from
+        the original features. The value must be smaller than the number
+        of original features. This parameter is ignored when `pca=False`.
 
 
     feature_selection: bool, default = False
@@ -336,15 +338,16 @@ def setup(
 
     feature_selection_method: str, default = 'classic'
         Algorithm for feature selection. Choose from:
+            - 'univariate': Uses sklearn's SelectKBest.
             - 'classic': Uses sklearn's SelectFromModel.
             - 'sequential': Uses sklearn's SequtnailFeatureSelector.
-            - 'boruta': Uses the boruta algorithm for feature selection.
 
 
     feature_selection_estimator: str or sklearn estimator, default = 'lightgbm'
-        Classifier used to determine the feature importances. The estimator should
-        have a feature_importances_ or coef_ attribute after fitting. If None, it
-        uses LGBClassifier.
+        Classifier used to determine the feature importances. The
+        estimator should have a `feature_importances_` or `coef_`
+        attribute after fitting. If None, it uses LGBRegressor. This
+        parameter is ignored when `feature_selection_method=univariate`.
 
 
     n_features_to_select: int, default = 10
@@ -381,11 +384,10 @@ def setup(
         column names. Ignored when ``data_split_shuffle`` is False.
 
 
-    fold_strategy: str or sklearn CV generator object, default = 'stratifiedkfold'
+    fold_strategy: str or sklearn CV generator object, default = 'kfold'
         Choice of cross validation strategy. Possible values are:
 
         * 'kfold'
-        * 'stratifiedkfold'
         * 'groupkfold'
         * 'timeseries'
         * a custom CV generator object compatible with scikit-learn.
@@ -540,8 +542,6 @@ def setup(
         remove_outliers=remove_outliers,
         outliers_method=outliers_method,
         outliers_threshold=outliers_threshold,
-        fix_imbalance=False,  # Always False for regression
-        fix_imbalance_method=None,
         transformation=transformation,
         transformation_method=transformation_method,
         normalize=normalize,

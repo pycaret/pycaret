@@ -36,12 +36,9 @@ def setup(
     ignore_features: Optional[List[str]] = None,
     keep_features: Optional[List[str]] = None,
     preprocess: bool = True,
-    imputation_type: str = "simple",
+    imputation_type: Optional[str] = "simple",
     numeric_imputation: str = "mean",
     categorical_imputation: str = "constant",
-    iterative_imputation_iters: int = 5,
-    numeric_iterative_imputer: Union[str, Any] = "lightgbm",
-    categorical_iterative_imputer: Union[str, Any] = "lightgbm",
     text_features_method: str = "tf-idf",
     max_encoding_ohe: int = 5,
     encoding_method: Optional[Any] = None,
@@ -61,10 +58,6 @@ def setup(
     pca: bool = False,
     pca_method: str = "linear",
     pca_components: Union[int, float] = 1.0,
-    feature_selection: bool = False,
-    feature_selection_method: str = "classic",
-    feature_selection_estimator: Union[str, Any] = "lightgbm",
-    n_features_to_select: int = 10,
     custom_pipeline: Any = None,
     n_jobs: Optional[int] = -1,
     use_gpu: bool = False,
@@ -97,7 +90,7 @@ def setup(
     >>> exp_name = setup(data = anomaly)
 
 
-    data: pandas.DataFrame
+    data: dataframe-like
         Shape (n_samples, n_features), where n_samples is the number of samples and 
         n_features is the number of features.
 
@@ -151,6 +144,11 @@ def setup(
         when preprocess is set to False.
 
 
+    imputation_type: str or None, default = 'simple'
+        The type of imputation to use. Can be either 'simple' or 'iterative'.
+        If None, no imputation of missing values is performed.
+
+
     numeric_imputation: str, default = 'mean'
         Missing values in numeric features are imputed with 'mean' value of the feature
         in the training dataset. The other available option is 'median' or 'zero'.
@@ -159,20 +157,6 @@ def setup(
     categorical_imputation: str, default = 'constant'
         Missing values in categorical features are imputed with a constant 'not_available'
         value. The other available option is 'mode'.
-
-
-    iterative_imputation_iters: int, default = 5
-        Number of iterations. Ignored when ``imputation_type=simple``.
-
-
-    numeric_iterative_imputer: str or sklearn estimator, default = 'lightgbm'
-        Regressor for iterative imputation of missing values in numeric features.
-        If None, it uses LGBClassifier. Ignored when ``imputation_type=simple``.
-
-
-    categorical_iterative_imputer: str or sklearn estimator, default = 'lightgbm'
-        Regressor for iterative imputation of missing values in categorical features.
-        If None, it uses LGBClassifier. Ignored when ``imputation_type=simple``.
 
 
     text_features_method: str, default = "tf-idf"
@@ -294,34 +278,10 @@ def setup(
 
 
     pca_components: int or float, default = 1.0
-        Number of components to keep. If >1, it select that number of components.
-        If <= 1, it selects that fraction of components from the original features.
-        The value must must be smaller than the number of original features.
-        Ignored when ``pca`` is not True.
-
-
-    feature_selection: bool, default = False
-        When set to True, a subset of features is selected based on a feature
-        importance score determined by ``feature_selection_estimator``.
-
-
-    feature_selection_method: str, default = 'classic'
-        Algorithm for feature selection. Choose from:
-            - 'classic': Uses sklearn's SelectFromModel.
-            - 'sequential': Uses sklearn's SequtnailFeatureSelector.
-            - 'boruta': Uses the boruta algorithm for feature selection.
-
-
-    feature_selection_estimator: str or sklearn estimator, default = 'lightgbm'
-        Classifier used to determine the feature importances. The estimator should
-        have a feature_importances_ or coef_ attribute after fitting. If None, it
-        uses LGBClassifier.
-
-
-    n_features_to_select: int, default = 10
-        The number of features to select. Note that this parameter doesn't
-        take features in ``ignore_features`` or ``keep_features`` into account
-        when counting.
+        Number of components to keep. If >1, it selects that number of
+        components. If <= 1, it selects that fraction of components from
+        the original features. The value must be smaller than the number
+        of original features. This parameter is ignored when `pca=False`.
 
 
     custom_pipeline: (str, transformer), list of (str, transformer) or dict, default = None
@@ -432,9 +392,6 @@ def setup(
         imputation_type=imputation_type,
         numeric_imputation=numeric_imputation,
         categorical_imputation=categorical_imputation,
-        iterative_imputation_iters=iterative_imputation_iters,
-        numeric_iterative_imputer=numeric_iterative_imputer,
-        categorical_iterative_imputer=categorical_iterative_imputer,
         text_features_method=text_features_method,
         max_encoding_ohe=max_encoding_ohe,
         encoding_method=encoding_method,
@@ -454,10 +411,6 @@ def setup(
         pca=pca,
         pca_method=pca_method,
         pca_components=pca_components,
-        feature_selection=feature_selection,
-        feature_selection_method=feature_selection_method,
-        feature_selection_estimator=feature_selection_estimator,
-        n_features_to_select=n_features_to_select,
         custom_pipeline=custom_pipeline,
         n_jobs=n_jobs,
         use_gpu=use_gpu,

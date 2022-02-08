@@ -1049,7 +1049,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         # For later when we have multivariate time series
         ignore_features: Optional[List[str]] = None
         # Features to be ignored (are not read by self.dataset, self.X, etc...)
-        self._ign_cols = ignore_features or []
+        self._fxs = {"Ignore": ignore_features or []}
 
         ## Make a local copy (to perfrom inplace operation on the original dataset)
         data_ = data.copy()

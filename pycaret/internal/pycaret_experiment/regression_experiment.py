@@ -1,6 +1,19 @@
-from pycaret.internal.pycaret_experiment.utils import MLUsecase
-from pycaret.internal.pycaret_experiment.class_reg_experiment import (
-    ClassRegExperiment,
+import time
+import logging
+import warnings
+import numpy as np  # type: ignore
+from joblib.memory import Memory
+from IPython.display import display
+from typing import List, Tuple, Dict
+import plotly.express as px  # type: ignore
+import plotly.graph_objects as go  # type: ignore
+
+# Own module
+from pycaret.internal.pipeline import Pipeline as InternalPipeline
+from pycaret.internal.preprocess.preprocessor import Preprocessor
+from pycaret.internal.pycaret_experiment.utils import MLUsecase, highlight_setup
+from pycaret.internal.pycaret_experiment.supervised_experiment import (
+    _SupervisedExperiment,
 )
 import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
@@ -9,19 +22,13 @@ import pycaret.containers.metrics.regression
 import pycaret.containers.models.regression
 import pycaret.internal.preprocess
 import pycaret.internal.persistence
-import pandas as pd  # type ignore
-import numpy as np  # type: ignore
-from typing import List, Tuple, Any, Union, Optional, Dict
-import warnings
-import plotly.express as px  # type: ignore
-import plotly.graph_objects as go  # type: ignore
 
 
 warnings.filterwarnings("ignore")
 LOGGER = get_logger()
 
 
-class RegressionExperiment(ClassRegExperiment):
+class RegressionExperiment(_SupervisedExperiment, Preprocessor):
     def __init__(self) -> None:
         super().__init__()
         self._ml_usecase = MLUsecase.REGRESSION
@@ -61,6 +68,340 @@ class RegressionExperiment(ClassRegExperiment):
         return pycaret.containers.metrics.regression.get_all_metric_containers(
             self.variables, raise_errors=raise_errors
         )
+
+    def setup(
+        self,
+        data: pd.DataFrame,
+        target: Union[int, str] = -1,
+        train_size: float = 0.7,
+        test_data: Optional[pd.DataFrame] = None,
+        ordinal_features: Optional[Dict[str, list]] = None,
+        numeric_features: Optional[List[str]] = None,
+        categorical_features: Optional[List[str]] = None,
+        date_features: Optional[List[str]] = None,
+        text_features: Optional[List[str]] = None,
+        ignore_features: Optional[List[str]] = None,
+        keep_features: Optional[List[str]] = None,
+        preprocess: bool = True,
+        imputation_type: Optional[str] = "simple",
+        numeric_imputation: str = "mean",
+        categorical_imputation: str = "constant",
+        iterative_imputation_iters: int = 5,
+        numeric_iterative_imputer: Union[str, Any] = "lightgbm",
+        categorical_iterative_imputer: Union[str, Any] = "lightgbm",
+        text_features_method: str = "tf-idf",
+        max_encoding_ohe: int = 5,
+        encoding_method: Optional[Any] = None,
+        polynomial_features: bool = False,
+        polynomial_degree: int = 2,
+        low_variance_threshold: float = 0,
+        remove_multicollinearity: bool = False,
+        multicollinearity_threshold: float = 0.9,
+        bin_numeric_features: Optional[List[str]] = None,
+        remove_outliers: bool = False,
+        outliers_method: str = "iforest",
+        outliers_threshold: float = 0.05,
+        transformation: bool = False,
+        transformation_method: str = "yeo-johnson",
+        normalize: bool = False,
+        normalize_method: str = "zscore",
+        pca: bool = False,
+        pca_method: str = "linear",
+        pca_components: Union[int, float] = 1.0,
+        feature_selection: bool = False,
+        feature_selection_method: str = "classic",
+        feature_selection_estimator: Union[str, Any] = "lightgbm",
+        n_features_to_select: int = 10,
+        transform_target: bool = False,
+        transform_target_method: str = "box-cox",
+        custom_pipeline: Any = None,
+        data_split_shuffle: bool = True,
+        data_split_stratify: Union[bool, List[str]] = False,
+        fold_strategy: Union[str, Any] = "kfold",
+        fold: int = 10,
+        fold_shuffle: bool = False,
+        fold_groups: Optional[Union[str, pd.DataFrame]] = None,
+        n_jobs: Optional[int] = -1,
+        use_gpu: bool = False,
+        html: bool = True,
+        session_id: Optional[int] = None,
+        system_log: Union[bool, logging.Logger] = True,
+        log_experiment: bool = False,
+        experiment_name: Optional[str] = None,
+        log_plots: Union[bool, list] = False,
+        log_profile: bool = False,
+        log_data: bool = False,
+        silent: bool = False,
+        verbose: bool = True,
+        memory: Union[bool, str, Memory] = True,
+        profile: bool = False,
+        profile_kwargs: Dict[str, Any] = None,
+    ):
+        # Setup initialization ===================================== >>
+
+        runtime_start = time.time()
+
+        # Define parameter attrs
+        self.fold_shuffle_param = fold_shuffle
+        self.fold_groups_param = fold_groups
+
+        self._initialize_setup(
+            n_jobs=n_jobs,
+            use_gpu=use_gpu,
+            html=html,
+            session_id=session_id,
+            system_log=system_log,
+            log_experiment=log_experiment,
+            experiment_name=experiment_name,
+            memory=memory,
+            verbose=verbose,
+        )
+
+        # Prepare experiment specific params ======================= >>
+
+        self.log_plots_param = log_plots
+        if self.log_plots_param is True:
+            self.log_plots_param = ["residuals", "error", "feature"]
+        elif isinstance(self.log_plots_param, list):
+            for i in self.log_plots_param:
+                if i not in self._available_plots:
+                    raise ValueError(
+                        f"Invalid value for log_plots '{i}'. Possible values "
+                        f"are: {', '.join(self._available_plots.keys())}."
+                    )
+
+        # Check transform_target_method
+        allowed_transform_target_method = ["box-cox", "yeo-johnson"]
+        if transform_target_method not in allowed_transform_target_method:
+            raise ValueError(
+                "Invalid value for the transform_target_method parameter. "
+                f"Choose from: {', '.join(allowed_transform_target_method)}."
+            )
+        self.transform_target_param = transform_target
+        self.transform_target_method = transform_target_method
+
+        # Set up data ============================================== >>
+
+        self._prepare_dataset(data)
+        self._prepare_target(target)
+        self._prepare_train_test(
+            train_size=train_size,
+            test_data=test_data,
+            data_split_stratify=data_split_stratify,
+            data_split_shuffle=data_split_shuffle,
+        )
+        self._prepare_folds(
+            fold_strategy=fold_strategy,
+            fold=fold,
+            fold_shuffle=fold_shuffle,
+            fold_groups=fold_groups,
+        )
+        self._prepare_column_types(
+            ordinal_features=ordinal_features,
+            numeric_features=numeric_features,
+            categorical_features=categorical_features,
+            date_features=date_features,
+            text_features=text_features,
+            ignore_features=ignore_features,
+            keep_features=keep_features,
+        )
+
+        # Preprocessing ============================================ >>
+
+        # Initialize empty pipeline
+        self.pipeline = InternalPipeline(
+            steps=[("placeholder", None)], memory=self.memory,
+        )
+
+        if preprocess:
+            self.logger.info("Preparing preprocessing pipeline...")
+
+            # Encode the target column
+            if self.y.dtype.kind not in "ifu":
+                self._encode_target_column()
+
+            # Convert date feature to numerical values
+            if self._fxs["Date"]:
+                self._date_feature_engineering()
+
+            # Impute missing values
+            if imputation_type == "simple":
+                self._simple_imputation(numeric_imputation, categorical_imputation)
+            elif imputation_type == "iterative":
+                self._iterative_imputation(
+                    iterative_imputation_iters=iterative_imputation_iters,
+                    numeric_iterative_imputer=numeric_iterative_imputer,
+                    categorical_iterative_imputer=categorical_iterative_imputer,
+                )
+            elif imputation_type is not None:
+                raise ValueError(
+                    "Invalid value for the imputation_type parameter, got "
+                    f"{imputation_type}. Possible values are: simple, iterative."
+                )
+
+            # Convert text features to meaningful vectors
+            if self._fxs["Text"]:
+                self._text_embedding(text_features_method)
+
+            # Encode non-numerical features
+            if self._fxs["Ordinal"] or self._fxs["Categorical"]:
+                self._encoding(max_encoding_ohe, encoding_method)
+
+            # Create polynomial features from the existing ones
+            if polynomial_features:
+                self._polynomial_features(polynomial_degree)
+
+            # Drop features with too low variance
+            if low_variance_threshold:
+                self._low_variance(low_variance_threshold)
+
+            # Drop features that are collinear with other features
+            if remove_multicollinearity:
+                self._remove_multicollinearity(multicollinearity_threshold)
+
+            # Bin numerical features to 5 clusters
+            if bin_numeric_features:
+                self._bin_numerical_features(bin_numeric_features)
+
+            # Remove outliers from the dataset
+            if remove_outliers:
+                self._remove_outliers(outliers_method, outliers_threshold)
+
+            # Power transform the data to be more Gaussian-like
+            if transformation:
+                self._transformation(transformation_method)
+
+            # Scale the features
+            if normalize:
+                self._normalization(normalize_method)
+
+            # Apply Principal Component Analysis
+            if pca:
+                self._pca(pca_method, pca_components)
+
+            # Select relevant features
+            if feature_selection:
+                self._feature_selection(
+                    feature_selection_method=feature_selection_method,
+                    feature_selection_estimator=feature_selection_estimator,
+                    n_features_to_select=n_features_to_select,
+                )
+
+        # Add custom transformers to the pipeline
+        if custom_pipeline:
+            self._add_custom_pipeline(custom_pipeline)
+
+        # Remove placeholder step
+        if len(self.pipeline) > 1:
+            self.pipeline.steps.pop(0)
+
+        self.pipeline.fit(self.X_train, self.y_train)
+
+        self.logger.info(f"Finished creating preprocessing pipeline.")
+        self.logger.info(f"Pipeline: {self.pipeline}")
+
+        # Final display ============================================ >>
+
+        self.logger.info("Creating final display dataframe.")
+
+        container = []
+        container.append(["Session id", self.seed])
+        container.append(["Target", self.target_param])
+        container.append(["Target type", "regression"])
+        container.append(["Data shape", self.dataset.shape])
+        container.append(["Train data shape", self.train.shape])
+        container.append(["Test data shape", self.test.shape])
+        for fx, cols in self._fxs.items():
+            if len(cols) > 0:
+                container.append([f"{fx} features", len(cols)])
+        if self.data.isna().sum().sum():
+            container.append(["Missing Values", self.data.isna().sum().sum()])
+        if preprocess:
+            container.append(["Preprocess", preprocess])
+            container.append(["Imputation type", imputation_type])
+            if imputation_type == "simple":
+                container.append(["Numeric imputation", numeric_imputation])
+                container.append(["Categorical imputation", categorical_imputation])
+            else:
+                if isinstance(numeric_iterative_imputer, str):
+                    num_imputer = numeric_iterative_imputer
+                else:
+                    num_imputer = numeric_iterative_imputer.__class__.__name__
+
+                if isinstance(categorical_iterative_imputer, str):
+                    cat_imputer = categorical_iterative_imputer
+                else:
+                    cat_imputer = categorical_iterative_imputer.__class__.__name__
+
+                container.append(["Iterative imputation iterations", iterative_imputation_iters])
+                container.append(["Numeric iterative imputer", num_imputer])
+                container.append(["Categorical iterative imputer", cat_imputer])
+            if self._fxs["Text"]:
+                container.append(["Text features embedding method", text_features_method])
+            if self._fxs["Categorical"]:
+                container.append(["Maximum one-hot encoding", max_encoding_ohe])
+                container.append(["Encoding method", encoding_method])
+            if polynomial_features:
+                container.append(["Polynomial features", polynomial_features])
+                container.append(["Polynomial degree", polynomial_degree])
+            if low_variance_threshold:
+                container.append(["Low variance threshold", low_variance_threshold])
+            if remove_multicollinearity:
+                container.append(["Remove multicollinearity", remove_multicollinearity])
+                container.append(["Multicollinearity threshold", multicollinearity_threshold])
+            if remove_outliers:
+                container.append(["Remove outliers", remove_outliers])
+                container.append(["Outliers threshold", outliers_threshold])
+            if transformation:
+                container.append(["Transformation", transformation])
+                container.append(["Transformation method", transformation_method])
+            if normalize:
+                container.append(["Normalize", normalize])
+                container.append(["Normalize method", normalize_method])
+            if pca:
+                container.append(["PCA", pca])
+                container.append(["PCA method", pca_method])
+                container.append(["PCA components", pca_components])
+            if feature_selection:
+                container.append(["Feature selection", feature_selection])
+                container.append(["Feature selection method", feature_selection_method])
+                container.append(["Feature selection estimator", feature_selection_estimator])
+                container.append(["Number of features selected", n_features_to_select])
+            if transform_target:
+                container.append(["Transform target", transform_target])
+                container.append(["Transform target method", transform_target_method])
+            if custom_pipeline:
+                container.append(["Custom pipeline", "Yes"])
+            container.append(["Fold Generator", self.fold_generator.__class__.__name__])
+            container.append(["Fold Number", fold])
+            container.append(["CPU Jobs", self.n_jobs_param])
+            container.append(["Log Experiment", self.logging_param])
+            container.append(["Experiment Name", self.exp_name_log])
+            container.append(["USI", self.USI])
+
+        self.display_container = [pd.DataFrame(container, columns=["Description", "Value"])]
+        self.logger.info(f"Setup display_container: {self.display_container[0]}")
+        if self.verbose:
+            pd.set_option("display.max_rows", 100)
+            display(self.display_container[0].style.apply(highlight_setup))
+            pd.reset_option("display.max_rows")  # Reset option
+
+        # Wrap-up ================================================== >>
+
+        # Create a profile report
+        self._profile(profile, profile_kwargs)
+
+        # Define models and metrics
+        self._all_models, self._all_models_internal = self._get_models()
+        self._all_metrics = self._get_metrics()
+
+        runtime = np.array(time.time() - runtime_start).round(2)
+        self._set_up_mlflow(runtime, log_data, log_profile)
+
+        self._setup_ran = True
+        self.logger.info(f"setup() successfully completed in {runtime}s...............")
+
+        return self
 
     def compare_models(
         self,

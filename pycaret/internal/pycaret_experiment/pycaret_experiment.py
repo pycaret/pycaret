@@ -1,7 +1,7 @@
 import warnings
-import pandas as pd  # type ignore
 import numpy as np  # type: ignore
-from typing import Any, Optional, Dict
+from typing import Dict
+from collections import defaultdict
 import plotly.express as px  # type: ignore
 import plotly.graph_objects as go  # type: ignore
 
@@ -36,6 +36,7 @@ class _PyCaretExperiment:
         self.fold_generator = None
         self.pipeline = None
         self.display_container = None
+        self._fxs = defaultdict(list)
         self._setup_ran = False
 
     @property
@@ -422,7 +423,7 @@ class _PyCaretExperiment:
     @property
     def dataset(self):
         """Complete dataset without ignored columns."""
-        return self.data[[c for c in self.data.columns if c not in self._ign_cols]]
+        return self.data[[c for c in self.data.columns if c not in self._fxs["Ignore"]]]
 
     @property
     def train(self):
@@ -437,7 +438,10 @@ class _PyCaretExperiment:
     @property
     def X(self):
         """Feature set."""
-        return self.dataset.drop(self.target_param, axis=1)
+        if self.target_param:
+            return self.dataset.drop(self.target_param, axis=1)
+        else:
+            return self.dataset  # For unsupervised: dataset == X
 
     @property
     def y(self):
@@ -482,7 +486,10 @@ class _PyCaretExperiment:
     @property
     def X_transformed(self):
         """Transformed feature set."""
-        return self.pipeline.transform(self.X, self.y)[0]
+        if self.target_param:
+            return self.pipeline.transform(self.X, self.y)[0]
+        else:
+            return self.pipeline.transform(self.X)
 
     @property
     def y_transformed(self):

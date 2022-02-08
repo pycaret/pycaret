@@ -186,9 +186,7 @@ class KMeansClusterContainer(ClusterContainer):
         tune_grid = {}
         tune_distributions = {}
 
-        if not gpu_imported:
-            args["n_jobs"] = experiment.n_jobs_param
-        else:
+        if gpu_imported:
             KMeans = get_kmeans()
 
         super().__init__(

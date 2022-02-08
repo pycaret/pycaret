@@ -106,6 +106,7 @@ def test_ordinal_features():
     data = pycaret.datasets.get_data("employee")
     pc = pycaret.classification.setup(
         data=data,
+        imputation_type=None,
         ordinal_features={"salary": ["low", "medium", "high"]},
     )
     X, _ = pc.pipeline.fit_transform(pc.X, pc.y)
@@ -121,7 +122,7 @@ def test_categorical_features():
     data = pycaret.datasets.get_data("juice")
     pc = pycaret.classification.setup(data)
     X, _ = pc.pipeline.fit_transform(pc.X, pc.y)
-    assert list(X["Purchase"].unique()) == [0.0, 1.0]
+    assert list(sorted(X["Purchase"].unique())) == [0.0, 1.0]
 
 
 @pytest.mark.parametrize("transformation_method", ["yeo-johnson", "quantile"])
@@ -309,7 +310,7 @@ def test_iterative_imputer():
             numeric_iterative_imputer=imputer,
             categorical_iterative_imputer=imputer,
         )
-        transformer = pc.pipeline.named_steps["imputer"]
+        transformer = pc.pipeline.named_steps["iterative_imputer"]
         df = transformer.fit_transform(data, data["STORE"])[0]
         assert not df.isnull().values.any()
         assert all(categories[col] == set(df[col].unique()) for col in categories)

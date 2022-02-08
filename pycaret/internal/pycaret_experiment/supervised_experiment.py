@@ -53,6 +53,7 @@ LOGGER = get_logger()
 class _SupervisedExperiment(_TabularExperiment):
     def __init__(self) -> None:
         super().__init__()
+        self.transform_target_param = False  # Default False for both class/reg
         self.variable_keys = self.variable_keys.union(
             {
                 "X",
