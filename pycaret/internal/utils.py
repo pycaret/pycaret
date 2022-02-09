@@ -1,6 +1,4 @@
-# Module: internal.utils
-# Author: Moez Ali <moez.ali@queensu.ca> and Antoni Baum (Yard1) <antoni.baum@protonmail.com>
-# License: MIT
+import functools
 import inspect
 import numpy as np
 import pandas as pd
@@ -10,28 +8,9 @@ from pycaret.internal.validation import *
 from typing import Any, Callable, List, Optional, Dict, Set, Tuple, Union
 from sklearn.model_selection import KFold, StratifiedKFold, BaseCrossValidator
 from sklearn.model_selection._split import _BaseKFold
-from enum import IntEnum, Enum
-import functools
 
-
-class SeasonalPeriod(IntEnum):
-    S = 60  # second
-    T = 60  # minute
-    H = 24  # hour
-    D = 7  # day
-    W = 52  # week
-    M = 12  # month
-    Q = 4  # quarter
-    A = 1  # year
-    Y = 1  # year
-
-
-class TSModelTypes(Enum):
-    BASELINE = "baseline"
-    CLASSICAL = "classical"
-    LINEAR = "linear"
-    NEIGHBORS = "neighbors"
-    TREE = "tree"
+from pycaret.internal.logging import get_logger
+from pycaret.internal.validation import *
 
 
 def to_df(data, index=None, columns=None, dtypes=None):
@@ -115,7 +94,7 @@ def check_features_exist(features, df):
 def id_or_display_name(metric, input_ml_usecase, target_ml_usecase):
     """
     Get id or display_name attribute from metric. In time series experiment
-    the pull() method retrieves the metrics idto name the columns of the results
+    the pull() method retrieves the metrics id to name the columns of the results
     """
 
     if input_ml_usecase == target_ml_usecase:
@@ -221,14 +200,14 @@ def set_config(variable: str, value, globals_d: dict):
 
 def save_config(file_name: str, globals_d: dict):
     """
-    This function is used to save all enviroment variables to file,
+    This function is used to save all environment variables to file,
     allowing to later resume modeling without rerunning setup().
 
     Example
     -------
     >>> save_config('myvars.pkl')
 
-    This will save all enviroment variables to 'myvars.pkl'.
+    This will save all environment variables to 'myvars.pkl'.
 
     """
 
@@ -310,7 +289,7 @@ def color_df(
     df: pd.DataFrame, color: str, names: list, axis: int = 1
 ) -> pandas.io.formats.style.Styler:
     return df.style.apply(
-        lambda x: [f"background: {color}" if (x.name in names) else "" for i in x],
+        lambda x: [f"background: {color}" if (x.name in names) else "" for _ in x],
         axis=axis,
     )
 
@@ -411,8 +390,8 @@ def np_list_arange(
         start = float(start)
         step = float(step)
     stop = stop + (step if inclusive else 0)
-    range = list(np.arange(start, stop, step))
-    range = [
+    range_ = list(np.arange(start, stop, step))
+    range_ = [
         start
         if x < start
         else stop
@@ -420,11 +399,11 @@ def np_list_arange(
         else float(round(x, 15))
         if isinstance(x, float)
         else x
-        for x in range
+        for x in range_
     ]
-    range[0] = start
-    range[-1] = stop - step
-    return range
+    range_[0] = start
+    range_[-1] = stop - step
+    return range_
 
 
 def calculate_unsupervised_metrics(
@@ -537,7 +516,7 @@ def normalize_custom_transformers(
     else:
         _check_custom_transformer(transformers)
         if not isinstance(transformers, tuple):
-            transformers = (f"custom_step", transformers)
+            transformers = ("custom_step", transformers)
         if is_sklearn_pipeline(transformers[0]):
             return transformers.steps
         transformers = [transformers]
@@ -748,7 +727,7 @@ def get_groups(
     else:
         if groups.shape[0] != X_train.shape[0]:
             raise ValueError(
-                f"groups has lenght {groups.shape[0]} which doesn't match X_train length of {len(X_train)}."
+                f"groups has length {groups.shape[0]} which doesn't match X_train length of {len(X_train)}."
             )
     return groups
 
@@ -806,8 +785,8 @@ def can_early_stop(
 
     logger = get_logger()
 
-    from sklearn.tree import BaseDecisionTree
     from sklearn.ensemble import BaseEnsemble
+    from sklearn.tree import BaseDecisionTree
 
     try:
         base_estimator = estimator.steps[-1][1]
@@ -907,19 +886,28 @@ def df_shrink_dtypes(df, skip=[], obj2cat=True, int2uint=False):
     """
 
     # 1: Build column filter and typemap
-    excl_types, skip = {'category', 'datetime64[ns]', 'bool'}, set(skip)
+    excl_types, skip = {"category", "datetime64[ns]", "bool"}, set(skip)
 
     typemap = {
-        'int': [(np.dtype(x), np.iinfo(x).min, np.iinfo(x).max) for x in (np.int8, np.int16, np.int32, np.int64)],
-        'uint': [(np.dtype(x), np.iinfo(x).min, np.iinfo(x).max) for x in (np.uint8, np.uint16, np.uint32, np.uint64)],
-        'float': [(np.dtype(x), np.finfo(x).min, np.finfo(x).max) for x in (np.float32, np.float64, np.longdouble)]
+        "int": [
+            (np.dtype(x), np.iinfo(x).min, np.iinfo(x).max)
+            for x in (np.int8, np.int16, np.int32, np.int64)
+        ],
+        "uint": [
+            (np.dtype(x), np.iinfo(x).min, np.iinfo(x).max)
+            for x in (np.uint8, np.uint16, np.uint32, np.uint64)
+        ],
+        "float": [
+            (np.dtype(x), np.finfo(x).min, np.finfo(x).max)
+            for x in (np.float32, np.float64, np.longdouble)
+        ],
     }
 
     if obj2cat:
         # User wants to categorify dtype('Object'), which may not always save space
-        typemap['object'] = 'category'
+        typemap["object"] = "category"
     else:
-        excl_types.add('object')
+        excl_types.add("object")
 
     new_dtypes = {}
     exclude = lambda dt: dt[1].name not in excl_types and dt[0] not in skip
@@ -928,9 +916,11 @@ def df_shrink_dtypes(df, skip=[], obj2cat=True, int2uint=False):
         t = next((v for k, v in typemap.items() if old_t.name.startswith(k)), None)
 
         if isinstance(t, list):  # Find the smallest type that fits
-            if int2uint and t == typemap['int'] and df[c].min() >= 0:
-                t = typemap['uint']
-            new_t = next((r[0] for r in t if r[1] <= df[c].min() and r[2] >= df[c].max()), None)
+            if int2uint and t == typemap["int"] and df[c].min() >= 0:
+                t = typemap["uint"]
+            new_t = next(
+                (r[0] for r in t if r[1] <= df[c].min() and r[2] >= df[c].max()), None
+            )
             if new_t and new_t == old_t:
                 new_t = None
         else:
@@ -945,7 +935,9 @@ def df_shrink_dtypes(df, skip=[], obj2cat=True, int2uint=False):
 def get_label_encoder(pipeline):
     """Return the label encoder in the pipeline if any."""
     try:
-        encoder = next(step[1] for step in pipeline.steps if step[0] == "label_encoding")
+        encoder = next(
+            step[1] for step in pipeline.steps if step[0] == "label_encoding"
+        )
         return encoder.transformer
     except StopIteration:
         return
@@ -954,3 +946,25 @@ def get_label_encoder(pipeline):
 def mlflow_remove_bad_chars(string: str) -> str:
     """Leaves only alphanumeric, spaces _, -, ., / in a string"""
     return "".join(c for c in string if c.isalpha() or c in ("_", "-", ".", " ", "/"))
+
+
+def deep_clone(estimator: Any) -> Any:
+    """Does a deep clone of a model/estimator.
+
+    NOTE: A simple clone does not copy the fitted model (only model hyperparameters)
+    # In some cases when we need to copy the fitted parameters, and internal
+    # attributes as well. Deep Clone will do this per https://stackoverflow.com/a/33576345/8925915.
+    This will copy both model hyperparameters as well as all fitted properties.
+
+    Parameters
+    ----------
+    estimator : Any
+        Estimator to be copied
+
+    Returns
+    -------
+    Any
+        Cloned estimator
+    """
+    estimator_ = deepcopy(estimator)
+    return estimator_

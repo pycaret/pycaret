@@ -177,7 +177,7 @@ class _SupervisedExperiment(_TabularExperiment):
             if not metric.greater_is_better:
                 result *= -1
             if best_result is None or best_result < result:
-                msg=(
+                msg = (
                     "Original model was better than the tuned model, hence it will be returned. "
                     "NOTE: The display metrics are for the tuned model (not the original one)."
                 )
@@ -197,6 +197,83 @@ class _SupervisedExperiment(_TabularExperiment):
         return pycaret.internal.utils.get_cv_n_folds(
             fold, default=self.fold_generator, X=X, y=y, groups=groups
         )
+
+    ### TODO: DO we need this after the merge from preprocessing to time_series???
+    def _split_data(
+        self,
+        X_before_preprocess,
+        y_before_preprocess,
+        target,
+        train_data,
+        test_data,
+        train_size,
+        data_split_shuffle,
+        dtypes,
+        display: Display,
+        fh=None,
+    ) -> None:
+        _stratify_columns = get_columns_to_stratify_by(
+            X_before_preprocess, y_before_preprocess, self.stratify_param, target
+        )
+        if test_data is None:
+
+            if self._ml_usecase == MLUsecase.TIME_SERIES:
+
+                from sktime.forecasting.model_selection import (
+                    temporal_train_test_split,
+                )  # sktime is an optional dependency
+
+                (
+                    self.y_train,
+                    self.y_test,
+                    self.X_train,
+                    self.X_test,
+                ) = temporal_train_test_split(
+                    y=y_before_preprocess,
+                    X=X_before_preprocess,
+                    fh=fh,  # if fh is provided it splits by it
+                )
+
+                if isinstance(self.y_train, pd.Series):
+                    self.y_train = pd.DataFrame(self.y_train)
+                if isinstance(self.y_test, pd.Series):
+                    self.y_test = pd.DataFrame(self.y_test)
+
+            else:
+                self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(
+                    X_before_preprocess,
+                    y_before_preprocess,
+                    test_size=1 - train_size,
+                    stratify=_stratify_columns,
+                    random_state=self.seed,
+                    shuffle=data_split_shuffle,
+                )
+            train_data = pd.concat([self.X_train, self.y_train], axis=1)
+            test_data = pd.concat([self.X_test, self.y_test], axis=1)
+
+        train_data = self.prep_pipe.fit_transform(train_data)
+        # workaround to also transform target
+        dtypes.final_training_columns.append(target)
+        test_data = self.prep_pipe.transform(test_data)
+
+        self.X_train = train_data.drop(target, axis=1)
+        self.y_train = train_data[target]
+
+        self.X_test = test_data.drop(target, axis=1)
+        self.y_test = test_data[target]
+
+        if self.fold_groups_param is not None:
+            self.fold_groups_param_full = self.fold_groups_param.copy()
+            self.fold_groups_param = self.fold_groups_param[
+                self.fold_groups_param.index.isin(self.X_train.index)
+            ]
+
+        display.move_progress()
+        self._internal_pipeline.fit(train_data.drop(target, axis=1), train_data[target])
+        data = self.prep_pipe.transform(self.data_before_preprocess.copy())
+        self.X = data.drop(target, axis=1)
+        self.y = data[target]
+        return
 
     def _set_up_mlflow(self, runtime, log_data, log_profile):
         # log into experiment
@@ -253,9 +330,7 @@ class _SupervisedExperiment(_TabularExperiment):
             self.logger.info(
                 "SubProcess save_model() called =================================="
             )
-            self.save_model(
-                self.pipeline, "Transformation Pipeline", verbose=False
-            )
+            self.save_model(self.pipeline, "Transformation Pipeline", verbose=False)
             self.logger.info(
                 "SubProcess save_model() end =================================="
             )
@@ -683,15 +758,11 @@ class _SupervisedExperiment(_TabularExperiment):
             )
             results_columns_to_ignore = ["Object", "runtime", "cutoff"]
             if errors == "raise":
-                model, model_fit_time = self.create_model(
-                    **create_model_args
-                )
+                model, model_fit_time = self.create_model(**create_model_args)
                 model_results = self.pull(pop=True)
             else:
                 try:
-                    model, model_fit_time = self.create_model(
-                        **create_model_args
-                    )
+                    model, model_fit_time = self.create_model(**create_model_args)
                     model_results = self.pull(pop=True)
                     assert (
                         np.sum(
@@ -707,9 +778,7 @@ class _SupervisedExperiment(_TabularExperiment):
                     )
                     self.logger.warning(traceback.format_exc())
                     try:
-                        model, model_fit_time = self.create_model(
-                            **create_model_args
-                        )
+                        model, model_fit_time = self.create_model(**create_model_args)
                         model_results = self.pull(pop=True)
                         assert (
                             np.sum(
@@ -862,9 +931,7 @@ class _SupervisedExperiment(_TabularExperiment):
                         probability_threshold=probability_threshold,
                     )
                     if errors == "raise":
-                        model, model_fit_time = self.create_model(
-                            **create_model_args
-                        )
+                        model, model_fit_time = self.create_model(**create_model_args)
                         sorted_models.append(model)
                     else:
                         try:
@@ -957,7 +1024,9 @@ class _SupervisedExperiment(_TabularExperiment):
                 self.display_container.append(model_results)
 
                 display.display(
-                    model_results, clear=system, override=False if not system else None,
+                    model_results,
+                    clear=system,
+                    override=False if not system else None,
                 )
 
                 self.logger.info(f"display_container: {len(self.display_container)}")
@@ -1040,7 +1109,10 @@ class _SupervisedExperiment(_TabularExperiment):
             self.logger.info("Creating metrics dataframe")
 
             model_results = pd.DataFrame(score_dict)
-            model_avgs = pd.DataFrame(avgs_dict, index=["Mean", "SD"],)
+            model_avgs = pd.DataFrame(
+                avgs_dict,
+                index=["Mean", "SD"],
+            )
 
             model_results = model_results.append(model_avgs)
             model_results = model_results.round(round)
@@ -1319,7 +1391,11 @@ class _SupervisedExperiment(_TabularExperiment):
 
         # Storing X_train and y_train in data_X and data_y parameter
         data_X = self.X_train.copy() if X_train_data is None else X_train_data.copy()
-        data_y = self.y_train_transformed.copy() if y_train_data is None else y_train_data.copy()
+        data_y = (
+            self.y_train_transformed.copy()
+            if y_train_data is None
+            else y_train_data.copy()
+        )
         if not self._ml_usecase == MLUsecase.TIME_SERIES:
             # reset index
             data_X.reset_index(drop=True, inplace=True)
@@ -4317,26 +4393,30 @@ class _SupervisedExperiment(_TabularExperiment):
             raise ValueError("id already present in metrics dataframe.")
 
         if self._ml_usecase == MLUsecase.CLASSIFICATION:
-            new_metric = pycaret.containers.metrics.classification.ClassificationMetricContainer(
-                id=id,
-                name=name,
-                score_func=score_func,
-                target=target,
-                args=kwargs,
-                display_name=name,
-                greater_is_better=greater_is_better,
-                is_multiclass=bool(multiclass),
-                is_custom=True,
+            new_metric = (
+                pycaret.containers.metrics.classification.ClassificationMetricContainer(
+                    id=id,
+                    name=name,
+                    score_func=score_func,
+                    target=target,
+                    args=kwargs,
+                    display_name=name,
+                    greater_is_better=greater_is_better,
+                    is_multiclass=bool(multiclass),
+                    is_custom=True,
+                )
             )
         else:
-            new_metric = pycaret.containers.metrics.regression.RegressionMetricContainer(
-                id=id,
-                name=name,
-                score_func=score_func,
-                args=kwargs,
-                display_name=name,
-                greater_is_better=greater_is_better,
-                is_custom=True,
+            new_metric = (
+                pycaret.containers.metrics.regression.RegressionMetricContainer(
+                    id=id,
+                    name=name,
+                    score_func=score_func,
+                    args=kwargs,
+                    display_name=name,
+                    greater_is_better=greater_is_better,
+                    is_custom=True,
+                )
             )
 
         self._all_metrics[id] = new_metric
@@ -4451,7 +4531,10 @@ class _SupervisedExperiment(_TabularExperiment):
         groups = self._get_groups(groups, data=self.X)
 
         if not display:
-            display = Display(verbose=False, html_param=self.html_param,)
+            display = Display(
+                verbose=False,
+                html_param=self.html_param,
+            )
 
         np.random.seed(self.seed)
 
@@ -4638,9 +4721,15 @@ class _SupervisedExperiment(_TabularExperiment):
         try:
             np.random.seed(self.seed)
             if not display:
-                display = Display(verbose=verbose, html_param=self.html_param,)
+                display = Display(
+                    verbose=verbose,
+                    html_param=self.html_param,
+                )
         except:
-            display = Display(verbose=False, html_param=False,)
+            display = Display(
+                verbose=False,
+                html_param=False,
+            )
 
         if data is None:
             X_test_, y_test_ = self.X_test_transformed, self.y_test_transformed
@@ -4790,7 +4879,10 @@ class _SupervisedExperiment(_TabularExperiment):
             display.update_monitor(2, model_name)
             if finalize_models:
                 model = self.finalize_model(
-                    model, fit_kwargs=fit_kwargs, groups=groups, model_only=model_only,
+                    model,
+                    fit_kwargs=fit_kwargs,
+                    groups=groups,
+                    model_only=model_only,
                 )
             else:
                 model = deepcopy(model)

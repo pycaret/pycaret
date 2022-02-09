@@ -1,12 +1,12 @@
-# Module: Utility
-# Author: Moez Ali <moez.ali@queensu.ca>
-# License: MIT
+import functools
+from typing import Dict, Optional, Union
 
 import functools
-import numpy as np
-import pandas as pd
 from typing import Optional
 
+import numpy as np
+import pandas as pd
+from sklearn.metrics._scorer import _PredictScorer, get_scorer  # type: ignore
 
 version_ = "3.0.0"
 nightly_version_ = "3.0.0"
@@ -104,8 +104,30 @@ def check_metric(
         )
 
 
+def _get_metrics_dict(
+    metrics_dict: Dict[str, Union[str, _PredictScorer]]
+) -> Dict[str, _PredictScorer]:
+    """Returns a metrics dictionary in which all values are callables
+    of type _PredictScorer
+
+    Parameters
+    ----------
+    metrics_dict : A metrics dictionary in which some values can be strings.
+        If the value is a string, the corresponding callable metric is returned
+        e.g. Dictionary Value of 'neg_mean_absolute_error' will return
+        make_scorer(mean_absolute_error, greater_is_better=False)
+    """
+    return_metrics_dict = {}
+    for k, v in metrics_dict.items():
+        if isinstance(v, str):
+            return_metrics_dict[k] = get_scorer(v)
+        else:
+            return_metrics_dict[k] = v
+    return return_metrics_dict
+
+
 def enable_colab():
-    from IPython.display import display, HTML, clear_output, update_display
+    from IPython.display import HTML, clear_output, display, update_display
 
     """
     Function to render plotly visuals in colab.
@@ -154,3 +176,25 @@ def get_system_logs():
 
         columns = [col.strip() for col in line.split(":") if col]
         print(columns)
+
+
+def _coerce_empty_dataframe_to_none(
+    data: Optional[pd.DataFrame],
+) -> Optional[pd.DataFrame]:
+    """Returns None if the data is an empty dataframe or None,
+    else return the dataframe as is.
+
+    Parameters
+    ----------
+    data : Optional[pd.DataFrame]
+        Dataframe to be checked or None
+
+    Returns
+    -------
+    Optional[pd.DataFrame]
+        Returned Dataframe OR None (if dataframe is empty or None)
+    """
+    if isinstance(data, pd.DataFrame) and data.empty:
+        return None
+    else:
+        return data

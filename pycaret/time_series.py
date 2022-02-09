@@ -1,22 +1,13 @@
-# Module: Time Series
-# Author: Antoni Baum <antoni.baum@protonmail.com>
-# License: MIT
-# Release: PyCaret 2.2.0
-# Last modified : 25/10/2020
-
-import os
-import time
 import logging
+import os
+import warnings
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np  # type: ignore
 import pandas as pd  # type: ignore
 
 from pycaret.internal.pycaret_experiment import TimeSeriesExperiment
 from pycaret.internal.utils import check_if_global_is_not_none
-
-from typing import List, Tuple, Any, Union, Optional, Dict
-import warnings
-import time
 
 warnings.filterwarnings("ignore")
 
@@ -32,11 +23,14 @@ _CURRENT_EXPERIMENT_DECORATOR_DICT = {
 
 def setup(
     data: Union[pd.Series, pd.DataFrame],
+    target: Optional[str] = None,
+    index: Optional[str] = None,
+    ignore_features: Optional[List] = None,
     preprocess: bool = True,
     imputation_type: str = "simple",
     fold_strategy: Union[str, Any] = "expanding",
     fold: int = 3,
-    fh: Union[List[int], int, np.array] = 1,
+    fh: Optional[Union[List[int], int, np.array]] = 1,
     seasonal_period: Optional[Union[int, str]] = None,
     enforce_pi: bool = False,
     n_jobs: Optional[int] = -1,
@@ -71,6 +65,24 @@ def setup(
         Shape (n_samples, 1), when pandas.DataFrame, otherwise (n_samples, ).
 
 
+    target : Optional[str], default = None
+        Target name to be forecasted. Must be specified when data is a pandas
+        DataFrame with more than 1 column. When data is a pandas Series or
+        pandas DataFrame with 1 column, this can be left as None.
+
+
+    index: Optional[str], default = None
+        Column name to be used as the datetime index for modeling. Column is
+        internally converted to datetime using `pd.to_datetime()`. If None,
+        then the data's index is used as is for modeling.
+
+
+    ignore_features: Optional[List], default = None
+        List of features to ignore for modeling when the data is a pandas
+        Dataframe with more than 1 column. Ignored when data is a pandas Series
+        or Dataframe with 1 column.
+
+
     preprocess: bool, default = True
         Parameter not in use for now. Behavior may change in future.
 
@@ -98,13 +110,16 @@ def setup(
         parameter. Ignored when ``fold_strategy`` is a custom object.
 
 
-    fh: int or list or np.array, default = 1
+    fh: Optional[int or list or np.array], default = 1
         The forecast horizon to be used for forecasting. Default is set to ``1`` i.e.
         forecast one point ahead. When integer is passed it means N continuous points
         in the future without any gap. If you want to forecast values with gaps, you
         must pass an array e.g. np.arange([13, 25]) will skip the first 12 future
         points and forecast from the 13th point till the 24th point ahead (note in
         numpy right value is inclusive and left is exclusive).
+
+        If fh = None, then fold_strategy must be a sktime compatible cross validation
+        object. In this case, fh is derived from this object.
 
 
     seasonal_period: int or str, default = None
@@ -128,7 +143,7 @@ def setup(
 
     enforce_pi: bool, default = False
         When set to True, only models that support prediction intervals are
-        loaded in the environment. 
+        loaded in the environment.
 
 
     n_jobs: int, default = -1
@@ -158,7 +173,7 @@ def setup(
 
 
     system_log: bool or logging.Logger, default = True
-        Whether to save the system logging file (as logs.log). If the input already is a 
+        Whether to save the system logging file (as logs.log). If the input already is a
         logger object, that one is used instead.
 
 
@@ -208,6 +223,9 @@ def setup(
     set_current_experiment(exp)
     return exp.setup(
         data=data,
+        target=target,
+        index=index,
+        ignore_features=ignore_features,
         preprocess=preprocess,
         imputation_type=imputation_type,
         fold_strategy=fold_strategy,
@@ -545,7 +563,7 @@ def tune_model(
 
 
     search_algorithm: str, default = 'random'
-        use 'random' for random grid search and 'grid' for complete grid search. 
+        use 'random' for random grid search and 'grid' for complete grid search.
 
 
     choose_better: bool, default = True
@@ -885,7 +903,7 @@ def plot_model(
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
     save: Union[str, bool] = False,
-) -> Tuple[str, Any]:
+) -> Optional[Tuple[str, Any]]:
 
     """
     This function analyzes the performance of a trained model on holdout set.
@@ -900,6 +918,8 @@ def plot_model(
     >>> airline = get_data('airline')
     >>> from pycaret.time_series import *
     >>> exp_name = setup(data = airline,  fh = 12)
+    >>> plot_model(plot="diff", data_kwargs={"order_list": [1, 2], "acf": True, "pacf": True})
+    >>> plot_model(plot="diff", data_kwargs={"lags_list": [[1], [1, 12]], "acf": True, "pacf": True})
     >>> arima = create_model('arima')
     >>> plot_model(plot = 'ts')
     >>> plot_model(plot = 'decomp_classical', data_kwargs = {'type' : 'multiplicative'})
@@ -911,8 +931,8 @@ def plot_model(
 
 
     plot: str, default = None
-        Default is 'ts' when estimator is None, When estimator is not None, 
-        default is changed to 'forecast'. List of available plots (ID - Name): 
+        Default is 'ts' when estimator is None, When estimator is not None,
+        default is changed to 'forecast'. List of available plots (ID - Name):
 
         * 'ts' - Time Series Plot
         * 'train_test_split' - Train Test Split
@@ -922,6 +942,9 @@ def plot_model(
         * 'decomp_classical' - Decomposition Classical
         * 'decomp_stl' - Decomposition STL
         * 'diagnostics' - Diagnostics Plot
+        * 'diff' - Difference Plot
+        * 'periodogram' - Frequency Components (Periodogram)
+        * 'fft' - Frequency Components (FFT)
         * 'forecast' - "Out-of-Sample" Forecast Plot
         * 'insample' - "In-Sample" Forecast Plot
         * 'residuals' - Residuals Plot
@@ -961,7 +984,7 @@ def plot_model(
 
 
     Returns:
-        None
+        Optional[Tuple[str, Any]]
 
     """
 
@@ -1124,6 +1147,7 @@ def plot_model(
 def predict_model(
     estimator,
     fh=None,
+    X=None,
     return_pred_int=False,
     alpha=0.05,
     round: int = 4,
@@ -1131,8 +1155,8 @@ def predict_model(
 ) -> pd.DataFrame:
 
     """
-    This function forecast using a trained model. When ``fh`` is None, 
-    it forecasts using the same forecast horizon used during the 
+    This function forecast using a trained model. When ``fh`` is None,
+    it forecasts using the same forecast horizon used during the
     training.
 
 
@@ -1153,8 +1177,17 @@ def predict_model(
 
     fh: int, default = None
         Number of points from the last date of training to forecast.
-        When fh is None, it forecasts using the same forecast horizon 
+        When fh is None, it forecasts using the same forecast horizon
         used during the training.
+
+
+    X: pd.DataFrame, default = None
+        Exogenous Variables to be used for prediction.
+        Before finalizing the estimator, X need not be passed even when the
+        estimator is built using exogenous variables (since this is taken
+        care of internally by using the exogenous variables from test split).
+        When estimator has been finalized and estimator used exogenous
+        variables, then X must be passed.
 
 
     return_pred_int: bool, default = False
@@ -1186,8 +1219,8 @@ def predict_model(
 
     return experiment.predict_model(
         estimator=estimator,
-        # data=data,
         fh=fh,
+        X=X,
         return_pred_int=return_pred_int,
         alpha=alpha,
         round=round,
@@ -1254,7 +1287,10 @@ def deploy_model(
     >>> from pycaret.time_series import *
     >>> exp_name = setup(data = data, fh = 12)
     >>> arima = create_model('arima')
-    >>> deploy_model(model = arima, model_name = 'arima-for-deployment', platform = 'aws', authentication = {'bucket' : 'S3-bucket-name'})
+    >>> deploy_model(
+            model = arima, model_name = 'arima-for-deployment',
+            platform = 'aws', authentication = {'bucket' : 'S3-bucket-name'}
+        )
 
 
     Amazon Web Service (AWS) users:
@@ -1860,8 +1896,69 @@ def check_stats(
     alpha: float = 0.05,
     split: str = "all",
 ) -> pd.DataFrame:
+    """This function is used to get summary statistics and run statistical
+    tests on the original data or model residuals.
 
+    Example
+    --------
+    >>> from pycaret.datasets import get_data
+    >>> airline = get_data('airline')
+    >>> from pycaret.time_series import *
+    >>> exp_name = setup(data = airline,  fh = 12)
+    >>> check_stats(test="summary")
+    >>> check_stats(test="adf")
+    >>> arima = create_model('arima')
+    >>> check_stats(arima, test = 'white_noise')
+
+
+    Parameters
+    ----------
+    estimator : sktime compatible object, optional
+        Trained model object, by default None
+
+
+    test : str, optional
+        Name of the test to be performed, by default "all"
+
+        Options are:
+
+        * 'summary' - Summary Statistics
+        * 'white_noise' - Ljung-Box Test for white noise
+        * 'adf' - ADF test for difference stationarity
+        * 'kpss' - KPSS test for trend stationarity
+        * 'stationarity' - ADF and KPSS test
+        * 'normality' - Shapiro Test for Normality
+        * 'all' - All of the above tests
+
+
+    alpha : float, optional
+        Significance Level, by default 0.05
+
+
+    split : str, optional
+        The split of the original data to run the test on. Only applicable
+        when test is run on the original data (not residuals), by default "all"
+
+        Options are:
+
+        * 'all' - Complete Dataset
+        * 'train' - The Training Split of the dataset
+        * 'test' - The Test Split of the dataset
+
+
+    data_kwargs : Optional[Dict], optional
+        Users can specify `lags list` or `order_list` to run the test for the
+        data as well as for its lagged versions, by default None
+
+        >>> check_stats(test="white_noise", data_kwargs={"order_list": [1, 2]})
+        >>> check_stats(test="white_noise", data_kwargs={"lags_list": [1, [1, 12]]})
+
+
+    Returns:
+    --------
+    pd.DataFrame
+        Dataframe with the test results
+    """
     return _CURRENT_EXPERIMENT.check_stats(
         estimator=estimator, test=test, alpha=alpha, split=split,
     )
-

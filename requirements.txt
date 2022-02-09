@@ -28,9 +28,3 @@ imbalanced-learn>=0.8.1
 category-encoders>=2.2.2
 scikit-plot #for lift and gain charts
 Boruta
-
-# Time-series
-statsmodels~=0.12.1
-sktime>=0.8.0
-tbats>=1.1.0
-pmdarima>=1.8.0

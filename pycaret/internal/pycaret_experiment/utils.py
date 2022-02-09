@@ -21,4 +21,7 @@ def get_ml_task(y):
 
 
 def highlight_setup(column):
-    return ["background-color: lightgreen" if v is True or v == "Yes" else "" for v in column]
+    return [
+        "background-color: lightgreen" if v is True or v == "Yes" else ""
+        for v in column
+    ]
