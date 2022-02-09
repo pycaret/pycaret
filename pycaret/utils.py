@@ -2,10 +2,11 @@
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
 
-import pandas as pd
-import numpy as np
-from typing import Optional
 import functools
+import numpy as np
+import pandas as pd
+from typing import Optional
+
 
 version_ = "3.0.0"
 nightly_version_ = "3.0.0"

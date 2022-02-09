@@ -6,16 +6,25 @@ import pandas as pd
 import pytest
 import pycaret.clustering
 import pycaret.datasets
+import uuid
+from mlflow.tracking.client import MlflowClient
 
+@pytest.fixture(scope='module')
+def jewellery_dataframe():
+    return pycaret.datasets.get_data("jewellery")
 
-def test():
+@pytest.fixture(scope='module')
+def tracking_api():
+    client = MlflowClient()
+    return client
+
+def test(jewellery_dataframe):
     # loading dataset
-    data = pycaret.datasets.get_data("jewellery")
-    assert isinstance(data, pd.DataFrame)
+    assert isinstance(jewellery_dataframe, pd.DataFrame)
 
     # init setup
     clu1 = pycaret.clustering.setup(
-        data,
+        jewellery_dataframe,
         normalize=True,
         log_experiment=True,
         log_plots=True,
@@ -62,6 +71,103 @@ def test():
 
     assert 1 == 1
 
+class TestClusteringExperimentCustomTags:
+    def test_clustering_setup_fails_with_experiment_custom_tags(self, jewellery_dataframe):
+        with pytest.raises(TypeError):
+            # init setup
+            _ = pycaret.clustering.setup(
+                jewellery_dataframe,
+                normalize=True,
+                log_experiment=True,
+                silent=True,
+                html=False,
+                session_id=123,
+                n_jobs=1,
+                experiment_name=uuid.uuid4().hex,
+                experiment_custom_tags='custom_tag'
+            )
+    def test_clustering_create_model_fails_with_experiment_custom_tags(self, jewellery_dataframe):
+        with pytest.raises(TypeError):
+            # init setup
+            _ = pycaret.clustering.setup(
+                jewellery_dataframe,
+                normalize=True,
+                log_experiment=True,
+                silent=True,
+                html=False,
+                session_id=123,
+                n_jobs=1,
+                experiment_name=uuid.uuid4().hex,
+            )
+            _ = pycaret.clustering.create_model("kmeans", experiment_custom_tags=('pytest', 'testing'))
+
+    @pytest.mark.parametrize('custom_tag', [1, ('pytest', 'True'), True, 1000.0])
+    def test_clustering_setup_fails_with_experiment_custom_multiples_inputs(self, custom_tag):
+        with pytest.raises(TypeError):
+            # init setup
+            _ = pycaret.clustering.setup(
+                pycaret.datasets.get_data("jewellery"),
+                normalize=True,
+                log_experiment=True,
+                silent=True,
+                html=False,
+                session_id=123,
+                n_jobs=1,
+                experiment_name=uuid.uuid4().hex,
+                experiment_custom_tags=custom_tag
+            )
+    def test_clustering_setup_with_experiment_custom_tags(self, jewellery_dataframe, tracking_api):
+            experiment_name = uuid.uuid4().hex
+            # init setup
+            _ = pycaret.clustering.setup(
+                jewellery_dataframe,
+                normalize=True,
+                log_experiment=True,
+                silent=True,
+                html=False,
+                session_id=123,
+                n_jobs=1,
+                experiment_name=experiment_name,
+                experiment_custom_tags={'pytest' : 'testing'}
+            )
+            #get experiment data
+            experiment = [e for e in tracking_api.list_experiments() if e.name == experiment_name][0]
+            experiment_id = experiment.experiment_id
+            #get run's info
+            experiment_run = tracking_api.list_run_infos(experiment_id)[0]
+            #get run id
+            run_id = experiment_run.run_id
+            #get run data
+            run_data = tracking_api.get_run(run_id)
+            #assert that custom tag was inserted
+            assert 'testing' == run_data.to_dictionary().get('data').get("tags").get("pytest")
+
+    def test_clustering_create_models_with_experiment_custom_tags(self, jewellery_dataframe, tracking_api):
+            experiment_name = uuid.uuid4().hex
+            # init setup
+            _ = pycaret.clustering.setup(
+                jewellery_dataframe,
+                normalize=True,
+                log_experiment=True,
+                silent=True,
+                html=False,
+                session_id=123,
+                n_jobs=1,
+                experiment_name=experiment_name,
+            )
+            _ = pycaret.clustering.create_model("kmeans", experiment_custom_tags={'pytest' : 'testing'})
+            #get experiment data
+            experiment = [e for e in tracking_api.list_experiments() if e.name == experiment_name][0]
+            experiment_id = experiment.experiment_id
+            #get run's info
+            experiment_run = tracking_api.list_run_infos(experiment_id)[0]
+            #get run id
+            run_id = experiment_run.run_id
+            #get run data
+            run_data = tracking_api.get_run(run_id)
+            #assert that custom tag was inserted
+            assert 'testing' == run_data.to_dictionary().get('data').get("tags").get("pytest")
 
 if __name__ == "__main__":
     test()
+    TestClusteringExperimentCustomTags()

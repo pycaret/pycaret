@@ -10,6 +10,7 @@ import pycaret.datasets
 from pycaret.internal.utils import can_early_stop
 
 
+@pytest.mark.skip(reason="no way of currently testing this")
 def test():
     # loading dataset
     data = pycaret.datasets.get_data("juice")

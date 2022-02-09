@@ -462,10 +462,7 @@ def _calculate_unsupervised_metric(
     try:
         calculated_metric = score_func(target, labels, **container.args)
     except:
-        try:
-            calculated_metric = score_func(target, labels, **container.args)
-        except:
-            calculated_metric = 0
+        calculated_metric = 0
 
     return (display_name, calculated_metric)
 

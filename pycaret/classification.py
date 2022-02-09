@@ -4,13 +4,18 @@
 
 import logging
 import warnings
+import numpy as np
 import pandas as pd
 from joblib.memory import Memory
+from typing import List, Tuple, Any, Union, Optional, Dict, Callable
 
+# Own modules
+import pycaret.internal.tabular
+from pycaret.parallel import ParallelBackend
+from pycaret.internal.Display import Display, is_in_colab, enable_colab
 from pycaret.internal.pycaret_experiment import ClassificationExperiment
 from pycaret.internal.utils import check_if_global_is_not_none
 
-from typing import List, Any, Union, Optional, Dict
 
 warnings.filterwarnings("ignore")
 
@@ -25,7 +30,7 @@ _CURRENT_EXPERIMENT_DECORATOR_DICT = {
 
 
 def setup(
-    data: pd.DataFrame,
+    data: Union[np.array, pd.DataFrame],
     target: Union[int, str] = -1,
     train_size: float = 0.7,
     test_data: Optional[pd.DataFrame] = None,
@@ -82,6 +87,7 @@ def setup(
     system_log: Union[bool, logging.Logger] = True,
     log_experiment: bool = False,
     experiment_name: Optional[str] = None,
+    experiment_custom_tags: Optional[Dict[str, Any]] = None,
     log_plots: Union[bool, list] = False,
     log_profile: bool = False,
     log_data: bool = False,
@@ -117,14 +123,14 @@ def setup(
 
 
     train_size: float, default = 0.7
-        Proportion of the dataset to be used for training and validation. Should be 
+        Proportion of the dataset to be used for training and validation. Should be
         between 0.0 and 1.0.
 
 
     test_data: pandas.DataFrame, default = None
-        If not None, test_data is used as a hold-out set and ``train_size`` parameter is 
-        ignored. test_data must be labelled and the shape of data and test_data must 
-        match. 
+        If not None, test_data is used as a hold-out set and ``train_size`` parameter is
+        ignored. test_data must be labelled and the shape of data and test_data must
+        match.
 
 
     ordinal_features: dict, default = None
@@ -463,6 +469,11 @@ def setup(
         Name of the experiment for logging. Ignored when ``log_experiment`` is not True.
 
 
+    experiment_custom_tags: dict, default = None
+        Dictionary of tag_name: String -> value: (String, but will be string-ified
+        if not) passed to the mlflow.set_tags to add new custom tags for the experiment.
+
+
     log_plots: bool or list, default = False
         When set to True, certain plots are logged automatically in the ``MLFlow`` server.
         To change the type of plots to be logged, pass a list containing plot IDs. Refer
@@ -480,10 +491,10 @@ def setup(
 
 
     silent: bool, default = False
-        When executing in completely automated mode or on a remote kernel, this must be True.
-        Leave False otherwise
-        
-        
+        Controls the confirmation input of data types when ``setup`` is executed. When
+        executing in completely automated mode or on a remote kernel, this must be True.
+
+
     verbose: bool, default = True
         When set to False, Information grid is not printed.
 
@@ -569,6 +580,7 @@ def setup(
         system_log=system_log,
         log_experiment=log_experiment,
         experiment_name=experiment_name,
+        experiment_custom_tags=experiment_custom_tags,
         log_plots=log_plots,
         log_profile=log_profile,
         log_data=log_data,
@@ -594,8 +606,11 @@ def compare_models(
     errors: str = "ignore",
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
+    experiment_custom_tags: Optional[Dict[str, Any]] = None,
     probability_threshold: Optional[float] = None,
     verbose: bool = True,
+    display: Optional[Display] = None,
+    parallel: Optional[ParallelBackend] = None,
 ) -> Union[Any, List[Any]]:
 
     """
@@ -678,6 +693,11 @@ def compare_models(
         as the column name in the dataset containing group labels.
 
 
+    experiment_custom_tags: dict, default = None
+        Dictionary of tag_name: String -> value: (String, but will be string-ified
+        if not) passed to the mlflow.set_tags to add new custom tags for the experiment.
+
+
     probability_threshold: float, default = None
         Threshold for converting predicted probability to class label.
         It defaults to 0.5 for all classifiers unless explicitly defined
@@ -688,8 +708,20 @@ def compare_models(
         Score grid is not printed when verbose is set to False.
 
 
+    display: pycaret.internal.Display.Display, default = None
+        Custom display object
+
+
+    parallel: pycaret.parallel.parallel_backend.ParallelBackend, default = None
+        A ParallelBackend instance. For example if you have a SparkSession ``session``,
+        you can use ``FugueBackend(session)`` to make this function running using
+        Spark. For more details, see
+        :class:`~pycaret.parallel.fugue_backend.FugueBackend`
+
+
     Returns:
         Trained model or list of trained models, depending on the ``n_select`` param.
+
 
     Warnings
     --------
@@ -700,6 +732,17 @@ def compare_models(
 
     - No models are logged in ``MLFlow`` when ``cross_validation`` parameter is False.
     """
+    params = dict(locals())
+    if parallel is not None:
+        global _pycaret_setup_call
+        parallel.attach(_pycaret_setup_call["func"], _pycaret_setup_call["params"])
+        if params.get("include", None) is None:
+            _models = models()
+            if turbo:
+                _models = _models[_models.Turbo]
+            params["include"] = _models.index.tolist()
+        del params["parallel"]
+        return parallel.compare_models(compare_models, params)
 
     return _CURRENT_EXPERIMENT.compare_models(
         include=include,
@@ -714,8 +757,10 @@ def compare_models(
         errors=errors,
         fit_kwargs=fit_kwargs,
         groups=groups,
+        experiment_custom_tags=experiment_custom_tags,
         probability_threshold=probability_threshold,
         verbose=verbose,
+        display=display,
     )
 
 
@@ -1411,6 +1456,7 @@ def plot_model(
     save: bool = False,
     fold: Optional[Union[int, Any]] = None,
     fit_kwargs: Optional[dict] = None,
+    plot_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
     use_train_data: bool = False,
     verbose: bool = True,
@@ -1479,6 +1525,10 @@ def plot_model(
         Dictionary of arguments passed to the fit method of the model.
 
 
+    plot_kwargs: dict, default = {} (empty dict)
+        Dictionary of arguments passed to the visualizer class.
+
+
     groups: str or array-like, with shape (n_samples,), default = None
         Optional group labels when GroupKFold is used for the cross validation.
         It takes an array with shape (n_samples, ) where n_samples is the number
@@ -1524,6 +1574,7 @@ def plot_model(
         save=save,
         fold=fold,
         fit_kwargs=fit_kwargs,
+        plot_kwargs=plot_kwargs,
         groups=groups,
         verbose=verbose,
         use_train_data=use_train_data,
@@ -1536,6 +1587,7 @@ def evaluate_model(
     estimator,
     fold: Optional[Union[int, Any]] = None,
     fit_kwargs: Optional[dict] = None,
+    plot_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
     use_train_data: bool = False,
 ):
@@ -1570,6 +1622,10 @@ def evaluate_model(
         Dictionary of arguments passed to the fit method of the model.
 
 
+    plot_kwargs: dict, default = {} (empty dict)
+        Dictionary of arguments passed to the visualizer class.
+
+
     groups: str or array-like, with shape (n_samples,), default = None
         Optional group labels when GroupKFold is used for the cross validation.
         It takes an array with shape (n_samples, ) where n_samples is the number
@@ -1596,6 +1652,7 @@ def evaluate_model(
         estimator=estimator,
         fold=fold,
         fit_kwargs=fit_kwargs,
+        plot_kwargs=plot_kwargs,
         groups=groups,
         use_train_data=use_train_data,
     )
@@ -1615,16 +1672,9 @@ def interpret_model(
 ):
 
     """
-    This function takes a trained model object and returns an interpretation plot
-    based on the test / hold-out set. It only supports tree based algorithms.
-
-    This function is implemented based on the SHAP (SHapley Additive exPlanations),
-    which is a unified approach to explain the output of any machine learning model.
-    SHAP connects game theory with local explanations.
-
-    For more information : https://shap.readthedocs.io/en/latest/
-
-    For Partial Dependence Plot : https://github.com/SauceCat/PDPbox
+    This function analyzes the predictions generated from a trained model. Most plots
+    in this function are implemented based on the SHAP (SHapley Additive exPlanations).
+    For more info on this, please see https://shap.readthedocs.io/en/latest/
 
 
     Example
@@ -1811,65 +1861,67 @@ def calibrate_model(
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def optimize_threshold(
     estimator,
-    true_positive: int = 0,
-    true_negative: int = 0,
-    false_positive: int = 0,
-    false_negative: int = 0,
+    optimize: str = "Accuracy",
+    grid_interval: float = 0.1,
+    return_data: bool = False,
+    plot_kwargs: Optional[dict] = None,
 ):
 
     """
-    This function optimizes probability threshold for a given estimator using
-    custom cost function. The function displays a plot of optimized cost as a
-    function of probability threshold between 0.0 to 1.0 and returns the
-    optimized threshold value as a numpy float.
+    This function optimizes probability threshold for a trained classifier. It
+    iterates over performance metrics at different ``probability_threshold`` with
+    a step size defined in ``grid_interval`` parameter. This function will display
+    a plot of the performance metrics at each probability threshold and returns the
+    best model based on the metric defined under ``optimize`` parameter.
 
 
     Example
     -------
     >>> from pycaret.datasets import get_data
     >>> juice = get_data('juice')
-    >>> from pycaret.classification import *
-    >>> exp_name = setup(data = juice,  target = 'Purchase')
+    >>> experiment_name = setup(data = juice,  target = 'Purchase')
     >>> lr = create_model('lr')
-    >>> optimize_threshold(lr, true_negative = 10, false_negative = -100)
+    >>> best_lr_threshold = optimize_threshold(lr)
 
 
-    estimator: scikit-learn compatible object
-        Trained model object
+    Parameters
+    ----------
+    estimator : object
+        A trained model object should be passed as an estimator.
 
 
-    true_positive: int, default = 0
-        Cost function or returns for true positive.
+    optimize : str, default = 'Accuracy'
+        Metric to be used for selecting best model.
 
 
-    true_negative: int, default = 0
-        Cost function or returns for true negative.
+    grid_interval : float, default = 0.0001
+        Grid interval for threshold grid search. Default 10 iterations.
 
 
-    false_positive: int, default = 0
-        Cost function or returns for false positive.
+    return_data :  bool, default = False
+        When set to True, data used for visualization is also returned.
 
 
-    false_negative: int, default = 0
-        Cost function or returns for false negative.
+    plot_kwargs :  dict, default = {} (empty dict)
+        Dictionary of arguments passed to the visualizer class.
 
 
-    Returns:
-        numpy.float64
+    Returns
+    -------
+    Trained Model
 
 
     Warnings
     --------
-    - This function is not supported when target is multiclass.
-
+    - This function does not support multiclass classification problems.
     """
 
     return _CURRENT_EXPERIMENT.optimize_threshold(
         estimator=estimator,
-        true_positive=true_positive,
-        true_negative=true_negative,
-        false_positive=false_positive,
-        false_negative=false_negative,
+        optimize=optimize,
+        grid_interval=grid_interval,
+        return_data=return_data,
+        plot_kwargs=plot_kwargs,
     )
 
 
@@ -1880,6 +1932,7 @@ def predict_model(
     probability_threshold: Optional[float] = None,
     encoded_labels: bool = False,
     raw_score: bool = False,
+    drift_report: bool = False,
     round: int = 4,
     verbose: bool = True,
 ) -> pd.DataFrame:
@@ -1925,6 +1978,11 @@ def predict_model(
         When set to True, scores for all labels will be returned.
 
 
+    drift_report: bool, default = False
+        When set to True, interactive drift report is generated on test set
+        with the evidently library.
+
+
     round: int, default = 4
         Number of decimal places the metrics in the score grid will be rounded to.
 
@@ -1956,6 +2014,7 @@ def predict_model(
         probability_threshold=probability_threshold,
         encoded_labels=encoded_labels,
         raw_score=raw_score,
+        drift_report=drift_report,
         round=round,
         verbose=verbose,
     )
@@ -1967,6 +2026,7 @@ def finalize_model(
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
     model_only: bool = True,
+    experiment_custom_tags: Optional[Dict[str, Any]] = None,
 ) -> Any:
 
     """
@@ -2003,6 +2063,10 @@ def finalize_model(
         When set to False, only model object is re-trained and all the
         transformations in Pipeline are ignored.
 
+    experiment_custom_tags: dict, default = None
+        Dictionary of tag_name: String -> value: (String, but will be string-ified if
+        not) passed to the mlflow.set_tags to add new custom tags for the experiment.
+
 
     Returns:
         Trained Model
@@ -2014,12 +2078,16 @@ def finalize_model(
         fit_kwargs=fit_kwargs,
         groups=groups,
         model_only=model_only,
+        experiment_custom_tags=experiment_custom_tags,
     )
 
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def deploy_model(
-    model, model_name: str, authentication: dict, platform: str = "aws",
+    model,
+    model_name: str,
+    authentication: dict,
+    platform: str = "aws",
 ):
     """
     This function deploys the transformation pipeline and trained model on cloud.
@@ -2192,7 +2260,7 @@ def load_model(
         dictionary of applicable authentication tokens.
 
         when platform = 'aws':
-        {'bucket' : 'S3-bucket-name'}
+        {'bucket' : 'Name of Bucket on S3', 'path': (optional) folder name under the bucket}
 
         when platform = 'gcp':
         {'project': 'gcp-project-name', 'bucket' : 'gcp-bucket-name'}
@@ -2293,7 +2361,9 @@ def pull(pop: bool = False) -> pd.DataFrame:
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def models(
-    type: Optional[str] = None, internal: bool = False, raise_errors: bool = True,
+    type: Optional[str] = None,
+    internal: bool = False,
+    raise_errors: bool = True,
 ) -> pd.DataFrame:
 
     """
@@ -2334,7 +2404,9 @@ def models(
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def get_metrics(
-    reset: bool = False, include_custom: bool = True, raise_errors: bool = True,
+    reset: bool = False,
+    include_custom: bool = True,
+    raise_errors: bool = True,
 ) -> pd.DataFrame:
 
     """
@@ -2369,8 +2441,10 @@ def get_metrics(
 
     """
 
-    return _CURRENT_EXPERIMENT.get_metrics(
-        reset=reset, include_custom=include_custom, raise_errors=raise_errors,
+    return pycaret.internal.tabular.get_metrics(
+        reset=reset,
+        include_custom=include_custom,
+        raise_errors=raise_errors,
     )
 
 
@@ -2714,6 +2788,315 @@ def get_leaderboard(
         fit_kwargs=fit_kwargs,
         groups=groups,
         verbose=verbose,
+    )
+
+
+def dashboard(
+    estimator, display_format="dash", dashboard_kwargs={}, run_kwargs={}, **kwargs
+):
+    """
+    This function generates the interactive dashboard for a trained model. The
+    dashboard is implemented using ExplainerDashboard (explainerdashboard.readthedocs.io)
+
+
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> juice = get_data('juice')
+    >>> from pycaret.classification import *
+    >>> exp_name = setup(data = juice,  target = 'Purchase')
+    >>> lr = create_model('lr')
+    >>> dashboard(lr)
+
+
+    estimator: scikit-learn compatible object
+        Trained model object
+
+
+    display_format: str, default = 'dash'
+        Render mode for the dashboard. The default is set to ``dash`` which will
+        render a dashboard in browser. There are four possible options:
+
+        - 'dash' - displays the dashboard in browser
+        - 'inline' - displays the dashboard in the jupyter notebook cell.
+        - 'jupyterlab' - displays the dashboard in jupyterlab pane.
+        - 'external' - displays the dashboard in a separate tab. (use in Colab)
+
+
+    dashboard_kwargs: dict, default = {} (empty dict)
+        Dictionary of arguments passed to the ``ExplainerDashboard`` class.
+
+
+    run_kwargs: dict, default = {} (empty dict)
+        Dictionary of arguments passed to the ``run`` method of ``ExplainerDashboard``.
+
+
+    **kwargs:
+        Additional keyword arguments to pass to the ``ClassifierExplainer`` or
+        ``RegressionExplainer`` class.
+
+
+    Returns:
+        None
+    """
+    return pycaret.internal.tabular.dashboard(
+        estimator, display_format, dashboard_kwargs, run_kwargs, **kwargs
+    )
+
+
+def convert_model(estimator, language: str = "python") -> str:
+
+    """
+    This function transpiles trained machine learning models into native
+    inference script in different programming languages (Python, C, Java,
+    Go, JavaScript, Visual Basic, C#, PowerShell, R, PHP, Dart, Haskell,
+    Ruby, F#). This functionality is very useful if you want to deploy models
+    into environments where you can't install your normal Python stack to
+    support model inference.
+
+
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> juice = get_data('juice')
+    >>> from pycaret.classification import *
+    >>> exp_name = setup(data = juice,  target = 'Purchase')
+    >>> lr = create_model('lr')
+    >>> lr_java = export_model(lr, 'java')
+
+
+    estimator: scikit-learn compatible object
+        Trained model object
+
+
+    language: str, default = 'python'
+        Language in which inference script to be generated. Following
+        options are available:
+
+        * 'python'
+        * 'java'
+        * 'javascript'
+        * 'c'
+        * 'c#'
+        * 'f#'
+        * 'go'
+        * 'haskell'
+        * 'php'
+        * 'powershell'
+        * 'r'
+        * 'ruby'
+        * 'vb'
+        * 'dart'
+
+
+    Returns:
+        str
+
+    """
+    return pycaret.internal.tabular.convert_model(estimator, language)
+
+
+def eda(data=None, target: str = None, display_format: str = "bokeh", **kwargs):
+
+    """
+    This function generates AutoEDA using AutoVIZ library. You must
+    install Autoviz separately ``pip install autoviz`` to use this
+    function.
+
+
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> juice = get_data('juice')
+    >>> from pycaret.classification import *
+    >>> exp_name = setup(data = juice,  target = 'Purchase')
+    >>> eda(display_format = 'bokeh')
+
+
+    data: pandas.DataFrame
+        DataFrame with (n_samples, n_features).
+
+
+    target: str
+        Name of the target column to be passed in as a string.
+
+
+    display_format: str, default = 'bokeh'
+        When set to 'bokeh' the plots are interactive. Other option is ``svg`` for static
+        plots that are generated using matplotlib and seaborn.
+
+
+    **kwargs:
+        Additional keyword arguments to pass to the AutoVIZ class.
+
+
+    Returns:
+        None
+    """
+    return pycaret.internal.tabular.eda(
+        data=data, target=target, display_format=display_format, **kwargs
+    )
+
+
+def check_fairness(estimator, sensitive_features: list, plot_kwargs: dict = {}):
+
+    """
+    There are many approaches to conceptualizing fairness. This function follows
+    the approach known as group fairness, which asks: Which groups of individuals
+    are at risk for experiencing harms. This function provides fairness-related
+    metrics between different groups (also called subpopulation).
+
+
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> income = get_data('income')
+    >>> from pycaret.classification import *
+    >>> exp_name = setup(data = income,  target = 'income >50K')
+    >>> lr = create_model('lr')
+    >>> lr_fairness = check_fairness(lr, sensitive_features = ['sex', 'race'])
+
+
+    estimator: scikit-learn compatible object
+        Trained model object
+
+
+    sensitive_features: list
+        List of column names as present in the original dataset before any
+        transformations.
+
+
+    plot_kwargs: dict, default = {} (empty dict)
+        Dictionary of arguments passed to the matplotlib plot.
+
+
+    Returns:
+        pandas.DataFrame
+
+    """
+    return pycaret.internal.tabular.check_fairness(
+        estimator=estimator,
+        sensitive_features=sensitive_features,
+        plot_kwargs=plot_kwargs,
+    )
+
+
+def create_api(
+    estimator, api_name: str, host: str = "127.0.0.1", port: int = 8000
+) -> None:
+
+    """
+    This function takes an input ``estimator`` and creates a POST API for
+    inference. It only creates the API and doesn't run it automatically.
+    To run the API, you must run the Python file using ``!python``.
+
+
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> juice = get_data('juice')
+    >>> from pycaret.classification import *
+    >>> exp_name = setup(data = juice,  target = 'Purchase')
+    >>> lr = create_model('lr')
+    >>> create_api(lr, 'lr_api'
+    >>> !python lr_api.py
+
+
+    estimator: scikit-learn compatible object
+        Trained model object
+
+
+    api_name: scikit-learn compatible object
+        Trained model object
+
+
+    host: str, default = '127.0.0.1'
+        API host address.
+
+
+    port: int, default = 8000
+        port for API.
+
+
+    Returns:
+        None
+    """
+    return pycaret.internal.tabular.create_api(
+        estimator=estimator, api_name=api_name, host=host, port=port
+    )
+
+
+def create_docker(
+    api_name: str, base_image: str = "python:3.8-slim", expose_port: int = 8000
+) -> None:
+
+    """
+    This function creates a ``Dockerfile`` and ``requirements.txt`` for
+    productionalizing API end-point.
+
+
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> juice = get_data('juice')
+    >>> from pycaret.classification import *
+    >>> exp_name = setup(data = juice,  target = 'Purchase')
+    >>> lr = create_model('lr')
+    >>> create_api(lr, 'lr_api')
+    >>> create_docker('lr_api')
+
+
+    api_name: str
+        Name of API. Must be saved as a .py file in the same folder.
+
+
+    base_image: str, default = "python:3.8-slim"
+        Name of the base image for Dockerfile.
+
+
+    expose_port: int, default = 8000
+        port for expose for API in the Dockerfile.
+
+
+    Returns:
+        None
+    """
+    return pycaret.internal.tabular.create_docker(
+        api_name=api_name, base_image=base_image, expose_port=expose_port
+    )
+
+
+def create_app(estimator, app_kwargs: Optional[dict] = None) -> None:
+
+    """
+    This function creates a basic gradio app for inference.
+    It will later be expanded for other app types such as
+    Streamlit.
+
+
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> juice = get_data('juice')
+    >>> from pycaret.classification import *
+    >>> exp_name = setup(data = juice,  target = 'Purchase')
+    >>> lr = create_model('lr')
+    >>> create_app(lr)
+
+
+    estimator: scikit-learn compatible object
+        Trained model object
+
+
+    app_kwargs: dict, default = {}
+        arguments to be passed to app class.
+
+
+    Returns:
+        None
+    """
+    return pycaret.internal.tabular.create_app(
+        estimator=estimator, app_kwargs=app_kwargs
     )
 
 
