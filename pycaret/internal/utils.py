@@ -945,6 +945,15 @@ def df_shrink_dtypes(df, skip=[], obj2cat=True, int2uint=False):
     return df.astype(new_dtypes)
 
 
+def get_label_encoder(pipeline):
+    """Return the label encoder in the pipeline if any."""
+    try:
+        encoder = next(step[1] for step in pipeline.steps if step[0] == "label_encoding")
+        return encoder.transformer
+    except StopIteration:
+        return
+
+
 def mlflow_remove_bad_chars(string: str) -> str:
     """Leaves only alphanumeric, spaces _, -, ., / in a string"""
     return "".join(c for c in string if c.isalpha() or c in ("_", "-", ".", " ", "/"))

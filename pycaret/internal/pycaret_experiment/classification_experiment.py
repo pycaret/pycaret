@@ -22,7 +22,7 @@ from pycaret.internal.meta_estimators import (
     CustomProbabilityThresholdClassifier,
     get_estimator_from_meta_estimator,
 )
-from pycaret.internal.utils import color_df
+from pycaret.internal.utils import color_df, get_label_encoder
 import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
 from pycaret.internal.distributions import *
@@ -330,6 +330,10 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         container.append(["Session id", self.seed])
         container.append(["Target", self.target_param])
         container.append(["Target type", "classification"])
+        le = get_label_encoder(self.pipeline)
+        if le:
+            mapping = {str(v): i for i, v in enumerate(le.classes_)}
+            container.append(["Target mapping", ", ".join([f"{k}: {v}" for k, v in mapping.items()])])
         container.append(["Data shape", self.dataset.shape])
         container.append(["Train data shape", self.train.shape])
         container.append(["Test data shape", self.test.shape])

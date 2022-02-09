@@ -17,7 +17,7 @@ from pycaret.internal.utils import (
     true_warm_start,
     can_early_stop,
 )
-from pycaret.internal.utils import id_or_display_name, to_df
+from pycaret.internal.utils import to_df, id_or_display_name, get_label_encoder
 import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
 from pycaret.internal.distributions import *
@@ -4590,13 +4590,10 @@ class _SupervisedExperiment(_TabularExperiment):
 
         def replace_labels_in_column(labels):
             # Check if there is a LabelEncoder in the pipeline
-            try:
-                encoder = next(
-                    step[1] for step in self.pipeline.steps if step[0] == "label_encoding"
-                )
-                # encoder is a TransformerWrapper class
-                return encoder.transformer.inverse_transform(label["Label"])
-            except StopIteration:
+            le = get_label_encoder(self.pipeline)
+            if le:
+                return le.inverse_transform(label["Label"])
+            else:
                 return labels
 
         function_params_str = ", ".join(
