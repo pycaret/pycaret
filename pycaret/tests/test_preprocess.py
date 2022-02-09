@@ -111,7 +111,6 @@ def test_ordinal_features():
     )
     X, _ = pc.pipeline.fit_transform(pc.X, pc.y)
     mapping = pc.pipeline.steps[0][1].transformer.mapping
-    assert mapping[0]["mapping"][np.nan] == -1
     assert mapping[0]["mapping"]["low"] == 0
     assert mapping[0]["mapping"]["medium"] == 1
     assert mapping[0]["mapping"]["high"] == 2
