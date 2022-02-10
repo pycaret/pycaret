@@ -2,21 +2,25 @@ import os, sys
 
 sys.path.insert(0, os.path.abspath(".."))
 
+import pytest
 import pandas as pd
 import pycaret.classification
 import pycaret.datasets
 from mlflow.tracking.client import MlflowClient
 import uuid
 
-@pytest.fixture(scope='module')
+
+@pytest.fixture(scope="module")
 def juice_dataframe():
     # loading dataset
     return pycaret.datasets.get_data("juice")
 
-@pytest.fixture(scope='module')
+
+@pytest.fixture(scope="module")
 def tracking_api():
     client = MlflowClient()
     return client
+
 
 def test(juice_dataframe):
 
@@ -106,7 +110,9 @@ def test(juice_dataframe):
 
 
 class TestClassificationExperimentCustomTags:
-    def test_classification_setup_fails_with_experiment_custom_tags(self, juice_dataframe):
+    def test_classification_setup_fails_with_experiment_custom_tags(
+        self, juice_dataframe
+    ):
         with pytest.raises(TypeError):
             # init setup
             _ = pycaret.classification.setup(
@@ -120,11 +126,13 @@ class TestClassificationExperimentCustomTags:
                 session_id=123,
                 n_jobs=1,
                 experiment_name=uuid.uuid4().hex,
-                experiment_custom_tags='custom_tag'
+                experiment_custom_tags="custom_tag",
             )
 
-    @pytest.mark.parametrize('custom_tag', [1, ('pytest', 'True'), True, 1000.0])
-    def test_classification_setup_fails_with_experiment_custom_multiples_inputs(self, custom_tag):
+    @pytest.mark.parametrize("custom_tag", [1, ("pytest", "True"), True, 1000.0])
+    def test_classification_setup_fails_with_experiment_custom_multiples_inputs(
+        self, custom_tag
+    ):
         with pytest.raises(TypeError):
             # init setup
             _ = pycaret.classification.setup(
@@ -138,10 +146,12 @@ class TestClassificationExperimentCustomTags:
                 session_id=123,
                 n_jobs=1,
                 experiment_name=uuid.uuid4().hex,
-                experiment_custom_tags=custom_tag
+                experiment_custom_tags=custom_tag,
             )
 
-    def test_classification_compare_models_fails_with_experiment_custom_tags(self, juice_dataframe):
+    def test_classification_compare_models_fails_with_experiment_custom_tags(
+        self, juice_dataframe
+    ):
         with pytest.raises(TypeError):
             # init setup
             _ = pycaret.classification.setup(
@@ -155,13 +165,17 @@ class TestClassificationExperimentCustomTags:
                 session_id=123,
                 n_jobs=1,
                 experiment_name=uuid.uuid4().hex,
-                experiment_custom_tags={'pytest' : 'awesome_framework'}
+                experiment_custom_tags={"pytest": "awesome_framework"},
             )
 
             # compare models
-            _ = pycaret.classification.compare_models(errors="raise", n_select=100, experiment_custom_tags='invalid_tag')[:3]
+            _ = pycaret.classification.compare_models(
+                errors="raise", n_select=100, experiment_custom_tags="invalid_tag"
+            )[:3]
 
-    def test_classification_finalize_models_fails_with_experiment_custom_tags(self, juice_dataframe):
+    def test_classification_finalize_models_fails_with_experiment_custom_tags(
+        self, juice_dataframe
+    ):
         with pytest.raises(TypeError):
             # init setup
             _ = pycaret.classification.setup(
@@ -175,9 +189,8 @@ class TestClassificationExperimentCustomTags:
                 session_id=123,
                 n_jobs=1,
                 experiment_name=uuid.uuid4().hex,
-                experiment_custom_tags={'pytest' : 'awesome_framework'}
+                experiment_custom_tags={"pytest": "awesome_framework"},
             )
-
 
             # compare models
             _ = pycaret.classification.compare_models(errors="raise", n_select=100)[:3]
@@ -186,10 +199,13 @@ class TestClassificationExperimentCustomTags:
             best = pycaret.classification.automl(optimize="MCC")
 
             # finalize model
-            _ = pycaret.classification.finalize_model(best, experiment_custom_tags='pytest')
+            _ = pycaret.classification.finalize_model(
+                best, experiment_custom_tags="pytest"
+            )
 
-
-    def test_classification_models_with_experiment_custom_tags(self, juice_dataframe, tracking_api):
+    def test_classification_models_with_experiment_custom_tags(
+        self, juice_dataframe, tracking_api
+    ):
         # init setup
         experiment_name = uuid.uuid4().hex
         _ = pycaret.classification.setup(
@@ -206,18 +222,24 @@ class TestClassificationExperimentCustomTags:
         )
 
         # compare models
-        _ = pycaret.classification.compare_models(errors="raise", n_select=100, experiment_custom_tags={'pytest' : 'testing'})[:3]
-        #get experiment data
-        experiment = [e for e in tracking_api.list_experiments() if e.name == experiment_name][0]
+        _ = pycaret.classification.compare_models(
+            errors="raise", n_select=100, experiment_custom_tags={"pytest": "testing"}
+        )[:3]
+        # get experiment data
+        experiment = [
+            e for e in tracking_api.list_experiments() if e.name == experiment_name
+        ][0]
         experiment_id = experiment.experiment_id
-        #get run's info
+        # get run's info
         experiment_run = tracking_api.list_run_infos(experiment_id)[0]
-        #get run id
+        # get run id
         run_id = experiment_run.run_id
-        #get run data
+        # get run data
         run_data = tracking_api.get_run(run_id)
-        #assert that custom tag was inserted
-        assert 'testing' == run_data.to_dictionary().get('data').get("tags").get("pytest")
+        # assert that custom tag was inserted
+        assert "testing" == run_data.to_dictionary().get("data").get("tags").get(
+            "pytest"
+        )
 
 
 if __name__ == "__main__":
