@@ -1,9 +1,5 @@
-# Module: Regression
-# Author: Moez Ali <moez.ali@queensu.ca>
-# License: MIT
-
-
 import logging
+import numpy as np
 import pandas as pd
 from joblib.memory import Memory
 
@@ -112,7 +108,7 @@ def setup(
 
 
     data: dataframe-like
-        Shape (n_samples, n_features), where n_samples is the number of samples and 
+        Shape (n_samples, n_features), where n_samples is the number of samples and
         n_features is the number of features.
 
 
@@ -2181,7 +2177,9 @@ def get_metrics(
     """
 
     return _CURRENT_EXPERIMENT.get_metrics(
-        reset=reset, include_custom=include_custom, raise_errors=raise_errors,
+        reset=reset,
+        include_custom=include_custom,
+        raise_errors=raise_errors,
     )
 
 
@@ -2806,7 +2804,7 @@ def create_docker(
     )
 
 
-def create_app(estimator, app_kwargs: Optional[dict] = None)-> None:
+def create_app(estimator, app_kwargs: Optional[dict] = None) -> None:
 
     """
     This function creates a basic gradio app for inference.
@@ -2835,4 +2833,6 @@ def create_app(estimator, app_kwargs: Optional[dict] = None)-> None:
     Returns:
         None
     """
-    return pycaret.internal.tabular.create_app(estimator=estimator, app_kwargs=app_kwargs)
+    return pycaret.internal.tabular.create_app(
+        estimator=estimator, app_kwargs=app_kwargs
+    )
