@@ -803,8 +803,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         self.fold_groups_param_full = None
         self.transform_target_param = None
 
-        # For later when we have multivariate time series
-        ignore_features: Optional[List[str]] = None
         # Features to be ignored (are not read by self.dataset, self.X, etc...)
         self._fxs = {"Ignore": ignore_features or []}
 
