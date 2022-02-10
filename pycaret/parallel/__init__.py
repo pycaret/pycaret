@@ -1,4 +1,3 @@
-from typing import Any
 from .parallel_backend import ParallelBackend, NoDisplay
 
 try:

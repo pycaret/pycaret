@@ -17,7 +17,7 @@ class ParallelBackend:
     """
 
     def __init__(self) -> None:
-        self._signatpure: Optional[str] = None
+        self._signature: Optional[str] = None
         self._setup_func: Optional[Callable] = None
         self._setup_params: Optional[Dict[str, Any]] = None
 
