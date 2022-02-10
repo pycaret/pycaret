@@ -10,13 +10,14 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import numpy as np  # type: ignore
 import pandas as pd  # type: ignore
 from IPython.utils import io
-from pandas.io.formats.style import Styler
 from sklearn.base import clone  # type: ignore
 from sktime.forecasting.base import ForecastingHorizon
 from sktime.forecasting.model_selection import (  # type: ignore
     ExpandingWindowSplitter,
     SlidingWindowSplitter,
 )
+
+from pycaret.internal.pipeline import Pipeline as InternalPipeline
 
 import pycaret.containers.metrics.time_series
 import pycaret.containers.models.time_series
@@ -150,13 +151,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             # ["Transformed Test Target", self.y_test.shape],
             # ["Transformed Train Exogenous", self.X_train.shape],
             # ["Transformed Test Exogenous", self.X_test.shape],
-            
-            
-            
-            
-            
-            
-            
         ]
 
         if self.preprocess:
@@ -164,7 +158,8 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         display_container = pd.DataFrame(
             display_container, columns=["Description", "Value"]
-        
+        )
+
         return display_container
 
     def _get_models(self, raise_errors: bool = True) -> Tuple[dict, dict]:
@@ -175,8 +170,10 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             ).items()
             if not v.is_special
         }
-        all_models_internal = pycaret.containers.models.time_series.get_all_model_containers(
-            self, raise_errors=raise_errors
+        all_models_internal = (
+            pycaret.containers.models.time_series.get_all_model_containers(
+                self, raise_errors=raise_errors
+            )
         )
         return all_models, all_models_internal
 
@@ -546,7 +543,9 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
     @staticmethod
     def _return_exogenous_names(
-        data: pd.DataFrame, target: List[str], ignore_features: Optional[List] = None,
+        data: pd.DataFrame,
+        target: List[str],
+        ignore_features: Optional[List] = None,
     ):
 
         cols = data.columns.to_list()
@@ -784,7 +783,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         """
         # sktime is an optional dependency
-        from sktime.utils.seasonality import autocorrelation_seasonality_test
         from sktime.forecasting.model_selection import temporal_train_test_split
 
         ##############################
@@ -876,7 +874,9 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         y = data_[self.target_param]
         X = data_.drop(self.target_param, axis=1)
 
-        y_train, y_test, X_train, X_test = temporal_train_test_split(y=y, X=X, fh=fh)
+        y_train, y_test, X_train, X_test = temporal_train_test_split(
+            y=y, X=X, fh=self.fh
+        )
 
         # Coerce y into a dataframes ----
         # TODO: Is this needed here since we are not explicitly setting y_train and y_test?
@@ -902,7 +902,8 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             or is_sklearn_cv_generator(fold_strategy)
         ):
             raise TypeError(
-                f"fold_strategy parameter must be either a sktime compatible CV generator object or one of '{', '.join(possible_time_series_fold_strategies)}'."
+                "fold_strategy parameter must be either a sktime compatible CV generator "
+                f"object or one of '{', '.join(possible_time_series_fold_strategies)}'."
             )
 
         if fold_strategy in possible_time_series_fold_strategies:
@@ -915,6 +916,14 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             self.fold_generator = fold_strategy
             # Number of folds
             self.fold_param = fold_strategy.get_n_splits(y=self.y_train)
+
+        # Preprocessing ============================================ >>
+
+        # Initialize empty pipeline
+        self.pipeline = InternalPipeline(
+            steps=[("placeholder", None)],
+            memory=self.memory,
+        )
 
         ############################################
         #### Initial EDA in Setup (for display) ####
@@ -1280,7 +1289,9 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             self.display_container.append(model_results)
 
             display.display(
-                model_results, clear=system, override=False if not system else None,
+                model_results,
+                clear=system,
+                override=False if not system else None,
             )
 
             self.logger.info(f"display_container: {len(self.display_container)}")
@@ -1309,7 +1320,8 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         #     1, f"Fitting {_get_cv_n_folds(data_y, cv)} Folds",
         # )
         display.update_monitor(
-            1, f"Fitting {cv.get_n_splits(data_y)} Folds",
+            1,
+            f"Fitting {cv.get_n_splits(data_y)} Folds",
         )
         display.display_monitor()
         """
@@ -1387,7 +1399,10 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         model_results = pd.DataFrame(score_dict)
         model_results.insert(0, "cutoff", cutoffs)
 
-        model_avgs = pd.DataFrame(avgs_dict, index=["Mean", "SD"],)
+        model_avgs = pd.DataFrame(
+            avgs_dict,
+            index=["Mean", "SD"],
+        )
         model_avgs.insert(0, "cutoff", np.nan)
 
         model_results = model_results.append(model_avgs)
@@ -2193,7 +2208,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 import streamlit as st
             except ImportError:
                 raise ImportError(
-                    "It appears that streamlit is not installed. Do: pip install hpbandster ConfigSpace"
+                    "It appears that streamlit is not installed. Do: pip install streamlit"
                 )
 
         # Add sp value (used in decomp plots)
@@ -2626,9 +2641,15 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             try:
                 np.random.seed(self.seed)
                 if not display:
-                    display = Display(verbose=verbose, html_param=self.html_param,)
+                    display = Display(
+                        verbose=verbose,
+                        html_param=self.html_param,
+                    )
             except:
-                display = Display(verbose=False, html_param=False,)
+                display = Display(
+                    verbose=False,
+                    html_param=False,
+                )
 
             full_name = self._get_model_name(estimator_)
             df_score = pd.DataFrame(metrics, index=[0])
@@ -2645,7 +2666,10 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         return result
 
     def finalize_model(
-        self, estimator, fit_kwargs: Optional[dict] = None, model_only: bool = True,
+        self,
+        estimator,
+        fit_kwargs: Optional[dict] = None,
+        model_only: bool = True,
     ) -> Any:
 
         """
@@ -2682,11 +2706,17 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         """
 
         return super().finalize_model(
-            estimator=estimator, fit_kwargs=fit_kwargs, model_only=model_only,
+            estimator=estimator,
+            fit_kwargs=fit_kwargs,
+            model_only=model_only,
         )
 
     def deploy_model(
-        self, model, model_name: str, authentication: dict, platform: str = "aws",
+        self,
+        model,
+        model_name: str,
+        authentication: dict,
+        platform: str = "aws",
     ):
 
         """
@@ -2982,7 +3012,9 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         """
 
         return super().get_metrics(
-            reset=reset, include_custom=include_custom, raise_errors=raise_errors,
+            reset=reset,
+            include_custom=include_custom,
+            raise_errors=raise_errors,
         )
 
     def add_metric(

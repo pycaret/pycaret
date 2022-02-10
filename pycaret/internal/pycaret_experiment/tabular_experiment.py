@@ -5,7 +5,7 @@ import random
 import secrets
 import traceback
 import warnings
-from typing import List, Tuple, Dict
+from typing import List, Tuple, Dict, Optional, Any, Union
 from unittest.mock import patch
 from joblib.memory import Memory
 from packaging import version
@@ -38,6 +38,8 @@ from pycaret.internal.utils import (
     mlflow_remove_bad_chars,
 )
 from pycaret.internal.validation import *
+
+from pycaret.internal.Display import Display
 
 from sklearn.model_selection import BaseCrossValidator  # type: ignore
 

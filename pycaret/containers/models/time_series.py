@@ -402,11 +402,8 @@ class SeasonalNaiveContainer(TimeSeriesContainer):
         if not self.active:
             return
 
-        # self.seasonality_present = experiment.seasonality_present
-        # sp = experiment.seasonal_period
-        # self.sp = sp if sp is not None else 1
-        self.seasonality_present = globals_dict.get("seasonality_present")
-        self.sp = globals_dict.get("sp_to_use")
+        self.seasonality_present = experiment.seasonality_present
+        self.sp = experiment.sp_to_use
 
         if self.sp == 1:
             self.active = False
@@ -520,11 +517,8 @@ class ArimaContainer(TimeSeriesContainer):
         if not self.active:
             return
 
-        # seasonality_present = experiment.seasonality_present
-        # sp = experiment.seasonal_period
-        # sp = sp if sp is not None else 1
-        seasonality_present = globals_dict.get("seasonality_present")
-        self.sp = globals_dict.get("sp_to_use")
+        seasonality_present = experiment.seasonality_present
+        self.sp = experiment.sp_to_use
 
         # args = self._set_args
         # tune_args = self._set_tune_args
@@ -685,11 +679,8 @@ class AutoArimaContainer(TimeSeriesContainer):
         if not self.active:
             return
 
-        # self.seasonality_present = experiment.seasonality_present
-        # sp = experiment.seasonal_period
-        # self.sp = sp if sp is not None else 1
-        self.seasonality_present = globals_dict.get("seasonality_present")
-        self.sp = globals_dict.get("sp_to_use")
+        self.seasonality_present = experiment.seasonality_present
+        self.sp = experiment.sp_to_use
 
         args = self._set_args
         tune_args = self._set_tune_args
@@ -761,12 +752,8 @@ class ExponentialSmoothingContainer(TimeSeriesContainer):
         if not self.active:
             return
 
-        # self.seasonality_present = experiment.seasonality_present
-        # sp = experiment.seasonal_period
-        # self.sp = sp if sp is not None else 1
-        self.seasonality_present = globals_dict.get("seasonality_present")
-        self.sp = globals_dict.get("sp_to_use")
-
+        self.seasonality_present = experiment.seasonality_present
+        self.sp = experiment.sp_to_use
         self.strictly_positive = experiment.strictly_positive
 
         args = self._set_args
@@ -883,9 +870,9 @@ class CrostonContainer(TimeSeriesContainer):
 
     model_type = TSModelTypes.CLASSICAL
 
-    def __init__(self, globals_dict: dict) -> None:
+    def __init__(self, experiment) -> None:
         logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+        np.random.seed(experiment.seed)
         self.gpu_imported = False
 
         from sktime.forecasting.croston import Croston  # type: ignore
@@ -893,7 +880,7 @@ class CrostonContainer(TimeSeriesContainer):
         dummy = Croston()
         # check if pi is enforced.
         self.active: bool = self.disable_pred_int_enforcement(
-            forecaster=dummy, enforce_pi=globals_dict["enforce_pi"]
+            forecaster=dummy, enforce_pi=experiment.enforce_pi
         )
 
         # if not, make the model unavailiable
@@ -946,12 +933,8 @@ class ETSContainer(TimeSeriesContainer):
         if not self.active:
             return
 
-        # self.seasonality_present = experiment.seasonality_present
-        # sp = experiment.seasonal_period
-        # self.sp = sp if sp is not None else 1
-        self.seasonality_present = globals_dict.get("seasonality_present")
-        self.sp = globals_dict.get("sp_to_use")
-
+        self.seasonality_present = experiment.seasonality_present
+        self.sp = experiment.sp_to_use
         self.strictly_positive = experiment.strictly_positive
 
         args = self._set_args
@@ -1027,12 +1010,8 @@ class ThetaContainer(TimeSeriesContainer):
         if not self.active:
             return
 
-        # self.seasonality_present = experiment.seasonality_present
-        # sp = experiment.seasonal_period
-        # self.sp = sp if sp is not None else 1
-        self.seasonality_present = globals_dict.get("seasonality_present")
-        self.sp = globals_dict.get("sp_to_use")
-
+        self.seasonality_present = experiment.seasonality_present
+        self.sp = experiment.sp_to_use
         self.strictly_positive = experiment.strictly_positive
 
         args = self._set_args
@@ -1124,9 +1103,7 @@ class TBATSContainer(TimeSeriesContainer):
         if not self.active:
             return
 
-        # sp = experiment.seasonal_period
-        # self.sp = sp if sp is not None else 1
-        self.sp = globals_dict.get("sp_to_use")
+        self.sp = experiment.sp_to_use
 
         self.seasonality_present = experiment.seasonality_present
 
@@ -1195,10 +1172,7 @@ class BATSContainer(TimeSeriesContainer):
         if not self.active:
             return
 
-        # sp = experiment.seasonal_period
-        # self.sp = sp if sp is not None else 1
-        self.sp = globals_dict.get("sp_to_use")
-
+        self.sp = experiment.sp_to_use
         self.seasonality_present = experiment.seasonality_present
 
         args = self._set_args
@@ -1270,15 +1244,13 @@ class ProphetContainer(TimeSeriesContainer):
         # self.sp = sp if sp is not None else 1
         #### Disable Prophet if Index is not of allowed type (e.g. if it is RangeIndex)
         allowed_index_types = [pd.PeriodIndex, pd.DatetimeIndex]
-        index_type = globals_dict.get("index_type")
+        index_type = experiment.index_type
         self.active = True if index_type in allowed_index_types else False
         if not self.active:
             return
 
-        self.sp = globals_dict.get("sp_to_use")
-
+        self.sp = experiment.sp_to_use
         self.seasonality_present = experiment.seasonality_present
-        # self.freq = experiment.get("freq")
 
         args = self._set_args
         tune_args = self._set_tune_args
@@ -1368,9 +1340,7 @@ class CdsDtContainer(TimeSeriesContainer):
             return
 
         # Set the model hyperparameters
-        # sp = experiment.seasonal_period
-        # self.sp = sp if sp is not None else 1
-        self.sp = globals_dict.get("sp_to_use")
+        self.sp = experiment.sp_to_use
 
         self.strictly_positive = experiment.strictly_positive
 

@@ -5,7 +5,7 @@ import datetime
 import warnings
 import traceback
 import numpy as np  # type: ignore
-from typing import List, Tuple
+from typing import List, Tuple, Union, Any
 from joblib.memory import Memory
 from IPython.display import display
 import plotly.express as px  # type: ignore
@@ -31,6 +31,7 @@ import pycaret.containers.metrics.classification
 import pycaret.containers.models.classification
 import pycaret.internal.preprocess
 import pycaret.internal.persistence
+from pycaret.internal.Display import Display
 
 
 warnings.filterwarnings("ignore")
@@ -76,8 +77,10 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             ).items()
             if not v.is_special
         }
-        all_models_internal = pycaret.containers.models.classification.get_all_model_containers(
-            self, raise_errors=raise_errors
+        all_models_internal = (
+            pycaret.containers.models.classification.get_all_model_containers(
+                self, raise_errors=raise_errors
+            )
         )
         return all_models, all_models_internal
 
@@ -228,7 +231,8 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
 
         # Initialize empty pipeline
         self.pipeline = InternalPipeline(
-            steps=[("placeholder", None)], memory=self.memory,
+            steps=[("placeholder", None)],
+            memory=self.memory,
         )
 
         if preprocess:
@@ -333,7 +337,9 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         le = get_label_encoder(self.pipeline)
         if le:
             mapping = {str(v): i for i, v in enumerate(le.classes_)}
-            container.append(["Target mapping", ", ".join([f"{k}: {v}" for k, v in mapping.items()])])
+            container.append(
+                ["Target mapping", ", ".join([f"{k}: {v}" for k, v in mapping.items()])]
+            )
         container.append(["Data shape", self.dataset.shape])
         container.append(["Train data shape", self.train.shape])
         container.append(["Test data shape", self.test.shape])
@@ -359,11 +365,15 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
                 else:
                     cat_imputer = categorical_iterative_imputer.__class__.__name__
 
-                container.append(["Iterative imputation iterations", iterative_imputation_iters])
+                container.append(
+                    ["Iterative imputation iterations", iterative_imputation_iters]
+                )
                 container.append(["Numeric iterative imputer", num_imputer])
                 container.append(["Categorical iterative imputer", cat_imputer])
             if self._fxs["Text"]:
-                container.append(["Text features embedding method", text_features_method])
+                container.append(
+                    ["Text features embedding method", text_features_method]
+                )
             if self._fxs["Categorical"]:
                 container.append(["Maximum one-hot encoding", max_encoding_ohe])
                 container.append(["Encoding method", encoding_method])
@@ -374,7 +384,9 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
                 container.append(["Low variance threshold", low_variance_threshold])
             if remove_multicollinearity:
                 container.append(["Remove multicollinearity", remove_multicollinearity])
-                container.append(["Multicollinearity threshold", multicollinearity_threshold])
+                container.append(
+                    ["Multicollinearity threshold", multicollinearity_threshold]
+                )
             if remove_outliers:
                 container.append(["Remove outliers", remove_outliers])
                 container.append(["Outliers threshold", outliers_threshold])
@@ -394,7 +406,9 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             if feature_selection:
                 container.append(["Feature selection", feature_selection])
                 container.append(["Feature selection method", feature_selection_method])
-                container.append(["Feature selection estimator", feature_selection_estimator])
+                container.append(
+                    ["Feature selection estimator", feature_selection_estimator]
+                )
                 container.append(["Number of features selected", n_features_to_select])
             if custom_pipeline:
                 container.append(["Custom pipeline", "Yes"])
@@ -405,7 +419,9 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             container.append(["Experiment Name", self.exp_name_log])
             container.append(["USI", self.USI])
 
-        self.display_container = [pd.DataFrame(container, columns=["Description", "Value"])]
+        self.display_container = [
+            pd.DataFrame(container, columns=["Description", "Value"])
+        ]
         self.logger.info(f"Setup display_container: {self.display_container[0]}")
         if self.verbose:
             pd.set_option("display.max_rows", 100)
@@ -2200,7 +2216,11 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         )
 
     def deploy_model(
-        self, model, model_name: str, authentication: dict, platform: str = "aws",
+        self,
+        model,
+        model_name: str,
+        authentication: dict,
+        platform: str = "aws",
     ):
 
         """
@@ -2540,7 +2560,9 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         """
 
         return super().get_metrics(
-            reset=reset, include_custom=include_custom, raise_errors=raise_errors,
+            reset=reset,
+            include_custom=include_custom,
+            raise_errors=raise_errors,
         )
 
     def add_metric(
@@ -2673,4 +2695,3 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         """
 
         return super().get_logs(experiment_name=experiment_name, save=save)
-

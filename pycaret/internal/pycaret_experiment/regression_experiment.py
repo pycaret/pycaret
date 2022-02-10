@@ -4,7 +4,7 @@ import warnings
 import numpy as np  # type: ignore
 from joblib.memory import Memory
 from IPython.display import display
-from typing import List, Tuple, Dict
+from typing import List, Tuple, Dict, Union, Optional, Any
 import plotly.express as px  # type: ignore
 import plotly.graph_objects as go  # type: ignore
 
@@ -34,7 +34,10 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
         self._ml_usecase = MLUsecase.REGRESSION
         self.exp_name_log = "reg-default-name"
         self.variable_keys = self.variable_keys.union(
-            {"transform_target_param", "transform_target_method_param",}
+            {
+                "transform_target_param",
+                "transform_target_method_param",
+            }
         )
         self._available_plots = {
             "parameter": "Hyperparameters",
@@ -59,8 +62,10 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             ).items()
             if not v.is_special
         }
-        all_models_internal = pycaret.containers.models.regression.get_all_model_containers(
-            self, raise_errors=raise_errors
+        all_models_internal = (
+            pycaret.containers.models.regression.get_all_model_containers(
+                self, raise_errors=raise_errors
+            )
         )
         return all_models, all_models_internal
 
@@ -210,7 +215,8 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
 
         # Initialize empty pipeline
         self.pipeline = InternalPipeline(
-            steps=[("placeholder", None)], memory=self.memory,
+            steps=[("placeholder", None)],
+            memory=self.memory,
         )
 
         if preprocess:
@@ -333,11 +339,15 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
                 else:
                     cat_imputer = categorical_iterative_imputer.__class__.__name__
 
-                container.append(["Iterative imputation iterations", iterative_imputation_iters])
+                container.append(
+                    ["Iterative imputation iterations", iterative_imputation_iters]
+                )
                 container.append(["Numeric iterative imputer", num_imputer])
                 container.append(["Categorical iterative imputer", cat_imputer])
             if self._fxs["Text"]:
-                container.append(["Text features embedding method", text_features_method])
+                container.append(
+                    ["Text features embedding method", text_features_method]
+                )
             if self._fxs["Categorical"]:
                 container.append(["Maximum one-hot encoding", max_encoding_ohe])
                 container.append(["Encoding method", encoding_method])
@@ -348,7 +358,9 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
                 container.append(["Low variance threshold", low_variance_threshold])
             if remove_multicollinearity:
                 container.append(["Remove multicollinearity", remove_multicollinearity])
-                container.append(["Multicollinearity threshold", multicollinearity_threshold])
+                container.append(
+                    ["Multicollinearity threshold", multicollinearity_threshold]
+                )
             if remove_outliers:
                 container.append(["Remove outliers", remove_outliers])
                 container.append(["Outliers threshold", outliers_threshold])
@@ -365,7 +377,9 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             if feature_selection:
                 container.append(["Feature selection", feature_selection])
                 container.append(["Feature selection method", feature_selection_method])
-                container.append(["Feature selection estimator", feature_selection_estimator])
+                container.append(
+                    ["Feature selection estimator", feature_selection_estimator]
+                )
                 container.append(["Number of features selected", n_features_to_select])
             if transform_target:
                 container.append(["Transform target", transform_target])
@@ -379,7 +393,9 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             container.append(["Experiment Name", self.exp_name_log])
             container.append(["USI", self.USI])
 
-        self.display_container = [pd.DataFrame(container, columns=["Description", "Value"])]
+        self.display_container = [
+            pd.DataFrame(container, columns=["Description", "Value"])
+        ]
         self.logger.info(f"Setup display_container: {self.display_container[0]}")
         if self.verbose:
             pd.set_option("display.max_rows", 100)
@@ -873,72 +889,72 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
     ) -> Any:
 
         """
-        This function ensembles a given estimator. The output of this function is
-        a score grid with CV scores by fold. Metrics evaluated during CV can be
-        accessed using the ``get_metrics`` function. Custom metrics can be added
-        or removed using ``add_metric`` and ``remove_metric`` function.
+            This function ensembles a given estimator. The output of this function is
+            a score grid with CV scores by fold. Metrics evaluated during CV can be
+            accessed using the ``get_metrics`` function. Custom metrics can be added
+            or removed using ``add_metric`` and ``remove_metric`` function.
 
 
-        Example
-        --------
-        >>> from pycaret.datasets import get_data
-        >>> boston = get_data('boston')
-        >>> from pycaret.regression import *
-        >>> exp_name = setup(data = boston,  target = 'medv')
-        >>> dt = create_model('dt')
-        >>> bagged_dt = ensemble_model(dt, method = 'Bagging')
+            Example
+            --------
+            >>> from pycaret.datasets import get_data
+            >>> boston = get_data('boston')
+            >>> from pycaret.regression import *
+            >>> exp_name = setup(data = boston,  target = 'medv')
+            >>> dt = create_model('dt')
+            >>> bagged_dt = ensemble_model(dt, method = 'Bagging')
 
 
-    estimator: scikit-learn compatible object
-            Trained model object
+        estimator: scikit-learn compatible object
+                Trained model object
 
 
-        method: str, default = 'Bagging'
-            Method for ensembling base estimator. It can be 'Bagging' or 'Boosting'.
+            method: str, default = 'Bagging'
+                Method for ensembling base estimator. It can be 'Bagging' or 'Boosting'.
 
 
-        fold: int or scikit-learn compatible CV generator, default = None
-            Controls cross-validation. If None, the CV generator in the ``fold_strategy``
-            parameter of the ``setup`` function is used. When an integer is passed,
-            it is interpreted as the 'n_splits' parameter of the CV generator in the
-            ``setup`` function.
+            fold: int or scikit-learn compatible CV generator, default = None
+                Controls cross-validation. If None, the CV generator in the ``fold_strategy``
+                parameter of the ``setup`` function is used. When an integer is passed,
+                it is interpreted as the 'n_splits' parameter of the CV generator in the
+                ``setup`` function.
 
 
-        n_estimators: int, default = 10
-            The number of base estimators in the ensemble. In case of perfect fit, the
-            learning procedure is stopped early.
+            n_estimators: int, default = 10
+                The number of base estimators in the ensemble. In case of perfect fit, the
+                learning procedure is stopped early.
 
 
-        round: int, default = 4
-            Number of decimal places the metrics in the score grid will be rounded to.
+            round: int, default = 4
+                Number of decimal places the metrics in the score grid will be rounded to.
 
 
-        choose_better: bool, default = False
-            When set to True, the returned object is always better performing. The
-            metric used for comparison is defined by the ``optimize`` parameter.
+            choose_better: bool, default = False
+                When set to True, the returned object is always better performing. The
+                metric used for comparison is defined by the ``optimize`` parameter.
 
 
-        optimize: str, default = 'R2'
-            Metric to compare for model selection when ``choose_better`` is True.
+            optimize: str, default = 'R2'
+                Metric to compare for model selection when ``choose_better`` is True.
 
 
-        fit_kwargs: dict, default = {} (empty dict)
-            Dictionary of arguments passed to the fit method of the model.
+            fit_kwargs: dict, default = {} (empty dict)
+                Dictionary of arguments passed to the fit method of the model.
 
 
-        groups: str or array-like, with shape (n_samples,), default = None
-            Optional group labels when GroupKFold is used for the cross validation.
-            It takes an array with shape (n_samples, ) where n_samples is the number
-            of rows in training dataset. When string is passed, it is interpreted as
-            the column name in the dataset containing group labels.
+            groups: str or array-like, with shape (n_samples,), default = None
+                Optional group labels when GroupKFold is used for the cross validation.
+                It takes an array with shape (n_samples, ) where n_samples is the number
+                of rows in training dataset. When string is passed, it is interpreted as
+                the column name in the dataset containing group labels.
 
 
-        verbose: bool, default = True
-            Score grid is not printed when verbose is set to False.
+            verbose: bool, default = True
+                Score grid is not printed when verbose is set to False.
 
 
-        Returns:
-            Trained Model
+            Returns:
+                Trained Model
 
         """
 
@@ -1565,7 +1581,11 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
         )
 
     def deploy_model(
-        self, model, model_name: str, authentication: dict, platform: str = "aws",
+        self,
+        model,
+        model_name: str,
+        authentication: dict,
+        platform: str = "aws",
     ):
 
         """
@@ -1888,7 +1908,9 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
         """
 
         return super().get_metrics(
-            reset=reset, include_custom=include_custom, raise_errors=raise_errors,
+            reset=reset,
+            include_custom=include_custom,
+            raise_errors=raise_errors,
         )
 
     def add_metric(
@@ -2006,4 +2028,3 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
         """
 
         return super().get_logs(experiment_name=experiment_name, save=save)
-

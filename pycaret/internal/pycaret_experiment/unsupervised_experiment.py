@@ -11,7 +11,7 @@ from IPython.utils import io
 from IPython.display import display
 from sklearn.base import clone  # type: ignore
 from sklearn.preprocessing import LabelEncoder
-from typing import List
+from typing import List, Any, Union
 import plotly.express as px  # type: ignore
 import plotly.graph_objects as go  # type: ignore
 
@@ -32,6 +32,7 @@ from pycaret.internal.validation import *
 import pycaret.internal.preprocess
 import pycaret.internal.persistence
 
+from pycaret.internal.Display import Display
 
 warnings.filterwarnings("ignore")
 LOGGER = get_logger()
@@ -58,8 +59,10 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
             )
         except Exception:
             if ml_usecase == MLUsecase.CLUSTERING:
-                metrics = pycaret.containers.metrics.clustering.get_all_metric_containers(
-                    self.variables, True
+                metrics = (
+                    pycaret.containers.metrics.clustering.get_all_metric_containers(
+                        self.variables, True
+                    )
                 )
             return calculate_unsupervised_metrics(
                 metrics=metrics,  # type: ignore
@@ -123,9 +126,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
             self.logger.info(
                 "SubProcess save_model() called =================================="
             )
-            self.save_model(
-                self.pipeline, "Transformation Pipeline", verbose=False
-            )
+            self.save_model(self.pipeline, "Transformation Pipeline", verbose=False)
             self.logger.info(
                 "SubProcess save_model() end =================================="
             )
@@ -240,7 +241,8 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
 
         # Initialize empty pipeline
         self.pipeline = InternalPipeline(
-            steps=[("placeholder", None)], memory=self.memory,
+            steps=[("placeholder", None)],
+            memory=self.memory,
         )
 
         if preprocess:
@@ -331,7 +333,9 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
                 container.append(["Numeric imputation", numeric_imputation])
                 container.append(["Categorical imputation", categorical_imputation])
             if self._fxs["Text"]:
-                container.append(["Text features embedding method", text_features_method])
+                container.append(
+                    ["Text features embedding method", text_features_method]
+                )
             if self._fxs["Categorical"]:
                 container.append(["Maximum one-hot encoding", max_encoding_ohe])
                 container.append(["Encoding method", encoding_method])
@@ -342,7 +346,9 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
                 container.append(["Low variance threshold", low_variance_threshold])
             if remove_multicollinearity:
                 container.append(["Remove multicollinearity", remove_multicollinearity])
-                container.append(["Multicollinearity threshold", multicollinearity_threshold])
+                container.append(
+                    ["Multicollinearity threshold", multicollinearity_threshold]
+                )
             if remove_outliers:
                 container.append(["Remove outliers", remove_outliers])
                 container.append(["Outliers threshold", outliers_threshold])
@@ -363,7 +369,9 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
             container.append(["Experiment Name", self.exp_name_log])
             container.append(["USI", self.USI])
 
-        self.display_container = [pd.DataFrame(container, columns=["Description", "Value"])]
+        self.display_container = [
+            pd.DataFrame(container, columns=["Description", "Value"])
+        ]
         self.logger.info(f"Setup display_container: {self.display_container[0]}")
         if self.verbose:
             pd.set_option("display.max_rows", 100)
@@ -445,19 +453,25 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
             self.logger.info(f"supervised_type inferred as {supervised_type}")
 
         if supervised_type == "classification":
-            metrics = pycaret.containers.metrics.classification.get_all_metric_containers(
-                self, raise_errors=True
+            metrics = (
+                pycaret.containers.metrics.classification.get_all_metric_containers(
+                    self, raise_errors=True
+                )
             )
-            available_estimators = pycaret.containers.models.classification.get_all_model_containers(
-                self, raise_errors=True
+            available_estimators = (
+                pycaret.containers.models.classification.get_all_model_containers(
+                    self, raise_errors=True
+                )
             )
             ml_usecase = MLUsecase.CLASSIFICATION
         elif supervised_type == "regression":
             metrics = pycaret.containers.metrics.regression.get_all_metric_containers(
                 self, raise_errors=True
             )
-            available_estimators = pycaret.containers.models.regression.get_all_model_containers(
-                self, raise_errors=True
+            available_estimators = (
+                pycaret.containers.models.regression.get_all_model_containers(
+                    self, raise_errors=True
+                )
             )
             ml_usecase = MLUsecase.REGRESSION
         else:
@@ -606,7 +620,8 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
             )
             if self._ml_usecase == MLUsecase.CLUSTERING:
                 unsupervised_grids[k] = pd.get_dummies(
-                    unsupervised_grids[k], columns=["Cluster"],
+                    unsupervised_grids[k],
+                    columns=["Cluster"],
                 )
             elif method == "drop":
                 unsupervised_grids[k] = unsupervised_grids[k][
@@ -870,7 +885,10 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
         return data
 
     def predict_model(
-        self, estimator, data: pd.DataFrame, ml_usecase: Optional[MLUsecase] = None,
+        self,
+        estimator,
+        data: pd.DataFrame,
+        ml_usecase: Optional[MLUsecase] = None,
     ) -> pd.DataFrame:
         function_params_str = ", ".join(
             [f"{k}={v}" for k, v in locals().items() if k != "data"]
@@ -1292,4 +1310,3 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
             return (model, model_fit_time)
 
         return model
-
