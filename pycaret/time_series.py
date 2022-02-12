@@ -947,6 +947,7 @@ def plot_model(
         * 'diff' - Difference Plot
         * 'periodogram' - Frequency Components (Periodogram)
         * 'fft' - Frequency Components (FFT)
+        * 'ccf' - Cross Correlation (CCF)
         * 'forecast' - "Out-of-Sample" Forecast Plot
         * 'insample' - "In-Sample" Forecast Plot
         * 'residuals' - Residuals Plot
@@ -1232,7 +1233,7 @@ def predict_model(
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def finalize_model(
-    estimator, fit_kwargs: Optional[dict] = None, model_only: bool = True,
+    estimator, fit_kwargs: Optional[dict] = None, model_only: bool = True
 ) -> Any:
 
     """
@@ -1269,14 +1270,12 @@ def finalize_model(
     """
 
     return _CURRENT_EXPERIMENT.finalize_model(
-        estimator=estimator, fit_kwargs=fit_kwargs, model_only=model_only,
+        estimator=estimator, fit_kwargs=fit_kwargs, model_only=model_only
     )
 
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
-def deploy_model(
-    model, model_name: str, authentication: dict, platform: str = "aws",
-):
+def deploy_model(model, model_name: str, authentication: dict, platform: str = "aws"):
 
     """
     This function deploys the transformation pipeline and trained model on cloud.
@@ -1536,7 +1535,7 @@ def pull(pop: bool = False) -> pd.DataFrame:
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def models(
-    type: Optional[str] = None, internal: bool = False, raise_errors: bool = True,
+    type: Optional[str] = None, internal: bool = False, raise_errors: bool = True
 ) -> pd.DataFrame:
 
     """
@@ -1579,7 +1578,7 @@ def models(
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def get_metrics(
-    reset: bool = False, include_custom: bool = True, raise_errors: bool = True,
+    reset: bool = False, include_custom: bool = True, raise_errors: bool = True
 ) -> pd.DataFrame:
 
     """
@@ -1615,13 +1614,13 @@ def get_metrics(
     """
 
     return _CURRENT_EXPERIMENT.get_metrics(
-        reset=reset, include_custom=include_custom, raise_errors=raise_errors,
+        reset=reset, include_custom=include_custom, raise_errors=raise_errors
     )
 
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def add_metric(
-    id: str, name: str, score_func: type, greater_is_better: bool = True, **kwargs,
+    id: str, name: str, score_func: type, greater_is_better: bool = True, **kwargs
 ) -> pd.Series:
 
     """
@@ -1962,5 +1961,5 @@ def check_stats(
         Dataframe with the test results
     """
     return _CURRENT_EXPERIMENT.check_stats(
-        estimator=estimator, test=test, alpha=alpha, split=split,
+        estimator=estimator, test=test, alpha=alpha, split=split
     )

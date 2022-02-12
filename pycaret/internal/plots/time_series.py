@@ -36,6 +36,7 @@ def _plot(
     data: Optional[pd.Series] = None,
     train: Optional[pd.Series] = None,
     test: Optional[pd.Series] = None,
+    X: Optional[pd.DataFrame] = None,
     predictions: Optional[pd.Series] = None,
     cv: Optional[Union[ExpandingWindowSplitter, SlidingWindowSplitter]] = None,
     model_name: Optional[str] = None,
@@ -49,16 +50,16 @@ def _plot(
 
     if plot == "ts":
         fig, plot_data = plot_series(
-            data=data, data_kwargs=data_kwargs, fig_kwargs=fig_kwargs,
+            data=data, data_kwargs=data_kwargs, fig_kwargs=fig_kwargs
         )
     elif plot == "train_test_split":
         fig, plot_data = plot_splits_train_test_split(
-            train=train, test=test, data_kwargs=data_kwargs, fig_kwargs=fig_kwargs,
+            train=train, test=test, data_kwargs=data_kwargs, fig_kwargs=fig_kwargs
         )
 
     elif plot == "cv":
         fig, plot_data = plot_cv(
-            data=data, cv=cv, data_kwargs=data_kwargs, fig_kwargs=fig_kwargs,
+            data=data, cv=cv, data_kwargs=data_kwargs, fig_kwargs=fig_kwargs
         )
 
     elif plot == "decomp_classical":
@@ -142,6 +143,10 @@ def _plot(
             data_kwargs=data_kwargs,
             fig_kwargs=fig_kwargs,
         )
+    elif plot == "ccf":
+        fig, plot_data = plot_ccf(
+            data=data, X=X, data_kwargs=data_kwargs, fig_kwargs=fig_kwargs
+        )
     else:
         raise ValueError(f"Plot: '{plot}' is not supported.")
 
@@ -186,7 +191,7 @@ def plot_series(
     plot_data = [original]
 
     layout = go.Layout(
-        yaxis=dict(title="Values"), xaxis=dict(title="Time"), title=title,
+        yaxis=dict(title="Values"), xaxis=dict(title="Time"), title=title
     )
 
     fig = go.Figure(data=plot_data, layout=layout)
@@ -197,9 +202,7 @@ def plot_series(
 
     fig_size = fig_kwargs.get("fig_size", None)
     if fig_size is not None:
-        fig.update_layout(
-            autosize=False, width=fig_size[0], height=fig_size[1],
-        )
+        fig.update_layout(autosize=False, width=fig_size[0], height=fig_size[1])
 
     return_data_dict = {
         "data": data,
@@ -229,7 +232,7 @@ def plot_splits_train_test_split(
     )
     fig.add_trace(
         go.Scatter(
-            x=x, y=train, mode="lines+markers", marker_color="#1f77b4", name="Train",
+            x=x, y=train, mode="lines+markers", marker_color="#1f77b4", name="Train"
         )
     )
 
@@ -240,7 +243,7 @@ def plot_splits_train_test_split(
     )
     fig.add_trace(
         go.Scatter(
-            x=x, y=test, mode="lines+markers", marker_color="#FFA500", name="Test",
+            x=x, y=test, mode="lines+markers", marker_color="#FFA500", name="Test"
         )
     )
     fig.update_layout(
@@ -256,9 +259,7 @@ def plot_splits_train_test_split(
 
     fig_size = fig_kwargs.get("fig_size", None)
     if fig_size is not None:
-        fig.update_layout(
-            autosize=False, width=fig_size[0], height=fig_size[1],
-        )
+        fig.update_layout(autosize=False, width=fig_size[0], height=fig_size[1])
 
     return_data_dict = {
         "train": train,
@@ -353,9 +354,7 @@ def plot_cv(
 
             fig_size = fig_kwargs.get("fig_size", None)
             if fig_size is not None:
-                fig.update_layout(
-                    autosize=False, width=fig_size[0], height=fig_size[1],
-                )
+                fig.update_layout(autosize=False, width=fig_size[0], height=fig_size[1])
         return fig
 
     train_windows, test_windows = get_windows(data, cv)
@@ -447,9 +446,7 @@ def plot_acf(
 
     fig_size = fig_kwargs.get("fig_size", None)
     if fig_size is not None:
-        fig.update_layout(
-            autosize=False, width=fig_size[0], height=fig_size[1],
-        )
+        fig.update_layout(autosize=False, width=fig_size[0], height=fig_size[1])
     fig.update_layout(title=title)
 
     return_data_dict = {
@@ -537,9 +534,7 @@ def plot_pacf(
 
     fig_size = fig_kwargs.get("fig_size", None)
     if fig_size is not None:
-        fig.update_layout(
-            autosize=False, width=fig_size[0], height=fig_size[1],
-        )
+        fig.update_layout(autosize=False, width=fig_size[0], height=fig_size[1])
 
     fig.update_layout(title=title)
 
@@ -581,7 +576,7 @@ def plot_predictions(
         y=predictions,
         mode="lines+markers",
         line=dict(color="#1f77b4"),
-        marker=dict(size=5,),
+        marker=dict(size=5),
         showlegend=True,
     )
 
@@ -602,7 +597,7 @@ def plot_predictions(
     data_for_fig = [mean, original]
 
     layout = go.Layout(
-        yaxis=dict(title="Values"), xaxis=dict(title="Time"), title=title,
+        yaxis=dict(title="Values"), xaxis=dict(title="Time"), title=title
     )
 
     fig = go.Figure(data=data_for_fig, layout=layout)
@@ -612,9 +607,7 @@ def plot_predictions(
 
     fig_size = fig_kwargs.get("fig_size", None)
     if fig_size is not None:
-        fig.update_layout(
-            autosize=False, width=fig_size[0], height=fig_size[1],
-        )
+        fig.update_layout(autosize=False, width=fig_size[0], height=fig_size[1])
     fig.update_layout(showlegend=True)
 
     return_data_dict = {
@@ -647,7 +640,7 @@ def plot_diagnostics(
     fig = make_subplots(
         rows=2,
         cols=2,
-        row_heights=[0.5, 0.5,],
+        row_heights=[0.5, 0.5],
         subplot_titles=[
             "Time Plot",
             "Histogram Plot",
@@ -663,15 +656,13 @@ def plot_diagnostics(
 
     fig_size = fig_kwargs.get("fig_size", None)
     if fig_size is not None:
-        fig.update_layout(
-            autosize=False, width=fig_size[0], height=fig_size[1],
-        )
+        fig.update_layout(autosize=False, width=fig_size[0], height=fig_size[1])
 
     #### Add diagnostic plots ----
     fig = time_series_subplot(fig=fig, data=data, row=1, col=1, name="Time Plot")
     fig = dist_subplot(fig=fig, data=data, row=1, col=2)
     fig, acf_data = corr_subplot(
-        fig=fig, data=data, row=2, col=1, name="ACF", plot_acf=True,
+        fig=fig, data=data, row=2, col=1, name="ACF", plot="acf"
     )
     fig, qqplot_data = qq_subplot(fig=fig, data=data, row=2, col=2)
 
@@ -728,7 +719,7 @@ def plot_predictions_with_confidence(
         y=predictions,
         mode="lines+markers",
         line=dict(color="#1f77b4"),
-        marker=dict(size=5,),
+        marker=dict(size=5),
         showlegend=True,
     )
 
@@ -764,7 +755,7 @@ def plot_predictions_with_confidence(
     data = [mean, lower_bound, upper_bound, original]
 
     layout = go.Layout(
-        yaxis=dict(title="Values"), xaxis=dict(title="Time"), title=title,
+        yaxis=dict(title="Values"), xaxis=dict(title="Time"), title=title
     )
 
     fig = go.Figure(data=data, layout=layout)
@@ -775,9 +766,7 @@ def plot_predictions_with_confidence(
 
     fig_size = fig_kwargs.get("fig_size", None)
     if fig_size is not None:
-        fig.update_layout(
-            autosize=False, width=fig_size[0], height=fig_size[1],
-        )
+        fig.update_layout(autosize=False, width=fig_size[0], height=fig_size[1])
 
     return_data_dict = {
         "data": data,
@@ -835,7 +824,7 @@ def plot_time_series_decomposition(
     fig = make_subplots(
         rows=4,
         cols=1,
-        row_heights=[0.25, 0.25, 0.25, 0.25,],
+        row_heights=[0.25, 0.25, 0.25, 0.25],
         row_titles=["Actual", "Seasonal", "Trend", "Residual"],
         shared_xaxes=True,
     )
@@ -852,7 +841,7 @@ def plot_time_series_decomposition(
             line=dict(color="#1f77b4", width=2),
             mode="lines+markers",
             name="Actual",
-            marker=dict(size=2,),
+            marker=dict(size=2),
         ),
         row=1,
         col=1,
@@ -865,7 +854,7 @@ def plot_time_series_decomposition(
             line=dict(color="#1f77b4", width=2),
             mode="lines+markers",
             name="Seasonal",
-            marker=dict(size=2,),
+            marker=dict(size=2),
         ),
         row=2,
         col=1,
@@ -878,7 +867,7 @@ def plot_time_series_decomposition(
             line=dict(color="#1f77b4", width=2),
             mode="lines+markers",
             name="Trend",
-            marker=dict(size=2,),
+            marker=dict(size=2),
         ),
         row=3,
         col=1,
@@ -891,7 +880,9 @@ def plot_time_series_decomposition(
             line=dict(color="#1f77b4", width=2),
             mode="markers",
             name="Residuals",
-            marker=dict(size=4,),
+            marker=dict(
+                size=4,
+            ),
         ),
         row=4,
         col=1,
@@ -903,9 +894,7 @@ def plot_time_series_decomposition(
 
     fig_size = fig_kwargs.get("fig_size", None)
     if fig_size is not None:
-        fig.update_layout(
-            autosize=False, width=fig_size[0], height=fig_size[1],
-        )
+        fig.update_layout(autosize=False, width=fig_size[0], height=fig_size[1])
 
     return_data_dict = {
         "data": data,
@@ -1000,7 +989,7 @@ def plot_time_series_differences(
                 row=i + 1,
                 col=plot_cols[1],
                 name=name_list[i],
-                plot_acf=True,
+                plot="acf",
             )
 
         if plot_pacf:
@@ -1010,7 +999,7 @@ def plot_time_series_differences(
                 row=i + 1,
                 col=plot_cols[2],
                 name=name_list[i],
-                plot_acf=False,
+                plot="pacf",
             )
 
         if plot_periodogram:
@@ -1040,9 +1029,7 @@ def plot_time_series_differences(
 
     fig_size = fig_kwargs.get("fig_size", [max(1200, 400 * cols), 300 * rows])
     if fig_size is not None:
-        fig.update_layout(
-            autosize=False, width=fig_size[0], height=fig_size[1],
-        )
+        fig.update_layout(autosize=False, width=fig_size[0], height=fig_size[1])
 
     return_data_dict = {
         "data": data,
@@ -1102,13 +1089,13 @@ def plot_frequency_components(
         hovertemplate="Freq:%{customdata[0]:.4f} <br>Ampl:%{customdata[1]:.4f}<br>Time Period: %{customdata[2]:.4f]}",
         mode="lines+markers",
         line=dict(color="#1f77b4", width=2),
-        marker=dict(size=5,),
+        marker=dict(size=5),
         showlegend=True,
     )
     plot_data = [spectral_density]
 
     layout = go.Layout(
-        yaxis=dict(title="dB"), xaxis=dict(title="Frequency"), title=title,
+        yaxis=dict(title="dB"), xaxis=dict(title="Frequency"), title=title
     )
 
     fig = go.Figure(data=plot_data, layout=layout)
@@ -1119,11 +1106,76 @@ def plot_frequency_components(
 
     fig_size = fig_kwargs.get("fig_size", None)
     if fig_size is not None:
-        fig.update_layout(
-            autosize=False, width=fig_size[0], height=fig_size[1],
-        )
+        fig.update_layout(autosize=False, width=fig_size[0], height=fig_size[1])
 
     return_data_dict = {"freq_data": freq_data}
 
     return fig, return_data_dict
 
+
+def plot_ccf(
+    data: pd.Series,
+    X: Optional[pd.DataFrame] = None,
+    data_kwargs: Optional[Dict] = None,
+    fig_kwargs: Optional[Dict] = None,
+) -> PlotReturnType:
+    """Plots the Cross Correlation between the data and the exogenous variables X"""
+    fig, return_data_dict = None, None
+
+    data_kwargs = data_kwargs or {}
+    fig_kwargs = fig_kwargs or {}
+
+    title = "Cross Correlation Plot(s)"
+
+    num_subplots = 1  # When X is None (Self Correlation or ACF)
+    if X is not None:
+        full_data = pd.concat([data, X], axis=1)
+        num_subplots = full_data.shape[1]
+
+    # Decide the number of rows and columns ----
+    # Try 4, then 3, then 2, then 1 and pick first one which is equally divisible
+    cols = 1
+    n_data_cols = full_data.shape[1]
+    for i in [4, 3, 2]:
+        if n_data_cols % i == 0:
+            cols = i
+            break
+    rows = int(n_data_cols / cols)
+
+    subplot_titles = []
+    for i, col_name in enumerate(full_data.columns):
+        subplot_title = f"{data.name} vs. {col_name}"
+        subplot_titles.append(subplot_title)
+
+    fig = make_subplots(
+        rows=rows,
+        cols=cols,
+        subplot_titles=subplot_titles,
+    )
+
+    all_ccf_data = {}
+    for i, col_name in enumerate(full_data.columns):
+        row = int(i / cols) + 1
+        col = i % cols + 1
+        #### Add CCF plot ----
+        fig, ccf_data = corr_subplot(
+            fig=fig,
+            data=[data, full_data[col_name]],
+            row=row,
+            col=col,
+            plot="ccf",
+        )
+        all_ccf_data.update({col_name: ccf_data})
+
+    fig.update_layout(title=title)
+    fig.update_layout(showlegend=False)
+    fig_template = fig_kwargs.get("fig_template", "ggplot2")
+    fig.update_layout(template=fig_template)
+
+    fig_size = fig_kwargs.get("fig_size", [max(1200, 400 * cols), 300 * rows])
+    if fig_size is not None:
+        fig.update_layout(autosize=False, width=fig_size[0], height=fig_size[1])
+
+    return_data_dict = {"ccf": all_ccf_data}
+
+    return fig, return_data_dict

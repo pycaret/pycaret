@@ -1,5 +1,5 @@
 import warnings
-from typing import Optional, List, Tuple, Any
+from typing import Optional, List, Tuple, Any, Union
 
 import numpy as np
 import pandas as pd
@@ -14,7 +14,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 
 from statsmodels.graphics.gofplots import qqplot
-from statsmodels.tsa.stattools import pacf, acf
+from statsmodels.tsa.stattools import pacf, acf, ccf
 
 
 def time_series_subplot(
@@ -52,7 +52,7 @@ def time_series_subplot(
             line=dict(color="#1f77b4", width=2),
             mode="lines+markers",
             name=name,
-            marker=dict(size=5,),
+            marker=dict(size=5),
         ),
         row=row,
         col=col,
@@ -62,64 +62,147 @@ def time_series_subplot(
 
 def corr_subplot(
     fig: go.Figure,
-    data: pd.Series,
+    data: Union[pd.Series, List[pd.Series]],
     row: int,
     col: int,
     name: Optional[str] = None,
-    plot_acf: bool = True,
-) -> Tuple[go.Figure, Tuple[np.ndarray, np.ndarray]]:
-    """Function to add ACF to a Plotly subplot
+    plot: str = "acf",
+    nlags: Optional[int] = None,
+) -> Tuple[go.Figure, Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]]:
+    """Function to add correlation plots to a Plotly subplot
 
     Parameters
     ----------
     fig : go.Figure
         Plotly figure to which the ACF needs to be added
-    data : pd.Series
-        Data whose ACF needs to be computed
+    data : Union[pd.Series, List[pd.Series]]
+        Data whose correlation plot needs to be plotted.
+          - For ACF and PACF, this should be a Pandas Series.
+          - For CCF, this should be a list of two pandas Series with the first one
+            being the target, and the second one being the exogenous data against
+            which the CCF has to be computed. Note that if the second series is
+            the same as the first one, then this is equivalent to the ACF plot.
     row : int
         Row of the figure where the plot needs to be inserted. Starts from 1.
     col : int
         Column of the figure where the plot needs to be inserted. Starts from 1.
     name : Optional[str], optional
         Name to show when hovering over plot, by default None
-    plot_acf : bool, optional
-        If True, plots the ACF, else plots the PACF, by default True
+    plot : str, optional
+        Options are
+          - "acf": to plot ACF,
+          - "pacf": to plot PACF
+          - "ccf": to plot CCF
+        by default "acf"
+    nlags : Optional[int], optional
+        Number of lags to plot, by default None which plots 40 lags (same as statsmodels)
+
 
     Returns
     -------
     Tuple[go.Figure, Tuple[np.ndarray, np.ndarray]]
-        Returns back the plotly figure with ACF inserted along with the ACF data.
+        Returns back the plotly figure with Correlation plot inserted along with
+        the correlation data.
+
+    Raises
+    ------
+    ValueError
+        If `plot` is not one of the allowed types
     """
 
-    if plot_acf:
-        corr_array = acf(data, alpha=0.05)
+    lower, upper = None, None
+    if plot in ["acf", "pacf"]:
+        if plot == "acf":
+            default_name = "ACF"
+            corr_array = acf(data, alpha=0.05)
+        elif plot == "pacf":
+            default_name = "PACF"
+            corr_array = pacf(data, alpha=0.05)
+        corr_values = corr_array[0]
+        lower = corr_array[1][:, 0] - corr_array[0]
+        upper = corr_array[1][:, 1] - corr_array[0]
+    elif plot == "ccf":
+        default_name = "CCF"
+        [target, exog] = data
+        corr_values = ccf(target, exog, unbiased=False)
+        # No upper and lower bounds available for CCF
     else:
-        corr_array = pacf(data, alpha=0.05)
+        raise ValueError(
+            f"plot must be one of 'acf', 'pacf' or 'ccf'. You passed '{plot}'"
+        )
 
-    lower_y = corr_array[1][:, 0] - corr_array[0]
-    upper_y = corr_array[1][:, 1] - corr_array[0]
-
-    default_name = "ACF" if plot_acf else "PACF"
+    if not nlags:
+        nlags = 40
+    corr_values = corr_values[: nlags + 1]
+    lags = np.arange(len(corr_values))
     name = name or default_name
 
-    #### Add corr plot stick lines ----
+    #### Add the correlation plot ----
+    fig = _add_corr_stems_subplot(
+        fig=fig, corr_values=corr_values, lags=lags, name=name, row=row, col=col
+    )
+    if upper is not None and lower is not None:
+        # Not available for CCF ----
+        fig = _add_corr_bounds_subplot(
+            fig=fig, lower=lower, upper=upper, row=row, col=col
+        )
+
+    fig.update_traces(showlegend=False)
+    fig.update_xaxes(range=[-1, len(corr_values) + 1], row=row, col=col)
+    fig.update_yaxes(range=[-1.1, 1.1], zerolinecolor="#000000", row=row, col=col)
+    fig.update_xaxes(title_text="Lags", row=row, col=col)
+    fig.update_yaxes(title_text=default_name, row=row, col=col)
+    return fig, (corr_values, lags, upper, lower)
+
+
+def _add_corr_stems_subplot(
+    fig: go.Figure,
+    corr_values: np.ndarray,
+    lags: np.ndarray,
+    name: str,
+    row: int,
+    col: int,
+) -> go.Figure:
+    """Function to add the correlation stems (sticks) to a Plotly subplot
+
+    Parameters
+    ----------
+    fig : go.Figure
+        Plotly figure to which the stems needs to be added
+    corr_values : np.ndarray
+        The correlation values to plot
+    lags : np.ndarray
+        The lags corresponding to the correlation values
+    name : str
+        Name to show when hovering over plot
+    row : int
+        Row of the figure where the plot needs to be inserted. Starts from 1.
+    col : int
+        Column of the figure where the plot needs to be inserted. Starts from 1.
+
+    Returns
+    -------
+    go.Figure
+        Returns back the plotly figure with stems inserted
+    """
+    #### Add corr plot stem lines ----
     [
         fig.add_scatter(
-            x=(x, x),
-            y=(0, corr_array[0][x]),
+            x=(lag, lag),
+            y=(0, corr_values[lag]),
             mode="lines",
             line_color="#3f3f3f",
             row=row,
             col=col,
             name=name,
         )
-        for x in range(len(corr_array[0]))
+        for lag in lags
     ]
 
-    #### Add corr plot stick endpoints ----
+    #### Add corr plot stem endpoints ----
     fig.add_scatter(
-        x=np.arange(len(corr_array[0])),
-        y=corr_array[0],
+        x=lags,
+        y=corr_values,
         mode="markers",
         marker_color="#1f77b4",
         marker_size=6,
@@ -127,20 +210,47 @@ def corr_subplot(
         col=col,
         name=name,
     )
+    return fig
 
-    #### Add Upper and Lower Confidence Interval ----
+
+def _add_corr_bounds_subplot(
+    fig: go.Figure, lower: np.ndarray, upper: np.ndarray, row: int, col: int
+) -> go.Figure:
+    """Function to add the correlation confidence bounds to a Plotly subplot
+
+    Parameters
+    ----------
+    fig : go.Figure
+        Plotly figure to which the correlation confidence bounds need to be added
+    lower : np.ndarray
+        Lower Confidence Interval values
+    upper : np.ndarray
+        Upper Confidence Interval values
+    row : int
+        Row of the figure where the plot needs to be inserted. Starts from 1.
+    col : int
+        Column of the figure where the plot needs to be inserted. Starts from 1.
+
+    Returns
+    -------
+    go.Figure
+        Returns back the plotly figure with correlation confidence bounds inserted
+    """
+    #### Add the Upper Confidence Interval ----
     fig.add_scatter(
-        x=np.arange(len(corr_array[0])),
-        y=upper_y,
+        x=np.arange(len(upper)),
+        y=upper,
         mode="lines",
         line_color="rgba(255,255,255,0)",
         row=row,
         col=col,
         name="UC",
     )
+
+    #### Add the Lower Confidence Interval ----
     fig.add_scatter(
-        x=np.arange(len(corr_array[0])),
-        y=lower_y,
+        x=np.arange(len(lower)),
+        y=lower,
         mode="lines",
         fillcolor="rgba(32, 146, 230,0.3)",
         fill="tonexty",
@@ -149,16 +259,11 @@ def corr_subplot(
         col=col,
         name="LC",
     )
-    fig.update_traces(showlegend=False)
-    fig.update_xaxes(range=[-1, 42], row=row, col=col)
-    fig.update_yaxes(zerolinecolor="#000000", row=row, col=col)
-    fig.update_xaxes(title_text="Lags", row=row, col=col)
-    fig.update_yaxes(title_text=default_name, row=row, col=col)
-    return fig, corr_array
+    return fig
 
 
 def qq_subplot(
-    fig: go.Figure, data: pd.Series, row: int, col: int, name: Optional[str] = None,
+    fig: go.Figure, data: pd.Series, row: int, col: int, name: Optional[str] = None
 ) -> Tuple[go.Figure, List[matplotlib.lines.Line2D]]:
     """Function to add QQ plot to a Plotly subplot
 
@@ -218,7 +323,7 @@ def qq_subplot(
     return fig, qqplot_data
 
 
-def dist_subplot(fig: go.Figure, data: pd.Series, row: int, col: int,) -> go.Figure:
+def dist_subplot(fig: go.Figure, data: pd.Series, row: int, col: int) -> go.Figure:
     """Function to add a histogram to a Plotly subplot
 
     Parameters
@@ -370,7 +475,7 @@ def frequency_components_subplot(
             hovertemplate="Freq:%{customdata[0]:.4f} <br>Ampl:%{customdata[1]:.4f}<br>Time Period: %{customdata[2]:.4f]}",
             mode="lines+markers",
             line=dict(color="#1f77b4", width=2),
-            marker=dict(size=5,),
+            marker=dict(size=5),
             showlegend=True,
         ),
         row=row,

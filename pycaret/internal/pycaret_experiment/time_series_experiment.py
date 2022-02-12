@@ -97,6 +97,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             "residuals": "Residuals Plot",
             "periodogram": "Frequency Components (Periodogram)",
             "fft": "Frequency Components (FFT)",
+            "ccf": "Cross Correlation (CCF)",
         }
 
         available_plots_common_keys = [
@@ -111,6 +112,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             "diff",
             "periodogram",
             "fft",
+            "ccf",
         ]
         self._available_plots_data_keys = available_plots_common_keys
         self._available_plots_estimator_keys = available_plots_common_keys + [
@@ -166,8 +168,10 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             ).items()
             if not v.is_special
         }
-        all_models_internal = pycaret.containers.models.time_series.get_all_model_containers(
-            self.variables, raise_errors=raise_errors
+        all_models_internal = (
+            pycaret.containers.models.time_series.get_all_model_containers(
+                self.variables, raise_errors=raise_errors
+            )
         )
         return all_models, all_models_internal
 
@@ -537,7 +541,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
     @staticmethod
     def _return_exogenous_names(
-        data: pd.DataFrame, target: List[str], ignore_features: Optional[List] = None,
+        data: pd.DataFrame, target: List[str], ignore_features: Optional[List] = None
     ):
 
         cols = data.columns.to_list()
@@ -1146,7 +1150,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             self.display_container.append(model_results)
 
             display.display(
-                model_results, clear=system, override=False if not system else None,
+                model_results, clear=system, override=False if not system else None
             )
 
             self.logger.info(f"display_container: {len(self.display_container)}")
@@ -1174,9 +1178,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         # display.update_monitor(
         #     1, f"Fitting {_get_cv_n_folds(data_y, cv)} Folds",
         # )
-        display.update_monitor(
-            1, f"Fitting {cv.get_n_splits(data_y)} Folds",
-        )
+        display.update_monitor(1, f"Fitting {cv.get_n_splits(data_y)} Folds")
         display.display_monitor()
         """
         MONITOR UPDATE ENDS
@@ -1253,7 +1255,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         model_results = pd.DataFrame(score_dict)
         model_results.insert(0, "cutoff", cutoffs)
 
-        model_avgs = pd.DataFrame(avgs_dict, index=["Mean", "SD"],)
+        model_avgs = pd.DataFrame(avgs_dict, index=["Mean", "SD"])
         model_avgs.insert(0, "cutoff", np.nan)
 
         model_results = model_results.append(model_avgs)
@@ -2008,6 +2010,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             * 'diff' - Difference Plot
             * 'periodogram' - Frequency Components (Periodogram)
             * 'fft' - Frequency Components (FFT)
+            * 'ccf' - Cross Correlation (CCF)
             * 'forecast' - "Out-of-Sample" Forecast Plot
             * 'insample' - "In-Sample" Forecast Plot
             * 'residuals' - Residuals Plot
@@ -2089,7 +2092,8 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         elif plot is None and estimator is not None:
             plot = "forecast"
 
-        data, train, test, predictions, cv, model_name = (
+        data, train, test, X, predictions, cv, model_name = (
+            None,
             None,
             None,
             None,
@@ -2106,6 +2110,12 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         elif plot == "cv":
             data = self._get_y_data(split="train")
             cv = self.get_fold_generator()
+        elif plot == "ccf":
+            include = data_kwargs.get("include", None)
+            exclude = data_kwargs.get("exclude", None)
+            data = self._get_y_data(split="all")
+            X = self._get_X_data(split="all", include=include, exclude=exclude)
+
         elif estimator is None:
             # Estimator is not provided
             require_full_data = [
@@ -2200,6 +2210,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             data=data,
             train=train,
             test=test,
+            X=X,
             predictions=predictions,
             cv=cv,
             model_name=model_name,
@@ -2492,9 +2503,9 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             try:
                 np.random.seed(self.seed)
                 if not display:
-                    display = Display(verbose=verbose, html_param=self.html_param,)
+                    display = Display(verbose=verbose, html_param=self.html_param)
             except:
-                display = Display(verbose=False, html_param=False,)
+                display = Display(verbose=False, html_param=False)
 
             full_name = self._get_model_name(estimator_)
             df_score = pd.DataFrame(metrics, index=[0])
@@ -2511,7 +2522,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         return result
 
     def finalize_model(
-        self, estimator, fit_kwargs: Optional[dict] = None, model_only: bool = True,
+        self, estimator, fit_kwargs: Optional[dict] = None, model_only: bool = True
     ) -> Any:
 
         """
@@ -2548,11 +2559,11 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         """
 
         return super().finalize_model(
-            estimator=estimator, fit_kwargs=fit_kwargs, model_only=model_only,
+            estimator=estimator, fit_kwargs=fit_kwargs, model_only=model_only
         )
 
     def deploy_model(
-        self, model, model_name: str, authentication: dict, platform: str = "aws",
+        self, model, model_name: str, authentication: dict, platform: str = "aws"
     ):
 
         """
@@ -2848,7 +2859,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         """
 
         return super().get_metrics(
-            reset=reset, include_custom=include_custom, raise_errors=raise_errors,
+            reset=reset, include_custom=include_custom, raise_errors=raise_errors
         )
 
     def add_metric(
@@ -3139,7 +3150,25 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         results.reset_index(inplace=True, drop=True)
         return results
 
-    def _get_y_data(self, split="all"):
+    def _get_y_data(self, split="all") -> pd.Series:
+        """Returns the y data for the requested split
+
+        Parameters
+        ----------
+        split : str, optional
+            The plot for which the data must be returned. Options are: "all",
+            "train" or "test", by default "all".
+
+        Returns
+        -------
+        pd.Series
+            The y values for the requested split
+
+        Raises
+        ------
+        ValueError
+            When `split` is not one of the allowed types
+        """
         if split == "all":
             data = self.y
         elif split == "train":
@@ -3148,6 +3177,53 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             data = self.y_test
         else:
             raise ValueError(f"split value: '{split}' is not supported.")
+        return data
+
+    def _get_X_data(
+        self,
+        split="all",
+        include: Optional[List[str]] = None,
+        exclude: Optional[List[str]] = None,
+    ) -> pd.DataFrame:
+        """Returns the X data for the requested split
+
+        Parameters
+        ----------
+        split : str, optional
+            The plot for which the data must be returned. Options are: "all",
+            "train" or "test", by default "all".
+        include : Optional[List[str]], optional
+            The columns to include in the returned data, by default None which
+            returns all the columns
+        exclude : Optional[List[str]], optional
+            The columns to exclude from the returned data, by default None which
+            does not exclude any columns
+
+        Returns
+        -------
+        pd.DataFrame
+            The X values for the requested split
+
+        Raises
+        ------
+        ValueError
+            When `split` is not one of the allowed types
+        """
+        if split == "all":
+            data = self.X
+        elif split == "train":
+            data = self.X_train
+        elif split == "test":
+            data = self.X_test
+        else:
+            raise ValueError(f"split value: '{split}' is not supported.")
+
+        # TODO: Move this functionality (of including/excluding cols) to some utility module.
+        if include:
+            data = data[include]
+        if exclude:
+            data = data.loc[:, ~data.columns.isin(exclude)]
+
         return data
 
     def get_residuals(self, estimator) -> Optional[pd.Series]:
