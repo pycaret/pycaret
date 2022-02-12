@@ -102,16 +102,12 @@ class _SupervisedExperiment(_TabularExperiment):
         except Exception:
             ml_usecase = get_ml_task(y_test)
             if ml_usecase == MLUsecase.CLASSIFICATION:
-                metrics = (
-                    pycaret.containers.metrics.classification.get_all_metric_containers(
-                        self.variables, True
-                    )
+                metrics = pycaret.containers.metrics.classification.get_all_metric_containers(
+                    self.variables, True
                 )
             elif ml_usecase == MLUsecase.REGRESSION:
-                metrics = (
-                    pycaret.containers.metrics.regression.get_all_metric_containers(
-                        self.variables, True
-                    )
+                metrics = pycaret.containers.metrics.regression.get_all_metric_containers(
+                    self.variables, True
                 )
             return calculate_metrics(
                 metrics=metrics,  # type: ignore
@@ -184,7 +180,7 @@ class _SupervisedExperiment(_TabularExperiment):
             if not metric.greater_is_better:
                 result *= -1
             if best_result is None or best_result < result:
-                msg=(
+                msg = (
                     "Original model was better than the tuned model, hence it will be returned. "
                     "NOTE: The display metrics are for the tuned model (not the original one)."
                 )
@@ -230,8 +226,8 @@ class _SupervisedExperiment(_TabularExperiment):
                 )  # sktime is an optional dependency
 
                 (
-                    train_data,
-                    test_data,
+                    self.y_train,
+                    self.y_test,
                     self.X_train,
                     self.X_test,
                 ) = temporal_train_test_split(
@@ -240,13 +236,10 @@ class _SupervisedExperiment(_TabularExperiment):
                     fh=fh,  # if fh is provided it splits by it
                 )
 
-                train_data, test_data = (
-                    pd.DataFrame(train_data),
-                    pd.DataFrame(test_data),
-                )
-
-                self.y_train = train_data
-                self.y_test = test_data
+                if isinstance(self.y_train, pd.Series):
+                    self.y_train = pd.DataFrame(self.y_train)
+                if isinstance(self.y_test, pd.Series):
+                    self.y_test = pd.DataFrame(self.y_test)
 
             else:
                 self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(
@@ -257,8 +250,8 @@ class _SupervisedExperiment(_TabularExperiment):
                     random_state=self.seed,
                     shuffle=data_split_shuffle,
                 )
-                train_data = pd.concat([self.X_train, self.y_train], axis=1)
-                test_data = pd.concat([self.X_test, self.y_test], axis=1)
+            train_data = pd.concat([self.X_train, self.y_train], axis=1)
+            test_data = pd.concat([self.X_test, self.y_test], axis=1)
 
         train_data = self.prep_pipe.fit_transform(train_data)
         # workaround to also transform target
@@ -782,15 +775,11 @@ class _SupervisedExperiment(_TabularExperiment):
             )
             results_columns_to_ignore = ["Object", "runtime", "cutoff"]
             if errors == "raise":
-                model, model_fit_time = self.create_model(
-                    **create_model_args
-                )
+                model, model_fit_time = self.create_model(**create_model_args)
                 model_results = self.pull(pop=True)
             else:
                 try:
-                    model, model_fit_time = self.create_model(
-                        **create_model_args
-                    )
+                    model, model_fit_time = self.create_model(**create_model_args)
                     model_results = self.pull(pop=True)
                     assert (
                         np.sum(
@@ -806,9 +795,7 @@ class _SupervisedExperiment(_TabularExperiment):
                     )
                     self.logger.warning(traceback.format_exc())
                     try:
-                        model, model_fit_time = self.create_model(
-                            **create_model_args
-                        )
+                        model, model_fit_time = self.create_model(**create_model_args)
                         model_results = self.pull(pop=True)
                         assert (
                             np.sum(
@@ -961,9 +948,7 @@ class _SupervisedExperiment(_TabularExperiment):
                         probability_threshold=probability_threshold,
                     )
                     if errors == "raise":
-                        model, model_fit_time = self.create_model(
-                            **create_model_args
-                        )
+                        model, model_fit_time = self.create_model(**create_model_args)
                         sorted_models.append(model)
                     else:
                         try:
@@ -1509,8 +1494,7 @@ class _SupervisedExperiment(_TabularExperiment):
         ):
             if not isinstance(model, CustomProbabilityThresholdClassifier):
                 model = CustomProbabilityThresholdClassifier(
-                    classifier=model,
-                    probability_threshold=probability_threshold,
+                    classifier=model, probability_threshold=probability_threshold,
                 )
             elif probability_threshold is not None:
                 model.set_params(probability_threshold=probability_threshold)

@@ -1,669 +1,56 @@
-from copy import deepcopy
+import datetime
+import gc
+import logging
 import os
-import re
-import math
+import time
+import traceback
+import warnings
+from typing import Any, Dict, List, Optional, Tuple, Union
 
-from sktime.forecasting.model_selection import (
+import numpy as np  # type: ignore
+import pandas as pd  # type: ignore
+from IPython.utils import io
+from pandas.io.formats.style import Styler
+from sklearn.base import clone  # type: ignore
+from sktime.forecasting.base import ForecastingHorizon
+from sktime.forecasting.model_selection import (  # type: ignore
     ExpandingWindowSplitter,
     SlidingWindowSplitter,
 )
 
-
-from pycaret.internal.pycaret_experiment.utils import highlight_setup, MLUsecase
+import pycaret.containers.metrics.time_series
+import pycaret.containers.models.time_series
+import pycaret.internal.patches.sklearn
+import pycaret.internal.persistence
+import pycaret.internal.preprocess
+from pycaret.internal.Display import Display
+from pycaret.internal.distributions import get_base_distributions
+from pycaret.internal.logging import get_logger
+from pycaret.internal.pipeline import get_pipeline_fit_kwargs
+from pycaret.internal.plots.time_series import _plot
 from pycaret.internal.pycaret_experiment.supervised_experiment import (
     _SupervisedExperiment,
 )
-from pycaret.internal.pipeline import (
-    estimator_pipeline,
-    get_pipeline_fit_kwargs,
-)
-from pycaret.internal.utils import (
-    color_df,
-    SeasonalPeriod,
-    TSModelTypes,
-    get_function_params,
-)
-import pycaret.internal.patches.sklearn
-import pycaret.internal.patches.yellowbrick
-from pycaret.internal.logging import get_logger
-from pycaret.internal.Display import Display
-
-from pycaret.internal.distributions import *
-from pycaret.internal.validation import *
+from pycaret.internal.pycaret_experiment.utils import MLUsecase, highlight_setup
+from pycaret.internal.tests.time_series import run_test
 from pycaret.internal.tunable import TunableMixin
-
-import pycaret.containers.metrics.time_series
-import pycaret.containers.models.time_series
-import pycaret.internal.preprocess
-import pycaret.internal.persistence
-import pandas as pd  # type: ignore
-from pandas.io.formats.style import Styler
-import numpy as np  # type: ignore
-import datetime
-import time
-import gc
-from sklearn.base import clone  # type: ignore
-from typing import List, Tuple, Any, Union, Optional, Dict, Generator
-import warnings
-from IPython.utils import io
-import traceback
-import plotly.express as px  # type: ignore
-import plotly.graph_objects as go  # type: ignore
-import logging
-from sklearn.base import clone  # type: ignore
-from sklearn.model_selection._validation import _aggregate_score_dicts  # type: ignore
-from sklearn.model_selection import check_cv, ParameterGrid, ParameterSampler  # type: ignore
-from sklearn.model_selection._search import _check_param_grid  # type: ignore
-from sklearn.metrics._scorer import get_scorer, _PredictScorer  # type: ignore
-from collections import defaultdict
-from functools import partial
-from scipy.stats import rankdata  # type: ignore
-from joblib import Parallel, delayed  # type: ignore
-
-
-from sktime.forecasting.base import ForecastingHorizon
-from sktime.utils.validation.forecasting import check_y_X  # type: ignore
-from sktime.forecasting.model_selection import SlidingWindowSplitter  # type: ignore
-
-from pycaret.internal.tests.time_series import test_
-from pycaret.internal.plots.time_series import plot_
-
+from pycaret.internal.utils import color_df, deep_clone
+from pycaret.internal.validation import is_sklearn_cv_generator
+from pycaret.utils import _coerce_empty_dataframe_to_none
+from pycaret.utils.datetime import coerce_datetime_to_period_index
+from pycaret.utils.time_series import TSModelTypes, get_sp_from_str
+from pycaret.utils.time_series.forecasting import (
+    get_predictions_with_intervals,
+    update_additional_scorer_kwargs,
+)
+from pycaret.utils.time_series.forecasting.model_selection import (
+    ForecastingGridSearchCV,
+    ForecastingRandomizedSearchCV,
+    cross_validate,
+)
 
 warnings.filterwarnings("ignore")
 LOGGER = get_logger()
-
-
-# def _get_cv_n_folds(y, cv) -> int:
-#     """
-#     Get the number of folds for time series
-#     cv must be of type SlidingWindowSplitter or ExpandingWindowSplitter
-#     TODO: Fix this inside sktime and replace this with sktime method [1]
-
-#     Ref:
-#     [1] https://github.com/alan-turing-institute/sktime/issues/632
-#     """
-#     n_folds = int((len(y) - cv.initial_window) / cv.step_length)
-#     return n_folds
-
-
-def get_folds(cv, y) -> Generator[Tuple[pd.Series, pd.Series], None, None]:
-    """
-    Returns the train and test indices for the time series data
-    """
-    # https://github.com/alan-turing-institute/sktime/blob/main/examples/window_splitters.ipynb
-    for train_indices, test_indices in cv.split(y):
-        # print(f"Train Indices: {train_indices}, Test Indices: {test_indices}")
-        yield train_indices, test_indices
-
-
-def cross_validate_ts(
-    forecaster,
-    y: pd.Series,
-    X: Optional[Union[pd.Series, pd.DataFrame]],
-    cv,
-    scoring: Dict[str, Union[str, _PredictScorer]],
-    fit_params,
-    n_jobs,
-    return_train_score,
-    error_score=0,
-    verbose: int = 0,
-    **additional_scorer_kwargs,
-) -> Dict[str, np.array]:
-    """Performs Cross Validation on time series data
-
-    Parallelization is based on `sklearn` cross_validate function [1]
-    Ref:
-    [1] https://github.com/scikit-learn/scikit-learn/blob/0.24.1/sklearn/model_selection/_validation.py#L246
-
-
-    Parameters
-    ----------
-    forecaster : [type]
-        Time Series Forecaster that is compatible with sktime
-    y : pd.Series
-        The variable of interest for forecasting
-    X : Optional[Union[pd.Series, pd.DataFrame]]
-        Exogenous Variables
-    cv : [type]
-        [description]
-    scoring : Dict[str, Union[str, _PredictScorer]]
-        Scoring Dictionary. Values can be valid strings that can be converted to
-        callable metrics or the callable metrics directly
-    fit_params : [type]
-        Fit parameters to be used when training
-    n_jobs : [type]
-        Number of cores to use to parallelize. Refer to sklearn for details
-    return_train_score : [type]
-        Should the training scores be returned. Unused for now.
-    error_score : int, optional
-        Unused for now, by default 0
-    verbose : int
-        Sets the verbosity level. Unused for now
-    additional_scorer_kwargs: Dict[str, Any]
-        Additional scorer kwargs such as {`sp`:12} required by metrics like MASE
-
-    Returns
-    -------
-    [type]
-        [description]
-
-    Raises
-    ------
-    Error
-        If fit and score raises any exceptions
-    """
-    try:
-        # # For Debug
-        # n_jobs = 1
-        scoring = _get_metrics_dict_ts(scoring)
-        parallel = Parallel(n_jobs=n_jobs)
-
-        out = parallel(
-            delayed(_fit_and_score)(
-                forecaster=clone(forecaster),
-                y=y,
-                X=X,
-                scoring=scoring,
-                train=train,
-                test=test,
-                parameters=None,
-                fit_params=fit_params,
-                return_train_score=return_train_score,
-                error_score=error_score,
-                **additional_scorer_kwargs,
-            )
-            for train, test in get_folds(cv, y)
-        )
-    # raise key exceptions
-    except Exception:
-        raise
-
-    # Similar to parts of _format_results in BaseGridSearch
-    (test_scores_dict, fit_time, score_time, cutoffs) = zip(*out)
-    test_scores = _aggregate_score_dicts(test_scores_dict)
-
-    return test_scores, cutoffs
-
-
-def _get_metrics_dict_ts(
-    metrics_dict: Dict[str, Union[str, _PredictScorer]]
-) -> Dict[str, _PredictScorer]:
-    """Returns a metrics dictionary in which all values are callables
-    of type _PredictScorer
-
-    Parameters
-    ----------
-    metrics_dict : A metrics dictionary in which some values can be strings.
-        If the value is a string, the corresponding callable metric is returned
-        e.g. Dictionary Value of 'neg_mean_absolute_error' will return
-        make_scorer(mean_absolute_error, greater_is_better=False)
-    """
-    return_metrics_dict = {}
-    for k, v in metrics_dict.items():
-        if isinstance(v, str):
-            return_metrics_dict[k] = get_scorer(v)
-        else:
-            return_metrics_dict[k] = v
-    return return_metrics_dict
-
-
-def _fit_and_score(
-    forecaster,
-    y: pd.Series,
-    X: Optional[Union[pd.Series, pd.DataFrame]],
-    scoring: Dict[str, Union[str, _PredictScorer]],
-    train,
-    test,
-    parameters,
-    fit_params,
-    return_train_score,
-    error_score=0,
-    **additional_scorer_kwargs,
-):
-    """Fits the forecaster on a single train split and scores on the test split
-    Similar to _fit_and_score from `sklearn` [1] (and to some extent `sktime` [2]).
-    Difference is that [1] operates on a single fold only, whereas [2] operates on all cv folds.
-    Ref:
-    [1] https://github.com/scikit-learn/scikit-learn/blob/0.24.1/sklearn/model_selection/_validation.py#L449
-    [2] https://github.com/alan-turing-institute/sktime/blob/v0.5.3/sktime/forecasting/model_selection/_tune.py#L95
-
-    Parameters
-    ----------
-    forecaster : [type]
-        Time Series Forecaster that is compatible with sktime
-    y : pd.Series
-        The variable of interest for forecasting
-    X : Optional[Union[pd.Series, pd.DataFrame]]
-        Exogenous Variables
-    scoring : Dict[str, Union[str, _PredictScorer]]
-        Scoring Dictionary. Values can be valid strings that can be converted to
-        callable metrics or the callable metrics directly
-    train : [type]
-        Indices of training samples.
-    test : [type]
-        Indices of test samples.
-    parameters : [type]
-        Parameter to set for the forecaster
-    fit_params : [type]
-        Fit parameters to be used when training
-    return_train_score : [type]
-        Should the training scores be returned. Unused for now.
-    error_score : int, optional
-        Unused for now, by default 0
-    **additional_scorer_kwargs: Dict[str, Any]
-            Additional scorer kwargs such as {`sp`:12} required by metrics like MASE
-
-    Raises
-    ------
-    ValueError
-        When test indices do not match predicted indices. This is only for
-        for internal checks and should not be raised when used by external users
-    """
-    if parameters is not None:
-        forecaster.set_params(**parameters)
-
-    y_train, y_test = y[train], y[test]
-    X_train = None if X is None else X[train]
-    X_test = None if X is None else X[test]
-
-    #### Fit the forecaster ----
-    start = time.time()
-    try:
-        forecaster.fit(y_train, X_train, **fit_params)
-    except Exception as error:
-        logging.error(f"Fit failed on {forecaster}")
-        logging.error(error)
-
-        if error_score == "raise":
-            raise
-
-    fit_time = time.time() - start
-
-    #### Determine Cutoff ----
-    # NOTE: Cutoff is available irrespective of whether fit passed or failed
-    cutoff = forecaster.cutoff
-
-    #### Score the model ----
-    lower = pd.Series([])
-    upper = pd.Series([])
-    if forecaster.is_fitted:
-        y_pred, lower, upper = get_predictions_with_intervals(
-            forecaster=forecaster, X_test=X_test
-        )
-
-        if (y_test.index.values != y_pred.index.values).any():
-            print(
-                f"\t y_train: {y_train.index.values},"
-                f"\n\t y_test: {y_test.index.values}"
-            )
-            print(f"\t y_pred: {y_pred.index.values}")
-            raise ValueError(
-                "y_test indices do not match y_pred_indices or split/prediction "
-                "length does not match forecast horizon."
-            )
-
-    start = time.time()
-    fold_scores = {}
-    scoring = _get_metrics_dict_ts(scoring)
-
-    # SP should be passed from outside in additional_scorer_kwargs already
-    additional_scorer_kwargs = update_additional_scorer_kwargs(
-        initial_kwargs=additional_scorer_kwargs,
-        y_train=y_train,
-        lower=lower,
-        upper=upper,
-    )
-    for scorer_name, scorer in scoring.items():
-        if forecaster.is_fitted:
-            # get all kwargs in additional_scorer_kwargs
-            # that correspond to parameters in function signature
-            kwargs = {
-                **{
-                    k: v
-                    for k, v in additional_scorer_kwargs.items()
-                    if k in get_function_params(scorer._score_func)
-                },
-                **scorer._kwargs,
-            }
-            metric = scorer._score_func(y_true=y_test, y_pred=y_pred, **kwargs)
-        else:
-            metric = None
-        fold_scores[scorer_name] = metric
-    score_time = time.time() - start
-
-    return fold_scores, fit_time, score_time, cutoff
-
-
-class BaseGridSearch:
-    """
-    Parallelization is based predominantly on [1]. Also similar to [2]
-
-    Ref:
-    [1] https://github.com/scikit-learn/scikit-learn/blob/0.24.1/sklearn/model_selection/_search.py#L795
-    [2] https://github.com/scikit-optimize/scikit-optimize/blob/v0.8.1/skopt/searchcv.py#L410
-    """
-
-    def __init__(
-        self,
-        forecaster,
-        cv,
-        n_jobs=None,
-        pre_dispatch=None,
-        refit: bool = False,
-        refit_metric: str = "smape",
-        scoring=None,
-        verbose=0,
-        error_score=None,
-        return_train_score=None,
-    ):
-        self.forecaster = forecaster
-        self.cv = cv
-        self.n_jobs = n_jobs
-        self.pre_dispatch = pre_dispatch
-        self.refit = refit
-        self.refit_metric = refit_metric
-        self.scoring = scoring
-        self.verbose = verbose
-        self.error_score = error_score
-        self.return_train_score = return_train_score
-
-        self.best_params_ = {}
-        self.cv_results_ = {}
-
-    def fit(
-        self,
-        y: pd.Series,
-        X: Optional[pd.DataFrame] = None,
-        additional_scorer_kwargs: Optional[Dict[str, Any]] = None,
-        **fit_params,
-    ):
-        """[summary]
-
-        Parameters
-        ----------
-        y : pd.Series
-            Target
-        X : Optional[pd.DataFrame], optional
-            Exogenous Variables, by default None
-        additional_scorer_kwargs: Dict[str, Any]
-            Additional scorer kwargs such as {`sp`:12} required by metrics like MASE
-        **fit_params: Dict[str, Any]
-            Additional params to pass to fit
-
-        Returns
-        -------
-        [type]
-            [description]
-
-        Raises
-        ------
-        ValueError
-            [description]
-        """
-        if additional_scorer_kwargs is None:
-            additional_scorer_kwargs = {}
-
-        y, X = check_y_X(y, X)
-
-        # validate cross-validator
-        cv = check_cv(self.cv)
-        base_forecaster = clone(self.forecaster)
-
-        # This checker is sktime specific and only support 1 metric
-        # Removing for now since we can have multiple metrics
-        # TODO: Add back later if it supports multiple metrics
-        # scoring = check_scoring(self.scoring)
-        # Multiple metrics supported
-        scorers = self.scoring  # Dict[str, Union[str, scorer]]  Not metrics container
-        scorers = _get_metrics_dict_ts(scorers)
-        refit_metric = self.refit_metric
-        if refit_metric not in list(scorers.keys()):
-            raise ValueError(
-                f"Refit Metric: '{refit_metric}' is not available. ",
-                f"Available Values are: {list(scorers.keys())}",
-            )
-
-        results = {}
-        all_candidate_params = []
-        all_out = []
-
-        def evaluate_candidates(candidate_params):
-            candidate_params = list(candidate_params)
-            n_candidates = len(candidate_params)
-            n_splits = cv.get_n_splits(y)
-
-            if self.verbose > 0:
-                print(  # noqa
-                    f"Fitting {n_splits} folds for each of {n_candidates} "
-                    f"candidates, totalling {n_candidates * n_splits} fits"
-                )
-
-            parallel = Parallel(
-                n_jobs=self.n_jobs, verbose=self.verbose, pre_dispatch=self.pre_dispatch
-            )
-            out = parallel(
-                delayed(_fit_and_score)(
-                    forecaster=clone(base_forecaster),
-                    y=y,
-                    X=X,
-                    scoring=scorers,
-                    train=train,
-                    test=test,
-                    parameters=parameters,
-                    fit_params=fit_params,
-                    return_train_score=self.return_train_score,
-                    error_score=self.error_score,
-                    **additional_scorer_kwargs,
-                )
-                for parameters in candidate_params
-                for train, test in get_folds(cv, y)
-            )
-
-            if len(out) < 1:
-                raise ValueError(
-                    "No fits were performed. "
-                    "Was the CV iterator empty? "
-                    "Were there no candidates?"
-                )
-
-            all_candidate_params.extend(candidate_params)
-            all_out.extend(out)
-
-            nonlocal results
-            results = self._format_results(
-                all_candidate_params, scorers, all_out, n_splits
-            )
-            return results
-
-        self._run_search(evaluate_candidates)
-
-        self.best_index_ = results["rank_test_%s" % refit_metric].argmin()
-        self.best_score_ = results["mean_test_%s" % refit_metric][self.best_index_]
-        self.best_params_ = results["params"][self.best_index_]
-
-        self.best_forecaster_ = clone(base_forecaster).set_params(**self.best_params_)
-
-        if self.refit:
-            refit_start_time = time.time()
-            self.best_forecaster_.fit(y, X, **fit_params)
-            self.refit_time_ = time.time() - refit_start_time
-
-        # Store the only scorer not as a dict for single metric evaluation
-        self.scorer_ = scorers
-
-        self.cv_results_ = results
-        self.n_splits_ = cv.get_n_splits(y)
-
-        self._is_fitted = True
-        return self
-
-    @staticmethod
-    def _format_results(candidate_params, scorers, out, n_splits):
-        """From sklearn and sktime"""
-        n_candidates = len(candidate_params)
-        (test_scores_dict, fit_time, score_time, cutoffs) = zip(*out)
-        test_scores_dict = _aggregate_score_dicts(test_scores_dict)
-
-        results = {}
-
-        # From sklearn (with the addition of greater_is_better from sktime)
-        # INFO: For some reason, sklearn func does not work with sktime metrics
-        # without passing greater_is_better (as done in sktime) and processing
-        # it as such.
-        def _store(
-            key_name,
-            array,
-            weights=None,
-            splits=False,
-            rank=False,
-            greater_is_better=False,
-        ):
-            """A small helper to store the scores/times to the cv_results_"""
-            # When iterated first by splits, then by parameters
-            # We want `array` to have `n_candidates` rows and `n_splits` cols.
-            array = np.array(array, dtype=np.float64).reshape(n_candidates, n_splits)
-            if splits:
-                for split_idx in range(n_splits):
-                    # Uses closure to alter the results
-                    results["split%d_%s" % (split_idx, key_name)] = array[:, split_idx]
-
-            array_means = np.average(array, axis=1, weights=weights)
-            results["mean_%s" % key_name] = array_means
-
-            if key_name.startswith(("train_", "test_")) and np.any(
-                ~np.isfinite(array_means)
-            ):
-                warnings.warn(
-                    f"One or more of the {key_name.split('_')[0]} scores "
-                    f"are non-finite: {array_means}",
-                    category=UserWarning,
-                )
-
-            # Weighted std is not directly available in numpy
-            array_stds = np.sqrt(
-                np.average(
-                    (array - array_means[:, np.newaxis]) ** 2, axis=1, weights=weights
-                )
-            )
-            results["std_%s" % key_name] = array_stds
-
-            if rank:
-                # This section is taken from sktime
-                array_means = -array_means if greater_is_better else array_means
-                results["rank_%s" % key_name] = np.asarray(
-                    rankdata(array_means, method="min"), dtype=np.int32
-                )
-
-        _store("fit_time", fit_time)
-        _store("score_time", score_time)
-        # Use one MaskedArray and mask all the places where the param is not
-        # applicable for that candidate. Use defaultdict as each candidate may
-        # not contain all the params
-        param_results = defaultdict(
-            partial(
-                np.ma.MaskedArray, np.empty(n_candidates,), mask=True, dtype=object,
-            )
-        )
-        for cand_i, params in enumerate(candidate_params):
-            for name, value in params.items():
-                # An all masked empty array gets created for the key
-                # `"param_%s" % name` at the first occurrence of `name`.
-                # Setting the value at an index also unmasks that index
-                param_results["param_%s" % name][cand_i] = value
-
-        results.update(param_results)
-        # Store a list of param dicts at the key "params"
-        results["params"] = candidate_params
-
-        for scorer_name, scorer in scorers.items():
-            # Computed the (weighted) mean and std for test scores alone
-            _store(
-                "test_%s" % scorer_name,
-                test_scores_dict[scorer_name],
-                splits=True,
-                rank=True,
-                weights=None,
-                greater_is_better=True if scorer._sign == 1 else False,
-            )
-
-        return results
-
-
-class ForecastingGridSearchCV(BaseGridSearch):
-    def __init__(
-        self,
-        forecaster,
-        cv,
-        param_grid,
-        scoring=None,
-        n_jobs=None,
-        refit=True,
-        refit_metric: str = "smape",
-        verbose=0,
-        pre_dispatch="2*n_jobs",
-        error_score=np.nan,
-        return_train_score=False,
-    ):
-        super(ForecastingGridSearchCV, self).__init__(
-            forecaster=forecaster,
-            cv=cv,
-            n_jobs=n_jobs,
-            pre_dispatch=pre_dispatch,
-            refit=refit,
-            refit_metric=refit_metric,
-            scoring=scoring,
-            verbose=verbose,
-            error_score=error_score,
-            return_train_score=return_train_score,
-        )
-        self.param_grid = param_grid
-        _check_param_grid(param_grid)
-
-    def _run_search(self, evaluate_candidates):
-        """Search all candidates in param_grid"""
-        evaluate_candidates(ParameterGrid(self.param_grid))
-
-
-class ForecastingRandomizedSearchCV(BaseGridSearch):
-    def __init__(
-        self,
-        forecaster,
-        cv,
-        param_distributions,
-        n_iter=10,
-        scoring=None,
-        n_jobs=None,
-        refit=True,
-        refit_metric: str = "smape",
-        verbose=0,
-        random_state=None,
-        pre_dispatch="2*n_jobs",
-        error_score=np.nan,
-        return_train_score=False,
-    ):
-        super(ForecastingRandomizedSearchCV, self).__init__(
-            forecaster=forecaster,
-            cv=cv,
-            n_jobs=n_jobs,
-            pre_dispatch=pre_dispatch,
-            refit=refit,
-            refit_metric=refit_metric,
-            scoring=scoring,
-            verbose=verbose,
-            error_score=error_score,
-            return_train_score=return_train_score,
-        )
-        self.param_distributions = param_distributions
-        self.n_iter = n_iter
-        self.random_state = random_state
-
-    def _run_search(self, evaluate_candidates):
-        """Search n_iter candidates from param_distributions"""
-        return evaluate_candidates(
-            ParameterSampler(
-                self.param_distributions, self.n_iter, random_state=self.random_state
-            )
-        )
 
 
 class TimeSeriesExperiment(_SupervisedExperiment):
@@ -692,6 +79,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 "sp_to_use",
                 "strictly_positive",
                 "enforce_pi",
+                "index_type",
             }
         )
         self._available_plots = {
@@ -703,31 +91,29 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             "decomp_classical": "Decomposition Classical",
             "decomp_stl": "Decomposition STL",
             "diagnostics": "Diagnostics Plot",
+            "diff": "Difference Plot",
             "forecast": "Out-of-Sample Forecast Plot",
             "insample": "In-Sample Forecast Plot",
             "residuals": "Residuals Plot",
+            "periodogram": "Frequency Components (Periodogram)",
+            "fft": "Frequency Components (FFT)",
         }
 
-        self._available_plots_data_keys = [
+        available_plots_common_keys = [
             "ts",
             "train_test_split",
             "cv",
             "acf",
             "pacf",
+            "diagnostics",
             "decomp_classical",
             "decomp_stl",
-            "diagnostics",
+            "diff",
+            "periodogram",
+            "fft",
         ]
-
-        self._available_plots_estimator_keys = [
-            "ts",
-            "train_test_split",
-            "cv",
-            "acf",
-            "pacf",
-            "decomp_classical",
-            "decomp_stl",
-            "diagnostics",
+        self._available_plots_data_keys = available_plots_common_keys
+        self._available_plots_estimator_keys = available_plots_common_keys + [
             "forecast",
             "insample",
             "residuals",
@@ -739,42 +125,35 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         functions = pd.DataFrame(
             [
                 ["session_id", self.seed],
-                # ["Target", self.target_param],
+                ["Target", self.target_param],
                 ["Original Data", self.data_before_preprocess.shape],
                 ["Missing Values", kwargs["missing_flag"]],
+                ["Forecasting Type", self.forecasting_type],
+                ["Transformed Train Target", self.y_train.shape],
+                ["Transformed Test Target", self.y_test.shape],
+                ["Transformed Train Exogenous", self.X_train.shape],
+                ["Transformed Test Exogenous", self.X_test.shape],
+                ["Fold Generator", type(self.fold_generator).__name__],
+                ["Fold Number", self.fold_param],
+                ["Enforce Prediction Interval", self.enforce_pi],
+                ["Seasonal Period Tested", self.seasonal_period],
+                ["Seasonality Detected", self.seasonality_present],
+                ["Seasonality Used in Models", self.sp_to_use],
+                ["Target Strictly Positive", self.strictly_positive],
+                ["Target White Noise", self.white_noise],
+                ["Recommended d", self.lowercase_d],
+                ["Recommended Seasonal D", self.uppercase_d],
+                ["CPU Jobs", self.n_jobs_param],
+                ["Use GPU", self.gpu_param],
+                ["Log Experiment", self.logging_param],
+                ["Experiment Name", self.exp_name_log],
+                ["USI", self.USI],
             ]
             + (
-                [
-                    ["Transformed Train Set", self.y_train.shape],
-                    ["Transformed Test Set", self.y_test.shape],
-                    ["Fold Generator", type(self.fold_generator).__name__],
-                    ["Fold Number", self.fold_param],
-                    ["Enforce Prediction Interval", self.enforce_pi],
-                    ["Seasonal Period Tested", self.seasonal_period],
-                    ["Seasonality Detected", self.seasonality_present],
-                    ["Seasonality Used in Models", self.sp_to_use],
-                    ["Target Strictly Positive", self.strictly_positive],
-                    ["Target White Noise", self.white_noise],
-                    ["Recommended d", self.lowercase_d],
-                    ["Recommended Seasonal D", self.uppercase_d],
-                    ["CPU Jobs", self.n_jobs_param],
-                    ["Use GPU", self.gpu_param],
-                    ["Log Experiment", self.logging_param],
-                    ["Experiment Name", self.exp_name_log],
-                    ["USI", self.USI],
-                ]
-            )
-            + (
-                [["Imputation Type", kwargs["imputation_type"]],]
+                [["Imputation Type", kwargs["imputation_type"]]]
                 if self.preprocess
                 else []
             ),
-            # + (
-            #    [
-            #        ["Transform Target", self.transform_target_param],
-            #        ["Transform Target Method", self.transform_target_method_param],
-            #    ]
-            # ),
             columns=["Description", "Value"],
         )
         return functions.style.apply(highlight_setup)
@@ -812,7 +191,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
     def _get_default_plots_to_log(self) -> List[str]:
         return ["forecast", "residuals", "diagnostics"]
 
-    def check_fh(self, fh: Union[List[int], int, np.array]) -> np.array:
+    def _check_fh(self, fh: Union[List[int], int, np.array]) -> np.array:
         """
         Checks fh for validity and converts fh into an appropriate forecasting
         horizon compatible with sktime (if necessary)
@@ -851,16 +230,360 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             )
         return fh
 
+    @staticmethod
+    def _check_and_clean_data(data: Union[pd.Series, pd.DataFrame]) -> pd.DataFrame:
+        """Check that the data is of the correct type (Pandas Series or DataFrame).
+        Also cleans the data before coercing it into a dataframe which is used
+        internally for all future tasks.
+
+        Parameters
+        ----------
+        data : Union[pd.Series, pd.DataFrame]
+            Input data
+
+        Returns
+        -------
+        pd.DataFrame
+            Checked and Cleaned version of the data
+
+        Raises
+        ------
+        ValueError
+            Raised if data is not of the correct type
+
+        """
+        if not isinstance(data, (pd.Series, pd.DataFrame)):
+            raise ValueError(
+                f"Data must be a pandas Series or DataFrame, got object of {type(data)} type!"
+            )
+
+        ## Make a local copy (to perfrom inplace operation on the original dataset)
+        data_ = data.copy()
+
+        if isinstance(data_, pd.Series):
+            # Set data name is not already set
+            data_.name = data_.name if data.name is not None else "Time Series"
+            data_ = pd.DataFrame(data_)  # Force convertion to DataFrame
+
+        #### Clean column names ----
+        data_.columns = [str(x) for x in data_.columns]
+
+        return data_
+
+    @staticmethod
+    def _return_target_names(
+        data: pd.DataFrame, target: Optional[Union[str, List[str]]] = None
+    ) -> List[str]:
+
+        cols = data.shape[1]
+
+        #### target can not be None if there are multiple columns ----
+        if cols > 1 and target is None:
+            raise ValueError(
+                f"Data has {cols} columns, but the target has not been specified."
+            )
+
+        #### Set target if there is only 1 column ----
+        if cols == 1:
+            if target is not None and target != data.columns[0]:
+                raise ValueError(
+                    f"Target = '{target}', but data only has '{data.columns[0]}'. "
+                    "If you are passing a series (or a dataframe with 1 column) "
+                    "to setup, you can leave `target=None`"
+                )
+            elif target is None:
+                # Use the available column
+                target = [data.columns[0]]
+
+        if isinstance(target, str):
+            # Coerce to list
+            target = [target]
+
+        return target
+
+    def _check_and_set_targets(
+        self, data: pd.DataFrame, target: Optional[Union[str, List[str]]] = None
+    ):
+        """Checks that the targets are of correct type and sets class
+        attributes related to target(s)
+
+        Parameters
+        ----------
+        data : pd.DataFrame
+            Data from which the targets have to be extracted
+
+        target : Optional[Union[str, List[str]]], default = None
+            Target name to be forecasted. Must be specified when data is a pandas
+            DataFrame with more than 1 column. When data is a pandas Series or
+            pandas DataFrame with 1 column, this can be left as None.
+
+        Raises
+        ------
+        TypeError
+            If the target(s) are not of numeric type
+        """
+
+        #### Get Target Name ----
+        target = self._return_target_names(data=data, target=target)
+
+        if isinstance(target, list) and len(target) == 1:
+            target = target[0]
+
+        if target not in data.columns.to_list():
+            raise ValueError(f"Target Column '{target}' is not present in the data.")
+
+        #### Check type of target values - must be numeric ----
+        if not np.issubdtype(data[target].dtype, np.number):
+            raise TypeError(
+                f"Data must be of 'numpy.number' subtype, got {data[target].dtype}!"
+            )
+
+        self.target_param = target
+
+    def _check_and_clean_index(
+        self,
+        data: pd.DataFrame,
+        index: Optional[str] = None,
+        seasonal_period: Optional[Union[int, str]] = None,
+    ) -> pd.DataFrame:
+        """
+        Checks if the index is one of the allowed types (pd.PeriodIndex,
+        pd.DatetimeIndex). If it is not one of the allowed types, then seasonal
+        period must be provided. This check is also performed. Finally, index is
+        coerced into period index which is used in subsequent steps and the
+        appropriate class for data index is set so that it can be used to disable
+        certain models which do not support that type of index.
+
+        Parameters
+        ----------
+        data : pd.DataFrame
+            Data Frame whose index has to be checked and cleaned
+
+        index: Optional[str], default = None
+            Column name to be used as the datetime index for modeling. Column is
+            internally converted to datetime using `pd.to_datetime()`. If None,
+            then the data's index is used as is for modeling.
+
+        seasonal_period : Optional[Union[int, str]], default = None
+            Seasonal Period specified by user
+
+        Returns
+        -------
+        pd.DataFrame
+            Data with checked and cleaned version of the index
+
+        Raises
+        ------
+        ValueError
+            Raised when
+            (1) Index has duplicate values.
+            (2) Index is not one of the allowed types and seasonal period is not provided
+        """
+
+        #### Set Index if necessary ----
+        if index is not None:
+            if index in data.columns.to_list():
+                unique_index_before = len(data[index]) == len(set(data[index]))
+                data[index] = pd.to_datetime(data[index])
+                unique_index_after = len(data[index]) == len(set(data[index]))
+                if unique_index_before and not unique_index_after:
+                    raise ValueError(
+                        f"Coresion of Index column '{index}' to datetime led to duplicates!"
+                        " Consider setting the data index outside pycaret before passing to setup()."
+                    )
+                data.set_index(index, inplace=True)
+            else:
+                raise ValueError(
+                    f"Index '{index}' is not a column in the data provided."
+                )
+
+        #### Data must not have duplicate indices ----
+        if len(data.index) != len(set(data.index)):
+            raise ValueError("Index may not have duplicate values!")
+
+        #### Check Index Type ----
+        allowed_freq_index_types = (pd.PeriodIndex, pd.DatetimeIndex)
+        if (
+            not isinstance(data.index, allowed_freq_index_types)
+            and seasonal_period is None
+        ):
+            # https://stackoverflow.com/questions/3590165/join-a-list-of-items-with-different-types-as-string-in-python
+            raise ValueError(
+                f"The index of your 'data' is of type '{type(data.index)}'. "
+                "If the 'data' index is not of one of the following types: "
+                f"{', '.join(str(type) for type in allowed_freq_index_types)}, "
+                "then 'seasonal_period' must be provided. Refer to docstring for options."
+            )
+
+        #### Convert DateTimeIndex index to PeriodIndex ----
+        # We use PeriodIndex in PyCaret since it seems to be more robust per `sktime``
+        # Ref: https://github.com/alan-turing-institute/sktime/blob/v0.10.0/sktime/forecasting/base/_fh.py#L524
+        if isinstance(data.index, pd.DatetimeIndex):
+            data.index = data.index.to_period()
+
+        #### Save index type so that we can disable certain models ----
+        # E.g. Prophet when index if of type RangeIndex
+        self.index_type = type(data.index)
+
+        return data
+
+    def _check_and_set_fh(
+        self,
+        fh: Optional[Union[List[int], int, np.array]],
+        fold_strategy: Union[str, Any],
+        fold: int,
+    ):
+        """Checks and sets the forecast horizon class attribute based on the user inputs.
+        (1) If fold_strategy is of type string, then fh must be provided
+            and is used to set the forecast horizon.
+        (2) If fold_strategy is not of type string, then forecast horizon is
+            derived from the fold_strategy object's internal fh
+
+        Parameters
+        ----------
+        fh : Optional[Union[List[int], int, np.array]]
+            Forecast Horizon specified by user
+        fold_strategy : Union[str, Any]
+            Fold Strategy specified by user
+        fold : int
+            Number of folds specified by user
+
+        Raises
+        ------
+        ValueError
+            fold_strategy is of type string and fh is not provided.
+        """
+
+        self.logger.info("Set Forecast Horizon.")
+
+        #### Forecast Horizon Checks ----
+        if fh is None:
+            if isinstance(fold_strategy, str):
+                raise ValueError(
+                    "The forecast horizon `fh` must be provided when fold_strategy is of type 'string'"
+                )
+        elif not isinstance(fh, (int, list, np.ndarray)):
+            raise TypeError(
+                f"fh parameter accepts integer. list or np.array value. Provided values is {type(fh)}"
+            )
+
+        #### Check Fold Strategy ----
+        if not isinstance(fold_strategy, str):
+            self.logger.info(
+                f"fh parameter {fh} will be ignored since fold_strategy has been provided. "
+                f"fh from fold_strategy will be used instead."
+            )
+            fh = fold_strategy.fh
+            self.logger.info(
+                f"fold parameter '{fold}' will be ignored since fold_strategy has been provided. "
+                f"fold based on fold_strategy will be used instead."
+            )
+            # fold value will be reset after the data is split in the parent class setup
+
+        fh = self._check_fh(fh)
+        self.fh = fh
+
+    def _check_and_set_seasonal_period(
+        self, data: pd.DataFrame, seasonal_period: Optional[Union[int, str]]
+    ):
+        """Derived the seasonal period by either
+        (1) Extracting it from data's index (if seasonal period is not provided), or
+        (2) Extracting it from the seasonal_period if it is of type string, or
+        (3) Using seasonal_period as is if it is of type int.
+
+        After deriving the seasonal period, a seasonality test is performed.
+        Final seasonal period class attribute value is set equal to
+        (1) 1 if seasonality is not detected at the derived seasonal period, or
+        (2) the derived seasonal period if seasonality is detected at that value.
+
+        Parameters
+        ----------
+        data : pd.DataFrame
+            Data used index can be used to extract the seasonal period information
+        seasonal_period : Optional[Union[int, str]]
+            Seasonal Period specified by user
+
+        Raises
+        ------
+        ValueError
+            If seasonal period is provided but is not of type int or string
+        """
+        self.logger.info("Set up Seasonal Period.")
+
+        # sktime is an optional dependency
+        from sktime.utils.seasonality import autocorrelation_seasonality_test
+
+        if seasonal_period is None:
+            index_freq = data.index.freqstr
+            self.seasonal_period = get_sp_from_str(str_freq=index_freq)
+        else:
+            if not isinstance(seasonal_period, (int, str)):
+                raise ValueError(
+                    f"seasonal_period parameter must be an int or str, got {type(seasonal_period)}"
+                )
+
+            if isinstance(seasonal_period, str):
+                self.seasonal_period = get_sp_from_str(str_freq=seasonal_period)
+            else:
+                self.seasonal_period = seasonal_period
+
+        # check valid seasonal parameter
+        self.seasonality_present = autocorrelation_seasonality_test(
+            data[self.target_param], self.seasonal_period
+        )
+
+        # What seasonal period should be used for modeling?
+        self.sp_to_use = self.seasonal_period if self.seasonality_present else 1
+
+    @staticmethod
+    def _return_exogenous_names(
+        data: pd.DataFrame, target: List[str], ignore_features: Optional[List] = None,
+    ):
+
+        cols = data.columns.to_list()
+
+        ignore_features = ignore_features if ignore_features is not None else []
+        exo_variables = [item for item in cols if item not in ignore_features]
+
+        # Remove targets
+        exo_variables = [item for item in exo_variables if item not in target]
+
+        return exo_variables
+
+    def _check_and_set_forecsting_type(self):
+        """Checks & sets the the forecasting type based on the number of Targets
+        and Exogenous Variables.
+
+        Raises
+        ------
+        ValueError
+            If Forecasting type is unsupported (e.g. Multivariate Forecasting)
+        """
+        if isinstance(self.target_param, str):
+            if len(self.exogenous_variables) > 0:
+                self.forecasting_type = "Univariate with Exogenous Variables"
+            else:
+                self.forecasting_type = "Univariate without Exogenous Variables"
+        elif isinstance(self.target_param, list):
+            if len(self.exogenous_variables) > 0:
+                self.forecasting_type = "Multivariate with Exogenous Variables"
+            else:
+                self.forecasting_type = "Multivariate without Exogenous Variables"
+            raise ValueError("Multivariate forecasting is currently not supported")
+
     def setup(
         self,
         data: Union[pd.Series, pd.DataFrame],
+        target: Optional[str] = None,
+        index: Optional[str] = None,
+        ignore_features: Optional[List] = None,
         preprocess: bool = True,
         imputation_type: str = "simple",
         #        transform_target: bool = False,
         #        transform_target_method: str = "box-cox",
         fold_strategy: Union[str, Any] = "expanding",
         fold: int = 3,
-        fh: Union[List[int], int, np.array] = 1,
+        fh: Optional[Union[List[int], int, np.array]] = 1,
         seasonal_period: Optional[Union[int, str]] = None,
         enforce_pi: bool = False,
         n_jobs: Optional[int] = -1,
@@ -897,6 +620,24 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             Shape (n_samples, 1), when pandas.DataFrame, otherwise (n_samples, ).
 
 
+        target : Optional[str], default = None
+            Target name to be forecasted. Must be specified when data is a pandas
+            DataFrame with more than 1 column. When data is a pandas Series or
+            pandas DataFrame with 1 column, this can be left as None.
+
+
+        index: Optional[str], default = None
+            Column name to be used as the datetime index for modeling. Column is
+            internally converted to datetime using `pd.to_datetime()`. If None,
+            then the data's index is used as is for modeling.
+
+
+        ignore_features: Optional[List], default = None
+            List of features to ignore for modeling when the data is a pandas
+            Dataframe with more than 1 column. Ignored when data is a pandas Series
+            or Dataframe with 1 column.
+
+
         preprocess: bool, default = True
             Parameter not in use for now. Behavior may change in future.
 
@@ -924,13 +665,16 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             parameter. Ignored when ``fold_strategy`` is a custom object.
 
 
-        fh: int or list or np.array, default = 1
+        fh: Optional[int or list or np.array], default = 1
             The forecast horizon to be used for forecasting. Default is set to ``1`` i.e.
             forecast one point ahead. When integer is passed it means N continuous points
             in the future without any gap. If you want to forecast values with gaps, you
             must pass an array e.g. np.arange([13, 25]) will skip the first 12 future
             points and forecast from the 13th point till the 24th point ahead (note in
             numpy right value is inclusive and left is exclusive).
+
+            If fh = None, then fold_strategy must be a sktime compatible cross validation
+            object. In this case, fh is derived from this object.
 
 
         seasonal_period: int or str, default = None
@@ -1030,114 +774,48 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
 
         """
-        from sktime.utils.seasonality import (
-            autocorrelation_seasonality_test,
-        )  # only needed in setup
 
-        ## Make a local copy so as not to perfrom inplace operation on the
-        ## original dataset
-        data_ = data.copy()
+        ##############################
+        #### Setup initialization ####
+        ##############################
 
-        if isinstance(data_, pd.Series) and data_.name is None:
-            data_.name = "Time Series"
+        # Define parameter attrs ----
+        self.enforce_pi = enforce_pi
 
-        # Forecast Horizon Checks
-        if fh is None and isinstance(fold_strategy, str):
-            raise ValueError(
-                f"The forecast horizon `fh` must be provided when fold_strategy is of type 'string'"
-            )
+        #### Check and Clean Data ----
+        data_ = self._check_and_clean_data(data)
 
-        # Check Fold Strategy
-        if not isinstance(fold_strategy, str):
-            self.logger.info(
-                f"fh parameter {fh} will be ignored since fold_strategy has been provided. "
-                f"fh from fold_strategy will be used instead."
-            )
-            fh = fold_strategy.fh
-            self.logger.info(
-                f"fold parameter {fold} will be ignored since fold_strategy has been provided. "
-                f"fold based on fold_strategy will be used instead."
-            )
-            # fold value will be reset after the data is split in the parent class setup
-
-        fh = self.check_fh(fh)
-        self.fh = fh
-
-        # Check Index
-        allowed_freq_index_types = (pd.PeriodIndex, pd.DatetimeIndex)
-        if (
-            not isinstance(data_.index, allowed_freq_index_types)
-            and seasonal_period is None
-        ):
-            # https://stackoverflow.com/questions/3590165/join-a-list-of-items-with-different-types-as-string-in-python
-            raise ValueError(
-                f"The index of your 'data' is of type '{type(data_.index)}'. "
-                "If the 'data' index is not of one of the following types: "
-                f"{', '.join(str(type) for type in allowed_freq_index_types)}, "
-                "then 'seasonal_period' must be provided. Refer to docstring for options."
-            )
-
-        if isinstance(data_.index, pd.DatetimeIndex):
-            data_.index = data_.index.to_period()
-
-        if seasonal_period is None:
-
-            index_freq = data_.index.freqstr
-            self.seasonal_period = get_sp_from_str(str_freq = index_freq)
-
-        else:
-
-            if not isinstance(seasonal_period, (int, str)):
-                raise ValueError(
-                    f"seasonal_period parameter must be an int or str, got {type(seasonal_period)}"
-                )
-
-            if isinstance(seasonal_period, str):
-                self.seasonal_period = get_sp_from_str(str_freq = seasonal_period)
-            else:
-                self.seasonal_period = seasonal_period
-
-        if isinstance(data_, (pd.Series, pd.DataFrame)):
-            if isinstance(data_, pd.DataFrame):
-                if data_.shape[1] != 1:
-                    raise ValueError(
-                        f"data must be a pandas Series or DataFrame with one column, got {data_.shape[1]} columns!"
-                    )
-                data_ = data_.copy()
-            else:
-                data_ = pd.DataFrame(data_)  # Force convertion to DataFrame
-        else:
-            raise ValueError(
-                f"data must be a pandas Series or DataFrame, got object of {type(data_)} type!"
-            )
-
-        data_.columns = [str(x) for x in data_.columns]
-
-        target_name = data_.columns[0]
-        if not np.issubdtype(data_[target_name].dtype, np.number):
-            raise TypeError(
-                f"Data must be of 'numpy.number' subtype, got {data_[target_name].dtype}!"
-            )
-
-        if len(data_.index) != len(set(data_.index)):
-            raise ValueError("Index may not have duplicate values!")
-
-        # check valid seasonal parameter
-        self.seasonality_present = autocorrelation_seasonality_test(
-            data_[target_name], self.seasonal_period
+        #### Check and Clean Index ----
+        data_ = self._check_and_clean_index(
+            data=data_, index=index, seasonal_period=seasonal_period
         )
 
-        # What seasonal period should be used for modeling?
-        self.sp_to_use = self.seasonal_period if self.seasonality_present else 1
+        #### Check and Set Targets ----
+        self._check_and_set_targets(data=data_, target=target)
+
+        #### Check and Set Exogenous Variables ----
+        self.exogenous_variables = self._return_exogenous_names(
+            data=data_, target=self.target_param, ignore_features=ignore_features
+        )
+
+        #### Set type of forecasting ----
+        self._check_and_set_forecsting_type()
+
+        #### Set Forecast Horizon ----
+        self._check_and_set_fh(fh=fh, fold_strategy=fold_strategy, fold=fold)
+
+        #### Set up Seasonal Period ----
+        self._check_and_set_seasonal_period(data=data_, seasonal_period=seasonal_period)
+
+        #### Multiplicative components allowed? ----
+        self.logger.info("Set up whether Multiplicative components allowed.")
 
         # Should multiplicative components be allowed in models that support it
-        self.strictly_positive = np.all(data_[target_name] > 0)
-
-        self.enforce_pi = enforce_pi
+        self.strictly_positive = np.all(data_[self.target_param] > 0)
 
         return super().setup(
             data=data_,
-            target=data_.columns[0],
+            target=self.target_param,
             test_data=None,
             preprocess=preprocess,
             imputation_type=imputation_type,
@@ -1146,7 +824,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             high_cardinality_features=None,
             numeric_features=None,
             date_features=None,
-            ignore_features=None,
+            ignore_features=ignore_features,
             normalize=False,
             transformation=False,
             handle_unknown_categorical=False,
@@ -1168,8 +846,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             data_split_stratify=False,
             fold_strategy=fold_strategy,
             fold=fold,
-            fh=fh,
-            seasonal_period=seasonal_period,
+            fh=self.fh,
             fold_shuffle=False,
             n_jobs=n_jobs,
             use_gpu=use_gpu,
@@ -1448,20 +1125,13 @@ class TimeSeriesExperiment(_SupervisedExperiment):
     def _create_model_without_cv(
         self, model, data_X, data_y, fit_kwargs, predict, system, display: Display
     ):
-        # with estimator_pipeline(self._internal_pipeline, model) as pipeline_with_model:
-
-        self.logger.info(
-            "Support for Exogenous variables not yet supported. Switching X, y order"
-        )
-        data_X, data_y = data_y, data_X
-
         fit_kwargs = get_pipeline_fit_kwargs(model, fit_kwargs)
         self.logger.info("Cross validation set to False")
 
         self.logger.info("Fitting Model")
         model_fit_start = time.time()
         with io.capture_output():
-            model.fit(data_X, data_y, **fit_kwargs)
+            model.fit(data_y, data_X, **fit_kwargs)
         model_fit_end = time.time()
 
         model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
@@ -1469,6 +1139,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         display.move_progress()
 
         if predict:
+            # X is not passed here so predict_model picks X_test by default.
             self.predict_model(model, verbose=False)
             model_results = self.pull(pop=True).drop("Model", axis=1)
 
@@ -1534,7 +1205,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         model_fit_start = time.time()
 
         additional_scorer_kwargs = self.get_additional_scorer_kwargs()
-        scores, cutoffs = cross_validate_ts(
+        scores, cutoffs = cross_validate(
             # Commented out since supervised_experiment also does not clone
             # when doing cross_validate
             # forecaster=clone(model),
@@ -1607,7 +1278,11 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         else:
             # Set fh explicitly since we are not fitting explicitly
             # This is needed so that the model can be used later to predict, etc.
-            model._set_fh(fit_kwargs.get("fh"))
+
+            # Update: Do we really use a unfitted modelf for prediction later?
+            # Also as per sktime developers, it is not advisable to use private
+            # functions from sktime. Disabling for now.
+            # model._set_fh(fit_kwargs.get("fh"))
 
             # model_fit_time /= _get_cv_n_folds(data_y, cv)
             model_fit_time /= cv.get_n_splits(data_y)
@@ -1866,7 +1541,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         warnings.filterwarnings("ignore")
 
-        import logging
+        # import logging
 
         np.random.seed(self.seed)
 
@@ -1936,7 +1611,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             model = clone(estimator_definition.tunable(**estimator.get_params()))
         is_stacked_model = False
 
-        base_estimator = model
+        # base_estimator = model
 
         display.update_monitor(2, estimator_name)
         display.display_monitor()
@@ -2183,83 +1858,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             return (best_model, model_grid)
         return best_model
 
-    # def ensemble_model(
-    #     self,
-    #     estimator,
-    #     method: str = "Bagging",
-    #     fold: Optional[Union[int, Any]] = None,
-    #     n_estimators: int = 10,
-    #     round: int = 4,
-    #     choose_better: bool = False,
-    #     optimize: str = "R2",
-    #     fit_kwargs: Optional[dict] = None,
-    #     verbose: bool = True,
-    # ) -> Any:
-
-    #     """
-    #         This function ensembles a given estimator. The output of this function is
-    #         a score grid with CV scores by fold. Metrics evaluated during CV can be
-    #         accessed using the ``get_metrics`` function. Custom metrics can be added
-    #         or removed using ``add_metric`` and ``remove_metric`` function.
-
-    #         Example
-    #         --------
-    #         >>> from pycaret.datasets import get_data
-    #         >>> boston = get_data('boston')
-    #         >>> from pycaret.regression import *
-    #         >>> exp_name = setup(data = boston,  target = 'medv')
-    #         >>> dt = create_model('dt')
-    #         >>> bagged_dt = ensemble_model(dt, method = 'Bagging')
-
-    #     estimator: scikit-learn compatible object
-    #             Trained model object
-
-    #         method: str, default = 'Bagging'
-    #             Method for ensembling base estimator. It can be 'Bagging' or 'Boosting'.
-
-    #         fold: int or scikit-learn compatible CV generator, default = None
-    #             Controls cross-validation. If None, the CV generator in the ``fold_strategy``
-    #             parameter of the ``setup`` function is used. When an integer is passed,
-    #             it is interpreted as the 'n_splits' parameter of the CV generator in the
-    #             ``setup`` function.
-
-    #         n_estimators: int, default = 10
-    #             The number of base estimators in the ensemble. In case of perfect fit, the
-    #             learning procedure is stopped early.
-
-    #         round: int, default = 4
-    #             Number of decimal places the metrics in the score grid will be rounded to.
-
-    #         choose_better: bool, default = False
-    #             When set to True, the returned object is always better performing. The
-    #             metric used for comparison is defined by the ``optimize`` parameter.
-
-    #         optimize: str, default = 'R2'
-    #             Metric to compare for model selection when ``choose_better`` is True.
-
-    #         fit_kwargs: dict, default = {} (empty dict)
-    #             Dictionary of arguments passed to the fit method of the model.
-
-    #         verbose: bool, default = True
-    #             Score grid is not printed when verbose is set to False.
-
-    #         Returns:
-    #             Trained Model
-
-    #     """
-
-    #     return super().ensemble_model(
-    #         estimator=estimator,
-    #         method=method,
-    #         fold=fold,
-    #         n_estimators=n_estimators,
-    #         round=round,
-    #         choose_better=choose_better,
-    #         optimize=optimize,
-    #         fit_kwargs=fit_kwargs,
-    #         verbose=verbose,
-    #     )
-
     def blend_models(
         self,
         estimator_list: list,
@@ -2356,86 +1954,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             verbose=verbose,
         )
 
-    # def stack_models(
-    #     self,
-    #     estimator_list: list,
-    #     meta_model=None,
-    #     fold: Optional[Union[int, Any]] = None,
-    #     round: int = 4,
-    #     restack: bool = False,
-    #     choose_better: bool = False,
-    #     optimize: str = "R2",
-    #     fit_kwargs: Optional[dict] = None,
-    #     verbose: bool = True,
-    # ):
-
-    #     """
-    #     This function trains a meta model over select estimators passed in
-    #     the ``estimator_list`` parameter. The output of this function is a
-    #     score grid with CV scores by fold. Metrics evaluated during CV can
-    #     be accessed using the ``get_metrics`` function. Custom metrics
-    #     can be added or removed using ``add_metric`` and ``remove_metric``
-    #     function.
-
-    #     Example
-    #     --------
-    #     >>> from pycaret.datasets import get_data
-    #     >>> boston = get_data('boston')
-    #     >>> from pycaret.regression import *
-    #     >>> exp_name = setup(data = boston,  target = 'medv')
-    #     >>> top3 = compare_models(n_select = 3)
-    #     >>> stacker = stack_models(top3)
-
-    #     estimator_list: list of scikit-learn compatible objects
-    #         List of trained model objects
-
-    #     meta_model: scikit-learn compatible object, default = None
-    #         When None, Linear Regression is trained as a meta model.
-
-    #     fold: int or scikit-learn compatible CV generator, default = None
-    #         Controls cross-validation. If None, the CV generator in the ``fold_strategy``
-    #         parameter of the ``setup`` function is used. When an integer is passed,
-    #         it is interpreted as the 'n_splits' parameter of the CV generator in the
-    #         ``setup`` function.
-
-    #     round: int, default = 4
-    #         Number of decimal places the metrics in the score grid will be rounded to.
-
-    #     restack: bool, default = False
-    #         When set to False, only the predictions of estimators will be used as
-    #         training data for the ``meta_model``.
-
-    #     choose_better: bool, default = False
-    #         When set to True, the returned object is always better performing. The
-    #         metric used for comparison is defined by the ``optimize`` parameter.
-
-    #     optimize: str, default = 'R2'
-    #         Metric to compare for model selection when ``choose_better`` is True.
-
-    #     fit_kwargs: dict, default = {} (empty dict)
-    #         Dictionary of arguments passed to the fit method of the model.
-
-    #     verbose: bool, default = True
-    #         Score grid is not printed when verbose is set to False.
-
-    #     Returns:
-    #         Trained Model
-
-    #     """
-
-    #     return super().stack_models(
-    #         estimator_list=estimator_list,
-    #         meta_model=meta_model,
-    #         fold=fold,
-    #         round=round,
-    #         method="auto",
-    #         restack=restack,
-    #         choose_better=choose_better,
-    #         optimize=optimize,
-    #         fit_kwargs=fit_kwargs,
-    #         verbose=verbose,
-    #     )
-
     def plot_model(
         self,
         estimator: Optional[Any] = None,
@@ -2448,7 +1966,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         fig_kwargs: Optional[Dict] = None,
         system: bool = True,
         save: Union[str, bool] = False,
-    ) -> Tuple[str, Any]:
+    ) -> Optional[Tuple[str, Any]]:
 
         """
         This function analyzes the performance of a trained model on holdout set.
@@ -2463,6 +1981,8 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         >>> airline = get_data('airline')
         >>> from pycaret.time_series import *
         >>> exp_name = setup(data = airline,  fh = 12)
+        >>> plot_model(plot="diff", data_kwargs={"order_list": [1, 2], "acf": True, "pacf": True})
+        >>> plot_model(plot="diff", data_kwargs={"lags_list": [[1], [1, 12]], "acf": True, "pacf": True})
         >>> arima = create_model('arima')
         >>> plot_model(plot = 'ts')
         >>> plot_model(plot = 'decomp_classical', data_kwargs = {'type' : 'multiplicative'})
@@ -2485,6 +2005,9 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             * 'decomp_classical' - Decomposition Classical
             * 'decomp_stl' - Decomposition STL
             * 'diagnostics' - Diagnostics Plot
+            * 'diff' - Difference Plot
+            * 'periodogram' - Frequency Components (Periodogram)
+            * 'fft' - Frequency Components (FFT)
             * 'forecast' - "Out-of-Sample" Forecast Plot
             * 'insample' - "In-Sample" Forecast Plot
             * 'residuals' - Residuals Plot
@@ -2524,7 +2047,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
 
         Returns:
-            None
+            Optional[Tuple[str, Any]]
 
         """
         # checking display_format parameter
@@ -2539,27 +2062,15 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                     "It appears that streamlit is not installed. Do: pip install hpbandster ConfigSpace"
                 )
 
+        # Add sp value (used in decomp plots)
+        sp_dict = {"sp_to_use": self.sp_to_use}
         if data_kwargs is None:
-            data_kwargs = {}
+            data_kwargs = sp_dict
+        else:
+            data_kwargs.update(sp_dict)
+
         if fig_kwargs is None:
             fig_kwargs = {}
-
-        available_plots_common = [
-            "ts",
-            "train_test_split",
-            "cv",
-            "acf",
-            "pacf",
-            "diagnostics",
-            "decomp_classical",
-            "decomp_stl",
-        ]
-        available_plots_data = available_plots_common
-        available_plots_model = available_plots_common + [
-            "forecast",
-            "insample",
-            "residuals",
-        ]
 
         return_pred_int = False
         return_obj = []
@@ -2596,19 +2107,26 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             data = self._get_y_data(split="train")
             cv = self.get_fold_generator()
         elif estimator is None:
+            # Estimator is not provided
             require_full_data = [
                 "acf",
                 "pacf",
                 "diagnostics",
                 "decomp_classical",
                 "decomp_stl",
+                "diff",
+                "periodogram",
+                "fft",
             ]
             if plot in require_full_data:
                 data = self._get_y_data(split="all")
             else:
-                plots_formatted_data = [f"'{plot}'" for plot in available_plots_data]
+                plots_formatted_data = [
+                    f"'{plot}'" for plot in self._available_plots_data_keys
+                ]
                 raise ValueError(
-                    f"Plot type '{plot}' is not supported when estimator is not provided. Available plots are: {', '.join(plots_formatted_data)}"
+                    f"Plot type '{plot}' is not supported when estimator is not "
+                    f"provided. Available plots are: {', '.join(plots_formatted_data)}"
                 )
         else:
             # Estimator is Provided
@@ -2630,16 +2148,22 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 "pacf",
                 "decomp_classical",
                 "decomp_stl",
+                "diff",
+                "periodogram",
+                "fft",
             ]
             if plot == "forecast":
                 data = self._get_y_data(split="all")
 
                 fh = data_kwargs.get("fh", None)
                 alpha = data_kwargs.get("alpha", 0.05)
+                X = data_kwargs.get("X", None)
                 return_pred_int = estimator.get_tag("capability:pred_int")
+
                 predictions = self.predict_model(
                     estimator,
                     fh=fh,
+                    X=X,
                     alpha=alpha,
                     return_pred_int=return_pred_int,
                     verbose=False,
@@ -2663,12 +2187,15 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 resid = self.check_and_clean_resid(resid=resid)
                 data = resid
             else:
-                plots_formatted_model = [f"'{plot}'" for plot in available_plots_model]
+                plots_formatted_model = [
+                    f"'{plot}'" for plot in self._available_plots_estimator_keys
+                ]
                 raise ValueError(
-                    f"Plot type '{plot}' is not supported when estimator is provided. Available plots are: {', '.join(plots_formatted_model)}"
+                    f"Plot type '{plot}' is not supported when estimator is provided. "
+                    f"Available plots are: {', '.join(plots_formatted_model)}"
                 )
 
-        fig, plot_data = plot_(
+        fig, plot_data = _plot(
             plot=plot,
             data=data,
             train=train,
@@ -2681,26 +2208,29 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             fig_kwargs=fig_kwargs,
         )
 
-        plot_name = self._available_plots[plot]
-        plot_filename = f"{plot_name}.html"
+        # Sometimes the plot is not successful, such as decomp with RangeIndex.
+        # In such cases, plotting should be bypassed.
+        if fig is not None:
+            plot_name = self._available_plots[plot]
+            plot_filename = f"{plot_name}.html"
 
-        # Per https://github.com/pycaret/pycaret/issues/1699#issuecomment-962460539
-        if save:
-            if not isinstance(save, bool):
-                plot_filename = os.path.join(save, plot_filename)
+            # Per https://github.com/pycaret/pycaret/issues/1699#issuecomment-962460539
+            if save:
+                if not isinstance(save, bool):
+                    plot_filename = os.path.join(save, plot_filename)
 
-            self.logger.info(f"Saving '{plot_filename}'")
-            fig.write_html(plot_filename)
+                self.logger.info(f"Saving '{plot_filename}'")
+                fig.write_html(plot_filename)
 
-            ### Add file name to return object ----
-            return_obj.append(plot_filename)
+                ### Add file name to return object ----
+                return_obj.append(plot_filename)
 
-        elif system:
-            if display_format == "streamlit":
-                st.write(fig)
-            else:
-                fig.show()
-            self.logger.info("Visual Rendered Successfully")
+            elif system:
+                if display_format == "streamlit":
+                    st.write(fig)
+                else:
+                    fig.show()
+                self.logger.info("Visual Rendered Successfully")
 
         ### Add figure and data to return object if required ----
         if return_fig:
@@ -2716,127 +2246,11 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             return_obj = return_obj[0]
         return return_obj
 
-    # def evaluate_model(
-    #     self,
-    #     estimator,
-    #     fold: Optional[Union[int, Any]] = None,
-    #     fit_kwargs: Optional[dict] = None,
-    #     use_train_data: bool = False,
-    # ):
-
-    #     """
-    #     This function displays a user interface for analyzing performance of a trained
-    #     model. It calls the ``plot_model`` function internally.
-
-    #     Example
-    #     --------
-    #     >>> from pycaret.datasets import get_data
-    #     >>> boston = get_data('boston')
-    #     >>> from pycaret.regression import *
-    #     >>> exp_name = setup(data = boston,  target = 'medv')
-    #     >>> lr = create_model('lr')
-    #     >>> evaluate_model(lr)
-
-    #     estimator: scikit-learn compatible object
-    #         Trained model object
-
-    #     fold: int or scikit-learn compatible CV generator, default = None
-    #         Controls cross-validation. If None, the CV generator in the ``fold_strategy``
-    #         parameter of the ``setup`` function is used. When an integer is passed,
-    #         it is interpreted as the 'n_splits' parameter of the CV generator in the
-    #         ``setup`` function.
-
-    #     fit_kwargs: dict, default = {} (empty dict)
-    #         Dictionary of arguments passed to the fit method of the model.
-
-    #     use_train_data: bool, default = False
-    #         When set to true, train data will be used for plots, instead
-    #         of test data.
-
-    #     Returns:
-    #         None
-
-    #     Warnings
-    #     --------
-    #     -   This function only works in IPython enabled Notebook.
-
-    #     """
-
-    #     return super().evaluate_model(
-    #         estimator=estimator,
-    #         fold=fold,
-    #         fit_kwargs=fit_kwargs,
-    #         use_train_data=use_train_data,
-    #     )
-
-    # def interpret_model(
-    #     self,
-    #     estimator,
-    #     plot: str = "summary",
-    #     feature: Optional[str] = None,
-    #     observation: Optional[int] = None,
-    #     use_train_data: bool = False,
-    #     **kwargs,
-    # ):
-
-    #     """
-    #     This function analyzes the predictions generated from a trained model. Most plots
-    #     in this function are implemented based on the SHAP (SHapley Additive exPlanations).
-    #     For more info on this, please see https://shap.readthedocs.io/en/latest/
-
-    #     Example
-    #     --------
-    #     >>> from pycaret.datasets import get_data
-    #     >>> boston = get_data('boston')
-    #     >>> from pycaret.regression import *
-    #     >>> exp = setup(data = boston,  target = 'medv')
-    #     >>> xgboost = create_model('xgboost')
-    #     >>> interpret_model(xgboost)
-
-    #     estimator: scikit-learn compatible object
-    #         Trained model object
-
-    #     plot: str, default = 'summary'
-    #         List of available plots (ID - Name):
-    #         * 'summary' - Summary Plot using SHAP
-    #         * 'correlation' - Dependence Plot using SHAP
-    #         * 'reason' - Force Plot using SHAP
-    #         * 'pdp' - Partial Dependence Plot
-
-    #     feature: str, default = None
-    #         Feature to check correlation with. This parameter is only required when ``plot``
-    #         type is 'correlation' or 'pdp'. When set to None, it uses the first column from
-    #         the dataset.
-
-    #     observation: int, default = None
-    #         Observation index number in holdout set to explain. When ``plot`` is not
-    #         'reason', this parameter is ignored.
-
-    #     use_train_data: bool, default = False
-    #         When set to true, train data will be used for plots, instead
-    #         of test data.
-
-    #     **kwargs:
-    #         Additional keyword arguments to pass to the plot.
-
-    #     Returns:
-    #         None
-
-    #     """
-
-    #     return super().interpret_model(
-    #         estimator=estimator,
-    #         plot=plot,
-    #         feature=feature,
-    #         observation=observation,
-    #         use_train_data=use_train_data,
-    #         **kwargs,
-    #     )
-
     def predict_model(
         self,
         estimator,
         fh=None,
+        X=None,
         return_pred_int=False,
         alpha=0.05,
         round: int = 4,
@@ -2870,6 +2284,15 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             used during the training.
 
 
+        X: pd.DataFrame, default = None
+            Exogenous Variables to be used for prediction.
+            Before finalizing the estimator, X need not be passed even when the
+            estimator is built using exogenous variables (since this is taken
+            care of internally by using the exogenous variables from test split).
+            When estimator has been finalized and estimator used exogenous
+            variables, then X must be passed.
+
+
         return_pred_int: bool, default = False
             When set to True, it returns lower bound and upper bound
             prediction interval, in addition to the point prediction.
@@ -2892,9 +2315,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
 
         """
-
-        data = None  # TODO: Add back when we have support for multivariate TS
-
+        # Deep Cloning to prevent overwriting the fh when user specifies their own fh
         estimator_ = deep_clone(estimator)
 
         loaded_in_same_env = True
@@ -2922,11 +2343,44 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 fh = estimator_.fh
         else:
             # Get the fh in the right format for sktime
-            fh = self.check_fh(fh)
+            fh = self._check_fh(fh)
+
+        # NOTE: User does not need to pass X before finalizing the model even when
+        # building models with exogenous variables
+
+        # Loaded in the same environment as experiment
+        if hasattr(self, "X_test"):
+            # If model has not been finalized & X has not been passed, then
+            # set X = X_test.
+
+            # But note that some models like Prophet train on Datetime Index
+            # But pycaret stores all indices as PeriodIndex, so convert
+            # appropriately before checking for the above condition
+            orig_freq = None
+            if isinstance(estimator._y.index, pd.DatetimeIndex):
+                orig_freq = self.y_train.index.freq
+            last_estimator_index = coerce_datetime_to_period_index(
+                estimator._y, freq=orig_freq
+            ).index[-1]
+
+            if last_estimator_index == self.y_train.index[-1] and X is None:
+                X = self.X_test  # Predict Test Set
+        # else: # Loaded in different environment
+        # NOTE: If the model was built using exogenous variables, then user
+        # must make sure that this is provided, else the predictions will fail.
+
+        #### Convert to None if empty dataframe
+        # Some predict methods in sktime expect None (not an empty dataframe as
+        # returned by pycaret). Hence converting to None.
+        X = _coerce_empty_dataframe_to_none(data=X)
 
         try:
+            # TODO: Replace estimator_.predict() with
+            # y_test_pred, lower, upper = get_predictions_with_intervals(
+            #     forecaster=estimator_, X=X, fh=fh, alpha=alpha
+            # )
             return_vals = estimator_.predict(
-                X=data, fh=fh, return_pred_int=return_pred_int, alpha=alpha
+                fh=fh, X=X, return_pred_int=return_pred_int, alpha=alpha
             )
         except NotImplementedError as error:
             self.logger.warning(error)
@@ -2936,7 +2390,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 "NaN values will be returned for the prediction intervals instead."
             )
             return_vals = estimator_.predict(
-                X=data, fh=fh, return_pred_int=False, alpha=alpha
+                fh=fh, X=X, return_pred_int=False, alpha=alpha
             )
         if isinstance(return_vals, tuple):
             # Prediction Interval is returned
@@ -2964,10 +2418,9 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         # Converting to float since rounding does not support int
         result = result.astype(float).round(round)
 
-        if isinstance(result.index, pd.DatetimeIndex):
-            result.index = (
-                result.index.to_period()
-            )  # Prophet with return_pred_int = True returns datetime index.
+        # Prophet with return_pred_int = True returns datetime index.
+        # Not anymore, we changed the container to return back a period index
+        # result = coerce_datetime_to_period_index(result)
 
         #################
         #### Metrics ####
@@ -2981,21 +2434,16 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         # of y_test_pred will not match y_test.
 
         if loaded_in_same_env:
-            X_test_ = self.X_test.copy()
-            # Some predict methods in sktime expect None (not an empty dataframe as
-            # returned by pycaret). Hence converting to None.
-            if X_test_.shape[0] == 0 or X_test_.shape[1] == 0:
-                X_test_ = None
-            y_test_ = self.y_test.copy()
+            y_test = self.y_test
 
             # y_train for finalized model is different from self.y_train
             # Hence, better to get this from the estimator directly.
             y_train = estimator_._y
             y_test_pred, lower, upper = get_predictions_with_intervals(
-                forecaster=estimator_, X_test=X_test_, fh=fh, alpha=alpha
+                forecaster=estimator_, X=X, fh=fh, alpha=alpha
             )
 
-            if len(y_test_pred) != len(y_test_):
+            if len(y_test_pred) != len(y_test):
                 msg = (
                     "predict_model >> Forecast Horizon does not match the horizon length "
                     "used during training. Metrics will not be displayed."
@@ -3004,7 +2452,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 verbose = False
 
             # concatenates by index
-            y_test_and_pred = pd.concat([y_test_pred, y_test_], axis=1)
+            y_test_and_pred = pd.concat([y_test_pred, y_test], axis=1)
             # Removes any indices that do not match
             y_test_and_pred.dropna(inplace=True)
             y_test_pred_common = y_test_and_pred[y_test_and_pred.columns[0]]
@@ -3118,7 +2566,10 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         >>> from pycaret.time_series import *
         >>> exp_name = setup(data = data, fh = 12)
         >>> arima = create_model('arima')
-        >>> deploy_model(model = arima, model_name = 'arima-for-deployment', platform = 'aws', authentication = {'bucket' : 'S3-bucket-name'})
+        >>> deploy_model(
+                model = arima, model_name = 'arima-for-deployment',
+                platform = 'aws', authentication = {'bucket' : 'S3-bucket-name'}
+            )
 
 
         Amazon Web Service (AWS) users:
@@ -3285,47 +2736,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             authentication=authentication,
             verbose=verbose,
         )
-
-    # def automl(
-    #     self, optimize: str = "R2", use_holdout: bool = False, turbo: bool = True
-    # ) -> Any:
-
-    #     """
-    #     This function returns the best model out of all trained models in
-    #     current session based on the ``optimize`` parameter. Metrics
-    #     evaluated can be accessed using the ``get_metrics`` function.
-
-    #     Example
-    #     -------
-    #     >>> from pycaret.datasets import get_data
-    #     >>> boston = get_data('boston')
-    #     >>> from pycaret.regression import *
-    #     >>> exp_name = setup(data = boston,  target = 'medv')
-    #     >>> top3 = compare_models(n_select = 3)
-    #     >>> tuned_top3 = [tune_model(i) for i in top3]
-    #     >>> blender = blend_models(tuned_top3)
-    #     >>> stacker = stack_models(tuned_top3)
-    #     >>> best_mae_model = automl(optimize = 'MAE')
-
-    #     optimize: str, default = 'R2'
-    #         Metric to use for model selection. It also accepts custom metrics
-    #         added using the ``add_metric`` function.
-
-    #     use_holdout: bool, default = False
-    #         When set to True, metrics are evaluated on holdout set instead of CV.
-
-    #     turbo: bool, default = True
-    #         When set to True and use_holdout is False, only models created with default fold
-    #         parameter will be considered. If set to False, models created with a non-default
-    #         fold parameter will be scored again using default fold settings, so that they can be
-    #         compared.
-
-    #     Returns:
-    #         Trained Model
-
-    #     """
-
-    #     return super().automl(optimize=optimize, use_holdout=use_holdout, turbo=turbo)
 
     def models(
         self,
@@ -3641,18 +3051,91 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         test: str = "all",
         alpha: float = 0.05,
         split: str = "all",
+        data_kwargs: Optional[Dict] = None,
     ) -> pd.DataFrame:
+        """This function is used to get summary statistics and run statistical
+        tests on the original data or model residuals.
+
+        Example
+        --------
+        >>> from pycaret.datasets import get_data
+        >>> airline = get_data('airline')
+        >>> from pycaret.time_series import *
+        >>> exp_name = setup(data = airline,  fh = 12)
+        >>> check_stats(test="summary")
+        >>> check_stats(test="adf")
+        >>> arima = create_model('arima')
+        >>> check_stats(arima, test = 'white_noise')
+
+
+        Parameters
+        ----------
+        estimator : sktime compatible object, optional
+            Trained model object, by default None
+
+
+        test : str, optional
+            Name of the test to be performed, by default "all"
+
+            Options are:
+
+            * 'summary' - Summary Statistics
+            * 'white_noise' - Ljung-Box Test for white noise
+            * 'adf' - ADF test for difference stationarity
+            * 'kpss' - KPSS test for trend stationarity
+            * 'stationarity' - ADF and KPSS test
+            * 'normality' - Shapiro Test for Normality
+            * 'all' - All of the above tests
+
+
+        alpha : float, optional
+            Significance Level, by default 0.05
+
+
+        split : str, optional
+            The split of the original data to run the test on. Only applicable
+            when test is run on the original data (not residuals), by default "all"
+
+            Options are:
+
+            * 'all' - Complete Dataset
+            * 'train' - The Training Split of the dataset
+            * 'test' - The Test Split of the dataset
+
+
+        data_kwargs : Optional[Dict], optional
+            Users can specify `lags list` or `order_list` to run the test for the
+            data as well as for its lagged versions, by default None
+
+            >>> check_stats(test="white_noise", data_kwargs={"order_list": [1, 2]})
+            >>> check_stats(test="white_noise", data_kwargs={"lags_list": [1, [1, 12]]})
+
+
+        Returns:
+        --------
+        pd.DataFrame
+            Dataframe with the test results
+        """
+
         #### Step 1: Get the data to be tested ----
         if estimator is None:
             data = self._get_y_data(split=split)
+            data_name = "Actual"
         else:
             data = self.get_residuals(estimator=estimator)
             if data is None:
                 return
             data = self.check_and_clean_resid(resid=data)
+            data_name = "Residual"
 
         #### Step 2: Test ----
-        results = test_(data=data, test=test, alpha=alpha)
+        results = run_test(
+            data=data,
+            test=test,
+            data_name=data_name,
+            alpha=alpha,
+            data_kwargs=data_kwargs,
+        )
         results.reset_index(inplace=True, drop=True)
         return results
 
@@ -3672,11 +3155,15 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         resid = None
 
         estimator.check_is_fitted()
+
+        # Deep Cloning to prevent overwriting the fh when getting insample predictions
         estimator_ = deep_clone(estimator)
         y_used_to_train = estimator_._y
+        X_used_to_train = estimator_._X
         try:
             resid = y_used_to_train - estimator_.predict(
-                ForecastingHorizon(y_used_to_train.index, is_relative=False)
+                fh=ForecastingHorizon(y_used_to_train.index, is_relative=False),
+                X=X_used_to_train,
             )
         except NotImplementedError as exception:
             self.logger.warning(exception)
@@ -3693,12 +3180,16 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         insample_predictions = None
 
         estimator.check_is_fitted()
+
+        # Deep Cloning to prevent overwriting the fh when getting insample predictions
         estimator_ = deep_clone(estimator)
         y_used_to_train = estimator_._y
+        X_used_to_train = estimator_._X
         try:
             insample_predictions = self.predict_model(
-                estimator, fh=-np.arange(0, len(y_used_to_train))
+                estimator_, fh=-np.arange(0, len(y_used_to_train)), X=X_used_to_train
             )
+
         except NotImplementedError as exception:
             self.logger.warning(exception)
             print(
@@ -3766,150 +3257,3 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         """
         additional_scorer_kwargs = {"sp": self.sp_to_use}
         return additional_scorer_kwargs
-
-
-# TODO: Add to pycaret utils or some common location
-def deep_clone(estimator):
-    # Cloning since setting fh to another value replaces it inplace
-    # Note cloning does not copy the fitted model (only model hyperparams)
-    # Hence, we need to do deep copy per
-    # https://stackoverflow.com/a/33576345/8925915
-    estimator_ = deepcopy(estimator)
-    return estimator_
-
-
-def get_predictions_with_intervals(
-    forecaster, X_test: pd.DataFrame, fh=None, alpha: float = 0.05
-) -> Tuple[pd.Series, pd.Series, pd.Series]:
-    """Returns the predictions, lower and upper interval values for a
-    forecaster. If the forecaster does not support prediction intervals,
-    then NAN is returned for lower and upper intervals.
-
-    Parameters
-    ----------
-    forecaster : sktime compatible forecaster
-        Forecaster to be used to get the predictions
-    X_test : pd.DataFrame
-        Test dataset
-    alpha : float, default = 0.05
-        alpha value for prediction interval
-
-    Returns
-    -------
-    Tuple[pd.Series, pd.Series, pd.Series]
-        Predictions, Lower and Upper Interval Values
-    """
-    # Predict and get lower and upper intervals
-    return_pred_int = forecaster.get_tag("capability:pred_int")
-
-    if fh is None:
-        return_values = forecaster.predict(
-            X_test, return_pred_int=return_pred_int, alpha=alpha
-        )
-    else:
-        return_values = forecaster.predict(
-            X_test, fh=fh, return_pred_int=return_pred_int, alpha=alpha
-        )
-
-    if return_pred_int:
-        y_pred = return_values[0]
-        lower = return_values[1]["lower"]
-        upper = return_values[1]["upper"]
-    else:
-        y_pred = return_values
-        lower = pd.Series([np.nan] * len(y_pred))
-        upper = pd.Series([np.nan] * len(y_pred))
-        lower.index = y_pred.index
-        upper.index = y_pred.index
-
-    # Prophet with return_pred_int = True returns datetime index.
-    for series in [y_pred, lower, upper]:
-        if isinstance(series.index, pd.DatetimeIndex):
-            series.index = series.index.to_period()
-
-    return y_pred, lower, upper
-
-
-def update_additional_scorer_kwargs(
-    initial_kwargs: Dict[str, Any],
-    y_train: pd.Series,
-    lower: pd.Series,
-    upper: pd.Series,
-) -> Dict[str, Any]:
-    """Updates the initial kwargs with additional scorer kwargs
-    NOTE: Initial kwargs are obtained from experiment, e.g. {"sp": 12} and
-    are common to all folds.
-    The additional kwargs such as y_train, lower, upper are specific to each
-    fold and must be updated dynamically as such.
-
-    Parameters
-    ----------
-    initial_kwargs : Dict[str, Any]
-        Initial kwargs are obtained from experiment, e.g. {"sp": 12} and
-        are common to all folds
-    y_train : pd.Series
-        Training Data. Used in metrics such as MASE
-    lower : pd.Series
-        Lower Limits of Predictions. Used in metrics such as INPI
-    upper : pd.Series
-        Upper Limits of Predictions. Used in metrics such as INPI
-
-    Returns
-    -------
-    Dict[str, Any]
-        Updated kwargs dictionary
-    """
-    additional_scorer_kwargs = initial_kwargs.copy()
-    additional_scorer_kwargs.update(
-        {"y_train": y_train, "lower": lower, "upper": upper,}
-    )
-    return additional_scorer_kwargs
-
-def get_sp_from_str(str_freq:str)->int:
-    """Takes the seasonal period as string detects if it is alphaneumeric and returns its integer equivalent. 
-        For example - 
-        input - '30W'
-        output - 26 
-        explaination - we take the lcm of 30 and 52 ( as W = 52) which in this case is 780. 
-        And the output is ( lcm / prefix). Here, 780 / 30 = 26. 
-
-    Parameters
-    ----------
-    str_freq : str
-        frequency of the dataset passed as a string
-
-    Returns
-    -------
-    int
-        integer equivalent of the string frequency
-
-    Raises
-    ------
-    ValueError
-        if the frequency suffix does not correspond to any of the values in the class SeasonalPeriod then the error is thrown. 
-    """
-    str_freq = str_freq.split("-")[0] or str_freq
-    # Checking whether the index_freq contains both digit and alphabet
-    if bool(re.search(r'\d', str_freq)):
-        temp = re.compile("([0-9]+)([a-zA-Z]+)")
-        res = temp.match(str_freq).groups()
-        # separating the digits and alphabets
-        if res[1] in SeasonalPeriod.__members__:
-            prefix = int(res[0])
-            value = SeasonalPeriod[res[1]].value
-            lcm = abs(value*prefix)//math.gcd(value,prefix)
-            seasonal_period = int(lcm/prefix)
-            return seasonal_period
-        else:
-            raise ValueError(
-            f"Unsupported Period frequency: {str_freq}, valid Period frequency suffixes are: {', '.join(SeasonalPeriod.__members__.keys())}"
-        )
-    else:
-
-        if str_freq in SeasonalPeriod.__members__:
-            seasonal_period = SeasonalPeriod[str_freq].value
-            return seasonal_period
-        else:
-            raise ValueError(
-                f"Unsupported Period frequency: {str_freq}, valid Period frequency suffixes are: {', '.join(SeasonalPeriod.__members__.keys())}"
-            )

@@ -8,37 +8,44 @@ required parameters in the `__init__` and then call `super().__init__` to comple
 the process. Refer to the existing classes for examples.
 """
 
-from typing import Union, Dict, List, Tuple, Any, Optional
-from abc import abstractmethod
+import logging
 import random
+import warnings
+from abc import abstractmethod
+from typing import Any, Dict, List, Optional, Tuple, Union
+
 import numpy as np  # type: ignore
 import pandas as pd
-import logging
-
-from sktime.forecasting.base import BaseForecaster  # type: ignore
-from sktime.forecasting.compose import make_reduction, TransformedTargetForecaster  # type: ignore
-from sktime.forecasting.trend import PolynomialTrendForecaster  # type: ignore
-from sktime.transformations.series.detrend import ConditionalDeseasonalizer, Detrender  # type: ignore
-from sktime.forecasting.base._sktime import DEFAULT_ALPHA  # type: ignore
 from sklearn.utils.validation import check_is_fitted  # type: ignore
+from sktime.forecasting.base import BaseForecaster  # type: ignore
+from sktime.forecasting.base._sktime import DEFAULT_ALPHA  # type: ignore
+from sktime.forecasting.compose import (  # type: ignore
+    TransformedTargetForecaster,
+    make_reduction,
+)
+from sktime.forecasting.trend import PolynomialTrendForecaster  # type: ignore
+from sktime.transformations.series.detrend import (  # type: ignore
+    ConditionalDeseasonalizer,
+    Detrender,
+)
 
+import pycaret.containers.base_container
 from pycaret.containers.models.base_model import (
     ModelContainer,
     leftover_parameters_to_categorical_distributions,
 )
-from pycaret.internal.utils import (
-    param_grid_to_lists,
-    get_logger,
-    np_list_arange,
-)
 from pycaret.internal.distributions import (
-    Distribution,
-    UniformDistribution,
-    IntUniformDistribution,
     CategoricalDistribution,
+    Distribution,
+    IntUniformDistribution,
+    UniformDistribution,
 )
-from pycaret.internal.utils import TSModelTypes
-import pycaret.containers.base_container
+from pycaret.internal.utils import get_logger, np_list_arange, param_grid_to_lists
+from pycaret.utils.datetime import (
+    coerce_datetime_to_period_index,
+    coerce_period_to_datetime_index,
+)
+from pycaret.utils.time_series import TSModelTypes
 
 
 class TimeSeriesContainer(ModelContainer):
@@ -396,8 +403,7 @@ class SeasonalNaiveContainer(TimeSeriesContainer):
             return
 
         self.seasonality_present = globals_dict.get("seasonality_present")
-        sp = globals_dict.get("seasonal_period")
-        self.sp = sp if sp is not None else 1
+        self.sp = globals_dict.get("sp_to_use")
 
         if self.sp == 1:
             self.active = False
@@ -512,15 +518,14 @@ class ArimaContainer(TimeSeriesContainer):
             return
 
         seasonality_present = globals_dict.get("seasonality_present")
-        sp = globals_dict.get("seasonal_period")
-        sp = sp if sp is not None else 1
+        self.sp = globals_dict.get("sp_to_use")
 
         # args = self._set_args
         # tune_args = self._set_tune_args
         # tune_grid = self._set_tune_grid
         # tune_distributions = self._set_tune_distributions
 
-        args = {"seasonal_order": (0, 1, 0, sp)} if seasonality_present else {}
+        args = {"seasonal_order": (0, 1, 0, self.sp)} if seasonality_present else {}
         tune_args = {}
 
         def return_order_related_params(
@@ -605,7 +610,7 @@ class ArimaContainer(TimeSeriesContainer):
             D_end=D_end,
             Q_start=Q_start,
             Q_end=Q_end,
-            sp=sp,
+            sp=self.sp,
             seasonal_max_multiplier=seasonal_max_multiplier,
         )
         tune_grid = {
@@ -630,7 +635,7 @@ class ArimaContainer(TimeSeriesContainer):
             D_end=D_end,
             Q_start=Q_start,
             Q_end=Q_end,
-            sp=sp,
+            sp=self.sp,
             seasonal_max_multiplier=seasonal_max_multiplier,
         )
         tune_distributions = {
@@ -675,8 +680,7 @@ class AutoArimaContainer(TimeSeriesContainer):
             return
 
         self.seasonality_present = globals_dict.get("seasonality_present")
-        sp = globals_dict.get("seasonal_period")
-        self.sp = sp if sp is not None else 1
+        self.sp = globals_dict.get("sp_to_use")
 
         args = self._set_args
         tune_args = self._set_tune_args
@@ -737,7 +741,9 @@ class ExponentialSmoothingContainer(TimeSeriesContainer):
         np.random.seed(globals_dict["seed"])
         self.gpu_imported = False
 
-        from sktime.forecasting.exp_smoothing import ExponentialSmoothing  # type: ignore
+        from sktime.forecasting.exp_smoothing import (
+            ExponentialSmoothing,  # type: ignore
+        )
 
         dummy = ExponentialSmoothing()
         self.active = self.disable_pred_int_enforcement(
@@ -747,8 +753,7 @@ class ExponentialSmoothingContainer(TimeSeriesContainer):
             return
 
         self.seasonality_present = globals_dict.get("seasonality_present")
-        sp = globals_dict.get("seasonal_period")
-        self.sp = sp if sp is not None else 1
+        self.sp = globals_dict.get("sp_to_use")
 
         self.strictly_positive = globals_dict.get("strictly_positive")
 
@@ -856,12 +861,14 @@ class ExponentialSmoothingContainer(TimeSeriesContainer):
             }
         return tune_distributions
 
+
 class CrostonContainer(TimeSeriesContainer):
     """
     SKtime documentation:
     https://www.sktime.org/en/latest/api_reference/auto_generated/sktime.forecasting.croston.Croston.html
 
     """
+
     model_type = TSModelTypes.CLASSICAL
 
     def __init__(self, globals_dict: dict) -> None:
@@ -873,8 +880,9 @@ class CrostonContainer(TimeSeriesContainer):
 
         dummy = Croston()
         # check if pi is enforced.
-        self.active:bool = self.disable_pred_int_enforcement(
-            forecaster=dummy, enforce_pi=globals_dict["enforce_pi"])
+        self.active: bool = self.disable_pred_int_enforcement(
+            forecaster=dummy, enforce_pi=globals_dict["enforce_pi"]
+        )
 
         # if not, make the model unavailiable
         if not self.active:
@@ -890,7 +898,7 @@ class CrostonContainer(TimeSeriesContainer):
             class_def=Croston,
             tune_grid=tune_grid,
             tune_distribution=tune_distributions,
-            is_gpu_enabled=self.gpu_imported
+            is_gpu_enabled=self.gpu_imported,
         )
 
     @property
@@ -898,16 +906,15 @@ class CrostonContainer(TimeSeriesContainer):
         # lack of research/evidence for suitable range here,
         # SKtime and R implementations are default 0.1
         smoothing_grid: List[float] = [0.01, 0.03, 0.1, 0.2, 0.4, 0.6, 0.8, 1.0]
-        tune_grid = {"smoothing" : smoothing_grid}
+        tune_grid = {"smoothing": smoothing_grid}
         return tune_grid
 
     @property
     def _set_tune_distributions(self) -> Dict[str, List[Any]]:
-        tune_distributions = {"smoothing": UniformDistribution(
-                lower=0.01, upper=1, log=True
-            )}
+        tune_distributions = {
+            "smoothing": UniformDistribution(lower=0.01, upper=1, log=True)
+        }
         return tune_distributions
-
 
 
 class ETSContainer(TimeSeriesContainer):
@@ -928,8 +935,7 @@ class ETSContainer(TimeSeriesContainer):
             return
 
         self.seasonality_present = globals_dict.get("seasonality_present")
-        sp = globals_dict.get("seasonal_period")
-        self.sp = sp if sp is not None else 1
+        self.sp = globals_dict.get("sp_to_use")
 
         self.strictly_positive = globals_dict.get("strictly_positive")
 
@@ -1007,8 +1013,7 @@ class ThetaContainer(TimeSeriesContainer):
             return
 
         self.seasonality_present = globals_dict.get("seasonality_present")
-        sp = globals_dict.get("seasonal_period")
-        self.sp = sp if sp is not None else 1
+        self.sp = globals_dict.get("sp_to_use")
 
         self.strictly_positive = globals_dict.get("strictly_positive")
 
@@ -1101,8 +1106,7 @@ class TBATSContainer(TimeSeriesContainer):
         if not self.active:
             return
 
-        sp = globals_dict.get("seasonal_period")
-        self.sp = sp if sp is not None else 1
+        self.sp = globals_dict.get("sp_to_use")
 
         self.seasonality_present = globals_dict.get("seasonality_present")
 
@@ -1171,8 +1175,7 @@ class BATSContainer(TimeSeriesContainer):
         if not self.active:
             return
 
-        sp = globals_dict.get("seasonal_period")
-        self.sp = sp if sp is not None else 1
+        self.sp = globals_dict.get("sp_to_use")
 
         self.seasonality_present = globals_dict.get("seasonality_present")
 
@@ -1241,8 +1244,14 @@ class ProphetContainer(TimeSeriesContainer):
         if not self.active:
             return
 
-        sp = globals_dict.get("seasonal_period")
-        self.sp = sp if sp is not None else 1
+        #### Disable Prophet if Index is not of allowed type (e.g. if it is RangeIndex)
+        allowed_index_types = [pd.PeriodIndex, pd.DatetimeIndex]
+        index_type = globals_dict.get("index_type")
+        self.active = True if index_type in allowed_index_types else False
+        if not self.active:
+            return
+
+        self.sp = globals_dict.get("sp_to_use")
 
         self.seasonality_present = globals_dict.get("seasonality_present")
         self.freq = globals_dict.get("freq")
@@ -1335,8 +1344,7 @@ class CdsDtContainer(TimeSeriesContainer):
             return
 
         # Set the model hyperparameters
-        sp = globals_dict.get("seasonal_period")
-        self.sp = sp if sp is not None else 1
+        self.sp = globals_dict.get("sp_to_use")
 
         self.strictly_positive = globals_dict.get("strictly_positive")
 
@@ -2604,25 +2612,79 @@ class BaseCdsDtForecaster(BaseForecaster):
 
 
 try:
-    from sktime.forecasting.fbprophet import Prophet  # type: ignore
     from sktime.forecasting.base._base import DEFAULT_ALPHA
+    from sktime.forecasting.fbprophet import Prophet  # type: ignore
 
     class ProphetPeriodPatched(Prophet):
         def fit(self, y, X=None, fh=None, **fit_params):
-            if isinstance(y, (pd.Series, pd.DataFrame)):
-                if isinstance(y.index, pd.PeriodIndex):
-                    y.index = y.index.to_timestamp(freq=y.index.freq)
-
+            #### sktime Prophet only supports DatetimeIndex
+            # Hence coerce the index if it is not DatetimeIndex
+            y = coerce_period_to_datetime_index(y)
+            X = coerce_period_to_datetime_index(X)
             return super().fit(y, X=X, fh=fh, **fit_params)
 
         def predict(self, fh=None, X=None, return_pred_int=False, alpha=DEFAULT_ALPHA):
+            """Forecast time series at future horizon.
+
+            Parameters
+            ----------
+            fh : int, list, np.ndarray or ForecastingHorizon
+                Forecasting horizon
+            X : pd.DataFrame, or 2D np.ndarray, optional (default=None)
+                Exogeneous time series to predict from
+                if self.get_tag("X-y-must-have-same-index"), X.index must contain fh.index
+            return_pred_int : bool, optional (default=False)
+                If True, returns prediction intervals for given alpha values.
+            alpha : float or list, optional (default=0.95)
+
+            Returns
+            -------
+            y_pred : pd.Series, pd.DataFrame, or np.ndarray (1D or 2D)
+                Point forecasts at fh, with same index as fh
+                y_pred has same type as y passed in fit (most recently)
+            y_pred_int : pd.DataFrame - only if return_pred_int=True
+                in this case, return is 2-tuple (otherwise a single y_pred)
+                Prediction intervals
+            """
+
+            #### Store original frequency setting for later ----
+            orig_freq = None
+            if isinstance(X, (pd.DataFrame, pd.Series)):
+                orig_freq = X.index.freq
+
+            # TODO: Disable Prophet when Index is of any type other than DatetimeIndex or PeriodIndex
+            #### In that case, pycaret will always pass PeriodIndex from outside
+            # since Datetime index are converted to PeriodIndex in pycaret
+            # Ref: https://github.com/alan-turing-institute/sktime/blob/v0.10.0/sktime/forecasting/base/_fh.py#L524
+
+            # But sktime Prophet only supports DatetimeIndex
+            # Hence coerce the index internally if it is not DatetimeIndex
+            X = coerce_period_to_datetime_index(X)
+
             y = super().predict(
                 fh=fh, X=X, return_pred_int=return_pred_int, alpha=alpha
             )
+
+            #### sktime Prophet returns back DatetimeIndex
+            #### Convert back to PeriodIndex for pycaret
             try:
-                y.index = y.index.to_period(freq=y.index.freq)
-            except Exception:
-                pass
+                if isinstance(y, tuple):
+                    #### Predictions & Prediction Intervals --------
+                    # y[0] and y[1] have freq=None (from prophet).
+                    # Hence passing using original_freq for conversion.
+                    # Note Tuple can not be assigned, hence performing inplace.
+                    coerce_datetime_to_period_index(y[0], freq=orig_freq, inplace=True)
+                    coerce_datetime_to_period_index(y[1], freq=orig_freq, inplace=True)
+                else:
+                    #### Predictions only ----
+                    # y has freq=None. Hence passing using original_freq for conversion.
+                    y = coerce_datetime_to_period_index(y, freq=orig_freq)
+            except Exception as exception:
+                warnings.warn(
+                    "Exception occurred in ProphetPeriodPatched predict method "
+                    "during conversion from DatetimeIndex to PeriodIndex: \n"
+                    f"{exception}"
+                )
             return y
 
 
@@ -2669,5 +2731,4 @@ def get_all_model_containers(
     return pycaret.containers.base_container.get_all_containers(
         globals(), globals_dict, TimeSeriesContainer, raise_errors
     )
-
 

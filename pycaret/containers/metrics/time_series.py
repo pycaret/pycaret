@@ -190,7 +190,7 @@ def rmsse(y_true, y_pred, y_train, sp):
     )
 
 
-def inpi(y_true, y_pred, lower: pd.Series, upper: pd.Series):
+def cov_prob(y_true, y_pred, lower: pd.Series, upper: pd.Series):
     """Returns the percentage of actual values that are within the
     prediction interval. Higher score is better.
     NOTE: If lower and upper have NAN values, it returns np.nan
@@ -305,10 +305,10 @@ class R2MetricContainer(TimeSeriesMetricContainer):
         )
 
 
-class INPIMetricContainer(TimeSeriesMetricContainer):
+class CovProbMetricContainer(TimeSeriesMetricContainer):
     def __init__(self, globals_dict: dict) -> None:
         super().__init__(
-            id="inpi", name="INPI", score_func=inpi, greater_is_better=True
+            id="cov_prob", name="COV_PROB", score_func=cov_prob, greater_is_better=True
         )
 
 

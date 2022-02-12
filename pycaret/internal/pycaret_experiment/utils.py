@@ -1,6 +1,5 @@
 from enum import Enum, auto
 
-
 class MLUsecase(Enum):
     CLASSIFICATION = auto()
     REGRESSION = auto()
@@ -23,3 +22,5 @@ def get_ml_task(y):
 def highlight_setup(s):
     is_max = s == True
     return ["background-color: lightgreen" if v else "" for v in is_max]
+
+

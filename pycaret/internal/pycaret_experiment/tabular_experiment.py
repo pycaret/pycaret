@@ -457,7 +457,7 @@ class _TabularExperiment(_PyCaretExperiment):
         data_split_stratify: Union[bool, List[str]] = False,  # added in pycaret==2.2
         fold_strategy: Union[str, Any] = "kfold",  # added in pycaret==2.2
         fold: int = 10,  # added in pycaret==2.2
-        fh: Union[List[int], int, np.array] = 1,
+        fh: Optional[Union[List[int], int, np.array]] = 1,
         fold_shuffle: bool = False,
         fold_groups: Optional[Union[str, pd.DataFrame]] = None,
         n_jobs: Optional[int] = -1,
@@ -474,7 +474,6 @@ class _TabularExperiment(_PyCaretExperiment):
         log_profile: bool = False,
         log_data: bool = False,
         silent: bool = False,
-        seasonal_period: Optional[int] = None,
         verbose: bool = True,
         profile: bool = False,
         profile_kwargs: Dict[str, Any] = None,
@@ -960,12 +959,6 @@ class _TabularExperiment(_PyCaretExperiment):
         # checking fold parameter
         if not isinstance(fold, int):
             raise TypeError("fold parameter only accepts integer value.")
-
-        # checking fh parameter
-        if not isinstance(fh, (int, list, np.ndarray)):
-            raise TypeError(
-                f"fh parameter accepts integer. list or np.array value. Provided values is {type(fh)}"
-            )
 
         # fold_shuffle
         if type(fold_shuffle) is not bool:
@@ -1738,13 +1731,26 @@ class _TabularExperiment(_PyCaretExperiment):
                 self.white_noise = "Maybe"
 
             self.lowercase_d = recommend_lowercase_d(data=self.y)
-            # TODO: Should sp this overrise the self.seasonal_period since sp
-            # will be used for all models and the same checks will need to be
-            # done there as well
-            sp = self.seasonal_period if self.seasonality_present else 1
-            self.uppercase_d = (
-                recommend_uppercase_d(data=self.y, sp=sp) if sp > 1 else 0
-            )
+
+            if self.sp_to_use > 1:
+                try:
+                    max_D = 2
+                    uppercase_d = recommend_uppercase_d(
+                        data=self.y, sp=self.sp_to_use, max_D=max_D
+                    )
+                except ValueError as error:
+                    self.logger.info(f"Test for computing 'D' failed at max_D = 2.")
+                    try:
+                        max_D = 1
+                        uppercase_d = recommend_uppercase_d(
+                            data=self.y, sp=self.sp_to_use, max_D=max_D
+                        )
+                    except ValueError:
+                        self.logger.info(f"Test for computing 'D' failed at max_D = 1.")
+                        uppercase_d = 0
+            else:
+                uppercase_d = 0
+            self.uppercase_d = uppercase_d
 
         self.preprocess = preprocess
         functions = self._get_setup_display(
@@ -1841,11 +1847,11 @@ class _TabularExperiment(_PyCaretExperiment):
                 # at least 2 values
                 self.remove_metric("R2")
 
-            #### Remove INPI when enforce_pi is False ----
+            #### Remove COV_PROB when enforce_pi is False ----
             # User can add it manually if they want when enforce_pi is set to False.
             # Refer: https://github.com/pycaret/pycaret/issues/1900
-            if not self.enforce_pi and "inpi" in self._get_metrics():
-                self.remove_metric("INPI")
+            if not self.enforce_pi and "cov_prob" in self._get_metrics():
+                self.remove_metric("COV_PROB")
 
         self.logger.info(
             f"self.master_model_container: {len(self.master_model_container)}"

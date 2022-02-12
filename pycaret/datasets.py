@@ -130,7 +130,9 @@ def get_data(
         }
         data = ts_dataset_mapping.get(dataset)()
         if isinstance(data, tuple):
-            data = data[0]  # ignoring X for now (univariate only)
+            y = data[0]
+            X = data[1]
+            data = pd.concat([y, X], axis=1)
     else:
         raise ValueError(f"Data could not be read. Please check your inputs...")
 
