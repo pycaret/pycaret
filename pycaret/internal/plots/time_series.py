@@ -3,7 +3,7 @@ from typing import Optional, Any, Union, Dict, Tuple
 import numpy as np
 import pandas as pd
 
-
+from math import ceil
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
@@ -1133,14 +1133,37 @@ def plot_ccf(
         num_subplots = full_data.shape[1]
 
     # Decide the number of rows and columns ----
-    # Try 4, then 3, then 2, then 1 and pick first one which is equally divisible
-    cols = 1
     n_data_cols = full_data.shape[1]
-    for i in [4, 3, 2]:
-        if n_data_cols % i == 0:
-            cols = i
-            break
-    rows = int(n_data_cols / cols)
+
+    rows = fig_kwargs.get("rows", None)
+    cols = fig_kwargs.get("cols", None)
+
+    if rows is None and cols is not None:
+        rows = ceil(n_data_cols / cols)
+    elif rows is not None and cols is None:
+        cols = ceil(n_data_cols / rows)
+    elif rows is not None and cols is not None:
+        available = rows * cols
+        if available < n_data_cols:
+            raise ValueError(
+                "Not enough subplots available to plot CCF. "
+                f"You provided {rows} * {cols} = {available} subplots. "
+                f"Please provide at least {n_data_cols} subplots in all."
+            )
+    else:
+        # Decide based on data
+        # If 1, then row = 1, col = 1
+        # else, try 5, 4, 3, 2, and pick first one which is equally divisible
+        # if None, then use 5
+        if n_data_cols == 1:
+            cols = 1
+        else:
+            cols = 5
+            for i in [5, 4, 3, 2]:
+                if n_data_cols % i == 0:
+                    cols = i
+                    break
+        rows = ceil(n_data_cols / cols)
 
     subplot_titles = []
     for i, col_name in enumerate(full_data.columns):
