@@ -1107,6 +1107,7 @@ class TBATSContainer(TimeSeriesContainer):
             return
 
         self.sp = globals_dict.get("all_sp_values")
+        
         self.seasonality_present = globals_dict.get("seasonality_present")
 
         args = self._set_args
