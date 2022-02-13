@@ -31,7 +31,7 @@ def setup(
     fold_strategy: Union[str, Any] = "expanding",
     fold: int = 3,
     fh: Optional[Union[List[int], int, np.array]] = 1,
-    seasonal_period: Optional[Union[int, str]] = None,
+    seasonal_period: Optional[Union[List[Union[int, str]], int, str]] = None,
     enforce_pi: bool = False,
     n_jobs: Optional[int] = -1,
     use_gpu: bool = False,
@@ -124,7 +124,7 @@ def setup(
         object. In this case, fh is derived from this object.
 
 
-    seasonal_period: int or str, default = None
+    seasonal_period: List or int or str, default = None
         Seasonal period in timeseries data. If not provided the frequency of the data
         index is mapped to a seasonal period as follows:
 
@@ -140,8 +140,10 @@ def setup(
 
         Alternatively you can provide a custom `seasonal_period` by passing
         it as an integer or a string corresponding to the keys above (e.g.
-        'W' for weekly data, 'M' for monthly data, etc.).
-
+        'W' for weekly data, 'M' for monthly data, etc.). You can also provide
+        a list of such values to use in models that accept multple seasonal values.
+        For models that don't accept multiple seasonal values, the first value of 
+        the list will be used as the seasonal period.
 
     enforce_pi: bool, default = False
         When set to True, only models that support prediction intervals are

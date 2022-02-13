@@ -1106,8 +1106,7 @@ class TBATSContainer(TimeSeriesContainer):
         if not self.active:
             return
 
-        self.sp = globals_dict.get("sp_to_use")
-
+        self.sp = globals_dict.get("all_sp_values")
         self.seasonality_present = globals_dict.get("seasonality_present")
 
         args = self._set_args
