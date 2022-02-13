@@ -550,7 +550,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         exo_variables = [item for item in cols if item not in ignore_features]
 
         # Remove targets
-        exo_variables = [item for item in exo_variables if item not in target]
+        exo_variables = [item for item in exo_variables if item != target]
 
         return exo_variables
 
@@ -2101,7 +2101,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             None,
             None,
         )
-        
+
         include = data_kwargs.get("include", None)
         exclude = data_kwargs.get("exclude", None)
 
