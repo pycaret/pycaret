@@ -486,7 +486,9 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         self.fh = fh
 
     def _check_and_set_seasonal_period(
-        self, data: pd.DataFrame, seasonal_period: Optional[Union[List[Union[int, str]], int, str]]
+        self,
+        data: pd.DataFrame,
+        seasonal_period: Optional[Union[List[Union[int, str]], int, str]],
     ):
         """Derived the seasonal periods by either
         (1) Extracting it from data's index (if seasonal period is not provided), or
@@ -518,23 +520,27 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         if seasonal_period is None:
             seasonal_period = data.index.freqstr
-        
+
         if not isinstance(seasonal_period, list):
             seasonal_period = [seasonal_period]
         seasonal_period = [self._convert_sp_to_int(sp) for sp in seasonal_period]
-        
+
         # check valid seasonal parameter
         seasonality_test_results = [
-            autocorrelation_seasonality_test(data[self.target_param], sp) for sp in seasonal_period]
+            autocorrelation_seasonality_test(data[self.target_param], sp)
+            for sp in seasonal_period
+        ]
         self.seasonality_present = any(seasonality_test_results)
         sp_values_and_test_result = zip(seasonal_period, seasonality_test_results)
 
         # What seasonal period should be used for modeling?
         self.all_sp_values = [
-            sp for sp, seasonality_present in sp_values_and_test_result if seasonality_present] or [1]
+            sp
+            for sp, seasonality_present in sp_values_and_test_result
+            if seasonality_present
+        ] or [1]
         self.sp_to_use = self.all_sp_values[0]
         self.seasonal_period = seasonal_period[0]
-
 
     def _convert_sp_to_int(self, seasonal_period):
         """Derives the seasonal period specified by either:
@@ -563,7 +569,9 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
     @staticmethod
     def _return_exogenous_names(
-        data: pd.DataFrame, target: List[str], ignore_features: Optional[List] = None,
+        data: pd.DataFrame,
+        target: List[str],
+        ignore_features: Optional[List] = None,
     ):
 
         cols = data.columns.to_list()
@@ -721,7 +729,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             it as an integer or a string corresponding to the keys above (e.g.
             'W' for weekly data, 'M' for monthly data, etc.). You can also provide
             a list of such values to use in models that accept multple seasonal values.
-            For models that don't accept multiple seasonal values, the first value of 
+            For models that don't accept multiple seasonal values, the first value of
             the list will be used as the seasonal period.
 
         enforce_pi: bool, default = False
