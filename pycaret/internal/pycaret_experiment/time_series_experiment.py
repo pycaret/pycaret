@@ -569,9 +569,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
     @staticmethod
     def _return_exogenous_names(
-        data: pd.DataFrame,
-        target: List[str],
-        ignore_features: Optional[List] = None,
+        data: pd.DataFrame, target: List[str], ignore_features: Optional[List] = None,
     ):
 
         cols = data.columns.to_list()
