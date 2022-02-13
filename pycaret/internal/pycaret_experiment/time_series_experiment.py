@@ -140,7 +140,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 ["Seasonal Period Tested", self.seasonal_period],
                 ["Seasonality Detected", self.seasonality_present],
                 ["Seasonality Used in Models", self.sp_to_use],
-                ["All Seasonality Used in Models", self.all_sp_values],
+                ["Seasonalities Used in Multiple Seasonality Models", self.all_sp_values],
                 ["Target Strictly Positive", self.strictly_positive],
                 ["Target White Noise", self.white_noise],
                 ["Recommended d", self.lowercase_d],
