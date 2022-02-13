@@ -124,7 +124,7 @@ def setup(
         object. In this case, fh is derived from this object.
 
 
-    seasonal_period: List or int or str, default = None
+    seasonal_period: list or int or str, default = None
         Seasonal period in timeseries data. If not provided the frequency of the data
         index is mapped to a seasonal period as follows:
 
