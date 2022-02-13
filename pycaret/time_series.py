@@ -141,9 +141,9 @@ def setup(
         Alternatively you can provide a custom `seasonal_period` by passing
         it as an integer or a string corresponding to the keys above (e.g.
         'W' for weekly data, 'M' for monthly data, etc.). You can also provide
-        a list of such values to use in models that accept multple seasonal values.
-        For models that don't accept multiple seasonal values, the first value of 
-        the list will be used as the seasonal period.
+        a list of such values to use in models that accept multple seasonal values
+        (currently TBATS). For models that don't accept multiple seasonal values, the 
+        first value of the list will be used as the seasonal period.
 
     enforce_pi: bool, default = False
         When set to True, only models that support prediction intervals are
