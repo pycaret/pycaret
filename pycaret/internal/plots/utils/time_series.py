@@ -1,5 +1,4 @@
-import warnings
-from typing import Optional, List, Tuple, Any, Union
+from typing import Optional, List, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -18,7 +17,12 @@ from statsmodels.tsa.stattools import pacf, acf, ccf
 
 
 def time_series_subplot(
-    fig: go.Figure, data: pd.Series, row: int, col: int, name: Optional[str] = None
+    fig: go.Figure,
+    data: pd.Series,
+    row: int,
+    col: int,
+    hoverinfo: Optional[str],
+    name: Optional[str] = None,
 ) -> go.Figure:
     """Function to add a time series to a Plotly subplot
 
@@ -32,6 +36,9 @@ def time_series_subplot(
         Row of the figure where the plot needs to be inserted. Starts from 1.
     col : int
         Column of the figure where the plot needs to be inserted. Starts from 1.
+    hoverinfo : Optional[str]
+        Whether hoverinfo should be disabled or not. Options are same as plotly.
+        e.g. "text" to display, "skip" or "none" to disable.
     name : Optional[str], optional
         Name to show when hovering over plot, by default None
 
@@ -53,6 +60,7 @@ def time_series_subplot(
             mode="lines+markers",
             name=name,
             marker=dict(size=5),
+            hoverinfo=hoverinfo,
         ),
         row=row,
         col=col,
@@ -436,6 +444,7 @@ def frequency_components_subplot(
     data: pd.Series,
     row: int,
     col: int,
+    hoverinfo: Optional[str],
     type: str = "periodogram",
     name: Optional[str] = None,
 ) -> go.Figure:
@@ -451,6 +460,9 @@ def frequency_components_subplot(
         Row of the figure where the plot needs to be inserted. Starts from 1.
     col : int
         Column of the figure where the plot needs to be inserted. Starts from 1.
+    hoverinfo : Optional[str]
+        Whether hoverinfo should be disabled or not. Options are same as plotly.
+        e.g. "text" to display, "skip" or "none" to disable.
     type : str, optional
         Type of method to use to get the frequency components, by default "periodogram"
         Allowed methods are: "periodogram", "fft"
@@ -466,21 +478,39 @@ def frequency_components_subplot(
     time_period = [round(1 / freq, 4) for freq in x]
     freq_data = pd.DataFrame({"Freq": x, "Amplitude": y, "Time Period": time_period})
 
-    fig.add_trace(
-        go.Scatter(
-            name=name,
-            x=freq_data["Freq"],
-            y=freq_data["Amplitude"],
-            customdata=freq_data.to_numpy(),
-            hovertemplate="Freq:%{customdata[0]:.4f} <br>Ampl:%{customdata[1]:.4f}<br>Time Period: %{customdata[2]:.4f]}",
-            mode="lines+markers",
-            line=dict(color="#1f77b4", width=2),
-            marker=dict(size=5),
-            showlegend=True,
-        ),
-        row=row,
-        col=col,
-    )
+    if hoverinfo == "text":
+        fig.add_trace(
+            go.Scatter(
+                name=name,
+                x=freq_data["Freq"],
+                y=freq_data["Amplitude"],
+                customdata=freq_data.to_numpy(),
+                hovertemplate="Freq:%{customdata[0]:.4f} <br>Ampl:%{customdata[1]:.4f}<br>Time Period: %{customdata[2]:.4f]}",
+                mode="lines+markers",
+                line=dict(color="#1f77b4", width=2),
+                marker=dict(size=5),
+                showlegend=True,
+                hoverinfo=hoverinfo,
+            ),
+            row=row,
+            col=col,
+        )
+    else:
+        # Disable hoverinfo
+        fig.add_trace(
+            go.Scatter(
+                name=name,
+                x=freq_data["Freq"],
+                y=freq_data["Amplitude"],
+                mode="lines+markers",
+                line=dict(color="#1f77b4", width=2),
+                marker=dict(size=5),
+                showlegend=True,
+                hoverinfo=hoverinfo,
+            ),
+            row=row,
+            col=col,
+        )
     # X-axis is getting messed up when acf or pacf is being plotted along with this
     # Hence setting explicitly per https://plotly.com/python/subplots/
     fig.update_xaxes(range=[0, 0.5], row=row, col=col)

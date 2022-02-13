@@ -41,6 +41,7 @@ def _plot(
     cv: Optional[Union[ExpandingWindowSplitter, SlidingWindowSplitter]] = None,
     model_name: Optional[str] = None,
     return_pred_int: bool = False,
+    hoverinfo: Optional[str] = "text",
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
 ) -> PlotReturnType:
@@ -50,7 +51,11 @@ def _plot(
 
     if plot == "ts":
         fig, plot_data = plot_series(
-            data=data, X=X, data_kwargs=data_kwargs, fig_kwargs=fig_kwargs
+            data=data,
+            X=X,
+            hoverinfo=hoverinfo,
+            data_kwargs=data_kwargs,
+            fig_kwargs=fig_kwargs,
         )
     elif plot == "train_test_split":
         fig, plot_data = plot_splits_train_test_split(
@@ -105,6 +110,7 @@ def _plot(
         fig, plot_data = plot_series(
             data=data,
             X=X,
+            hoverinfo=hoverinfo,
             model_name=model_name,
             data_kwargs=data_kwargs,
             fig_kwargs=fig_kwargs,
@@ -133,6 +139,7 @@ def _plot(
         fig, plot_data = plot_time_series_differences(
             data=data,
             model_name=model_name,
+            hoverinfo=hoverinfo,
             data_kwargs=data_kwargs,
             fig_kwargs=fig_kwargs,
         )
@@ -141,6 +148,7 @@ def _plot(
             data=data,
             model_name=model_name,
             plot=plot,
+            hoverinfo=hoverinfo,
             data_kwargs=data_kwargs,
             fig_kwargs=fig_kwargs,
         )
@@ -157,6 +165,7 @@ def _plot(
 def plot_series(
     data: pd.Series,
     X: Optional[pd.DataFrame] = None,
+    hoverinfo: Optional[str] = "text",
     model_name: Optional[str] = None,
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
@@ -169,7 +178,7 @@ def plot_series(
 
     time_series_name = data.name
     if model_name is not None:
-        title = f"Residuals"
+        title = "Residuals"
     else:
         title = "Time Series"
         if time_series_name is not None:
@@ -187,11 +196,17 @@ def plot_series(
         rows=rows,
         cols=1,
         subplot_titles=subplot_titles,
+        shared_xaxes=True,
     )
 
     for i, col_name in enumerate(full_data.columns):
         fig = time_series_subplot(
-            fig=fig, data=full_data[col_name], row=i + 1, col=1, name=col_name
+            fig=fig,
+            data=full_data[col_name],
+            row=i + 1,
+            col=1,
+            hoverinfo=hoverinfo,
+            name=col_name,
         )
 
     fig.update_layout(title=title)
@@ -313,7 +328,7 @@ def plot_cv(
                     y=(y_axis_label, y_axis_label),
                     mode="lines+markers",
                     line_color="#C0C0C0",
-                    name=f"Unchanged",
+                    name="Unchanged",
                     hoverinfo="skip",
                 )
                 for i in range(len(data) - 1)
@@ -403,7 +418,7 @@ def plot_acf(
         mode="markers",
         marker_color="#1f77b4",
         marker_size=10,
-        name=f"ACF",
+        name="ACF",
     )
 
     [
@@ -623,6 +638,7 @@ def plot_predictions(
 def plot_diagnostics(
     data: pd.Series,
     model_name: Optional[str] = None,
+    hoverinfo: Optional[str] = "text",
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
 ) -> PlotReturnType:
@@ -661,7 +677,9 @@ def plot_diagnostics(
         fig.update_layout(autosize=False, width=fig_size[0], height=fig_size[1])
 
     #### Add diagnostic plots ----
-    fig = time_series_subplot(fig=fig, data=data, row=1, col=1, name="Time Plot")
+    fig = time_series_subplot(
+        fig=fig, data=data, row=1, col=1, hoverinfo=hoverinfo, name="Time Plot"
+    )
     fig = dist_subplot(fig=fig, data=data, row=1, col=2)
     fig, acf_data = corr_subplot(
         fig=fig, data=data, row=2, col=1, name="ACF", plot="acf"
@@ -911,6 +929,7 @@ def plot_time_series_decomposition(
 def plot_time_series_differences(
     data: pd.Series,
     model_name: Optional[str] = None,
+    hoverinfo: Optional[str] = "text",
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
 ) -> PlotReturnType:
@@ -980,7 +999,12 @@ def plot_time_series_differences(
 
         #### Add difference data ----
         fig = time_series_subplot(
-            fig=fig, data=subplot_data, row=i + 1, col=plot_cols[0], name=name_list[i]
+            fig=fig,
+            data=subplot_data,
+            row=i + 1,
+            col=plot_cols[0],
+            hoverinfo=hoverinfo,
+            name=name_list[i],
         )
 
         #### Add diagnostics if requested ----
@@ -1010,6 +1034,7 @@ def plot_time_series_differences(
                 data=subplot_data,
                 row=i + 1,
                 col=plot_cols[3],
+                hoverinfo=hoverinfo,
                 name=name_list[i],
                 type="periodogram",
             )
@@ -1020,6 +1045,7 @@ def plot_time_series_differences(
                 data=subplot_data,
                 row=i + 1,
                 col=plot_cols[4],
+                hoverinfo=hoverinfo,
                 name=name_list[i],
                 type="fft",
             )
@@ -1055,6 +1081,7 @@ def plot_frequency_components(
     data: pd.Series,
     model_name: Optional[str] = None,
     plot: str = "periodogram",
+    hoverinfo: Optional[str] = "text",
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
 ) -> PlotReturnType:
@@ -1077,7 +1104,7 @@ def plot_frequency_components(
     else:
         if time_series_name is not None:
             title = f"{title} | {time_series_name}"
-        legend = f"Time Series"
+        legend = "Time Series"
 
     x, y = return_frequency_components(data=data, type=plot)
     time_period = [round(1 / freq, 4) for freq in x]
@@ -1093,6 +1120,7 @@ def plot_frequency_components(
         line=dict(color="#1f77b4", width=2),
         marker=dict(size=5),
         showlegend=True,
+        hoverinfo=hoverinfo,
     )
     plot_data = [spectral_density]
 

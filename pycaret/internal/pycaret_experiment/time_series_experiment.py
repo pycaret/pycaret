@@ -603,6 +603,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         log_plots: Union[bool, list] = False,
         log_profile: bool = False,
         log_data: bool = False,
+        hoverinfo: Optional[str] = None,
         verbose: bool = True,
         profile: bool = False,
         profile_kwargs: Dict[str, Any] = None,
@@ -760,6 +761,12 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             Ignored when ``log_experiment`` is not True.
 
 
+        hoverinfo: Optional[str] = None
+            When None, hovering over certain plots is disabled when the data exceeds a
+            certain number of points. Can be set to any value that can be passed to plotly
+            `hoverinfo` arguments. e.g. "text" to display, "skip" or "none" to disable.
+
+
         verbose: bool, default = True
             When set to False, Information grid is not printed.
 
@@ -783,7 +790,11 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         #### Setup initialization ####
         ##############################
 
-        # Define parameter attrs ----
+        #### Define parameter attrs ----
+        # Number of data points above which the hovering of some plots is disabled
+        # This is needed else the notebooks become very slow.
+        self.hover_threshold = 200
+        self.hoverinfo = hoverinfo
         self.enforce_pi = enforce_pi
 
         #### Check and Clean Data ----
@@ -1962,6 +1973,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         plot: Optional[str] = None,
         return_fig: bool = False,
         return_data: bool = False,
+        hoverinfo: Optional[str] = None,
         verbose: bool = False,
         display_format: Optional[str] = None,
         data_kwargs: Optional[Dict] = None,
@@ -2024,6 +2036,13 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             When set to True, it returns the data for plotting.
             If both return_fig and return_data is set to True, order of return
             is figure then data.
+
+
+        hoverinfo: Optional[str] = None
+            Override for the experiment global `hoverinfo` passed during setup.
+            Useful when user wants to change the hoverinfo for certain plots only.
+            Can be set to any value that can be passed to plotly `hoverinfo`
+            arguments. e.g. "text" to display, "skip" or "none" to disable.
 
 
         verbose: bool, default = True
@@ -2206,6 +2225,10 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                     f"Available plots are: {', '.join(plots_formatted_model)}"
                 )
 
+        hoverinfo = self._resolve_hoverinfo(
+            hoverinfo=hoverinfo, data=data, train=train, test=test, X=X
+        )
+
         fig, plot_data = _plot(
             plot=plot,
             data=data,
@@ -2216,6 +2239,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             cv=cv,
             model_name=model_name,
             return_pred_int=return_pred_int,
+            hoverinfo=hoverinfo,
             data_kwargs=data_kwargs,
             fig_kwargs=fig_kwargs,
         )
@@ -2257,6 +2281,23 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         elif len(return_obj) == 1:
             return_obj = return_obj[0]
         return return_obj
+
+    def _resolve_hoverinfo(self, hoverinfo, data, train, test, X):
+        # Decide whether hover should be enabled or disabled (if "auto")
+        if self.hoverinfo is None and hoverinfo is None:
+            hoverinfo = "text"
+            if data is not None and len(data) > self.hover_threshold:
+                hoverinfo = "skip"
+            if train is not None and len(train) > self.hover_threshold:
+                hoverinfo = "skip"
+            if test is not None and len(test) > self.hover_threshold:
+                hoverinfo = "skip"
+            if X is not None and len(X) * X.shape[1] > self.hover_threshold:
+                hoverinfo = "skip"
+        elif self.hoverinfo is not None and hoverinfo is None:
+            hoverinfo = self.hoverinfo
+        # if hoverinfo is not None, then use as is.
+        return hoverinfo
 
     def predict_model(
         self,

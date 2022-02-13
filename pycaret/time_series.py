@@ -46,6 +46,7 @@ def setup(
     log_plots: Union[bool, list] = False,
     log_profile: bool = False,
     log_data: bool = False,
+    hoverinfo: Optional[str] = None,
     verbose: bool = True,
     profile: bool = False,
     profile_kwargs: Dict[str, Any] = None,
@@ -203,6 +204,12 @@ def setup(
         Ignored when ``log_experiment`` is not True.
 
 
+    hoverinfo: Optional[str] = None
+            When None, hovering over certain plots is disabled when the data exceeds a
+            certain number of points. Can be set to any value that can be passed to plotly
+            `hoverinfo` arguments. e.g. "text" to display, "skip" or "none" to disable.
+
+
     verbose: bool, default = True
         When set to False, Information grid is not printed.
 
@@ -246,6 +253,7 @@ def setup(
         log_plots=log_plots,
         log_profile=log_profile,
         log_data=log_data,
+        hoverinfo=hoverinfo,
         verbose=verbose,
         profile=profile,
         profile_kwargs=profile_kwargs,
@@ -900,6 +908,7 @@ def plot_model(
     plot: Optional[str] = None,
     return_fig: bool = False,
     return_data: bool = False,
+    hoverinfo: Optional[str] = None,
     verbose: bool = False,
     display_format: Optional[str] = None,
     data_kwargs: Optional[Dict] = None,
@@ -963,8 +972,15 @@ def plot_model(
         is figure then data.
 
 
+    hoverinfo: Optional[str] = None
+        Override for the experiment global `hoverinfo` passed during setup.
+        Useful when user wants to change the hoverinfo for certain plots only.
+        Can be set to any value that can be passed to plotly `hoverinfo`
+        arguments. e.g. "text" to display, "skip" or "none" to disable.
+
+
     verbose: bool, default = True
-            Unused for now
+        Unused for now
 
 
     display_format: str, default = None
@@ -999,6 +1015,7 @@ def plot_model(
         plot=plot,
         return_fig=return_fig,
         return_data=return_data,
+        hoverinfo=hoverinfo,
         display_format=display_format,
         data_kwargs=data_kwargs,
         fig_kwargs=fig_kwargs,
