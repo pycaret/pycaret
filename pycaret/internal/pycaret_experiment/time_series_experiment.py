@@ -496,10 +496,10 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             (2) Extracting it from the value if it is of type string, or
             (3) Using the value as is if it is of type int.
 
-        After deriving the seasonal period, a seasonality test is performed.
-        Final seasonal period class attribute value is set equal to
+        After deriving the seasonal periods, a seasonality test is performed for each
+        value of seasonal_period. Final seasonal period class attribute value is set equal to
         (1) 1 if seasonality is not detected at any of the derived seasonal periods, or
-        (2) the derived seasonal periods if seasonality is detected at those values.
+        (2) the derived seasonal periods for which seasonality is detected.
 
         Parameters
         ----------
@@ -511,7 +511,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         Raises
         ------
         ValueError
-            If seasonal period is provided but is not of type int or string
+            If seasonal period is provided but its values are not of type int or string
         """
         self.logger.info("Set up Seasonal Period.")
 
