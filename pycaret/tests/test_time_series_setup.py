@@ -216,7 +216,7 @@ def test_setup_seasonal_period_str(
         seasonal_period=seasonal_period,
     )
 
-    assert exp.seasonal_period == seasonal_value    
+    assert exp.seasonal_period == seasonal_value
 
 
 @pytest.mark.parametrize(
