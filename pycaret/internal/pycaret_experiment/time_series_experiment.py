@@ -492,9 +492,9 @@ class TimeSeriesExperiment(_SupervisedExperiment):
     ):
         """Derived the seasonal periods by either
         (1) Extracting it from data's index (if seasonal period is not provided), or
-        for each seasonal_period specified:
-            (2) Extracting it from the seasonal_period if it is of type string, or
-            (3) Using seasonal_period as is if it is of type int.
+        for each value of seasonal_period:
+            (2) Extracting it from the value if it is of type string, or
+            (3) Using the value as is if it is of type int.
 
         After deriving the seasonal period, a seasonality test is performed.
         Final seasonal period class attribute value is set equal to
