@@ -2101,9 +2101,13 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             None,
             None,
         )
+        
+        include = data_kwargs.get("include", None)
+        exclude = data_kwargs.get("exclude", None)
 
         if plot == "ts":
             data = self._get_y_data(split="all")
+            X = self._get_X_data(split="all", include=include, exclude=exclude)
         elif plot == "train_test_split":
             train = self._get_y_data(split="train")
             test = self._get_y_data(split="test")
@@ -2111,11 +2115,8 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             data = self._get_y_data(split="train")
             cv = self.get_fold_generator()
         elif plot == "ccf":
-            include = data_kwargs.get("include", None)
-            exclude = data_kwargs.get("exclude", None)
             data = self._get_y_data(split="all")
             X = self._get_X_data(split="all", include=include, exclude=exclude)
-
         elif estimator is None:
             # Estimator is not provided
             require_full_data = [

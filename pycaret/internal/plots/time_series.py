@@ -50,7 +50,7 @@ def _plot(
 
     if plot == "ts":
         fig, plot_data = plot_series(
-            data=data, data_kwargs=data_kwargs, fig_kwargs=fig_kwargs
+            data=data, X=X, data_kwargs=data_kwargs, fig_kwargs=fig_kwargs
         )
     elif plot == "train_test_split":
         fig, plot_data = plot_splits_train_test_split(
@@ -104,6 +104,7 @@ def _plot(
     elif plot == "residuals":
         fig, plot_data = plot_series(
             data=data,
+            X=X,
             model_name=model_name,
             data_kwargs=data_kwargs,
             fig_kwargs=fig_kwargs,
@@ -155,6 +156,7 @@ def _plot(
 
 def plot_series(
     data: pd.Series,
+    X: Optional[pd.DataFrame] = None,
     model_name: Optional[str] = None,
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
@@ -168,44 +170,44 @@ def plot_series(
     time_series_name = data.name
     if model_name is not None:
         title = f"Residuals"
-        legend = f"Residuals | {model_name}"
     else:
         title = "Time Series"
         if time_series_name is not None:
-            title = f"{title} | {time_series_name}"
-        legend = f"Time Series"
+            title = f"{title} | Target = {time_series_name}"
 
-    x = (
-        data.index.to_timestamp()
-        if isinstance(data.index, pd.PeriodIndex)
-        else data.index
-    )
-    original = go.Scatter(
-        name=legend,
-        x=x,
-        y=data,
-        mode="lines+markers",
-        marker=dict(size=5, color="#3f3f3f"),
-        showlegend=True,
-    )
-    plot_data = [original]
+    if X is not None:
+        full_data = pd.concat([data, X], axis=1)
+    else:
+        full_data = pd.DataFrame(data, columns=[f"Residuals | {model_name}"])
 
-    layout = go.Layout(
-        yaxis=dict(title="Values"), xaxis=dict(title="Time"), title=title
+    rows = full_data.shape[1]
+    subplot_titles = full_data.columns
+
+    fig = make_subplots(
+        rows=rows,
+        cols=1,
+        subplot_titles=subplot_titles,
     )
 
-    fig = go.Figure(data=plot_data, layout=layout)
+    for i, col_name in enumerate(full_data.columns):
+        fig = time_series_subplot(
+            fig=fig, data=full_data[col_name], row=i + 1, col=1, name=col_name
+        )
 
+    fig.update_layout(title=title)
+    fig.update_layout(showlegend=False)
     fig_template = fig_kwargs.get("fig_template", "ggplot2")
     fig.update_layout(template=fig_template)
-    fig.update_layout(showlegend=True)
 
-    fig_size = fig_kwargs.get("fig_size", None)
+    default_width = None
+    default_height = 300 * rows if rows > 1 else None
+    default_fig_size = [default_width, default_height]
+    fig_size = fig_kwargs.get("fig_size", default_fig_size)
     if fig_size is not None:
         fig.update_layout(autosize=False, width=fig_size[0], height=fig_size[1])
 
     return_data_dict = {
-        "data": data,
+        "data": full_data,
     }
 
     return fig, return_data_dict
