@@ -156,10 +156,10 @@ def test_seasonal_period_to_use():
     assert exp.sp_to_use == 12
     assert exp.all_sp_values == [12]
 
-    # Airline Data with seasonality of 12, 6
+    # Airline Data with seasonality of M (12), 6
     data = get_data("airline", verbose=False)
     exp.setup(
-        data=data, fh=fh, verbose=False, session_id=42, seasonal_period=[12, 6]
+        data=data, fh=fh, verbose=False, session_id=42, seasonal_period=['M', 6]
     )
     assert exp.all_sp_values == [12, 6]
     assert exp.sp_to_use == 12
