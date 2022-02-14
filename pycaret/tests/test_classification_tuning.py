@@ -5,6 +5,7 @@ os.environ["TUNE_DISABLE_AUTO_CALLBACK_LOGGERS"] = "1"
 os.environ["TUNE_MAX_LEN_IDENTIFIER"] = "1"
 
 import pandas as pd
+import pytest
 import pycaret.classification
 import pycaret.datasets
 from pycaret.internal.utils import can_early_stop

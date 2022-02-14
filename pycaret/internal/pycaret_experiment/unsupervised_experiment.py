@@ -212,7 +212,6 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
             system_log=system_log,
             log_experiment=log_experiment,
             experiment_name=experiment_name,
-            experiment_custom_tags=experiment_custom_tags,
             memory=memory,
             verbose=verbose,
         )
