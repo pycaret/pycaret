@@ -113,7 +113,7 @@ def test(boston_dataframe):
 
 class TestRegressionExperimentCustomTags:
     def test_regression_setup_fails_with_experiment_custom_tags(self, boston_dataframe):
-        with pytest.raises(TypeError):
+        with pytest.raises(Exception):
             # init setup
             _ = pycaret.regression.setup(
                 boston_dataframe,
@@ -131,7 +131,7 @@ class TestRegressionExperimentCustomTags:
     def test_regression_setup_fails_with_experiment_custom_multiples_inputs(
         self, custom_tag
     ):
-        with pytest.raises(TypeError):
+        with pytest.raises(Exception):
             # init setup
             _ = pycaret.regression.setup(
                 pycaret.datasets.get_data("boston"),
@@ -144,54 +144,6 @@ class TestRegressionExperimentCustomTags:
                 experiment_name=uuid.uuid4().hex,
                 experiment_custom_tags=custom_tag,
             )
-
-    def test_regression_compare_models_fails_with_experiment_custom_tags(
-        self, boston_dataframe
-    ):
-        with pytest.raises(TypeError):
-            # init setup
-            _ = pycaret.regression.setup(
-                boston_dataframe,
-                target="medv",
-                silent=True,
-                log_experiment=True,
-                html=False,
-                session_id=123,
-                n_jobs=1,
-                experiment_name=uuid.uuid4().hex,
-            )
-
-            # compare models
-            _ = pycaret.regression.compare_models(
-                n_select=100, experiment_custom_tags="custom_tag"
-            )[:3]
-
-    def test_regression_finalize_models_fails_with_experiment_custom_tags(
-        self, boston_dataframe
-    ):
-        with pytest.raises(TypeError):
-            # init setup
-            _ = pycaret.regression.setup(
-                boston_dataframe,
-                target="medv",
-                silent=True,
-                log_experiment=True,
-                html=False,
-                session_id=123,
-                n_jobs=1,
-                experiment_name=uuid.uuid4().hex,
-            )
-
-            # compare models
-            _ = pycaret.regression.compare_models(
-                n_select=100, experiment_custom_tags={"pytest": "testing"}
-            )[:2]
-
-            # select best model
-            best = pycaret.regression.automl(optimize="MAPE")
-
-            # finalize model
-            _ = pycaret.regression.finalize_model(best, experiment_custom_tags="pytest")
 
     def test_regression_models_with_experiment_custom_tags(
         self, boston_dataframe, tracking_api

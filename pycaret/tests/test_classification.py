@@ -72,7 +72,7 @@ def test(juice_dataframe):
     assert isinstance(predict_holdout, pd.DataFrame)
 
     # predictions on new dataset
-    predict_holdout = pycaret.classification.predict_model(best, data=data)
+    predict_holdout = pycaret.classification.predict_model(best, data=juice_dataframe)
     assert isinstance(predict_holdout, pd.DataFrame)
 
     # calibrate model
@@ -113,7 +113,7 @@ class TestClassificationExperimentCustomTags:
     def test_classification_setup_fails_with_experiment_custom_tags(
         self, juice_dataframe
     ):
-        with pytest.raises(TypeError):
+        with pytest.raises(Exception):
             # init setup
             _ = pycaret.classification.setup(
                 juice_dataframe,
@@ -133,7 +133,7 @@ class TestClassificationExperimentCustomTags:
     def test_classification_setup_fails_with_experiment_custom_multiples_inputs(
         self, custom_tag
     ):
-        with pytest.raises(TypeError):
+        with pytest.raises(Exception):
             # init setup
             _ = pycaret.classification.setup(
                 pycaret.datasets.get_data("juice"),
@@ -147,60 +147,6 @@ class TestClassificationExperimentCustomTags:
                 n_jobs=1,
                 experiment_name=uuid.uuid4().hex,
                 experiment_custom_tags=custom_tag,
-            )
-
-    def test_classification_compare_models_fails_with_experiment_custom_tags(
-        self, juice_dataframe
-    ):
-        with pytest.raises(TypeError):
-            # init setup
-            _ = pycaret.classification.setup(
-                juice_dataframe,
-                target="Purchase",
-                remove_multicollinearity=True,
-                multicollinearity_threshold=0.95,
-                log_experiment=True,
-                silent=True,
-                html=False,
-                session_id=123,
-                n_jobs=1,
-                experiment_name=uuid.uuid4().hex,
-                experiment_custom_tags={"pytest": "awesome_framework"},
-            )
-
-            # compare models
-            _ = pycaret.classification.compare_models(
-                errors="raise", n_select=100, experiment_custom_tags="invalid_tag"
-            )[:3]
-
-    def test_classification_finalize_models_fails_with_experiment_custom_tags(
-        self, juice_dataframe
-    ):
-        with pytest.raises(TypeError):
-            # init setup
-            _ = pycaret.classification.setup(
-                juice_dataframe,
-                target="Purchase",
-                remove_multicollinearity=True,
-                multicollinearity_threshold=0.95,
-                log_experiment=True,
-                silent=True,
-                html=False,
-                session_id=123,
-                n_jobs=1,
-                experiment_name=uuid.uuid4().hex,
-                experiment_custom_tags={"pytest": "awesome_framework"},
-            )
-
-            # compare models
-            _ = pycaret.classification.compare_models(errors="raise", n_select=100)[:3]
-
-            # select best model
-            best = pycaret.classification.automl(optimize="MCC")
-
-            # finalize model
-            _ = pycaret.classification.finalize_model(
-                best, experiment_custom_tags="pytest"
             )
 
     def test_classification_models_with_experiment_custom_tags(

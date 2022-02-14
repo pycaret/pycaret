@@ -18,6 +18,7 @@ from pycaret.internal.utils import (
     can_early_stop,
 )
 from pycaret.internal.utils import to_df, id_or_display_name, get_label_encoder
+from pycaret.internal.drift_report import (create_classification_drift_report, create_regression_drift_report)
 import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
 from pycaret.internal.distributions import *
@@ -761,7 +762,6 @@ class _SupervisedExperiment(_TabularExperiment):
                 fit_kwargs=fit_kwargs,
                 groups=groups,
                 probability_threshold=probability_threshold,
-                experiment_custom_tags=experiment_custom_tags,
                 refit=False,
             )
             results_columns_to_ignore = ["Object", "runtime", "cutoff"]
@@ -981,6 +981,7 @@ class _SupervisedExperiment(_TabularExperiment):
                             log_holdout=full_logging,
                             URI=URI,
                             display=display,
+                            experiment_custom_tags=experiment_custom_tags,
                         )
                     except Exception:
                         self.logger.error(
@@ -4618,6 +4619,7 @@ class _SupervisedExperiment(_TabularExperiment):
         probability_threshold: Optional[float] = None,
         encoded_labels: bool = False,  # added in pycaret==2.1.0
         raw_score: bool = False,
+        drift_report: bool = False,
         round: int = 4,  # added in pycaret==2.2.0
         verbose: bool = True,
         ml_usecase: Optional[MLUsecase] = None,
@@ -4748,6 +4750,25 @@ class _SupervisedExperiment(_TabularExperiment):
         else:
             data = to_df(data[self.X.columns])  # Ignore all column but the originals
             X_test_ = self.pipeline.transform(data)
+
+        # generate drift report
+        if drift_report:
+            if self.ml_usecase == MLUsecase.CLASSIFICATION:
+                create_classification_drift_report(
+                    self._get_model_name(estimator),
+                    self.pipeline,
+                    self.data_before_preprocess,
+                    self.X_train,
+                    X_test_,
+                )
+            elif self.ml_usecase == MLUsecase.REGRESSION:
+                create_regression_drift_report(
+                    self._get_model_name(estimator),
+                    self.pipeline,
+                    self.data_before_preprocess,
+                    self.X_train,
+                    X_test_,
+                )
 
         # prediction starts here
         if isinstance(estimator, CustomProbabilityThresholdClassifier):

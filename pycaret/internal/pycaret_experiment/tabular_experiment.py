@@ -488,6 +488,7 @@ class _TabularExperiment(_PyCaretExperiment):
         save: Union[str, bool] = False,
         fold: Optional[Union[int, Any]] = None,
         fit_kwargs: Optional[dict] = None,
+        plot_kwargs: Optional[dict] = None,
         groups: Optional[Union[str, Any]] = None,
         feature_name: Optional[str] = None,
         label: bool = False,
@@ -719,6 +720,8 @@ class _TabularExperiment(_PyCaretExperiment):
                 verbose=verbose, html_param=self.html_param, progress_args=progress_args
             )
             display.display_progress()
+
+        plot_kwargs = plot_kwargs or {}
 
         self.logger.info("Preloading libraries")
         # pre-load libraries
@@ -1226,7 +1229,7 @@ class _TabularExperiment(_PyCaretExperiment):
                     try:
                         from yellowbrick.cluster import KElbowVisualizer
 
-                        visualizer = KElbowVisualizer(estimator, timings=False)
+                        visualizer = KElbowVisualizer(estimator, timings=False, **plot_kwargs)
                         show_yellowbrick_plot(
                             visualizer=visualizer,
                             X_train=self.X_train_transformed,
@@ -1253,7 +1256,7 @@ class _TabularExperiment(_PyCaretExperiment):
 
                     try:
                         visualizer = SilhouetteVisualizer(
-                            estimator, colors="yellowbrick"
+                            estimator, colors="yellowbrick", **plot_kwargs
                         )
                         show_yellowbrick_plot(
                             visualizer=visualizer,
@@ -1279,7 +1282,7 @@ class _TabularExperiment(_PyCaretExperiment):
                     from yellowbrick.cluster import InterclusterDistance
 
                     try:
-                        visualizer = InterclusterDistance(estimator)
+                        visualizer = InterclusterDistance(estimator, **plot_kwargs)
                         show_yellowbrick_plot(
                             visualizer=visualizer,
                             X_train=self.X_train_transformed,
@@ -1304,7 +1307,7 @@ class _TabularExperiment(_PyCaretExperiment):
 
                     from yellowbrick.regressor import ResidualsPlot
 
-                    visualizer = ResidualsPlot(estimator)
+                    visualizer = ResidualsPlot(estimator, **plot_kwargs)
                     show_yellowbrick_plot(
                         visualizer=visualizer,
                         X_train=self.X_train_transformed,
@@ -1324,7 +1327,7 @@ class _TabularExperiment(_PyCaretExperiment):
 
                     from yellowbrick.classifier import ROCAUC
 
-                    visualizer = ROCAUC(estimator)
+                    visualizer = ROCAUC(estimator, **plot_kwargs)
                     show_yellowbrick_plot(
                         visualizer=visualizer,
                         X_train=self.X_train_transformed,
@@ -1345,7 +1348,7 @@ class _TabularExperiment(_PyCaretExperiment):
                     from yellowbrick.classifier import DiscriminationThreshold
 
                     visualizer = DiscriminationThreshold(
-                        estimator, random_state=self.seed
+                        estimator, random_state=self.seed, **plot_kwargs
                     )
                     show_yellowbrick_plot(
                         visualizer=visualizer,
@@ -1366,7 +1369,7 @@ class _TabularExperiment(_PyCaretExperiment):
 
                     from yellowbrick.classifier import PrecisionRecallCurve
 
-                    visualizer = PrecisionRecallCurve(estimator, random_state=self.seed)
+                    visualizer = PrecisionRecallCurve(estimator, random_state=self.seed, **plot_kwargs)
                     show_yellowbrick_plot(
                         visualizer=visualizer,
                         X_train=self.X_train_transformed,
@@ -1386,11 +1389,13 @@ class _TabularExperiment(_PyCaretExperiment):
 
                     from yellowbrick.classifier import ConfusionMatrix
 
+                    plot_kwargs.setdefault("fontsize", 15)
+                    plot_kwargs.setdefault("cmap", "Greens")
+
                     visualizer = ConfusionMatrix(
                         estimator,
                         random_state=self.seed,
-                        fontsize=15,
-                        cmap="Greens",
+                        **plot_kwargs
                     )
                     show_yellowbrick_plot(
                         visualizer=visualizer,
@@ -1413,13 +1418,13 @@ class _TabularExperiment(_PyCaretExperiment):
                         from yellowbrick.classifier import ClassPredictionError
 
                         visualizer = ClassPredictionError(
-                            estimator, random_state=self.seed
+                            estimator, random_state=self.seed, **plot_kwargs
                         )
 
                     elif self._ml_usecase == MLUsecase.REGRESSION:
                         from yellowbrick.regressor import PredictionError
 
-                        visualizer = PredictionError(estimator, random_state=self.seed)
+                        visualizer = PredictionError(estimator, random_state=self.seed, **plot_kwargs)
 
                     show_yellowbrick_plot(
                         visualizer=visualizer,  # type: ignore
@@ -1465,6 +1470,7 @@ class _TabularExperiment(_PyCaretExperiment):
                         estimator,
                         random_state=self.seed,
                         support=True,
+                        **plot_kwargs
                     )
                     show_yellowbrick_plot(
                         visualizer=visualizer,
@@ -1505,7 +1511,7 @@ class _TabularExperiment(_PyCaretExperiment):
                     data_X_transformed = pca.fit_transform(data_X_transformed)
                     test_X_transformed = pca.fit_transform(test_X_transformed)
 
-                    viz_ = DecisionViz(estimator)
+                    viz_ = DecisionViz(estimator, **plot_kwargs)
                     show_yellowbrick_plot(
                         visualizer=viz_,
                         X_train=data_X_transformed,
@@ -1528,7 +1534,7 @@ class _TabularExperiment(_PyCaretExperiment):
 
                     from yellowbrick.model_selection import RFECV
 
-                    visualizer = RFECV(estimator, cv=cv)
+                    visualizer = RFECV(estimator, cv=cv, **plot_kwargs)
                     show_yellowbrick_plot(
                         visualizer=visualizer,
                         X_train=self.X_train_transformed,
@@ -1630,7 +1636,7 @@ class _TabularExperiment(_PyCaretExperiment):
                     data_X_transformed = self.X_train_transformed.select_dtypes(
                         include="number"
                     )
-                    visualizer = Manifold(manifold="tsne", random_state=self.seed)
+                    visualizer = Manifold(manifold="tsne", random_state=self.seed, **plot_kwargs)
                     show_yellowbrick_plot(
                         visualizer=visualizer,
                         X_train=data_X_transformed,
@@ -2013,7 +2019,7 @@ class _TabularExperiment(_PyCaretExperiment):
                     data_X_transformed = pca.fit_transform(data_X_transformed)
                     display.move_progress()
                     classes = self.y_train_transformed.unique().tolist()
-                    visualizer = RadViz(classes=classes, alpha=0.25)
+                    visualizer = RadViz(classes=classes, alpha=0.25, **plot_kwargs)
 
                     show_yellowbrick_plot(
                         visualizer=visualizer,
@@ -2159,6 +2165,7 @@ class _TabularExperiment(_PyCaretExperiment):
         estimator,
         fold: Optional[Union[int, Any]] = None,
         fit_kwargs: Optional[dict] = None,
+        plot_kwargs: Optional[dict] = None,
         feature_name: Optional[str] = None,
         groups: Optional[Union[str, Any]] = None,
         use_train_data: bool = False,
@@ -2237,6 +2244,7 @@ class _TabularExperiment(_PyCaretExperiment):
             scale=fixed(1),
             fold=fixed(fold),
             fit_kwargs=fixed(fit_kwargs),
+            plot_kwargs=fixed(plot_kwargs),
             feature_name=fixed(feature_name),
             label=fixed(False),
             groups=fixed(groups),

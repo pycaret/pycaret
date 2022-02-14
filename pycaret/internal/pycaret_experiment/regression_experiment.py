@@ -1188,6 +1188,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
         save: bool = False,
         fold: Optional[Union[int, Any]] = None,
         fit_kwargs: Optional[dict] = None,
+        plot_kwargs: Optional[dict] = None,
         groups: Optional[Union[str, Any]] = None,
         use_train_data: bool = False,
         verbose: bool = True,
@@ -1281,6 +1282,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             save=save,
             fold=fold,
             fit_kwargs=fit_kwargs,
+            plot_kwargs=plot_kwargs,
             groups=groups,
             verbose=verbose,
             use_train_data=use_train_data,
@@ -1293,6 +1295,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
         estimator,
         fold: Optional[Union[int, Any]] = None,
         fit_kwargs: Optional[dict] = None,
+        plot_kwargs: Optional[dict] = None,
         groups: Optional[Union[str, Any]] = None,
         use_train_data: bool = False,
     ):
@@ -1352,6 +1355,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             estimator=estimator,
             fold=fold,
             fit_kwargs=fit_kwargs,
+            plot_kwargs=plot_kwargs,
             groups=groups,
             use_train_data=use_train_data,
         )
@@ -1469,6 +1473,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
         self,
         estimator,
         data: Optional[pd.DataFrame] = None,
+        drift_report: bool = False,
         round: int = 4,
         verbose: bool = True,
     ) -> pd.DataFrame:
@@ -1525,6 +1530,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             data=data,
             probability_threshold=None,
             encoded_labels=False,
+            drift_report=drift_report,
             round=round,
             verbose=verbose,
         )

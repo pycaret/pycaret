@@ -1754,11 +1754,8 @@ def predict_model(
         estimator=estimator,
         data=data,
         drift_report=drift_report,
-        probability_threshold=None,
-        encoded_labels=True,
         round=round,
         verbose=verbose,
-        ml_usecase=MLUsecase.REGRESSION,
     )
 
 
