@@ -74,7 +74,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
     def _is_unsupervised(self) -> bool:
         return True
 
-    def _set_up_mlflow(self, runtime, log_data, log_profile):
+    def _set_up_mlflow(self, runtime, log_data, log_profile, experiment_custom_tags=None):
         # log into experiment
         self.experiment__.append(("Setup Config", self.display_container[0]))
         self.experiment__.append(("Transformed data", self.X_transformed))
@@ -113,6 +113,10 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
 
             # set tag of compare_models
             mlflow.set_tag("Source", "setup")
+
+            # set custom tags if applicable
+            if experiment_custom_tags:
+                mlflow.set_tags(experiment_custom_tags)
 
             import secrets
 
@@ -186,6 +190,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
         system_log: Union[bool, logging.Logger] = True,
         log_experiment: bool = False,
         experiment_name: Optional[str] = None,
+        experiment_custom_tags: Optional[Dict[str, Any]] = None,
         log_plots: Union[bool, list] = False,
         log_profile: bool = False,
         log_data: bool = False,
@@ -207,6 +212,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
             system_log=system_log,
             log_experiment=log_experiment,
             experiment_name=experiment_name,
+            experiment_custom_tags=experiment_custom_tags,
             memory=memory,
             verbose=verbose,
         )
@@ -388,7 +394,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
         self._all_metrics = self._get_metrics()
 
         runtime = np.array(time.time() - runtime_start).round(2)
-        self._set_up_mlflow(runtime, log_data, log_profile)
+        self._set_up_mlflow(runtime, log_data, log_profile, experiment_custom_tags=experiment_custom_tags)
 
         self._setup_ran = True
         self.logger.info(f"setup() successfully completed in {runtime}s...............")
@@ -929,6 +935,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
         ground_truth: Optional[str] = None,
         round: int = 4,
         fit_kwargs: Optional[dict] = None,
+        experiment_custom_tags: Optional[Dict[str, Any]] = None,
         verbose: bool = True,
         system: bool = True,
         add_to_model_list: bool = True,
@@ -1266,6 +1273,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
                     model_fit_time=model_fit_time,
                     pipeline=self.pipeline,
                     log_plots=self.log_plots_param,
+                    experiment_custom_tags=experiment_custom_tags,
                     display=display,
                 )
             except Exception:

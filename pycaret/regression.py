@@ -758,6 +758,7 @@ def create_model(
     cross_validation: bool = True,
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
+    experiment_custom_tags: Optional[Dict[str, Any]] = None,
     verbose: bool = True,
     **kwargs,
 ):
@@ -839,6 +840,11 @@ def create_model(
         the column name in the dataset containing group labels.
 
 
+    experiment_custom_tags: dict, default = None
+        Dictionary of tag_name: String -> value: (String, but will be string-ified
+        if not) passed to the mlflow.set_tags to add new custom tags for the experiment.
+
+
     verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
 
@@ -865,6 +871,7 @@ def create_model(
         cross_validation=cross_validation,
         fit_kwargs=fit_kwargs,
         groups=groups,
+        experiment_custom_tags=experiment_custom_tags,
         verbose=verbose,
         **kwargs,
     )

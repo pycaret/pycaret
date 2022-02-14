@@ -133,6 +133,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
         system_log: Union[bool, logging.Logger] = True,
         log_experiment: bool = False,
         experiment_name: Optional[str] = None,
+        experiment_custom_tags: Optional[Dict[str, Any]] = None,
         log_plots: Union[bool, list] = False,
         log_profile: bool = False,
         log_data: bool = False,
@@ -412,7 +413,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
         self._all_metrics = self._get_metrics()
 
         runtime = np.array(time.time() - runtime_start).round(2)
-        self._set_up_mlflow(runtime, log_data, log_profile)
+        self._set_up_mlflow(runtime, log_data, log_profile, experiment_custom_tags=experiment_custom_tags)
 
         self._setup_ran = True
         self.logger.info(f"setup() successfully completed in {runtime}s...............")
@@ -433,6 +434,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
         errors: str = "ignore",
         fit_kwargs: Optional[dict] = None,
         groups: Optional[Union[str, Any]] = None,
+        experiment_custom_tags: Optional[Dict[str, Any]] = None,
         verbose: bool = True,
     ):
 
@@ -547,6 +549,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             errors=errors,
             fit_kwargs=fit_kwargs,
             groups=groups,
+            experiment_custom_tags=experiment_custom_tags,
             verbose=verbose,
         )
 
@@ -558,6 +561,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
         cross_validation: bool = True,
         fit_kwargs: Optional[dict] = None,
         groups: Optional[Union[str, Any]] = None,
+        experiment_custom_tags: Optional[Dict[str, Any]] = None,
         verbose: bool = True,
         **kwargs,
     ):
@@ -665,6 +669,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             cross_validation=cross_validation,
             fit_kwargs=fit_kwargs,
             groups=groups,
+            experiment_custom_tags=experiment_custom_tags,
             verbose=verbose,
             **kwargs,
         )
@@ -1530,6 +1535,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
         fit_kwargs: Optional[dict] = None,
         groups: Optional[Union[str, Any]] = None,
         model_only: bool = True,
+        experiment_custom_tags: Optional[Dict[str, Any]] = None,
     ) -> Any:
 
         """
@@ -1578,6 +1584,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             fit_kwargs=fit_kwargs,
             groups=groups,
             model_only=model_only,
+            experiment_custom_tags=experiment_custom_tags,
         )
 
     def deploy_model(

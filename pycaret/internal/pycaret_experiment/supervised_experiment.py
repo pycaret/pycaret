@@ -277,7 +277,7 @@ class _SupervisedExperiment(_TabularExperiment):
         self.y = data[target]
         return
 
-    def _set_up_mlflow(self, runtime, log_data, log_profile):
+    def _set_up_mlflow(self, runtime, log_data, log_profile, experiment_custom_tags=None):
         # log into experiment
         self.experiment__.append(("Setup Config", self.display_container[0]))
         self.experiment__.append(("X_training Set", self.X_train))
@@ -319,6 +319,10 @@ class _SupervisedExperiment(_TabularExperiment):
 
             # set tag of compare_models
             mlflow.set_tag("Source", "setup")
+
+            # set custom tags if applicable
+            if experiment_custom_tags:
+                mlflow.set_tags(experiment_custom_tags)
 
             import secrets
 
@@ -372,6 +376,7 @@ class _SupervisedExperiment(_TabularExperiment):
         errors: str = "ignore",
         fit_kwargs: Optional[dict] = None,
         groups: Optional[Union[str, Any]] = None,
+        experiment_custom_tags: Optional[Dict[str, Any]] = None,
         probability_threshold: Optional[float] = None,
         verbose: bool = True,
         display: Optional[Display] = None,
@@ -756,6 +761,7 @@ class _SupervisedExperiment(_TabularExperiment):
                 fit_kwargs=fit_kwargs,
                 groups=groups,
                 probability_threshold=probability_threshold,
+                experiment_custom_tags=experiment_custom_tags,
                 refit=False,
             )
             results_columns_to_ignore = ["Object", "runtime", "cutoff"]
@@ -1152,6 +1158,7 @@ class _SupervisedExperiment(_TabularExperiment):
         groups: Optional[Union[str, Any]] = None,
         refit: bool = True,
         probability_threshold: Optional[float] = None,
+        experiment_custom_tags: Optional[Dict[str, Any]] = None,
         verbose: bool = True,
         system: bool = True,
         add_to_model_list: bool = True,
@@ -1561,6 +1568,7 @@ class _SupervisedExperiment(_TabularExperiment):
                     model_fit_time=model_fit_time,
                     pipeline=self.pipeline,
                     log_plots=self.log_plots_param,
+                    experiment_custom_tags=experiment_custom_tags,
                     display=display,
                 )
             except:
@@ -4467,6 +4475,7 @@ class _SupervisedExperiment(_TabularExperiment):
         fit_kwargs: Optional[dict] = None,
         groups: Optional[Union[str, Any]] = None,
         model_only: bool = True,
+        experiment_custom_tags: Optional[Dict[str, Any]] = None,
         display: Optional[Display] = None,
     ) -> Any:  # added in pycaret==2.2.0
 
@@ -4573,6 +4582,7 @@ class _SupervisedExperiment(_TabularExperiment):
                     model_fit_time=model_fit_time,
                     pipeline=self.pipeline,
                     log_plots=self.log_plots_param,
+                    experiment_custom_tags=experiment_custom_tags,
                     display=display,
                 )
             except:

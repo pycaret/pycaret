@@ -604,6 +604,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         system_log: Union[bool, logging.Logger] = True,
         log_experiment: bool = False,
         experiment_name: Optional[str] = None,
+        experiment_custom_tags: Optional[Dict[str, Any]] = None,
         log_plots: Union[bool, list] = False,
         log_profile: bool = False,
         log_data: bool = False,
@@ -978,7 +979,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         runtime = np.array(time.time() - runtime_start).round(2)
 
-        self._set_up_mlflow(runtime, log_data, log_profile)
+        self._set_up_mlflow(runtime, log_data, log_profile, experiment_custom_tags=experiment_custom_tags)
 
         self._setup_ran = True
 
@@ -1019,6 +1020,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         turbo: bool = True,
         errors: str = "ignore",
         fit_kwargs: Optional[dict] = None,
+        experiment_custom_tags: Optional[Dict[str, Any]] = None,
         verbose: bool = True,
     ):
 
@@ -1124,6 +1126,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             turbo=turbo,
             errors=errors,
             fit_kwargs=fit_kwargs,
+            experiment_custom_tags=experiment_custom_tags,
             verbose=verbose,
         )
 
@@ -1134,6 +1137,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         round: int = 4,
         cross_validation: bool = True,
         fit_kwargs: Optional[dict] = None,
+        experiment_custom_tags: Optional[Dict[str, Any]] = None,
         verbose: bool = True,
         **kwargs,
     ):
@@ -1236,6 +1240,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             round=round,
             cross_validation=cross_validation,
             fit_kwargs=fit_kwargs,
+            experiment_custom_tags=experiment_custom_tags,
             verbose=verbose,
             **kwargs,
         )
@@ -2668,6 +2673,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         estimator,
         fit_kwargs: Optional[dict] = None,
         model_only: bool = True,
+        experiment_custom_tags: Optional[Dict[str, Any]] = None,
     ) -> Any:
 
         """
@@ -2707,6 +2713,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             estimator=estimator,
             fit_kwargs=fit_kwargs,
             model_only=model_only,
+            experiment_custom_tags=experiment_custom_tags,
         )
 
     def deploy_model(

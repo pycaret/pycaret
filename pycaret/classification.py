@@ -773,6 +773,7 @@ def create_model(
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
     probability_threshold: Optional[float] = None,
+    experiment_custom_tags: Optional[Dict[str, Any]] = None,
     verbose: bool = True,
     **kwargs,
 ) -> Any:
@@ -852,6 +853,11 @@ def create_model(
         in this parameter. Only applicable for binary classification.
 
 
+    experiment_custom_tags: dict, default = None
+        Dictionary of tag_name: String -> value: (String, but will be string-ified
+        if not) passed to the mlflow.set_tags to add new custom tags for the experiment.
+
+
     verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
 
@@ -881,6 +887,7 @@ def create_model(
         fit_kwargs=fit_kwargs,
         groups=groups,
         probability_threshold=probability_threshold,
+        experiment_custom_tags=experiment_custom_tags,
         verbose=verbose,
         **kwargs,
     )
@@ -2063,9 +2070,10 @@ def finalize_model(
         When set to False, only model object is re-trained and all the
         transformations in Pipeline are ignored.
 
+
     experiment_custom_tags: dict, default = None
-        Dictionary of tag_name: String -> value: (String, but will be string-ified if
-        not) passed to the mlflow.set_tags to add new custom tags for the experiment.
+        Dictionary of tag_name: String -> value: (String, but will be string-ified
+        if not) passed to the mlflow.set_tags to add new custom tags for the experiment.
 
 
     Returns:

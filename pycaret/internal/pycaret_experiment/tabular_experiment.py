@@ -178,6 +178,7 @@ class _TabularExperiment(_PyCaretExperiment):
         log_plots: bool = False,
         tune_cv_results=None,
         URI=None,
+        experiment_custom_tags=None,
         display: Optional[Display] = None,
     ):
         self.logger.info("Creating MLFlow logs")
@@ -243,6 +244,10 @@ class _TabularExperiment(_PyCaretExperiment):
 
             # set tag of compare_models
             mlflow.set_tag("Source", source)
+
+            # set custom tags if applicable
+            if experiment_custom_tags:
+                mlflow.set_tags(experiment_custom_tags)
 
             if not URI:
                 import secrets
