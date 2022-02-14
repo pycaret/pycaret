@@ -185,12 +185,12 @@ def plot_series(
             title = f"{title} | Target = {time_series_name}"
 
     if X is not None:
-        full_data = pd.concat([data, X], axis=1)
+        plot_data = pd.concat([data, X], axis=1)
     else:
-        full_data = pd.DataFrame(data, columns=[f"Residuals | {model_name}"])
+        plot_data = pd.DataFrame(data, columns=[f"Residuals | {model_name}"])
 
-    rows = full_data.shape[1]
-    subplot_titles = full_data.columns
+    rows = plot_data.shape[1]
+    subplot_titles = plot_data.columns
 
     fig = make_subplots(
         rows=rows,
@@ -199,10 +199,10 @@ def plot_series(
         shared_xaxes=True,
     )
 
-    for i, col_name in enumerate(full_data.columns):
+    for i, col_name in enumerate(plot_data.columns):
         fig = time_series_subplot(
             fig=fig,
-            data=full_data[col_name],
+            data=plot_data[col_name],
             row=i + 1,
             col=1,
             hoverinfo=hoverinfo,
@@ -222,7 +222,7 @@ def plot_series(
         fig.update_layout(autosize=False, width=fig_size[0], height=fig_size[1])
 
     return_data_dict = {
-        "data": full_data,
+        "data": plot_data,
     }
 
     return fig, return_data_dict
@@ -1145,7 +1145,7 @@ def plot_frequency_components(
 
 def plot_ccf(
     data: pd.Series,
-    X: Optional[pd.DataFrame] = None,
+    X: pd.DataFrame,
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
 ) -> PlotReturnType:
@@ -1157,13 +1157,10 @@ def plot_ccf(
 
     title = "Cross Correlation Plot(s)"
 
-    num_subplots = 1  # When X is None (Self Correlation or ACF)
-    if X is not None:
-        full_data = pd.concat([data, X], axis=1)
-        num_subplots = full_data.shape[1]
+    plot_data = pd.concat([data, X], axis=1)
 
     # Decide the number of rows and columns ----
-    n_data_cols = full_data.shape[1]
+    n_data_cols = plot_data.shape[1]
 
     rows = fig_kwargs.get("rows", None)
     cols = fig_kwargs.get("cols", None)
@@ -1196,7 +1193,7 @@ def plot_ccf(
         rows = ceil(n_data_cols / cols)
 
     subplot_titles = []
-    for i, col_name in enumerate(full_data.columns):
+    for i, col_name in enumerate(plot_data.columns):
         subplot_title = f"{data.name} vs. {col_name}"
         subplot_titles.append(subplot_title)
 
@@ -1207,13 +1204,13 @@ def plot_ccf(
     )
 
     all_ccf_data = {}
-    for i, col_name in enumerate(full_data.columns):
+    for i, col_name in enumerate(plot_data.columns):
         row = int(i / cols) + 1
         col = i % cols + 1
         #### Add CCF plot ----
         fig, ccf_data = corr_subplot(
             fig=fig,
-            data=[data, full_data[col_name]],
+            data=[data, plot_data[col_name]],
             row=row,
             col=col,
             plot="ccf",
