@@ -602,8 +602,7 @@ def compare_models(
     groups: Optional[Union[str, Any]] = None,
     experiment_custom_tags: Optional[Dict[str, Any]] = None,
     verbose: bool = True,
-    display: Optional[Display] = None,
-    parallel: Optional[ParallelBackend] = None,
+    # parallel: Optional[ParallelBackend] = None,
 ):
 
     """
@@ -719,7 +718,8 @@ def compare_models(
     - No models are logged in ``MLFlow`` when ``cross_validation`` parameter is False.
 
     """
-    params = dict(locals())
+    # params = dict(locals())
+    parallel = None
     if parallel is not None:
         global _pycaret_setup_call
         parallel.attach(_pycaret_setup_call["func"], _pycaret_setup_call["params"])
@@ -746,7 +746,6 @@ def compare_models(
         groups=groups,
         experiment_custom_tags=experiment_custom_tags,
         verbose=verbose,
-        display=display,
     )
 
 
