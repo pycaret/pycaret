@@ -97,6 +97,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             "residuals": "Residuals Plot",
             "periodogram": "Frequency Components (Periodogram)",
             "fft": "Frequency Components (FFT)",
+            "ccf": "Cross Correlation (CCF)",
         }
 
         available_plots_common_keys = [
@@ -111,6 +112,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             "diff",
             "periodogram",
             "fft",
+            "ccf",
         ]
         self._available_plots_data_keys = available_plots_common_keys
         self._available_plots_estimator_keys = available_plots_common_keys + [
@@ -166,8 +168,10 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             ).items()
             if not v.is_special
         }
-        all_models_internal = pycaret.containers.models.time_series.get_all_model_containers(
-            self.variables, raise_errors=raise_errors
+        all_models_internal = (
+            pycaret.containers.models.time_series.get_all_model_containers(
+                self.variables, raise_errors=raise_errors
+            )
         )
         return all_models, all_models_internal
 
@@ -537,7 +541,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
     @staticmethod
     def _return_exogenous_names(
-        data: pd.DataFrame, target: List[str], ignore_features: Optional[List] = None,
+        data: pd.DataFrame, target: List[str], ignore_features: Optional[List] = None
     ):
 
         cols = data.columns.to_list()
@@ -546,7 +550,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         exo_variables = [item for item in cols if item not in ignore_features]
 
         # Remove targets
-        exo_variables = [item for item in exo_variables if item not in target]
+        exo_variables = [item for item in exo_variables if item != target]
 
         return exo_variables
 
@@ -599,6 +603,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         log_plots: Union[bool, list] = False,
         log_profile: bool = False,
         log_data: bool = False,
+        hoverinfo: Optional[str] = None,
         verbose: bool = True,
         profile: bool = False,
         profile_kwargs: Dict[str, Any] = None,
@@ -756,6 +761,12 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             Ignored when ``log_experiment`` is not True.
 
 
+        hoverinfo: Optional[str] = None
+            When None, hovering over certain plots is disabled when the data exceeds a
+            certain number of points. Can be set to any value that can be passed to plotly
+            `hoverinfo` arguments. e.g. "text" to display, "skip" or "none" to disable.
+
+
         verbose: bool, default = True
             When set to False, Information grid is not printed.
 
@@ -779,7 +790,11 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         #### Setup initialization ####
         ##############################
 
-        # Define parameter attrs ----
+        #### Define parameter attrs ----
+        # Number of data points above which the hovering of some plots is disabled
+        # This is needed else the notebooks become very slow.
+        self.hover_threshold = 200
+        self.hoverinfo = hoverinfo
         self.enforce_pi = enforce_pi
 
         #### Check and Clean Data ----
@@ -1146,7 +1161,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             self.display_container.append(model_results)
 
             display.display(
-                model_results, clear=system, override=False if not system else None,
+                model_results, clear=system, override=False if not system else None
             )
 
             self.logger.info(f"display_container: {len(self.display_container)}")
@@ -1174,9 +1189,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         # display.update_monitor(
         #     1, f"Fitting {_get_cv_n_folds(data_y, cv)} Folds",
         # )
-        display.update_monitor(
-            1, f"Fitting {cv.get_n_splits(data_y)} Folds",
-        )
+        display.update_monitor(1, f"Fitting {cv.get_n_splits(data_y)} Folds")
         display.display_monitor()
         """
         MONITOR UPDATE ENDS
@@ -1253,7 +1266,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         model_results = pd.DataFrame(score_dict)
         model_results.insert(0, "cutoff", cutoffs)
 
-        model_avgs = pd.DataFrame(avgs_dict, index=["Mean", "SD"],)
+        model_avgs = pd.DataFrame(avgs_dict, index=["Mean", "SD"])
         model_avgs.insert(0, "cutoff", np.nan)
 
         model_results = model_results.append(model_avgs)
@@ -1960,6 +1973,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         plot: Optional[str] = None,
         return_fig: bool = False,
         return_data: bool = False,
+        hoverinfo: Optional[str] = None,
         verbose: bool = False,
         display_format: Optional[str] = None,
         data_kwargs: Optional[Dict] = None,
@@ -2008,6 +2022,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             * 'diff' - Difference Plot
             * 'periodogram' - Frequency Components (Periodogram)
             * 'fft' - Frequency Components (FFT)
+            * 'ccf' - Cross Correlation (CCF)
             * 'forecast' - "Out-of-Sample" Forecast Plot
             * 'insample' - "In-Sample" Forecast Plot
             * 'residuals' - Residuals Plot
@@ -2021,6 +2036,13 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             When set to True, it returns the data for plotting.
             If both return_fig and return_data is set to True, order of return
             is figure then data.
+
+
+        hoverinfo: Optional[str] = None
+            Override for the experiment global `hoverinfo` passed during setup.
+            Useful when user wants to change the hoverinfo for certain plots only.
+            Can be set to any value that can be passed to plotly `hoverinfo`
+            arguments. e.g. "text" to display, "skip" or "none" to disable.
 
 
         verbose: bool, default = True
@@ -2089,7 +2111,8 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         elif plot is None and estimator is not None:
             plot = "forecast"
 
-        data, train, test, predictions, cv, model_name = (
+        data, train, test, X, predictions, cv, model_name = (
+            None,
             None,
             None,
             None,
@@ -2098,14 +2121,21 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             None,
         )
 
+        include = data_kwargs.get("include", None)
+        exclude = data_kwargs.get("exclude", None)
+
         if plot == "ts":
             data = self._get_y_data(split="all")
+            X = self._get_X_data(split="all", include=include, exclude=exclude)
         elif plot == "train_test_split":
             train = self._get_y_data(split="train")
             test = self._get_y_data(split="test")
         elif plot == "cv":
             data = self._get_y_data(split="train")
             cv = self.get_fold_generator()
+        elif plot == "ccf":
+            data = self._get_y_data(split="all")
+            X = self._get_X_data(split="all", include=include, exclude=exclude)
         elif estimator is None:
             # Estimator is not provided
             require_full_data = [
@@ -2195,15 +2225,21 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                     f"Available plots are: {', '.join(plots_formatted_model)}"
                 )
 
+        hoverinfo = self._resolve_hoverinfo(
+            hoverinfo=hoverinfo, data=data, train=train, test=test, X=X
+        )
+
         fig, plot_data = _plot(
             plot=plot,
             data=data,
             train=train,
             test=test,
+            X=X,
             predictions=predictions,
             cv=cv,
             model_name=model_name,
             return_pred_int=return_pred_int,
+            hoverinfo=hoverinfo,
             data_kwargs=data_kwargs,
             fig_kwargs=fig_kwargs,
         )
@@ -2245,6 +2281,23 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         elif len(return_obj) == 1:
             return_obj = return_obj[0]
         return return_obj
+
+    def _resolve_hoverinfo(self, hoverinfo, data, train, test, X):
+        # Decide whether hover should be enabled or disabled (if "auto")
+        if self.hoverinfo is None and hoverinfo is None:
+            hoverinfo = "text"
+            if data is not None and len(data) > self.hover_threshold:
+                hoverinfo = "skip"
+            if train is not None and len(train) > self.hover_threshold:
+                hoverinfo = "skip"
+            if test is not None and len(test) > self.hover_threshold:
+                hoverinfo = "skip"
+            if X is not None and len(X) * X.shape[1] > self.hover_threshold:
+                hoverinfo = "skip"
+        elif self.hoverinfo is not None and hoverinfo is None:
+            hoverinfo = self.hoverinfo
+        # if hoverinfo is not None, then use as is.
+        return hoverinfo
 
     def predict_model(
         self,
@@ -2492,9 +2545,9 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             try:
                 np.random.seed(self.seed)
                 if not display:
-                    display = Display(verbose=verbose, html_param=self.html_param,)
+                    display = Display(verbose=verbose, html_param=self.html_param)
             except:
-                display = Display(verbose=False, html_param=False,)
+                display = Display(verbose=False, html_param=False)
 
             full_name = self._get_model_name(estimator_)
             df_score = pd.DataFrame(metrics, index=[0])
@@ -2511,7 +2564,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         return result
 
     def finalize_model(
-        self, estimator, fit_kwargs: Optional[dict] = None, model_only: bool = True,
+        self, estimator, fit_kwargs: Optional[dict] = None, model_only: bool = True
     ) -> Any:
 
         """
@@ -2548,11 +2601,11 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         """
 
         return super().finalize_model(
-            estimator=estimator, fit_kwargs=fit_kwargs, model_only=model_only,
+            estimator=estimator, fit_kwargs=fit_kwargs, model_only=model_only
         )
 
     def deploy_model(
-        self, model, model_name: str, authentication: dict, platform: str = "aws",
+        self, model, model_name: str, authentication: dict, platform: str = "aws"
     ):
 
         """
@@ -2848,7 +2901,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         """
 
         return super().get_metrics(
-            reset=reset, include_custom=include_custom, raise_errors=raise_errors,
+            reset=reset, include_custom=include_custom, raise_errors=raise_errors
         )
 
     def add_metric(
@@ -3139,7 +3192,25 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         results.reset_index(inplace=True, drop=True)
         return results
 
-    def _get_y_data(self, split="all"):
+    def _get_y_data(self, split="all") -> pd.Series:
+        """Returns the y data for the requested split
+
+        Parameters
+        ----------
+        split : str, optional
+            The plot for which the data must be returned. Options are: "all",
+            "train" or "test", by default "all".
+
+        Returns
+        -------
+        pd.Series
+            The y values for the requested split
+
+        Raises
+        ------
+        ValueError
+            When `split` is not one of the allowed types
+        """
         if split == "all":
             data = self.y
         elif split == "train":
@@ -3148,6 +3219,53 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             data = self.y_test
         else:
             raise ValueError(f"split value: '{split}' is not supported.")
+        return data
+
+    def _get_X_data(
+        self,
+        split="all",
+        include: Optional[List[str]] = None,
+        exclude: Optional[List[str]] = None,
+    ) -> pd.DataFrame:
+        """Returns the X data for the requested split
+
+        Parameters
+        ----------
+        split : str, optional
+            The plot for which the data must be returned. Options are: "all",
+            "train" or "test", by default "all".
+        include : Optional[List[str]], optional
+            The columns to include in the returned data, by default None which
+            returns all the columns
+        exclude : Optional[List[str]], optional
+            The columns to exclude from the returned data, by default None which
+            does not exclude any columns
+
+        Returns
+        -------
+        pd.DataFrame
+            The X values for the requested split
+
+        Raises
+        ------
+        ValueError
+            When `split` is not one of the allowed types
+        """
+        if split == "all":
+            data = self.X
+        elif split == "train":
+            data = self.X_train
+        elif split == "test":
+            data = self.X_test
+        else:
+            raise ValueError(f"split value: '{split}' is not supported.")
+
+        # TODO: Move this functionality (of including/excluding cols) to some utility module.
+        if include:
+            data = data[include]
+        if exclude:
+            data = data.loc[:, ~data.columns.isin(exclude)]
+
         return data
 
     def get_residuals(self, estimator) -> Optional[pd.Series]:
