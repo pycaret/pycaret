@@ -1959,7 +1959,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         ERROR HANDLING ENDS HERE
         """
 
-        logger.info("defining variables")
+        self.logger.info("defining variables")
         # get estimator name
         model_name = self._get_model_name(estimator)
 
@@ -1970,7 +1970,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         models_by_threshold = []
         results_df = []
 
-        logger.info("starting optimization loop")
+        self.logger.info("starting optimization loop")
         # loop starts here
         for i in grid:
             model = self.create_model(estimator, verbose=False, system=False, probability_threshold=i)
@@ -1982,7 +1982,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             model_results['probability_threshold'] = i
             results_df.append(model_results)
 
-        logger.info("optimization loop finished successfully")
+        self.logger.info("optimization loop finished successfully")
 
         results_concat = pd.concat(results_df, axis=0)
         results_concat_melted = results_concat.melt(id_vars = ['probability_threshold'], value_vars=list(results_concat.columns[:-1]))
@@ -1997,7 +1997,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         plot_kwargs = plot_kwargs or {}
         fig = px.line(results_concat_melted, x="probability_threshold", y="value", title = title,\
                         color='variable', **plot_kwargs)
-        logger.info("Figure ready for render")
+        self.logger.info("Figure ready for render")
         fig.show()
 
         self.logger.info("returning model with best metric")
