@@ -155,11 +155,13 @@ def corr_subplot(
             fig=fig, lower=lower, upper=upper, row=row, col=col
         )
 
-    fig.update_traces(showlegend=False)
-    fig.update_xaxes(range=[-1, len(corr_values) + 1], row=row, col=col)
-    fig.update_yaxes(range=[-1.1, 1.1], zerolinecolor="#000000", row=row, col=col)
-    fig.update_xaxes(title_text="Lags", row=row, col=col)
-    fig.update_yaxes(title_text=default_name, row=row, col=col)
+    with fig.batch_update():
+        fig.update_traces(showlegend=False)
+        fig.update_xaxes(range=[-1, len(corr_values) + 1], row=row, col=col)
+        fig.update_yaxes(range=[-1.1, 1.1], zerolinecolor="#000000", row=row, col=col)
+        # For compactness, the following have been removed for now
+        # fig.update_xaxes(title_text="Lags", row=row, col=col)
+        # fig.update_yaxes(title_text=default_name, row=row, col=col)
     return fig, (corr_values, lags, upper, lower)
 
 
@@ -195,7 +197,7 @@ def _add_corr_stems_subplot(
     """
     #### Add corr plot stem lines ----
     [
-        fig.add_scatter(
+        fig.add_scattergl(
             x=(lag, lag),
             y=(0, corr_values[lag]),
             mode="lines",
@@ -208,7 +210,7 @@ def _add_corr_stems_subplot(
     ]
 
     #### Add corr plot stem endpoints ----
-    fig.add_scatter(
+    fig.add_scattergl(
         x=lags,
         y=corr_values,
         mode="markers",
@@ -245,7 +247,7 @@ def _add_corr_bounds_subplot(
         Returns back the plotly figure with correlation confidence bounds inserted
     """
     #### Add the Upper Confidence Interval ----
-    fig.add_scatter(
+    fig.add_scattergl(
         x=np.arange(len(upper)),
         y=upper,
         mode="lines",
@@ -256,7 +258,7 @@ def _add_corr_bounds_subplot(
     )
 
     #### Add the Lower Confidence Interval ----
-    fig.add_scatter(
+    fig.add_scattergl(
         x=np.arange(len(lower)),
         y=lower,
         mode="lines",
@@ -303,7 +305,7 @@ def qq_subplot(
 
     fig.add_trace(
         {
-            "type": "scatter",
+            "type": "scattergl",
             "x": qqplot_data[0].get_xdata(),
             "y": qqplot_data[0].get_ydata(),
             "mode": "markers",
@@ -316,7 +318,7 @@ def qq_subplot(
 
     fig.add_trace(
         {
-            "type": "scatter",
+            "type": "scattergl",
             "x": qqplot_data[1].get_xdata(),
             "y": qqplot_data[1].get_ydata(),
             "mode": "lines",
@@ -326,8 +328,9 @@ def qq_subplot(
         row=row,
         col=col,
     )
-    fig.update_xaxes(title_text="Theoretical Quantities", row=2, col=2)
-    fig.update_yaxes(title_text="Sample Quantities", row=2, col=2)
+    with fig.batch_update():
+        fig.update_xaxes(title_text="Theoretical Quantities", row=row, col=col)
+        fig.update_yaxes(title_text="Sample Quantities", row=row, col=col)
     return fig, qqplot_data
 
 
@@ -356,8 +359,9 @@ def dist_subplot(fig: go.Figure, data: pd.Series, row: int, col: int) -> go.Figu
     temp_fig = px.histogram(data, color_discrete_sequence=["#1f77b4"])
     fig.add_trace(temp_fig.data[0], row=row, col=col)
 
-    fig.update_xaxes(title_text="Range of Values", row=row, col=col)
-    fig.update_yaxes(title_text="PDF", row=row, col=col)
+    with fig.batch_update():
+        fig.update_xaxes(title_text="Range of Values", row=row, col=col)
+        fig.update_yaxes(title_text="PDF", row=row, col=col)
     return fig
 
 
@@ -480,7 +484,7 @@ def frequency_components_subplot(
 
     if hoverinfo == "text":
         fig.add_trace(
-            go.Scatter(
+            data=go.Scattergl(
                 name=name,
                 x=freq_data["Freq"],
                 y=freq_data["Amplitude"],
@@ -498,7 +502,7 @@ def frequency_components_subplot(
     else:
         # Disable hoverinfo
         fig.add_trace(
-            go.Scatter(
+            go.Scattergl(
                 name=name,
                 x=freq_data["Freq"],
                 y=freq_data["Amplitude"],
@@ -511,7 +515,12 @@ def frequency_components_subplot(
             row=row,
             col=col,
         )
-    # X-axis is getting messed up when acf or pacf is being plotted along with this
-    # Hence setting explicitly per https://plotly.com/python/subplots/
-    fig.update_xaxes(range=[0, 0.5], row=row, col=col)
+
+    with fig.batch_update():
+        # For compactness, the following have been removed for now
+        # fig.update_xaxes(title_text="Frequency", row=row, col=col)
+
+        # X-axis is getting messed up when acf or pacf is being plotted along with this
+        # Hence setting explicitly per https://plotly.com/python/subplots/
+        fig.update_xaxes(range=[0, 0.5], row=row, col=col)
     return fig, freq_data
