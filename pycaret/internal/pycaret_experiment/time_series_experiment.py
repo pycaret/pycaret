@@ -77,6 +77,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 "seasonal_period",
                 "seasonality_present",
                 "sp_to_use",
+                "all_sp_values",
                 "strictly_positive",
                 "enforce_pi",
                 "index_type",
@@ -138,9 +139,10 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 ["Fold Generator", type(self.fold_generator).__name__],
                 ["Fold Number", self.fold_param],
                 ["Enforce Prediction Interval", self.enforce_pi],
-                ["Seasonal Period Tested", self.seasonal_period],
-                ["Seasonality Detected", self.seasonality_present],
-                ["Seasonality Used in Models", self.sp_to_use],
+                ["Seasonal Period(s) Tested", self.seasonal_period],
+                ["Seasonality Present", self.seasonality_present],
+                ["Seasonalities Detected", self.all_sp_values],
+                ["Primary Seasonality", self.sp_to_use],
                 ["Target Strictly Positive", self.strictly_positive],
                 ["Target White Noise", self.white_noise],
                 ["Recommended d", self.lowercase_d],
@@ -348,7 +350,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         self,
         data: pd.DataFrame,
         index: Optional[str] = None,
-        seasonal_period: Optional[Union[int, str]] = None,
+        seasonal_period: Optional[Union[List[Union[int, str]], int, str]] = None,
     ) -> pd.DataFrame:
         """
         Checks if the index is one of the allowed types (pd.PeriodIndex,
@@ -368,7 +370,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             internally converted to datetime using `pd.to_datetime()`. If None,
             then the data's index is used as is for modeling.
 
-        seasonal_period : Optional[Union[int, str]], default = None
+        seasonal_period : Optional[Union[List[Union[int, str]], int, str]], default = None
             Seasonal Period specified by user
 
         Returns
@@ -488,22 +490,69 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         self.fh = fh
 
     def _check_and_set_seasonal_period(
-        self, data: pd.DataFrame, seasonal_period: Optional[Union[int, str]]
+        self,
+        data: pd.DataFrame,
+        seasonal_period: Optional[Union[List[Union[int, str]], int, str]],
     ):
-        """Derived the seasonal period by either
+        """Derived the seasonal periods by either
         (1) Extracting it from data's index (if seasonal period is not provided), or
-        (2) Extracting it from the seasonal_period if it is of type string, or
-        (3) Using seasonal_period as is if it is of type int.
+        for each value of seasonal_period:
+            (2) Extracting it from the value if it is of type string, or
+            (3) Using the value as is if it is of type int.
 
-        After deriving the seasonal period, a seasonality test is performed.
-        Final seasonal period class attribute value is set equal to
-        (1) 1 if seasonality is not detected at the derived seasonal period, or
-        (2) the derived seasonal period if seasonality is detected at that value.
+        After deriving the seasonal periods, a seasonality test is performed for each
+        value of seasonal_period. Final seasonal period class attribute value is set equal to
+        (1) 1 if seasonality is not detected at any of the derived seasonal periods, or
+        (2) the derived seasonal periods for which seasonality is detected.
 
         Parameters
         ----------
         data : pd.DataFrame
             Data used index can be used to extract the seasonal period information
+        seasonal_period : Optional[Union[List[Union[int, str]], int, str]]
+            Seasonal Period specified by user
+
+        Raises
+        ------
+        ValueError
+            If seasonal period is provided but its values are not of type int or string
+        """
+        self.logger.info("Set up Seasonal Period.")
+
+        # sktime is an optional dependency
+        from sktime.utils.seasonality import autocorrelation_seasonality_test
+
+        if seasonal_period is None:
+            seasonal_period = data.index.freqstr
+
+        if not isinstance(seasonal_period, list):
+            seasonal_period = [seasonal_period]
+        seasonal_period = [self._convert_sp_to_int(sp) for sp in seasonal_period]
+
+        # check valid seasonal parameter
+        seasonality_test_results = [
+            autocorrelation_seasonality_test(data[self.target_param], sp)
+            for sp in seasonal_period
+        ]
+        self.seasonality_present = any(seasonality_test_results)
+        sp_values_and_test_result = zip(seasonal_period, seasonality_test_results)
+
+        # What seasonal period should be used for modeling?
+        self.all_sp_values = [
+            sp
+            for sp, seasonality_present in sp_values_and_test_result
+            if seasonality_present
+        ] or [1]
+        self.sp_to_use = self.all_sp_values[0]
+        self.seasonal_period = seasonal_period[0] if len(seasonal_period) == 1 else seasonal_period
+
+    def _convert_sp_to_int(self, seasonal_period):
+        """Derives the seasonal period specified by either:
+            (1) Extracting it from the seasonal_period if it is of type string, or
+            (2) Using seasonal_period as is if it is of type int.
+
+        Parameters
+        ----------
         seasonal_period : Optional[Union[int, str]]
             Seasonal Period specified by user
 
@@ -512,32 +561,15 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         ValueError
             If seasonal period is provided but is not of type int or string
         """
-        self.logger.info("Set up Seasonal Period.")
+        if not isinstance(seasonal_period, (int, str)):
+            raise ValueError(
+                f"seasonal_period parameter must be an int or str, got {type(seasonal_period)}"
+            )
 
-        # sktime is an optional dependency
-        from sktime.utils.seasonality import autocorrelation_seasonality_test
+        if isinstance(seasonal_period, str):
+            return get_sp_from_str(str_freq=seasonal_period)
 
-        if seasonal_period is None:
-            index_freq = data.index.freqstr
-            self.seasonal_period = get_sp_from_str(str_freq=index_freq)
-        else:
-            if not isinstance(seasonal_period, (int, str)):
-                raise ValueError(
-                    f"seasonal_period parameter must be an int or str, got {type(seasonal_period)}"
-                )
-
-            if isinstance(seasonal_period, str):
-                self.seasonal_period = get_sp_from_str(str_freq=seasonal_period)
-            else:
-                self.seasonal_period = seasonal_period
-
-        # check valid seasonal parameter
-        self.seasonality_present = autocorrelation_seasonality_test(
-            data[self.target_param], self.seasonal_period
-        )
-
-        # What seasonal period should be used for modeling?
-        self.sp_to_use = self.seasonal_period if self.seasonality_present else 1
+        return seasonal_period
 
     @staticmethod
     def _return_exogenous_names(
@@ -588,7 +620,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         fold_strategy: Union[str, Any] = "expanding",
         fold: int = 3,
         fh: Optional[Union[List[int], int, np.array]] = 1,
-        seasonal_period: Optional[Union[int, str]] = None,
+        seasonal_period: Optional[Union[List[Union[int, str]], int, str]] = None,
         enforce_pi: bool = False,
         n_jobs: Optional[int] = -1,
         use_gpu: bool = False,
@@ -682,7 +714,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             object. In this case, fh is derived from this object.
 
 
-        seasonal_period: int or str, default = None
+        seasonal_period: list or int or str, default = None
             Seasonal period in timeseries data. If not provided the frequency of the data
             index is mapped to a seasonal period as follows:
 
@@ -698,8 +730,10 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
             Alternatively you can provide a custom `seasonal_period` by passing
             it as an integer or a string corresponding to the keys above (e.g.
-            'W' for weekly data, 'M' for monthly data, etc.).
-
+            'W' for weekly data, 'M' for monthly data, etc.). You can also provide
+            a list of such values to use in models that accept multple seasonal values
+            (currently TBATS). For models that don't accept multiple seasonal values, the 
+            first value of the list will be used as the seasonal period.
 
         enforce_pi: bool, default = False
             When set to True, only models that support prediction intervals are
