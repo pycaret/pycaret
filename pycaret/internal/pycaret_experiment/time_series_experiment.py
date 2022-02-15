@@ -549,7 +549,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         Parameters
         ----------
-        seasonal_period : Optional[Union[List[Union[int, str]], int, str]]
+        seasonal_period : Optional[Union[int, str]]
             Seasonal Period specified by user
 
         Raises
