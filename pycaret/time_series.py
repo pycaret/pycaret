@@ -44,6 +44,7 @@ def setup(
     log_plots: Union[bool, list] = False,
     log_profile: bool = False,
     log_data: bool = False,
+    hoverinfo: Optional[str] = None,
     verbose: bool = True,
     profile: bool = False,
     profile_kwargs: Dict[str, Any] = None,
@@ -201,6 +202,12 @@ def setup(
         Ignored when ``log_experiment`` is not True.
 
 
+    hoverinfo: Optional[str] = None
+            When None, hovering over certain plots is disabled when the data exceeds a
+            certain number of points. Can be set to any value that can be passed to plotly
+            `hoverinfo` arguments. e.g. "text" to display, "skip" or "none" to disable.
+
+
     verbose: bool, default = True
         When set to False, Information grid is not printed.
 
@@ -244,6 +251,7 @@ def setup(
         log_plots=log_plots,
         log_profile=log_profile,
         log_data=log_data,
+        hoverinfo=hoverinfo,
         verbose=verbose,
         profile=profile,
         profile_kwargs=profile_kwargs,
@@ -907,6 +915,7 @@ def plot_model(
     plot: Optional[str] = None,
     return_fig: bool = False,
     return_data: bool = False,
+    hoverinfo: Optional[str] = None,
     verbose: bool = False,
     display_format: Optional[str] = None,
     data_kwargs: Optional[Dict] = None,
@@ -954,6 +963,7 @@ def plot_model(
         * 'diff' - Difference Plot
         * 'periodogram' - Frequency Components (Periodogram)
         * 'fft' - Frequency Components (FFT)
+        * 'ccf' - Cross Correlation (CCF)
         * 'forecast' - "Out-of-Sample" Forecast Plot
         * 'insample' - "In-Sample" Forecast Plot
         * 'residuals' - Residuals Plot
@@ -969,8 +979,15 @@ def plot_model(
         is figure then data.
 
 
+    hoverinfo: Optional[str] = None
+        Override for the experiment global `hoverinfo` passed during setup.
+        Useful when user wants to change the hoverinfo for certain plots only.
+        Can be set to any value that can be passed to plotly `hoverinfo`
+        arguments. e.g. "text" to display, "skip" or "none" to disable.
+
+
     verbose: bool, default = True
-            Unused for now
+        Unused for now
 
 
     display_format: str, default = None
@@ -1005,6 +1022,7 @@ def plot_model(
         plot=plot,
         return_fig=return_fig,
         return_data=return_data,
+        hoverinfo=hoverinfo,
         display_format=display_format,
         data_kwargs=data_kwargs,
         fig_kwargs=fig_kwargs,
@@ -1292,12 +1310,7 @@ def finalize_model(
 
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
-def deploy_model(
-    model,
-    model_name: str,
-    authentication: dict,
-    platform: str = "aws",
-):
+def deploy_model(model, model_name: str, authentication: dict, platform: str = "aws"):
 
     """
     This function deploys the transformation pipeline and trained model on cloud.
@@ -1557,9 +1570,7 @@ def pull(pop: bool = False) -> pd.DataFrame:
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def models(
-    type: Optional[str] = None,
-    internal: bool = False,
-    raise_errors: bool = True,
+    type: Optional[str] = None, internal: bool = False, raise_errors: bool = True
 ) -> pd.DataFrame:
 
     """
@@ -1602,9 +1613,7 @@ def models(
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def get_metrics(
-    reset: bool = False,
-    include_custom: bool = True,
-    raise_errors: bool = True,
+    reset: bool = False, include_custom: bool = True, raise_errors: bool = True
 ) -> pd.DataFrame:
 
     """
@@ -1640,19 +1649,13 @@ def get_metrics(
     """
 
     return _CURRENT_EXPERIMENT.get_metrics(
-        reset=reset,
-        include_custom=include_custom,
-        raise_errors=raise_errors,
+        reset=reset, include_custom=include_custom, raise_errors=raise_errors
     )
 
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def add_metric(
-    id: str,
-    name: str,
-    score_func: type,
-    greater_is_better: bool = True,
-    **kwargs,
+    id: str, name: str, score_func: type, greater_is_better: bool = True, **kwargs
 ) -> pd.Series:
 
     """
@@ -1993,8 +1996,5 @@ def check_stats(
         Dataframe with the test results
     """
     return _CURRENT_EXPERIMENT.check_stats(
-        estimator=estimator,
-        test=test,
-        alpha=alpha,
-        split=split,
+        estimator=estimator, test=test, alpha=alpha, split=split
     )
