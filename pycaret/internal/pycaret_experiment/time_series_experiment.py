@@ -18,6 +18,8 @@ from sktime.forecasting.model_selection import (  # type: ignore
     SlidingWindowSplitter,
 )
 
+import plotly.io as pio
+
 import pycaret.containers.metrics.time_series
 import pycaret.containers.models.time_series
 import pycaret.internal.patches.sklearn
@@ -544,7 +546,9 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             if seasonality_present
         ] or [1]
         self.sp_to_use = self.all_sp_values[0]
-        self.seasonal_period = seasonal_period[0] if len(seasonal_period) == 1 else seasonal_period
+        self.seasonal_period = (
+            seasonal_period[0] if len(seasonal_period) == 1 else seasonal_period
+        )
 
     def _convert_sp_to_int(self, seasonal_period):
         """Derives the seasonal period specified by either:
@@ -636,6 +640,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         log_profile: bool = False,
         log_data: bool = False,
         hoverinfo: Optional[str] = None,
+        renderer: Optional[str] = None,
         verbose: bool = True,
         profile: bool = False,
         profile_kwargs: Dict[str, Any] = None,
@@ -732,7 +737,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             it as an integer or a string corresponding to the keys above (e.g.
             'W' for weekly data, 'M' for monthly data, etc.). You can also provide
             a list of such values to use in models that accept multple seasonal values
-            (currently TBATS). For models that don't accept multiple seasonal values, the 
+            (currently TBATS). For models that don't accept multiple seasonal values, the
             first value of the list will be used as the seasonal period.
 
         enforce_pi: bool, default = False
@@ -797,8 +802,19 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         hoverinfo: Optional[str] = None
             When None, hovering over certain plots is disabled when the data exceeds a
-            certain number of points. Can be set to any value that can be passed to plotly
-            `hoverinfo` arguments. e.g. "text" to display, "skip" or "none" to disable.
+            certain number of points (determined by `plot_big_data_threshold`). Can be
+            set to any value that can be passed to plotly `hoverinfo` arguments.
+            e.g. "text" to display, "skip" or "none" to disable.
+
+
+        renderer: Optional[str] = None
+            When None, plots use plotly's default render when data is below a certain
+            number of points (determined by `plot_big_data_threshold`) otherwise it
+            switches to a static "png" renderer. Alternately, users can specify the
+            renderer they want to use. e.g. "notebook", "png", "svg". Refer to plotly
+            documentation for availale renderers. Also note that certain renderers
+            (like "svg") may need additional libraries to be installed. Users will
+            have to do this manually since they don't come preinstalled with plotly.
 
 
         verbose: bool, default = True
@@ -827,8 +843,9 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         #### Define parameter attrs ----
         # Number of data points above which the hovering of some plots is disabled
         # This is needed else the notebooks become very slow.
-        self.hover_threshold = 200
+        self.plot_big_data_threshold = 200
         self.hoverinfo = hoverinfo
+        self.renderer = renderer
         self.enforce_pi = enforce_pi
 
         #### Check and Clean Data ----
@@ -2008,6 +2025,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         return_fig: bool = False,
         return_data: bool = False,
         hoverinfo: Optional[str] = None,
+        renderer: Optional[str] = None,
         verbose: bool = False,
         display_format: Optional[str] = None,
         data_kwargs: Optional[Dict] = None,
@@ -2077,6 +2095,15 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             Useful when user wants to change the hoverinfo for certain plots only.
             Can be set to any value that can be passed to plotly `hoverinfo`
             arguments. e.g. "text" to display, "skip" or "none" to disable.
+
+
+        renderer: Optional[str] = None
+            When None, plots use the `renderer` passed during setup. Alternately,
+            users can specify the renderer they want to use. e.g. "notebook", "png",
+            "svg". Refer to plotly documentation for availale renderers. Also note
+            that certain renderers (like "svg") may need additional libraries to
+            be installed. Users will have to do this manually since they don't come
+            preinstalled with plotly.
 
 
         verbose: bool, default = True
@@ -2263,6 +2290,10 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             hoverinfo=hoverinfo, data=data, train=train, test=test, X=X
         )
 
+        renderer = self._resolve_renderer(
+            renderer=renderer, data=data, train=train, test=test, X=X
+        )
+
         fig, plot_data = _plot(
             plot=plot,
             data=data,
@@ -2299,7 +2330,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 if display_format == "streamlit":
                     st.write(fig)
                 else:
-                    fig.show()
+                    fig.show(renderer=renderer)
                 self.logger.info("Visual Rendered Successfully")
 
         ### Add figure and data to return object if required ----
@@ -2317,21 +2348,38 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         return return_obj
 
     def _resolve_hoverinfo(self, hoverinfo, data, train, test, X):
-        # Decide whether hover should be enabled or disabled (if "auto")
+        # Decide whether hover should be enabled or disabled
         if self.hoverinfo is None and hoverinfo is None:
             hoverinfo = "text"
-            if data is not None and len(data) > self.hover_threshold:
+            if data is not None and len(data) > self.plot_big_data_threshold:
                 hoverinfo = "skip"
-            if train is not None and len(train) > self.hover_threshold:
+            if train is not None and len(train) > self.plot_big_data_threshold:
                 hoverinfo = "skip"
-            if test is not None and len(test) > self.hover_threshold:
+            if test is not None and len(test) > self.plot_big_data_threshold:
                 hoverinfo = "skip"
-            if X is not None and len(X) * X.shape[1] > self.hover_threshold:
+            if X is not None and len(X) * X.shape[1] > self.plot_big_data_threshold:
                 hoverinfo = "skip"
         elif self.hoverinfo is not None and hoverinfo is None:
             hoverinfo = self.hoverinfo
         # if hoverinfo is not None, then use as is.
         return hoverinfo
+
+    def _resolve_renderer(self, renderer, data, train, test, X):
+        # Decide the render to be used
+        if self.renderer is None and renderer is None:
+            renderer = pio.renderers.default
+            if data is not None and len(data) > self.plot_big_data_threshold:
+                renderer = "png"
+            if train is not None and len(train) > self.plot_big_data_threshold:
+                renderer = "png"
+            if test is not None and len(test) > self.plot_big_data_threshold:
+                renderer = "png"
+            if X is not None and len(X) * X.shape[1] > self.plot_big_data_threshold:
+                renderer = "png"
+        elif self.renderer is not None and renderer is None:
+            renderer = self.renderer
+        # if renderer is not None, then use as is.
+        return renderer
 
     def predict_model(
         self,

@@ -47,6 +47,7 @@ def setup(
     log_profile: bool = False,
     log_data: bool = False,
     hoverinfo: Optional[str] = None,
+    renderer: Optional[str] = None,
     verbose: bool = True,
     profile: bool = False,
     profile_kwargs: Dict[str, Any] = None,
@@ -143,7 +144,7 @@ def setup(
         it as an integer or a string corresponding to the keys above (e.g.
         'W' for weekly data, 'M' for monthly data, etc.). You can also provide
         a list of such values to use in models that accept multple seasonal values
-        (currently TBATS). For models that don't accept multiple seasonal values, the 
+        (currently TBATS). For models that don't accept multiple seasonal values, the
         first value of the list will be used as the seasonal period.
 
     enforce_pi: bool, default = False
@@ -207,9 +208,20 @@ def setup(
 
 
     hoverinfo: Optional[str] = None
-            When None, hovering over certain plots is disabled when the data exceeds a
-            certain number of points. Can be set to any value that can be passed to plotly
-            `hoverinfo` arguments. e.g. "text" to display, "skip" or "none" to disable.
+        When None, hovering over certain plots is disabled when the data exceeds a
+        certain number of points (determined by `plot_big_data_threshold`). Can be
+        set to any value that can be passed to plotly `hoverinfo` arguments.
+        e.g. "text" to display, "skip" or "none" to disable.
+
+
+    renderer: Optional[str] = None
+        When None, plots use plotly's default render when data is below a certain
+        number of points (determined by `plot_big_data_threshold`) otherwise it
+        switches to a static "png" renderer. Alternately, users can specify the
+        renderer they want to use. e.g. "notebook", "png", "svg". Refer to plotly
+        documentation for availale renderers. Also note that certain renderers
+        (like "svg") may need additional libraries to be installed. Users will
+        have to do this manually since they don't come preinstalled with plotly.
 
 
     verbose: bool, default = True
@@ -256,6 +268,7 @@ def setup(
         log_profile=log_profile,
         log_data=log_data,
         hoverinfo=hoverinfo,
+        renderer=renderer,
         verbose=verbose,
         profile=profile,
         profile_kwargs=profile_kwargs,
@@ -911,6 +924,7 @@ def plot_model(
     return_fig: bool = False,
     return_data: bool = False,
     hoverinfo: Optional[str] = None,
+    renderer: Optional[str] = None,
     verbose: bool = False,
     display_format: Optional[str] = None,
     data_kwargs: Optional[Dict] = None,
@@ -981,6 +995,15 @@ def plot_model(
         arguments. e.g. "text" to display, "skip" or "none" to disable.
 
 
+    renderer: Optional[str] = None
+        When None, plots use the `renderer` passed during setup. Alternately,
+        users can specify the renderer they want to use. e.g. "notebook", "png",
+        "svg". Refer to plotly documentation for availale renderers. Also note
+        that certain renderers (like "svg") may need additional libraries to
+        be installed. Users will have to do this manually since they don't come
+        preinstalled with plotly.
+
+
     verbose: bool, default = True
         Unused for now
 
@@ -1018,6 +1041,7 @@ def plot_model(
         return_fig=return_fig,
         return_data=return_data,
         hoverinfo=hoverinfo,
+        renderer=renderer,
         display_format=display_format,
         data_kwargs=data_kwargs,
         fig_kwargs=fig_kwargs,

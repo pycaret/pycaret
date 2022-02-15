@@ -196,6 +196,7 @@ def plot_series(
         rows=rows,
         cols=1,
         subplot_titles=subplot_titles,
+        vertical_spacing=0.02,
         shared_xaxes=True,
     )
 
@@ -209,17 +210,18 @@ def plot_series(
             name=col_name,
         )
 
-    fig.update_layout(title=title)
-    fig.update_layout(showlegend=False)
-    fig_template = fig_kwargs.get("fig_template", "ggplot2")
-    fig.update_layout(template=fig_template)
+    with fig.batch_update():
+        fig.update_layout(title=title)
+        fig.update_layout(showlegend=False)
+        fig_template = fig_kwargs.get("fig_template", "ggplot2")
+        fig.update_layout(template=fig_template)
 
-    default_width = None
-    default_height = 300 * rows if rows > 1 else None
-    default_fig_size = [default_width, default_height]
-    fig_size = fig_kwargs.get("fig_size", default_fig_size)
-    if fig_size is not None:
-        fig.update_layout(autosize=False, width=fig_size[0], height=fig_size[1])
+        default_width = None
+        default_height = 300 * rows if rows > 1 else None
+        default_fig_size = [default_width, default_height]
+        fig_size = fig_kwargs.get("fig_size", default_fig_size)
+        if fig_size is not None:
+            fig.update_layout(autosize=False, width=fig_size[0], height=fig_size[1])
 
     return_data_dict = {
         "data": plot_data,
@@ -263,20 +265,22 @@ def plot_splits_train_test_split(
             x=x, y=test, mode="lines+markers", marker_color="#FFA500", name="Test"
         )
     )
-    fig.update_layout(
-        {
-            "title": "Train Test Split",
-            "xaxis": {"title": "Time", "zeroline": False},
-            "yaxis": {"title": "Values"},
-            "showlegend": True,
-        }
-    )
-    fig_template = fig_kwargs.get("fig_template", "ggplot2")
-    fig.update_layout(template=fig_template)
 
-    fig_size = fig_kwargs.get("fig_size", None)
-    if fig_size is not None:
-        fig.update_layout(autosize=False, width=fig_size[0], height=fig_size[1])
+    with fig.batch_update():
+        fig.update_layout(
+            {
+                "title": "Train Test Split",
+                "xaxis": {"title": "Time", "zeroline": False},
+                "yaxis": {"title": "Values"},
+                "showlegend": True,
+            }
+        )
+        fig_template = fig_kwargs.get("fig_template", "ggplot2")
+        fig.update_layout(template=fig_template)
+
+        fig_size = fig_kwargs.get("fig_size", None)
+        if fig_size is not None:
+            fig.update_layout(autosize=False, width=fig_size[0], height=fig_size[1])
 
     return_data_dict = {
         "train": train,
@@ -323,7 +327,7 @@ def plot_cv(
 
             y_axis_label = str(num_window)
             [
-                fig.add_scatter(
+                fig.add_scattergl(
                     x=(time_stamps[i], time_stamps[i + 1]),
                     y=(y_axis_label, y_axis_label),
                     mode="lines+markers",
@@ -334,7 +338,7 @@ def plot_cv(
                 for i in range(len(data) - 1)
             ]
             [
-                fig.add_scatter(
+                fig.add_scattergl(
                     x=(time_stamps[i], time_stamps[i + 1]),
                     y=(y_axis_label, y_axis_label),
                     mode="lines+markers",
@@ -346,7 +350,7 @@ def plot_cv(
                 for i in train_windows[num_window][:-1]
             ]
             [
-                fig.add_scatter(
+                fig.add_scattergl(
                     x=(time_stamps[i], time_stamps[i + 1]),
                     y=(y_axis_label, y_axis_label),
                     mode="lines+markers",
@@ -356,22 +360,26 @@ def plot_cv(
                 )
                 for i in test_windows[num_window][:-1]
             ]
-            fig.update_traces(showlegend=False)
 
-            fig.update_layout(
-                {
-                    "title": "Train Cross-Validation Splits",
-                    "xaxis": {"title": "Time", "zeroline": False},
-                    "yaxis": {"title": "Windows"},
-                    "showlegend": True,
-                }
-            )
-            fig_template = fig_kwargs.get("fig_template", "ggplot2")
-            fig.update_layout(template=fig_template)
+            with fig.batch_update():
+                fig.update_traces(showlegend=False)
 
-            fig_size = fig_kwargs.get("fig_size", None)
-            if fig_size is not None:
-                fig.update_layout(autosize=False, width=fig_size[0], height=fig_size[1])
+                fig.update_layout(
+                    {
+                        "title": "Train Cross-Validation Splits",
+                        "xaxis": {"title": "Time", "zeroline": False},
+                        "yaxis": {"title": "Windows"},
+                        "showlegend": True,
+                    }
+                )
+                fig_template = fig_kwargs.get("fig_template", "ggplot2")
+                fig.update_layout(template=fig_template)
+
+                fig_size = fig_kwargs.get("fig_size", None)
+                if fig_size is not None:
+                    fig.update_layout(
+                        autosize=False, width=fig_size[0], height=fig_size[1]
+                    )
         return fig
 
     train_windows, test_windows = get_windows(data, cv)
@@ -412,7 +420,7 @@ def plot_acf(
 
     fig = go.Figure()
 
-    fig.add_scatter(
+    fig.add_scattergl(
         x=np.arange(len(corr_array[0])),
         y=corr_array[0],
         mode="markers",
@@ -422,7 +430,7 @@ def plot_acf(
     )
 
     [
-        fig.add_scatter(
+        fig.add_scattergl(
             x=(x, x),
             y=(0, corr_array[0][x]),
             mode="lines",
@@ -432,14 +440,14 @@ def plot_acf(
         for ind, x in enumerate(range(len(corr_array[0])))
     ]
 
-    fig.add_scatter(
+    fig.add_scattergl(
         x=np.arange(len(corr_array[0])),
         y=upper_y,
         mode="lines",
         line_color="rgba(255,255,255,0)",
         name="UC",
     )
-    fig.add_scatter(
+    fig.add_scattergl(
         x=np.arange(len(corr_array[0])),
         y=lower_y,
         mode="lines",
@@ -448,23 +456,26 @@ def plot_acf(
         line_color="rgba(255,255,255,0)",
         name="LC",
     )
-    fig.update_traces(showlegend=False)
-    fig.update_xaxes(range=[-1, 42])
-
-    fig.add_scatter(
-        x=(0, len(corr_array[0])), y=(0, 0), mode="lines", line_color="#3f3f3f", name=""
+    fig.add_scattergl(
+        x=(0, len(corr_array[0])),
+        y=(0, 0),
+        mode="lines",
+        line_color="#3f3f3f",
+        name="",
     )
-    fig.update_traces(showlegend=False)
 
-    fig.update_yaxes(zerolinecolor="#000000")
+    with fig.batch_update():
+        fig.update_xaxes(range=[-1, 42])
+        fig.update_yaxes(zerolinecolor="#000000")
+        fig.update_traces(showlegend=False)
 
-    fig_template = fig_kwargs.get("fig_template", "ggplot2")
-    fig.update_layout(template=fig_template)
+        fig_template = fig_kwargs.get("fig_template", "ggplot2")
+        fig.update_layout(template=fig_template)
 
-    fig_size = fig_kwargs.get("fig_size", None)
-    if fig_size is not None:
-        fig.update_layout(autosize=False, width=fig_size[0], height=fig_size[1])
-    fig.update_layout(title=title)
+        fig_size = fig_kwargs.get("fig_size", None)
+        if fig_size is not None:
+            fig.update_layout(autosize=False, width=fig_size[0], height=fig_size[1])
+        fig.update_layout(title=title)
 
     return_data_dict = {
         "acf": corr_array,
@@ -500,7 +511,7 @@ def plot_pacf(
 
     fig = go.Figure()
 
-    fig.add_scatter(
+    fig.add_scattergl(
         x=np.arange(len(corr_array[0])),
         y=corr_array[0],
         mode="markers",
@@ -510,7 +521,7 @@ def plot_pacf(
     )
 
     [
-        fig.add_scatter(
+        fig.add_scattergl(
             x=(x, x),
             y=(0, corr_array[0][x]),
             mode="lines",
@@ -520,14 +531,14 @@ def plot_pacf(
         for ind, x in enumerate(range(len(corr_array[0])))
     ]
 
-    fig.add_scatter(
+    fig.add_scattergl(
         x=np.arange(len(corr_array[0])),
         y=upper_y,
         mode="lines",
         line_color="rgba(255,255,255,0)",
         name="UC",
     )
-    fig.add_scatter(
+    fig.add_scattergl(
         x=np.arange(len(corr_array[0])),
         y=lower_y,
         mode="lines",
@@ -536,24 +547,28 @@ def plot_pacf(
         line_color="rgba(255,255,255,0)",
         name="LC",
     )
-    fig.update_traces(showlegend=False)
-    fig.update_xaxes(range=[-1, 42])
 
-    fig.add_scatter(
-        x=(0, len(corr_array[0])), y=(0, 0), mode="lines", line_color="#3f3f3f", name=""
+    fig.add_scattergl(
+        x=(0, len(corr_array[0])),
+        y=(0, 0),
+        mode="lines",
+        line_color="#3f3f3f",
+        name="",
     )
-    fig.update_traces(showlegend=False)
 
-    fig.update_yaxes(zerolinecolor="#000000")
+    with fig.batch_update():
+        fig.update_traces(showlegend=False)
+        fig.update_xaxes(range=[-1, 42])
+        fig.update_yaxes(zerolinecolor="#000000")
 
-    fig_template = fig_kwargs.get("fig_template", "ggplot2")
-    fig.update_layout(template=fig_template)
+        fig_template = fig_kwargs.get("fig_template", "ggplot2")
+        fig.update_layout(template=fig_template)
 
-    fig_size = fig_kwargs.get("fig_size", None)
-    if fig_size is not None:
-        fig.update_layout(autosize=False, width=fig_size[0], height=fig_size[1])
+        fig_size = fig_kwargs.get("fig_size", None)
+        if fig_size is not None:
+            fig.update_layout(autosize=False, width=fig_size[0], height=fig_size[1])
 
-    fig.update_layout(title=title)
+        fig.update_layout(title=title)
 
     return_data_dict = {
         "pacf": corr_array,
@@ -619,13 +634,14 @@ def plot_predictions(
 
     fig = go.Figure(data=data_for_fig, layout=layout)
 
-    fig_template = fig_kwargs.get("fig_template", "ggplot2")
-    fig.update_layout(template=fig_template)
+    with fig.batch_update():
+        fig_template = fig_kwargs.get("fig_template", "ggplot2")
+        fig.update_layout(template=fig_template)
 
-    fig_size = fig_kwargs.get("fig_size", None)
-    if fig_size is not None:
-        fig.update_layout(autosize=False, width=fig_size[0], height=fig_size[1])
-    fig.update_layout(showlegend=True)
+        fig_size = fig_kwargs.get("fig_size", None)
+        if fig_size is not None:
+            fig.update_layout(autosize=False, width=fig_size[0], height=fig_size[1])
+        fig.update_layout(showlegend=True)
 
     return_data_dict = {
         "data": data,
@@ -907,14 +923,16 @@ def plot_time_series_decomposition(
         row=4,
         col=1,
     )
-    fig.update_layout(title=title)
-    fig.update_layout(showlegend=False)
-    fig_template = fig_kwargs.get("fig_template", "ggplot2")
-    fig.update_layout(template=fig_template)
 
-    fig_size = fig_kwargs.get("fig_size", None)
-    if fig_size is not None:
-        fig.update_layout(autosize=False, width=fig_size[0], height=fig_size[1])
+    with fig.batch_update():
+        fig.update_layout(title=title)
+        fig.update_layout(showlegend=False)
+        fig_template = fig_kwargs.get("fig_template", "ggplot2")
+        fig.update_layout(template=fig_template)
+
+        fig_size = fig_kwargs.get("fig_size", None)
+        if fig_size is not None:
+            fig.update_layout(autosize=False, width=fig_size[0], height=fig_size[1])
 
     return_data_dict = {
         "data": data,
@@ -1050,14 +1068,15 @@ def plot_time_series_differences(
                 type="fft",
             )
 
-    fig.update_layout(title=title)
-    fig.update_layout(showlegend=False)
-    fig_template = fig_kwargs.get("fig_template", "ggplot2")
-    fig.update_layout(template=fig_template)
+    with fig.batch_update():
+        fig.update_layout(title=title)
+        fig.update_layout(showlegend=False)
+        fig_template = fig_kwargs.get("fig_template", "ggplot2")
+        fig.update_layout(template=fig_template)
 
-    fig_size = fig_kwargs.get("fig_size", [max(1200, 400 * cols), 300 * rows])
-    if fig_size is not None:
-        fig.update_layout(autosize=False, width=fig_size[0], height=fig_size[1])
+        fig_size = fig_kwargs.get("fig_size", [max(1200, 400 * cols), 300 * rows])
+        if fig_size is not None:
+            fig.update_layout(autosize=False, width=fig_size[0], height=fig_size[1])
 
     return_data_dict = {
         "data": data,
@@ -1110,7 +1129,7 @@ def plot_frequency_components(
     time_period = [round(1 / freq, 4) for freq in x]
     freq_data = pd.DataFrame({"Freq": x, "Amplitude": y, "Time Period": time_period})
 
-    spectral_density = go.Scatter(
+    spectral_density = go.Scattergl(
         name=legend,
         x=freq_data["Freq"],
         y=freq_data["Amplitude"],
@@ -1130,13 +1149,14 @@ def plot_frequency_components(
 
     fig = go.Figure(data=plot_data, layout=layout)
 
-    fig_template = fig_kwargs.get("fig_template", "ggplot2")
-    fig.update_layout(template=fig_template)
-    fig.update_layout(showlegend=True)
+    with fig.batch_update():
+        fig_template = fig_kwargs.get("fig_template", "ggplot2")
+        fig.update_layout(template=fig_template)
+        fig.update_layout(showlegend=True)
 
-    fig_size = fig_kwargs.get("fig_size", None)
-    if fig_size is not None:
-        fig.update_layout(autosize=False, width=fig_size[0], height=fig_size[1])
+        fig_size = fig_kwargs.get("fig_size", None)
+        if fig_size is not None:
+            fig.update_layout(autosize=False, width=fig_size[0], height=fig_size[1])
 
     return_data_dict = {"freq_data": freq_data}
 
@@ -1217,14 +1237,15 @@ def plot_ccf(
         )
         all_ccf_data.update({col_name: ccf_data})
 
-    fig.update_layout(title=title)
-    fig.update_layout(showlegend=False)
-    fig_template = fig_kwargs.get("fig_template", "ggplot2")
-    fig.update_layout(template=fig_template)
+    with fig.batch_update():
+        fig.update_layout(title=title)
+        fig.update_layout(showlegend=False)
+        fig_template = fig_kwargs.get("fig_template", "ggplot2")
+        fig.update_layout(template=fig_template)
 
-    fig_size = fig_kwargs.get("fig_size", [max(1200, 400 * cols), 300 * rows])
-    if fig_size is not None:
-        fig.update_layout(autosize=False, width=fig_size[0], height=fig_size[1])
+        fig_size = fig_kwargs.get("fig_size", [max(1200, 400 * cols), 300 * rows])
+        if fig_size is not None:
+            fig.update_layout(autosize=False, width=fig_size[0], height=fig_size[1])
 
     return_data_dict = {"ccf": all_ccf_data}
 
