@@ -540,7 +540,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             if seasonality_present
         ] or [1]
         self.sp_to_use = self.all_sp_values[0]
-        self.seasonal_period = seasonal_period[0]
+        self.seasonal_period = seasonal_period[0] if len(seasonal_period) == 1 else seasonal_period
 
     def _convert_sp_to_int(self, seasonal_period):
         """Derives the seasonal period specified by either:
