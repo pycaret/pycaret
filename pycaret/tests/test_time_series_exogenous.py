@@ -4,7 +4,6 @@ import pytest
 import numpy as np  # type: ignore
 import pandas as pd  # type: ignore
 
-from pycaret.datasets import get_data
 from pycaret.internal.pycaret_experiment import TimeSeriesExperiment
 
 
@@ -85,8 +84,7 @@ def test_create_tune_predict_finalize_model(load_uni_exo_data_target):
 
 
 def test_blend_models(load_uni_exo_data_target, load_models_uni_mix_exo_noexo):
-    """test blending functionality
-    """
+    """test blending functionality"""
     data, target = load_uni_exo_data_target
 
     fh = 12
@@ -124,8 +122,7 @@ def test_blend_models(load_uni_exo_data_target, load_models_uni_mix_exo_noexo):
 
 
 def test_setup():
-    """Test the setup with exogenous variables
-    """
+    """Test the setup with exogenous variables"""
     length = 100
     data = pd.DataFrame(np.random.rand(length, 7))
     data.columns = "A B C D E F G".split()
@@ -191,8 +188,7 @@ def test_setup():
 
 
 def test_setup_raises():
-    """Test the setup with exogenous variables when it raises errors
-    """
+    """Test the setup with exogenous variables when it raises errors"""
     length = 100
     data = pd.DataFrame(np.random.rand(length, 7))
     data.columns = "A B C D E F G".split()
@@ -237,4 +233,3 @@ def test_setup_raises():
 
     exceptionmsg = errmsg.value.args[0]
     assert exceptionmsg == f"Target Column '{target}' is not present in the data."
-
