@@ -10529,6 +10529,8 @@ def create_api(estimator, api_name, host="127.0.0.1", port=8000):
     raw_data = get_config("data_before_preprocess").copy()
     raw_data.drop(target_name, axis=1, inplace=True)
     input_cols = list(raw_data.columns)
+    cols_to_drop = [*get_config("prep_pipe")[0].features_todrop] + get_config("prep_pipe")[0].id_columns
+    removed_cols = [input_cols.remove(i) for i in cols_to_drop]
 
     MODULE = get_config("prep_pipe")[0].ml_usecase
     INPUT_COLS = input_cols
