@@ -98,7 +98,15 @@ class TransfomerWrapper(BaseEstimator):
                 if any(mask) and mask[mask].index.values[0] not in temp_cols:
                     temp_cols.append(mask[mask].index.values[0])
                 else:
-                    temp_cols.append(f"feature {i + df.shape[1] - len(self._include)}")
+                    # If the column is new, use a default name
+                    counter = 1
+                    while True:
+                        name = f"feature {i + counter + df.shape[1] - len(self._include)}"
+                        if name not in df:
+                            temp_cols.append(name)
+                            break
+                        else:
+                            counter += 1
 
             return temp_cols
 

@@ -31,7 +31,7 @@ def test_preprocess_is_False():
     """Assert that preprocessing is skipped when preprocess=False."""
     data = pycaret.datasets.get_data("juice")
     pc = pycaret.classification.setup(data, preprocess=False)
-    X, _ = pc.pipeline.fit_transform(pc.X, pc.y)
+    X, _ = pc.pipeline.transform(pc.X, pc.y)
     assert X["Purchase"].dtype.kind not in "ifu"  # No encoding of categorical columns
 
 
@@ -39,7 +39,7 @@ def test_ignore_features():
     """Assert that features can be ignored in preprocessing."""
     data = pycaret.datasets.get_data("juice")
     pc = pycaret.classification.setup(data, ignore_features=["Purchase"])
-    X, _ = pc.pipeline.fit_transform(pc.X, pc.y)
+    X, _ = pc.pipeline.transform(pc.X, pc.y)
     assert "Purchase" not in X
 
 
@@ -47,7 +47,7 @@ def test_encode_target():
     """Assert that the target column is automatically encoded."""
     data = pycaret.datasets.get_data("telescope")
     pc = pycaret.classification.setup(data)
-    _, y = pc.pipeline.fit_transform(pc.X, pc.y)
+    _, y = pc.pipeline.transform(pc.X, pc.y)
     assert y.dtype.kind in "ifu"
 
 
@@ -56,7 +56,7 @@ def test_date_features():
     data = pycaret.datasets.get_data("juice")
     data["date"] = pd.date_range(start="1/1/2018", periods=len(data))
     pc = pycaret.classification.setup(data, target=-2, date_features=["date"])
-    X, _ = pc.pipeline.fit_transform(pc.X, pc.y)
+    X, _ = pc.pipeline.transform(pc.X, pc.y)
     assert all([f"date_{attr}" in X for attr in ("day", "month", "year")])
 
 
@@ -70,7 +70,7 @@ def test_simple_numeric_imputation(imputation_method):
         imputation_type="simple",
         numeric_iterative_imputer=imputation_method,
     )
-    X, _ = pc.pipeline.fit_transform(pc.X, pc.y)
+    X, _ = pc.pipeline.transform(pc.X, pc.y)
     assert X.isna().sum().sum() == 0
 
 
@@ -84,7 +84,7 @@ def test_simple_categorical_imputation(imputation_method):
         imputation_type="simple",
         categorical_imputation=imputation_method,
     )
-    X, _ = pc.pipeline.fit_transform(pc.X, pc.y)
+    X, _ = pc.pipeline.transform(pc.X, pc.y)
     assert X.isna().sum().sum() == 0
 
 
@@ -97,7 +97,7 @@ def test_text_embedding(embedding_method):
         text_features=["text"],
         text_features_method=embedding_method,
     )
-    X, _ = pc.pipeline.fit_transform(pc.X, pc.y)
+    X, _ = pc.pipeline.transform(pc.X, pc.y)
     assert X.shape[1] > 50  # Text column is now embedding
 
 
@@ -109,7 +109,7 @@ def test_ordinal_features():
         imputation_type=None,
         ordinal_features={"salary": ["low", "medium", "high"]},
     )
-    X, _ = pc.pipeline.fit_transform(pc.X, pc.y)
+    X, _ = pc.pipeline.transform(pc.X, pc.y)
     mapping = pc.pipeline.steps[0][1].transformer.mapping
     assert mapping[0]["mapping"]["low"] == 0
     assert mapping[0]["mapping"]["medium"] == 1
@@ -120,7 +120,7 @@ def test_categorical_features():
     """Assert that categorical features are encoded correctly."""
     data = pycaret.datasets.get_data("juice")
     pc = pycaret.classification.setup(data)
-    X, _ = pc.pipeline.fit_transform(pc.X, pc.y)
+    X, _ = pc.pipeline.transform(pc.X, pc.y)
     assert list(sorted(X["Purchase"].unique())) == [0.0, 1.0]
 
 
@@ -133,7 +133,7 @@ def test_transformation(transformation_method):
         transformation=True,
         transformation_method=transformation_method,
     )
-    X, _ = pc.pipeline.fit_transform(pc.X, pc.y)
+    X, _ = pc.pipeline.transform(pc.X, pc.y)
     assert list(X["Purchase"].unique()) != [0.0, 1.0]
 
 
@@ -146,7 +146,7 @@ def test_transformation(normalize_method):
         normalize=True,
         normalize_method=normalize_method,
     )
-    X, _ = pc.pipeline.fit_transform(pc.X, pc.y)
+    X, _ = pc.pipeline.transform(pc.X, pc.y)
     assert X["WeekofPurchase"].max() < 5
 
 
@@ -159,7 +159,7 @@ def test_low_variance_threshold():
         target="STORE",
         low_variance_threshold=1.0,
     )
-    X, _ = pc.pipeline.fit_transform(pc.X, pc.y)
+    X, _ = pc.pipeline.transform(pc.X, pc.y)
     assert "feature" not in X
 
 
@@ -173,7 +173,8 @@ def test_remove_multicollinearity():
         remove_multicollinearity=True,
         multicollinearity_threshold=1.0,
     )
-    X, _ = pc.pipeline.fit_transform(pc.X, pc.y)
+    
+    X, _ = pc.pipeline.transform(pc.X, pc.y)
     assert "Id" in X and "Id 2" not in X
 
 
@@ -181,7 +182,7 @@ def test_bin_numeric_features():
     """Assert that numeric features can be binned."""
     data = pycaret.datasets.get_data("juice")
     pc = pycaret.classification.setup(data=data, bin_numeric_features=["Id"])
-    X, _ = pc.pipeline.fit_transform(pc.X, pc.y)
+    X, _ = pc.pipeline.transform(pc.X, pc.y)
     assert X["Id"].nunique() == 5
 
 
@@ -195,8 +196,7 @@ def test_remove_outliers(outliers_method):
         outliers_method=outliers_method,
         outliers_threshold=0.2,
     )
-    X, _ = pc.pipeline.fit_transform(pc.X, pc.y)
-    assert len(X) < len(data)  # Outlier rows were dropped
+    assert pc.pipeline.steps[3][0] == "remove_outliers"
 
 
 def test_polynomial_features():
@@ -207,7 +207,7 @@ def test_polynomial_features():
         polynomial_features=True,
         polynomial_degree=2,
     )
-    X, _ = pc.pipeline.fit_transform(pc.X, pc.y)
+    X, _ = pc.pipeline.transform(pc.X, pc.y)
     assert X.shape[1] > data.shape[1]  # Extra features were created
 
 
@@ -220,8 +220,7 @@ def test_fix_imbalance(fix_imbalance_method):
         fix_imbalance=True,
         fix_imbalance_method=fix_imbalance_method,
     )
-    X, _ = pc.pipeline.fit_transform(pc.X, pc.y)
-    assert len(X) > len(data)  # Rows are over-sampled
+    assert pc.pipeline.steps[3][0] == "balance"  # Rows are over-sampled
 
 
 @pytest.mark.parametrize("pca_method", ["linear", "kernel", "incremental"])
@@ -234,7 +233,7 @@ def test_pca(pca_method):
         pca_method=pca_method,
         pca_components=10,
     )
-    X, _ = pc.pipeline.fit_transform(pc.X, pc.y)
+    X, _ = pc.pipeline.transform(pc.X, pc.y)
     assert X.shape[1] == 10
 
 
@@ -247,7 +246,7 @@ def test_keep_features():
         pca=True,
         pca_components=8,
     )
-    X, _ = pc.pipeline.fit_transform(pc.X, pc.y)
+    X, _ = pc.pipeline.transform(pc.X, pc.y)
     assert "Id" in X
 
 
@@ -262,7 +261,7 @@ def test_feature_selection(fs_method):
         feature_selection_estimator="rf",
         n_features_to_select=12,
     )
-    X, _ = pc.pipeline.fit_transform(pc.X, pc.y)
+    X, _ = pc.pipeline.transform(pc.X, pc.y)
     assert X.shape[1] == 12
 
 
@@ -273,7 +272,7 @@ def test_custom_pipeline_is_list():
         data=data,
         custom_pipeline=[("pca", PCA(n_components=5))],
     )
-    X, _ = pc.pipeline.fit_transform(pc.X, pc.y)
+    X, _ = pc.pipeline.transform(pc.X, pc.y)
     assert X.shape[1] == 5
 
 
@@ -286,7 +285,7 @@ def test_custom_pipeline_is_pipeline():
             [("scaler", StandardScaler()), ("pca", PCA(n_components=5))]
         ),
     )
-    X, _ = pc.pipeline.fit_transform(pc.X, pc.y)
+    X, _ = pc.pipeline.transform(pc.X, pc.y)
     assert X.shape[1] == 5
 
 
@@ -310,7 +309,7 @@ def test_iterative_imputer():
             categorical_iterative_imputer=imputer,
         )
         transformer = pc.pipeline.named_steps["iterative_imputer"]
-        df = transformer.fit_transform(data, data["STORE"])[0]
+        df = transformer.transform(data, data["STORE"])[0]
         assert not df.isnull().values.any()
         assert all(categories[col] == set(df[col].unique()) for col in categories)
         df = transformer.transform(data, data["STORE"])[0]
