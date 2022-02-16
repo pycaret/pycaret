@@ -40,8 +40,7 @@ _setup_args_raises = _return_setup_args_raises()
 
 @pytest.mark.parametrize("fold, fh, fold_strategy", _splitter_args)
 def test_splitter_using_fold_and_fh(fold, fh, fold_strategy, load_pos_and_neg_data):
-    """Tests the splitter creation using fold, fh and a string value for fold_strategy.
-    """
+    """Tests the splitter creation using fold, fh and a string value for fold_strategy."""
 
     from pycaret.time_series import setup
     from sktime.forecasting.model_selection._split import (
@@ -50,7 +49,10 @@ def test_splitter_using_fold_and_fh(fold, fh, fold_strategy, load_pos_and_neg_da
     )
 
     exp_name = setup(
-        data=load_pos_and_neg_data, fold=fold, fh=fh, fold_strategy=fold_strategy,
+        data=load_pos_and_neg_data,
+        fold=fold,
+        fh=fh,
+        fold_strategy=fold_strategy,
     )
 
     allowed_fold_strategies = ["expanding", "rolling", "sliding"]
@@ -77,10 +79,7 @@ def test_splitter_pass_cv_object(load_pos_and_neg_data):
     """Tests the passing of a `sktime` cv splitter to fold_strategy"""
 
     from pycaret.time_series import setup
-    from sktime.forecasting.model_selection._split import (
-        ExpandingWindowSplitter,
-        SlidingWindowSplitter,
-    )
+    from sktime.forecasting.model_selection._split import ExpandingWindowSplitter
 
     fold = 3
     fh = np.arange(1, 13)  # regular horizon of 12 months
@@ -118,7 +117,10 @@ def test_setup_raises(fold, fh, fold_strategy, load_pos_and_neg_data):
 
     with pytest.raises(ValueError) as errmsg:
         _ = setup(
-            data=load_pos_and_neg_data, fold=fold, fh=fh, fold_strategy=fold_strategy,
+            data=load_pos_and_neg_data,
+            fold=fold,
+            fh=fh,
+            fold_strategy=fold_strategy,
         )
 
     exceptionmsg = errmsg.value.args[0]
@@ -138,8 +140,44 @@ def test_enforce_pi(load_pos_and_neg_data):
     exp2.setup(data=data, enforce_pi=False)
     num_models2 = len(exp2.models())
 
-    # We know that some models do not offer PI capability to the following
+    # We know that some models do not offer PI capability, so the following
     # check is valid for now.
+    assert num_models1 < num_models2
+
+
+def test_enforce_exogenous_no_exo_data(load_pos_and_neg_data):
+    """Tests the enforcement of exogenous variable support in models when
+    univariate data without exogenous variables is passed."""
+    data = load_pos_and_neg_data
+
+    exp1 = TimeSeriesExperiment()
+    exp1.setup(data=data, enforce_exogenous=True)
+    num_models1 = len(exp1.models())
+
+    exp2 = TimeSeriesExperiment()
+    exp2.setup(data=data, enforce_exogenous=False)
+    num_models2 = len(exp2.models())
+
+    # Irrespective of the enforce_exogenous flag, all models are enabled when
+    # the data does not contain exogenous variables.
+    assert num_models1 == num_models2
+
+
+def test_enforce_exogenous_exo_data(load_uni_exo_data_target):
+    """Tests the enforcement of exogenous variable support in models when
+    univariate data with exogenous variables is passed."""
+    data, target = load_uni_exo_data_target
+
+    exp1 = TimeSeriesExperiment()
+    exp1.setup(data=data, target=target, seasonal_period=4, enforce_exogenous=True)
+    num_models1 = len(exp1.models())
+
+    exp2 = TimeSeriesExperiment()
+    exp2.setup(data=data, target=target, seasonal_period=4, enforce_exogenous=False)
+    num_models2 = len(exp2.models())
+
+    # We know that some models do not offer exogenous variables support, so the
+    # following check is valid for now.
     assert num_models1 < num_models2
 
 
@@ -151,7 +189,10 @@ def test_seasonal_period_to_use():
     # Airline Data with seasonality of 12
     data = get_data("airline", verbose=False)
     exp.setup(
-        data=data, fh=fh, verbose=False, session_id=42,
+        data=data,
+        fh=fh,
+        verbose=False,
+        session_id=42,
     )
     assert exp.seasonal_period == 12
     assert exp.all_sp_values == [12]
@@ -159,9 +200,7 @@ def test_seasonal_period_to_use():
 
     # Airline Data with seasonality of M (12), 6
     data = get_data("airline", verbose=False)
-    exp.setup(
-        data=data, fh=fh, verbose=False, session_id=42, seasonal_period=['M', 6]
-    )
+    exp.setup(data=data, fh=fh, verbose=False, session_id=42, seasonal_period=["M", 6])
     assert exp.seasonal_period == [12, 6]
     assert exp.all_sp_values == [12, 6]
     assert exp.sp_to_use == 12
@@ -169,9 +208,13 @@ def test_seasonal_period_to_use():
     # White noise Data with seasonality of 12
     data = get_data("1", folder="time_series/white_noise", verbose=False)
     exp.setup(
-        data=data, fh=fh, seasonal_period=12, verbose=False, session_id=42,
+        data=data,
+        fh=fh,
+        seasonal_period=12,
+        verbose=False,
+        session_id=42,
     )
-    
+
     # Should get 1 even though we passed 12
     assert exp.seasonal_period == 12
     assert exp.all_sp_values == [1]
@@ -228,7 +271,7 @@ def test_setup_seasonal_period_str(
 def test_setup_seasonal_period_alphanumeric(
     load_pos_and_neg_data, prefix, seasonal_period, seasonal_value
 ):
-    """ Tests the get_sp_from_str function with different values of frequency """
+    """Tests the get_sp_from_str function with different values of frequency"""
 
     seasonal_period = prefix + seasonal_period
     prefix = int(prefix)
@@ -317,4 +360,3 @@ def test_train_test_split(load_pos_and_neg_data):
     exp.setup(data=data, fh=fh, session_id=42)
     y_test = exp.get_config("y_test")
     assert len(y_test) == len(fh)
-

@@ -33,6 +33,7 @@ def setup(
     fh: Optional[Union[List[int], int, np.array]] = 1,
     seasonal_period: Optional[Union[List[Union[int, str]], int, str]] = None,
     enforce_pi: bool = False,
+    enforce_exogenous: bool = True,
     n_jobs: Optional[int] = -1,
     use_gpu: bool = False,
     custom_pipeline: Union[
@@ -143,13 +144,22 @@ def setup(
         Alternatively you can provide a custom `seasonal_period` by passing
         it as an integer or a string corresponding to the keys above (e.g.
         'W' for weekly data, 'M' for monthly data, etc.). You can also provide
-        a list of such values to use in models that accept multple seasonal values
+        a list of such values to use in models that accept multiple seasonal values
         (currently TBATS). For models that don't accept multiple seasonal values, the
         first value of the list will be used as the seasonal period.
+
 
     enforce_pi: bool, default = False
         When set to True, only models that support prediction intervals are
         loaded in the environment.
+
+
+    enforce_exogenous: bool, default = True
+        When set to True and the data includes exogenous variables, only models
+        that support exogenous variables are loaded in the environment.When
+        set to False, all models are included and in this case, models that do
+        not support exogenous variables will model the data as a univariate
+        forecasting problem.
 
 
     n_jobs: int, default = -1
@@ -256,6 +266,7 @@ def setup(
         fh=fh,
         seasonal_period=seasonal_period,
         enforce_pi=enforce_pi,
+        enforce_exogenous=enforce_exogenous,
         n_jobs=n_jobs,
         use_gpu=use_gpu,
         custom_pipeline=custom_pipeline,
