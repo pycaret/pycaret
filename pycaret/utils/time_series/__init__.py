@@ -231,9 +231,9 @@ class TSModelTypes(Enum):
     TREE = "tree"
 
 
-class TSExogenousTypes(Enum):
-    EXO = "Present"
-    NO_EXO = "Not Present"
+class TSExogenousPresent(Enum):
+    YES = "Present"
+    NO = "Not Present"
 
 
 class TSApproachTypes(Enum):

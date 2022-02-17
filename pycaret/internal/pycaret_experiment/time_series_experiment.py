@@ -45,7 +45,7 @@ from pycaret.utils.time_series.forecasting import (
     get_predictions_with_intervals,
     update_additional_scorer_kwargs,
 )
-from pycaret.utils.time_series import TSApproachTypes, TSExogenousTypes
+from pycaret.utils.time_series import TSApproachTypes, TSExogenousPresent
 from pycaret.utils.time_series.forecasting.model_selection import (
     ForecastingGridSearchCV,
     ForecastingRandomizedSearchCV,
@@ -85,7 +85,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 "enforce_pi",
                 "enforce_exogenous",
                 "approach_type",
-                "exogenous_type",
+                "exogenous_present",
                 "index_type",
             }
         )
@@ -138,7 +138,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 ["Original Data", self.data_before_preprocess.shape],
                 ["Missing Values", kwargs["missing_flag"]],
                 ["Approach", self.approach_type.value],
-                ["Exogenous Variables", self.exogenous_type.value],
+                ["Exogenous Variables", self.exogenous_present.value],
                 ["Transformed Train Target", self.y_train.shape],
                 ["Transformed Test Target", self.y_test.shape],
                 ["Transformed Train Exogenous", self.X_train.shape],
@@ -613,9 +613,9 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         #### Data has exogenous variables or not ----
         if len(self.exogenous_variables) > 0:
-            self.exogenous_type = TSExogenousTypes.EXO
+            self.exogenous_present = TSExogenousPresent.YES
         else:
-            self.exogenous_type = TSExogenousTypes.NO_EXO
+            self.exogenous_present = TSExogenousPresent.NO
 
     def setup(
         self,

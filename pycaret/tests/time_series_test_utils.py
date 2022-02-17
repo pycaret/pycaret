@@ -8,7 +8,7 @@ import pandas as pd
 from pycaret.internal.pycaret_experiment import TimeSeriesExperiment
 from pycaret.datasets import get_data
 from pycaret.containers.models.time_series import get_all_model_containers
-from pycaret.utils.time_series import SeasonalPeriod, TSExogenousTypes
+from pycaret.utils.time_series import SeasonalPeriod, TSExogenousPresent
 
 _BLEND_TEST_MODELS = [
     "naive",
@@ -109,7 +109,7 @@ def _return_model_names():
         "X_train": pd.DataFrame(get_data("airline")),
         "enforce_pi": False,
         "enforce_exogenous": True,
-        "exogenous_type": TSExogenousTypes.NO_EXO,
+        "exogenous_present": TSExogenousPresent.NO,
         "seasonal_period": 2,
         "sp_to_use": 2,
     }

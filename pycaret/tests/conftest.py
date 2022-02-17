@@ -6,6 +6,7 @@ import pandas as pd  # type: ignore
 from pycaret.datasets import get_data
 from pycaret.internal.pycaret_experiment import TimeSeriesExperiment
 from pycaret.containers.models.time_series import get_all_model_containers
+from pycaret.utils.time_series import TSExogenousPresent
 
 from .time_series_test_utils import _BLEND_TEST_MODELS
 
@@ -81,6 +82,8 @@ def load_ts_models(load_setup):
         "gpu_param": False,
         "X_train": pd.DataFrame(get_data("airline")),
         "enforce_pi": False,
+        "enforce_exogenous": True,
+        "exogenous_present": TSExogenousPresent.NO,
         "sp_to_use": 12,
     }
     ts_models = get_all_model_containers(globals_dict)
