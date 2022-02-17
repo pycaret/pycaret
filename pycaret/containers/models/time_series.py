@@ -45,10 +45,7 @@ from pycaret.utils.datetime import (
     coerce_period_to_datetime_index,
 )
 from pycaret.utils.time_series import TSModelTypes
-from pycaret.utils.time_series.forecasting.models import (
-    disable_pred_int_enforcement,
-    disable_exogenous_enforcement,
-)
+from pycaret.utils.time_series.forecasting.models import _check_enforcements
 
 
 class TimeSeriesContainer(ModelContainer):
@@ -254,16 +251,7 @@ class NaiveContainer(TimeSeriesContainer):
 
         #### Disable container if certain features are not supported but enforced ----
         dummy = NaiveForecaster()
-        self.active = disable_pred_int_enforcement(
-            forecaster=dummy, enforce_pi=globals_dict["enforce_pi"]
-        )
-        if not self.active:
-            return
-        self.active = disable_exogenous_enforcement(
-            forecaster=dummy,
-            enforce_exogenous=globals_dict["enforce_exogenous"],
-            exp_has_exogenous=globals_dict["exogenous_type"],
-        )
+        self.active = _check_enforcements(forecaster=dummy, globals_dict=globals_dict)
         if not self.active:
             return
 
@@ -324,17 +312,7 @@ class GrandMeansContainer(TimeSeriesContainer):
 
         #### Disable container if certain features are not supported but enforced ----
         dummy = NaiveForecaster()
-        self.active = disable_pred_int_enforcement(
-            forecaster=dummy, enforce_pi=globals_dict["enforce_pi"]
-        )
-        if not self.active:
-            return
-
-        self.active = disable_exogenous_enforcement(
-            forecaster=dummy,
-            enforce_exogenous=globals_dict["enforce_exogenous"],
-            exp_has_exogenous=globals_dict["exogenous_type"],
-        )
+        self.active = _check_enforcements(forecaster=dummy, globals_dict=globals_dict)
         if not self.active:
             return
 
@@ -395,17 +373,7 @@ class SeasonalNaiveContainer(TimeSeriesContainer):
 
         #### Disable container if certain features are not supported but enforced ----
         dummy = NaiveForecaster()
-        self.active = disable_pred_int_enforcement(
-            forecaster=dummy, enforce_pi=globals_dict["enforce_pi"]
-        )
-        if not self.active:
-            return
-
-        self.active = disable_exogenous_enforcement(
-            forecaster=dummy,
-            enforce_exogenous=globals_dict["enforce_exogenous"],
-            exp_has_exogenous=globals_dict["exogenous_type"],
-        )
+        self.active = _check_enforcements(forecaster=dummy, globals_dict=globals_dict)
         if not self.active:
             return
 
@@ -465,17 +433,7 @@ class PolyTrendContainer(TimeSeriesContainer):
 
         #### Disable container if certain features are not supported but enforced ----
         dummy = PolynomialTrendForecaster()
-        self.active = disable_pred_int_enforcement(
-            forecaster=dummy, enforce_pi=globals_dict["enforce_pi"]
-        )
-        if not self.active:
-            return
-
-        self.active = disable_exogenous_enforcement(
-            forecaster=dummy,
-            enforce_exogenous=globals_dict["enforce_exogenous"],
-            exp_has_exogenous=globals_dict["exogenous_type"],
-        )
+        self.active = _check_enforcements(forecaster=dummy, globals_dict=globals_dict)
         if not self.active:
             return
 
@@ -528,17 +486,7 @@ class ArimaContainer(TimeSeriesContainer):
 
         #### Disable container if certain features are not supported but enforced ----
         dummy = ARIMA()
-        self.active = disable_pred_int_enforcement(
-            forecaster=dummy, enforce_pi=globals_dict["enforce_pi"]
-        )
-        if not self.active:
-            return
-
-        self.active = disable_exogenous_enforcement(
-            forecaster=dummy,
-            enforce_exogenous=globals_dict["enforce_exogenous"],
-            exp_has_exogenous=globals_dict["exogenous_type"],
-        )
+        self.active = _check_enforcements(forecaster=dummy, globals_dict=globals_dict)
         if not self.active:
             return
 
@@ -699,17 +647,7 @@ class AutoArimaContainer(TimeSeriesContainer):
 
         #### Disable container if certain features are not supported but enforced ----
         dummy = AutoARIMA()
-        self.active = disable_pred_int_enforcement(
-            forecaster=dummy, enforce_pi=globals_dict["enforce_pi"]
-        )
-        if not self.active:
-            return
-
-        self.active = disable_exogenous_enforcement(
-            forecaster=dummy,
-            enforce_exogenous=globals_dict["enforce_exogenous"],
-            exp_has_exogenous=globals_dict["exogenous_type"],
-        )
+        self.active = _check_enforcements(forecaster=dummy, globals_dict=globals_dict)
         if not self.active:
             return
 
@@ -781,17 +719,7 @@ class ExponentialSmoothingContainer(TimeSeriesContainer):
 
         #### Disable container if certain features are not supported but enforced ----
         dummy = ExponentialSmoothing()
-        self.active = disable_pred_int_enforcement(
-            forecaster=dummy, enforce_pi=globals_dict["enforce_pi"]
-        )
-        if not self.active:
-            return
-
-        self.active = disable_exogenous_enforcement(
-            forecaster=dummy,
-            enforce_exogenous=globals_dict["enforce_exogenous"],
-            exp_has_exogenous=globals_dict["exogenous_type"],
-        )
+        self.active = _check_enforcements(forecaster=dummy, globals_dict=globals_dict)
         if not self.active:
             return
 
@@ -923,17 +851,7 @@ class CrostonContainer(TimeSeriesContainer):
 
         #### Disable container if certain features are not supported but enforced ----
         dummy = Croston()
-        self.active: bool = disable_pred_int_enforcement(
-            forecaster=dummy, enforce_pi=globals_dict["enforce_pi"]
-        )
-        if not self.active:
-            return
-
-        self.active = disable_exogenous_enforcement(
-            forecaster=dummy,
-            enforce_exogenous=globals_dict["enforce_exogenous"],
-            exp_has_exogenous=globals_dict["exogenous_type"],
-        )
+        self.active = _check_enforcements(forecaster=dummy, globals_dict=globals_dict)
         if not self.active:
             return
 
@@ -978,17 +896,7 @@ class ETSContainer(TimeSeriesContainer):
 
         #### Disable container if certain features are not supported but enforced ----
         dummy = AutoETS()
-        self.active = disable_pred_int_enforcement(
-            forecaster=dummy, enforce_pi=globals_dict["enforce_pi"]
-        )
-        if not self.active:
-            return
-
-        self.active = disable_exogenous_enforcement(
-            forecaster=dummy,
-            enforce_exogenous=globals_dict["enforce_exogenous"],
-            exp_has_exogenous=globals_dict["exogenous_type"],
-        )
+        self.active = _check_enforcements(forecaster=dummy, globals_dict=globals_dict)
         if not self.active:
             return
 
@@ -1065,17 +973,7 @@ class ThetaContainer(TimeSeriesContainer):
 
         #### Disable container if certain features are not supported but enforced ----
         dummy = ThetaForecaster()
-        self.active = disable_pred_int_enforcement(
-            forecaster=dummy, enforce_pi=globals_dict["enforce_pi"]
-        )
-        if not self.active:
-            return
-
-        self.active = disable_exogenous_enforcement(
-            forecaster=dummy,
-            enforce_exogenous=globals_dict["enforce_exogenous"],
-            exp_has_exogenous=globals_dict["exogenous_type"],
-        )
+        self.active = _check_enforcements(forecaster=dummy, globals_dict=globals_dict)
         if not self.active:
             return
 
@@ -1168,17 +1066,7 @@ class TBATSContainer(TimeSeriesContainer):
 
         #### Disable container if certain features are not supported but enforced ----
         dummy = TBATS()
-        self.active = disable_pred_int_enforcement(
-            forecaster=dummy, enforce_pi=globals_dict["enforce_pi"]
-        )
-        if not self.active:
-            return
-
-        self.active = disable_exogenous_enforcement(
-            forecaster=dummy,
-            enforce_exogenous=globals_dict["enforce_exogenous"],
-            exp_has_exogenous=globals_dict["exogenous_type"],
-        )
+        self.active = _check_enforcements(forecaster=dummy, globals_dict=globals_dict)
         if not self.active:
             return
 
@@ -1246,17 +1134,7 @@ class BATSContainer(TimeSeriesContainer):
 
         #### Disable container if certain features are not supported but enforced ----
         dummy = BATS()
-        self.active = disable_pred_int_enforcement(
-            forecaster=dummy, enforce_pi=globals_dict["enforce_pi"]
-        )
-        if not self.active:
-            return
-
-        self.active = disable_exogenous_enforcement(
-            forecaster=dummy,
-            enforce_exogenous=globals_dict["enforce_exogenous"],
-            exp_has_exogenous=globals_dict["exogenous_type"],
-        )
+        self.active = _check_enforcements(forecaster=dummy, globals_dict=globals_dict)
         if not self.active:
             return
 
@@ -1324,17 +1202,7 @@ class ProphetContainer(TimeSeriesContainer):
 
         #### Disable container if certain features are not supported but enforced ----
         dummy = Prophet()
-        self.active = disable_pred_int_enforcement(
-            forecaster=dummy, enforce_pi=globals_dict["enforce_pi"]
-        )
-        if not self.active:
-            return
-
-        self.active = disable_exogenous_enforcement(
-            forecaster=dummy,
-            enforce_exogenous=globals_dict["enforce_exogenous"],
-            exp_has_exogenous=globals_dict["exogenous_type"],
-        )
+        self.active = _check_enforcements(forecaster=dummy, globals_dict=globals_dict)
         if not self.active:
             return
 
@@ -1432,17 +1300,7 @@ class CdsDtContainer(TimeSeriesContainer):
 
         #### Disable container if certain features are not supported but enforced ----
         dummy = BaseCdsDtForecaster(regressor=self.regressor)
-        self.active = disable_pred_int_enforcement(
-            forecaster=dummy, enforce_pi=globals_dict["enforce_pi"]
-        )
-        if not self.active:
-            return
-
-        self.active = disable_exogenous_enforcement(
-            forecaster=dummy,
-            enforce_exogenous=globals_dict["enforce_exogenous"],
-            exp_has_exogenous=globals_dict["exogenous_type"],
-        )
+        self.active = _check_enforcements(forecaster=dummy, globals_dict=globals_dict)
         if not self.active:
             return
 
