@@ -8,7 +8,7 @@ import pandas as pd
 from pycaret.internal.pycaret_experiment import TimeSeriesExperiment
 from pycaret.datasets import get_data
 from pycaret.containers.models.time_series import get_all_model_containers
-from pycaret.utils.time_series import SeasonalPeriod
+from pycaret.utils.time_series import SeasonalPeriod, TSExogenousPresent
 
 _BLEND_TEST_MODELS = [
     "naive",
@@ -82,7 +82,7 @@ def _get_seasonal_values():
 
 
 def _get_seasonal_values_alphanumeric():
-    """ Check if frequency is alphanumeric and process it as needed """
+    """Check if frequency is alphanumeric and process it as needed"""
     choice_list = ["10", "20", "30", "40", "50", "60"]
     return [
         (random.choice(choice_list), k, v.value)
@@ -108,6 +108,8 @@ def _return_model_names():
         "gpu_param": False,
         "X_train": pd.DataFrame(get_data("airline")),
         "enforce_pi": False,
+        "enforce_exogenous": True,
+        "exogenous_present": TSExogenousPresent.NO,
         "seasonal_period": 2,
         "sp_to_use": 2,
     }
@@ -157,8 +159,7 @@ def _return_model_parameters():
 
 
 def _return_splitter_args():
-    """fold, fh, fold_strategy
-    """
+    """fold, fh, fold_strategy"""
     parametrize_list = [
         ## fh: Integer
         (random.randint(2, 5), random.randint(5, 10), "expanding"),
@@ -200,8 +201,7 @@ def _return_compare_model_args():
 
 
 def _return_setup_args_raises():
-    """
-    """
+    """ """
     setup_raises_list = [
         (random.randint(50, 100), random.randint(10, 20), "expanding"),
         (random.randint(50, 100), random.randint(10, 20), "rolling"),
@@ -221,10 +221,10 @@ def _return_data_with_without_period_index():
 
 def _return_model_names_for_plots_stats():
     """Returns models to be used for testing plots. Needs
-        - 1 model that has prediction interval ("theta")
-        - 1 model that does not have prediction interval ("lr_cds_dt")
-        - 1 model that has in-sample forecasts ("theta")
-        - 1 model that does not have in-sample forecasts ("lr_cds_dt")
+    - 1 model that has prediction interval ("theta")
+    - 1 model that does not have prediction interval ("lr_cds_dt")
+    - 1 model that has in-sample forecasts ("theta")
+    - 1 model that does not have in-sample forecasts ("lr_cds_dt")
     """
     model_names = ["theta", "lr_cds_dt"]
     return model_names

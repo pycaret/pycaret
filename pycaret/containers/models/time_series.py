@@ -16,7 +16,6 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np  # type: ignore
 import pandas as pd
-from sklearn.utils.validation import check_is_fitted  # type: ignore
 from sktime.forecasting.base import BaseForecaster  # type: ignore
 from sktime.forecasting.base._sktime import DEFAULT_ALPHA  # type: ignore
 from sktime.forecasting.compose import (  # type: ignore
@@ -46,6 +45,7 @@ from pycaret.utils.datetime import (
     coerce_period_to_datetime_index,
 )
 from pycaret.utils.time_series import TSModelTypes
+from pycaret.utils.time_series.forecasting.models import _check_enforcements
 
 
 class TimeSeriesContainer(ModelContainer):
@@ -225,28 +225,6 @@ class TimeSeriesContainer(ModelContainer):
         tune_distributions: Dict[str, List[Any]] = {}
         return tune_distributions
 
-    def disable_pred_int_enforcement(self, forecaster, enforce_pi: bool) -> bool:
-        """Checks to see if prediction interbal should be enforced. If it should
-        but the forecaster does not support it, the container will be disabled
-
-        Parameters
-        ----------
-        forecaster : `sktime` compatible forecaster
-            forecaster to check for prediction interval capability.
-            Can be a dummy object of the forecasting class
-        enforce_pi : bool
-            Should prediction interval be enforced?
-
-        Returns
-        -------
-        bool
-            True if user wants to enforce prediction interval and forecaster
-            supports it. False otherwise.
-        """
-        if enforce_pi and not forecaster.get_tag("capability:pred_int"):
-            return False
-        return True
-
 
 #########################
 #### BASELINE MODELS ####
@@ -271,10 +249,9 @@ class NaiveContainer(TimeSeriesContainer):
 
         from sktime.forecasting.naive import NaiveForecaster  # type: ignore
 
+        #### Disable container if certain features are not supported but enforced ----
         dummy = NaiveForecaster()
-        self.active = self.disable_pred_int_enforcement(
-            forecaster=dummy, enforce_pi=globals_dict["enforce_pi"]
-        )
+        self.active = _check_enforcements(forecaster=dummy, globals_dict=globals_dict)
         if not self.active:
             return
 
@@ -333,10 +310,9 @@ class GrandMeansContainer(TimeSeriesContainer):
 
         from sktime.forecasting.naive import NaiveForecaster  # type: ignore
 
+        #### Disable container if certain features are not supported but enforced ----
         dummy = NaiveForecaster()
-        self.active = self.disable_pred_int_enforcement(
-            forecaster=dummy, enforce_pi=globals_dict["enforce_pi"]
-        )
+        self.active = _check_enforcements(forecaster=dummy, globals_dict=globals_dict)
         if not self.active:
             return
 
@@ -395,10 +371,9 @@ class SeasonalNaiveContainer(TimeSeriesContainer):
 
         from sktime.forecasting.naive import NaiveForecaster  # type: ignore
 
+        #### Disable container if certain features are not supported but enforced ----
         dummy = NaiveForecaster()
-        self.active = self.disable_pred_int_enforcement(
-            forecaster=dummy, enforce_pi=globals_dict["enforce_pi"]
-        )
+        self.active = _check_enforcements(forecaster=dummy, globals_dict=globals_dict)
         if not self.active:
             return
 
@@ -456,10 +431,9 @@ class PolyTrendContainer(TimeSeriesContainer):
 
         from sktime.forecasting.trend import PolynomialTrendForecaster  # type: ignore
 
+        #### Disable container if certain features are not supported but enforced ----
         dummy = PolynomialTrendForecaster()
-        self.active = self.disable_pred_int_enforcement(
-            forecaster=dummy, enforce_pi=globals_dict["enforce_pi"]
-        )
+        self.active = _check_enforcements(forecaster=dummy, globals_dict=globals_dict)
         if not self.active:
             return
 
@@ -510,10 +484,9 @@ class ArimaContainer(TimeSeriesContainer):
 
         from sktime.forecasting.arima import ARIMA  # type: ignore
 
+        #### Disable container if certain features are not supported but enforced ----
         dummy = ARIMA()
-        self.active = self.disable_pred_int_enforcement(
-            forecaster=dummy, enforce_pi=globals_dict["enforce_pi"]
-        )
+        self.active = _check_enforcements(forecaster=dummy, globals_dict=globals_dict)
         if not self.active:
             return
 
@@ -672,10 +645,9 @@ class AutoArimaContainer(TimeSeriesContainer):
 
         from sktime.forecasting.arima import AutoARIMA  # type: ignore
 
+        #### Disable container if certain features are not supported but enforced ----
         dummy = AutoARIMA()
-        self.active = self.disable_pred_int_enforcement(
-            forecaster=dummy, enforce_pi=globals_dict["enforce_pi"]
-        )
+        self.active = _check_enforcements(forecaster=dummy, globals_dict=globals_dict)
         if not self.active:
             return
 
@@ -745,10 +717,9 @@ class ExponentialSmoothingContainer(TimeSeriesContainer):
             ExponentialSmoothing,  # type: ignore
         )
 
+        #### Disable container if certain features are not supported but enforced ----
         dummy = ExponentialSmoothing()
-        self.active = self.disable_pred_int_enforcement(
-            forecaster=dummy, enforce_pi=globals_dict["enforce_pi"]
-        )
+        self.active = _check_enforcements(forecaster=dummy, globals_dict=globals_dict)
         if not self.active:
             return
 
@@ -878,13 +849,9 @@ class CrostonContainer(TimeSeriesContainer):
 
         from sktime.forecasting.croston import Croston  # type: ignore
 
+        #### Disable container if certain features are not supported but enforced ----
         dummy = Croston()
-        # check if pi is enforced.
-        self.active: bool = self.disable_pred_int_enforcement(
-            forecaster=dummy, enforce_pi=globals_dict["enforce_pi"]
-        )
-
-        # if not, make the model unavailiable
+        self.active = _check_enforcements(forecaster=dummy, globals_dict=globals_dict)
         if not self.active:
             return
 
@@ -927,10 +894,9 @@ class ETSContainer(TimeSeriesContainer):
 
         from sktime.forecasting.ets import AutoETS  # type: ignore
 
+        #### Disable container if certain features are not supported but enforced ----
         dummy = AutoETS()
-        self.active = self.disable_pred_int_enforcement(
-            forecaster=dummy, enforce_pi=globals_dict["enforce_pi"]
-        )
+        self.active = _check_enforcements(forecaster=dummy, globals_dict=globals_dict)
         if not self.active:
             return
 
@@ -1005,10 +971,9 @@ class ThetaContainer(TimeSeriesContainer):
 
         from sktime.forecasting.theta import ThetaForecaster  # type: ignore
 
+        #### Disable container if certain features are not supported but enforced ----
         dummy = ThetaForecaster()
-        self.active = self.disable_pred_int_enforcement(
-            forecaster=dummy, enforce_pi=globals_dict["enforce_pi"]
-        )
+        self.active = _check_enforcements(forecaster=dummy, globals_dict=globals_dict)
         if not self.active:
             return
 
@@ -1099,10 +1064,9 @@ class TBATSContainer(TimeSeriesContainer):
             self.active = False
             return
 
+        #### Disable container if certain features are not supported but enforced ----
         dummy = TBATS()
-        self.active = self.disable_pred_int_enforcement(
-            forecaster=dummy, enforce_pi=globals_dict["enforce_pi"]
-        )
+        self.active = _check_enforcements(forecaster=dummy, globals_dict=globals_dict)
         if not self.active:
             return
 
@@ -1168,10 +1132,9 @@ class BATSContainer(TimeSeriesContainer):
             self.active = False
             return
 
+        #### Disable container if certain features are not supported but enforced ----
         dummy = BATS()
-        self.active = self.disable_pred_int_enforcement(
-            forecaster=dummy, enforce_pi=globals_dict["enforce_pi"]
-        )
+        self.active = _check_enforcements(forecaster=dummy, globals_dict=globals_dict)
         if not self.active:
             return
 
@@ -1237,10 +1200,9 @@ class ProphetContainer(TimeSeriesContainer):
 
         from sktime.forecasting.fbprophet import Prophet
 
+        #### Disable container if certain features are not supported but enforced ----
         dummy = Prophet()
-        self.active = self.disable_pred_int_enforcement(
-            forecaster=dummy, enforce_pi=globals_dict["enforce_pi"]
-        )
+        self.active = _check_enforcements(forecaster=dummy, globals_dict=globals_dict)
         if not self.active:
             return
 
@@ -1336,10 +1298,9 @@ class CdsDtContainer(TimeSeriesContainer):
             self.active = False
             return
 
+        #### Disable container if certain features are not supported but enforced ----
         dummy = BaseCdsDtForecaster(regressor=self.regressor)
-        self.active = self.disable_pred_int_enforcement(
-            forecaster=dummy, enforce_pi=globals_dict["enforce_pi"]
-        )
+        self.active = _check_enforcements(forecaster=dummy, globals_dict=globals_dict)
         if not self.active:
             return
 
@@ -2687,7 +2648,6 @@ try:
                 )
             return y
 
-
 except ImportError:
     Prophet = None
     ProphetPeriodPatched = None
@@ -2731,4 +2691,3 @@ def get_all_model_containers(
     return pycaret.containers.base_container.get_all_containers(
         globals(), globals_dict, TimeSeriesContainer, raise_errors
     )
-

@@ -45,6 +45,7 @@ from pycaret.utils.time_series.forecasting import (
     get_predictions_with_intervals,
     update_additional_scorer_kwargs,
 )
+from pycaret.utils.time_series import TSApproachTypes, TSExogenousPresent
 from pycaret.utils.time_series.forecasting.model_selection import (
     ForecastingGridSearchCV,
     ForecastingRandomizedSearchCV,
@@ -82,6 +83,9 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 "all_sp_values",
                 "strictly_positive",
                 "enforce_pi",
+                "enforce_exogenous",
+                "approach_type",
+                "exogenous_present",
                 "index_type",
             }
         )
@@ -133,7 +137,8 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 ["Target", self.target_param],
                 ["Original Data", self.data_before_preprocess.shape],
                 ["Missing Values", kwargs["missing_flag"]],
-                ["Forecasting Type", self.forecasting_type],
+                ["Approach", self.approach_type.value],
+                ["Exogenous Variables", self.exogenous_present.value],
                 ["Transformed Train Target", self.y_train.shape],
                 ["Transformed Test Target", self.y_test.shape],
                 ["Transformed Train Exogenous", self.X_train.shape],
@@ -590,8 +595,8 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         return exo_variables
 
-    def _check_and_set_forecsting_type(self):
-        """Checks & sets the the forecasting type based on the number of Targets
+    def _check_and_set_forecsting_types(self):
+        """Checks & sets the the forecasting types based on the number of Targets
         and Exogenous Variables.
 
         Raises
@@ -599,17 +604,18 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         ValueError
             If Forecasting type is unsupported (e.g. Multivariate Forecasting)
         """
+        #### Univariate or Multivariate ----
         if isinstance(self.target_param, str):
-            if len(self.exogenous_variables) > 0:
-                self.forecasting_type = "Univariate with Exogenous Variables"
-            else:
-                self.forecasting_type = "Univariate without Exogenous Variables"
+            self.approach_type = TSApproachTypes.UNI
         elif isinstance(self.target_param, list):
-            if len(self.exogenous_variables) > 0:
-                self.forecasting_type = "Multivariate with Exogenous Variables"
-            else:
-                self.forecasting_type = "Multivariate without Exogenous Variables"
+            self.approach_type = TSApproachTypes.MULTI
             raise ValueError("Multivariate forecasting is currently not supported")
+
+        #### Data has exogenous variables or not ----
+        if len(self.exogenous_variables) > 0:
+            self.exogenous_present = TSExogenousPresent.YES
+        else:
+            self.exogenous_present = TSExogenousPresent.NO
 
     def setup(
         self,
@@ -619,13 +625,14 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         ignore_features: Optional[List] = None,
         preprocess: bool = True,
         imputation_type: str = "simple",
-        #        transform_target: bool = False,
-        #        transform_target_method: str = "box-cox",
+        # transform_target: bool = False,
+        # transform_target_method: str = "box-cox",
         fold_strategy: Union[str, Any] = "expanding",
         fold: int = 3,
         fh: Optional[Union[List[int], int, np.array]] = 1,
         seasonal_period: Optional[Union[List[Union[int, str]], int, str]] = None,
         enforce_pi: bool = False,
+        enforce_exogenous: bool = True,
         n_jobs: Optional[int] = -1,
         use_gpu: bool = False,
         custom_pipeline: Union[
@@ -736,13 +743,22 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             Alternatively you can provide a custom `seasonal_period` by passing
             it as an integer or a string corresponding to the keys above (e.g.
             'W' for weekly data, 'M' for monthly data, etc.). You can also provide
-            a list of such values to use in models that accept multple seasonal values
+            a list of such values to use in models that accept multiple seasonal values
             (currently TBATS). For models that don't accept multiple seasonal values, the
             first value of the list will be used as the seasonal period.
+
 
         enforce_pi: bool, default = False
             When set to True, only models that support prediction intervals are
             loaded in the environment.
+
+
+        enforce_exogenous: bool, default = True
+            When set to True and the data includes exogenous variables, only models
+            that support exogenous variables are loaded in the environment.When
+            set to False, all models are included and in this case, models that do
+            not support exogenous variables will model the data as a univariate
+            forecasting problem.
 
 
         n_jobs: int, default = -1
@@ -847,6 +863,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         self.hoverinfo = hoverinfo
         self.renderer = renderer
         self.enforce_pi = enforce_pi
+        self.enforce_exogenous = enforce_exogenous
 
         #### Check and Clean Data ----
         data_ = self._check_and_clean_data(data)
@@ -865,7 +882,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         )
 
         #### Set type of forecasting ----
-        self._check_and_set_forecsting_type()
+        self._check_and_set_forecsting_types()
 
         #### Set Forecast Horizon ----
         self._check_and_set_fh(fh=fh, fold_strategy=fold_strategy, fold=fold)
