@@ -5,7 +5,7 @@ import pytest
 import numpy as np  # type: ignore
 
 from pycaret.datasets import get_data
-from pycaret.internal.pycaret_experiment import TimeSeriesExperiment
+from pycaret.time_series import TSForecastingExperiment
 
 from .time_series_test_utils import (
     _return_splitter_args,
@@ -132,11 +132,11 @@ def test_enforce_pi(load_pos_and_neg_data):
     """Tests the enforcement of prediction interval"""
     data = load_pos_and_neg_data
 
-    exp1 = TimeSeriesExperiment()
+    exp1 = TSForecastingExperiment()
     exp1.setup(data=data, enforce_pi=True)
     num_models1 = len(exp1.models())
 
-    exp2 = TimeSeriesExperiment()
+    exp2 = TSForecastingExperiment()
     exp2.setup(data=data, enforce_pi=False)
     num_models2 = len(exp2.models())
 
@@ -150,11 +150,11 @@ def test_enforce_exogenous_no_exo_data(load_pos_and_neg_data):
     univariate data without exogenous variables is passed."""
     data = load_pos_and_neg_data
 
-    exp1 = TimeSeriesExperiment()
+    exp1 = TSForecastingExperiment()
     exp1.setup(data=data, enforce_exogenous=True)
     num_models1 = len(exp1.models())
 
-    exp2 = TimeSeriesExperiment()
+    exp2 = TSForecastingExperiment()
     exp2.setup(data=data, enforce_exogenous=False)
     num_models2 = len(exp2.models())
 
@@ -168,11 +168,11 @@ def test_enforce_exogenous_exo_data(load_uni_exo_data_target):
     univariate data with exogenous variables is passed."""
     data, target = load_uni_exo_data_target
 
-    exp1 = TimeSeriesExperiment()
+    exp1 = TSForecastingExperiment()
     exp1.setup(data=data, target=target, seasonal_period=4, enforce_exogenous=True)
     num_models1 = len(exp1.models())
 
-    exp2 = TimeSeriesExperiment()
+    exp2 = TSForecastingExperiment()
     exp2.setup(data=data, target=target, seasonal_period=4, enforce_exogenous=False)
     num_models2 = len(exp2.models())
 
@@ -183,7 +183,7 @@ def test_enforce_exogenous_exo_data(load_uni_exo_data_target):
 
 def test_seasonal_period_to_use():
 
-    exp = TimeSeriesExperiment()
+    exp = TSForecastingExperiment()
     fh = 12
 
     # Airline Data with seasonality of 12
@@ -224,7 +224,7 @@ def test_seasonal_period_to_use():
 @pytest.mark.parametrize("seasonal_key, seasonal_value", _get_seasonal_values())
 def test_setup_seasonal_period_int(load_pos_and_neg_data, seasonal_key, seasonal_value):
 
-    exp = TimeSeriesExperiment()
+    exp = TSForecastingExperiment()
 
     fh = np.arange(1, 13)
     fold = 2
@@ -246,7 +246,7 @@ def test_setup_seasonal_period_int(load_pos_and_neg_data, seasonal_key, seasonal
 def test_setup_seasonal_period_str(
     load_pos_and_neg_data, seasonal_period, seasonal_value
 ):
-    exp = TimeSeriesExperiment()
+    exp = TSForecastingExperiment()
 
     fh = np.arange(1, 13)
     fold = 2
@@ -278,7 +278,7 @@ def test_setup_seasonal_period_alphanumeric(
     lcm = abs(seasonal_value * prefix) // math.gcd(seasonal_value, prefix)
     expected_seasonal_value = int(lcm / prefix)
 
-    exp = TimeSeriesExperiment()
+    exp = TSForecastingExperiment()
 
     fh = np.arange(1, 13)
     fold = 2
@@ -305,21 +305,21 @@ def test_train_test_split(load_pos_and_neg_data):
     ####################################
 
     #### Integer fh ----
-    exp = TimeSeriesExperiment()
+    exp = TSForecastingExperiment()
     fh = 12
     exp.setup(data=data, fh=fh, session_id=42)
     y_test = exp.get_config("y_test")
     assert len(y_test) == fh
 
     #### Numpy fh ----
-    exp = TimeSeriesExperiment()
+    exp = TSForecastingExperiment()
     fh = np.arange(1, 10)  # 9 values
     exp.setup(data=data, fh=fh, session_id=42)
     y_test = exp.get_config("y_test")
     assert len(y_test) == len(fh)
 
     #### List fh ----
-    exp = TimeSeriesExperiment()
+    exp = TSForecastingExperiment()
     fh = [1, 2, 3, 4, 5, 6]
     exp.setup(data=data, fh=fh, session_id=42)
     y_test = exp.get_config("y_test")
@@ -330,14 +330,14 @@ def test_train_test_split(load_pos_and_neg_data):
     #################################
 
     #### Numpy fh ----
-    exp = TimeSeriesExperiment()
+    exp = TSForecastingExperiment()
     fh = np.arange(7, 13)  # 6 values
     exp.setup(data=data, fh=fh, session_id=42)
     y_test = exp.get_config("y_test")
     assert len(y_test) == len(fh)
 
     #### List fh ----
-    exp = TimeSeriesExperiment()
+    exp = TSForecastingExperiment()
     fh = [4, 5, 6]
     exp.setup(data=data, fh=fh, session_id=42)
     y_test = exp.get_config("y_test")
@@ -348,14 +348,14 @@ def test_train_test_split(load_pos_and_neg_data):
     ####################################
 
     #### Numpy fh ----
-    exp = TimeSeriesExperiment()
+    exp = TSForecastingExperiment()
     fh = np.array([4, 5, 6, 10, 11, 12])  # 6 values
     exp.setup(data=data, fh=fh, session_id=42)
     y_test = exp.get_config("y_test")
     assert len(y_test) == len(fh)
 
     #### List fh ----
-    exp = TimeSeriesExperiment()
+    exp = TSForecastingExperiment()
     fh = [4, 5, 6, 10, 11, 12]
     exp.setup(data=data, fh=fh, session_id=42)
     y_test = exp.get_config("y_test")

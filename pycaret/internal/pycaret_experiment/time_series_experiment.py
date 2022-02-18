@@ -55,7 +55,7 @@ warnings.filterwarnings("ignore")
 LOGGER = get_logger()
 
 
-class TimeSeriesExperiment(_SupervisedExperiment):
+class TSForecastingExperiment(_SupervisedExperiment):
     def __init__(self) -> None:
         super().__init__()
         self._ml_usecase = MLUsecase.TIME_SERIES
@@ -3476,3 +3476,15 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         """
         additional_scorer_kwargs = {"sp": self.sp_to_use}
         return additional_scorer_kwargs
+
+
+class TimeSeriesExperiment(TSForecastingExperiment):
+    def __init__(self) -> None:
+        msg = (
+            "DeprecationWarning: TimeSeriesExperiment class will be removed in "
+            "a future release. Please import the following instead. \n"
+            ">>> from pycaret.time_series import TSForecastingExperiment"
+        )
+        warnings.warn(msg, DeprecationWarning)
+        print(msg)
+        super().__init__()

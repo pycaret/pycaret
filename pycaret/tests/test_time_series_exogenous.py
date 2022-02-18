@@ -4,7 +4,7 @@ import pytest
 import numpy as np  # type: ignore
 import pandas as pd  # type: ignore
 
-from pycaret.internal.pycaret_experiment import TimeSeriesExperiment
+from pycaret.time_series import TSForecastingExperiment
 from pycaret.utils.time_series import TSApproachTypes, TSExogenousPresent
 
 
@@ -37,7 +37,7 @@ def test_create_tune_predict_finalize_model(load_uni_exo_data_target):
     future_data = data.iloc[-12:]
     future_exog = future_data.drop(columns=target)
 
-    exp = TimeSeriesExperiment()
+    exp = TSForecastingExperiment()
     exp.setup(
         data=data_for_modeling, target=target, fh=fh, seasonal_period=4, session_id=42
     )
@@ -104,7 +104,7 @@ def test_blend_models(load_uni_exo_data_target, load_models_uni_mix_exo_noexo):
     expected_period_index = data_for_modeling.iloc[-fh:].index
     final_expected_period_index = future_exog.index
 
-    exp = TimeSeriesExperiment()
+    exp = TSForecastingExperiment()
     exp.setup(
         data=data_for_modeling,
         target=target,
@@ -141,7 +141,7 @@ def test_setup():
     target = "A"
     index = "B"  # NOTE: When index is provided we do not need to pass seasonal_period
 
-    exp = TimeSeriesExperiment()
+    exp = TSForecastingExperiment()
 
     ######################################
     #### Univariate without exogenous ####
@@ -213,7 +213,7 @@ def test_setup_raises():
     data = pd.DataFrame(np.random.rand(length, 7))
     data.columns = "A B C D E F G".split()
 
-    exp = TimeSeriesExperiment()
+    exp = TSForecastingExperiment()
 
     ##############################
     #### Target Not Specified ####

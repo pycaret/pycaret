@@ -1,6 +1,6 @@
 import pytest
 
-from pycaret.internal.pycaret_experiment import TimeSeriesExperiment
+from pycaret.time_series import TSForecastingExperiment
 
 from .time_series_test_utils import (
     _return_data_big_small,
@@ -37,7 +37,7 @@ _model_names_for_stats = _return_model_names_for_plots_stats()
 def test_check_stats_data(data, test):
     """Tests the check_stats functionality on the data"""
 
-    exp = TimeSeriesExperiment()
+    exp = TSForecastingExperiment()
 
     # Reduced fh since we are testing with small dataset as well
     fh = 1
@@ -113,7 +113,7 @@ def test_check_stats_data(data, test):
 def test_check_stats_estimator(model_name, data, test):
     """Tests the check_stats functionality on the data"""
 
-    exp = TimeSeriesExperiment()
+    exp = TSForecastingExperiment()
 
     # Reduced fh since we are testing with small dataset as well
     fh = 1
@@ -194,7 +194,7 @@ def test_check_stats_estimator(model_name, data, test):
 def test_check_stats_alpha(load_pos_and_neg_data):
     """Tests the check_stats functionality with different alpha"""
 
-    exp = TimeSeriesExperiment()
+    exp = TSForecastingExperiment()
 
     fh = 12
     fold = 2

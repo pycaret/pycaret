@@ -4,7 +4,7 @@ import pytest
 import numpy as np  # type: ignore
 import pandas as pd  # type: ignore
 
-from pycaret.internal.pycaret_experiment import TimeSeriesExperiment
+from pycaret.time_series import TSForecastingExperiment
 
 from .time_series_test_utils import (
     _return_model_parameters,
@@ -41,11 +41,15 @@ def test_create_predict_finalize_model(name, fh, load_pos_and_neg_data):
     """test create_model, predict_model and finalize_model functionality
     Combined to save run time
     """
-    exp = TimeSeriesExperiment()
+    exp = TSForecastingExperiment()
     data = load_pos_and_neg_data  # _check_data_for_prophet(name, load_pos_and_neg_data)
 
     exp.setup(
-        data=data, fold=2, fh=fh, fold_strategy="sliding", verbose=False,
+        data=data,
+        fold=2,
+        fh=fh,
+        fold_strategy="sliding",
+        verbose=False,
     )
     #######################
     ## Test Create Model ##
@@ -99,7 +103,7 @@ def test_create_predict_finalize_model(name, fh, load_pos_and_neg_data):
 
 def test_predict_model_warnings(load_pos_and_neg_data):
     """test predict_model warnings cases"""
-    exp = TimeSeriesExperiment()
+    exp = TSForecastingExperiment()
     exp.setup(
         data=load_pos_and_neg_data,
         fold=2,
@@ -125,7 +129,7 @@ def test_predict_model_warnings(load_pos_and_neg_data):
 
 def test_create_model_custom_folds(load_pos_and_neg_data):
     """test custom fold in create_model"""
-    exp = TimeSeriesExperiment()
+    exp = TSForecastingExperiment()
     setup_fold = 3
     exp.setup(
         data=load_pos_and_neg_data,
@@ -151,9 +155,12 @@ def test_create_model_custom_folds(load_pos_and_neg_data):
 
 def test_create_model_no_cv(load_pos_and_neg_data):
     """test create_model without cross validation"""
-    exp = TimeSeriesExperiment()
+    exp = TSForecastingExperiment()
     exp.setup(
-        data=load_pos_and_neg_data, fh=12, fold_strategy="sliding", verbose=False,
+        data=load_pos_and_neg_data,
+        fh=12,
+        fold_strategy="sliding",
+        verbose=False,
     )
 
     ##################################
@@ -169,7 +176,7 @@ def test_create_model_no_cv(load_pos_and_neg_data):
 def test_prediction_interval_na(load_pos_and_neg_data):
     """Tests predict model when interval is NA"""
 
-    exp = TimeSeriesExperiment()
+    exp = TSForecastingExperiment()
 
     fh = 12
     fold = 2
@@ -194,7 +201,7 @@ def test_prediction_interval_na(load_pos_and_neg_data):
 @pytest.mark.parametrize("cross_validation, log_experiment", _compare_model_args)
 def test_compare_models(cross_validation, log_experiment, load_pos_and_neg_data):
     """tests compare_models functionality"""
-    exp = TimeSeriesExperiment()
+    exp = TSForecastingExperiment()
 
     fh = 12
     fold = 2
@@ -227,7 +234,7 @@ def test_save_load_model(load_pos_and_neg_data):
     ######################
     #### OOP Approach ####
     ######################
-    exp = TimeSeriesExperiment()
+    exp = TSForecastingExperiment()
     exp.setup(
         data=data,
         fh=fh,
@@ -242,7 +249,7 @@ def test_save_load_model(load_pos_and_neg_data):
     exp.save_model(model, "model_unit_test_oop")
 
     # Mimic loading in another session
-    exp_loaded = TimeSeriesExperiment()
+    exp_loaded = TSForecastingExperiment()
     loaded_model = exp_loaded.load_model("model_unit_test_oop")
     loaded_predictions = exp_loaded.predict_model(loaded_model)
 

@@ -3,7 +3,7 @@
 
 import pytest
 
-from pycaret.internal.pycaret_experiment import TimeSeriesExperiment
+from pycaret.time_series import TSForecastingExperiment
 
 
 ##########################
@@ -15,7 +15,7 @@ def test_mlflow_logging(load_pos_and_neg_data):
     """Tests the logging of MLFlow experiment"""
     data = load_pos_and_neg_data
 
-    exp = TimeSeriesExperiment()
+    exp = TSForecastingExperiment()
     exp.setup(
         data=data,
         fh=12,
