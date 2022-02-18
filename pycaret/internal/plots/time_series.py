@@ -94,12 +94,12 @@ def _plot(
             fig_kwargs=fig_kwargs,
         )
 
-    elif plot == "decomp_classical":
+    elif plot == "decomp":
         fig, plot_data = plot_time_series_decomposition(
             data=data,
             fig_defaults=fig_defaults,
             model_name=model_name,
-            plot="decomp_classical",
+            plot="decomp",
             data_kwargs=data_kwargs,
             fig_kwargs=fig_kwargs,
         )
@@ -870,7 +870,7 @@ def plot_time_series_decomposition(
     data: pd.Series,
     fig_defaults: Dict[str, Any],
     model_name: Optional[str] = None,
-    plot: str = "decomp_classical",
+    plot: str = "decomp",
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
 ) -> PlotReturnType:
@@ -889,7 +889,7 @@ def plot_time_series_decomposition(
 
     classical_decomp_type = data_kwargs.get("type", "additive")
 
-    if plot == "decomp_classical":
+    if plot == "decomp":
         title_name = f"Classical Decomposition ({classical_decomp_type})"
     elif plot == "decomp_stl":
         title_name = "STL Decomposition"
@@ -903,7 +903,7 @@ def plot_time_series_decomposition(
     data_ = data.to_timestamp() if isinstance(data.index, pd.PeriodIndex) else data
 
     sp_to_use = data_kwargs.get("sp_to_use")
-    if plot == "decomp_classical":
+    if plot == "decomp":
         decomp_result = seasonal_decompose(
             data_, period=sp_to_use, model=classical_decomp_type
         )

@@ -94,8 +94,8 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             "cv": "Cross Validation",
             "acf": "Auto Correlation (ACF)",
             "pacf": "Partial Auto Correlation (PACF)",
-            "decomp_classical": "Decomposition Classical",
-            "decomp_stl": "Decomposition STL",
+            "decomp": "Classical Decomposition",
+            "decomp_stl": "STL Decomposition",
             "diagnostics": "Diagnostics Plot",
             "diff": "Difference Plot",
             "forecast": "Out-of-Sample Forecast Plot",
@@ -113,7 +113,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             "acf",
             "pacf",
             "diagnostics",
-            "decomp_classical",
+            "decomp",
             "decomp_stl",
             "diff",
             "periodogram",
@@ -2106,7 +2106,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         >>> plot_model(plot="diff", data_kwargs={"lags_list": [[1], [1, 12]], "acf": True, "pacf": True})
         >>> arima = create_model('arima')
         >>> plot_model(plot = 'ts')
-        >>> plot_model(plot = 'decomp_classical', data_kwargs = {'type' : 'multiplicative'})
+        >>> plot_model(plot = 'decomp', data_kwargs = {'type' : 'multiplicative'})
         >>> plot_model(estimator = arima, plot = 'forecast', data_kwargs = {'fh' : 24})
 
 
@@ -2123,8 +2123,8 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             * 'cv' - Cross Validation
             * 'acf' - Auto Correlation (ACF)
             * 'pacf' - Partial Auto Correlation (PACF)
-            * 'decomp_classical' - Decomposition Classical
-            * 'decomp_stl' - Decomposition STL
+            * 'decomp' - Classical Decomposition
+            * 'decomp_stl' - STL Decomposition
             * 'diagnostics' - Diagnostics Plot
             * 'diff' - Difference Plot
             * 'periodogram' - Frequency Components (Periodogram)
@@ -2175,6 +2175,13 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         """
         # checking display_format parameter
         self.plot_model_check_display_format_(display_format=display_format)
+
+        if plot == "decomp_classical":
+            DeprecationWarning(
+                "`decomp_classical` plot type will be disabled in a future release. "
+                "Please use `decomp` instead."
+            )
+            plot = "decomp"
 
         # Import required libraries ----
         if display_format == "streamlit":
@@ -2242,7 +2249,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 "acf",
                 "pacf",
                 "diagnostics",
-                "decomp_classical",
+                "decomp",
                 "decomp_stl",
                 "diff",
                 "periodogram",
@@ -2276,7 +2283,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 "diagnostics",
                 "acf",
                 "pacf",
-                "decomp_classical",
+                "decomp",
                 "decomp_stl",
                 "diff",
                 "periodogram",
