@@ -18,8 +18,6 @@ from sktime.forecasting.model_selection import (  # type: ignore
     SlidingWindowSplitter,
 )
 
-import plotly.io as pio
-
 import pycaret.containers.metrics.time_series
 import pycaret.containers.models.time_series
 import pycaret.internal.patches.sklearn
@@ -38,7 +36,7 @@ from pycaret.internal.tests.time_series import run_test
 from pycaret.internal.tunable import TunableMixin
 from pycaret.internal.utils import color_df, deep_clone
 from pycaret.internal.validation import is_sklearn_cv_generator
-from pycaret.utils import _coerce_empty_dataframe_to_none
+from pycaret.utils import _coerce_empty_dataframe_to_none, _resolve_dict_keys
 from pycaret.utils.datetime import coerce_datetime_to_period_index
 from pycaret.utils.time_series import TSModelTypes, get_sp_from_str
 from pycaret.utils.time_series.forecasting import (
@@ -51,6 +49,7 @@ from pycaret.utils.time_series.forecasting.model_selection import (
     ForecastingRandomizedSearchCV,
     cross_validate,
 )
+from pycaret.internal.plots.utils.time_series import _resolve_renderer
 
 warnings.filterwarnings("ignore")
 LOGGER = get_logger()
@@ -646,11 +645,10 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         log_plots: Union[bool, list] = False,
         log_profile: bool = False,
         log_data: bool = False,
-        hoverinfo: Optional[str] = None,
-        renderer: Optional[str] = None,
         verbose: bool = True,
         profile: bool = False,
-        profile_kwargs: Dict[str, Any] = None,
+        profile_kwargs: Optional[Dict[str, Any]] = None,
+        fig_kwargs: Optional[Dict[str, Any]] = None,
     ):
         """
         This function initializes the training environment and creates the transformation
@@ -816,23 +814,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             Ignored when ``log_experiment`` is not True.
 
 
-        hoverinfo: Optional[str] = None
-            When None, hovering over certain plots is disabled when the data exceeds a
-            certain number of points (determined by `plot_big_data_threshold`). Can be
-            set to any value that can be passed to plotly `hoverinfo` arguments.
-            e.g. "text" to display, "skip" or "none" to disable.
-
-
-        renderer: Optional[str] = None
-            When None, plots use plotly's default render when data is below a certain
-            number of points (determined by `plot_big_data_threshold`) otherwise it
-            switches to a static "png" renderer. Alternately, users can specify the
-            renderer they want to use. e.g. "notebook", "png", "svg". Refer to plotly
-            documentation for availale renderers. Also note that certain renderers
-            (like "svg") may need additional libraries to be installed. Users will
-            have to do this manually since they don't come preinstalled with plotly.
-
-
         verbose: bool, default = True
             When set to False, Information grid is not printed.
 
@@ -846,6 +827,47 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             to create the EDA report. Ignored if ``profile`` is False.
 
 
+        fig_kwargs: dict, default = {} (empty dict)
+            The global setting for any plots. Pass these as key-value pairs.
+            Example: fig_kwargs = {"height": 1000, "template": "simple_white"}
+
+            Available keys are:
+
+            hoverinfo: hoverinfo passed to Plotly figures. Can be any value supported
+                by Plotly (e.g. "text" to display, "skip" or "none" to disable.).
+                When not provided, hovering over certain plots may be disabled by
+                PyCaret when the data exceeds a  certain number of points (determined
+                by `big_data_threshold`).
+
+            renderer: The renderer used to display the plotly figure. Can be any value
+                supported by Plotly (e.g. "notebook", "png", "svg", etc.). Note that certain
+                renderers (like "svg") may need additional libraries to be installed. Users
+                will have to do this manually since they don't come preinstalled wit plotly.
+                When not provided, plots use plotly's default render when data is below a
+                certain number of points (determined by `big_data_threshold`) otherwise it
+                switches to a static "png" renderer.
+
+            template: The template to use for the plots. Can be any value supported by Plotly.
+                If not provided, defaults to "ggplot2"
+
+            width: The width of the plot in pixels. If not provided, defaults to None
+                which lets Plotly decide the width.
+
+            height: The height of the plot in pixels. If not provided, defaults to None
+                which lets Plotly decide the height.
+
+            rows: The number of rows to use for plots where this can be customized,
+                e.g. `ccf`. If not provided, defaults to None which lets PyCaret decide
+                based on number of subplots to be plotted.
+
+            cols: The number of columns to use for plots where this can be customized,
+                e.g. `ccf`. If not provided, defaults to 4
+
+            big_data_threshold: The number of data points above which hovering over
+                certain plots can be disabled and/or renderer switched to a static
+                renderer. This is useful when the time series being modeled has a lot
+                of data which can make notebooks slow to render.
+
         Returns:
             Global variables that can be changed using the ``set_config`` function.
 
@@ -857,11 +879,9 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         ##############################
 
         #### Define parameter attrs ----
-        # Number of data points above which the hovering of some plots is disabled
-        # This is needed else the notebooks become very slow.
-        self.plot_big_data_threshold = 200
-        self.hoverinfo = hoverinfo
-        self.renderer = renderer
+        self.fig_kwargs = fig_kwargs or {}
+        self._set_default_fig_kwargs()
+
         self.enforce_pi = enforce_pi
         self.enforce_exogenous = enforce_exogenous
 
@@ -947,6 +967,26 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             profile=profile,
             profile_kwargs=profile_kwargs,
         )
+
+    def _set_default_fig_kwargs(self):
+        """Set the default values for `fig_kwargs` if these are not provided by the user."""
+
+        # `big_data_threshold`: Number of data points above which the hovering for
+        # some plots is disabled. This is needed else the notebooks become very slow.
+        defaults = {
+            "big_data_threshold": 200,
+            "hoverinfo": None,
+            "renderer": None,
+            "template": "ggplot2",
+            "rows": None,
+            "cols": 4,
+            "width": None,
+            "height": None,
+        }
+
+        # Set to default if missing ----
+        for key in defaults:
+            self.fig_kwargs[key] = self.fig_kwargs.get(key, defaults[key])
 
     def compare_models(
         self,
@@ -2041,8 +2081,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         plot: Optional[str] = None,
         return_fig: bool = False,
         return_data: bool = False,
-        hoverinfo: Optional[str] = None,
-        renderer: Optional[str] = None,
         verbose: bool = False,
         display_format: Optional[str] = None,
         data_kwargs: Optional[Dict] = None,
@@ -2107,22 +2145,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             is figure then data.
 
 
-        hoverinfo: Optional[str] = None
-            Override for the experiment global `hoverinfo` passed during setup.
-            Useful when user wants to change the hoverinfo for certain plots only.
-            Can be set to any value that can be passed to plotly `hoverinfo`
-            arguments. e.g. "text" to display, "skip" or "none" to disable.
-
-
-        renderer: Optional[str] = None
-            When None, plots use the `renderer` passed during setup. Alternately,
-            users can specify the renderer they want to use. e.g. "notebook", "png",
-            "svg". Refer to plotly documentation for availale renderers. Also note
-            that certain renderers (like "svg") may need additional libraries to
-            be installed. Users will have to do this manually since they don't come
-            preinstalled with plotly.
-
-
         verbose: bool, default = True
             Unused for now
 
@@ -2136,9 +2158,10 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             Dictionary of arguments passed to the data for plotting.
 
 
-        fig_kwargs: dict, default = None
-            Dictionary of arguments passed to the figure object of plotly. Example:
-            * fig_kwargs = {'fig_size' : [800, 500], 'fig_template' : 'simple_white'}
+        fig_kwargs: dict, default = {} (empty dict)
+            The setting to be used for the plot. Overrides any global setting
+            passed during setup. Pass these as key-value pairs. For available
+            keys, refer to the `setup` documentation.
 
 
         save: string or bool, default = False
@@ -2169,8 +2192,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         else:
             data_kwargs.update(sp_dict)
 
-        if fig_kwargs is None:
-            fig_kwargs = {}
+        fig_kwargs = fig_kwargs or {}
 
         return_pred_int = False
         return_obj = []
@@ -2303,16 +2325,24 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                     f"Available plots are: {', '.join(plots_formatted_model)}"
                 )
 
-        hoverinfo = self._resolve_hoverinfo(
-            hoverinfo=hoverinfo, data=data, train=train, test=test, X=X
+        big_data_threshold = _resolve_dict_keys(
+            dict_=fig_kwargs, key="big_data_threshold", defaults=self.fig_kwargs
         )
-
-        renderer = self._resolve_renderer(
-            renderer=renderer, data=data, train=train, test=test, X=X
+        renderer = _resolve_dict_keys(
+            dict_=fig_kwargs, key="renderer", defaults=self.fig_kwargs
+        )
+        renderer = _resolve_renderer(
+            renderer=renderer,
+            threshold=big_data_threshold,
+            data=data,
+            train=train,
+            test=test,
+            X=X,
         )
 
         fig, plot_data = _plot(
             plot=plot,
+            fig_defaults=self.fig_kwargs,
             data=data,
             train=train,
             test=test,
@@ -2321,7 +2351,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             cv=cv,
             model_name=model_name,
             return_pred_int=return_pred_int,
-            hoverinfo=hoverinfo,
             data_kwargs=data_kwargs,
             fig_kwargs=fig_kwargs,
         )
@@ -2363,40 +2392,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         elif len(return_obj) == 1:
             return_obj = return_obj[0]
         return return_obj
-
-    def _resolve_hoverinfo(self, hoverinfo, data, train, test, X):
-        # Decide whether hover should be enabled or disabled
-        if self.hoverinfo is None and hoverinfo is None:
-            hoverinfo = "text"
-            if data is not None and len(data) > self.plot_big_data_threshold:
-                hoverinfo = "skip"
-            if train is not None and len(train) > self.plot_big_data_threshold:
-                hoverinfo = "skip"
-            if test is not None and len(test) > self.plot_big_data_threshold:
-                hoverinfo = "skip"
-            if X is not None and len(X) * X.shape[1] > self.plot_big_data_threshold:
-                hoverinfo = "skip"
-        elif self.hoverinfo is not None and hoverinfo is None:
-            hoverinfo = self.hoverinfo
-        # if hoverinfo is not None, then use as is.
-        return hoverinfo
-
-    def _resolve_renderer(self, renderer, data, train, test, X):
-        # Decide the render to be used
-        if self.renderer is None and renderer is None:
-            renderer = pio.renderers.default
-            if data is not None and len(data) > self.plot_big_data_threshold:
-                renderer = "png"
-            if train is not None and len(train) > self.plot_big_data_threshold:
-                renderer = "png"
-            if test is not None and len(test) > self.plot_big_data_threshold:
-                renderer = "png"
-            if X is not None and len(X) * X.shape[1] > self.plot_big_data_threshold:
-                renderer = "png"
-        elif self.renderer is not None and renderer is None:
-            renderer = self.renderer
-        # if renderer is not None, then use as is.
-        return renderer
 
     def predict_model(
         self,

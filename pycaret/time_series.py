@@ -47,11 +47,10 @@ def setup(
     log_plots: Union[bool, list] = False,
     log_profile: bool = False,
     log_data: bool = False,
-    hoverinfo: Optional[str] = None,
-    renderer: Optional[str] = None,
     verbose: bool = True,
     profile: bool = False,
     profile_kwargs: Dict[str, Any] = None,
+    fig_kwargs: Dict[str, Any] = None,
 ):
     """
     This function initializes the training environment and creates the transformation
@@ -217,23 +216,6 @@ def setup(
         Ignored when ``log_experiment`` is not True.
 
 
-    hoverinfo: Optional[str] = None
-        When None, hovering over certain plots is disabled when the data exceeds a
-        certain number of points (determined by `plot_big_data_threshold`). Can be
-        set to any value that can be passed to plotly `hoverinfo` arguments.
-        e.g. "text" to display, "skip" or "none" to disable.
-
-
-    renderer: Optional[str] = None
-        When None, plots use plotly's default render when data is below a certain
-        number of points (determined by `plot_big_data_threshold`) otherwise it
-        switches to a static "png" renderer. Alternately, users can specify the
-        renderer they want to use. e.g. "notebook", "png", "svg". Refer to plotly
-        documentation for availale renderers. Also note that certain renderers
-        (like "svg") may need additional libraries to be installed. Users will
-        have to do this manually since they don't come preinstalled with plotly.
-
-
     verbose: bool, default = True
         When set to False, Information grid is not printed.
 
@@ -246,6 +228,47 @@ def setup(
         Dictionary of arguments passed to the ProfileReport method used
         to create the EDA report. Ignored if ``profile`` is False.
 
+
+    fig_kwargs: dict, default = {} (empty dict)
+        The global setting for any plots. Pass these as key-value pairs.
+        Example: fig_kwargs = {"height": 1000, "template": "simple_white"}
+
+        Available keys are:
+
+        hoverinfo: hoverinfo passed to Plotly figures. Can be any value supported
+            by Plotly (e.g. "text" to display, "skip" or "none" to disable.).
+            When not provided, hovering over certain plots may be disabled by
+            PyCaret when the data exceeds a  certain number of points (determined
+            by `big_data_threshold`).
+
+        renderer: The renderer used to display the plotly figure. Can be any value
+            supported by Plotly (e.g. "notebook", "png", "svg", etc.). Note that certain
+            renderers (like "svg") may need additional libraries to be installed. Users
+            will have to do this manually since they don't come preinstalled wit plotly.
+            When not provided, plots use plotly's default render when data is below a
+            certain number of points (determined by `big_data_threshold`) otherwise it
+            switches to a static "png" renderer.
+
+        template: The template to use for the plots. Can be any value supported by Plotly.
+            If not provided, defaults to "ggplot2"
+
+        width: The width of the plot in pixels. If not provided, defaults to None
+            which lets Plotly decide the width.
+
+        height: The height of the plot in pixels. If not provided, defaults to None
+            which lets Plotly decide the height.
+
+        rows: The number of rows to use for plots where this can be customized,
+            e.g. `ccf`. If not provided, defaults to None which lets PyCaret decide
+            based on number of subplots to be plotted.
+
+        cols: The number of columns to use for plots where this can be customized,
+            e.g. `ccf`. If not provided, defaults to 4
+
+        big_data_threshold: The number of data points above which hovering over
+            certain plots can be disabled and/or renderer switched to a static
+            renderer. This is useful when the time series being modeled has a lot
+            of data which can make notebooks slow to render.
 
     Returns:
         Global variables that can be changed using the ``set_config`` function.
@@ -278,11 +301,10 @@ def setup(
         log_plots=log_plots,
         log_profile=log_profile,
         log_data=log_data,
-        hoverinfo=hoverinfo,
-        renderer=renderer,
         verbose=verbose,
         profile=profile,
         profile_kwargs=profile_kwargs,
+        fig_kwargs=fig_kwargs,
     )
 
 
@@ -934,8 +956,6 @@ def plot_model(
     plot: Optional[str] = None,
     return_fig: bool = False,
     return_data: bool = False,
-    hoverinfo: Optional[str] = None,
-    renderer: Optional[str] = None,
     verbose: bool = False,
     display_format: Optional[str] = None,
     data_kwargs: Optional[Dict] = None,
@@ -999,22 +1019,6 @@ def plot_model(
         is figure then data.
 
 
-    hoverinfo: Optional[str] = None
-        Override for the experiment global `hoverinfo` passed during setup.
-        Useful when user wants to change the hoverinfo for certain plots only.
-        Can be set to any value that can be passed to plotly `hoverinfo`
-        arguments. e.g. "text" to display, "skip" or "none" to disable.
-
-
-    renderer: Optional[str] = None
-        When None, plots use the `renderer` passed during setup. Alternately,
-        users can specify the renderer they want to use. e.g. "notebook", "png",
-        "svg". Refer to plotly documentation for availale renderers. Also note
-        that certain renderers (like "svg") may need additional libraries to
-        be installed. Users will have to do this manually since they don't come
-        preinstalled with plotly.
-
-
     verbose: bool, default = True
         Unused for now
 
@@ -1028,9 +1032,10 @@ def plot_model(
         Dictionary of arguments passed to the data for plotting.
 
 
-    fig_kwargs: dict, default = None
-        Dictionary of arguments passed to the figure object of plotly. Example:
-        * fig_kwargs = {'fig_size' : [800, 500], 'fig_template' : 'simple_white'}
+    fig_kwargs: dict, default = {} (empty dict)
+        The setting to be used for the plot. Overrides any global setting
+        passed during setup. Pass these as key-value pairs. For available
+        keys, refer to the `setup` documentation.
 
 
     save: string or bool, default = False
@@ -1051,8 +1056,6 @@ def plot_model(
         plot=plot,
         return_fig=return_fig,
         return_data=return_data,
-        hoverinfo=hoverinfo,
-        renderer=renderer,
         display_format=display_format,
         data_kwargs=data_kwargs,
         fig_kwargs=fig_kwargs,

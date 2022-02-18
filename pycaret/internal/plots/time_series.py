@@ -3,7 +3,6 @@ from typing import Optional, Any, Union, Dict, Tuple
 import numpy as np
 import pandas as pd
 
-from math import ceil
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
@@ -16,6 +15,7 @@ from sktime.forecasting.model_selection import (
     SlidingWindowSplitter,
 )
 
+from pycaret.utils import _resolve_dict_keys
 from pycaret.utils.time_series import get_diffs
 from pycaret.internal.plots.utils.time_series import (
     time_series_subplot,
@@ -24,6 +24,9 @@ from pycaret.internal.plots.utils.time_series import (
     qq_subplot,
     frequency_components_subplot,
     return_frequency_components,
+    _update_fig_dimensions,
+    _get_subplot_rows_cols,
+    _resolve_hoverinfo,
 )
 
 __author__ = ["satya-pattnaik", "ngupta23"]
@@ -33,6 +36,7 @@ PlotReturnType = Tuple[Optional[go.Figure], Optional[Dict[str, Any]]]
 
 def _plot(
     plot: str,
+    fig_defaults: Dict[str, Any],
     data: Optional[pd.Series] = None,
     train: Optional[pd.Series] = None,
     test: Optional[pd.Series] = None,
@@ -41,17 +45,32 @@ def _plot(
     cv: Optional[Union[ExpandingWindowSplitter, SlidingWindowSplitter]] = None,
     model_name: Optional[str] = None,
     return_pred_int: bool = False,
-    hoverinfo: Optional[str] = "text",
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
 ) -> PlotReturnType:
-
+    """TODO: Fill"""
     data_kwargs = data_kwargs or {}
     fig_kwargs = fig_kwargs or {}
+
+    big_data_threshold = _resolve_dict_keys(
+        dict_=fig_kwargs, key="big_data_threshold", defaults=fig_defaults
+    )
+    hoverinfo = _resolve_dict_keys(
+        dict_=fig_kwargs, key="hoverinfo", defaults=fig_defaults
+    )
+    hoverinfo = _resolve_hoverinfo(
+        hoverinfo=hoverinfo,
+        threshold=big_data_threshold,
+        data=data,
+        train=train,
+        test=test,
+        X=X,
+    )
 
     if plot == "ts":
         fig, plot_data = plot_series(
             data=data,
+            fig_defaults=fig_defaults,
             X=X,
             hoverinfo=hoverinfo,
             data_kwargs=data_kwargs,
@@ -59,17 +78,26 @@ def _plot(
         )
     elif plot == "train_test_split":
         fig, plot_data = plot_splits_train_test_split(
-            train=train, test=test, data_kwargs=data_kwargs, fig_kwargs=fig_kwargs
+            train=train,
+            test=test,
+            fig_defaults=fig_defaults,
+            data_kwargs=data_kwargs,
+            fig_kwargs=fig_kwargs,
         )
 
     elif plot == "cv":
         fig, plot_data = plot_cv(
-            data=data, cv=cv, data_kwargs=data_kwargs, fig_kwargs=fig_kwargs
+            data=data,
+            cv=cv,
+            fig_defaults=fig_defaults,
+            data_kwargs=data_kwargs,
+            fig_kwargs=fig_kwargs,
         )
 
     elif plot == "decomp_classical":
         fig, plot_data = plot_time_series_decomposition(
             data=data,
+            fig_defaults=fig_defaults,
             model_name=model_name,
             plot="decomp_classical",
             data_kwargs=data_kwargs,
@@ -79,6 +107,7 @@ def _plot(
     elif plot == "decomp_stl":
         fig, plot_data = plot_time_series_decomposition(
             data=data,
+            fig_defaults=fig_defaults,
             model_name=model_name,
             plot="decomp_stl",
             data_kwargs=data_kwargs,
@@ -88,6 +117,7 @@ def _plot(
     elif plot == "acf":
         fig, plot_data = plot_acf(
             data=data,
+            fig_defaults=fig_defaults,
             model_name=model_name,
             data_kwargs=data_kwargs,
             fig_kwargs=fig_kwargs,
@@ -95,6 +125,7 @@ def _plot(
     elif plot == "pacf":
         fig, plot_data = plot_pacf(
             data=data,
+            fig_defaults=fig_defaults,
             model_name=model_name,
             data_kwargs=data_kwargs,
             fig_kwargs=fig_kwargs,
@@ -102,6 +133,7 @@ def _plot(
     elif plot == "diagnostics":
         fig, plot_data = plot_diagnostics(
             data=data,
+            fig_defaults=fig_defaults,
             model_name=model_name,
             data_kwargs=data_kwargs,
             fig_kwargs=fig_kwargs,
@@ -109,6 +141,7 @@ def _plot(
     elif plot == "residuals":
         fig, plot_data = plot_series(
             data=data,
+            fig_defaults=fig_defaults,
             X=X,
             hoverinfo=hoverinfo,
             model_name=model_name,
@@ -122,6 +155,7 @@ def _plot(
                 predictions=predictions["y_pred"],
                 upper_interval=predictions["upper"],
                 lower_interval=predictions["lower"],
+                fig_defaults=fig_defaults,
                 model_name=model_name,
                 data_kwargs=data_kwargs,
                 fig_kwargs=fig_kwargs,
@@ -130,6 +164,7 @@ def _plot(
             fig, plot_data = plot_predictions(
                 data=data,
                 predictions=predictions,
+                fig_defaults=fig_defaults,
                 type_=plot,
                 model_name=model_name,
                 data_kwargs=data_kwargs,
@@ -138,6 +173,7 @@ def _plot(
     elif plot == "diff":
         fig, plot_data = plot_time_series_differences(
             data=data,
+            fig_defaults=fig_defaults,
             model_name=model_name,
             hoverinfo=hoverinfo,
             data_kwargs=data_kwargs,
@@ -146,6 +182,7 @@ def _plot(
     elif plot == "periodogram" or plot == "fft":
         fig, plot_data = plot_frequency_components(
             data=data,
+            fig_defaults=fig_defaults,
             model_name=model_name,
             plot=plot,
             hoverinfo=hoverinfo,
@@ -154,7 +191,11 @@ def _plot(
         )
     elif plot == "ccf":
         fig, plot_data = plot_ccf(
-            data=data, X=X, data_kwargs=data_kwargs, fig_kwargs=fig_kwargs
+            data=data,
+            X=X,
+            fig_defaults=fig_defaults,
+            data_kwargs=data_kwargs,
+            fig_kwargs=fig_kwargs,
         )
     else:
         raise ValueError(f"Plot: '{plot}' is not supported.")
@@ -164,6 +205,7 @@ def _plot(
 
 def plot_series(
     data: pd.Series,
+    fig_defaults: Dict[str, Any],
     X: Optional[pd.DataFrame] = None,
     hoverinfo: Optional[str] = "text",
     model_name: Optional[str] = None,
@@ -211,17 +253,14 @@ def plot_series(
         )
 
     with fig.batch_update():
-        fig.update_layout(title=title)
-        fig.update_layout(showlegend=False)
-        fig_template = fig_kwargs.get("fig_template", "ggplot2")
-        fig.update_layout(template=fig_template)
+        template = _resolve_dict_keys(
+            dict_=fig_kwargs, key="template", defaults=fig_defaults
+        )
+        fig.update_layout(title=title, showlegend=False, template=template)
 
-        default_width = None
-        default_height = 300 * rows if rows > 1 else None
-        default_fig_size = [default_width, default_height]
-        fig_size = fig_kwargs.get("fig_size", default_fig_size)
-        if fig_size is not None:
-            fig.update_layout(autosize=False, width=fig_size[0], height=fig_size[1])
+        fig = _update_fig_dimensions(
+            fig=fig, fig_kwargs=fig_kwargs, fig_defaults=fig_defaults
+        )
 
     return_data_dict = {
         "data": plot_data,
@@ -233,6 +272,7 @@ def plot_series(
 def plot_splits_train_test_split(
     train: pd.Series,
     test: pd.Series,
+    fig_defaults: Dict[str, Any],
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
 ) -> PlotReturnType:
@@ -275,12 +315,14 @@ def plot_splits_train_test_split(
                 "showlegend": True,
             }
         )
-        fig_template = fig_kwargs.get("fig_template", "ggplot2")
-        fig.update_layout(template=fig_template)
+        template = _resolve_dict_keys(
+            dict_=fig_kwargs, key="template", defaults=fig_defaults
+        )
+        fig.update_layout(template=template)
 
-        fig_size = fig_kwargs.get("fig_size", None)
-        if fig_size is not None:
-            fig.update_layout(autosize=False, width=fig_size[0], height=fig_size[1])
+        fig = _update_fig_dimensions(
+            fig=fig, fig_kwargs=fig_kwargs, fig_defaults=fig_defaults
+        )
 
     return_data_dict = {
         "train": train,
@@ -293,6 +335,7 @@ def plot_splits_train_test_split(
 def plot_cv(
     data: pd.Series,
     cv,
+    fig_defaults: Dict[str, Any],
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
 ) -> PlotReturnType:
@@ -372,14 +415,14 @@ def plot_cv(
                         "showlegend": True,
                     }
                 )
-                fig_template = fig_kwargs.get("fig_template", "ggplot2")
-                fig.update_layout(template=fig_template)
+                template = _resolve_dict_keys(
+                    dict_=fig_kwargs, key="template", defaults=fig_defaults
+                )
+                fig.update_layout(template=template)
 
-                fig_size = fig_kwargs.get("fig_size", None)
-                if fig_size is not None:
-                    fig.update_layout(
-                        autosize=False, width=fig_size[0], height=fig_size[1]
-                    )
+                fig = _update_fig_dimensions(
+                    fig=fig, fig_kwargs=fig_kwargs, fig_defaults=fig_defaults
+                )
         return fig
 
     train_windows, test_windows = get_windows(data, cv)
@@ -395,6 +438,7 @@ def plot_cv(
 
 def plot_acf(
     data: pd.Series,
+    fig_defaults: Dict[str, Any],
     model_name: Optional[str] = None,
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
@@ -467,15 +511,14 @@ def plot_acf(
     with fig.batch_update():
         fig.update_xaxes(range=[-1, 42])
         fig.update_yaxes(zerolinecolor="#000000")
-        fig.update_traces(showlegend=False)
 
-        fig_template = fig_kwargs.get("fig_template", "ggplot2")
-        fig.update_layout(template=fig_template)
-
-        fig_size = fig_kwargs.get("fig_size", None)
-        if fig_size is not None:
-            fig.update_layout(autosize=False, width=fig_size[0], height=fig_size[1])
-        fig.update_layout(title=title)
+        template = _resolve_dict_keys(
+            dict_=fig_kwargs, key="template", defaults=fig_defaults
+        )
+        fig.update_layout(title=title, showlegend=False, template=template)
+        fig = _update_fig_dimensions(
+            fig=fig, fig_kwargs=fig_kwargs, fig_defaults=fig_defaults
+        )
 
     return_data_dict = {
         "acf": corr_array,
@@ -486,6 +529,7 @@ def plot_acf(
 
 def plot_pacf(
     data: pd.Series,
+    fig_defaults: Dict[str, Any],
     model_name: Optional[str] = None,
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
@@ -557,18 +601,17 @@ def plot_pacf(
     )
 
     with fig.batch_update():
-        fig.update_traces(showlegend=False)
         fig.update_xaxes(range=[-1, 42])
         fig.update_yaxes(zerolinecolor="#000000")
 
-        fig_template = fig_kwargs.get("fig_template", "ggplot2")
-        fig.update_layout(template=fig_template)
+        template = _resolve_dict_keys(
+            dict_=fig_kwargs, key="template", defaults=fig_defaults
+        )
+        fig.update_layout(title=title, showlegend=False, template=template)
 
-        fig_size = fig_kwargs.get("fig_size", None)
-        if fig_size is not None:
-            fig.update_layout(autosize=False, width=fig_size[0], height=fig_size[1])
-
-        fig.update_layout(title=title)
+        fig = _update_fig_dimensions(
+            fig=fig, fig_kwargs=fig_kwargs, fig_defaults=fig_defaults
+        )
 
     return_data_dict = {
         "pacf": corr_array,
@@ -581,6 +624,7 @@ def plot_predictions(
     data: pd.Series,
     predictions: pd.Series,
     type_: str,
+    fig_defaults: Dict[str, Any],
     model_name: Optional[str] = None,
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
@@ -635,12 +679,14 @@ def plot_predictions(
     fig = go.Figure(data=data_for_fig, layout=layout)
 
     with fig.batch_update():
-        fig_template = fig_kwargs.get("fig_template", "ggplot2")
-        fig.update_layout(template=fig_template)
+        template = _resolve_dict_keys(
+            dict_=fig_kwargs, key="template", defaults=fig_defaults
+        )
+        fig.update_layout(template=template)
 
-        fig_size = fig_kwargs.get("fig_size", None)
-        if fig_size is not None:
-            fig.update_layout(autosize=False, width=fig_size[0], height=fig_size[1])
+        fig = _update_fig_dimensions(
+            fig=fig, fig_kwargs=fig_kwargs, fig_defaults=fig_defaults
+        )
         fig.update_layout(showlegend=True)
 
     return_data_dict = {
@@ -653,6 +699,7 @@ def plot_predictions(
 
 def plot_diagnostics(
     data: pd.Series,
+    fig_defaults: Dict[str, Any],
     model_name: Optional[str] = None,
     hoverinfo: Optional[str] = "text",
     data_kwargs: Optional[Dict] = None,
@@ -685,12 +732,14 @@ def plot_diagnostics(
     )
 
     fig.update_layout(showlegend=False)
-    fig_template = fig_kwargs.get("fig_template", "ggplot2")
-    fig.update_layout(template=fig_template)
+    template = _resolve_dict_keys(
+        dict_=fig_kwargs, key="template", defaults=fig_defaults
+    )
+    fig.update_layout(template=template)
 
-    fig_size = fig_kwargs.get("fig_size", None)
-    if fig_size is not None:
-        fig.update_layout(autosize=False, width=fig_size[0], height=fig_size[1])
+    fig = _update_fig_dimensions(
+        fig=fig, fig_kwargs=fig_kwargs, fig_defaults=fig_defaults
+    )
 
     #### Add diagnostic plots ----
     fig = time_series_subplot(
@@ -712,6 +761,7 @@ def plot_predictions_with_confidence(
     predictions: pd.Series,
     upper_interval: pd.Series,
     lower_interval: pd.Series,
+    fig_defaults: Dict[str, Any],
     model_name: Optional[str] = None,
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
@@ -796,13 +846,15 @@ def plot_predictions_with_confidence(
 
     fig = go.Figure(data=data, layout=layout)
 
-    fig_template = fig_kwargs.get("fig_template", "ggplot2")
-    fig.update_layout(template=fig_template)
+    template = _resolve_dict_keys(
+        dict_=fig_kwargs, key="template", defaults=fig_defaults
+    )
+    fig.update_layout(template=template)
     fig.update_layout(showlegend=True)
 
-    fig_size = fig_kwargs.get("fig_size", None)
-    if fig_size is not None:
-        fig.update_layout(autosize=False, width=fig_size[0], height=fig_size[1])
+    fig = _update_fig_dimensions(
+        fig=fig, fig_kwargs=fig_kwargs, fig_defaults=fig_defaults
+    )
 
     return_data_dict = {
         "data": data,
@@ -816,6 +868,7 @@ def plot_predictions_with_confidence(
 
 def plot_time_series_decomposition(
     data: pd.Series,
+    fig_defaults: Dict[str, Any],
     model_name: Optional[str] = None,
     plot: str = "decomp_classical",
     data_kwargs: Optional[Dict] = None,
@@ -925,14 +978,14 @@ def plot_time_series_decomposition(
     )
 
     with fig.batch_update():
-        fig.update_layout(title=title)
-        fig.update_layout(showlegend=False)
-        fig_template = fig_kwargs.get("fig_template", "ggplot2")
-        fig.update_layout(template=fig_template)
+        template = _resolve_dict_keys(
+            dict_=fig_kwargs, key="template", defaults=fig_defaults
+        )
+        fig.update_layout(title=title, showlegend=False, template=template)
 
-        fig_size = fig_kwargs.get("fig_size", None)
-        if fig_size is not None:
-            fig.update_layout(autosize=False, width=fig_size[0], height=fig_size[1])
+        fig = _update_fig_dimensions(
+            fig=fig, fig_kwargs=fig_kwargs, fig_defaults=fig_defaults
+        )
 
     return_data_dict = {
         "data": data,
@@ -946,6 +999,7 @@ def plot_time_series_decomposition(
 
 def plot_time_series_differences(
     data: pd.Series,
+    fig_defaults: Dict[str, Any],
     model_name: Optional[str] = None,
     hoverinfo: Optional[str] = "text",
     data_kwargs: Optional[Dict] = None,
@@ -1069,14 +1123,14 @@ def plot_time_series_differences(
             )
 
     with fig.batch_update():
-        fig.update_layout(title=title)
-        fig.update_layout(showlegend=False)
-        fig_template = fig_kwargs.get("fig_template", "ggplot2")
-        fig.update_layout(template=fig_template)
+        template = _resolve_dict_keys(
+            dict_=fig_kwargs, key="template", defaults=fig_defaults
+        )
+        fig.update_layout(title=title, showlegend=False, template=template)
 
-        fig_size = fig_kwargs.get("fig_size", [max(1200, 400 * cols), 300 * rows])
-        if fig_size is not None:
-            fig.update_layout(autosize=False, width=fig_size[0], height=fig_size[1])
+        fig = _update_fig_dimensions(
+            fig=fig, fig_kwargs=fig_kwargs, fig_defaults=fig_defaults
+        )
 
     return_data_dict = {
         "data": data,
@@ -1098,6 +1152,7 @@ def plot_time_series_differences(
 
 def plot_frequency_components(
     data: pd.Series,
+    fig_defaults: Dict[str, Any],
     model_name: Optional[str] = None,
     plot: str = "periodogram",
     hoverinfo: Optional[str] = "text",
@@ -1150,13 +1205,16 @@ def plot_frequency_components(
     fig = go.Figure(data=plot_data, layout=layout)
 
     with fig.batch_update():
-        fig_template = fig_kwargs.get("fig_template", "ggplot2")
-        fig.update_layout(template=fig_template)
+
+        template = _resolve_dict_keys(
+            dict_=fig_kwargs, key="template", defaults=fig_defaults
+        )
+        fig.update_layout(template=template)
         fig.update_layout(showlegend=True)
 
-        fig_size = fig_kwargs.get("fig_size", None)
-        if fig_size is not None:
-            fig.update_layout(autosize=False, width=fig_size[0], height=fig_size[1])
+        fig = _update_fig_dimensions(
+            fig=fig, fig_kwargs=fig_kwargs, fig_defaults=fig_defaults
+        )
 
     return_data_dict = {"freq_data": freq_data}
 
@@ -1166,6 +1224,7 @@ def plot_frequency_components(
 def plot_ccf(
     data: pd.Series,
     X: pd.DataFrame,
+    fig_defaults: Dict[str, Any],
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
 ) -> PlotReturnType:
@@ -1180,37 +1239,10 @@ def plot_ccf(
     plot_data = pd.concat([data, X], axis=1)
 
     # Decide the number of rows and columns ----
-    n_data_cols = plot_data.shape[1]
-
-    rows = fig_kwargs.get("rows", None)
-    cols = fig_kwargs.get("cols", None)
-
-    if rows is None and cols is not None:
-        rows = ceil(n_data_cols / cols)
-    elif rows is not None and cols is None:
-        cols = ceil(n_data_cols / rows)
-    elif rows is not None and cols is not None:
-        available = rows * cols
-        if available < n_data_cols:
-            raise ValueError(
-                "Not enough subplots available to plot CCF. "
-                f"You provided {rows} * {cols} = {available} subplots. "
-                f"Please provide at least {n_data_cols} subplots in all."
-            )
-    else:
-        # Decide based on data
-        # If 1, then row = 1, col = 1
-        # else, try 5, 4, 3, 2, and pick first one which is equally divisible
-        # if None, then use 5
-        if n_data_cols == 1:
-            cols = 1
-        else:
-            cols = 5
-            for i in [5, 4, 3, 2]:
-                if n_data_cols % i == 0:
-                    cols = i
-                    break
-        rows = ceil(n_data_cols / cols)
+    num_subplots = plot_data.shape[1]
+    rows = _resolve_dict_keys(dict_=fig_kwargs, key="rows", defaults=fig_defaults)
+    cols = _resolve_dict_keys(dict_=fig_kwargs, key="cols", defaults=fig_defaults)
+    rows, cols = _get_subplot_rows_cols(num_subplots=num_subplots, rows=rows, cols=cols)
 
     subplot_titles = []
     for i, col_name in enumerate(plot_data.columns):
@@ -1238,14 +1270,14 @@ def plot_ccf(
         all_ccf_data.update({col_name: ccf_data})
 
     with fig.batch_update():
-        fig.update_layout(title=title)
-        fig.update_layout(showlegend=False)
-        fig_template = fig_kwargs.get("fig_template", "ggplot2")
-        fig.update_layout(template=fig_template)
+        template = _resolve_dict_keys(
+            dict_=fig_kwargs, key="template", defaults=fig_defaults
+        )
+        fig.update_layout(title=title, showlegend=False, template=template)
 
-        fig_size = fig_kwargs.get("fig_size", [max(1200, 400 * cols), 300 * rows])
-        if fig_size is not None:
-            fig.update_layout(autosize=False, width=fig_size[0], height=fig_size[1])
+        fig = _update_fig_dimensions(
+            fig=fig, fig_kwargs=fig_kwargs, fig_defaults=fig_defaults
+        )
 
     return_data_dict = {"ccf": all_ccf_data}
 

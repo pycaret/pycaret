@@ -1,5 +1,5 @@
 import functools
-from typing import Dict, Optional, Union
+from typing import Dict, Optional, Union, Any
 
 import numpy as np
 import pandas as pd
@@ -195,3 +195,32 @@ def _coerce_empty_dataframe_to_none(
         return None
     else:
         return data
+
+
+def _resolve_dict_keys(dict_: Dict[str, Any], key: str, defaults: Dict[str, Any]) -> Any:
+    """Returns the value of "key" from `dict`. If key is not present, then the
+    value is picked from the `defaults` dictionary. Note that `defaults` must
+    contain the `key` else this will give an error.
+
+    Parameters
+    ----------
+    dict : Dict[str, Any]
+        The dictionary from which the "key"'s value must be obtained
+    key : str
+        The "key" whose value must be obtained
+    defaults : Dict[str, Any]
+        The dictionary containing the default value of the "key"
+
+    Returns
+    -------
+    Any
+        The value of the "key"
+
+    Raises
+    ------
+    KeyError
+        If the `defaults` dictionary does not contain the `key`
+    """
+    if key not in defaults:
+        raise KeyError(f"Key '{key}' not present in Defaults dictionary.")
+    return dict_.get(key, defaults[key])
