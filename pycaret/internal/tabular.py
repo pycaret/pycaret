@@ -1751,7 +1751,9 @@ def setup(
     runtime = np.array(runtime_end - runtime_start).round(2)
 
     if logging_param:
-
+        dashboard_logger.log_experiment(
+            log_profile, log_data, _ml_usecase, functions, experiment_custom_tags, runtime, display
+        )
     logger.info(f"create_model_container: {len(create_model_container)}")
     logger.info(f"master_model_container: {len(master_model_container)}")
     logger.info(f"display_container: {len(display_container)}")

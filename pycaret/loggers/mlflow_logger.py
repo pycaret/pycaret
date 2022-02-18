@@ -212,8 +212,10 @@ class mlflowLogger(BaseLogger):
             del prep_pipe_temp
         gc.collect()
 
-    def log_experiment(log_profile, log_data):
-        from pycaret.internal.tabular import exp_name_log, _is_unsupervised, data_before_preprocess, USI
+    def log_experiment(log_profile, log_data, ml_usecase, functions, experiment_custom_tags, runtime, display):
+        import pdb
+        pdb.set_trace()
+        from pycaret.internal.tabular import exp_name_log, _is_unsupervised, data_before_preprocess, USI, save_model, prep_pipe, X, X_train, X_test
         logger.info("Logging experiment in MLFlow")
 
         import mlflow
@@ -273,11 +275,11 @@ class mlflowLogger(BaseLogger):
             pf.to_file("Data Profile.html")
             mlflow.log_artifact("Data Profile.html")
             os.remove("Data Profile.html")
-            display.display(functions_, clear=True)
+            display.display(functions, clear=True)
 
         # Log training and testing set
         if log_data:
-            if not _is_unsupervised(_ml_usecase):
+            if not _is_unsupervised(ml_usecase):
                 X_train.join(y_train).to_csv("Train.csv")
                 X_test.join(y_test).to_csv("Test.csv")
                 mlflow.log_artifact("Train.csv")
