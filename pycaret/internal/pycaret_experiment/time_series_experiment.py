@@ -2177,10 +2177,13 @@ class TSForecastingExperiment(_SupervisedExperiment):
         self.plot_model_check_display_format_(display_format=display_format)
 
         if plot == "decomp_classical":
-            DeprecationWarning(
-                "`decomp_classical` plot type will be disabled in a future release. "
-                "Please use `decomp` instead."
+            msg = (
+                "DeprecationWarning: `decomp_classical` plot type will be disabled in "
+                "a future release. Please use `decomp` instead."
             )
+            warnings.warn(msg, DeprecationWarning)
+            print(msg)
+            #### Reset to "decomp"
             plot = "decomp"
 
         # Import required libraries ----
