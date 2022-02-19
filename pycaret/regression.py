@@ -1746,6 +1746,7 @@ def predict_model(
     drift_report: bool = False,
     round: int = 4,
     verbose: bool = True,
+    drift_kwargs:Optional[dict] = None
 ) -> pd.DataFrame:
 
     """
@@ -1809,6 +1810,7 @@ def predict_model(
         round=round,
         verbose=verbose,
         ml_usecase=MLUsecase.REGRESSION,
+        drift_kwargs=drift_kwargs
     )
 
 

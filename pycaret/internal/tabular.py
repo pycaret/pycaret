@@ -8660,6 +8660,7 @@ def predict_model(
     verbose: bool = True,
     ml_usecase: Optional[MLUsecase] = None,
     display: Optional[Display] = None,  # added in pycaret==2.2.0
+    drift_kwargs:Optional[Display] = None
 ) -> pd.DataFrame:
 
     """
@@ -8822,22 +8823,32 @@ def predict_model(
 
     # generate drift report
     if drift_report:
+        if not data is None and drift_kwargs:# IF data is set
+            if 'reference' in drift_kwargs.keys():
+                data_before_preprocess_=None    # refrence data
+                X_train_=drift_kwargs['reference']# transformed refrence data
+                X_test_=data                    # transformed unseen data
+            else:
+                raise ValueError("Please set drift_kwargs = {'reference' : training_df}")
+        else:
+            data_before_preprocess_=data_before_preprocess
+            X_train_=X_train
+
         if ml_usecase == MLUsecase.CLASSIFICATION:
             create_classification_drift_report(
                 _get_model_name(estimator),
                 prep_pipe,
-                data_before_preprocess,
-                X_train,
+                X_train_,
                 X_test_,
+                data_before_preprocess_,
             )
-
         elif ml_usecase == MLUsecase.REGRESSION:
             create_regression_drift_report(
                 _get_model_name(estimator),
                 prep_pipe,
-                data_before_preprocess,
-                X_train,
+                X_train_,
                 X_test_,
+                data_before_preprocess_,
             )
 
     # function to replace encoded labels with their original values

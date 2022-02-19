@@ -5,9 +5,9 @@ from pycaret.internal.pipeline import Pipeline
 def create_classification_drift_report(
     estimator_name: str,
     prep_pipe: Pipeline,
-    unprocessed_data: pd.DataFrame,
     X_train: pd.DataFrame,
     X_test: pd.DataFrame,
+    unprocessed_data: pd.DataFrame=None,
 ) -> str:
 
     try:
@@ -25,18 +25,23 @@ def create_classification_drift_report(
     p = prep_pipe.steps[0][1].learned_dtypes
     numeric_features = list(p[(p == "float32") | (p == "float64")].index)
     categorical_features = list(p[p == "object"].index)
-    
-    #filter out cases with object dtype
-    categorical_features= unprocessed_data[categorical_features].select_dtypes(exclude=["object"]).columns.to_list()
-
-    reference_data = unprocessed_data.iloc[X_train.index]
-    current_data = unprocessed_data.iloc[X_test.index]
+    if not unprocessed_data is None: # When ,model_predict data is None
+        #filter out cases with object dtype
+        categorical_features= unprocessed_data[categorical_features].select_dtypes(exclude=["object"]).columns.to_list()
+        reference_data = unprocessed_data.iloc[X_train.index]
+        current_data = unprocessed_data.iloc[X_test.index]
+    else:
+        target=[prep_pipe.steps[0][1].target]
+        numeric_features=list(set(X_train.columns.to_list())&set(numeric_features)&set(X_test.columns.to_list()))
+        categorical_features=list(set(X_train.columns.to_list())&set(categorical_features)&set(X_test.columns.to_list()))
+        categorical_features= X_train[categorical_features].select_dtypes(exclude=["object"]).columns.to_list()
+        reference_data=X_train[categorical_features+numeric_features+target]
+        current_data=X_test[categorical_features+numeric_features+target]
 
     column_mapping = ColumnMapping()
     column_mapping.target = prep_pipe.steps[0][1].target
     column_mapping.prediction = None
     column_mapping.datetime = None
-
     column_mapping.numerical_features = numeric_features
     column_mapping.categorical_features = categorical_features
 
@@ -51,9 +56,9 @@ def create_classification_drift_report(
 def create_regression_drift_report(
     estimator_name: str,
     prep_pipe: Pipeline,
-    unprocessed_data: pd.DataFrame,
     X_train: pd.DataFrame,
     X_test: pd.DataFrame,
+    unprocessed_data: pd.DataFrame=None,
 ) -> str:
 
     try:
