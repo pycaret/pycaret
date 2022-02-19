@@ -86,23 +86,20 @@ def get_data(
     import pandas as pd
     import os.path
     from IPython.display import display
-
-    root = (
-        "https://raw.githubusercontent.com/pycaret/datasets/main/"
-        if address is None
-        else address
-    )
-    data_dir, meta_dir = "data/", "meta/"
-
     extension = ".csv"
     filename = str(dataset) + extension
+    if address is None:
+        root = "https://raw.githubusercontent.com/pycaret/datasets/main/"
+        data_dir, meta_dir = "data/", "meta/"
 
-    folder = "common" if folder is None else folder
+        folder = "common" if folder is None else folder
 
-    if dataset == "index":
-        complete_address = root + meta_dir + folder + "/" + filename
+        if dataset == "index":
+            complete_address = root + meta_dir + folder + "/" + filename
+        else:
+            complete_address = root + data_dir + folder + "/" + filename
     else:
-        complete_address = root + data_dir + folder + "/" + filename
+        complete_address = address + "/" + filename
 
     sktime_datasets = ["airline", "lynx", "uschange"]
 
