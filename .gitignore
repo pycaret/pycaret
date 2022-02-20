@@ -27,7 +27,6 @@ pycaret/tests/__pycache__/
 tutorials/logs.log
 /docs/build
 trained_models/
-*.ipynb
 *.pkl
 /mlruns.db
 /mlruns.db-journal
