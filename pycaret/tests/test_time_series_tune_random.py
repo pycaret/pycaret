@@ -5,10 +5,9 @@ import pytest
 import numpy as np  # type: ignore
 import pandas as pd  # type: ignore
 
-from pycaret.datasets import get_data
-from pycaret.internal.pycaret_experiment import TimeSeriesExperiment
+from pycaret.time_series import TSForecastingExperiment
 
-from .time_series_test_utils import _check_windows, _return_model_names
+from .time_series_test_utils import _return_model_names
 
 pytestmark = pytest.mark.filterwarnings("ignore::UserWarning")
 
@@ -37,7 +36,7 @@ _model_names = _return_model_names()
 
 @pytest.mark.parametrize("model", _model_names)
 def test_tune_model_random(model, load_pos_and_neg_data):
-    exp = TimeSeriesExperiment()
+    exp = TSForecastingExperiment()
     fh = 12
     fold = 2
     data = load_pos_and_neg_data
@@ -51,4 +50,3 @@ def test_tune_model_random(model, load_pos_and_neg_data):
 
     expected_period_index = data.iloc[-fh:].index
     assert np.all(y_pred.index == expected_period_index)
-

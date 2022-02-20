@@ -1,15 +1,15 @@
 import pandas as pd
 from pycaret.datasets import get_data
-from pycaret.internal.pycaret_experiment import TimeSeriesExperiment
+from pycaret.time_series import TSForecastingExperiment
 
 
-def create_models(exp: TimeSeriesExperiment, prophet: bool = True):
+def create_models(exp: TSForecastingExperiment, prophet: bool = True):
     """Function to create a few trial models that support both univariate and
     multivariate forecasting.
 
     Parameters
     ----------
-    exp : TimeSeriesExperiment
+    exp : TSForecastingExperiment
         The Time Series experiment object
     prophet : bool, optional
         Should Prophet model be created, by default True
@@ -26,28 +26,27 @@ def create_models(exp: TimeSeriesExperiment, prophet: bool = True):
 
 
 def test_time_series_indices():
-    """Checks working with various types of indices with both univariate and multivariate datasets
-    """
+    """Checks working with various types of indices with both univariate and multivariate datasets"""
 
     ####################
     #### Univariate ####
     ####################
 
     #### With Period Index ----
-    exp = TimeSeriesExperiment()
+    exp = TSForecastingExperiment()
     data = get_data("airline")
     exp.setup(data=data, fh=12, fold=2, session_id=42)
     create_models(exp)
 
     #### With Datetime Index ----
-    exp = TimeSeriesExperiment()
+    exp = TSForecastingExperiment()
     data = get_data("airline")
     data = data.to_timestamp()
     exp.setup(data=data, fh=12, fold=2, session_id=42)
     create_models(exp)
 
     #### With Int Index ----
-    exp = TimeSeriesExperiment()
+    exp = TSForecastingExperiment()
     data = get_data("airline")
     data.reset_index(drop=True, inplace=True)
     exp.setup(data=data, fh=12, fold=2, seasonal_period=12, session_id=42)
@@ -64,16 +63,21 @@ def test_time_series_indices():
     data["date"] = pd.to_datetime(data["date"].str.replace("\s", "-"))
 
     #### With Datetime Index Column ----
-    exp = TimeSeriesExperiment()
+    exp = TSForecastingExperiment()
     exp.setup(
-        data=data, target="gdp_change", index="date", fh=2, fold=2, session_id=42,
+        data=data,
+        target="gdp_change",
+        index="date",
+        fh=2,
+        fold=2,
+        session_id=42,
     )
     create_models(exp)
 
     #### With Datetime Index ----
     data_temp = data.copy()
     data_temp.set_index("date", inplace=True)
-    exp = TimeSeriesExperiment()
+    exp = TSForecastingExperiment()
     exp.setup(data=data_temp, target="gdp_change", fh=2, fold=2, session_id=42)
     create_models(exp)
 
@@ -81,12 +85,12 @@ def test_time_series_indices():
     data_temp = data.copy()
     data_temp.set_index("date", inplace=True)
     data_temp.index = data_temp.index.to_period()
-    exp = TimeSeriesExperiment()
+    exp = TSForecastingExperiment()
     exp.setup(data=data_temp, target="gdp_change", fh=2, fold=2, session_id=42)
     create_models(exp)
 
     #### With Int Index ----
-    exp = TimeSeriesExperiment()
+    exp = TSForecastingExperiment()
     exp.setup(
         data=data,
         target="gdp_change",
@@ -97,4 +101,3 @@ def test_time_series_indices():
         session_id=42,
     )
     create_models(exp)
-
