@@ -62,6 +62,7 @@ import random
 import gc
 import multiprocessing
 from copy import deepcopy
+from pycaret.loggers.wandb_logger import wandbLogger
 from sklearn.base import clone
 from sklearn.exceptions import NotFittedError
 from sklearn.compose import TransformedTargetRegressor
@@ -1298,7 +1299,7 @@ def setup(
     # create logging parameter
     logging_param = log_experiment
     if logging_param:
-        loggers_list = [mlflowLogger()]
+        loggers_list = [mlflowLogger(), wandbLogger()]
         dashboard_logger = loggers.DashboardLogger(loggers_list)
 
     # create exp_name_log param incase logging is False
@@ -1752,7 +1753,7 @@ def setup(
 
     if logging_param:
         dashboard_logger.log_experiment(
-            log_profile, log_data, _ml_usecase, functions, experiment_custom_tags, runtime, display
+            log_profile, profile_kwargs, log_data, _ml_usecase, functions, experiment_custom_tags, runtime, display
         )
     logger.info(f"create_model_container: {len(create_model_container)}")
     logger.info(f"master_model_container: {len(master_model_container)}")
@@ -2082,11 +2083,6 @@ def compare_models(
 
     display.move_progress()
 
-    # create URI (before loop)
-    import secrets
-
-    URI = secrets.token_hex(nbytes=4)
-
     master_display = None
     master_display_ = None
 
@@ -2271,6 +2267,8 @@ def compare_models(
             n_select_range = range(len(master_display) - n_select, len(master_display))
         else:
             n_select_range = range(0, n_select)
+        if logging_param:
+            dashboard_logger.log_model_comparison(master_display)
 
         for index, row in enumerate(master_display.iterrows()):
             loc, row = row
@@ -2318,28 +2316,25 @@ def compare_models(
                         model = None
                         continue
                 full_logging = True
-
             if logging_param and cross_validation and model is not None:
-
                 try:
-                    mlflowLogger.log_model(
-                        model=model,
-                        model_results=results,
-                        ml_usecase=_ml_usecase,
-                        score_dict=avgs_dict_log,
-                        source="compare_models",
-                        runtime=row["runtime"],
-                        model_fit_time=row["TT (Sec)"],
-                        _prep_pipe=prep_pipe,
-                        log_plots=log_plots_param if full_logging else False,
-                        experiment_custom_tags=experiment_custom_tags,
-                        log_holdout=full_logging,
-                        URI=URI,
-                        display=display,
-                    )
+                    dashboard_logger.log_model(
+                            model=model,
+                            model_results=results,
+                            _prep_pipe=prep_pipe,
+                            ml_usecase=_ml_usecase,
+                            score_dict=avgs_dict_log,
+                            source="compare_models",
+                            runtime=row["runtime"],
+                            model_fit_time=row["TT (Sec)"],
+                            log_plots=log_plots_param if full_logging else False,
+                            experiment_custom_tags=experiment_custom_tags,
+                            log_holdout=full_logging,
+                            display=display,
+                        )
                 except:
                     logger.error(
-                        f"_mlflow_log_model() for {model} raised an exception:"
+                        f"dashboard_logger.log_model() for {model} raised an exception:"
                     )
                     logger.error(traceback.format_exc())
 
@@ -2689,11 +2684,10 @@ def create_model_unsupervised(
 
         metrics_log = {k: v for k, v in metrics.items()}
 
-        try:
-            mlflowLogger.log_model(
+        #try:
+        dashboard_logger.log_model(
                 model=model,
                 model_results=None,
-                ml_usecase=_ml_usecase,
                 score_dict=metrics_log,
                 source="create_model",
                 experiment_custom_tags=experiment_custom_tags,
@@ -2703,9 +2697,11 @@ def create_model_unsupervised(
                 log_plots=log_plots_param,
                 display=display,
             )
+        '''
         except:
-            logger.error(f"_mlflow_log_model() for {model} raised an exception:")
+            logger.error(f"log_model() for {model} raised an exception:")
             logger.error(traceback.format_exc())
+        '''
 
     display.move_progress()
 
@@ -3208,8 +3204,8 @@ def create_model_supervised(
         avgs_dict_log = avgs_dict.copy()
         avgs_dict_log = {k: v[0] for k, v in avgs_dict_log.items()}
 
-        try:
-            mlflowLogger.log_model(
+        #try:
+        dashboard_logger.log_model(
                 model=model,
                 model_results=model_results,
                 ml_usecase=_ml_usecase,
@@ -3222,9 +3218,11 @@ def create_model_supervised(
                 experiment_custom_tags=experiment_custom_tags,
                 display=display,
             )
+        '''
         except:
             logger.error(f"_mlflow_log_model() for {model} raised an exception:")
             logger.error(traceback.format_exc())
+        '''
 
     display.move_progress()
 
@@ -3550,8 +3548,8 @@ def tune_model_unsupervised(
 
         metrics_log = {k: v[0] for k, v in best_model_results.items()}
 
-        try:
-            mlflowLogger.log_model(
+        #try:
+        dashboard_logger.log_model(
                 model=model,
                 model_results=None,
                 ml_usecase=_ml_usecase,
@@ -3563,9 +3561,11 @@ def tune_model_unsupervised(
                 log_plots=log_plots_param,
                 display=display,
             )
+        '''
         except:
             logger.error(f"_mlflow_log_model() for {model} raised an exception:")
             logger.error(traceback.format_exc())
+        '''
 
     results = results.set_precision(round)
     display_container.append(results)
@@ -4599,8 +4599,8 @@ def tune_model_supervised(
 
         avgs_dict_log = {k: v for k, v in model_results.loc["Mean"].items()}
 
-        try:
-            mlflowLogger.log_model(
+        #try:
+        dashboard_logger.log_model(
                 model=best_model,
                 model_results=model_results,
                 ml_usecase=_ml_usecase,
@@ -4613,9 +4613,11 @@ def tune_model_supervised(
                 tune_cv_results=cv_results,
                 display=display,
             )
+        '''
         except:
             logger.error(f"_mlflow_log_model() for {best_model} raised an exception:")
             logger.error(traceback.format_exc())
+        '''
 
     model_results = color_df(model_results, "yellow", ["Mean"], axis=1)
     model_results = model_results.set_precision(round)
@@ -4946,8 +4948,8 @@ def ensemble_model(
 
         avgs_dict_log = {k: v for k, v in model_results.loc["Mean"].items()}
 
-        try:
-            mlflowLogger.log_model(
+        #try:
+        dashboard_logger.log_model(
                 model=best_model,
                 model_results=model_results,
                 ml_usecase=_ml_usecase,
@@ -4959,9 +4961,11 @@ def ensemble_model(
                 log_plots=log_plots_param,
                 display=display,
             )
+        '''
         except:
             logger.error(f"_mlflow_log_model() for {best_model} raised an exception:")
             logger.error(traceback.format_exc())
+        '''
 
     if choose_better:
         model = _choose_better(
@@ -5295,8 +5299,8 @@ def blend_models(
 
         avgs_dict_log = {k: v for k, v in model_results.loc["Mean"].items()}
 
-        try:
-            mlflowLogger.log_model(
+        #try:
+        dashboard_logger.log_model(
                 model=model,
                 model_results=model_results,
                 ml_usecase=_ml_usecase,
@@ -5308,9 +5312,11 @@ def blend_models(
                 log_plots=log_plots_param,
                 display=display,
             )
+        '''
         except:
             logger.error(f"_mlflow_log_model() for {model} raised an exception:")
             logger.error(traceback.format_exc())
+        '''
 
     if choose_better:
         model = _choose_better(
@@ -5655,8 +5661,8 @@ def stack_models(
 
         avgs_dict_log = {k: v for k, v in model_results.loc["Mean"].items()}
 
-        try:
-            mlflowLogger.log_model(
+        #try:
+        dashboard_logger.log_model(
                 model=model,
                 model_results=model_results,
                 ml_usecase=_ml_usecase,
@@ -5668,9 +5674,11 @@ def stack_models(
                 log_plots=log_plots_param,
                 display=display,
             )
+        '''
         except:
             logger.error(f"_mlflow_log_model() for {model} raised an exception:")
             logger.error(traceback.format_exc())
+        '''
 
     if choose_better:
         model = _choose_better(
@@ -8249,8 +8257,8 @@ def calibrate_model(
 
         avgs_dict_log = {k: v for k, v in model_results.loc["Mean"].items()}
 
-        try:
-            mlflowLogger.log_model(
+        #try:
+        dashboard_logger.log_model(
                 model=model,
                 model_results=model_results,
                 ml_usecase=_ml_usecase,
@@ -8262,9 +8270,11 @@ def calibrate_model(
                 log_plots=log_plots_param,
                 display=display,
             )
+        '''
         except:
             logger.error(f"_mlflow_log_model() for {model} raised an exception:")
             logger.error(traceback.format_exc())
+        '''
 
     model_results = color_df(model_results, "yellow", ["Mean"], axis=1)
     model_results = model_results.set_precision(round)
@@ -8978,13 +8988,13 @@ def finalize_model(
     runtime_end = time.time()
     runtime = np.array(runtime_end - runtime_start).round(2)
 
-    # mlflow logging
+    # dashboard logging
     if logging_param:
 
         avgs_dict_log = {k: v for k, v in model_results.loc["Mean"].items()}
 
-        try:
-            mlflowLogger.log_model(
+        #try:
+        dashboard_logger.log_model(
                 model=model_final,
                 model_results=model_results,
                 ml_usecase=_ml_usecase,
@@ -8997,9 +9007,11 @@ def finalize_model(
                 experiment_custom_tags=experiment_custom_tags,
                 display=display,
             )
+        '''
         except:
-            logger.error(f"_mlflow_log_model() for {model_final} raised an exception:")
+            logger.error(f"log_model() for {model_final} raised an exception:")
             logger.error(traceback.format_exc())
+        '''
 
     model_results = color_df(model_results, "yellow", ["Mean"], axis=1)
     model_results = model_results.set_precision(round)
