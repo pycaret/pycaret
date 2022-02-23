@@ -5,8 +5,7 @@ IPython
 joblib
 scikit-learn~=0.24.2
 ipywidgets
-#yellowbrick>=1.0.1
-yellowbrick@https://github.com/DistrictDataLabs/yellowbrick/archive/refs/heads/develop.zip
+yellowbrick>=1.0.1
 lightgbm>=2.3.1
 plotly>=5.0.0
 pyyaml<6.0.0
