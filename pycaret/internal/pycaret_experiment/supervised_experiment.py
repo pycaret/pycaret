@@ -18,7 +18,6 @@ from pycaret.internal.utils import (
     can_early_stop,
 )
 from pycaret.internal.utils import to_df, id_or_display_name, get_label_encoder
-from pycaret.internal.drift_report import (create_classification_drift_report, create_regression_drift_report)
 import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
 from pycaret.internal.distributions import *
@@ -4676,22 +4675,29 @@ class _SupervisedExperiment(_TabularExperiment):
 
         # generate drift report
         if drift_report:
-            if self._ml_usecase == MLUsecase.CLASSIFICATION:
-                create_classification_drift_report(
-                    self._get_model_name(estimator),
-                    self.pipeline,
-                    self.dataset,
-                    self.X_train,
-                    X_test_,
+            try:
+                from evidently.dashboard import Dashboard
+                from evidently.tabs import DataDriftTab, CatTargetDriftTab
+                from evidently.pipeline.column_mapping import ColumnMapping
+            except ImportError:
+                raise ImportError(
+                    "It appears that evidently (required for `drift_report=True`) is not installed. "
+                    "Do: pip install evidently"
                 )
-            elif self._ml_usecase == MLUsecase.REGRESSION:
-                create_regression_drift_report(
-                    self._get_model_name(estimator),
-                    self.pipeline,
-                    self.dataset,
-                    self.X_train,
-                    X_test_,
-                )
+
+            column_mapping = ColumnMapping()
+            column_mapping.target = self.target_param
+            column_mapping.prediction = None
+            column_mapping.datetime = None
+            column_mapping.numerical_features = self._fxs["Numeric"]
+            column_mapping.categorical_features = self._fxs["Categorical"]
+            column_mapping.datetime_features = self._fxs["Date"]
+
+            dashboard = Dashboard(tabs=[DataDriftTab(), CatTargetDriftTab()])
+            dashboard.calculate(self.train, self.test, column_mapping=column_mapping)
+            report_name = f"{self._get_model_name(estimator)}_Drift_Report.html"
+            dashboard.save(report_name)
+            print(f"{report_name} saved successfully.")
 
         # prediction starts here
         if isinstance(estimator, CustomProbabilityThresholdClassifier):
