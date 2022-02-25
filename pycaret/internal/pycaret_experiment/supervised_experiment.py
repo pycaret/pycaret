@@ -4268,7 +4268,7 @@ class _SupervisedExperiment(_TabularExperiment):
         df.set_index("ID", inplace=True, drop=True)
 
         if not include_custom:
-            df = df[df["Custom"] == False]
+            df = df[df["Custom"] is False]
 
         return df
 
@@ -4676,19 +4676,19 @@ class _SupervisedExperiment(_TabularExperiment):
 
         # generate drift report
         if drift_report:
-            if self.ml_usecase == MLUsecase.CLASSIFICATION:
+            if self._ml_usecase == MLUsecase.CLASSIFICATION:
                 create_classification_drift_report(
                     self._get_model_name(estimator),
                     self.pipeline,
-                    self.data_before_preprocess,
+                    self.dataset,
                     self.X_train,
                     X_test_,
                 )
-            elif self.ml_usecase == MLUsecase.REGRESSION:
+            elif self._ml_usecase == MLUsecase.REGRESSION:
                 create_regression_drift_report(
                     self._get_model_name(estimator),
                     self.pipeline,
-                    self.data_before_preprocess,
+                    self.dataset,
                     self.X_train,
                     X_test_,
                 )
@@ -4874,3 +4874,60 @@ class _SupervisedExperiment(_TabularExperiment):
         results.set_index("Index", inplace=True, drop=True)
         display.clear_output()
         return results
+
+    def check_fairness(self, estimator, sensitive_features: list, plot_kwargs: dict = {}):
+
+        """
+        There are many approaches to conceptualizing fairness. This function follows
+        the approach known as group fairness, which asks: Which groups of individuals
+        are at risk for experiencing harms. This function provides fairness-related
+        metrics between different groups (also called subpopulation).
+        """
+
+        try:
+            import fairlearn
+        except ImportError:
+            raise ImportError(
+                "It appears that fairlearn is not installed. Do: pip install fairlearn"
+            )
+
+        from fairlearn.metrics import MetricFrame, count, selection_rate
+
+        all_metrics = self.get_metrics()[["Name", "Score Function"]].set_index("Name")
+        metric_dict = {}
+        metric_dict["Samples"] = count
+        for i in all_metrics.index:
+            metric_dict[i] = all_metrics.loc[i][0]
+
+        if self._ml_usecase == MLUsecase.CLASSIFICATION:
+            metric_dict["Selection Rate"] = selection_rate
+
+        y_pred = estimator.predict(self.X_test_transformed)
+        y_true = np.array(self.y_test_transformed)
+        try:
+            multi_metric = MetricFrame(
+                metrics=metric_dict,
+                y_true=y_true,
+                y_pred=y_pred,
+                sensitive_features=self.X_test[sensitive_features],
+            )
+        except Exception:
+            if MLUsecase.CLASSIFICATION:
+                metric_dict.pop("AUC")
+                multi_metric = MetricFrame(
+                    metrics=metric_dict,
+                    y_true=y_true,
+                    y_pred=y_pred,
+                    sensitive_features=self.X_test[sensitive_features],
+                )
+
+        multi_metric.by_group.plot.bar(
+            subplots=True,
+            layout=[3, 3],
+            legend=False,
+            figsize=[16, 8],
+            title="Performance Metrics by Sensitive Features",
+            **plot_kwargs,
+        )
+
+        return pd.DataFrame(multi_metric.by_group)

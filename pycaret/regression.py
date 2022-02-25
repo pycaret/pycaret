@@ -2632,10 +2632,10 @@ def convert_model(estimator, language: str = "python") -> str:
         str
 
     """
-    return pycaret.internal.tabular.convert_model(estimator, language)
+    return _CURRENT_EXPERIMENT.convert_model(estimator, language)
 
 
-def eda(data=None, target: str = None, display_format: str = "bokeh", **kwargs):
+def eda(display_format: str = "bokeh", **kwargs):
 
     """
     This function generates AutoEDA using AutoVIZ library. You must
@@ -2652,14 +2652,6 @@ def eda(data=None, target: str = None, display_format: str = "bokeh", **kwargs):
     >>> eda(display_format = 'bokeh')
 
 
-    data: pandas.DataFrame
-        DataFrame with (n_samples, n_features).
-
-
-    target: str
-        Name of the target column to be passed in as a string.
-
-
     display_format: str, default = 'bokeh'
         When set to 'bokeh' the plots are interactive. Other option is ``svg`` for static
         plots that are generated using matplotlib and seaborn.
@@ -2672,9 +2664,7 @@ def eda(data=None, target: str = None, display_format: str = "bokeh", **kwargs):
     Returns:
         None
     """
-    return pycaret.internal.tabular.eda(
-        data=data, target=target, display_format=display_format, **kwargs
-    )
+    return _CURRENT_EXPERIMENT.eda(display_format=display_format, **kwargs)
 
 
 def check_fairness(estimator, sensitive_features: list, plot_kwargs: dict = {}):
@@ -2714,7 +2704,7 @@ def check_fairness(estimator, sensitive_features: list, plot_kwargs: dict = {}):
         pandas.DataFrame
 
     """
-    return pycaret.internal.tabular.check_fairness(
+    return _CURRENT_EXPERIMENT.check_fairness(
         estimator=estimator,
         sensitive_features=sensitive_features,
         plot_kwargs=plot_kwargs,
@@ -2762,7 +2752,7 @@ def create_api(
         None
 
     """
-    return pycaret.internal.tabular.create_api(
+    return _CURRENT_EXPERIMENT.create_api(
         estimator=estimator, api_name=api_name, host=host, port=port
     )
 
@@ -2802,7 +2792,7 @@ def create_docker(
     Returns:
         None
     """
-    return pycaret.internal.tabular.create_docker(
+    return _CURRENT_EXPERIMENT.create_docker(
         api_name=api_name, base_image=base_image, expose_port=expose_port
     )
 

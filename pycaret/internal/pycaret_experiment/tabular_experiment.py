@@ -200,7 +200,7 @@ class _TabularExperiment(_PyCaretExperiment):
         with mlflow.start_run(run_name=full_name, nested=True) as run:
 
             # Get active run to log as tag
-            RunID = mlflow.active_run().info.run_id
+            RunID = run.info.run_id
 
             # Log model parameters
             pipeline_estimator_name = get_pipeline_estimator_label(model)
@@ -2655,4 +2655,216 @@ class _TabularExperiment(_PyCaretExperiment):
 
         return pycaret.internal.persistence.load_model(
             model_name, platform, authentication, verbose
+        )
+
+    @staticmethod
+    def convert_model(estimator, language: str = "python") -> str:
+        """
+        This function transpiles trained machine learning models into native
+        inference script in different programming languages (Python, C, Java,
+        Go, JavaScript, Visual Basic, C#, PowerShell, R, PHP, Dart, Haskell,
+        Ruby, F#). This functionality is very useful if you want to deploy models
+        into environments where you can't install your normal Python stack to
+        support model inference.
+        """
+
+        try:
+            import m2cgen as m2c
+        except ImportError:
+            raise ImportError(
+                "It appears that m2cgen is not installed. Do: pip install m2cgen"
+            )
+
+        if language == "python":
+            return m2c.export_to_python(estimator)
+        elif language == "java":
+            return m2c.export_to_java(estimator)
+        elif language == "c":
+            return m2c.export_to_c(estimator)
+        elif language == "c#":
+            return m2c.export_to_c_sharp(estimator)
+        elif language == "dart":
+            return m2c.export_to_dart(estimator)
+        elif language == "f#":
+            return m2c.export_to_f_sharp(estimator)
+        elif language == "go":
+            return m2c.export_to_go(estimator)
+        elif language == "haskell":
+            return m2c.export_to_haskell(estimator)
+        elif language == "javascript":
+            return m2c.export_to_javascript(estimator)
+        elif language == "php":
+            return m2c.export_to_php(estimator)
+        elif language == "powershell":
+            return m2c.export_to_powershell(estimator)
+        elif language == "r":
+            return m2c.export_to_r(estimator)
+        elif language == "ruby":
+            return m2c.export_to_ruby(estimator)
+        elif language == "vb":
+            return m2c.export_to_visual_basic(estimator)
+        else:
+            raise ValueError(
+                f"Wrong language {language}. Expected one of 'python', 'java', 'c', 'c#', 'dart', "
+                "'f#', 'go', 'haskell', 'javascript', 'php', 'powershell', 'r', 'ruby', 'vb'."
+            )
+
+    def create_api(self, estimator, api_name, host="127.0.0.1", port=8000):
+
+        """
+        This function creates API and write it as a python file using FastAPI
+        """
+
+        try:
+            import fastapi
+        except ImportError:
+            raise ImportError(
+                "It appears that FastAPI is not installed. Do: pip install fastapi"
+            )
+
+        try:
+            import uvicorn
+        except ImportError:
+            raise ImportError(
+                "It appears that uvicorn is not installed. Do: pip install uvicorn"
+            )
+
+        MODULE = self._ml_usecase
+        INPUT_COLS = list(self.X.columns)
+        INPUT_COLS_WITHOUT_SPACES = [i.replace(" ", "_") for i in INPUT_COLS]
+        INPUT_COLS_WITHOUT_SPACES = [i.replace("-", "_") for i in INPUT_COLS_WITHOUT_SPACES]
+        INPUT_COLS_WITHOUT_SPACES_FORMATTED = ", ".join(
+            tuple(INPUT_COLS_WITHOUT_SPACES)
+        ).replace("'", "")
+        API_NAME = api_name
+        HOST = host
+
+        self.save_model(estimator, model_name=api_name, verbose=False)
+
+        query = """
+    import pandas as pd
+    from pycaret.{MODULE_NAME} import load_model, predict_model
+    from fastapi import FastAPI
+    import uvicorn
+    # Create the app
+    app = FastAPI()
+    # Load trained Pipeline
+    model = load_model('{API_NAME}')
+    # Define predict function
+    @app.post('/predict')
+    def predict({INPUT_COLS}):
+        data = pd.DataFrame([[{DATAFRAME}]])
+        data.columns = {COLUMNS}
+        predictions = predict_model(model, data=data) 
+        return {D1}'prediction': list(predictions['Label']){D2}
+    if __name__ == '__main__':
+        uvicorn.run(app, host='{HOST}', port={PORT})""".format(
+            MODULE_NAME=MODULE,
+            API_NAME=API_NAME,
+            INPUT_COLS=INPUT_COLS_WITHOUT_SPACES_FORMATTED,
+            DATAFRAME=INPUT_COLS_WITHOUT_SPACES_FORMATTED,
+            COLUMNS=INPUT_COLS,
+            D1="{",
+            D2="}",
+            HOST=HOST,
+            PORT=port,
+        )
+
+        file_name = str(api_name) + ".py"
+
+        f = open(file_name, "w")
+        f.write(query)
+        f.close()
+
+        message = """
+    API sucessfully created. This function only creates a POST API, it doesn't run it automatically.
+    To run your API, please run this command --> !python {API_NAME}.py
+        """.format(
+            API_NAME=API_NAME
+        )
+
+        print(message)
+
+    def eda(self, display_format: str = "bokeh", **kwargs):
+        """
+        Function to generate EDA using AutoVIZ library.
+        """
+        try:
+            from autoviz.AutoViz_Class import AutoViz_Class
+        except ImportError:
+            raise ImportError(
+                "It appears that Autoviz is not installed. Do: pip install autoviz"
+            )
+
+        AV = AutoViz_Class()
+        AV.AutoViz(
+            filename="",
+            dfte=self.dataset_transformed,
+            depVar=self.target_param,
+            chart_format=display_format,
+            **kwargs,
+        )
+
+    def create_docker(
+        self, api_name: str, base_image: str = "python:3.8-slim", expose_port: int = 8000
+    ):
+        """
+        This function creates a ``Dockerfile`` and ``requirements.txt`` for
+        productionalizing API end-point.
+        Example
+        -------
+        >>> from pycaret.datasets import get_data
+        >>> juice = get_data('juice')
+        >>> from pycaret.classification import *
+        >>> exp_name = setup(data = juice,  target = 'Purchase')
+        >>> lr = create_model('lr')
+        >>> create_api(lr, 'lr_api')
+        >>> create_docker('lr_api')
+        api_name: str
+            Name of API. Must be saved as a .py file in the same folder.
+        base_image: str, default = "python:3.8-slim"
+            Name of the base image for Dockerfile.
+        expose_port: int, default = 8000
+            port for expose for API in the Dockerfile.
+        Returns:
+            None
+        """
+
+        requirements = """
+pycaret
+fastapi
+uvicorn
+"""
+        print("Writing requirements.txt")
+        f = open("requirements.txt", "w")
+        f.write(requirements)
+        f.close()
+
+        print("Writing Dockerfile")
+        docker = """
+
+FROM {BASE_IMAGE}
+
+WORKDIR /app
+
+ADD . /app
+
+RUN apt-get update && apt-get install -y libgomp1
+
+RUN pip install -r requirements.txt
+
+EXPOSE {PORT}
+
+CMD ["python", "{API_NAME}.py"]    
+""".format(
+        BASE_IMAGE=base_image, PORT=expose_port, API_NAME=api_name
+    )
+
+        with open("Dockerfile", "w") as f:
+            f.write(docker)
+
+        print(
+            """Dockerfile and requirements.txt successfully created.
+    To build image you have to run --> !docker image build -f "Dockerfile" -t IMAGE_NAME:IMAGE_TAG .
+            """
         )

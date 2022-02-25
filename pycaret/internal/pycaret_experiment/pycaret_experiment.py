@@ -471,17 +471,17 @@ class _PyCaretExperiment:
     @property
     def dataset_transformed(self):
         """Transformed dataset."""
-        return pd.concat([*self.pipeline.transform(self.X, self.y)])
+        return pd.concat([*self.pipeline.transform(self.X, self.y)], axis=1)
 
     @property
     def train_transformed(self):
         """Transformed training set."""
-        return pd.concat([*self.pipeline.transform(self.X_train, self.y_train)])
+        return pd.concat([*self.pipeline.transform(self.X_train, self.y_train)], axis=1)
 
     @property
     def test_transformed(self):
         """Transformed test set."""
-        return pd.concat([*self.pipeline.transform(self.X_test, self.y_test)])
+        return pd.concat([*self.pipeline.transform(self.X_test, self.y_test)], axis=1)
 
     @property
     def X_transformed(self):

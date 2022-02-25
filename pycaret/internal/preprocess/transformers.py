@@ -101,9 +101,9 @@ class TransfomerWrapper(BaseEstimator):
                     # If the column is new, use a default name
                     counter = 1
                     while True:
-                        name = f"feature {i + counter + df.shape[1] - len(self._include)}"
-                        if name not in df:
-                            temp_cols.append(name)
+                        n = f"feature {i + counter + df.shape[1] - len(self._include)}"
+                        if (n not in df or n in self._include) and n not in temp_cols:
+                            temp_cols.append(n)
                             break
                         else:
                             counter += 1
