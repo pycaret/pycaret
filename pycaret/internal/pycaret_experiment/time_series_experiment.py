@@ -37,24 +37,26 @@ from pycaret.internal.tests.time_series import run_test
 from pycaret.internal.tunable import TunableMixin
 from pycaret.internal.utils import color_df, deep_clone
 from pycaret.internal.validation import is_sklearn_cv_generator
-from pycaret.utils import _coerce_empty_dataframe_to_none
+from pycaret.utils import _coerce_empty_dataframe_to_none, _resolve_dict_keys
 from pycaret.utils.datetime import coerce_datetime_to_period_index
 from pycaret.utils.time_series import TSModelTypes, get_sp_from_str
 from pycaret.utils.time_series.forecasting import (
     get_predictions_with_intervals,
     update_additional_scorer_kwargs,
 )
+from pycaret.utils.time_series import TSApproachTypes, TSExogenousPresent
 from pycaret.utils.time_series.forecasting.model_selection import (
     ForecastingGridSearchCV,
     ForecastingRandomizedSearchCV,
     cross_validate,
 )
+from pycaret.internal.plots.utils.time_series import _resolve_renderer
 
 warnings.filterwarnings("ignore")
 LOGGER = get_logger()
 
 
-class TimeSeriesExperiment(_SupervisedExperiment):
+class TSForecastingExperiment(_SupervisedExperiment):
     def __init__(self) -> None:
         super().__init__()
         self._ml_usecase = MLUsecase.TIME_SERIES
@@ -78,8 +80,12 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 "seasonal_period",
                 "seasonality_present",
                 "sp_to_use",
+                "all_sp_values",
                 "strictly_positive",
                 "enforce_pi",
+                "enforce_exogenous",
+                "approach_type",
+                "exogenous_present",
                 "index_type",
             }
         )
@@ -89,8 +95,8 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             "cv": "Cross Validation",
             "acf": "Auto Correlation (ACF)",
             "pacf": "Partial Auto Correlation (PACF)",
-            "decomp_classical": "Decomposition Classical",
-            "decomp_stl": "Decomposition STL",
+            "decomp": "Classical Decomposition",
+            "decomp_stl": "STL Decomposition",
             "diagnostics": "Diagnostics Plot",
             "diff": "Difference Plot",
             "forecast": "Out-of-Sample Forecast Plot",
@@ -108,7 +114,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             "acf",
             "pacf",
             "diagnostics",
-            "decomp_classical",
+            "decomp",
             "decomp_stl",
             "diff",
             "periodogram",
@@ -128,16 +134,18 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         display_container = [
             ["session_id", self.seed],
             ["Target", self.target_param],
-            ["Forecasting Type", self.forecasting_type],
+            ["Approach", self.approach_type.value],
+            ["Exogenous Variables", self.exogenous_present.value],
             ["Data shape", self.data.shape],
             ["Train data shape", self.train.shape],
             ["Test data shape", self.test.shape],
             ["Fold Generator", type(self.fold_generator).__name__],
             ["Fold Number", self.fold_param],
             ["Enforce Prediction Interval", self.enforce_pi],
-            ["Seasonal Period Tested", self.seasonal_period],
-            ["Seasonality Detected", self.seasonality_present],
-            ["Seasonality Used in Models", self.sp_to_use],
+            ["Seasonal Period(s) Tested", self.seasonal_period],
+            ["Seasonality Present", self.seasonality_present],
+            ["Seasonalities Detected", self.all_sp_values],
+            ["Primary Seasonality", self.sp_to_use],
             ["Target Strictly Positive", self.strictly_positive],
             ["Target White Noise", self.white_noise],
             ["Recommended d", self.lowercase_d],
@@ -352,7 +360,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         self,
         data: pd.DataFrame,
         index: Optional[str] = None,
-        seasonal_period: Optional[Union[int, str]] = None,
+        seasonal_period: Optional[Union[List[Union[int, str]], int, str]] = None,
     ) -> pd.DataFrame:
         """
         Checks if the index is one of the allowed types (pd.PeriodIndex,
@@ -372,7 +380,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             internally converted to datetime using `pd.to_datetime()`. If None,
             then the data's index is used as is for modeling.
 
-        seasonal_period : Optional[Union[int, str]], default = None
+        seasonal_period : Optional[Union[List[Union[int, str]], int, str]], default = None
             Seasonal Period specified by user
 
         Returns
@@ -492,22 +500,71 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         self.fh = fh
 
     def _check_and_set_seasonal_period(
-        self, data: pd.DataFrame, seasonal_period: Optional[Union[int, str]]
+        self,
+        data: pd.DataFrame,
+        seasonal_period: Optional[Union[List[Union[int, str]], int, str]],
     ):
-        """Derived the seasonal period by either
+        """Derived the seasonal periods by either
         (1) Extracting it from data's index (if seasonal period is not provided), or
-        (2) Extracting it from the seasonal_period if it is of type string, or
-        (3) Using seasonal_period as is if it is of type int.
+        for each value of seasonal_period:
+            (2) Extracting it from the value if it is of type string, or
+            (3) Using the value as is if it is of type int.
 
-        After deriving the seasonal period, a seasonality test is performed.
-        Final seasonal period class attribute value is set equal to
-        (1) 1 if seasonality is not detected at the derived seasonal period, or
-        (2) the derived seasonal period if seasonality is detected at that value.
+        After deriving the seasonal periods, a seasonality test is performed for each
+        value of seasonal_period. Final seasonal period class attribute value is set equal to
+        (1) 1 if seasonality is not detected at any of the derived seasonal periods, or
+        (2) the derived seasonal periods for which seasonality is detected.
 
         Parameters
         ----------
         data : pd.DataFrame
             Data used index can be used to extract the seasonal period information
+        seasonal_period : Optional[Union[List[Union[int, str]], int, str]]
+            Seasonal Period specified by user
+
+        Raises
+        ------
+        ValueError
+            If seasonal period is provided but its values are not of type int or string
+        """
+        self.logger.info("Set up Seasonal Period.")
+
+        # sktime is an optional dependency
+        from sktime.utils.seasonality import autocorrelation_seasonality_test
+
+        if seasonal_period is None:
+            seasonal_period = data.index.freqstr
+
+        if not isinstance(seasonal_period, list):
+            seasonal_period = [seasonal_period]
+        seasonal_period = [self._convert_sp_to_int(sp) for sp in seasonal_period]
+
+        # check valid seasonal parameter
+        seasonality_test_results = [
+            autocorrelation_seasonality_test(data[self.target_param], sp)
+            for sp in seasonal_period
+        ]
+        self.seasonality_present = any(seasonality_test_results)
+        sp_values_and_test_result = zip(seasonal_period, seasonality_test_results)
+
+        # What seasonal period should be used for modeling?
+        self.all_sp_values = [
+            sp
+            for sp, seasonality_present in sp_values_and_test_result
+            if seasonality_present
+        ] or [1]
+        self.sp_to_use = self.all_sp_values[0]
+        self.seasonal_period = (
+            seasonal_period[0] if len(seasonal_period) == 1 else seasonal_period
+        )
+
+    def _convert_sp_to_int(self, seasonal_period):
+        """Derives the seasonal period specified by either:
+            (1) Extracting it from the seasonal_period if it is of type string, or
+            (2) Using seasonal_period as is if it is of type int.
+
+        Parameters
+        ----------
         seasonal_period : Optional[Union[int, str]]
             Seasonal Period specified by user
 
@@ -516,32 +573,15 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         ValueError
             If seasonal period is provided but is not of type int or string
         """
-        self.logger.info("Set up Seasonal Period.")
+        if not isinstance(seasonal_period, (int, str)):
+            raise ValueError(
+                f"seasonal_period parameter must be an int or str, got {type(seasonal_period)}"
+            )
 
-        # sktime is an optional dependency
-        from sktime.utils.seasonality import autocorrelation_seasonality_test
+        if isinstance(seasonal_period, str):
+            return get_sp_from_str(str_freq=seasonal_period)
 
-        if seasonal_period is None:
-            index_freq = data.index.freqstr
-            self.seasonal_period = get_sp_from_str(str_freq=index_freq)
-        else:
-            if not isinstance(seasonal_period, (int, str)):
-                raise ValueError(
-                    f"seasonal_period parameter must be an int or str, got {type(seasonal_period)}"
-                )
-
-            if isinstance(seasonal_period, str):
-                self.seasonal_period = get_sp_from_str(str_freq=seasonal_period)
-            else:
-                self.seasonal_period = seasonal_period
-
-        # check valid seasonal parameter
-        self.seasonality_present = autocorrelation_seasonality_test(
-            data[self.target_param], self.seasonal_period
-        )
-
-        # What seasonal period should be used for modeling?
-        self.sp_to_use = self.seasonal_period if self.seasonality_present else 1
+        return seasonal_period
 
     @staticmethod
     def _return_exogenous_names(
@@ -558,8 +598,8 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         return exo_variables
 
-    def _check_and_set_forecsting_type(self):
-        """Checks & sets the the forecasting type based on the number of Targets
+    def _check_and_set_forecsting_types(self):
+        """Checks & sets the the forecasting types based on the number of Targets
         and Exogenous Variables.
 
         Raises
@@ -567,17 +607,18 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         ValueError
             If Forecasting type is unsupported (e.g. Multivariate Forecasting)
         """
+        #### Univariate or Multivariate ----
         if isinstance(self.target_param, str):
-            if len(self.exogenous_variables) > 0:
-                self.forecasting_type = "Univariate with Exogenous Variables"
-            else:
-                self.forecasting_type = "Univariate without Exogenous Variables"
+            self.approach_type = TSApproachTypes.UNI
         elif isinstance(self.target_param, list):
-            if len(self.exogenous_variables) > 0:
-                self.forecasting_type = "Multivariate with Exogenous Variables"
-            else:
-                self.forecasting_type = "Multivariate without Exogenous Variables"
+            self.approach_type = TSApproachTypes.MULTI
             raise ValueError("Multivariate forecasting is currently not supported")
+
+        #### Data has exogenous variables or not ----
+        if len(self.exogenous_variables) > 0:
+            self.exogenous_present = TSExogenousPresent.YES
+        else:
+            self.exogenous_present = TSExogenousPresent.NO
 
     def setup(
         self,
@@ -587,13 +628,14 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         ignore_features: Optional[List] = None,
         preprocess: bool = True,
         imputation_type: str = "simple",
-        #        transform_target: bool = False,
-        #        transform_target_method: str = "box-cox",
+        # transform_target: bool = False,
+        # transform_target_method: str = "box-cox",
         fold_strategy: Union[str, Any] = "expanding",
         fold: int = 3,
         fh: Optional[Union[List[int], int, np.array]] = 1,
-        seasonal_period: Optional[Union[int, str]] = None,
+        seasonal_period: Optional[Union[List[Union[int, str]], int, str]] = None,
         enforce_pi: bool = False,
+        enforce_exogenous: bool = True,
         n_jobs: Optional[int] = -1,
         use_gpu: bool = False,
         custom_pipeline: Union[
@@ -608,10 +650,10 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         log_plots: Union[bool, list] = False,
         log_profile: bool = False,
         log_data: bool = False,
-        hoverinfo: Optional[str] = None,
         verbose: bool = True,
         profile: bool = False,
-        profile_kwargs: Dict[str, Any] = None,
+        profile_kwargs: Optional[Dict[str, Any]] = None,
+        fig_kwargs: Optional[Dict[str, Any]] = None,
     ):
         """
         This function initializes the training environment and creates the transformation
@@ -687,7 +729,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             object. In this case, fh is derived from this object.
 
 
-        seasonal_period: int or str, default = None
+        seasonal_period: list or int or str, default = None
             Seasonal period in timeseries data. If not provided the frequency of the data
             index is mapped to a seasonal period as follows:
 
@@ -703,12 +745,23 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
             Alternatively you can provide a custom `seasonal_period` by passing
             it as an integer or a string corresponding to the keys above (e.g.
-            'W' for weekly data, 'M' for monthly data, etc.).
+            'W' for weekly data, 'M' for monthly data, etc.). You can also provide
+            a list of such values to use in models that accept multiple seasonal values
+            (currently TBATS). For models that don't accept multiple seasonal values, the
+            first value of the list will be used as the seasonal period.
 
 
         enforce_pi: bool, default = False
             When set to True, only models that support prediction intervals are
             loaded in the environment.
+
+
+        enforce_exogenous: bool, default = True
+            When set to True and the data includes exogenous variables, only models
+            that support exogenous variables are loaded in the environment.When
+            set to False, all models are included and in this case, models that do
+            not support exogenous variables will model the data as a univariate
+            forecasting problem.
 
 
         n_jobs: int, default = -1
@@ -766,12 +819,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             Ignored when ``log_experiment`` is not True.
 
 
-        hoverinfo: Optional[str] = None
-            When None, hovering over certain plots is disabled when the data exceeds a
-            certain number of points. Can be set to any value that can be passed to plotly
-            `hoverinfo` arguments. e.g. "text" to display, "skip" or "none" to disable.
-
-
         verbose: bool, default = True
             When set to False, Information grid is not printed.
 
@@ -784,6 +831,47 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             Dictionary of arguments passed to the ProfileReport method used
             to create the EDA report. Ignored if ``profile`` is False.
 
+
+        fig_kwargs: dict, default = {} (empty dict)
+            The global setting for any plots. Pass these as key-value pairs.
+            Example: fig_kwargs = {"height": 1000, "template": "simple_white"}
+
+            Available keys are:
+
+            hoverinfo: hoverinfo passed to Plotly figures. Can be any value supported
+                by Plotly (e.g. "text" to display, "skip" or "none" to disable.).
+                When not provided, hovering over certain plots may be disabled by
+                PyCaret when the data exceeds a  certain number of points (determined
+                by `big_data_threshold`).
+
+            renderer: The renderer used to display the plotly figure. Can be any value
+                supported by Plotly (e.g. "notebook", "png", "svg", etc.). Note that certain
+                renderers (like "svg") may need additional libraries to be installed. Users
+                will have to do this manually since they don't come preinstalled wit plotly.
+                When not provided, plots use plotly's default render when data is below a
+                certain number of points (determined by `big_data_threshold`) otherwise it
+                switches to a static "png" renderer.
+
+            template: The template to use for the plots. Can be any value supported by Plotly.
+                If not provided, defaults to "ggplot2"
+
+            width: The width of the plot in pixels. If not provided, defaults to None
+                which lets Plotly decide the width.
+
+            height: The height of the plot in pixels. If not provided, defaults to None
+                which lets Plotly decide the height.
+
+            rows: The number of rows to use for plots where this can be customized,
+                e.g. `ccf`. If not provided, defaults to None which lets PyCaret decide
+                based on number of subplots to be plotted.
+
+            cols: The number of columns to use for plots where this can be customized,
+                e.g. `ccf`. If not provided, defaults to 4
+
+            big_data_threshold: The number of data points above which hovering over
+                certain plots can be disabled and/or renderer switched to a static
+                renderer. This is useful when the time series being modeled has a lot
+                of data which can make notebooks slow to render.
 
         Returns:
             Global variables that can be changed using the ``set_config`` function.
@@ -799,15 +887,15 @@ class TimeSeriesExperiment(_SupervisedExperiment):
 
         runtime_start = time.time()
 
-        # Define parameter attrs ----
-        self.log_plots_param = log_plots
-        # Number of data points above which the hovering of some plots is disabled
-        # This is needed else the notebooks become very slow.
-        self.hover_threshold = 200
-        self.hoverinfo = hoverinfo
+        #### Define parameter attrs ----
+        self.fig_kwargs = fig_kwargs or {}
+        self._set_default_fig_kwargs()
+
         self.enforce_pi = enforce_pi
+        self.enforce_exogenous = enforce_exogenous
         self.preprocess = preprocess
         self.imputation_type = imputation_type
+        self.log_plots_param = log_plots
 
         # Needed for compatibility with Regression and Classification.
         # Not used in Time Series
@@ -854,7 +942,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         )
 
         #### Set type of forecasting ----
-        self._check_and_set_forecsting_type()
+        self._check_and_set_forecsting_types()
 
         #### Set Forecast Horizon ----
         self._check_and_set_fh(fh=fh, fold_strategy=fold_strategy, fold=fold)
@@ -1013,15 +1101,35 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             # at least 2 values
             self.remove_metric("R2")
 
-        #### Remove INPI when enforce_pi is False ----
+        #### Remove COV_PROB when enforce_pi is False ----
         # User can add it manually if they want when enforce_pi is set to False.
         # Refer: https://github.com/pycaret/pycaret/issues/1900
-        if not self.enforce_pi and "inpi" in self._get_metrics():
-            self.remove_metric("INPI")
+        if not self.enforce_pi and "cov_prob" in self._get_metrics():
+            self.remove_metric("COV_PROB")
 
         self.logger.info(f"setup() successfully completed in {runtime}s...............")
 
         return self
+
+    def _set_default_fig_kwargs(self):
+        """Set the default values for `fig_kwargs` if these are not provided by the user."""
+
+        # `big_data_threshold`: Number of data points above which the hovering for
+        # some plots is disabled. This is needed else the notebooks become very slow.
+        defaults = {
+            "big_data_threshold": 200,
+            "hoverinfo": None,
+            "renderer": None,
+            "template": "ggplot2",
+            "rows": None,
+            "cols": 4,
+            "width": None,
+            "height": None,
+        }
+
+        # Set to default if missing ----
+        for key in defaults:
+            self.fig_kwargs[key] = self.fig_kwargs.get(key, defaults[key])
 
     def compare_models(
         self,
@@ -2120,7 +2228,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         plot: Optional[str] = None,
         return_fig: bool = False,
         return_data: bool = False,
-        hoverinfo: Optional[str] = None,
         verbose: bool = False,
         display_format: Optional[str] = None,
         data_kwargs: Optional[Dict] = None,
@@ -2146,7 +2253,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         >>> plot_model(plot="diff", data_kwargs={"lags_list": [[1], [1, 12]], "acf": True, "pacf": True})
         >>> arima = create_model('arima')
         >>> plot_model(plot = 'ts')
-        >>> plot_model(plot = 'decomp_classical', data_kwargs = {'type' : 'multiplicative'})
+        >>> plot_model(plot = 'decomp', data_kwargs = {'type' : 'multiplicative'})
         >>> plot_model(estimator = arima, plot = 'forecast', data_kwargs = {'fh' : 24})
 
 
@@ -2163,8 +2270,8 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             * 'cv' - Cross Validation
             * 'acf' - Auto Correlation (ACF)
             * 'pacf' - Partial Auto Correlation (PACF)
-            * 'decomp_classical' - Decomposition Classical
-            * 'decomp_stl' - Decomposition STL
+            * 'decomp' - Classical Decomposition
+            * 'decomp_stl' - STL Decomposition
             * 'diagnostics' - Diagnostics Plot
             * 'diff' - Difference Plot
             * 'periodogram' - Frequency Components (Periodogram)
@@ -2185,13 +2292,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             is figure then data.
 
 
-        hoverinfo: Optional[str] = None
-            Override for the experiment global `hoverinfo` passed during setup.
-            Useful when user wants to change the hoverinfo for certain plots only.
-            Can be set to any value that can be passed to plotly `hoverinfo`
-            arguments. e.g. "text" to display, "skip" or "none" to disable.
-
-
         verbose: bool, default = True
             Unused for now
 
@@ -2205,9 +2305,10 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             Dictionary of arguments passed to the data for plotting.
 
 
-        fig_kwargs: dict, default = None
-            Dictionary of arguments passed to the figure object of plotly. Example:
-            * fig_kwargs = {'fig_size' : [800, 500], 'fig_template' : 'simple_white'}
+        fig_kwargs: dict, default = {} (empty dict)
+            The setting to be used for the plot. Overrides any global setting
+            passed during setup. Pass these as key-value pairs. For available
+            keys, refer to the `setup` documentation.
 
 
         save: string or bool, default = False
@@ -2221,6 +2322,16 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         """
         # checking display_format parameter
         self.plot_model_check_display_format_(display_format=display_format)
+
+        if plot == "decomp_classical":
+            msg = (
+                "DeprecationWarning: `decomp_classical` plot type will be disabled in "
+                "a future release. Please use `decomp` instead."
+            )
+            warnings.warn(msg, DeprecationWarning)
+            print(msg)
+            #### Reset to "decomp"
+            plot = "decomp"
 
         # Import required libraries ----
         if display_format == "streamlit":
@@ -2238,8 +2349,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         else:
             data_kwargs.update(sp_dict)
 
-        if fig_kwargs is None:
-            fig_kwargs = {}
+        fig_kwargs = fig_kwargs or {}
 
         return_pred_int = False
         return_obj = []
@@ -2289,7 +2399,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 "acf",
                 "pacf",
                 "diagnostics",
-                "decomp_classical",
+                "decomp",
                 "decomp_stl",
                 "diff",
                 "periodogram",
@@ -2323,7 +2433,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 "diagnostics",
                 "acf",
                 "pacf",
-                "decomp_classical",
+                "decomp",
                 "decomp_stl",
                 "diff",
                 "periodogram",
@@ -2372,12 +2482,24 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                     f"Available plots are: {', '.join(plots_formatted_model)}"
                 )
 
-        hoverinfo = self._resolve_hoverinfo(
-            hoverinfo=hoverinfo, data=data, train=train, test=test, X=X
+        big_data_threshold = _resolve_dict_keys(
+            dict_=fig_kwargs, key="big_data_threshold", defaults=self.fig_kwargs
+        )
+        renderer = _resolve_dict_keys(
+            dict_=fig_kwargs, key="renderer", defaults=self.fig_kwargs
+        )
+        renderer = _resolve_renderer(
+            renderer=renderer,
+            threshold=big_data_threshold,
+            data=data,
+            train=train,
+            test=test,
+            X=X,
         )
 
         fig, plot_data = _plot(
             plot=plot,
+            fig_defaults=self.fig_kwargs,
             data=data,
             train=train,
             test=test,
@@ -2386,7 +2508,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
             cv=cv,
             model_name=model_name,
             return_pred_int=return_pred_int,
-            hoverinfo=hoverinfo,
             data_kwargs=data_kwargs,
             fig_kwargs=fig_kwargs,
         )
@@ -2412,7 +2533,7 @@ class TimeSeriesExperiment(_SupervisedExperiment):
                 if display_format == "streamlit":
                     st.write(fig)
                 else:
-                    fig.show()
+                    fig.show(renderer=renderer)
                 self.logger.info("Visual Rendered Successfully")
 
         ### Add figure and data to return object if required ----
@@ -2428,23 +2549,6 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         elif len(return_obj) == 1:
             return_obj = return_obj[0]
         return return_obj
-
-    def _resolve_hoverinfo(self, hoverinfo, data, train, test, X):
-        # Decide whether hover should be enabled or disabled (if "auto")
-        if self.hoverinfo is None and hoverinfo is None:
-            hoverinfo = "text"
-            if data is not None and len(data) > self.hover_threshold:
-                hoverinfo = "skip"
-            if train is not None and len(train) > self.hover_threshold:
-                hoverinfo = "skip"
-            if test is not None and len(test) > self.hover_threshold:
-                hoverinfo = "skip"
-            if X is not None and len(X) * X.shape[1] > self.hover_threshold:
-                hoverinfo = "skip"
-        elif self.hoverinfo is not None and hoverinfo is None:
-            hoverinfo = self.hoverinfo
-        # if hoverinfo is not None, then use as is.
-        return hoverinfo
 
     def predict_model(
         self,
@@ -3533,3 +3637,15 @@ class TimeSeriesExperiment(_SupervisedExperiment):
         """
         additional_scorer_kwargs = {"sp": self.sp_to_use}
         return additional_scorer_kwargs
+
+
+class TimeSeriesExperiment(TSForecastingExperiment):
+    def __init__(self) -> None:
+        msg = (
+            "DeprecationWarning: TimeSeriesExperiment class will be removed in "
+            "a future release. Please import the following instead. \n"
+            ">>> from pycaret.time_series import TSForecastingExperiment"
+        )
+        warnings.warn(msg, DeprecationWarning)
+        print(msg)
+        super().__init__()

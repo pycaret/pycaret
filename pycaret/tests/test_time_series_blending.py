@@ -4,13 +4,14 @@ from random import uniform
 import pytest
 import numpy as np  # type: ignore
 
-from pycaret.internal.pycaret_experiment import TimeSeriesExperiment
+from pycaret.time_series import TSForecastingExperiment
 from pycaret.internal.ensemble import _ENSEMBLE_METHODS
 
 
 ##########################
 #### Tests Start Here ####
 ##########################
+
 
 @pytest.mark.filterwarnings(
     "ignore::statsmodels.tools.sm_exceptions.ConvergenceWarning:statsmodels"
@@ -67,7 +68,7 @@ def test_blend_model_predict(load_setup, load_models):
 
 def test_blend_model_custom_folds(load_pos_and_neg_data):
     """test custom folds in blend_model"""
-    exp = TimeSeriesExperiment()
+    exp = TSForecastingExperiment()
     setup_fold = 3
     exp.setup(
         data=load_pos_and_neg_data,

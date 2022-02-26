@@ -5,8 +5,6 @@ catboost_info
 /stacker.py
 /stacknet.py
 /cli.py
-/nb_test.ipynb
-/nb_test2.ipynb
 /app.py
 /cli_app.py
 /logo.png
@@ -31,7 +29,6 @@ mlruns/
 /pycaret/tests/mlruns/
 *.log
 trained_models/
-*.ipynb
 *.pkl
 /mlruns.db
 /mlruns.db-journal

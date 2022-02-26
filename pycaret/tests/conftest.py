@@ -4,8 +4,9 @@ import numpy as np  # type: ignore
 import pandas as pd  # type: ignore
 
 from pycaret.datasets import get_data
-from pycaret.internal.pycaret_experiment import TimeSeriesExperiment
+from pycaret.time_series import TSForecastingExperiment
 from pycaret.containers.models.time_series import get_all_model_containers
+from pycaret.utils.time_series import TSExogenousPresent
 
 from .time_series_test_utils import _BLEND_TEST_MODELS
 
@@ -57,8 +58,8 @@ def load_pos_data():
 
 @pytest.fixture(scope="session", name="load_setup")
 def load_setup(load_pos_and_neg_data):
-    """Create a TimeSeriesExperiment to test module functionalities"""
-    exp = TimeSeriesExperiment()
+    """Create a TSForecastingExperiment to test module functionalities"""
+    exp = TSForecastingExperiment()
 
     fh = np.arange(1, 13)
     fold = 2

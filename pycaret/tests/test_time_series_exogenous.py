@@ -4,8 +4,8 @@ import pytest
 import numpy as np  # type: ignore
 import pandas as pd  # type: ignore
 
-from pycaret.datasets import get_data
-from pycaret.internal.pycaret_experiment import TimeSeriesExperiment
+from pycaret.time_series import TSForecastingExperiment
+from pycaret.utils.time_series import TSApproachTypes, TSExogenousPresent
 
 
 pytestmark = pytest.mark.filterwarnings("ignore::UserWarning")
@@ -37,7 +37,7 @@ def test_create_tune_predict_finalize_model(load_uni_exo_data_target):
     future_data = data.iloc[-12:]
     future_exog = future_data.drop(columns=target)
 
-    exp = TimeSeriesExperiment()
+    exp = TSForecastingExperiment()
     exp.setup(
         data=data_for_modeling, target=target, fh=fh, seasonal_period=4, session_id=42
     )
@@ -85,7 +85,12 @@ def test_create_tune_predict_finalize_model(load_uni_exo_data_target):
 
 
 def test_blend_models(load_uni_exo_data_target, load_models_uni_mix_exo_noexo):
-    """test blending functionality"""
+    """test blending functionality.
+    NOTE: compare models does not enforce exog here for now.
+    TODO: Later when Reduced Regression Models also support exogenous variables,
+    we can add a test with only models that support exogenous variables (i.e.
+    with enforce_exogenous=True).
+    """
     data, target = load_uni_exo_data_target
 
     fh = 12
@@ -99,9 +104,14 @@ def test_blend_models(load_uni_exo_data_target, load_models_uni_mix_exo_noexo):
     expected_period_index = data_for_modeling.iloc[-fh:].index
     final_expected_period_index = future_exog.index
 
-    exp = TimeSeriesExperiment()
+    exp = TSForecastingExperiment()
     exp.setup(
-        data=data_for_modeling, target=target, fh=fh, seasonal_period=4, session_id=42
+        data=data_for_modeling,
+        target=target,
+        fh=fh,
+        seasonal_period=4,
+        enforce_exogenous=False,
+        session_id=42,
     )
 
     models_to_include = load_models_uni_mix_exo_noexo
@@ -131,59 +141,68 @@ def test_setup():
     target = "A"
     index = "B"  # NOTE: When index is provided we do not need to pass seasonal_period
 
-    exp = TimeSeriesExperiment()
+    exp = TSForecastingExperiment()
 
     ######################################
     #### Univariate without exogenous ####
     ######################################
-    forecasting_type = "Univariate without Exogenous Variables"
+    approach_type = TSApproachTypes.UNI
+    exogenous_present = TSExogenousPresent.NO
 
     #### Case 1: pd.Series ----
     exp.setup(data=data[target], seasonal_period=1)
-    assert exp.forecasting_type == forecasting_type
+    assert exp.approach_type == approach_type
+    assert exp.exogenous_present == exogenous_present
     assert exp.target_param == target
     assert exp.exogenous_variables == []
 
     #### Case 2: pd.DataFrame with 1 column ----
     exp.setup(data=pd.DataFrame(data[target]), seasonal_period=1)
-    assert exp.forecasting_type == forecasting_type
+    assert exp.approach_type == approach_type
+    assert exp.exogenous_present == exogenous_present
     assert exp.target_param == target
     assert exp.exogenous_variables == []
 
     #### Case 3: # Target specified & correct ----
     exp.setup(data=data[target], target=target, seasonal_period=1)
-    assert exp.forecasting_type == forecasting_type
+    assert exp.approach_type == approach_type
+    assert exp.exogenous_present == exogenous_present
     assert exp.target_param == target
     assert exp.exogenous_variables == []
 
     ###################################
     #### Univariate with exogenous ####
     ###################################
-    forecasting_type = "Univariate with Exogenous Variables"
+    approach_type = TSApproachTypes.UNI
+    exogenous_present = TSExogenousPresent.YES
 
     #### Case 1: `target` provided, `index` not provided, `ignore_features` not provided ----
     exp.setup(data=data, target=target, seasonal_period=1)
-    assert exp.forecasting_type == forecasting_type
+    assert exp.approach_type == approach_type
+    assert exp.exogenous_present == exogenous_present
     assert exp.target_param == target
     assert exp.exogenous_variables == ["B", "C", "D", "E", "F", "G"]
 
     #### Case 2: `target` provided, `index` provided, `ignore_features` not provided ----
     exp.setup(data=data, target=target, index=index)
-    assert exp.forecasting_type == forecasting_type
+    assert exp.approach_type == approach_type
+    assert exp.exogenous_present == exogenous_present
     assert exp.target_param == target
     assert exp.exogenous_variables == ["C", "D", "E", "F", "G"]
     # TODO: Add check for index values
 
     #### Case 3: `target` provided, `index` provided, `ignore_features` provided ----
     exp.setup(data=data, target=target, index=index, ignore_features=["C", "E"])
-    assert exp.forecasting_type == forecasting_type
+    assert exp.approach_type == approach_type
+    assert exp.exogenous_present == exogenous_present
     assert exp.target_param == target
     assert exp.exogenous_variables == ["D", "F", "G"]
     # TODO: Add check for index values
 
     #### Case 4: `target` provided, `index` not provided, `ignore_features` provided ----
     exp.setup(data=data, target=target, ignore_features=["C", "E"], seasonal_period=1)
-    assert exp.forecasting_type == forecasting_type
+    assert exp.approach_type == approach_type
+    assert exp.exogenous_present == exogenous_present
     assert exp.target_param == target
     assert exp.exogenous_variables == ["B", "D", "F", "G"]
 
@@ -194,7 +213,7 @@ def test_setup_raises():
     data = pd.DataFrame(np.random.rand(length, 7))
     data.columns = "A B C D E F G".split()
 
-    exp = TimeSeriesExperiment()
+    exp = TSForecastingExperiment()
 
     ##############################
     #### Target Not Specified ####

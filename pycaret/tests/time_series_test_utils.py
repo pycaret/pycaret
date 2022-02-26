@@ -5,10 +5,10 @@ import random
 import numpy as np  # type: ignore
 import pandas as pd
 
-from pycaret.internal.pycaret_experiment import TimeSeriesExperiment
+from pycaret.time_series import TSForecastingExperiment
 from pycaret.datasets import get_data
 from pycaret.containers.models.time_series import get_all_model_containers
-from pycaret.utils.time_series import SeasonalPeriod
+from pycaret.utils.time_series import SeasonalPeriod, TSExogenousPresent
 
 _BLEND_TEST_MODELS = [
     "naive",
@@ -34,7 +34,7 @@ _ALL_STATS_TESTS = [
 
 
 def _get_all_plots():
-    exp = TimeSeriesExperiment()
+    exp = TSForecastingExperiment()
     data = get_data("airline")
     exp.setup(data=data)
     all_plots = list(exp._available_plots.keys())
@@ -43,7 +43,7 @@ def _get_all_plots():
 
 
 def _get_all_plots_data():
-    exp = TimeSeriesExperiment()
+    exp = TSForecastingExperiment()
     data = get_data("airline")
     exp.setup(data=data)
     all_plots = exp._available_plots_data_keys
@@ -52,7 +52,7 @@ def _get_all_plots_data():
 
 
 def _get_all_plots_estimator():
-    exp = TimeSeriesExperiment()
+    exp = TSForecastingExperiment()
     data = get_data("airline")
     exp.setup(data=data)
     all_plots = exp._available_plots_estimator_keys
@@ -67,7 +67,7 @@ _ALL_PLOTS_ESTIMATOR_NOT_DATA = list(set(_ALL_PLOTS_ESTIMATOR) - set(_ALL_PLOTS_
 
 
 def _get_all_metrics():
-    exp = TimeSeriesExperiment()
+    exp = TSForecastingExperiment()
     data = get_data("airline")
     exp.setup(data=data)
     all_metrics = exp.get_metrics()["Name"].to_list()
@@ -103,7 +103,7 @@ def _check_windows():
 def _return_model_names():
     """Return all model names."""
     data = get_data("airline")
-    exp = TimeSeriesExperiment()
+    exp = TSForecastingExperiment()
     exp.setup(
         data=data,
         seasonal_period=2,

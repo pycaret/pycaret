@@ -229,3 +229,13 @@ class TSModelTypes(Enum):
     LINEAR = "linear"
     NEIGHBORS = "neighbors"
     TREE = "tree"
+
+
+class TSExogenousPresent(Enum):
+    YES = "Present"
+    NO = "Not Present"
+
+
+class TSApproachTypes(Enum):
+    UNI = "Univariate"
+    MULTI = "Multivariate"
