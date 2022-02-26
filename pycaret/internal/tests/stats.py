@@ -1,9 +1,11 @@
-from typing import List
+from typing import List, Optional, Dict, Tuple, Union
 
+from scipy.stats import shapiro
 import pandas as pd
-import statsmodels.api as sm
+
 
 from pycaret.internal.tests import _format_test_results
+from pycaret.utils.time_series import get_diffs, _get_diff_name_list
 
 
 ##########################
@@ -11,93 +13,159 @@ from pycaret.internal.tests import _format_test_results
 ##########################
 
 
-def summary_statistics(data: pd.Series):
-    distinct_counts = dict(data.value_counts(normalize=True))
-    result = {
-        "Length": len(data),
-        "Mean": data.mean(),
-        "Median": data.median(),
-        "Standard Deviation": data.std(),
-        "Variance": data.var(),
-        "Kurtosis": data.kurt(),
-        "Skewness": data.skew(),
-        "# Distinct Values": len(distinct_counts),
-    }
-
-    result = pd.DataFrame(result, index=["Value"]).T.reset_index()
-    result = _format_test_results(result, "Summary", "Statistics")
-
-    return result
-
-
-def is_gaussian(data: pd.Series, alpha: float = 0.05, verbose: bool = False):
-    """Performs the shapiro test to check for normality of data
-    """
-    from scipy.stats import shapiro, norm
-
-    p_value = shapiro(data.values.squeeze())[1]
-    normality = True if p_value > alpha else False
-    details = {
-        "Normality": normality,
-        "p-value": p_value,
-    }
-    details = pd.DataFrame(details, index=["Value"]).T.reset_index()
-    details["Setting"] = [{"alpha": alpha}] * len(details)
-    details = _format_test_results(details, "Normality", "Shapiro")
-
-    if verbose:
-        return normality, details
-    else:
-        return normality
-
-
-def is_white_noise(
+def _summary_stats(
     data: pd.Series,
-    lags: List[int] = [24, 48],
-    alpha: float = 0.05,
-    verbose: bool = False,
-):
-    """Performs the Ljung-Box test for testing if a time series is White Noise
-
-    H0: The data is consistent with white noise
-    Ha: The data is not consistent with white noise.
+    data_name: Optional[str] = None,
+    data_kwargs: Optional[Dict] = None,
+) -> pd.DataFrame:
+    """Provides Summary Statistics for the data
 
     Parameters
     ----------
     data : pd.Series
-        The time series that has to be tested
-    lags : List[int], optional
-        The lags used to test the autocorelation for white noise, by default [24, 48]
+        Data whose summary statistics need to be calculated
+    data_kwargs : Optional[Dict], optional
+        Useful for time series analysis. Users can specify `lags list` and
+        `order_list` to get summary statistics for the data as well as for its
+        lagged versions, by default None
+
+        >>> summary_statistics(data=data, data_kwargs={"order_list": [1, 2]})
+        >>> summary_statistics(data=data, data_kwargs={"lags_list": [1, [1, 12]]})
+
+    Returns
+    -------
+    pd.DataFrame
+        Dataframe containing the summary statistics
     """
-    test_category = "White Noise"
+    test_category = "Summary"
 
-    #### Step 1: Validate inputs and adjust as needed ----
-    lags = [lag for lag in lags if lag < len(data)]
-    lags = None if len(lags) == 0 else lags
-
-    #### Step 2: Run test ----
-    results = sm.stats.acorr_ljungbox(data, lags=lags, return_df=True)
-
-    #### Step 3: Cleanup results ----
-    results[test_category] = results["lb_pvalue"] > alpha
-    is_white_noise = False if results[test_category].all() == False else True
-    results.rename(
-        columns={"lb_stat": "Test Statictic", "lb_pvalue": "p-value"}, inplace=True,
+    # Step 1: Get list of all data that needs to be tested ----
+    diff_list, name_list = _get_diff_name_list(
+        data=data, data_name=data_name, data_kwargs=data_kwargs
     )
 
-    results.reset_index(inplace=True)
-    results.rename(columns={"index": "Setting"}, inplace=True)
+    #### Step 2: Test all data ----
+    results_list = []
+    for data_, name_ in zip(diff_list, name_list):
+        #### Step 2A: Get Test Results ----
+        distinct_counts = dict(data_.value_counts(normalize=True))
+        results = {
+            "Length": len(data_),
+            "Mean": data_.mean(),
+            "Median": data_.median(),
+            "Standard Deviation": data_.std(),
+            "Variance": data_.var(),
+            "Kurtosis": data_.kurt(),
+            "Skewness": data_.skew(),
+            "# Distinct Values": len(distinct_counts),
+        }
 
+        #### Step 2B: Create Result DataFrame ----
+        results = pd.DataFrame(results, index=["Value"]).T.reset_index()
+        results["Data"] = name_
+
+        #### Step 2C: Update list of all results ----
+        results_list.append(results)
+
+    #### Step 3: Combine all results ----
+    results = pd.concat(results_list)
+    results.reset_index(inplace=True)
+
+    #### Step 4: Format Results ----
+    results = _format_test_results(results, test_category, "Statistics")
+
+    #### Step 5: Return values ----
+    return results
+
+
+def _is_gaussian(
+    data: pd.Series,
+    data_name: Optional[str] = None,
+    alpha: float = 0.05,
+    verbose: bool = False,
+    data_kwargs: Optional[Dict] = None,
+) -> Tuple[Union[bool, List[bool]], Optional[pd.DataFrame]]:
+    """Performs the shapiro test to check for normality of data
+
+    Parameters
+    ----------
+    data : pd.Series
+        Data on which the test needs to be performed
+    alpha : float, optional
+        Significance Level, by default 0.05
+    verbose : bool, optional
+        If False, returns boolean value(s) for whether the data is normal or not.
+        If True, then it returns the detailed results dataframe along with the
+        boolean value(s), by default False
+    data_kwargs : Optional[Dict], optional
+        Useful for time series analysis. Users can specify `lags list` or
+        `order_list` to run the test for the data as well as for its lagged
+        versions, by default None
+
+        >>> _is_gaussian(data=data, data_kwargs={"order_list": [1, 2]})
+        >>> _is_gaussian(data=data, data_kwargs={"lags_list": [1, [1, 12]]})
+
+    Returns
+    -------
+    Tuple[Union[bool, List[bool]], Optional[pd.DataFrame]]
+        If verbose=False, returns boolean value(s) for whether the data is normal
+        or not. If test for lags/orders are not requested, then returns a single
+        boolean value corresponding to the data. If tests are requested for lags
+        /orders (using kwargs), then returns a list of boolean values corresponding
+        to the data and the lags/order specified by user (in that order).
+        If verbose=True, then it returns the detailed results dataframe along with
+        the boolean value(s).
+    """
+
+    test_category = "Normality"
+
+    # Step 1: Get list of all data that needs to be tested ----
+    diff_list, name_list = _get_diff_name_list(
+        data=data, data_name=data_name, data_kwargs=data_kwargs
+    )
+
+    #### Step 2: Test all data ----
+    results_list = []
+    is_gaussian_list = []
+    for data_, name_ in zip(diff_list, name_list):
+        #### Step 2A: Validate inputs and adjust as needed ----
+        if len(data_) == 0:
+            # Differencing led to no remaining data, hence skip it
+            continue
+
+        #### Step 2B: Get Test Results ----
+        p_value = shapiro(data_.values.squeeze())[1]
+        is_gaussian = True if p_value > alpha else False
+
+        #### Step 2C: Create Result DataFrame ----
+        results = {
+            "Normality": is_gaussian,
+            "p-value": p_value,
+        }
+        results = pd.DataFrame(results, index=["Value"]).T.reset_index()
+        results["Data"] = name_
+
+        #### Step 2D: Update list of all results ----
+        results_list.append(results)
+        is_gaussian_list.append(is_gaussian)
+
+    #### Step 3: Combine all results ----
+    results = pd.concat(results_list)
+    results.reset_index(inplace=True)
+
+    #### Step 4: Add Settings & Format Results ----
     def add_and_format_settings(row):
-        row["Setting"] = {"alpha": alpha, "K": row["Setting"]}
+        row["Setting"] = {"alpha": alpha}
         return row
 
-    # TODO: Add alpha value to Settings
     results = results.apply(add_and_format_settings, axis=1)
-    results = pd.melt(results, id_vars="Setting", var_name="index", value_name="Value")
-    results = _format_test_results(results, test_category, "Ljung-Box")
+    results = _format_test_results(results, test_category, "Shapiro")
 
+    #### Step 5: Return values ----
+    if len(is_gaussian_list) == 1:
+        is_gaussian_list = is_gaussian_list[0]
     if verbose:
-        return is_white_noise, results
+        return is_gaussian_list, results
     else:
-        return is_white_noise
+        return is_gaussian_list
+

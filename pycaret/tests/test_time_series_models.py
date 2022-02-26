@@ -3,7 +3,7 @@
 import pytest
 import pandas as pd  # type: ignore
 
-from pycaret.internal.pycaret_experiment import TimeSeriesExperiment
+from pycaret.time_series import TSForecastingExperiment
 
 
 ##########################
@@ -14,7 +14,7 @@ from pycaret.internal.pycaret_experiment import TimeSeriesExperiment
 def test_naive_models(load_pos_and_neg_data):
     """Tests enabling and disabling of naive models"""
 
-    exp = TimeSeriesExperiment()
+    exp = TSForecastingExperiment()
     data = load_pos_and_neg_data
 
     #### Seasonal Period != 1 ----
@@ -38,11 +38,13 @@ def test_naive_models(load_pos_and_neg_data):
 def test_custom_models(load_pos_data):
     """Tests working with custom models"""
 
-    exp = TimeSeriesExperiment()
+    exp = TSForecastingExperiment()
     data = load_pos_data
 
     exp.setup(
-        data=data, fh=12, session_id=42,
+        data=data,
+        fh=12,
+        session_id=42,
     )
 
     #### Create a sktime pipeline with preprocessing ----
@@ -71,7 +73,9 @@ def test_custom_models(load_pos_data):
     impute_values = ["drift", "bfill", "ffill"]
     my_grid = {"impute__method": impute_values}
     tuned_model, tuner = exp.tune_model(
-        my_custom_model, custom_grid=my_grid, return_tuner=True,
+        my_custom_model,
+        custom_grid=my_grid,
+        return_tuner=True,
     )
     assert type(tuned_model) == type(forecaster)
     assert "param_impute__method" in pd.DataFrame(tuner.cv_results_)
@@ -93,4 +97,3 @@ def test_custom_models(load_pos_data):
         f"When passing a model not in PyCaret's model library, the custom_grid parameter must be provided."
         in exceptionmsg
     )
-

@@ -38,9 +38,9 @@ Add any other context about the problem here.
 
 <!--
 Please run the following code snippet and paste the output here:
- 
-import pycaret
-pycaret.__version__
+
+from pycaret import show_versions
+>>> show_versions()
 -->
 
 </details>

@@ -169,7 +169,6 @@ class IntUniformDistribution(Distribution):
         )
 
     def get_tune(self):
-        from ray import tune
         from ray.tune.sample import Integer
         from ray.tune.sample import LogUniform
 

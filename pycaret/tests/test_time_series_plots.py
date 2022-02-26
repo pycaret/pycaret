@@ -8,13 +8,13 @@ import numpy as np  # type: ignore
 import pandas as pd  # type: ignore
 
 
-from pycaret.internal.pycaret_experiment import TimeSeriesExperiment
+from pycaret.time_series import TSForecastingExperiment
 from pycaret.internal.ensemble import _ENSEMBLE_METHODS
 
 
 from .time_series_test_utils import (
     _return_data_with_without_period_index,
-    _return_model_names_for_plots,
+    _return_model_names_for_plots_stats,
     _ALL_PLOTS_DATA,
     _ALL_PLOTS_ESTIMATOR,
     _ALL_PLOTS_ESTIMATOR_NOT_DATA,
@@ -34,7 +34,7 @@ pytestmark = pytest.mark.filterwarnings("ignore::UserWarning")
 
 
 _data_with_without_period_index = _return_data_with_without_period_index()
-_model_names_for_plots = _return_model_names_for_plots()
+_model_names_for_plots = _return_model_names_for_plots_stats()
 
 ############################
 #### Functions End Here ####
@@ -52,7 +52,7 @@ def test_plot_model_data(data, plot):
     """Tests the plot_model functionality on original dataset
     NOTE: Want to show multiplicative plot here so can not take data with negative values
     """
-    exp = TimeSeriesExperiment()
+    exp = TSForecastingExperiment()
     fh = np.arange(1, 13)
     fold = 2
     sp = 1 if isinstance(data.index, pd.RangeIndex) else None
@@ -99,7 +99,7 @@ def test_plot_model_estimator(model_name, data, plot):
     """Tests the plot_model functionality on estimators
     NOTE: Want to show multiplicative plot here so can not take data with negative values
     """
-    exp = TimeSeriesExperiment()
+    exp = TSForecastingExperiment()
 
     fh = np.arange(1, 13)
     fold = 2
@@ -139,7 +139,7 @@ def test_plot_model_estimator(model_name, data, plot):
         n_jobs=-1,
         seasonal_period=sp,
     )
-    model = create_model("naive")
+    model = create_model(model_name)
     plot_model(estimator=model, plot=plot)
 
 
@@ -148,7 +148,7 @@ def test_plot_model_data_raises(load_pos_and_neg_data, plot):
     """Tests the plot_model functionality when it raises an exception
     on data plots (i.e. estimator is not passed)
     """
-    exp = TimeSeriesExperiment()
+    exp = TSForecastingExperiment()
     fh = np.arange(1, 13)
     fold = 2
 
@@ -184,7 +184,7 @@ def test_plot_model_customization(data):
     """Tests the customization of plot_model
     NOTE: Want to show multiplicative plot here so can not take data with negative values
     """
-    exp = TimeSeriesExperiment()
+    exp = TSForecastingExperiment()
 
     fh = np.arange(1, 13)
     fold = 2
@@ -210,7 +210,9 @@ def test_plot_model_customization(data):
     print("\n\n==== Testing Customization ON DATA ====")
     exp.plot_model(
         plot="pacf",
-        data_kwargs={"nlags": 36,},
+        data_kwargs={
+            "nlags": 36,
+        },
         fig_kwargs={"fig_size": [800, 500], "fig_template": "simple_white"},
         system=False,
     )
@@ -230,7 +232,7 @@ def test_plot_model_return_data_original_data(data, plot):
     """Tests whether the return_data parameter of the plot_model function works
     properly or not for the original data
     """
-    exp = TimeSeriesExperiment()
+    exp = TSForecastingExperiment()
 
     fh = np.arange(1, 13)
     fold = 2
@@ -260,7 +262,7 @@ def test_plot_model_return_data_estimator(data, model_name, plot):
     """Tests whether the return_data parameter of the plot_model function works
     properly or not for the estimator
     """
-    exp = TimeSeriesExperiment()
+    exp = TSForecastingExperiment()
 
     fh = np.arange(1, 13)
     fold = 2

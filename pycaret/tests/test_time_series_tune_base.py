@@ -5,7 +5,7 @@ import pytest
 import numpy as np
 import pandas as pd
 
-from pycaret.internal.pycaret_experiment import TimeSeriesExperiment
+from pycaret.time_series import TSForecastingExperiment
 
 from .time_series_test_utils import _ALL_METRICS
 
@@ -14,13 +14,14 @@ from .time_series_test_utils import _ALL_METRICS
 #### Tests Start Here ####
 ##########################
 
+
 def test_tune_custom_grid_and_choose_better(load_pos_and_neg_data):
     """Tests
     (1) passing a custom grid to tune_model, and
     (2) choose_better=True
     """
 
-    exp = TimeSeriesExperiment()
+    exp = TSForecastingExperiment()
 
     fh = np.arange(1, 13)
     fold = 2
@@ -58,7 +59,7 @@ def test_tune_custom_grid_and_choose_better(load_pos_and_neg_data):
 
 def test_tune_model_custom_folds(load_pos_and_neg_data):
     """test custom folds in tune_model"""
-    exp = TimeSeriesExperiment()
+    exp = TSForecastingExperiment()
     setup_fold = 3
     exp.setup(
         data=load_pos_and_neg_data,
@@ -86,7 +87,7 @@ def test_tune_model_custom_folds(load_pos_and_neg_data):
 @pytest.mark.parametrize("metric", _ALL_METRICS)
 def test_tune_model_alternate_metric(load_pos_and_neg_data, metric):
     """tests model selection using non default metric"""
-    exp = TimeSeriesExperiment()
+    exp = TSForecastingExperiment()
     fh = 12
     fold = 2
 
@@ -105,7 +106,7 @@ def test_tune_model_alternate_metric(load_pos_and_neg_data, metric):
 def test_tune_model_raises(load_pos_and_neg_data):
     """Tests conditions that raise an error due to lack of data"""
 
-    exp = TimeSeriesExperiment()
+    exp = TSForecastingExperiment()
 
     fh = np.arange(1, 13)
     fold = 2

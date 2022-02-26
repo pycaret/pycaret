@@ -4,11 +4,11 @@ import random
 
 import numpy as np  # type: ignore
 import pandas as pd
-from pandas.core.indexes import period  # type: ignore
 
-from pycaret.internal.pycaret_experiment import TimeSeriesExperiment
+from pycaret.time_series import TSForecastingExperiment
 from pycaret.datasets import get_data
 from pycaret.containers.models.time_series import get_all_model_containers
+from pycaret.utils.time_series import SeasonalPeriod, TSExogenousPresent
 
 _BLEND_TEST_MODELS = [
     "naive",
@@ -25,15 +25,16 @@ _BLEND_TEST_MODELS = [
 _ALL_STATS_TESTS = [
     "summary",
     "white_noise",
-    "stationarity",
     "adf",
     "kpss",
     "normality",
+    "stationarity",
+    "all",
 ]
 
 
 def _get_all_plots():
-    exp = TimeSeriesExperiment()
+    exp = TSForecastingExperiment()
     data = get_data("airline")
     exp.setup(data=data)
     all_plots = list(exp._available_plots.keys())
@@ -42,7 +43,7 @@ def _get_all_plots():
 
 
 def _get_all_plots_data():
-    exp = TimeSeriesExperiment()
+    exp = TSForecastingExperiment()
     data = get_data("airline")
     exp.setup(data=data)
     all_plots = exp._available_plots_data_keys
@@ -51,7 +52,7 @@ def _get_all_plots_data():
 
 
 def _get_all_plots_estimator():
-    exp = TimeSeriesExperiment()
+    exp = TSForecastingExperiment()
     data = get_data("airline")
     exp.setup(data=data)
     all_plots = exp._available_plots_estimator_keys
@@ -66,7 +67,7 @@ _ALL_PLOTS_ESTIMATOR_NOT_DATA = list(set(_ALL_PLOTS_ESTIMATOR) - set(_ALL_PLOTS_
 
 
 def _get_all_metrics():
-    exp = TimeSeriesExperiment()
+    exp = TSForecastingExperiment()
     data = get_data("airline")
     exp.setup(data=data)
     all_metrics = exp.get_metrics()["Name"].to_list()
@@ -77,17 +78,18 @@ _ALL_METRICS = _get_all_metrics()
 
 
 def _get_seasonal_values():
-    from pycaret.internal.utils import SeasonalPeriod
-
     return [(k, v.value) for k, v in SeasonalPeriod.__members__.items()]
 
+
 def _get_seasonal_values_alphanumeric():
-    """ Check if frequency is alphanumeric and process it as needed """
-    from pycaret.internal.utils import SeasonalPeriod
-    choice_list = ['10','20','30','40','50','60']
-    #prefix = random.choice(choice_list)
-    return [(random.choice(choice_list),k,v.value) for k, v in SeasonalPeriod.__members__.items()]
- 
+    """Check if frequency is alphanumeric and process it as needed"""
+    choice_list = ["10", "20", "30", "40", "50", "60"]
+    return [
+        (random.choice(choice_list), k, v.value)
+        for k, v in SeasonalPeriod.__members__.items()
+    ]
+
+
 def _check_windows():
     """Check if the system is Windows."""
     import sys
@@ -106,7 +108,10 @@ def _return_model_names():
         "gpu_param": False,
         "X_train": pd.DataFrame(get_data("airline")),
         "enforce_pi": False,
+        "enforce_exogenous": True,
+        "exogenous_present": TSExogenousPresent.NO,
         "seasonal_period": 2,
+        "sp_to_use": 2,
     }
     model_containers = get_all_model_containers(globals_dict)
 
@@ -154,8 +159,7 @@ def _return_model_parameters():
 
 
 def _return_splitter_args():
-    """fold, fh, fold_strategy
-    """
+    """fold, fh, fold_strategy"""
     parametrize_list = [
         ## fh: Integer
         (random.randint(2, 5), random.randint(5, 10), "expanding"),
@@ -166,9 +170,21 @@ def _return_splitter_args():
         (random.randint(2, 5), np.arange(1, random.randint(5, 10)), "rolling"),
         (random.randint(2, 5), np.arange(1, random.randint(5, 10)), "sliding"),
         # Non continuous np.array
-        (random.randint(2, 5), np.arange(random.randint(3, 5), random.randint(6, 10)), "expanding"),
-        (random.randint(2, 5), np.arange(random.randint(3, 5), random.randint(6, 10)), "rolling"),
-        (random.randint(2, 5), np.arange(random.randint(3, 5), random.randint(6, 10)), "sliding"),
+        (
+            random.randint(2, 5),
+            np.arange(random.randint(3, 5), random.randint(6, 10)),
+            "expanding",
+        ),
+        (
+            random.randint(2, 5),
+            np.arange(random.randint(3, 5), random.randint(6, 10)),
+            "rolling",
+        ),
+        (
+            random.randint(2, 5),
+            np.arange(random.randint(3, 5), random.randint(6, 10)),
+            "sliding",
+        ),
     ]
     return parametrize_list
 
@@ -185,8 +201,7 @@ def _return_compare_model_args():
 
 
 def _return_setup_args_raises():
-    """
-    """
+    """ """
     setup_raises_list = [
         (random.randint(50, 100), random.randint(10, 20), "expanding"),
         (random.randint(50, 100), random.randint(10, 20), "rolling"),
@@ -204,12 +219,12 @@ def _return_data_with_without_period_index():
     return datasets
 
 
-def _return_model_names_for_plots():
+def _return_model_names_for_plots_stats():
     """Returns models to be used for testing plots. Needs
-        - 1 model that has prediction interval ("theta")
-        - 1 model that does not have prediction interval ("lr_cds_dt")
-        - 1 model that has in-sample forecasts ("theta")
-        - 1 model that does not have in-sample forecasts ("lr_cds_dt")
+    - 1 model that has prediction interval ("theta")
+    - 1 model that does not have prediction interval ("lr_cds_dt")
+    - 1 model that has in-sample forecasts ("theta")
+    - 1 model that does not have in-sample forecasts ("lr_cds_dt")
     """
     model_names = ["theta", "lr_cds_dt"]
     return model_names
