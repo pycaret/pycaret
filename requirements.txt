@@ -3,9 +3,9 @@ seaborn
 matplotlib
 IPython
 joblib
-scikit-learn~=0.24.2
+scikit-learn>=1.0.0
 ipywidgets
-yellowbrick>=1.0.1
+yellowbrick>=1.4
 lightgbm>=2.3.1
 plotly>=5.0.0
 pyyaml<6.0.0
