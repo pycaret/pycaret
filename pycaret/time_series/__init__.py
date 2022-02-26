@@ -6,7 +6,6 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import numpy as np  # type: ignore
 import pandas as pd  # type: ignore
 
-# from pycaret.internal.pycaret_experiment import TimeSeriesExperiment
 from pycaret.internal.utils import check_if_global_is_not_none
 
 from pycaret.internal.pycaret_experiment import TSForecastingExperiment

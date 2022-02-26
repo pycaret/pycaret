@@ -1,5 +1,6 @@
 from pycaret.utils.time_series import TSExogenousPresent
-from pycaret.internal.pycaret_experiment import TSForecastingExperiment
+
+# from pycaret.time_series import TSForecastingExperiment
 
 
 def _disable_pred_int_enforcement(forecaster, enforce_pi: bool) -> bool:
@@ -60,7 +61,7 @@ def _disable_exogenous_enforcement(
     return False
 
 
-def _check_enforcements(forecaster, experiment: TSForecastingExperiment) -> bool:
+def _check_enforcements(forecaster, experiment) -> bool:
     """Checks whether the model supports certain features such as
     (1) Prediction Interval, and (2) support for exogenous variables. The checks
     depend on what features are requested by the user during the experiment setup.

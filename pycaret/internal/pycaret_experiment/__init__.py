@@ -4,7 +4,6 @@ from .clustering_experiment import ClusteringExperiment
 from .classification_experiment import ClassificationExperiment
 from .regression_experiment import RegressionExperiment
 from .time_series_experiment import TSForecastingExperiment
-from .time_series_experiment import TimeSeriesExperiment
 
 from .utils import MLUsecase
 
