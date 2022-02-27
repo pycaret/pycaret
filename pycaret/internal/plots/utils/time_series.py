@@ -489,7 +489,7 @@ def frequency_components_subplot(
     if hoverinfo == "text":
         hovertemplate = "Freq:%{customdata[0]:.4f} <br>Ampl:%{customdata[1]:.4f}<br>Time Period: %{customdata[2]:.4f]}"
         fig.add_trace(
-            data=go.Scattergl(
+            go.Scattergl(
                 name=name,
                 x=freq_data["Freq"],
                 y=freq_data["Amplitude"],
