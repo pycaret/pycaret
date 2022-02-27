@@ -250,8 +250,12 @@ def _add_corr_bounds_subplot(
     go.Figure
         Returns back the plotly figure with correlation confidence bounds inserted
     """
+
+    # For some reason scattergl does not work here. Hence switching to scatter.
+    # (refer: https://github.com/pycaret/pycaret/issues/2211).
+
     #### Add the Upper Confidence Interval ----
-    fig.add_scattergl(
+    fig.add_scatter(
         x=np.arange(len(upper)),
         y=upper,
         mode="lines",
@@ -262,7 +266,7 @@ def _add_corr_bounds_subplot(
     )
 
     #### Add the Lower Confidence Interval ----
-    fig.add_scattergl(
+    fig.add_scatter(
         x=np.arange(len(lower)),
         y=lower,
         mode="lines",
@@ -489,7 +493,7 @@ def frequency_components_subplot(
     if hoverinfo == "text":
         hovertemplate = "Freq:%{customdata[0]:.4f} <br>Ampl:%{customdata[1]:.4f}<br>Time Period: %{customdata[2]:.4f]}"
         fig.add_trace(
-            data=go.Scattergl(
+            go.Scattergl(
                 name=name,
                 x=freq_data["Freq"],
                 y=freq_data["Amplitude"],
