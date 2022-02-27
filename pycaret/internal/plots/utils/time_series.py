@@ -56,19 +56,39 @@ def time_series_subplot(
         if isinstance(data.index, pd.PeriodIndex)
         else data.index
     )
-    fig.add_trace(
-        go.Scatter(
-            x=x,
-            y=data.values,
-            line=dict(color="#1f77b4", width=2),
-            mode="lines+markers",
-            name=name,
-            marker=dict(size=5),
-            hoverinfo=hoverinfo,
-        ),
-        row=row,
-        col=col,
-    )
+
+    # If you add hoverinfo = "text", you must also add the hovertemplate, else no hoverinfo
+    # gets displayed. OR alternately, leave it out and it gets plotted by default.
+    if hoverinfo == "text":
+        # Not specifying the hoverinfo will show it by default
+        fig.add_trace(
+            go.Scatter(
+                x=x,
+                y=data.values,
+                line=dict(color="#1f77b4", width=2),
+                mode="lines+markers",
+                name=name,
+                marker=dict(size=5),
+            ),
+            row=row,
+            col=col,
+        )
+    else:
+        # Disable hoverinfo
+        fig.add_trace(
+            go.Scatter(
+                x=x,
+                y=data.values,
+                line=dict(color="#1f77b4", width=2),
+                mode="lines+markers",
+                name=name,
+                marker=dict(size=5),
+                hoverinfo=hoverinfo,
+            ),
+            row=row,
+            col=col,
+        )
+
     return fig
 
 
@@ -490,6 +510,8 @@ def frequency_components_subplot(
     time_period = [round(1 / freq, 4) for freq in x]
     freq_data = pd.DataFrame({"Freq": x, "Amplitude": y, "Time Period": time_period})
 
+    # If you add hoverinfo = "text", you must also add the hovertemplate, else no hoverinfo
+    # gets displayed. OR alternately, leave it out and it gets plotted by default.
     if hoverinfo == "text":
         hovertemplate = "Freq:%{customdata[0]:.4f} <br>Ampl:%{customdata[1]:.4f}<br>Time Period: %{customdata[2]:.4f]}"
         fig.add_trace(
