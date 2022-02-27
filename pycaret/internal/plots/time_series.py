@@ -484,14 +484,16 @@ def plot_acf(
         for ind, x in enumerate(range(len(corr_array[0])))
     ]
 
-    fig.add_scattergl(
+    # For some reason scattergl does not work here. Hence switching to scatter.
+    # (refer: https://github.com/pycaret/pycaret/issues/2211).
+    fig.add_scatter(
         x=np.arange(len(corr_array[0])),
         y=upper_y,
         mode="lines",
         line_color="rgba(255,255,255,0)",
         name="UC",
     )
-    fig.add_scattergl(
+    fig.add_scatter(
         x=np.arange(len(corr_array[0])),
         y=lower_y,
         mode="lines",
@@ -575,14 +577,16 @@ def plot_pacf(
         for ind, x in enumerate(range(len(corr_array[0])))
     ]
 
-    fig.add_scattergl(
+    # For some reason scattergl does not work here. Hence switching to scatter.
+    # (refer: https://github.com/pycaret/pycaret/issues/2211).
+    fig.add_scatter(
         x=np.arange(len(corr_array[0])),
         y=upper_y,
         mode="lines",
         line_color="rgba(255,255,255,0)",
         name="UC",
     )
-    fig.add_scattergl(
+    fig.add_scatter(
         x=np.arange(len(corr_array[0])),
         y=lower_y,
         mode="lines",
