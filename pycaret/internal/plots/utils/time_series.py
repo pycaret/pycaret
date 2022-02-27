@@ -57,6 +57,8 @@ def time_series_subplot(
         else data.index
     )
 
+    name = name or data.name
+
     # If you add hoverinfo = "text", you must also add the hovertemplate, else no hoverinfo
     # gets displayed. OR alternately, leave it out and it gets plotted by default.
     if hoverinfo == "text":
@@ -509,6 +511,8 @@ def frequency_components_subplot(
     x, y = return_frequency_components(data=data, type=type)
     time_period = [round(1 / freq, 4) for freq in x]
     freq_data = pd.DataFrame({"Freq": x, "Amplitude": y, "Time Period": time_period})
+
+    name = name or data.name
 
     # If you add hoverinfo = "text", you must also add the hovertemplate, else no hoverinfo
     # gets displayed. OR alternately, leave it out and it gets plotted by default.

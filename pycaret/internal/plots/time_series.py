@@ -723,14 +723,16 @@ def plot_diagnostics(
         title = f"{title} | {time_series_name}"
 
     fig = make_subplots(
-        rows=2,
+        rows=3,
         cols=2,
-        row_heights=[0.5, 0.5],
+        row_heights=[0.33, 0.33, 0.33],
         subplot_titles=[
             "Time Plot",
+            "Periodogram",
             "Histogram Plot",
-            "ACF Plot",
             "Quantile-Quantile Plot",
+            "ACF Plot",
+            "PACF Plot",
         ],
         x_title=title,
     )
@@ -746,16 +748,33 @@ def plot_diagnostics(
     )
 
     #### Add diagnostic plots ----
-    fig = time_series_subplot(
-        fig=fig, data=data, row=1, col=1, hoverinfo=hoverinfo, name="Time Plot"
+
+    # ROW 1
+    fig = time_series_subplot(fig=fig, data=data, row=1, col=1, hoverinfo=hoverinfo)
+    fig, periodogram_data = frequency_components_subplot(
+        fig=fig,
+        data=data,
+        row=1,
+        col=2,
+        hoverinfo=hoverinfo,
+        type="periodogram",
     )
-    fig = dist_subplot(fig=fig, data=data, row=1, col=2)
-    fig, acf_data = corr_subplot(
-        fig=fig, data=data, row=2, col=1, name="ACF", plot="acf"
-    )
+
+    # ROW 2
+    fig = dist_subplot(fig=fig, data=data, row=2, col=1)
     fig, qqplot_data = qq_subplot(fig=fig, data=data, row=2, col=2)
 
-    return_data_dict = {"data": data, "qqplot": qqplot_data, "acf": acf_data}
+    # ROW 3
+    fig, acf_data = corr_subplot(fig=fig, data=data, row=3, col=1, plot="acf")
+    fig, pacf_data = corr_subplot(fig=fig, data=data, row=3, col=2, plot="pacf")
+
+    return_data_dict = {
+        "data": data,
+        "periodogram": periodogram_data,
+        "qqplot": qqplot_data,
+        "acf": acf_data,
+        "pacf": pacf_data,
+    }
 
     return fig, return_data_dict
 
