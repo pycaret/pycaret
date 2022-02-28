@@ -151,7 +151,9 @@ def corr_subplot(
             corr_array = acf(data, alpha=0.05)
         elif plot == "pacf":
             default_name = "PACF"
-            corr_array = pacf(data, alpha=0.05)
+            nobs = len(data)
+            nlags = min(int(10 * np.log10(nobs)), nobs // 2 - 1)
+            corr_array = pacf(data, nlags=nlags, alpha=0.05)
         corr_values = corr_array[0]
         lower = corr_array[1][:, 0] - corr_array[0]
         upper = corr_array[1][:, 1] - corr_array[0]
