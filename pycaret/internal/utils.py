@@ -41,19 +41,24 @@ def to_df(data, index=None, columns=None, dtypes=None):
     # Get number of columns (list/tuple have no shape and sp.matrix has no index)
     n_cols = lambda data: data.shape[1] if hasattr(data, "shape") else len(data[0])
 
-    if not isinstance(data, pd.DataFrame) and data is not None:
-        # Assign default column names (dict already has column names)
-        if not isinstance(data, dict) and columns is None:
-            columns = [f"feature {str(i)}" for i in range(1, n_cols(data) + 1)]
+    if data is not None:
+        if not isinstance(data, pd.DataFrame):
+            # Assign default column names (dict already has column names)
+            if not isinstance(data, dict) and columns is None:
+                columns = [f"feature {str(i)}" for i in range(1, n_cols(data) + 1)]
 
-        # Create dataframe from sparse matrix or directly from data
-        if sparse.issparse(data):
-            data = pd.DataFrame.sparse.from_spmatrix(data, index, columns)
+            # Create dataframe from sparse matrix or directly from data
+            if sparse.issparse(data):
+                data = pd.DataFrame.sparse.from_spmatrix(data, index, columns)
+            else:
+                data = pd.DataFrame(data, index, columns)
+
+            if dtypes is not None:
+                data = data.astype(dtypes)
+
         else:
-            data = pd.DataFrame(data, index, columns)
-
-        if dtypes is not None:
-            data = data.astype(dtypes)
+            # Convert all column names to str
+            data.columns = [str(col) for col in data.columns]
 
     return data
 
