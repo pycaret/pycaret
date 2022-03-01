@@ -542,8 +542,10 @@ def plot_pacf(
     data_kwargs = data_kwargs or {}
     fig_kwargs = fig_kwargs or {}
 
-    nlags = data_kwargs.get("nlags", None)
-    corr_array = pacf(data, alpha=0.05, nlags=nlags)
+    nobs = len(data)
+    nlags_default = min(int(10 * np.log10(nobs)), nobs // 2 - 1)
+    nlags = data_kwargs.get("nlags", nlags_default)
+    corr_array = pacf(data, nlags=nlags, alpha=0.05)
 
     time_series_name = data.name
     title = "Partial Autocorrelation (PACF)"
@@ -605,7 +607,7 @@ def plot_pacf(
     )
 
     with fig.batch_update():
-        fig.update_xaxes(range=[-1, 42])
+        fig.update_xaxes(range=[-1, len(corr_array[0]) + 1])
         fig.update_yaxes(zerolinecolor="#000000")
 
         template = _resolve_dict_keys(
@@ -729,10 +731,10 @@ def plot_diagnostics(
         subplot_titles=[
             "Time Plot",
             "Periodogram",
-            "Histogram Plot",
-            "Quantile-Quantile Plot",
-            "ACF Plot",
-            "PACF Plot",
+            "Histogram",
+            "Q-Q Plot",
+            "ACF",
+            "PACF",
         ],
         x_title=title,
     )
