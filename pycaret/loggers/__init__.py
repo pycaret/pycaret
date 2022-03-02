@@ -77,7 +77,7 @@ class DashboardLogger:
         score_dict["TT"] = model_fit_time
         for logger in self.loggers:
             logger.log_params(params, model_name=full_name)
-            logger.log_metrics(score_dict)
+            logger.log_metrics(score_dict, source)
             logger.set_tags(source, experiment_custom_tags, runtime)
             
         # Log the CV results as model_results.html artifact
@@ -121,7 +121,7 @@ class DashboardLogger:
                     [logger.log_artifact(plot_name, "Plot") for logger in self.logggers]
                     os.remove(plot_name)
                 except Exception as e:
-                    logger.warning(e)
+                    console.warning(e)
 
             for plot in log_plots:
                 _log_plot(plot)
@@ -136,7 +136,7 @@ class DashboardLogger:
             dd = pd.DataFrame.from_dict(d1)
             dd["Score"] = tune_cv_results.get("mean_test_score")
             dd.to_html("Iterations.html", col_space=75, justify="left")
-            [logger.log_artifact("Iterations.html", "Hyperparameter-grid") for logger in self.logggers]
+            [logger.log_artifact("Iterations.html", "Hyperparameter-grid") for logger in self.loggers]
             os.remove("Iterations.html")
 
         [logger.log_sklearn_pipeline(_prep_pipe, model) for logger in self.loggers]
@@ -144,7 +144,7 @@ class DashboardLogger:
         gc.collect()
 
     def log_experiment(self, log_profile, profile_kwargs, log_data, ml_usecase, functions, experiment_custom_tags, runtime, display):
-        from pycaret.internal.tabular import exp_name_log, _is_unsupervised, data_before_preprocess, USI, save_model, prep_pipe, X, X_train, X_test, y_train, y_test
+        from pycaret.internal.tabular import exp_name_log, _is_unsupervised, data_before_preprocess, USI, save_model, prep_pipe, X
         console = get_logger()
         console.info("Logging experiment in MLFlow")
 
@@ -180,6 +180,7 @@ class DashboardLogger:
         # Log training and testing set
         if log_data:
             if not _is_unsupervised(ml_usecase):
+                from pycaret.internal.tabular import X_train, X_test, y_train, y_test
                 X_train.join(y_train).to_csv("Train.csv")
                 X_test.join(y_test).to_csv("Test.csv")
                 [logger.log_artifact("Train.csv", "train_data") for logger in self.loggers]
@@ -191,6 +192,10 @@ class DashboardLogger:
                 [logger.log_artifact("Dataset.csv", "data") for logger in self.loggers]
                 os.remove("Dataset.csv")
     
-    def log_model_comparison(self, results):
+    def log_model_comparison(self, results, source):
         for logger in self.loggers:
-            logger.log_model_comparison(results)
+            logger.log_model_comparison(results, source)
+    
+    def finish(self):
+        for logger in self.loggers:
+            logger.finish_experiment()

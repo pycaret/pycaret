@@ -34,7 +34,7 @@ class mlflowLogger(BaseLogger):
     def log_params(self, params, model_name=None):
         mlflow.log_params(params)
 
-    def log_metrics(self, metrics):
+    def log_metrics(self, metrics, source=None):
         mlflow.log_metrics(metrics)
     
     def set_tags(self, source, experiment_custom_tags, runtime):

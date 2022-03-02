@@ -5,7 +5,7 @@ from xml.etree.ElementTree import PI
 from pycaret.loggers import BaseLogger
 import wandb
 import pandas as pd
-from pickle import dumps
+import pickle
 
 class wandbLogger(BaseLogger):
     def __init__(self) -> None:
@@ -24,9 +24,14 @@ class wandbLogger(BaseLogger):
     def log_params(self, params, model_name=None):
         if model_name:
             params = {model_name: params}
-        self.run.config.update(params)
+        self.run.config.update(params, allow_val_change=True)
 
-    def log_metrics(self, metrics):
+    def log_metrics(self, metrics, source=None):
+        if source:
+            prefixed_metrics = {}
+            for metric in metrics:
+                prefixed_metrics[source+'/'+metric] = metrics[metric]
+            metrics = prefixed_metrics
         self.run.log(metrics)
     
     def log_artifact(self, file, type=None):
@@ -44,14 +49,18 @@ class wandbLogger(BaseLogger):
     def log_sklearn_pipeline(self, prep_pipe, model):
         pipeline = deepcopy(prep_pipe)
         pipeline.steps.append(["trained_model", model])
-        dumps(pipeline, open("pipline.pkl","wb"))
-
+        pickle.dump(pipeline, open("pipeline.pkl","wb"))
         art = wandb.Artifact("pipeline", type="model")
         art.add_file("pipeline.pkl")
         self.run.log_artifact(art)
         os.remove("pipeline.pkl")
     
-    def log_model_comparison(self, model_result):
-        if "Object" in model_result:
-            model_result = model_result.drop(columns=["Object"])
-        self.run.log({"compare_models": model_result})
+    def log_model_comparison(self, model_result, source):
+        result_copy = deepcopy(model_result)
+        if "Object" in result_copy:
+            result_copy["Object"] = result_copy["Object"].apply(lambda obj: str(type(obj).__name__))
+        self.run.log({source: result_copy})
+
+    def finish_experiment(self):
+        if self.run:
+            self.run.finish()
