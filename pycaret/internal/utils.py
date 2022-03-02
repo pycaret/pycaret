@@ -893,14 +893,15 @@ def df_shrink_dtypes(df, skip=[], obj2cat=True, int2uint=False):
     # 1: Build column filter and typemap
     excl_types, skip = {"category", "datetime64[ns]", "bool"}, set(skip)
 
+    # no int16 as orjson in plotly doesn't support it
     typemap = {
         "int": [
             (np.dtype(x), np.iinfo(x).min, np.iinfo(x).max)
-            for x in (np.int8, np.int16, np.int32, np.int64)
+            for x in (np.int8, np.int32, np.int64)
         ],
         "uint": [
             (np.dtype(x), np.iinfo(x).min, np.iinfo(x).max)
-            for x in (np.uint8, np.uint16, np.uint32, np.uint64)
+            for x in (np.uint8, np.uint32, np.uint64)
         ],
         "float": [
             (np.dtype(x), np.finfo(x).min, np.finfo(x).max)
