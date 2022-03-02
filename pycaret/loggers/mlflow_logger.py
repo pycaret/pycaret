@@ -57,6 +57,12 @@ class mlflowLogger(BaseLogger):
     
     def log_artifact(self, file, type="artifact"):
         mlflow.log_artifact(file)
+    
+    def log_plot(self, plot, title=None):
+        self.log_artifact(plot)
+
+    def log_hpram_grid(self, html_file, title="hpram_grid"):
+        self.log_artifact(html_file)
 
     def log_sklearn_pipeline(self, prep_pipe, model):
         # get default conda env

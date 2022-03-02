@@ -23,5 +23,11 @@ class BaseLogger:
     def log_metrics(self, metrics, source=None):
         pass
 
+    def log_plot(self, plot, title):
+        pass
+
+    def log_hpram_grid(self, html_file, title="hpram_grid"):
+        pass
+
     def finish_experiment(self):
         pass

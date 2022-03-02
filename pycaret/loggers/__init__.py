@@ -97,7 +97,7 @@ class DashboardLogger:
                     holdout_score = pull(pop=True)
                     del holdout
                     holdout_score.to_html("Holdout.html", col_space=65, justify="left")
-                    [logger.log_artifact("Holdout.html", "Holdout") for logger in self.logggers]
+                    [logger.log_artifact("Holdout.html", "Holdout") for logger in self.loggers]
                     os.remove("Holdout.html")
                 except:
                     console.warning(
@@ -108,7 +108,6 @@ class DashboardLogger:
         # Log AUC and Confusion Matrix plot
 
         if log_plots:
-
             console.info(
                 "SubProcess plot_model() called =================================="
             )
@@ -118,7 +117,7 @@ class DashboardLogger:
                     plot_name = plot_model(
                         model, plot=plot, verbose=False, save=True, system=False
                     )
-                    [logger.log_artifact(plot_name, "Plot") for logger in self.logggers]
+                    [logger.log_plot(plot_name, plot_name.split('.')[0]) for logger in self.loggers]
                     os.remove(plot_name)
                 except Exception as e:
                     console.warning(e)
@@ -136,7 +135,7 @@ class DashboardLogger:
             dd = pd.DataFrame.from_dict(d1)
             dd["Score"] = tune_cv_results.get("mean_test_score")
             dd.to_html("Iterations.html", col_space=75, justify="left")
-            [logger.log_artifact("Iterations.html", "Hyperparameter-grid") for logger in self.loggers]
+            [logger.log_hpram_grid("Iterations.html", "Hyperparameter-grid") for logger in self.loggers]
             os.remove("Iterations.html")
 
         [logger.log_sklearn_pipeline(_prep_pipe, model) for logger in self.loggers]

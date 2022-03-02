@@ -61,6 +61,12 @@ class wandbLogger(BaseLogger):
             result_copy["Object"] = result_copy["Object"].apply(lambda obj: str(type(obj).__name__))
         self.run.log({source: result_copy})
 
+    def log_plot(self, plot, title):
+        self.run.log({title: wandb.Image(plot)})
+    
+    def log_hpram_grid(self, html_file, title="hpram_grid"):
+        self.run.log({title: wandb.Html(html_file)})
+
     def finish_experiment(self):
         if self.run:
             self.run.finish()
