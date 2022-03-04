@@ -929,8 +929,10 @@ def create_model(
 
 
     return_train_score: bool, default = False
-        If not False, will evaluate the train value scores.
-        Intended to be fed as an input from the user.
+        If False, returns the CV Validation scores only. 
+        If True, returns the CV training scores along with the CV validation scores.
+        This is useful when the user wants to do bias-variance tradeoff. A high CV
+        training score with a low corresponding CV validation score indicates overfitting.
 
 
     **kwargs:
@@ -1131,8 +1133,10 @@ def tune_model(
 
 
     return_train_score: bool, default = False
-        If not False, will evaluate the train value scores.
-        Intended to be fed as an input from the user.
+        If False, returns the CV Validation scores only. 
+        If True, returns the CV training scores along with the CV validation scores.
+        This is useful when the user wants to do bias-variance tradeoff. A high CV
+        training score with a low corresponding CV validation score indicates overfitting.
 
 
     **kwargs:
@@ -1263,8 +1267,10 @@ def ensemble_model(
 
 
     return_train_score: bool, default = False
-        If not False, will evaluate the train value scores.
-        Intended to be fed as an input from the user.
+        If False, returns the CV Validation scores only. 
+        If True, returns the CV training scores along with the CV validation scores.
+        This is useful when the user wants to do bias-variance tradeoff. A high CV
+        training score with a low corresponding CV validation score indicates overfitting.
 
 
     Returns:
@@ -1387,8 +1393,10 @@ def blend_models(
 
 
     return_train_score: bool, default = False
-        If not False, will evaluate the train value scores.
-        Intended to be fed as an input from the user.
+        If False, returns the CV Validation scores only. 
+        If True, returns the CV training scores along with the CV validation scores.
+        This is useful when the user wants to do bias-variance tradeoff. A high CV
+        training score with a low corresponding CV validation score indicates overfitting.
 
 
     Returns:
@@ -1516,8 +1524,10 @@ def stack_models(
 
 
     return_train_score: bool, default = False
-        If not False, will evaluate the train value scores.
-        Intended to be fed as an input from the user.
+        If False, returns the CV Validation scores only. 
+        If True, returns the CV training scores along with the CV validation scores.
+        This is useful when the user wants to do bias-variance tradeoff. A high CV
+        training score with a low corresponding CV validation score indicates overfitting.
 
 
     Returns:
@@ -1934,8 +1944,10 @@ def calibrate_model(
 
 
     return_train_score: bool, default = False
-        If not False, will evaluate the train value scores.
-        Intended to be fed as an input from the user.
+        If False, returns the CV Validation scores only. 
+        If True, returns the CV training scores along with the CV validation scores.
+        This is useful when the user wants to do bias-variance tradeoff. A high CV
+        training score with a low corresponding CV validation score indicates overfitting.
 
 
     Returns:
@@ -2169,8 +2181,10 @@ def finalize_model(
         not) passed to the mlflow.set_tags to add new custom tags for the experiment.
 
     return_train_score: bool, default = False
-        If not False, will evaluate the train value scores.
-        Intended to be fed as an input from the user.
+        If False, returns the CV Validation scores only. 
+        If True, returns the CV training scores along with the CV validation scores.
+        This is useful when the user wants to do bias-variance tradeoff. A high CV
+        training score with a low corresponding CV validation score indicates overfitting.
 
 
     Returns:
@@ -2420,8 +2434,10 @@ def automl(optimize: str = "Accuracy", use_holdout: bool = False, return_train_s
 
 
     return_train_score: bool, default = False
-        If not False, will evaluate the train value scores.
-        Intended to be fed as an input from the user.
+        If False, returns the CV Validation scores only. 
+        If True, returns the CV training scores along with the CV validation scores.
+        This is useful when the user wants to do bias-variance tradeoff. A high CV
+        training score with a low corresponding CV validation score indicates overfitting.
 
 
     Returns:

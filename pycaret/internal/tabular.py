@@ -2925,8 +2925,10 @@ def create_model_supervised(
         Intended to be only changed by internal functions.
 
     return_train_score: bool, default = False
-        If not False, will evaluate the train value scores.
-        Intended to be fed as an input from the user.
+        If False, returns the CV Validation scores only. 
+        If True, returns the CV training scores along with the CV validation scores.
+        This is useful when the user wants to do bias-variance tradeoff. A high CV
+        training score with a low corresponding CV validation score indicates overfitting.
 
     **kwargs:
         Additional keyword arguments to pass to the estimator.
@@ -3288,14 +3290,17 @@ def create_model_supervised(
             with io.capture_output():
                 pipeline_with_model.fit(data_X, data_y, **fit_kwargs)
             
+            # calculating model results with final model on complete train dataset
             if isinstance(model, CustomProbabilityThresholdClassifier):
                 probability_threshold = model.probability_threshold
                 estimator = get_estimator_from_meta_estimator(model)
             else:
                 estimator = model
 
+            # prediction using complete X_train
             pred = np.nan_to_num(estimator.predict(data_X))
 
+            # calculating raw score using complete X_train
             try:
                 score = estimator.predict_proba(data_X)
 
@@ -3307,7 +3312,8 @@ def create_model_supervised(
             except:
                 score = None
                 pred_prob = None
-
+            
+            # enforcing integer type for classification
             if probability_threshold is not None and pred_prob is not None:
                 try:
                     pred = (pred_prob >= probability_threshold).astype(int)
@@ -3317,6 +3323,7 @@ def create_model_supervised(
             if pred_prob is None:
                 pred_prob = pred
 
+            # calculating metrics on predictions of complete train dataset
             metrics = _calculate_metrics_supervised(data_y, pred, pred_prob)
             metrics = pd.DataFrame(metrics, index=[0])
             df_score = pd.DataFrame({
@@ -3326,6 +3333,7 @@ def create_model_supervised(
             df_score = pd.concat([df_score, metrics], axis=1)
             df_score.set_index(['Split', 'Fold'], inplace=True)
 
+            # concatenating train results to cross-validation socre dataframe
             model_results = pd.concat([model_results, df_score])
 
             model_fit_end = time.time()
@@ -3924,8 +3932,10 @@ def tune_model_supervised(
         print more messages. Ignored if verbose param is False.
 
     return_train_score: bool, default = False
-        If not False, will evaluate the train value scores.
-        Intended to be fed as an input from the user.
+        If False, returns the CV Validation scores only. 
+        If True, returns the CV training scores along with the CV validation scores.
+        This is useful when the user wants to do bias-variance tradeoff. A high CV
+        training score with a low corresponding CV validation score indicates overfitting.
 
     **kwargs:
         Additional keyword arguments to pass to the optimizer.
@@ -4869,8 +4879,10 @@ def ensemble_model(
         Score grid is not printed when verbose is set to False.
 
     return_train_score: bool, default = False
-        If not False, will evaluate the train value scores.
-        Intended to be fed as an input from the user.
+        If False, returns the CV Validation scores only. 
+        If True, returns the CV training scores along with the CV validation scores.
+        This is useful when the user wants to do bias-variance tradeoff. A high CV
+        training score with a low corresponding CV validation score indicates overfitting.
 
     Returns
     -------
@@ -5230,8 +5242,10 @@ def blend_models(
         Score grid is not printed when verbose is set to False.
 
     return_train_score: bool, default = False
-        If not False, will evaluate the train value scores.
-        Intended to be fed as an input from the user.
+        If False, returns the CV Validation scores only. 
+        If True, returns the CV training scores along with the CV validation scores.
+        This is useful when the user wants to do bias-variance tradeoff. A high CV
+        training score with a low corresponding CV validation score indicates overfitting.
 
     Returns
     -------
@@ -5609,8 +5623,10 @@ def stack_models(
         Score grid is not printed when verbose is set to False.
 
     return_train_score: bool, default = False
-        If not False, will evaluate the train value scores.
-        Intended to be fed as an input from the user.
+        If False, returns the CV Validation scores only. 
+        If True, returns the CV training scores along with the CV validation scores.
+        This is useful when the user wants to do bias-variance tradeoff. A high CV
+        training score with a low corresponding CV validation score indicates overfitting.
 
     Returns
     -------
@@ -8272,8 +8288,10 @@ def calibrate_model(
         Score grid is not printed when verbose is set to False.
 
     return_train_score: bool, default = False
-        If not False, will evaluate the train value scores.
-        Intended to be fed as an input from the user.
+        If False, returns the CV Validation scores only. 
+        If True, returns the CV training scores along with the CV validation scores.
+        This is useful when the user wants to do bias-variance tradeoff. A high CV
+        training score with a low corresponding CV validation score indicates overfitting.
 
     Returns
     -------
@@ -9118,8 +9136,10 @@ def finalize_model(
         passed to the mlflow.set_tags to add new custom tags for the experiment.
 
     return_train_score: bool, default = False
-        If not False, will evaluate the train value scores.
-        Intended to be fed as an input from the user.
+        If False, returns the CV Validation scores only. 
+        If True, returns the CV training scores along with the CV validation scores.
+        This is useful when the user wants to do bias-variance tradeoff. A high CV
+        training score with a low corresponding CV validation score indicates overfitting.
 
     Returns
     -------
@@ -9658,8 +9678,10 @@ def automl(optimize: str = "Accuracy", use_holdout: bool = False, return_train_s
         When set to True, metrics are evaluated on holdout set instead of CV.
 
     return_train_score: bool, default = False
-        If not False, will evaluate the train value scores.
-        Intended to be fed as an input from the user.
+        If False, returns the CV Validation scores only. 
+        If True, returns the CV training scores along with the CV validation scores.
+        This is useful when the user wants to do bias-variance tradeoff. A high CV
+        training score with a low corresponding CV validation score indicates overfitting.
 
     """
 
