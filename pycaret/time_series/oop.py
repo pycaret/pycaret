@@ -1047,18 +1047,18 @@ class TSForecastingExperiment(_SupervisedExperiment):
             self.white_noise = "Maybe"
 
         self.lowercase_d = recommend_lowercase_d(data=self.y)
-        if self.sp_to_use > 1:
+        if self.primary_sp_to_use > 1:
             try:
                 max_D = 2
                 uppercase_d = recommend_uppercase_d(
-                    data=self.y, sp=self.sp_to_use, max_D=max_D
+                    data=self.y, sp=self.primary_sp_to_use, max_D=max_D
                 )
             except ValueError as error:
                 self.logger.info(f"Test for computing 'D' failed at max_D = 2.")
                 try:
                     max_D = 1
                     uppercase_d = recommend_uppercase_d(
-                        data=self.y, sp=self.sp_to_use, max_D=max_D
+                        data=self.y, sp=self.primary_sp_to_use, max_D=max_D
                     )
                 except ValueError:
                     self.logger.info(f"Test for computing 'D' failed at max_D = 1.")
@@ -1115,11 +1115,11 @@ class TSForecastingExperiment(_SupervisedExperiment):
             # at least 2 values
             self.remove_metric("R2")
 
-        #### Remove COV_PROB when enforce_pi is False ----
+        #### Remove COVERAGE when enforce_pi is False ----
         # User can add it manually if they want when enforce_pi is set to False.
         # Refer: https://github.com/pycaret/pycaret/issues/1900
-        if not self.enforce_pi and "cov_prob" in self._get_metrics():
-            self.remove_metric("COV_PROB")
+        if not self.enforce_pi and "coverage" in self._get_metrics():
+            self.remove_metric("COVERAGE")
 
         self.logger.info(f"setup() successfully completed in {runtime}s...............")
 
