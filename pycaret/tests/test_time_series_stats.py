@@ -126,7 +126,7 @@ def test_check_stats_estimator(model_name, data, test):
         fold_strategy="sliding",
         verbose=False,
         session_id=42,
-        seasonal_period=1,  # TODO: Remove after models start using `sp_to_use`
+        seasonal_period=1,  # TODO: Remove after models start using `primary_sp_to_use`
     )
     model = exp.create_model(model_name)
 

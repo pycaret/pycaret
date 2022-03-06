@@ -84,7 +84,7 @@ def load_ts_models(load_setup):
         "enforce_pi": False,
         "enforce_exogenous": True,
         "exogenous_present": TSExogenousPresent.NO,
-        "sp_to_use": 12,
+        "primary_sp_to_use": 12,
     }
     ts_models = get_all_model_containers(globals_dict)
     ts_experiment = load_setup

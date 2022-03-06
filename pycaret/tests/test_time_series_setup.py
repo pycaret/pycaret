@@ -196,14 +196,14 @@ def test_seasonal_period_to_use():
     )
     assert exp.seasonal_period == 12
     assert exp.all_sp_values == [12]
-    assert exp.sp_to_use == 12
+    assert exp.primary_sp_to_use == 12
 
     # Airline Data with seasonality of M (12), 6
     data = get_data("airline", verbose=False)
     exp.setup(data=data, fh=fh, verbose=False, session_id=42, seasonal_period=["M", 6])
     assert exp.seasonal_period == [12, 6]
     assert exp.all_sp_values == [12, 6]
-    assert exp.sp_to_use == 12
+    assert exp.primary_sp_to_use == 12
 
     # White noise Data with seasonality of 12
     data = get_data("1", folder="time_series/white_noise", verbose=False)
@@ -218,7 +218,7 @@ def test_seasonal_period_to_use():
     # Should get 1 even though we passed 12
     assert exp.seasonal_period == 12
     assert exp.all_sp_values == [1]
-    assert exp.sp_to_use == 1
+    assert exp.primary_sp_to_use == 1
 
 
 @pytest.mark.parametrize("seasonal_key, seasonal_value", _get_seasonal_values())
