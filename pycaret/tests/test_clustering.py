@@ -10,7 +10,7 @@ import pycaret.datasets
 from mlflow.tracking.client import MlflowClient
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope="module")
 def data():
     return pycaret.datasets.get_data("jewellery")
 
@@ -31,8 +31,12 @@ def test(data):
     )
 
     # create model
-    kmeans = pycaret.clustering.create_model("kmeans", experiment_custom_tags={"tag": 1})
-    kmodes = pycaret.clustering.create_model("kmodes", experiment_custom_tags={"tag": 1})
+    kmeans = pycaret.clustering.create_model(
+        "kmeans", experiment_custom_tags={"tag": 1}
+    )
+    kmodes = pycaret.clustering.create_model(
+        "kmodes", experiment_custom_tags={"tag": 1}
+    )
 
     # assign model
     kmeans_results = pycaret.clustering.assign_model(kmeans)

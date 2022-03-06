@@ -79,7 +79,7 @@ class TSForecastingExperiment(_SupervisedExperiment):
                 "fh",
                 "seasonal_period",
                 "seasonality_present",
-                "sp_to_use",
+                "primary_sp_to_use",
                 "all_sp_values",
                 "strictly_positive",
                 "enforce_pi",
@@ -145,7 +145,7 @@ class TSForecastingExperiment(_SupervisedExperiment):
             ["Seasonal Period(s) Tested", self.seasonal_period],
             ["Seasonality Present", self.seasonality_present],
             ["Seasonalities Detected", self.all_sp_values],
-            ["Primary Seasonality", self.sp_to_use],
+            ["Primary Seasonality", self.primary_sp_to_use],
             ["Target Strictly Positive", self.strictly_positive],
             ["Target White Noise", self.white_noise],
             ["Recommended d", self.lowercase_d],
@@ -553,7 +553,7 @@ class TSForecastingExperiment(_SupervisedExperiment):
             for sp, seasonality_present in sp_values_and_test_result
             if seasonality_present
         ] or [1]
-        self.sp_to_use = self.all_sp_values[0]
+        self.primary_sp_to_use = self.all_sp_values[0]
         self.seasonal_period = (
             seasonal_period[0] if len(seasonal_period) == 1 else seasonal_period
         )
@@ -2357,7 +2357,7 @@ class TSForecastingExperiment(_SupervisedExperiment):
                 )
 
         # Add sp value (used in decomp plots)
-        sp_dict = {"sp_to_use": self.sp_to_use}
+        sp_dict = {"primary_sp_to_use": self.primary_sp_to_use}
         if data_kwargs is None:
             data_kwargs = sp_dict
         else:
@@ -3649,7 +3649,7 @@ class TSForecastingExperiment(_SupervisedExperiment):
         Dict[str, Any]
             Additional kwargs to pass to scorers
         """
-        additional_scorer_kwargs = {"sp": self.sp_to_use}
+        additional_scorer_kwargs = {"sp": self.primary_sp_to_use}
         return additional_scorer_kwargs
 
 

@@ -56,19 +56,41 @@ def time_series_subplot(
         if isinstance(data.index, pd.PeriodIndex)
         else data.index
     )
-    fig.add_trace(
-        go.Scatter(
-            x=x,
-            y=data.values,
-            line=dict(color="#1f77b4", width=2),
-            mode="lines+markers",
-            name=name,
-            marker=dict(size=5),
-            hoverinfo=hoverinfo,
-        ),
-        row=row,
-        col=col,
-    )
+
+    name = name or data.name
+
+    # If you add hoverinfo = "text", you must also add the hovertemplate, else no hoverinfo
+    # gets displayed. OR alternately, leave it out and it gets plotted by default.
+    if hoverinfo == "text":
+        # Not specifying the hoverinfo will show it by default
+        fig.add_trace(
+            go.Scatter(
+                x=x,
+                y=data.values,
+                line=dict(color="#1f77b4", width=2),
+                mode="lines+markers",
+                name=name,
+                marker=dict(size=5),
+            ),
+            row=row,
+            col=col,
+        )
+    else:
+        # Disable hoverinfo
+        fig.add_trace(
+            go.Scatter(
+                x=x,
+                y=data.values,
+                line=dict(color="#1f77b4", width=2),
+                mode="lines+markers",
+                name=name,
+                marker=dict(size=5),
+                hoverinfo=hoverinfo,
+            ),
+            row=row,
+            col=col,
+        )
+
     return fig
 
 
@@ -129,7 +151,9 @@ def corr_subplot(
             corr_array = acf(data, alpha=0.05)
         elif plot == "pacf":
             default_name = "PACF"
-            corr_array = pacf(data, alpha=0.05)
+            nobs = len(data)
+            nlags = min(int(10 * np.log10(nobs)), nobs // 2 - 1)
+            corr_array = pacf(data, nlags=nlags, alpha=0.05)
         corr_values = corr_array[0]
         lower = corr_array[1][:, 0] - corr_array[0]
         upper = corr_array[1][:, 1] - corr_array[0]
@@ -250,8 +274,12 @@ def _add_corr_bounds_subplot(
     go.Figure
         Returns back the plotly figure with correlation confidence bounds inserted
     """
+
+    # For some reason scattergl does not work here. Hence switching to scatter.
+    # (refer: https://github.com/pycaret/pycaret/issues/2211).
+
     #### Add the Upper Confidence Interval ----
-    fig.add_scattergl(
+    fig.add_scatter(
         x=np.arange(len(upper)),
         y=upper,
         mode="lines",
@@ -262,7 +290,7 @@ def _add_corr_bounds_subplot(
     )
 
     #### Add the Lower Confidence Interval ----
-    fig.add_scattergl(
+    fig.add_scatter(
         x=np.arange(len(lower)),
         y=lower,
         mode="lines",
@@ -486,10 +514,14 @@ def frequency_components_subplot(
     time_period = [round(1 / freq, 4) for freq in x]
     freq_data = pd.DataFrame({"Freq": x, "Amplitude": y, "Time Period": time_period})
 
+    name = name or data.name
+
+    # If you add hoverinfo = "text", you must also add the hovertemplate, else no hoverinfo
+    # gets displayed. OR alternately, leave it out and it gets plotted by default.
     if hoverinfo == "text":
         hovertemplate = "Freq:%{customdata[0]:.4f} <br>Ampl:%{customdata[1]:.4f}<br>Time Period: %{customdata[2]:.4f]}"
         fig.add_trace(
-            data=go.Scattergl(
+            go.Scattergl(
                 name=name,
                 x=freq_data["Freq"],
                 y=freq_data["Amplitude"],

@@ -484,14 +484,16 @@ def plot_acf(
         for ind, x in enumerate(range(len(corr_array[0])))
     ]
 
-    fig.add_scattergl(
+    # For some reason scattergl does not work here. Hence switching to scatter.
+    # (refer: https://github.com/pycaret/pycaret/issues/2211).
+    fig.add_scatter(
         x=np.arange(len(corr_array[0])),
         y=upper_y,
         mode="lines",
         line_color="rgba(255,255,255,0)",
         name="UC",
     )
-    fig.add_scattergl(
+    fig.add_scatter(
         x=np.arange(len(corr_array[0])),
         y=lower_y,
         mode="lines",
@@ -540,8 +542,10 @@ def plot_pacf(
     data_kwargs = data_kwargs or {}
     fig_kwargs = fig_kwargs or {}
 
-    nlags = data_kwargs.get("nlags", None)
-    corr_array = pacf(data, alpha=0.05, nlags=nlags)
+    nobs = len(data)
+    nlags_default = min(int(10 * np.log10(nobs)), nobs // 2 - 1)
+    nlags = data_kwargs.get("nlags", nlags_default)
+    corr_array = pacf(data, nlags=nlags, alpha=0.05)
 
     time_series_name = data.name
     title = "Partial Autocorrelation (PACF)"
@@ -575,14 +579,16 @@ def plot_pacf(
         for ind, x in enumerate(range(len(corr_array[0])))
     ]
 
-    fig.add_scattergl(
+    # For some reason scattergl does not work here. Hence switching to scatter.
+    # (refer: https://github.com/pycaret/pycaret/issues/2211).
+    fig.add_scatter(
         x=np.arange(len(corr_array[0])),
         y=upper_y,
         mode="lines",
         line_color="rgba(255,255,255,0)",
         name="UC",
     )
-    fig.add_scattergl(
+    fig.add_scatter(
         x=np.arange(len(corr_array[0])),
         y=lower_y,
         mode="lines",
@@ -601,7 +607,7 @@ def plot_pacf(
     )
 
     with fig.batch_update():
-        fig.update_xaxes(range=[-1, 42])
+        fig.update_xaxes(range=[-1, len(corr_array[0]) + 1])
         fig.update_yaxes(zerolinecolor="#000000")
 
         template = _resolve_dict_keys(
@@ -719,14 +725,16 @@ def plot_diagnostics(
         title = f"{title} | {time_series_name}"
 
     fig = make_subplots(
-        rows=2,
+        rows=3,
         cols=2,
-        row_heights=[0.5, 0.5],
+        row_heights=[0.33, 0.33, 0.33],
         subplot_titles=[
             "Time Plot",
-            "Histogram Plot",
-            "ACF Plot",
-            "Quantile-Quantile Plot",
+            "Periodogram",
+            "Histogram",
+            "Q-Q Plot",
+            "ACF",
+            "PACF",
         ],
         x_title=title,
     )
@@ -742,16 +750,33 @@ def plot_diagnostics(
     )
 
     #### Add diagnostic plots ----
-    fig = time_series_subplot(
-        fig=fig, data=data, row=1, col=1, hoverinfo=hoverinfo, name="Time Plot"
+
+    # ROW 1
+    fig = time_series_subplot(fig=fig, data=data, row=1, col=1, hoverinfo=hoverinfo)
+    fig, periodogram_data = frequency_components_subplot(
+        fig=fig,
+        data=data,
+        row=1,
+        col=2,
+        hoverinfo=hoverinfo,
+        type="periodogram",
     )
-    fig = dist_subplot(fig=fig, data=data, row=1, col=2)
-    fig, acf_data = corr_subplot(
-        fig=fig, data=data, row=2, col=1, name="ACF", plot="acf"
-    )
+
+    # ROW 2
+    fig = dist_subplot(fig=fig, data=data, row=2, col=1)
     fig, qqplot_data = qq_subplot(fig=fig, data=data, row=2, col=2)
 
-    return_data_dict = {"data": data, "qqplot": qqplot_data, "acf": acf_data}
+    # ROW 3
+    fig, acf_data = corr_subplot(fig=fig, data=data, row=3, col=1, plot="acf")
+    fig, pacf_data = corr_subplot(fig=fig, data=data, row=3, col=2, plot="pacf")
+
+    return_data_dict = {
+        "data": data,
+        "periodogram": periodogram_data,
+        "qqplot": qqplot_data,
+        "acf": acf_data,
+        "pacf": pacf_data,
+    }
 
     return fig, return_data_dict
 
@@ -902,13 +927,13 @@ def plot_time_series_decomposition(
     decomp_result = None
     data_ = data.to_timestamp() if isinstance(data.index, pd.PeriodIndex) else data
 
-    sp_to_use = data_kwargs.get("sp_to_use")
+    primary_sp_to_use = data_kwargs.get("primary_sp_to_use")
     if plot == "decomp":
         decomp_result = seasonal_decompose(
-            data_, period=sp_to_use, model=classical_decomp_type
+            data_, period=primary_sp_to_use, model=classical_decomp_type
         )
     elif plot == "decomp_stl":
-        decomp_result = STL(data_, period=sp_to_use).fit()
+        decomp_result = STL(data_, period=primary_sp_to_use).fit()
 
     fig = make_subplots(
         rows=4,

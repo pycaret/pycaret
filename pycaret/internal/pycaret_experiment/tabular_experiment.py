@@ -1229,7 +1229,9 @@ class _TabularExperiment(_PyCaretExperiment):
                     try:
                         from yellowbrick.cluster import KElbowVisualizer
 
-                        visualizer = KElbowVisualizer(estimator, timings=False, **plot_kwargs)
+                        visualizer = KElbowVisualizer(
+                            estimator, timings=False, **plot_kwargs
+                        )
                         show_yellowbrick_plot(
                             visualizer=visualizer,
                             X_train=self.X_train_transformed,
@@ -1369,7 +1371,9 @@ class _TabularExperiment(_PyCaretExperiment):
 
                     from yellowbrick.classifier import PrecisionRecallCurve
 
-                    visualizer = PrecisionRecallCurve(estimator, random_state=self.seed, **plot_kwargs)
+                    visualizer = PrecisionRecallCurve(
+                        estimator, random_state=self.seed, **plot_kwargs
+                    )
                     show_yellowbrick_plot(
                         visualizer=visualizer,
                         X_train=self.X_train_transformed,
@@ -1393,9 +1397,7 @@ class _TabularExperiment(_PyCaretExperiment):
                     plot_kwargs.setdefault("cmap", "Greens")
 
                     visualizer = ConfusionMatrix(
-                        estimator,
-                        random_state=self.seed,
-                        **plot_kwargs
+                        estimator, random_state=self.seed, **plot_kwargs
                     )
                     show_yellowbrick_plot(
                         visualizer=visualizer,
@@ -1424,7 +1426,9 @@ class _TabularExperiment(_PyCaretExperiment):
                     elif self._ml_usecase == MLUsecase.REGRESSION:
                         from yellowbrick.regressor import PredictionError
 
-                        visualizer = PredictionError(estimator, random_state=self.seed, **plot_kwargs)
+                        visualizer = PredictionError(
+                            estimator, random_state=self.seed, **plot_kwargs
+                        )
 
                     show_yellowbrick_plot(
                         visualizer=visualizer,  # type: ignore
@@ -1467,10 +1471,7 @@ class _TabularExperiment(_PyCaretExperiment):
                     from yellowbrick.classifier import ClassificationReport
 
                     visualizer = ClassificationReport(
-                        estimator,
-                        random_state=self.seed,
-                        support=True,
-                        **plot_kwargs
+                        estimator, random_state=self.seed, support=True, **plot_kwargs
                     )
                     show_yellowbrick_plot(
                         visualizer=visualizer,
@@ -1636,7 +1637,9 @@ class _TabularExperiment(_PyCaretExperiment):
                     data_X_transformed = self.X_train_transformed.select_dtypes(
                         include="number"
                     )
-                    visualizer = Manifold(manifold="tsne", random_state=self.seed, **plot_kwargs)
+                    visualizer = Manifold(
+                        manifold="tsne", random_state=self.seed, **plot_kwargs
+                    )
                     show_yellowbrick_plot(
                         visualizer=visualizer,
                         X_train=data_X_transformed,
@@ -2732,7 +2735,9 @@ class _TabularExperiment(_PyCaretExperiment):
         MODULE = self._ml_usecase
         INPUT_COLS = list(self.X.columns)
         INPUT_COLS_WITHOUT_SPACES = [i.replace(" ", "_") for i in INPUT_COLS]
-        INPUT_COLS_WITHOUT_SPACES = [i.replace("-", "_") for i in INPUT_COLS_WITHOUT_SPACES]
+        INPUT_COLS_WITHOUT_SPACES = [
+            i.replace("-", "_") for i in INPUT_COLS_WITHOUT_SPACES
+        ]
         INPUT_COLS_WITHOUT_SPACES_FORMATTED = ", ".join(
             tuple(INPUT_COLS_WITHOUT_SPACES)
         ).replace("'", "")
@@ -2806,7 +2811,10 @@ class _TabularExperiment(_PyCaretExperiment):
         )
 
     def create_docker(
-        self, api_name: str, base_image: str = "python:3.8-slim", expose_port: int = 8000
+        self,
+        api_name: str,
+        base_image: str = "python:3.8-slim",
+        expose_port: int = 8000,
     ):
         """
         This function creates a ``Dockerfile`` and ``requirements.txt`` for
@@ -2857,8 +2865,8 @@ EXPOSE {PORT}
 
 CMD ["python", "{API_NAME}.py"]    
 """.format(
-        BASE_IMAGE=base_image, PORT=expose_port, API_NAME=api_name
-    )
+            BASE_IMAGE=base_image, PORT=expose_port, API_NAME=api_name
+        )
 
         with open("Dockerfile", "w") as f:
             f.write(docker)
