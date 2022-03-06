@@ -1732,18 +1732,18 @@ class _TabularExperiment(_PyCaretExperiment):
 
             self.lowercase_d = recommend_lowercase_d(data=self.y)
 
-            if self.sp_to_use > 1:
+            if self.primary_sp_to_use > 1:
                 try:
                     max_D = 2
                     uppercase_d = recommend_uppercase_d(
-                        data=self.y, sp=self.sp_to_use, max_D=max_D
+                        data=self.y, sp=self.primary_sp_to_use, max_D=max_D
                     )
                 except ValueError as error:
                     self.logger.info(f"Test for computing 'D' failed at max_D = 2.")
                     try:
                         max_D = 1
                         uppercase_d = recommend_uppercase_d(
-                            data=self.y, sp=self.sp_to_use, max_D=max_D
+                            data=self.y, sp=self.primary_sp_to_use, max_D=max_D
                         )
                     except ValueError:
                         self.logger.info(f"Test for computing 'D' failed at max_D = 1.")

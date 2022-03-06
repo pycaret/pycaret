@@ -111,7 +111,7 @@ def _return_model_names():
         "enforce_exogenous": True,
         "exogenous_present": TSExogenousPresent.NO,
         "seasonal_period": 2,
-        "sp_to_use": 2,
+        "primary_sp_to_use": 2,
     }
     model_containers = get_all_model_containers(globals_dict)
 
