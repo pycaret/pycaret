@@ -382,7 +382,13 @@ class _TabularExperiment(_PyCaretExperiment):
         return
 
     def _set_up_mlflow(
-        self, functions, runtime, log_profile, profile_kwargs, log_data, display,
+        self,
+        functions,
+        runtime,
+        log_profile,
+        profile_kwargs,
+        log_data,
+        display,
     ) -> None:
         return
 
@@ -1832,7 +1838,12 @@ class _TabularExperiment(_PyCaretExperiment):
         runtime = np.array(runtime_end - runtime_start).round(2)
 
         self._set_up_mlflow(
-            functions, runtime, log_profile, profile_kwargs, log_data, display,
+            functions,
+            runtime,
+            log_profile,
+            profile_kwargs,
+            log_data,
+            display,
         )
 
         self._setup_ran = True
@@ -1847,11 +1858,11 @@ class _TabularExperiment(_PyCaretExperiment):
                 # at least 2 values
                 self.remove_metric("R2")
 
-            #### Remove COV_PROB when enforce_pi is False ----
+            #### Remove COVERAGE when enforce_pi is False ----
             # User can add it manually if they want when enforce_pi is set to False.
             # Refer: https://github.com/pycaret/pycaret/issues/1900
-            if not self.enforce_pi and "cov_prob" in self._get_metrics():
-                self.remove_metric("COV_PROB")
+            if not self.enforce_pi and "coverage" in self._get_metrics():
+                self.remove_metric("COVERAGE")
 
         self.logger.info(
             f"self.master_model_container: {len(self.master_model_container)}"
@@ -2638,7 +2649,9 @@ class _TabularExperiment(_PyCaretExperiment):
                             hover_data=d.columns,
                         )
 
-                        fig.update_layout(height=600 * scale,)
+                        fig.update_layout(
+                            height=600 * scale,
+                        )
 
                         plot_filename = f"{plot_name}.html"
 
