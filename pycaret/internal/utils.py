@@ -1,16 +1,99 @@
 import functools
 import inspect
-from copy import deepcopy
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Union
-
 import numpy as np
 import pandas as pd
+from scipy import sparse
 import pandas.io.formats.style
-from sklearn.model_selection import BaseCrossValidator, KFold, StratifiedKFold
+from pycaret.internal.validation import *
+from typing import Any, Callable, List, Optional, Dict, Set, Tuple, Union
+from sklearn.model_selection import KFold, StratifiedKFold, BaseCrossValidator
 from sklearn.model_selection._split import _BaseKFold
 
 from pycaret.internal.logging import get_logger
 from pycaret.internal.validation import *
+
+
+def to_df(data, index=None, columns=None, dtypes=None):
+    """Convert a dataset to pd.Dataframe.
+
+    Parameters
+    ----------
+    data: list, tuple, dict, np.array, sp.matrix, pd.DataFrame or None
+        Dataset to convert to a dataframe.  If None or already a
+        dataframe, return unchanged.
+
+    index: sequence or pd.Index
+        Values for the dataframe's index.
+
+    columns: sequence or None, optional (default=None)
+        Name of the columns. Use None for automatic naming.
+
+    dtypes: str, dict, dtype or None, optional (default=None)
+        Data types for the output columns. If None, the types are
+        inferred from the data.
+
+    Returns
+    -------
+    df: pd.DataFrame or None
+        Transformed dataframe.
+
+    """
+    # Get number of columns (list/tuple have no shape and sp.matrix has no index)
+    n_cols = lambda data: data.shape[1] if hasattr(data, "shape") else len(data[0])
+
+    if data is not None:
+        if not isinstance(data, pd.DataFrame):
+            # Assign default column names (dict already has column names)
+            if not isinstance(data, dict) and columns is None:
+                columns = [f"feature {str(i)}" for i in range(1, n_cols(data) + 1)]
+
+            # Create dataframe from sparse matrix or directly from data
+            if sparse.issparse(data):
+                data = pd.DataFrame.sparse.from_spmatrix(data, index, columns)
+            else:
+                data = pd.DataFrame(data, index, columns)
+
+            if dtypes is not None:
+                data = data.astype(dtypes)
+
+        else:
+            # Convert all column names to str
+            data.columns = [str(col) for col in data.columns]
+
+    return data
+
+
+def to_series(data, index=None, name="target"):
+    """Convert a column to pd.Series.
+
+    Parameters
+    ----------
+    data: sequence or None
+        Data to convert. If None, return unchanged.
+
+    index: sequence or Index, optional (default=None)
+        Values for the indices.
+
+    name: string, optional (default="target")
+        Name of the target column.
+
+    Returns
+    -------
+    series: pd.Series or None
+        Transformed series.
+
+    """
+    if data is not None and not isinstance(data, pd.Series):
+        data = pd.Series(data, index=index, name=name)
+
+    return data
+
+
+def check_features_exist(features, df):
+    """Raise an error if the features are not in the dataframe."""
+    for fx in features:
+        if fx not in df.columns:
+            raise ValueError(f"Column {fx} not found in the dataset!")
 
 
 def id_or_display_name(metric, input_ml_usecase, target_ml_usecase):
@@ -25,6 +108,16 @@ def id_or_display_name(metric, input_ml_usecase, target_ml_usecase):
         output = metric.display_name
 
     return output
+
+
+def variable_return(X, y):
+    """Return one or two arguments depending on which is None."""
+    if y is None:
+        return X
+    elif X is None:
+        return y
+    else:
+        return X, y
 
 
 def get_config(variable: str, globals_d: dict):
@@ -340,7 +433,12 @@ def calculate_unsupervised_metrics(
 
 
 def _calculate_unsupervised_metric(
-    container, score_func, display_name, X, labels, ground_truth,
+    container,
+    score_func,
+    display_name,
+    X,
+    labels,
+    ground_truth,
 ):
     if not score_func:
         return None
@@ -348,10 +446,7 @@ def _calculate_unsupervised_metric(
     try:
         calculated_metric = score_func(target, labels, **container.args)
     except:
-        try:
-            calculated_metric = score_func(target, labels, **container.args)
-        except:
-            calculated_metric = 0
+        calculated_metric = 0
 
     return (display_name, calculated_metric)
 
@@ -410,7 +505,7 @@ def _calculate_metric(
         except:
             calculated_metric = 0
 
-    return (display_name, calculated_metric)
+    return display_name, calculated_metric
 
 
 def normalize_custom_transformers(
@@ -673,7 +768,11 @@ def is_fit_var(key):
 
 
 def can_early_stop(
-    estimator, consider_partial_fit, consider_warm_start, consider_xgboost, params,
+    estimator,
+    consider_partial_fit,
+    consider_warm_start,
+    consider_xgboost,
+    params,
 ):
     """
     From https://github.com/ray-project/tune-sklearn/blob/master/tune_sklearn/tune_basesearch.py.
@@ -753,7 +852,7 @@ def infer_ml_usecase(y: pd.Series) -> Tuple[str, str]:
 
 
 def get_columns_to_stratify_by(
-    X: pd.DataFrame, y: pd.DataFrame, stratify: Union[bool, List[str]], target: str
+    X: pd.DataFrame, y: pd.DataFrame, stratify: Union[bool, List[str]]
 ) -> pd.DataFrame:
     if not stratify:
         stratify = None
@@ -780,6 +879,74 @@ def check_if_global_is_not_none(globals_d: dict, global_names: dict):
         return wrapper
 
     return decorator
+
+
+def df_shrink_dtypes(df, skip=[], obj2cat=True, int2uint=False):
+    """Shrink a dataframe.
+
+    Return any possible smaller data types for DataFrame columns.
+    Allows `object`->`category`, `int`->`uint`, and exclusion.
+    From: https://github.com/fastai/fastai/blob/master/fastai/tabular/core.py
+
+    """
+
+    # 1: Build column filter and typemap
+    excl_types, skip = {"category", "datetime64[ns]", "bool"}, set(skip)
+
+    # no int16 as orjson in plotly doesn't support it
+    typemap = {
+        "int": [
+            (np.dtype(x), np.iinfo(x).min, np.iinfo(x).max)
+            for x in (np.int8, np.int32, np.int64)
+        ],
+        "uint": [
+            (np.dtype(x), np.iinfo(x).min, np.iinfo(x).max)
+            for x in (np.uint8, np.uint32, np.uint64)
+        ],
+        "float": [
+            (np.dtype(x), np.finfo(x).min, np.finfo(x).max)
+            for x in (np.float32, np.float64, np.longdouble)
+        ],
+    }
+
+    if obj2cat:
+        # User wants to categorify dtype('Object'), which may not always save space
+        typemap["object"] = "category"
+    else:
+        excl_types.add("object")
+
+    new_dtypes = {}
+    exclude = lambda dt: dt[1].name not in excl_types and dt[0] not in skip
+
+    for c, old_t in filter(exclude, df.dtypes.items()):
+        t = next((v for k, v in typemap.items() if old_t.name.startswith(k)), None)
+
+        if isinstance(t, list):  # Find the smallest type that fits
+            if int2uint and t == typemap["int"] and df[c].min() >= 0:
+                t = typemap["uint"]
+            new_t = next(
+                (r[0] for r in t if r[1] <= df[c].min() and r[2] >= df[c].max()), None
+            )
+            if new_t and new_t == old_t:
+                new_t = None
+        else:
+            new_t = t if isinstance(t, str) else None
+
+        if new_t:
+            new_dtypes[c] = new_t
+
+    return df.astype(new_dtypes)
+
+
+def get_label_encoder(pipeline):
+    """Return the label encoder in the pipeline if any."""
+    try:
+        encoder = next(
+            step[1] for step in pipeline.steps if step[0] == "label_encoding"
+        )
+        return encoder.transformer
+    except StopIteration:
+        return
 
 
 def mlflow_remove_bad_chars(string: str) -> str:

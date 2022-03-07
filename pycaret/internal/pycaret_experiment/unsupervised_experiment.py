@@ -1,154 +1,48 @@
+import gc
+import os
+import time
+import datetime
+import logging
+import warnings
+import traceback
+import numpy as np  # type: ignore
+from joblib.memory import Memory
+from IPython.utils import io
+from IPython.display import display
+from sklearn.base import clone  # type: ignore
+from sklearn.preprocessing import LabelEncoder
+from typing import List, Any, Union
+import plotly.express as px  # type: ignore
+import plotly.graph_objects as go  # type: ignore
+
+# Own modules
+from pycaret.internal.preprocess.preprocessor import Preprocessor
 from pycaret.internal.pycaret_experiment.utils import highlight_setup, MLUsecase
 from pycaret.internal.pycaret_experiment.tabular_experiment import _TabularExperiment
 from pycaret.internal.pipeline import (
+    Pipeline as InternalPipeline,
     estimator_pipeline,
     get_pipeline_fit_kwargs,
 )
-from pycaret.internal.utils import infer_ml_usecase, mlflow_remove_bad_chars
+from pycaret.internal.utils import to_df, infer_ml_usecase, mlflow_remove_bad_chars
 import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
-from pycaret.internal.logging import get_logger
-from pycaret.internal.Display import Display
 from pycaret.internal.distributions import *
 from pycaret.internal.validation import *
 import pycaret.internal.preprocess
 import pycaret.internal.persistence
-import pandas as pd  # type ignore
-from pandas.io.formats.style import Styler
-import numpy as np  # type: ignore
-import os
-import datetime
-import time
-import gc
-from sklearn.base import clone  # type: ignore
-from sklearn.preprocessing import LabelEncoder
-from typing import List, Tuple, Any, Union, Optional, Dict
-import warnings
-from IPython.utils import io
-import traceback
-import plotly.express as px  # type: ignore
-import plotly.graph_objects as go  # type: ignore
-import logging
 
+from pycaret.internal.Display import Display
 
 warnings.filterwarnings("ignore")
 LOGGER = get_logger()
 
 
-class _UnsupervisedExperiment(_TabularExperiment):
+class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
     def __init__(self) -> None:
         super().__init__()
         self.variable_keys = self.variable_keys.union({"X"})
         return
-
-    def _get_setup_display(self, **kwargs) -> Styler:
-        # define highlight function for function grid to display
-
-        functions = pd.DataFrame(
-            [
-                ["session_id", self.seed],
-                ["Original Data", self.data_before_preprocess.shape],
-                ["Missing Values", kwargs["missing_flag"]],
-                ["Numeric Features", str(kwargs["float_type"])],
-                ["Categorical Features", str(kwargs["cat_type"])],
-            ]
-            + (
-                [
-                    ["Ordinal Features", kwargs["ordinal_features_grid"]],
-                    [
-                        "High Cardinality Features",
-                        kwargs["high_cardinality_features_grid"],
-                    ],
-                    ["High Cardinality Method", kwargs["high_cardinality_method_grid"]],
-                ]
-                if self.preprocess
-                else []
-            )
-            + [
-                ["Transformed Data", self.X.shape],
-                ["CPU Jobs", self.n_jobs_param],
-                ["Use GPU", self.gpu_param],
-                ["Log Experiment", self.logging_param],
-                ["Experiment Name", self.exp_name_log],
-                ["USI", self.USI],
-            ]
-            + (
-                [
-                    ["Imputation Type", kwargs["imputation_type"]],
-                    [
-                        "Iterative Imputation Iteration",
-                        self.iterative_imputation_iters_param
-                        if kwargs["imputation_type"] == "iterative"
-                        else "None",
-                    ],
-                    ["Numeric Imputer", kwargs["numeric_imputation"]],
-                    [
-                        "Iterative Imputation Numeric Model",
-                        kwargs["imputation_regressor_name"]
-                        if kwargs["imputation_type"] == "iterative"
-                        else "None",
-                    ],
-                    ["Categorical Imputer", kwargs["categorical_imputation"]],
-                    [
-                        "Iterative Imputation Categorical Model",
-                        kwargs["imputation_classifier_name"]
-                        if kwargs["imputation_type"] == "iterative"
-                        else "None",
-                    ],
-                    [
-                        "Unknown Categoricals Handling",
-                        kwargs["unknown_categorical_method_grid"],
-                    ],
-                    ["Normalize", kwargs["normalize"]],
-                    ["Normalize Method", kwargs["normalize_grid"]],
-                    ["Transformation", kwargs["transformation"]],
-                    ["Transformation Method", kwargs["transformation_grid"]],
-                    ["PCA", kwargs["pca"]],
-                    ["PCA Method", kwargs["pca_method_grid"]],
-                    ["PCA Components", kwargs["pca_components_grid"]],
-                    ["Ignore Low Variance", kwargs["ignore_low_variance"]],
-                    ["Combine Rare Levels", kwargs["combine_rare_levels"]],
-                    ["Rare Level Threshold", kwargs["rare_level_threshold_grid"]],
-                    ["Numeric Binning", kwargs["numeric_bin_grid"]],
-                    ["Remove Outliers", kwargs["remove_outliers"]],
-                    ["Outliers Threshold", kwargs["outliers_threshold_grid"]],
-                    [
-                        "Remove Perfect Collinearity",
-                        kwargs["remove_perfect_collinearity"],
-                    ],
-                    ["Remove Multicollinearity", kwargs["remove_multicollinearity"]],
-                    [
-                        "Multicollinearity Threshold",
-                        kwargs["multicollinearity_threshold_grid"],
-                    ],
-                    ["Remove Perfect Collinearity", kwargs["remove_perfect_collinearity"]],
-                    [
-                        "Columns Removed Due to Multicollinearity",
-                        kwargs["multicollinearity_removed_columns"],
-                    ],
-                    ["Clustering", kwargs["create_clusters"]],
-                    ["Clustering Iteration", kwargs["cluster_iter_grid"]],
-                    ["Polynomial Features", kwargs["polynomial_features"]],
-                    ["Polynomial Degree", kwargs["polynomial_degree_grid"]],
-                    ["Trignometry Features", kwargs["trigonometry_features"]],
-                    ["Polynomial Threshold", kwargs["polynomial_threshold_grid"]],
-                    ["Group Features", kwargs["group_features_grid"]],
-                    ["Feature Selection", kwargs["feature_selection"]],
-                    ["Feature Selection Method", kwargs["feature_selection_method"]],
-                    [
-                        "Features Selection Threshold",
-                        kwargs["feature_selection_threshold_grid"],
-                    ],
-                    ["Feature Interaction", kwargs["feature_interaction"]],
-                    ["Feature Ratio", kwargs["feature_ratio"]],
-                    ["Interaction Threshold", kwargs["interaction_threshold_grid"]],
-                ]
-                if self.preprocess
-                else []
-            ),
-            columns=["Description", "Value"],
-        )
-        return functions.style.apply(highlight_setup)
 
     def _calculate_metrics(self, X, labels, ground_truth=None, ml_usecase=None) -> dict:
         """
@@ -165,8 +59,10 @@ class _UnsupervisedExperiment(_TabularExperiment):
             )
         except Exception:
             if ml_usecase == MLUsecase.CLUSTERING:
-                metrics = pycaret.containers.metrics.clustering.get_all_metric_containers(
-                    self.variables, True
+                metrics = (
+                    pycaret.containers.metrics.clustering.get_all_metric_containers(
+                        self.variables, True
+                    )
                 )
             return calculate_unsupervised_metrics(
                 metrics=metrics,  # type: ignore
@@ -178,33 +74,11 @@ class _UnsupervisedExperiment(_TabularExperiment):
     def _is_unsupervised(self) -> bool:
         return True
 
-    def _split_data(
-        self,
-        X_before_preprocess,
-        y_before_preprocess,
-        target,
-        train_data,
-        test_data,
-        train_size,
-        data_split_shuffle,
-        dtypes,
-        display: Display,
-        fh=None,
-    ) -> None:
-        display.move_progress()
-        self.X = self.prep_pipe.fit_transform(train_data).drop(target, axis=1)
-        self.X_train = self.X
-
-    def _set_up_mlflow(
-        self, functions, runtime, log_profile, profile_kwargs, log_data, display,
-    ) -> None:
-        functions_styler = functions
-        if isinstance(functions, Styler):
-            functions = functions.data
+    def _set_up_mlflow(self, runtime, log_data, log_profile, experiment_custom_tags=None):
         # log into experiment
-        self.experiment__.append(("Setup Config", functions))
-        self.experiment__.append(("Transformed Data", self.X))
-        self.experiment__.append(("Transformation Pipeline", self.prep_pipe))
+        self.experiment__.append(("Setup Config", self.display_container[0]))
+        self.experiment__.append(("Transformed data", self.X_transformed))
+        self.experiment__.append(("Transformation Pipeline", self.pipeline))
 
         if self.logging_param:
 
@@ -213,8 +87,9 @@ class _UnsupervisedExperiment(_TabularExperiment):
             import mlflow
 
             try:
-                mlflow.create_experiment(self.exp_name_log)
+                self.exp_id = mlflow.create_experiment(self.exp_name_log)
             except Exception:
+                self.exp_id = None
                 self.logger.warning("Couldn't create mlflow experiment. Exception:")
                 self.logger.warning(traceback.format_exc())
 
@@ -229,7 +104,7 @@ class _UnsupervisedExperiment(_TabularExperiment):
             # Get active run to log as tag
             RunID = mlflow.active_run().info.run_id
 
-            k = functions.copy()
+            k = self.display_container[0].copy()
             k.set_index("Description", drop=True, inplace=True)
             kdict = k.to_dict()
             params = kdict.get("Value")
@@ -238,6 +113,10 @@ class _UnsupervisedExperiment(_TabularExperiment):
 
             # set tag of compare_models
             mlflow.set_tag("Source", "setup")
+
+            # set custom tags if applicable
+            if experiment_custom_tags:
+                mlflow.set_tags(experiment_custom_tags)
 
             import secrets
 
@@ -251,9 +130,7 @@ class _UnsupervisedExperiment(_TabularExperiment):
             self.logger.info(
                 "SubProcess save_model() called =================================="
             )
-            self.save_model(
-                self.prep_pipe, "Transformation Pipeline", verbose=False
-            )
+            self.save_model(self.pipeline, "Transformation Pipeline", verbose=False)
             self.logger.info(
                 "SubProcess save_model() end =================================="
             )
@@ -261,144 +138,267 @@ class _UnsupervisedExperiment(_TabularExperiment):
             os.remove("Transformation Pipeline.pkl")
 
             # Log pandas profile
-            if log_profile:
-                import pandas_profiling
-
-                pf = pandas_profiling.ProfileReport(
-                    self.data_before_preprocess, **profile_kwargs
-                )
-                pf.to_file("Data Profile.html")
+            if log_profile and self.report is not None:
+                self.report.to_file("Data Profile.html")
                 mlflow.log_artifact("Data Profile.html")
                 os.remove("Data Profile.html")
-                display.display(functions_styler, clear=True)
 
             # Log training and testing set
             if log_data:
-                self.X.to_csv("Dataset.csv")
-                mlflow.log_artifact("Dataset.csv")
-                os.remove("Dataset.csv")
-        return
+                self.dataset.to_csv("data.csv")
+                mlflow.log_artifact("data.csv")
+                os.remove("data.csv")
 
     def setup(
         self,
         data: pd.DataFrame,
-        train_size: float = 0.7,
-        test_data: Optional[pd.DataFrame] = None,
-        preprocess: bool = True,
-        imputation_type: str = "simple",
-        iterative_imputation_iters: int = 5,
-        categorical_features: Optional[List[str]] = None,
-        categorical_imputation: str = "mode",
-        categorical_iterative_imputer: Union[str, Any] = "lightgbm",
         ordinal_features: Optional[Dict[str, list]] = None,
-        high_cardinality_features: Optional[List[str]] = None,
-        high_cardinality_method: str = "frequency",
         numeric_features: Optional[List[str]] = None,
-        numeric_imputation: str = "mean",  # method 'zero' added in pycaret==2.1
-        numeric_iterative_imputer: Union[str, Any] = "lightgbm",
+        categorical_features: Optional[List[str]] = None,
         date_features: Optional[List[str]] = None,
+        text_features: Optional[List[str]] = None,
         ignore_features: Optional[List[str]] = None,
-        normalize: bool = False,
-        normalize_method: str = "zscore",
-        transformation: bool = False,
-        transformation_method: str = "yeo-johnson",
-        handle_unknown_categorical: bool = True,
-        unknown_categorical_method: str = "least_frequent",
-        pca: bool = False,
-        pca_method: str = "linear",
-        pca_components: Optional[float] = None,
-        ignore_low_variance: bool = False,
-        combine_rare_levels: bool = False,
-        rare_level_threshold: float = 0.10,
-        bin_numeric_features: Optional[List[str]] = None,
+        keep_features: Optional[List[str]] = None,
+        preprocess: bool = True,
+        imputation_type: Optional[str] = "simple",
+        numeric_imputation: str = "mean",
+        categorical_imputation: str = "constant",
+        text_features_method: str = "tf-idf",
+        max_encoding_ohe: int = 5,
+        encoding_method: Optional[Any] = None,
+        polynomial_features: bool = False,
+        polynomial_degree: int = 2,
+        low_variance_threshold: float = 0,
         remove_multicollinearity: bool = False,
         multicollinearity_threshold: float = 0.9,
-        remove_perfect_collinearity: bool = True,
-        group_features: Optional[List[str]] = None,
-        group_names: Optional[List[str]] = None,
+        bin_numeric_features: Optional[List[str]] = None,
+        remove_outliers: bool = False,
+        outliers_method: str = "iforest",
+        outliers_threshold: float = 0.05,
+        transformation: bool = False,
+        transformation_method: str = "yeo-johnson",
+        normalize: bool = False,
+        normalize_method: str = "zscore",
+        pca: bool = False,
+        pca_method: str = "linear",
+        pca_components: Union[int, float] = 1.0,
+        custom_pipeline: Any = None,
         n_jobs: Optional[int] = -1,
-        use_gpu: bool = False,  # added in pycaret==2.1
-        custom_pipeline: Union[
-            Any, Tuple[str, Any], List[Any], List[Tuple[str, Any]]
-        ] = None,
+        use_gpu: bool = False,
         html: bool = True,
         session_id: Optional[int] = None,
         system_log: Union[bool, logging.Logger] = True,
         log_experiment: bool = False,
         experiment_name: Optional[str] = None,
+        experiment_custom_tags: Optional[Dict[str, Any]] = None,
         log_plots: Union[bool, list] = False,
         log_profile: bool = False,
         log_data: bool = False,
         silent: bool = False,
         verbose: bool = True,
+        memory: Union[bool, str, Memory] = True,
         profile: bool = False,
         profile_kwargs: Dict[str, Any] = None,
-        display: Optional[Display] = None,
     ):
-        return super().setup(
-            data=data,
-            target=None,
-            train_size=train_size,
-            test_data=test_data,
-            preprocess=preprocess,
-            imputation_type=imputation_type,
-            iterative_imputation_iters=iterative_imputation_iters,
-            categorical_features=categorical_features,
-            categorical_imputation=categorical_imputation,
-            categorical_iterative_imputer=categorical_iterative_imputer,
-            ordinal_features=ordinal_features,
-            high_cardinality_features=high_cardinality_features,
-            high_cardinality_method=high_cardinality_method,
-            numeric_features=numeric_features,
-            numeric_imputation=numeric_imputation,
-            numeric_iterative_imputer=numeric_iterative_imputer,
-            date_features=date_features,
-            ignore_features=ignore_features,
-            normalize=normalize,
-            normalize_method=normalize_method,
-            transformation=transformation,
-            transformation_method=transformation_method,
-            handle_unknown_categorical=handle_unknown_categorical,
-            unknown_categorical_method=unknown_categorical_method,
-            pca=pca,
-            pca_method=pca_method,
-            pca_components=pca_components,
-            ignore_low_variance=ignore_low_variance,
-            combine_rare_levels=combine_rare_levels,
-            rare_level_threshold=rare_level_threshold,
-            bin_numeric_features=bin_numeric_features,
-            remove_outliers=False,
-            remove_multicollinearity=remove_multicollinearity,
-            multicollinearity_threshold=multicollinearity_threshold,
-            remove_perfect_collinearity=remove_perfect_collinearity,
-            create_clusters=False,
-            polynomial_features=False,
-            trigonometry_features=False,
-            group_features=group_features,
-            group_names=group_names,
-            feature_selection=False,
-            feature_interaction=False,
-            feature_ratio=False,
-            fix_imbalance=False,
-            data_split_shuffle=False,
-            data_split_stratify=False,
+        # Setup initialization ===================================== >>
+
+        runtime_start = time.time()
+
+        self._initialize_setup(
             n_jobs=n_jobs,
             use_gpu=use_gpu,
-            custom_pipeline=custom_pipeline,
             html=html,
             session_id=session_id,
             system_log=system_log,
             log_experiment=log_experiment,
             experiment_name=experiment_name,
-            log_plots=log_plots,
-            log_profile=log_profile,
-            log_data=log_data,
-            silent=silent,
+            memory=memory,
             verbose=verbose,
-            profile=profile,
-            profile_kwargs=profile_kwargs,
-            display=display,
         )
+
+        # Prepare experiment specific params ======================= >>
+
+        self.log_plots_param = log_plots
+        if self.log_plots_param is True:
+            self.log_plots_param = self._get_default_plots_to_log()
+        elif isinstance(self.log_plots_param, list):
+            for i in self.log_plots_param:
+                if i not in self._available_plots:
+                    raise ValueError(
+                        f"Invalid value for log_plots '{i}'. Possible values "
+                        f"are: {', '.join(self._available_plots.keys())}."
+                    )
+
+        # Set up data ============================================== >>
+
+        self._prepare_dataset(data)
+        self._prepare_column_types(
+            ordinal_features=ordinal_features,
+            numeric_features=numeric_features,
+            categorical_features=categorical_features,
+            date_features=date_features,
+            text_features=text_features,
+            ignore_features=ignore_features,
+            keep_features=keep_features,
+        )
+
+        # Preprocessing ============================================ >>
+
+        # Initialize empty pipeline
+        self.pipeline = InternalPipeline(
+            steps=[("placeholder", None)],
+            memory=self.memory,
+        )
+
+        if preprocess:
+            self.logger.info("Preparing preprocessing pipeline...")
+
+            # Convert date feature to numerical values
+            if self._fxs["Date"]:
+                self._date_feature_engineering()
+
+            # Impute missing values
+            if imputation_type == "simple":
+                self._simple_imputation(numeric_imputation, categorical_imputation)
+            elif imputation_type is not None:
+                raise ValueError(
+                    "Invalid value for the imputation_type parameter, got "
+                    f"{imputation_type}. Possible values are: simple, iterative."
+                )
+
+            # Convert text features to meaningful vectors
+            if self._fxs["Text"]:
+                self._text_embedding(text_features_method)
+
+            # Encode non-numerical features
+            if self._fxs["Ordinal"] or self._fxs["Categorical"]:
+                self._encoding(max_encoding_ohe, encoding_method)
+
+            # Create polynomial features from the existing ones
+            if polynomial_features:
+                self._polynomial_features(polynomial_degree)
+
+            # Drop features with too low variance
+            if low_variance_threshold:
+                self._low_variance(low_variance_threshold)
+
+            # Drop features that are collinear with other features
+            if remove_multicollinearity:
+                self._remove_multicollinearity(multicollinearity_threshold)
+
+            # Bin numerical features to 5 clusters
+            if bin_numeric_features:
+                self._bin_numerical_features(bin_numeric_features)
+
+            # Remove outliers from the dataset
+            if remove_outliers:
+                self._remove_outliers(outliers_method, outliers_threshold)
+
+            # Power transform the data to be more Gaussian-like
+            if transformation:
+                self._transformation(transformation_method)
+
+            # Scale the features
+            if normalize:
+                self._normalization(normalize_method)
+
+            # Apply Principal Component Analysis
+            if pca:
+                self._pca(pca_method, pca_components)
+
+        # Add custom transformers to the pipeline
+        if custom_pipeline:
+            self._add_custom_pipeline(custom_pipeline)
+
+        # Remove placeholder step
+        if len(self.pipeline) > 1:
+            self.pipeline.steps.pop(0)
+
+        self.pipeline.fit(self.X)
+
+        self.logger.info(f"Finished creating preprocessing pipeline.")
+        self.logger.info(f"Pipeline: {self.pipeline}")
+
+        # Final display ============================================ >>
+
+        self.logger.info("Creating final display dataframe.")
+
+        container = []
+        container.append(["Session id", self.seed])
+        container.append(["Data shape", self.dataset.shape])
+        for fx, cols in self._fxs.items():
+            if len(cols) > 0:
+                container.append([f"{fx} features", len(cols)])
+        if self.data.isna().sum().sum():
+            container.append(["Missing Values", self.data.isna().sum().sum()])
+        if preprocess:
+            container.append(["Preprocess", preprocess])
+            container.append(["Imputation type", imputation_type])
+            if imputation_type == "simple":
+                container.append(["Numeric imputation", numeric_imputation])
+                container.append(["Categorical imputation", categorical_imputation])
+            if self._fxs["Text"]:
+                container.append(
+                    ["Text features embedding method", text_features_method]
+                )
+            if self._fxs["Categorical"]:
+                container.append(["Maximum one-hot encoding", max_encoding_ohe])
+                container.append(["Encoding method", encoding_method])
+            if polynomial_features:
+                container.append(["Polynomial features", polynomial_features])
+                container.append(["Polynomial degree", polynomial_degree])
+            if low_variance_threshold:
+                container.append(["Low variance threshold", low_variance_threshold])
+            if remove_multicollinearity:
+                container.append(["Remove multicollinearity", remove_multicollinearity])
+                container.append(
+                    ["Multicollinearity threshold", multicollinearity_threshold]
+                )
+            if remove_outliers:
+                container.append(["Remove outliers", remove_outliers])
+                container.append(["Outliers threshold", outliers_threshold])
+            if transformation:
+                container.append(["Transformation", transformation])
+                container.append(["Transformation method", transformation_method])
+            if normalize:
+                container.append(["Normalize", normalize])
+                container.append(["Normalize method", normalize_method])
+            if pca:
+                container.append(["PCA", pca])
+                container.append(["PCA method", pca_method])
+                container.append(["PCA components", pca_components])
+            if custom_pipeline:
+                container.append(["Custom pipeline", "Yes"])
+            container.append(["CPU Jobs", self.n_jobs_param])
+            container.append(["Log Experiment", self.logging_param])
+            container.append(["Experiment Name", self.exp_name_log])
+            container.append(["USI", self.USI])
+
+        self.display_container = [
+            pd.DataFrame(container, columns=["Description", "Value"])
+        ]
+        self.logger.info(f"Setup display_container: {self.display_container[0]}")
+        if self.verbose:
+            pd.set_option("display.max_rows", 100)
+            display(self.display_container[0].style.apply(highlight_setup))
+            pd.reset_option("display.max_rows")  # Reset option
+
+        # Wrap-up ================================================== >>
+
+        # Create a profile report
+        self._profile(profile, profile_kwargs)
+
+        # Define models and metrics
+        self._all_models, self._all_models_internal = self._get_models()
+        self._all_metrics = self._get_metrics()
+
+        runtime = np.array(time.time() - runtime_start).round(2)
+        self._set_up_mlflow(runtime, log_data, log_profile, experiment_custom_tags=experiment_custom_tags)
+
+        self._setup_ran = True
+        self.logger.info(f"setup() successfully completed in {runtime}s...............")
+
+        return self
 
     def tune_model(
         self,
@@ -458,19 +458,25 @@ class _UnsupervisedExperiment(_TabularExperiment):
             self.logger.info(f"supervised_type inferred as {supervised_type}")
 
         if supervised_type == "classification":
-            metrics = pycaret.containers.metrics.classification.get_all_metric_containers(
-                temp_globals, raise_errors=True
+            metrics = (
+                pycaret.containers.metrics.classification.get_all_metric_containers(
+                    self, raise_errors=True
+                )
             )
-            available_estimators = pycaret.containers.models.classification.get_all_model_containers(
-                temp_globals, raise_errors=True
+            available_estimators = (
+                pycaret.containers.models.classification.get_all_model_containers(
+                    self, raise_errors=True
+                )
             )
             ml_usecase = MLUsecase.CLASSIFICATION
         elif supervised_type == "regression":
             metrics = pycaret.containers.metrics.regression.get_all_metric_containers(
-                temp_globals, raise_errors=True
+                self, raise_errors=True
             )
-            available_estimators = pycaret.containers.models.regression.get_all_model_containers(
-                temp_globals, raise_errors=True
+            available_estimators = (
+                pycaret.containers.models.regression.get_all_model_containers(
+                    self, raise_errors=True
+                )
             )
             ml_usecase = MLUsecase.REGRESSION
         else:
@@ -619,7 +625,8 @@ class _UnsupervisedExperiment(_TabularExperiment):
             )
             if self._ml_usecase == MLUsecase.CLUSTERING:
                 unsupervised_grids[k] = pd.get_dummies(
-                    unsupervised_grids[k], columns=["Cluster"],
+                    unsupervised_grids[k],
+                    columns=["Cluster"],
                 )
             elif method == "drop":
                 unsupervised_grids[k] = unsupervised_grids[k][
@@ -717,7 +724,7 @@ class _UnsupervisedExperiment(_TabularExperiment):
                     source="tune_model",
                     runtime=runtime,
                     model_fit_time=best_model_fit_time,
-                    _prep_pipe=self.prep_pipe,
+                    pipeline=self.pipeline,
                     log_plots=self.log_plots_param,
                     display=display,
                 )
@@ -858,12 +865,12 @@ class _UnsupervisedExperiment(_TabularExperiment):
         self.logger.info("Copying data")
         # copy data_
         if transformation:
-            data = self.X.copy()
+            data = self.X_transformed.copy()
             self.logger.info(
                 "Transformation parameter set to True. Assigned clusters are attached on transformed dataset."
             )
         else:
-            data = self.data_before_preprocess.copy()
+            data = self.X.copy()
 
         # calculation labels and attaching to dataframe
 
@@ -883,7 +890,10 @@ class _UnsupervisedExperiment(_TabularExperiment):
         return data
 
     def predict_model(
-        self, estimator, data: pd.DataFrame, ml_usecase: Optional[MLUsecase] = None,
+        self,
+        estimator,
+        data: pd.DataFrame,
+        ml_usecase: Optional[MLUsecase] = None,
     ) -> pd.DataFrame:
         function_params_str = ", ".join(
             [f"{k}={v}" for k, v in locals().items() if k != "data"]
@@ -895,8 +905,10 @@ class _UnsupervisedExperiment(_TabularExperiment):
         if ml_usecase is None:
             ml_usecase = self._ml_usecase
 
-        # copy data and model
-        data_transformed = data.copy()
+        if data is None:
+            data_transformed = self.X_transformed
+        else:
+            data_transformed = self.pipeline.transform(to_df(data[self.X.columns]))
 
         # exception checking for predict param
         if hasattr(estimator, "predict"):
@@ -904,25 +916,11 @@ class _UnsupervisedExperiment(_TabularExperiment):
         else:
             raise TypeError("Model doesn't support predict parameter.")
 
-        pred_score = None
-
-        # predictions start here
-        if is_sklearn_pipeline(estimator):
-            pred = estimator.predict(data_transformed)
-            if ml_usecase == MLUsecase.ANOMALY:
-                pred_score = estimator.decision_function(data_transformed)
-        else:
-            pred = estimator.predict(self.prep_pipe.transform(data_transformed))
-            if ml_usecase == MLUsecase.ANOMALY:
-                pred_score = estimator.decision_function(
-                    self.prep_pipe.transform(data_transformed)
-                )
-
+        pred = estimator.predict(data_transformed)
         if ml_usecase == MLUsecase.CLUSTERING:
-            pred_list = [f"Cluster {i}" for i in pred]
-
-            data_transformed["Cluster"] = pred_list
+            data_transformed["Cluster"] = [f"Cluster {i}" for i in pred]
         else:
+            pred_score = estimator.decision_function(data_transformed)
             data_transformed["Anomaly"] = pred
             data_transformed["Anomaly_Score"] = pred_score
 
@@ -936,6 +934,7 @@ class _UnsupervisedExperiment(_TabularExperiment):
         ground_truth: Optional[str] = None,
         round: int = 4,
         fit_kwargs: Optional[dict] = None,
+        experiment_custom_tags: Optional[Dict[str, Any]] = None,
         verbose: bool = True,
         system: bool = True,
         add_to_model_list: bool = True,
@@ -1210,7 +1209,7 @@ class _UnsupervisedExperiment(_TabularExperiment):
         MONITOR UPDATE ENDS
         """
 
-        with estimator_pipeline(self._internal_pipeline, model) as pipeline_with_model:
+        with estimator_pipeline(self.pipeline, model) as pipeline_with_model:
             fit_kwargs = get_pipeline_fit_kwargs(pipeline_with_model, fit_kwargs)
 
             self.logger.info("Fitting Model")
@@ -1271,8 +1270,9 @@ class _UnsupervisedExperiment(_TabularExperiment):
                     source="create_model",
                     runtime=runtime,
                     model_fit_time=model_fit_time,
-                    _prep_pipe=self.prep_pipe,
+                    pipeline=self.pipeline,
                     log_plots=self.log_plots_param,
+                    experiment_custom_tags=experiment_custom_tags,
                     display=display,
                 )
             except Exception:
@@ -1317,4 +1317,3 @@ class _UnsupervisedExperiment(_TabularExperiment):
             return (model, model_fit_time)
 
         return model
-

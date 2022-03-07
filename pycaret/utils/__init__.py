@@ -1,6 +1,9 @@
 import functools
 from typing import Dict, Optional, Union, Any
 
+import functools
+from typing import Optional
+
 import numpy as np
 import pandas as pd
 from sklearn.metrics._scorer import _PredictScorer, get_scorer  # type: ignore

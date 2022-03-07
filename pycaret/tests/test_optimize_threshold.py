@@ -3,29 +3,35 @@ import os, sys
 sys.path.insert(0, os.path.abspath(".."))
 
 import pandas as pd
+import numpy as np
 import pytest
 import pycaret.classification
 import pycaret.datasets
 
 
-@pytest.mark.skip(
-    reason="fails due to upgrade of time series to sklearn 1.0x. Re-enable after merging with preprocessing branch."
-)
-def test():
+def test_optimize_threshold():
 
     # loading dataset
     data = pycaret.datasets.get_data("blood")
+
+    # initialize setup
     clf1 = pycaret.classification.setup(
         data,
         target="Class",
         silent=True,
         html=False,
-        create_clusters=True,
-        cluster_iter=10,
         n_jobs=1,
     )
-    assert len(pycaret.classification.get_config("X").columns) > len(data.columns)
+
+    # train model
+    lr = pycaret.classification.create_model("lr")
+
+    # optimize threshold
+    optimized_data, optimized_model = pycaret.classification.optimize_threshold(
+        lr, return_data=True
+    )
+    assert isinstance(optimized_data, pd.core.frame.DataFrame)
 
 
 if __name__ == "__main__":
-    test()
+    test_optimize_threshold()

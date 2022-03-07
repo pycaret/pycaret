@@ -5,7 +5,7 @@ tune-sklearn>=0.2.1
 ray[tune]>=1.0.0
 hyperopt
 optuna>=2.2.0
-scikit-optimize>=0.8.1
+scikit-optimize>=0.9.0
 psutil
 catboost>=0.23.2
 xgboost>=1.1.0
@@ -14,6 +14,16 @@ convertdate>=2.1.2
 holidays>=0.10.2
 pystan~=2.19.1.1
 prophet>=1.0
+explainerdashboard #for dashboard
+m2cgen # for model conversion
+evidently # for drift reporting
+autoviz # for EDA visualization
+fairlearn # for check_fairness function
+fastapi # for web api
+uvicorn # for web api
+gradio # for gradio app
+fugue>=0.6.5 # for distributed
+
 
 # for cloud deployment
 boto3

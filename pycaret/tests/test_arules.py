@@ -11,7 +11,7 @@ import pycaret.datasets
 def test():
     # loading dataset
     data = pycaret.datasets.get_data("france")
-    assert isinstance(data, pd.core.frame.DataFrame)
+    assert isinstance(data, pd.DataFrame)
     row, col = data.shape
     assert row == 8557
     assert col == 8
@@ -24,7 +24,7 @@ def test():
         session_id=123,
     )
     assert isinstance(arul101, tuple)
-    assert isinstance(arul101[0], pd.core.frame.DataFrame)
+    assert isinstance(arul101[0], pd.DataFrame)
     row, col = arul101[0].shape
     assert row == 8557
     assert col == 8
@@ -35,7 +35,7 @@ def test():
 
     # create model
     model = pycaret.arules.create_model()
-    assert isinstance(model, pd.core.frame.DataFrame)
+    assert isinstance(model, pd.DataFrame)
     row, col = model.shape
     assert row == 141
     assert col == 9
@@ -44,7 +44,7 @@ def test():
     rules = pycaret.arules.get_rules(
         data=data, transaction_id="InvoiceNo", item_id="Description"
     )
-    assert isinstance(rules, pd.core.frame.DataFrame)
+    assert isinstance(rules, pd.DataFrame)
     row, col = rules.shape
     assert row == 141
     assert col == 9

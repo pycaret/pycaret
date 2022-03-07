@@ -1,16 +1,14 @@
-import pycaret.internal.patches.sklearn
-import pycaret.internal.patches.yellowbrick
-from pycaret.internal.logging import get_logger
-from pycaret.internal.distributions import *
-from pycaret.internal.validation import *
-import pycaret.internal.preprocess
-import pycaret.internal.persistence
-import pandas as pd  # type ignore
-import numpy as np  # type: ignore
-from typing import List, Tuple, Any, Union, Optional, Dict
 import warnings
+import numpy as np  # type: ignore
+from typing import Dict, Optional, Any
+from collections import defaultdict
 import plotly.express as px  # type: ignore
 import plotly.graph_objects as go  # type: ignore
+
+import pycaret.internal.patches.sklearn
+import pycaret.internal.patches.yellowbrick
+from pycaret.internal.validation import *
+import pycaret.internal.persistence
 
 
 warnings.filterwarnings("ignore")
@@ -22,13 +20,24 @@ class _PyCaretExperiment:
         self._ml_usecase = None
         self._available_plots = {}
         self.variable_keys = set()
-        self._setup_ran = False
-        self.display_container = []
         self.exp_id = None
         self.gpu_param = False
         self.n_jobs_param = -1
         self.logger = LOGGER
-        return
+        self.experiment__ = []
+        self.master_model_container = []
+
+        # Data attrs
+        self.data = None
+        self.target_param = None
+        self.idx = [None, None]  # Train and test indices
+
+        # Setup attrs
+        self.fold_generator = None
+        self.pipeline = None
+        self.display_container = None
+        self._fxs = defaultdict(list)
+        self._setup_ran = False
 
     @property
     def _gpu_n_jobs_param(self) -> int:
@@ -271,7 +280,6 @@ class _PyCaretExperiment:
         variable
 
         """
-
         function_params_str = ", ".join(
             [f"{k}={v}" for k, v in locals().items() if not k == "globals_d"]
         )
@@ -283,11 +291,15 @@ class _PyCaretExperiment:
             raise ValueError(
                 f"Variable {variable} not found. Possible variables are: {list(self.variables)}"
             )
+
+        if any(variable.endswith(attr) for attr in ("train", "test", "dataset")):
+            variable += "_transformed"
+
         var = getattr(self, variable)
 
-        self.logger.info(f"Variable: {variable} returned as {var}")
+        self.logger.info(f"Variable: {variable[:-12]} returned as {var}")
         self.logger.info(
-            "get_config() succesfully completed......................................"
+            "get_config() successfully completed......................................"
         )
 
         return var
@@ -392,7 +404,7 @@ class _PyCaretExperiment:
 
     def pull(self, pop=False) -> pd.DataFrame:  # added in pycaret==2.2.0
         """
-        Returns latest displayed table.
+        Returns the latest displayed table.
 
         Parameters
         ----------
@@ -406,7 +418,100 @@ class _PyCaretExperiment:
             Equivalent to get_config('display_container')[-1]
 
         """
-        if not self.display_container:
-            return None
         return self.display_container.pop(-1) if pop else self.display_container[-1]
 
+    @property
+    def dataset(self):
+        """Complete dataset without ignored columns."""
+        return self.data[[c for c in self.data.columns if c not in self._fxs["Ignore"]]]
+
+    @property
+    def train(self):
+        """Training set."""
+        return self.dataset.loc[self.idx[0], :]
+
+    @property
+    def test(self):
+        """Test set."""
+        return self.dataset.loc[self.idx[1], :]
+
+    @property
+    def X(self):
+        """Feature set."""
+        if self.target_param:
+            return self.dataset.drop(self.target_param, axis=1)
+        else:
+            return self.dataset  # For unsupervised: dataset == X
+
+    @property
+    def y(self):
+        """Target column."""
+        return self.dataset[self.target_param]
+
+    @property
+    def X_train(self):
+        """Feature set of the training set."""
+        return self.train.drop(self.target_param, axis=1)
+
+    @property
+    def X_test(self):
+        """Feature set of the test set."""
+        return self.test.drop(self.target_param, axis=1)
+
+    @property
+    def y_train(self):
+        """Target column of the training set."""
+        return self.train[self.target_param]
+
+    @property
+    def y_test(self):
+        """Target column of the test set."""
+        return self.test[self.target_param]
+
+    @property
+    def dataset_transformed(self):
+        """Transformed dataset."""
+        return pd.concat([*self.pipeline.transform(self.X, self.y)], axis=1)
+
+    @property
+    def train_transformed(self):
+        """Transformed training set."""
+        return pd.concat([*self.pipeline.transform(self.X_train, self.y_train)], axis=1)
+
+    @property
+    def test_transformed(self):
+        """Transformed test set."""
+        return pd.concat([*self.pipeline.transform(self.X_test, self.y_test)], axis=1)
+
+    @property
+    def X_transformed(self):
+        """Transformed feature set."""
+        if self.target_param:
+            return self.pipeline.transform(self.X, self.y)[0]
+        else:
+            return self.pipeline.transform(self.X)
+
+    @property
+    def y_transformed(self):
+        """Transformed target column."""
+        return self.pipeline.transform(self.X, self.y)[1]
+
+    @property
+    def X_train_transformed(self):
+        """Transformed feature set of the training set."""
+        return self.pipeline.transform(self.X_train, self.y_train)[0]
+
+    @property
+    def X_test_transformed(self):
+        """Transformed feature set of the test set."""
+        return self.pipeline.transform(self.X_test, self.y_test)[0]
+
+    @property
+    def y_train_transformed(self):
+        """Transformed target column of the training set."""
+        return self.pipeline.transform(self.X_train, self.y_train)[1]
+
+    @property
+    def y_test_transformed(self):
+        """Transformed target column of the test set."""
+        return self.pipeline.transform(self.X_test, self.y_test)[1]

@@ -1,5 +1,7 @@
 from pycaret.utils.time_series import TSExogenousPresent
 
+# from pycaret.time_series import TSForecastingExperiment
+
 
 def _disable_pred_int_enforcement(forecaster, enforce_pi: bool) -> bool:
     """Checks to see if prediction interval should be enforced. If it should
@@ -59,7 +61,7 @@ def _disable_exogenous_enforcement(
     return False
 
 
-def _check_enforcements(forecaster, globals_dict) -> bool:
+def _check_enforcements(forecaster, experiment) -> bool:
     """Checks whether the model supports certain features such as
     (1) Prediction Interval, and (2) support for exogenous variables. The checks
     depend on what features are requested by the user during the experiment setup.
@@ -68,9 +70,8 @@ def _check_enforcements(forecaster, globals_dict) -> bool:
     ----------
     forecaster : sktime compatible forecaster
         The forecaster which needs to be checked for feature support
-    globals_dict : dict_
+    experiment : TSForecastingExperiment
         Used to check what features are requested by the user during setup.
-        TODO: To be replaced with experiment object after preprocessing is added.
 
     Returns
     -------
@@ -82,14 +83,14 @@ def _check_enforcements(forecaster, globals_dict) -> bool:
 
     #### Pred Interval Enforcement ----
     disable_pred_int = _disable_pred_int_enforcement(
-        forecaster=forecaster, enforce_pi=globals_dict["enforce_pi"]
+        forecaster=forecaster, enforce_pi=experiment.enforce_pi
     )
 
     #### Exogenous variable support Enforcement ----
     disable_exog_enforcement = _disable_exogenous_enforcement(
         forecaster=forecaster,
-        enforce_exogenous=globals_dict["enforce_exogenous"],
-        exp_has_exogenous=globals_dict["exogenous_present"],
+        enforce_exogenous=experiment.enforce_exogenous,
+        exp_has_exogenous=experiment.exogenous_present,
     )
 
     if disable_pred_int or disable_exog_enforcement:

@@ -5,14 +5,15 @@
 # Last modified : 25/10/2020
 
 import logging
+import warnings
 import pandas as pd
-import numpy as np
+from joblib.memory import Memory
+from typing import List, Any, Union, Optional, Dict
 
+# Own modules
 from pycaret.internal.pycaret_experiment import ClusteringExperiment
 from pycaret.internal.utils import check_if_global_is_not_none
 
-from typing import List, Tuple, Any, Union, Optional, Dict
-import warnings
 
 warnings.filterwarnings("ignore")
 
@@ -28,53 +29,51 @@ _CURRENT_EXPERIMENT_DECORATOR_DICT = {
 
 def setup(
     data,
-    preprocess: bool = True,
-    imputation_type: str = "simple",
-    iterative_imputation_iters: int = 5,
-    categorical_features: Optional[List[str]] = None,
-    categorical_imputation: str = "mode",
-    categorical_iterative_imputer: Union[str, Any] = "lightgbm",
     ordinal_features: Optional[Dict[str, list]] = None,
-    high_cardinality_features: Optional[List[str]] = None,
-    high_cardinality_method: str = "frequency",
     numeric_features: Optional[List[str]] = None,
-    numeric_imputation: str = "mean",
-    numeric_iterative_imputer: Union[str, Any] = "lightgbm",
+    categorical_features: Optional[List[str]] = None,
     date_features: Optional[List[str]] = None,
+    text_features: Optional[List[str]] = None,
     ignore_features: Optional[List[str]] = None,
-    normalize: bool = False,
-    normalize_method: str = "zscore",
-    transformation: bool = False,
-    transformation_method: str = "yeo-johnson",
-    handle_unknown_categorical: bool = True,
-    unknown_categorical_method: str = "least_frequent",
-    pca: bool = False,
-    pca_method: str = "linear",
-    pca_components: Optional[float] = None,
-    ignore_low_variance: bool = False,
-    combine_rare_levels: bool = False,
-    rare_level_threshold: float = 0.10,
-    bin_numeric_features: Optional[List[str]] = None,
+    keep_features: Optional[List[str]] = None,
+    preprocess: bool = True,
+    imputation_type: Optional[str] = "simple",
+    numeric_imputation: str = "mean",
+    categorical_imputation: str = "constant",
+    text_features_method: str = "tf-idf",
+    max_encoding_ohe: int = 5,
+    encoding_method: Optional[Any] = None,
+    polynomial_features: bool = False,
+    polynomial_degree: int = 2,
+    low_variance_threshold: float = 0,
     remove_multicollinearity: bool = False,
     multicollinearity_threshold: float = 0.9,
-    remove_perfect_collinearity: bool = False,
-    group_features: Optional[List[str]] = None,
-    group_names: Optional[List[str]] = None,
+    bin_numeric_features: Optional[List[str]] = None,
+    remove_outliers: bool = False,
+    outliers_method: str = "iforest",
+    outliers_threshold: float = 0.05,
+    transformation: bool = False,
+    transformation_method: str = "yeo-johnson",
+    normalize: bool = False,
+    normalize_method: str = "zscore",
+    pca: bool = False,
+    pca_method: str = "linear",
+    pca_components: Union[int, float] = 1.0,
+    custom_pipeline: Any = None,
     n_jobs: Optional[int] = -1,
     use_gpu: bool = False,
-    custom_pipeline: Union[
-        Any, Tuple[str, Any], List[Any], List[Tuple[str, Any]]
-    ] = None,
     html: bool = True,
     session_id: Optional[int] = None,
     system_log: Union[bool, logging.Logger] = True,
     log_experiment: bool = False,
     experiment_name: Optional[str] = None,
+    experiment_custom_tags: Optional[Dict[str, Any]] = None,
     log_plots: Union[bool, list] = False,
     log_profile: bool = False,
     log_data: bool = False,
     silent: bool = False,
     verbose: bool = True,
+    memory: Union[bool, str, Memory] = True,
     profile: bool = False,
     profile_kwargs: Dict[str, Any] = None,
 ):
@@ -94,30 +93,68 @@ def setup(
     >>> exp_name = setup(data = jewellery)
 
 
-    data: pandas.DataFrame
+    data: dataframe-like
         Shape (n_samples, n_features), where n_samples is the number of samples and 
         n_features is the number of features.
 
 
-    preprocess: bool, default = True
-        When set to False, no transformations are applied except for custom 
-        transformations passed in ``custom_pipeline`` param. Data must be 
-        ready for modeling (no missing values, no dates, categorical data encoding), 
-        when preprocess is set to False. 
+    ordinal_features: dict, default = None
+        Categorical features to be encoded ordinally. For example, a categorical
+        feature with 'low', 'medium', 'high' values where low < medium < high can
+        be passed as ordinal_features = {'column_name' : ['low', 'medium', 'high']}.
 
 
-    imputation_type: str, default = 'simple'
-        The type of imputation to use. Can be either 'simple' or 'iterative'.
-
-
-    iterative_imputation_iters: int, default = 5
-        Number of iterations. Ignored when ``imputation_type`` is not 'iterative'.	
+    numeric_features: list of str, default = None
+        If the inferred data types are not correct, the numeric_features param can
+        be used to define the data types. It takes a list of strings with column
+        names that are numeric.
 
 
     categorical_features: list of str, default = None
-        If the inferred data types are not correct or the silent param is set to True,
-        categorical_features param can be used to overwrite or define the data types. 
-        It takes a list of strings with column names that are categorical.
+        If the inferred data types are not correct, the categorical_features param
+        can be used to define the data types. It takes a list of strings with column
+        names that are categorical.
+
+
+    date_features: list of str, default = None
+        If the inferred data types are not correct, the date_features param can be
+        used to overwrite the data types. It takes a list of strings with column
+        names that are DateTime.
+
+
+    text_features: list of str, default = None
+        Column names that contain a text corpus. If None, no text features are
+        selected.
+
+
+    ignore_features: list of str, default = None
+        ignore_features param can be used to ignore features during preprocessing
+        and model training. It takes a list of strings with column names that are
+        to be ignored.
+
+
+    keep_features: list of str, default = None
+        keep_features param can be used to always keep specific features during
+        preprocessing, i.e. these features are never dropped by any kind of
+        feature selection. It takes a list of strings with column names that are
+        to be kept.
+
+
+    preprocess: bool, default = True
+        When set to False, no transformations are applied except for train_test_split
+        and custom transformations passed in ``custom_pipeline`` param. Data must be
+        ready for modeling (no missing values, no dates, categorical data encoding),
+        when preprocess is set to False.
+
+
+    imputation_type: str or None, default = 'simple'
+        The type of imputation to use. Can be either 'simple' or 'iterative'.
+        If None, no imputation of missing values is performed.
+
+
+    numeric_imputation: str, default = 'mean'
+        Missing values in numeric features are imputed with 'mean' value of the feature
+        in the training dataset. The other available option is 'median' or 'zero'.
 
 
     categorical_imputation: str, default = 'constant'
@@ -125,77 +162,79 @@ def setup(
         value. The other available option is 'mode'.
 
 
-    categorical_iterative_imputer: str, default = 'lightgbm'
-        Estimator for iterative imputation of missing values in categorical features.
-        Ignored when ``imputation_type`` is not 'iterative'. 
+    text_features_method: str, default = "tf-idf"
+        Method with which to embed the text features in the dataset. Choose
+        between "bow" (Bag of Words - CountVectorizer) or "tf-idf" (TfidfVectorizer).
+        Be aware that the sparse matrix output of the transformer is converted
+        internally to its full array. This can cause memory issues for large
+        text embeddings.
 
 
-    ordinal_features: dict, default = None
-        Encode categorical features as ordinal. For example, a categorical feature with 
-        'low', 'medium', 'high' values where low < medium < high can be passed as  
-        ordinal_features = { 'column_name' : ['low', 'medium', 'high'] }. 
+    max_encoding_ohe: int, default = 5
+        Categorical columns with `max_encoding_ohe` or less unique values are
+        encoded using OneHotEncoding. If more, the `encoding_method` estimator
+        is used. Note that columns with exactly two classes are always encoded
+        ordinally.
 
 
-    high_cardinality_features: list of str, default = None
-        When categorical features contains many levels, it can be compressed into fewer
-        levels using this parameter. It takes a list of strings with column names that 
-        are categorical.
+    encoding_method: category-encoders estimator, default = None
+        A `category-encoders` estimator to encode the categorical columns
+        with more than `max_encoding_ohe` unique values. If None,
+        `category_encoders.leave_one_out.LeaveOneOutEncoder` is used.
 
 
-    high_cardinality_method: str, default = 'frequency'
-        Categorical features with high cardinality are replaced with the frequency of
-        values in each level occurring in the training dataset. Other available method
-        is 'clustering' which trains the K-Means clustering algorithm on the statistical
-        attribute of the training data and replaces the original value of feature with the 
-        cluster label. The number of clusters is determined by optimizing Calinski-Harabasz 
-        and Silhouette criterion. 
+    polynomial_features: bool, default = False
+        When set to True, new features are derived using existing numeric features.
 
 
-    numeric_features: list of str, default = None
-        If the inferred data types are not correct or the silent param is set to True,
-        numeric_features param can be used to overwrite or define the data types. 
-        It takes a list of strings with column names that are numeric.
+    polynomial_degree: int, default = 2
+        Degree of polynomial features. For example, if an input sample is two dimensional
+        and of the form [a, b], the polynomial features with degree = 2 are:
+        [1, a, b, a^2, ab, b^2]. Ignored when ``polynomial_features`` is not True.
 
 
-    numeric_imputation: str, default = 'mean'
-        Missing values in numeric features are imputed with 'mean' value of the feature 
-        in the training dataset. The other available option is 'median' or 'zero'.
+    low_variance_threshold: float or None, default = 0
+        Remove features with a training-set variance lower than the provided
+        threshold. The default is to keep all features with non-zero variance,
+        i.e. remove the features that have the same value in all samples. If
+        None, skip this treansformation step.
 
 
-    numeric_iterative_imputer: str, default = 'lightgbm'
-        Estimator for iterative imputation of missing values in numeric features.
-        Ignored when ``imputation_type`` is set to 'simple'. 
+    remove_multicollinearity: bool, default = False
+        When set to True, features with the inter-correlations higher than the defined
+        threshold are removed. When two features are highly correlated with each other,
+        the feature that is less correlated with the target variable is removed. Only
+        considers numeric features.
 
 
-    date_features: list of str, default = None
-        If the inferred data types are not correct or the silent param is set to True,
-        date_features param can be used to overwrite or define the data types. It takes 
-        a list of strings with column names that are DateTime.
+    multicollinearity_threshold: float, default = 0.9
+        Threshold for correlated features. Ignored when ``remove_multicollinearity``
+        is not True.
 
 
-    ignore_features: list of str, default = None
-        ignore_features param can be used to ignore features during model training.
-        It takes a list of strings with column names that are to be ignored.
+    bin_numeric_features: list of str, default = None
+        To convert numeric features into categorical, bin_numeric_features parameter can
+        be used. It takes a list of strings with column names to be discretized. It does
+        so by using 'sturges' rule to determine the number of clusters and then apply
+        KMeans algorithm. Original values of the feature are then replaced by the
+        cluster label.
 
 
-    normalize: bool, default = False
-        When set to True, it transforms the numeric features by scaling them to a given
-        range. Type of scaling is defined by the ``normalize_method`` parameter.
+    remove_outliers: bool, default = False
+        When set to True, outliers from the training data are removed using an
+        Isolation Forest.
 
 
-    normalize_method: str, default = 'zscore'
-        Defines the method for scaling. By default, normalize method is set to 'zscore'
-        The standard zscore is calculated as z = (x - u) / s. Ignored when ``normalize`` 
-        is not True. The other options are:
-    
-        - minmax: scales and translates each feature individually such that it is in 
-          the range of 0 - 1.
-        - maxabs: scales and translates each feature individually such that the 
-          maximal absolute value of each feature will be 1.0. It does not 
-          shift/center the data, and thus does not destroy any sparsity.
-        - robust: scales and translates each feature according to the Interquartile 
-          range. When the dataset contains outliers, robust scaler often gives 
-          better results.
+    outliers_method: str, default = "iforest"
+        Method with which to remove outliers. Possible values are:
+            - 'iforest': Uses sklearn's IsolationForest.
+            - 'ee': Uses sklearn's EllipticEnvelope.
+            - 'lof': Uses sklearn's LocalOutlierFactor.
+
+
+    outliers_threshold: float, default = 0.05
+        The percentage outliers to be removed from the dataset. Ignored
+        when ``remove_outliers=False``.
 
 
     transformation: bool, default = False
@@ -204,127 +243,81 @@ def setup(
 
 
     transformation_method: str, default = 'yeo-johnson'
-        Defines the method for transformation. By default, the transformation method is 
-        set to 'yeo-johnson'. The other available option for transformation is 'quantile'. 
+        Defines the method for transformation. By default, the transformation method is
+        set to 'yeo-johnson'. The other available option for transformation is 'quantile'.
         Ignored when ``transformation`` is not True.
 
-    
-    handle_unknown_categorical: bool, default = True
-        When set to True, unknown categorical levels in unseen data are replaced by the
-        most or least frequent level as learned in the training dataset. 
+
+    normalize: bool, default = False
+        When set to True, it transforms the features by scaling them to a given
+        range. Type of scaling is defined by the ``normalize_method`` parameter.
 
 
-    unknown_categorical_method: str, default = 'least_frequent'
-        Method used to replace unknown categorical levels in unseen data. Method can be
-        set to 'least_frequent' or 'most_frequent'.
+    normalize_method: str, default = 'zscore'
+        Defines the method for scaling. By default, normalize method is set to 'zscore'
+        The standard zscore is calculated as z = (x - u) / s. Ignored when ``normalize``
+        is not True. The other options are:
+
+        - minmax: scales and translates each feature individually such that it is in
+          the range of 0 - 1.
+        - maxabs: scales and translates each feature individually such that the
+          maximal absolute value of each feature will be 1.0. It does not
+          shift/center the data, and thus does not destroy any sparsity.
+        - robust: scales and translates each feature according to the Interquartile
+          range. When the dataset contains outliers, robust scaler often gives
+          better results.
 
 
     pca: bool, default = False
-        When set to True, dimensionality reduction is applied to project the data into 
-        a lower dimensional space using the method defined in ``pca_method`` parameter. 
-        
+        When set to True, dimensionality reduction is applied to project the data into
+        a lower dimensional space using the method defined in ``pca_method`` parameter.
+
 
     pca_method: str, default = 'linear'
-        The 'linear' method performs uses Singular Value  Decomposition. Other options are:
-        
-        - kernel: dimensionality reduction through the use of RBF kernel.
-        - incremental: replacement for 'linear' pca when the dataset is too large.
+        Method with which to apply PCA. Possible values are:
+            - 'linear': Uses Singular Value  Decomposition.
+            - kernel: Dimensionality reduction through the use of RBF kernel.
+            - incremental: Similar to 'linear', but more efficient for large datasets.
 
 
-    pca_components: int or float, default = None
-        Number of components to keep. if pca_components is a float, it is treated as a 
-        target percentage for information retention. When pca_components is an integer
-        it is treated as the number of features to be kept. pca_components must be less
-        than the original number of features. Ignored when ``pca`` is not True.
+    pca_components: int or float, default = 1.0
+        Number of components to keep. If >1, it selects that number of
+        components. If <= 1, it selects that fraction of components from
+        the original features. The value must be smaller than the number
+        of original features. This parameter is ignored when `pca=False`.
 
 
-    ignore_low_variance: bool, default = False
-        When set to True, all categorical features with insignificant variances are 
-        removed from the data. The variance is calculated using the ratio of unique 
-        values to the number of samples, and the ratio of the most common value to the 
-        frequency of the second most common value.
-
-    
-    combine_rare_levels: bool, default = False
-        When set to True, frequency percentile for levels in categorical features below 
-        a certain threshold is combined into a single level.
-
-    
-    rare_level_threshold: float, default = 0.1
-        Percentile distribution below which rare categories are combined. Ignored when
-        ``combine_rare_levels`` is not True.
-
-    
-    bin_numeric_features: list of str, default = None
-        To convert numeric features into categorical, bin_numeric_features parameter can 
-        be used. It takes a list of strings with column names to be discretized. It does
-        so by using 'sturges' rule to determine the number of clusters and then apply
-        KMeans algorithm. Original values of the feature are then replaced by the
-        cluster label.
-
-
-    remove_multicollinearity: bool, default = False
-        When set to True, features with the inter-correlations higher than the defined 
-        threshold are removed. Only considers numeric features.
-
-
-    multicollinearity_threshold: float, default = 0.9
-        Threshold for correlated features. Ignored when ``remove_multicollinearity``
-        is not True.
-
-    
-    remove_perfect_collinearity: bool, default = True
-        When set to True, perfect collinearity (features with correlation = 1) is removed
-        from the dataset, when two features are 100% correlated, one of it is randomly 
-        removed from the dataset.
-
-
-    group_features: list or list of list, default = None
-        When the dataset contains features with related characteristics, group_features
-        parameter can be used for feature extraction. It takes a list of strings with 
-        column names that are related.
-
-        
-    group_names: list, default = None
-        Group names to be used in naming new features. When the length of group_names 
-        does not match with the length of ``group_features``, new features are named 
-        sequentially group_1, group_2, etc. It is ignored when ``group_features`` is
-        None.
+    custom_pipeline: (str, transformer), list of (str, transformer) or dict, default = None
+        Addidiotnal custom transformers. If passed, they are applied to the
+        pipeline last, after all the build-in transformers.
 
 
     n_jobs: int, default = -1
-        The number of jobs to run in parallel (for functions that supports parallel 
-        processing) -1 means using all processors. To run all functions on single 
+        The number of jobs to run in parallel (for functions that supports parallel
+        processing) -1 means using all processors. To run all functions on single
         processor set n_jobs to None.
 
 
     use_gpu: bool or str, default = False
-        When set to True, it will use GPU for training with algorithms that support it, 
+        When set to True, it will use GPU for training with algorithms that support it,
         and fall back to CPU if they are unavailable. When set to 'force', it will only
-        use GPU-enabled algorithms and raise exceptions when they are unavailable. When 
+        use GPU-enabled algorithms and raise exceptions when they are unavailable. When
         False, all algorithms are trained using CPU only.
 
         GPU enabled algorithms:
 
-        - Kmeans, DBSCAN, requires cuML >= 0.15 
-          https://github.com/rapidsai/cuml
-
-
-    custom_pipeline: (str, transformer) or list of (str, transformer), default = None
-        When passed, will append the custom transformers in the preprocessing pipeline
-        and are applied on each CV fold separately and on the final fit. All the custom
-        transformations are applied before pycaret's internal transformations. 
+        - None at this moment.
 
 
     html: bool, default = True
         When set to False, prevents runtime display of monitor. This must be set to False
         when the environment does not support IPython. For example, command line terminal,
-        Databricks Notebook, Spyder and other similar IDEs. 
+        Databricks Notebook, Spyder and other similar IDEs.
 
 
     session_id: int, default = None
         Controls the randomness of experiment. It is equivalent to 'random_state' in
-        scikit-learn. When None, a pseudo random number is generated. This can be used 
+        scikit-learn. When None, a pseudo random number is generated. This can be used
         for later reproducibility of the entire experiment.
 
 
@@ -341,29 +334,41 @@ def setup(
         Name of the experiment for logging. Ignored when ``log_experiment`` is not True.
 
 
+    experiment_custom_tags: dict, default = None
+        Dictionary of tag_name: String -> value: (String, but will be string-ified
+        if not) passed to the mlflow.set_tags to add new custom tags for the experiment.
+
+
     log_plots: bool or list, default = False
-        When set to True, certain plots are logged automatically in the ``MLFlow`` server. 
+        When set to True, certain plots are logged automatically in the ``MLFlow`` server.
         To change the type of plots to be logged, pass a list containing plot IDs. Refer
         to documentation of ``plot_model``. Ignored when ``log_experiment`` is not True.
 
 
     log_profile: bool, default = False
         When set to True, data profile is logged on the ``MLflow`` server as a html file.
-        Ignored when ``log_experiment`` is not True. 
+        Ignored when ``log_experiment`` is not True.
 
 
     log_data: bool, default = False
         When set to True, dataset is logged on the ``MLflow`` server as a csv file.
         Ignored when ``log_experiment`` is not True.
-        
+
 
     silent: bool, default = False
         Controls the confirmation input of data types when ``setup`` is executed. When
         executing in completely automated mode or on a remote kernel, this must be True.
 
-    
+
     verbose: bool, default = True
         When set to False, Information grid is not printed.
+
+
+    memory: str, bool or Memory, default=True
+        Used to cache the fitted transformers of the pipeline.
+            If False: No caching is performed.
+            If True: A default temp directory is used.
+            If str: Path to the caching directory.
 
 
     profile: bool, default = False
@@ -384,51 +389,51 @@ def setup(
     set_current_experiment(exp)
     return exp.setup(
         data=data,
+        ordinal_features=ordinal_features,
+        numeric_features=numeric_features,
+        categorical_features=categorical_features,
+        date_features=date_features,
+        text_features=text_features,
+        ignore_features=ignore_features,
+        keep_features=keep_features,
         preprocess=preprocess,
         imputation_type=imputation_type,
-        iterative_imputation_iters=iterative_imputation_iters,
-        categorical_features=categorical_features,
-        categorical_imputation=categorical_imputation,
-        categorical_iterative_imputer=categorical_iterative_imputer,
-        ordinal_features=ordinal_features,
-        high_cardinality_features=high_cardinality_features,
-        high_cardinality_method=high_cardinality_method,
-        numeric_features=numeric_features,
         numeric_imputation=numeric_imputation,
-        numeric_iterative_imputer=numeric_iterative_imputer,
-        date_features=date_features,
-        ignore_features=ignore_features,
-        normalize=normalize,
-        normalize_method=normalize_method,
+        categorical_imputation=categorical_imputation,
+        text_features_method=text_features_method,
+        max_encoding_ohe=max_encoding_ohe,
+        encoding_method=encoding_method,
+        polynomial_features=polynomial_features,
+        polynomial_degree=polynomial_degree,
+        low_variance_threshold=low_variance_threshold,
+        remove_multicollinearity=remove_multicollinearity,
+        multicollinearity_threshold=multicollinearity_threshold,
+        bin_numeric_features=bin_numeric_features,
+        remove_outliers=remove_outliers,
+        outliers_method=outliers_method,
+        outliers_threshold=outliers_threshold,
         transformation=transformation,
         transformation_method=transformation_method,
-        handle_unknown_categorical=handle_unknown_categorical,
-        unknown_categorical_method=unknown_categorical_method,
+        normalize=normalize,
+        normalize_method=normalize_method,
         pca=pca,
         pca_method=pca_method,
         pca_components=pca_components,
-        ignore_low_variance=ignore_low_variance,
-        combine_rare_levels=combine_rare_levels,
-        rare_level_threshold=rare_level_threshold,
-        bin_numeric_features=bin_numeric_features,
-        remove_multicollinearity=remove_multicollinearity,
-        multicollinearity_threshold=multicollinearity_threshold,
-        remove_perfect_collinearity=remove_perfect_collinearity,
-        group_features=group_features,
-        group_names=group_names,
+        custom_pipeline=custom_pipeline,
         n_jobs=n_jobs,
         use_gpu=use_gpu,
-        custom_pipeline=custom_pipeline,
         html=html,
         session_id=session_id,
         system_log=system_log,
         log_experiment=log_experiment,
         experiment_name=experiment_name,
+        experiment_custom_tags=experiment_custom_tags,
         log_plots=log_plots,
         log_profile=log_profile,
         log_data=log_data,
         silent=silent,
         verbose=verbose,
+        memory=memory,
         profile=profile,
         profile_kwargs=profile_kwargs,
     )
@@ -442,6 +447,7 @@ def create_model(
     round: int = 4,
     fit_kwargs: Optional[dict] = None,
     verbose: bool = True,
+    experiment_custom_tags: Optional[Dict[str, Any]] = None,
     **kwargs,
 ):
 
@@ -500,6 +506,11 @@ def create_model(
         Status update is not printed when verbose is set to False.
 
 
+    experiment_custom_tags: dict, default = None
+        Dictionary of tag_name: String -> value: (String, but will be string-ified
+        if not) passed to the mlflow.set_tags to add new custom tags for the experiment.
+
+
     **kwargs: 
         Additional keyword arguments to pass to the estimator.
 
@@ -533,6 +544,7 @@ def create_model(
         round=round,
         fit_kwargs=fit_kwargs,
         verbose=verbose,
+        experiment_custom_tags=experiment_custom_tags,
         **kwargs,
     )
 
@@ -1080,7 +1092,7 @@ def load_model(
         dictionary of applicable authentication tokens.
 
         when platform = 'aws':
-        {'bucket' : 'S3-bucket-name'}
+        {'bucket' : 'Name of Bucket on S3', 'path': (optional) folder name under the bucket}
 
         when platform = 'gcp':
         {'project': 'gcp-project-name', 'bucket' : 'gcp-bucket-name'}
@@ -1333,10 +1345,14 @@ def get_config(variable: str):
     This function retrieves the global variables created when initializing the 
     ``setup`` function. Following variables are accessible:
 
-    - X: Transformed dataset (X)
-    - data_before_preprocess: data before preprocessing
+    - dataset: Transformed dataset
+    - train: Transformed training set
+    - test: Transformed test set
+    - X: Transformed feature set
+    - y: Transformed target column
+    - X_train, X_test, y_train, y_test: Subsets of the train and test sets.
     - seed: random state set through session_id
-    - prep_pipe: Transformation pipeline configured through setup
+    - pipeline: Transformation pipeline configured through setup
     - n_jobs_param: n_jobs parameter used in model training
     - html_param: html_param configured through setup
     - master_model_container: model storage container
@@ -1481,8 +1497,8 @@ def get_clusters(
     unknown_categorical_method: str = "least_frequent",
     pca: bool = False,
     pca_method: str = "linear",
-    pca_components: Optional[float] = None,
-    ignore_low_variance: bool = False,
+    pca_components: Union[int, float] = 1.0,
+    low_variance_threshold: float = 0,
     combine_rare_levels: bool = False,
     rare_level_threshold: float = 0.10,
     bin_numeric_features: Optional[List[str]] = None,
@@ -1532,7 +1548,7 @@ def get_clusters(
         pca=pca,
         pca_method=pca_method,
         pca_components=pca_components,
-        ignore_low_variance=ignore_low_variance,
+        low_variance_threshold=low_variance_threshold,
         combine_rare_levels=combine_rare_levels,
         rare_level_threshold=rare_level_threshold,
         bin_numeric_features=bin_numeric_features,

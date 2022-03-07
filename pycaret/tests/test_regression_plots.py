@@ -3,7 +3,6 @@ import os, sys
 sys.path.insert(0, os.path.abspath(".."))
 
 import pandas as pd
-import pytest
 import pycaret.regression
 import pycaret.datasets
 
@@ -11,7 +10,7 @@ import pycaret.datasets
 def test():
     # loading dataset
     data = pycaret.datasets.get_data("boston")
-    assert isinstance(data, pd.core.frame.DataFrame)
+    assert isinstance(data, pd.DataFrame)
 
     # init setup
     reg1 = pycaret.regression.setup(
@@ -57,7 +56,7 @@ def test():
         for plot in available_shap:
             pycaret.regression.interpret_model(model, plot=plot)
             pycaret.regression.interpret_model(
-                model, plot=plot, X_new_sample=data.iloc[:10]
+                model, plot=plot, X_new_sample=data.drop("medv", axis=1).iloc[:10]
             )
 
     assert 1 == 1

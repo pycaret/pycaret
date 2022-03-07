@@ -1,18 +1,21 @@
 # Module: Classification
 # Author: Moez Ali <moez.ali@queensu.ca>
 # License: MIT
-# Release: PyCaret 2.2.0
-# Last modified : 25/10/2020
 
 import logging
-import pandas as pd
+import warnings
 import numpy as np
+import pandas as pd
+from joblib.memory import Memory
+from typing import List, Tuple, Any, Union, Optional, Dict, Callable
 
+# Own modules
+import pycaret.internal.tabular
+from pycaret.parallel import ParallelBackend
+from pycaret.internal.Display import Display, is_in_colab, enable_colab
 from pycaret.internal.pycaret_experiment import ClassificationExperiment
 from pycaret.internal.utils import check_if_global_is_not_none
 
-from typing import List, Tuple, Any, Union, Optional, Dict
-import warnings
 
 warnings.filterwarnings("ignore")
 
@@ -27,58 +30,50 @@ _CURRENT_EXPERIMENT_DECORATOR_DICT = {
 
 
 def setup(
-    data: pd.DataFrame,
-    target: str,
+    data: Union[np.array, pd.DataFrame],
+    target: Union[int, str] = -1,
     train_size: float = 0.7,
     test_data: Optional[pd.DataFrame] = None,
-    preprocess: bool = True,
-    imputation_type: str = "simple",
-    iterative_imputation_iters: int = 5,
-    categorical_features: Optional[List[str]] = None,
-    categorical_imputation: str = "constant",
-    categorical_iterative_imputer: Union[str, Any] = "lightgbm",
     ordinal_features: Optional[Dict[str, list]] = None,
-    high_cardinality_features: Optional[List[str]] = None,
-    high_cardinality_method: str = "frequency",
     numeric_features: Optional[List[str]] = None,
-    numeric_imputation: str = "mean",
-    numeric_iterative_imputer: Union[str, Any] = "lightgbm",
+    categorical_features: Optional[List[str]] = None,
     date_features: Optional[List[str]] = None,
+    text_features: Optional[List[str]] = None,
     ignore_features: Optional[List[str]] = None,
-    normalize: bool = False,
-    normalize_method: str = "zscore",
-    transformation: bool = False,
-    transformation_method: str = "yeo-johnson",
-    handle_unknown_categorical: bool = True,
-    unknown_categorical_method: str = "least_frequent",
-    pca: bool = False,
-    pca_method: str = "linear",
-    pca_components: Optional[float] = None,
-    ignore_low_variance: bool = False,
-    combine_rare_levels: bool = False,
-    rare_level_threshold: float = 0.10,
-    bin_numeric_features: Optional[List[str]] = None,
-    remove_outliers: bool = False,
-    outliers_threshold: float = 0.05,
-    remove_multicollinearity: bool = False,
-    multicollinearity_threshold: float = 0.9,
-    remove_perfect_collinearity: bool = True,
-    create_clusters: bool = False,
-    cluster_iter: int = 20,
+    keep_features: Optional[List[str]] = None,
+    preprocess: bool = True,
+    imputation_type: Optional[str] = "simple",
+    numeric_imputation: str = "mean",
+    categorical_imputation: str = "constant",
+    iterative_imputation_iters: int = 5,
+    numeric_iterative_imputer: Union[str, Any] = "lightgbm",
+    categorical_iterative_imputer: Union[str, Any] = "lightgbm",
+    text_features_method: str = "tf-idf",
+    max_encoding_ohe: int = 5,
+    encoding_method: Optional[Any] = None,
     polynomial_features: bool = False,
     polynomial_degree: int = 2,
-    trigonometry_features: bool = False,
-    polynomial_threshold: float = 0.1,
-    group_features: Optional[List[str]] = None,
-    group_names: Optional[List[str]] = None,
-    feature_selection: bool = False,
-    feature_selection_threshold: float = 0.8,
-    feature_selection_method: str = "classic",
-    feature_interaction: bool = False,
-    feature_ratio: bool = False,
-    interaction_threshold: float = 0.01,
+    low_variance_threshold: float = 0,
+    remove_multicollinearity: bool = False,
+    multicollinearity_threshold: float = 0.9,
+    bin_numeric_features: Optional[List[str]] = None,
+    remove_outliers: bool = False,
+    outliers_method: str = "iforest",
+    outliers_threshold: float = 0.05,
     fix_imbalance: bool = False,
     fix_imbalance_method: Optional[Any] = None,
+    transformation: bool = False,
+    transformation_method: str = "yeo-johnson",
+    normalize: bool = False,
+    normalize_method: str = "zscore",
+    pca: bool = False,
+    pca_method: str = "linear",
+    pca_components: Union[int, float] = 1.0,
+    feature_selection: bool = False,
+    feature_selection_method: str = "classic",
+    feature_selection_estimator: Union[str, Any] = "lightgbm",
+    n_features_to_select: int = 10,
+    custom_pipeline: Any = None,
     data_split_shuffle: bool = True,
     data_split_stratify: Union[bool, List[str]] = False,
     fold_strategy: Union[str, Any] = "stratifiedkfold",
@@ -87,19 +82,18 @@ def setup(
     fold_groups: Optional[Union[str, pd.DataFrame]] = None,
     n_jobs: Optional[int] = -1,
     use_gpu: bool = False,
-    custom_pipeline: Union[
-        Any, Tuple[str, Any], List[Any], List[Tuple[str, Any]]
-    ] = None,
     html: bool = True,
     session_id: Optional[int] = None,
     system_log: Union[bool, logging.Logger] = True,
     log_experiment: bool = False,
     experiment_name: Optional[str] = None,
+    experiment_custom_tags: Optional[Dict[str, Any]] = None,
     log_plots: Union[bool, list] = False,
     log_profile: bool = False,
     log_data: bool = False,
     silent: bool = False,
     verbose: bool = True,
+    memory: Union[bool, str, Memory] = True,
     profile: bool = False,
     profile_kwargs: Dict[str, Any] = None,
 ):
@@ -118,14 +112,14 @@ def setup(
     >>> exp_name = setup(data = juice,  target = 'Purchase')
 
 
-    data: pandas.DataFrame
-        Shape (n_samples, n_features), where n_samples is the number of samples and
+    data: dataframe-like
+        Shape (n_samples, n_features), where n_samples is the number of samples and 
         n_features is the number of features.
 
 
-    target: str
-        Name of the target column to be passed in as a string. The target variable can
-        be either binary or multiclass.
+    target: int or str, default = -1
+        Name or index of the target column. The default value selects the last
+        column in the dataset. The target can be either binary or multiclass.
 
 
     train_size: float, default = 0.7
@@ -139,6 +133,48 @@ def setup(
         match.
 
 
+    ordinal_features: dict, default = None
+        Categorical features to be encoded ordinally. For example, a categorical
+        feature with 'low', 'medium', 'high' values where low < medium < high can
+        be passed as ordinal_features = {'column_name' : ['low', 'medium', 'high']}.
+
+
+    numeric_features: list of str, default = None
+        If the inferred data types are not correct, the numeric_features param can
+        be used to define the data types. It takes a list of strings with column
+        names that are numeric.
+
+
+    categorical_features: list of str, default = None
+        If the inferred data types are not correct, the categorical_features param
+        can be used to define the data types. It takes a list of strings with column
+        names that are categorical.
+
+
+    date_features: list of str, default = None
+        If the inferred data types are not correct, the date_features param can be
+        used to overwrite the data types. It takes a list of strings with column
+        names that are DateTime.
+
+
+    text_features: list of str, default = None
+        Column names that contain a text corpus. If None, no text features are
+        selected.
+
+
+    ignore_features: list of str, default = None
+        ignore_features param can be used to ignore features during preprocessing
+        and model training. It takes a list of strings with column names that are
+        to be ignored.
+
+
+    keep_features: list of str, default = None
+        keep_features param can be used to always keep specific features during
+        preprocessing, i.e. these features are never dropped by any kind of
+        feature selection. It takes a list of strings with column names that are
+        to be kept.
+
+
     preprocess: bool, default = True
         When set to False, no transformations are applied except for train_test_split
         and custom transformations passed in ``custom_pipeline`` param. Data must be
@@ -146,55 +182,9 @@ def setup(
         when preprocess is set to False.
 
 
-    imputation_type: str, default = 'simple'
+    imputation_type: str or None, default = 'simple'
         The type of imputation to use. Can be either 'simple' or 'iterative'.
-
-
-    iterative_imputation_iters: int, default = 5
-        Number of iterations. Ignored when ``imputation_type`` is not 'iterative'.
-
-
-    categorical_features: list of str, default = None
-        If the inferred data types are not correct or the silent param is set to True,
-        categorical_features param can be used to overwrite or define the data types.
-        It takes a list of strings with column names that are categorical.
-
-
-    categorical_imputation: str, default = 'constant'
-        Missing values in categorical features are imputed with a constant 'not_available'
-        value. The other available option is 'mode'.
-
-
-    categorical_iterative_imputer: str, default = 'lightgbm'
-        Estimator for iterative imputation of missing values in categorical features.
-        Ignored when ``imputation_type`` is not 'iterative'.
-
-
-    ordinal_features: dict, default = None
-        Encode categorical features as ordinal. For example, a categorical feature with
-        'low', 'medium', 'high' values where low < medium < high can be passed as
-        ordinal_features = { 'column_name' : ['low', 'medium', 'high'] }.
-
-
-    high_cardinality_features: list of str, default = None
-        When categorical features contains many levels, it can be compressed into fewer
-        levels using this parameter. It takes a list of strings with column names that
-        are categorical.
-
-
-    high_cardinality_method: str, default = 'frequency'
-        Categorical features with high cardinality are replaced with the frequency of
-        values in each level occurring in the training dataset. Other available method
-        is 'clustering' which trains the K-Means clustering algorithm on the statistical
-        attribute of the training data and replaces the original value of feature with the
-        cluster label. The number of clusters is determined by optimizing Calinski-Harabasz
-        and Silhouette criterion.
-
-
-    numeric_features: list of str, default = None
-        If the inferred data types are not correct or the silent param is set to True,
-        numeric_features param can be used to overwrite or define the data types.
-        It takes a list of strings with column names that are numeric.
+        If None, no imputation of missing values is performed.
 
 
     numeric_imputation: str, default = 'mean'
@@ -202,24 +192,125 @@ def setup(
         in the training dataset. The other available option is 'median' or 'zero'.
 
 
-    numeric_iterative_imputer: str, default = 'lightgbm'
-        Estimator for iterative imputation of missing values in numeric features.
-        Ignored when ``imputation_type`` is set to 'simple'.
+    categorical_imputation: str, default = 'constant'
+        Missing values in categorical features are imputed with a constant 'not_available'
+        value. The other available option is 'mode'.
 
 
-    date_features: list of str, default = None
-        If the inferred data types are not correct or the silent param is set to True,
-        date_features param can be used to overwrite or define the data types. It takes
-        a list of strings with column names that are DateTime.
+    iterative_imputation_iters: int, default = 5
+        Number of iterations. Ignored when ``imputation_type=simple``.
 
 
-    ignore_features: list of str, default = None
-        ignore_features param can be used to ignore features during model training.
-        It takes a list of strings with column names that are to be ignored.
+    numeric_iterative_imputer: str or sklearn estimator, default = 'lightgbm'
+        Regressor for iterative imputation of missing values in numeric features.
+        If None, it uses LGBClassifier. Ignored when ``imputation_type=simple``.
+
+
+    categorical_iterative_imputer: str or sklearn estimator, default = 'lightgbm'
+        Regressor for iterative imputation of missing values in categorical features.
+        If None, it uses LGBClassifier. Ignored when ``imputation_type=simple``.
+
+
+    text_features_method: str, default = "tf-idf"
+        Method with which to embed the text features in the dataset. Choose
+        between "bow" (Bag of Words - CountVectorizer) or "tf-idf" (TfidfVectorizer).
+        Be aware that the sparse matrix output of the transformer is converted
+        internally to its full array. This can cause memory issues for large
+        text embeddings.
+
+
+    max_encoding_ohe: int, default = 5
+        Categorical columns with `max_encoding_ohe` or less unique values are
+        encoded using OneHotEncoding. If more, the `encoding_method` estimator
+        is used. Note that columns with exactly two classes are always encoded
+        ordinally.
+
+
+    encoding_method: category-encoders estimator, default = None
+        A `category-encoders` estimator to encode the categorical columns
+        with more than `max_encoding_ohe` unique values. If None,
+        `category_encoders.leave_one_out.LeaveOneOutEncoder` is used.
+
+
+    polynomial_features: bool, default = False
+        When set to True, new features are derived using existing numeric features.
+
+
+    polynomial_degree: int, default = 2
+        Degree of polynomial features. For example, if an input sample is two dimensional
+        and of the form [a, b], the polynomial features with degree = 2 are:
+        [1, a, b, a^2, ab, b^2]. Ignored when ``polynomial_features`` is not True.
+
+
+    low_variance_threshold: float or None, default = 0
+        Remove features with a training-set variance lower than the provided
+        threshold. The default is to keep all features with non-zero variance,
+        i.e. remove the features that have the same value in all samples. If
+        None, skip this treansformation step.
+
+
+    remove_multicollinearity: bool, default = False
+        When set to True, features with the inter-correlations higher than the defined
+        threshold are removed. When two features are highly correlated with each other,
+        the feature that is less correlated with the target variable is removed. Only
+        considers numeric features.
+
+    multicollinearity_threshold: float, default = 0.9
+        Threshold for correlated features. Ignored when ``remove_multicollinearity``
+        is not True.
+
+
+    bin_numeric_features: list of str, default = None
+        To convert numeric features into categorical, bin_numeric_features parameter can
+        be used. It takes a list of strings with column names to be discretized. It does
+        so by using 'sturges' rule to determine the number of clusters and then apply
+        KMeans algorithm. Original values of the feature are then replaced by the
+        cluster label.
+
+
+    remove_outliers: bool, default = False
+        When set to True, outliers from the training data are removed using an
+        Isolation Forest.
+
+
+    outliers_method: str, default = "iforest"
+        Method with which to remove outliers. Ignored when `remove_outliers=False`.
+        Possible values are:
+            - 'iforest': Uses sklearn's IsolationForest.
+            - 'ee': Uses sklearn's EllipticEnvelope.
+            - 'lof': Uses sklearn's LocalOutlierFactor.
+
+
+    outliers_threshold: float, default = 0.05
+        The percentage of outliers to be removed from the dataset. Ignored
+        when ``remove_outliers=False``.
+
+
+    fix_imbalance: bool, default = False
+        When training dataset has unequal distribution of target class it can be balanced
+        using this parameter. When set to True, SMOTE (Synthetic Minority Over-sampling
+        Technique) is applied by default to create synthetic datapoints for minority class.
+
+
+    fix_imbalance_method: imblearn estimator, default = None
+        When ``fix_imbalance`` is True, `imblearn` compatible estimator with a
+        `fit_resample` method can be passed. If None, `imblearn.over_sampling.SMOTE`
+        is used.
+
+
+    transformation: bool, default = False
+        When set to True, it applies the power transform to make data more Gaussian-like.
+        Type of transformation is defined by the ``transformation_method`` parameter.
+
+
+    transformation_method: str, default = 'yeo-johnson'
+        Defines the method for transformation. By default, the transformation method is
+        set to 'yeo-johnson'. The other available option for transformation is 'quantile'.
+        Ignored when ``transformation`` is not True.
 
 
     normalize: bool, default = False
-        When set to True, it transforms the numeric features by scaling them to a given
+        When set to True, it transforms the features by scaling them to a given
         range. Type of scaling is defined by the ``normalize_method`` parameter.
 
 
@@ -238,194 +329,53 @@ def setup(
           better results.
 
 
-    transformation: bool, default = False
-        When set to True, it applies the power transform to make data more Gaussian-like.
-        Type of transformation is defined by the ``transformation_method`` parameter.
-
-
-    transformation_method: str, default = 'yeo-johnson'
-        Defines the method for transformation. By default, the transformation method is
-        set to 'yeo-johnson'. The other available option for transformation is 'quantile'.
-        Ignored when ``transformation`` is not True.
-
-
-    handle_unknown_categorical: bool, default = True
-        When set to True, unknown categorical levels in unseen data are replaced by the
-        most or least frequent level as learned in the training dataset.
-
-
-    unknown_categorical_method: str, default = 'least_frequent'
-        Method used to replace unknown categorical levels in unseen data. Method can be
-        set to 'least_frequent' or 'most_frequent'.
-
-
     pca: bool, default = False
         When set to True, dimensionality reduction is applied to project the data into
         a lower dimensional space using the method defined in ``pca_method`` parameter.
 
 
     pca_method: str, default = 'linear'
-        The 'linear' method performs uses Singular Value  Decomposition. Other options are:
-
-        - kernel: dimensionality reduction through the use of RBF kernel.
-        - incremental: replacement for 'linear' pca when the dataset is too large.
-
-
-    pca_components: int or float, default = None
-        Number of components to keep. if pca_components is a float, it is treated as a
-        target percentage for information retention. When pca_components is an integer
-        it is treated as the number of features to be kept. pca_components must be less
-        than the original number of features. Ignored when ``pca`` is not True.
+        Method with which to apply PCA. Possible values are:
+            - 'linear': Uses Singular Value  Decomposition.
+            - kernel: Dimensionality reduction through the use of RBF kernel.
+            - incremental: Similar to 'linear', but more efficient for large datasets.
 
 
-    ignore_low_variance: bool, default = False
-        When set to True, all categorical features with insignificant variances are
-        removed from the data. The variance is calculated using the ratio of unique
-        values to the number of samples, and the ratio of the most common value to the
-        frequency of the second most common value.
-
-
-    combine_rare_levels: bool, default = False
-        When set to True, frequency percentile for levels in categorical features below
-        a certain threshold is combined into a single level.
-
-
-    rare_level_threshold: float, default = 0.1
-        Percentile distribution below which rare categories are combined. Ignored when
-        ``combine_rare_levels`` is not True.
-
-
-    bin_numeric_features: list of str, default = None
-        To convert numeric features into categorical, bin_numeric_features parameter can
-        be used. It takes a list of strings with column names to be discretized. It does
-        so by using 'sturges' rule to determine the number of clusters and then apply
-        KMeans algorithm. Original values of the feature are then replaced by the
-        cluster label.
-
-
-    remove_outliers: bool, default = False
-        When set to True, outliers from the training data are removed using the Singular
-        Value Decomposition.
-
-
-    outliers_threshold: float, default = 0.05
-        The percentage outliers to be removed from the training dataset. Ignored when
-        ``remove_outliers`` is not True.
-
-
-    remove_multicollinearity: bool, default = False
-        When set to True, features with the inter-correlations higher than the defined
-        threshold are removed. When two features are highly correlated with each other,
-        the feature that is less correlated with the target variable is removed. Only
-        considers numeric features.
-
-    multicollinearity_threshold: float, default = 0.9
-        Threshold for correlated features. Ignored when ``remove_multicollinearity``
-        is not True.
-
-
-    remove_perfect_collinearity: bool, default = True
-        When set to True, perfect collinearity (features with correlation = 1) is removed
-        from the dataset, when two features are 100% correlated, one of it is randomly
-        removed from the dataset.
-
-
-    create_clusters: bool, default = False
-        When set to True, an additional feature is created in training dataset where each
-        instance is assigned to a cluster. The number of clusters is determined by
-        optimizing Calinski-Harabasz and Silhouette criterion.
-
-
-    cluster_iter: int, default = 20
-        Number of iterations for creating cluster. Each iteration represents cluster
-        size. Ignored when ``create_clusters`` is not True.
-
-
-    polynomial_features: bool, default = False
-        When set to True, new features are derived using existing numeric features.
-
-
-    polynomial_degree: int, default = 2
-        Degree of polynomial features. For example, if an input sample is two dimensional
-        and of the form [a, b], the polynomial features with degree = 2 are:
-        [1, a, b, a^2, ab, b^2]. Ignored when ``polynomial_features`` is not True.
-
-
-    trigonometry_features: bool, default = False
-        When set to True, new features are derived using existing numeric features.
-
-
-    polynomial_threshold: float, default = 0.1
-        When ``polynomial_features`` or ``trigonometry_features`` is True, new features
-        are derived from the existing numeric features. This may sometimes result in too
-        large feature space. polynomial_threshold parameter can be used to deal with this
-        problem. It does so by using combination of Random Forest, AdaBoost and Linear
-        correlation. All derived features that falls within the percentile distribution
-        are kept and rest of the features are removed.
-
-
-    group_features: list or list of list, default = None
-        When the dataset contains features with related characteristics, group_features
-        parameter can be used for feature extraction. It takes a list of strings with
-        column names that are related.
-
-
-    group_names: list, default = None
-        Group names to be used in naming new features. When the length of group_names
-        does not match with the length of ``group_features``, new features are named
-        sequentially group_1, group_2, etc. It is ignored when ``group_features`` is
-        None.
+    pca_components: int or float, default = 1.0
+        Number of components to keep. If >1, it selects that number of
+        components. If <= 1, it selects that fraction of components from
+        the original features. The value must be smaller than the number
+        of original features. This parameter is ignored when `pca=False`.
 
 
     feature_selection: bool, default = False
-        When set to True, a subset of features are selected using a combination of
-        various permutation importance techniques including Random Forest, Adaboost
-        and Linear correlation with target variable. The size of the subset is
-        dependent on the ``feature_selection_threshold`` parameter.
-
-
-    feature_selection_threshold: float, default = 0.8
-        Threshold value used for feature selection. When ``polynomial_features`` or
-        ``feature_interaction`` is True, it is recommended to keep the threshold low
-        to avoid large feature spaces. Setting a very low value may be efficient but
-        could result in under-fitting.
+        When set to True, a subset of features is selected based on a feature
+        importance score determined by ``feature_selection_estimator``.
 
 
     feature_selection_method: str, default = 'classic'
-        Algorithm for feature selection. 'classic' method uses permutation feature
-        importance techniques. Other possible value is 'boruta' which uses boruta
-        algorithm for feature selection.
+        Algorithm for feature selection. Choose from:
+            - 'univariate': Uses sklearn's SelectKBest.
+            - 'classic': Uses sklearn's SelectFromModel.
+            - 'sequential': Uses sklearn's SequtnailFeatureSelector.
 
 
-    feature_interaction: bool, default = False
-        When set to True, new features are created by interacting (a * b) all the
-        numeric variables in the dataset. This feature is not scalable and may not
-        work as expected on datasets with large feature space.
+    feature_selection_estimator: str or sklearn estimator, default = 'lightgbm'
+        Classifier used to determine the feature importances. The
+        estimator should have a `feature_importances_` or `coef_`
+        attribute after fitting. If None, it uses LGBClassifier. This
+        parameter is ignored when `feature_selection_method=univariate`.
 
 
-    feature_ratio: bool, default = False
-        When set to True, new features are created by calculating the ratios (a / b)
-        between all numeric variables in the dataset. This feature is not scalable and
-        may not work as expected on datasets with large feature space.
+    n_features_to_select: int, default = 10
+        The number of features to select. Note that this parameter doesn't
+        take features in ``ignore_features`` or ``keep_features`` into account
+        when counting.
 
 
-    interaction_threshold: bool, default = 0.01
-        Similar to polynomial_threshold, It is used to compress a sparse matrix of newly
-        created features through interaction. Features whose importance based on the
-        combination  of  Random Forest, AdaBoost and Linear correlation falls within the
-        percentile of the  defined threshold are kept in the dataset. Remaining features
-        are dropped before further processing.
-
-
-    fix_imbalance: bool, default = False
-        When training dataset has unequal distribution of target class it can be balanced
-        using this parameter. When set to True, SMOTE (Synthetic Minority Over-sampling
-        Technique) is applied by default to create synthetic datapoints for minority class.
-
-
-    fix_imbalance_method: obj, default = None
-        When ``fix_imbalance`` is True, 'imblearn' compatible object with 'fit_resample'
-        method can be passed. When set to None, 'imblearn.over_sampling.SMOTE' is used.
+    custom_pipeline: (str, transformer), list of (str, transformer) or dict, default = None
+        Addidiotnal custom transformers. If passed, they are applied to the
+        pipeline last, after all the build-in transformers.
 
 
     data_split_shuffle: bool, default = True
@@ -494,13 +444,6 @@ def setup(
           https://github.com/rapidsai/cuml
 
 
-    custom_pipeline: (str, transformer) or list of (str, transformer), default = None
-        When passed, will append the custom transformers in the preprocessing pipeline
-        and are applied on each CV fold separately and on the final fit. All the custom
-        transformations are applied after 'train_test_split' and before pycaret's internal
-        transformations.
-
-
     html: bool, default = True
         When set to False, prevents runtime display of monitor. This must be set to False
         when the environment does not support IPython. For example, command line terminal,
@@ -524,6 +467,11 @@ def setup(
 
     experiment_name: str, default = None
         Name of the experiment for logging. Ignored when ``log_experiment`` is not True.
+
+
+    experiment_custom_tags: dict, default = None
+        Dictionary of tag_name: String -> value: (String, but will be string-ified
+        if not) passed to the mlflow.set_tags to add new custom tags for the experiment.
 
 
     log_plots: bool or list, default = False
@@ -551,6 +499,13 @@ def setup(
         When set to False, Information grid is not printed.
 
 
+    memory: str, bool or Memory, default=True
+        Used to cache the fitted transformers of the pipeline.
+            If False: No caching is performed.
+            If True: A default temp directory is used.
+            If str: Path to the caching directory.
+
+
     profile: bool, default = False
         When set to True, an interactive EDA report is displayed.
 
@@ -572,54 +527,46 @@ def setup(
         target=target,
         train_size=train_size,
         test_data=test_data,
+        ordinal_features=ordinal_features,
+        numeric_features=numeric_features,
+        categorical_features=categorical_features,
+        date_features=date_features,
+        text_features=text_features,
+        ignore_features=ignore_features,
+        keep_features=keep_features,
         preprocess=preprocess,
         imputation_type=imputation_type,
-        iterative_imputation_iters=iterative_imputation_iters,
-        categorical_features=categorical_features,
-        categorical_imputation=categorical_imputation,
-        categorical_iterative_imputer=categorical_iterative_imputer,
-        ordinal_features=ordinal_features,
-        high_cardinality_features=high_cardinality_features,
-        high_cardinality_method=high_cardinality_method,
-        numeric_features=numeric_features,
         numeric_imputation=numeric_imputation,
+        categorical_imputation=categorical_imputation,
+        iterative_imputation_iters=iterative_imputation_iters,
         numeric_iterative_imputer=numeric_iterative_imputer,
-        date_features=date_features,
-        ignore_features=ignore_features,
-        normalize=normalize,
-        normalize_method=normalize_method,
+        categorical_iterative_imputer=categorical_iterative_imputer,
+        text_features_method=text_features_method,
+        max_encoding_ohe=max_encoding_ohe,
+        encoding_method=encoding_method,
+        polynomial_features=polynomial_features,
+        polynomial_degree=polynomial_degree,
+        low_variance_threshold=low_variance_threshold,
+        remove_multicollinearity=remove_multicollinearity,
+        multicollinearity_threshold=multicollinearity_threshold,
+        bin_numeric_features=bin_numeric_features,
+        remove_outliers=remove_outliers,
+        outliers_method=outliers_method,
+        outliers_threshold=outliers_threshold,
+        fix_imbalance=fix_imbalance,
+        fix_imbalance_method=fix_imbalance_method,
         transformation=transformation,
         transformation_method=transformation_method,
-        handle_unknown_categorical=handle_unknown_categorical,
-        unknown_categorical_method=unknown_categorical_method,
+        normalize=normalize,
+        normalize_method=normalize_method,
         pca=pca,
         pca_method=pca_method,
         pca_components=pca_components,
-        ignore_low_variance=ignore_low_variance,
-        combine_rare_levels=combine_rare_levels,
-        rare_level_threshold=rare_level_threshold,
-        bin_numeric_features=bin_numeric_features,
-        remove_outliers=remove_outliers,
-        outliers_threshold=outliers_threshold,
-        remove_multicollinearity=remove_multicollinearity,
-        multicollinearity_threshold=multicollinearity_threshold,
-        remove_perfect_collinearity=remove_perfect_collinearity,
-        create_clusters=create_clusters,
-        cluster_iter=cluster_iter,
-        polynomial_features=polynomial_features,
-        polynomial_degree=polynomial_degree,
-        trigonometry_features=trigonometry_features,
-        polynomial_threshold=polynomial_threshold,
-        group_features=group_features,
-        group_names=group_names,
         feature_selection=feature_selection,
-        feature_selection_threshold=feature_selection_threshold,
         feature_selection_method=feature_selection_method,
-        feature_interaction=feature_interaction,
-        feature_ratio=feature_ratio,
-        interaction_threshold=interaction_threshold,
-        fix_imbalance=fix_imbalance,
-        fix_imbalance_method=fix_imbalance_method,
+        feature_selection_estimator=feature_selection_estimator,
+        n_features_to_select=n_features_to_select,
+        custom_pipeline=custom_pipeline,
         data_split_shuffle=data_split_shuffle,
         data_split_stratify=data_split_stratify,
         fold_strategy=fold_strategy,
@@ -628,17 +575,18 @@ def setup(
         fold_groups=fold_groups,
         n_jobs=n_jobs,
         use_gpu=use_gpu,
-        custom_pipeline=custom_pipeline,
         html=html,
         session_id=session_id,
         system_log=system_log,
         log_experiment=log_experiment,
         experiment_name=experiment_name,
+        experiment_custom_tags=experiment_custom_tags,
         log_plots=log_plots,
         log_profile=log_profile,
         log_data=log_data,
         silent=silent,
         verbose=verbose,
+        memory=memory,
         profile=profile,
         profile_kwargs=profile_kwargs,
     )
@@ -658,8 +606,10 @@ def compare_models(
     errors: str = "ignore",
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
+    experiment_custom_tags: Optional[Dict[str, Any]] = None,
     probability_threshold: Optional[float] = None,
     verbose: bool = True,
+    # parallel: Optional[ParallelBackend] = None,
 ) -> Union[Any, List[Any]]:
 
     """
@@ -742,9 +692,14 @@ def compare_models(
         as the column name in the dataset containing group labels.
 
 
+    experiment_custom_tags: dict, default = None
+        Dictionary of tag_name: String -> value: (String, but will be string-ified
+        if not) passed to the mlflow.set_tags to add new custom tags for the experiment.
+
+
     probability_threshold: float, default = None
         Threshold for converting predicted probability to class label.
-        It defaults to 0.5 for all classifiers unless explicitly defined 
+        It defaults to 0.5 for all classifiers unless explicitly defined
         in this parameter. Only applicable for binary classification.
 
 
@@ -752,8 +707,20 @@ def compare_models(
         Score grid is not printed when verbose is set to False.
 
 
+    display: pycaret.internal.Display.Display, default = None
+        Custom display object
+
+
+    parallel: pycaret.parallel.parallel_backend.ParallelBackend, default = None
+        A ParallelBackend instance. For example if you have a SparkSession ``session``,
+        you can use ``FugueBackend(session)`` to make this function running using
+        Spark. For more details, see
+        :class:`~pycaret.parallel.fugue_backend.FugueBackend`
+
+
     Returns:
         Trained model or list of trained models, depending on the ``n_select`` param.
+
 
     Warnings
     --------
@@ -764,6 +731,18 @@ def compare_models(
 
     - No models are logged in ``MLFlow`` when ``cross_validation`` parameter is False.
     """
+    #params = dict(locals())
+    parallel = None
+    if parallel is not None:
+        global _pycaret_setup_call
+        parallel.attach(_pycaret_setup_call["func"], _pycaret_setup_call["params"])
+        if params.get("include", None) is None:
+            _models = models()
+            if turbo:
+                _models = _models[_models.Turbo]
+            params["include"] = _models.index.tolist()
+        del params["parallel"]
+        return parallel.compare_models(compare_models, params)
 
     return _CURRENT_EXPERIMENT.compare_models(
         include=include,
@@ -778,6 +757,7 @@ def compare_models(
         errors=errors,
         fit_kwargs=fit_kwargs,
         groups=groups,
+        experiment_custom_tags=experiment_custom_tags,
         probability_threshold=probability_threshold,
         verbose=verbose,
     )
@@ -792,6 +772,7 @@ def create_model(
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
     probability_threshold: Optional[float] = None,
+    experiment_custom_tags: Optional[Dict[str, Any]] = None,
     verbose: bool = True,
     **kwargs,
 ) -> Any:
@@ -867,8 +848,13 @@ def create_model(
 
     probability_threshold: float, default = None
         Threshold for converting predicted probability to class label.
-        It defaults to 0.5 for all classifiers unless explicitly defined 
+        It defaults to 0.5 for all classifiers unless explicitly defined
         in this parameter. Only applicable for binary classification.
+
+
+    experiment_custom_tags: dict, default = None
+        Dictionary of tag_name: String -> value: (String, but will be string-ified
+        if not) passed to the mlflow.set_tags to add new custom tags for the experiment.
 
 
     verbose: bool, default = True
@@ -900,6 +886,7 @@ def create_model(
         fit_kwargs=fit_kwargs,
         groups=groups,
         probability_threshold=probability_threshold,
+        experiment_custom_tags=experiment_custom_tags,
         verbose=verbose,
         **kwargs,
     )
@@ -1189,7 +1176,7 @@ def ensemble_model(
 
     probability_threshold: float, default = None
         Threshold for converting predicted probability to class label.
-        It defaults to 0.5 for all classifiers unless explicitly defined 
+        It defaults to 0.5 for all classifiers unless explicitly defined
         in this parameter. Only applicable for binary classification.
 
 
@@ -1307,7 +1294,7 @@ def blend_models(
 
     probability_threshold: float, default = None
         Threshold for converting predicted probability to class label.
-        It defaults to 0.5 for all classifiers unless explicitly defined 
+        It defaults to 0.5 for all classifiers unless explicitly defined
         in this parameter. Only applicable for binary classification.
 
 
@@ -1382,7 +1369,7 @@ def stack_models(
     meta_model_fold: integer or scikit-learn compatible CV generator, default = 5
         Controls internal cross-validation. Can be an integer or a scikit-learn
         CV generator. If set to an integer, will use (Stratifed)KFold CV with
-        that many folds. See scikit-learn documentation on Stacking for 
+        that many folds. See scikit-learn documentation on Stacking for
         more details.
 
 
@@ -1430,7 +1417,7 @@ def stack_models(
 
     probability_threshold: float, default = None
         Threshold for converting predicted probability to class label.
-        It defaults to 0.5 for all classifiers unless explicitly defined 
+        It defaults to 0.5 for all classifiers unless explicitly defined
         in this parameter. Only applicable for binary classification.
 
 
@@ -1475,6 +1462,7 @@ def plot_model(
     save: bool = False,
     fold: Optional[Union[int, Any]] = None,
     fit_kwargs: Optional[dict] = None,
+    plot_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
     use_train_data: bool = False,
     verbose: bool = True,
@@ -1543,6 +1531,10 @@ def plot_model(
         Dictionary of arguments passed to the fit method of the model.
 
 
+    plot_kwargs: dict, default = {} (empty dict)
+        Dictionary of arguments passed to the visualizer class.
+
+
     groups: str or array-like, with shape (n_samples,), default = None
         Optional group labels when GroupKFold is used for the cross validation.
         It takes an array with shape (n_samples, ) where n_samples is the number
@@ -1588,6 +1580,7 @@ def plot_model(
         save=save,
         fold=fold,
         fit_kwargs=fit_kwargs,
+        plot_kwargs=plot_kwargs,
         groups=groups,
         verbose=verbose,
         use_train_data=use_train_data,
@@ -1600,6 +1593,7 @@ def evaluate_model(
     estimator,
     fold: Optional[Union[int, Any]] = None,
     fit_kwargs: Optional[dict] = None,
+    plot_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
     use_train_data: bool = False,
 ):
@@ -1634,6 +1628,10 @@ def evaluate_model(
         Dictionary of arguments passed to the fit method of the model.
 
 
+    plot_kwargs: dict, default = {} (empty dict)
+        Dictionary of arguments passed to the visualizer class.
+
+
     groups: str or array-like, with shape (n_samples,), default = None
         Optional group labels when GroupKFold is used for the cross validation.
         It takes an array with shape (n_samples, ) where n_samples is the number
@@ -1660,6 +1658,7 @@ def evaluate_model(
         estimator=estimator,
         fold=fold,
         fit_kwargs=fit_kwargs,
+        plot_kwargs=plot_kwargs,
         groups=groups,
         use_train_data=use_train_data,
     )
@@ -1679,16 +1678,9 @@ def interpret_model(
 ):
 
     """
-    This function takes a trained model object and returns an interpretation plot
-    based on the test / hold-out set. It only supports tree based algorithms.
-
-    This function is implemented based on the SHAP (SHapley Additive exPlanations),
-    which is a unified approach to explain the output of any machine learning model.
-    SHAP connects game theory with local explanations.
-
-    For more information : https://shap.readthedocs.io/en/latest/
-
-    For Partial Dependence Plot : https://github.com/SauceCat/PDPbox
+    This function analyzes the predictions generated from a trained model. Most plots
+    in this function are implemented based on the SHAP (SHapley Additive exPlanations).
+    For more info on this, please see https://shap.readthedocs.io/en/latest/
 
 
     Example
@@ -1819,7 +1811,7 @@ def calibrate_model(
     calibrate_fold: integer or scikit-learn compatible CV generator, default = 5
         Controls internal cross-validation. Can be an integer or a scikit-learn
         CV generator. If set to an integer, will use (Stratifed)KFold CV with
-        that many folds. See scikit-learn documentation on Stacking for 
+        that many folds. See scikit-learn documentation on Stacking for
         more details.
 
 
@@ -1875,65 +1867,67 @@ def calibrate_model(
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def optimize_threshold(
     estimator,
-    true_positive: int = 0,
-    true_negative: int = 0,
-    false_positive: int = 0,
-    false_negative: int = 0,
+    optimize: str = "Accuracy",
+    grid_interval: float = 0.1,
+    return_data: bool = False,
+    plot_kwargs: Optional[dict] = None,
 ):
 
     """
-    This function optimizes probability threshold for a given estimator using
-    custom cost function. The function displays a plot of optimized cost as a
-    function of probability threshold between 0.0 to 1.0 and returns the
-    optimized threshold value as a numpy float.
+    This function optimizes probability threshold for a trained classifier. It
+    iterates over performance metrics at different ``probability_threshold`` with
+    a step size defined in ``grid_interval`` parameter. This function will display
+    a plot of the performance metrics at each probability threshold and returns the
+    best model based on the metric defined under ``optimize`` parameter.
 
 
     Example
     -------
     >>> from pycaret.datasets import get_data
     >>> juice = get_data('juice')
-    >>> from pycaret.classification import *
-    >>> exp_name = setup(data = juice,  target = 'Purchase')
+    >>> experiment_name = setup(data = juice,  target = 'Purchase')
     >>> lr = create_model('lr')
-    >>> optimize_threshold(lr, true_negative = 10, false_negative = -100)
+    >>> best_lr_threshold = optimize_threshold(lr)
 
 
-    estimator: scikit-learn compatible object
-        Trained model object
+    Parameters
+    ----------
+    estimator : object
+        A trained model object should be passed as an estimator.
 
 
-    true_positive: int, default = 0
-        Cost function or returns for true positive.
+    optimize : str, default = 'Accuracy'
+        Metric to be used for selecting best model.
 
 
-    true_negative: int, default = 0
-        Cost function or returns for true negative.
+    grid_interval : float, default = 0.0001
+        Grid interval for threshold grid search. Default 10 iterations.
 
 
-    false_positive: int, default = 0
-        Cost function or returns for false positive.
+    return_data :  bool, default = False
+        When set to True, data used for visualization is also returned.
 
 
-    false_negative: int, default = 0
-        Cost function or returns for false negative.
+    plot_kwargs :  dict, default = {} (empty dict)
+        Dictionary of arguments passed to the visualizer class.
 
 
-    Returns:
-        numpy.float64
+    Returns
+    -------
+    Trained Model
 
 
     Warnings
     --------
-    - This function is not supported when target is multiclass.
-
+    - This function does not support multiclass classification problems.
     """
 
     return _CURRENT_EXPERIMENT.optimize_threshold(
         estimator=estimator,
-        true_positive=true_positive,
-        true_negative=true_negative,
-        false_positive=false_positive,
-        false_negative=false_negative,
+        optimize=optimize,
+        grid_interval=grid_interval,
+        return_data=return_data,
+        plot_kwargs=plot_kwargs,
     )
 
 
@@ -1944,6 +1938,7 @@ def predict_model(
     probability_threshold: Optional[float] = None,
     encoded_labels: bool = False,
     raw_score: bool = False,
+    drift_report: bool = False,
     round: int = 4,
     verbose: bool = True,
 ) -> pd.DataFrame:
@@ -1989,6 +1984,11 @@ def predict_model(
         When set to True, scores for all labels will be returned.
 
 
+    drift_report: bool, default = False
+        When set to True, interactive drift report is generated on test set
+        with the evidently library.
+
+
     round: int, default = 4
         Number of decimal places the metrics in the score grid will be rounded to.
 
@@ -2020,6 +2020,7 @@ def predict_model(
         probability_threshold=probability_threshold,
         encoded_labels=encoded_labels,
         raw_score=raw_score,
+        drift_report=drift_report,
         round=round,
         verbose=verbose,
     )
@@ -2031,6 +2032,7 @@ def finalize_model(
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
     model_only: bool = True,
+    experiment_custom_tags: Optional[Dict[str, Any]] = None,
 ) -> Any:
 
     """
@@ -2068,6 +2070,11 @@ def finalize_model(
         transformations in Pipeline are ignored.
 
 
+    experiment_custom_tags: dict, default = None
+        Dictionary of tag_name: String -> value: (String, but will be string-ified
+        if not) passed to the mlflow.set_tags to add new custom tags for the experiment.
+
+
     Returns:
         Trained Model
 
@@ -2078,12 +2085,16 @@ def finalize_model(
         fit_kwargs=fit_kwargs,
         groups=groups,
         model_only=model_only,
+        experiment_custom_tags=experiment_custom_tags,
     )
 
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def deploy_model(
-    model, model_name: str, authentication: dict, platform: str = "aws",
+    model,
+    model_name: str,
+    authentication: dict,
+    platform: str = "aws",
 ):
     """
     This function deploys the transformation pipeline and trained model on cloud.
@@ -2256,7 +2267,7 @@ def load_model(
         dictionary of applicable authentication tokens.
 
         when platform = 'aws':
-        {'bucket' : 'S3-bucket-name'}
+        {'bucket' : 'Name of Bucket on S3', 'path': (optional) folder name under the bucket}
 
         when platform = 'gcp':
         {'project': 'gcp-project-name', 'bucket' : 'gcp-bucket-name'}
@@ -2357,7 +2368,9 @@ def pull(pop: bool = False) -> pd.DataFrame:
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def models(
-    type: Optional[str] = None, internal: bool = False, raise_errors: bool = True,
+    type: Optional[str] = None,
+    internal: bool = False,
+    raise_errors: bool = True,
 ) -> pd.DataFrame:
 
     """
@@ -2398,7 +2411,9 @@ def models(
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def get_metrics(
-    reset: bool = False, include_custom: bool = True, raise_errors: bool = True,
+    reset: bool = False,
+    include_custom: bool = True,
+    raise_errors: bool = True,
 ) -> pd.DataFrame:
 
     """
@@ -2433,8 +2448,10 @@ def get_metrics(
 
     """
 
-    return _CURRENT_EXPERIMENT.get_metrics(
-        reset=reset, include_custom=include_custom, raise_errors=raise_errors,
+    return pycaret.internal.tabular.get_metrics(
+        reset=reset,
+        include_custom=include_custom,
+        raise_errors=raise_errors,
     )
 
 
@@ -2579,14 +2596,14 @@ def get_config(variable: str):
     This function retrieves the global variables created when initializing the
     ``setup`` function. Following variables are accessible:
 
-    - X: Transformed dataset (X)
-    - y: Transformed dataset (y)
-    - X_train: Transformed train dataset (X)
-    - X_test: Transformed test/holdout dataset (X)
-    - y_train: Transformed train dataset (y)
-    - y_test: Transformed test/holdout dataset (y)
+    - dataset: Transformed dataset
+    - train: Transformed training set
+    - test: Transformed test set
+    - X: Transformed feature set
+    - y: Transformed target column
+    - X_train, X_test, y_train, y_test: Subsets of the train and test sets.
     - seed: random state set through session_id
-    - prep_pipe: Transformation pipeline
+    - pipeline: Transformation pipeline configured through setup
     - fold_shuffle_param: shuffle parameter used in Kfolds
     - n_jobs_param: n_jobs parameter used in model training
     - html_param: html_param configured through setup
@@ -2778,6 +2795,304 @@ def get_leaderboard(
         fit_kwargs=fit_kwargs,
         groups=groups,
         verbose=verbose,
+    )
+
+
+def dashboard(
+    estimator, display_format="dash", dashboard_kwargs={}, run_kwargs={}, **kwargs
+):
+    """
+    This function generates the interactive dashboard for a trained model. The
+    dashboard is implemented using ExplainerDashboard (explainerdashboard.readthedocs.io)
+
+
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> juice = get_data('juice')
+    >>> from pycaret.classification import *
+    >>> exp_name = setup(data = juice,  target = 'Purchase')
+    >>> lr = create_model('lr')
+    >>> dashboard(lr)
+
+
+    estimator: scikit-learn compatible object
+        Trained model object
+
+
+    display_format: str, default = 'dash'
+        Render mode for the dashboard. The default is set to ``dash`` which will
+        render a dashboard in browser. There are four possible options:
+
+        - 'dash' - displays the dashboard in browser
+        - 'inline' - displays the dashboard in the jupyter notebook cell.
+        - 'jupyterlab' - displays the dashboard in jupyterlab pane.
+        - 'external' - displays the dashboard in a separate tab. (use in Colab)
+
+
+    dashboard_kwargs: dict, default = {} (empty dict)
+        Dictionary of arguments passed to the ``ExplainerDashboard`` class.
+
+
+    run_kwargs: dict, default = {} (empty dict)
+        Dictionary of arguments passed to the ``run`` method of ``ExplainerDashboard``.
+
+
+    **kwargs:
+        Additional keyword arguments to pass to the ``ClassifierExplainer`` or
+        ``RegressionExplainer`` class.
+
+
+    Returns:
+        None
+    """
+    return pycaret.internal.tabular.dashboard(
+        estimator, display_format, dashboard_kwargs, run_kwargs, **kwargs
+    )
+
+
+def convert_model(estimator, language: str = "python") -> str:
+
+    """
+    This function transpiles trained machine learning models into native
+    inference script in different programming languages (Python, C, Java,
+    Go, JavaScript, Visual Basic, C#, PowerShell, R, PHP, Dart, Haskell,
+    Ruby, F#). This functionality is very useful if you want to deploy models
+    into environments where you can't install your normal Python stack to
+    support model inference.
+
+
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> juice = get_data('juice')
+    >>> from pycaret.classification import *
+    >>> exp_name = setup(data = juice,  target = 'Purchase')
+    >>> lr = create_model('lr')
+    >>> lr_java = export_model(lr, 'java')
+
+
+    estimator: scikit-learn compatible object
+        Trained model object
+
+
+    language: str, default = 'python'
+        Language in which inference script to be generated. Following
+        options are available:
+
+        * 'python'
+        * 'java'
+        * 'javascript'
+        * 'c'
+        * 'c#'
+        * 'f#'
+        * 'go'
+        * 'haskell'
+        * 'php'
+        * 'powershell'
+        * 'r'
+        * 'ruby'
+        * 'vb'
+        * 'dart'
+
+
+    Returns:
+        str
+
+    """
+    return _CURRENT_EXPERIMENT.convert_model(estimator, language)
+
+
+def eda(display_format: str = "bokeh", **kwargs):
+
+    """
+    This function generates AutoEDA using AutoVIZ library. You must
+    install Autoviz separately ``pip install autoviz`` to use this
+    function.
+
+
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> juice = get_data('juice')
+    >>> from pycaret.classification import *
+    >>> exp_name = setup(data = juice,  target = 'Purchase')
+    >>> eda(display_format = 'bokeh')
+
+    display_format: str, default = 'bokeh'
+        When set to 'bokeh' the plots are interactive. Other option is ``svg`` for static
+        plots that are generated using matplotlib and seaborn.
+
+
+    **kwargs:
+        Additional keyword arguments to pass to the AutoVIZ class.
+
+
+    Returns:
+        None
+    """
+    return _CURRENT_EXPERIMENT.eda(display_format=display_format, **kwargs)
+
+
+def check_fairness(estimator, sensitive_features: list, plot_kwargs: dict = {}):
+
+    """
+    There are many approaches to conceptualizing fairness. This function follows
+    the approach known as group fairness, which asks: Which groups of individuals
+    are at risk for experiencing harms. This function provides fairness-related
+    metrics between different groups (also called subpopulation).
+
+
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> income = get_data('income')
+    >>> from pycaret.classification import *
+    >>> exp_name = setup(data = income,  target = 'income >50K')
+    >>> lr = create_model('lr')
+    >>> lr_fairness = check_fairness(lr, sensitive_features = ['sex', 'race'])
+
+
+    estimator: scikit-learn compatible object
+        Trained model object
+
+
+    sensitive_features: list
+        List of column names as present in the original dataset before any
+        transformations.
+
+
+    plot_kwargs: dict, default = {} (empty dict)
+        Dictionary of arguments passed to the matplotlib plot.
+
+
+    Returns:
+        pandas.DataFrame
+
+    """
+    return _CURRENT_EXPERIMENT.check_fairness(
+        estimator=estimator,
+        sensitive_features=sensitive_features,
+        plot_kwargs=plot_kwargs,
+    )
+
+
+def create_api(
+    estimator, api_name: str, host: str = "127.0.0.1", port: int = 8000
+) -> None:
+
+    """
+    This function takes an input ``estimator`` and creates a POST API for
+    inference. It only creates the API and doesn't run it automatically.
+    To run the API, you must run the Python file using ``!python``.
+
+
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> juice = get_data('juice')
+    >>> from pycaret.classification import *
+    >>> exp_name = setup(data = juice,  target = 'Purchase')
+    >>> lr = create_model('lr')
+    >>> create_api(lr, 'lr_api'
+    >>> !python lr_api.py
+
+
+    estimator: scikit-learn compatible object
+        Trained model object
+
+
+    api_name: scikit-learn compatible object
+        Trained model object
+
+
+    host: str, default = '127.0.0.1'
+        API host address.
+
+
+    port: int, default = 8000
+        port for API.
+
+
+    Returns:
+        None
+    """
+    return _CURRENT_EXPERIMENT.create_api(
+        estimator=estimator, api_name=api_name, host=host, port=port
+    )
+
+
+def create_docker(
+    api_name: str, base_image: str = "python:3.8-slim", expose_port: int = 8000
+) -> None:
+
+    """
+    This function creates a ``Dockerfile`` and ``requirements.txt`` for
+    productionalizing API end-point.
+
+
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> juice = get_data('juice')
+    >>> from pycaret.classification import *
+    >>> exp_name = setup(data = juice,  target = 'Purchase')
+    >>> lr = create_model('lr')
+    >>> create_api(lr, 'lr_api')
+    >>> create_docker('lr_api')
+
+
+    api_name: str
+        Name of API. Must be saved as a .py file in the same folder.
+
+
+    base_image: str, default = "python:3.8-slim"
+        Name of the base image for Dockerfile.
+
+
+    expose_port: int, default = 8000
+        port for expose for API in the Dockerfile.
+
+
+    Returns:
+        None
+    """
+    return _CURRENT_EXPERIMENT.create_docker(
+        api_name=api_name, base_image=base_image, expose_port=expose_port
+    )
+
+
+def create_app(estimator, app_kwargs: Optional[dict] = None) -> None:
+
+    """
+    This function creates a basic gradio app for inference.
+    It will later be expanded for other app types such as
+    Streamlit.
+
+
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> juice = get_data('juice')
+    >>> from pycaret.classification import *
+    >>> exp_name = setup(data = juice,  target = 'Purchase')
+    >>> lr = create_model('lr')
+    >>> create_app(lr)
+
+
+    estimator: scikit-learn compatible object
+        Trained model object
+
+
+    app_kwargs: dict, default = {}
+        arguments to be passed to app class.
+
+
+    Returns:
+        None
+    """
+    return pycaret.internal.tabular.create_app(
+        estimator=estimator, app_kwargs=app_kwargs
     )
 
 

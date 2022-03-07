@@ -1,37 +1,43 @@
-from pycaret.internal.pycaret_experiment.utils import highlight_setup, MLUsecase
+import time
+import logging
+import warnings
+import numpy as np  # type: ignore
+from joblib.memory import Memory
+from IPython.display import display
+from typing import List, Tuple, Dict, Union, Optional, Any
+import plotly.express as px  # type: ignore
+import plotly.graph_objects as go  # type: ignore
+
+# Own module
+from pycaret.internal.pipeline import Pipeline as InternalPipeline
+from pycaret.internal.preprocess.preprocessor import Preprocessor
+from pycaret.internal.pycaret_experiment.utils import MLUsecase, highlight_setup
 from pycaret.internal.pycaret_experiment.supervised_experiment import (
     _SupervisedExperiment,
 )
 import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
-from pycaret.internal.logging import get_logger
-from pycaret.internal.distributions import *
 from pycaret.internal.validation import *
 import pycaret.containers.metrics.regression
 import pycaret.containers.models.regression
 import pycaret.internal.preprocess
 import pycaret.internal.persistence
-import pandas as pd  # type ignore
-from pandas.io.formats.style import Styler
-import numpy as np  # type: ignore
-from typing import List, Tuple, Any, Union, Optional, Dict
-import warnings
-import plotly.express as px  # type: ignore
-import plotly.graph_objects as go  # type: ignore
-import logging
 
 
 warnings.filterwarnings("ignore")
 LOGGER = get_logger()
 
 
-class RegressionExperiment(_SupervisedExperiment):
+class RegressionExperiment(_SupervisedExperiment, Preprocessor):
     def __init__(self) -> None:
         super().__init__()
         self._ml_usecase = MLUsecase.REGRESSION
         self.exp_name_log = "reg-default-name"
         self.variable_keys = self.variable_keys.union(
-            {"transform_target_param", "transform_target_method_param",}
+            {
+                "transform_target_param",
+                "transform_target_method_param",
+            }
         )
         self._available_plots = {
             "parameter": "Hyperparameters",
@@ -47,144 +53,19 @@ class RegressionExperiment(_SupervisedExperiment):
             "tree": "Decision Tree",
             "residuals_interactive": "Interactive Residuals",
         }
-        return
-
-    def _get_setup_display(self, **kwargs) -> Styler:
-        # define highlight function for function grid to display
-
-        functions = pd.DataFrame(
-            [
-                ["session_id", self.seed],
-                ["Target", self.target_param],
-                ["Original Data", self.data_before_preprocess.shape],
-                ["Missing Values", kwargs["missing_flag"]],
-                ["Numeric Features", str(kwargs["float_type"])],
-                ["Categorical Features", str(kwargs["cat_type"])],
-            ]
-            + (
-                [
-                    ["Ordinal Features", kwargs["ordinal_features_grid"]],
-                    [
-                        "High Cardinality Features",
-                        kwargs["high_cardinality_features_grid"],
-                    ],
-                    ["High Cardinality Method", kwargs["high_cardinality_method_grid"]],
-                ]
-                if self.preprocess
-                else []
-            )
-            + (
-                [
-                    ["Transformed Train Set", self.X_train.shape],
-                    ["Transformed Test Set", self.X_test.shape],
-                    ["Shuffle Train-Test", str(kwargs["data_split_shuffle"])],
-                    ["Stratify Train-Test", str(kwargs["data_split_stratify"])],
-                    ["Fold Generator", type(self.fold_generator).__name__],
-                    ["Fold Number", self.fold_param],
-                    ["CPU Jobs", self.n_jobs_param],
-                    ["Use GPU", self.gpu_param],
-                    ["Log Experiment", self.logging_param],
-                    ["Experiment Name", self.exp_name_log],
-                    ["USI", self.USI],
-                ]
-            )
-            + (
-                [
-                    ["Imputation Type", kwargs["imputation_type"]],
-                    [
-                        "Iterative Imputation Iteration",
-                        self.iterative_imputation_iters_param
-                        if kwargs["imputation_type"] == "iterative"
-                        else "None",
-                    ],
-                    ["Numeric Imputer", kwargs["numeric_imputation"]],
-                    [
-                        "Iterative Imputation Numeric Model",
-                        kwargs["imputation_regressor_name"]
-                        if kwargs["imputation_type"] == "iterative"
-                        else "None",
-                    ],
-                    ["Categorical Imputer", kwargs["categorical_imputation"]],
-                    [
-                        "Iterative Imputation Categorical Model",
-                        kwargs["imputation_classifier_name"]
-                        if kwargs["imputation_type"] == "iterative"
-                        else "None",
-                    ],
-                    [
-                        "Unknown Categoricals Handling",
-                        kwargs["unknown_categorical_method_grid"],
-                    ],
-                    ["Normalize", kwargs["normalize"]],
-                    ["Normalize Method", kwargs["normalize_grid"]],
-                    ["Transformation", kwargs["transformation"]],
-                    ["Transformation Method", kwargs["transformation_grid"]],
-                    ["PCA", kwargs["pca"]],
-                    ["PCA Method", kwargs["pca_method_grid"]],
-                    ["PCA Components", kwargs["pca_components_grid"]],
-                    ["Ignore Low Variance", kwargs["ignore_low_variance"]],
-                    ["Combine Rare Levels", kwargs["combine_rare_levels"]],
-                    ["Rare Level Threshold", kwargs["rare_level_threshold_grid"]],
-                    ["Numeric Binning", kwargs["numeric_bin_grid"]],
-                    ["Remove Outliers", kwargs["remove_outliers"]],
-                    ["Outliers Threshold", kwargs["outliers_threshold_grid"]],
-                    [
-                        "Remove Perfect Collinearity",
-                        kwargs["remove_perfect_collinearity"],
-                    ],
-                    ["Remove Multicollinearity", kwargs["remove_multicollinearity"]],
-                    [
-                        "Multicollinearity Threshold",
-                        kwargs["multicollinearity_threshold_grid"],
-                    ],
-                    [
-                        "Remove Perfect Collinearity",
-                        kwargs["remove_perfect_collinearity"],
-                    ],
-                    [
-                        "Columns Removed Due to Multicollinearity",
-                        kwargs["multicollinearity_removed_columns"],
-                    ],
-                    ["Clustering", kwargs["create_clusters"]],
-                    ["Clustering Iteration", kwargs["cluster_iter_grid"]],
-                    ["Polynomial Features", kwargs["polynomial_features"]],
-                    ["Polynomial Degree", kwargs["polynomial_degree_grid"]],
-                    ["Trignometry Features", kwargs["trigonometry_features"]],
-                    ["Polynomial Threshold", kwargs["polynomial_threshold_grid"]],
-                    ["Group Features", kwargs["group_features_grid"]],
-                    ["Feature Selection", kwargs["feature_selection"]],
-                    ["Feature Selection Method", kwargs["feature_selection_method"]],
-                    [
-                        "Features Selection Threshold",
-                        kwargs["feature_selection_threshold_grid"],
-                    ],
-                    ["Feature Interaction", kwargs["feature_interaction"]],
-                    ["Feature Ratio", kwargs["feature_ratio"]],
-                    ["Interaction Threshold", kwargs["interaction_threshold_grid"]],
-                ]
-                if self.preprocess
-                else []
-            )
-            + (
-                [
-                    ["Transform Target", self.transform_target_param],
-                    ["Transform Target Method", self.transform_target_method_param],
-                ]
-            ),
-            columns=["Description", "Value"],
-        )
-        return functions.style.apply(highlight_setup)
 
     def _get_models(self, raise_errors: bool = True) -> Tuple[dict, dict]:
         all_models = {
             k: v
             for k, v in pycaret.containers.models.regression.get_all_model_containers(
-                self.variables, raise_errors=raise_errors
+                self, raise_errors=raise_errors
             ).items()
             if not v.is_special
         }
-        all_models_internal = pycaret.containers.models.regression.get_all_model_containers(
-            self.variables, raise_errors=raise_errors
+        all_models_internal = (
+            pycaret.containers.models.regression.get_all_model_containers(
+                self, raise_errors=raise_errors
+            )
         )
         return all_models, all_models_internal
 
@@ -193,63 +74,52 @@ class RegressionExperiment(_SupervisedExperiment):
             self.variables, raise_errors=raise_errors
         )
 
-    def _get_default_plots_to_log(self) -> List[str]:
-        return ["residuals", "error", "feature"]
-
     def setup(
         self,
         data: pd.DataFrame,
-        target: str,
+        target: Union[int, str] = -1,
         train_size: float = 0.7,
         test_data: Optional[pd.DataFrame] = None,
-        preprocess: bool = True,
-        imputation_type: str = "simple",
-        iterative_imputation_iters: int = 5,
-        categorical_features: Optional[List[str]] = None,
-        categorical_imputation: str = "constant",
-        categorical_iterative_imputer: Union[str, Any] = "lightgbm",
         ordinal_features: Optional[Dict[str, list]] = None,
-        high_cardinality_features: Optional[List[str]] = None,
-        high_cardinality_method: str = "frequency",
         numeric_features: Optional[List[str]] = None,
-        numeric_imputation: str = "mean",
-        numeric_iterative_imputer: Union[str, Any] = "lightgbm",
+        categorical_features: Optional[List[str]] = None,
         date_features: Optional[List[str]] = None,
+        text_features: Optional[List[str]] = None,
         ignore_features: Optional[List[str]] = None,
-        normalize: bool = False,
-        normalize_method: str = "zscore",
-        transformation: bool = False,
-        transformation_method: str = "yeo-johnson",
-        handle_unknown_categorical: bool = True,
-        unknown_categorical_method: str = "least_frequent",
-        pca: bool = False,
-        pca_method: str = "linear",
-        pca_components: Optional[float] = None,
-        ignore_low_variance: bool = False,
-        combine_rare_levels: bool = False,
-        rare_level_threshold: float = 0.10,
-        bin_numeric_features: Optional[List[str]] = None,
-        remove_outliers: bool = False,
-        outliers_threshold: float = 0.05,
-        remove_multicollinearity: bool = False,
-        multicollinearity_threshold: float = 0.9,
-        remove_perfect_collinearity: bool = True,
-        create_clusters: bool = False,
-        cluster_iter: int = 20,
+        keep_features: Optional[List[str]] = None,
+        preprocess: bool = True,
+        imputation_type: Optional[str] = "simple",
+        numeric_imputation: str = "mean",
+        categorical_imputation: str = "constant",
+        iterative_imputation_iters: int = 5,
+        numeric_iterative_imputer: Union[str, Any] = "lightgbm",
+        categorical_iterative_imputer: Union[str, Any] = "lightgbm",
+        text_features_method: str = "tf-idf",
+        max_encoding_ohe: int = 5,
+        encoding_method: Optional[Any] = None,
         polynomial_features: bool = False,
         polynomial_degree: int = 2,
-        trigonometry_features: bool = False,
-        polynomial_threshold: float = 0.1,
-        group_features: Optional[List[str]] = None,
-        group_names: Optional[List[str]] = None,
+        low_variance_threshold: float = 0,
+        remove_multicollinearity: bool = False,
+        multicollinearity_threshold: float = 0.9,
+        bin_numeric_features: Optional[List[str]] = None,
+        remove_outliers: bool = False,
+        outliers_method: str = "iforest",
+        outliers_threshold: float = 0.05,
+        transformation: bool = False,
+        transformation_method: str = "yeo-johnson",
+        normalize: bool = False,
+        normalize_method: str = "zscore",
+        pca: bool = False,
+        pca_method: str = "linear",
+        pca_components: Union[int, float] = 1.0,
         feature_selection: bool = False,
-        feature_selection_threshold: float = 0.8,
         feature_selection_method: str = "classic",
-        feature_interaction: bool = False,
-        feature_ratio: bool = False,
-        interaction_threshold: float = 0.01,
+        feature_selection_estimator: Union[str, Any] = "lightgbm",
+        n_features_to_select: int = 10,
         transform_target: bool = False,
         transform_target_method: str = "box-cox",
+        custom_pipeline: Any = None,
         data_split_shuffle: bool = True,
         data_split_stratify: Union[bool, List[str]] = False,
         fold_strategy: Union[str, Any] = "kfold",
@@ -258,560 +128,297 @@ class RegressionExperiment(_SupervisedExperiment):
         fold_groups: Optional[Union[str, pd.DataFrame]] = None,
         n_jobs: Optional[int] = -1,
         use_gpu: bool = False,
-        custom_pipeline: Union[
-            Any, Tuple[str, Any], List[Any], List[Tuple[str, Any]]
-        ] = None,
         html: bool = True,
         session_id: Optional[int] = None,
         system_log: Union[bool, logging.Logger] = True,
         log_experiment: bool = False,
         experiment_name: Optional[str] = None,
+        experiment_custom_tags: Optional[Dict[str, Any]] = None,
         log_plots: Union[bool, list] = False,
         log_profile: bool = False,
         log_data: bool = False,
         silent: bool = False,
         verbose: bool = True,
+        memory: Union[bool, str, Memory] = True,
         profile: bool = False,
         profile_kwargs: Dict[str, Any] = None,
     ):
-        """
-        This function initializes the training environment and creates the transformation
-        pipeline. Setup function must be called before executing any other function. It takes
-        two mandatory parameters: ``data`` and ``target``. All the other parameters are
-        optional.
+        # Setup initialization ===================================== >>
 
-        Example
-        -------
-        >>> from pycaret.datasets import get_data
-        >>> boston = get_data('boston')
-        >>> from pycaret.regression import *
-        >>> exp_name = setup(data = boston,  target = 'medv')
+        runtime_start = time.time()
 
+        # Define parameter attrs
+        self.fold_shuffle_param = fold_shuffle
+        self.fold_groups_param = fold_groups
 
-        data : pandas.DataFrame
-            Shape (n_samples, n_features), where n_samples is the number of samples and
-            n_features is the number of features.
-
-
-        target: str
-            Name of the target column to be passed in as a string. The target variable can
-            be either binary or multiclass.
-
-
-        train_size: float, default = 0.7
-            Proportion of the dataset to be used for training and validation. Should be
-            between 0.0 and 1.0.
-
-
-        test_data: pandas.DataFrame, default = None
-            If not None, test_data is used as a hold-out set and ``train_size`` parameter is
-            ignored. test_data must be labelled and the shape of data and test_data must
-            match.
-
-
-        preprocess: bool, default = True
-            When set to False, no transformations are applied except for train_test_split
-            and custom transformations passed in ``custom_pipeline`` param. Data must be
-            ready for modeling (no missing values, no dates, categorical data encoding),
-            when preprocess is set to False.
-
-
-        imputation_type: str, default = 'simple'
-            The type of imputation to use. Can be either 'simple' or 'iterative'.
-
-
-        iterative_imputation_iters: int, default = 5
-            Number of iterations. Ignored when ``imputation_type`` is not 'iterative'.
-
-
-        categorical_features: list of str, default = None
-            If the inferred data types are not correct or the silent parameter is set to True,
-            categorical_features parameter can be used to overwrite or define the data types.
-            It takes a list of strings with column names that are categorical.
-
-
-        categorical_imputation: str, default = 'constant'
-            Missing values in categorical features are imputed with a constant 'not_available'
-            value. The other available option is 'mode'.
-
-
-        categorical_iterative_imputer: str, default = 'lightgbm'
-            Estimator for iterative imputation of missing values in categorical features.
-            Ignored when ``imputation_type`` is not 'iterative'.
-
-
-        ordinal_features: dict, default = None
-            Encode categorical features as ordinal. For example, a categorical feature with
-            'low', 'medium', 'high' values where low < medium < high can be passed as
-            ordinal_features = { 'column_name' : ['low', 'medium', 'high'] }.
-
-
-        high_cardinality_features: list of str, default = None
-            When categorical features contains many levels, it can be compressed into fewer
-            levels using this parameter. It takes a list of strings with column names that
-            are categorical.
-
-
-        high_cardinality_method: str, default = 'frequency'
-            Categorical features with high cardinality are replaced with the frequency of
-            values in each level occurring in the training dataset. Other available method
-            is 'clustering' which trains the K-Means clustering algorithm on the statistical
-            attribute of the training data and replaces the original value of feature with the
-            cluster label. The number of clusters is determined by optimizing Calinski-Harabasz
-            and Silhouette criterion.
-
-
-        numeric_features: list of str, default = None
-            If the inferred data types are not correct or the silent parameter is set to True,
-            numeric_features parameter can be used to overwrite or define the data types.
-            It takes a list of strings with column names that are numeric.
-
-
-        numeric_imputation: str, default = 'mean'
-            Missing values in numeric features are imputed with 'mean' value of the feature
-            in the training dataset. The other available option is 'median' or 'zero'.
-
-
-        numeric_iterative_imputer: str, default = 'lightgbm'
-            Estimator for iterative imputation of missing values in numeric features.
-            Ignored when ``imputation_type`` is set to 'simple'.
-
-
-        date_features: list of str, default = None
-            If the inferred data types are not correct or the silent parameter is set to True,
-            date_features parameter can be used to overwrite or define the data types. It takes
-            a list of strings with column names that are DateTime.
-
-
-        ignore_features: list of str, default = None
-            ignore_features parameter can be used to ignore features during model training.
-            It takes a list of strings with column names that are to be ignored.
-
-
-        normalize: bool, default = False
-            When set to True, it transforms the numeric features by scaling them to a given
-            range. Type of scaling is defined by the ``normalize_method`` parameter.
-
-
-        normalize_method: str, default = 'zscore'
-            Defines the method for scaling. By default, normalize method is set to 'zscore'
-            The standard zscore is calculated as z = (x - u) / s. Ignored when ``normalize``
-            is not True. The other options are:
-
-            - minmax: scales and translates each feature individually such that it is in
-            the range of 0 - 1.
-            - maxabs: scales and translates each feature individually such that the
-            maximal absolute value of each feature will be 1.0. It does not
-            shift/center the data, and thus does not destroy any sparsity.
-            - robust: scales and translates each feature according to the Interquartile
-            range. When the dataset contains outliers, robust scaler often gives
-            better results.
-
-
-        transformation: bool, default = False
-            When set to True, it applies the power transform to make data more Gaussian-like.
-            Type of transformation is defined by the ``transformation_method`` parameter.
-
-
-        transformation_method: str, default = 'yeo-johnson'
-            Defines the method for transformation. By default, the transformation method is
-            set to 'yeo-johnson'. The other available option for transformation is 'quantile'.
-            Ignored when ``transformation`` is not True.
-
-
-        handle_unknown_categorical: bool, default = True
-            When set to True, unknown categorical levels in unseen data are replaced by the
-            most or least frequent level as learned in the training dataset.
-
-
-        unknown_categorical_method: str, default = 'least_frequent'
-            Method used to replace unknown categorical levels in unseen data. Method can be
-            set to 'least_frequent' or 'most_frequent'.
-
-
-        pca: bool, default = False
-            When set to True, dimensionality reduction is applied to project the data into
-            a lower dimensional space using the method defined in ``pca_method`` parameter.
-
-
-        pca_method: str, default = 'linear'
-            The 'linear' method performs uses Singular Value  Decomposition. Other options are:
-
-            - kernel: dimensionality reduction through the use of RBF kernel.
-            - incremental: replacement for 'linear' pca when the dataset is too large.
-
-
-        pca_components: int or float, default = None
-            Number of components to keep. if pca_components is a float, it is treated as a
-            target percentage for information retention. When pca_components is an integer
-            it is treated as the number of features to be kept. pca_components must be less
-            than the original number of features. Ignored when ``pca`` is not True.
-
-
-        ignore_low_variance: bool, default = False
-            When set to True, all categorical features with insignificant variances are
-            removed from the data. The variance is calculated using the ratio of unique
-            values to the number of samples, and the ratio of the most common value to the
-            frequency of the second most common value.
-
-
-        combine_rare_levels: bool, default = False
-            When set to True, frequency percentile for levels in categorical features below
-            a certain threshold is combined into a single level.
-
-
-        rare_level_threshold: float, default = 0.1
-            Percentile distribution below which rare categories are combined. Ignored when
-            ``combine_rare_levels`` is not True.
-
-
-        bin_numeric_features: list of str, default = None
-            To convert numeric features into categorical, bin_numeric_features parameter can
-            be used. It takes a list of strings with column names to be discretized. It does
-            so by using 'sturges' rule to determine the number of clusters and then apply
-            KMeans algorithm. Original values of the feature are then replaced by the
-            cluster label.
-
-
-        remove_outliers: bool, default = False
-            When set to True, outliers from the training data are removed using the Singular
-            Value Decomposition.
-
-
-        outliers_threshold: float, default = 0.05
-            The percentage outliers to be removed from the training dataset. Ignored when
-            ``remove_outliers`` is not True.
-
-
-        remove_multicollinearity: bool, default = False
-            When set to True, features with the inter-correlations higher than the defined
-            threshold are removed. When two features are highly correlated with each other,
-            the feature that is less correlated with the target variable is removed. Only
-            considers numeric features.
-
-
-        multicollinearity_threshold: float, default = 0.9
-            Threshold for correlated features. Ignored when ``remove_multicollinearity``
-            is not True.
-
-
-        remove_perfect_collinearity: bool, default = True
-            When set to True, perfect collinearity (features with correlation = 1) is removed
-            from the dataset, when two features are 100% correlated, one of it is randomly
-            removed from the dataset.
-
-
-        create_clusters: bool, default = False
-            When set to True, an additional feature is created in training dataset where each
-            instance is assigned to a cluster. The number of clusters is determined by
-            optimizing Calinski-Harabasz and Silhouette criterion.
-
-
-        cluster_iter: int, default = 20
-            Number of iterations for creating cluster. Each iteration represents cluster
-            size. Ignored when ``create_clusters`` is not True.
-
-
-        polynomial_features: bool, default = False
-            When set to True, new features are derived using existing numeric features.
-
-
-        polynomial_degree: int, default = 2
-            Degree of polynomial features. For example, if an input sample is two dimensional
-            and of the form [a, b], the polynomial features with degree = 2 are:
-            [1, a, b, a^2, ab, b^2]. Ignored when ``polynomial_features`` is not True.
-
-
-        trigonometry_features: bool, default = False
-            When set to True, new features are derived using existing numeric features.
-
-
-        polynomial_threshold: float, default = 0.1
-            When ``polynomial_features`` or ``trigonometry_features`` is True, new features
-            are derived from the existing numeric features. This may sometimes result in too
-            large feature space. polynomial_threshold parameter can be used to deal with this
-            problem. It does so by using combination of Random Forest, AdaBoost and Linear
-            correlation. All derived features that falls within the percentile distribution
-            are kept and rest of the features are removed.
-
-
-        group_features: list or list of list, default = None
-            When the dataset contains features with related characteristics, group_features
-            parameter can be used for feature extraction. It takes a list of strings with
-            column names that are related.
-
-
-        group_names: list, default = None
-            Group names to be used in naming new features. When the length of group_names
-            does not match with the length of ``group_features``, new features are named
-            sequentially group_1, group_2, etc. It is ignored when ``group_features`` is
-            None.
-
-
-        feature_selection: bool, default = False
-            When set to True, a subset of features are selected using a combination of
-            various permutation importance techniques including Random Forest, Adaboost
-            and Linear correlation with target variable. The size of the subset is
-            dependent on the ``feature_selection_threshold`` parameter.
-
-
-        feature_selection_threshold: float, default = 0.8
-            Threshold value used for feature selection. When ``polynomial_features`` or
-            ``feature_interaction`` is True, it is recommended to keep the threshold low
-            to avoid large feature spaces. Setting a very low value may be efficient but
-            could result in under-fitting.
-
-
-        feature_selection_method: str, default = 'classic'
-            Algorithm for feature selection. 'classic' method uses permutation feature
-            importance techniques. Other possible value is 'boruta' which uses boruta
-            algorithm for feature selection.
-
-
-        feature_interaction: bool, default = False
-            When set to True, new features are created by interacting (a * b) all the
-            numeric variables in the dataset. This feature is not scalable and may not
-            work as expected on datasets with large feature space.
-
-
-        feature_ratio: bool, default = False
-            When set to True, new features are created by calculating the ratios (a / b)
-            between all numeric variables in the dataset. This feature is not scalable and
-            may not work as expected on datasets with large feature space.
-
-
-        interaction_threshold: bool, default = 0.01
-            Similar to polynomial_threshold, It is used to compress a sparse matrix of newly
-            created features through interaction. Features whose importance based on the
-            combination  of  Random Forest, AdaBoost and Linear correlation falls within the
-            percentile of the  defined threshold are kept in the dataset. Remaining features
-            are dropped before further processing.
-
-
-        transform_target: bool, default = False
-            When set to True, target variable is transformed using the method defined in
-            ``transform_target_method`` param. Target transformation is applied separately
-            from feature transformations.
-
-
-        transform_target_method: str, default = 'box-cox'
-            'Box-cox' and 'yeo-johnson' methods are supported. Box-Cox requires input data to
-            be strictly positive, while Yeo-Johnson supports both positive or negative data.
-            When transform_target_method is 'box-cox' and target variable contains negative
-            values, method is internally forced to 'yeo-johnson' to avoid exceptions.
-
-
-        data_split_shuffle: bool, default = True
-            When set to False, prevents shuffling of rows during 'train_test_split'.
-
-
-        data_split_stratify: bool or list, default = False
-            Controls stratification during 'train_test_split'. When set to True, will
-            stratify by target column. To stratify on any other columns, pass a list of
-            column names. Ignored when ``data_split_shuffle`` is False.
-
-
-        fold_strategy: str or sklearn CV generator object, default = 'kfold'
-            Choice of cross validation strategy. Possible values are:
-
-            * 'kfold'
-            * 'stratifiedkfold'
-            * 'groupkfold'
-            * 'timeseries'
-            * a custom CV generator object compatible with scikit-learn.
-
-
-        fold: int, default = 10
-            Number of folds to be used in cross validation. Must be at least 2. This is
-            a global setting that can be over-written at function level by using ``fold``
-            parameter. Ignored when ``fold_strategy`` is a custom object.
-
-
-        fold_shuffle: bool, default = False
-            Controls the shuffle parameter of CV. Only applicable when ``fold_strategy``
-            is 'kfold' or 'stratifiedkfold'. Ignored when ``fold_strategy`` is a custom
-            object.
-
-
-        fold_groups: str or array-like, with shape (n_samples,), default = None
-            Optional group labels when 'GroupKFold' is used for the cross validation.
-            It takes an array with shape (n_samples, ) where n_samples is the number
-            of rows in the training dataset. When string is passed, it is interpreted
-            as the column name in the dataset containing group labels.
-
-
-        n_jobs: int, default = -1
-            The number of jobs to run in parallel (for functions that supports parallel
-            processing) -1 means using all processors. To run all functions on single
-            processor set n_jobs to None.
-
-
-        use_gpu: bool or str, default = False
-            When set to True, it will use GPU for training with algorithms that support it,
-            and fall back to CPU if they are unavailable. When set to 'force', it will only
-            use GPU-enabled algorithms and raise exceptions when they are unavailable. When
-            False, all algorithms are trained using CPU only.
-
-            GPU enabled algorithms:
-
-            - Extreme Gradient Boosting, requires no further installation
-
-            - CatBoost Regressor, requires no further installation
-            (GPU is only enabled when data > 50,000 rows)
-
-            - Light Gradient Boosting Machine, requires GPU installation
-            https://lightgbm.readthedocs.io/en/latest/GPU-Tutorial.html
-
-            - Linear Regression, Lasso Regression, Ridge Regression, K Neighbors Regressor,
-            Random Forest, Support Vector Regression, Elastic Net requires cuML >= 0.15
-            https://github.com/rapidsai/cuml
-
-
-        custom_pipeline: (str, transformer) or list of (str, transformer), default = None
-            When passed, will append the custom transformers in the preprocessing pipeline
-            and are applied on each CV fold separately and on the final fit. All the custom
-            transformations are applied after 'train_test_split' and before pycaret's internal
-            transformations.
-
-
-        html: bool, default = True
-            When set to False, prevents runtime display of monitor. This must be set to False
-            when the environment does not support IPython. For example, command line terminal,
-            Databricks Notebook, Spyder and other similar IDEs.
-
-
-        session_id: int, default = None
-            Controls the randomness of experiment. It is equivalent to 'random_state' in
-            scikit-learn. When None, a pseudo random number is generated. This can be used
-            for later reproducibility of the entire experiment.
-
-
-        system_log: bool or logging.Logger, default = True
-            Whether to save the system logging file (as logs.log). If the input
-            already is a logger object, that one is used instead.
-
-
-        log_experiment: bool, default = False
-            When set to True, all metrics and parameters are logged on the ``MLFlow`` server.
-
-
-        experiment_name: str, default = None
-            Name of the experiment for logging. Ignored when ``log_experiment`` is not True.
-
-
-        log_plots: bool or list, default = False
-            When set to True, certain plots are logged automatically in the ``MLFlow`` server.
-            To change the type of plots to be logged, pass a list containing plot IDs. Refer
-            to documentation of ``plot_model``. Ignored when ``log_experiment`` is not True.
-
-
-        log_profile: bool, default = False
-            When set to True, data profile is logged on the ``MLflow`` server as a html file.
-            Ignored when ``log_experiment`` is not True.
-
-
-        log_data: bool, default = False
-            When set to True, dataset is logged on the ``MLflow`` server as a csv file.
-            Ignored when ``log_experiment`` is not True.
-
-
-        silent: bool, default = False
-            Controls the confirmation input of data types when ``setup`` is executed. When
-            executing in completely automated mode or on a remote kernel, this must be True.
-
-
-        verbose: bool, default = True
-            When set to False, Information grid is not printed.
-
-
-        profile: bool, default = False
-            When set to True, an interactive EDA report is displayed.
-
-
-        profile_kwargs: dict, default = {} (empty dict)
-            Dictionary of arguments passed to the ProfileReport method used
-            to create the EDA report. Ignored if ``profile`` is False.
-
-
-        Returns:
-            Global variables that can be changed using the ``set_config`` function.
-
-        """
-        return super().setup(
-            data=data,
-            target=target,
-            train_size=train_size,
-            test_data=test_data,
-            preprocess=preprocess,
-            imputation_type=imputation_type,
-            iterative_imputation_iters=iterative_imputation_iters,
-            categorical_features=categorical_features,
-            categorical_imputation=categorical_imputation,
-            categorical_iterative_imputer=categorical_iterative_imputer,
-            ordinal_features=ordinal_features,
-            high_cardinality_features=high_cardinality_features,
-            high_cardinality_method=high_cardinality_method,
-            numeric_features=numeric_features,
-            numeric_imputation=numeric_imputation,
-            numeric_iterative_imputer=numeric_iterative_imputer,
-            date_features=date_features,
-            ignore_features=ignore_features,
-            normalize=normalize,
-            normalize_method=normalize_method,
-            transformation=transformation,
-            transformation_method=transformation_method,
-            handle_unknown_categorical=handle_unknown_categorical,
-            unknown_categorical_method=unknown_categorical_method,
-            pca=pca,
-            pca_method=pca_method,
-            pca_components=pca_components,
-            ignore_low_variance=ignore_low_variance,
-            combine_rare_levels=combine_rare_levels,
-            rare_level_threshold=rare_level_threshold,
-            bin_numeric_features=bin_numeric_features,
-            remove_outliers=remove_outliers,
-            outliers_threshold=outliers_threshold,
-            remove_multicollinearity=remove_multicollinearity,
-            multicollinearity_threshold=multicollinearity_threshold,
-            remove_perfect_collinearity=remove_perfect_collinearity,
-            create_clusters=create_clusters,
-            cluster_iter=cluster_iter,
-            polynomial_features=polynomial_features,
-            polynomial_degree=polynomial_degree,
-            trigonometry_features=trigonometry_features,
-            polynomial_threshold=polynomial_threshold,
-            group_features=group_features,
-            group_names=group_names,
-            feature_selection=feature_selection,
-            feature_selection_threshold=feature_selection_threshold,
-            feature_selection_method=feature_selection_method,
-            feature_interaction=feature_interaction,
-            feature_ratio=feature_ratio,
-            interaction_threshold=interaction_threshold,
-            transform_target=transform_target,
-            transform_target_method=transform_target_method,
-            data_split_shuffle=data_split_shuffle,
-            data_split_stratify=data_split_stratify,
-            fold_strategy=fold_strategy,
-            fold=fold,
-            fold_shuffle=fold_shuffle,
-            fold_groups=fold_groups,
+        self._initialize_setup(
             n_jobs=n_jobs,
             use_gpu=use_gpu,
-            custom_pipeline=custom_pipeline,
             html=html,
             session_id=session_id,
             system_log=system_log,
             log_experiment=log_experiment,
             experiment_name=experiment_name,
-            log_plots=log_plots,
-            log_profile=log_profile,
-            log_data=log_data,
-            silent=silent,
+            memory=memory,
             verbose=verbose,
-            profile=profile,
-            profile_kwargs=profile_kwargs,
         )
+
+        # Prepare experiment specific params ======================= >>
+
+        self.log_plots_param = log_plots
+        if self.log_plots_param is True:
+            self.log_plots_param = ["residuals", "error", "feature"]
+        elif isinstance(self.log_plots_param, list):
+            for i in self.log_plots_param:
+                if i not in self._available_plots:
+                    raise ValueError(
+                        f"Invalid value for log_plots '{i}'. Possible values "
+                        f"are: {', '.join(self._available_plots.keys())}."
+                    )
+
+        # Check transform_target_method
+        allowed_transform_target_method = ["box-cox", "yeo-johnson"]
+        if transform_target_method not in allowed_transform_target_method:
+            raise ValueError(
+                "Invalid value for the transform_target_method parameter. "
+                f"Choose from: {', '.join(allowed_transform_target_method)}."
+            )
+        self.transform_target_param = transform_target
+        self.transform_target_method = transform_target_method
+
+        # Set up data ============================================== >>
+
+        self._prepare_dataset(data)
+        self._prepare_target(target)
+        self._prepare_train_test(
+            train_size=train_size,
+            test_data=test_data,
+            data_split_stratify=data_split_stratify,
+            data_split_shuffle=data_split_shuffle,
+        )
+        self._prepare_folds(
+            fold_strategy=fold_strategy,
+            fold=fold,
+            fold_shuffle=fold_shuffle,
+            fold_groups=fold_groups,
+        )
+        self._prepare_column_types(
+            ordinal_features=ordinal_features,
+            numeric_features=numeric_features,
+            categorical_features=categorical_features,
+            date_features=date_features,
+            text_features=text_features,
+            ignore_features=ignore_features,
+            keep_features=keep_features,
+        )
+
+        # Preprocessing ============================================ >>
+
+        # Initialize empty pipeline
+        self.pipeline = InternalPipeline(
+            steps=[("placeholder", None)],
+            memory=self.memory,
+        )
+
+        if preprocess:
+            self.logger.info("Preparing preprocessing pipeline...")
+
+            # Encode the target column
+            if self.y.dtype.kind not in "ifu":
+                self._encode_target_column()
+
+            # Convert date feature to numerical values
+            if self._fxs["Date"]:
+                self._date_feature_engineering()
+
+            # Impute missing values
+            if imputation_type == "simple":
+                self._simple_imputation(numeric_imputation, categorical_imputation)
+            elif imputation_type == "iterative":
+                self._iterative_imputation(
+                    iterative_imputation_iters=iterative_imputation_iters,
+                    numeric_iterative_imputer=numeric_iterative_imputer,
+                    categorical_iterative_imputer=categorical_iterative_imputer,
+                )
+            elif imputation_type is not None:
+                raise ValueError(
+                    "Invalid value for the imputation_type parameter, got "
+                    f"{imputation_type}. Possible values are: simple, iterative."
+                )
+
+            # Convert text features to meaningful vectors
+            if self._fxs["Text"]:
+                self._text_embedding(text_features_method)
+
+            # Encode non-numerical features
+            if self._fxs["Ordinal"] or self._fxs["Categorical"]:
+                self._encoding(max_encoding_ohe, encoding_method)
+
+            # Create polynomial features from the existing ones
+            if polynomial_features:
+                self._polynomial_features(polynomial_degree)
+
+            # Drop features with too low variance
+            if low_variance_threshold:
+                self._low_variance(low_variance_threshold)
+
+            # Drop features that are collinear with other features
+            if remove_multicollinearity:
+                self._remove_multicollinearity(multicollinearity_threshold)
+
+            # Bin numerical features to 5 clusters
+            if bin_numeric_features:
+                self._bin_numerical_features(bin_numeric_features)
+
+            # Remove outliers from the dataset
+            if remove_outliers:
+                self._remove_outliers(outliers_method, outliers_threshold)
+
+            # Power transform the data to be more Gaussian-like
+            if transformation:
+                self._transformation(transformation_method)
+
+            # Scale the features
+            if normalize:
+                self._normalization(normalize_method)
+
+            # Apply Principal Component Analysis
+            if pca:
+                self._pca(pca_method, pca_components)
+
+            # Select relevant features
+            if feature_selection:
+                self._feature_selection(
+                    feature_selection_method=feature_selection_method,
+                    feature_selection_estimator=feature_selection_estimator,
+                    n_features_to_select=n_features_to_select,
+                )
+
+        # Add custom transformers to the pipeline
+        if custom_pipeline:
+            self._add_custom_pipeline(custom_pipeline)
+
+        # Remove placeholder step
+        if len(self.pipeline) > 1:
+            self.pipeline.steps.pop(0)
+
+        self.pipeline.fit(self.X_train, self.y_train)
+
+        self.logger.info(f"Finished creating preprocessing pipeline.")
+        self.logger.info(f"Pipeline: {self.pipeline}")
+
+        # Final display ============================================ >>
+
+        self.logger.info("Creating final display dataframe.")
+
+        container = []
+        container.append(["Session id", self.seed])
+        container.append(["Target", self.target_param])
+        container.append(["Target type", "regression"])
+        container.append(["Data shape", self.dataset.shape])
+        container.append(["Train data shape", self.train.shape])
+        container.append(["Test data shape", self.test.shape])
+        for fx, cols in self._fxs.items():
+            if len(cols) > 0:
+                container.append([f"{fx} features", len(cols)])
+        if self.data.isna().sum().sum():
+            container.append(["Missing Values", self.data.isna().sum().sum()])
+        if preprocess:
+            container.append(["Preprocess", preprocess])
+            container.append(["Imputation type", imputation_type])
+            if imputation_type == "simple":
+                container.append(["Numeric imputation", numeric_imputation])
+                container.append(["Categorical imputation", categorical_imputation])
+            else:
+                if isinstance(numeric_iterative_imputer, str):
+                    num_imputer = numeric_iterative_imputer
+                else:
+                    num_imputer = numeric_iterative_imputer.__class__.__name__
+
+                if isinstance(categorical_iterative_imputer, str):
+                    cat_imputer = categorical_iterative_imputer
+                else:
+                    cat_imputer = categorical_iterative_imputer.__class__.__name__
+
+                container.append(
+                    ["Iterative imputation iterations", iterative_imputation_iters]
+                )
+                container.append(["Numeric iterative imputer", num_imputer])
+                container.append(["Categorical iterative imputer", cat_imputer])
+            if self._fxs["Text"]:
+                container.append(
+                    ["Text features embedding method", text_features_method]
+                )
+            if self._fxs["Categorical"]:
+                container.append(["Maximum one-hot encoding", max_encoding_ohe])
+                container.append(["Encoding method", encoding_method])
+            if polynomial_features:
+                container.append(["Polynomial features", polynomial_features])
+                container.append(["Polynomial degree", polynomial_degree])
+            if low_variance_threshold:
+                container.append(["Low variance threshold", low_variance_threshold])
+            if remove_multicollinearity:
+                container.append(["Remove multicollinearity", remove_multicollinearity])
+                container.append(
+                    ["Multicollinearity threshold", multicollinearity_threshold]
+                )
+            if remove_outliers:
+                container.append(["Remove outliers", remove_outliers])
+                container.append(["Outliers threshold", outliers_threshold])
+            if transformation:
+                container.append(["Transformation", transformation])
+                container.append(["Transformation method", transformation_method])
+            if normalize:
+                container.append(["Normalize", normalize])
+                container.append(["Normalize method", normalize_method])
+            if pca:
+                container.append(["PCA", pca])
+                container.append(["PCA method", pca_method])
+                container.append(["PCA components", pca_components])
+            if feature_selection:
+                container.append(["Feature selection", feature_selection])
+                container.append(["Feature selection method", feature_selection_method])
+                container.append(
+                    ["Feature selection estimator", feature_selection_estimator]
+                )
+                container.append(["Number of features selected", n_features_to_select])
+            if transform_target:
+                container.append(["Transform target", transform_target])
+                container.append(["Transform target method", transform_target_method])
+            if custom_pipeline:
+                container.append(["Custom pipeline", "Yes"])
+            container.append(["Fold Generator", self.fold_generator.__class__.__name__])
+            container.append(["Fold Number", fold])
+            container.append(["CPU Jobs", self.n_jobs_param])
+            container.append(["Log Experiment", self.logging_param])
+            container.append(["Experiment Name", self.exp_name_log])
+            container.append(["USI", self.USI])
+
+        self.display_container = [
+            pd.DataFrame(container, columns=["Description", "Value"])
+        ]
+        self.logger.info(f"Setup display_container: {self.display_container[0]}")
+        if self.verbose:
+            pd.set_option("display.max_rows", 100)
+            display(self.display_container[0].style.apply(highlight_setup))
+            pd.reset_option("display.max_rows")  # Reset option
+
+        # Wrap-up ================================================== >>
+
+        # Create a profile report
+        self._profile(profile, profile_kwargs)
+
+        # Define models and metrics
+        self._all_models, self._all_models_internal = self._get_models()
+        self._all_metrics = self._get_metrics()
+
+        runtime = np.array(time.time() - runtime_start).round(2)
+        self._set_up_mlflow(runtime, log_data, log_profile, experiment_custom_tags=experiment_custom_tags)
+
+        self._setup_ran = True
+        self.logger.info(f"setup() successfully completed in {runtime}s...............")
+
+        return self
 
     def compare_models(
         self,
@@ -827,6 +434,7 @@ class RegressionExperiment(_SupervisedExperiment):
         errors: str = "ignore",
         fit_kwargs: Optional[dict] = None,
         groups: Optional[Union[str, Any]] = None,
+        experiment_custom_tags: Optional[Dict[str, Any]] = None,
         verbose: bool = True,
     ):
 
@@ -941,6 +549,7 @@ class RegressionExperiment(_SupervisedExperiment):
             errors=errors,
             fit_kwargs=fit_kwargs,
             groups=groups,
+            experiment_custom_tags=experiment_custom_tags,
             verbose=verbose,
         )
 
@@ -952,6 +561,7 @@ class RegressionExperiment(_SupervisedExperiment):
         cross_validation: bool = True,
         fit_kwargs: Optional[dict] = None,
         groups: Optional[Union[str, Any]] = None,
+        experiment_custom_tags: Optional[Dict[str, Any]] = None,
         verbose: bool = True,
         **kwargs,
     ):
@@ -1059,6 +669,7 @@ class RegressionExperiment(_SupervisedExperiment):
             cross_validation=cross_validation,
             fit_kwargs=fit_kwargs,
             groups=groups,
+            experiment_custom_tags=experiment_custom_tags,
             verbose=verbose,
             **kwargs,
         )
@@ -1283,72 +894,72 @@ class RegressionExperiment(_SupervisedExperiment):
     ) -> Any:
 
         """
-        This function ensembles a given estimator. The output of this function is
-        a score grid with CV scores by fold. Metrics evaluated during CV can be
-        accessed using the ``get_metrics`` function. Custom metrics can be added
-        or removed using ``add_metric`` and ``remove_metric`` function.
+            This function ensembles a given estimator. The output of this function is
+            a score grid with CV scores by fold. Metrics evaluated during CV can be
+            accessed using the ``get_metrics`` function. Custom metrics can be added
+            or removed using ``add_metric`` and ``remove_metric`` function.
 
 
-        Example
-        --------
-        >>> from pycaret.datasets import get_data
-        >>> boston = get_data('boston')
-        >>> from pycaret.regression import *
-        >>> exp_name = setup(data = boston,  target = 'medv')
-        >>> dt = create_model('dt')
-        >>> bagged_dt = ensemble_model(dt, method = 'Bagging')
+            Example
+            --------
+            >>> from pycaret.datasets import get_data
+            >>> boston = get_data('boston')
+            >>> from pycaret.regression import *
+            >>> exp_name = setup(data = boston,  target = 'medv')
+            >>> dt = create_model('dt')
+            >>> bagged_dt = ensemble_model(dt, method = 'Bagging')
 
 
-    estimator: scikit-learn compatible object
-            Trained model object
+        estimator: scikit-learn compatible object
+                Trained model object
 
 
-        method: str, default = 'Bagging'
-            Method for ensembling base estimator. It can be 'Bagging' or 'Boosting'.
+            method: str, default = 'Bagging'
+                Method for ensembling base estimator. It can be 'Bagging' or 'Boosting'.
 
 
-        fold: int or scikit-learn compatible CV generator, default = None
-            Controls cross-validation. If None, the CV generator in the ``fold_strategy``
-            parameter of the ``setup`` function is used. When an integer is passed,
-            it is interpreted as the 'n_splits' parameter of the CV generator in the
-            ``setup`` function.
+            fold: int or scikit-learn compatible CV generator, default = None
+                Controls cross-validation. If None, the CV generator in the ``fold_strategy``
+                parameter of the ``setup`` function is used. When an integer is passed,
+                it is interpreted as the 'n_splits' parameter of the CV generator in the
+                ``setup`` function.
 
 
-        n_estimators: int, default = 10
-            The number of base estimators in the ensemble. In case of perfect fit, the
-            learning procedure is stopped early.
+            n_estimators: int, default = 10
+                The number of base estimators in the ensemble. In case of perfect fit, the
+                learning procedure is stopped early.
 
 
-        round: int, default = 4
-            Number of decimal places the metrics in the score grid will be rounded to.
+            round: int, default = 4
+                Number of decimal places the metrics in the score grid will be rounded to.
 
 
-        choose_better: bool, default = False
-            When set to True, the returned object is always better performing. The
-            metric used for comparison is defined by the ``optimize`` parameter.
+            choose_better: bool, default = False
+                When set to True, the returned object is always better performing. The
+                metric used for comparison is defined by the ``optimize`` parameter.
 
 
-        optimize: str, default = 'R2'
-            Metric to compare for model selection when ``choose_better`` is True.
+            optimize: str, default = 'R2'
+                Metric to compare for model selection when ``choose_better`` is True.
 
 
-        fit_kwargs: dict, default = {} (empty dict)
-            Dictionary of arguments passed to the fit method of the model.
+            fit_kwargs: dict, default = {} (empty dict)
+                Dictionary of arguments passed to the fit method of the model.
 
 
-        groups: str or array-like, with shape (n_samples,), default = None
-            Optional group labels when GroupKFold is used for the cross validation.
-            It takes an array with shape (n_samples, ) where n_samples is the number
-            of rows in training dataset. When string is passed, it is interpreted as
-            the column name in the dataset containing group labels.
+            groups: str or array-like, with shape (n_samples,), default = None
+                Optional group labels when GroupKFold is used for the cross validation.
+                It takes an array with shape (n_samples, ) where n_samples is the number
+                of rows in training dataset. When string is passed, it is interpreted as
+                the column name in the dataset containing group labels.
 
 
-        verbose: bool, default = True
-            Score grid is not printed when verbose is set to False.
+            verbose: bool, default = True
+                Score grid is not printed when verbose is set to False.
 
 
-        Returns:
-            Trained Model
+            Returns:
+                Trained Model
 
         """
 
@@ -1577,6 +1188,7 @@ class RegressionExperiment(_SupervisedExperiment):
         save: bool = False,
         fold: Optional[Union[int, Any]] = None,
         fit_kwargs: Optional[dict] = None,
+        plot_kwargs: Optional[dict] = None,
         groups: Optional[Union[str, Any]] = None,
         use_train_data: bool = False,
         verbose: bool = True,
@@ -1670,6 +1282,7 @@ class RegressionExperiment(_SupervisedExperiment):
             save=save,
             fold=fold,
             fit_kwargs=fit_kwargs,
+            plot_kwargs=plot_kwargs,
             groups=groups,
             verbose=verbose,
             use_train_data=use_train_data,
@@ -1682,6 +1295,7 @@ class RegressionExperiment(_SupervisedExperiment):
         estimator,
         fold: Optional[Union[int, Any]] = None,
         fit_kwargs: Optional[dict] = None,
+        plot_kwargs: Optional[dict] = None,
         groups: Optional[Union[str, Any]] = None,
         use_train_data: bool = False,
     ):
@@ -1741,6 +1355,7 @@ class RegressionExperiment(_SupervisedExperiment):
             estimator=estimator,
             fold=fold,
             fit_kwargs=fit_kwargs,
+            plot_kwargs=plot_kwargs,
             groups=groups,
             use_train_data=use_train_data,
         )
@@ -1779,13 +1394,13 @@ class RegressionExperiment(_SupervisedExperiment):
         >>> xgboost = create_model('xgboost')
         >>> interpret_model(xgboost)
 
-    
+
         estimator: scikit-learn compatible object
             Trained model object
 
 
         plot : str, default = 'summary'
-            Abbreviation of type of plot. The current list of plots supported 
+            Abbreviation of type of plot. The current list of plots supported
             are (Plot - Name):
 
             * 'summary' - Summary Plot using SHAP
@@ -1858,6 +1473,7 @@ class RegressionExperiment(_SupervisedExperiment):
         self,
         estimator,
         data: Optional[pd.DataFrame] = None,
+        drift_report: bool = False,
         round: int = 4,
         verbose: bool = True,
     ) -> pd.DataFrame:
@@ -1913,7 +1529,8 @@ class RegressionExperiment(_SupervisedExperiment):
             estimator=estimator,
             data=data,
             probability_threshold=None,
-            encoded_labels=True,
+            encoded_labels=False,
+            drift_report=drift_report,
             round=round,
             verbose=verbose,
         )
@@ -1924,6 +1541,7 @@ class RegressionExperiment(_SupervisedExperiment):
         fit_kwargs: Optional[dict] = None,
         groups: Optional[Union[str, Any]] = None,
         model_only: bool = True,
+        experiment_custom_tags: Optional[Dict[str, Any]] = None,
     ) -> Any:
 
         """
@@ -1972,10 +1590,15 @@ class RegressionExperiment(_SupervisedExperiment):
             fit_kwargs=fit_kwargs,
             groups=groups,
             model_only=model_only,
+            experiment_custom_tags=experiment_custom_tags,
         )
 
     def deploy_model(
-        self, model, model_name: str, authentication: dict, platform: str = "aws",
+        self,
+        model,
+        model_name: str,
+        authentication: dict,
+        platform: str = "aws",
     ):
 
         """
@@ -2298,7 +1921,9 @@ class RegressionExperiment(_SupervisedExperiment):
         """
 
         return super().get_metrics(
-            reset=reset, include_custom=include_custom, raise_errors=raise_errors,
+            reset=reset,
+            include_custom=include_custom,
+            raise_errors=raise_errors,
         )
 
     def add_metric(
@@ -2416,4 +2041,3 @@ class RegressionExperiment(_SupervisedExperiment):
         """
 
         return super().get_logs(experiment_name=experiment_name, save=save)
-

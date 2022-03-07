@@ -102,18 +102,14 @@ def _check_windows():
 
 def _return_model_names():
     """Return all model names."""
-    globals_dict = {
-        "seed": 0,
-        "n_jobs_param": -1,
-        "gpu_param": False,
-        "X_train": pd.DataFrame(get_data("airline")),
-        "enforce_pi": False,
-        "enforce_exogenous": True,
-        "exogenous_present": TSExogenousPresent.NO,
-        "seasonal_period": 2,
-        "primary_sp_to_use": 2,
-    }
-    model_containers = get_all_model_containers(globals_dict)
+    data = get_data("airline")
+    exp = TSForecastingExperiment()
+    exp.setup(
+        data=data,
+        seasonal_period=2,
+        session_id=42,
+    )
+    model_containers = get_all_model_containers(exp)
 
     models_to_ignore = (
         ["prophet", "ensemble_forecaster"]

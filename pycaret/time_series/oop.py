@@ -10,13 +10,14 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import numpy as np  # type: ignore
 import pandas as pd  # type: ignore
 from IPython.utils import io
-from pandas.io.formats.style import Styler
 from sklearn.base import clone  # type: ignore
 from sktime.forecasting.base import ForecastingHorizon
 from sktime.forecasting.model_selection import (  # type: ignore
     ExpandingWindowSplitter,
     SlidingWindowSplitter,
 )
+
+from pycaret.internal.pipeline import Pipeline as InternalPipeline
 
 import pycaret.containers.metrics.time_series
 import pycaret.containers.models.time_series
@@ -127,58 +128,61 @@ class TSForecastingExperiment(_SupervisedExperiment):
             "residuals",
         ]
 
-    def _get_setup_display(self, **kwargs) -> Styler:
-        # define highlight function for function grid to display
+    def _get_setup_display(self, **kwargs) -> pd.DataFrame:
+        """Returns the dataframe to be displayed at the end of setup"""
 
-        functions = pd.DataFrame(
-            [
-                ["session_id", self.seed],
-                ["Target", self.target_param],
-                ["Original Data", self.data_before_preprocess.shape],
-                ["Missing Values", kwargs["missing_flag"]],
-                ["Approach", self.approach_type.value],
-                ["Exogenous Variables", self.exogenous_present.value],
-                ["Transformed Train Target", self.y_train.shape],
-                ["Transformed Test Target", self.y_test.shape],
-                ["Transformed Train Exogenous", self.X_train.shape],
-                ["Transformed Test Exogenous", self.X_test.shape],
-                ["Fold Generator", type(self.fold_generator).__name__],
-                ["Fold Number", self.fold_param],
-                ["Enforce Prediction Interval", self.enforce_pi],
-                ["Seasonal Period(s) Tested", self.seasonal_period],
-                ["Seasonality Present", self.seasonality_present],
-                ["Seasonalities Detected", self.all_sp_values],
-                ["Primary Seasonality", self.primary_sp_to_use],
-                ["Target Strictly Positive", self.strictly_positive],
-                ["Target White Noise", self.white_noise],
-                ["Recommended d", self.lowercase_d],
-                ["Recommended Seasonal D", self.uppercase_d],
-                ["CPU Jobs", self.n_jobs_param],
-                ["Use GPU", self.gpu_param],
-                ["Log Experiment", self.logging_param],
-                ["Experiment Name", self.exp_name_log],
-                ["USI", self.USI],
-            ]
-            + (
-                [["Imputation Type", kwargs["imputation_type"]]]
-                if self.preprocess
-                else []
-            ),
-            columns=["Description", "Value"],
+        display_container = [
+            ["session_id", self.seed],
+            ["Target", self.target_param],
+            ["Approach", self.approach_type.value],
+            ["Exogenous Variables", self.exogenous_present.value],
+            ["Data shape", self.data.shape],
+            ["Train data shape", self.train.shape],
+            ["Test data shape", self.test.shape],
+            ["Fold Generator", type(self.fold_generator).__name__],
+            ["Fold Number", self.fold_param],
+            ["Enforce Prediction Interval", self.enforce_pi],
+            ["Seasonal Period(s) Tested", self.seasonal_period],
+            ["Seasonality Present", self.seasonality_present],
+            ["Seasonalities Detected", self.all_sp_values],
+            ["Primary Seasonality", self.primary_sp_to_use],
+            ["Target Strictly Positive", self.strictly_positive],
+            ["Target White Noise", self.white_noise],
+            ["Recommended d", self.lowercase_d],
+            ["Recommended Seasonal D", self.uppercase_d],
+            ["Missing Values", self.data.isna().sum().sum()],
+            ["Preprocess", self.preprocess],
+            ["CPU Jobs", self.n_jobs_param],
+            ["Use GPU", self.gpu_param],
+            ["Log Experiment", self.logging_param],
+            ["Experiment Name", self.exp_name_log],
+            ["USI", self.USI],
+            # ["Transformed Train Target", self.y_train.shape],
+            # ["Transformed Test Target", self.y_test.shape],
+            # ["Transformed Train Exogenous", self.X_train.shape],
+            # ["Transformed Test Exogenous", self.X_test.shape],
+        ]
+
+        if self.preprocess:
+            display_container.extend([["Imputation Type", self.imputation_type]])
+
+        display_container = pd.DataFrame(
+            display_container, columns=["Description", "Value"]
         )
-        return functions.style.apply(highlight_setup)
+
+        return display_container
 
     def _get_models(self, raise_errors: bool = True) -> Tuple[dict, dict]:
         all_models = {
             k: v
             for k, v in pycaret.containers.models.time_series.get_all_model_containers(
-                self.variables, raise_errors=raise_errors
+                self, raise_errors=raise_errors
             ).items()
             if not v.is_special
         }
         all_models_internal = (
             pycaret.containers.models.time_series.get_all_model_containers(
-                self.variables, raise_errors=raise_errors
+                self, raise_errors=raise_errors
             )
         )
         return all_models, all_models_internal
@@ -642,6 +646,7 @@ class TSForecastingExperiment(_SupervisedExperiment):
         system_log: Union[bool, logging.Logger] = True,
         log_experiment: bool = False,
         experiment_name: Optional[str] = None,
+        experiment_custom_tags: Optional[Dict[str, Any]] = None,
         log_plots: Union[bool, list] = False,
         log_profile: bool = False,
         log_data: bool = False,
@@ -873,10 +878,14 @@ class TSForecastingExperiment(_SupervisedExperiment):
 
 
         """
+        # sktime is an optional dependency
+        from sktime.forecasting.model_selection import temporal_train_test_split
 
         ##############################
         #### Setup initialization ####
         ##############################
+
+        runtime_start = time.time()
 
         #### Define parameter attrs ----
         self.fig_kwargs = fig_kwargs or {}
@@ -884,6 +893,37 @@ class TSForecastingExperiment(_SupervisedExperiment):
 
         self.enforce_pi = enforce_pi
         self.enforce_exogenous = enforce_exogenous
+        self.preprocess = preprocess
+        self.imputation_type = imputation_type
+        self.log_plots_param = log_plots
+
+        # Needed for compatibility with Regression and Classification.
+        # Not used in Time Series
+        self.fold_groups_param = None
+        self.fold_groups_param_full = None
+        self.transform_target_param = None
+
+        # Features to be ignored (are not read by self.dataset, self.X, etc...)
+        self._fxs = {"Ignore": ignore_features or []}
+
+        ## Make a local copy (to perfrom inplace operation on the original dataset)
+        data_ = data.copy()
+
+        # TODO: What is memory and is it needed as an argument to the setup?
+        # https://github.com/pycaret/pycaret/blob/eb3a958ea159c600eb8d536cb902d309aa18ebcb/pycaret/internal/pycaret_experiment/class_reg_experiment.py#L138
+        memory: Union[bool, str, Memory] = True
+
+        self._initialize_setup(
+            n_jobs=n_jobs,
+            use_gpu=use_gpu,
+            html=html,
+            session_id=session_id,
+            system_log=system_log,
+            log_experiment=log_experiment,
+            experiment_name=experiment_name,
+            memory=memory,
+            verbose=verbose,
+        )
 
         #### Check and Clean Data ----
         data_ = self._check_and_clean_data(data)
@@ -913,60 +953,177 @@ class TSForecastingExperiment(_SupervisedExperiment):
         #### Multiplicative components allowed? ----
         self.logger.info("Set up whether Multiplicative components allowed.")
 
+        ############################################
+        #### Multiplicative components allowed? ####
+        ############################################
+
+        self.logger.info("Set up whether Multiplicative components allowed.")
+
         # Should multiplicative components be allowed in models that support it
         self.strictly_positive = np.all(data_[self.target_param] > 0)
 
-        return super().setup(
-            data=data_,
-            target=self.target_param,
-            test_data=None,
-            preprocess=preprocess,
-            imputation_type=imputation_type,
-            categorical_features=None,
-            ordinal_features=None,
-            high_cardinality_features=None,
-            numeric_features=None,
-            date_features=None,
-            ignore_features=ignore_features,
-            normalize=False,
-            transformation=False,
-            handle_unknown_categorical=False,
-            pca=False,
-            ignore_low_variance=False,
-            combine_rare_levels=False,
-            bin_numeric_features=None,
-            remove_outliers=False,
-            remove_multicollinearity=False,
-            remove_perfect_collinearity=False,
-            create_clusters=False,
-            polynomial_features=False,
-            trigonometry_features=False,
-            group_features=None,
-            feature_selection=False,
-            feature_interaction=False,
-            transform_target=False,
-            data_split_shuffle=False,
-            data_split_stratify=False,
-            fold_strategy=fold_strategy,
-            fold=fold,
-            fh=self.fh,
-            fold_shuffle=False,
-            n_jobs=n_jobs,
-            use_gpu=use_gpu,
-            custom_pipeline=custom_pipeline,
-            html=html,
-            session_id=session_id,
-            system_log=system_log,
-            log_experiment=log_experiment,
-            experiment_name=experiment_name,
-            log_plots=log_plots,
-            log_profile=log_profile,
-            log_data=log_data,
-            silent=True,
-            verbose=verbose,
-            profile=profile,
-            profile_kwargs=profile_kwargs,
+        ###############################
+        #### Set Train Test Splits ####
+        ###############################
+
+        self.logger.info("Set up Train-Test Splits.")
+
+        # If `fh` is provided it splits by it
+        y = data_[self.target_param]
+        X = data_.drop(self.target_param, axis=1)
+
+        y_train, y_test, X_train, X_test = temporal_train_test_split(
+            y=y, X=X, fh=self.fh
         )
+
+        # Coerce y into a dataframes ----
+        # TODO: Is this needed here since we are not explicitly setting y_train and y_test?
+        y_train, y_test = (
+            pd.DataFrame(y_train),
+            pd.DataFrame(y_test),
+        )
+
+        self.data = data_
+        # idx contains train, test indices.
+        # Setting of self.y_train, self.y_test, self.X_train and self.X_test
+        # will be handled internally based on these indices and self.data
+        self.idx = [y_train.index, y_test.index]
+
+        ######################################
+        #### Setup Cross Validation Folds ####
+        ######################################
+
+        possible_time_series_fold_strategies = ["expanding", "sliding", "rolling"]
+        #### TODO: Change is_sklearn_cv_generator to check for sktime instead
+        if not (
+            fold_strategy in possible_time_series_fold_strategies
+            or is_sklearn_cv_generator(fold_strategy)
+        ):
+            raise TypeError(
+                "fold_strategy parameter must be either a sktime compatible CV generator "
+                f"object or one of '{', '.join(possible_time_series_fold_strategies)}'."
+            )
+
+        if fold_strategy in possible_time_series_fold_strategies:
+            self.fold_strategy = fold_strategy  # save for use in methods later
+            # Number of folds
+            self.fold_param = fold
+            self.fold_generator = self.get_fold_generator(fold=self.fold_param)
+        else:
+            # TODO: Add the correct self.fold_strategy here based type of fold_strategy
+            self.fold_generator = fold_strategy
+            # Number of folds
+            self.fold_param = fold_strategy.get_n_splits(y=self.y_train)
+
+        # Preprocessing ============================================ >>
+
+        # Initialize empty pipeline
+        self.pipeline = InternalPipeline(
+            steps=[("placeholder", None)],
+            memory=self.memory,
+        )
+
+        ############################################
+        #### Initial EDA in Setup (for display) ####
+        ############################################
+
+        from pycaret.internal.tests.time_series import (
+            recommend_uppercase_d,
+            recommend_lowercase_d,
+        )
+
+        self.white_noise = None
+        wn_results = self.check_stats(test="white_noise")
+        wn_values = wn_results.query("Property == 'White Noise'")["Value"]
+
+        # There can be multiple lags values tested.
+        # Checking the percent of lag values that indicate white noise
+        percent_white_noise = sum(wn_values) / len(wn_values)
+        if percent_white_noise == 0:
+            self.white_noise = "No"
+        elif percent_white_noise == 1.00:
+            self.white_noise = "Yes"
+        else:
+            self.white_noise = "Maybe"
+
+        self.lowercase_d = recommend_lowercase_d(data=self.y)
+        if self.primary_sp_to_use > 1:
+            try:
+                max_D = 2
+                uppercase_d = recommend_uppercase_d(
+                    data=self.y, sp=self.primary_sp_to_use, max_D=max_D
+                )
+            except ValueError as error:
+                self.logger.info(f"Test for computing 'D' failed at max_D = 2.")
+                try:
+                    max_D = 1
+                    uppercase_d = recommend_uppercase_d(
+                        data=self.y, sp=self.primary_sp_to_use, max_D=max_D
+                    )
+                except ValueError:
+                    self.logger.info(f"Test for computing 'D' failed at max_D = 1.")
+                    uppercase_d = 0
+        else:
+            uppercase_d = 0
+        self.uppercase_d = uppercase_d
+
+        #######################
+        #### Final display ####
+        #######################
+
+        self.logger.info("Creating final display dataframe.")
+        self.display_container = [self._get_setup_display()]
+        self.logger.info(f"Setup Display Container: {self.display_container[0]}")
+        if self.verbose:
+            pd.set_option("display.max_rows", 100)
+            print(self.display_container[0].style.apply(highlight_setup))
+            pd.reset_option("display.max_rows")  # Reset option
+
+        #################
+        #### Wrap-up ####
+        #################
+
+        # Create a profile report
+        self._profile(profile, profile_kwargs)
+
+        # Define models and metrics
+        self._all_models, self._all_models_internal = self._get_models()
+        self._all_metrics = self._get_metrics()
+
+        runtime = np.array(time.time() - runtime_start).round(2)
+
+        self._set_up_mlflow(
+            runtime,
+            log_data,
+            log_profile,
+            experiment_custom_tags=experiment_custom_tags,
+        )
+
+        self._setup_ran = True
+
+        #############################
+        #### Cleanup after Setup ####
+        #############################
+
+        #### Disabling of certain metrics. ----
+        ## NOTE: This must be run after _setup_ran has been set, else metrics can
+        # not be retrieved.
+
+        #### Disable R2 when fh = 1 ----
+        if len(self.fh) == 1 and "r2" in self._get_metrics():
+            # disable R2 metric if it exists in the metrics since R2 needs
+            # at least 2 values
+            self.remove_metric("R2")
+
+        #### Remove COVERAGE when enforce_pi is False ----
+        # User can add it manually if they want when enforce_pi is set to False.
+        # Refer: https://github.com/pycaret/pycaret/issues/1900
+        if not self.enforce_pi and "coverage" in self._get_metrics():
+            self.remove_metric("COVERAGE")
+
+        self.logger.info(f"setup() successfully completed in {runtime}s...............")
+
+        return self
 
     def _set_default_fig_kwargs(self):
         """Set the default values for `fig_kwargs` if these are not provided by the user."""
@@ -1001,6 +1158,7 @@ class TSForecastingExperiment(_SupervisedExperiment):
         turbo: bool = True,
         errors: str = "ignore",
         fit_kwargs: Optional[dict] = None,
+        experiment_custom_tags: Optional[Dict[str, Any]] = None,
         verbose: bool = True,
     ):
 
@@ -1106,6 +1264,7 @@ class TSForecastingExperiment(_SupervisedExperiment):
             turbo=turbo,
             errors=errors,
             fit_kwargs=fit_kwargs,
+            experiment_custom_tags=experiment_custom_tags,
             verbose=verbose,
         )
 
@@ -1116,6 +1275,7 @@ class TSForecastingExperiment(_SupervisedExperiment):
         round: int = 4,
         cross_validation: bool = True,
         fit_kwargs: Optional[dict] = None,
+        experiment_custom_tags: Optional[Dict[str, Any]] = None,
         verbose: bool = True,
         **kwargs,
     ):
@@ -1218,6 +1378,7 @@ class TSForecastingExperiment(_SupervisedExperiment):
             round=round,
             cross_validation=cross_validation,
             fit_kwargs=fit_kwargs,
+            experiment_custom_tags=experiment_custom_tags,
             verbose=verbose,
             **kwargs,
         )
@@ -1787,7 +1948,7 @@ class TSForecastingExperiment(_SupervisedExperiment):
 
         gc.collect()
 
-        # with estimator_pipeline(self._internal_pipeline, model) as pipeline_with_model:
+        # with estimator_pipeline(self.pipeline, model) as pipeline_with_model:
         if True:
 
             # fit_kwargs = get_pipeline_fit_kwargs(pipeline_with_model, fit_kwargs)
@@ -1951,7 +2112,7 @@ class TSForecastingExperiment(_SupervisedExperiment):
                     source="tune_model",
                     runtime=runtime,
                     model_fit_time=model_fit_time,
-                    _prep_pipe=self.prep_pipe,
+                    pipeline=self.pipeline,
                     log_plots=self.log_plots_param,
                     tune_cv_results=cv_results,
                     display=display,
@@ -2192,7 +2353,7 @@ class TSForecastingExperiment(_SupervisedExperiment):
                 import streamlit as st
             except ImportError:
                 raise ImportError(
-                    "It appears that streamlit is not installed. Do: pip install hpbandster ConfigSpace"
+                    "It appears that streamlit is not installed. Do: pip install streamlit"
                 )
 
         # Add sp value (used in decomp plots)
@@ -2668,7 +2829,11 @@ class TSForecastingExperiment(_SupervisedExperiment):
         return result
 
     def finalize_model(
-        self, estimator, fit_kwargs: Optional[dict] = None, model_only: bool = True
+        self,
+        estimator,
+        fit_kwargs: Optional[dict] = None,
+        model_only: bool = True,
+        experiment_custom_tags: Optional[Dict[str, Any]] = None,
     ) -> Any:
 
         """
@@ -2705,11 +2870,18 @@ class TSForecastingExperiment(_SupervisedExperiment):
         """
 
         return super().finalize_model(
-            estimator=estimator, fit_kwargs=fit_kwargs, model_only=model_only
+            estimator=estimator,
+            fit_kwargs=fit_kwargs,
+            model_only=model_only,
+            experiment_custom_tags=experiment_custom_tags,
         )
 
     def deploy_model(
-        self, model, model_name: str, authentication: dict, platform: str = "aws"
+        self,
+        model,
+        model_name: str,
+        authentication: dict,
+        platform: str = "aws",
     ):
 
         """

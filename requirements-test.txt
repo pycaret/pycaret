@@ -1,3 +1,6 @@
 # for testing
 pytest
 moto
+codecov
+
+dask[dataframe]

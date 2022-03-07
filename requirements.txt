@@ -1,4 +1,5 @@
-pandas
+scipy~=1.7.0  # Not larger because of statsmodels
+pandas>=1.3.0
 seaborn
 matplotlib
 IPython
@@ -22,6 +23,7 @@ pyod
 pandas-profiling>=2.8.0
 kmodes>=0.10.1
 mlflow
-imbalanced-learn==0.7.0
+imbalanced-learn>=0.8.1
+category-encoders>=2.2.2
 scikit-plot #for lift and gain charts
 Boruta
