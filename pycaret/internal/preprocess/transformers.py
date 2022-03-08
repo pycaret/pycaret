@@ -235,6 +235,23 @@ class ExtractDateTimeFeatures(BaseEstimator):
         return X
 
 
+class DropImputer(BaseEstimator):
+    """Drop rows with missing values."""
+
+    def __init__(self, columns):
+        self.columns = columns
+
+    def fit(self, X, y=None):
+        return self
+
+    def transform(self, X, y=None):
+        X = X.dropna(subset=self.columns, axis=0)
+        if y is not None:
+            y = y[y.index.isin(X.index)]
+
+        return X, y
+
+
 class EmbedTextFeatures(BaseEstimator):
     """Embed text features to an array representation."""
 

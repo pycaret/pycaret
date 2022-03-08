@@ -39,7 +39,7 @@ def setup(
     keep_features: Optional[List[str]] = None,
     preprocess: bool = True,
     imputation_type: Optional[str] = "simple",
-    numeric_imputation: str = "mean",
+    numeric_imputation: Union[int, float, str] = "mean",
     categorical_imputation: str = "constant",
     iterative_imputation_iters: int = 5,
     numeric_iterative_imputer: Union[str, Any] = "lightgbm",
@@ -182,14 +182,21 @@ def setup(
         If None, no imputation of missing values is performed.
 
 
-    numeric_imputation: str, default = 'mean'
-        Missing values in numeric features are imputed with 'mean' value of the feature
-        in the training dataset. The other available option is 'median' or 'zero'.
+    numeric_imputation: int, float or str, default = 'mean'
+        Imputing strategy for numerical columns. Choose from:
+            - "drop": Drop rows containing missing values.
+            - "mean": Impute with mean of column.
+            - "median": Impute with median of column.
+            - "mode": Impute with most frequent value.
+            - "knn": Impute using a K-Nearest Neighbors approach.
+            - int or float: Impute with provided numerical value.
 
 
     categorical_imputation: str, default = 'constant'
-        Missing values in categorical features are imputed with a constant 'not_available'
-        value. The other available option is 'mode'.
+        Imputing strategy for categorical columns. Choose from:
+            - "drop": Drop rows containing missing values.
+            - "mode": Impute with most frequent value.
+            - str: Impute with provided string.
 
 
     iterative_imputation_iters: int, default = 5

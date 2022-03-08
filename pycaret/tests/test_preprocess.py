@@ -60,7 +60,7 @@ def test_date_features():
     assert all([f"date_{attr}" in X for attr in ("day", "month", "year")])
 
 
-@pytest.mark.parametrize("imputation_method", ["zero", "mean", "median"])
+@pytest.mark.parametrize("imputation_method", [0, "drop", "mean", "median", "mode", "knn"])
 def test_simple_numeric_imputation(imputation_method):
     """Assert that missing values are imputed."""
     data = pycaret.datasets.get_data("juice")
@@ -74,7 +74,7 @@ def test_simple_numeric_imputation(imputation_method):
     assert X.isna().sum().sum() == 0
 
 
-@pytest.mark.parametrize("imputation_method", ["constant", "mode"])
+@pytest.mark.parametrize("imputation_method", ["drop", "missing", "mode"])
 def test_simple_categorical_imputation(imputation_method):
     """Assert that missing values are imputed."""
     data = pycaret.datasets.get_data("juice")
@@ -86,6 +86,34 @@ def test_simple_categorical_imputation(imputation_method):
     )
     X, _ = pc.pipeline.transform(pc.X, pc.y)
     assert X.isna().sum().sum() == 0
+
+
+def test_iterative_imputer():
+    """Test iterative imputer"""
+    data = pycaret.datasets.get_data("juice")
+    categories = {}
+    for i, col in enumerate(data.columns):
+        # leave two columns and target filled
+        if col in ("STORE", "PriceCH", "DiscMM"):
+            continue
+        if col in ("Purchase", "Store7"):
+            categories[col] = set(data[col].unique())
+        data.loc[data.sample(frac=0.1, random_state=i).index, col] = pd.np.nan
+    for imputer in ["catboost", "lightgbm", "rf", "lr"]:
+        data = data.copy()
+        pc = pycaret.classification.setup(
+            data=data,
+            imputation_type="iterative",
+            numeric_iterative_imputer=imputer,
+            categorical_iterative_imputer=imputer,
+        )
+        transformer = pc.pipeline.named_steps["iterative_imputer"]
+        df = transformer.transform(data, data["STORE"])[0]
+        assert not df.isnull().values.any()
+        assert all(categories[col] == set(df[col].unique()) for col in categories)
+        df = transformer.transform(data, data["STORE"])[0]
+        assert not df.isnull().values.any()
+        assert all(categories[col] == set(df[col].unique()) for col in categories)
 
 
 @pytest.mark.parametrize("embedding_method", ["bow", "tf-idf"])
@@ -287,31 +315,3 @@ def test_custom_pipeline_is_pipeline():
     )
     X, _ = pc.pipeline.transform(pc.X, pc.y)
     assert X.shape[1] == 5
-
-
-def test_iterative_imputer():
-    """Test iterative imputer"""
-    data = pycaret.datasets.get_data("juice")
-    categories = {}
-    for i, col in enumerate(data.columns):
-        # leave two columns and target filled
-        if col in ("STORE", "PriceCH", "DiscMM"):
-            continue
-        if col in ("Purchase", "Store7"):
-            categories[col] = set(data[col].unique())
-        data.loc[data.sample(frac=0.1, random_state=i).index, col] = pd.np.nan
-    for imputer in ["catboost", "lightgbm", "rf", "lr"]:
-        data = data.copy()
-        pc = pycaret.classification.setup(
-            data=data,
-            imputation_type="iterative",
-            numeric_iterative_imputer=imputer,
-            categorical_iterative_imputer=imputer,
-        )
-        transformer = pc.pipeline.named_steps["iterative_imputer"]
-        df = transformer.transform(data, data["STORE"])[0]
-        assert not df.isnull().values.any()
-        assert all(categories[col] == set(df[col].unique()) for col in categories)
-        df = transformer.transform(data, data["STORE"])[0]
-        assert not df.isnull().values.any()
-        assert all(categories[col] == set(df[col].unique()) for col in categories)
