@@ -192,7 +192,7 @@ def setup(
             - int or float: Impute with provided numerical value.
 
 
-    categorical_imputation: str, default = 'constant'
+    categorical_imputation: str, default = 'mode'
         Imputing strategy for categorical columns. Choose from:
             - "drop": Drop rows containing missing values.
             - "mode": Impute with most frequent value.
