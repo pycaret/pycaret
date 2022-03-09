@@ -3305,42 +3305,10 @@ def create_model_supervised(
             with io.capture_output():
                 pipeline_with_model.fit(data_X, data_y, **fit_kwargs)
 
-            # calculating model results with final model on complete train dataset
-            if isinstance(model, CustomProbabilityThresholdClassifier):
-                probability_threshold = model.probability_threshold
-                estimator = get_estimator_from_meta_estimator(model)
-            else:
-                estimator = model
-
-            # prediction using complete X_train
-            pred = np.nan_to_num(estimator.predict(data_X))
-
-            # calculating raw score using complete X_train
-            try:
-                score = estimator.predict_proba(data_X)
-
-                if len(np.unique(pred)) <= 2:
-                    pred_prob = score[:, 1]
-                else:
-                    pred_prob = score
-
-            except:
-                score = None
-                pred_prob = None
-
-            # enforcing integer type for classification
-            if probability_threshold is not None and pred_prob is not None:
-                try:
-                    pred = (pred_prob >= probability_threshold).astype(int)
-                except:
-                    pass
-
-            if pred_prob is None:
-                pred_prob = pred
+                predict_model(pipeline_with_model, data=pd.concat([data_X, data_y], axis=1))
 
             # calculating metrics on predictions of complete train dataset
-            metrics = _calculate_metrics_supervised(data_y, pred, pred_prob)
-            metrics = pd.DataFrame(metrics, index=[0])
+            metrics = pull(pop=True).drop("Model", axis=1)
             df_score = pd.DataFrame({"Split": ["Train"], "Fold": [None]})
             df_score = pd.concat([df_score, metrics], axis=1)
             df_score.set_index(["Split", "Fold"], inplace=True)
@@ -9003,7 +8971,7 @@ def predict_model(
     else:
 
         if is_sklearn_pipeline(estimator) and hasattr(estimator, "predict"):
-            dtypes = estimator.named_steps["dtypes"]
+            dtypes = estimator.named_steps.get("dtypes", prep_pipe.named_steps["dtypes"])
         else:
             try:
                 dtypes = prep_pipe.named_steps["dtypes"]
@@ -9024,6 +8992,10 @@ def predict_model(
                 raise ValueError("Pipeline not found")
 
         X_test_ = data.copy()
+        y_test_ = None
+        if y_test is not None and y_test.name in X_test_.columns:
+            y_test_ = X_test_[y_test.name]
+            X_test_ = X_test_.drop(y_test.name, axis=1)
 
     # generate drift report
     if drift_report:
@@ -9095,7 +9067,7 @@ def predict_model(
 
     df_score = None
 
-    if data is None:
+    if y_test_ is not None:
         # model name
         full_name = _get_model_name(estimator)
         metrics = _calculate_metrics_supervised(y_test_, pred, pred_prob)
