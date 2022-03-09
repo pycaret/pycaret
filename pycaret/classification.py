@@ -785,7 +785,7 @@ def compare_models(
 
     display: pycaret.internal.Display.Display, default = None
         Custom display object
-    
+
     parallel: pycaret.parallel.parallel_backend.ParallelBackend, default = None
         A ParallelBackend instance. For example if you have a SparkSession ``session``,
         you can use ``FugueBackend(session)`` to make this function running using
@@ -929,7 +929,7 @@ def create_model(
 
 
     return_train_score: bool, default = False
-        If False, returns the CV Validation scores only. 
+        If False, returns the CV Validation scores only.
         If True, returns the CV training scores along with the CV validation scores.
         This is useful when the user wants to do bias-variance tradeoff. A high CV
         training score with a low corresponding CV validation score indicates overfitting.
@@ -961,7 +961,7 @@ def create_model(
         groups=groups,
         probability_threshold=probability_threshold,
         verbose=verbose,
-        return_train_score = return_train_score,
+        return_train_score=return_train_score,
         **kwargs,
     )
 
@@ -1133,7 +1133,7 @@ def tune_model(
 
 
     return_train_score: bool, default = False
-        If False, returns the CV Validation scores only. 
+        If False, returns the CV Validation scores only.
         If True, returns the CV training scores along with the CV validation scores.
         This is useful when the user wants to do bias-variance tradeoff. A high CV
         training score with a low corresponding CV validation score indicates overfitting.
@@ -1267,7 +1267,7 @@ def ensemble_model(
 
 
     return_train_score: bool, default = False
-        If False, returns the CV Validation scores only. 
+        If False, returns the CV Validation scores only.
         If True, returns the CV training scores along with the CV validation scores.
         This is useful when the user wants to do bias-variance tradeoff. A high CV
         training score with a low corresponding CV validation score indicates overfitting.
@@ -1393,7 +1393,7 @@ def blend_models(
 
 
     return_train_score: bool, default = False
-        If False, returns the CV Validation scores only. 
+        If False, returns the CV Validation scores only.
         If True, returns the CV training scores along with the CV validation scores.
         This is useful when the user wants to do bias-variance tradeoff. A high CV
         training score with a low corresponding CV validation score indicates overfitting.
@@ -1524,7 +1524,7 @@ def stack_models(
 
 
     return_train_score: bool, default = False
-        If False, returns the CV Validation scores only. 
+        If False, returns the CV Validation scores only.
         If True, returns the CV training scores along with the CV validation scores.
         This is useful when the user wants to do bias-variance tradeoff. A high CV
         training score with a low corresponding CV validation score indicates overfitting.
@@ -1944,7 +1944,7 @@ def calibrate_model(
 
 
     return_train_score: bool, default = False
-        If False, returns the CV Validation scores only. 
+        If False, returns the CV Validation scores only.
         If True, returns the CV training scores along with the CV validation scores.
         This is useful when the user wants to do bias-variance tradeoff. A high CV
         training score with a low corresponding CV validation score indicates overfitting.
@@ -2049,7 +2049,7 @@ def predict_model(
     drift_report: bool = False,
     round: int = 4,
     verbose: bool = True,
-    drift_kwargs:Optional[dict] = None
+    drift_kwargs: Optional[dict] = None,
 ) -> pd.DataFrame:
 
     """
@@ -2129,7 +2129,7 @@ def predict_model(
         round=round,
         verbose=verbose,
         ml_usecase=MLUsecase.CLASSIFICATION,
-        drift_kwargs=drift_kwargs
+        drift_kwargs=drift_kwargs,
     )
 
 
@@ -2181,7 +2181,7 @@ def finalize_model(
         not) passed to the mlflow.set_tags to add new custom tags for the experiment.
 
     return_train_score: bool, default = False
-        If False, returns the CV Validation scores only. 
+        If False, returns the CV Validation scores only.
         If True, returns the CV training scores along with the CV validation scores.
         This is useful when the user wants to do bias-variance tradeoff. A high CV
         training score with a low corresponding CV validation score indicates overfitting.
@@ -2403,7 +2403,11 @@ def load_model(
     )
 
 
-def automl(optimize: str = "Accuracy", use_holdout: bool = False, return_train_score: bool = False) -> Any:
+def automl(
+    optimize: str = "Accuracy",
+    use_holdout: bool = False,
+    return_train_score: bool = False,
+) -> Any:
 
     """
     This function returns the best model out of all trained models in
@@ -2434,7 +2438,7 @@ def automl(optimize: str = "Accuracy", use_holdout: bool = False, return_train_s
 
 
     return_train_score: bool, default = False
-        If False, returns the CV Validation scores only. 
+        If False, returns the CV Validation scores only.
         If True, returns the CV training scores along with the CV validation scores.
         This is useful when the user wants to do bias-variance tradeoff. A high CV
         training score with a low corresponding CV validation score indicates overfitting.
@@ -2444,7 +2448,11 @@ def automl(optimize: str = "Accuracy", use_holdout: bool = False, return_train_s
         Trained Model
 
     """
-    return pycaret.internal.tabular.automl(optimize=optimize, use_holdout=use_holdout, return_train_score=return_train_score)
+    return pycaret.internal.tabular.automl(
+        optimize=optimize,
+        use_holdout=use_holdout,
+        return_train_score=return_train_score,
+    )
 
 
 def pull(pop: bool = False) -> pd.DataFrame:
