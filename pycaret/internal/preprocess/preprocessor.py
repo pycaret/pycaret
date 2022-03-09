@@ -3,7 +3,7 @@
 
 import numpy as np
 import pandas as pd
-from sklearn.impute import SimpleImputer
+from sklearn.impute import SimpleImputer, KNNImputer
 from sklearn.decomposition import PCA, IncrementalPCA, KernelPCA
 from sklearn.model_selection import (
     train_test_split,
@@ -48,6 +48,7 @@ from pycaret.internal.preprocess.iterative_imputer import IterativeImputer
 from pycaret.internal.preprocess.transformers import (
     TransfomerWrapper,
     ExtractDateTimeFeatures,
+    DropImputer,
     EmbedTextFeatures,
     RemoveMulticollinearity,
     RemoveOutliers,
@@ -232,40 +233,53 @@ class Preprocessor:
         """Perform simple imputation of missing values."""
         self.logger.info("Set up simple imputation.")
 
-        # Checking parameters
-        num_dict = {"zero": "constant", "mean": "mean", "median": "median"}
-        if numeric_imputation not in num_dict:
-            raise ValueError(
-                "Invalid value for the numeric_imputation parameter, "
-                f"got {numeric_imputation}. Possible values are "
-                f"{' '.join(num_dict)}."
+        # Numerical imputation
+        num_dict = {"mode": "most_frequent", "mean": "mean", "median": "median"}
+        if isinstance(numeric_imputation, str):
+            if numeric_imputation.lower() == "drop":
+                num_estimator = TransfomerWrapper(
+                    transformer=DropImputer(columns=self._fxs["Numeric"])
+                )
+            elif numeric_imputation.lower() == "knn":
+                num_estimator = TransfomerWrapper(
+                    transformer=KNNImputer(),
+                    include=self._fxs["Numeric"],
+                )
+            elif numeric_imputation.lower() in num_dict:
+                num_estimator = TransfomerWrapper(
+                    SimpleImputer(strategy=num_dict[numeric_imputation.lower()]),
+                    include=self._fxs["Numeric"],
+                )
+            else:
+                raise ValueError(
+                    "Invalid value for the numeric_imputation parameter, got "
+                    f"{numeric_imputation}. Choose from: drop, mean, median, mode, knn."
+                )
+        else:
+            num_estimator = TransfomerWrapper(
+                SimpleImputer(strategy="constant", fill_value=numeric_imputation),
+                include=self._fxs["Numeric"],
             )
 
-        cat_dict = {"constant": "constant", "mode": "most_frequent"}
-        if categorical_imputation not in cat_dict:
-            raise ValueError(
-                "Invalid value for the categorical_imputation "
-                f"parameter, got {categorical_imputation}. Possible "
-                f"values are {' '.join(cat_dict)}."
+        if categorical_imputation.lower() == "drop":
+            cat_estimator = TransfomerWrapper(
+                transformer=DropImputer(columns=self._fxs["Categorical"])
+            )
+        elif categorical_imputation.lower() == "mode":
+            cat_estimator = TransfomerWrapper(
+                transformer=SimpleImputer(strategy="most_frequent"),
+                include=self._fxs["Categorical"],
+            )
+        else:
+            cat_estimator = TransfomerWrapper(
+                SimpleImputer(strategy="constant", fill_value=categorical_imputation)
+                , include=self._fxs["Categorical"],
             )
 
-        num_estimator = TransfomerWrapper(
-            transformer=SimpleImputer(
-                strategy=num_dict[numeric_imputation], fill_value=0,
-            ),
-            include=self._fxs["Numeric"],
-        )
-        cat_estimator = TransfomerWrapper(
-            transformer=SimpleImputer(
-                strategy=cat_dict[categorical_imputation],
-                fill_value="not_available",
-            ),
-            include=self._fxs["Categorical"],
-        )
         self.pipeline.steps.extend(
             [
                 ("numerical_imputer", num_estimator),
-                ("categorical_imputer", cat_estimator),
+                ("categorical_imputer", cat_estimator)
             ],
         )
 
