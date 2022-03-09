@@ -188,7 +188,8 @@ def setup(
 
 
     numeric_imputation: int, float or str, default = 'mean'
-        Imputing strategy for numerical columns. Choose from:
+        Imputing strategy for numerical columns. Ignored when ``imputation_type=
+        iterative``. Choose from:
             - "drop": Drop rows containing missing values.
             - "mean": Impute with mean of column.
             - "median": Impute with median of column.
@@ -198,7 +199,8 @@ def setup(
 
 
     categorical_imputation: str, default = 'mode'
-        Imputing strategy for categorical columns. Choose from:
+        Imputing strategy for categorical columns. Ignored when ``imputation_type=
+        iterative``. Choose from:
             - "drop": Drop rows containing missing values.
             - "mode": Impute with most frequent value.
             - str: Impute with provided string.
