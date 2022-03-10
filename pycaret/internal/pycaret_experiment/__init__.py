@@ -2,7 +2,8 @@ from .anomaly_experiment import AnomalyExperiment
 from .clustering_experiment import ClusteringExperiment
 
 from .classification_experiment import ClassificationExperiment
-from .regression_experiment import RegressionExperiment
+
+# from ...regression.oop import RegressionExperiment
 
 # Already refactored, hence not needed here.
 # from pycaret.time_series import TSForecastingExperiment

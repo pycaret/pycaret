@@ -7,7 +7,8 @@ import pycaret.internal.tabular
 from pycaret.parallel import ParallelBackend
 from pycaret.internal.Display import Display, is_in_colab, enable_colab
 from typing import List, Tuple, Any, Union, Optional, Dict, Callable
-from pycaret.internal.pycaret_experiment import RegressionExperiment
+
+from pycaret.regression import RegressionExperiment
 from pycaret.internal.utils import check_if_global_is_not_none
 
 from typing import List, Any, Union, Optional, Dict
