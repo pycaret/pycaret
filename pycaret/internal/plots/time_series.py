@@ -34,7 +34,7 @@ __author__ = ["satya-pattnaik", "ngupta23"]
 PlotReturnType = Tuple[Optional[go.Figure], Optional[Dict[str, Any]]]
 
 
-def _plot(
+def _get_plot(
     plot: str,
     fig_defaults: Dict[str, Any],
     data: Optional[pd.Series] = None,

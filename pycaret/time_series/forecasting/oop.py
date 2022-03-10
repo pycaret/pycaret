@@ -28,7 +28,7 @@ from pycaret.internal.Display import Display
 from pycaret.internal.distributions import get_base_distributions
 from pycaret.internal.logging import get_logger
 from pycaret.internal.pipeline import get_pipeline_fit_kwargs
-from pycaret.internal.plots.time_series import _plot
+from pycaret.internal.plots.time_series import _get_plot
 from pycaret.internal.pycaret_experiment.supervised_experiment import (
     _SupervisedExperiment,
 )
@@ -2494,22 +2494,7 @@ class TSForecastingExperiment(_SupervisedExperiment):
                     f"Available plots are: {', '.join(plots_formatted_model)}"
                 )
 
-        big_data_threshold = _resolve_dict_keys(
-            dict_=fig_kwargs, key="big_data_threshold", defaults=self.fig_kwargs
-        )
-        renderer = _resolve_dict_keys(
-            dict_=fig_kwargs, key="renderer", defaults=self.fig_kwargs
-        )
-        renderer = _resolve_renderer(
-            renderer=renderer,
-            threshold=big_data_threshold,
-            data=data,
-            train=train,
-            test=test,
-            X=X,
-        )
-        
-        fig, plot_data = _plot(
+        fig, plot_data = _get_plot(
             plot=plot,
             fig_defaults=self.fig_kwargs,
             data=data,
@@ -2546,6 +2531,22 @@ class TSForecastingExperiment(_SupervisedExperiment):
                     st.write(fig)
                 else:
                     try:
+                        big_data_threshold = _resolve_dict_keys(
+                            dict_=fig_kwargs,
+                            key="big_data_threshold",
+                            defaults=self.fig_kwargs,
+                        )
+                        renderer = _resolve_dict_keys(
+                            dict_=fig_kwargs, key="renderer", defaults=self.fig_kwargs
+                        )
+                        renderer = _resolve_renderer(
+                            renderer=renderer,
+                            threshold=big_data_threshold,
+                            data=data,
+                            train=train,
+                            test=test,
+                            X=X,
+                        )
                         fig.show(renderer=renderer)
                         self.logger.info("Visual Rendered Successfully")
                     except ValueError as exception:
