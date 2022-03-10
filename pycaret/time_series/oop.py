@@ -2268,6 +2268,7 @@ class TSForecastingExperiment(_SupervisedExperiment):
         >>> arima = create_model('arima')
         >>> plot_model(plot = 'ts')
         >>> plot_model(plot = 'decomp', data_kwargs = {'type' : 'multiplicative'})
+        >>> plot_model(plot = 'decomp', data_kwargs = {'seasonal_period': 24})
         >>> plot_model(estimator = arima, plot = 'forecast', data_kwargs = {'fh' : 24})
 
 
