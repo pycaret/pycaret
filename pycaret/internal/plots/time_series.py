@@ -910,9 +910,9 @@ def plot_time_series_decomposition(
         return fig, return_data_dict
 
     data_kwargs = data_kwargs or {}
-    fig_kwargs = fig_kwargs or {}
-
+    period = data_kwargs.get("seasonal_period")
     classical_decomp_type = data_kwargs.get("type", "additive")
+    fig_kwargs = fig_kwargs or {}
 
     if plot == "decomp":
         title_name = f"Classical Decomposition ({classical_decomp_type})"
@@ -923,17 +923,17 @@ def plot_time_series_decomposition(
         title = f"{title_name}" if data.name is None else f"{title_name} | {data.name}"
     else:
         title = f"{title_name} | '{model_name}' Residuals"
+    title = title + f"<br>Seasonal Period = {period}"
 
     decomp_result = None
     data_ = data.to_timestamp() if isinstance(data.index, pd.PeriodIndex) else data
 
-    primary_sp_to_use = data_kwargs.get("primary_sp_to_use")
     if plot == "decomp":
         decomp_result = seasonal_decompose(
-            data_, period=primary_sp_to_use, model=classical_decomp_type
+            data_, period=period, model=classical_decomp_type
         )
     elif plot == "decomp_stl":
-        decomp_result = STL(data_, period=primary_sp_to_use).fit()
+        decomp_result = STL(data_, period=period).fit()
 
     fig = make_subplots(
         rows=4,

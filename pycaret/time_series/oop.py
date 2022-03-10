@@ -2357,11 +2357,8 @@ class TSForecastingExperiment(_SupervisedExperiment):
                 )
 
         # Add sp value (used in decomp plots)
-        sp_dict = {"primary_sp_to_use": self.primary_sp_to_use}
-        if data_kwargs is None:
-            data_kwargs = sp_dict
-        else:
-            data_kwargs.update(sp_dict)
+        data_kwargs = data_kwargs or {}
+        data_kwargs.setdefault("seasonal_period", self.primary_sp_to_use)
 
         fig_kwargs = fig_kwargs or {}
 
