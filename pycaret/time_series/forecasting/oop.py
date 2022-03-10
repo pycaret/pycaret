@@ -2508,7 +2508,7 @@ class TSForecastingExperiment(_SupervisedExperiment):
             test=test,
             X=X,
         )
-
+        
         fig, plot_data = _plot(
             plot=plot,
             fig_defaults=self.fig_kwargs,
@@ -2545,8 +2545,31 @@ class TSForecastingExperiment(_SupervisedExperiment):
                 if display_format == "streamlit":
                     st.write(fig)
                 else:
-                    fig.show(renderer=renderer)
-                self.logger.info("Visual Rendered Successfully")
+                    try:
+                        fig.show(renderer=renderer)
+                        self.logger.info("Visual Rendered Successfully")
+                    except ValueError as exception:
+                        self.logger.info(exception)
+                        self.logger.info("Visual Rendered Unsuccessfully")
+                        print(exception)
+                        print(
+                            "When data exceeds a certain threshold (determined by "
+                            "`big_data_threshold`), the renderer is switched to a "
+                            "static one to prevent notebooks from being slowed down.\n"
+                            "This renderer may need to be installed manually by users.\n"
+                            "Alternately:\n"
+                            "Option 1: "
+                            "Users can increase `big_data_threshold` in either `setup` "
+                            "(globally) or `plot_model` (plot specific). Examples.\n"
+                            "\t>>> setup(..., fig_kwargs={'big_data_threshold': 1000})\n"
+                            "\t>>> plot_model(..., fig_kwargs={'big_data_threshold': 1000})\n"
+                            "Option 2: "
+                            "Users can specify any plotly renderer directly in either `setup` "
+                            "(globally) or `plot_model` (plot specific). Examples.\n"
+                            "\t>>> setup(..., fig_kwargs={'renderer': 'notebook'})\n"
+                            "\t>>> plot_model(..., fig_kwargs={'renderer': 'colab'})\n"
+                            "Refer to the docstring in `setup` for more details."
+                        )
 
         ### Add figure and data to return object if required ----
         if return_fig:
