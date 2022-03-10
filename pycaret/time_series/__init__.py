@@ -1,5 +1,5 @@
-from pycaret.time_series.oop import TSForecastingExperiment
-from pycaret.time_series.functional import (
+from pycaret.time_series.forecasting.oop import TSForecastingExperiment
+from pycaret.time_series.forecasting.functional import (
     setup,
     create_model,
     compare_models,
