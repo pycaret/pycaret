@@ -511,7 +511,7 @@ def plot_acf(
     )
 
     with fig.batch_update():
-        fig.update_xaxes(range=[-1, 42])
+        fig.update_xaxes(range=[-1, len(corr_array[0]) + 1])
         fig.update_yaxes(zerolinecolor="#000000")
 
         template = _resolve_dict_keys(
