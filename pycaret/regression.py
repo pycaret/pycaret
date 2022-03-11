@@ -566,7 +566,7 @@ def setup(
 
     if not isinstance(data, pd.DataFrame):
         data = data()
-    
+
     available_plots = {
         "parameter": "Hyperparameters",
         "residuals": "Residuals",
@@ -758,7 +758,7 @@ def compare_models(
 
     display: pycaret.internal.Display.Display, default = None
         Custom display object
-    
+
     parallel: pycaret.parallel.parallel_backend.ParallelBackend, default = None
         A ParallelBackend instance. For example if you have a SparkSession ``session``,
         you can use ``FugueBackend(session)`` to make this function running using
@@ -831,6 +831,7 @@ def create_model(
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
     verbose: bool = True,
+    return_train_score: bool = False,
     **kwargs,
 ):
 
@@ -915,6 +916,13 @@ def create_model(
         Score grid is not printed when verbose is set to False.
 
 
+    return_train_score: bool, default = False
+        If False, returns the CV Validation scores only.
+        If True, returns the CV training scores along with the CV validation scores.
+        This is useful when the user wants to do bias-variance tradeoff. A high CV
+        training score with a low corresponding CV validation score indicates overfitting.
+
+
     **kwargs:
         Additional keyword arguments to pass to the estimator.
 
@@ -938,6 +946,7 @@ def create_model(
         fit_kwargs=fit_kwargs,
         groups=groups,
         verbose=verbose,
+        return_train_score=return_train_score,
         **kwargs,
     )
 
@@ -960,6 +969,7 @@ def tune_model(
     return_tuner: bool = False,
     verbose: bool = True,
     tuner_verbose: Union[int, bool] = True,
+    return_train_score: bool = False,
     **kwargs,
 ):
 
@@ -1108,6 +1118,13 @@ def tune_model(
         print more messages. Ignored when ``verbose`` param is False.
 
 
+    return_train_score: bool, default = False
+        If False, returns the CV Validation scores only.
+        If True, returns the CV training scores along with the CV validation scores.
+        This is useful when the user wants to do bias-variance tradeoff. A high CV
+        training score with a low corresponding CV validation score indicates overfitting.
+
+
     **kwargs:
         Additional keyword arguments to pass to the optimizer.
 
@@ -1144,6 +1161,7 @@ def tune_model(
         return_tuner=return_tuner,
         verbose=verbose,
         tuner_verbose=tuner_verbose,
+        return_train_score=return_train_score,
         **kwargs,
     )
 
@@ -1159,6 +1177,7 @@ def ensemble_model(
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
     verbose: bool = True,
+    return_train_score: bool = False,
 ) -> Any:
 
     """
@@ -1222,6 +1241,13 @@ def ensemble_model(
          the column name in the dataset containing group labels.
 
 
+    return_train_score: bool, default = False
+        If False, returns the CV Validation scores only.
+        If True, returns the CV training scores along with the CV validation scores.
+        This is useful when the user wants to do bias-variance tradeoff. A high CV
+        training score with a low corresponding CV validation score indicates overfitting.
+
+
      verbose: bool, default = True
          Score grid is not printed when verbose is set to False.
 
@@ -1242,6 +1268,7 @@ def ensemble_model(
         fit_kwargs=fit_kwargs,
         groups=groups,
         verbose=verbose,
+        return_train_score=return_train_score,
     )
 
 
@@ -1255,6 +1282,7 @@ def blend_models(
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
     verbose: bool = True,
+    return_train_score: bool = False,
 ):
 
     """
@@ -1320,6 +1348,13 @@ def blend_models(
         Score grid is not printed when verbose is set to False.
 
 
+    return_train_score: bool, default = False
+        If False, returns the CV Validation scores only.
+        If True, returns the CV training scores along with the CV validation scores.
+        This is useful when the user wants to do bias-variance tradeoff. A high CV
+        training score with a low corresponding CV validation score indicates overfitting.
+
+
     Returns:
         Trained Model
 
@@ -1337,6 +1372,7 @@ def blend_models(
         fit_kwargs=fit_kwargs,
         groups=groups,
         verbose=verbose,
+        return_train_score=return_train_score,
     )
 
 
@@ -1352,6 +1388,7 @@ def stack_models(
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
     verbose: bool = True,
+    return_train_score: bool = False,
 ):
 
     """
@@ -1428,6 +1465,13 @@ def stack_models(
         Score grid is not printed when verbose is set to False.
 
 
+    return_train_score: bool, default = False
+        If False, returns the CV Validation scores only.
+        If True, returns the CV training scores along with the CV validation scores.
+        This is useful when the user wants to do bias-variance tradeoff. A high CV
+        training score with a low corresponding CV validation score indicates overfitting.
+
+
     Returns:
         Trained Model
 
@@ -1446,6 +1490,7 @@ def stack_models(
         fit_kwargs=fit_kwargs,
         groups=groups,
         verbose=verbose,
+        return_train_score=return_train_score,
     )
 
 
@@ -1746,7 +1791,7 @@ def predict_model(
     drift_report: bool = False,
     round: int = 4,
     verbose: bool = True,
-    drift_kwargs:Optional[dict] = None
+    drift_kwargs: Optional[dict] = None,
 ) -> pd.DataFrame:
 
     """
@@ -1810,7 +1855,7 @@ def predict_model(
         round=round,
         verbose=verbose,
         ml_usecase=MLUsecase.REGRESSION,
-        drift_kwargs=drift_kwargs
+        drift_kwargs=drift_kwargs,
     )
 
 
@@ -1820,6 +1865,7 @@ def finalize_model(
     groups: Optional[Union[str, Any]] = None,
     model_only: bool = True,
     experiment_custom_tags: Optional[Dict[str, Any]] = None,
+    return_train_score: bool = False,
 ) -> Any:
 
     """
@@ -1860,6 +1906,12 @@ def finalize_model(
         Dictionary of tag_name: String -> value: (String, but will be string-ified if
         not) passed to the mlflow.set_tags to add new custom tags for the experiment.
 
+    return_train_score: bool, default = False
+        If False, returns the CV Validation scores only.
+        If True, returns the CV training scores along with the CV validation scores.
+        This is useful when the user wants to do bias-variance tradeoff. A high CV
+        training score with a low corresponding CV validation score indicates overfitting.
+
 
     Returns:
         Trained Model
@@ -1873,6 +1925,7 @@ def finalize_model(
         groups=groups,
         model_only=model_only,
         experiment_custom_tags=experiment_custom_tags,
+        return_train_score=return_train_score,
     )
 
 
@@ -2076,7 +2129,9 @@ def load_model(
     )
 
 
-def automl(optimize: str = "R2", use_holdout: bool = False) -> Any:
+def automl(
+    optimize: str = "R2", use_holdout: bool = False, return_train_score: bool = False
+) -> Any:
 
     """
     This function returns the best model out of all trained models in
@@ -2106,13 +2161,24 @@ def automl(optimize: str = "R2", use_holdout: bool = False) -> Any:
         When set to True, metrics are evaluated on holdout set instead of CV.
 
 
+    return_train_score: bool, default = False
+        If False, returns the CV Validation scores only.
+        If True, returns the CV training scores along with the CV validation scores.
+        This is useful when the user wants to do bias-variance tradeoff. A high CV
+        training score with a low corresponding CV validation score indicates overfitting.
+
+
     Returns:
         Trained Model
 
 
     """
 
-    return pycaret.internal.tabular.automl(optimize=optimize, use_holdout=use_holdout)
+    return pycaret.internal.tabular.automl(
+        optimize=optimize,
+        use_holdout=use_holdout,
+        return_train_score=return_train_score,
+    )
 
 
 def pull(pop: bool = False) -> pd.DataFrame:
@@ -2790,8 +2856,8 @@ def create_docker(
 ) -> None:
 
     """
-    This function creates a ``Dockerfile`` and ``requirements.txt`` for 
-    productionalizing API end-point. 
+    This function creates a ``Dockerfile`` and ``requirements.txt`` for
+    productionalizing API end-point.
 
 
     Example
@@ -2825,11 +2891,11 @@ def create_docker(
     )
 
 
-def create_app(estimator, app_kwargs: Optional[dict] = None)-> None:
+def create_app(estimator, app_kwargs: Optional[dict] = None) -> None:
 
     """
     This function creates a basic gradio app for inference.
-    It will later be expanded for other app types such as 
+    It will later be expanded for other app types such as
     Streamlit.
 
 
@@ -2854,4 +2920,6 @@ def create_app(estimator, app_kwargs: Optional[dict] = None)-> None:
     Returns:
         None
     """
-    return pycaret.internal.tabular.create_app(estimator=estimator, app_kwargs=app_kwargs)
+    return pycaret.internal.tabular.create_app(
+        estimator=estimator, app_kwargs=app_kwargs
+    )

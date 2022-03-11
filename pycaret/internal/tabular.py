@@ -4,6 +4,7 @@
 # Release: PyCaret 2.2
 # Last modified : 26/08/2020
 
+from cgi import test
 from enum import Enum, auto
 import math
 from pycaret import loggers
@@ -2196,7 +2197,9 @@ def compare_models(
 
         logger.info("Creating metrics dataframe")
         if cross_validation:
-            compare_models_ = pd.DataFrame(model_results.loc["Mean"]).T
+            compare_models_ = pd.DataFrame(
+                model_results.loc["CV-Val", "Mean"]
+            ).T.reset_index(drop=True)
         else:
             compare_models_ = pd.DataFrame(model_results.iloc[0]).T
         compare_models_.insert(len(compare_models_.columns), "TT (Sec)", model_fit_time)
@@ -2769,6 +2772,7 @@ def create_model_supervised(
     add_to_model_list: bool = True,
     probability_threshold: Optional[float] = None,
     display: Optional[Display] = None,  # added in pycaret==2.2.0
+    return_train_score: bool = False,
     **kwargs,
 ) -> Any:
 
@@ -2860,6 +2864,12 @@ def create_model_supervised(
     y_train_data: pandas.DataFrame, default = None
         If not None, will use this dataframe as training target.
         Intended to be only changed by internal functions.
+
+    return_train_score: bool, default = False
+        If False, returns the CV Validation scores only.
+        If True, returns the CV training scores along with the CV validation scores.
+        This is useful when the user wants to do bias-variance tradeoff. A high CV
+        training score with a low corresponding CV validation score indicates overfitting.
 
     **kwargs:
         Additional keyword arguments to pass to the estimator.
@@ -2953,6 +2963,10 @@ def create_model_supervised(
         if not isinstance(experiment_custom_tags, dict):
             raise TypeError("experiment_custom_tags parameter must be dict if not None")
 
+    # checking return_train_score parameter
+    if type(return_train_score) is not bool:
+        raise TypeError("return_train_score can only take argument as True or False")
+
     """
 
     ERROR HANDLING ENDS HERE
@@ -2963,7 +2977,9 @@ def create_model_supervised(
 
     if not display:
         progress_args = {"max": 4}
-        master_display_columns = [v.display_name for k, v in _all_metrics.items()]
+        master_display_columns = ["Split", "Fold"] + [
+            v.display_name for k, v in _all_metrics.items()
+        ]
         timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
         monitor_rows = [
             ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
@@ -3156,37 +3172,68 @@ def create_model_supervised(
             scoring=metrics_dict,
             fit_params=fit_kwargs,
             n_jobs=n_jobs,
-            return_train_score=False,
+            return_train_score=return_train_score,
             error_score=0,
         )
         model_fit_end = time.time()
         model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
 
-        score_dict = {
-            v.display_name: scores[f"test_{k}"] * (1 if v.greater_is_better else -1)
-            for k, v in metrics.items()
-        }
+        score_dict = {}
+        for k, v in metrics.items():
+            score_dict[v.display_name] = []
+            if return_train_score:
+                train_score = scores[f"train_{k}"] * (1 if v.greater_is_better else -1)
+                train_score = train_score.tolist()
+                score_dict[v.display_name] = train_score
+            test_score = scores[f"test_{k}"] * (1 if v.greater_is_better else -1)
+            test_score = test_score.tolist()
+            score_dict[v.display_name] += test_score
 
         logger.info("Calculating mean and std")
 
-        avgs_dict = {k: [np.mean(v), np.std(v)] for k, v in score_dict.items()}
+        avgs_dict = {}
+        for k, v in metrics.items():
+            avgs_dict[v.display_name] = []
+            if return_train_score:
+                train_score = scores[f"train_{k}"] * (1 if v.greater_is_better else -1)
+                train_score = train_score.tolist()
+                avgs_dict[v.display_name] = [np.mean(train_score), np.std(train_score)]
+            test_score = scores[f"test_{k}"] * (1 if v.greater_is_better else -1)
+            test_score = test_score.tolist()
+            avgs_dict[v.display_name] += [np.mean(test_score), np.std(test_score)]
 
         display.move_progress()
 
         logger.info("Creating metrics dataframe")
 
-        model_results = pd.DataFrame(score_dict)
-        model_avgs = pd.DataFrame(
-            avgs_dict,
-            index=["Mean", "SD"],
-        )
+        fold = cv.n_splits
 
-        model_results = model_results.append(model_avgs)
-        model_results = model_results.round(round)
+        if return_train_score:
+            model_results = pd.DataFrame(
+                {
+                    "Split": ["CV-Train"] * fold
+                    + ["CV-Val"] * fold
+                    + ["CV-Train"] * 2
+                    + ["CV-Val"] * 2,
+                    "Fold": np.arange(fold).tolist()
+                    + np.arange(fold).tolist()
+                    + ["Mean", "Std"] * 2,
+                }
+            )
+        else:
+            model_results = pd.DataFrame(
+                {
+                    "Split": ["CV-Val"] * fold + ["CV-Val"] * 2,
+                    "Fold": np.arange(fold).tolist() + ["Mean", "Std"],
+                }
+            )
 
-        # yellow the mean
-        model_results = color_df(model_results, "yellow", ["Mean"], axis=1)
-        model_results = model_results.set_precision(round)
+        model_scores = pd.concat(
+            [pd.DataFrame(score_dict), pd.DataFrame(avgs_dict)]
+        ).reset_index(drop=True)
+
+        model_results = pd.concat([model_results, model_scores], axis=1)
+        model_results.set_index(["Split", "Fold"], inplace=True)
 
         if refit:
             # refitting the model on complete X_train, y_train
@@ -3196,11 +3243,32 @@ def create_model_supervised(
             logger.info("Finalizing model")
             with io.capture_output():
                 pipeline_with_model.fit(data_X, data_y, **fit_kwargs)
+
+                predict_model(pipeline_with_model, data=pd.concat([data_X, data_y], axis=1))
+
+            # calculating metrics on predictions of complete train dataset
+            metrics = pull(pop=True).drop("Model", axis=1)
+            df_score = pd.DataFrame({"Split": ["Train"], "Fold": [None]})
+            df_score = pd.concat([df_score, metrics], axis=1)
+            df_score.set_index(["Split", "Fold"], inplace=True)
+
+            # concatenating train results to cross-validation socre dataframe
+            model_results = pd.concat([model_results, df_score])
+
             model_fit_end = time.time()
 
             model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
         else:
             model_fit_time /= _get_cv_n_folds(cv, data_X, y=data_y, groups=groups)
+
+        model_results = model_results.round(round)
+        model_results_df = model_results.copy()
+
+        # yellow the mean
+        model_results = color_df(
+            model_results, "yellow", [("CV-Val", "Mean"), ("CV-Train", "Mean")], axis=1
+        )
+        model_results = model_results.set_precision(round)
 
         # end runtime
         runtime_end = time.time()
@@ -3209,8 +3277,9 @@ def create_model_supervised(
     # mlflow logging
     if logging_param and system and refit:
 
-        avgs_dict_log = avgs_dict.copy()
-        avgs_dict_log = {k: v[0] for k, v in avgs_dict_log.items()}
+        avgs_dict_log = {
+            k: v for k, v in model_results_df.loc["CV-Val", "Mean"].items()
+        }
 
         try:
             dashboard_logger.log_model(
@@ -3490,7 +3559,7 @@ def tune_model_unsupervised(
             round=round,
             refit=False,
         )
-        results[k] = pull(pop=True).loc["Mean"]
+        results[k] = pull(pop=True).loc["CV-Val", "Mean"]
         display.move_progress()
 
     logger.info("Compiling results")
@@ -3649,6 +3718,7 @@ def tune_model_supervised(
     verbose: bool = True,
     tuner_verbose: Union[int, bool] = True,
     display: Optional[Display] = None,
+    return_train_score: bool = False,
     **kwargs,
 ) -> Any:
 
@@ -3789,6 +3859,12 @@ def tune_model_supervised(
     tuner_verbose: bool or in, default = True
         If True or above 0, will print messages from the tuner. Higher values
         print more messages. Ignored if verbose param is False.
+
+    return_train_score: bool, default = False
+        If False, returns the CV Validation scores only.
+        If True, returns the CV training scores along with the CV validation scores.
+        This is useful when the user wants to do bias-variance tradeoff. A high CV
+        training score with a low corresponding CV validation score indicates overfitting.
 
     **kwargs:
         Additional keyword arguments to pass to the optimizer.
@@ -4041,6 +4117,10 @@ def tune_model_supervised(
     elif tuner_verbose > 2:
         tuner_verbose = 2
 
+    # checking return_train_score parameter
+    if type(return_train_score) is not bool:
+        raise TypeError("return_train_score can only take argument as True or False")
+
     """
 
     ERROR HANDLING ENDS HERE
@@ -4053,7 +4133,9 @@ def tune_model_supervised(
 
     if not display:
         progress_args = {"max": 3 + 4}
-        master_display_columns = [v.display_name for k, v in _all_metrics.items()]
+        master_display_columns = ["Split", "Fold"] + [
+            v.display_name for k, v in _all_metrics.items()
+        ]
         timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
         monitor_rows = [
             ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
@@ -4583,6 +4665,7 @@ def tune_model_supervised(
         round=round,
         groups=groups,
         fit_kwargs=fit_kwargs,
+        return_train_score=return_train_score,
         **best_params,
     )
     model_results = pull()
@@ -4605,8 +4688,9 @@ def tune_model_supervised(
     # mlflow logging
     if logging_param:
 
-        avgs_dict_log = {k: v for k, v in model_results.loc["Mean"].items()}
+        avgs_dict_log = {k: v for k, v in model_results.loc["CV-Val", "Mean"].items()}
         dashboard_logger.log_model_comparison(model_results, "tune_model")
+
 
         try:
             dashboard_logger.log_model(
@@ -4628,7 +4712,9 @@ def tune_model_supervised(
             logger.error(traceback.format_exc())
         
 
-    model_results = color_df(model_results, "yellow", ["Mean"], axis=1)
+    model_results = color_df(
+        model_results, "yellow", [("CV-Val", "Mean"), ("CV-Train", "Mean")], axis=1
+    )
     model_results = model_results.set_precision(round)
     display.display(model_results, clear=True)
 
@@ -4660,6 +4746,7 @@ def ensemble_model(
     probability_threshold: Optional[float] = None,
     verbose: bool = True,
     display: Optional[Display] = None,  # added in pycaret==2.2.0
+    return_train_score: bool = False,
 ) -> Any:
     """
     This function ensembles the trained base estimator using the method defined in
@@ -4728,6 +4815,12 @@ def ensemble_model(
 
     verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
+
+    return_train_score: bool, default = False
+        If False, returns the CV Validation scores only.
+        If True, returns the CV training scores along with the CV validation scores.
+        This is useful when the user wants to do bias-variance tradeoff. A high CV
+        training score with a low corresponding CV validation score indicates overfitting.
 
     Returns
     -------
@@ -4828,6 +4921,10 @@ def ensemble_model(
                 f"Optimization metric not supported for multiclass problems. See docstring for list of other optimization parameters."
             )
 
+    # checking return_train_score parameter
+    if type(return_train_score) is not bool:
+        raise TypeError("return_train_score can only take argument as True or False")
+
     """
 
     ERROR HANDLING ENDS HERE
@@ -4840,7 +4937,9 @@ def ensemble_model(
 
     if not display:
         progress_args = {"max": 2 + 4}
-        master_display_columns = [v.display_name for k, v in _all_metrics.items()]
+        master_display_columns = ["Split", "Fold"] + [
+            v.display_name for k, v in _all_metrics.items()
+        ]
         timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
         monitor_rows = [
             ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
@@ -4943,6 +5042,7 @@ def ensemble_model(
         fit_kwargs=fit_kwargs,
         groups=groups,
         probability_threshold=probability_threshold,
+        return_train_score=return_train_score,
     )
     best_model = model
     model_results = pull()
@@ -4954,9 +5054,9 @@ def ensemble_model(
 
     # mlflow logging
     if logging_param:
-
-        avgs_dict_log = {k: v for k, v in model_results.loc["Mean"].items()}
+        avgs_dict_log = {k: v for k, v in model_results.loc["CV-Val", "Mean"].items()}
         dashboard_logger.log_model_comparison(model_results, "ensemble_model")
+
         try:
             dashboard_logger.log_model(
                 model=best_model,
@@ -4986,7 +5086,9 @@ def ensemble_model(
             display=display,
         )
 
-    model_results = color_df(model_results, "yellow", ["Mean"], axis=1)
+    model_results = color_df(
+        model_results, "yellow", [("CV-Val", "Mean"), ("CV-Train", "Mean")], axis=1
+    )
     model_results = model_results.set_precision(round)
     display.display(model_results, clear=True)
 
@@ -5016,6 +5118,7 @@ def blend_models(
     probability_threshold: Optional[float] = None,
     verbose: bool = True,
     display: Optional[Display] = None,  # added in pycaret==2.2.0
+    return_train_score: bool = False,
 ) -> Any:
 
     """
@@ -5082,6 +5185,12 @@ def blend_models(
 
     verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
+
+    return_train_score: bool, default = False
+        If False, returns the CV Validation scores only.
+        If True, returns the CV training scores along with the CV validation scores.
+        This is useful when the user wants to do bias-variance tradeoff. A high CV
+        training score with a low corresponding CV validation score indicates overfitting.
 
     Returns
     -------
@@ -5195,6 +5304,10 @@ def blend_models(
                 f"Optimization metric not supported for multiclass problems. See docstring for list of other optimization parameters."
             )
 
+    # checking return_train_score parameter
+    if type(return_train_score) is not bool:
+        raise TypeError("return_train_score can only take argument as True or False")
+
     """
 
     ERROR HANDLING ENDS HERE
@@ -5207,7 +5320,9 @@ def blend_models(
 
     if not display:
         progress_args = {"max": 2 + 4}
-        master_display_columns = [v.display_name for k, v in _all_metrics.items()]
+        master_display_columns = ["Split", "Fold"] + [
+            v.display_name for k, v in _all_metrics.items()
+        ]
         timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
         monitor_rows = [
             ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
@@ -5295,6 +5410,7 @@ def blend_models(
         fit_kwargs=fit_kwargs,
         groups=groups,
         probability_threshold=probability_threshold,
+        return_train_score=return_train_score,
     )
     model_results = pull()
     logger.info("SubProcess create_model() end ==================================")
@@ -5303,11 +5419,11 @@ def blend_models(
     runtime_end = time.time()
     runtime = np.array(runtime_end - runtime_start).round(2)
 
-    # mlflow logging
+    # dashboard logging
     if logging_param:
-
-        avgs_dict_log = {k: v for k, v in model_results.loc["Mean"].items()}
+        avgs_dict_log = {k: v for k, v in model_results.loc["CV-Val", "Mean"].items()}
         dashboard_logger.log_model_comparison(model_results, "blend_models")
+
         try:
             dashboard_logger.log_model(
                 model=model,
@@ -5337,7 +5453,9 @@ def blend_models(
             display=display,
         )
 
-    model_results = color_df(model_results, "yellow", ["Mean"], axis=1)
+    model_results = color_df(
+        model_results, "yellow", [("CV-Val", "Mean"), ("CV-Train", "Mean")], axis=1
+    )
     model_results = model_results.set_precision(round)
     display.display(model_results, clear=True)
 
@@ -5369,6 +5487,7 @@ def stack_models(
     probability_threshold: Optional[float] = None,
     verbose: bool = True,
     display: Optional[Display] = None,
+    return_train_score: bool = False,
 ) -> Any:
 
     """
@@ -5455,6 +5574,12 @@ def stack_models(
     verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
 
+    return_train_score: bool, default = False
+        If False, returns the CV Validation scores only.
+        If True, returns the CV training scores along with the CV validation scores.
+        This is useful when the user wants to do bias-variance tradeoff. A high CV
+        training score with a low corresponding CV validation score indicates overfitting.
+
     Returns
     -------
     score_grid
@@ -5539,6 +5664,10 @@ def stack_models(
                 f"Optimization metric not supported for multiclass problems. See docstring for list of other optimization parameters."
             )
 
+    # checking return_train_score parameter
+    if type(return_train_score) is not bool:
+        raise TypeError("return_train_score can only take argument as True or False")
+
     """
 
     ERROR HANDLING ENDS HERE
@@ -5561,7 +5690,9 @@ def stack_models(
 
     if not display:
         progress_args = {"max": 2 + 4}
-        master_display_columns = [v.display_name for k, v in _all_metrics.items()]
+        master_display_columns = ["Split", "Fold"] + [
+            v.display_name for k, v in _all_metrics.items()
+        ]
         timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
         monitor_rows = [
             ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
@@ -5657,6 +5788,7 @@ def stack_models(
         fit_kwargs=fit_kwargs,
         groups=groups,
         probability_threshold=probability_threshold,
+        return_train_score=return_train_score,
     )
     model_results = pull()
     logger.info("SubProcess create_model() end ==================================")
@@ -5667,9 +5799,9 @@ def stack_models(
 
     # dashboard logging
     if logging_param:
-
-        avgs_dict_log = {k: v for k, v in model_results.loc["Mean"].items()}
+        avgs_dict_log = {k: v for k, v in model_results.loc["CV-Val", "Mean"].items()}
         dashboard_logger.log_model_comparison(model_results, "stack_models")
+
         try:
             dashboard_logger.log_model(
                 model=model,
@@ -5699,7 +5831,9 @@ def stack_models(
             display=display,
         )
 
-    model_results = color_df(model_results, "yellow", ["Mean"], axis=1)
+    model_results = color_df(
+        model_results, "yellow", [("CV-Val", "Mean"), ("CV-Train", "Mean")], axis=1
+    )
     model_results = model_results.set_precision(round)
     display.display(model_results, clear=True)
 
@@ -8059,6 +8193,7 @@ def calibrate_model(
     groups: Optional[Union[str, Any]] = None,
     verbose: bool = True,
     display: Optional[Display] = None,  # added in pycaret==2.2.0
+    return_train_score: bool = False,
 ) -> Any:
 
     """
@@ -8111,6 +8246,12 @@ def calibrate_model(
     verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
 
+    return_train_score: bool, default = False
+        If False, returns the CV Validation scores only.
+        If True, returns the CV training scores along with the CV validation scores.
+        This is useful when the user wants to do bias-variance tradeoff. A high CV
+        training score with a low corresponding CV validation score indicates overfitting.
+
     Returns
     -------
     score_grid
@@ -8161,6 +8302,10 @@ def calibrate_model(
     if type(verbose) is not bool:
         raise TypeError("Verbose parameter can only take argument as True or False.")
 
+    # checking return_train_score parameter
+    if type(return_train_score) is not bool:
+        raise TypeError("return_train_score can only take argument as True or False")
+
     """
 
     ERROR HANDLING ENDS HERE
@@ -8179,7 +8324,9 @@ def calibrate_model(
 
     if not display:
         progress_args = {"max": 2 + 4}
-        master_display_columns = [v.display_name for k, v in _all_metrics.items()]
+        master_display_columns = ["Split", "Fold"] + [
+            v.display_name for k, v in _all_metrics.items()
+        ]
         timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
         monitor_rows = [
             ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
@@ -8249,6 +8396,7 @@ def calibrate_model(
         fit_kwargs=fit_kwargs,
         groups=groups,
         probability_threshold=probability_threshold,
+        return_train_score=return_train_score,
     )
     model_results = pull()
     logger.info("SubProcess create_model() end ==================================")
@@ -8261,11 +8409,11 @@ def calibrate_model(
     runtime_end = time.time()
     runtime = np.array(runtime_end - runtime_start).round(2)
 
-    # mlflow logging
+    # dashboard logging
     if logging_param:
-
-        avgs_dict_log = {k: v for k, v in model_results.loc["Mean"].items()}
+        avgs_dict_log = {k: v for k, v in model_results.loc["CV-Val", "Mean"].items()}
         dashboard_logger.log_model_comparison(model_results, f"calibrate_models_{_get_model_name(model)}")
+
 
         try:
             dashboard_logger.log_model(
@@ -8286,7 +8434,9 @@ def calibrate_model(
             logger.error(traceback.format_exc())
         
 
-    model_results = color_df(model_results, "yellow", ["Mean"], axis=1)
+    model_results = color_df(
+        model_results, "yellow", [("CV-Val", "Mean"), ("CV-Train", "Mean")], axis=1
+    )
     model_results = model_results.set_precision(round)
     display.display(model_results, clear=True)
 
@@ -8307,12 +8457,12 @@ def optimize_threshold(
     estimator,
     optimize: str = "Accuracy",
     grid_interval: float = 0.1,
-    return_data: bool = False, 
+    return_data: bool = False,
     plot_kwargs: Optional[dict] = None,
 ):
 
     """
-    This function optimizes probability threshold for a trained classifier. It 
+    This function optimizes probability threshold for a trained classifier. It
     iterates over performance metrics at different ``probability_threshold`` with
     a step size defined in ``grid_interval`` parameter. This function will display
     a plot of the performance metrics at each probability threshold and returns the
@@ -8335,7 +8485,7 @@ def optimize_threshold(
 
 
     optimize : str, default = 'Accuracy'
-        Metric to be used for selecting best model. 
+        Metric to be used for selecting best model.
 
 
     grid_interval : float, default = 0.0001
@@ -8424,40 +8574,63 @@ def optimize_threshold(
     logger.info("starting optimization loop")
     # loop starts here
     for i in grid:
-        model = create_model_supervised(estimator, verbose=False, system=False, probability_threshold=i)
+        model = create_model_supervised(
+            estimator, verbose=False, system=False, probability_threshold=i
+        )
         try:
             models_by_threshold.append(model[0])
         except:
             models_by_threshold.append(model)
-        model_results = pull().loc[['Mean']]
-        model_results['probability_threshold'] = i
+        model_results = (
+            pull()
+            .reset_index()
+            .drop(columns=["Split"])
+            .set_index(["Fold"])
+            .loc[["Mean"]]
+        )
+        model_results["probability_threshold"] = i
         results_df.append(model_results)
 
     logger.info("optimization loop finished successfully")
 
     results_concat = pd.concat(results_df, axis=0)
-    results_concat_melted = results_concat.melt(id_vars = ['probability_threshold'], value_vars=list(results_concat.columns[:-1]))
-    optimized_metric_index = np.array(results_concat_melted[results_concat_melted['variable'] == optimize]['value']).argmax()
+    results_concat_melted = results_concat.melt(
+        id_vars=["probability_threshold"], value_vars=list(results_concat.columns[:-1])
+    )
+    optimized_metric_index = np.array(
+        results_concat_melted[results_concat_melted["variable"] == optimize]["value"]
+    ).argmax()
     best_model_by_metric = models_by_threshold[optimized_metric_index]
 
     logger.info("plotting optimization threshold using plotly")
 
     # plotting threshold
     import plotly.express as px
+
     title = f"{model_name} Probability Threshold Optimization (default = 0.5)"
     plot_kwargs = plot_kwargs or {}
-    fig = px.line(results_concat_melted, x="probability_threshold", y="value", title = title,\
-                    color='variable', **plot_kwargs)
+    fig = px.line(
+        results_concat_melted,
+        x="probability_threshold",
+        y="value",
+        title=title,
+        color="variable",
+        **plot_kwargs,
+    )
     logger.info("Figure ready for render")
     fig.show()
 
     logger.info("returning model with best metric")
     if return_data:
         logger.info("also returning data as return_data = True")
-        logger.info("optimize_threshold() succesfully completed......................................")
+        logger.info(
+            "optimize_threshold() succesfully completed......................................"
+        )
         return (results_concat_melted, best_model_by_metric)
     else:
-        logger.info("optimize_threshold() succesfully completed......................................")
+        logger.info(
+            "optimize_threshold() succesfully completed......................................"
+        )
         return best_model_by_metric
 
 
@@ -8622,7 +8795,7 @@ def predict_model(
     verbose: bool = True,
     ml_usecase: Optional[MLUsecase] = None,
     display: Optional[Display] = None,  # added in pycaret==2.2.0
-    drift_kwargs:Optional[Display] = None
+    drift_kwargs: Optional[Display] = None,
 ) -> pd.DataFrame:
 
     """
@@ -8761,7 +8934,7 @@ def predict_model(
     else:
 
         if is_sklearn_pipeline(estimator) and hasattr(estimator, "predict"):
-            dtypes = estimator.named_steps["dtypes"]
+            dtypes = estimator.named_steps.get("dtypes", prep_pipe.named_steps["dtypes"])
         else:
             try:
                 dtypes = prep_pipe.named_steps["dtypes"]
@@ -8782,19 +8955,25 @@ def predict_model(
                 raise ValueError("Pipeline not found")
 
         X_test_ = data.copy()
+        y_test_ = None
+        if y_test is not None and y_test.name in X_test_.columns:
+            y_test_ = X_test_[y_test.name]
+            X_test_ = X_test_.drop(y_test.name, axis=1)
 
     # generate drift report
     if drift_report:
-        if not data is None and drift_kwargs:# IF data is set
-            if 'reference' in drift_kwargs.keys():
-                data_before_preprocess_=None    # refrence data
-                X_train_=drift_kwargs['reference']# transformed refrence data
-                X_test_=data                    # transformed unseen data
+        if not data is None and drift_kwargs:  # IF data is set
+            if "reference" in drift_kwargs.keys():
+                data_before_preprocess_ = None  # refrence data
+                X_train_ = drift_kwargs["reference"]  # transformed refrence data
+                X_test_ = data  # transformed unseen data
             else:
-                raise ValueError("Please set drift_kwargs = {'reference' : training_df}")
+                raise ValueError(
+                    "Please set drift_kwargs = {'reference' : training_df}"
+                )
         else:
-            data_before_preprocess_=data_before_preprocess
-            X_train_=X_train
+            data_before_preprocess_ = data_before_preprocess
+            X_train_ = X_train
 
         if ml_usecase == MLUsecase.CLASSIFICATION:
             create_classification_drift_report(
@@ -8851,7 +9030,7 @@ def predict_model(
 
     df_score = None
 
-    if data is None:
+    if y_test_ is not None:
         # model name
         full_name = _get_model_name(estimator)
         metrics = _calculate_metrics_supervised(y_test_, pred, pred_prob)
@@ -8912,6 +9091,7 @@ def finalize_model(
     model_only: bool = True,
     display: Optional[Display] = None,
     experiment_custom_tags: Optional[Dict[str, Any]] = None,
+    return_train_score: bool = False,
 ) -> Any:  # added in pycaret==2.2.0
 
     """
@@ -8950,6 +9130,12 @@ def finalize_model(
     experiment_custom_tags: dict, default = None
         Dictionary of tag_name: String -> value: (String, but will be string-ified if not)
         passed to the mlflow.set_tags to add new custom tags for the experiment.
+
+    return_train_score: bool, default = False
+        If False, returns the CV Validation scores only.
+        If True, returns the CV training scores along with the CV validation scores.
+        This is useful when the user wants to do bias-variance tradeoff. A high CV
+        training score with a low corresponding CV validation score indicates overfitting.
 
     Returns
     -------
@@ -9002,6 +9188,7 @@ def finalize_model(
         groups=groups,
         experiment_custom_tags=experiment_custom_tags,
         add_to_model_list=False,
+        return_train_score=return_train_score,
     )
     model_results = pull(pop=True)
 
@@ -9011,9 +9198,9 @@ def finalize_model(
 
     # dashboard logging
     if logging_param:
-
-        avgs_dict_log = {k: v for k, v in model_results.loc["Mean"].items()}
+        avgs_dict_log = {k: v for k, v in model_results.loc["CV-Val", "Mean"].items()}
         dashboard_logger.log_model_comparison(model_results, f"finalize_model_{_get_model_name(model_final)}")
+
 
         try:
             dashboard_logger.log_model(
@@ -9034,7 +9221,9 @@ def finalize_model(
             logger.error(traceback.format_exc())
         
 
-    model_results = color_df(model_results, "yellow", ["Mean"], axis=1)
+    model_results = color_df(
+        model_results, "yellow", [("CV-Val", "Mean"), ("CV-Train", "Mean")], axis=1
+    )
     model_results = model_results.set_precision(round)
     display.display(model_results, clear=True)
 
@@ -9474,7 +9663,11 @@ def load_model(
     )
 
 
-def automl(optimize: str = "Accuracy", use_holdout: bool = False) -> Any:
+def automl(
+    optimize: str = "Accuracy",
+    use_holdout: bool = False,
+    return_train_score: bool = False,
+) -> Any:
 
     """
     This function returns the best model out of all models created in
@@ -9488,6 +9681,12 @@ def automl(optimize: str = "Accuracy", use_holdout: bool = False) -> Any:
 
     use_holdout: bool, default = False
         When set to True, metrics are evaluated on holdout set instead of CV.
+
+    return_train_score: bool, default = False
+        If False, returns the CV Validation scores only.
+        If True, returns the CV training scores along with the CV validation scores.
+        This is useful when the user wants to do bias-variance tradeoff. A high CV
+        training score with a low corresponding CV validation score indicates overfitting.
 
     """
 
@@ -9532,6 +9731,7 @@ def automl(optimize: str = "Accuracy", use_holdout: bool = False) -> Any:
                     cross_validation=False,
                     predict=False,
                     groups=fold_groups_param,
+                    return_train_score=return_train_score,
                 )
                 pull(pop=True)
                 pred_holdout = predict_model(i, verbose=False)
@@ -9561,6 +9761,7 @@ def automl(optimize: str = "Accuracy", use_holdout: bool = False) -> Any:
         cross_validation=False,
         predict=False,
         groups=fold_groups_param,
+        return_train_score=return_train_score,
     )
 
     logger.info(str(automl_model))
@@ -10298,12 +10499,14 @@ def _create_regression_dashboard(
         RegressionExplainer,
         ClassifierExplainer,
     )
+
     # Replaceing chars which dash doesnt accept for column name `.` , `{`, `}`
-    X_test_df=get_config("X_test")
-    X_test_df.columns = [col.replace('.','__').replace('{','__').replace('}','__') for col in X_test_df.columns]
-    explainer = RegressionExplainer(
-        model, X_test_df, get_config("y_test"), **kwargs
-    )
+    X_test_df = get_config("X_test")
+    X_test_df.columns = [
+        col.replace(".", "__").replace("{", "__").replace("}", "__")
+        for col in X_test_df.columns
+    ]
+    explainer = RegressionExplainer(model, X_test_df, get_config("y_test"), **kwargs)
     ExplainerDashboard(explainer, mode=mode, **dashboard_kwargs).run(**run_kwargs)
 
 
@@ -10317,8 +10520,11 @@ def _create_classification_dashboard(
     except:
         labels_ = None
     # Replaceing chars which dash doesnt accept for column name `.` , `{`, `}`
-    X_test_df=get_config("X_test")
-    X_test_df.columns = [col.replace('.','__').replace('{','__').replace('}','__') for col in X_test_df.columns]
+    X_test_df = get_config("X_test")
+    X_test_df.columns = [
+        col.replace(".", "__").replace("{", "__").replace("}", "__")
+        for col in X_test_df.columns
+    ]
     explainer = ClassifierExplainer(
         model, X_test_df, get_config("y_test"), labels=labels_, **kwargs
     )
@@ -10505,7 +10711,9 @@ def create_api(estimator, api_name, host="127.0.0.1", port=8000):
     raw_data = get_config("data_before_preprocess").copy()
     raw_data.drop(target_name, axis=1, inplace=True)
     input_cols = list(raw_data.columns)
-    cols_to_drop = [*get_config("prep_pipe")[0].features_todrop] + get_config("prep_pipe")[0].id_columns
+    cols_to_drop = [*get_config("prep_pipe")[0].features_todrop] + get_config(
+        "prep_pipe"
+    )[0].id_columns
     removed_cols = [input_cols.remove(i) for i in cols_to_drop]
 
     MODULE = get_config("prep_pipe")[0].ml_usecase
@@ -10646,10 +10854,11 @@ To build image you have to run --> !docker image build -f "Dockerfile" -t IMAGE_
         """
     )
 
+
 def create_app(estimator, app_kwargs: Optional[dict]):
     """
     This function creates a basic gradio app for inference.
-    It will later be expanded for other app types such as 
+    It will later be expanded for other app types such as
     Streamlit.
 
 
@@ -10685,26 +10894,39 @@ def create_app(estimator, app_kwargs: Optional[dict]):
     all_inputs = []
     app_kwargs = app_kwargs or {}
 
-    data_without_target = get_config('data_before_preprocess').copy()
-    cols_to_drop = [get_config('prep_pipe')[0].target] + get_config('prep_pipe')[0].features_todrop + get_config('prep_pipe')[0].id_columns
+    data_without_target = get_config("data_before_preprocess").copy()
+    cols_to_drop = (
+        [get_config("prep_pipe")[0].target]
+        + get_config("prep_pipe")[0].features_todrop
+        + get_config("prep_pipe")[0].id_columns
+    )
     data_without_target.drop(cols_to_drop, axis=1, errors="ignore", inplace=True)
-    
+
     for i in data_without_target.columns:
-        if data_without_target[i].dtype == 'object':
-            all_inputs.append(gr.inputs.Dropdown(list(data_without_target[i].unique()), label=i)) 
+        if data_without_target[i].dtype == "object":
+            all_inputs.append(
+                gr.inputs.Dropdown(list(data_without_target[i].unique()), label=i)
+            )
         else:
             all_inputs.append(gr.inputs.Textbox(label=i))
-            
+
     def predict(*dict_input):
-    
+
         input_df = pd.DataFrame.from_dict([dict_input])
         input_df.columns = list(data_without_target.columns)
         if _ml_usecase == MLUsecase.CLASSIFICATION:
-            return predict_model(estimator, data=input_df, raw_score=True).iloc[0].to_dict()
+            return (
+                predict_model(estimator, data=input_df, raw_score=True)
+                .iloc[0]
+                .to_dict()
+            )
         if _ml_usecase == MLUsecase.REGRESSION:
             return predict_model(estimator, data=input_df).iloc[0].to_dict()
 
-    return gr.Interface(fn = predict, inputs = all_inputs, outputs = "text", live=False, **app_kwargs).launch()
+    return gr.Interface(
+        fn=predict, inputs=all_inputs, outputs="text", live=False, **app_kwargs
+    ).launch()
+
 
 def _choose_better(
     models_and_results: list,
@@ -10713,6 +10935,7 @@ def _choose_better(
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
     display: Optional[Display] = None,
+    return_train_score: bool = False,
 ):
     """
     When choose_better is set to True, optimize metric in scoregrid is
@@ -10743,7 +10966,7 @@ def _choose_better(
     best_model = None
     for model, result in models_and_results:
         if result is not None and is_fitted(model):
-            result = result.loc["Mean"][compare_dimension]
+            result = result.loc["CV-Val", "Mean"][compare_dimension]
         else:
             logger.info(
                 "SubProcess create_model() called =================================="
@@ -10755,11 +10978,12 @@ def _choose_better(
                 fold=fold,
                 fit_kwargs=fit_kwargs,
                 groups=groups,
+                return_train_score=return_train_score,
             )
             logger.info(
                 "SubProcess create_model() end =================================="
             )
-            result = pull(pop=True).loc["Mean"][compare_dimension]
+            result = pull(pop=True).loc["CV-Val", "Mean"][compare_dimension]
         logger.info(f"{model} result for {compare_dimension} is {result}")
         if not metric.greater_is_better:
             result *= -1
