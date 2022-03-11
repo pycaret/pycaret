@@ -50,5 +50,5 @@ setup(
         "full": required_optional,
     },
     tests_require=required_test,
-    python_requires=">=3.7"
+    python_requires=">=3.7",
 )

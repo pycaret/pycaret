@@ -37,4 +37,3 @@ demo4.py
 dask*/
 /.venv
 /.devcontainer
-/venv310/
