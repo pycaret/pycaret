@@ -1,9 +1,3 @@
-# Module: Clustering
-# Author: Moez Ali <moez.ali@queensu.ca>
-# License: MIT
-# Release: PyCaret 2.2.0
-# Last modified : 25/10/2020
-
 import logging
 import warnings
 import pandas as pd
@@ -11,7 +5,7 @@ from joblib.memory import Memory
 from typing import List, Any, Union, Optional, Dict
 
 # Own modules
-from pycaret.internal.pycaret_experiment import ClusteringExperiment
+from pycaret.clustering import ClusteringExperiment
 from pycaret.internal.utils import check_if_global_is_not_none
 
 
@@ -80,7 +74,7 @@ def setup(
 
     """
 
-    This function initializes the training environment and creates the transformation 
+    This function initializes the training environment and creates the transformation
     pipeline. Setup function must be called before executing any other function. It
     takes one mandatory parameter: ``data``. All the other parameters are optional.
 
@@ -94,7 +88,7 @@ def setup(
 
 
     data: dataframe-like
-        Shape (n_samples, n_features), where n_samples is the number of samples and 
+        Shape (n_samples, n_features), where n_samples is the number of samples and
         n_features is the number of features.
 
 
@@ -372,7 +366,7 @@ def setup(
 
 
     profile: bool, default = False
-        When set to True, an interactive EDA report is displayed. 
+        When set to True, an interactive EDA report is displayed.
 
 
     profile_kwargs: dict, default = {} (empty dict)
@@ -382,7 +376,7 @@ def setup(
 
     Returns:
         Global variables that can be changed using the ``set_config`` function.
-    
+
     """
 
     exp = _EXPERIMENT_CLASS()
@@ -453,12 +447,12 @@ def create_model(
 
     """
     This function trains and evaluates the performance of a given model.
-    Metrics evaluated can be accessed using the ``get_metrics`` function. 
-    Custom metrics can be added or removed using the ``add_metric`` and 
-    ``remove_metric`` function. All the available models can be accessed 
+    Metrics evaluated can be accessed using the ``get_metrics`` function.
+    Custom metrics can be added or removed using the ``add_metric`` and
+    ``remove_metric`` function. All the available models can be accessed
     using the ``models`` function.
-    
-  
+
+
     Example
     -------
     >>> from pycaret.datasets import get_data
@@ -469,8 +463,8 @@ def create_model(
 
 
     model: str or scikit-learn compatible object
-        ID of an model available in the model library or pass an untrained 
-        model object consistent with scikit-learn API. Models available  
+        ID of an model available in the model library or pass an untrained
+        model object consistent with scikit-learn API. Models available
         in the model library (ID - Name):
 
         * 'kmeans' - K-Means Clustering
@@ -479,9 +473,9 @@ def create_model(
         * 'sc' - Spectral Clustering
         * 'hclust' - Agglomerative Clustering
         * 'dbscan' - Density-Based Spatial Clustering
-        * 'optics' - OPTICS Clustering                               
-        * 'birch' - Birch Clustering                                 
-        * 'kmodes' - K-Modes Clustering                              
+        * 'optics' - OPTICS Clustering
+        * 'birch' - Birch Clustering
+        * 'kmodes' - K-Modes Clustering
 
 
     num_clusters: int, default = 4
@@ -490,12 +484,12 @@ def create_model(
 
     ground_truth: str, default = None
         ground_truth to be provided to evaluate metrics that require true labels.
-        When None, such metrics are returned as 0.0. All metrics evaluated can 
+        When None, such metrics are returned as 0.0. All metrics evaluated can
         be accessed using ``get_metrics`` function.
 
 
     round: int, default = 4
-        Number of decimal places the metrics in the score grid will be rounded to. 
+        Number of decimal places the metrics in the score grid will be rounded to.
 
 
     fit_kwargs: dict, default = {} (empty dict)
@@ -511,7 +505,7 @@ def create_model(
         if not) passed to the mlflow.set_tags to add new custom tags for the experiment.
 
 
-    **kwargs: 
+    **kwargs:
         Additional keyword arguments to pass to the estimator.
 
 
@@ -521,20 +515,20 @@ def create_model(
 
     Warnings
     --------
-    - ``num_clusters`` param not required for Affinity Propagation ('ap'), 
+    - ``num_clusters`` param not required for Affinity Propagation ('ap'),
       Mean shift ('meanshift'), Density-Based Spatial Clustering ('dbscan')
-      and OPTICS Clustering ('optics'). 
-      
-    - When fit doesn't converge in Affinity Propagation ('ap') model, all 
+      and OPTICS Clustering ('optics').
+
+    - When fit doesn't converge in Affinity Propagation ('ap') model, all
       datapoints are labelled as -1.
-      
-    - Noisy samples are given the label -1, when using Density-Based Spatial 
-      ('dbscan') or OPTICS Clustering ('optics'). 
-      
-    - OPTICS ('optics') clustering may take longer training times on large 
+
+    - Noisy samples are given the label -1, when using Density-Based Spatial
+      ('dbscan') or OPTICS Clustering ('optics').
+
+    - OPTICS ('optics') clustering may take longer training times on large
       datasets.
-    
-       
+
+
     """
 
     return _CURRENT_EXPERIMENT.create_model(
@@ -555,8 +549,8 @@ def assign_model(
 ) -> pd.DataFrame:
 
     """
-    This function assigns cluster labels to the dataset for a given model. 
-    
+    This function assigns cluster labels to the dataset for a given model.
+
 
     Example
     -------
@@ -571,19 +565,19 @@ def assign_model(
 
     model: scikit-learn compatible object
         Trained model object
-    
+
 
     transformation: bool, default = False
-        Whether to apply cluster labels on the transformed dataset. 
-    
-    
+        Whether to apply cluster labels on the transformed dataset.
+
+
     verbose: bool, default = True
         Status update is not printed when verbose is set to False.
 
 
     Returns:
         pandas.DataFrame
-  
+
     """
 
     return _CURRENT_EXPERIMENT.assign_model(
@@ -619,29 +613,29 @@ def plot_model(
     model: scikit-learn compatible object
         Trained Model Object
 
-    
+
     plot: str, default = 'cluster'
         List of available plots (ID - Name):
 
         * 'cluster' - Cluster PCA Plot (2d)
         * 'tsne' - Cluster t-SNE (3d)
-        * 'elbow' - Elbow Plot 
+        * 'elbow' - Elbow Plot
         * 'silhouette' - Silhouette Plot
         * 'distance' - Distance Plot
         * 'distribution' - Distribution Plot
-    
-    
+
+
     feature: str, default = None
-        Feature to be evaluated when plot = 'distribution'. When ``plot`` type is 
-        'cluster' or 'tsne' feature column is used as a hoverover tooltip and/or 
-        label when the ``label`` param is set to True. When the ``plot`` type is 
+        Feature to be evaluated when plot = 'distribution'. When ``plot`` type is
+        'cluster' or 'tsne' feature column is used as a hoverover tooltip and/or
+        label when the ``label`` param is set to True. When the ``plot`` type is
         'cluster' or 'tsne' and feature is None, first column of the dataset is
         used.
-    
+
 
     label: bool, default = False
-        Name of column to be used as data labels. Ignored when ``plot`` is not 
-        'cluster' or 'tsne'. 
+        Name of column to be used as data labels. Ignored when ``plot`` is not
+        'cluster' or 'tsne'.
 
 
     scale: float, default = 1
@@ -674,13 +668,15 @@ def plot_model(
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def evaluate_model(
-    model, feature: Optional[str] = None, fit_kwargs: Optional[dict] = None,
+    model,
+    feature: Optional[str] = None,
+    fit_kwargs: Optional[dict] = None,
 ):
 
     """
     This function displays a user interface for analyzing performance of a trained
-    model. It calls the ``plot_model`` function internally. 
-    
+    model. It calls the ``plot_model`` function internally.
+
     Example
     --------
     >>> from pycaret.datasets import get_data
@@ -689,16 +685,16 @@ def evaluate_model(
     >>> exp_name = setup(data = jewellery)
     >>> kmeans = create_model('kmeans')
     >>> evaluate_model(kmeans)
-    
+
 
     model: scikit-learn compatible object
         Trained model object
 
 
     feature: str, default = None
-        Feature to be evaluated when plot = 'distribution'. When ``plot`` type is 
-        'cluster' or 'tsne' feature column is used as a hoverover tooltip and/or 
-        label when the ``label`` param is set to True. When the ``plot`` type is 
+        Feature to be evaluated when plot = 'distribution'. When ``plot`` type is
+        'cluster' or 'tsne' feature column is used as a hoverover tooltip and/or
+        label when the ``label`` param is set to True. When the ``plot`` type is
         'cluster' or 'tsne' and feature is None, first column of the dataset is
         used.
 
@@ -713,7 +709,7 @@ def evaluate_model(
 
     Warnings
     --------
-    -   This function only works in IPython enabled Notebook. 
+    -   This function only works in IPython enabled Notebook.
 
     """
 
@@ -738,28 +734,28 @@ def tune_model(
 ):
 
     """
-    This function tunes the ``num_clusters`` parameter of a given model. 
-    
-    
+    This function tunes the ``num_clusters`` parameter of a given model.
+
+
     Example
     -------
     >>> from pycaret.datasets import get_data
     >>> juice = get_data('juice')
     >>> from pycaret.clustering import *
     >>> exp_name = setup(data = juice)
-    >>> tuned_kmeans = tune_model(model = 'kmeans', supervised_target = 'Purchase') 
+    >>> tuned_kmeans = tune_model(model = 'kmeans', supervised_target = 'Purchase')
 
 
     model: str
         ID of an model available in the model library. Models that can be
         tuned in this function (ID - Model):
-        
+
         * 'kmeans' - K-Means Clustering
         * 'sc' - Spectral Clustering
-        * 'hclust' - Agglomerative Clustering                        
-        * 'birch' - Birch Clustering                                 
-        * 'kmodes' - K-Modes Clustering    
-    
+        * 'hclust' - Agglomerative Clustering
+        * 'birch' - Birch Clustering
+        * 'kmodes' - K-Modes Clustering
+
 
     supervised_target: str
         Name of the target column containing labels.
@@ -768,73 +764,73 @@ def tune_model(
     supervised_type: str, default = None
         Type of task. 'classification' or 'regression'. Automatically inferred
         when None.
-        
+
 
     supervised_estimator: str, default = None
         Classification (ID - Name):
-            * 'lr' - Logistic Regression (Default)           
-            * 'knn' - K Nearest Neighbour             
-            * 'nb' - Naive Bayes                                 
-            * 'dt' - Decision Tree Classifier                           
-            * 'svm' - SVM - Linear Kernel             	            
-            * 'rbfsvm' - SVM - Radial Kernel                            
-            * 'gpc' - Gaussian Process Classifier                       
-            * 'mlp' - Multi Level Perceptron                            
-            * 'ridge' - Ridge Classifier                
-            * 'rf' - Random Forest Classifier                           
-            * 'qda' - Quadratic Discriminant Analysis                   
-            * 'ada' - Ada Boost Classifier                             
-            * 'gbc' - Gradient Boosting Classifier                              
-            * 'lda' - Linear Discriminant Analysis                      
-            * 'et' - Extra Trees Classifier                             
-            * 'xgboost' - Extreme Gradient Boosting                     
-            * 'lightgbm' - Light Gradient Boosting                       
-            * 'catboost' - CatBoost Classifier             
-        
+            * 'lr' - Logistic Regression (Default)
+            * 'knn' - K Nearest Neighbour
+            * 'nb' - Naive Bayes
+            * 'dt' - Decision Tree Classifier
+            * 'svm' - SVM - Linear Kernel
+            * 'rbfsvm' - SVM - Radial Kernel
+            * 'gpc' - Gaussian Process Classifier
+            * 'mlp' - Multi Level Perceptron
+            * 'ridge' - Ridge Classifier
+            * 'rf' - Random Forest Classifier
+            * 'qda' - Quadratic Discriminant Analysis
+            * 'ada' - Ada Boost Classifier
+            * 'gbc' - Gradient Boosting Classifier
+            * 'lda' - Linear Discriminant Analysis
+            * 'et' - Extra Trees Classifier
+            * 'xgboost' - Extreme Gradient Boosting
+            * 'lightgbm' - Light Gradient Boosting
+            * 'catboost' - CatBoost Classifier
+
         Regression (ID - Name):
-            * 'lr' - Linear Regression (Default)                                
-            * 'lasso' - Lasso Regression              
-            * 'ridge' - Ridge Regression              
-            * 'en' - Elastic Net                   
-            * 'lar' - Least Angle Regression                
-            * 'llar' - Lasso Least Angle Regression                     
-            * 'omp' - Orthogonal Matching Pursuit                        
-            * 'br' - Bayesian Ridge                                   
-            * 'ard' - Automatic Relevance Determ.                     
-            * 'par' - Passive Aggressive Regressor                      
-            * 'ransac' - Random Sample Consensus              
-            * 'tr' - TheilSen Regressor                               
-            * 'huber' - Huber Regressor                                              
-            * 'kr' - Kernel Ridge                                                       
-            * 'svm' - Support Vector Machine                                   
-            * 'knn' - K Neighbors Regressor                                    
-            * 'dt' - Decision Tree                                                     
-            * 'rf' - Random Forest                                                     
-            * 'et' - Extra Trees Regressor                                     
-            * 'ada' - AdaBoost Regressor                                               
-            * 'gbr' - Gradient Boosting                                            
-            * 'mlp' - Multi Level Perceptron                                  
-            * 'xgboost' - Extreme Gradient Boosting                                   
-            * 'lightgbm' - Light Gradient Boosting                           
-            * 'catboost' - CatBoost Regressor                       
-            
+            * 'lr' - Linear Regression (Default)
+            * 'lasso' - Lasso Regression
+            * 'ridge' - Ridge Regression
+            * 'en' - Elastic Net
+            * 'lar' - Least Angle Regression
+            * 'llar' - Lasso Least Angle Regression
+            * 'omp' - Orthogonal Matching Pursuit
+            * 'br' - Bayesian Ridge
+            * 'ard' - Automatic Relevance Determ.
+            * 'par' - Passive Aggressive Regressor
+            * 'ransac' - Random Sample Consensus
+            * 'tr' - TheilSen Regressor
+            * 'huber' - Huber Regressor
+            * 'kr' - Kernel Ridge
+            * 'svm' - Support Vector Machine
+            * 'knn' - K Neighbors Regressor
+            * 'dt' - Decision Tree
+            * 'rf' - Random Forest
+            * 'et' - Extra Trees Regressor
+            * 'ada' - AdaBoost Regressor
+            * 'gbr' - Gradient Boosting
+            * 'mlp' - Multi Level Perceptron
+            * 'xgboost' - Extreme Gradient Boosting
+            * 'lightgbm' - Light Gradient Boosting
+            * 'catboost' - CatBoost Regressor
+
 
     optimize: str, default = None
         For Classification tasks:
             Accuracy, AUC, Recall, Precision, F1, Kappa (default = 'Accuracy')
-        
+
         For Regression tasks:
             MAE, MSE, RMSE, R2, RMSLE, MAPE (default = 'R2')
-            
+
 
     custom_grid: list, default = None
-        By default, a pre-defined number of clusters is iterated over to 
+        By default, a pre-defined number of clusters is iterated over to
         optimize the supervised objective. To overwrite default iteration,
         pass a list of num_clusters to iterate over in custom_grid param.
-    
+
 
     fold: int, default = 10
-        Number of folds to be used in Kfold CV. Must be at least 2. 
+        Number of folds to be used in Kfold CV. Must be at least 2.
 
 
     verbose: bool, default = True
@@ -843,15 +839,15 @@ def tune_model(
 
     Returns:
         Trained Model with optimized ``num_clusters`` parameter.
-    
+
 
     Warnings
     --------
     - Affinity Propagation, Mean shift, Density-Based Spatial Clustering
-      and OPTICS Clustering cannot be used in this function since they donot 
+      and OPTICS Clustering cannot be used in this function since they donot
       support the ``num_clusters`` param.
 
-          
+
     """
     return _CURRENT_EXPERIMENT.tune_model(
         model=model,
@@ -873,7 +869,7 @@ def predict_model(model, data: pd.DataFrame) -> pd.DataFrame:
 
     """
     This function generates cluster labels using a trained model.
-    
+
     Example
     -------
     >>> from pycaret.datasets import get_data
@@ -882,14 +878,14 @@ def predict_model(model, data: pd.DataFrame) -> pd.DataFrame:
     >>> exp_name = setup(data = jewellery)
     >>> kmeans = create_model('kmeans')
     >>> kmeans_predictions = predict_model(model = kmeans, data = unseen_data)
-        
+
 
     model: scikit-learn compatible object
         Trained Model Object.
-    
+
 
     data : pandas.DataFrame
-        Shape (n_samples, n_features) where n_samples is the number of samples and 
+        Shape (n_samples, n_features) where n_samples is the number of samples and
         n_features is the number of features.
 
 
@@ -902,10 +898,10 @@ def predict_model(model, data: pd.DataFrame) -> pd.DataFrame:
     - Models that do not support 'predict' method cannot be used in the ``predict_model``.
 
     - The behavior of the predict_model is changed in version 2.1 without backward compatibility.
-      As such, the pipelines trained using the version (<= 2.0), may not work for inference 
+      As such, the pipelines trained using the version (<= 2.0), may not work for inference
       with version >= 2.1. You can either retrain your models with a newer version or downgrade
       the version for inference.
-    
+
 
     """
 
@@ -913,12 +909,18 @@ def predict_model(model, data: pd.DataFrame) -> pd.DataFrame:
     if experiment is None:
         experiment = _EXPERIMENT_CLASS()
 
-    return experiment.predict_model(estimator=model, data=data,)
+    return experiment.predict_model(
+        estimator=model,
+        data=data,
+    )
 
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def deploy_model(
-    model, model_name: str, authentication: dict, platform: str = "aws",
+    model,
+    model_name: str,
+    authentication: dict,
+    platform: str = "aws",
 ):
     """
     This function deploys the transformation pipeline and trained model on cloud.
@@ -1012,9 +1014,9 @@ def save_model(
 ):
 
     """
-    This function saves the transformation pipeline and trained model object 
-    into the current working directory as a pickle file for later use. 
-    
+    This function saves the transformation pipeline and trained model object
+    into the current working directory as a pickle file for later use.
+
 
     Example
     -------
@@ -1024,18 +1026,18 @@ def save_model(
     >>> exp_name = setup(data = jewellery)
     >>> kmeans = create_model('kmeans')
     >>> save_model(lr, 'saved_kmeans_model')
-    
+
 
     model: scikit-learn compatible object
         Trained model object
-    
+
 
     model_name: str
         Name of the model.
-    
+
 
     model_only: bool, default = False
-        When set to True, only trained model object is saved instead of the 
+        When set to True, only trained model object is saved instead of the
         entire pipeline.
 
 
@@ -1043,7 +1045,7 @@ def save_model(
         Success message is not printed when verbose is set to False.
 
 
-    **kwargs: 
+    **kwargs:
         Additional keyword arguments to pass to joblib.dump().
 
 
@@ -1071,22 +1073,22 @@ def load_model(
 
     """
     This function loads a previously saved pipeline.
-    
+
 
     Example
     -------
     >>> from pycaret.clustering import load_model
     >>> saved_kmeans = load_model('saved_kmeans_model')
-    
+
 
     model_name: str
         Name of the model.
-      
+
 
     platform: str, default = None
-        Name of the cloud platform. Currently supported platforms: 
+        Name of the cloud platform. Currently supported platforms:
         'aws', 'gcp' and 'azure'.
-    
+
 
     authentication: dict, default = None
         dictionary of applicable authentication tokens.
@@ -1099,7 +1101,7 @@ def load_model(
 
         when platform = 'azure':
         {'container': 'azure-container-name'}
-    
+
 
     verbose: bool, default = True
         Success message is not printed when verbose is set to False.
@@ -1135,7 +1137,7 @@ def pull(pop: bool = False) -> pd.DataFrame:
 
     Returns:
         pandas.DataFrame
-        
+
 
     """
     return _CURRENT_EXPERIMENT.pull(pop=pop)
@@ -1176,7 +1178,9 @@ def models(internal: bool = False, raise_errors: bool = True) -> pd.DataFrame:
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def get_metrics(
-    reset: bool = False, include_custom: bool = True, raise_errors: bool = True,
+    reset: bool = False,
+    include_custom: bool = True,
+    raise_errors: bool = True,
 ) -> pd.DataFrame:
 
     """
@@ -1211,7 +1215,9 @@ def get_metrics(
     """
 
     return _CURRENT_EXPERIMENT.get_metrics(
-        reset=reset, include_custom=include_custom, raise_errors=raise_errors,
+        reset=reset,
+        include_custom=include_custom,
+        raise_errors=raise_errors,
     )
 
 
@@ -1317,7 +1323,7 @@ def get_logs(experiment_name: Optional[str] = None, save: bool = False) -> pd.Da
     >>> from pycaret.datasets import get_data
     >>> jewellery = get_data('jewellery')
     >>> from pycaret.clustering import *
-    >>> exp_name = setup(data = jewellery,  log_experiment = True) 
+    >>> exp_name = setup(data = jewellery,  log_experiment = True)
     >>> kmeans = create_model('kmeans')
     >>> exp_logs = get_logs()
 
@@ -1342,7 +1348,7 @@ def get_logs(experiment_name: Optional[str] = None, save: bool = False) -> pd.Da
 def get_config(variable: str):
 
     """
-    This function retrieves the global variables created when initializing the 
+    This function retrieves the global variables created when initializing the
     ``setup`` function. Following variables are accessible:
 
     - dataset: Transformed dataset
@@ -1370,12 +1376,12 @@ def get_config(variable: str):
     >>> jewellery = get_data('jewellery')
     >>> from pycaret.clustering import *
     >>> exp_name = setup(data = jewellery)
-    >>> X = get_config('X') 
+    >>> X = get_config('X')
 
 
     Returns:
         Global variable
-    
+
 
     """
 
@@ -1386,7 +1392,7 @@ def get_config(variable: str):
 def set_config(variable: str, value):
 
     """
-    This function resets the global variables. Following variables are 
+    This function resets the global variables. Following variables are
     accessible:
 
     - X: Transformed dataset (X)
@@ -1410,7 +1416,7 @@ def set_config(variable: str, value):
     >>> jewellery = get_data('jewellery')
     >>> from pycaret.clustering import *
     >>> exp_name = setup(data = jewellery)
-    >>> set_config('seed', 123) 
+    >>> set_config('seed', 123)
 
 
     Returns:
@@ -1435,11 +1441,11 @@ def save_config(file_name: str):
     >>> jewellery = get_data('jewellery')
     >>> from pycaret.clustering import *
     >>> exp_name = setup(data = jewellery)
-    >>> save_config('myvars.pkl') 
+    >>> save_config('myvars.pkl')
 
 
     Returns:
-        None        
+        None
 
     """
 
@@ -1457,8 +1463,8 @@ def load_config(file_name: str):
     Example
     -------
     >>> from pycaret.clustering import load_config
-    >>> load_config('myvars.pkl') 
-    
+    >>> load_config('myvars.pkl')
+
 
     Returns:
         Global variables
