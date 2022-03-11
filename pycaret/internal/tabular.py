@@ -1299,7 +1299,14 @@ def setup(
     # create logging parameter
     logging_param = log_experiment
     if logging_param:
-        loggers_list = [mlflowLogger(), wandbLogger()]
+        loggers_list = [mlflowLogger()]
+        try:
+            import wandb
+            from wandb import __version__
+            loggers_list.append(wandbLogger())
+        except ImportError:
+            logger.info("Install wandb to use wandbLogger")
+
         dashboard_logger = loggers.DashboardLogger(loggers_list)
 
     # create exp_name_log param incase logging is False

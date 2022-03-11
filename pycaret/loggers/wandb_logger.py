@@ -35,7 +35,11 @@ class wandbLogger(BaseLogger):
         self.run.log(metrics)
     
     def log_artifact(self, file, type=None):
-        file_name, extension = file.split('.')
+        file_name, extension = None, ""
+        if file.find(".") != -1:
+            file_name, extension = file.split('.')[-2:]
+        else:
+            file_name = file
         art = wandb.Artifact(name=file_name.replace(" ", "_"), type=type or "exp_data")
         art.add_file(file)
         self.run.log_artifact(art)

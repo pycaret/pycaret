@@ -29,5 +29,8 @@ class BaseLogger:
     def log_hpram_grid(self, html_file, title="hpram_grid"):
         pass
 
+    def log_artifact(self, file, type="artifact"):
+        pass
+
     def finish_experiment(self):
         pass

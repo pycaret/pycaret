@@ -4,6 +4,7 @@ from copy import deepcopy
 import secrets
 
 from typing import Optional, Dict, Any
+import pycaret
 from pycaret.internal.Display import Display
 from pycaret.internal.logging import get_logger
 from pycaret.internal.pipeline import get_pipeline_estimator_label
@@ -24,7 +25,15 @@ class mlflowLogger(BaseLogger):
         self.run = None
 
     def init_experiment(self, exp_name_log, full_name=None):
-        from pycaret.internal.tabular import USI
+        # get USI from nlp or tabular
+        USI = None
+        try:
+            USI  = pycaret.internal.tabular.USI
+        except:
+            try:
+                USI = pycaret.nlp.USI
+            except:
+                pass
         full_name = full_name or f"Session Initialized {USI}"
         mlflow.set_experiment(exp_name_log)
         self.run = mlflow.start_run(run_name=full_name, nested=True)
@@ -38,7 +47,16 @@ class mlflowLogger(BaseLogger):
         mlflow.log_metrics(metrics)
     
     def set_tags(self, source, experiment_custom_tags, runtime):
-        from pycaret.internal.tabular import USI
+        # get USI from nlp or tabular
+        USI = None
+        try:
+            USI  = pycaret.internal.tabular.USI
+        except:
+            try:
+                USI = pycaret.nlp.USI
+            except:
+                pass
+        
         # Get active run to log as tag
         RunID = mlflow.active_run().info.run_id
 

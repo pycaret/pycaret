@@ -15,7 +15,14 @@ class DashboardLogger:
     def __init__(self, logger_list: List[BaseLogger]) -> None:
         self.loggers = logger_list
 
-    
+    def init_loggers(self, exp_name_log, full_name=None):
+        for logger in self.loggers:
+            logger.init_experiment(exp_name_log, full_name)
+
+    def log_params(self, params):
+        for logger in self.loggers:
+            logger.log_params(params)
+
     def log_model(
         self,
         model,
@@ -45,8 +52,7 @@ class DashboardLogger:
 
         full_name = _get_model_name(model)
         console.info(f"Model: {full_name}")
-        for logger in self.loggers:
-            logger.init_experiment(exp_name_log, full_name)
+        self.init_loggers(exp_name_log, full_name)
 
         # Log model parameters
         pipeline_estimator_name = get_pipeline_estimator_label(model)
