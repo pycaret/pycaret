@@ -910,7 +910,21 @@ def plot_time_series_decomposition(
         return fig, return_data_dict
 
     data_kwargs = data_kwargs or {}
-    period = data_kwargs.get("seasonal_period")
+    period = data_kwargs.get("seasonal_period", None)
+
+    #### Check period ----
+    if period is None:
+        raise ValueError(
+            "Decomposition plot needed seasonal period to be passed through "
+            "`data_kwargs`. None was passed."
+        )
+    if plot == "decomp_stl" and period < 2:
+        print(
+            "STL Decomposition is not supported for time series that have a "
+            f"seasonal period < 2. The seasonal period computed/provided was {period}."
+        )
+        return fig, return_data_dict
+
     classical_decomp_type = data_kwargs.get("type", "additive")
     fig_kwargs = fig_kwargs or {}
 
