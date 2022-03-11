@@ -146,16 +146,16 @@ class DataTypes_Auto_infer(BaseEstimator, TransformerMixin):
         # remove sepcial char from column names
         # data.columns= data.columns.str.replace('[,]','')
 
-        # we will take float as numberic, object as categorical from the begning
-        # fir int64, we will check to see what is the proportion of unique counts to the total lenght of the data
+        # we will take float as numeric, object as categorical from the beginning
+        # for int64, we will check to see what is the proportion of unique counts to the total length of the data
         # if proportion is lower, then it is probabaly categorical
-        # however, proportion can be lower / disturebed due to samller denominator (total lenghth / number of samples)
+        # however, proportion can be lower / disturbed due to samller denominator (total length / number of samples)
         # so we will take the following chart
         # 0-50 samples, threshold is 24%
         # 50-100 samples, th is 12%
         # 50-250 samples , th is 4.8%
         # 250-500 samples, th is 2.4%
-        # 500 and above 2% or belwo
+        # 500 and above 2% or below
 
         # if there are inf or -inf then replace them with NaN
         data.replace([np.inf, -np.inf], np.NaN, inplace=True)
@@ -183,7 +183,7 @@ class DataTypes_Auto_infer(BaseEstimator, TransformerMixin):
         for i in data.select_dtypes(include=["bool", "category"]).columns:
             data[i] = data[i].astype("object")
 
-        # wiith csv , if we have any null in  a colum that was int , panda will read it as float.
+        # with csv , if we have any null in  a column that was int , pandas will read it as float.
         # so first we need to convert any such floats that have NaN and unique values are lower than 20
         for i in data.select_dtypes(include=["float64"]).columns:
             data[i] = data[i].astype("float32")
