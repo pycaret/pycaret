@@ -1,10 +1,3 @@
-# Module: Association Rules Mining
-# Author: Moez Ali <moez.ali@queensu.ca>
-# License: MIT
-# Release: PyCaret 2.2.0
-# Last modified : 25/10/2020
-
-
 def setup(data, transaction_id, item_id, ignore_items=None, session_id=None):
 
     """
@@ -115,7 +108,14 @@ def setup(data, transaction_id, item_id, ignore_items=None, session_id=None):
     return X, txid, iid, ignore_list, seed, experiment__
 
 
-def create_model(metric="confidence", threshold=0.5, min_support=0.05, round=4, low_memory=False, max_len=None):
+def create_model(
+    metric="confidence",
+    threshold=0.5,
+    min_support=0.05,
+    round=4,
+    low_memory=False,
+    max_len=None,
+):
 
     """
     This function creates an association rules model using data and identifiers
@@ -157,7 +157,7 @@ def create_model(metric="confidence", threshold=0.5, min_support=0.05, round=4, 
 
     round: int, default = 4
         Number of decimal places metrics in score grid will be rounded to.
-        
+
     low_memory: bool, default = False
         If `True`, uses an iterator for apriori to search for combinations above
       `min_support`.
@@ -207,7 +207,13 @@ def create_model(metric="confidence", threshold=0.5, min_support=0.05, round=4, 
 
     basket = basket.applymap(encode_units)
 
-    frequent_itemsets = apriori(basket, min_support=min_support, use_colnames=True, low_memory=low_memory, max_len=max_len)
+    frequent_itemsets = apriori(
+        basket,
+        min_support=min_support,
+        use_colnames=True,
+        low_memory=low_memory,
+        max_len=max_len,
+    )
     rules = association_rules(frequent_itemsets, metric=metric, min_threshold=threshold)
     rules = rules.sort_values(by=[metric], ascending=False).reset_index(drop=True)
     rules = rules.round(round)

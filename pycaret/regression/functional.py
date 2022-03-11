@@ -1,25 +1,22 @@
-# Module: Classification
-# Author: Moez Ali <moez.ali@queensu.ca>
-# License: MIT
-
 import logging
-import warnings
 import numpy as np
 import pandas as pd
 from joblib.memory import Memory
-from typing import List, Tuple, Any, Union, Optional, Dict, Callable
 
-# Own modules
 import pycaret.internal.tabular
 from pycaret.parallel import ParallelBackend
 from pycaret.internal.Display import Display, is_in_colab, enable_colab
-from pycaret.internal.pycaret_experiment import ClassificationExperiment
+from typing import List, Tuple, Any, Union, Optional, Dict, Callable
+
+from pycaret.regression import RegressionExperiment
 from pycaret.internal.utils import check_if_global_is_not_none
 
+from typing import List, Any, Union, Optional, Dict
+import warnings
 
 warnings.filterwarnings("ignore")
 
-_EXPERIMENT_CLASS = ClassificationExperiment
+_EXPERIMENT_CLASS = RegressionExperiment
 _CURRENT_EXPERIMENT = None
 _CURRENT_EXPERIMENT_EXCEPTION = (
     "_CURRENT_EXPERIMENT global variable is not set. Please run setup() first."
@@ -60,8 +57,6 @@ def setup(
     remove_outliers: bool = False,
     outliers_method: str = "iforest",
     outliers_threshold: float = 0.05,
-    fix_imbalance: bool = False,
-    fix_imbalance_method: Optional[Any] = None,
     transformation: bool = False,
     transformation_method: str = "yeo-johnson",
     normalize: bool = False,
@@ -73,10 +68,12 @@ def setup(
     feature_selection_method: str = "classic",
     feature_selection_estimator: Union[str, Any] = "lightgbm",
     n_features_to_select: int = 10,
+    transform_target: bool = False,
+    transform_target_method: str = "box-cox",
     custom_pipeline: Any = None,
     data_split_shuffle: bool = True,
     data_split_stratify: Union[bool, List[str]] = False,
-    fold_strategy: Union[str, Any] = "stratifiedkfold",
+    fold_strategy: Union[str, Any] = "kfold",
     fold: int = 10,
     fold_shuffle: bool = False,
     fold_groups: Optional[Union[str, pd.DataFrame]] = None,
@@ -97,7 +94,6 @@ def setup(
     profile: bool = False,
     profile_kwargs: Dict[str, Any] = None,
 ):
-
     """
     This function initializes the training environment and creates the transformation
     pipeline. Setup function must be called before executing any other function. It takes
@@ -113,7 +109,7 @@ def setup(
 
 
     data: dataframe-like
-        Shape (n_samples, n_features), where n_samples is the number of samples and 
+        Shape (n_samples, n_features), where n_samples is the number of samples and
         n_features is the number of features.
 
 
@@ -264,6 +260,7 @@ def setup(
         the feature that is less correlated with the target variable is removed. Only
         considers numeric features.
 
+
     multicollinearity_threshold: float, default = 0.9
         Threshold for correlated features. Ignored when ``remove_multicollinearity``
         is not True.
@@ -293,18 +290,6 @@ def setup(
     outliers_threshold: float, default = 0.05
         The percentage of outliers to be removed from the dataset. Ignored
         when ``remove_outliers=False``.
-
-
-    fix_imbalance: bool, default = False
-        When training dataset has unequal distribution of target class it can be balanced
-        using this parameter. When set to True, SMOTE (Synthetic Minority Over-sampling
-        Technique) is applied by default to create synthetic datapoints for minority class.
-
-
-    fix_imbalance_method: imblearn estimator, default = None
-        When ``fix_imbalance`` is True, `imblearn` compatible estimator with a
-        `fit_resample` method can be passed. If None, `imblearn.over_sampling.SMOTE`
-        is used.
 
 
     transformation: bool, default = False
@@ -372,7 +357,7 @@ def setup(
     feature_selection_estimator: str or sklearn estimator, default = 'lightgbm'
         Classifier used to determine the feature importances. The
         estimator should have a `feature_importances_` or `coef_`
-        attribute after fitting. If None, it uses LGBClassifier. This
+        attribute after fitting. If None, it uses LGBRegressor. This
         parameter is ignored when `feature_selection_method=univariate`.
 
 
@@ -380,6 +365,19 @@ def setup(
         The number of features to select. Note that this parameter doesn't
         take features in ``ignore_features`` or ``keep_features`` into account
         when counting.
+
+
+    transform_target: bool, default = False
+        When set to True, target variable is transformed using the method defined in
+        ``transform_target_method`` param. Target transformation is applied separately
+        from feature transformations.
+
+
+    transform_target_method: str, default = 'box-cox'
+        'Box-cox' and 'yeo-johnson' methods are supported. Box-Cox requires input data to
+        be strictly positive, while Yeo-Johnson supports both positive or negative data.
+        When transform_target_method is 'box-cox' and target variable contains negative
+        values, method is internally forced to 'yeo-johnson' to avoid exceptions.
 
 
     custom_pipeline: (str, transformer), list of (str, transformer) or dict, default = None
@@ -397,11 +395,10 @@ def setup(
         column names. Ignored when ``data_split_shuffle`` is False.
 
 
-    fold_strategy: str or sklearn CV generator object, default = 'stratifiedkfold'
+    fold_strategy: str or sklearn CV generator object, default = 'kfold'
         Choice of cross validation strategy. Possible values are:
 
         * 'kfold'
-        * 'stratifiedkfold'
         * 'groupkfold'
         * 'timeseries'
         * a custom CV generator object compatible with scikit-learn.
@@ -448,8 +445,8 @@ def setup(
         - Light Gradient Boosting Machine, requires GPU installation
           https://lightgbm.readthedocs.io/en/latest/GPU-Tutorial.html
 
-        - Logistic Regression, Ridge Classifier, Random Forest, K Neighbors Classifier,
-          Support Vector Machine, requires cuML >= 0.15
+        - Linear Regression, Lasso Regression, Ridge Regression, K Neighbors Regressor,
+          Random Forest, Support Vector Regression, Elastic Net requires cuML >= 0.15
           https://github.com/rapidsai/cuml
 
 
@@ -500,8 +497,8 @@ def setup(
 
 
     silent: bool, default = False
-        Controls the confirmation input of data types when ``setup`` is executed. When
-        executing in completely automated mode or on a remote kernel, this must be True.
+        When executing in completely automated mode or on a remote kernel, this must be True.
+        Leave False otherwise
 
 
     verbose: bool, default = True
@@ -513,7 +510,6 @@ def setup(
             If False: No caching is performed.
             If True: A default temp directory is used.
             If str: Path to the caching directory.
-
 
     profile: bool, default = False
         When set to True, an interactive EDA report is displayed.
@@ -528,7 +524,6 @@ def setup(
         Global variables that can be changed using the ``set_config`` function.
 
     """
-
     exp = _EXPERIMENT_CLASS()
     set_current_experiment(exp)
     return exp.setup(
@@ -562,8 +557,6 @@ def setup(
         remove_outliers=remove_outliers,
         outliers_method=outliers_method,
         outliers_threshold=outliers_threshold,
-        fix_imbalance=fix_imbalance,
-        fix_imbalance_method=fix_imbalance_method,
         transformation=transformation,
         transformation_method=transformation_method,
         normalize=normalize,
@@ -575,6 +568,8 @@ def setup(
         feature_selection_method=feature_selection_method,
         feature_selection_estimator=feature_selection_estimator,
         n_features_to_select=n_features_to_select,
+        transform_target=transform_target,
+        transform_target_method=transform_target_method,
         custom_pipeline=custom_pipeline,
         data_split_shuffle=data_split_shuffle,
         data_split_stratify=data_split_stratify,
@@ -608,7 +603,7 @@ def compare_models(
     fold: Optional[Union[int, Any]] = None,
     round: int = 4,
     cross_validation: bool = True,
-    sort: str = "Accuracy",
+    sort: str = "R2",
     n_select: int = 1,
     budget_time: Optional[float] = None,
     turbo: bool = True,
@@ -616,10 +611,9 @@ def compare_models(
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
     experiment_custom_tags: Optional[Dict[str, Any]] = None,
-    probability_threshold: Optional[float] = None,
     verbose: bool = True,
     # parallel: Optional[ParallelBackend] = None,
-) -> Union[Any, List[Any]]:
+):
 
     """
     This function trains and evaluates performance of all estimators available in the
@@ -628,12 +622,13 @@ def compare_models(
     using the ``get_metrics`` function. Custom metrics can be added or removed using
     ``add_metric`` and ``remove_metric`` function.
 
+
     Example
-    -------
+    --------
     >>> from pycaret.datasets import get_data
-    >>> juice = get_data('juice')
-    >>> from pycaret.classification import *
-    >>> exp_name = setup(data = juice,  target = 'Purchase')
+    >>> boston = get_data('boston')
+    >>> from pycaret.regression import *
+    >>> exp_name = setup(data = boston,  target = 'medv')
     >>> best_model = compare_models()
 
 
@@ -665,7 +660,7 @@ def compare_models(
         is ignored when cross_validation is set to False.
 
 
-    sort: str, default = 'Accuracy'
+    sort: str, default = 'R2'
         The sort order of the score grid. It also accepts custom metrics that are
         added through the ``add_metric`` function.
 
@@ -694,6 +689,17 @@ def compare_models(
         Dictionary of arguments passed to the fit method of the model.
 
 
+    display: pycaret.internal.Display.Display, default = None
+        Custom display object
+
+
+    parallel: pycaret.parallel.parallel_backend.ParallelBackend, default = None
+        A ParallelBackend instance. For example if you have a SparkSession ``session``,
+        you can use ``FugueBackend(session)`` to make this function running using
+        Spark. For more details, see
+        :class:`~pycaret.parallel.fugue_backend.FugueBackend`
+
+
     groups: str or array-like, with shape (n_samples,), default = None
         Optional group labels when 'GroupKFold' is used for the cross validation.
         It takes an array with shape (n_samples, ) where n_samples is the number
@@ -706,25 +712,8 @@ def compare_models(
         if not) passed to the mlflow.set_tags to add new custom tags for the experiment.
 
 
-    probability_threshold: float, default = None
-        Threshold for converting predicted probability to class label.
-        It defaults to 0.5 for all classifiers unless explicitly defined
-        in this parameter. Only applicable for binary classification.
-
-
     verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
-
-
-    display: pycaret.internal.Display.Display, default = None
-        Custom display object
-
-
-    parallel: pycaret.parallel.parallel_backend.ParallelBackend, default = None
-        A ParallelBackend instance. For example if you have a SparkSession ``session``,
-        you can use ``FugueBackend(session)`` to make this function running using
-        Spark. For more details, see
-        :class:`~pycaret.parallel.fugue_backend.FugueBackend`
 
 
     Returns:
@@ -736,11 +725,10 @@ def compare_models(
     - Changing turbo parameter to False may result in very high training times with
       datasets exceeding 10,000 rows.
 
-    - AUC for estimators that does not support 'predict_proba' is shown as 0.0000.
-
     - No models are logged in ``MLFlow`` when ``cross_validation`` parameter is False.
+
     """
-    #params = dict(locals())
+    # params = dict(locals())
     parallel = None
     if parallel is not None:
         global _pycaret_setup_call
@@ -767,7 +755,6 @@ def compare_models(
         fit_kwargs=fit_kwargs,
         groups=groups,
         experiment_custom_tags=experiment_custom_tags,
-        probability_threshold=probability_threshold,
         verbose=verbose,
     )
 
@@ -780,11 +767,10 @@ def create_model(
     cross_validation: bool = True,
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
-    probability_threshold: Optional[float] = None,
     experiment_custom_tags: Optional[Dict[str, Any]] = None,
     verbose: bool = True,
     **kwargs,
-) -> Any:
+):
 
     """
     This function trains and evaluates the performance of a given estimator
@@ -794,12 +780,13 @@ def create_model(
     ``add_metric`` and ``remove_metric`` function. All the available models
     can be accessed using the ``models`` function.
 
+
     Example
     -------
     >>> from pycaret.datasets import get_data
-    >>> juice = get_data('juice')
-    >>> from pycaret.classification import *
-    >>> exp_name = setup(data = juice,  target = 'Purchase')
+    >>> boston = get_data('boston')
+    >>> from pycaret.regression import *
+    >>> exp_name = setup(data = boston,  target = 'medv')
     >>> lr = create_model('lr')
 
 
@@ -808,24 +795,31 @@ def create_model(
         model object consistent with scikit-learn API. Estimators available
         in the model library (ID - Name):
 
-        * 'lr' - Logistic Regression
-        * 'knn' - K Neighbors Classifier
-        * 'nb' - Naive Bayes
-        * 'dt' - Decision Tree Classifier
-        * 'svm' - SVM - Linear Kernel
-        * 'rbfsvm' - SVM - Radial Kernel
-        * 'gpc' - Gaussian Process Classifier
-        * 'mlp' - MLP Classifier
-        * 'ridge' - Ridge Classifier
-        * 'rf' - Random Forest Classifier
-        * 'qda' - Quadratic Discriminant Analysis
-        * 'ada' - Ada Boost Classifier
-        * 'gbc' - Gradient Boosting Classifier
-        * 'lda' - Linear Discriminant Analysis
-        * 'et' - Extra Trees Classifier
+        * 'lr' - Linear Regression
+        * 'lasso' - Lasso Regression
+        * 'ridge' - Ridge Regression
+        * 'en' - Elastic Net
+        * 'lar' - Least Angle Regression
+        * 'llar' - Lasso Least Angle Regression
+        * 'omp' - Orthogonal Matching Pursuit
+        * 'br' - Bayesian Ridge
+        * 'ard' - Automatic Relevance Determination
+        * 'par' - Passive Aggressive Regressor
+        * 'ransac' - Random Sample Consensus
+        * 'tr' - TheilSen Regressor
+        * 'huber' - Huber Regressor
+        * 'kr' - Kernel Ridge
+        * 'svm' - Support Vector Regression
+        * 'knn' - K Neighbors Regressor
+        * 'dt' - Decision Tree Regressor
+        * 'rf' - Random Forest Regressor
+        * 'et' - Extra Trees Regressor
+        * 'ada' - AdaBoost Regressor
+        * 'gbr' - Gradient Boosting Regressor
+        * 'mlp' - MLP Regressor
         * 'xgboost' - Extreme Gradient Boosting
         * 'lightgbm' - Light Gradient Boosting Machine
-        * 'catboost' - CatBoost Classifier
+        * 'catboost' - CatBoost Regressor
 
 
     fold: int or scikit-learn compatible CV generator, default = None
@@ -855,12 +849,6 @@ def create_model(
         the column name in the dataset containing group labels.
 
 
-    probability_threshold: float, default = None
-        Threshold for converting predicted probability to class label.
-        It defaults to 0.5 for all classifiers unless explicitly defined
-        in this parameter. Only applicable for binary classification.
-
-
     experiment_custom_tags: dict, default = None
         Dictionary of tag_name: String -> value: (String, but will be string-ified
         if not) passed to the mlflow.set_tags to add new custom tags for the experiment.
@@ -880,8 +868,6 @@ def create_model(
 
     Warnings
     --------
-    - AUC for estimators that does not support 'predict_proba' is shown as 0.0000.
-
     - Models are not logged on the ``MLFlow`` server when ``cross_validation`` param
       is set to False.
 
@@ -894,7 +880,6 @@ def create_model(
         cross_validation=cross_validation,
         fit_kwargs=fit_kwargs,
         groups=groups,
-        probability_threshold=probability_threshold,
         experiment_custom_tags=experiment_custom_tags,
         verbose=verbose,
         **kwargs,
@@ -908,7 +893,7 @@ def tune_model(
     round: int = 4,
     n_iter: int = 10,
     custom_grid: Optional[Union[Dict[str, list], Any]] = None,
-    optimize: str = "Accuracy",
+    optimize: str = "R2",
     custom_scorer=None,
     search_library: str = "scikit-learn",
     search_algorithm: Optional[str] = None,
@@ -921,7 +906,7 @@ def tune_model(
     verbose: bool = True,
     tuner_verbose: Union[int, bool] = True,
     **kwargs,
-) -> Any:
+):
 
     """
     This function tunes the hyperparameters of a given estimator. The output of
@@ -930,12 +915,13 @@ def tune_model(
     accessed using the ``get_metrics`` function. Custom metrics can be added
     or removed using ``add_metric`` and ``remove_metric`` function.
 
+
     Example
     -------
     >>> from pycaret.datasets import get_data
-    >>> juice = get_data('juice')
-    >>> from pycaret.classification import *
-    >>> exp_name = setup(data = juice,  target = 'Purchase')
+    >>> boston = get_data('boston')
+    >>> from pycaret.regression import *
+    >>> exp_name = setup(data = boston,  target = 'medv')
     >>> lr = create_model('lr')
     >>> tuned_lr = tune_model(lr)
 
@@ -966,7 +952,7 @@ def tune_model(
         supported by the defined ``search_library``.
 
 
-    optimize: str, default = 'Accuracy'
+    optimize: str, default = 'R2'
         Metric name to be evaluated for hyperparameter tuning. It also accepts custom
         metrics that are added through the ``add_metric`` function.
 
@@ -1115,92 +1101,79 @@ def ensemble_model(
     n_estimators: int = 10,
     round: int = 4,
     choose_better: bool = False,
-    optimize: str = "Accuracy",
+    optimize: str = "R2",
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
-    probability_threshold: Optional[float] = None,
     verbose: bool = True,
 ) -> Any:
 
     """
-    This function ensembles a given estimator. The output of this function is
-    a score grid with CV scores by fold. Metrics evaluated during CV can be
-    accessed using the ``get_metrics`` function. Custom metrics can be added
-    or removed using ``add_metric`` and ``remove_metric`` function.
+     This function ensembles a given estimator. The output of this function is
+     a score grid with CV scores by fold. Metrics evaluated during CV can be
+     accessed using the ``get_metrics`` function. Custom metrics can be added
+     or removed using ``add_metric`` and ``remove_metric`` function.
 
 
-    Example
-    -------
-    >>> from pycaret.datasets import get_data
-    >>> juice = get_data('juice')
-    >>> from pycaret.classification import *
-    >>> exp_name = setup(data = juice,  target = 'Purchase')
-    >>> dt = create_model('dt')
-    >>> bagged_dt = ensemble_model(dt, method = 'Bagging')
+     Example
+     --------
+     >>> from pycaret.datasets import get_data
+     >>> boston = get_data('boston')
+     >>> from pycaret.regression import *
+     >>> exp_name = setup(data = boston,  target = 'medv')
+     >>> dt = create_model('dt')
+     >>> bagged_dt = ensemble_model(dt, method = 'Bagging')
 
 
     estimator: scikit-learn compatible object
-        Trained model object
+         Trained model object
 
 
-    method: str, default = 'Bagging'
-        Method for ensembling base estimator. It can be 'Bagging' or 'Boosting'.
+     method: str, default = 'Bagging'
+         Method for ensembling base estimator. It can be 'Bagging' or 'Boosting'.
 
 
-    fold: int or scikit-learn compatible CV generator, default = None
-        Controls cross-validation. If None, the CV generator in the ``fold_strategy``
-        parameter of the ``setup`` function is used. When an integer is passed,
-        it is interpreted as the 'n_splits' parameter of the CV generator in the
-        ``setup`` function.
+     fold: int or scikit-learn compatible CV generator, default = None
+         Controls cross-validation. If None, the CV generator in the ``fold_strategy``
+         parameter of the ``setup`` function is used. When an integer is passed,
+         it is interpreted as the 'n_splits' parameter of the CV generator in the
+         ``setup`` function.
 
 
-    n_estimators: int, default = 10
-        The number of base estimators in the ensemble. In case of perfect fit, the
-        learning procedure is stopped early.
+     n_estimators: int, default = 10
+         The number of base estimators in the ensemble. In case of perfect fit, the
+         learning procedure is stopped early.
 
 
-    round: int, default = 4
-        Number of decimal places the metrics in the score grid will be rounded to.
+     round: int, default = 4
+         Number of decimal places the metrics in the score grid will be rounded to.
 
 
-    choose_better: bool, default = False
-        When set to True, the returned object is always better performing. The
-        metric used for comparison is defined by the ``optimize`` parameter.
+     choose_better: bool, default = False
+         When set to True, the returned object is always better performing. The
+         metric used for comparison is defined by the ``optimize`` parameter.
 
 
-    optimize: str, default = 'Accuracy'
-        Metric to compare for model selection when ``choose_better`` is True.
+     optimize: str, default = 'R2'
+         Metric to compare for model selection when ``choose_better`` is True.
 
 
-    fit_kwargs: dict, default = {} (empty dict)
-        Dictionary of arguments passed to the fit method of the model.
+     fit_kwargs: dict, default = {} (empty dict)
+         Dictionary of arguments passed to the fit method of the model.
 
 
-    groups: str or array-like, with shape (n_samples,), default = None
-        Optional group labels when GroupKFold is used for the cross validation.
-        It takes an array with shape (n_samples, ) where n_samples is the number
-        of rows in training dataset. When string is passed, it is interpreted as
-        the column name in the dataset containing group labels.
+     groups: str or array-like, with shape (n_samples,), default = None
+         Optional group labels when GroupKFold is used for the cross validation.
+         It takes an array with shape (n_samples, ) where n_samples is the number
+         of rows in training dataset. When string is passed, it is interpreted as
+         the column name in the dataset containing group labels.
 
 
-    probability_threshold: float, default = None
-        Threshold for converting predicted probability to class label.
-        It defaults to 0.5 for all classifiers unless explicitly defined
-        in this parameter. Only applicable for binary classification.
+     verbose: bool, default = True
+         Score grid is not printed when verbose is set to False.
 
 
-    verbose: bool, default = True
-        Score grid is not printed when verbose is set to False.
-
-
-    Returns:
-        Trained Model
-
-
-    Warnings
-    --------
-    - Method 'Boosting' is not supported for estimators that do not have 'class_weights'
-      or 'predict_proba' attributes.
+     Returns:
+         Trained Model
 
     """
 
@@ -1215,7 +1188,6 @@ def ensemble_model(
         fit_kwargs=fit_kwargs,
         groups=groups,
         verbose=verbose,
-        probability_threshold=probability_threshold,
     )
 
 
@@ -1225,29 +1197,27 @@ def blend_models(
     fold: Optional[Union[int, Any]] = None,
     round: int = 4,
     choose_better: bool = False,
-    optimize: str = "Accuracy",
-    method: str = "auto",
+    optimize: str = "R2",
     weights: Optional[List[float]] = None,
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
-    probability_threshold: Optional[float] = None,
     verbose: bool = True,
-) -> Any:
+):
 
     """
-    This function trains a Soft Voting / Majority Rule classifier for select
-    models passed in the ``estimator_list`` param. The output of this function
-    is a score grid with CV scores by fold. Metrics evaluated during CV can be
-    accessed using the ``get_metrics`` function. Custom metrics can be added
-    or removed using ``add_metric`` and ``remove_metric`` function.
+    This function trains a Voting Regressor for select models passed in the
+    ``estimator_list`` param. The output of this function is a score grid with
+    CV scores by fold. Metrics evaluated during CV can be accessed using the
+    ``get_metrics`` function. Custom metrics can be added or removed using
+    ``add_metric`` and ``remove_metric`` function.
 
 
     Example
-    -------
+    --------
     >>> from pycaret.datasets import get_data
-    >>> juice = get_data('juice')
-    >>> from pycaret.classification import *
-    >>> exp_name = setup(data = juice,  target = 'Purchase')
+    >>> boston = get_data('boston')
+    >>> from pycaret.regression import *
+    >>> exp_name = setup(data = boston,  target = 'medv')
     >>> top3 = compare_models(n_select = 3)
     >>> blender = blend_models(top3)
 
@@ -1272,16 +1242,8 @@ def blend_models(
         metric used for comparison is defined by the ``optimize`` parameter.
 
 
-    optimize: str, default = 'Accuracy'
+    optimize: str, default = 'R2'
         Metric to compare for model selection when ``choose_better`` is True.
-
-
-    method: str, default = 'auto'
-        'hard' uses predicted class labels for majority rule voting. 'soft', predicts
-        the class label based on the argmax of the sums of the predicted probabilities,
-        which is recommended for an ensemble of well-calibrated classifiers. Default
-        value, 'auto', will try to use 'soft' and fall back to 'hard' if the former is
-        not supported.
 
 
     weights: list, default = None
@@ -1301,18 +1263,13 @@ def blend_models(
         the column name in the dataset containing group labels.
 
 
-    probability_threshold: float, default = None
-        Threshold for converting predicted probability to class label.
-        It defaults to 0.5 for all classifiers unless explicitly defined
-        in this parameter. Only applicable for binary classification.
-
-
     verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
 
 
     Returns:
         Trained Model
+
 
     """
 
@@ -1322,12 +1279,10 @@ def blend_models(
         round=round,
         choose_better=choose_better,
         optimize=optimize,
-        method=method,
         weights=weights,
         fit_kwargs=fit_kwargs,
         groups=groups,
         verbose=verbose,
-        probability_threshold=probability_threshold,
     )
 
 
@@ -1338,15 +1293,13 @@ def stack_models(
     meta_model_fold: Optional[Union[int, Any]] = 5,
     fold: Optional[Union[int, Any]] = None,
     round: int = 4,
-    method: str = "auto",
     restack: bool = True,
     choose_better: bool = False,
-    optimize: str = "Accuracy",
+    optimize: str = "R2",
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
-    probability_threshold: Optional[float] = None,
     verbose: bool = True,
-) -> Any:
+):
 
     """
     This function trains a meta model over select estimators passed in
@@ -1358,11 +1311,11 @@ def stack_models(
 
 
     Example
-    -------
+    --------
     >>> from pycaret.datasets import get_data
-    >>> juice = get_data('juice')
-    >>> from pycaret.classification import *
-    >>> exp_name = setup(data = juice,  target = 'Purchase')
+    >>> boston = get_data('boston')
+    >>> from pycaret.regression import *
+    >>> exp_name = setup(data = boston,  target = 'medv')
     >>> top3 = compare_models(n_select = 3)
     >>> stacker = stack_models(top3)
 
@@ -1372,7 +1325,7 @@ def stack_models(
 
 
     meta_model: scikit-learn compatible object, default = None
-        When None, Logistic Regression is trained as a meta model.
+        When None, Linear Regression is trained as a meta model.
 
 
     meta_model_fold: integer or scikit-learn compatible CV generator, default = 5
@@ -1393,12 +1346,6 @@ def stack_models(
         Number of decimal places the metrics in the score grid will be rounded to.
 
 
-    method: str, default = 'auto'
-        When set to 'auto', it will invoke, for each estimator, 'predict_proba',
-        'decision_function' or 'predict' in that order. Other, manually pass one
-        of the value from 'predict_proba', 'decision_function' or 'predict'.
-
-
     restack: bool, default = True
         When set to False, only the predictions of estimators will be used as
         training data for the ``meta_model``.
@@ -1409,7 +1356,7 @@ def stack_models(
         metric used for comparison is defined by the ``optimize`` parameter.
 
 
-    optimize: str, default = 'Accuracy'
+    optimize: str, default = 'R2'
         Metric to compare for model selection when ``choose_better`` is True.
 
 
@@ -1424,25 +1371,12 @@ def stack_models(
         the column name in the dataset containing group labels.
 
 
-    probability_threshold: float, default = None
-        Threshold for converting predicted probability to class label.
-        It defaults to 0.5 for all classifiers unless explicitly defined
-        in this parameter. Only applicable for binary classification.
-
-
     verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
 
 
     Returns:
         Trained Model
-
-
-    Warnings
-    --------
-    - When ``method`` is not set to 'auto', it will check if the defined method
-      is available for all estimators passed in ``estimator_list``. If the method is
-      not implemented by any estimator, it will raise an error.
 
     """
 
@@ -1452,13 +1386,11 @@ def stack_models(
         meta_model_fold=meta_model_fold,
         fold=fold,
         round=round,
-        method=method,
         restack=restack,
         choose_better=choose_better,
         optimize=optimize,
         fit_kwargs=fit_kwargs,
         groups=groups,
-        probability_threshold=probability_threshold,
         verbose=verbose,
     )
 
@@ -1466,7 +1398,7 @@ def stack_models(
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def plot_model(
     estimator,
-    plot: str = "auc",
+    plot: str = "residuals",
     scale: float = 1,
     save: bool = False,
     fold: Optional[Union[int, Any]] = None,
@@ -1482,43 +1414,36 @@ def plot_model(
     This function analyzes the performance of a trained model on holdout set.
     It may require re-training the model in certain cases.
 
+
     Example
-    -------
+    --------
     >>> from pycaret.datasets import get_data
-    >>> juice = get_data('juice')
-    >>> from pycaret.classification import *
-    >>> exp_name = setup(data = juice,  target = 'Purchase')
+    >>> boston = get_data('boston')
+    >>> from pycaret.regression import *
+    >>> exp_name = setup(data = boston,  target = 'medv')
     >>> lr = create_model('lr')
-    >>> plot_model(lr, plot = 'auc')
+    >>> plot_model(lr, plot = 'residual')
 
 
     estimator: scikit-learn compatible object
         Trained model object
 
 
-    plot: str, default = 'auc'
+    plot: str, default = 'residual'
         List of available plots (ID - Name):
 
-        * 'auc' - Area Under the Curve
-        * 'threshold' - Discrimination Threshold
-        * 'pr' - Precision Recall Curve
-        * 'confusion_matrix' - Confusion Matrix
-        * 'error' - Class Prediction Error
-        * 'class_report' - Classification Report
-        * 'boundary' - Decision Boundary
-        * 'rfe' - Recursive Feature Selection
+        * 'residuals_interactive' - Interactive Residual plots
+        * 'residuals' - Residuals Plot
+        * 'error' - Prediction Error Plot
+        * 'cooks' - Cooks Distance Plot
+        * 'rfe' - Recursive Feat. Selection
         * 'learning' - Learning Curve
-        * 'manifold' - Manifold Learning
-        * 'calibration' - Calibration Curve
         * 'vc' - Validation Curve
-        * 'dimension' - Dimension Learning
+        * 'manifold' - Manifold Learning
         * 'feature' - Feature Importance
         * 'feature_all' - Feature Importance (All)
         * 'parameter' - Model Hyperparameter
-        * 'lift' - Lift Curve
-        * 'gain' - Gain Chart
         * 'tree' - Decision Tree
-        * 'ks' - KS Statistic Plot
 
 
     scale: float, default = 1
@@ -1568,18 +1493,6 @@ def plot_model(
     Returns:
         None
 
-
-    Warnings
-    --------
-    -   Estimators that does not support 'predict_proba' attribute cannot be used for
-        'AUC' and 'calibration' plots.
-
-    -   When the target is multiclass, 'calibration', 'threshold', 'manifold' and 'rfe'
-        plots are not available.
-
-    -   When the 'max_features' parameter of a trained model object is not equal to
-        the number of samples in training set, the 'rfe' plot is not available.
-
     """
 
     return _CURRENT_EXPERIMENT.plot_model(
@@ -1611,13 +1524,12 @@ def evaluate_model(
     This function displays a user interface for analyzing performance of a trained
     model. It calls the ``plot_model`` function internally.
 
-
     Example
-    -------
+    --------
     >>> from pycaret.datasets import get_data
-    >>> juice = get_data('juice')
-    >>> from pycaret.classification import *
-    >>> exp_name = setup(data = juice,  target = 'Purchase')
+    >>> boston = get_data('boston')
+    >>> from pycaret.regression import *
+    >>> exp_name = setup(data = boston,  target = 'medv')
     >>> lr = create_model('lr')
     >>> evaluate_model(lr)
 
@@ -1687,30 +1599,35 @@ def interpret_model(
 ):
 
     """
-    This function analyzes the predictions generated from a trained model. Most plots
-    in this function are implemented based on the SHAP (SHapley Additive exPlanations).
-    For more info on this, please see https://shap.readthedocs.io/en/latest/
+    This function takes a trained model object and returns an interpretation plot
+    based on the test / hold-out set. It only supports tree based algorithms.
 
+    This function is implemented based on the SHAP (SHapley Additive exPlanations),
+    which is a unified approach to explain the output of any machine learning model.
+    SHAP connects game theory with local explanations.
+
+    For more information : https://shap.readthedocs.io/en/latest/
+
+    For Partial Dependence Plot : https://github.com/SauceCat/PDPbox
 
     Example
-    -------
+    --------
     >>> from pycaret.datasets import get_data
-    >>> juice = get_data('juice')
-    >>> from pycaret.classification import *
-    >>> exp_name = setup(data = juice,  target = 'Purchase')
+    >>> boston = get_data('boston')
+    >>> from pycaret.regression import *
+    >>> exp = setup(data = boston,  target = 'medv')
     >>> xgboost = create_model('xgboost')
     >>> interpret_model(xgboost)
 
 
-    estimator : object, default = none
-        A trained model object to be passed as an estimator. Only tree-based
-        models are accepted when plot type is 'summary', 'correlation', or
-        'reason'. 'pdp' plot is model agnostic.
+    estimator: scikit-learn compatible object
+        Trained model object
 
 
     plot : str, default = 'summary'
         Abbreviation of type of plot. The current list of plots supported
         are (Plot - Name):
+
         * 'summary' - Summary Plot using SHAP
         * 'correlation' - Dependence Plot using SHAP
         * 'reason' - Force Plot using SHAP
@@ -1778,192 +1695,26 @@ def interpret_model(
     )
 
 
-@check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
-def calibrate_model(
-    estimator,
-    method: str = "sigmoid",
-    calibrate_fold: Optional[Union[int, Any]] = 5,
-    fold: Optional[Union[int, Any]] = None,
-    round: int = 4,
-    fit_kwargs: Optional[dict] = None,
-    groups: Optional[Union[str, Any]] = None,
-    verbose: bool = True,
-) -> Any:
-
-    """
-    This function calibrates the probability of a given estimator using isotonic
-    or logistic regression. The output of this function is a score grid with CV
-    scores by fold. Metrics evaluated during CV can be accessed using the
-    ``get_metrics`` function. Custom metrics can be added or removed using
-    ``add_metric`` and ``remove_metric`` function.
-
-
-    Example
-    -------
-    >>> from pycaret.datasets import get_data
-    >>> juice = get_data('juice')
-    >>> from pycaret.classification import *
-    >>> exp_name = setup(data = juice,  target = 'Purchase')
-    >>> dt = create_model('dt')
-    >>> calibrated_dt = calibrate_model(dt)
-
-
-    estimator: scikit-learn compatible object
-        Trained model object
-
-
-    method: str, default = 'sigmoid'
-        The method to use for calibration. Can be 'sigmoid' which corresponds to
-        Platt's method or 'isotonic' which is a non-parametric approach.
-
-
-    calibrate_fold: integer or scikit-learn compatible CV generator, default = 5
-        Controls internal cross-validation. Can be an integer or a scikit-learn
-        CV generator. If set to an integer, will use (Stratifed)KFold CV with
-        that many folds. See scikit-learn documentation on Stacking for
-        more details.
-
-
-    fold: int or scikit-learn compatible CV generator, default = None
-        Controls cross-validation. If None, the CV generator in the ``fold_strategy``
-        parameter of the ``setup`` function is used. When an integer is passed,
-        it is interpreted as the 'n_splits' parameter of the CV generator in the
-        ``setup`` function.
-
-
-    round: int, default = 4
-        Number of decimal places the metrics in the score grid will be rounded to.
-
-
-    fit_kwargs: dict, default = {} (empty dict)
-        Dictionary of arguments passed to the fit method of the model.
-
-
-    groups: str or array-like, with shape (n_samples,), default = None
-        Optional group labels when GroupKFold is used for the cross validation.
-        It takes an array with shape (n_samples, ) where n_samples is the number
-        of rows in training dataset. When string is passed, it is interpreted as
-        the column name in the dataset containing group labels.
-
-
-    verbose: bool, default = True
-        Score grid is not printed when verbose is set to False.
-
-
-    Returns:
-        Trained Model
-
-
-    Warnings
-    --------
-    - Avoid isotonic calibration with too few calibration samples (< 1000) since it
-      tends to overfit.
-
-    """
-
-    return _CURRENT_EXPERIMENT.calibrate_model(
-        estimator=estimator,
-        method=method,
-        calibrate_fold=calibrate_fold,
-        fold=fold,
-        round=round,
-        fit_kwargs=fit_kwargs,
-        groups=groups,
-        verbose=verbose,
-    )
-
-
-@check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
-def optimize_threshold(
-    estimator,
-    optimize: str = "Accuracy",
-    grid_interval: float = 0.1,
-    return_data: bool = False,
-    plot_kwargs: Optional[dict] = None,
-):
-
-    """
-    This function optimizes probability threshold for a trained classifier. It
-    iterates over performance metrics at different ``probability_threshold`` with
-    a step size defined in ``grid_interval`` parameter. This function will display
-    a plot of the performance metrics at each probability threshold and returns the
-    best model based on the metric defined under ``optimize`` parameter.
-
-
-    Example
-    -------
-    >>> from pycaret.datasets import get_data
-    >>> juice = get_data('juice')
-    >>> experiment_name = setup(data = juice,  target = 'Purchase')
-    >>> lr = create_model('lr')
-    >>> best_lr_threshold = optimize_threshold(lr)
-
-
-    Parameters
-    ----------
-    estimator : object
-        A trained model object should be passed as an estimator.
-
-
-    optimize : str, default = 'Accuracy'
-        Metric to be used for selecting best model.
-
-
-    grid_interval : float, default = 0.0001
-        Grid interval for threshold grid search. Default 10 iterations.
-
-
-    return_data :  bool, default = False
-        When set to True, data used for visualization is also returned.
-
-
-    plot_kwargs :  dict, default = {} (empty dict)
-        Dictionary of arguments passed to the visualizer class.
-
-
-    Returns
-    -------
-    Trained Model
-
-
-    Warnings
-    --------
-    - This function does not support multiclass classification problems.
-    """
-
-    return _CURRENT_EXPERIMENT.optimize_threshold(
-        estimator=estimator,
-        optimize=optimize,
-        grid_interval=grid_interval,
-        return_data=return_data,
-        plot_kwargs=plot_kwargs,
-    )
-
-
 # not using check_if_global_is_not_none on purpose
 def predict_model(
     estimator,
     data: Optional[pd.DataFrame] = None,
-    probability_threshold: Optional[float] = None,
-    encoded_labels: bool = False,
-    raw_score: bool = False,
     drift_report: bool = False,
     round: int = 4,
     verbose: bool = True,
 ) -> pd.DataFrame:
 
     """
-    This function predicts ``Label`` and ``Score`` (probability of predicted
-    class) using a trained model. When ``data`` is None, it predicts label and
-    score on the holdout set.
+    This function predicts ``Label`` using a trained model. When ``data`` is
+    None, it predicts label on the holdout set.
 
 
     Example
     -------
     >>> from pycaret.datasets import get_data
-    >>> juice = get_data('juice')
-    >>> from pycaret.classification import *
-    >>> exp_name = setup(data = juice,  target = 'Purchase')
+    >>> boston = get_data('boston')
+    >>> from pycaret.regression import *
+    >>> exp_name = setup(data = boston,  target = 'medv')
     >>> lr = create_model('lr')
     >>> pred_holdout = predict_model(lr)
     >>> pred_unseen = predict_model(lr, data = unseen_dataframe)
@@ -1973,24 +1724,9 @@ def predict_model(
         Trained model object
 
 
-    data: pandas.DataFrame
+    data : pandas.DataFrame
         Shape (n_samples, n_features). All features used during training
         must be available in the unseen dataset.
-
-
-    probability_threshold: float, default = None
-        Threshold for converting predicted probability to class label.
-        Unless this parameter is set, it will default to the value set
-        during model creation. If that wasn't set, the default will be 0.5
-        for all classifiers. Only applicable for binary classification.
-
-
-    encoded_labels: bool, default = False
-        When set to True, will return labels encoded as an integer.
-
-
-    raw_score: bool, default = False
-        When set to True, scores for all labels will be returned.
 
 
     drift_report: bool, default = False
@@ -1999,7 +1735,7 @@ def predict_model(
 
 
     round: int, default = 4
-        Number of decimal places the metrics in the score grid will be rounded to.
+        Number of decimal places to round predictions to.
 
 
     verbose: bool, default = True
@@ -2017,6 +1753,7 @@ def predict_model(
       work for inference with version >= 2.1. You can either retrain your models with a
       newer version or downgrade the version for inference.
 
+
     """
 
     experiment = _CURRENT_EXPERIMENT
@@ -2026,9 +1763,6 @@ def predict_model(
     return experiment.predict_model(
         estimator=estimator,
         data=data,
-        probability_threshold=probability_threshold,
-        encoded_labels=encoded_labels,
-        raw_score=raw_score,
         drift_report=drift_report,
         round=round,
         verbose=verbose,
@@ -2050,11 +1784,11 @@ def finalize_model(
 
 
     Example
-    -------
+    --------
     >>> from pycaret.datasets import get_data
-    >>> juice = get_data('juice')
-    >>> from pycaret.classification import *
-    >>> exp_name = setup(data = juice,  target = 'Purchase')
+    >>> boston = get_data('boston')
+    >>> from pycaret.regression import *
+    >>> exp_name = setup(data = boston,  target = 'medv')
     >>> lr = create_model('lr')
     >>> final_lr = finalize_model(lr)
 
@@ -2078,14 +1812,14 @@ def finalize_model(
         When set to False, only model object is re-trained and all the
         transformations in Pipeline are ignored.
 
-
     experiment_custom_tags: dict, default = None
-        Dictionary of tag_name: String -> value: (String, but will be string-ified
-        if not) passed to the mlflow.set_tags to add new custom tags for the experiment.
+        Dictionary of tag_name: String -> value: (String, but will be string-ified if
+        not) passed to the mlflow.set_tags to add new custom tags for the experiment.
 
 
     Returns:
         Trained Model
+
 
     """
 
@@ -2112,9 +1846,9 @@ def deploy_model(
     Example
     -------
     >>> from pycaret.datasets import get_data
-    >>> juice = get_data('juice')
-    >>> from pycaret.classification import *
-    >>> exp_name = setup(data = juice,  target = 'Purchase')
+    >>> boston = get_data('boston')
+    >>> from pycaret.regression import *
+    >>> exp_name = setup(data = boston,  target = 'medv')
     >>> lr = create_model('lr')
     >>> # sets appropriate credentials for the platform as environment variables
     >>> import os
@@ -2203,9 +1937,9 @@ def save_model(
     Example
     -------
     >>> from pycaret.datasets import get_data
-    >>> juice = get_data('juice')
-    >>> from pycaret.classification import *
-    >>> exp_name = setup(data = juice,  target = 'Purchase')
+    >>> boston = get_data('boston')
+    >>> from pycaret.regression import *
+    >>> exp_name = setup(data = boston,  target = 'medv')
     >>> lr = create_model('lr')
     >>> save_model(lr, 'saved_lr_model')
 
@@ -2223,12 +1957,12 @@ def save_model(
         entire pipeline.
 
 
-    verbose: bool, default = True
-        Success message is not printed when verbose is set to False.
-
-
     **kwargs:
         Additional keyword arguments to pass to joblib.dump().
+
+
+    verbose: bool, default = True
+        Success message is not printed when verbose is set to False.
 
 
     Returns:
@@ -2256,10 +1990,9 @@ def load_model(
     """
     This function loads a previously saved pipeline.
 
-
     Example
     -------
-    >>> from pycaret.classification import load_model
+    >>> from pycaret.regression import load_model
     >>> saved_lr = load_model('saved_lr_model')
 
 
@@ -2307,9 +2040,7 @@ def load_model(
 
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
-def automl(
-    optimize: str = "Accuracy", use_holdout: bool = False, turbo: bool = True
-) -> Any:
+def automl(optimize: str = "R2", use_holdout: bool = False, turbo: bool = True) -> Any:
 
     """
     This function returns the best model out of all trained models in
@@ -2320,17 +2051,17 @@ def automl(
     Example
     -------
     >>> from pycaret.datasets import get_data
-    >>> juice = get_data('juice')
-    >>> from pycaret.classification import *
-    >>> exp_name = setup(data = juice,  target = 'Purchase')
+    >>> boston = get_data('boston')
+    >>> from pycaret.regression import *
+    >>> exp_name = setup(data = boston,  target = 'medv')
     >>> top3 = compare_models(n_select = 3)
     >>> tuned_top3 = [tune_model(i) for i in top3]
     >>> blender = blend_models(tuned_top3)
     >>> stacker = stack_models(tuned_top3)
-    >>> best_auc_model = automl(optimize = 'AUC')
+    >>> best_mae_model = automl(optimize = 'MAE')
 
 
-    optimize: str, default = 'Accuracy'
+    optimize: str, default = 'R2'
         Metric to use for model selection. It also accepts custom metrics
         added using the ``add_metric`` function.
 
@@ -2349,7 +2080,9 @@ def automl(
     Returns:
         Trained Model
 
+
     """
+
     return _CURRENT_EXPERIMENT.automl(
         optimize=optimize, use_holdout=use_holdout, turbo=turbo
     )
@@ -2357,7 +2090,6 @@ def automl(
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def pull(pop: bool = False) -> pd.DataFrame:
-
     """
     Returns last printed score grid. Use ``pull`` function after
     any training function to store the score grid in pandas.DataFrame.
@@ -2388,9 +2120,9 @@ def models(
     Example
     -------
     >>> from pycaret.datasets import get_data
-    >>> juice = get_data('juice')
-    >>> from pycaret.classification import *
-    >>> exp_name = setup(data = juice,  target = 'Purchase')
+    >>> boston = get_data('boston')
+    >>> from pycaret.regression import *
+    >>> exp_name = setup(data = boston,  target = 'medv')
     >>> all_models = models()
 
 
@@ -2432,9 +2164,9 @@ def get_metrics(
     Example
     -------
     >>> from pycaret.datasets import get_data
-    >>> juice = get_data('juice')
-    >>> from pycaret.classification import *
-    >>> exp_name = setup(data = juice,  target = 'Purchase')
+    >>> boston = get_data('boston')
+    >>> from pycaret.regression import *
+    >>> exp_name = setup(data = boston,  target = 'medv')
     >>> all_metrics = get_metrics()
 
 
@@ -2457,7 +2189,7 @@ def get_metrics(
 
     """
 
-    return pycaret.internal.tabular.get_metrics(
+    return _CURRENT_EXPERIMENT.get_metrics(
         reset=reset,
         include_custom=include_custom,
         raise_errors=raise_errors,
@@ -2469,9 +2201,7 @@ def add_metric(
     id: str,
     name: str,
     score_func: type,
-    target: str = "pred",
     greater_is_better: bool = True,
-    multiclass: bool = True,
     **kwargs,
 ) -> pd.Series:
 
@@ -2482,11 +2212,11 @@ def add_metric(
     Example
     -------
     >>> from pycaret.datasets import get_data
-    >>> juice = get_data('juice')
-    >>> from pycaret.classification import *
-    >>> exp_name = setup(data = juice,  target = 'Purchase')
-    >>> from sklearn.metrics import log_loss
-    >>> add_metric('logloss', 'Log Loss', log_loss, greater_is_better = False)
+    >>> boston = get_data('boston')
+    >>> from pycaret.regression import *
+    >>> exp_name = setup(data = boston,  target = 'medv')
+    >>> from sklearn.metrics import explained_variance_score
+    >>> add_metric('evs', 'EVS', explained_variance_score)
 
 
     id: str
@@ -2501,20 +2231,8 @@ def add_metric(
         Score function (or loss function) with signature ``score_func(y, y_pred, **kwargs)``.
 
 
-    target: str, default = 'pred'
-        The target of the score function.
-
-        - 'pred' for the prediction table
-        - 'pred_proba' for pred_proba
-        - 'threshold' for decision_function or predict_proba
-
-
     greater_is_better: bool, default = True
         Whether ``score_func`` is higher the better or not.
-
-
-    multiclass: bool, default = True
-        Whether the metric supports multiclass target.
 
 
     **kwargs:
@@ -2530,9 +2248,8 @@ def add_metric(
         id=id,
         name=name,
         score_func=score_func,
-        target=target,
+        target="pred",
         greater_is_better=greater_is_better,
-        multiclass=multiclass,
         **kwargs,
     )
 
@@ -2547,10 +2264,10 @@ def remove_metric(name_or_id: str):
     Example
     -------
     >>> from pycaret.datasets import get_data
-    >>> juice = get_data('juice')
-    >>> from pycaret.classification import *
-    >>> exp_name = setup(data = juice,  target = 'Purchase')
-    >>> remove_metric('MCC')
+    >>> boston = get_data('boston')
+    >>> from pycaret.regression import *
+    >>> exp_name = setup(data = boston,  target = 'mredv')
+    >>> remove_metric('MAPE')
 
 
     name_or_id: str
@@ -2575,9 +2292,9 @@ def get_logs(experiment_name: Optional[str] = None, save: bool = False) -> pd.Da
     Example
     -------
     >>> from pycaret.datasets import get_data
-    >>> juice = get_data('juice')
-    >>> from pycaret.classification import *
-    >>> exp_name = setup(data = juice,  target = 'Purchase', log_experiment = True)
+    >>> boston = get_data('boston')
+    >>> from pycaret.regression import *
+    >>> exp_name = setup(data = boston,  target = 'medv', log_experiment = True)
     >>> best = compare_models()
     >>> exp_logs = get_logs()
 
@@ -2631,19 +2348,22 @@ def get_config(variable: str):
     - fold_param: fold params defined in the setup
     - fold_groups_param: fold groups defined in the setup
     - stratify_param: stratify parameter defined in the setup
+    - transform_target_param: transform_target_param in setup
+    - transform_target_method_param: transform_target_method_param in setup
 
 
     Example
     -------
     >>> from pycaret.datasets import get_data
-    >>> juice = get_data('juice')
-    >>> from pycaret.classification import *
-    >>> exp_name = setup(data = juice,  target = 'Purchase')
+    >>> boston = get_data('boston')
+    >>> from pycaret.regression import *
+    >>> exp_name = setup(data = boston,  target = 'medv')
     >>> X_train = get_config('X_train')
 
 
     Returns:
         Global variable
+
 
     """
 
@@ -2683,13 +2403,16 @@ def set_config(variable: str, value):
     - fold_param: fold params defined in the setup
     - fold_groups_param: fold groups defined in the setup
     - stratify_param: stratify parameter defined in the setup
+    - transform_target_param: transform_target_param in setup
+    - transform_target_method_param: transform_target_method_param in setup
+
 
     Example
     -------
     >>> from pycaret.datasets import get_data
-    >>> juice = get_data('juice')
-    >>> from pycaret.classification import *
-    >>> exp_name = setup(data = juice,  target = 'Purchase')
+    >>> boston = get_data('boston')
+    >>> from pycaret.regression import *
+    >>> exp_name = setup(data = boston,  target = 'medv')
     >>> set_config('seed', 123)
 
 
@@ -2712,9 +2435,9 @@ def save_config(file_name: str):
     Example
     -------
     >>> from pycaret.datasets import get_data
-    >>> juice = get_data('juice')
-    >>> from pycaret.classification import *
-    >>> exp_name = setup(data = juice,  target = 'Purchase')
+    >>> boston = get_data('boston')
+    >>> from pycaret.regression import *
+    >>> exp_name = setup(data = boston,  target = 'medv')
     >>> save_config('myvars.pkl')
 
 
@@ -2736,7 +2459,7 @@ def load_config(file_name: str):
 
     Example
     -------
-    >>> from pycaret.classification import load_config
+    >>> from pycaret.regression import load_config
     >>> load_config('myvars.pkl')
 
 
@@ -2764,7 +2487,7 @@ def get_leaderboard(
 
     Example
     -------
-    >>> from pycaret.classification import get_leaderboard
+    >>> from pycaret.regression import get_leaderboard
     >>> leaderboard = get_leaderboard()
 
 
@@ -2805,6 +2528,16 @@ def get_leaderboard(
         groups=groups,
         verbose=verbose,
     )
+
+
+def set_current_experiment(experiment: RegressionExperiment):
+    global _CURRENT_EXPERIMENT
+
+    if not isinstance(experiment, RegressionExperiment):
+        raise TypeError(
+            f"experiment must be a PyCaret RegressionExperiment object, got {type(experiment)}."
+        )
+    _CURRENT_EXPERIMENT = experiment
 
 
 def dashboard(
@@ -2874,9 +2607,9 @@ def convert_model(estimator, language: str = "python") -> str:
     Example
     -------
     >>> from pycaret.datasets import get_data
-    >>> juice = get_data('juice')
-    >>> from pycaret.classification import *
-    >>> exp_name = setup(data = juice,  target = 'Purchase')
+    >>> boston = get_data('boston')
+    >>> from pycaret.regression import *
+    >>> exp_name = setup(data = boston,  target = 'medv')
     >>> lr = create_model('lr')
     >>> lr_java = export_model(lr, 'java')
 
@@ -2923,10 +2656,11 @@ def eda(display_format: str = "bokeh", **kwargs):
     Example
     -------
     >>> from pycaret.datasets import get_data
-    >>> juice = get_data('juice')
-    >>> from pycaret.classification import *
-    >>> exp_name = setup(data = juice,  target = 'Purchase')
+    >>> boston = get_data('boston')
+    >>> from pycaret.regression import *
+    >>> exp_name = setup(data = boston,  target = 'medv')
     >>> eda(display_format = 'bokeh')
+
 
     display_format: str, default = 'bokeh'
         When set to 'bokeh' the plots are interactive. Other option is ``svg`` for static
@@ -2955,11 +2689,11 @@ def check_fairness(estimator, sensitive_features: list, plot_kwargs: dict = {}):
     Example
     -------
     >>> from pycaret.datasets import get_data
-    >>> income = get_data('income')
-    >>> from pycaret.classification import *
-    >>> exp_name = setup(data = income,  target = 'income >50K')
+    >>> boston = get_data('boston')
+    >>> from pycaret.regression import *
+    >>> exp_name = setup(data = boston,  target = 'medv')
     >>> lr = create_model('lr')
-    >>> lr_fairness = check_fairness(lr, sensitive_features = ['sex', 'race'])
+    >>> lr_fairness = check_fairness(lr, sensitive_features = ['chas'])
 
 
     estimator: scikit-learn compatible object
@@ -2967,8 +2701,9 @@ def check_fairness(estimator, sensitive_features: list, plot_kwargs: dict = {}):
 
 
     sensitive_features: list
-        List of column names as present in the original dataset before any
-        transformations.
+        Sensitive features are relevant groups (also called subpopulations).
+        You must pass a list of column names that are present in the dataset
+        as string.
 
 
     plot_kwargs: dict, default = {} (empty dict)
@@ -2999,20 +2734,20 @@ def create_api(
     Example
     -------
     >>> from pycaret.datasets import get_data
-    >>> juice = get_data('juice')
-    >>> from pycaret.classification import *
-    >>> exp_name = setup(data = juice,  target = 'Purchase')
+    >>> boston = get_data('boston')
+    >>> from pycaret.regression import *
+    >>> exp_name = setup(data = boston,  target = 'medv')
     >>> lr = create_model('lr')
-    >>> create_api(lr, 'lr_api'
-    >>> !python lr_api.py
+    >>> create_api(lr, 'lr_api')
+    >>> !python lr_api.py #to run the API
 
 
     estimator: scikit-learn compatible object
         Trained model object
 
 
-    api_name: scikit-learn compatible object
-        Trained model object
+    api_name: str
+        Name of the api as a string.
 
 
     host: str, default = '127.0.0.1'
@@ -3025,6 +2760,7 @@ def create_api(
 
     Returns:
         None
+
     """
     return _CURRENT_EXPERIMENT.create_api(
         estimator=estimator, api_name=api_name, host=host, port=port
@@ -3043,9 +2779,9 @@ def create_docker(
     Example
     -------
     >>> from pycaret.datasets import get_data
-    >>> juice = get_data('juice')
-    >>> from pycaret.classification import *
-    >>> exp_name = setup(data = juice,  target = 'Purchase')
+    >>> boston = get_data('boston')
+    >>> from pycaret.regression import *
+    >>> exp_name = setup(data = boston,  target = 'medv')
     >>> lr = create_model('lr')
     >>> create_api(lr, 'lr_api')
     >>> create_docker('lr_api')
@@ -3082,9 +2818,9 @@ def create_app(estimator, app_kwargs: Optional[dict] = None) -> None:
     Example
     -------
     >>> from pycaret.datasets import get_data
-    >>> juice = get_data('juice')
-    >>> from pycaret.classification import *
-    >>> exp_name = setup(data = juice,  target = 'Purchase')
+    >>> boston = get_data('boston')
+    >>> from pycaret.regression import *
+    >>> exp_name = setup(data = boston,  target = 'medv')
     >>> lr = create_model('lr')
     >>> create_app(lr)
 
@@ -3103,13 +2839,3 @@ def create_app(estimator, app_kwargs: Optional[dict] = None) -> None:
     return pycaret.internal.tabular.create_app(
         estimator=estimator, app_kwargs=app_kwargs
     )
-
-
-def set_current_experiment(experiment: ClassificationExperiment):
-    global _CURRENT_EXPERIMENT
-
-    if not isinstance(experiment, ClassificationExperiment):
-        raise TypeError(
-            f"experiment must be a PyCaret ClassificationExperiment object, got {type(experiment)}."
-        )
-    _CURRENT_EXPERIMENT = experiment
