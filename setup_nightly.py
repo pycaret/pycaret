@@ -19,10 +19,10 @@ with open("requirements.txt") as f:
     required = f.read().splitlines()
 
 with open("requirements-optional.txt") as f:
-    optional_required = f.read().splitlines()
+    required_optional = f.read().splitlines()
 
 with open("requirements-test.txt") as f:
-    test_required = f.read().splitlines()
+    required_test = f.read().splitlines()
 
 setup(
     name="pycaret-nightly",
@@ -39,10 +39,22 @@ setup(
         "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
+        "Topic :: Scientific/Engineering :: Artificial Intelligence",
+        "License :: OSI Approved :: MIT License",
+        "Operating System :: OS Independent",
     ],
     packages=find_packages(include=["pycaret*"]),
     include_package_data=True,
     install_requires=required,
-    extras_require={"full": optional_required,
-                    "test": test_required + optional_required},
+    extras_require={
+        "analysis": required_optional[1:9],
+        "models": required_optional[11:15],
+        "tuners": required_optional[17:22],
+        "mlops": required_optional[24:30],
+        "nlp": required_optional[32:38],
+        "full": required_optional,
+    },
+    tests_require=required_test,
+    python_requires=">=3.7"
 )

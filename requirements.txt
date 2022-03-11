@@ -1,29 +1,23 @@
-scipy~=1.7.0  # Not larger because of statsmodels
+# Base
+numpy>=1.21.0,<1.22
 pandas>=1.3.0
-seaborn
-matplotlib
-IPython
-joblib
-scikit-learn>=1.0.0
-ipywidgets
-yellowbrick>=1.4
-lightgbm>=2.3.1
-plotly>=5.0.0
-pyyaml<6.0.0
-wordcloud
-textblob
-cufflinks>=0.17.0
-umap-learn
-pyLDAvis
-gensim<4.0.0
-spacy<2.4.0
-nltk
-mlxtend>=0.17.0
-pyod
-pandas-profiling>=2.8.0
-kmodes>=0.10.1
-mlflow
+scipy>=1.8.0
+ipython>=8.1.1
+joblib>=1.1.0
+scikit-learn>=1.0.2
+pyod>=0.9.8
 imbalanced-learn>=0.8.1
-category-encoders>=2.2.2
-scikit-plot #for lift and gain charts
-Boruta
+category-encoders==2.4.0
+lightgbm>=3.0.0
+
+# Plotting
+matplotlib>=3.3.0
+scikit-plot>=0.3.7
+yellowbrick>=1.4
+plotly>=5.0.0
+
+# Time-series
+statsmodels>=0.13.2
+sktime>=0.9.0
+tbats>=1.1.0
+pmdarima>=1.8.5

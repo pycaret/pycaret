@@ -12,13 +12,13 @@ def readme():
     return README
 
 
-with open("requirements.txt") as f:
+with open("requirements/requirements.txt") as f:
     required = f.read().splitlines()
 
 with open("requirements-ts.txt") as f:
     required += f.read().splitlines()
 
-with open("requirements-optional.txt") as f:
+with open("requirements/requirements-optional.txt") as f:
     optional_required = f.read().splitlines()
 
 setup(

@@ -65,7 +65,7 @@ The design and simplicity of PyCaret are inspired by the emerging role of citize
  
 ## Installation
 
-PyCaret's default installation only installs hard dependencies as listed in the [requirements.txt](requirements.txt) file. 
+PyCaret's default installation only installs hard dependencies as listed in the [requirements.txt](requirements/requirements.txt) file. 
 
 ```python
 pip install pycaret
