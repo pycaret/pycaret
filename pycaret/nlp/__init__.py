@@ -1,9 +1,3 @@
-# Module: Natural Language Processing
-# Author: Moez Ali <moez.ali@queensu.ca>
-# License: MIT
-# Release: PyCaret 2.2.0
-# Last modified : 25/10/2020
-
 from typing import Optional, Dict, Any, Dict
 
 
