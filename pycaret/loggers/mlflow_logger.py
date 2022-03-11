@@ -28,7 +28,7 @@ class mlflowLogger(BaseLogger):
         # get USI from nlp or tabular
         USI = None
         try:
-            USI  = pycaret.internal.tabular.USI
+            USI = pycaret.internal.tabular.USI
         except:
             try:
                 USI = pycaret.nlp.USI
@@ -45,18 +45,18 @@ class mlflowLogger(BaseLogger):
 
     def log_metrics(self, metrics, source=None):
         mlflow.log_metrics(metrics)
-    
+
     def set_tags(self, source, experiment_custom_tags, runtime):
         # get USI from nlp or tabular
         USI = None
         try:
-            USI  = pycaret.internal.tabular.USI
+            USI = pycaret.internal.tabular.USI
         except:
             try:
                 USI = pycaret.nlp.USI
             except:
                 pass
-        
+
         # Get active run to log as tag
         RunID = mlflow.active_run().info.run_id
 
@@ -72,10 +72,10 @@ class mlflowLogger(BaseLogger):
         mlflow.set_tag("USI", USI)
         mlflow.set_tag("Run Time", runtime)
         mlflow.set_tag("Run ID", RunID)
-    
+
     def log_artifact(self, file, type="artifact"):
         mlflow.log_artifact(file)
-    
+
     def log_plot(self, plot, title=None):
         self.log_artifact(plot)
 
@@ -85,7 +85,13 @@ class mlflowLogger(BaseLogger):
     def log_sklearn_pipeline(self, prep_pipe, model):
         # get default conda env
         from mlflow.sklearn import get_default_conda_env
-        from pycaret.internal.tabular import data_before_preprocess, _is_unsupervised, _ml_usecase, exp_name_log, target_param
+        from pycaret.internal.tabular import (
+            data_before_preprocess,
+            _is_unsupervised,
+            _ml_usecase,
+            exp_name_log,
+            target_param,
+        )
 
         default_conda_env = get_default_conda_env()
         default_conda_env["name"] = f"{exp_name_log}-env"
@@ -98,6 +104,7 @@ class mlflowLogger(BaseLogger):
 
         # define model signature
         from mlflow.models.signature import infer_signature
+
         try:
             signature = infer_signature(
                 data_before_preprocess.drop([target_param], axis=1)

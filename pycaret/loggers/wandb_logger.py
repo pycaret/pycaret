@@ -6,20 +6,21 @@ import wandb
 import pandas as pd
 import pickle
 
+
 class wandbLogger(BaseLogger):
     def __init__(self) -> None:
         super().__init__()
         self.run = None
-    
+
     def init_experiment(self, exp_name_log, full_name=None, **kwargs):
-        self.run = wandb.init(
-            project=exp_name_log,
-            name=full_name,
-            **kwargs
-        ) if not wandb.run else wandb.run
+        self.run = (
+            wandb.init(project=exp_name_log, name=full_name, **kwargs)
+            if not wandb.run
+            else wandb.run
+        )
 
         return self.run
-    
+
     def log_params(self, params, model_name=None):
         if model_name:
             params = {model_name: params}
@@ -29,44 +30,45 @@ class wandbLogger(BaseLogger):
         if source:
             prefixed_metrics = {}
             for metric in metrics:
-                prefixed_metrics[source+'/'+metric] = metrics[metric]
+                prefixed_metrics[source + "/" + metric] = metrics[metric]
             metrics = prefixed_metrics
         self.run.log(metrics)
-    
+
     def log_artifact(self, file, type=None):
         file_name, extension = None, ""
         if file.find(".") != -1:
-            file_name, extension = file.split('.')[-2:]
+            file_name, extension = file.split(".")[-2:]
         else:
             file_name = file
         art = wandb.Artifact(name=file_name.replace(" ", "_"), type=type or "exp_data")
         art.add_file(file)
         self.run.log_artifact(art)
 
-        if extension=="html":
+        if extension == "html":
             self.run.log({file_name: wandb.Html(file)})
-        elif extension=="csv":
+        elif extension == "csv":
             self.run.log({file_name: pd.read_csv(file)})
-
 
     def log_sklearn_pipeline(self, prep_pipe, model):
         pipeline = deepcopy(prep_pipe)
         pipeline.steps.append(["trained_model", model])
-        pickle.dump(pipeline, open("pipeline.pkl","wb"))
+        pickle.dump(pipeline, open("pipeline.pkl", "wb"))
         art = wandb.Artifact("pipeline", type="model")
         art.add_file("pipeline.pkl")
         self.run.log_artifact(art)
         os.remove("pipeline.pkl")
-    
+
     def log_model_comparison(self, model_result, source):
         result_copy = deepcopy(model_result)
         if "Object" in result_copy:
-            result_copy["Object"] = result_copy["Object"].apply(lambda obj: str(type(obj).__name__))
+            result_copy["Object"] = result_copy["Object"].apply(
+                lambda obj: str(type(obj).__name__)
+            )
         self.run.log({source: result_copy})
 
     def log_plot(self, plot, title):
         self.run.log({title: wandb.Image(plot)})
-    
+
     def log_hpram_grid(self, html_file, title="hpram_grid"):
         self.run.log({title: wandb.Html(html_file)})
 
