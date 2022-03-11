@@ -1,7 +1,3 @@
-# Module: Classification
-# Author: Moez Ali <moez.ali@queensu.ca>
-# License: MIT
-
 import logging
 import warnings
 import numpy as np
@@ -13,7 +9,7 @@ from typing import List, Tuple, Any, Union, Optional, Dict, Callable
 import pycaret.internal.tabular
 from pycaret.parallel import ParallelBackend
 from pycaret.internal.Display import Display, is_in_colab, enable_colab
-from pycaret.internal.pycaret_experiment import ClassificationExperiment
+from pycaret.classification import ClassificationExperiment
 from pycaret.internal.utils import check_if_global_is_not_none
 
 
@@ -113,7 +109,7 @@ def setup(
 
 
     data: dataframe-like
-        Shape (n_samples, n_features), where n_samples is the number of samples and 
+        Shape (n_samples, n_features), where n_samples is the number of samples and
         n_features is the number of features.
 
 
@@ -740,7 +736,7 @@ def compare_models(
 
     - No models are logged in ``MLFlow`` when ``cross_validation`` parameter is False.
     """
-    #params = dict(locals())
+    # params = dict(locals())
     parallel = None
     if parallel is not None:
         global _pycaret_setup_call
