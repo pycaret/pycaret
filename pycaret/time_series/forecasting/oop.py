@@ -17,7 +17,14 @@ from sktime.forecasting.model_selection import (  # type: ignore
     SlidingWindowSplitter,
 )
 
-from pycaret.internal.pipeline import Pipeline as InternalPipeline
+# from pycaret.internal.pipeline import Pipeline as InternalPipeline
+from sktime.forecasting.compose import ForecastingPipeline
+from sktime.forecasting.compose import TransformedTargetForecaster
+
+
+from pycaret.internal.preprocess.time_series.forecasting.preprocessor import (
+    TSForecastingPreprocessor,
+)
 
 import pycaret.containers.metrics.time_series
 import pycaret.containers.models.time_series
@@ -56,7 +63,7 @@ warnings.filterwarnings("ignore")
 LOGGER = get_logger()
 
 
-class TSForecastingExperiment(_SupervisedExperiment):
+class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
     def __init__(self) -> None:
         super().__init__()
         self._ml_usecase = MLUsecase.TIME_SERIES
@@ -163,8 +170,8 @@ class TSForecastingExperiment(_SupervisedExperiment):
             # ["Transformed Test Exogenous", self.X_test.shape],
         ]
 
-        if self.preprocess:
-            display_container.extend([["Imputation Type", self.imputation_type]])
+        # if self.preprocess:
+        #     display_container.extend([["Imputation Type", self.imputation_type]])
 
         display_container = pd.DataFrame(
             display_container, columns=["Description", "Value"]
@@ -627,9 +634,12 @@ class TSForecastingExperiment(_SupervisedExperiment):
         index: Optional[str] = None,
         ignore_features: Optional[List] = None,
         preprocess: bool = True,
-        imputation_type: str = "simple",
-        # transform_target: bool = False,
-        # transform_target_method: str = "box-cox",
+        numeric_imputation_target: Optional[Union[int, float, str]] = "drift",
+        numeric_imputation_exogenous: Optional[Union[int, float, str]] = "drift",
+        transform_target: Optional[str] = None,
+        transform_exogenous: Optional[str] = None,
+        scale_target: Optional[str] = None,
+        scale_exogenous: Optional[str] = None,
         fold_strategy: Union[str, Any] = "expanding",
         fold: int = 3,
         fh: Optional[Union[List[int], int, np.array]] = 1,
@@ -894,7 +904,7 @@ class TSForecastingExperiment(_SupervisedExperiment):
         self.enforce_pi = enforce_pi
         self.enforce_exogenous = enforce_exogenous
         self.preprocess = preprocess
-        self.imputation_type = imputation_type
+        # self.imputation_type = imputation_type
         self.log_plots_param = log_plots
 
         # Needed for compatibility with Regression and Classification.
@@ -1017,11 +1027,73 @@ class TSForecastingExperiment(_SupervisedExperiment):
 
         # Preprocessing ============================================ >>
 
-        # Initialize empty pipeline
-        self.pipeline = InternalPipeline(
-            steps=[("placeholder", None)],
-            memory=self.memory,
-        )
+        # # Initialize empty pipeline
+        # self.pipeline = ForecastingPipeline(
+        #     steps=[("placeholder", None)],
+        # )
+
+        # Initialize empty steps ----
+        self.pipe_steps_target = []
+        self.pipe_steps_exogenous = []
+
+        if preprocess:
+            self.logger.info("Preparing preprocessing pipeline...")
+
+            # Impute missing values ----
+            if numeric_imputation_target is not None:
+                self._imputation(
+                    numeric_imputation=numeric_imputation_target, target=True
+                )
+
+            if numeric_imputation_exogenous is not None:
+                self._imputation(
+                    numeric_imputation=numeric_imputation_exogenous, target=False
+                )
+
+        #     # Transformations (preferably based on residual analysis) ----
+        #     if transformation:
+        #         self._transformation(transformation_method)
+
+        #     # Scaling ----
+        #     if normalize:
+        #         self._normalization(normalize_method)
+
+        # # Add custom transformers to the pipeline
+        # if custom_pipeline:
+        #     self._add_custom_pipeline(custom_pipeline)
+
+        # # Remove placeholder step
+        # if len(self.pipeline) > 1:
+        #     self.pipeline.steps.pop(0)
+
+        if len(self.pipe_steps_target) > 0:
+            ######################################
+            #### Target Preprocessing Present ####
+            ######################################
+
+            # Forecaster without the last step (the actual forecaster)
+            pre_forecaster = TransformedTargetForecaster(self.pipe_steps_target)
+            # Extend the exogenous steps to include the pre_forecaster
+            # TODO: see how the actual forecaster will be appended to this.
+            self.pipe_steps_exogenous.extend(("forecaster", pre_forecaster))
+
+            # Create the final pipeline
+            self.pipeline = ForecastingPipeline(steps=self.pipe_steps_exogenous)
+        else:
+            ##########################################
+            #### Target Preprocessing Not Present ####
+            ##########################################
+            if len(self.pipe_steps_exogenous) > 0:
+                # Create the final pipeline
+                self.pipeline = ForecastingPipeline(steps=self.pipe_steps_exogenous)
+            else:
+                self.pipeline = ForecastingPipeline(steps=[("placeholder", None)])
+                self.pipeline.steps.pop(0)
+
+        self.pipeline.fit(self.X_train, self.y_train)
+
+        self.logger.info("Finished creating preprocessing pipeline.")
+        self.logger.info(f"Pipeline: {self.pipeline}")
 
         ############################################
         #### Initial EDA in Setup (for display) ####
