@@ -15,9 +15,10 @@ matplotlib>=3.3.0
 scikit-plot>=0.3.7
 yellowbrick>=1.4
 plotly>=5.0.0
+kaleido>=0.2.1
 
 # Time-series
-statsmodels>=0.13.2
-sktime>=0.9.0
+statsmodels~=0.12.1
+sktime>=0.10.1
 tbats>=1.1.0
-pmdarima>=1.8.5
+pmdarima>=1.8.0

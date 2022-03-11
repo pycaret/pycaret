@@ -38,10 +38,8 @@ wordcloud>=1.8.1
 textblob>=0.17.1
 
 # Others
-psutil
+psutil>=5.9.0
 LunarCalendar>=0.0.9
 convertdate>=2.1.2
 holidays>=0.13
-pystan~=2.19.1.1  # Can't latest because of prophet
-prophet>=1.0.1
 fugue>=0.6.5
