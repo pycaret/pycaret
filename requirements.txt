@@ -27,3 +27,4 @@ imbalanced-learn>=0.8.1
 category-encoders>=2.2.2
 scikit-plot #for lift and gain charts
 Boruta
+kaleido # For time series static plots
