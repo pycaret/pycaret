@@ -1,15 +1,9 @@
-# Module: Anomaly Detection
-# Author: Moez Ali <moez.ali@queensu.ca>
-# License: MIT
-# Release: PyCaret 2.2.0
-# Last modified : 25/10/2020
-
 import logging
 import warnings
 import pandas as pd
 from joblib.memory import Memory
 
-from pycaret.internal.pycaret_experiment import AnomalyExperiment
+from pycaret.anomaly import AnomalyExperiment
 from pycaret.internal.utils import check_if_global_is_not_none
 
 from typing import List, Any, Union, Optional, Dict
@@ -78,7 +72,7 @@ def setup(
 ):
 
     """
-    This function initializes the training environment and creates the transformation 
+    This function initializes the training environment and creates the transformation
     pipeline. Setup function must be called before executing any other function. It
     takes one mandatory parameter: ``data``. All the other parameters are optional.
 
@@ -92,7 +86,7 @@ def setup(
 
 
     data: dataframe-like
-        Shape (n_samples, n_features), where n_samples is the number of samples and 
+        Shape (n_samples, n_features), where n_samples is the number of samples and
         n_features is the number of features.
 
 
@@ -291,31 +285,31 @@ def setup(
 
 
     n_jobs: int, default = -1
-        The number of jobs to run in parallel (for functions that supports parallel 
-        processing) -1 means using all processors. To run all functions on single 
+        The number of jobs to run in parallel (for functions that supports parallel
+        processing) -1 means using all processors. To run all functions on single
         processor set n_jobs to None.
 
 
     use_gpu: bool or str, default = False
-        When set to True, it will use GPU for training with algorithms that support it, 
+        When set to True, it will use GPU for training with algorithms that support it,
         and fall back to CPU if they are unavailable. When set to 'force', it will only
-        use GPU-enabled algorithms and raise exceptions when they are unavailable. When 
+        use GPU-enabled algorithms and raise exceptions when they are unavailable. When
         False, all algorithms are trained using CPU only.
 
         GPU enabled algorithms:
 
-        - None at this moment. 
+        - None at this moment.
 
 
     html: bool, default = True
         When set to False, prevents runtime display of monitor. This must be set to False
         when the environment does not support IPython. For example, command line terminal,
-        Databricks Notebook, Spyder and other similar IDEs. 
+        Databricks Notebook, Spyder and other similar IDEs.
 
 
     session_id: int, default = None
         Controls the randomness of experiment. It is equivalent to 'random_state' in
-        scikit-learn. When None, a pseudo random number is generated. This can be used 
+        scikit-learn. When None, a pseudo random number is generated. This can be used
         for later reproducibility of the entire experiment.
 
 
@@ -338,26 +332,26 @@ def setup(
 
 
     log_plots: bool or list, default = False
-        When set to True, certain plots are logged automatically in the ``MLFlow`` server. 
+        When set to True, certain plots are logged automatically in the ``MLFlow`` server.
         To change the type of plots to be logged, pass a list containing plot IDs. Refer
         to documentation of ``plot_model``. Ignored when ``log_experiment`` is not True.
 
 
     log_profile: bool, default = False
         When set to True, data profile is logged on the ``MLflow`` server as a html file.
-        Ignored when ``log_experiment`` is not True. 
+        Ignored when ``log_experiment`` is not True.
 
 
     log_data: bool, default = False
         When set to True, dataset is logged on the ``MLflow`` server as a csv file.
         Ignored when ``log_experiment`` is not True.
-        
+
 
     silent: bool, default = False
         Controls the confirmation input of data types when ``setup`` is executed. When
         executing in completely automated mode or on a remote kernel, this must be True.
 
-    
+
     verbose: bool, default = True
         When set to False, Information grid is not printed.
 
@@ -370,7 +364,7 @@ def setup(
 
 
     profile: bool, default = False
-        When set to True, an interactive EDA report is displayed. 
+        When set to True, an interactive EDA report is displayed.
 
 
     profile_kwargs: dict, default = {} (empty dict)
@@ -449,8 +443,8 @@ def create_model(
 
     """
     This function trains a given model from the model library. All available
-    models can be accessed using the ``models`` function. 
-    
+    models can be accessed using the ``models`` function.
+
 
     Example
     -------
@@ -462,26 +456,26 @@ def create_model(
 
 
     model: str or scikit-learn compatible object
-        ID of an model available in the model library or pass an untrained 
-        model object consistent with scikit-learn API. Estimators available  
+        ID of an model available in the model library or pass an untrained
+        model object consistent with scikit-learn API. Estimators available
         in the model library (ID - Name):
 
-        * 'abod' - Angle-base Outlier Detection       
-        * 'cluster' - Clustering-Based Local Outlier            
-        * 'cof' - Connectivity-Based Outlier Factor                 
-        * 'histogram' - Histogram-based Outlier Detection          
-        * 'knn' - k-Nearest Neighbors Detector                       
-        * 'lof' - Local Outlier Factor                            
-        * 'svm' - One-class SVM detector                          
-        * 'pca' - Principal Component Analysis                    
-        * 'mcd' - Minimum Covariance Determinant                    
-        * 'sod' - Subspace Outlier Detection                       
-        * 'sos' - Stochastic Outlier Selection                       
+        * 'abod' - Angle-base Outlier Detection
+        * 'cluster' - Clustering-Based Local Outlier
+        * 'cof' - Connectivity-Based Outlier Factor
+        * 'histogram' - Histogram-based Outlier Detection
+        * 'knn' - k-Nearest Neighbors Detector
+        * 'lof' - Local Outlier Factor
+        * 'svm' - One-class SVM detector
+        * 'pca' - Principal Component Analysis
+        * 'mcd' - Minimum Covariance Determinant
+        * 'sod' - Subspace Outlier Detection
+        * 'sos' - Stochastic Outlier Selection
 
 
     fraction: float, default = 0.05
-        The amount of contamination of the data set, i.e. the proportion of 
-        outliers in the data set. Used when fitting to define the threshold on 
+        The amount of contamination of the data set, i.e. the proportion of
+        outliers in the data set. Used when fitting to define the threshold on
         the decision function.
 
 
@@ -498,12 +492,12 @@ def create_model(
         Dictionary of arguments passed to the fit method of the model.
 
 
-    **kwargs: 
+    **kwargs:
         Additional keyword arguments to pass to the estimator.
 
 
     Returns:
-        Trained Model 
+        Trained Model
 
     """
 
@@ -523,7 +517,7 @@ def assign_model(
 ) -> pd.DataFrame:
 
     """
-    This function assigns anomaly labels to the dataset for a given model. 
+    This function assigns anomaly labels to the dataset for a given model.
     (1 = outlier, 0 = inlier).
 
 
@@ -542,20 +536,20 @@ def assign_model(
 
 
     transformation: bool, default = False
-        Whether to apply anomaly labels on the transformed dataset. 
-    
-    
+        Whether to apply anomaly labels on the transformed dataset.
+
+
     score: bool, default = True
-        Whether to show outlier score or not. 
+        Whether to show outlier score or not.
 
 
     verbose: bool, default = True
         Status update is not printed when verbose is set to False.
-        
+
 
     Returns:
         pandas.DataFrame
-  
+
     """
     return _CURRENT_EXPERIMENT.assign_model(
         model, transformation=transformation, score=score, verbose=verbose
@@ -593,19 +587,19 @@ def plot_model(
 
     plot: str, default = 'tsne'
         List of available plots (ID - Name):
-        
+
         * 'tsne' - t-SNE (3d) Dimension Plot
         * 'umap' - UMAP Dimensionality Plot
 
 
     feature: str, default = None
-        Feature to be used as a hoverover tooltip and/or label when the ``label`` 
-        param is set to True. When feature is None, first column of the dataset 
+        Feature to be used as a hoverover tooltip and/or label when the ``label``
+        param is set to True. When feature is None, first column of the dataset
         is used.
-        
+
 
     label: bool, default = False
-        Name of column to be used as data labels. 
+        Name of column to be used as data labels.
 
 
     scale: float, default = 1
@@ -638,13 +632,15 @@ def plot_model(
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def evaluate_model(
-    model, feature: Optional[str] = None, fit_kwargs: Optional[dict] = None,
+    model,
+    feature: Optional[str] = None,
+    fit_kwargs: Optional[dict] = None,
 ):
 
     """
     This function displays a user interface for analyzing performance of a trained
-    model. It calls the ``plot_model`` function internally. 
-    
+    model. It calls the ``plot_model`` function internally.
+
 
     Example
     -------
@@ -654,15 +650,15 @@ def evaluate_model(
     >>> exp_name = setup(data = anomaly)
     >>> knn = create_model('knn')
     >>> evaluate_model(knn)
-    
+
 
     model: scikit-learn compatible object
         Trained model object
 
 
     feature: str, default = None
-        Feature to be used as a hoverover tooltip and/or label when the ``label`` 
-        param is set to True. When feature is None, first column of the dataset 
+        Feature to be used as a hoverover tooltip and/or label when the ``label``
+        param is set to True. When feature is None, first column of the dataset
         is used by default.
 
 
@@ -675,7 +671,7 @@ def evaluate_model(
 
     Warnings
     --------
-    -   This function only works in IPython enabled Notebook. 
+    -   This function only works in IPython enabled Notebook.
 
     """
 
@@ -703,32 +699,32 @@ def tune_model(
     """
     This function tunes the ``fraction`` parameter of a given model.
 
-    
+
     Example
     -------
     >>> from pycaret.datasets import get_data
     >>> juice = get_data('juice')
     >>> from pycaret.anomaly import *
     >>> exp_name = setup(data = juice)
-    >>> tuned_knn = tune_model(model = 'knn', supervised_target = 'Purchase') 
-    
-    
+    >>> tuned_knn = tune_model(model = 'knn', supervised_target = 'Purchase')
+
+
     model: str
         ID of an model available in the model library. Models that can be
         tuned in this function (ID - Model):
 
-        * 'abod' - Angle-base Outlier Detection       
-        * 'cluster' - Clustering-Based Local Outlier            
-        * 'cof' - Connectivity-Based Outlier Factor                 
-        * 'histogram' - Histogram-based Outlier Detection          
-        * 'knn' - k-Nearest Neighbors Detector                       
-        * 'lof' - Local Outlier Factor                            
-        * 'svm' - One-class SVM detector                          
-        * 'pca' - Principal Component Analysis                    
-        * 'mcd' - Minimum Covariance Determinant                    
-        * 'sod' - Subspace Outlier Detection                       
-        * 'sos' - Stochastic Outlier Selection    
-    
+        * 'abod' - Angle-base Outlier Detection
+        * 'cluster' - Clustering-Based Local Outlier
+        * 'cof' - Connectivity-Based Outlier Factor
+        * 'histogram' - Histogram-based Outlier Detection
+        * 'knn' - k-Nearest Neighbors Detector
+        * 'lof' - Local Outlier Factor
+        * 'svm' - One-class SVM detector
+        * 'pca' - Principal Component Analysis
+        * 'mcd' - Minimum Covariance Determinant
+        * 'sod' - Subspace Outlier Detection
+        * 'sos' - Stochastic Outlier Selection
+
 
     supervised_target: str
         Name of the target column containing labels.
@@ -741,75 +737,75 @@ def tune_model(
 
     supervised_estimator: str, default = None
         Classification (ID - Name):
-            * 'lr' - Logistic Regression (Default)            
-            * 'knn' - K Nearest Neighbour             
-            * 'nb' - Naive Bayes                                 
-            * 'dt' - Decision Tree Classifier                           
-            * 'svm' - SVM - Linear Kernel             	            
-            * 'rbfsvm' - SVM - Radial Kernel                            
-            * 'gpc' - Gaussian Process Classifier                       
-            * 'mlp' - Multi Level Perceptron                            
-            * 'ridge' - Ridge Classifier                
-            * 'rf' - Random Forest Classifier                           
-            * 'qda' - Quadratic Discriminant Analysis                   
-            * 'ada' - Ada Boost Classifier                             
-            * 'gbc' - Gradient Boosting Classifier                              
-            * 'lda' - Linear Discriminant Analysis                      
-            * 'et' - Extra Trees Classifier                             
-            * 'xgboost' - Extreme Gradient Boosting                     
-            * 'lightgbm' - Light Gradient Boosting                       
-            * 'catboost' - CatBoost Classifier             
-        
+            * 'lr' - Logistic Regression (Default)
+            * 'knn' - K Nearest Neighbour
+            * 'nb' - Naive Bayes
+            * 'dt' - Decision Tree Classifier
+            * 'svm' - SVM - Linear Kernel
+            * 'rbfsvm' - SVM - Radial Kernel
+            * 'gpc' - Gaussian Process Classifier
+            * 'mlp' - Multi Level Perceptron
+            * 'ridge' - Ridge Classifier
+            * 'rf' - Random Forest Classifier
+            * 'qda' - Quadratic Discriminant Analysis
+            * 'ada' - Ada Boost Classifier
+            * 'gbc' - Gradient Boosting Classifier
+            * 'lda' - Linear Discriminant Analysis
+            * 'et' - Extra Trees Classifier
+            * 'xgboost' - Extreme Gradient Boosting
+            * 'lightgbm' - Light Gradient Boosting
+            * 'catboost' - CatBoost Classifier
+
         Regression (ID - Name):
-            * 'lr' - Linear Regression (Default)                               
-            * 'lasso' - Lasso Regression              
-            * 'ridge' - Ridge Regression              
-            * 'en' - Elastic Net                   
-            * 'lar' - Least Angle Regression                
-            * 'llar' - Lasso Least Angle Regression                     
-            * 'omp' - Orthogonal Matching Pursuit                        
-            * 'br' - Bayesian Ridge                                   
-            * 'ard' - Automatic Relevance Determ.                     
-            * 'par' - Passive Aggressive Regressor                      
-            * 'ransac' - Random Sample Consensus              
-            * 'tr' - TheilSen Regressor                               
-            * 'huber' - Huber Regressor                                              
-            * 'kr' - Kernel Ridge                                                       
-            * 'svm' - Support Vector Machine                                   
-            * 'knn' - K Neighbors Regressor                                    
-            * 'dt' - Decision Tree                                                     
-            * 'rf' - Random Forest                                                     
-            * 'et' - Extra Trees Regressor                                     
-            * 'ada' - AdaBoost Regressor                                               
-            * 'gbr' - Gradient Boosting                                            
-            * 'mlp' - Multi Level Perceptron                                  
-            * 'xgboost' - Extreme Gradient Boosting                                   
-            * 'lightgbm' - Light Gradient Boosting                           
-            * 'catboost' - CatBoost Regressor                   
+            * 'lr' - Linear Regression (Default)
+            * 'lasso' - Lasso Regression
+            * 'ridge' - Ridge Regression
+            * 'en' - Elastic Net
+            * 'lar' - Least Angle Regression
+            * 'llar' - Lasso Least Angle Regression
+            * 'omp' - Orthogonal Matching Pursuit
+            * 'br' - Bayesian Ridge
+            * 'ard' - Automatic Relevance Determ.
+            * 'par' - Passive Aggressive Regressor
+            * 'ransac' - Random Sample Consensus
+            * 'tr' - TheilSen Regressor
+            * 'huber' - Huber Regressor
+            * 'kr' - Kernel Ridge
+            * 'svm' - Support Vector Machine
+            * 'knn' - K Neighbors Regressor
+            * 'dt' - Decision Tree
+            * 'rf' - Random Forest
+            * 'et' - Extra Trees Regressor
+            * 'ada' - AdaBoost Regressor
+            * 'gbr' - Gradient Boosting
+            * 'mlp' - Multi Level Perceptron
+            * 'xgboost' - Extreme Gradient Boosting
+            * 'lightgbm' - Light Gradient Boosting
+            * 'catboost' - CatBoost Regressor
 
 
     method: str, default = 'drop'
-        When method set to drop, it will drop the outliers from training dataset. 
-        When 'surrogate', it uses decision function and label as a feature during 
+        When method set to drop, it will drop the outliers from training dataset.
+        When 'surrogate', it uses decision function and label as a feature during
         training.
-    
-    
+
+
     optimize: str, default = None
         For Classification tasks:
             Accuracy, AUC, Recall, Precision, F1, Kappa (default = 'Accuracy')
-        
+
         For Regression tasks:
             MAE, MSE, RMSE, R2, RMSLE, MAPE (default = 'R2')
 
-    
+
     custom_grid: list, default = None
-        By default, a pre-defined list of fraction values is iterated over to 
+        By default, a pre-defined list of fraction values is iterated over to
         optimize the supervised objective. To overwrite default iteration,
         pass a list of fraction value to iterate over in custom_grid param.
-    
+
 
     fold: int, default = 10
-        Number of folds to be used in Kfold CV. Must be at least 2. 
+        Number of folds to be used in Kfold CV. Must be at least 2.
 
 
     verbose: bool, default = True
@@ -818,7 +814,7 @@ def tune_model(
 
     Returns:
         Trained Model with optimized ``fraction`` parameter.
-          
+
     """
 
     return _CURRENT_EXPERIMENT.tune_model(
@@ -842,7 +838,7 @@ def predict_model(model, data: pd.DataFrame) -> pd.DataFrame:
 
     """
     This function generates anomaly labels on using a trained model.
-    
+
 
     Example
     -------
@@ -852,25 +848,25 @@ def predict_model(model, data: pd.DataFrame) -> pd.DataFrame:
     >>> exp_name = setup(data = anomaly)
     >>> knn = create_model('knn')
     >>> knn_predictions = predict_model(model = knn, data = unseen_data)
-        
+
 
     model: scikit-learn compatible object
         Trained Model Object.
-    
+
 
     data : pandas.DataFrame
-        Shape (n_samples, n_features) where n_samples is the number of samples and 
+        Shape (n_samples, n_features) where n_samples is the number of samples and
         n_features is the number of features.
 
 
     Returns:
         pandas.DataFrame
-              
-    
+
+
     Warnings
     --------
     - The behavior of the predict_model is changed in version 2.1 without backward compatibility.
-      As such, the pipelines trained using the version (<= 2.0), may not work for inference 
+      As such, the pipelines trained using the version (<= 2.0), may not work for inference
       with version >= 2.1. You can either retrain your models with a newer version or downgrade
       the version for inference.
 
@@ -886,7 +882,10 @@ def predict_model(model, data: pd.DataFrame) -> pd.DataFrame:
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def deploy_model(
-    model, model_name: str, authentication: dict, platform: str = "aws",
+    model,
+    model_name: str,
+    authentication: dict,
+    platform: str = "aws",
 ):
 
     """
@@ -961,7 +960,7 @@ def deploy_model(
 
     platform: str, default = 'aws'
         Name of the platform. Currently supported platforms: 'aws', 'gcp' and 'azure'.
-    
+
 
     Returns:
         None
@@ -982,9 +981,9 @@ def save_model(
 ):
 
     """
-    This function saves the transformation pipeline and trained model object 
-    into the current working directory as a pickle file for later use. 
-    
+    This function saves the transformation pipeline and trained model object
+    into the current working directory as a pickle file for later use.
+
 
     Example
     -------
@@ -994,18 +993,18 @@ def save_model(
     >>> exp_name = setup(data = anomaly)
     >>> knn = create_model('knn')
     >>> save_model(knn, 'saved_knn_model')
-    
+
 
     model: scikit-learn compatible object
         Trained model object
-    
+
 
     model_name: str
         Name of the model.
-    
+
 
     model_only: bool, default = False
-        When set to True, only trained model object is saved instead of the 
+        When set to True, only trained model object is saved instead of the
         entire pipeline.
 
 
@@ -1013,7 +1012,7 @@ def save_model(
         Success message is not printed when verbose is set to False.
 
 
-    **kwargs: 
+    **kwargs:
         Additional keyword arguments to pass to joblib.dump().
 
 
@@ -1041,22 +1040,22 @@ def load_model(
 
     """
     This function loads a previously saved pipeline.
-    
+
 
     Example
     -------
     >>> from pycaret.anomaly import load_model
     >>> saved_knn = load_model('saved_knn_model')
-    
+
 
     model_name: str
         Name of the model.
-      
+
 
     platform: str, default = None
-        Name of the cloud platform. Currently supported platforms: 
+        Name of the cloud platform. Currently supported platforms:
         'aws', 'gcp' and 'azure'.
-    
+
 
     authentication: dict, default = None
         dictionary of applicable authentication tokens.
@@ -1069,7 +1068,7 @@ def load_model(
 
         when platform = 'azure':
         {'container': 'azure-container-name'}
-    
+
 
     verbose: bool, default = True
         Success message is not printed when verbose is set to False.
@@ -1093,7 +1092,10 @@ def load_model(
 
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
-def models(internal: bool = False, raise_errors: bool = True,) -> pd.DataFrame:
+def models(
+    internal: bool = False,
+    raise_errors: bool = True,
+) -> pd.DataFrame:
 
     """
     Returns table of models available in the model library.
@@ -1137,7 +1139,7 @@ def get_logs(experiment_name: Optional[str] = None, save: bool = False) -> pd.Da
     >>> from pycaret.datasets import get_data
     >>> anomaly = get_data('anomaly')
     >>> from pycaret.anomaly import *
-    >>> exp_name = setup(data = anomaly,  log_experiment = True) 
+    >>> exp_name = setup(data = anomaly,  log_experiment = True)
     >>> knn = create_model('knn')
     >>> exp_logs = get_logs()
 
@@ -1162,7 +1164,7 @@ def get_logs(experiment_name: Optional[str] = None, save: bool = False) -> pd.Da
 def get_config(variable: str):
 
     """
-    This function retrieves the global variables created when initializing the 
+    This function retrieves the global variables created when initializing the
     ``setup`` function. Following variables are accessible:
 
     - dataset: Transformed dataset
@@ -1190,7 +1192,7 @@ def get_config(variable: str):
     >>> anomaly = get_data('anomaly')
     >>> from pycaret.anomaly import *
     >>> exp_name = setup(data = anomaly)
-    >>> X = get_config('X') 
+    >>> X = get_config('X')
 
 
     Returns:
@@ -1205,7 +1207,7 @@ def get_config(variable: str):
 def set_config(variable: str, value):
 
     """
-    This function resets the global variables. Following variables are 
+    This function resets the global variables. Following variables are
     accessible:
 
     - X: Transformed dataset (X)
@@ -1229,7 +1231,7 @@ def set_config(variable: str, value):
     >>> anomaly = get_data('anomaly')
     >>> from pycaret.anomaly import *
     >>> exp_name = setup(data = anomaly)
-    >>> set_config('seed', 123) 
+    >>> set_config('seed', 123)
 
 
     Returns:
@@ -1254,11 +1256,11 @@ def save_config(file_name: str):
     >>> anomaly = get_data('anomaly')
     >>> from pycaret.anomaly import *
     >>> exp_name = setup(data = anomaly)
-    >>> save_config('myvars.pkl') 
+    >>> save_config('myvars.pkl')
 
 
     Returns:
-        None    
+        None
 
     """
 
@@ -1276,8 +1278,8 @@ def load_config(file_name: str):
     Example
     -------
     >>> from pycaret.anomaly import load_config
-    >>> load_config('myvars.pkl') 
-    
+    >>> load_config('myvars.pkl')
+
 
     Returns:
         Global variables
@@ -1389,7 +1391,11 @@ def get_outliers(
     )
 
     c = exp.create_model(
-        model=model, fraction=fraction, fit_kwargs=fit_kwargs, verbose=False, **kwargs,
+        model=model,
+        fraction=fraction,
+        fit_kwargs=fit_kwargs,
+        verbose=False,
+        **kwargs,
     )
     return exp.assign_model(c, verbose=False)
 
