@@ -42,6 +42,6 @@ psutil
 LunarCalendar>=0.0.9
 convertdate>=2.1.2
 holidays>=0.13
-pystan>=3.4.0
+pystan>=3.3.0
 prophet>=1.0.1
 fugue>=0.6.5 # for distributed
