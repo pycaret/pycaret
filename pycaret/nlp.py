@@ -6,8 +6,8 @@
 
 from typing import Optional, Dict, Any, Dict
 from pycaret.loggers import DashboardLogger
-from pycaret.loggers.mlflow_logger import mlflowLogger
-from pycaret.loggers.wandb_logger import wandbLogger
+from pycaret.loggers.mlflow_logger import MlflowLogger
+from pycaret.loggers.wandb_logger import WandbLogger
 
 def setup(
     data,
@@ -479,13 +479,13 @@ def setup(
     # create logging parameter
     logging_param = log_experiment
     if logging_param:
-        loggers_list = [mlflowLogger()]
+        loggers_list = [MlflowLogger()]
         try:
             import wandb
             from wandb import __version__
-            loggers_list.append(wandbLogger())
+            loggers_list.append(WandbLogger())
         except ImportError:
-            logger.info("Install wandb to use wandbLogger")
+            logger.info("Install wandb to use WandbLogger")
 
         dashboard_logger = DashboardLogger(loggers_list)
 
