@@ -34,7 +34,7 @@ __author__ = ["satya-pattnaik", "ngupta23"]
 PlotReturnType = Tuple[Optional[go.Figure], Optional[Dict[str, Any]]]
 
 
-def _plot(
+def _get_plot(
     plot: str,
     fig_defaults: Dict[str, Any],
     data: Optional[pd.Series] = None,
@@ -511,7 +511,7 @@ def plot_acf(
     )
 
     with fig.batch_update():
-        fig.update_xaxes(range=[-1, 42])
+        fig.update_xaxes(range=[-1, len(corr_array[0]) + 1])
         fig.update_yaxes(zerolinecolor="#000000")
 
         template = _resolve_dict_keys(
@@ -910,9 +910,23 @@ def plot_time_series_decomposition(
         return fig, return_data_dict
 
     data_kwargs = data_kwargs or {}
-    fig_kwargs = fig_kwargs or {}
+    period = data_kwargs.get("seasonal_period", None)
+
+    #### Check period ----
+    if period is None:
+        raise ValueError(
+            "Decomposition plot needed seasonal period to be passed through "
+            "`data_kwargs`. None was passed."
+        )
+    if plot == "decomp_stl" and period < 2:
+        print(
+            "STL Decomposition is not supported for time series that have a "
+            f"seasonal period < 2. The seasonal period computed/provided was {period}."
+        )
+        return fig, return_data_dict
 
     classical_decomp_type = data_kwargs.get("type", "additive")
+    fig_kwargs = fig_kwargs or {}
 
     if plot == "decomp":
         title_name = f"Classical Decomposition ({classical_decomp_type})"
@@ -923,17 +937,17 @@ def plot_time_series_decomposition(
         title = f"{title_name}" if data.name is None else f"{title_name} | {data.name}"
     else:
         title = f"{title_name} | '{model_name}' Residuals"
+    title = title + f"<br>Seasonal Period = {period}"
 
     decomp_result = None
     data_ = data.to_timestamp() if isinstance(data.index, pd.PeriodIndex) else data
 
-    primary_sp_to_use = data_kwargs.get("primary_sp_to_use")
     if plot == "decomp":
         decomp_result = seasonal_decompose(
-            data_, period=primary_sp_to_use, model=classical_decomp_type
+            data_, period=period, model=classical_decomp_type
         )
     elif plot == "decomp_stl":
-        decomp_result = STL(data_, period=primary_sp_to_use).fit()
+        decomp_result = STL(data_, period=period).fit()
 
     fig = make_subplots(
         rows=4,

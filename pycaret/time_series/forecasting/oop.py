@@ -28,7 +28,7 @@ from pycaret.internal.Display import Display
 from pycaret.internal.distributions import get_base_distributions
 from pycaret.internal.logging import get_logger
 from pycaret.internal.pipeline import get_pipeline_fit_kwargs
-from pycaret.internal.plots.time_series import _plot
+from pycaret.internal.plots.time_series import _get_plot
 from pycaret.internal.pycaret_experiment.supervised_experiment import (
     _SupervisedExperiment,
 )
@@ -2268,6 +2268,7 @@ class TSForecastingExperiment(_SupervisedExperiment):
         >>> arima = create_model('arima')
         >>> plot_model(plot = 'ts')
         >>> plot_model(plot = 'decomp', data_kwargs = {'type' : 'multiplicative'})
+        >>> plot_model(plot = 'decomp', data_kwargs = {'seasonal_period': 24})
         >>> plot_model(estimator = arima, plot = 'forecast', data_kwargs = {'fh' : 24})
 
 
@@ -2357,11 +2358,8 @@ class TSForecastingExperiment(_SupervisedExperiment):
                 )
 
         # Add sp value (used in decomp plots)
-        sp_dict = {"primary_sp_to_use": self.primary_sp_to_use}
-        if data_kwargs is None:
-            data_kwargs = sp_dict
-        else:
-            data_kwargs.update(sp_dict)
+        data_kwargs = data_kwargs or {}
+        data_kwargs.setdefault("seasonal_period", self.primary_sp_to_use)
 
         fig_kwargs = fig_kwargs or {}
 
@@ -2496,22 +2494,7 @@ class TSForecastingExperiment(_SupervisedExperiment):
                     f"Available plots are: {', '.join(plots_formatted_model)}"
                 )
 
-        big_data_threshold = _resolve_dict_keys(
-            dict_=fig_kwargs, key="big_data_threshold", defaults=self.fig_kwargs
-        )
-        renderer = _resolve_dict_keys(
-            dict_=fig_kwargs, key="renderer", defaults=self.fig_kwargs
-        )
-        renderer = _resolve_renderer(
-            renderer=renderer,
-            threshold=big_data_threshold,
-            data=data,
-            train=train,
-            test=test,
-            X=X,
-        )
-
-        fig, plot_data = _plot(
+        fig, plot_data = _get_plot(
             plot=plot,
             fig_defaults=self.fig_kwargs,
             data=data,
@@ -2547,8 +2530,47 @@ class TSForecastingExperiment(_SupervisedExperiment):
                 if display_format == "streamlit":
                     st.write(fig)
                 else:
-                    fig.show(renderer=renderer)
-                self.logger.info("Visual Rendered Successfully")
+                    try:
+                        big_data_threshold = _resolve_dict_keys(
+                            dict_=fig_kwargs,
+                            key="big_data_threshold",
+                            defaults=self.fig_kwargs,
+                        )
+                        renderer = _resolve_dict_keys(
+                            dict_=fig_kwargs, key="renderer", defaults=self.fig_kwargs
+                        )
+                        renderer = _resolve_renderer(
+                            renderer=renderer,
+                            threshold=big_data_threshold,
+                            data=data,
+                            train=train,
+                            test=test,
+                            X=X,
+                        )
+                        fig.show(renderer=renderer)
+                        self.logger.info("Visual Rendered Successfully")
+                    except ValueError as exception:
+                        self.logger.info(exception)
+                        self.logger.info("Visual Rendered Unsuccessfully")
+                        print(exception)
+                        print(
+                            "When data exceeds a certain threshold (determined by "
+                            "`big_data_threshold`), the renderer is switched to a "
+                            "static one to prevent notebooks from being slowed down.\n"
+                            "This renderer may need to be installed manually by users.\n"
+                            "Alternately:\n"
+                            "Option 1: "
+                            "Users can increase `big_data_threshold` in either `setup` "
+                            "(globally) or `plot_model` (plot specific). Examples.\n"
+                            "\t>>> setup(..., fig_kwargs={'big_data_threshold': 1000})\n"
+                            "\t>>> plot_model(..., fig_kwargs={'big_data_threshold': 1000})\n"
+                            "Option 2: "
+                            "Users can specify any plotly renderer directly in either `setup` "
+                            "(globally) or `plot_model` (plot specific). Examples.\n"
+                            "\t>>> setup(..., fig_kwargs={'renderer': 'notebook'})\n"
+                            "\t>>> plot_model(..., fig_kwargs={'renderer': 'colab'})\n"
+                            "Refer to the docstring in `setup` for more details."
+                        )
 
         ### Add figure and data to return object if required ----
         if return_fig:
