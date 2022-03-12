@@ -16,11 +16,15 @@ try:
     import mlflow
     import mlflow.sklearn
 except ImportError:
-    logger.warning("mlflowLogger requires mlflow. Install using `pip install mlflow`")
+    mlflow = None
 
 
-class mlflowLogger(BaseLogger):
+class MlflowLogger(BaseLogger):
     def __init__(self) -> None:
+        if mlflow is None:
+            raise ImportError(
+                "MlflowLogger requires mlflow. Install using `pip install mlflow`"
+            )
         super().__init__()
         self.run = None
 
@@ -102,22 +106,22 @@ class mlflowLogger(BaseLogger):
         dep = f"pycaret=={__version__}"
         dependencies["pip"] = [dep]
 
-        # define model signature
-        from mlflow.models.signature import infer_signature
+        # # define model signature
+        # from mlflow.models.signature import infer_signature
 
-        try:
-            signature = infer_signature(
-                data_before_preprocess.drop([target_param], axis=1)
-            )
-        except:
-            logger.warning("Couldn't infer MLFlow signature.")
-            signature = None
-        if not _is_unsupervised(_ml_usecase):
-            input_example = (
-                data_before_preprocess.drop([target_param], axis=1).iloc[0].to_dict()
-            )
-        else:
-            input_example = data_before_preprocess.iloc[0].to_dict()
+        # try:
+        #     signature = infer_signature(
+        #         data_before_preprocess.drop([target_param], axis=1)
+        #     )
+        # except:
+        #     logger.warning("Couldn't infer MLFlow signature.")
+        #     signature = None
+        # if not _is_unsupervised(_ml_usecase):
+        #     input_example = (
+        #         data_before_preprocess.drop([target_param], axis=1).iloc[0].to_dict()
+        #     )
+        # else:
+        #     input_example = data_before_preprocess.iloc[0].to_dict()
 
         # log model as sklearn flavor
         prep_pipe_temp = deepcopy(prep_pipe)

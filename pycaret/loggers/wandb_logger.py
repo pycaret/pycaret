@@ -2,13 +2,23 @@ import os
 from copy import deepcopy
 from xml.etree.ElementTree import PI
 from pycaret.loggers import BaseLogger
-import wandb
 import pandas as pd
-import pickle
+import joblib
+import tempfile
+
+logger = get_logger()
+try:
+    import wandb
+except ImportError:
+    wandb = None
 
 
-class wandbLogger(BaseLogger):
+class WandbLogger(BaseLogger):
     def __init__(self) -> None:
+        if wandb is None:
+            raise ImportError(
+                "WandbLogger requires wandb. Install using `pip install wandb`"
+            )
         super().__init__()
         self.run = None
 
@@ -52,7 +62,8 @@ class wandbLogger(BaseLogger):
     def log_sklearn_pipeline(self, prep_pipe, model):
         pipeline = deepcopy(prep_pipe)
         pipeline.steps.append(["trained_model", model])
-        pickle.dump(pipeline, open("pipeline.pkl", "wb"))
+        with open("pipeline.pkl", "wb") as f:  # this should use tempfile
+            joblib.dump(pipeline, f)
         art = wandb.Artifact("pipeline", type="model")
         art.add_file("pipeline.pkl")
         self.run.log_artifact(art)

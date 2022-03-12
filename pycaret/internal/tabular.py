@@ -43,7 +43,6 @@ from pycaret.internal.drift_report import (
     create_classification_drift_report,
     create_regression_drift_report,
 )
-from pycaret.loggers.mlflow_logger import mlflowLogger
 import pycaret.containers.metrics.classification
 import pycaret.containers.metrics.regression
 import pycaret.containers.metrics.clustering
@@ -63,7 +62,8 @@ import random
 import gc
 import multiprocessing
 from copy import deepcopy
-from pycaret.loggers.wandb_logger import wandbLogger
+from pycaret.loggers.mlflow_logger import MlflowLogger
+from pycaret.loggers.wandb_logger import WandbLogger
 from sklearn.base import clone
 from sklearn.exceptions import NotFittedError
 from sklearn.compose import TransformedTargetRegressor
@@ -1300,13 +1300,13 @@ def setup(
     # create logging parameter
     logging_param = log_experiment
     if logging_param:
-        loggers_list = [mlflowLogger()]
+        loggers_list = [MlflowLogger()]
         try:
             import wandb
             from wandb import __version__
-            loggers_list.append(wandbLogger())
+            loggers_list.append(WandbLogger())
         except ImportError:
-            logger.info("Install wandb to use wandbLogger")
+            logger.info("Install wandb to use WandbLogger")
 
         dashboard_logger = loggers.DashboardLogger(loggers_list)
 
