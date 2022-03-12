@@ -20,7 +20,6 @@ from sktime.forecasting.model_selection import (  # type: ignore
 
 from sktime.forecasting.naive import NaiveForecaster  # type: ignore
 
-# from pycaret.internal.pipeline import Pipeline as InternalPipeline
 # from sktime.forecasting.compose import ForecastingPipeline
 from pycaret.utils.time_series.forecasting.pipeline import PyCaretForecastingPipeline
 from sktime.forecasting.compose import TransformedTargetForecaster
@@ -98,6 +97,8 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                 "approach_type",
                 "exogenous_present",
                 "index_type",
+                "y_transformed",
+                "X_transformed",
             }
         )
         self._available_plots = {
