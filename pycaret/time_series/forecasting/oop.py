@@ -1033,17 +1033,17 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         if self.target_has_missing and numeric_imputation_target is None:
             raise ValueError(
-                "Time Series modeling automation relies on running statistical tests, plots, etc. "
-                "Many of these can not be run when data has missing values. Your target has "
-                f"{num_missing_target} values and numeric_imputation_target is set to "
-                "`None`. Please enable imputation to proceed. "
+                "\nTime Series modeling automation relies on running statistical tests, plots, etc.\n"
+                "Many of these can not be run when data has missing values. \nYour target has "
+                f"{num_missing_target} missing values and `numeric_imputation_target` is set to "
+                "`None`. \nPlease enable imputation to proceed. "
             )
         if self.exogenous_has_missing and numeric_imputation_exogenous is None:
             raise ValueError(
-                "Time Series modeling automation relies on running statistical tests, plots, etc. "
-                "Many of these can not be run when data has missing values. Your exogenous data "
-                f"has {num_missing_exogenous} values and numeric_imputation_exogenous is set to "
-                "`None`. Please enable imputation to proceed. "
+                "\nTime Series modeling automation relies on running statistical tests, plots, etc.\n"
+                "Many of these can not be run when data has missing values. \nYour exogenous data "
+                f"has {num_missing_exogenous} missing values and `numeric_imputation_exogenous` is "
+                "set to `None`. \nPlease enable imputation to proceed. "
             )
 
         # Initialize empty steps ----
