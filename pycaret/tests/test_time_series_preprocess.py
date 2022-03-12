@@ -84,9 +84,6 @@ def test_preprocess_exo_types(load_uni_exo_data_target):
 
     data, target = load_uni_exo_data_target
 
-    # # Simulate misssing values
-    # data[10:20] = np.nan
-
     exp = TSForecastingExperiment()
 
     #### Default
@@ -134,12 +131,9 @@ def test_preprocess_exo_types(load_uni_exo_data_target):
     assert isinstance(exp.pipeline.steps[-1][1], TransformedTargetForecaster)
 
 
-def test_preprocess_raises_no_exo(load_pos_and_neg_data):
+def test_preprocess_raises_no_exo(load_pos_and_neg_data_missing):
     """Tests conditions that raise errors"""
-    data = load_pos_and_neg_data
-
-    # Simulate misssing values
-    data[10:20] = np.nan
+    data = load_pos_and_neg_data_missing
 
     exp = TSForecastingExperiment()
 
@@ -154,13 +148,10 @@ def test_preprocess_raises_no_exo(load_pos_and_neg_data):
     assert "Please enable imputation to proceed" in exceptionmsg
 
 
-def test_preprocess_raises_exo(load_uni_exo_data_target):
+def test_preprocess_raises_exo(load_uni_exo_data_target_missing):
     """Tests conditions that raise errors"""
 
-    data, target = load_uni_exo_data_target
-
-    # Simulate misssing values
-    data[10:20] = np.nan
+    data, target = load_uni_exo_data_target_missing
 
     exp = TSForecastingExperiment()
     with pytest.raises(ValueError) as errmsg:
@@ -194,12 +185,9 @@ def test_preprocess_raises_exo(load_uni_exo_data_target):
 
 
 @pytest.mark.parametrize("model_name", _model_names_for_missing_data)
-def test_preprocess_uni(load_pos_and_neg_data, model_name):
+def test_preprocess_uni(load_pos_and_neg_data_missing, model_name):
     """Tests normal preprocessing"""
-    data = load_pos_and_neg_data
-
-    # Simulate misssing values
-    data[10:20] = np.nan
+    data = load_pos_and_neg_data_missing
 
     exp = TSForecastingExperiment()
     FH = 12
@@ -228,12 +216,9 @@ def test_preprocess_uni(load_pos_and_neg_data, model_name):
 
 
 @pytest.mark.parametrize("model_name", _model_names_for_missing_data)
-def test_preprocess_exo(load_uni_exo_data_target, model_name):
+def test_preprocess_exo(load_uni_exo_data_target_missing, model_name):
     """Tests normal preprocessing"""
-    data, target = load_uni_exo_data_target
-
-    # Simulate misssing values
-    data[10:20] = np.nan
+    data, target = load_uni_exo_data_target_missing
 
     exp = TSForecastingExperiment()
     FH = 12
