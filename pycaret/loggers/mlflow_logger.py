@@ -6,12 +6,10 @@ import secrets
 from typing import Optional, Dict, Any
 import pycaret
 from pycaret.internal.Display import Display
-from pycaret.internal.logging import get_logger
 from pycaret.internal.pipeline import get_pipeline_estimator_label
 from pycaret.internal.meta_estimators import get_estimator_from_meta_estimator
 from pycaret.loggers import BaseLogger
 
-logger = get_logger()
 try:
     import mlflow
     import mlflow.sklearn

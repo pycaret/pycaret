@@ -6,7 +6,6 @@ import pandas as pd
 import joblib
 import tempfile
 
-logger = get_logger()
 try:
     import wandb
 except ImportError:
