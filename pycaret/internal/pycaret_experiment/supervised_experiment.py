@@ -1349,10 +1349,6 @@ class _SupervisedExperiment(_TabularExperiment):
                 self.y_train.copy() if y_train_data is None else y_train_data.copy()
             )
 
-            # # Replace Empty DataFrame with None as empty DataFrame causes issues
-            # if (data_X.shape[0] == 0) or (data_X.shape[1] == 0):
-            #     data_X = None
-
         if metrics is None:
             metrics = self._all_metrics
 
