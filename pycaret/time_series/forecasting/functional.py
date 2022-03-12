@@ -29,7 +29,7 @@ def setup(
     target: Optional[str] = None,
     index: Optional[str] = None,
     ignore_features: Optional[List] = None,
-    preprocess: bool = False,
+    preprocess: bool = True,
     numeric_imputation_target: Optional[Union[int, float, str]] = None,
     numeric_imputation_exogenous: Optional[Union[int, float, str]] = None,
     # transform_target: Optional[str] = None,
@@ -95,7 +95,7 @@ def setup(
         or Dataframe with 1 column.
 
 
-    preprocess: bool, default = False
+    preprocess: bool, default = True
         Parameter not in use for now. Behavior may change in future.
 
 

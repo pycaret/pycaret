@@ -21,9 +21,9 @@ from sktime.forecasting.model_selection import (  # type: ignore
 from sktime.forecasting.naive import NaiveForecaster  # type: ignore
 
 # from pycaret.internal.pipeline import Pipeline as InternalPipeline
-from sktime.forecasting.compose import ForecastingPipeline
+# from sktime.forecasting.compose import ForecastingPipeline
+from pycaret.utils.time_series.forecasting.pipeline import PyCaretForecastingPipeline
 from sktime.forecasting.compose import TransformedTargetForecaster
-
 
 from pycaret.internal.preprocess.time_series.forecasting.preprocessor import (
     TSForecastingPreprocessor,
@@ -37,7 +37,8 @@ import pycaret.internal.preprocess
 from pycaret.internal.Display import Display
 from pycaret.internal.distributions import get_base_distributions
 from pycaret.internal.logging import get_logger
-from pycaret.internal.pipeline import get_pipeline_fit_kwargs
+
+# from pycaret.internal.pipeline import get_pipeline_fit_kwargs
 from pycaret.internal.plots.time_series import _get_plot
 from pycaret.internal.pycaret_experiment.supervised_experiment import (
     _SupervisedExperiment,
@@ -550,8 +551,13 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         seasonal_period = [self._convert_sp_to_int(sp) for sp in seasonal_period]
 
         # check valid seasonal parameter
+        # We use y_transformed here instead of y for 2 reasons:
+        # (1) Missing values in y will cause issues with this test (seasonality
+        #     will not be detected properly).
+        # (2) The actual forecaster will see transformed values of y for training.
+        #     Hence, these transformed values should be used to determine seasonality.
         seasonality_test_results = [
-            autocorrelation_seasonality_test(data[self.target_param], sp)
+            autocorrelation_seasonality_test(self.y_transformed, sp)
             for sp in seasonal_period
         ]
         self.seasonality_present = any(seasonality_test_results)
@@ -636,7 +642,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         target: Optional[str] = None,
         index: Optional[str] = None,
         ignore_features: Optional[List] = None,
-        preprocess: bool = False,
+        preprocess: bool = True,
         numeric_imputation_target: Optional[Union[int, float, str]] = None,
         numeric_imputation_exogenous: Optional[Union[int, float, str]] = None,
         # transform_target: Optional[str] = None,
@@ -703,7 +709,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             or Dataframe with 1 column.
 
 
-        preprocess: bool, default = False
+        preprocess: bool, default = True
             Parameter not in use for now. Behavior may change in future.
 
 
@@ -960,21 +966,6 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         #### Set Forecast Horizon ----
         self._check_and_set_fh(fh=fh, fold_strategy=fold_strategy, fold=fold)
 
-        #### Set up Seasonal Period ----
-        self._check_and_set_seasonal_period(data=data_, seasonal_period=seasonal_period)
-
-        #### Multiplicative components allowed? ----
-        self.logger.info("Set up whether Multiplicative components allowed.")
-
-        ############################################
-        #### Multiplicative components allowed? ####
-        ############################################
-
-        self.logger.info("Set up whether Multiplicative components allowed.")
-
-        # Should multiplicative components be allowed in models that support it
-        self.strictly_positive = np.all(data_[self.target_param] > 0)
-
         ###############################
         #### Set Train Test Splits ####
         ###############################
@@ -1030,11 +1021,29 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         # Preprocessing ============================================ >>
 
-        self.target_has_missing = self.y.isna().sum() != 0
+        num_missing_target = self.y.isna().sum()
+        self.target_has_missing = num_missing_target != 0
         if isinstance(self.X, pd.DataFrame):
-            self.exogenous_has_missing = self.X.isna().sum().sum != 0
+            num_missing_exogenous = self.X.isna().sum().sum()
+            self.exogenous_has_missing = num_missing_exogenous != 0
         elif self.X is None:
+            num_missing_exogenous = 0
             self.exogenous_has_missing = False
+
+        if self.target_has_missing and numeric_imputation_target is None:
+            raise ValueError(
+                "Time Series modeling automation relies on running statistical tests, plots, etc. "
+                "Many of these can not be run when data has missing values. Your target has "
+                f"{num_missing_target} values and numeric_imputation_target is set to "
+                "`None`. Please enable imputation to proceed. "
+            )
+        if self.exogenous_has_missing and numeric_imputation_exogenous is None:
+            raise ValueError(
+                "Time Series modeling automation relies on running statistical tests, plots, etc. "
+                "Many of these can not be run when data has missing values. Your exogenous data "
+                f"has {num_missing_exogenous} values and numeric_imputation_exogenous is set to "
+                "`None`. Please enable imputation to proceed. "
+            )
 
         # Initialize empty steps ----
         self.pipe_steps_target = []
@@ -1043,20 +1052,19 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         if preprocess:
             self.logger.info("Preparing preprocessing pipeline...")
 
-            # Impute missing values ----
+            #### Impute missing values ----
             if numeric_imputation_target is not None:
                 self._imputation(
                     numeric_imputation=numeric_imputation_target, target=True
                 )
-
             # Only add exogenous pipeline steps if exogenous variables are present.
-            # since adding ForecastingPipeline for exogenous variables disables the
-            # calculation of prediction intervals, even if the final model supports it.
-            if self.exogenous_present == TSExogenousPresent.YES:
-                if numeric_imputation_exogenous is not None:
-                    self._imputation(
-                        numeric_imputation=numeric_imputation_exogenous, target=False
-                    )
+            if (
+                self.exogenous_present == TSExogenousPresent.YES
+                and numeric_imputation_exogenous is not None
+            ):
+                self._imputation(
+                    numeric_imputation=numeric_imputation_exogenous, target=False
+                )
 
         #     # Transformations (preferably based on residual analysis) ----
         #     if transformation:
@@ -1070,44 +1078,35 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         # if custom_pipeline:
         #     self._add_custom_pipeline(custom_pipeline)
 
-        self.transform_target, self.transform_exogenous = False, False
-        if len(self.pipe_steps_target) > 0:
-            self.transform_target = True
-        if len(self.pipe_steps_exogenous) > 0:
-            self.transform_exogenous = True
+        # Add dummy forecaster for now ----
+        dummy_model_step = [("dummy_model", NaiveForecaster())]
+        self.pipe_steps_target.extend(dummy_model_step)
+        forecaster = TransformedTargetForecaster(self.pipe_steps_target)
 
-        if self.transform_target > 0:
-            #### Target needs to be preprocessed for sure ----
-            # Add dummy forecaster for now ----
-            dummy_model_step = [("dummy_model", NaiveForecaster())]
-            self.pipe_steps_target.extend(dummy_model_step)
-            forecaster = TransformedTargetForecaster(self.pipe_steps_target)
-            if self.transform_exogenous:
-                #### Exogenous steps present, use ForecastingPipeline ----
-                # Extend the exogenous steps to include the forecaster
-                self.pipe_steps_exogenous.extend([("forecaster", forecaster)])
-                self.pipeline = ForecastingPipeline(steps=self.pipe_steps_exogenous)
-            else:
-                #### No exogenous steps, use TransformedTargetForecaster directly ----
-                self.pipeline = forecaster
-        else:
-            #### Target does not to be preprocessed ----
-            if self.transform_exogenous:
-                #### Exogenous steps present, use ForecastingPipeline ----
-                # Extend the exogenous steps to include the forecaster
-                dummy_forecaster_step = [("dummy_forecaster", NaiveForecaster())]
-                self.pipe_steps_exogenous.extend(dummy_forecaster_step)
-                self.pipeline = ForecastingPipeline(steps=self.pipe_steps_exogenous)
-            else:
-                #### No exogenous steps, hence no pipeline ----
-                self.pipeline = None
+        # Create Forecasting Pipeline ----
+        self.pipe_steps_exogenous.extend([("forecaster", forecaster)])
+        self.pipeline = PyCaretForecastingPipeline(steps=self.pipe_steps_exogenous)
 
-        if self.pipeline is not None:
-            # TODO: Why is this needed. May also need to pass fh here if we need to perform this step.
-            self.pipeline.fit(y=self.y_train, X=self.X_train)
+        # No need to pass fh here (as far as I can tell), since this is just needed
+        # for the transformed data values.
+        self.pipeline.fit(y=self.y_train, X=self.X_train)
 
         self.logger.info("Finished creating preprocessing pipeline.")
         self.logger.info(f"Pipeline: {self.pipeline}")
+
+        ##################################################################
+        #### Do these after the preprocessing pipeline has been setup ####
+        ##################################################################
+        # Since the models will see transformed data, these parameters should
+        # also be derived from the transformed data.
+
+        #### Set up Seasonal Period ----
+        self._check_and_set_seasonal_period(data=data_, seasonal_period=seasonal_period)
+
+        #### Multiplicative components allowed? ----
+        self.logger.info("Set up whether Multiplicative components allowed.")
+        # Should multiplicative components be allowed in models that support it
+        self.strictly_positive = np.all(self.y_transformed > 0)
 
         ############################################
         #### Initial EDA in Setup (for display) ####
@@ -1132,19 +1131,23 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         else:
             self.white_noise = "Maybe"
 
-        self.lowercase_d = recommend_lowercase_d(data=self.y)
+        # We use y_transformed here instead of y for 2 reasons:
+        # (1) Missing values in y will cause issues with this test.
+        # (2) The actual forecaster will see transformed values of y for training.
+        #     Hence d, and D should be computed using the transformed values.
+        self.lowercase_d = recommend_lowercase_d(data=self.y_transformed)
         if self.primary_sp_to_use > 1:
             try:
                 max_D = 2
                 uppercase_d = recommend_uppercase_d(
-                    data=self.y, sp=self.primary_sp_to_use, max_D=max_D
+                    data=self.y_transformed, sp=self.primary_sp_to_use, max_D=max_D
                 )
             except ValueError:
                 self.logger.info("Test for computing 'D' failed at max_D = 2.")
                 try:
                     max_D = 1
                     uppercase_d = recommend_uppercase_d(
-                        data=self.y, sp=self.primary_sp_to_use, max_D=max_D
+                        data=self.y_transformed, sp=self.primary_sp_to_use, max_D=max_D
                     )
                 except ValueError:
                     self.logger.info("Test for computing 'D' failed at max_D = 1.")
@@ -1493,59 +1496,21 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         return fit_kwargs
 
     def add_model_to_pipeline(self, model):
-        """Adds the model to the preprocessing pipeline. The preprocessing pipeline
-        may be of type ForecastingPipeline or TransformedTargetForecaster or None.
-        These conditions are handled appropriately.
-        """
-        if self.pipeline is not None:
-            pipeline_with_model = deepcopy(self.pipeline)
+        """Adds the model to the preprocessing pipeline."""
+        pipeline_with_model = deepcopy(self.pipeline)
+        # Pop the dummy model at the end of pipeline ----
+        pipeline_with_model.steps[-1][1].steps.pop()
+        # Add the right model to the pipeline ----
+        pipeline_with_model.steps[-1][1].steps.extend([("model", model)])
 
-            if isinstance(pipeline_with_model, ForecastingPipeline):
-                #### Exogenous variables are being transformed ----
-                if isinstance(
-                    pipeline_with_model.steps[-1][1], TransformedTargetForecaster
-                ):
-                    #### `target`` is also being transformed ----
-                    # Pop the dummy model at the end of pipeline ----
-                    pipeline_with_model.steps[-1][1].steps.pop()
-                    # Add the right model to the pipeline ----
-                    pipeline_with_model.steps[-1][1].steps.extend([("model", model)])
-                if isinstance(pipeline_with_model.steps[-1][1], NaiveForecaster):
-                    #### `target`` is also being transformed ----
-                    # Dummy forcaster is the last step ----
-                    pipeline_with_model.steps.pop()
-                    pipeline_with_model.steps.extend([("model", model)])
-            elif isinstance(pipeline_with_model, TransformedTargetForecaster):
-                #### `target` is being transformed but not exogenous ----
-                # Dummy forcaster is the last step ----
-                pipeline_with_model.steps.pop()
-                pipeline_with_model.steps.extend([("model", model)])
-        else:
-            #### Neither Exogenous variables nor target are being transformed ----
-            # No pipeline, use model as is ----
-            pipeline_with_model = model
         return pipeline_with_model
 
     def get_final_model_from_pipeline(self, pipeline):
-        """Extracts and returns the final model from the pipeline. The pipeline
-        may be of type ForecastingPipeline or TransformedTargetForecaster or of
-        type sktime BaseForecaster. These conditions are handled appropriately"""
+        """Extracts and returns the final model from the pipeline."""
 
-        if self.transform_exogenous and self.transform_target:
-            #### Exogenous Variables and targets are being transformed ----
-            # The last step is a `TransformedTargetForecaster`
-            # pipeline.steps[-1] is the TransformedTargetForecaster
-            # pipeline.steps[-1][1].steps[-1] is the final model
-            final_forecaster_only = pipeline.steps[-1][1].steps[-1][1]
-        elif self.transform_exogenous and not self.transform_target:
-            #### Exogenous Variables are being transformed but not targets ----
-            final_forecaster_only = pipeline.steps[-1][1]
-        elif not self.transform_exogenous and self.transform_target:
-            #### Exogenous Variables are not being transformed but targets are ----
-            final_forecaster_only = pipeline.steps[-1][1]
-        else:
-            #### Neither Exogenous Variables not targets are not being transformed
-            final_forecaster_only = pipeline
+        # Pipeline will always be of type PyCaretForecastingPipeline with final
+        # forecaster being of type TransformedTargetForecaster
+        final_forecaster_only = pipeline.steps_[-1][1].steps_[-1][1]
 
         return final_forecaster_only
 
@@ -1618,7 +1583,6 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         self.logger.info(f"Cross validating with {cv}, n_jobs={n_jobs}")
 
         # Cross Validate time series
-        # fit_kwargs = get_pipeline_fit_kwargs(pipeline_with_model, fit_kwargs)
         fit_kwargs = self.update_fit_kwargs_with_fh_from_cv(
             fit_kwargs=fit_kwargs, cv=cv
         )
@@ -1712,11 +1676,9 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             model_fit_time /= cv.get_n_splits(data_y)
 
         # return model, model_fit_time, model_results, avgs_dict
-        # TODO: Check why in regression, we return model and not pipeline_with_model
-        # If we only return model, it's is_fitted attribute will be False, and we wont
-        # be able to make any predictions with it as is (without pycaret).
-        # return model, model_fit_time, model_results, avgs_dict
-        return pipeline_with_model, model_fit_time, model_results, avgs_dict
+        #### Keep only final forecaster. Rest of the pipeline will be added during finalize.
+        final_model = self.get_final_model_from_pipeline(pipeline=pipeline_with_model)
+        return final_model, model_fit_time, model_results, avgs_dict
 
     def tune_model(
         self,
@@ -3041,11 +3003,8 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         """
 
-        #### Keep only final forecaster. Rest of the pipeline will be added during finalize.
-        final_forecaster_only = self.get_final_model_from_pipeline(pipeline=estimator)
-
         return super().finalize_model(
-            estimator=final_forecaster_only,
+            estimator=estimator,
             fit_kwargs=fit_kwargs,
             model_only=model_only,
             experiment_custom_tags=experiment_custom_tags,

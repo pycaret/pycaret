@@ -2,6 +2,8 @@ import warnings
 from typing import Dict, Optional, Any
 from collections import defaultdict
 
+import pandas as pd
+
 import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
 from pycaret.internal.validation import *
@@ -491,47 +493,91 @@ class _PyCaretExperiment:
     @property
     def dataset_transformed(self):
         """Transformed dataset."""
-        return pd.concat([*self.pipeline.transform(self.X, self.y)], axis=1)
+        if self._ml_usecase != MLUsecase.TIME_SERIES:
+            return pd.concat([*self.pipeline.transform(self.X, self.y)], axis=1)
+        else:
+            # In time series, the order of arguments and returns may be reversed.
+            return pd.concat([*self.pipeline.transform(y=self.y, X=self.X)], axis=1)
 
     @property
     def train_transformed(self):
         """Transformed training set."""
-        return pd.concat([*self.pipeline.transform(self.X_train, self.y_train)], axis=1)
+        if self._ml_usecase != MLUsecase.TIME_SERIES:
+            return pd.concat(
+                [*self.pipeline.transform(self.X_train, self.y_train)], axis=1
+            )
+        else:
+            # In time series, the order of arguments and returns may be reversed.
+            return pd.concat(
+                [*self.pipeline.transform(y=self.y_train, X=self.X_train)], axis=1
+            )
 
     @property
     def test_transformed(self):
         """Transformed test set."""
-        return pd.concat([*self.pipeline.transform(self.X_test, self.y_test)], axis=1)
+        if self._ml_usecase != MLUsecase.TIME_SERIES:
+            return pd.concat(
+                [*self.pipeline.transform(self.X_test, self.y_test)], axis=1
+            )
+        else:
+            # In time series, the order of arguments and returns may be reversed.
+            return pd.concat(
+                [*self.pipeline.transform(y=self.y_test, X=self.X_test)], axis=1
+            )
 
     @property
     def X_transformed(self):
         """Transformed feature set."""
-        if self.target_param:
-            return self.pipeline.transform(self.X, self.y)[0]
+        if self._ml_usecase != MLUsecase.TIME_SERIES:
+            if self.target_param:
+                return self.pipeline.transform(self.X, self.y)[0]
+            else:
+                return self.pipeline.transform(self.X)
         else:
-            return self.pipeline.transform(self.X)
+            # In time series, the order of arguments and returns may be reversed.
+            return self.pipeline.transform(y=self.y, X=self.X)[1]
 
     @property
     def y_transformed(self):
         """Transformed target column."""
-        return self.pipeline.transform(self.X, self.y)[1]
+        if self._ml_usecase != MLUsecase.TIME_SERIES:
+            return self.pipeline.transform(self.X, self.y)[1]
+        else:
+            # In time series, the order of arguments and returns may be reversed.
+            return self.pipeline.transform(y=self.y, X=self.X)[0]
 
     @property
     def X_train_transformed(self):
         """Transformed feature set of the training set."""
-        return self.pipeline.transform(self.X_train, self.y_train)[0]
+        if self._ml_usecase != MLUsecase.TIME_SERIES:
+            return self.pipeline.transform(self.X_train, self.y_train)[0]
+        else:
+            # In time series, the order of arguments and returns may be reversed.
+            return self.pipeline.transform(y=self.y_train, X=self.X_train)[1]
 
     @property
     def X_test_transformed(self):
         """Transformed feature set of the test set."""
-        return self.pipeline.transform(self.X_test, self.y_test)[0]
+        if self._ml_usecase != MLUsecase.TIME_SERIES:
+            return self.pipeline.transform(self.X_test, self.y_test)[0]
+        else:
+            # In time series, the order of arguments and returns may be reversed.
+            return self.pipeline.transform(y=self.y_test, X=self.X_test)[1]
 
     @property
     def y_train_transformed(self):
         """Transformed target column of the training set."""
-        return self.pipeline.transform(self.X_train, self.y_train)[1]
+        if self._ml_usecase != MLUsecase.TIME_SERIES:
+            return self.pipeline.transform(self.X_train, self.y_train)[1]
+        else:
+            # In time series, the order of arguments and returns may be reversed.
+            return self.pipeline.transform(y=self.y_train, X=self.X_train)[0]
 
     @property
     def y_test_transformed(self):
         """Transformed target column of the test set."""
-        return self.pipeline.transform(self.X_test, self.y_test)[1]
+        if self._ml_usecase != MLUsecase.TIME_SERIES:
+            return self.pipeline.transform(self.X_test, self.y_test)[1]
+        else:
+            # In time series, the order of arguments and returns may be reversed.
+            return self.pipeline.transform(y=self.y_test, X=self.X_test)[0]
