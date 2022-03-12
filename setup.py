@@ -14,7 +14,7 @@ with open("requirements.txt") as f:
     required = f.read().splitlines()
 
 with open("requirements-optional.txt") as f:
-    required_optional = f.read().splitlines()
+    required_optional = f.read()
 
 with open("requirements-test.txt") as f:
     required_test = f.read().splitlines()
@@ -42,12 +42,12 @@ setup(
     include_package_data=True,
     install_requires=required,
     extras_require={
-        "analysis": required_optional[1:9],
-        "models": required_optional[11:15],
-        "tuners": required_optional[17:22],
-        "mlops": required_optional[24:30],
-        "nlp": required_optional[32:38],
-        "full": required_optional,
+        "analysis": required_optional.split("\n\n")[0],
+        "models": required_optional.split("\n\n")[1],
+        "tuners": required_optional.split("\n\n")[2],
+        "mlops": required_optional.split("\n\n")[3],
+        "nlp": required_optional.split("\n\n")[4],
+        "full": required_optional.splitlines(),
     },
     tests_require=required_test,
     python_requires=">=3.7",
