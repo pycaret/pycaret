@@ -1,14 +1,13 @@
 import warnings
-import numpy as np  # type: ignore
 from typing import Dict, Optional, Any
 from collections import defaultdict
-import plotly.express as px  # type: ignore
-import plotly.graph_objects as go  # type: ignore
 
 import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
 from pycaret.internal.validation import *
 import pycaret.internal.persistence
+
+from pycaret.internal.pycaret_experiment.utils import MLUsecase
 
 
 warnings.filterwarnings("ignore")
@@ -438,10 +437,17 @@ class _PyCaretExperiment:
     @property
     def X(self):
         """Feature set."""
-        if self.target_param:
-            return self.dataset.drop(self.target_param, axis=1)
+        if self._ml_usecase != MLUsecase.TIME_SERIES:
+            if self.target_param:
+                return self.dataset.drop(self.target_param, axis=1)
+            else:
+                return self.dataset  # For unsupervised: dataset == X
         else:
-            return self.dataset  # For unsupervised: dataset == X
+            X = self.dataset.drop(self.target_param, axis=1)
+            if X.empty:
+                return None
+            else:
+                return X
 
     @property
     def y(self):
@@ -451,12 +457,26 @@ class _PyCaretExperiment:
     @property
     def X_train(self):
         """Feature set of the training set."""
-        return self.train.drop(self.target_param, axis=1)
+        X_train = self.train.drop(self.target_param, axis=1)
+        if self._ml_usecase != MLUsecase.TIME_SERIES:
+            return X_train
+        else:
+            if X_train.empty:
+                return None
+            else:
+                return X_train
 
     @property
     def X_test(self):
         """Feature set of the test set."""
-        return self.test.drop(self.target_param, axis=1)
+        X_test = self.test.drop(self.target_param, axis=1)
+        if self._ml_usecase != MLUsecase.TIME_SERIES:
+            return X_test
+        else:
+            if X_test.empty:
+                return None
+            else:
+                return X_test
 
     @property
     def y_train(self):

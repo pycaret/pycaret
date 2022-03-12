@@ -29,8 +29,13 @@ def setup(
     target: Optional[str] = None,
     index: Optional[str] = None,
     ignore_features: Optional[List] = None,
-    preprocess: bool = True,
-    imputation_type: str = "simple",
+    preprocess: bool = False,
+    numeric_imputation_target: Optional[Union[int, float, str]] = None,
+    numeric_imputation_exogenous: Optional[Union[int, float, str]] = None,
+    # transform_target: Optional[str] = None,
+    # transform_exogenous: Optional[str] = None,
+    # scale_target: Optional[str] = None,
+    # scale_exogenous: Optional[str] = None,
     fold_strategy: Union[str, Any] = "expanding",
     fold: int = 3,
     fh: Optional[Union[List[int], int, np.array]] = 1,
@@ -90,7 +95,7 @@ def setup(
         or Dataframe with 1 column.
 
 
-    preprocess: bool, default = True
+    preprocess: bool, default = False
         Parameter not in use for now. Behavior may change in future.
 
 
@@ -286,7 +291,12 @@ def setup(
         index=index,
         ignore_features=ignore_features,
         preprocess=preprocess,
-        imputation_type=imputation_type,
+        numeric_imputation_target=numeric_imputation_target,
+        numeric_imputation_exogenous=numeric_imputation_exogenous,
+        # transform_target=transform_target,
+        # transform_exogenous = transform_exogenous,
+        # scale_target = scale_target,
+        # scale_exogenous = scale_exogenous,
         fold_strategy=fold_strategy,
         fold=fold,
         fh=fh,

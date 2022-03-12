@@ -200,7 +200,9 @@ class _SupervisedExperiment(_TabularExperiment):
             fold, default=self.fold_generator, X=X, y=y, groups=groups
         )
 
-    def _set_up_mlflow(self, runtime, log_data, log_profile, experiment_custom_tags=None):
+    def _set_up_mlflow(
+        self, runtime, log_data, log_profile, experiment_custom_tags=None
+    ):
         # log into experiment
         self.experiment__.append(("Setup Config", self.display_container[0]))
         self.experiment__.append(("X_training Set", self.X_train))
@@ -1322,20 +1324,34 @@ class _SupervisedExperiment(_TabularExperiment):
         self.logger.info("Copying training dataset")
 
         # Storing X_train and y_train in data_X and data_y parameter
-        data_X = self.X_train.copy() if X_train_data is None else X_train_data.copy()
-        data_y = (
-            self.y_train_transformed.copy()
-            if y_train_data is None
-            else y_train_data.copy()
-        )
         if not self._ml_usecase == MLUsecase.TIME_SERIES:
+            data_X = (
+                self.X_train.copy() if X_train_data is None else X_train_data.copy()
+            )
+            data_y = (
+                self.y_train_transformed.copy()
+                if y_train_data is None
+                else y_train_data.copy()
+            )
+
             # reset index
             data_X.reset_index(drop=True, inplace=True)
             data_y.reset_index(drop=True, inplace=True)
         else:
-            # Replace Empty DataFrame with None as empty DataFrame causes issues
-            if (data_X.shape[0] == 0) or (data_X.shape[1] == 0):
-                data_X = None
+            if X_train_data is not None:
+                data_X = X_train_data.copy()
+            else:
+                if self.X_train is None:
+                    data_X = None
+                else:
+                    data_X = self.X_train.copy()
+            data_y = (
+                self.y_train.copy() if y_train_data is None else y_train_data.copy()
+            )
+
+            # # Replace Empty DataFrame with None as empty DataFrame causes issues
+            # if (data_X.shape[0] == 0) or (data_X.shape[1] == 0):
+            #     data_X = None
 
         if metrics is None:
             metrics = self._all_metrics
@@ -4881,7 +4897,9 @@ class _SupervisedExperiment(_TabularExperiment):
         display.clear_output()
         return results
 
-    def check_fairness(self, estimator, sensitive_features: list, plot_kwargs: dict = {}):
+    def check_fairness(
+        self, estimator, sensitive_features: list, plot_kwargs: dict = {}
+    ):
 
         """
         There are many approaches to conceptualizing fairness. This function follows

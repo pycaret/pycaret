@@ -484,9 +484,7 @@ class BaseGridSearch:
         # applicable for that candidate. Use defaultdict as each candidate may
         # not contain all the params
         param_results = defaultdict(
-            partial(
-                np.ma.MaskedArray, np.empty(n_candidates,), mask=True, dtype=object,
-            )
+            partial(np.ma.MaskedArray, np.empty(n_candidates), mask=True, dtype=object)
         )
         for cand_i, params in enumerate(candidate_params):
             for name, value in params.items():

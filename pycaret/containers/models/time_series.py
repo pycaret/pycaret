@@ -1863,7 +1863,10 @@ class OrthogonalMatchingPursuitCdsDtContainer(CdsDtContainer):
     model_type = TSModelTypes.LINEAR
 
     def __init__(self, experiment) -> None:
-        self.num_features = len(experiment.X_train.columns)
+        if experiment.X_train is None:
+            self.num_features = 0
+        else:
+            self.num_features = len(experiment.X_train.columns)
         super().__init__(experiment=experiment)
 
     def return_regressor_class(self):
@@ -1915,7 +1918,10 @@ class KNeighborsCdsDtContainer(CdsDtContainer):
     model_type = TSModelTypes.NEIGHBORS
 
     def __init__(self, experiment) -> None:
-        self.num_features = len(experiment.X_train.columns)
+        if experiment.X_train is None:
+            self.num_features = 0
+        else:
+            self.num_features = len(experiment.X_train.columns)
         super().__init__(experiment=experiment)
 
     def return_regressor_class(self):
