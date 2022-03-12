@@ -1,13 +1,12 @@
-from pycaret.time_series.forecasting.oop import TSForecastingExperiment
-from pycaret.time_series.forecasting.functional import (
+from pycaret.clustering.oop import ClusteringExperiment
+from pycaret.clustering.functional import (
     setup,
     create_model,
-    compare_models,
+    assign_model,
     tune_model,
-    blend_models,
     plot_model,
+    evaluate_model,
     predict_model,
-    finalize_model,
     deploy_model,
     save_model,
     load_model,
@@ -21,20 +20,19 @@ from pycaret.time_series.forecasting.functional import (
     set_config,
     save_config,
     load_config,
+    get_clusters,
     set_current_experiment,
-    check_stats,
 )
 
 __all__ = [
-    "TSForecastingExperiment",
+    "ClusteringExperiment",
     "setup",
     "create_model",
-    "compare_models",
+    "assign_model",
     "tune_model",
-    "blend_models",
     "plot_model",
+    "evaluate_model",
     "predict_model",
-    "finalize_model",
     "deploy_model",
     "save_model",
     "load_model",
@@ -48,6 +46,6 @@ __all__ = [
     "set_config",
     "save_config",
     "load_config",
+    "get_clusters",
     "set_current_experiment",
-    "check_stats",
 ]
