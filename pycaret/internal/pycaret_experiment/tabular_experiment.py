@@ -2603,6 +2603,7 @@ class _TabularExperiment(_PyCaretExperiment):
             model_name,
             None if model_only else self.pipeline,
             verbose,
+            use_case=self._ml_usecase,
             **kwargs,
         )
 
