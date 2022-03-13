@@ -226,6 +226,12 @@ def _return_model_names_for_plots_stats():
     return model_names
 
 
+def _return_model_names_for_missing_data():
+    """Returns models that do not support missing data"""
+    model_names = ["ets", "theta", "lr_cds_dt"]
+    return model_names
+
+
 def _return_data_big_small():
     """Returns one dataset with 144 data points and one with < 12 data points"""
     data = get_data("airline")

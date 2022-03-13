@@ -6,6 +6,7 @@ import time
 import traceback
 import warnings
 from typing import Any, Dict, List, Optional, Tuple, Union
+from copy import deepcopy
 
 import numpy as np  # type: ignore
 import pandas as pd  # type: ignore
@@ -17,7 +18,15 @@ from sktime.forecasting.model_selection import (  # type: ignore
     SlidingWindowSplitter,
 )
 
-from pycaret.internal.pipeline import Pipeline as InternalPipeline
+from sktime.forecasting.naive import NaiveForecaster  # type: ignore
+
+# from sktime.forecasting.compose import ForecastingPipeline
+from pycaret.utils.time_series.forecasting.pipeline import PyCaretForecastingPipeline
+from sktime.forecasting.compose import TransformedTargetForecaster
+
+from pycaret.internal.preprocess.time_series.forecasting.preprocessor import (
+    TSForecastingPreprocessor,
+)
 
 import pycaret.containers.metrics.time_series
 import pycaret.containers.models.time_series
@@ -27,7 +36,8 @@ import pycaret.internal.preprocess
 from pycaret.internal.Display import Display
 from pycaret.internal.distributions import get_base_distributions
 from pycaret.internal.logging import get_logger
-from pycaret.internal.pipeline import get_pipeline_fit_kwargs
+
+# from pycaret.internal.pipeline import get_pipeline_fit_kwargs
 from pycaret.internal.plots.time_series import _get_plot
 from pycaret.internal.pycaret_experiment.supervised_experiment import (
     _SupervisedExperiment,
@@ -56,7 +66,7 @@ warnings.filterwarnings("ignore")
 LOGGER = get_logger()
 
 
-class TSForecastingExperiment(_SupervisedExperiment):
+class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
     def __init__(self) -> None:
         super().__init__()
         self._ml_usecase = MLUsecase.TIME_SERIES
@@ -87,6 +97,8 @@ class TSForecastingExperiment(_SupervisedExperiment):
                 "approach_type",
                 "exogenous_present",
                 "index_type",
+                "y_transformed",
+                "X_transformed",
             }
         )
         self._available_plots = {
@@ -163,8 +175,8 @@ class TSForecastingExperiment(_SupervisedExperiment):
             # ["Transformed Test Exogenous", self.X_test.shape],
         ]
 
-        if self.preprocess:
-            display_container.extend([["Imputation Type", self.imputation_type]])
+        # if self.preprocess:
+        #     display_container.extend([["Imputation Type", self.imputation_type]])
 
         display_container = pd.DataFrame(
             display_container, columns=["Description", "Value"]
@@ -540,8 +552,13 @@ class TSForecastingExperiment(_SupervisedExperiment):
         seasonal_period = [self._convert_sp_to_int(sp) for sp in seasonal_period]
 
         # check valid seasonal parameter
+        # We use y_transformed here instead of y for 2 reasons:
+        # (1) Missing values in y will cause issues with this test (seasonality
+        #     will not be detected properly).
+        # (2) The actual forecaster will see transformed values of y for training.
+        #     Hence, these transformed values should be used to determine seasonality.
         seasonality_test_results = [
-            autocorrelation_seasonality_test(data[self.target_param], sp)
+            autocorrelation_seasonality_test(self.y_transformed, sp)
             for sp in seasonal_period
         ]
         self.seasonality_present = any(seasonality_test_results)
@@ -627,9 +644,12 @@ class TSForecastingExperiment(_SupervisedExperiment):
         index: Optional[str] = None,
         ignore_features: Optional[List] = None,
         preprocess: bool = True,
-        imputation_type: str = "simple",
-        # transform_target: bool = False,
-        # transform_target_method: str = "box-cox",
+        numeric_imputation_target: Optional[Union[int, float, str]] = None,
+        numeric_imputation_exogenous: Optional[Union[int, float, str]] = None,
+        # transform_target: Optional[str] = None,
+        # transform_exogenous: Optional[str] = None,
+        # scale_target: Optional[str] = None,
+        # scale_exogenous: Optional[str] = None,
         fold_strategy: Union[str, Any] = "expanding",
         fold: int = 3,
         fh: Optional[Union[List[int], int, np.array]] = 1,
@@ -894,7 +914,7 @@ class TSForecastingExperiment(_SupervisedExperiment):
         self.enforce_pi = enforce_pi
         self.enforce_exogenous = enforce_exogenous
         self.preprocess = preprocess
-        self.imputation_type = imputation_type
+        # self.imputation_type = imputation_type
         self.log_plots_param = log_plots
 
         # Needed for compatibility with Regression and Classification.
@@ -946,21 +966,6 @@ class TSForecastingExperiment(_SupervisedExperiment):
 
         #### Set Forecast Horizon ----
         self._check_and_set_fh(fh=fh, fold_strategy=fold_strategy, fold=fold)
-
-        #### Set up Seasonal Period ----
-        self._check_and_set_seasonal_period(data=data_, seasonal_period=seasonal_period)
-
-        #### Multiplicative components allowed? ----
-        self.logger.info("Set up whether Multiplicative components allowed.")
-
-        ############################################
-        #### Multiplicative components allowed? ####
-        ############################################
-
-        self.logger.info("Set up whether Multiplicative components allowed.")
-
-        # Should multiplicative components be allowed in models that support it
-        self.strictly_positive = np.all(data_[self.target_param] > 0)
 
         ###############################
         #### Set Train Test Splits ####
@@ -1017,11 +1022,92 @@ class TSForecastingExperiment(_SupervisedExperiment):
 
         # Preprocessing ============================================ >>
 
-        # Initialize empty pipeline
-        self.pipeline = InternalPipeline(
-            steps=[("placeholder", None)],
-            memory=self.memory,
-        )
+        num_missing_target = self.y.isna().sum()
+        self.target_has_missing = num_missing_target != 0
+        if isinstance(self.X, pd.DataFrame):
+            num_missing_exogenous = self.X.isna().sum().sum()
+            self.exogenous_has_missing = num_missing_exogenous != 0
+        elif self.X is None:
+            num_missing_exogenous = 0
+            self.exogenous_has_missing = False
+
+        if self.target_has_missing and numeric_imputation_target is None:
+            raise ValueError(
+                "\nTime Series modeling automation relies on running statistical tests, plots, etc.\n"
+                "Many of these can not be run when data has missing values. \nYour target has "
+                f"{num_missing_target} missing values and `numeric_imputation_target` is set to "
+                "`None`. \nPlease enable imputation to proceed. "
+            )
+        if self.exogenous_has_missing and numeric_imputation_exogenous is None:
+            raise ValueError(
+                "\nTime Series modeling automation relies on running statistical tests, plots, etc.\n"
+                "Many of these can not be run when data has missing values. \nYour exogenous data "
+                f"has {num_missing_exogenous} missing values and `numeric_imputation_exogenous` is "
+                "set to `None`. \nPlease enable imputation to proceed. "
+            )
+
+        # Initialize empty steps ----
+        self.pipe_steps_target = []
+        self.pipe_steps_exogenous = []
+
+        if preprocess:
+            self.logger.info("Preparing preprocessing pipeline...")
+
+            #### Impute missing values ----
+            if numeric_imputation_target is not None:
+                self._imputation(
+                    numeric_imputation=numeric_imputation_target, target=True
+                )
+            # Only add exogenous pipeline steps if exogenous variables are present.
+            if (
+                self.exogenous_present == TSExogenousPresent.YES
+                and numeric_imputation_exogenous is not None
+            ):
+                self._imputation(
+                    numeric_imputation=numeric_imputation_exogenous, target=False
+                )
+
+        #     # Transformations (preferably based on residual analysis) ----
+        #     if transformation:
+        #         self._transformation(transformation_method)
+
+        #     # Scaling ----
+        #     if normalize:
+        #         self._normalization(normalize_method)
+
+        # # Add custom transformers to the pipeline
+        # if custom_pipeline:
+        #     self._add_custom_pipeline(custom_pipeline)
+
+        # Add dummy forecaster for now ----
+        dummy_model_step = [("dummy_model", NaiveForecaster())]
+        self.pipe_steps_target.extend(dummy_model_step)
+        forecaster = TransformedTargetForecaster(self.pipe_steps_target)
+
+        # Create Forecasting Pipeline ----
+        self.pipe_steps_exogenous.extend([("forecaster", forecaster)])
+        self.pipeline = PyCaretForecastingPipeline(steps=self.pipe_steps_exogenous)
+
+        # No need to pass fh here (as far as I can tell), since this is just needed
+        # for the transformed data values.
+        self.pipeline.fit(y=self.y_train, X=self.X_train)
+
+        self.logger.info("Finished creating preprocessing pipeline.")
+        self.logger.info(f"Pipeline: {self.pipeline}")
+
+        ##################################################################
+        #### Do these after the preprocessing pipeline has been setup ####
+        ##################################################################
+        # Since the models will see transformed data, these parameters should
+        # also be derived from the transformed data.
+
+        #### Set up Seasonal Period ----
+        self._check_and_set_seasonal_period(data=data_, seasonal_period=seasonal_period)
+
+        #### Multiplicative components allowed? ----
+        self.logger.info("Set up whether Multiplicative components allowed.")
+        # Should multiplicative components be allowed in models that support it
+        self.strictly_positive = np.all(self.y_transformed > 0)
 
         ############################################
         #### Initial EDA in Setup (for display) ####
@@ -1046,22 +1132,26 @@ class TSForecastingExperiment(_SupervisedExperiment):
         else:
             self.white_noise = "Maybe"
 
-        self.lowercase_d = recommend_lowercase_d(data=self.y)
+        # We use y_transformed here instead of y for 2 reasons:
+        # (1) Missing values in y will cause issues with this test.
+        # (2) The actual forecaster will see transformed values of y for training.
+        #     Hence d, and D should be computed using the transformed values.
+        self.lowercase_d = recommend_lowercase_d(data=self.y_transformed)
         if self.primary_sp_to_use > 1:
             try:
                 max_D = 2
                 uppercase_d = recommend_uppercase_d(
-                    data=self.y, sp=self.primary_sp_to_use, max_D=max_D
+                    data=self.y_transformed, sp=self.primary_sp_to_use, max_D=max_D
                 )
-            except ValueError as error:
-                self.logger.info(f"Test for computing 'D' failed at max_D = 2.")
+            except ValueError:
+                self.logger.info("Test for computing 'D' failed at max_D = 2.")
                 try:
                     max_D = 1
                     uppercase_d = recommend_uppercase_d(
-                        data=self.y, sp=self.primary_sp_to_use, max_D=max_D
+                        data=self.y_transformed, sp=self.primary_sp_to_use, max_D=max_D
                     )
                 except ValueError:
-                    self.logger.info(f"Test for computing 'D' failed at max_D = 1.")
+                    self.logger.info("Test for computing 'D' failed at max_D = 1.")
                     uppercase_d = 0
         else:
             uppercase_d = 0
@@ -1406,16 +1496,41 @@ class TSForecastingExperiment(_SupervisedExperiment):
             fit_kwargs.update(fh_param)
         return fit_kwargs
 
+    def add_model_to_pipeline(self, model):
+        """Adds the model to the preprocessing pipeline."""
+        pipeline_with_model = deepcopy(self.pipeline)
+        # Pop the dummy model at the end of pipeline ----
+        pipeline_with_model.steps[-1][1].steps.pop()
+        # Add the right model to the pipeline ----
+        pipeline_with_model.steps[-1][1].steps.extend([("model", model)])
+
+        return pipeline_with_model
+
+    def get_final_model_from_pipeline(self, pipeline):
+        """Extracts and returns the final model from the pipeline."""
+
+        # Pipeline will always be of type PyCaretForecastingPipeline with final
+        # forecaster being of type TransformedTargetForecaster
+        final_forecaster_only = pipeline.steps_[-1][1].steps_[-1][1]
+
+        return final_forecaster_only
+
     def _create_model_without_cv(
         self, model, data_X, data_y, fit_kwargs, predict, system, display: Display
     ):
-        fit_kwargs = get_pipeline_fit_kwargs(model, fit_kwargs)
+        # fit_kwargs = get_pipeline_fit_kwargs(model, fit_kwargs)
         self.logger.info("Cross validation set to False")
 
         self.logger.info("Fitting Model")
         model_fit_start = time.time()
+
+        ###############################################
+        #### Add the correct model to the pipeline ####
+        ###############################################
+        pipeline_with_model = self.add_model_to_pipeline(model=model)
+
         with io.capture_output():
-            model.fit(data_y, data_X, **fit_kwargs)
+            pipeline_with_model.fit(data_y, data_X, **fit_kwargs)
         model_fit_end = time.time()
 
         model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
@@ -1424,7 +1539,7 @@ class TSForecastingExperiment(_SupervisedExperiment):
 
         if predict:
             # X is not passed here so predict_model picks X_test by default.
-            self.predict_model(model, verbose=False)
+            self.predict_model(pipeline_with_model, verbose=False)
             model_results = self.pull(pop=True).drop("Model", axis=1)
 
             self.display_container.append(model_results)
@@ -1435,7 +1550,7 @@ class TSForecastingExperiment(_SupervisedExperiment):
 
             self.logger.info(f"display_container: {len(self.display_container)}")
 
-        return model, model_fit_time
+        return pipeline_with_model, model_fit_time
 
     def _create_model_with_cv(
         self,
@@ -1455,9 +1570,6 @@ class TSForecastingExperiment(_SupervisedExperiment):
         MONITOR UPDATE STARTS
         """
 
-        # display.update_monitor(
-        #     1, f"Fitting {_get_cv_n_folds(data_y, cv)} Folds",
-        # )
         display.update_monitor(1, f"Fitting {cv.get_n_splits(data_y)} Folds")
         display.display_monitor()
         """
@@ -1469,17 +1581,9 @@ class TSForecastingExperiment(_SupervisedExperiment):
 
         n_jobs = self._gpu_n_jobs_param
 
-        # fit_kwargs = get_pipeline_fit_kwargs(pipeline_with_model, fit_kwargs)
-
         self.logger.info(f"Cross validating with {cv}, n_jobs={n_jobs}")
 
         # Cross Validate time series
-        # fh_param = {"fh": cv.fh}
-
-        # if fit_kwargs is None:
-        #     fit_kwargs = fh_param
-        # else:
-        #     fit_kwargs.update(fh_param)
         fit_kwargs = self.update_fit_kwargs_with_fh_from_cv(
             fit_kwargs=fit_kwargs, cv=cv
         )
@@ -1487,11 +1591,14 @@ class TSForecastingExperiment(_SupervisedExperiment):
         model_fit_start = time.time()
 
         additional_scorer_kwargs = self.get_additional_scorer_kwargs()
+
+        ###############################################
+        #### Add the correct model to the pipeline ####
+        ###############################################
+        pipeline_with_model = self.add_model_to_pipeline(model=model)
+
         scores, cutoffs = cross_validate(
-            # Commented out since supervised_experiment also does not clone
-            # when doing cross_validate
-            # forecaster=clone(model),
-            forecaster=model,
+            forecaster=pipeline_with_model,
             y=data_y,
             X=data_X,
             scoring=metrics_dict,
@@ -1553,7 +1660,7 @@ class TSForecastingExperiment(_SupervisedExperiment):
             model_fit_start = time.time()
             self.logger.info("Finalizing model")
             with io.capture_output():
-                model.fit(y=data_y, X=data_X, **fit_kwargs)
+                pipeline_with_model.fit(y=data_y, X=data_X, **fit_kwargs)
             model_fit_end = time.time()
 
             model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
@@ -1570,7 +1677,9 @@ class TSForecastingExperiment(_SupervisedExperiment):
             model_fit_time /= cv.get_n_splits(data_y)
 
         # return model, model_fit_time, model_results, avgs_dict
-        return model, model_fit_time, model_results, avgs_dict
+        #### Keep only final forecaster. Rest of the pipeline will be added during finalize.
+        final_model = self.get_final_model_from_pipeline(pipeline=pipeline_with_model)
+        return final_model, model_fit_time, model_results, avgs_dict
 
     def tune_model(
         self,
@@ -1829,12 +1938,15 @@ class TSForecastingExperiment(_SupervisedExperiment):
 
         self.logger.info("Copying training dataset")
         # Storing X_train and y_train in data_X and data_y parameter
-        data_X = self.X_train.copy()
+        if self.X_train is None:
+            data_X = None
+        else:
+            data_X = self.X_train.copy()
         data_y = self.y_train.copy()
 
-        # Replace Empty DataFrame with None as empty DataFrame causes issues
-        if (data_X.shape[0] == 0) or (data_X.shape[1] == 0):
-            data_X = None
+        # # Replace Empty DataFrame with None as empty DataFrame causes issues
+        # if (data_X.shape[0] == 0) or (data_X.shape[1] == 0):
+        #     data_X = None
 
         display.move_progress()
 
@@ -2741,7 +2853,8 @@ class TSForecastingExperiment(_SupervisedExperiment):
         else:
             # Prediction interval is not returned (not implemented)
             if return_pred_int:
-                result = pd.DataFrame(return_vals, columns=["y_pred"])
+                result = pd.DataFrame(return_vals)
+                result.columns = ["y_pred"]
                 result["lower"] = np.nan
                 result["upper"] = np.nan
             else:

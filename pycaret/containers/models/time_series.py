@@ -1863,7 +1863,10 @@ class OrthogonalMatchingPursuitCdsDtContainer(CdsDtContainer):
     model_type = TSModelTypes.LINEAR
 
     def __init__(self, experiment) -> None:
-        self.num_features = len(experiment.X_train.columns)
+        if experiment.X_train is None:
+            self.num_features = 0
+        else:
+            self.num_features = len(experiment.X_train.columns)
         super().__init__(experiment=experiment)
 
     def return_regressor_class(self):
@@ -1915,7 +1918,10 @@ class KNeighborsCdsDtContainer(CdsDtContainer):
     model_type = TSModelTypes.NEIGHBORS
 
     def __init__(self, experiment) -> None:
-        self.num_features = len(experiment.X_train.columns)
+        if experiment.X_train is None:
+            self.num_features = 0
+        else:
+            self.num_features = len(experiment.X_train.columns)
         super().__init__(experiment=experiment)
 
     def return_regressor_class(self):
@@ -2490,7 +2496,7 @@ class BaseCdsDtForecaster(BaseForecaster):
 
     _tags = {
         "scitype:y": "univariate",  # which y are fine? univariate/multivariate/both
-        "univariate-only": True,  # does estimator use the exogenous X?
+        "ignores-exogeneous-X": False,  # does estimator use the exogenous X?
         "handles-missing-data": False,  # can estimator handle missing data?
         "y_inner_mtype": "pd.Series",  # which types do _fit, _predict, assume for y?
         "X_inner_mtype": "pd.DataFrame",  # which types do _fit, _predict, assume for X?

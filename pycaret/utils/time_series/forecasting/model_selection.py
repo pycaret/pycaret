@@ -157,9 +157,13 @@ def _fit_and_score(
                 },
                 **scorer._kwargs,
             }
-            metric = scorer._score_func(y_true=y_test, y_pred=y_pred, **kwargs)
+            try:
+                metric = scorer._score_func(y_true=y_test, y_pred=y_pred, **kwargs)
+            except:
+                # Missing values in y_train will cause MASE to fail.
+                metric = np.nan
         else:
-            metric = None
+            metric = np.nan
         fold_scores[scorer_name] = metric
     score_time = time.time() - start
 
@@ -484,9 +488,7 @@ class BaseGridSearch:
         # applicable for that candidate. Use defaultdict as each candidate may
         # not contain all the params
         param_results = defaultdict(
-            partial(
-                np.ma.MaskedArray, np.empty(n_candidates,), mask=True, dtype=object,
-            )
+            partial(np.ma.MaskedArray, np.empty(n_candidates), mask=True, dtype=object)
         )
         for cand_i, params in enumerate(candidate_params):
             for name, value in params.items():
