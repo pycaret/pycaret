@@ -1,31 +1,56 @@
-import numpy as np
-import pandas as pd
+from typing import Union
 
-from sktime.transformations.series.impute import Imputer
-
-from pycaret.internal.utils import (
-    to_df,
-    get_columns_to_stratify_by,
-    df_shrink_dtypes,
-    check_features_exist,
-    normalize_custom_transformers,
+from sklearn.preprocessing import (
+    StandardScaler,
+    MinMaxScaler,
+    MaxAbsScaler,
+    RobustScaler,
 )
+
+from sktime.transformations.series.compose import ColumnwiseTransformer
+from sktime.transformations.series.adapt import TabularToSeriesAdaptor
+from sktime.transformations.series.impute import Imputer
+from sktime.transformations.series.boxcox import BoxCoxTransformer, LogTransformer
+from sktime.transformations.series.exponent import ExponentTransformer, SqrtTransformer
+from sktime.transformations.series.cos import CosineTransformer
 
 
 class TSForecastingPreprocessor:
     """Class for preprocessing Time Series Forecasting Experiments."""
 
-    def _imputation(self, numeric_imputation, target: bool = True):
-        """Perform simple imputation of missing values."""
-        type = "Target" if target else "Exogenous"
-        self.logger.info(f"Set up imputation for {type} variable(s).")
+    def _imputation(
+        self, numeric_imputation: Union[str, int, float], target: bool = True
+    ):
+        """Perform numeric imputation of missing values.
+
+        Parameters
+        ----------
+        numeric_imputation : Union[str, int, float]
+            The method to be used for imputation.
+            If str, then passed as is to the underlying `sktime` imputer.
+            Allowed values are:
+                "drift", "linear", "nearest", "mean", "median", "backfill",
+                "bfill", "pad", "ffill", "random"
+            If int or float, imputation method is set to "constant" with the given value.
+        target : bool, optional
+            If True, imputation is added to the target variable steps
+            If False, imputation is added to the exogenous variable steps,
+            by default True
+
+        Raises
+        ------
+        ValueError
+            (1) `numeric_imputation` is of type str but not of one of the allowed values.
+            (2) `numeric_imputation` is not of one of the allowed types.
+        """
+        type_ = "Target" if target else "Exogenous"
+        self.logger.info(f"Set up imputation for {type_} variable(s).")
 
         if isinstance(numeric_imputation, str):
             allowed_values = [
                 "drift",
                 "linear",
                 "nearest",
-                "constant",
                 "mean",
                 "median",
                 "backfill",
@@ -36,14 +61,14 @@ class TSForecastingPreprocessor:
             ]
             if numeric_imputation not in allowed_values:
                 raise ValueError(
-                    f"{target} Imputation Type '{numeric_imputation}' not allowed."
+                    f"{type_} Imputation Type '{numeric_imputation}' not allowed."
                 )
             num_estimator = Imputer(method=numeric_imputation, random_state=self.seed)
         elif isinstance(numeric_imputation, (int, float)):
             num_estimator = Imputer(method="constant", value=numeric_imputation)
         else:
             raise ValueError(
-                f"{target} Imputation Type '{numeric_imputation}' is not of allowed type."
+                f"{type_} Imputation Type '{type(numeric_imputation)}' is not of allowed type."
             )
 
         if target:
@@ -51,49 +76,106 @@ class TSForecastingPreprocessor:
         else:
             self.pipe_steps_exogenous.extend([("numerical_imputer", num_estimator)])
 
-    # def _transformation(self, transformation_method):
-    #     """Power transform the data to be more Gaussian-like."""
-    #     self.logger.info("Set up column transformation.")
+    def _transformation(self, transform: str, target: bool = True):
+        """Power transform the data to be more Gaussian-like.
 
-    #     if transformation_method == "yeo-johnson":
-    #         transformation_estimator = PowerTransformer(
-    #             method="yeo-johnson", standardize=False, copy=True
-    #         )
-    #     elif transformation_method == "quantile":
-    #         transformation_estimator = QuantileTransformer(
-    #             random_state=self.seed,
-    #             output_distribution="normal",
-    #         )
-    #     else:
-    #         raise ValueError(
-    #             "Invalid value for the transformation_method parameter. "
-    #             "The value should be either yeo-johnson or quantile, "
-    #             f"got {transformation_method}."
-    #         )
+        Parameters
+        ----------
+        transform : str
+            The method to be used for transformation. Allowed values and
+            corresponding transformers are:
+                "box-cox": BoxCoxTransformer(),
+                "log": LogTransformer(),
+                "sqrt": SqrtTransformer(),
+                "exp": ExponentTransformer(),
+                "cos": CosineTransformer(),
+        target : bool, optional
+            If True, transformation is added to the target variable steps
+            If False, transformation is added to the exogenous variable steps,
+            by default True
 
-    #     self.pipeline.steps.append(
-    #         ("transformation", TransfomerWrapper(transformation_estimator))
-    #     )
+        Raises
+        ------
+        ValueError
+            (1) `transform` is not of one of the allowed values.
+            (2) `transform` is not of one of the allowed types.
+        """
+        type_ = "Target" if target else "Exogenous"
+        self.logger.info(f"Set up transformation for {type_} variable(s).")
 
-    # def _normalization(self, normalize_method):
-    #     """Scale the features."""
-    #     self.logger.info("Set up feature normalization.")
+        if isinstance(transform, str):
+            transform_dict = {
+                "box-cox": BoxCoxTransformer(),
+                "log": LogTransformer(),
+                "sqrt": SqrtTransformer(),
+                "exp": ExponentTransformer(),
+                "cos": CosineTransformer(),
+            }
 
-    #     norm_dict = {
-    #         "zscore": StandardScaler(),
-    #         "minmax": MinMaxScaler(),
-    #         "maxabs": MaxAbsScaler(),
-    #         "robust": RobustScaler(),
-    #     }
-    #     if normalize_method in norm_dict:
-    #         normalize_estimator = TransfomerWrapper(norm_dict[normalize_method])
-    #     else:
-    #         raise ValueError(
-    #             "Invalid value for the normalize_method parameter, got "
-    #             f"{normalize_method}. Possible values are: {' '.join(norm_dict)}."
-    #         )
+            if transform not in transform_dict:
+                raise ValueError(
+                    f"{type_} transformaton method '{transform}' not allowed."
+                )
 
-    #     self.pipeline.steps.append(("normalize", normalize_estimator))
+        else:
+            raise ValueError(
+                f"{type_} transformaton method '{type(transform)}' is not of allowed type."
+            )
+
+        if target:
+            transformer = transform_dict[transform]
+            self.pipe_steps_target.extend([("transformer", transformer)])
+        else:
+            transformer = ColumnwiseTransformer(transform_dict[transform])
+            self.pipe_steps_exogenous.extend([("transformer", transformer)])
+
+    def _scaling(self, scale: str, target: bool = True):
+        """Scale the data.
+
+        Parameters
+        ----------
+        scale : str
+            The method to be used for scaling. Allowed values and corresponding scalers are:
+                "zscore": StandardScaler(),
+                "minmax": MinMaxScaler(),
+                "maxabs": MaxAbsScaler(),
+                "robust": RobustScaler(),
+        target : bool, optional
+            If True, scaling is added to the target variable steps
+            If False, scaling is added to the exogenous variable steps,
+            by default True
+
+        Raises
+        ------
+        ValueError
+            (1) `scale` is not of one of the allowed values.
+            (2) `scale` is not of one of the allowed types.
+        """
+        type_ = "Target" if target else "Exogenous"
+        self.logger.info(f"Set up scaling for {type_} variable(s).")
+
+        if isinstance(scale, str):
+            scale_dict = {
+                "zscore": StandardScaler(),
+                "minmax": MinMaxScaler(),
+                "maxabs": MaxAbsScaler(),
+                "robust": RobustScaler(),
+            }
+
+            if scale not in scale_dict:
+                raise ValueError(f"{type_} scale method '{scale}' not allowed.")
+
+            scaler = TabularToSeriesAdaptor(scale_dict[scale])
+
+        else:
+            raise ValueError(
+                f"{type_} transformaton method '{type(scale)}' is not of allowed type."
+            )
+
+        if target:
+            self.pipe_steps_target.extend([("scaler", scaler)])
+        else:
+            self.pipe_steps_exogenous.extend([("scaler", scaler)])
 
     # def _feature_selection(
     #     self,

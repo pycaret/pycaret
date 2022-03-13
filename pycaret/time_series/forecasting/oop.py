@@ -17,11 +17,16 @@ from sktime.forecasting.model_selection import (  # type: ignore
     ExpandingWindowSplitter,
     SlidingWindowSplitter,
 )
+from sktime.forecasting.base import BaseForecaster
+from sktime.forecasting.base._sktime import DEFAULT_ALPHA  # type: ignore
 
 from sktime.forecasting.naive import NaiveForecaster  # type: ignore
 
 # from sktime.forecasting.compose import ForecastingPipeline
-from pycaret.utils.time_series.forecasting.pipeline import PyCaretForecastingPipeline
+from pycaret.utils.time_series.forecasting.pipeline import (
+    PyCaretForecastingPipeline,
+    _add_model_to_pipeline,
+)
 from sktime.forecasting.compose import TransformedTargetForecaster
 
 from pycaret.internal.preprocess.time_series.forecasting.preprocessor import (
@@ -219,19 +224,21 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
     def _get_default_plots_to_log(self) -> List[str]:
         return ["forecast", "residuals", "diagnostics"]
 
-    def _check_fh(self, fh: Union[List[int], int, np.array]) -> np.array:
+    def _check_fh(
+        self, fh: Union[List[int], int, np.array, ForecastingHorizon]
+    ) -> Union[np.array, ForecastingHorizon]:
         """
         Checks fh for validity and converts fh into an appropriate forecasting
         horizon compatible with sktime (if necessary)
 
         Parameters
         ----------
-        fh : Union[List[int], int, np.array]
+        fh : Union[List[int], int, np.array, ForecastingHorizon]
             Forecasting Horizon
 
         Returns
         -------
-        np.array
+        Union[np.array, ForecastingHorizon]
             Forecast Horizon (possibly updated to made compatible with sktime)
 
         Raises
@@ -249,12 +256,13 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                 )
         elif isinstance(fh, List):
             fh = np.array(fh)
-        elif isinstance(fh, np.ndarray):
+        elif isinstance(fh, (np.ndarray, ForecastingHorizon)):
             # Good to go
             pass
         else:
             raise ValueError(
-                f"Horizon `fh` must be a of type int, list, or numpy array, got object of {type(fh)} type!"
+                "Horizon `fh` must be a of type int, list, or numpy array or "
+                f"sktime ForecastingHorizon, got object of {type(fh)} type!"
             )
         return fh
 
@@ -646,10 +654,10 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         preprocess: bool = True,
         numeric_imputation_target: Optional[Union[int, float, str]] = None,
         numeric_imputation_exogenous: Optional[Union[int, float, str]] = None,
-        # transform_target: Optional[str] = None,
-        # transform_exogenous: Optional[str] = None,
-        # scale_target: Optional[str] = None,
-        # scale_exogenous: Optional[str] = None,
+        transform_target: Optional[str] = None,
+        transform_exogenous: Optional[str] = None,
+        scale_target: Optional[str] = None,
+        scale_exogenous: Optional[str] = None,
         fold_strategy: Union[str, Any] = "expanding",
         fold: int = 3,
         fh: Optional[Union[List[int], int, np.array]] = 1,
@@ -1067,30 +1075,37 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                     numeric_imputation=numeric_imputation_exogenous, target=False
                 )
 
-        #     # Transformations (preferably based on residual analysis) ----
-        #     if transformation:
-        #         self._transformation(transformation_method)
+            # Transformations (preferably based on residual analysis) ----
+            if transform_target is not None:
+                self._transformation(transform=transform_target, target=True)
+            # Only add exogenous pipeline steps if exogenous variables are present.
+            if (
+                self.exogenous_present == TSExogenousPresent.YES
+                and transform_exogenous is not None
+            ):
+                self._transformation(transform=transform_exogenous, target=False)
 
-        #     # Scaling ----
-        #     if normalize:
-        #         self._normalization(normalize_method)
+            # Scaling ----
+            if scale_target:
+                self._scaling(scale=scale_target, target=True)
+            # Only add exogenous pipeline steps if exogenous variables are present.
+            if (
+                self.exogenous_present == TSExogenousPresent.YES
+                and scale_exogenous is not None
+            ):
+                self._scaling(scale=scale_exogenous, target=False)
 
         # # Add custom transformers to the pipeline
         # if custom_pipeline:
         #     self._add_custom_pipeline(custom_pipeline)
 
-        # Add dummy forecaster for now ----
-        dummy_model_step = [("dummy_model", NaiveForecaster())]
-        self.pipe_steps_target.extend(dummy_model_step)
-        forecaster = TransformedTargetForecaster(self.pipe_steps_target)
+        self.pipeline = self._create_pipeline(
+            dummy_model=DummyForecaster(),
+            target_steps=self.pipe_steps_target,
+            exogenous_steps=self.pipe_steps_exogenous,
+        )
 
-        # Create Forecasting Pipeline ----
-        self.pipe_steps_exogenous.extend([("forecaster", forecaster)])
-        self.pipeline = PyCaretForecastingPipeline(steps=self.pipe_steps_exogenous)
-
-        # No need to pass fh here (as far as I can tell), since this is just needed
-        # for the transformed data values.
-        self.pipeline.fit(y=self.y_train, X=self.X_train)
+        self.pipeline.fit(y=self.y_train, X=self.X_train, fh=self.fh)
 
         self.logger.info("Finished creating preprocessing pipeline.")
         self.logger.info(f"Pipeline: {self.pipeline}")
@@ -1496,22 +1511,29 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             fit_kwargs.update(fh_param)
         return fit_kwargs
 
-    def add_model_to_pipeline(self, model):
-        """Adds the model to the preprocessing pipeline."""
-        pipeline_with_model = deepcopy(self.pipeline)
-        # Pop the dummy model at the end of pipeline ----
-        pipeline_with_model.steps[-1][1].steps.pop()
-        # Add the right model to the pipeline ----
-        pipeline_with_model.steps[-1][1].steps.extend([("model", model)])
+    def _get_final_model_from_pipeline(
+        self, pipeline: PyCaretForecastingPipeline, check_is_fitted: bool = False
+    ) -> BaseForecaster:
+        """Extracts and returns the final trained model from the pipeline.
 
-        return pipeline_with_model
+        Parameters
+        ----------
+        pipeline : PyCaretForecastingPipeline
+            The trained pipeline with the correct final model
+        check_is_fitted : bool
+            If True, will check if final model is fitted and raise an exception
+            if it is not.
 
-    def get_final_model_from_pipeline(self, pipeline):
-        """Extracts and returns the final model from the pipeline."""
-
+        Returns
+        -------
+        BaseForecaster
+            The trained final model in the pipeline
+        """
         # Pipeline will always be of type PyCaretForecastingPipeline with final
         # forecaster being of type TransformedTargetForecaster
         final_forecaster_only = pipeline.steps_[-1][1].steps_[-1][1]
+        if check_is_fitted:
+            final_forecaster_only.check_is_fitted()
 
         return final_forecaster_only
 
@@ -1527,7 +1549,9 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         ###############################################
         #### Add the correct model to the pipeline ####
         ###############################################
-        pipeline_with_model = self.add_model_to_pipeline(model=model)
+        pipeline_with_model = _add_model_to_pipeline(
+            pipeline=self.pipeline, model=model
+        )
 
         with io.capture_output():
             pipeline_with_model.fit(data_y, data_X, **fit_kwargs)
@@ -1595,7 +1619,9 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         ###############################################
         #### Add the correct model to the pipeline ####
         ###############################################
-        pipeline_with_model = self.add_model_to_pipeline(model=model)
+        pipeline_with_model = _add_model_to_pipeline(
+            pipeline=self.pipeline, model=model
+        )
 
         scores, cutoffs = cross_validate(
             forecaster=pipeline_with_model,
@@ -1662,23 +1688,14 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             with io.capture_output():
                 pipeline_with_model.fit(y=data_y, X=data_X, **fit_kwargs)
             model_fit_end = time.time()
-
             model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
         else:
-            # Set fh explicitly since we are not fitting explicitly
-            # This is needed so that the model can be used later to predict, etc.
-
-            # Update: Do we really use a unfitted modelf for prediction later?
-            # Also as per sktime developers, it is not advisable to use private
-            # functions from sktime. Disabling for now.
-            # model._set_fh(fit_kwargs.get("fh"))
-
-            # model_fit_time /= _get_cv_n_folds(data_y, cv)
             model_fit_time /= cv.get_n_splits(data_y)
 
-        # return model, model_fit_time, model_results, avgs_dict
-        #### Keep only final forecaster. Rest of the pipeline will be added during finalize.
-        final_model = self.get_final_model_from_pipeline(pipeline=pipeline_with_model)
+        #### Return the final model only. Rest of the pipeline will be added during finalize.
+        final_model = self._get_final_model_from_pipeline(
+            pipeline=pipeline_with_model, check_is_fitted=refit
+        )
         return final_model, model_fit_time, model_results, avgs_dict
 
     def tune_model(
@@ -2595,7 +2612,6 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                 resid = self.get_residuals(estimator=estimator)
                 if resid is None:
                     return
-                resid = self.check_and_clean_resid(resid=resid)
                 data = resid
             else:
                 plots_formatted_model = [
@@ -2767,8 +2783,13 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
 
         """
+        estimator.check_is_fitted()
+
         # Deep Cloning to prevent overwriting the fh when user specifies their own fh
         estimator_ = deep_clone(estimator)
+        pipeline_with_model = _add_model_to_pipeline(
+            pipeline=self.pipeline, model=estimator_
+        )
 
         loaded_in_same_env = True
         # Check if loaded in a different environment
@@ -2789,21 +2810,20 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             verbose = False
 
         if fh is None:
+            # TODO: Check if we can directly take from the estimator and remove the if-else
             if not hasattr(self, "fh"):
                 # If the model is saved and loaded afterwards,
                 # it will not have self.fh
                 fh = estimator_.fh
+            else:
+                fh = self.fh
         else:
             # Get the fh in the right format for sktime
             fh = self._check_fh(fh)
 
-        # NOTE: User does not need to pass X before finalizing the model even when
-        # building models with exogenous variables
-
-        # Loaded in the same environment as experiment
         if hasattr(self, "X_test"):
-            # If model has not been finalized & X has not been passed, then
-            # set X = X_test.
+            # If loaded in the same environment as experiment & model has not been
+            # finalized, then set X = X_test.
 
             # But note that some models like Prophet train on Datetime Index
             # But pycaret stores all indices as PeriodIndex, so convert
@@ -2826,54 +2846,16 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         # returned by pycaret). Hence converting to None.
         X = _coerce_empty_dataframe_to_none(data=X)
 
-        try:
-            # TODO: Replace estimator_.predict() with
-            # y_test_pred, lower, upper = get_predictions_with_intervals(
-            #     forecaster=estimator_, X=X, fh=fh, alpha=alpha
-            # )
-            return_vals = estimator_.predict(
-                fh=fh, X=X, return_pred_int=return_pred_int, alpha=alpha
-            )
-        except NotImplementedError as error:
-            self.logger.warning(error)
-            self.logger.warning(
-                "Most likely, prediction intervals has not been implemented for this "
-                "algorithm. Predcition will be run with `return_pred_int` = False, and "
-                "NaN values will be returned for the prediction intervals instead."
-            )
-            return_vals = estimator_.predict(
-                fh=fh, X=X, return_pred_int=False, alpha=alpha
-            )
-        if isinstance(return_vals, tuple):
-            # Prediction Interval is returned
-            #   First Value is a series of predictions
-            #   Second Value is a dataframe of lower and upper bounds
-            result = pd.concat(return_vals, axis=1)
-            result.columns = ["y_pred", "lower", "upper"]
-        else:
-            # Prediction interval is not returned (not implemented)
-            if return_pred_int:
-                result = pd.DataFrame(return_vals)
-                result.columns = ["y_pred"]
-                result["lower"] = np.nan
-                result["upper"] = np.nan
-            else:
-                # Leave as series
-                result = return_vals
-                if result.name is None:
-                    if hasattr(self, "y"):
-                        result.name = self.y.name
-                    else:
-                        # If the model is saved and loaded afterwards,
-                        # it will not have self.y
-                        pass
-
-        # Converting to float since rounding does not support int
-        result = result.astype(float).round(round)
-
-        # Prophet with return_pred_int = True returns datetime index.
-        # Not anymore, we changed the container to return back a period index
-        # result = coerce_datetime_to_period_index(result)
+        result = get_predictions_with_intervals(
+            forecaster=pipeline_with_model,
+            X=X,
+            fh=fh,
+            alpha=alpha,
+            merge=True,
+            round=round,
+        )
+        if not return_pred_int:
+            result = result["y_pred"]
 
         #################
         #### Metrics ####
@@ -2888,12 +2870,10 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         if loaded_in_same_env:
             y_test = self.y_test
+            y_train, _ = self._get_y_X_used_for_training(estimator)
 
-            # y_train for finalized model is different from self.y_train
-            # Hence, better to get this from the estimator directly.
-            y_train = estimator_._y
             y_test_pred, lower, upper = get_predictions_with_intervals(
-                forecaster=estimator_, X=X, fh=fh, alpha=alpha
+                forecaster=pipeline_with_model, X=X, fh=fh, alpha=alpha
             )
 
             if len(y_test_pred) != len(y_test):
@@ -3104,7 +3084,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         )
 
     def save_model(
-        self, model, model_name: str, model_only: bool = True, verbose: bool = True
+        self, model, model_name: str, model_only: bool = False, verbose: bool = True
     ):
 
         """
@@ -3129,8 +3109,9 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             Name of the model.
 
 
-        model_only: bool, default = True
-            Parameter not in use for now. Behavior may change in future.
+        model_only: bool, default = False
+            When set to True, only trained model object is saved instead of the
+            entire pipeline.
 
 
         verbose: bool, default = True
@@ -3194,12 +3175,52 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         """
 
-        return super().load_model(
+        model = super().load_model(
             model_name=model_name,
             platform=platform,
             authentication=authentication,
             verbose=verbose,
         )
+
+        #### In time series, the fitted pipeline is needed to make predictions,
+        # hence must be set.
+        if isinstance(model, PyCaretForecastingPipeline):
+            # The saved model was saved with the pipeline.
+            # Set the pipeline as it is needed for predictions, etc.
+            self.pipeline = deepcopy(model)
+        else:
+            # The saved model was saved without the pipeline. Create a dummy one
+            # and fit it.
+            self.pipeline = self._create_pipeline(dummy_model=model)
+            self.fh = model.fh
+            self.pipeline.fit(y=model._y, X=model._X, fh=self.fh)
+
+        self.pipeline.check_is_fitted()
+        model = self._get_final_model_from_pipeline(
+            pipeline=self.pipeline, check_is_fitted=True
+        )
+        return model
+
+    def _create_pipeline(
+        self,
+        dummy_model: BaseForecaster,
+        target_steps: Optional[List] = None,
+        exogenous_steps: Optional[List] = None,
+    ) -> PyCaretForecastingPipeline:
+
+        target_steps = target_steps or []
+        exogenous_steps = exogenous_steps or []
+
+        # Set the pipeline from model
+        # Add dummy forecaster for now ----
+        target_steps.extend([("dummy_model", dummy_model)])
+        forecaster = TransformedTargetForecaster(target_steps)
+
+        # Create Forecasting Pipeline ----
+        exogenous_steps.extend([("forecaster", forecaster)])
+        pipeline = PyCaretForecastingPipeline(exogenous_steps)
+
+        return pipeline
 
     def models(
         self,
@@ -3589,7 +3610,6 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             data = self.get_residuals(estimator=estimator)
             if data is None:
                 return
-            data = self.check_and_clean_resid(resid=data)
             data_name = "Residual"
 
         #### Step 2: Test ----
@@ -3679,59 +3699,127 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         return data
 
-    def get_residuals(self, estimator) -> Optional[pd.Series]:
-        # https://github.com/alan-turing-institute/sktime/issues/1105#issuecomment-932216820
+    def _get_y_X_used_for_training(
+        self,
+        estimator: BaseForecaster,
+    ) -> Tuple[pd.Series, pd.DataFrame]:
+        """Returns the y and X values passed to the pipeline for training.
+        These values are the values before transformation and can be passed to
+        the complete pipeline again if needed for steps in the workflow.
+
+        Parameters
+        ----------
+        estimator : BaseForecaster
+            sktime compatible model (without the pipeline). i.e. last step of
+            the pipeline TransformedTargetForecaster
+
+        Returns
+        -------
+        Tuple[pd.DataFrame, pd.DataFrame]
+            y and X values respectively used for training
+
+        Raises
+        ------
+        ValueError
+            Indices used to train estimator does not match either y_train or y indices.
+        """
+        if len(estimator._y) == len(self.y_train) and np.all(
+            estimator._y.index == self.y_train.index
+        ):
+            # Model has not been finalized ----
+            y = self.y_train
+            X = self.X_train
+        elif len(estimator._y) == len(self.y) and np.all(
+            estimator._y.index == self.y.index
+        ):
+            # Model has been finalized ----
+            y = self.y
+            X = self.X
+        else:
+            # Should not happen
+            raise ValueError(
+                "y indices in estimator (used for training) do not match with train "
+                "or full dataset. This should not happen"
+            )
+        return y, X
+
+    def get_residuals(self, estimator: BaseForecaster) -> Optional[pd.Series]:
+        """_summary_
+
+        Parameters
+        ----------
+        estimator : BaseForecaster
+            sktime compatible model (without the pipeline). i.e. last step of
+            the pipeline TransformedTargetForecaster
+
+        Returns
+        -------
+        Optional[pd.Series]
+            Insample residuals. `None` if estimator does not support insample predictions
+
+        References
+        ----------
+        https://github.com/alan-turing-institute/sktime/issues/1105#issuecomment-932216820
+        """
+
         resid = None
 
-        estimator.check_is_fitted()
+        y, _ = self._get_y_X_used_for_training(estimator)
 
-        # Deep Cloning to prevent overwriting the fh when getting insample predictions
-        estimator_ = deep_clone(estimator)
-        y_used_to_train = estimator_._y
-        X_used_to_train = estimator_._X
-        try:
-            resid = y_used_to_train - estimator_.predict(
-                fh=ForecastingHorizon(y_used_to_train.index, is_relative=False),
-                X=X_used_to_train,
-            )
-        except NotImplementedError as exception:
-            self.logger.warning(exception)
+        insample_predictions = self.get_insample_predictions(estimator)
+        if insample_predictions is not None:
+            resid = y - insample_predictions
+            resid = self._check_and_clean_resid(resid=resid)
+        else:
             print(
                 "In sample predictions has not been implemented for this estimator "
-                f"of type '{estimator_.__class__.__name__}' in `sktime`. When "
+                f"of type '{estimator.__class__.__name__}' in `sktime`. When "
                 "this is implemented, it will be enabled by default in pycaret."
             )
 
         return resid
 
-    def get_insample_predictions(self, estimator) -> Optional[pd.Series]:
+    def get_insample_predictions(
+        self, estimator: BaseForecaster
+    ) -> Optional[pd.Series]:
+        """Returns the insample predictions for the estimator by appropriately
+        taking the entire pipeline into consideration.
+
+        Parameters
+        ----------
+        estimator : BaseForecaster
+            sktime compatible model (without the pipeline). i.e. last step of
+            the pipeline TransformedTargetForecaster
+
+        Returns
+        -------
+        Optional[pd.Series]
+            Insample predictions. `None` if estimator does not support insample predictions
+
+        References
+        ----------
         # https://github.com/alan-turing-institute/sktime/issues/1105#issuecomment-932216820
+        # https://github.com/alan-turing-institute/sktime/blob/87bdf36dbc0990f29942eb6f7fa56a8e6c5fa7b7/sktime/forecasting/base/_base.py#L699
+        """
         insample_predictions = None
 
-        estimator.check_is_fitted()
-
-        # Deep Cloning to prevent overwriting the fh when getting insample predictions
-        estimator_ = deep_clone(estimator)
-        y_used_to_train = estimator_._y
-        X_used_to_train = estimator_._X
+        y, X = self._get_y_X_used_for_training(estimator)
+        fh = ForecastingHorizon(y.index, is_relative=False)
         try:
-            insample_predictions = self.predict_model(
-                estimator_, fh=-np.arange(0, len(y_used_to_train)), X=X_used_to_train
-            )
-
+            insample_predictions = self.predict_model(estimator, fh=fh, X=X)
         except NotImplementedError as exception:
             self.logger.warning(exception)
             print(
                 "In sample predictions has not been implemented for this estimator "
-                f"of type '{estimator_.__class__.__name__}' in `sktime`. When "
+                f"of type '{estimator.__class__.__name__}' in `sktime`. When "
                 "this is implemented, it will be enabled by default in pycaret."
             )
 
         return insample_predictions
 
-    def check_and_clean_resid(self, resid: pd.Series) -> pd.Series:
-        """Checks to see if the residuals matches one of the test set or
-        full dataset. If it does, it resturns the residuals without the NA values.
+    def _check_and_clean_resid(self, resid: pd.Series) -> pd.Series:
+        """Checks to see if the residuals matches one of the train set or
+        full dataset. If it does, it returns the residuals without the NA values.
 
         Parameters
         ----------
@@ -3798,3 +3886,28 @@ class TimeSeriesExperiment(TSForecastingExperiment):
         warnings.warn(msg, DeprecationWarning)
         print(msg)
         super().__init__()
+
+
+class DummyForecaster(BaseForecaster):
+    """Dummy Forecaster for initial pycaret pipeline"""
+
+    _tags = {
+        "scitype:y": "univariate",  # which y are fine? univariate/multivariate/both
+        "ignores-exogeneous-X": False,  # does estimator use the exogenous X?
+        "handles-missing-data": False,  # can estimator handle missing data?
+        "y_inner_mtype": "pd.Series",  # which types do _fit, _predict, assume for y?
+        "X_inner_mtype": "pd.DataFrame",  # which types do _fit, _predict, assume for X?
+        "requires-fh-in-fit": False,  # is forecasting horizon already required in fit?
+        "X-y-must-have-same-index": True,  # can estimator handle different X/y index?
+        "enforce-index-type": None,  # index type that needs to be enforced in X/y
+        "capability:pred_int": False,
+    }
+
+    def _fit(self, y, X=None, fh=None):
+        self.preds = pd.Series([-99_999] * 10)
+        self._is_fitted = True
+        return self
+
+    def _predict(self, fh=None, X=None, return_pred_int=False, alpha=DEFAULT_ALPHA):
+        self.check_is_fitted()
+        return self.preds
