@@ -1,12 +1,17 @@
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Tuple, Union, Optional
 
 import numpy as np
 import pandas as pd
 
 
 def get_predictions_with_intervals(
-    forecaster, X: pd.DataFrame, fh=None, alpha: float = 0.05
-) -> Tuple[pd.Series, pd.Series, pd.Series]:
+    forecaster,
+    X: pd.DataFrame,
+    fh=None,
+    alpha: float = 0.05,
+    merge: bool = False,
+    round: Optional[int] = None,
+) -> Union[pd.DataFrame, Tuple[pd.Series, pd.Series, pd.Series]]:
     """Returns the predictions, lower and upper interval values for a
     forecaster. If the forecaster does not support prediction intervals,
     then NAN is returned for lower and upper intervals.
@@ -19,10 +24,16 @@ def get_predictions_with_intervals(
         Exogenous Variables
     alpha : float, default = 0.05
         alpha value for prediction interval
+    merge : bool, default = False
+        If True, returns a dataframe with 3 columns called
+        ["y_pred", "lower", "upper"], else retruns 3 separate series.
+    round : Optional[int], default = None
+        If set to an integer value, returned values are rounded to as many digits
+        If set to None, no rounding is performed.
 
     Returns
     -------
-    Tuple[pd.Series, pd.Series, pd.Series]
+    Union[pd.DataFrame, Tuple[pd.Series, pd.Series, pd.Series]]
         Predictions, Lower and Upper Interval Values
     """
     # Predict and get lower and upper intervals
@@ -48,7 +59,12 @@ def get_predictions_with_intervals(
         if isinstance(series.index, pd.DatetimeIndex):
             series.index = series.index.to_period()
 
-    return y_pred, lower, upper
+    if merge:
+        results = pd.concat([y_pred, lower, upper], axis=1)
+        results.columns = ["y_pred", "lower", "upper"]
+        return results
+    else:
+        return y_pred, lower, upper
 
 
 def update_additional_scorer_kwargs(
@@ -82,6 +98,6 @@ def update_additional_scorer_kwargs(
     """
     additional_scorer_kwargs = initial_kwargs.copy()
     additional_scorer_kwargs.update(
-        {"y_train": y_train, "lower": lower, "upper": upper,}
+        {"y_train": y_train, "lower": lower, "upper": upper}
     )
     return additional_scorer_kwargs
