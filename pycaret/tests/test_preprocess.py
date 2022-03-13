@@ -60,7 +60,9 @@ def test_date_features():
     assert all([f"date_{attr}" in X for attr in ("day", "month", "year")])
 
 
-@pytest.mark.parametrize("imputation_method", [0, "drop", "mean", "median", "mode", "knn"])
+@pytest.mark.parametrize(
+    "imputation_method", [0, "drop", "mean", "median", "mode", "knn"]
+)
 def test_simple_numeric_imputation(imputation_method):
     """Assert that missing values are imputed."""
     data = pycaret.datasets.get_data("juice")
@@ -199,9 +201,9 @@ def test_remove_multicollinearity():
         data=data,
         target="STORE",
         remove_multicollinearity=True,
-        multicollinearity_threshold=1.0,
+        multicollinearity_threshold=0.9999,
     )
-    
+
     X, _ = pc.pipeline.transform(pc.X, pc.y)
     assert "Id" in X and "Id 2" not in X
 
