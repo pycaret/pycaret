@@ -2824,18 +2824,8 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         if hasattr(self, "X_test"):
             # If loaded in the same environment as experiment & model has not been
             # finalized, then set X = X_test.
-
-            # But note that some models like Prophet train on Datetime Index
-            # But pycaret stores all indices as PeriodIndex, so convert
-            # appropriately before checking for the above condition
-            orig_freq = None
-            if isinstance(estimator._y.index, pd.DatetimeIndex):
-                orig_freq = self.y_train.index.freq
-            last_estimator_index = coerce_datetime_to_period_index(
-                estimator._y, freq=orig_freq
-            ).index[-1]
-
-            if last_estimator_index == self.y_train.index[-1] and X is None:
+            estimator_y, _ = self._get_cleaned_estimator_y_X(estimator=estimator)
+            if estimator_y.index[-1] == self.y_train.index[-1] and X is None:
                 X = self.X_test  # Predict Test Set
         # else: # Loaded in different environment
         # NOTE: If the model was built using exogenous variables, then user
@@ -3699,6 +3689,49 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         return data
 
+    def _get_cleaned_estimator_y_X(
+        self, estimator: BaseForecaster
+    ) -> Tuple[pd.Series, pd.DataFrame]:
+        """Some models like Prophet train on DatetimeIndex, but pycaret stores
+        all indices as PeriodIndex. This method will convert the y and X values of
+        the estimator from DatetimeIndex to PeriodIndex and return them. If the
+        index is not of type DatetimeIndex, then it returns the y and X values as is.
+
+        Note that this estimator data is different from the data used to train the
+        pipeline. Because of transformatons in the pipeline, the estimator (y, X)
+        values may be different from the (self.y_train, self.X_train) or
+        (self.y, self.X) values passed to the pipeline.
+
+        Parameters
+        ----------
+        estimator : BaseForecaster
+            Estimator whose y and X values have to be cleaned and returned
+
+        Returns
+        -------
+        Tuple[pd.Series, pd.DataFrame]
+            Cleaned y and X values respectively
+        """
+
+        orig_freq = None
+        if isinstance(estimator._y.index, pd.DatetimeIndex):
+            orig_freq = self.y_train.index.freq
+            clean_y = coerce_datetime_to_period_index(data=estimator._y, freq=orig_freq)
+            clean_X = coerce_datetime_to_period_index(data=estimator._X, freq=orig_freq)
+        else:
+            clean_y = estimator._y.copy()
+            if isinstance(estimator._X, pd.DataFrame):
+                clean_X = estimator._X.copy()
+            elif estimator._X is None:
+                clean_X = None
+            else:
+                raise ValueError(
+                    "Estimator's X is not of allowed type (Pandas DataFrame or None). "
+                    f"Got {type(estimator._X)}"
+                )
+
+        return clean_y, clean_X
+
     def _get_y_X_used_for_training(
         self,
         estimator: BaseForecaster,
@@ -3723,14 +3756,16 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         ValueError
             Indices used to train estimator does not match either y_train or y indices.
         """
-        if len(estimator._y) == len(self.y_train) and np.all(
-            estimator._y.index == self.y_train.index
+
+        estimator_y, _ = self._get_cleaned_estimator_y_X(estimator=estimator)
+        if len(estimator_y) == len(self.y_train) and np.all(
+            estimator_y.index == self.y_train.index
         ):
             # Model has not been finalized ----
             y = self.y_train
             X = self.X_train
-        elif len(estimator._y) == len(self.y) and np.all(
-            estimator._y.index == self.y.index
+        elif len(estimator_y) == len(self.y) and np.all(
+            estimator_y.index == self.y.index
         ):
             # Model has been finalized ----
             y = self.y
