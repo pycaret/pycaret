@@ -26,7 +26,7 @@ jobs:
           python -m pip install -U pytest
           python -m pip install -U codecov
           
-          $CONDA/bin/conda install prophet>=1.0
+          $CONDA/bin/conda install -n base -c conda-forge prophet>=1.0
                              
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
           if [ -f requirements-optional.txt ]; then pip install -r requirements-optional.txt; fi
@@ -62,7 +62,8 @@ jobs:
           python -m pip install -U pytest
           python -m pip install -U codecov
           
-          $CONDA/bin/conda install prophet>=1.0
+          C:\Miniconda\condabin\conda.bat activate base
+          C:\Miniconda\condabin\conda.bat install -n base -c conda-forge prophet>=1.0
           
           pip install -r requirements.txt
           pip install -r requirements-optional.txt
@@ -195,7 +196,7 @@ jobs:
           python -m pip install -U pytest
           python -m pip install -U codecov
           
-          $CONDA/bin/conda install prophet>=1.0
+          $CONDA/bin/conda install -n base -c conda-forge prophet>=1.0
           
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
           if [ -f requirements-ts.txt ]; then pip install -r requirements-ts.txt; fi
@@ -226,7 +227,7 @@ jobs:
           python -m pip install -U pytest
           python -m pip install -U codecov
           
-          $CONDA/bin/conda install prophet>=1.0
+          $CONDA/bin/conda install -n base -c conda-forge prophet>=1.0
           
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
           if [ -f requirements-ts.txt ]; then pip install -r requirements-ts.txt; fi
