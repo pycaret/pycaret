@@ -29,7 +29,7 @@ jobs:
           python -m pip install -U LunarCalendar>=0.0.9
           python -m pip install -U convertdate>=2.1.2
           python -m pip install -U holidays>=0.10.2
-          python -m pip install -U pystan~=2.19.1.1 --no-cache-dir --no-binary :all:
+          python -m pip install -U pystan~=2.19.1.1 
           python -m pip install -U prophet>=1.0 --no-cache-dir --no-binary :all:
                     
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
@@ -69,7 +69,7 @@ jobs:
           python -m pip install -U LunarCalendar>=0.0.9
           python -m pip install -U convertdate>=2.1.2
           python -m pip install -U holidays>=0.10.2
-          python -m pip install -U pystan~=2.19.1.1 --no-cache-dir --no-binary :all:
+          python -m pip install -U pystan~=2.19.1.1 
           python -m pip install -U prophet>=1.0 --no-cache-dir --no-binary :all:
           
           pip install -r requirements.txt
@@ -206,7 +206,7 @@ jobs:
           python -m pip install -U LunarCalendar>=0.0.9
           python -m pip install -U convertdate>=2.1.2
           python -m pip install -U holidays>=0.10.2
-          python -m pip install -U pystan~=2.19.1.1 --no-cache-dir --no-binary :all:
+          python -m pip install -U pystan~=2.19.1.1 
           python -m pip install -U prophet>=1.0 --no-cache-dir --no-binary :all:
           
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
@@ -241,7 +241,7 @@ jobs:
           python -m pip install -U LunarCalendar>=0.0.9
           python -m pip install -U convertdate>=2.1.2
           python -m pip install -U holidays>=0.10.2
-          python -m pip install -U pystan~=2.19.1.1 --no-cache-dir --no-binary :all:
+          python -m pip install -U pystan~=2.19.1.1 
           python -m pip install -U prophet>=1.0 --no-cache-dir --no-binary :all:
           
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
