@@ -1,0 +1,6 @@
+
+LunarCalendar>=0.0.9
+convertdate>=2.1.2
+holidays>=0.10.2
+pystan~=2.19.1.1
+prophet>=1.0
