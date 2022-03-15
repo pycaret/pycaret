@@ -26,9 +26,9 @@ jobs:
           python -m pip install -U pytest
           python -m pip install -U codecov
           
-          if [ -f requirements-prophet.txt ]; then pip install -r requirements-prophet.txt; fi
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
           if [ -f requirements-optional.txt ]; then pip install -r requirements-optional.txt; fi
+          if [ -f requirements-prophet.txt ]; then pip install -r requirements-prophet.txt; fi
           if [ -f requirements-test.txt ]; then pip install -r requirements-test.txt; fi
           python -m spacy download en_core_web_sm
       - name: Remove tests
@@ -61,9 +61,9 @@ jobs:
           python -m pip install -U pytest
           python -m pip install -U codecov
           
-          pip install -r requirements-prophet.txt
           pip install -r requirements.txt
           pip install -r requirements-optional.txt
+          pip install -r requirements-prophet.txt
           pip install -r requirements-test.txt
           python -m spacy download en_core_web_sm
       - name: Remove tests
@@ -192,10 +192,11 @@ jobs:
           python -m pip install -U pytest
           python -m pip install -U codecov
           
-          if [ -f requirements-prophet.txt ]; then pip install -r requirements-prophet.txt; fi          
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-          if [ -f requirements-ts.txt ]; then pip install -r requirements-ts.txt; fi
           if [ -f requirements-optional.txt ]; then pip install -r requirements-optional.txt; fi
+          if [ -f requirements-prophet.txt ]; then pip install -r requirements-prophet.txt; fi
+          if [ -f requirements-test.txt ]; then pip install -r requirements-test.txt; fi
+          
           python -m spacy download en_core_web_sm
       - name: Remove tests
         run: |
@@ -222,10 +223,9 @@ jobs:
           python -m pip install -U pytest
           python -m pip install -U codecov
           
-          if [ -f requirements-prophet.txt ]; then pip install -r requirements-prophet.txt; fi          
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-          if [ -f requirements-ts.txt ]; then pip install -r requirements-ts.txt; fi
           if [ -f requirements-optional.txt ]; then pip install -r requirements-optional.txt; fi
+          if [ -f requirements-prophet.txt ]; then pip install -r requirements-prophet.txt; fi
           if [ -f requirements-test.txt ]; then pip install -r requirements-test.txt; fi
           python -m spacy download en_core_web_sm
       - name: Remove tests
