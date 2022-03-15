@@ -1560,20 +1560,20 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
     def _get_final_model_from_pipeline(
         self, pipeline: PyCaretForecastingPipeline, check_is_fitted: bool = False
     ) -> BaseForecaster:
-        """Extracts and returns the final trained model from the pipeline.
+        """Extracts and returns the final model from the pipeline.
 
         Parameters
         ----------
         pipeline : PyCaretForecastingPipeline
-            The trained pipeline with the correct final model
+            The pipeline with a final model
         check_is_fitted : bool
             If True, will check if final model is fitted and raise an exception
-            if it is not.
+            if it is not, by default False.
 
         Returns
         -------
         BaseForecaster
-            The trained final model in the pipeline
+            The final model in the pipeline
         """
         # Pipeline will always be of type PyCaretForecastingPipeline with final
         # forecaster being of type TransformedTargetForecaster
