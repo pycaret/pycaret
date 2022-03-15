@@ -45,6 +45,7 @@ _IMPUTE_METHODS_STR = [
     "random",
 ]
 _TRANSFORMATION_METHODS = ["box-cox", "log", "sqrt", "exp", "cos"]
+_TRANSFORMATION_METHODS_NO_NEG = ["box-cox", "log"]
 _SCALE_METHODS = ["zscore", "minmax", "maxabs", "robust"]
 
 

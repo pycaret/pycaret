@@ -11,6 +11,7 @@ from .time_series_test_utils import (
     _return_model_names_for_missing_data,
     _IMPUTE_METHODS_STR,
     _TRANSFORMATION_METHODS,
+    _TRANSFORMATION_METHODS_NO_NEG,
     _SCALE_METHODS,
 )
 
@@ -136,8 +137,9 @@ def test_pipeline_types_exo(load_uni_exo_data_target):
     assert isinstance(exp.pipeline.steps[-1][1], TransformedTargetForecaster)
 
 
-def test_preprocess_setup_raises_no_exo(load_pos_and_neg_data_missing):
-    """Tests setup conditions that raise errors"""
+def test_preprocess_setup_raises_missing_no_exo(load_pos_and_neg_data_missing):
+    """Tests setup conditions that raise errors due to missing data
+    Univariate without exogenous variables"""
     data = load_pos_and_neg_data_missing
 
     exp = TSForecastingExperiment()
@@ -153,8 +155,9 @@ def test_preprocess_setup_raises_no_exo(load_pos_and_neg_data_missing):
     assert "Please enable imputation to proceed" in exceptionmsg
 
 
-def test_preprocess_setup_raises_exo(load_uni_exo_data_target_missing):
-    """Tests setup conditions that raise errors"""
+def test_preprocess_setup_raises_missing_exo(load_uni_exo_data_target_missing):
+    """Tests setup conditions that raise errors due to missing data
+    Univariate with exogenous variables"""
 
     data, target = load_uni_exo_data_target_missing
 
@@ -187,6 +190,60 @@ def test_preprocess_setup_raises_exo(load_uni_exo_data_target_missing):
         )
     exceptionmsg = errmsg.value.args[0]
     assert "Please enable imputation to proceed" in exceptionmsg
+
+
+@pytest.mark.parametrize("method", _TRANSFORMATION_METHODS_NO_NEG)
+def test_preprocess_setup_raises_negative_no_exo(load_pos_and_neg_data, method):
+    """Tests setup conditions that raise errors due to negative values before
+    transformatons. Univariate without exogenous variables"""
+    data = load_pos_and_neg_data
+
+    exp = TSForecastingExperiment()
+
+    with pytest.raises(ValueError) as errmsg:
+        exp.setup(data=data, transform_target=method)
+    exceptionmsg = errmsg.value.args[0]
+    assert (
+        "This can happen when you have negative and/or zero values in the data"
+        in exceptionmsg
+    )
+
+
+@pytest.mark.parametrize("method", _TRANSFORMATION_METHODS_NO_NEG)
+def test_preprocess_setup_raises_negative_exo(load_uni_exo_data_target, method):
+    """Tests setup conditions that raise errors due to negative values before
+    transformatons. Univariate with exogenous variables"""
+    data, target = load_uni_exo_data_target
+
+    exp = TSForecastingExperiment()
+
+    with pytest.raises(ValueError) as errmsg:
+        exp.setup(
+            data=data,
+            target=target,
+            seasonal_period=4,
+            preprocess=True,
+            transform_target=method,
+        )
+    exceptionmsg = errmsg.value.args[0]
+    assert (
+        "This can happen when you have negative and/or zero values in the data"
+        in exceptionmsg
+    )
+
+    with pytest.raises(ValueError) as errmsg:
+        exp.setup(
+            data=data,
+            target=target,
+            seasonal_period=4,
+            preprocess=True,
+            transform_exogenous=method,
+        )
+    exceptionmsg = errmsg.value.args[0]
+    assert (
+        "This can happen when you have negative and/or zero values in the data"
+        in exceptionmsg
+    )
 
 
 @pytest.mark.parametrize("model_name", _model_names_for_missing_data)
@@ -256,7 +313,7 @@ def test_pipeline_works_exo(load_uni_exo_data_target_missing, model_name):
     plot_data = exp.plot_model(tuned, return_data=True, system=False)
     assert isinstance(plot_data, dict)
 
-    final = exp.finalize_model(tuned)
+    _ = exp.finalize_model(tuned)
     # # Exogenous models predictions and plots after finalizing will need future X
     # # values. Hence disabling this test.
     # preds = exp.predict_model(final)
