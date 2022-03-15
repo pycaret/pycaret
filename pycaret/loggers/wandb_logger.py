@@ -61,12 +61,11 @@ class WandbLogger(BaseLogger):
     def log_sklearn_pipeline(self, prep_pipe, model):
         pipeline = deepcopy(prep_pipe)
         pipeline.steps.append(["trained_model", model])
-        with open("pipeline.pkl", "wb") as f:  # this should use tempfile
-            joblib.dump(pipeline, f)
         art = wandb.Artifact("pipeline", type="model")
-        art.add_file("pipeline.pkl")
+        with art.new_file('pipeline.pkl') as f:
+            f.write(pipeline)
         self.run.log_artifact(art)
-        os.remove("pipeline.pkl")
+
 
     def log_model_comparison(self, model_result, source):
         result_copy = deepcopy(model_result)
