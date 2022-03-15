@@ -14,10 +14,10 @@ with open("requirements.txt") as f:
     required = f.read().splitlines()
 
 with open("requirements-optional.txt") as f:
-    optional_required = f.read().splitlines()
+    required_optional = f.read()
 
 with open("requirements-test.txt") as f:
-    test_required = f.read().splitlines()
+    required_test = f.read().splitlines()
 
 setup(
     name="pycaret",
@@ -34,10 +34,21 @@ setup(
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
+        "Topic :: Scientific/Engineering :: Artificial Intelligence",
+        "License :: OSI Approved :: MIT License",
+        "Operating System :: OS Independent",
     ],
     packages=find_packages(include=["pycaret*"]),
     include_package_data=True,
     install_requires=required,
-    extras_require={"full": optional_required,
-                    "test": test_required + optional_required},
+    extras_require={
+        "analysis": required_optional.split("\n\n")[0].splitlines(),
+        "models": required_optional.split("\n\n")[1].splitlines(),
+        "tuners": required_optional.split("\n\n")[2].splitlines(),
+        "mlops": required_optional.split("\n\n")[3].splitlines(),
+        "nlp": required_optional.split("\n\n")[4].splitlines(),
+        "full": required_optional.splitlines(),
+    },
+    tests_require=required_test,
+    python_requires=">=3.7",
 )

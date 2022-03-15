@@ -1,35 +1,42 @@
-shap
-interpret<=0.2.4
-# no interpret-community as it causes a breaking dependency mismatch
+# Analysis
+shap>=0.38.0
+interpret>=0.2.7
+umap-learn>=0.5.2
+ipywidgets>=7.6.5
+pandas-profiling>=3.1.0
+explainerdashboard>=0.3.8  # For dashboard method
+autoviz>=0.1.36  # For EDA method
+fairlearn>=0.7.0  # For check_fairness method
+
+# Models
+xgboost>=1.1.0
+catboost>=0.23.2
+kmodes>=0.11.1
+mlxtend>=0.19.0
+
+# Tuners
 tune-sklearn>=0.2.1
 ray[tune]>=1.0.0
-hyperopt
+hyperopt>=0.2.7
 optuna>=2.2.0
 scikit-optimize>=0.9.0
-psutil
-catboost>=0.23.2
-xgboost>=1.1.0
-LunarCalendar>=0.0.9
-convertdate>=2.1.2
-holidays>=0.10.2
-pystan~=2.19.1.1
-prophet>=1.0
-explainerdashboard #for dashboard
-m2cgen # for model conversion
-evidently # for drift reporting
-autoviz # for EDA visualization
-fairlearn # for check_fairness function
-fastapi # for web api
-uvicorn # for web api
-gradio # for gradio app
-fugue>=0.6.5 # for distributed
 
+# MLOps
+mlflow>=1.24.0
+gradio>=2.8.10
+fastapi>=0.75.0  # For web api
+uvicorn>=0.17.6  # For web api
+m2cgen>=0.9.0  # For model conversion
+evidently>=0.1.45.dev0  # for drift reporting
 
-# for cloud deployment
-boto3
-azure-storage-blob
-google-cloud-storage
+# NLP
+nltk>=3.7
+pyLDAvis>=3.3.1
+gensim>=4.1.2
+spacy>=3.2.3
+wordcloud>=1.8.1
+textblob>=0.17.1
 
-#hpbandster
-#ConfigSpace
-#pdpbox
+# Others
+psutil>=5.9.0
+fugue>=0.6.5
