@@ -54,10 +54,17 @@ def get_predictions_with_intervals(
         lower.index = y_pred.index
         upper.index = y_pred.index
 
-    # Prophet with return_pred_int = True returns datetime index.
-    for series in [y_pred, lower, upper]:
-        if isinstance(series.index, pd.DatetimeIndex):
-            series.index = series.index.to_period()
+    # PyCaret works on Period Index only when developing models. If user passes
+    # DateTimeIndex, it gets converted to PeriodIndex. If the forecaster (such as
+    # Prophet) does not support PeriodIndex, then a patched version is created
+    # which can support a PeriodIndex input and returns a PeriodIndex prediction.
+    # Hence, no casting of index needs to be done here.
+
+    if round is not None:
+        # Converting to float since rounding does not support int
+        y_pred = y_pred.astype(float).round(round)
+        lower = lower.astype(float).round(round)
+        upper = upper.astype(float).round(round)
 
     if merge:
         results = pd.concat([y_pred, lower, upper], axis=1)
