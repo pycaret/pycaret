@@ -363,6 +363,7 @@ class _TabularExperiment(_PyCaretExperiment):
         gc.collect()
 
     def _profile(self, profile, profile_kwargs):
+        """Create a profile report"""
         if profile:
             profile_kwargs = profile_kwargs or {}
 
@@ -380,6 +381,8 @@ class _TabularExperiment(_PyCaretExperiment):
                     f"Data Failed with exception:\n {ex}\n"
                     "No output to show, continue with modeling."
                 )
+
+        return self
 
     def _initialize_setup(
         self,
@@ -2761,7 +2764,7 @@ class _TabularExperiment(_PyCaretExperiment):
     def predict({INPUT_COLS}):
         data = pd.DataFrame([[{DATAFRAME}]])
         data.columns = {COLUMNS}
-        predictions = predict_model(model, data=data) 
+        predictions = predict_model(model, data=data)
         return {D1}'prediction': list(predictions['Label']){D2}
     if __name__ == '__main__':
         uvicorn.run(app, host='{HOST}', port={PORT})""".format(
@@ -2864,7 +2867,7 @@ RUN pip install -r requirements.txt
 
 EXPOSE {PORT}
 
-CMD ["python", "{API_NAME}.py"]    
+CMD ["python", "{API_NAME}.py"]
 """.format(
             BASE_IMAGE=base_image, PORT=expose_port, API_NAME=api_name
         )

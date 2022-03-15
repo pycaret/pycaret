@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Union, Optional
 
 from sklearn.preprocessing import (
     StandardScaler,
@@ -14,11 +14,40 @@ from sktime.transformations.series.boxcox import BoxCoxTransformer, LogTransform
 from sktime.transformations.series.exponent import ExponentTransformer, SqrtTransformer
 from sktime.transformations.series.cos import CosineTransformer
 
+from pycaret.utils.time_series import TSApproachTypes, TSExogenousPresent
+
 
 class TSForecastingPreprocessor:
     """Class for preprocessing Time Series Forecasting Experiments."""
 
+    def __init__(self):
+        # Initialize empty steps ----
+        self.pipe_steps_target = []
+        self.pipe_steps_exogenous = []
+
     def _imputation(
+        self,
+        numeric_imputation_target: Optional[Union[str, int, float]],
+        numeric_imputation_exogenous: Optional[Union[str, int, float]],
+        exogenous_present: bool,
+    ):
+        #### Impute target ----
+        if numeric_imputation_target is not None:
+            self._add_imputation_steps(
+                numeric_imputation=numeric_imputation_target, target=True
+            )
+
+        #### Impute Exogenous ----
+        # Only add exogenous pipeline steps if exogenous variables are present.
+        if (
+            exogenous_present == TSExogenousPresent.YES
+            and numeric_imputation_exogenous is not None
+        ):
+            self._add_imputation_steps(
+                numeric_imputation=numeric_imputation_exogenous, target=False
+            )
+
+    def _add_imputation_steps(
         self, numeric_imputation: Union[str, int, float], target: bool = True
     ):
         """Perform numeric imputation of missing values.
@@ -76,7 +105,25 @@ class TSForecastingPreprocessor:
         else:
             self.pipe_steps_exogenous.extend([("numerical_imputer", num_estimator)])
 
-    def _transformation(self, transform: str, target: bool = True):
+    def _transformation(
+        self,
+        transform_target: Optional[Union[str, int, float]],
+        transform_exogenous: Optional[Union[str, int, float]],
+        exogenous_present: bool,
+    ):
+        #### Impute target ----
+        if transform_target is not None:
+            self._add_transformation_steps(transform=transform_target, target=True)
+
+        #### Impute Exogenous ----
+        # Only add exogenous pipeline steps if exogenous variables are present.
+        if (
+            exogenous_present == TSExogenousPresent.YES
+            and transform_exogenous is not None
+        ):
+            self._add_transformation_steps(transform=transform_exogenous, target=False)
+
+    def _add_transformation_steps(self, transform: str, target: bool = True):
         """Power transform the data to be more Gaussian-like.
 
         Parameters
@@ -129,7 +176,22 @@ class TSForecastingPreprocessor:
             transformer = ColumnwiseTransformer(transform_dict[transform])
             self.pipe_steps_exogenous.extend([("transformer", transformer)])
 
-    def _scaling(self, scale: str, target: bool = True):
+    def _scaling(
+        self,
+        scale_target: Optional[Union[str, int, float]],
+        scale_exogenous: Optional[Union[str, int, float]],
+        exogenous_present: bool,
+    ):
+        #### Scale target ----
+        if scale_target:
+            self._add_scaling_steps(scale=scale_target, target=True)
+
+        #### Scale Exogenous ----
+        # Only add exogenous pipeline steps if exogenous variables are present.
+        if exogenous_present == TSExogenousPresent.YES and scale_exogenous is not None:
+            self._add_scaling_steps(scale=scale_exogenous, target=False)
+
+    def _add_scaling_steps(self, scale: str, target: bool = True):
         """Scale the data.
 
         Parameters
