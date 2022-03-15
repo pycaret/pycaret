@@ -199,7 +199,7 @@ def test_remove_multicollinearity():
         data=data,
         target="STORE",
         remove_multicollinearity=True,
-        multicollinearity_threshold=1.0,
+        multicollinearity_threshold=0.9999,
     )
     
     X, _ = pc.pipeline.transform(pc.X, pc.y)
