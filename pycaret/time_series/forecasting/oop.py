@@ -104,6 +104,10 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                 "index_type",
                 "y_transformed",
                 "X_transformed",
+                "y_train_transformed",
+                "X_train_transformed",
+                "y_test_transformed",
+                "X_test_transformed",
             }
         )
         self._available_plots = {
@@ -719,11 +723,53 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
 
         preprocess: bool, default = True
-            Parameter not in use for now. Behavior may change in future.
+            Should preprocessing be done on the data (includes imputation,
+            transformation, scaling)? By default True, but all steps are disabled.
+            Enable the steps that need to be preprocessed using appropriate arguments.
 
 
-        imputation_type: str, default = 'simple'
-            Parameter not in use for now. Behavior may change in future.
+        numeric_imputation_target: Optional[Union[int, float, str]], default = None
+            Indicates how to impute missing values in the target.
+            If None, no imputation is done.
+            If the target has missing values, then imputation is mandatory.
+            If str, then value passed as is to the underlying `sktime` imputer.
+            Allowed values are:
+                "drift", "linear", "nearest", "mean", "median", "backfill",
+                "bfill", "pad", "ffill", "random"
+            If int or float, imputation method is set to "constant" with the given value.
+
+
+        numeric_imputation_exogenous: Optional[Union[int, float, str]], default = None
+            Indicates how to impute missing values in the exogenous variables.
+            If None, no imputation is done.
+            If exogenous variables have missing values, then imputation is mandatory.
+            If str, then value passed as is to the underlying `sktime` imputer.
+            Allowed values are:
+                "drift", "linear", "nearest", "mean", "median", "backfill",
+                "bfill", "pad", "ffill", "random"
+            If int or float, imputation method is set to "constant" with the given value.
+
+
+        transform_target: Optional[str], default = None
+            Indicates how the target variable should be transformed.
+            If None, no transformation is performed. Allowed values are
+                "box-cox", "log", "sqrt", "exp", "cos"
+
+
+        transform_exogenous: Optional[str], default = None
+            Indicates how the exogenous variables should be transformed.
+            If None, no transformation is performed. Allowed values are
+                "box-cox", "log", "sqrt", "exp", "cos"
+
+        scale_target: Optional[str], default = None
+            Indicates how the target variable should be scaled.
+            If None, no scaling is performed. Allowed values are
+                "zscore", "minmax", "maxabs", "robust"
+
+        scale_exogenous: Optional[str], default = None
+            Indicates how the exogenous variables should be scaled.
+            If None, no scaling is performed. Allowed values are
+                "zscore", "minmax", "maxabs", "robust"
 
 
         fold_strategy: str or sklearn CV generator object, default = 'expanding'
@@ -3939,10 +3985,22 @@ class DummyForecaster(BaseForecaster):
     }
 
     def _fit(self, y, X=None, fh=None):
-        self.preds = pd.Series([-99_999] * 10)
+        self._fh_len = None
+        if fh is not None:
+            self._fh_len = len(fh)
         self._is_fitted = True
         return self
 
     def _predict(self, fh=None, X=None, return_pred_int=False, alpha=DEFAULT_ALPHA):
         self.check_is_fitted()
-        return self.preds
+        if fh is not None:
+            preds = pd.Series([-99_999] * len(fh))
+        elif self._fh_len is not None:
+            # fh seen during fit
+            preds = pd.Series([-99_999] * self._fh_len)
+        else:
+            raise ValueError(
+                f"{type(self).__name__}: `fh` is unknown. Unable to make predictions."
+            )
+
+        return preds
