@@ -1793,7 +1793,12 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
             self.logger.info(f"display_container: {len(self.display_container)}")
 
-        return pipeline_with_model, model_fit_time
+        #### Return the final model only. Rest of the pipeline will be added during finalize.
+        final_model = self._get_final_model_from_pipeline(
+            pipeline=pipeline_with_model, check_is_fitted=True
+        )
+
+        return final_model, model_fit_time
 
     def _create_model_with_cv(
         self,
