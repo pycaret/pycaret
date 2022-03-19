@@ -2560,11 +2560,12 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                 # it will not have self._get_model_name
                 model_names = [estimator.__class__.__name__ for estimator in estimators]
 
-            if len(estimators) > 1 and plot not in _support_multiple_estimators:
-                msg = f"Plot '{plot}' does not support multiple estimators. The first estimator will be used."
-                self.logger.warning(msg)
-                print(msg)
-                estimator = estimators[0]
+            if plot not in _support_multiple_estimators:
+                if len(estimators) > 1:
+                    msg = f"Plot '{plot}' does not support multiple estimators. The first estimator will be used."
+                    self.logger.warning(msg)
+                    print(msg)
+                estimators = estimators[0]
                 model_names = model_names[0]
 
             require_insample_predictions = ["insample"]
@@ -2622,7 +2623,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                 return_pred_int = False
 
             elif plot in require_residuals:
-                resid = self.get_residuals(estimator=estimator)
+                resid = self.get_residuals(estimator=estimators)
                 if resid is None:
                     return
                 resid = self.check_and_clean_resid(resid=resid)

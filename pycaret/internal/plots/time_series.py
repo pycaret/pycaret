@@ -210,7 +210,7 @@ def plot_series(
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
 ) -> PlotReturnType:
-    """Plots the original time series"""
+    """Plots the original time series or residuals"""
     fig, return_data_dict = None, None
 
     data_kwargs = data_kwargs or {}
@@ -225,9 +225,17 @@ def plot_series(
             title = f"{title} | Target = {time_series_name}"
 
     if X is not None:
+        # Exogenous Variables present (predictions).
         plot_data = pd.concat([data, X], axis=1)
     else:
-        plot_data = pd.DataFrame(data, columns=[f"Residuals | {model_name}"])
+        # Exogenous Variables not present (Original Time series or residuals).
+        if isinstance(data, pd.Series):
+            if model_name is None:
+                # Original Time series
+                plot_data = pd.DataFrame(data)
+            else:
+                # Residual
+                plot_data = pd.DataFrame(data, columns=[f"Residuals | {model_name}"])
 
     rows = plot_data.shape[1]
     subplot_titles = plot_data.columns
