@@ -278,3 +278,37 @@ def test_save_load_model(load_pos_and_neg_data):
     loaded_predictions = predict_model(loaded_model)
 
     assert np.all(loaded_predictions == expected_predictions)
+
+
+def test_save_load_raises(load_pos_and_neg_data):
+    """Tests the save_model and load_model that raises an exception"""
+
+    fh = np.arange(1, 13)
+    fold = 2
+    data = load_pos_and_neg_data
+
+    exp = TSForecastingExperiment()
+    exp.setup(
+        data=data,
+        fh=fh,
+        fold=fold,
+        fold_strategy="sliding",
+        verbose=False,
+        session_id=42,
+    )
+
+    model = exp.create_model("ets")
+    exp.save_model(model, "model_unit_test_oop", model_only=True)
+
+    # Mimic loading in another session
+    exp_loaded = TSForecastingExperiment()
+    loaded_model = exp_loaded.load_model("model_unit_test_oop")
+
+    #### Setup not run and only passing a estimator without pipeline ----
+    with pytest.raises(ValueError) as errmsg:
+        _ = exp_loaded.predict_model(loaded_model)
+    exceptionmsg = errmsg.value.args[0]
+    assert (
+        "Setup has not been run and you have provided a estimator without the pipeline"
+        in exceptionmsg
+    )

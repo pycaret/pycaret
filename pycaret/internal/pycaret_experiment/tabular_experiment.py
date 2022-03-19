@@ -474,6 +474,8 @@ class _TabularExperiment(_PyCaretExperiment):
                     raise ImportError(message)
                 else:
                     self.logger.warning(message)
+                    
+        return self
 
     @staticmethod
     def plot_model_check_display_format_(display_format: Optional[str]):

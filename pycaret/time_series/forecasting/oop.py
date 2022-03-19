@@ -811,7 +811,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         return self
 
-    def _set_pipeline(self) -> "TSForecastingExperiment":
+    def _initialize_pipeline(self) -> "TSForecastingExperiment":
         """Sets the preprocessing pipeline according to the user inputs
 
         Returns
@@ -1397,20 +1397,19 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         # Features to be ignored (are not read by self.dataset, self.X, etc...)
         self._fxs = {"Ignore": ignore_features or []}
 
-        self._initialize_setup(
-            n_jobs=n_jobs,
-            use_gpu=use_gpu,
-            html=html,
-            session_id=session_id,
-            system_log=system_log,
-            log_experiment=log_experiment,
-            experiment_name=experiment_name,
-            memory=True,
-            verbose=verbose,
-        )
-
         (
-            self._check_clean_and_set_data(data)
+            self._initialize_setup(
+                n_jobs=n_jobs,
+                use_gpu=use_gpu,
+                html=html,
+                session_id=session_id,
+                system_log=system_log,
+                log_experiment=log_experiment,
+                experiment_name=experiment_name,
+                memory=True,
+                verbose=verbose,
+            )
+            ._check_clean_and_set_data(data)
             ._check_and_clean_index(index=index, seasonal_period=seasonal_period)
             ._check_and_set_targets(target=target)
             ._set_exogenous_names()
@@ -1419,7 +1418,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             ._setup_train_test_split()
             ._set_fold_generator()
             ._set_missingness()
-            ._set_pipeline()
+            ._initialize_pipeline()
             ##################################################################
             #### Do these after the preprocessing pipeline has been setup.
             #### Since the model will see transformed data, these parameters
@@ -3005,11 +3004,37 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         """
         estimator.check_is_fitted()
 
-        # Deep Cloning to prevent overwriting the fh when user specifies their own fh
-        estimator_ = deep_clone(estimator)
-        pipeline_with_model = _add_model_to_pipeline(
-            pipeline=self.pipeline, model=estimator_
-        )
+        # Use Cases:
+        # (1) User is in the middle of experiment and passes a Base Model without pipeline.
+        # Action: Append pipeline and predict
+        # (2) User saved a model (without pipeline) and in the future, restarted experiment
+        # after setup and loaded his model.
+        # Action: Append pipeline and predict. If setup has not been run, raise an exception.
+        # (3) User saved a model pipeline and in the future, loaded this pipeline in another
+        # experiment to make predictions. This model pipeline might be different from the
+        # experiment pipeline. Hence experiment pipeline should not be changes. Predict as is.
+        # Action: Pipeline as is
+
+        if isinstance(estimator, PyCaretForecastingPipeline):
+            # Use Case 3
+            pipeline_with_model = deepcopy(estimator)
+            estimator_ = self._get_final_model_from_pipeline(
+                pipeline=pipeline_with_model, check_is_fitted=True
+            )
+        else:
+            if self._setup_ran:
+                # Use Case 1 & 2
+                # Deep Cloning to prevent overwriting the fh when user specifies their own fh
+                estimator_ = deepcopy(estimator)
+                pipeline_with_model = _add_model_to_pipeline(
+                    pipeline=self.pipeline, model=estimator_
+                )
+            else:
+                raise ValueError(
+                    "\n\nSetup has not been run and you have provided a estimator without the pipeline. "
+                    "You can either \n(1) Provide the complete pipeline without running setup to make "
+                    "the prediction OR \n(2) Run setup first before providing the estimator only."
+                )
 
         loaded_in_same_env = True
         # Check if loaded in a different environment
@@ -3385,31 +3410,12 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         """
 
-        model = super().load_model(
+        return super().load_model(
             model_name=model_name,
             platform=platform,
             authentication=authentication,
             verbose=verbose,
         )
-
-        #### In time series, the fitted pipeline is needed to make predictions,
-        # hence must be set.
-        if isinstance(model, PyCaretForecastingPipeline):
-            # The saved model was saved with the pipeline.
-            # Set the pipeline as it is needed for predictions, etc.
-            self.pipeline = deepcopy(model)
-        else:
-            # The saved model was saved without the pipeline. Create a dummy one
-            # and fit it.
-            self.pipeline = self._create_pipeline(model=model)
-            self.fh = model.fh
-            self.pipeline.fit(y=model._y, X=model._X, fh=self.fh)
-
-        self.pipeline.check_is_fitted()
-        model = self._get_final_model_from_pipeline(
-            pipeline=self.pipeline, check_is_fitted=True
-        )
-        return model
 
     def _create_pipeline(
         self,
