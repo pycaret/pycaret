@@ -2492,7 +2492,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         elif plot is None and estimator is not None:
             plot = "forecast"
 
-        data, train, test, X, predictions, cv, model_name = (
+        data, train, test, X, predictions, cv, model_names = (
             None,
             None,
             None,
@@ -2540,16 +2540,32 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                     f"provided. Available plots are: {', '.join(plots_formatted_data)}"
                 )
         else:
+            _support_multiple_estimators = ["forecast", "insample"]
+
             # Estimator is Provided
+            # If a single estimator, make a list
+            if isinstance(estimator, List):
+                estimators = estimator
+            else:
+                estimators = [estimator]
 
             if hasattr(self, "_get_model_name") and hasattr(
                 self, "_all_models_internal"
             ):
-                model_name = self._get_model_name(estimator)
+                model_names = [
+                    self._get_model_name(estimator) for estimator in estimators
+                ]
             else:
                 # If the model is saved and loaded afterwards,
                 # it will not have self._get_model_name
-                model_name = estimator.__class__.__name__
+                model_names = [estimator.__class__.__name__ for estimator in estimators]
+
+            if len(estimators) > 1 and plot not in _support_multiple_estimators:
+                msg = f"Plot '{plot}' does not support multiple estimators. The first estimator will be used."
+                self.logger.warning(msg)
+                print(msg)
+                estimator = estimators[0]
+                model_names = model_names[0]
 
             require_insample_predictions = ["insample"]
             require_residuals = [
@@ -2569,24 +2585,38 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                 fh = data_kwargs.get("fh", None)
                 alpha = data_kwargs.get("alpha", 0.05)
                 X = data_kwargs.get("X", None)
-                return_pred_int = estimator.get_tag("capability:pred_int")
+                return_pred_ints = [
+                    estimator.get_tag("capability:pred_int") for estimator in estimators
+                ]
 
-                predictions = self.predict_model(
-                    estimator,
-                    fh=fh,
-                    X=X,
-                    alpha=alpha,
-                    return_pred_int=return_pred_int,
-                    verbose=False,
-                )
+                predictions = [
+                    self.predict_model(
+                        estimator,
+                        fh=fh,
+                        X=X,
+                        alpha=alpha,
+                        return_pred_int=return_pred_int,
+                        verbose=False,
+                    )
+                    for estimator, return_pred_int in zip(estimators, return_pred_ints)
+                ]
+
+                if len(estimators) == 1:
+                    return_pred_int = return_pred_ints[0]
+                else:
+                    # Disable Prediction Intervals if more than 1 estimator is provided.
+                    return_pred_int = False
+
             elif plot in require_insample_predictions:
                 # Try to get insample forecasts if possible
-                insample_predictions = self.get_insample_predictions(
-                    estimator=estimator
-                )
-                if insample_predictions is None:
+                predictions = [
+                    self.get_insample_predictions(estimator=estimator)
+                    for estimator in estimators
+                ]
+                if all(
+                    insample_prediction is None for insample_prediction in predictions
+                ):
                     return
-                predictions = insample_predictions
                 data = self._get_y_data(split="all")
                 # Do not plot prediction interval for insample predictions
                 return_pred_int = False
@@ -2615,7 +2645,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             X=X,
             predictions=predictions,
             cv=cv,
-            model_name=model_name,
+            model_names=model_names,
             return_pred_int=return_pred_int,
             data_kwargs=data_kwargs,
             fig_kwargs=fig_kwargs,
