@@ -8,20 +8,25 @@ import warnings
 from typing import Any, Dict, List, Optional, Tuple, Union
 from copy import deepcopy
 
-import numpy as np  # type: ignore
-import pandas as pd  # type: ignore
+import numpy as np
+import pandas as pd
 from IPython.utils import io
-from sklearn.base import clone  # type: ignore
+from sklearn.base import clone
 from sktime.forecasting.base import ForecastingHorizon
-from sktime.forecasting.model_selection import (  # type: ignore
+from sktime.forecasting.model_selection import (
+    temporal_train_test_split,
     ExpandingWindowSplitter,
     SlidingWindowSplitter,
 )
 
-from sktime.forecasting.naive import NaiveForecaster  # type: ignore
+from sktime.forecasting.base import BaseForecaster
 
 # from sktime.forecasting.compose import ForecastingPipeline
-from pycaret.utils.time_series.forecasting.pipeline import PyCaretForecastingPipeline
+from pycaret.utils.time_series.forecasting.pipeline import (
+    PyCaretForecastingPipeline,
+    _add_model_to_pipeline,
+)
+from pycaret.utils.time_series.forecasting.models import DummyForecaster
 from sktime.forecasting.compose import TransformedTargetForecaster
 
 from pycaret.internal.preprocess.time_series.forecasting.preprocessor import (
@@ -36,6 +41,11 @@ import pycaret.internal.preprocess
 from pycaret.internal.Display import Display
 from pycaret.internal.distributions import get_base_distributions
 from pycaret.internal.logging import get_logger
+
+from pycaret.internal.tests.time_series import (
+    recommend_uppercase_d,
+    recommend_lowercase_d,
+)
 
 # from pycaret.internal.pipeline import get_pipeline_fit_kwargs
 from pycaret.internal.plots.time_series import _get_plot
@@ -99,6 +109,10 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                 "index_type",
                 "y_transformed",
                 "X_transformed",
+                "y_train_transformed",
+                "X_train_transformed",
+                "y_test_transformed",
+                "X_test_transformed",
             }
         )
         self._available_plots = {
@@ -219,19 +233,21 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
     def _get_default_plots_to_log(self) -> List[str]:
         return ["forecast", "residuals", "diagnostics"]
 
-    def _check_fh(self, fh: Union[List[int], int, np.array]) -> np.array:
+    def _check_fh(
+        self, fh: Union[List[int], int, np.array, ForecastingHorizon]
+    ) -> Union[np.array, ForecastingHorizon]:
         """
         Checks fh for validity and converts fh into an appropriate forecasting
         horizon compatible with sktime (if necessary)
 
         Parameters
         ----------
-        fh : Union[List[int], int, np.array]
+        fh : Union[List[int], int, np.array, ForecastingHorizon]
             Forecasting Horizon
 
         Returns
         -------
-        np.array
+        Union[np.array, ForecastingHorizon]
             Forecast Horizon (possibly updated to made compatible with sktime)
 
         Raises
@@ -249,17 +265,19 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                 )
         elif isinstance(fh, List):
             fh = np.array(fh)
-        elif isinstance(fh, np.ndarray):
+        elif isinstance(fh, (np.ndarray, ForecastingHorizon)):
             # Good to go
             pass
         else:
             raise ValueError(
-                f"Horizon `fh` must be a of type int, list, or numpy array, got object of {type(fh)} type!"
+                "Horizon `fh` must be a of type int, list, or numpy array or "
+                f"sktime ForecastingHorizon, got object of {type(fh)} type!"
             )
         return fh
 
-    @staticmethod
-    def _check_and_clean_data(data: Union[pd.Series, pd.DataFrame]) -> pd.DataFrame:
+    def _check_clean_and_set_data(
+        self, data: Union[pd.Series, pd.DataFrame]
+    ) -> "TSForecastingExperiment":
         """Check that the data is of the correct type (Pandas Series or DataFrame).
         Also cleans the data before coercing it into a dataframe which is used
         internally for all future tasks.
@@ -271,8 +289,8 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         Returns
         -------
-        pd.DataFrame
-            Checked and Cleaned version of the data
+        TSForecastingExperiment
+            The experiment object to allow chaining of methods
 
         Raises
         ------
@@ -296,14 +314,33 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         #### Clean column names ----
         data_.columns = [str(x) for x in data_.columns]
 
-        return data_
+        self.data = data_
 
-    @staticmethod
+        return self
+
     def _return_target_names(
-        data: pd.DataFrame, target: Optional[Union[str, List[str]]] = None
+        self, target: Optional[Union[str, List[str]]] = None
     ) -> List[str]:
+        """Extract the target names appropriately from data and user inputs
 
-        cols = data.shape[1]
+        Parameters
+        ----------
+        target : Optional[Union[str, List[str]]], optional
+            Target name passed by user, by default None
+
+        Returns
+        -------
+        List[str]
+            Target names. Returns a list to suppport multivariate TS in the future.
+
+        Raises
+        ------
+        ValueError
+            (1) Data has more than one column, but "target" has not been specified.
+            (2) Specified target is not in the data columns.
+        """
+
+        cols = self.data.shape[1]
 
         #### target can not be None if there are multiple columns ----
         if cols > 1 and target is None:
@@ -313,15 +350,15 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         #### Set target if there is only 1 column ----
         if cols == 1:
-            if target is not None and target != data.columns[0]:
+            if target is not None and target != self.data.columns[0]:
                 raise ValueError(
-                    f"Target = '{target}', but data only has '{data.columns[0]}'. "
+                    f"Target = '{target}', but data only has '{self.data.columns[0]}'. "
                     "If you are passing a series (or a dataframe with 1 column) "
                     "to setup, you can leave `target=None`"
                 )
             elif target is None:
                 # Use the available column
-                target = [data.columns[0]]
+                target = [self.data.columns[0]]
 
         if isinstance(target, str):
             # Coerce to list
@@ -329,21 +366,21 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         return target
 
-    def _check_and_set_targets(
-        self, data: pd.DataFrame, target: Optional[Union[str, List[str]]] = None
-    ):
+    def _check_and_set_targets(self, target: Optional[Union[str, List[str]]] = None):
         """Checks that the targets are of correct type and sets class
         attributes related to target(s)
 
         Parameters
         ----------
-        data : pd.DataFrame
-            Data from which the targets have to be extracted
-
         target : Optional[Union[str, List[str]]], default = None
             Target name to be forecasted. Must be specified when data is a pandas
             DataFrame with more than 1 column. When data is a pandas Series or
             pandas DataFrame with 1 column, this can be left as None.
+
+        Returns
+        -------
+        TSForecastingExperiment
+            The experiment object to allow chaining of methods
 
         Raises
         ------
@@ -352,28 +389,29 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         """
 
         #### Get Target Name ----
-        target = self._return_target_names(data=data, target=target)
+        target = self._return_target_names(target=target)
 
         if isinstance(target, list) and len(target) == 1:
             target = target[0]
 
-        if target not in data.columns.to_list():
+        if target not in self.data.columns.to_list():
             raise ValueError(f"Target Column '{target}' is not present in the data.")
 
         #### Check type of target values - must be numeric ----
-        if not np.issubdtype(data[target].dtype, np.number):
+        if not np.issubdtype(self.data[target].dtype, np.number):
             raise TypeError(
-                f"Data must be of 'numpy.number' subtype, got {data[target].dtype}!"
+                f"Data must be of 'numpy.number' subtype, got {self.data[target].dtype}!"
             )
 
         self.target_param = target
 
+        return self
+
     def _check_and_clean_index(
         self,
-        data: pd.DataFrame,
         index: Optional[str] = None,
         seasonal_period: Optional[Union[List[Union[int, str]], int, str]] = None,
-    ) -> pd.DataFrame:
+    ) -> "TSForecastingExperiment":
         """
         Checks if the index is one of the allowed types (pd.PeriodIndex,
         pd.DatetimeIndex). If it is not one of the allowed types, then seasonal
@@ -384,9 +422,6 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         Parameters
         ----------
-        data : pd.DataFrame
-            Data Frame whose index has to be checked and cleaned
-
         index: Optional[str], default = None
             Column name to be used as the datetime index for modeling. Column is
             internally converted to datetime using `pd.to_datetime()`. If None,
@@ -397,8 +432,8 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         Returns
         -------
-        pd.DataFrame
-            Data with checked and cleaned version of the index
+        TSForecastingExperiment
+            The experiment object to allow chaining of methods
 
         Raises
         ------
@@ -410,34 +445,36 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         #### Set Index if necessary ----
         if index is not None:
-            if index in data.columns.to_list():
-                unique_index_before = len(data[index]) == len(set(data[index]))
-                data[index] = pd.to_datetime(data[index])
-                unique_index_after = len(data[index]) == len(set(data[index]))
+            if index in self.data.columns.to_list():
+                unique_index_before = len(self.data[index]) == len(
+                    set(self.data[index])
+                )
+                self.data[index] = pd.to_datetime(self.data[index])
+                unique_index_after = len(self.data[index]) == len(set(self.data[index]))
                 if unique_index_before and not unique_index_after:
                     raise ValueError(
                         f"Coresion of Index column '{index}' to datetime led to duplicates!"
                         " Consider setting the data index outside pycaret before passing to setup()."
                     )
-                data.set_index(index, inplace=True)
+                self.data.set_index(index, inplace=True)
             else:
                 raise ValueError(
                     f"Index '{index}' is not a column in the data provided."
                 )
 
         #### Data must not have duplicate indices ----
-        if len(data.index) != len(set(data.index)):
+        if len(self.data.index) != len(set(self.data.index)):
             raise ValueError("Index may not have duplicate values!")
 
         #### Check Index Type ----
         allowed_freq_index_types = (pd.PeriodIndex, pd.DatetimeIndex)
         if (
-            not isinstance(data.index, allowed_freq_index_types)
+            not isinstance(self.data.index, allowed_freq_index_types)
             and seasonal_period is None
         ):
             # https://stackoverflow.com/questions/3590165/join-a-list-of-items-with-different-types-as-string-in-python
             raise ValueError(
-                f"The index of your 'data' is of type '{type(data.index)}'. "
+                f"The index of your 'data' is of type '{type(self.data.index)}'. "
                 "If the 'data' index is not of one of the following types: "
                 f"{', '.join(str(type) for type in allowed_freq_index_types)}, "
                 "then 'seasonal_period' must be provided. Refer to docstring for options."
@@ -446,21 +483,19 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         #### Convert DateTimeIndex index to PeriodIndex ----
         # We use PeriodIndex in PyCaret since it seems to be more robust per `sktime``
         # Ref: https://github.com/alan-turing-institute/sktime/blob/v0.10.0/sktime/forecasting/base/_fh.py#L524
-        if isinstance(data.index, pd.DatetimeIndex):
-            data.index = data.index.to_period()
+        if isinstance(self.data.index, pd.DatetimeIndex):
+            self.data.index = self.data.index.to_period()
 
         #### Save index type so that we can disable certain models ----
         # E.g. Prophet when index if of type RangeIndex
-        self.index_type = type(data.index)
+        self.index_type = type(self.data.index)
 
-        return data
+        return self
 
     def _check_and_set_fh(
         self,
         fh: Optional[Union[List[int], int, np.array]],
-        fold_strategy: Union[str, Any],
-        fold: int,
-    ):
+    ) -> "TSForecastingExperiment":
         """Checks and sets the forecast horizon class attribute based on the user inputs.
         (1) If fold_strategy is of type string, then fh must be provided
             and is used to set the forecast horizon.
@@ -471,10 +506,11 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         ----------
         fh : Optional[Union[List[int], int, np.array]]
             Forecast Horizon specified by user
-        fold_strategy : Union[str, Any]
-            Fold Strategy specified by user
-        fold : int
-            Number of folds specified by user
+
+        Returns
+        -------
+        TSForecastingExperiment
+            The experiment object to allow chaining of methods
 
         Raises
         ------
@@ -486,7 +522,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         #### Forecast Horizon Checks ----
         if fh is None:
-            if isinstance(fold_strategy, str):
+            if isinstance(self.fold_strategy, str):
                 raise ValueError(
                     "The forecast horizon `fh` must be provided when fold_strategy is of type 'string'"
                 )
@@ -496,14 +532,14 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             )
 
         #### Check Fold Strategy ----
-        if not isinstance(fold_strategy, str):
+        if not isinstance(self.fold_strategy, str):
             self.logger.info(
                 f"fh parameter {fh} will be ignored since fold_strategy has been provided. "
                 f"fh from fold_strategy will be used instead."
             )
-            fh = fold_strategy.fh
+            fh = self.fold_strategy.fh
             self.logger.info(
-                f"fold parameter '{fold}' will be ignored since fold_strategy has been provided. "
+                f"fold parameter '{self.fold}' will be ignored since fold_strategy has been provided. "
                 f"fold based on fold_strategy will be used instead."
             )
             # fold value will be reset after the data is split in the parent class setup
@@ -511,11 +547,12 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         fh = self._check_fh(fh)
         self.fh = fh
 
+        return self
+
     def _check_and_set_seasonal_period(
         self,
-        data: pd.DataFrame,
         seasonal_period: Optional[Union[List[Union[int, str]], int, str]],
-    ):
+    ) -> "TSForecastingExperiment":
         """Derived the seasonal periods by either
         (1) Extracting it from data's index (if seasonal period is not provided), or
         for each value of seasonal_period:
@@ -529,10 +566,13 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         Parameters
         ----------
-        data : pd.DataFrame
-            Data used index can be used to extract the seasonal period information
         seasonal_period : Optional[Union[List[Union[int, str]], int, str]]
             Seasonal Period specified by user
+
+        Returns
+        -------
+        TSForecastingExperiment
+            The experiment object to allow chaining of methods
 
         Raises
         ------
@@ -545,7 +585,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         from sktime.utils.seasonality import autocorrelation_seasonality_test
 
         if seasonal_period is None:
-            seasonal_period = data.index.freqstr
+            seasonal_period = self.data.index.freqstr
 
         if not isinstance(seasonal_period, list):
             seasonal_period = [seasonal_period]
@@ -575,6 +615,8 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             seasonal_period[0] if len(seasonal_period) == 1 else seasonal_period
         )
 
+        return self
+
     def _convert_sp_to_int(self, seasonal_period):
         """Derives the seasonal period specified by either:
             (1) Extracting it from the seasonal_period if it is of type string, or
@@ -600,24 +642,38 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         return seasonal_period
 
-    @staticmethod
-    def _return_exogenous_names(
-        data: pd.DataFrame, target: List[str], ignore_features: Optional[List] = None
-    ):
+    def _set_exogenous_names(self) -> "TSForecastingExperiment":
+        """Sets the names of the exogenous variables to be used by the experiment
+        after accounting for the features to ignore.
 
-        cols = data.columns.to_list()
+        Returns
+        -------
+        TSForecastingExperiment
+            The experiment object to allow chaining of methods
+        """
 
-        ignore_features = ignore_features if ignore_features is not None else []
-        exo_variables = [item for item in cols if item not in ignore_features]
+        cols = self.data.columns.to_list()
+
+        self.ignore_features = (
+            self.ignore_features if self.ignore_features is not None else []
+        )
+        exo_variables = [item for item in cols if item not in self.ignore_features]
 
         # Remove targets
-        exo_variables = [item for item in exo_variables if item != target]
+        self.exogenous_variables = [
+            item for item in exo_variables if item != self.target_param
+        ]
 
-        return exo_variables
+        return self
 
-    def _check_and_set_forecsting_types(self):
+    def _check_and_set_forecsting_types(self) -> "TSForecastingExperiment":
         """Checks & sets the the forecasting types based on the number of Targets
         and Exogenous Variables.
+
+        Returns
+        -------
+        TSForecastingExperiment
+            The experiment object to allow chaining of methods
 
         Raises
         ------
@@ -637,6 +693,371 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         else:
             self.exogenous_present = TSExogenousPresent.NO
 
+        return self
+
+    def _check_transformations(self):
+        """Checks that the transformations are valid
+
+        Raises
+        ------
+        ValueError
+            (1) If transformation to y produces NA values.
+            (2) If transformation to X produces NA values.
+        """
+
+        def _msg(missing_indices, num_na, variable) -> str:
+            msg = (
+                f"\n\nNA Value Indices:\n{missing_indices}"
+                f"\n\nTransformation produced {num_na} NA values in {variable}. "
+                "This will lead to issues with modeling."
+                "\nThis can happen when you have negative and/or zero values in the data and you used a "
+                "transformation that can not be applied to such values. e.g. Box-Cox, log, etc."
+                "\nPlease update the preprocessing steps to proceed."
+            )
+            return msg
+
+        num_na_y = self.y_transformed.isna().sum()
+        if num_na_y != 0:
+            with pd.option_context("display.max_seq_items", None):
+                missing_idx = self.y_transformed[self.y_transformed.isna()].index
+                raise ValueError(_msg(missing_idx, num_na_y, "y"))
+
+        if self.X_transformed is not None:
+            num_na_X = self.X_transformed.isna().sum().sum()
+            if num_na_X != 0:
+                with pd.option_context("display.max_seq_items", None):
+                    missing_idx = self.X_transformed[self.X_transformed.isna()].index
+                    raise ValueError(_msg(missing_idx, num_na_X, "X"))
+
+    def _setup_train_test_split(self) -> "TSForecastingExperiment":
+        """Sets up the train-test split indices.
+
+        Returns
+        -------
+        TSForecastingExperiment
+            The experiment object to allow chaining of methods
+        """
+        self.logger.info("Set up Train-Test Splits.")
+
+        # If `fh` is provided it splits by it
+        y = self.data[self.target_param]
+        X = self.data.drop(self.target_param, axis=1)
+
+        y_train, y_test, X_train, X_test = temporal_train_test_split(
+            y=y, X=X, fh=self.fh
+        )
+
+        # idx contains train, test indices.
+        # Setting of self.y_train, self.y_test, self.X_train and self.X_test
+        # will be handled internally based on these indices and self.data
+        self.idx = [y_train.index, y_test.index]
+
+        return self
+
+    def _set_fold_generator(self) -> "TSForecastingExperiment":
+        """Sets up the cross validation fold generator that operates on the training dataset.
+
+        Returns
+        -------
+        TSForecastingExperiment
+            The experiment object to allow chaining of methods
+
+        Raises
+        ------
+        TypeError
+            When the fold_strategy passed by the user is not one of the allowed types
+        """
+        possible_time_series_fold_strategies = ["expanding", "sliding", "rolling"]
+        #### TODO: Change is_sklearn_cv_generator to check for sktime instead
+        if not (
+            self.fold_strategy in possible_time_series_fold_strategies
+            or is_sklearn_cv_generator(self.fold_strategy)
+        ):
+            raise TypeError(
+                "fold_strategy parameter must be either a sktime compatible CV generator "
+                f"object or one of '{', '.join(possible_time_series_fold_strategies)}'."
+            )
+
+        if self.fold_strategy in possible_time_series_fold_strategies:
+            # Number of folds
+            self.fold_param = self.fold
+            self.fold_generator = self.get_fold_generator(fold=self.fold_param)
+        else:
+            self.fold_generator = self.fold_strategy
+            # Number of folds
+            self.fold_param = self.fold_strategy.get_n_splits(y=self.y_train)
+
+        return self
+
+    def _set_missingness(self) -> "TSForecastingExperiment":
+        """Checks and sets flags indicating missing values in the target and
+        exogenous variables. These can be used later to make decisions on whether
+        to let the experiment proceed or not or if some steps in preprocessing
+        must be enabled.
+
+        Returns
+        -------
+        TSForecastingExperiment
+            The experiment object to allow chaining of methods
+        """
+        self.num_missing_target = self.y.isna().sum()
+        self.target_has_missing = self.num_missing_target != 0
+        if isinstance(self.X, pd.DataFrame):
+            self.num_missing_exogenous = self.X.isna().sum().sum()
+            self.exogenous_has_missing = self.num_missing_exogenous != 0
+        elif self.X is None:
+            self.num_missing_exogenous = 0
+            self.exogenous_has_missing = False
+
+        return self
+
+    def _initialize_pipeline(self) -> "TSForecastingExperiment":
+        """Sets the preprocessing pipeline according to the user inputs
+
+        Returns
+        -------
+        TSForecastingExperiment
+            The experiment object to allow chaining of methods
+
+        Raises
+        ------
+        ValueError
+            (1) The target has missing values but imputation has not been set.
+            (2) The exogenous variables have missing values but imputation has not been set.
+        """
+
+        if self.target_has_missing and self.numeric_imputation_target is None:
+            raise ValueError(
+                "\nTime Series modeling automation relies on running statistical tests, plots, etc.\n"
+                "Many of these can not be run when data has missing values. \nYour target has "
+                f"{self.num_missing_target} missing values and `numeric_imputation_target` is set to "
+                "`None`. \nPlease enable imputation to proceed. "
+            )
+        if self.exogenous_has_missing and self.numeric_imputation_exogenous is None:
+            raise ValueError(
+                "\nTime Series modeling automation relies on running statistical tests, plots, etc.\n"
+                "Many of these can not be run when data has missing values. \nYour exogenous data "
+                f"has {self.num_missing_exogenous} missing values and `numeric_imputation_exogenous` is "
+                "set to `None`. \nPlease enable imputation to proceed. "
+            )
+
+        # Initialize empty steps ----
+        self.pipe_steps_target = []
+        self.pipe_steps_exogenous = []
+
+        if self.preprocess:
+            self.logger.info("Preparing preprocessing pipeline...")
+
+            #### Impute missing values ----
+            self._imputation(
+                numeric_imputation_target=self.numeric_imputation_target,
+                numeric_imputation_exogenous=self.numeric_imputation_exogenous,
+                exogenous_present=self.exogenous_present,
+            )
+
+            #### Transformations (preferably based on residual analysis) ----
+            self._transformation(
+                transform_target=self.transform_target,
+                transform_exogenous=self.transform_exogenous,
+                exogenous_present=self.exogenous_present,
+            )
+
+            #### Scaling ----
+            self._scaling(
+                scale_target=self.scale_target,
+                scale_exogenous=self.scale_exogenous,
+                exogenous_present=self.exogenous_present,
+            )
+
+        # # Add custom transformers to the pipeline
+        # if custom_pipeline:
+        #     self._add_custom_pipeline(custom_pipeline)
+
+        self.pipeline = self._create_pipeline(
+            model=DummyForecaster(),
+            target_steps=self.pipe_steps_target,
+            exogenous_steps=self.pipe_steps_exogenous,
+        )
+
+        self.pipeline.fit(y=self.y_train, X=self.X_train, fh=self.fh)
+        self._check_transformations()
+
+        self.logger.info("Finished creating preprocessing pipeline.")
+        self.logger.info(f"Pipeline: {self.pipeline}")
+
+        return self
+
+    def _set_multiplicative_components(self) -> "TSForecastingExperiment":
+        """Should multiplicative components be allowed in certain models?
+        These only work if the data is strictly positive.
+
+        Returns
+        -------
+        TSForecastingExperiment
+            The experiment object to allow chaining of methods
+        """
+        self.logger.info("Set up whether Multiplicative components allowed.")
+        # Should multiplicative components be allowed in models that support it
+        self.strictly_positive = np.all(self.y_transformed > 0)
+        return self
+
+    def _set_is_white_noise(self) -> "TSForecastingExperiment":
+        """Is the data being modeled white noise?
+
+        Returns
+        -------
+        TSForecastingExperiment
+            The experiment object to allow chaining of methods
+        """
+        self.white_noise = None
+        wn_results = self.check_stats(test="white_noise")
+        wn_values = wn_results.query("Property == 'White Noise'")["Value"]
+
+        # There can be multiple lags values tested.
+        # Checking the percent of lag values that indicate white noise
+        percent_white_noise = sum(wn_values) / len(wn_values)
+        if percent_white_noise == 0:
+            self.white_noise = "No"
+        elif percent_white_noise == 1.00:
+            self.white_noise = "Yes"
+        else:
+            self.white_noise = "Maybe"
+
+        return self
+
+    def _set_lowercase_d(self) -> "TSForecastingExperiment":
+        """Difference 'd' value to be used by models
+
+        We use y_transformed here instead of y for 2 reasons:
+        (1) Missing values in y will cause issues with this test.
+        (2) The actual forecaster will see transformed values of y for training.
+            Hence d, and D should be computed using the transformed values.
+
+        Returns
+        -------
+        TSForecastingExperiment
+            The experiment object to allow chaining of methods
+        """
+        self.lowercase_d = recommend_lowercase_d(data=self.y_transformed)
+        return self
+
+    def _set_uppercase_d(self) -> "TSForecastingExperiment":
+        """Seasonal difference 'D' value to be used by models
+
+        We use y_transformed here instead of y for 2 reasons:
+        (1) Missing values in y will cause issues with this test.
+        (2) The actual forecaster will see transformed values of y for training.
+            Hence d, and D should be computed using the transformed values.
+
+        Returns
+        -------
+        TSForecastingExperiment
+            The experiment object to allow chaining of methods
+        """
+        if self.primary_sp_to_use > 1:
+            try:
+                max_D = 2
+                uppercase_d = recommend_uppercase_d(
+                    data=self.y_transformed, sp=self.primary_sp_to_use, max_D=max_D
+                )
+            except ValueError:
+                self.logger.info("Test for computing 'D' failed at max_D = 2.")
+                try:
+                    max_D = 1
+                    uppercase_d = recommend_uppercase_d(
+                        data=self.y_transformed, sp=self.primary_sp_to_use, max_D=max_D
+                    )
+                except ValueError:
+                    self.logger.info("Test for computing 'D' failed at max_D = 1.")
+                    uppercase_d = 0
+        else:
+            uppercase_d = 0
+        self.uppercase_d = uppercase_d
+
+        return self
+
+    def _perform_setup_eda(self) -> "TSForecastingExperiment":
+        """Perform the EDA on the transformed data in order to extract
+        appropriate model parameters.
+
+        Returns
+        -------
+        TSForecastingExperiment
+            The experiment object to allow chaining of methods
+        """
+        self._set_is_white_noise()
+        self._set_lowercase_d()
+        self._set_uppercase_d()
+        return self
+
+    def _setup_display_container(self) -> "TSForecastingExperiment":
+        """Prepare the display container for setup
+
+        Returns
+        -------
+        TSForecastingExperiment
+            The experiment object to allow chaining of methods
+        """
+        self.logger.info("Creating final display dataframe.")
+        self.display_container = [self._get_setup_display()]
+        self.logger.info(f"Setup Display Container: {self.display_container[0]}")
+        if self.verbose:
+            pd.set_option("display.max_rows", 100)
+            print(self.display_container[0].style.apply(highlight_setup))
+            pd.reset_option("display.max_rows")  # Reset option
+
+        return self
+
+    def _set_all_models(self) -> "TSForecastingExperiment":
+        """Set all available models
+
+        Returns
+        -------
+        TSForecastingExperiment
+            The experiment object to allow chaining of methods
+        """
+        self._all_models, self._all_models_internal = self._get_models()
+        return self
+
+    def _set_all_metrics(self) -> "TSForecastingExperiment":
+        """Set all available metrics
+
+        Returns
+        -------
+        TSForecastingExperiment
+            The experiment object to allow chaining of methods
+        """
+        self._all_metrics = self._get_metrics()
+        return self
+
+    def _disable_metrics(self) -> "TSForecastingExperiment":
+        """Disable metrics that are not applicable based on data and user inputs. e.g.
+        (1) R2 needs at least 2 data points so should be disabled if there is only
+        one point in the forecast horizon.
+        (2) COVERAGE should only be enabled if user explicitly sets `enforce_pi = True`
+
+        Returns
+        -------
+        TSForecastingExperiment
+            The experiment object to allow chaining of methods
+        """
+        ## NOTE: This must be run after _setup_ran has been set, else metrics can
+        # not be retrieved.
+
+        #### Disable R2 when fh = 1 ----
+        if len(self.fh) == 1 and "r2" in self._get_metrics():
+            # disable R2 metric if it exists in the metrics since R2 needs
+            # at least 2 values
+            self.remove_metric("R2")
+
+        #### Remove COVERAGE when enforce_pi is False ----
+        # User can add it manually if they want when enforce_pi is set to False.
+        # Refer: https://github.com/pycaret/pycaret/issues/1900
+        if not self.enforce_pi and "coverage" in self._get_metrics():
+            self.remove_metric("COVERAGE")
+
+        return self
+
     def setup(
         self,
         data: Union[pd.Series, pd.DataFrame],
@@ -646,10 +1067,10 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         preprocess: bool = True,
         numeric_imputation_target: Optional[Union[int, float, str]] = None,
         numeric_imputation_exogenous: Optional[Union[int, float, str]] = None,
-        # transform_target: Optional[str] = None,
-        # transform_exogenous: Optional[str] = None,
-        # scale_target: Optional[str] = None,
-        # scale_exogenous: Optional[str] = None,
+        transform_target: Optional[str] = None,
+        transform_exogenous: Optional[str] = None,
+        scale_target: Optional[str] = None,
+        scale_exogenous: Optional[str] = None,
         fold_strategy: Union[str, Any] = "expanding",
         fold: int = 3,
         fh: Optional[Union[List[int], int, np.array]] = 1,
@@ -711,11 +1132,53 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
 
         preprocess: bool, default = True
-            Parameter not in use for now. Behavior may change in future.
+            Should preprocessing be done on the data (includes imputation,
+            transformation, scaling)? By default True, but all steps are disabled.
+            Enable the steps that need to be preprocessed using appropriate arguments.
 
 
-        imputation_type: str, default = 'simple'
-            Parameter not in use for now. Behavior may change in future.
+        numeric_imputation_target: Optional[Union[int, float, str]], default = None
+            Indicates how to impute missing values in the target.
+            If None, no imputation is done.
+            If the target has missing values, then imputation is mandatory.
+            If str, then value passed as is to the underlying `sktime` imputer.
+            Allowed values are:
+                "drift", "linear", "nearest", "mean", "median", "backfill",
+                "bfill", "pad", "ffill", "random"
+            If int or float, imputation method is set to "constant" with the given value.
+
+
+        numeric_imputation_exogenous: Optional[Union[int, float, str]], default = None
+            Indicates how to impute missing values in the exogenous variables.
+            If None, no imputation is done.
+            If exogenous variables have missing values, then imputation is mandatory.
+            If str, then value passed as is to the underlying `sktime` imputer.
+            Allowed values are:
+                "drift", "linear", "nearest", "mean", "median", "backfill",
+                "bfill", "pad", "ffill", "random"
+            If int or float, imputation method is set to "constant" with the given value.
+
+
+        transform_target: Optional[str], default = None
+            Indicates how the target variable should be transformed.
+            If None, no transformation is performed. Allowed values are
+                "box-cox", "log", "sqrt", "exp", "cos"
+
+
+        transform_exogenous: Optional[str], default = None
+            Indicates how the exogenous variables should be transformed.
+            If None, no transformation is performed. Allowed values are
+                "box-cox", "log", "sqrt", "exp", "cos"
+
+        scale_target: Optional[str], default = None
+            Indicates how the target variable should be scaled.
+            If None, no scaling is performed. Allowed values are
+                "zscore", "minmax", "maxabs", "robust"
+
+        scale_exogenous: Optional[str], default = None
+            Indicates how the exogenous variables should be scaled.
+            If None, no scaling is performed. Allowed values are
+                "zscore", "minmax", "maxabs", "robust"
 
 
         fold_strategy: str or sklearn CV generator object, default = 'expanding'
@@ -898,8 +1361,6 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
 
         """
-        # sktime is an optional dependency
-        from sktime.forecasting.model_selection import temporal_train_test_split
 
         ##############################
         #### Setup initialization ####
@@ -914,7 +1375,16 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         self.enforce_pi = enforce_pi
         self.enforce_exogenous = enforce_exogenous
         self.preprocess = preprocess
-        # self.imputation_type = imputation_type
+        self.numeric_imputation_target = numeric_imputation_target
+        self.numeric_imputation_exogenous = numeric_imputation_exogenous
+        self.transform_target = transform_target
+        self.transform_exogenous = transform_exogenous
+        self.scale_target = scale_target
+        self.scale_exogenous = scale_exogenous
+
+        self.fold_strategy = fold_strategy
+        self.fold = fold
+
         self.log_plots_param = log_plots
 
         # Needed for compatibility with Regression and Classification.
@@ -923,262 +1393,45 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         self.fold_groups_param_full = None
         self.transform_target_param = None
 
+        self.ignore_features = ignore_features
         # Features to be ignored (are not read by self.dataset, self.X, etc...)
         self._fxs = {"Ignore": ignore_features or []}
 
-        ## Make a local copy (to perfrom inplace operation on the original dataset)
-        data_ = data.copy()
-
-        # TODO: What is memory and is it needed as an argument to the setup?
-        # https://github.com/pycaret/pycaret/blob/eb3a958ea159c600eb8d536cb902d309aa18ebcb/pycaret/internal/pycaret_experiment/class_reg_experiment.py#L138
-        memory: Union[bool, str, Memory] = True
-
-        self._initialize_setup(
-            n_jobs=n_jobs,
-            use_gpu=use_gpu,
-            html=html,
-            session_id=session_id,
-            system_log=system_log,
-            log_experiment=log_experiment,
-            experiment_name=experiment_name,
-            memory=memory,
-            verbose=verbose,
-        )
-
-        #### Check and Clean Data ----
-        data_ = self._check_and_clean_data(data)
-
-        #### Check and Clean Index ----
-        data_ = self._check_and_clean_index(
-            data=data_, index=index, seasonal_period=seasonal_period
-        )
-
-        #### Check and Set Targets ----
-        self._check_and_set_targets(data=data_, target=target)
-
-        #### Check and Set Exogenous Variables ----
-        self.exogenous_variables = self._return_exogenous_names(
-            data=data_, target=self.target_param, ignore_features=ignore_features
-        )
-
-        #### Set type of forecasting ----
-        self._check_and_set_forecsting_types()
-
-        #### Set Forecast Horizon ----
-        self._check_and_set_fh(fh=fh, fold_strategy=fold_strategy, fold=fold)
-
-        ###############################
-        #### Set Train Test Splits ####
-        ###############################
-
-        self.logger.info("Set up Train-Test Splits.")
-
-        # If `fh` is provided it splits by it
-        y = data_[self.target_param]
-        X = data_.drop(self.target_param, axis=1)
-
-        y_train, y_test, X_train, X_test = temporal_train_test_split(
-            y=y, X=X, fh=self.fh
-        )
-
-        # Coerce y into a dataframes ----
-        # TODO: Is this needed here since we are not explicitly setting y_train and y_test?
-        y_train, y_test = (
-            pd.DataFrame(y_train),
-            pd.DataFrame(y_test),
-        )
-
-        self.data = data_
-        # idx contains train, test indices.
-        # Setting of self.y_train, self.y_test, self.X_train and self.X_test
-        # will be handled internally based on these indices and self.data
-        self.idx = [y_train.index, y_test.index]
-
-        ######################################
-        #### Setup Cross Validation Folds ####
-        ######################################
-
-        possible_time_series_fold_strategies = ["expanding", "sliding", "rolling"]
-        #### TODO: Change is_sklearn_cv_generator to check for sktime instead
-        if not (
-            fold_strategy in possible_time_series_fold_strategies
-            or is_sklearn_cv_generator(fold_strategy)
-        ):
-            raise TypeError(
-                "fold_strategy parameter must be either a sktime compatible CV generator "
-                f"object or one of '{', '.join(possible_time_series_fold_strategies)}'."
+        (
+            self._initialize_setup(
+                n_jobs=n_jobs,
+                use_gpu=use_gpu,
+                html=html,
+                session_id=session_id,
+                system_log=system_log,
+                log_experiment=log_experiment,
+                experiment_name=experiment_name,
+                memory=True,
+                verbose=verbose,
             )
-
-        if fold_strategy in possible_time_series_fold_strategies:
-            self.fold_strategy = fold_strategy  # save for use in methods later
-            # Number of folds
-            self.fold_param = fold
-            self.fold_generator = self.get_fold_generator(fold=self.fold_param)
-        else:
-            # TODO: Add the correct self.fold_strategy here based type of fold_strategy
-            self.fold_generator = fold_strategy
-            # Number of folds
-            self.fold_param = fold_strategy.get_n_splits(y=self.y_train)
-
-        # Preprocessing ============================================ >>
-
-        num_missing_target = self.y.isna().sum()
-        self.target_has_missing = num_missing_target != 0
-        if isinstance(self.X, pd.DataFrame):
-            num_missing_exogenous = self.X.isna().sum().sum()
-            self.exogenous_has_missing = num_missing_exogenous != 0
-        elif self.X is None:
-            num_missing_exogenous = 0
-            self.exogenous_has_missing = False
-
-        if self.target_has_missing and numeric_imputation_target is None:
-            raise ValueError(
-                "\nTime Series modeling automation relies on running statistical tests, plots, etc.\n"
-                "Many of these can not be run when data has missing values. \nYour target has "
-                f"{num_missing_target} missing values and `numeric_imputation_target` is set to "
-                "`None`. \nPlease enable imputation to proceed. "
-            )
-        if self.exogenous_has_missing and numeric_imputation_exogenous is None:
-            raise ValueError(
-                "\nTime Series modeling automation relies on running statistical tests, plots, etc.\n"
-                "Many of these can not be run when data has missing values. \nYour exogenous data "
-                f"has {num_missing_exogenous} missing values and `numeric_imputation_exogenous` is "
-                "set to `None`. \nPlease enable imputation to proceed. "
-            )
-
-        # Initialize empty steps ----
-        self.pipe_steps_target = []
-        self.pipe_steps_exogenous = []
-
-        if preprocess:
-            self.logger.info("Preparing preprocessing pipeline...")
-
-            #### Impute missing values ----
-            if numeric_imputation_target is not None:
-                self._imputation(
-                    numeric_imputation=numeric_imputation_target, target=True
-                )
-            # Only add exogenous pipeline steps if exogenous variables are present.
-            if (
-                self.exogenous_present == TSExogenousPresent.YES
-                and numeric_imputation_exogenous is not None
-            ):
-                self._imputation(
-                    numeric_imputation=numeric_imputation_exogenous, target=False
-                )
-
-        #     # Transformations (preferably based on residual analysis) ----
-        #     if transformation:
-        #         self._transformation(transformation_method)
-
-        #     # Scaling ----
-        #     if normalize:
-        #         self._normalization(normalize_method)
-
-        # # Add custom transformers to the pipeline
-        # if custom_pipeline:
-        #     self._add_custom_pipeline(custom_pipeline)
-
-        # Add dummy forecaster for now ----
-        dummy_model_step = [("dummy_model", NaiveForecaster())]
-        self.pipe_steps_target.extend(dummy_model_step)
-        forecaster = TransformedTargetForecaster(self.pipe_steps_target)
-
-        # Create Forecasting Pipeline ----
-        self.pipe_steps_exogenous.extend([("forecaster", forecaster)])
-        self.pipeline = PyCaretForecastingPipeline(steps=self.pipe_steps_exogenous)
-
-        # No need to pass fh here (as far as I can tell), since this is just needed
-        # for the transformed data values.
-        self.pipeline.fit(y=self.y_train, X=self.X_train)
-
-        self.logger.info("Finished creating preprocessing pipeline.")
-        self.logger.info(f"Pipeline: {self.pipeline}")
-
-        ##################################################################
-        #### Do these after the preprocessing pipeline has been setup ####
-        ##################################################################
-        # Since the models will see transformed data, these parameters should
-        # also be derived from the transformed data.
-
-        #### Set up Seasonal Period ----
-        self._check_and_set_seasonal_period(data=data_, seasonal_period=seasonal_period)
-
-        #### Multiplicative components allowed? ----
-        self.logger.info("Set up whether Multiplicative components allowed.")
-        # Should multiplicative components be allowed in models that support it
-        self.strictly_positive = np.all(self.y_transformed > 0)
-
-        ############################################
-        #### Initial EDA in Setup (for display) ####
-        ############################################
-
-        from pycaret.internal.tests.time_series import (
-            recommend_uppercase_d,
-            recommend_lowercase_d,
+            ._check_clean_and_set_data(data)
+            ._check_and_clean_index(index=index, seasonal_period=seasonal_period)
+            ._check_and_set_targets(target=target)
+            ._set_exogenous_names()
+            ._check_and_set_forecsting_types()
+            ._check_and_set_fh(fh=fh)
+            ._setup_train_test_split()
+            ._set_fold_generator()
+            ._set_missingness()
+            ._initialize_pipeline()
+            ##################################################################
+            #### Do these after the preprocessing pipeline has been setup.
+            #### Since the model will see transformed data, these parameters
+            #### should also be derived from the transformed data.
+            ##################################################################
+            ._check_and_set_seasonal_period(seasonal_period=seasonal_period)
+            ._set_multiplicative_components()
+            ._perform_setup_eda()
+            ._setup_display_container()
+            ._profile(profile, profile_kwargs)
+            ._set_all_models()
+            ._set_all_metrics()
         )
-
-        self.white_noise = None
-        wn_results = self.check_stats(test="white_noise")
-        wn_values = wn_results.query("Property == 'White Noise'")["Value"]
-
-        # There can be multiple lags values tested.
-        # Checking the percent of lag values that indicate white noise
-        percent_white_noise = sum(wn_values) / len(wn_values)
-        if percent_white_noise == 0:
-            self.white_noise = "No"
-        elif percent_white_noise == 1.00:
-            self.white_noise = "Yes"
-        else:
-            self.white_noise = "Maybe"
-
-        # We use y_transformed here instead of y for 2 reasons:
-        # (1) Missing values in y will cause issues with this test.
-        # (2) The actual forecaster will see transformed values of y for training.
-        #     Hence d, and D should be computed using the transformed values.
-        self.lowercase_d = recommend_lowercase_d(data=self.y_transformed)
-        if self.primary_sp_to_use > 1:
-            try:
-                max_D = 2
-                uppercase_d = recommend_uppercase_d(
-                    data=self.y_transformed, sp=self.primary_sp_to_use, max_D=max_D
-                )
-            except ValueError:
-                self.logger.info("Test for computing 'D' failed at max_D = 2.")
-                try:
-                    max_D = 1
-                    uppercase_d = recommend_uppercase_d(
-                        data=self.y_transformed, sp=self.primary_sp_to_use, max_D=max_D
-                    )
-                except ValueError:
-                    self.logger.info("Test for computing 'D' failed at max_D = 1.")
-                    uppercase_d = 0
-        else:
-            uppercase_d = 0
-        self.uppercase_d = uppercase_d
-
-        #######################
-        #### Final display ####
-        #######################
-
-        self.logger.info("Creating final display dataframe.")
-        self.display_container = [self._get_setup_display()]
-        self.logger.info(f"Setup Display Container: {self.display_container[0]}")
-        if self.verbose:
-            pd.set_option("display.max_rows", 100)
-            print(self.display_container[0].style.apply(highlight_setup))
-            pd.reset_option("display.max_rows")  # Reset option
-
-        #################
-        #### Wrap-up ####
-        #################
-
-        # Create a profile report
-        self._profile(profile, profile_kwargs)
-
-        # Define models and metrics
-        self._all_models, self._all_models_internal = self._get_models()
-        self._all_metrics = self._get_metrics()
 
         runtime = np.array(time.time() - runtime_start).round(2)
 
@@ -1190,26 +1443,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         )
 
         self._setup_ran = True
-
-        #############################
-        #### Cleanup after Setup ####
-        #############################
-
-        #### Disabling of certain metrics. ----
-        ## NOTE: This must be run after _setup_ran has been set, else metrics can
-        # not be retrieved.
-
-        #### Disable R2 when fh = 1 ----
-        if len(self.fh) == 1 and "r2" in self._get_metrics():
-            # disable R2 metric if it exists in the metrics since R2 needs
-            # at least 2 values
-            self.remove_metric("R2")
-
-        #### Remove COVERAGE when enforce_pi is False ----
-        # User can add it manually if they want when enforce_pi is set to False.
-        # Refer: https://github.com/pycaret/pycaret/issues/1900
-        if not self.enforce_pi and "coverage" in self._get_metrics():
-            self.remove_metric("COVERAGE")
+        self._disable_metrics()
 
         self.logger.info(f"setup() successfully completed in {runtime}s...............")
 
@@ -1496,22 +1730,29 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             fit_kwargs.update(fh_param)
         return fit_kwargs
 
-    def add_model_to_pipeline(self, model):
-        """Adds the model to the preprocessing pipeline."""
-        pipeline_with_model = deepcopy(self.pipeline)
-        # Pop the dummy model at the end of pipeline ----
-        pipeline_with_model.steps[-1][1].steps.pop()
-        # Add the right model to the pipeline ----
-        pipeline_with_model.steps[-1][1].steps.extend([("model", model)])
+    def _get_final_model_from_pipeline(
+        self, pipeline: PyCaretForecastingPipeline, check_is_fitted: bool = False
+    ) -> BaseForecaster:
+        """Extracts and returns the final model from the pipeline.
 
-        return pipeline_with_model
+        Parameters
+        ----------
+        pipeline : PyCaretForecastingPipeline
+            The pipeline with a final model
+        check_is_fitted : bool
+            If True, will check if final model is fitted and raise an exception
+            if it is not, by default False.
 
-    def get_final_model_from_pipeline(self, pipeline):
-        """Extracts and returns the final model from the pipeline."""
-
+        Returns
+        -------
+        BaseForecaster
+            The final model in the pipeline
+        """
         # Pipeline will always be of type PyCaretForecastingPipeline with final
         # forecaster being of type TransformedTargetForecaster
         final_forecaster_only = pipeline.steps_[-1][1].steps_[-1][1]
+        if check_is_fitted:
+            final_forecaster_only.check_is_fitted()
 
         return final_forecaster_only
 
@@ -1527,7 +1768,9 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         ###############################################
         #### Add the correct model to the pipeline ####
         ###############################################
-        pipeline_with_model = self.add_model_to_pipeline(model=model)
+        pipeline_with_model = _add_model_to_pipeline(
+            pipeline=self.pipeline, model=model
+        )
 
         with io.capture_output():
             pipeline_with_model.fit(data_y, data_X, **fit_kwargs)
@@ -1550,7 +1793,12 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
             self.logger.info(f"display_container: {len(self.display_container)}")
 
-        return pipeline_with_model, model_fit_time
+        #### Return the final model only. Rest of the pipeline will be added during finalize.
+        final_model = self._get_final_model_from_pipeline(
+            pipeline=pipeline_with_model, check_is_fitted=True
+        )
+
+        return final_model, model_fit_time
 
     def _create_model_with_cv(
         self,
@@ -1595,7 +1843,9 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         ###############################################
         #### Add the correct model to the pipeline ####
         ###############################################
-        pipeline_with_model = self.add_model_to_pipeline(model=model)
+        pipeline_with_model = _add_model_to_pipeline(
+            pipeline=self.pipeline, model=model
+        )
 
         scores, cutoffs = cross_validate(
             forecaster=pipeline_with_model,
@@ -1662,23 +1912,14 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             with io.capture_output():
                 pipeline_with_model.fit(y=data_y, X=data_X, **fit_kwargs)
             model_fit_end = time.time()
-
             model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
         else:
-            # Set fh explicitly since we are not fitting explicitly
-            # This is needed so that the model can be used later to predict, etc.
-
-            # Update: Do we really use a unfitted modelf for prediction later?
-            # Also as per sktime developers, it is not advisable to use private
-            # functions from sktime. Disabling for now.
-            # model._set_fh(fit_kwargs.get("fh"))
-
-            # model_fit_time /= _get_cv_n_folds(data_y, cv)
             model_fit_time /= cv.get_n_splits(data_y)
 
-        # return model, model_fit_time, model_results, avgs_dict
-        #### Keep only final forecaster. Rest of the pipeline will be added during finalize.
-        final_model = self.get_final_model_from_pipeline(pipeline=pipeline_with_model)
+        #### Return the final model only. Rest of the pipeline will be added during finalize.
+        final_model = self._get_final_model_from_pipeline(
+            pipeline=pipeline_with_model, check_is_fitted=refit
+        )
         return final_model, model_fit_time, model_results, avgs_dict
 
     def tune_model(
@@ -2595,7 +2836,6 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                 resid = self.get_residuals(estimator=estimator)
                 if resid is None:
                     return
-                resid = self.check_and_clean_resid(resid=resid)
                 data = resid
             else:
                 plots_formatted_model = [
@@ -2767,8 +3007,39 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
 
         """
-        # Deep Cloning to prevent overwriting the fh when user specifies their own fh
-        estimator_ = deep_clone(estimator)
+        estimator.check_is_fitted()
+
+        # Use Cases:
+        # (1) User is in the middle of experiment and passes a Base Model without pipeline.
+        # Action: Append pipeline and predict
+        # (2) User saved a model (without pipeline) and in the future, restarted experiment
+        # after setup and loaded his model.
+        # Action: Append pipeline and predict. If setup has not been run, raise an exception.
+        # (3) User saved a model pipeline and in the future, loaded this pipeline in another
+        # experiment to make predictions. This model pipeline might be different from the
+        # experiment pipeline. Hence experiment pipeline should not be changes. Predict as is.
+        # Action: Pipeline as is
+
+        if isinstance(estimator, PyCaretForecastingPipeline):
+            # Use Case 3
+            pipeline_with_model = deepcopy(estimator)
+            estimator_ = self._get_final_model_from_pipeline(
+                pipeline=pipeline_with_model, check_is_fitted=True
+            )
+        else:
+            if self._setup_ran:
+                # Use Case 1 & 2
+                # Deep Cloning to prevent overwriting the fh when user specifies their own fh
+                estimator_ = deepcopy(estimator)
+                pipeline_with_model = _add_model_to_pipeline(
+                    pipeline=self.pipeline, model=estimator_
+                )
+            else:
+                raise ValueError(
+                    "\n\nSetup has not been run and you have provided a estimator without the pipeline. "
+                    "You can either \n(1) Provide the complete pipeline without running setup to make "
+                    "the prediction OR \n(2) Run setup first before providing the estimator only."
+                )
 
         loaded_in_same_env = True
         # Check if loaded in a different environment
@@ -2789,33 +3060,22 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             verbose = False
 
         if fh is None:
+            # TODO: Check if we can directly take from the estimator and remove the if-else
             if not hasattr(self, "fh"):
                 # If the model is saved and loaded afterwards,
                 # it will not have self.fh
                 fh = estimator_.fh
+            else:
+                fh = self.fh
         else:
             # Get the fh in the right format for sktime
             fh = self._check_fh(fh)
 
-        # NOTE: User does not need to pass X before finalizing the model even when
-        # building models with exogenous variables
-
-        # Loaded in the same environment as experiment
         if hasattr(self, "X_test"):
-            # If model has not been finalized & X has not been passed, then
-            # set X = X_test.
-
-            # But note that some models like Prophet train on Datetime Index
-            # But pycaret stores all indices as PeriodIndex, so convert
-            # appropriately before checking for the above condition
-            orig_freq = None
-            if isinstance(estimator._y.index, pd.DatetimeIndex):
-                orig_freq = self.y_train.index.freq
-            last_estimator_index = coerce_datetime_to_period_index(
-                estimator._y, freq=orig_freq
-            ).index[-1]
-
-            if last_estimator_index == self.y_train.index[-1] and X is None:
+            # If loaded in the same environment as experiment & model has not been
+            # finalized, then set X = X_test.
+            estimator_y, _ = self._get_cleaned_estimator_y_X(estimator=estimator)
+            if estimator_y.index[-1] == self.y_train.index[-1] and X is None:
                 X = self.X_test  # Predict Test Set
         # else: # Loaded in different environment
         # NOTE: If the model was built using exogenous variables, then user
@@ -2826,54 +3086,16 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         # returned by pycaret). Hence converting to None.
         X = _coerce_empty_dataframe_to_none(data=X)
 
-        try:
-            # TODO: Replace estimator_.predict() with
-            # y_test_pred, lower, upper = get_predictions_with_intervals(
-            #     forecaster=estimator_, X=X, fh=fh, alpha=alpha
-            # )
-            return_vals = estimator_.predict(
-                fh=fh, X=X, return_pred_int=return_pred_int, alpha=alpha
-            )
-        except NotImplementedError as error:
-            self.logger.warning(error)
-            self.logger.warning(
-                "Most likely, prediction intervals has not been implemented for this "
-                "algorithm. Predcition will be run with `return_pred_int` = False, and "
-                "NaN values will be returned for the prediction intervals instead."
-            )
-            return_vals = estimator_.predict(
-                fh=fh, X=X, return_pred_int=False, alpha=alpha
-            )
-        if isinstance(return_vals, tuple):
-            # Prediction Interval is returned
-            #   First Value is a series of predictions
-            #   Second Value is a dataframe of lower and upper bounds
-            result = pd.concat(return_vals, axis=1)
-            result.columns = ["y_pred", "lower", "upper"]
-        else:
-            # Prediction interval is not returned (not implemented)
-            if return_pred_int:
-                result = pd.DataFrame(return_vals)
-                result.columns = ["y_pred"]
-                result["lower"] = np.nan
-                result["upper"] = np.nan
-            else:
-                # Leave as series
-                result = return_vals
-                if result.name is None:
-                    if hasattr(self, "y"):
-                        result.name = self.y.name
-                    else:
-                        # If the model is saved and loaded afterwards,
-                        # it will not have self.y
-                        pass
-
-        # Converting to float since rounding does not support int
-        result = result.astype(float).round(round)
-
-        # Prophet with return_pred_int = True returns datetime index.
-        # Not anymore, we changed the container to return back a period index
-        # result = coerce_datetime_to_period_index(result)
+        result = get_predictions_with_intervals(
+            forecaster=pipeline_with_model,
+            X=X,
+            fh=fh,
+            alpha=alpha,
+            merge=True,
+            round=round,
+        )
+        if not return_pred_int:
+            result = result["y_pred"]
 
         #################
         #### Metrics ####
@@ -2888,12 +3110,10 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         if loaded_in_same_env:
             y_test = self.y_test
+            y_train, _ = self._get_y_X_used_for_training(estimator)
 
-            # y_train for finalized model is different from self.y_train
-            # Hence, better to get this from the estimator directly.
-            y_train = estimator_._y
             y_test_pred, lower, upper = get_predictions_with_intervals(
-                forecaster=estimator_, X=X, fh=fh, alpha=alpha
+                forecaster=pipeline_with_model, X=X, fh=fh, alpha=alpha
             )
 
             if len(y_test_pred) != len(y_test):
@@ -3104,7 +3324,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         )
 
     def save_model(
-        self, model, model_name: str, model_only: bool = True, verbose: bool = True
+        self, model, model_name: str, model_only: bool = False, verbose: bool = True
     ):
 
         """
@@ -3129,8 +3349,9 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             Name of the model.
 
 
-        model_only: bool, default = True
-            Parameter not in use for now. Behavior may change in future.
+        model_only: bool, default = False
+            When set to True, only trained model object is saved instead of the
+            entire pipeline.
 
 
         verbose: bool, default = True
@@ -3200,6 +3421,27 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             authentication=authentication,
             verbose=verbose,
         )
+
+    def _create_pipeline(
+        self,
+        model: BaseForecaster,
+        target_steps: Optional[List] = None,
+        exogenous_steps: Optional[List] = None,
+    ) -> PyCaretForecastingPipeline:
+
+        target_steps = target_steps or []
+        exogenous_steps = exogenous_steps or []
+
+        # Set the pipeline from model
+        # Add forecaster (model) to end of target steps ----
+        target_steps.extend([("model", model)])
+        forecaster = TransformedTargetForecaster(target_steps)
+
+        # Create Forecasting Pipeline ----
+        exogenous_steps.extend([("forecaster", forecaster)])
+        pipeline = PyCaretForecastingPipeline(exogenous_steps)
+
+        return pipeline
 
     def models(
         self,
@@ -3589,7 +3831,6 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             data = self.get_residuals(estimator=estimator)
             if data is None:
                 return
-            data = self.check_and_clean_resid(resid=data)
             data_name = "Residual"
 
         #### Step 2: Test ----
@@ -3679,59 +3920,172 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         return data
 
-    def get_residuals(self, estimator) -> Optional[pd.Series]:
-        # https://github.com/alan-turing-institute/sktime/issues/1105#issuecomment-932216820
+    def _get_cleaned_estimator_y_X(
+        self, estimator: BaseForecaster
+    ) -> Tuple[pd.Series, pd.DataFrame]:
+        """Some models like Prophet train on DatetimeIndex, but pycaret stores
+        all indices as PeriodIndex. This method will convert the y and X values of
+        the estimator from DatetimeIndex to PeriodIndex and return them. If the
+        index is not of type DatetimeIndex, then it returns the y and X values as is.
+
+        Note that this estimator data is different from the data used to train the
+        pipeline. Because of transformatons in the pipeline, the estimator (y, X)
+        values may be different from the (self.y_train, self.X_train) or
+        (self.y, self.X) values passed to the pipeline.
+
+        Parameters
+        ----------
+        estimator : BaseForecaster
+            Estimator whose y and X values have to be cleaned and returned
+
+        Returns
+        -------
+        Tuple[pd.Series, pd.DataFrame]
+            Cleaned y and X values respectively
+        """
+
+        orig_freq = None
+        if isinstance(estimator._y.index, pd.DatetimeIndex):
+            orig_freq = self.y_train.index.freq
+            clean_y = coerce_datetime_to_period_index(data=estimator._y, freq=orig_freq)
+            clean_X = coerce_datetime_to_period_index(data=estimator._X, freq=orig_freq)
+        else:
+            clean_y = estimator._y.copy()
+            if isinstance(estimator._X, pd.DataFrame):
+                clean_X = estimator._X.copy()
+            elif estimator._X is None:
+                clean_X = None
+            else:
+                raise ValueError(
+                    "Estimator's X is not of allowed type (Pandas DataFrame or None). "
+                    f"Got {type(estimator._X)}"
+                )
+
+        return clean_y, clean_X
+
+    def _get_y_X_used_for_training(
+        self,
+        estimator: BaseForecaster,
+    ) -> Tuple[pd.Series, pd.DataFrame]:
+        """Returns the y and X values passed to the pipeline for training.
+        These values are the values before transformation and can be passed to
+        the complete pipeline again if needed for steps in the workflow.
+
+        Parameters
+        ----------
+        estimator : BaseForecaster
+            sktime compatible model (without the pipeline). i.e. last step of
+            the pipeline TransformedTargetForecaster
+
+        Returns
+        -------
+        Tuple[pd.DataFrame, pd.DataFrame]
+            y and X values respectively used for training
+
+        Raises
+        ------
+        ValueError
+            Indices used to train estimator does not match either y_train or y indices.
+        """
+
+        estimator_y, _ = self._get_cleaned_estimator_y_X(estimator=estimator)
+        if len(estimator_y) == len(self.y_train) and np.all(
+            estimator_y.index == self.y_train.index
+        ):
+            # Model has not been finalized ----
+            y = self.y_train
+            X = self.X_train
+        elif len(estimator_y) == len(self.y) and np.all(
+            estimator_y.index == self.y.index
+        ):
+            # Model has been finalized ----
+            y = self.y
+            X = self.X
+        else:
+            # Should not happen
+            raise ValueError(
+                "y indices in estimator (used for training) do not match with train "
+                "or full dataset. This should not happen"
+            )
+        return y, X
+
+    def get_residuals(self, estimator: BaseForecaster) -> Optional[pd.Series]:
+        """_summary_
+
+        Parameters
+        ----------
+        estimator : BaseForecaster
+            sktime compatible model (without the pipeline). i.e. last step of
+            the pipeline TransformedTargetForecaster
+
+        Returns
+        -------
+        Optional[pd.Series]
+            Insample residuals. `None` if estimator does not support insample predictions
+
+        References
+        ----------
+        https://github.com/alan-turing-institute/sktime/issues/1105#issuecomment-932216820
+        """
+
         resid = None
 
-        estimator.check_is_fitted()
+        y, _ = self._get_y_X_used_for_training(estimator)
 
-        # Deep Cloning to prevent overwriting the fh when getting insample predictions
-        estimator_ = deep_clone(estimator)
-        y_used_to_train = estimator_._y
-        X_used_to_train = estimator_._X
-        try:
-            resid = y_used_to_train - estimator_.predict(
-                fh=ForecastingHorizon(y_used_to_train.index, is_relative=False),
-                X=X_used_to_train,
-            )
-        except NotImplementedError as exception:
-            self.logger.warning(exception)
+        insample_predictions = self.get_insample_predictions(estimator)
+        if insample_predictions is not None:
+            resid = y - insample_predictions
+            resid = self._check_and_clean_resid(resid=resid)
+        else:
             print(
                 "In sample predictions has not been implemented for this estimator "
-                f"of type '{estimator_.__class__.__name__}' in `sktime`. When "
+                f"of type '{estimator.__class__.__name__}' in `sktime`. When "
                 "this is implemented, it will be enabled by default in pycaret."
             )
 
         return resid
 
-    def get_insample_predictions(self, estimator) -> Optional[pd.Series]:
+    def get_insample_predictions(
+        self, estimator: BaseForecaster
+    ) -> Optional[pd.Series]:
+        """Returns the insample predictions for the estimator by appropriately
+        taking the entire pipeline into consideration.
+
+        Parameters
+        ----------
+        estimator : BaseForecaster
+            sktime compatible model (without the pipeline). i.e. last step of
+            the pipeline TransformedTargetForecaster
+
+        Returns
+        -------
+        Optional[pd.Series]
+            Insample predictions. `None` if estimator does not support insample predictions
+
+        References
+        ----------
         # https://github.com/alan-turing-institute/sktime/issues/1105#issuecomment-932216820
+        # https://github.com/alan-turing-institute/sktime/blob/87bdf36dbc0990f29942eb6f7fa56a8e6c5fa7b7/sktime/forecasting/base/_base.py#L699
+        """
         insample_predictions = None
 
-        estimator.check_is_fitted()
-
-        # Deep Cloning to prevent overwriting the fh when getting insample predictions
-        estimator_ = deep_clone(estimator)
-        y_used_to_train = estimator_._y
-        X_used_to_train = estimator_._X
+        y, X = self._get_y_X_used_for_training(estimator)
+        fh = ForecastingHorizon(y.index, is_relative=False)
         try:
-            insample_predictions = self.predict_model(
-                estimator_, fh=-np.arange(0, len(y_used_to_train)), X=X_used_to_train
-            )
-
+            insample_predictions = self.predict_model(estimator, fh=fh, X=X)
         except NotImplementedError as exception:
             self.logger.warning(exception)
             print(
                 "In sample predictions has not been implemented for this estimator "
-                f"of type '{estimator_.__class__.__name__}' in `sktime`. When "
+                f"of type '{estimator.__class__.__name__}' in `sktime`. When "
                 "this is implemented, it will be enabled by default in pycaret."
             )
 
         return insample_predictions
 
-    def check_and_clean_resid(self, resid: pd.Series) -> pd.Series:
-        """Checks to see if the residuals matches one of the test set or
-        full dataset. If it does, it resturns the residuals without the NA values.
+    def _check_and_clean_resid(self, resid: pd.Series) -> pd.Series:
+        """Checks to see if the residuals matches one of the train set or
+        full dataset. If it does, it returns the residuals without the NA values.
 
         Parameters
         ----------

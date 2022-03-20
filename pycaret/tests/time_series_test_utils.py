@@ -32,6 +32,22 @@ _ALL_STATS_TESTS = [
     "all",
 ]
 
+_IMPUTE_METHODS_STR = [
+    "drift",
+    "linear",
+    "nearest",
+    "mean",
+    "median",
+    "backfill",
+    "bfill",
+    "pad",
+    "ffill",
+    "random",
+]
+_TRANSFORMATION_METHODS = ["box-cox", "log", "sqrt", "exp", "cos"]
+_TRANSFORMATION_METHODS_NO_NEG = ["box-cox", "log"]
+_SCALE_METHODS = ["zscore", "minmax", "maxabs", "robust"]
+
 
 def _get_all_plots():
     exp = TSForecastingExperiment()
