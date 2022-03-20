@@ -58,7 +58,7 @@ def test_create_tune_predict_finalize_model(load_uni_exo_data_target):
     ########################
     # Default prediction
     y_pred = exp.predict_model(model)
-    assert isinstance(y_pred, pd.Series)
+    assert isinstance(y_pred, pd.DataFrame)
     assert np.all(y_pred.index == expected_period_index)
 
     #####################
@@ -71,7 +71,7 @@ def test_create_tune_predict_finalize_model(load_uni_exo_data_target):
     ########################
     # Default prediction
     y_pred = exp.predict_model(tuned_model)
-    assert isinstance(y_pred, pd.Series)
+    assert isinstance(y_pred, pd.DataFrame)
     assert np.all(y_pred.index == expected_period_index)
 
     #########################
@@ -119,7 +119,7 @@ def test_blend_models(load_uni_exo_data_target, load_models_uni_mix_exo_noexo):
 
     blender = exp.blend_models(best_models)
     y_pred = exp.predict_model(blender)
-    assert isinstance(y_pred, pd.Series)
+    assert isinstance(y_pred, pd.DataFrame)
     assert np.all(y_pred.index == expected_period_index)
 
     #########################

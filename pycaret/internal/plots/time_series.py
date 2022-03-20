@@ -1,4 +1,4 @@
-from typing import Optional, Any, Union, Dict, Tuple
+from typing import Optional, Any, Union, Dict, Tuple, List
 
 import numpy as np
 import pandas as pd
@@ -41,9 +41,9 @@ def _get_plot(
     train: Optional[pd.Series] = None,
     test: Optional[pd.Series] = None,
     X: Optional[pd.DataFrame] = None,
-    predictions: Optional[pd.Series] = None,
+    predictions: Optional[List[pd.DataFrame]] = None,
     cv: Optional[Union[ExpandingWindowSplitter, SlidingWindowSplitter]] = None,
-    model_name: Optional[str] = None,
+    model_names: Optional[List[str]] = None,
     return_pred_int: bool = False,
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
@@ -98,7 +98,7 @@ def _get_plot(
         fig, plot_data = plot_time_series_decomposition(
             data=data,
             fig_defaults=fig_defaults,
-            model_name=model_name,
+            model_name=model_names,
             plot="decomp",
             data_kwargs=data_kwargs,
             fig_kwargs=fig_kwargs,
@@ -108,7 +108,7 @@ def _get_plot(
         fig, plot_data = plot_time_series_decomposition(
             data=data,
             fig_defaults=fig_defaults,
-            model_name=model_name,
+            model_name=model_names,
             plot="decomp_stl",
             data_kwargs=data_kwargs,
             fig_kwargs=fig_kwargs,
@@ -118,7 +118,7 @@ def _get_plot(
         fig, plot_data = plot_acf(
             data=data,
             fig_defaults=fig_defaults,
-            model_name=model_name,
+            model_name=model_names,
             data_kwargs=data_kwargs,
             fig_kwargs=fig_kwargs,
         )
@@ -126,7 +126,7 @@ def _get_plot(
         fig, plot_data = plot_pacf(
             data=data,
             fig_defaults=fig_defaults,
-            model_name=model_name,
+            model_name=model_names,
             data_kwargs=data_kwargs,
             fig_kwargs=fig_kwargs,
         )
@@ -134,7 +134,7 @@ def _get_plot(
         fig, plot_data = plot_diagnostics(
             data=data,
             fig_defaults=fig_defaults,
-            model_name=model_name,
+            model_name=model_names,
             data_kwargs=data_kwargs,
             fig_kwargs=fig_kwargs,
         )
@@ -144,7 +144,7 @@ def _get_plot(
             fig_defaults=fig_defaults,
             X=X,
             hoverinfo=hoverinfo,
-            model_name=model_name,
+            model_name=model_names,
             data_kwargs=data_kwargs,
             fig_kwargs=fig_kwargs,
         )
@@ -152,11 +152,9 @@ def _get_plot(
         if return_pred_int:
             fig, plot_data = plot_predictions_with_confidence(
                 data=data,
-                predictions=predictions["y_pred"],
-                upper_interval=predictions["upper"],
-                lower_interval=predictions["lower"],
+                predictions=predictions,
                 fig_defaults=fig_defaults,
-                model_name=model_name,
+                model_names=model_names,
                 data_kwargs=data_kwargs,
                 fig_kwargs=fig_kwargs,
             )
@@ -166,7 +164,7 @@ def _get_plot(
                 predictions=predictions,
                 fig_defaults=fig_defaults,
                 type_=plot,
-                model_name=model_name,
+                model_names=model_names,
                 data_kwargs=data_kwargs,
                 fig_kwargs=fig_kwargs,
             )
@@ -174,7 +172,7 @@ def _get_plot(
         fig, plot_data = plot_time_series_differences(
             data=data,
             fig_defaults=fig_defaults,
-            model_name=model_name,
+            model_name=model_names,
             hoverinfo=hoverinfo,
             data_kwargs=data_kwargs,
             fig_kwargs=fig_kwargs,
@@ -183,7 +181,7 @@ def _get_plot(
         fig, plot_data = plot_frequency_components(
             data=data,
             fig_defaults=fig_defaults,
-            model_name=model_name,
+            model_name=model_names,
             plot=plot,
             hoverinfo=hoverinfo,
             data_kwargs=data_kwargs,
@@ -212,7 +210,7 @@ def plot_series(
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
 ) -> PlotReturnType:
-    """Plots the original time series"""
+    """Plots the original time series or residuals"""
     fig, return_data_dict = None, None
 
     data_kwargs = data_kwargs or {}
@@ -227,9 +225,18 @@ def plot_series(
             title = f"{title} | Target = {time_series_name}"
 
     if X is not None:
+        # Exogenous Variables present (predictions).
         plot_data = pd.concat([data, X], axis=1)
     else:
-        plot_data = pd.DataFrame(data, columns=[f"Residuals | {model_name}"])
+        # Exogenous Variables not present (Original Time series or residuals).
+        if isinstance(data, pd.Series):
+            if model_name is None:
+                # Original Time series
+                plot_data = pd.DataFrame(data)
+            else:
+                # Residual
+                plot_data = pd.DataFrame(data)
+                plot_data.columns = [f"Residuals | {model_name}"]
 
     rows = plot_data.shape[1]
     subplot_titles = plot_data.columns
@@ -628,10 +635,10 @@ def plot_pacf(
 
 def plot_predictions(
     data: pd.Series,
-    predictions: pd.Series,
+    predictions: List[pd.DataFrame],
     type_: str,
     fig_defaults: Dict[str, Any],
-    model_name: Optional[str] = None,
+    model_names: Optional[str] = None,
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
 ) -> PlotReturnType:
@@ -647,20 +654,26 @@ def plot_predictions(
     if time_series_name is not None:
         title = f"{title} | {time_series_name}"
 
-    x = (
-        predictions.index.to_timestamp()
-        if isinstance(predictions.index, pd.PeriodIndex)
-        else predictions.index
-    )
-    mean = go.Scatter(
-        name=f"Forecast | {model_name}",
-        x=x,
-        y=predictions,
-        mode="lines+markers",
-        line=dict(color="#1f77b4"),
-        marker=dict(size=5),
-        showlegend=True,
-    )
+    prediction_plot_data = []
+    for i, prediction in enumerate(predictions):
+        # Insample predictions can be None for some of the models ----
+        if prediction is not None:
+            x = (
+                prediction.index.to_timestamp()
+                if isinstance(prediction.index, pd.PeriodIndex)
+                else prediction.index
+            )
+
+            mean = go.Scatter(
+                name=f"Forecast | {model_names[i]}",
+                x=x,
+                y=prediction["y_pred"].values,
+                mode="lines+markers",
+                # line=dict(color="#1f77b4"),
+                marker=dict(size=5),
+                showlegend=True,
+            )
+            prediction_plot_data.append(mean)
 
     x = (
         data.index.to_timestamp()
@@ -676,7 +689,7 @@ def plot_predictions(
         showlegend=True,
     )
 
-    data_for_fig = [mean, original]
+    data_for_fig = prediction_plot_data + [original]
 
     layout = go.Layout(
         yaxis=dict(title="Values"), xaxis=dict(title="Time"), title=title
@@ -783,16 +796,24 @@ def plot_diagnostics(
 
 def plot_predictions_with_confidence(
     data: pd.Series,
-    predictions: pd.Series,
-    upper_interval: pd.Series,
-    lower_interval: pd.Series,
+    predictions: List[pd.DataFrame],
     fig_defaults: Dict[str, Any],
-    model_name: Optional[str] = None,
+    model_names: Optional[str] = None,
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
 ) -> PlotReturnType:
     """Plots the original data and the predictions provided with confidence"""
     fig, return_data_dict = None, None
+
+    if len(predictions) != 1:
+        raise ValueError(
+            "Plotting with predictions only supports one estimator. Please pass only one estimator to fix"
+        )
+
+    preds = predictions[0]["y_pred"]
+    upper_interval = predictions[0]["upper"]
+    lower_interval = predictions[0]["lower"]
+    model_name = model_names[0]
 
     data_kwargs = data_kwargs or {}
     fig_kwargs = fig_kwargs or {}
@@ -820,14 +841,14 @@ def plot_predictions_with_confidence(
     )
 
     x = (
-        predictions.index.to_timestamp()
-        if isinstance(predictions.index, pd.PeriodIndex)
-        else predictions.index
+        preds.index.to_timestamp()
+        if isinstance(preds.index, pd.PeriodIndex)
+        else preds.index
     )
     mean = go.Scatter(
         name=f"Forecast | {model_name}",
         x=x,
-        y=predictions,
+        y=preds,
         mode="lines+markers",
         line=dict(color="#1f77b4"),
         marker=dict(size=5),

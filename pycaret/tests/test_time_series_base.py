@@ -74,7 +74,7 @@ def test_create_predict_finalize_model(name, fh, load_pos_and_neg_data):
     ########################
     # Default prediction
     y_pred = exp.predict_model(model)
-    assert isinstance(y_pred, pd.Series)
+    assert isinstance(y_pred, pd.DataFrame)
     assert np.all(y_pred.index == expected_period_index)
 
     # With Prediction Interval (default alpha = 0.05)
