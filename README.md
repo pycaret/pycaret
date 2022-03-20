@@ -3,7 +3,7 @@
 <img src="docs/images/logo.png" alt="drawing" width="200"/>
 
 **An open-source, low-code machine learning library in Python** </br>
-:rocket: **Version 2.3.6 out now!** [Check out the release notes here](https://github.com/pycaret/pycaret/releases).
+:rocket: **Version 2.3.7 out now!** [Check out the release notes here](https://github.com/pycaret/pycaret/releases).
   
 <p align="center">
   <a href="https://www.pycaret.org">Official</a> •
