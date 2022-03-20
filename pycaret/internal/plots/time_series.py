@@ -41,7 +41,7 @@ def _get_plot(
     train: Optional[pd.Series] = None,
     test: Optional[pd.Series] = None,
     X: Optional[pd.DataFrame] = None,
-    predictions: Optional[List[Union[pd.Series, pd.DataFrame]]] = None,
+    predictions: Optional[List[pd.DataFrame]] = None,
     cv: Optional[Union[ExpandingWindowSplitter, SlidingWindowSplitter]] = None,
     model_names: Optional[List[str]] = None,
     return_pred_int: bool = False,
@@ -235,7 +235,8 @@ def plot_series(
                 plot_data = pd.DataFrame(data)
             else:
                 # Residual
-                plot_data = pd.DataFrame(data, columns=[f"Residuals | {model_name}"])
+                plot_data = pd.DataFrame(data)
+                plot_data.columns = [f"Residuals | {model_name}"]
 
     rows = plot_data.shape[1]
     subplot_titles = plot_data.columns
@@ -634,7 +635,7 @@ def plot_pacf(
 
 def plot_predictions(
     data: pd.Series,
-    predictions: List[Union[pd.Series, pd.DataFrame]],
+    predictions: List[pd.DataFrame],
     type_: str,
     fig_defaults: Dict[str, Any],
     model_names: Optional[str] = None,
@@ -663,16 +664,10 @@ def plot_predictions(
                 else prediction.index
             )
 
-            # TODO: Temporarily (fix after merging https://github.com/pycaret/pycaret/pull/2279)
-            if isinstance(prediction, pd.DataFrame):
-                preds = prediction["y_pred"].values
-            else:
-                preds = prediction.values
-
             mean = go.Scatter(
                 name=f"Forecast | {model_names[i]}",
                 x=x,
-                y=preds,
+                y=prediction["y_pred"].values,
                 mode="lines+markers",
                 # line=dict(color="#1f77b4"),
                 marker=dict(size=5),

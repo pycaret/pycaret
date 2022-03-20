@@ -3126,7 +3126,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             round=round,
         )
         if not return_pred_int:
-            result = result["y_pred"]
+            result = pd.DataFrame(result["y_pred"])
 
         #################
         #### Metrics ####
@@ -4065,7 +4065,8 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         insample_predictions = self.get_insample_predictions(estimator)
         if insample_predictions is not None:
-            resid = y - insample_predictions
+            resid = y - insample_predictions["y_pred"]
+            resid.name = y.name
             resid = self._check_and_clean_resid(resid=resid)
         else:
             print(
@@ -4078,7 +4079,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
     def get_insample_predictions(
         self, estimator: BaseForecaster
-    ) -> Optional[pd.Series]:
+    ) -> Optional[pd.DataFrame]:
         """Returns the insample predictions for the estimator by appropriately
         taking the entire pipeline into consideration.
 
@@ -4090,7 +4091,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         Returns
         -------
-        Optional[pd.Series]
+        Optional[pd.DataFrame]
             Insample predictions. `None` if estimator does not support insample predictions
 
         References
@@ -4103,7 +4104,9 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         y, X = self._get_y_X_used_for_training(estimator)
         fh = ForecastingHorizon(y.index, is_relative=False)
         try:
-            insample_predictions = self.predict_model(estimator, fh=fh, X=X)
+            insample_predictions = self.predict_model(
+                estimator, fh=fh, X=X, return_pred_int=False
+            )
         except NotImplementedError as exception:
             self.logger.warning(exception)
             print(

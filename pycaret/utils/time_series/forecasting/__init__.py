@@ -11,7 +11,7 @@ def get_predictions_with_intervals(
     alpha: float = 0.05,
     merge: bool = False,
     round: Optional[int] = None,
-) -> Union[pd.DataFrame, Tuple[pd.Series, pd.Series, pd.Series]]:
+) -> Union[pd.DataFrame, Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]]:
     """Returns the predictions, lower and upper interval values for a
     forecaster. If the forecaster does not support prediction intervals,
     then NAN is returned for lower and upper intervals.
@@ -33,7 +33,7 @@ def get_predictions_with_intervals(
 
     Returns
     -------
-    Union[pd.DataFrame, Tuple[pd.Series, pd.Series, pd.Series]]
+    Union[pd.DataFrame, Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]]
         Predictions, Lower and Upper Interval Values
     """
     # Predict and get lower and upper intervals
@@ -44,13 +44,13 @@ def get_predictions_with_intervals(
     )
 
     if return_pred_int:
-        y_pred = return_values[0]
-        lower = return_values[1]["lower"]
-        upper = return_values[1]["upper"]
+        y_pred = pd.DataFrame({"y_pred": return_values[0]})
+        lower = pd.DataFrame({"lower": return_values[1]["lower"]})
+        upper = pd.DataFrame({"upper": return_values[1]["upper"]})
     else:
-        y_pred = return_values
-        lower = pd.Series([np.nan] * len(y_pred))
-        upper = pd.Series([np.nan] * len(y_pred))
+        y_pred = pd.DataFrame({"y_pred": return_values})
+        lower = pd.DataFrame({"lower": [np.nan] * len(y_pred)})
+        upper = pd.DataFrame({"upper": [np.nan] * len(y_pred)})
         lower.index = y_pred.index
         upper.index = y_pred.index
 
@@ -68,7 +68,6 @@ def get_predictions_with_intervals(
 
     if merge:
         results = pd.concat([y_pred, lower, upper], axis=1)
-        results.columns = ["y_pred", "lower", "upper"]
         return results
     else:
         return y_pred, lower, upper
