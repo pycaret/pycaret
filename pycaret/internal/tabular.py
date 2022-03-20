@@ -7,6 +7,7 @@
 from cgi import test
 from enum import Enum, auto
 import math
+from pycaret import loggers
 from pycaret.internal.meta_estimators import (
     PowerTransformedTargetRegressor,
     CustomProbabilityThresholdClassifier,
@@ -61,6 +62,8 @@ import random
 import gc
 import multiprocessing
 from copy import deepcopy
+from pycaret.loggers.mlflow_logger import MlflowLogger
+from pycaret.loggers.wandb_logger import WandbLogger
 from sklearn.base import clone
 from sklearn.exceptions import NotFittedError
 from sklearn.compose import TransformedTargetRegressor
@@ -794,7 +797,7 @@ def setup(
     # declaring global variables to be accessed by other functions
     logger.info("Declaring global variables")
     global _ml_usecase, USI, html_param, X, y, X_train, X_test, y_train, y_test, seed, prep_pipe, experiment__, fold_shuffle_param, n_jobs_param, _gpu_n_jobs_param, create_model_container, master_model_container, display_container, exp_name_log, logging_param, log_plots_param, fix_imbalance_param, fix_imbalance_method_param, transform_target_param, transform_target_method_param, data_before_preprocess, target_param, gpu_param, _all_models, _all_models_internal, _all_metrics, _internal_pipeline, stratify_param, fold_generator, fold_param, fold_groups_param, fold_groups_param_full, imputation_regressor, imputation_classifier, iterative_imputation_iters_param
-
+    global dashboard_logger
     USI = secrets.token_hex(nbytes=2)
     logger.info(f"USI: {USI}")
 
@@ -846,6 +849,7 @@ def setup(
         "fold_param",
         "fold_groups_param",
         "fold_groups_param_full",
+        "dashboard_logger"
     }
     if not _is_unsupervised(_ml_usecase):
         pycaret_globals = common_globals.union(supervised_globals)
@@ -1295,6 +1299,16 @@ def setup(
 
     # create logging parameter
     logging_param = log_experiment
+    if logging_param:
+        loggers_list = [MlflowLogger()]
+        try:
+            import wandb
+            from wandb import __version__
+            loggers_list.append(WandbLogger())
+        except ImportError:
+            logger.info("Install wandb to use WandbLogger")
+
+        dashboard_logger = loggers.DashboardLogger(loggers_list)
 
     # create exp_name_log param incase logging is False
     exp_name_log = "no_logging"
@@ -1746,82 +1760,9 @@ def setup(
     runtime = np.array(runtime_end - runtime_start).round(2)
 
     if logging_param:
-
-        logger.info("Logging experiment in MLFlow")
-
-        import mlflow
-
-        try:
-            mlflow.create_experiment(exp_name_log)
-        except:
-            logger.warning("Couldn't create mlflow experiment. Exception:")
-            logger.warning(traceback.format_exc())
-
-        # mlflow logging
-        mlflow.set_experiment(exp_name_log)
-
-        run_name_ = f"Session Initialized {USI}"
-
-        mlflow.end_run()
-        mlflow.start_run(run_name=run_name_)
-
-        # Get active run to log as tag
-        RunID = mlflow.active_run().info.run_id
-
-        k = functions.copy()
-        k.set_index("Description", drop=True, inplace=True)
-        kdict = k.to_dict()
-        params = kdict.get("Value")
-        mlflow.log_params(params)
-
-        # set tag of compare_models
-        mlflow.set_tag("Source", "setup")
-
-        # set custom tags if applicable
-        if isinstance(experiment_custom_tags, dict):
-            mlflow.set_tags(experiment_custom_tags)
-
-        import secrets
-
-        URI = secrets.token_hex(nbytes=4)
-        mlflow.set_tag("URI", URI)
-        mlflow.set_tag("USI", USI)
-        mlflow.set_tag("Run Time", runtime)
-        mlflow.set_tag("Run ID", RunID)
-
-        # Log the transformation pipeline
-        logger.info("SubProcess save_model() called ==================================")
-        save_model(prep_pipe, "Transformation Pipeline", verbose=False)
-        logger.info("SubProcess save_model() end ==================================")
-        mlflow.log_artifact("Transformation Pipeline.pkl")
-        os.remove("Transformation Pipeline.pkl")
-
-        # Log pandas profile
-        if log_profile:
-            import pandas_profiling
-
-            pf = pandas_profiling.ProfileReport(
-                data_before_preprocess, **profile_kwargs
-            )
-            pf.to_file("Data Profile.html")
-            mlflow.log_artifact("Data Profile.html")
-            os.remove("Data Profile.html")
-            display.display(functions_, clear=True)
-
-        # Log training and testing set
-        if log_data:
-            if not _is_unsupervised(_ml_usecase):
-                X_train.join(y_train).to_csv("Train.csv")
-                X_test.join(y_test).to_csv("Test.csv")
-                mlflow.log_artifact("Train.csv")
-                mlflow.log_artifact("Test.csv")
-                os.remove("Train.csv")
-                os.remove("Test.csv")
-            else:
-                X.to_csv("Dataset.csv")
-                mlflow.log_artifact("Dataset.csv")
-                os.remove("Dataset.csv")
-
+        dashboard_logger.log_experiment(
+            log_profile, profile_kwargs, log_data, _ml_usecase, functions, experiment_custom_tags, runtime, display
+        )
     logger.info(f"create_model_container: {len(create_model_container)}")
     logger.info(f"master_model_container: {len(master_model_container)}")
     logger.info(f"display_container: {len(display_container)}")
@@ -2150,11 +2091,6 @@ def compare_models(
 
     display.move_progress()
 
-    # create URI (before loop)
-    import secrets
-
-    URI = secrets.token_hex(nbytes=4)
-
     master_display = None
     master_display_ = None
 
@@ -2341,6 +2277,8 @@ def compare_models(
             n_select_range = range(len(master_display) - n_select, len(master_display))
         else:
             n_select_range = range(0, n_select)
+        if logging_param:
+            dashboard_logger.log_model_comparison(master_display, "compare_models")
 
         for index, row in enumerate(master_display.iterrows()):
             loc, row = row
@@ -2388,27 +2326,25 @@ def compare_models(
                         model = None
                         continue
                 full_logging = True
-
             if logging_param and cross_validation and model is not None:
-
                 try:
-                    _mlflow_log_model(
-                        model=model,
-                        model_results=results,
-                        score_dict=avgs_dict_log,
-                        source="compare_models",
-                        runtime=row["runtime"],
-                        model_fit_time=row["TT (Sec)"],
-                        _prep_pipe=prep_pipe,
-                        log_plots=log_plots_param if full_logging else False,
-                        experiment_custom_tags=experiment_custom_tags,
-                        log_holdout=full_logging,
-                        URI=URI,
-                        display=display,
-                    )
+                    dashboard_logger.log_model(
+                            model=model,
+                            model_results=results,
+                            _prep_pipe=prep_pipe,
+                            ml_usecase=_ml_usecase,
+                            score_dict=avgs_dict_log,
+                            source="compare_models",
+                            runtime=row["runtime"],
+                            model_fit_time=row["TT (Sec)"],
+                            log_plots=log_plots_param if full_logging else False,
+                            experiment_custom_tags=experiment_custom_tags,
+                            log_holdout=full_logging,
+                            display=display,
+                        )
                 except:
                     logger.error(
-                        f"_mlflow_log_model() for {model} raised an exception:"
+                        f"dashboard_logger.log_model() for {model} raised an exception:"
                     )
                     logger.error(traceback.format_exc())
 
@@ -2759,10 +2695,11 @@ def create_model_unsupervised(
         metrics_log = {k: v for k, v in metrics.items()}
 
         try:
-            _mlflow_log_model(
+            dashboard_logger.log_model(
                 model=model,
                 model_results=None,
                 score_dict=metrics_log,
+                ml_usecase=_ml_usecase,
                 source="create_model",
                 experiment_custom_tags=experiment_custom_tags,
                 runtime=runtime,
@@ -2771,9 +2708,11 @@ def create_model_unsupervised(
                 log_plots=log_plots_param,
                 display=display,
             )
+        
         except:
-            logger.error(f"_mlflow_log_model() for {model} raised an exception:")
+            logger.error(f"log_model() for {model} raised an exception:")
             logger.error(traceback.format_exc())
+    
 
     display.move_progress()
 
@@ -3343,9 +3282,10 @@ def create_model_supervised(
         }
 
         try:
-            _mlflow_log_model(
+            dashboard_logger.log_model(
                 model=model,
                 model_results=model_results,
+                ml_usecase=_ml_usecase,
                 score_dict=avgs_dict_log,
                 source="create_model",
                 runtime=runtime,
@@ -3355,9 +3295,11 @@ def create_model_supervised(
                 experiment_custom_tags=experiment_custom_tags,
                 display=display,
             )
+        
         except:
             logger.error(f"_mlflow_log_model() for {model} raised an exception:")
             logger.error(traceback.format_exc())
+        
 
     display.move_progress()
 
@@ -3684,9 +3626,10 @@ def tune_model_unsupervised(
         metrics_log = {k: v[0] for k, v in best_model_results.items()}
 
         try:
-            _mlflow_log_model(
+            dashboard_logger.log_model(
                 model=model,
                 model_results=None,
+                ml_usecase=_ml_usecase,
                 score_dict=metrics_log,
                 source="tune_model",
                 runtime=runtime,
@@ -3695,9 +3638,11 @@ def tune_model_unsupervised(
                 log_plots=log_plots_param,
                 display=display,
             )
+        
         except:
             logger.error(f"_mlflow_log_model() for {model} raised an exception:")
             logger.error(traceback.format_exc())
+        
 
     results = results.set_precision(round)
     display_container.append(results)
@@ -4744,11 +4689,14 @@ def tune_model_supervised(
     if logging_param:
 
         avgs_dict_log = {k: v for k, v in model_results.loc["CV-Val", "Mean"].items()}
+        dashboard_logger.log_model_comparison(model_results, "tune_model")
+
 
         try:
-            _mlflow_log_model(
+            dashboard_logger.log_model(
                 model=best_model,
                 model_results=model_results,
+                ml_usecase=_ml_usecase,
                 score_dict=avgs_dict_log,
                 source="tune_model",
                 runtime=runtime,
@@ -4758,9 +4706,11 @@ def tune_model_supervised(
                 tune_cv_results=cv_results,
                 display=display,
             )
+        
         except:
             logger.error(f"_mlflow_log_model() for {best_model} raised an exception:")
             logger.error(traceback.format_exc())
+        
 
     model_results = color_df(
         model_results, "yellow", [("CV-Val", "Mean"), ("CV-Train", "Mean")], axis=1
@@ -5104,13 +5054,14 @@ def ensemble_model(
 
     # mlflow logging
     if logging_param:
-
         avgs_dict_log = {k: v for k, v in model_results.loc["CV-Val", "Mean"].items()}
+        dashboard_logger.log_model_comparison(model_results, "ensemble_model")
 
         try:
-            _mlflow_log_model(
+            dashboard_logger.log_model(
                 model=best_model,
                 model_results=model_results,
+                ml_usecase=_ml_usecase,
                 score_dict=avgs_dict_log,
                 source="ensemble_model",
                 runtime=runtime,
@@ -5119,9 +5070,11 @@ def ensemble_model(
                 log_plots=log_plots_param,
                 display=display,
             )
+        
         except:
             logger.error(f"_mlflow_log_model() for {best_model} raised an exception:")
             logger.error(traceback.format_exc())
+        
 
     if choose_better:
         model = _choose_better(
@@ -5466,15 +5419,16 @@ def blend_models(
     runtime_end = time.time()
     runtime = np.array(runtime_end - runtime_start).round(2)
 
-    # mlflow logging
+    # dashboard logging
     if logging_param:
-
         avgs_dict_log = {k: v for k, v in model_results.loc["CV-Val", "Mean"].items()}
+        dashboard_logger.log_model_comparison(model_results, "blend_models")
 
         try:
-            _mlflow_log_model(
+            dashboard_logger.log_model(
                 model=model,
                 model_results=model_results,
+                ml_usecase=_ml_usecase,
                 score_dict=avgs_dict_log,
                 source="blend_models",
                 runtime=runtime,
@@ -5483,9 +5437,11 @@ def blend_models(
                 log_plots=log_plots_param,
                 display=display,
             )
+        
         except:
             logger.error(f"_mlflow_log_model() for {model} raised an exception:")
             logger.error(traceback.format_exc())
+        
 
     if choose_better:
         model = _choose_better(
@@ -5841,15 +5797,16 @@ def stack_models(
     runtime_end = time.time()
     runtime = np.array(runtime_end - runtime_start).round(2)
 
-    # mlflow logging
+    # dashboard logging
     if logging_param:
-
         avgs_dict_log = {k: v for k, v in model_results.loc["CV-Val", "Mean"].items()}
+        dashboard_logger.log_model_comparison(model_results, "stack_models")
 
         try:
-            _mlflow_log_model(
+            dashboard_logger.log_model(
                 model=model,
                 model_results=model_results,
+                ml_usecase=_ml_usecase,
                 score_dict=avgs_dict_log,
                 source="stack_models",
                 runtime=runtime,
@@ -5858,9 +5815,11 @@ def stack_models(
                 log_plots=log_plots_param,
                 display=display,
             )
+        
         except:
             logger.error(f"_mlflow_log_model() for {model} raised an exception:")
             logger.error(traceback.format_exc())
+        
 
     if choose_better:
         model = _choose_better(
@@ -8450,15 +8409,17 @@ def calibrate_model(
     runtime_end = time.time()
     runtime = np.array(runtime_end - runtime_start).round(2)
 
-    # mlflow logging
+    # dashboard logging
     if logging_param:
-
         avgs_dict_log = {k: v for k, v in model_results.loc["CV-Val", "Mean"].items()}
+        dashboard_logger.log_model_comparison(model_results, f"calibrate_models_{_get_model_name(model)}")
+
 
         try:
-            _mlflow_log_model(
+            dashboard_logger.log_model(
                 model=model,
                 model_results=model_results,
+                ml_usecase=_ml_usecase,
                 score_dict=avgs_dict_log,
                 source="calibrate_models",
                 runtime=runtime,
@@ -8467,9 +8428,11 @@ def calibrate_model(
                 log_plots=log_plots_param,
                 display=display,
             )
+        
         except:
             logger.error(f"_mlflow_log_model() for {model} raised an exception:")
             logger.error(traceback.format_exc())
+        
 
     model_results = color_df(
         model_results, "yellow", [("CV-Val", "Mean"), ("CV-Train", "Mean")], axis=1
@@ -9233,15 +9196,17 @@ def finalize_model(
     runtime_end = time.time()
     runtime = np.array(runtime_end - runtime_start).round(2)
 
-    # mlflow logging
+    # dashboard logging
     if logging_param:
-
         avgs_dict_log = {k: v for k, v in model_results.loc["CV-Val", "Mean"].items()}
+        dashboard_logger.log_model_comparison(model_results, f"finalize_model_{_get_model_name(model_final)}")
+
 
         try:
-            _mlflow_log_model(
+            dashboard_logger.log_model(
                 model=model_final,
                 model_results=model_results,
+                ml_usecase=_ml_usecase,
                 score_dict=avgs_dict_log,
                 source="finalize_model",
                 runtime=runtime,
@@ -9252,8 +9217,9 @@ def finalize_model(
                 display=display,
             )
         except:
-            logger.error(f"_mlflow_log_model() for {model_final} raised an exception:")
+            logger.error(f"log_model() for {model_final} raised an exception:")
             logger.error(traceback.format_exc())
+        
 
     model_results = color_df(
         model_results, "yellow", [("CV-Val", "Mean"), ("CV-Train", "Mean")], axis=1
@@ -11151,196 +11117,6 @@ def get_ml_task(y):
     else:
         ml_usecase = MLUsecase.REGRESSION
     return ml_usecase
-
-
-def _mlflow_log_model(
-    model,
-    model_results,
-    score_dict: dict,
-    source: str,
-    runtime: float,
-    model_fit_time: float,
-    _prep_pipe,
-    log_holdout: bool = True,
-    log_plots: bool = False,
-    experiment_custom_tags: Optional[Dict[str, Any]] = None,
-    tune_cv_results=None,
-    URI=None,
-    display: Optional[Display] = None,
-):
-    logger = get_logger()
-
-    logger.info("Creating MLFlow logs")
-
-    # Creating Logs message monitor
-    if display:
-        display.update_monitor(1, "Creating Logs")
-        display.display_monitor()
-
-    # import mlflow
-    import mlflow
-    import mlflow.sklearn
-
-    mlflow.set_experiment(exp_name_log)
-
-    full_name = _get_model_name(model)
-    logger.info(f"Model: {full_name}")
-
-    with mlflow.start_run(run_name=full_name, nested=True) as run:
-
-        # Get active run to log as tag
-        RunID = mlflow.active_run().info.run_id
-
-        # Log model parameters
-        pipeline_estimator_name = get_pipeline_estimator_label(model)
-        if pipeline_estimator_name:
-            params = model.named_steps[pipeline_estimator_name]
-        else:
-            params = model
-
-        # get regressor from meta estimator
-        params = get_estimator_from_meta_estimator(params)
-
-        try:
-            try:
-                params = params.get_all_params()
-            except:
-                params = params.get_params()
-        except:
-            logger.warning("Couldn't get params for model. Exception:")
-            logger.warning(traceback.format_exc())
-            params = {}
-
-        for i in list(params):
-            v = params.get(i)
-            if len(str(v)) > 250:
-                params.pop(i)
-
-        logger.info(f"logged params: {params}")
-        mlflow.log_params(params)
-
-        # Log metrics
-        mlflow.log_metrics(score_dict)
-
-        # set tag of compare_models
-        mlflow.set_tag("Source", source)
-
-        # set custom tags if applicable
-        if isinstance(experiment_custom_tags, dict):
-            mlflow.set_tags(experiment_custom_tags)
-
-        if not URI:
-            import secrets
-
-            URI = secrets.token_hex(nbytes=4)
-        mlflow.set_tag("URI", URI)
-        mlflow.set_tag("USI", USI)
-        mlflow.set_tag("Run Time", runtime)
-        mlflow.set_tag("Run ID", RunID)
-
-        # Log training time in seconds
-        mlflow.log_metric("TT", model_fit_time)
-
-        # Log the CV results as model_results.html artifact
-        if not _is_unsupervised(_ml_usecase):
-            try:
-                model_results.data.to_html("Results.html", col_space=65, justify="left")
-            except:
-                model_results.to_html("Results.html", col_space=65, justify="left")
-            mlflow.log_artifact("Results.html")
-            os.remove("Results.html")
-
-            if log_holdout:
-                # Generate hold-out predictions and save as html
-                try:
-                    holdout = predict_model(model, verbose=False)
-                    holdout_score = pull(pop=True)
-                    del holdout
-                    holdout_score.to_html("Holdout.html", col_space=65, justify="left")
-                    mlflow.log_artifact("Holdout.html")
-                    os.remove("Holdout.html")
-                except:
-                    logger.warning(
-                        "Couldn't create holdout prediction for model, exception below:"
-                    )
-                    logger.warning(traceback.format_exc())
-
-        # Log AUC and Confusion Matrix plot
-
-        if log_plots:
-
-            logger.info(
-                "SubProcess plot_model() called =================================="
-            )
-
-            def _log_plot(plot):
-                try:
-                    plot_name = plot_model(
-                        model, plot=plot, verbose=False, save=True, system=False
-                    )
-                    mlflow.log_artifact(plot_name)
-                    os.remove(plot_name)
-                except Exception as e:
-                    logger.warning(e)
-
-            for plot in log_plots:
-                _log_plot(plot)
-
-            logger.info(
-                "SubProcess plot_model() end =================================="
-            )
-
-        # Log hyperparameter tuning grid
-        if tune_cv_results:
-            d1 = tune_cv_results.get("params")
-            dd = pd.DataFrame.from_dict(d1)
-            dd["Score"] = tune_cv_results.get("mean_test_score")
-            dd.to_html("Iterations.html", col_space=75, justify="left")
-            mlflow.log_artifact("Iterations.html")
-            os.remove("Iterations.html")
-
-        # get default conda env
-        from mlflow.sklearn import get_default_conda_env
-
-        default_conda_env = get_default_conda_env()
-        default_conda_env["name"] = f"{exp_name_log}-env"
-        default_conda_env.get("dependencies").pop(-3)
-        dependencies = default_conda_env.get("dependencies")[-1]
-        from pycaret.utils import __version__
-
-        dep = f"pycaret=={__version__}"
-        dependencies["pip"] = [dep]
-
-        # define model signature
-        from mlflow.models.signature import infer_signature
-
-        try:
-            signature = infer_signature(
-                data_before_preprocess.drop([target_param], axis=1)
-            )
-        except:
-            logger.warning("Couldn't infer MLFlow signature.")
-            signature = None
-        if not _is_unsupervised(_ml_usecase):
-            input_example = (
-                data_before_preprocess.drop([target_param], axis=1).iloc[0].to_dict()
-            )
-        else:
-            input_example = data_before_preprocess.iloc[0].to_dict()
-
-        # log model as sklearn flavor
-        prep_pipe_temp = deepcopy(_prep_pipe)
-        prep_pipe_temp.steps.append(["trained_model", model])
-        mlflow.sklearn.log_model(
-            prep_pipe_temp,
-            "model",
-            conda_env=default_conda_env,
-            # signature=signature,
-            # input_example=input_example,
-        )
-        del prep_pipe_temp
-    gc.collect()
-
 
 def _get_columns_to_stratify_by(
     X: pd.DataFrame, y: pd.DataFrame, stratify: Union[bool, List[str]], target: str
