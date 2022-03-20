@@ -32,10 +32,10 @@ def setup(
     preprocess: bool = True,
     numeric_imputation_target: Optional[Union[int, float, str]] = None,
     numeric_imputation_exogenous: Optional[Union[int, float, str]] = None,
-    # transform_target: Optional[str] = None,
-    # transform_exogenous: Optional[str] = None,
-    # scale_target: Optional[str] = None,
-    # scale_exogenous: Optional[str] = None,
+    transform_target: Optional[str] = None,
+    transform_exogenous: Optional[str] = None,
+    scale_target: Optional[str] = None,
+    scale_exogenous: Optional[str] = None,
     fold_strategy: Union[str, Any] = "expanding",
     fold: int = 3,
     fh: Optional[Union[List[int], int, np.array]] = 1,
@@ -96,11 +96,53 @@ def setup(
 
 
     preprocess: bool, default = True
-        Parameter not in use for now. Behavior may change in future.
+        Should preprocessing be done on the data (includes imputation,
+        transformation, scaling)? By default True, but all steps are disabled.
+        Enable the steps that need to be preprocessed using appropriate arguments.
 
 
-    imputation_type: str, default = 'simple'
-        Parameter not in use for now. Behavior may change in future.
+    numeric_imputation_target: Optional[Union[int, float, str]], default = None
+        Indicates how to impute missing values in the target.
+        If None, no imputation is done.
+        If the target has missing values, then imputation is mandatory.
+        If str, then value passed as is to the underlying `sktime` imputer.
+        Allowed values are:
+            "drift", "linear", "nearest", "mean", "median", "backfill",
+            "bfill", "pad", "ffill", "random"
+        If int or float, imputation method is set to "constant" with the given value.
+
+
+    numeric_imputation_exogenous: Optional[Union[int, float, str]], default = None
+        Indicates how to impute missing values in the exogenous variables.
+        If None, no imputation is done.
+        If exogenous variables have missing values, then imputation is mandatory.
+        If str, then value passed as is to the underlying `sktime` imputer.
+        Allowed values are:
+            "drift", "linear", "nearest", "mean", "median", "backfill",
+            "bfill", "pad", "ffill", "random"
+        If int or float, imputation method is set to "constant" with the given value.
+
+
+    transform_target: Optional[str], default = None
+        Indicates how the target variable should be transformed.
+        If None, no transformation is performed. Allowed values are
+            "box-cox", "log", "sqrt", "exp", "cos"
+
+
+    transform_exogenous: Optional[str], default = None
+        Indicates how the exogenous variables should be transformed.
+        If None, no transformation is performed. Allowed values are
+            "box-cox", "log", "sqrt", "exp", "cos"
+
+    scale_target: Optional[str], default = None
+        Indicates how the target variable should be scaled.
+        If None, no scaling is performed. Allowed values are
+            "zscore", "minmax", "maxabs", "robust"
+
+    scale_exogenous: Optional[str], default = None
+        Indicates how the exogenous variables should be scaled.
+        If None, no scaling is performed. Allowed values are
+            "zscore", "minmax", "maxabs", "robust"
 
 
     fold_strategy: str or sklearn CV generator object, default = 'expanding'
@@ -293,10 +335,10 @@ def setup(
         preprocess=preprocess,
         numeric_imputation_target=numeric_imputation_target,
         numeric_imputation_exogenous=numeric_imputation_exogenous,
-        # transform_target=transform_target,
-        # transform_exogenous = transform_exogenous,
-        # scale_target = scale_target,
-        # scale_exogenous = scale_exogenous,
+        transform_target=transform_target,
+        transform_exogenous=transform_exogenous,
+        scale_target=scale_target,
+        scale_exogenous=scale_exogenous,
         fold_strategy=fold_strategy,
         fold=fold,
         fh=fh,
