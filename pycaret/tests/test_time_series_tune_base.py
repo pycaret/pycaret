@@ -101,7 +101,7 @@ def test_tune_model_alternate_metric(load_pos_and_neg_data, metric):
 
     tuned_model_obj = exp.tune_model(model_obj, optimize=metric)
     y_pred = exp.predict_model(tuned_model_obj)
-    assert isinstance(y_pred, pd.Series)
+    assert isinstance(y_pred, pd.DataFrame)
 
     expected_period_index = load_pos_and_neg_data.iloc[-fh:].index
     assert np.all(y_pred.index == expected_period_index)
