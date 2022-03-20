@@ -46,7 +46,7 @@ def test_tune_model_random(model, load_pos_and_neg_data):
     model_obj = exp.create_model(model)
     tuned_model_obj = exp.tune_model(model_obj)  # default search_algorithm = "random"
     y_pred = exp.predict_model(tuned_model_obj)
-    assert isinstance(y_pred, pd.Series)
+    assert isinstance(y_pred, pd.DataFrame)
 
     expected_period_index = data.iloc[-fh:].index
     assert np.all(y_pred.index == expected_period_index)
