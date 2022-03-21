@@ -18,7 +18,7 @@ def test():
         data,
         target="medv",
         silent=True,
-        log_experiment=True,
+        log_experiment=False,
         html=False,
         session_id=123,
         transform_target=True,
