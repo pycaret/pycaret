@@ -2,6 +2,10 @@
 All notable changes to this project will be documented in this file.
 <br/><br/>
 
+#### Release: PyCaret 2.3.8 | Release Date: March 21st, 2022 (BUG FIXES)
+- Fixed `dashboard_logger` key error during `setup` (https://github.com/pycaret/pycaret/pull/2311)
+<br/><br/><br/>
+
 #### Release: PyCaret 2.3.7 | Release Date: March 20th, 2022 (NEW FEATURES, BUG FIXES)
 - Fugue integration - thanks to @goodwanghan (https://github.com/pycaret/pycaret/pull/2035)
 - Added W&B experiment logger - thanks to @AyushExel (https://github.com/pycaret/pycaret/pull/2231)
