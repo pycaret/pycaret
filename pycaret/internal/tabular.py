@@ -1299,6 +1299,7 @@ def setup(
 
     # create logging parameter
     logging_param = log_experiment
+    dashboard_logger = None
     if logging_param:
         loggers_list = [MlflowLogger()]
         try:

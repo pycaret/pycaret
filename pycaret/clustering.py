@@ -323,6 +323,7 @@ def setup(
 
     log_experiment: bool, default = False
         When set to True, all metrics and parameters are logged on the ``MLFlow`` server.
+        If ``wandb`` (Weights & Biases) is installed, will also log there.
 
 
     experiment_name: str, default = None
