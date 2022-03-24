@@ -18,6 +18,7 @@ fastapi # for web api
 uvicorn # for web api
 gradio # for gradio app
 fugue>=0.6.5 # for distributed
+cloudpickle # for distributed
 
 # for cloud deployment
 boto3
