@@ -3224,7 +3224,6 @@ def create_model_supervised(
         else:
             model_results = pd.DataFrame(
                 {
-                    "Split": ["CV-Val"] * fold + ["CV-Val"] * 2,
                     "Fold": np.arange(fold).tolist() + ["Mean", "Std"],
                 }
             )
@@ -3234,7 +3233,11 @@ def create_model_supervised(
         ).reset_index(drop=True)
 
         model_results = pd.concat([model_results, model_scores], axis=1)
-        model_results.set_index(["Split", "Fold"], inplace=True)
+        if return_train_score:
+            indices = ["Split", "Fold"]
+        else:
+            indices = ["Fold"]
+        model_results.set_index(indices, inplace=True)
 
         if refit:
             # refitting the model on complete X_train, y_train
@@ -3245,16 +3248,20 @@ def create_model_supervised(
             with io.capture_output():
                 pipeline_with_model.fit(data_X, data_y, **fit_kwargs)
 
-                predict_model(pipeline_with_model, data=pd.concat([data_X, data_y], axis=1))
+                if return_train_score:
+                    predict_model(
+                        pipeline_with_model, data=pd.concat([data_X, data_y], axis=1)
+                    )
 
             # calculating metrics on predictions of complete train dataset
-            metrics = pull(pop=True).drop("Model", axis=1)
-            df_score = pd.DataFrame({"Split": ["Train"], "Fold": [None]})
-            df_score = pd.concat([df_score, metrics], axis=1)
-            df_score.set_index(["Split", "Fold"], inplace=True)
+            if return_train_score:
+                metrics = pull(pop=True).drop("Model", axis=1)
+                df_score = pd.DataFrame({"Split": ["Train"], "Fold": [None]})
+                df_score = pd.concat([df_score, metrics], axis=1)
+                df_score.set_index(["Split", "Fold"], inplace=True)
 
-            # concatenating train results to cross-validation socre dataframe
-            model_results = pd.concat([model_results, df_score])
+                # concatenating train results to cross-validation socre dataframe
+                model_results = pd.concat([model_results, df_score])
 
             model_fit_end = time.time()
 
@@ -3296,11 +3303,10 @@ def create_model_supervised(
                 experiment_custom_tags=experiment_custom_tags,
                 display=display,
             )
-        
+
         except:
             logger.error(f"_mlflow_log_model() for {model} raised an exception:")
             logger.error(traceback.format_exc())
-        
 
     display.move_progress()
 
