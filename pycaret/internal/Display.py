@@ -8,6 +8,7 @@ import ipywidgets as ipw
 from IPython import get_ipython
 from IPython.display import display, clear_output, update_display
 from typing import Optional, List, Dict, Any
+from pycaret.utils import enable_colab  # Imported in other modules - do not remove
 
 
 class Display:
