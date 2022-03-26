@@ -1,7 +1,12 @@
-from typing import Any, Dict, Tuple, Union, Optional
+from typing import Any, Dict, Tuple, Union, Optional, Union, List
 
 import numpy as np
 import pandas as pd
+
+from sktime.forecasting.base import ForecastingHorizon
+
+
+PyCaretForecastingHorizonTypes = Union[List[int], int, np.ndarray, ForecastingHorizon]
 
 
 def get_predictions_with_intervals(

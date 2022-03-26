@@ -67,7 +67,6 @@ def test_splitter_using_fold_and_fh(fold, fh, fold_strategy, load_pos_and_neg_da
             assert np.all(exp_name.fold_generator.fh == np.arange(1, fh + 1))
             assert exp_name.fold_generator.step_length == fh
         else:
-            # fh is np.array
             assert np.all(exp_name.fold_generator.fh == fh)
 
             # When fh has np gaps: e.g. fh = np.arange(1, 37), step length = 36

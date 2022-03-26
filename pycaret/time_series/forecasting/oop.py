@@ -22,6 +22,7 @@ from sktime.forecasting.model_selection import (
 from sktime.forecasting.base import BaseForecaster
 
 # from sktime.forecasting.compose import ForecastingPipeline
+from pycaret.utils.time_series.forecasting import PyCaretForecastingHorizonTypes
 from pycaret.utils.time_series.forecasting.pipeline import (
     PyCaretForecastingPipeline,
     _add_model_to_pipeline,
@@ -55,7 +56,7 @@ from pycaret.internal.pycaret_experiment.supervised_experiment import (
 from pycaret.internal.pycaret_experiment.utils import MLUsecase, highlight_setup
 from pycaret.internal.tests.time_series import run_test
 from pycaret.internal.tunable import TunableMixin
-from pycaret.internal.utils import color_df, deep_clone
+from pycaret.internal.utils import color_df
 from pycaret.internal.validation import is_sklearn_cv_generator
 from pycaret.utils import _coerce_empty_dataframe_to_none, _resolve_dict_keys
 from pycaret.utils.datetime import coerce_datetime_to_period_index
@@ -233,22 +234,20 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
     def _get_default_plots_to_log(self) -> List[str]:
         return ["forecast", "residuals", "diagnostics"]
 
-    def _check_fh(
-        self, fh: Union[List[int], int, np.array, ForecastingHorizon]
-    ) -> Union[np.array, ForecastingHorizon]:
+    def _check_fh(self, fh: PyCaretForecastingHorizonTypes) -> ForecastingHorizon:
         """
         Checks fh for validity and converts fh into an appropriate forecasting
         horizon compatible with sktime (if necessary)
 
         Parameters
         ----------
-        fh : Union[List[int], int, np.array, ForecastingHorizon]
-            Forecasting Horizon
+        fh : PyCaretForecastingHorizonTypes
+            `PyCaret` compatible Forecasting Horizon
 
         Returns
         -------
-        Union[np.array, ForecastingHorizon]
-            Forecast Horizon (possibly updated to made compatible with sktime)
+        ForecastingHorizon
+            `sktime` compatible Forecast Horizon
 
         Raises
         ------
@@ -258,14 +257,14 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         """
         if isinstance(fh, int):
             if fh >= 1:
-                fh = np.arange(1, fh + 1)
+                fh = ForecastingHorizon(np.arange(1, fh + 1))
             else:
                 raise ValueError(
                     f"If Forecast Horizon `fh` is an integer, it must be >= 1. You provided fh = '{fh}'!"
                 )
-        elif isinstance(fh, List):
-            fh = np.array(fh)
-        elif isinstance(fh, (np.ndarray, ForecastingHorizon)):
+        elif isinstance(fh, (List, np.ndarray)):
+            fh = ForecastingHorizon(fh)
+        elif isinstance(fh, (ForecastingHorizon)):
             # Good to go
             pass
         else:
@@ -494,7 +493,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
     def _check_and_set_fh(
         self,
-        fh: Optional[Union[List[int], int, np.array]],
+        fh: Optional[PyCaretForecastingHorizonTypes],
     ) -> "TSForecastingExperiment":
         """Checks and sets the forecast horizon class attribute based on the user inputs.
         (1) If fold_strategy is of type string, then fh must be provided
@@ -504,8 +503,8 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         Parameters
         ----------
-        fh : Optional[Union[List[int], int, np.array]]
-            Forecast Horizon specified by user
+        fh : Optional[PyCaretForecastingHorizonTypes]
+            Pycaret compatible Forecast Horizon specified by user
 
         Returns
         -------
@@ -524,11 +523,13 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         if fh is None:
             if isinstance(self.fold_strategy, str):
                 raise ValueError(
-                    "The forecast horizon `fh` must be provided when fold_strategy is of type 'string'"
+                    "The forecast horizon `fh` must be provided when `fold_strategy` "
+                    "is of type 'string'."
                 )
-        elif not isinstance(fh, (int, list, np.ndarray)):
+        elif not isinstance(fh, (list, int, np.ndarray, ForecastingHorizon)):
             raise TypeError(
-                f"fh parameter accepts integer. list or np.array value. Provided values is {type(fh)}"
+                "fh parameter accepts integer, list, np.array or sktime ForecastingHorizon.\n"
+                f"Provided values is {type(fh)}"
             )
 
         #### Check Fold Strategy ----
@@ -544,8 +545,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             )
             # fold value will be reset after the data is split in the parent class setup
 
-        fh = self._check_fh(fh)
-        self.fh = fh
+        self.fh = self._check_fh(fh)
 
         return self
 
@@ -1073,7 +1073,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         scale_exogenous: Optional[str] = None,
         fold_strategy: Union[str, Any] = "expanding",
         fold: int = 3,
-        fh: Optional[Union[List[int], int, np.array]] = 1,
+        fh: Optional[Union[List[int], int, np.ndarray, ForecastingHorizon]] = 1,
         seasonal_period: Optional[Union[List[Union[int, str]], int, str]] = None,
         enforce_pi: bool = False,
         enforce_exogenous: bool = True,
@@ -1200,16 +1200,20 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             parameter. Ignored when ``fold_strategy`` is a custom object.
 
 
-        fh: Optional[int or list or np.array], default = 1
-            The forecast horizon to be used for forecasting. Default is set to ``1`` i.e.
-            forecast one point ahead. When integer is passed it means N continuous points
-            in the future without any gap. If you want to forecast values with gaps, you
-            must pass an array e.g. np.arange([13, 25]) will skip the first 12 future
-            points and forecast from the 13th point till the 24th point ahead (note in
-            numpy right value is inclusive and left is exclusive).
-
-            If fh = None, then fold_strategy must be a sktime compatible cross validation
-            object. In this case, fh is derived from this object.
+        fh: Optional[int or list or np.array or ForecastingHorizon], default = 1
+            The forecast horizon to be used for forecasting. Default is set to ``1``
+            i.e. forecast one point ahead. Valid options are:
+            (1) Integer: When integer is passed it means N continuous points in
+                the future without any gap.
+            (2) List or np.array: Indicates points to predict in the future. e.g.
+                fh = [1, 2, 3, 4] or np.arange(1, 5) will predict 4 points in the future.
+            (3) If you want to forecast values with gaps, you can pass an list or array
+                with gaps. e.g. np.arange([13, 25]) will skip the first 12 future points
+                and forecast from the 13th point till the 24th point ahead (note in numpy
+                right value is inclusive and left is exclusive).
+            (4) Can also be a sktime compatible ForecastingHorizon object.
+            (5) If fh = None, then fold_strategy must be a sktime compatible cross validation
+                object. In this case, fh is derived from this object.
 
 
         seasonal_period: list or int or str, default = None
@@ -2969,6 +2973,252 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             return_obj = return_obj[0]
         return return_obj
 
+    def _predict_model_reconcile_pipe_estimator(
+        self, estimator: Union[BaseForecaster, PyCaretForecastingPipeline]
+    ) -> Tuple[PyCaretForecastingPipeline, BaseForecaster]:
+        """Returns the pipeline along with the final model in the pipeline.
+
+        # Use Cases:
+        # (1) User is in the middle of native experiment and passes a Base Model
+        #     without pipeline.
+        #     Action: Append pipeline and predict
+        # (2) User saved a model (without pipeline) and in the future, restarted
+        #     experiment after setup and loaded his model.
+        #     Action: Append pipeline and predict. If setup has not been run,
+        #     raise an exception.
+        # (3) User saved a model pipeline and in the future, loaded this pipeline
+        #     in another experiment to make predictions. This model pipeline might
+        #     be different from the experiment pipeline. Hence experiment pipeline
+        #     should not be changed. Predict as is.
+        #     Action: Pipeline as is
+
+        Parameters
+        ----------
+        estimator : Union[BaseForecaster, PyCaretForecastingPipeline]
+            Estimator passed by user
+
+        Returns
+        -------
+        Tuple[PyCaretForecastingPipeline, BaseForecaster]
+            The pipeline and the final model in the pipeline
+
+        Raises
+        ------
+        ValueError
+            When a model (without pipeline) is loaded into an experiment where
+            setup has not been run, but user wants to make a prediction.
+        """
+        if isinstance(estimator, PyCaretForecastingPipeline):
+            # Use Case 3
+            pipeline_with_model = deepcopy(estimator)
+            estimator_ = self._get_final_model_from_pipeline(
+                pipeline=pipeline_with_model, check_is_fitted=True
+            )
+        else:
+            if self._setup_ran:
+                # Use Case 1 & 2
+                # Deep Cloning to prevent overwriting the fh when user specifies their own fh
+                estimator_ = deepcopy(estimator)
+                pipeline_with_model = _add_model_to_pipeline(
+                    pipeline=self.pipeline, model=estimator_
+                )
+            else:
+                raise ValueError(
+                    "\n\nSetup has not been run and you have provided a estimator without the pipeline. "
+                    "You can either \n(1) Provide the complete pipeline without running setup to make "
+                    "the prediction OR \n(2) Run setup first before providing the estimator only."
+                )
+        return pipeline_with_model, estimator_
+
+    def _predict_model_reconcile_fh(
+        self,
+        estimator: BaseForecaster,
+        fh: Optional[PyCaretForecastingHorizonTypes],
+    ) -> ForecastingHorizon:
+        """Return the forecasting horizon to be used for prediction.
+
+        (1) If fh is None, and experiment setup has been run, fh is obtained
+            from experiment.
+        (2) If fh is None, and experiment setup has not been run (e.g. loaded model),
+            fh is obtained from estimator.
+        (3) If fh is not None, it is used for predictions (after internal cleanup).
+
+        Parameters
+        ----------
+        estimator : BaseForecaster
+            The estimator to be used for predictions
+        fh : Optional[PyCaretForecastingHorizonTypes]
+           `PyCaret` compatible Forecasting Horizon provided by user.
+
+        Returns
+        -------
+        ForecastingHorizon
+            `sktime` compatible Forecast Horizon to be used for predictions.
+        """
+        if fh is None:
+            if self._setup_ran:
+                # Condition (1)
+                fh = self.fh
+            else:
+                # Condition (2)
+                fh = estimator.fh
+        else:
+            # Condition (3)
+            # Get the fh in the right format for sktime
+            fh = self._check_fh(fh)
+        return fh
+
+    def _predict_model_reconcile_X(
+        self, estimator: BaseForecaster, X: Optional[pd.DataFrame]
+    ) -> Optional[pd.DataFrame]:
+        """Returns the exogenous variables to be used for prediction
+
+        (1) If setup has been run AND X is None AND estimator has not been finalized,
+            use experiment X_test, ELSE
+        (2) Use X as is. NOTE: If model is finalized and was trained using exogenous
+            variables, then user must provide it.
+
+        Parameters
+        ----------
+        estimator : BaseForecaster
+            The estimator to be used for predictions
+        X : Optional[pd.DataFrame]
+            Exogenous Variables provided by user.
+
+        Returns
+        -------
+        Optional[pd.DataFrame]
+            Exogenous Variables to be used for predictions.
+
+        Raises
+        ------
+        ValueError
+            If model is finalized and was trained using exogenous variables and
+            user does not provide exogenous variabled for predictions.
+        """
+        if self._setup_ran:
+            estimator_y, _ = self._get_cleaned_estimator_y_X(estimator=estimator)
+            if X is None:
+                if estimator_y.index.equals(self.y_train.index):
+                    # Condition (1)
+                    X = self.X_test
+                elif self.exogenous_present == TSExogenousPresent.YES:
+                    raise ValueError(
+                        "Model was trained with exogenous variables but you have "
+                        "not passed any for predictions. Please pass exogenous "
+                        "variables to make predictions."
+                    )
+
+        #### Convert to None if empty dataframe ----
+        # Some predict methods in sktime expect None (not an empty dataframe as
+        # returned by pycaret). Hence converting to None.
+        X = _coerce_empty_dataframe_to_none(data=X)
+        return X
+
+    def _predict_model_resolve_verbose(
+        self, verbose: bool, y_pred: pd.DataFrame
+    ) -> bool:
+        """Resolves whether metrics should be displayed or not.
+
+        Metrics are only shown if ALL of the following conditions are satisfied
+        (applicable for native experiments OR for experiments that load a model):
+        (1) setup has been run AND
+        (2) verbose = True AND
+        (3) prediction indices match test indices exactly.
+
+        Parameters
+        ----------
+        verbose : bool
+            Verbosity set by user
+        y_pred : pd.DataFrame
+            Estimator predictions, used for checking if model has been finalized
+            or not.
+
+        Returns
+        -------
+        bool
+            Should metrics be enabled or disabled
+        """
+        if self._setup_ran:
+            if not y_pred.index.equals(self.y_test.index):
+                msg = (
+                    "predict_model >> Prediction Indices do not match test indices. "
+                    "Metrics will not be displayed."
+                )
+                self.logger.warning(msg)
+                verbose = False
+        else:
+            verbose = False
+
+        return verbose
+
+    def _predict_model_resolve_display(
+        self, verbose: bool, y_pred: pd.DataFrame
+    ) -> Display:
+        """Returns the display object after appropriately deciding whether metrics
+        should be displayed or not.
+
+        Parameters
+        ----------
+        verbose : bool
+            Verbosity set by user
+        y_pred : pd.DataFrame
+            Estimator predictions, used for checking if model has been finalized
+            or not.
+
+        Returns
+        -------
+        Display
+            The Display object for IPython Displays
+        """
+
+        verbose = self._predict_model_resolve_verbose(verbose=verbose, y_pred=y_pred)
+        if hasattr(self, "html_param"):
+            np.random.seed(self.seed)
+            display = Display(verbose=verbose, html_param=self.html_param)
+        else:
+            # Setup has not been run, hence self.html_param is not available
+            display = Display(verbose=verbose, html_param=False)
+
+        return display
+
+    def _predict_model_get_metrics(
+        self, estimator: BaseForecaster, result: pd.DataFrame
+    ) -> dict:
+        """Return the metrics for the predictions.
+
+        Parameters
+        ----------
+        estimator : BaseForecaster
+            Estimator used to make predictions
+        result : pd.DataFrame
+            Predictions with lower and upper bounds.
+
+        Returns
+        -------
+        dict
+            Prediction metrics
+        """
+        # Pass additional keyword arguments (like y_train, lower, upper) to
+        # method since they need to be passed to certain metrics like MASE,
+        # INPI, etc. This method will internally orchestrate the passing of
+        # the right arguments to the scorers.
+        initial_kwargs = self.get_additional_scorer_kwargs()
+        additional_scorer_kwargs = update_additional_scorer_kwargs(
+            initial_kwargs=initial_kwargs,
+            y_train=self._get_y_X_used_for_training(estimator=estimator)[0],
+            lower=result["lower"],
+            upper=result["upper"],
+        )
+        metrics = self._calculate_metrics(
+            y_test=self.y_test,
+            pred=result["y_pred"],
+            pred_prob=None,
+            **additional_scorer_kwargs,
+        )
+
+        return metrics
+
     def predict_model(
         self,
         estimator,
@@ -3001,7 +3251,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             Trained model object
 
 
-        fh: int, default = None
+        fh: Optional[Union[List[int], int, np.array, ForecastingHorizon]], default = None
             Number of points from the last date of training to forecast.
             When fh is None, it forecasts using the same forecast horizon
             used during the training.
@@ -3040,83 +3290,12 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         """
         estimator.check_is_fitted()
 
-        # Use Cases:
-        # (1) User is in the middle of experiment and passes a Base Model without pipeline.
-        # Action: Append pipeline and predict
-        # (2) User saved a model (without pipeline) and in the future, restarted experiment
-        # after setup and loaded his model.
-        # Action: Append pipeline and predict. If setup has not been run, raise an exception.
-        # (3) User saved a model pipeline and in the future, loaded this pipeline in another
-        # experiment to make predictions. This model pipeline might be different from the
-        # experiment pipeline. Hence experiment pipeline should not be changes. Predict as is.
-        # Action: Pipeline as is
+        pipeline_with_model, estimator_ = self._predict_model_reconcile_pipe_estimator(
+            estimator=estimator
+        )
 
-        if isinstance(estimator, PyCaretForecastingPipeline):
-            # Use Case 3
-            pipeline_with_model = deepcopy(estimator)
-            estimator_ = self._get_final_model_from_pipeline(
-                pipeline=pipeline_with_model, check_is_fitted=True
-            )
-        else:
-            if self._setup_ran:
-                # Use Case 1 & 2
-                # Deep Cloning to prevent overwriting the fh when user specifies their own fh
-                estimator_ = deepcopy(estimator)
-                pipeline_with_model = _add_model_to_pipeline(
-                    pipeline=self.pipeline, model=estimator_
-                )
-            else:
-                raise ValueError(
-                    "\n\nSetup has not been run and you have provided a estimator without the pipeline. "
-                    "You can either \n(1) Provide the complete pipeline without running setup to make "
-                    "the prediction OR \n(2) Run setup first before providing the estimator only."
-                )
-
-        loaded_in_same_env = True
-        # Check if loaded in a different environment
-        if not hasattr(self, "X_test") or fh is not None:
-            # If the model is saved and loaded afterwards,
-            # it will not have self.X_test
-
-            # Also do not display metrics if user provides own fh
-            # (even if it is same as test set horizon) per
-            # https://github.com/pycaret/pycaret/issues/1702
-            loaded_in_same_env = False
-            verbose = False
-
-        if fh is not None:
-            # Do not display metrics if user provides own fh
-            # (even if it is same as test set horizon) per
-            # https://github.com/pycaret/pycaret/issues/1702
-            verbose = False
-
-        if fh is None:
-            # TODO: Check if we can directly take from the estimator and remove the if-else
-            if not hasattr(self, "fh"):
-                # If the model is saved and loaded afterwards,
-                # it will not have self.fh
-                fh = estimator_.fh
-            else:
-                fh = self.fh
-        else:
-            # Get the fh in the right format for sktime
-            fh = self._check_fh(fh)
-
-        if hasattr(self, "X_test"):
-            # If loaded in the same environment as experiment & model has not been
-            # finalized, then set X = X_test.
-            estimator_y, _ = self._get_cleaned_estimator_y_X(estimator=estimator)
-            if estimator_y.index[-1] == self.y_train.index[-1] and X is None:
-                X = self.X_test  # Predict Test Set
-        # else: # Loaded in different environment
-        # NOTE: If the model was built using exogenous variables, then user
-        # must make sure that this is provided, else the predictions will fail.
-
-        #### Convert to None if empty dataframe
-        # Some predict methods in sktime expect None (not an empty dataframe as
-        # returned by pycaret). Hence converting to None.
-        X = _coerce_empty_dataframe_to_none(data=X)
-
+        fh = self._predict_model_reconcile_fh(estimator=estimator_, fh=fh)
+        X = self._predict_model_reconcile_X(estimator=estimator_, X=X)
         result = get_predictions_with_intervals(
             forecaster=pipeline_with_model,
             X=X,
@@ -3125,93 +3304,32 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             merge=True,
             round=round,
         )
-        if not return_pred_int:
-            result = pd.DataFrame(result["y_pred"])
+        y_pred = pd.DataFrame(result["y_pred"])
 
         #################
         #### Metrics ####
         #################
-        # Only display if loaded in same environment
-
-        # This is not technically y_test_pred in all cases.
-        # If the model has not been finalized, y_test_pred will match the indices from y_test
-        # If the model has been finalized, y_test_pred will not match the indices from y_test
-        # Also, the user can use a different fh length in predict in which case the length
-        # of y_test_pred will not match y_test.
-
-        if loaded_in_same_env:
-            y_test = self.y_test
-            y_train, _ = self._get_y_X_used_for_training(estimator)
-
-            y_test_pred, lower, upper = get_predictions_with_intervals(
-                forecaster=pipeline_with_model, X=X, fh=fh, alpha=alpha
+        if self._setup_ran:
+            #### Get Metrics ----
+            metrics = self._predict_model_get_metrics(
+                estimator=estimator_, result=result
             )
 
-            if len(y_test_pred) != len(y_test):
-                msg = (
-                    "predict_model >> Forecast Horizon does not match the horizon length "
-                    "used during training. Metrics will not be displayed."
-                )
-                self.logger.warning(msg)
-                verbose = False
-
-            # concatenates by index
-            y_test_and_pred = pd.concat([y_test_pred, y_test], axis=1)
-            # Removes any indices that do not match
-            y_test_and_pred.dropna(inplace=True)
-            y_test_pred_common = y_test_and_pred[y_test_and_pred.columns[0]]
-            y_test_common = y_test_and_pred[y_test_and_pred.columns[1]]
-
-            if len(y_test_and_pred) == 0:
-                self.logger.warning(
-                    "predict_model >> No indices matched between test set and prediction. "
-                    "You are most likely calling predict_model after finalizing model. "
-                    "Metrics will not be displayed."
-                )
-                metrics = self._calculate_metrics(y_test=[], pred=[], pred_prob=None)  # type: ignore
-                metrics = {metric_name: np.nan for metric_name, _ in metrics.items()}
-                verbose = False
-            else:
-                # Pass additional keyword arguments (like y_train, lower, upper) to
-                # method since they need to be passed to certain metrics like MASE,
-                # INPI, etc. This method will internally orchestrate the passing of
-                # the right arguments to the scorers.
-                initial_kwargs = self.get_additional_scorer_kwargs()
-                additional_scorer_kwargs = update_additional_scorer_kwargs(
-                    initial_kwargs=initial_kwargs,
-                    y_train=y_train,
-                    lower=lower,
-                    upper=upper,
-                )
-                metrics = self._calculate_metrics(
-                    y_test=y_test_common,
-                    pred=y_test_pred_common,
-                    pred_prob=None,
-                    **additional_scorer_kwargs,
-                )  # type: ignore
-
-            # Display Test Score
-            # model name
-            display = None
-            try:
-                np.random.seed(self.seed)
-                if not display:
-                    display = Display(verbose=verbose, html_param=self.html_param)
-            except:
-                display = Display(verbose=False, html_param=False)
-
+            #### Display metrics ----
             full_name = self._get_model_name(estimator_)
             df_score = pd.DataFrame(metrics, index=[0])
             df_score.insert(0, "Model", full_name)
             df_score = df_score.round(round)
+            display = self._predict_model_resolve_display(
+                verbose=verbose, y_pred=y_pred
+            )
             display.display(df_score.style.set_precision(round), clear=False)
-
-            # store predictions on hold-out in display_container
-            if df_score is not None:
-                self.display_container.append(df_score)
+            self.display_container.append(df_score)
 
         gc.collect()
 
+        if not return_pred_int:
+            result = y_pred
         return result
 
     def finalize_model(

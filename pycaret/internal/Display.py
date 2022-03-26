@@ -6,9 +6,8 @@ from pycaret.internal.logging import get_logger
 import pandas as pd
 import ipywidgets as ipw
 from IPython import get_ipython
-from IPython.display import display, HTML, clear_output, update_display
+from IPython.display import display, clear_output, update_display
 from typing import Optional, List, Dict, Any
-from pycaret.utils import enable_colab
 
 
 class Display:
@@ -34,7 +33,7 @@ class Display:
     originator = ""
 
     def can_display(self, override):
-        return (self.verbose and override != False) or override == True
+        return (self.verbose and override is not False) or override is True
 
     def display_progress(self, override=None):
         if self.progress is None:
@@ -170,7 +169,7 @@ class Display:
 
         if monitor_rows and self.html_param:
             self.monitor = pd.DataFrame(
-                monitor_rows, columns=[" " * i for i in range(len(monitor_rows[0]))],
+                monitor_rows, columns=[" " * i for i in range(len(monitor_rows[0]))]
             ).set_index("")
 
 

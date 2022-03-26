@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 from scipy import sparse
 import pandas.io.formats.style
-from pycaret.internal.validation import *
+
 from typing import Any, Callable, List, Optional, Dict, Set, Tuple, Union
 from sklearn.model_selection import KFold, StratifiedKFold, BaseCrossValidator
 from sklearn.model_selection._split import _BaseKFold
