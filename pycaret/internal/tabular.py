@@ -2198,9 +2198,7 @@ def compare_models(
 
         logger.info("Creating metrics dataframe")
         if cross_validation:
-            compare_models_ = pd.DataFrame(
-                model_results.loc["CV-Val", "Mean"]
-            ).T.reset_index(drop=True)
+            compare_models_ = pd.DataFrame(model_results.loc["Mean"]).T.reset_index(drop=True)
         else:
             compare_models_ = pd.DataFrame(model_results.iloc[0]).T
         compare_models_.insert(len(compare_models_.columns), "TT (Sec)", model_fit_time)
@@ -3273,8 +3271,12 @@ def create_model_supervised(
         model_results_df = model_results.copy()
 
         # yellow the mean
+        if return_train_score:
+            indices = [("CV-Val", "Mean"), ("CV-Train", "Mean")]
+        else:
+            indices = ["Mean"]
         model_results = color_df(
-            model_results, "yellow", [("CV-Val", "Mean"), ("CV-Train", "Mean")], axis=1
+            model_results, "yellow", indices, axis=1
         )
         model_results = model_results.set_precision(round)
 
@@ -3285,8 +3287,12 @@ def create_model_supervised(
     # mlflow logging
     if logging_param and system and refit:
 
+        if return_train_score:
+            indices = ("CV-Val", "Mean")
+        else:
+            indices = "Mean"
         avgs_dict_log = {
-            k: v for k, v in model_results_df.loc["CV-Val", "Mean"].items()
+            k: v for k, v in model_results_df.loc[indices].items()
         }
 
         try:
@@ -3566,7 +3572,7 @@ def tune_model_unsupervised(
             round=round,
             refit=False,
         )
-        results[k] = pull(pop=True).loc["CV-Val", "Mean"]
+        results[k] = pull(pop=True).loc["Mean"]
         display.move_progress()
 
     logger.info("Compiling results")
@@ -4694,8 +4700,11 @@ def tune_model_supervised(
 
     # mlflow logging
     if logging_param:
-
-        avgs_dict_log = {k: v for k, v in model_results.loc["CV-Val", "Mean"].items()}
+        if return_train_score:
+            indices = ("CV-Val", "Mean")
+        else:
+            indices = "Mean"
+        avgs_dict_log = {k: v for k, v in model_results.loc[indices].items()}
         dashboard_logger.log_model_comparison(model_results, "tune_model")
 
 
@@ -4719,8 +4728,12 @@ def tune_model_supervised(
             logger.error(traceback.format_exc())
         
 
+    if return_train_score:
+        indices = [("CV-Val", "Mean"), ("CV-Train", "Mean")]
+    else:
+        indices = ["Mean"]
     model_results = color_df(
-        model_results, "yellow", [("CV-Val", "Mean"), ("CV-Train", "Mean")], axis=1
+        model_results, "yellow", indices, axis=1
     )
     model_results = model_results.set_precision(round)
     display.display(model_results, clear=True)
@@ -5061,7 +5074,11 @@ def ensemble_model(
 
     # mlflow logging
     if logging_param:
-        avgs_dict_log = {k: v for k, v in model_results.loc["CV-Val", "Mean"].items()}
+        if return_train_score:
+            indices = ("CV-Val", "Mean")
+        else:
+            indices = "Mean"
+        avgs_dict_log = {k: v for k, v in model_results.loc[indices].items()}
         dashboard_logger.log_model_comparison(model_results, "ensemble_model")
 
         try:
@@ -5093,8 +5110,12 @@ def ensemble_model(
             display=display,
         )
 
+    if return_train_score:
+        indices = [("CV-Val", "Mean"), ("CV-Train", "Mean")]
+    else:
+        indices = ["Mean"]
     model_results = color_df(
-        model_results, "yellow", [("CV-Val", "Mean"), ("CV-Train", "Mean")], axis=1
+        model_results, "yellow", indices, axis=1
     )
     model_results = model_results.set_precision(round)
     display.display(model_results, clear=True)
@@ -5428,7 +5449,11 @@ def blend_models(
 
     # dashboard logging
     if logging_param:
-        avgs_dict_log = {k: v for k, v in model_results.loc["CV-Val", "Mean"].items()}
+        if return_train_score:
+            indices = ("CV-Val", "Mean")
+        else:
+            indices = "Mean"
+        avgs_dict_log = {k: v for k, v in model_results.loc[indices].items()}
         dashboard_logger.log_model_comparison(model_results, "blend_models")
 
         try:
@@ -5460,8 +5485,12 @@ def blend_models(
             display=display,
         )
 
+    if return_train_score:
+        indices = [("CV-Val", "Mean"), ("CV-Train", "Mean")]
+    else:
+        indices = ["Mean"]
     model_results = color_df(
-        model_results, "yellow", [("CV-Val", "Mean"), ("CV-Train", "Mean")], axis=1
+        model_results, "yellow", indices, axis=1
     )
     model_results = model_results.set_precision(round)
     display.display(model_results, clear=True)
@@ -5806,7 +5835,11 @@ def stack_models(
 
     # dashboard logging
     if logging_param:
-        avgs_dict_log = {k: v for k, v in model_results.loc["CV-Val", "Mean"].items()}
+        if return_train_score:
+            indices = ("CV-Val", "Mean")
+        else:
+            indices = "Mean"
+        avgs_dict_log = {k: v for k, v in model_results.loc[indices].items()}
         dashboard_logger.log_model_comparison(model_results, "stack_models")
 
         try:
@@ -5838,8 +5871,12 @@ def stack_models(
             display=display,
         )
 
+    if return_train_score:
+        indices = [("CV-Val", "Mean"), ("CV-Train", "Mean")]
+    else:
+        indices = ["Mean"]
     model_results = color_df(
-        model_results, "yellow", [("CV-Val", "Mean"), ("CV-Train", "Mean")], axis=1
+        model_results, "yellow", indices, axis=1
     )
     model_results = model_results.set_precision(round)
     display.display(model_results, clear=True)
@@ -8418,7 +8455,11 @@ def calibrate_model(
 
     # dashboard logging
     if logging_param:
-        avgs_dict_log = {k: v for k, v in model_results.loc["CV-Val", "Mean"].items()}
+        if return_train_score:
+            indices = ("CV-Val", "Mean")
+        else:
+            indices = "Mean"
+        avgs_dict_log = {k: v for k, v in model_results.loc[indices].items()}
         dashboard_logger.log_model_comparison(model_results, f"calibrate_models_{_get_model_name(model)}")
 
 
@@ -8441,8 +8482,12 @@ def calibrate_model(
             logger.error(traceback.format_exc())
         
 
+    if return_train_score:
+        indices = [("CV-Val", "Mean"), ("CV-Train", "Mean")]
+    else:
+        indices = ["Mean"]
     model_results = color_df(
-        model_results, "yellow", [("CV-Val", "Mean"), ("CV-Train", "Mean")], axis=1
+        model_results, "yellow", indices, axis=1
     )
     model_results = model_results.set_precision(round)
     display.display(model_results, clear=True)
@@ -9205,7 +9250,11 @@ def finalize_model(
 
     # dashboard logging
     if logging_param:
-        avgs_dict_log = {k: v for k, v in model_results.loc["CV-Val", "Mean"].items()}
+        if return_train_score:
+            indices = ("CV-Val", "Mean")
+        else:
+            indices = "Mean"
+        avgs_dict_log = {k: v for k, v in model_results.loc[indices].items()}
         dashboard_logger.log_model_comparison(model_results, f"finalize_model_{_get_model_name(model_final)}")
 
 
@@ -9228,8 +9277,12 @@ def finalize_model(
             logger.error(traceback.format_exc())
         
 
+    if return_train_score:
+        indices = [("CV-Val", "Mean"), ("CV-Train", "Mean")]
+    else:
+        indices = ["Mean"]
     model_results = color_df(
-        model_results, "yellow", [("CV-Val", "Mean"), ("CV-Train", "Mean")], axis=1
+        model_results, "yellow", indices, axis=1
     )
     model_results = model_results.set_precision(round)
     display.display(model_results, clear=True)
@@ -10973,7 +11026,10 @@ def _choose_better(
     best_model = None
     for model, result in models_and_results:
         if result is not None and is_fitted(model):
-            result = result.loc["CV-Val", "Mean"][compare_dimension]
+            try:
+                result = result.loc["CV-Val", "Mean"][compare_dimension]
+            except Exception:
+                result = result.loc["Mean"][compare_dimension]
         else:
             logger.info(
                 "SubProcess create_model() called =================================="
@@ -10990,7 +11046,11 @@ def _choose_better(
             logger.info(
                 "SubProcess create_model() end =================================="
             )
-            result = pull(pop=True).loc["CV-Val", "Mean"][compare_dimension]
+            result = pull(pop=True)
+            try:
+                result = result.loc["CV-Val", "Mean"][compare_dimension]
+            except Exception:
+                result = result.loc["Mean"][compare_dimension]
         logger.info(f"{model} result for {compare_dimension} is {result}")
         if not metric.greater_is_better:
             result *= -1
