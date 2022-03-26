@@ -2976,7 +2976,11 @@ def create_model_supervised(
 
     if not display:
         progress_args = {"max": 4}
-        master_display_columns = ["Split", "Fold"] + [
+        if return_train_score:
+            indices = ["Split", "Fold"]
+        else:
+            indices = ["Fold"]
+        master_display_columns = indices + [
             v.display_name for k, v in _all_metrics.items()
         ]
         timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
@@ -4146,7 +4150,11 @@ def tune_model_supervised(
 
     if not display:
         progress_args = {"max": 3 + 4}
-        master_display_columns = ["Split", "Fold"] + [
+        if return_train_score:
+            indices = ["Split", "Fold"]
+        else:
+            indices = ["Fold"]
+        master_display_columns = indices + [
             v.display_name for k, v in _all_metrics.items()
         ]
         timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
@@ -4957,7 +4965,11 @@ def ensemble_model(
 
     if not display:
         progress_args = {"max": 2 + 4}
-        master_display_columns = ["Split", "Fold"] + [
+        if return_train_score:
+            indices = ["Split", "Fold"]
+        else:
+            indices = ["Fold"]
+        master_display_columns = indices + [
             v.display_name for k, v in _all_metrics.items()
         ]
         timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
@@ -5348,7 +5360,11 @@ def blend_models(
 
     if not display:
         progress_args = {"max": 2 + 4}
-        master_display_columns = ["Split", "Fold"] + [
+        if return_train_score:
+            indices = ["Split", "Fold"]
+        else:
+            indices = ["Fold"]
+        master_display_columns = indices + [
             v.display_name for k, v in _all_metrics.items()
         ]
         timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
@@ -5726,7 +5742,11 @@ def stack_models(
 
     if not display:
         progress_args = {"max": 2 + 4}
-        master_display_columns = ["Split", "Fold"] + [
+        if return_train_score:
+            indices = ["Split", "Fold"]
+        else:
+            indices = ["Fold"]
+        master_display_columns = indices + [
             v.display_name for k, v in _all_metrics.items()
         ]
         timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
@@ -8368,7 +8388,11 @@ def calibrate_model(
 
     if not display:
         progress_args = {"max": 2 + 4}
-        master_display_columns = ["Split", "Fold"] + [
+        if return_train_score:
+            indices = ["Split", "Fold"]
+        else:
+            indices = ["Fold"]
+        master_display_columns = indices + [
             v.display_name for k, v in _all_metrics.items()
         ]
         timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
@@ -8636,7 +8660,7 @@ def optimize_threshold(
         model_results = (
             pull()
             .reset_index()
-            .drop(columns=["Split"])
+            .drop(columns=["Split"], errors="ignore")
             .set_index(["Fold"])
             .loc[["Mean"]]
         )
