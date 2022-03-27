@@ -63,12 +63,9 @@ def setup(
 
 
     log_experiment: bool, default = False
-        If str, has to be one of 'mlflow', 'wandb'.
-        When set to True, use ``MLFLow`` for logging, and if ``wandb``
-        (Weights & Biases) is installed, also log there. Otherwise,
-        can be a (list of) PyCaret ``BaseLogger`` or str referencing one to determine
-        which loggers to use.
-        If ``wandb`` (Weights & Biases) is installed, will also log there.
+        A (list of) PyCaret ``BaseLogger`` or str (one of 'mlflow', 'wandb')
+        corresponding to a logger to determine which experiment loggers to use.
+        Setting to True will use just MLFlow.
 
 
     experiment_name: str, default = None
@@ -495,6 +492,8 @@ def setup(
     else:
         data_ = data.copy()
 
+    logging_param = log_experiment
+
     def convert_logging_param(obj):
         if isinstance(obj, BaseLogger):
             return obj
@@ -502,23 +501,19 @@ def setup(
         if obj == "mlflow":
             return MlflowLogger()
         if obj == "wandb":
-            if not wandb:
-                raise ImportError("Install wandb to use WandbLogger")
             return WandbLogger()
 
     if logging_param:
         loggers_list = []
         if logging_param is True:
             loggers_list = [MlflowLogger()]
-            if wandb:
-                loggers_list.append(WandbLogger())
         else:
             if not isinstance(logging_param, list):
                 logging_param = [logging_param]
             loggers_list = [convert_logging_param(x) for x in logging_param]
 
         if loggers_list:
-            dashboard_logger = loggers.DashboardLogger(loggers_list)
+            dashboard_logger = DashboardLogger(loggers_list)
 
 
     # create exp_name_log param incase logging is False
