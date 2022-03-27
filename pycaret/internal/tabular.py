@@ -2230,9 +2230,7 @@ def compare_models(
 
         logger.info("Creating metrics dataframe")
         if cross_validation:
-            compare_models_ = pd.DataFrame(
-                model_results.loc["CV-Val", "Mean"]
-            ).T.reset_index(drop=True)
+            compare_models_ = pd.DataFrame(model_results.loc["Mean"]).T.reset_index(drop=True)
         else:
             compare_models_ = pd.DataFrame(model_results.iloc[0]).T
         compare_models_.insert(len(compare_models_.columns), "TT (Sec)", model_fit_time)
@@ -3009,7 +3007,11 @@ def create_model_supervised(
 
     if not display:
         progress_args = {"max": 4}
-        master_display_columns = ["Split", "Fold"] + [
+        if return_train_score:
+            indices = ["Split", "Fold"]
+        else:
+            indices = ["Fold"]
+        master_display_columns = indices + [
             v.display_name for k, v in _all_metrics.items()
         ]
         timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
@@ -3255,7 +3257,6 @@ def create_model_supervised(
         else:
             model_results = pd.DataFrame(
                 {
-                    "Split": ["CV-Val"] * fold + ["CV-Val"] * 2,
                     "Fold": np.arange(fold).tolist() + ["Mean", "Std"],
                 }
             )
@@ -3265,7 +3266,11 @@ def create_model_supervised(
         ).reset_index(drop=True)
 
         model_results = pd.concat([model_results, model_scores], axis=1)
-        model_results.set_index(["Split", "Fold"], inplace=True)
+        if return_train_score:
+            indices = ["Split", "Fold"]
+        else:
+            indices = ["Fold"]
+        model_results.set_index(indices, inplace=True)
 
         if refit:
             # refitting the model on complete X_train, y_train
@@ -3276,18 +3281,20 @@ def create_model_supervised(
             with io.capture_output():
                 pipeline_with_model.fit(data_X, data_y, **fit_kwargs)
 
-                predict_model(
-                    pipeline_with_model, data=pd.concat([data_X, data_y], axis=1)
-                )
+                if return_train_score:
+                    predict_model(
+                        pipeline_with_model, data=pd.concat([data_X, data_y], axis=1)
+                    )
 
             # calculating metrics on predictions of complete train dataset
-            metrics = pull(pop=True).drop("Model", axis=1)
-            df_score = pd.DataFrame({"Split": ["Train"], "Fold": [None]})
-            df_score = pd.concat([df_score, metrics], axis=1)
-            df_score.set_index(["Split", "Fold"], inplace=True)
+            if return_train_score:
+                metrics = pull(pop=True).drop("Model", axis=1)
+                df_score = pd.DataFrame({"Split": ["Train"], "Fold": [None]})
+                df_score = pd.concat([df_score, metrics], axis=1)
+                df_score.set_index(["Split", "Fold"], inplace=True)
 
-            # concatenating train results to cross-validation socre dataframe
-            model_results = pd.concat([model_results, df_score])
+                # concatenating train results to cross-validation socre dataframe
+                model_results = pd.concat([model_results, df_score])
 
             model_fit_end = time.time()
 
@@ -3299,8 +3306,12 @@ def create_model_supervised(
         model_results_df = model_results.copy()
 
         # yellow the mean
+        if return_train_score:
+            indices = [("CV-Val", "Mean"), ("CV-Train", "Mean")]
+        else:
+            indices = ["Mean"]
         model_results = color_df(
-            model_results, "yellow", [("CV-Val", "Mean"), ("CV-Train", "Mean")], axis=1
+            model_results, "yellow", indices, axis=1
         )
         model_results = model_results.set_precision(round)
 
@@ -3311,8 +3322,12 @@ def create_model_supervised(
     # mlflow logging
     if logging_param and system and refit:
 
+        if return_train_score:
+            indices = ("CV-Val", "Mean")
+        else:
+            indices = "Mean"
         avgs_dict_log = {
-            k: v for k, v in model_results_df.loc["CV-Val", "Mean"].items()
+            k: v for k, v in model_results_df.loc[indices].items()
         }
 
         try:
@@ -3592,7 +3607,7 @@ def tune_model_unsupervised(
             round=round,
             refit=False,
         )
-        results[k] = pull(pop=True).loc["CV-Val", "Mean"]
+        results[k] = pull(pop=True).loc["Mean"]
         display.move_progress()
 
     logger.info("Compiling results")
@@ -4165,7 +4180,11 @@ def tune_model_supervised(
 
     if not display:
         progress_args = {"max": 3 + 4}
-        master_display_columns = ["Split", "Fold"] + [
+        if return_train_score:
+            indices = ["Split", "Fold"]
+        else:
+            indices = ["Fold"]
+        master_display_columns = indices + [
             v.display_name for k, v in _all_metrics.items()
         ]
         timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
@@ -4719,8 +4738,11 @@ def tune_model_supervised(
 
     # mlflow logging
     if logging_param:
-
-        avgs_dict_log = {k: v for k, v in model_results.loc["CV-Val", "Mean"].items()}
+        if return_train_score:
+            indices = ("CV-Val", "Mean")
+        else:
+            indices = "Mean"
+        avgs_dict_log = {k: v for k, v in model_results.loc[indices].items()}
         dashboard_logger.log_model_comparison(model_results, "tune_model")
 
         try:
@@ -4742,8 +4764,12 @@ def tune_model_supervised(
             logger.error(f"_mlflow_log_model() for {best_model} raised an exception:")
             logger.error(traceback.format_exc())
 
+    if return_train_score:
+        indices = [("CV-Val", "Mean"), ("CV-Train", "Mean")]
+    else:
+        indices = ["Mean"]
     model_results = color_df(
-        model_results, "yellow", [("CV-Val", "Mean"), ("CV-Train", "Mean")], axis=1
+        model_results, "yellow", indices, axis=1
     )
     model_results = model_results.set_precision(round)
     display.display(model_results, clear=True)
@@ -4967,7 +4993,11 @@ def ensemble_model(
 
     if not display:
         progress_args = {"max": 2 + 4}
-        master_display_columns = ["Split", "Fold"] + [
+        if return_train_score:
+            indices = ["Split", "Fold"]
+        else:
+            indices = ["Fold"]
+        master_display_columns = indices + [
             v.display_name for k, v in _all_metrics.items()
         ]
         timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
@@ -5084,7 +5114,11 @@ def ensemble_model(
 
     # mlflow logging
     if logging_param:
-        avgs_dict_log = {k: v for k, v in model_results.loc["CV-Val", "Mean"].items()}
+        if return_train_score:
+            indices = ("CV-Val", "Mean")
+        else:
+            indices = "Mean"
+        avgs_dict_log = {k: v for k, v in model_results.loc[indices].items()}
         dashboard_logger.log_model_comparison(model_results, "ensemble_model")
 
         try:
@@ -5115,8 +5149,12 @@ def ensemble_model(
             display=display,
         )
 
+    if return_train_score:
+        indices = [("CV-Val", "Mean"), ("CV-Train", "Mean")]
+    else:
+        indices = ["Mean"]
     model_results = color_df(
-        model_results, "yellow", [("CV-Val", "Mean"), ("CV-Train", "Mean")], axis=1
+        model_results, "yellow", indices, axis=1
     )
     model_results = model_results.set_precision(round)
     display.display(model_results, clear=True)
@@ -5349,7 +5387,11 @@ def blend_models(
 
     if not display:
         progress_args = {"max": 2 + 4}
-        master_display_columns = ["Split", "Fold"] + [
+        if return_train_score:
+            indices = ["Split", "Fold"]
+        else:
+            indices = ["Fold"]
+        master_display_columns = indices + [
             v.display_name for k, v in _all_metrics.items()
         ]
         timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
@@ -5450,7 +5492,11 @@ def blend_models(
 
     # dashboard logging
     if logging_param:
-        avgs_dict_log = {k: v for k, v in model_results.loc["CV-Val", "Mean"].items()}
+        if return_train_score:
+            indices = ("CV-Val", "Mean")
+        else:
+            indices = "Mean"
+        avgs_dict_log = {k: v for k, v in model_results.loc[indices].items()}
         dashboard_logger.log_model_comparison(model_results, "blend_models")
 
         try:
@@ -5481,8 +5527,12 @@ def blend_models(
             display=display,
         )
 
+    if return_train_score:
+        indices = [("CV-Val", "Mean"), ("CV-Train", "Mean")]
+    else:
+        indices = ["Mean"]
     model_results = color_df(
-        model_results, "yellow", [("CV-Val", "Mean"), ("CV-Train", "Mean")], axis=1
+        model_results, "yellow", indices, axis=1
     )
     model_results = model_results.set_precision(round)
     display.display(model_results, clear=True)
@@ -5718,7 +5768,11 @@ def stack_models(
 
     if not display:
         progress_args = {"max": 2 + 4}
-        master_display_columns = ["Split", "Fold"] + [
+        if return_train_score:
+            indices = ["Split", "Fold"]
+        else:
+            indices = ["Fold"]
+        master_display_columns = indices + [
             v.display_name for k, v in _all_metrics.items()
         ]
         timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
@@ -5827,7 +5881,11 @@ def stack_models(
 
     # dashboard logging
     if logging_param:
-        avgs_dict_log = {k: v for k, v in model_results.loc["CV-Val", "Mean"].items()}
+        if return_train_score:
+            indices = ("CV-Val", "Mean")
+        else:
+            indices = "Mean"
+        avgs_dict_log = {k: v for k, v in model_results.loc[indices].items()}
         dashboard_logger.log_model_comparison(model_results, "stack_models")
 
         try:
@@ -5858,8 +5916,12 @@ def stack_models(
             display=display,
         )
 
+    if return_train_score:
+        indices = [("CV-Val", "Mean"), ("CV-Train", "Mean")]
+    else:
+        indices = ["Mean"]
     model_results = color_df(
-        model_results, "yellow", [("CV-Val", "Mean"), ("CV-Train", "Mean")], axis=1
+        model_results, "yellow", indices, axis=1
     )
     model_results = model_results.set_precision(round)
     display.display(model_results, clear=True)
@@ -8351,7 +8413,11 @@ def calibrate_model(
 
     if not display:
         progress_args = {"max": 2 + 4}
-        master_display_columns = ["Split", "Fold"] + [
+        if return_train_score:
+            indices = ["Split", "Fold"]
+        else:
+            indices = ["Fold"]
+        master_display_columns = indices + [
             v.display_name for k, v in _all_metrics.items()
         ]
         timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
@@ -8438,10 +8504,13 @@ def calibrate_model(
 
     # dashboard logging
     if logging_param:
-        avgs_dict_log = {k: v for k, v in model_results.loc["CV-Val", "Mean"].items()}
-        dashboard_logger.log_model_comparison(
-            model_results, f"calibrate_models_{_get_model_name(model)}"
-        )
+        if return_train_score:
+            indices = ("CV-Val", "Mean")
+        else:
+            indices = "Mean"
+        avgs_dict_log = {k: v for k, v in model_results.loc[indices].items()}
+        dashboard_logger.log_model_comparison(model_results, f"calibrate_models_{_get_model_name(model)}")
+
 
         try:
             dashboard_logger.log_model(
@@ -8461,8 +8530,12 @@ def calibrate_model(
             logger.error(f"_mlflow_log_model() for {model} raised an exception:")
             logger.error(traceback.format_exc())
 
+    if return_train_score:
+        indices = [("CV-Val", "Mean"), ("CV-Train", "Mean")]
+    else:
+        indices = ["Mean"]
     model_results = color_df(
-        model_results, "yellow", [("CV-Val", "Mean"), ("CV-Train", "Mean")], axis=1
+        model_results, "yellow", indices, axis=1
     )
     model_results = model_results.set_precision(round)
     display.display(model_results, clear=True)
@@ -8611,7 +8684,7 @@ def optimize_threshold(
         model_results = (
             pull()
             .reset_index()
-            .drop(columns=["Split"])
+            .drop(columns=["Split"], errors="ignore")
             .set_index(["Fold"])
             .loc[["Mean"]]
         )
@@ -9227,10 +9300,13 @@ def finalize_model(
 
     # dashboard logging
     if logging_param:
-        avgs_dict_log = {k: v for k, v in model_results.loc["CV-Val", "Mean"].items()}
-        dashboard_logger.log_model_comparison(
-            model_results, f"finalize_model_{_get_model_name(model_final)}"
-        )
+        if return_train_score:
+            indices = ("CV-Val", "Mean")
+        else:
+            indices = "Mean"
+        avgs_dict_log = {k: v for k, v in model_results.loc[indices].items()}
+        dashboard_logger.log_model_comparison(model_results, f"finalize_model_{_get_model_name(model_final)}")
+
 
         try:
             dashboard_logger.log_model(
@@ -9250,8 +9326,12 @@ def finalize_model(
             logger.error(f"log_model() for {model_final} raised an exception:")
             logger.error(traceback.format_exc())
 
+    if return_train_score:
+        indices = [("CV-Val", "Mean"), ("CV-Train", "Mean")]
+    else:
+        indices = ["Mean"]
     model_results = color_df(
-        model_results, "yellow", [("CV-Val", "Mean"), ("CV-Train", "Mean")], axis=1
+        model_results, "yellow", indices, axis=1
     )
     model_results = model_results.set_precision(round)
     display.display(model_results, clear=True)
@@ -10995,7 +11075,10 @@ def _choose_better(
     best_model = None
     for model, result in models_and_results:
         if result is not None and is_fitted(model):
-            result = result.loc["CV-Val", "Mean"][compare_dimension]
+            try:
+                result = result.loc["CV-Val", "Mean"][compare_dimension]
+            except Exception:
+                result = result.loc["Mean"][compare_dimension]
         else:
             logger.info(
                 "SubProcess create_model() called =================================="
@@ -11012,7 +11095,11 @@ def _choose_better(
             logger.info(
                 "SubProcess create_model() end =================================="
             )
-            result = pull(pop=True).loc["CV-Val", "Mean"][compare_dimension]
+            result = pull(pop=True)
+            try:
+                result = result.loc["CV-Val", "Mean"][compare_dimension]
+            except Exception:
+                result = result.loc["Mean"][compare_dimension]
         logger.info(f"{model} result for {compare_dimension} is {result}")
         if not metric.greater_is_better:
             result *= -1
