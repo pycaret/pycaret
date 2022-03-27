@@ -8,6 +8,7 @@ import pandas as pd
 import numpy as np
 
 import pycaret.internal.tabular
+from pycaret.loggers.base_logger import BaseLogger
 from pycaret.parallel import ParallelBackend
 from pycaret.internal.Display import Display, is_in_colab, enable_colab
 from typing import List, Tuple, Any, Union, Optional, Dict, Callable
@@ -86,7 +87,7 @@ def setup(
     ] = None,
     html: bool = True,
     session_id: Optional[int] = None,
-    log_experiment: bool = False,
+    log_experiment: Union[bool, str, BaseLogger, List[Union[str, BaseLogger]]] = False,
     experiment_name: Optional[str] = None,
     experiment_custom_tags: Optional[Dict[str, Any]] = None,
     log_plots: Union[bool, list] = False,
@@ -510,13 +511,16 @@ def setup(
         for later reproducibility of the entire experiment.
 
 
-    log_experiment: bool, default = False
-        When set to True, all metrics and parameters are logged on the ``MLFlow`` server.
-        If ``wandb`` (Weights & Biases) is installed, will also log there.
+    log_experiment: bool or str or BaseLogger or list of str or BaseLogger, default = False
+        If str, has to be one of 'mlflow', 'wandb'.
+        When set to True, use ``MLFLow`` for logging, and if ``wandb``
+        (Weights & Biases) is installed, also log there. Otherwise,
+        can be a (list of) PyCaret ``BaseLogger`` or str referencing one to determine
+        which loggers to use.
 
 
     experiment_name: str, default = None
-        Name of the experiment for logging. Ignored when ``log_experiment`` is not True.
+        Name of the experiment for logging. Ignored when ``log_experiment`` is False.
 
     experiment_custom_tags: dict, default = None
         Dictionary of tag_name: String -> value: (String, but will be string-ified
@@ -525,17 +529,17 @@ def setup(
     log_plots: bool or list, default = False
         When set to True, certain plots are logged automatically in the ``MLFlow`` server.
         To change the type of plots to be logged, pass a list containing plot IDs. Refer
-        to documentation of ``plot_model``. Ignored when ``log_experiment`` is not True.
+        to documentation of ``plot_model``. Ignored when ``log_experiment`` is False.
 
 
     log_profile: bool, default = False
         When set to True, data profile is logged on the ``MLflow`` server as a html file.
-        Ignored when ``log_experiment`` is not True.
+        Ignored when ``log_experiment`` is False.
 
 
     log_data: bool, default = False
         When set to True, dataset is logged on the ``MLflow`` server as a csv file.
-        Ignored when ``log_experiment`` is not True.
+        Ignored when ``log_experiment`` is False.
 
 
     silent: bool, default = False

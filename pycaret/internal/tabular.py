@@ -62,6 +62,7 @@ import random
 import gc
 import multiprocessing
 from copy import deepcopy
+from pycaret.loggers.base_logger import BaseLogger
 from pycaret.loggers.mlflow_logger import MlflowLogger
 from pycaret.loggers.wandb_logger import WandbLogger
 from sklearn.base import clone
@@ -169,7 +170,7 @@ def setup(
     ] = None,
     html: bool = True,
     session_id: Optional[int] = None,
-    log_experiment: bool = False,
+    log_experiment: Union[bool, str, BaseLogger, List[Union[str, BaseLogger]]] = False,
     experiment_name: Optional[str] = None,
     experiment_custom_tags: Optional[Dict[str, Any]] = None,
     log_plots: Union[bool, list] = False,
@@ -681,8 +682,21 @@ def setup(
                     )
 
     # log_experiment
-    if type(log_experiment) is not bool:
-        raise TypeError("log_experiment parameter only accepts True or False.")
+    def validate_log_experiment(obj):
+        return isinstance(obj, (bool, BaseLogger)) or (
+            isinstance(obj, str) and obj.lower() in ["mlflow", "wandb"]
+        )
+
+    if not (
+        (
+            isinstance(log_experiment, list)
+            and all(validate_log_experiment(x) for x in log_experiment)
+        )
+        or validate_log_experiment(log_experiment)
+    ):
+        raise TypeError(
+            "log_experiment parameter must be a bool, BaseLogger, one of 'mlflow', 'wandb'; or a list of the former."
+        )
 
     # log_profile
     if type(log_profile) is not bool:
@@ -849,7 +863,7 @@ def setup(
         "fold_param",
         "fold_groups_param",
         "fold_groups_param_full",
-        "dashboard_logger"
+        "dashboard_logger",
     }
     if not _is_unsupervised(_ml_usecase):
         pycaret_globals = common_globals.union(supervised_globals)
@@ -1300,16 +1314,37 @@ def setup(
     # create logging parameter
     logging_param = log_experiment
     dashboard_logger = None
-    if logging_param:
-        loggers_list = [MlflowLogger()]
-        try:
-            import wandb
-            from wandb import __version__
-            loggers_list.append(WandbLogger())
-        except ImportError:
-            logger.info("Install wandb to use WandbLogger")
 
-        dashboard_logger = loggers.DashboardLogger(loggers_list)
+    try:
+        import wandb
+        from wandb import __version__
+    except ImportError:
+        wandb = None
+
+    def convert_logging_param(obj):
+        if isinstance(obj, BaseLogger):
+            return obj
+        obj = obj.lower()
+        if obj == "mlflow":
+            return MlflowLogger()
+        if obj == "wandb":
+            if not wandb:
+                raise ImportError("Install wandb to use WandbLogger")
+            return WandbLogger()
+
+    if logging_param:
+        loggers_list = []
+        if logging_param is True:
+            loggers_list = [MlflowLogger()]
+            if wandb:
+                loggers_list.append(WandbLogger())
+        else:
+            if not isinstance(logging_param, list):
+                logging_param = [logging_param]
+            loggers_list = [convert_logging_param(x) for x in logging_param]
+
+        if loggers_list:
+            dashboard_logger = loggers.DashboardLogger(loggers_list)
 
     # create exp_name_log param incase logging is False
     exp_name_log = "no_logging"
@@ -1762,7 +1797,14 @@ def setup(
 
     if logging_param:
         dashboard_logger.log_experiment(
-            log_profile, profile_kwargs, log_data, _ml_usecase, functions, experiment_custom_tags, runtime, display
+            log_profile,
+            profile_kwargs,
+            log_data,
+            _ml_usecase,
+            functions,
+            experiment_custom_tags,
+            runtime,
+            display,
         )
     logger.info(f"create_model_container: {len(create_model_container)}")
     logger.info(f"master_model_container: {len(master_model_container)}")
@@ -2328,19 +2370,19 @@ def compare_models(
             if logging_param and cross_validation and model is not None:
                 try:
                     dashboard_logger.log_model(
-                            model=model,
-                            model_results=results,
-                            _prep_pipe=prep_pipe,
-                            ml_usecase=_ml_usecase,
-                            score_dict=avgs_dict_log,
-                            source="compare_models",
-                            runtime=row["runtime"],
-                            model_fit_time=row["TT (Sec)"],
-                            log_plots=log_plots_param if full_logging else False,
-                            experiment_custom_tags=experiment_custom_tags,
-                            log_holdout=full_logging,
-                            display=display,
-                        )
+                        model=model,
+                        model_results=results,
+                        _prep_pipe=prep_pipe,
+                        ml_usecase=_ml_usecase,
+                        score_dict=avgs_dict_log,
+                        source="compare_models",
+                        runtime=row["runtime"],
+                        model_fit_time=row["TT (Sec)"],
+                        log_plots=log_plots_param if full_logging else False,
+                        experiment_custom_tags=experiment_custom_tags,
+                        log_holdout=full_logging,
+                        display=display,
+                    )
                 except:
                     logger.error(
                         f"dashboard_logger.log_model() for {model} raised an exception:"
@@ -2707,11 +2749,10 @@ def create_model_unsupervised(
                 log_plots=log_plots_param,
                 display=display,
             )
-        
+
         except:
             logger.error(f"log_model() for {model} raised an exception:")
             logger.error(traceback.format_exc())
-    
 
     display.move_progress()
 
@@ -3655,11 +3696,10 @@ def tune_model_unsupervised(
                 log_plots=log_plots_param,
                 display=display,
             )
-        
+
         except:
             logger.error(f"_mlflow_log_model() for {model} raised an exception:")
             logger.error(traceback.format_exc())
-        
 
     results = results.set_precision(round)
     display_container.append(results)
@@ -4715,7 +4755,6 @@ def tune_model_supervised(
         avgs_dict_log = {k: v for k, v in model_results.loc[indices].items()}
         dashboard_logger.log_model_comparison(model_results, "tune_model")
 
-
         try:
             dashboard_logger.log_model(
                 model=best_model,
@@ -4730,11 +4769,10 @@ def tune_model_supervised(
                 tune_cv_results=cv_results,
                 display=display,
             )
-        
+
         except:
             logger.error(f"_mlflow_log_model() for {best_model} raised an exception:")
             logger.error(traceback.format_exc())
-        
 
     if return_train_score:
         indices = [("CV-Val", "Mean"), ("CV-Train", "Mean")]
@@ -5106,11 +5144,10 @@ def ensemble_model(
                 log_plots=log_plots_param,
                 display=display,
             )
-        
+
         except:
             logger.error(f"_mlflow_log_model() for {best_model} raised an exception:")
             logger.error(traceback.format_exc())
-        
 
     if choose_better:
         model = _choose_better(
@@ -5485,11 +5522,10 @@ def blend_models(
                 log_plots=log_plots_param,
                 display=display,
             )
-        
+
         except:
             logger.error(f"_mlflow_log_model() for {model} raised an exception:")
             logger.error(traceback.format_exc())
-        
 
     if choose_better:
         model = _choose_better(
@@ -5875,11 +5911,10 @@ def stack_models(
                 log_plots=log_plots_param,
                 display=display,
             )
-        
+
         except:
             logger.error(f"_mlflow_log_model() for {model} raised an exception:")
             logger.error(traceback.format_exc())
-        
 
     if choose_better:
         model = _choose_better(
@@ -8500,11 +8535,10 @@ def calibrate_model(
                 log_plots=log_plots_param,
                 display=display,
             )
-        
+
         except:
             logger.error(f"_mlflow_log_model() for {model} raised an exception:")
             logger.error(traceback.format_exc())
-        
 
     if return_train_score:
         indices = [("CV-Val", "Mean"), ("CV-Train", "Mean")]
@@ -9010,7 +9044,9 @@ def predict_model(
     else:
 
         if is_sklearn_pipeline(estimator) and hasattr(estimator, "predict"):
-            dtypes = estimator.named_steps.get("dtypes", prep_pipe.named_steps["dtypes"])
+            dtypes = estimator.named_steps.get(
+                "dtypes", prep_pipe.named_steps["dtypes"]
+            )
         else:
             try:
                 dtypes = prep_pipe.named_steps["dtypes"]
@@ -9299,7 +9335,6 @@ def finalize_model(
         except:
             logger.error(f"log_model() for {model_final} raised an exception:")
             logger.error(traceback.format_exc())
-        
 
     if return_train_score:
         indices = [("CV-Val", "Mean"), ("CV-Train", "Mean")]
@@ -11208,6 +11243,7 @@ def get_ml_task(y):
     else:
         ml_usecase = MLUsecase.REGRESSION
     return ml_usecase
+
 
 def _get_columns_to_stratify_by(
     X: pd.DataFrame, y: pd.DataFrame, stratify: Union[bool, List[str]], target: str

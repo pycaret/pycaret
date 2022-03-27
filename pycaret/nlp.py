@@ -6,6 +6,7 @@
 
 from typing import Optional, Dict, Any, Dict
 from pycaret.loggers import DashboardLogger
+from pycaret.loggers.base_logger import BaseLogger
 from pycaret.loggers.mlflow_logger import MlflowLogger
 from pycaret.loggers.wandb_logger import WandbLogger
 
@@ -62,12 +63,16 @@ def setup(
 
 
     log_experiment: bool, default = False
-        When set to True, all metrics and parameters are logged on the ``MLFlow`` server.
+        If str, has to be one of 'mlflow', 'wandb'.
+        When set to True, use ``MLFLow`` for logging, and if ``wandb``
+        (Weights & Biases) is installed, also log there. Otherwise,
+        can be a (list of) PyCaret ``BaseLogger`` or str referencing one to determine
+        which loggers to use.
         If ``wandb`` (Weights & Biases) is installed, will also log there.
 
 
     experiment_name: str, default = None
-        Name of the experiment for logging. Ignored when ``log_experiment`` is not True.
+        Name of the experiment for logging. Ignored when ``log_experiment`` is False.
 
     experiment_custom_tags: dict, default = None
         Dictionary of tag_name: String -> value: (String, but will be string-ified
@@ -80,7 +85,7 @@ def setup(
 
     log_data: bool, default = False
         When set to True, dataset is logged on the ``MLflow`` server as a csv file.
-        Ignored when ``log_experiment`` is not True.
+        Ignored when ``log_experiment`` is False.
 
 
     verbose: bool, default = True
@@ -331,8 +336,21 @@ def setup(
         sys.exit("(Type Error): html parameter only accepts True or False.")
 
     # log_experiment
-    if type(log_experiment) is not bool:
-        sys.exit("(Type Error): log_experiment parameter only accepts True or False.")
+    def validate_log_experiment(obj):
+        return isinstance(obj, (bool, BaseLogger)) or (
+            isinstance(obj, str) and obj.lower() in ["mlflow", "wandb"]
+        )
+
+    if not (
+        (
+            isinstance(log_experiment, list)
+            and all(validate_log_experiment(x) for x in log_experiment)
+        )
+        or validate_log_experiment(log_experiment)
+    ):
+        raise TypeError(
+            "log_experiment parameter must be a bool, BaseLogger, one of 'mlflow', 'wandb'; or a list of the former."
+        )
 
     # experiment custom tags
     if experiment_custom_tags is not None:
@@ -477,19 +495,30 @@ def setup(
     else:
         data_ = data.copy()
 
-    # create logging parameter
-    logging_param = log_experiment
-    dashboard_logger = None
-    if logging_param:
-        loggers_list = [MlflowLogger()]
-        try:
-            import wandb
-            from wandb import __version__
-            loggers_list.append(WandbLogger())
-        except ImportError:
-            logger.info("Install wandb to use WandbLogger")
+    def convert_logging_param(obj):
+        if isinstance(obj, BaseLogger):
+            return obj
+        obj = obj.lower()
+        if obj == "mlflow":
+            return MlflowLogger()
+        if obj == "wandb":
+            if not wandb:
+                raise ImportError("Install wandb to use WandbLogger")
+            return WandbLogger()
 
-        dashboard_logger = DashboardLogger(loggers_list)
+    if logging_param:
+        loggers_list = []
+        if logging_param is True:
+            loggers_list = [MlflowLogger()]
+            if wandb:
+                loggers_list.append(WandbLogger())
+        else:
+            if not isinstance(logging_param, list):
+                logging_param = [logging_param]
+            loggers_list = [convert_logging_param(x) for x in logging_param]
+
+        if loggers_list:
+            dashboard_logger = loggers.DashboardLogger(loggers_list)
 
 
     # create exp_name_log param incase logging is False

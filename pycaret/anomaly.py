@@ -16,6 +16,7 @@ from typing import List, Tuple, Any, Union, Optional, Dict
 import pycaret.internal.tabular
 
 from pycaret.internal.tabular import MLUsecase
+from pycaret.loggers.base_logger import BaseLogger
 
 warnings.filterwarnings("ignore")
 
@@ -61,7 +62,7 @@ def setup(
     ] = None,
     html: bool = True,
     session_id: Optional[int] = None,
-    log_experiment: bool = False,
+    log_experiment: Union[bool, str, BaseLogger, List[Union[str, BaseLogger]]] = False,
     experiment_name: Optional[str] = None,
     experiment_custom_tags: Optional[Dict[str, Any]] = None,
     log_plots: Union[bool, list] = False,
@@ -322,11 +323,15 @@ def setup(
 
 
     log_experiment: bool, default = False
-        When set to True, all metrics and parameters are logged on the ``MLFlow`` server.
+        If str, has to be one of 'mlflow', 'wandb'.
+        When set to True, use ``MLFLow`` for logging, and if ``wandb``
+        (Weights & Biases) is installed, also log there. Otherwise,
+        can be a (list of) PyCaret ``BaseLogger`` or str referencing one to determine
+        which loggers to use.
 
 
     experiment_name: str, default = None
-        Name of the experiment for logging. Ignored when ``log_experiment`` is not True.
+        Name of the experiment for logging. Ignored when ``log_experiment`` is False.
 
     experiment_custom_tags: dict, default = None
         Dictionary of tag_name: String -> value: (String, but will be string-ified 
@@ -336,17 +341,17 @@ def setup(
     log_plots: bool or list, default = False
         When set to True, certain plots are logged automatically in the ``MLFlow`` server. 
         To change the type of plots to be logged, pass a list containing plot IDs. Refer
-        to documentation of ``plot_model``. Ignored when ``log_experiment`` is not True.
+        to documentation of ``plot_model``. Ignored when ``log_experiment`` is False.
 
 
     log_profile: bool, default = False
         When set to True, data profile is logged on the ``MLflow`` server as a html file.
-        Ignored when ``log_experiment`` is not True. 
+        Ignored when ``log_experiment`` is False. 
 
 
     log_data: bool, default = False
         When set to True, dataset is logged on the ``MLflow`` server as a csv file.
-        Ignored when ``log_experiment`` is not True.
+        Ignored when ``log_experiment`` is False.
         
 
     silent: bool, default = False
@@ -1310,7 +1315,7 @@ def get_outliers(
     group_names: Optional[List[str]] = None,
     n_jobs: Optional[int] = -1,
     session_id: Optional[int] = None,
-    log_experiment: bool = False,
+    log_experiment: Union[bool, str, BaseLogger, List[Union[str, BaseLogger]]] = False,
     experiment_name: Optional[str] = None,
     log_plots: Union[bool, list] = False,
     log_profile: bool = False,
