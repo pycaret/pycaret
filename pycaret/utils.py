@@ -5,8 +5,8 @@
 import pandas as pd
 import functools
 
-version_ = "2.3.8"
-nightly_version_ = "2.3.8"
+version_ = "2.3.9"
+nightly_version_ = "2.3.9"
 
 __version__ = version_
 
