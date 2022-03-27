@@ -323,11 +323,9 @@ def setup(
 
 
     log_experiment: bool, default = False
-        If str, has to be one of 'mlflow', 'wandb'.
-        When set to True, use ``MLFLow`` for logging, and if ``wandb``
-        (Weights & Biases) is installed, also log there. Otherwise,
-        can be a (list of) PyCaret ``BaseLogger`` or str referencing one to determine
-        which loggers to use.
+        A (list of) PyCaret ``BaseLogger`` or str (one of 'mlflow', 'wandb')
+        corresponding to a logger to determine which experiment loggers to use.
+        Setting to True will use just MLFlow.
         If ``wandb`` (Weights & Biases) is installed, will also log there.
 
 

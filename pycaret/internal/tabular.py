@@ -1315,12 +1315,6 @@ def setup(
     logging_param = log_experiment
     dashboard_logger = None
 
-    try:
-        import wandb
-        from wandb import __version__
-    except ImportError:
-        wandb = None
-
     def convert_logging_param(obj):
         if isinstance(obj, BaseLogger):
             return obj
@@ -1328,16 +1322,12 @@ def setup(
         if obj == "mlflow":
             return MlflowLogger()
         if obj == "wandb":
-            if not wandb:
-                raise ImportError("Install wandb to use WandbLogger")
             return WandbLogger()
 
     if logging_param:
         loggers_list = []
         if logging_param is True:
             loggers_list = [MlflowLogger()]
-            if wandb:
-                loggers_list.append(WandbLogger())
         else:
             if not isinstance(logging_param, list):
                 logging_param = [logging_param]
