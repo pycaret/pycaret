@@ -2,7 +2,7 @@
 All notable changes to this project will be documented in this file.
 <br/><br/>
 
-#### Release: PyCaret 2.3.9 | Release Date: March 21st, 2022 (BUG FIXES)
+#### Release: PyCaret 2.3.9 | Release Date: March 27th, 2022 (BUG FIXES)
 - Made `log_experiment` more configurable (https://github.com/pycaret/pycaret/pull/2334, https://github.com/pycaret/pycaret/pull/2335)
 - Made `return_train_score=False` use the old output format (https://github.com/pycaret/pycaret/pull/2333)
 <br/><br/><br/>
