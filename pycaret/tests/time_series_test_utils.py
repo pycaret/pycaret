@@ -2,13 +2,14 @@
 """
 import random
 
-import numpy as np  # type: ignore
-import pandas as pd
+import numpy as np
+
+from sktime.forecasting.base import ForecastingHorizon
 
 from pycaret.time_series import TSForecastingExperiment
 from pycaret.datasets import get_data
 from pycaret.containers.models.time_series import get_all_model_containers
-from pycaret.utils.time_series import SeasonalPeriod, TSExogenousPresent
+from pycaret.utils.time_series import SeasonalPeriod
 
 _BLEND_TEST_MODELS = [
     "naive",
@@ -181,7 +182,7 @@ def _return_splitter_args():
         (random.randint(2, 5), np.arange(1, random.randint(5, 10)), "expanding"),
         (random.randint(2, 5), np.arange(1, random.randint(5, 10)), "rolling"),
         (random.randint(2, 5), np.arange(1, random.randint(5, 10)), "sliding"),
-        # Non continuous np.array
+        # fh: Non continuous np.array
         (
             random.randint(2, 5),
             np.arange(random.randint(3, 5), random.randint(6, 10)),
@@ -195,6 +196,46 @@ def _return_splitter_args():
         (
             random.randint(2, 5),
             np.arange(random.randint(3, 5), random.randint(6, 10)),
+            "sliding",
+        ),
+        # fh: Continuous List
+        (random.randint(2, 5), [1, 2, 3, 4], "expanding"),
+        (random.randint(2, 5), [1, 2, 3, 4], "rolling"),
+        (random.randint(2, 5), [1, 2, 3, 4], "sliding"),
+        # fh: Non Continuous List
+        (random.randint(2, 5), [3, 4], "expanding"),
+        (random.randint(2, 5), [3, 4], "rolling"),
+        (random.randint(2, 5), [3, 4], "sliding"),
+        # fh: Continuous ForecastingHorizon
+        (
+            random.randint(2, 5),
+            ForecastingHorizon(np.arange(1, random.randint(5, 10))),
+            "expanding",
+        ),
+        (
+            random.randint(2, 5),
+            ForecastingHorizon(np.arange(1, random.randint(5, 10))),
+            "rolling",
+        ),
+        (
+            random.randint(2, 5),
+            ForecastingHorizon(np.arange(1, random.randint(5, 10))),
+            "sliding",
+        ),
+        # fh: Non Continuous ForecastingHorizon
+        (
+            random.randint(2, 5),
+            ForecastingHorizon(np.arange(random.randint(3, 5), random.randint(6, 10))),
+            "expanding",
+        ),
+        (
+            random.randint(2, 5),
+            ForecastingHorizon(np.arange(random.randint(3, 5), random.randint(6, 10))),
+            "rolling",
+        ),
+        (
+            random.randint(2, 5),
+            ForecastingHorizon(np.arange(random.randint(3, 5), random.randint(6, 10))),
             "sliding",
         ),
     ]

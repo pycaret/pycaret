@@ -6,8 +6,10 @@ import os
 import warnings
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-import numpy as np  # type: ignore
-import pandas as pd  # type: ignore
+import numpy as np
+import pandas as pd
+
+from sktime.forecasting.base import ForecastingHorizon
 
 from pycaret.internal.utils import check_if_global_is_not_none
 from pycaret.time_series import TSForecastingExperiment
@@ -38,7 +40,7 @@ def setup(
     scale_exogenous: Optional[str] = None,
     fold_strategy: Union[str, Any] = "expanding",
     fold: int = 3,
-    fh: Optional[Union[List[int], int, np.array]] = 1,
+    fh: Optional[Union[List[int], int, np.ndarray, ForecastingHorizon]] = 1,
     seasonal_period: Optional[Union[List[Union[int, str]], int, str]] = None,
     enforce_pi: bool = False,
     enforce_exogenous: bool = True,
@@ -164,16 +166,20 @@ def setup(
         parameter. Ignored when ``fold_strategy`` is a custom object.
 
 
-    fh: Optional[int or list or np.array], default = 1
-        The forecast horizon to be used for forecasting. Default is set to ``1`` i.e.
-        forecast one point ahead. When integer is passed it means N continuous points
-        in the future without any gap. If you want to forecast values with gaps, you
-        must pass an array e.g. np.arange([13, 25]) will skip the first 12 future
-        points and forecast from the 13th point till the 24th point ahead (note in
-        numpy right value is inclusive and left is exclusive).
-
-        If fh = None, then fold_strategy must be a sktime compatible cross validation
-        object. In this case, fh is derived from this object.
+    fh: Optional[int or list or np.array or ForecastingHorizon], default = 1
+        The forecast horizon to be used for forecasting. Default is set to ``1``
+        i.e. forecast one point ahead. Valid options are:
+        (1) Integer: When integer is passed it means N continuous points in
+            the future without any gap.
+        (2) List or np.array: Indicates points to predict in the future. e.g.
+            fh = [1, 2, 3, 4] or np.arange(1, 5) will predict 4 points in the future.
+        (3) If you want to forecast values with gaps, you can pass an list or array
+            with gaps. e.g. np.arange([13, 25]) will skip the first 12 future points
+            and forecast from the 13th point till the 24th point ahead (note in numpy
+            right value is inclusive and left is exclusive).
+        (4) Can also be a sktime compatible ForecastingHorizon object.
+        (5) If fh = None, then fold_strategy must be a sktime compatible cross validation
+            object. In this case, fh is derived from this object.
 
 
     seasonal_period: list or int or str, default = None

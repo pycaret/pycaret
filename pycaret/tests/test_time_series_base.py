@@ -104,13 +104,15 @@ def test_create_predict_finalize_model(name, fh, load_pos_and_neg_data):
     assert np.all(y_pred.index == final_expected_period_index)
 
 
-def test_predict_model_warnings(load_pos_and_neg_data):
-    """test predict_model warnings cases"""
+def test_predict_model_metrics_displayed(load_pos_and_neg_data):
+    """Tests different cases in predict_model when metrics should and should not
+    be displayed"""
     exp = TSForecastingExperiment()
+    FH = 12
     exp.setup(
         data=load_pos_and_neg_data,
         fold=2,
-        fh=12,
+        fh=FH,
         fold_strategy="sliding",
         verbose=False,
     )
@@ -124,8 +126,26 @@ def test_predict_model_warnings(load_pos_and_neg_data):
     _ = exp.predict_model(model)
     expected = exp.pull()
 
-    # Prediction horizon larger than test set --> Metrics limited to common indices
-    _ = exp.predict_model(model, fh=np.arange(1, 24))
+    #### Metrics are returned ----
+    # (1) User provides fh resulting in prediction whose indices are same as y_test
+    _ = exp.predict_model(model, fh=FH)
+    metrics = exp.pull()
+    assert metrics.equals(expected)
+
+    #### No metrics returned ----
+    # All values are 0
+    expected.loc[0, 1:] = 0
+    cols = expected.select_dtypes(include=["float"])
+    for col in cols:
+        expected[col] = expected[col].astype(np.int64)
+
+    # (2) User provides fh resulting in prediction whose indices are less than y_test
+    _ = exp.predict_model(model, fh=FH - 1)
+    metrics = exp.pull()
+    assert metrics.equals(expected)
+
+    # (3) User provides fh resulting in prediction whose indices are more than y_test
+    _ = exp.predict_model(model, fh=FH + 1)
     metrics = exp.pull()
     assert metrics.equals(expected)
 
