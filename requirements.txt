@@ -15,9 +15,6 @@ scikit-plot>=0.3.7
 yellowbrick>=1.4
 plotly>=5.0.0
 kaleido>=0.2.1
-numba==0.55.0
-deprecated==1.2.13
-
 
 # Time-series
 statsmodels>=0.12.1
