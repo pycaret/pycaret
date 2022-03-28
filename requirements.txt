@@ -8,6 +8,7 @@ pyod>=0.9.8
 imbalanced-learn>=0.8.1
 category-encoders>=2.4.0
 lightgbm>=3.0.0
+numba~=0.55.0
 
 # Plotting
 matplotlib>=3.3.0
@@ -15,8 +16,6 @@ scikit-plot>=0.3.7
 yellowbrick>=1.4
 plotly>=5.0.0
 kaleido>=0.2.1
-numba==0.55.0
-
 
 # Time-series
 statsmodels>=0.12.1
