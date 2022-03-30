@@ -9034,9 +9034,11 @@ def predict_model(
     else:
 
         if is_sklearn_pipeline(estimator) and hasattr(estimator, "predict"):
-            dtypes = estimator.named_steps.get(
-                "dtypes", prep_pipe.named_steps["dtypes"]
-            )
+            try:
+                backup_dtypes = prep_pipe.named_steps["dtypes"]
+            except Exception:
+                backup_dtypes = None
+            dtypes = estimator.named_steps.get("dtypes", backup_dtypes)
         else:
             try:
                 dtypes = prep_pipe.named_steps["dtypes"]
