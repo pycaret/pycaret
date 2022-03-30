@@ -450,14 +450,36 @@ def plot_acf(
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
 ) -> PlotReturnType:
-    """Plots the ACF on the data provided"""
-    fig, return_data_dict = None, None
+    """Plots the ACF on the data provided
 
+    Parameters
+    ----------
+    data : pd.Series
+        Data whose correlation plot needs to be plotted
+    fig_defaults : Dict[str, Any]
+        The defaults dictionary containing keys for "width" and "height" (mandatory)
+    model_name : Optional[str]
+        The name of the model, by default None
+    data_kwargs : Dict[str, Any]
+        A dictionary containing options keys for "nlags"
+    fig_kwargs : Dict[str, Any]
+        A dictionary containing options keys for "width" and/or "height"
+
+    Returns
+    -------
+    Tuple[go.Figure, Dict[str, Any]]
+        Returns back the plotly figure along with the correlation data.
+    """
     data_kwargs = data_kwargs or {}
     fig_kwargs = fig_kwargs or {}
 
     nlags = data_kwargs.get("nlags", None)
-    corr_array = acf(data, alpha=0.05, nlags=nlags)
+    name = "ACF"
+
+    subplots = make_subplots(rows=1, cols=1)
+    fig, acf_data = corr_subplot(
+        fig=subplots, data=data, col=1, row=1, name=name, plot="acf", nlags=nlags
+    )
 
     time_series_name = data.name
     title = "Autocorrelation (ACF)"
@@ -466,61 +488,9 @@ def plot_acf(
     elif time_series_name is not None:
         title = f"{title} | {time_series_name}"
 
-    lower_y = corr_array[1][:, 0] - corr_array[0]
-    upper_y = corr_array[1][:, 1] - corr_array[0]
-
-    fig = go.Figure()
-
-    fig.add_scattergl(
-        x=np.arange(len(corr_array[0])),
-        y=corr_array[0],
-        mode="markers",
-        marker_color="#1f77b4",
-        marker_size=10,
-        name="ACF",
-    )
-
-    [
-        fig.add_scattergl(
-            x=(x, x),
-            y=(0, corr_array[0][x]),
-            mode="lines",
-            line_color="#3f3f3f",
-            name=f"Lag{ind + 1}",
-        )
-        for ind, x in enumerate(range(len(corr_array[0])))
-    ]
-
-    # For some reason scattergl does not work here. Hence switching to scatter.
-    # (refer: https://github.com/pycaret/pycaret/issues/2211).
-    fig.add_scatter(
-        x=np.arange(len(corr_array[0])),
-        y=upper_y,
-        mode="lines",
-        line_color="rgba(255,255,255,0)",
-        name="UC",
-    )
-    fig.add_scatter(
-        x=np.arange(len(corr_array[0])),
-        y=lower_y,
-        mode="lines",
-        fillcolor="rgba(32, 146, 230,0.3)",
-        fill="tonexty",
-        line_color="rgba(255,255,255,0)",
-        name="LC",
-    )
-    fig.add_scattergl(
-        x=(0, len(corr_array[0])),
-        y=(0, 0),
-        mode="lines",
-        line_color="#3f3f3f",
-        name="",
-    )
-
     with fig.batch_update():
-        fig.update_xaxes(range=[-1, len(corr_array[0]) + 1])
-        fig.update_yaxes(zerolinecolor="#000000")
-
+        fig.update_xaxes(title_text="Lags", row=1, col=1)
+        fig.update_yaxes(title_text=name, row=1, col=1)
         template = _resolve_dict_keys(
             dict_=fig_kwargs, key="template", defaults=fig_defaults
         )
@@ -529,9 +499,7 @@ def plot_acf(
             fig=fig, fig_kwargs=fig_kwargs, fig_defaults=fig_defaults
         )
 
-    return_data_dict = {
-        "acf": corr_array,
-    }
+    return_data_dict = {"acf": acf(data, alpha=0.05, nlags=nlags)}
 
     return fig, return_data_dict
 
@@ -543,16 +511,36 @@ def plot_pacf(
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
 ) -> PlotReturnType:
-    """Plots the PACF on the data provided"""
-    fig, return_data_dict = None, None
+    """Plots the PACF on the data provided
 
+    Parameters
+    ----------
+    data : pd.Series
+        Data whose correlation plot needs to be plotted
+    fig_defaults : Dict[str, Any]
+        The defaults dictionary containing keys for "width" and "height" (mandatory)
+    model_name : Optional[str]
+        The name of the model, by default None
+    data_kwargs : Dict[str, Any]
+        A dictionary containing options keys for "nlags"
+    fig_kwargs : Dict[str, Any]
+        A dictionary containing options keys for "width" and/or "height"
+
+    Returns
+    -------
+    Tuple[go.Figure, Dict[str, Any]]
+        Returns back the plotly figure along with the correlation data.
+    """
     data_kwargs = data_kwargs or {}
     fig_kwargs = fig_kwargs or {}
 
-    nobs = len(data)
-    nlags_default = min(int(10 * np.log10(nobs)), nobs // 2 - 1)
-    nlags = data_kwargs.get("nlags", nlags_default)
-    corr_array = pacf(data, nlags=nlags, alpha=0.05)
+    nlags = data_kwargs.get("nlags", None)
+    name = "PACF"
+
+    subplots = make_subplots(rows=1, cols=1)
+    fig, acf_data = corr_subplot(
+        fig=subplots, data=data, col=1, row=1, name=name, plot="pacf", nlags=nlags
+    )
 
     time_series_name = data.name
     title = "Partial Autocorrelation (PACF)"
@@ -561,74 +549,18 @@ def plot_pacf(
     elif time_series_name is not None:
         title = f"{title} | {time_series_name}"
 
-    lower_y = corr_array[1][:, 0] - corr_array[0]
-    upper_y = corr_array[1][:, 1] - corr_array[0]
-
-    fig = go.Figure()
-
-    fig.add_scattergl(
-        x=np.arange(len(corr_array[0])),
-        y=corr_array[0],
-        mode="markers",
-        marker_color="#1f77b4",
-        marker_size=10,
-        name="PACF",
-    )
-
-    [
-        fig.add_scattergl(
-            x=(x, x),
-            y=(0, corr_array[0][x]),
-            mode="lines",
-            line_color="#3f3f3f",
-            name=f"Lag{ind + 1}",
-        )
-        for ind, x in enumerate(range(len(corr_array[0])))
-    ]
-
-    # For some reason scattergl does not work here. Hence switching to scatter.
-    # (refer: https://github.com/pycaret/pycaret/issues/2211).
-    fig.add_scatter(
-        x=np.arange(len(corr_array[0])),
-        y=upper_y,
-        mode="lines",
-        line_color="rgba(255,255,255,0)",
-        name="UC",
-    )
-    fig.add_scatter(
-        x=np.arange(len(corr_array[0])),
-        y=lower_y,
-        mode="lines",
-        fillcolor="rgba(32, 146, 230,0.3)",
-        fill="tonexty",
-        line_color="rgba(255,255,255,0)",
-        name="LC",
-    )
-
-    fig.add_scattergl(
-        x=(0, len(corr_array[0])),
-        y=(0, 0),
-        mode="lines",
-        line_color="#3f3f3f",
-        name="",
-    )
-
     with fig.batch_update():
-        fig.update_xaxes(range=[-1, len(corr_array[0]) + 1])
-        fig.update_yaxes(zerolinecolor="#000000")
-
+        fig.update_xaxes(title_text="Lags", row=1, col=1)
+        fig.update_yaxes(title_text=name, row=1, col=1)
         template = _resolve_dict_keys(
             dict_=fig_kwargs, key="template", defaults=fig_defaults
         )
         fig.update_layout(title=title, showlegend=False, template=template)
-
         fig = _update_fig_dimensions(
             fig=fig, fig_kwargs=fig_kwargs, fig_defaults=fig_defaults
         )
 
-    return_data_dict = {
-        "pacf": corr_array,
-    }
+    return_data_dict = {"pacf": pacf(data, alpha=0.05, nlags=nlags)}
 
     return fig, return_data_dict
 
