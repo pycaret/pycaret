@@ -9060,9 +9060,13 @@ def predict_model(
 
         X_test_ = data.copy()
         y_test_ = None
-        if y_test is not None and y_test.name in X_test_.columns:
-            y_test_ = X_test_[y_test.name]
-            X_test_ = X_test_.drop(y_test.name, axis=1)
+        try:
+            y_test_from_global = y_test
+        except Exception:
+            y_test_from_global = None
+        if y_test_from_global is not None and y_test_from_global.name in X_test_.columns:
+            y_test_ = X_test_[y_test_from_global.name]
+            X_test_ = X_test_.drop(y_test_from_global.name, axis=1)
 
     # generate drift report
     if drift_report:
