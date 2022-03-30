@@ -459,7 +459,8 @@ def plot_acf(
     fig_defaults : Dict[str, Any]
         The defaults dictionary containing keys for "width" and "height" (mandatory)
     model_name : Optional[str]
-        The name of the model, by default None
+        The model_name must be passed to model residuals, while it should be left None
+        for the original data and the name of the data is passed
     data_kwargs : Dict[str, Any]
         A dictionary containing options keys for "nlags"
     fig_kwargs : Dict[str, Any]
@@ -474,11 +475,10 @@ def plot_acf(
     fig_kwargs = fig_kwargs or {}
 
     nlags = data_kwargs.get("nlags", None)
-    name = "ACF"
 
     subplots = make_subplots(rows=1, cols=1)
     fig, acf_data = corr_subplot(
-        fig=subplots, data=data, col=1, row=1, name=name, plot="acf", nlags=nlags
+        fig=subplots, data=data, col=1, row=1, plot="acf", nlags=nlags
     )
 
     time_series_name = data.name
@@ -490,16 +490,19 @@ def plot_acf(
 
     with fig.batch_update():
         fig.update_xaxes(title_text="Lags", row=1, col=1)
-        fig.update_yaxes(title_text=name, row=1, col=1)
+        fig.update_yaxes(title_text="ACF", row=1, col=1)
         template = _resolve_dict_keys(
             dict_=fig_kwargs, key="template", defaults=fig_defaults
         )
         fig.update_layout(title=title, showlegend=False, template=template)
+        fig.update_traces(marker={"size": 12})
         fig = _update_fig_dimensions(
             fig=fig, fig_kwargs=fig_kwargs, fig_defaults=fig_defaults
         )
 
-    return_data_dict = {"acf": acf(data, alpha=0.05, nlags=nlags)}
+    return_data_dict = {
+        "acf": (acf_data[0], np.column_stack((acf_data[2], acf_data[3])))
+    }
 
     return fig, return_data_dict
 
@@ -520,7 +523,8 @@ def plot_pacf(
     fig_defaults : Dict[str, Any]
         The defaults dictionary containing keys for "width" and "height" (mandatory)
     model_name : Optional[str]
-        The name of the model, by default None
+        The model_name must be passed to model residuals, while it should be left None
+        for the original data and the name of the data is passed
     data_kwargs : Dict[str, Any]
         A dictionary containing options keys for "nlags"
     fig_kwargs : Dict[str, Any]
@@ -535,11 +539,10 @@ def plot_pacf(
     fig_kwargs = fig_kwargs or {}
 
     nlags = data_kwargs.get("nlags", None)
-    name = "PACF"
 
     subplots = make_subplots(rows=1, cols=1)
-    fig, acf_data = corr_subplot(
-        fig=subplots, data=data, col=1, row=1, name=name, plot="pacf", nlags=nlags
+    fig, pacf_data = corr_subplot(
+        fig=subplots, data=data, col=1, row=1, plot="pacf", nlags=nlags
     )
 
     time_series_name = data.name
@@ -551,16 +554,19 @@ def plot_pacf(
 
     with fig.batch_update():
         fig.update_xaxes(title_text="Lags", row=1, col=1)
-        fig.update_yaxes(title_text=name, row=1, col=1)
+        fig.update_yaxes(title_text="PACF", row=1, col=1)
         template = _resolve_dict_keys(
             dict_=fig_kwargs, key="template", defaults=fig_defaults
         )
         fig.update_layout(title=title, showlegend=False, template=template)
+        fig.update_traces(marker={"size": 12})
         fig = _update_fig_dimensions(
             fig=fig, fig_kwargs=fig_kwargs, fig_defaults=fig_defaults
         )
 
-    return_data_dict = {"pacf": pacf(data, alpha=0.05, nlags=nlags)}
+    return_data_dict = {
+        "pacf": (pacf_data[0], np.column_stack((pacf_data[2], pacf_data[3])))
+    }
 
     return fig, return_data_dict
 
