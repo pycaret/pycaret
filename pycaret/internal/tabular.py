@@ -11042,6 +11042,50 @@ def create_app(estimator, app_kwargs: Optional[dict]):
         fn=predict, inputs=all_inputs, outputs="text", live=False, **app_kwargs
     ).launch()
 
+def deep_check(estimator, check_kwargs: Optional[dict]):
+    """
+    This function runs a full suite check over a trained model
+    using deepchecks library.
+
+
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> juice = get_data('juice')
+    >>> from pycaret.classification import *
+    >>> exp_name = setup(data = juice,  target = 'Purchase')
+    >>> lr = create_model('lr')
+    >>> deep_check(lr)
+
+
+    estimator: scikit-learn compatible object
+        Trained model object
+
+
+    check_kwargs: dict, default = {}
+        arguments to be passed to deepchecks full_suite class.
+
+
+    Returns:
+        None
+    """
+
+    try:
+        import deepchecks
+    except ImportError:
+        raise ImportError(
+            "It appears that deepchecks is not installed. Do: pip install deepchecks"
+        )
+
+    check_kwargs = check_kwargs or {}
+
+    from deepchecks import Dataset
+    ds_train = Dataset(get_config('X_train'), label=get_config('y_train'), cat_features=[])
+    ds_test =  Dataset(get_config('X_test'),  label=get_config('y_test'), cat_features=[])
+    
+    from deepchecks.suites import full_suite
+    suite = full_suite(**check_kwargs)
+    return suite.run(train_dataset=ds_train, test_dataset=ds_test, model=estimator)
 
 def _choose_better(
     models_and_results: list,

@@ -3208,3 +3208,32 @@ def create_app(estimator, app_kwargs: Optional[dict] = None) -> None:
     return pycaret.internal.tabular.create_app(
         estimator=estimator, app_kwargs=app_kwargs
     )
+
+def deep_check(estimator, check_kwargs: Optional[dict] = None) -> None:
+    """
+    This function runs a full suite check over a trained model
+    using deepchecks library.
+
+
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> juice = get_data('juice')
+    >>> from pycaret.classification import *
+    >>> exp_name = setup(data = juice,  target = 'Purchase')
+    >>> lr = create_model('lr')
+    >>> deep_check(lr)
+
+
+    estimator: scikit-learn compatible object
+        Trained model object
+
+
+    check_kwargs: dict, default = {}
+        arguments to be passed to deepchecks full_suite class.
+
+
+    Returns:
+        None
+    """
+    return pycaret.internal.tabular.deep_check(estimator=estimator, check_kwargs=check_kwargs)
