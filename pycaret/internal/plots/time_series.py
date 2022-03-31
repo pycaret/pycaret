@@ -459,8 +459,10 @@ def plot_acf(
     fig_defaults : Dict[str, Any]
         The defaults dictionary containing keys for "width" and "height" (mandatory)
     model_name : Optional[str]
-        The model_name must be passed to model residuals, while it should be left None
-        for the original data and the name of the data is passed
+        If the correlation plot is for model residuals, then, model_name must be 
+        passed for proper display of results. If the correlation plot is for the 
+        original data, model_name should be left None (name is derived from the 
+        data passed in this case).
     data_kwargs : Dict[str, Any]
         A dictionary containing options keys for "nlags"
     fig_kwargs : Dict[str, Any]
@@ -495,13 +497,13 @@ def plot_acf(
             dict_=fig_kwargs, key="template", defaults=fig_defaults
         )
         fig.update_layout(title=title, showlegend=False, template=template)
-        fig.update_traces(marker={"size": 12})
+        fig.update_traces(marker={"size": 10})
         fig = _update_fig_dimensions(
             fig=fig, fig_kwargs=fig_kwargs, fig_defaults=fig_defaults
         )
 
     return_data_dict = {
-        "acf": (acf_data[0], np.column_stack((acf_data[2], acf_data[3])))
+        "acf": acf_data
     }
 
     return fig, return_data_dict
@@ -523,8 +525,10 @@ def plot_pacf(
     fig_defaults : Dict[str, Any]
         The defaults dictionary containing keys for "width" and "height" (mandatory)
     model_name : Optional[str]
-        The model_name must be passed to model residuals, while it should be left None
-        for the original data and the name of the data is passed
+        If the correlation plot is for model residuals, then, model_name must be 
+        passed for proper display of results. If the correlation plot is for the 
+        original data, model_name should be left None (name is derived from the 
+        data passed in this case).
     data_kwargs : Dict[str, Any]
         A dictionary containing options keys for "nlags"
     fig_kwargs : Dict[str, Any]
@@ -559,13 +563,13 @@ def plot_pacf(
             dict_=fig_kwargs, key="template", defaults=fig_defaults
         )
         fig.update_layout(title=title, showlegend=False, template=template)
-        fig.update_traces(marker={"size": 12})
+        fig.update_traces(marker={"size": 10})
         fig = _update_fig_dimensions(
             fig=fig, fig_kwargs=fig_kwargs, fig_defaults=fig_defaults
         )
 
     return_data_dict = {
-        "pacf": (pacf_data[0], np.column_stack((pacf_data[2], pacf_data[3])))
+        "pacf": pacf_data
     }
 
     return fig, return_data_dict
