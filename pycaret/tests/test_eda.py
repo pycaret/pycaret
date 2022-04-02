@@ -9,7 +9,7 @@ import pycaret.classification
 import pycaret.datasets
 from IPython.display import display
 
-@pytest.skip("AutoViz is broken in 0.1.37 due to panel compat issue")
+@pytest.mark.skip("AutoViz is broken in 0.1.37 due to panel compat issue")
 def test():
 
     # loading dataset
