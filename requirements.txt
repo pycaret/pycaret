@@ -27,4 +27,3 @@ scikit-plot #for lift and gain charts
 Boruta
 pyyaml<6.0.0
 numba<0.55
-panel>=0.12.7 # fixes evidently issue with jinja2 ver
