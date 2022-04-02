@@ -60,7 +60,7 @@ def _add_model_to_pipeline(
     return pipeline_with_model
 
 
-def _pipeline_tansformations_empty(pipeline: PyCaretForecastingPipeline) -> bool:
+def _are_pipeline_tansformations_empty(pipeline: PyCaretForecastingPipeline) -> bool:
     """Returns whether the pipeline has transformations for either the target
     or exogenous variables or whether there are no transformatons for either.
 
