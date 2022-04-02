@@ -1057,6 +1057,11 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             self.remove_metric("COVERAGE")
 
         return self
+    
+    def _check_setup_ran(self):
+        if not self._setup_ran:
+            raise RuntimeError("This function requires the users to run setup() first.\
+                More info: https://pycaret.gitbook.io/docs/get-started/quickstart")
 
     def setup(
         self,
@@ -1580,9 +1585,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         """
 
-        if not self._setup_ran:
-            raise Exception("setup() must be ran before all other functions. \
-                            More info: https://pycaret.gitbook.io/docs/get-started/quickstart")
+        self._check_setup_ran()
 
         return super().compare_models(
             include=include,
@@ -1705,9 +1708,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         """
 
-        if not self._setup_ran:
-            raise Exception("setup() must be ran before all other functions. \
-                            More info: https://pycaret.gitbook.io/docs/get-started/quickstart")
+        self._check_setup_ran()
 
         return super().create_model(
             estimator=estimator,
@@ -2045,10 +2046,8 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             Trained Model and Optional Tuner Object when ``return_tuner`` is True.
 
         """
-
-        if not self._setup_ran:
-            raise Exception("setup() must be ran before all other functions. \
-                            More info: https://pycaret.gitbook.io/docs/get-started/quickstart")
+        
+        self._check_setup_ran()
 
         search_library = "pycaret"  # only 1 library supported right now
 
@@ -2594,9 +2593,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         """
 
-        if not self._setup_ran:
-            raise Exception("setup() must be ran before all other functions. \
-                            More info: https://pycaret.gitbook.io/docs/get-started/quickstart")
+        self._check_setup_ran()
 
         return super().blend_models(
             estimator_list=estimator_list,
@@ -2710,9 +2707,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         """
 
-        if not self._setup_ran:
-            raise Exception("setup() must be ran before all other functions. \
-                            More info: https://pycaret.gitbook.io/docs/get-started/quickstart")
+        self._check_setup_ran()
 
         # checking display_format parameter
         self.plot_model_check_display_format_(display_format=display_format)
@@ -3311,10 +3306,6 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         """
 
-        if not self._setup_ran:
-            raise Exception("setup() must be ran before all other functions. \
-                            More info: https://pycaret.gitbook.io/docs/get-started/quickstart")
-
         estimator.check_is_fitted()
 
         pipeline_with_model, estimator_ = self._predict_model_reconcile_pipe_estimator(
@@ -3400,9 +3391,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         """
 
-        if not self._setup_ran:
-            raise Exception("setup() must be ran before all other functions. \
-                            More info: https://pycaret.gitbook.io/docs/get-started/quickstart")
+        self._check_setup_ran()
 
         return super().finalize_model(
             estimator=estimator,
@@ -3496,9 +3485,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         """
 
-        if not self._setup_ran:
-            raise Exception("setup() must be ran before all other functions. \
-                            More info: https://pycaret.gitbook.io/docs/get-started/quickstart")
+        self._check_setup_ran()
 
         return super().deploy_model(
             model=model,
@@ -3546,10 +3533,6 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             Tuple of the model object and the filename.
 
         """
-
-        if not self._setup_ran:
-            raise Exception("setup() must be ran before all other functions. \
-                            More info: https://pycaret.gitbook.io/docs/get-started/quickstart")
 
         return super().save_model(
             model=model, model_name=model_name, model_only=model_only, verbose=verbose
@@ -4010,10 +3993,6 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         pd.DataFrame
             Dataframe with the test results
         """
-
-        if not self._setup_ran:
-            raise Exception("setup() must be ran before all other functions. \
-                            More info: https://pycaret.gitbook.io/docs/get-started/quickstart")
 
         #### Step 1: Get the data to be tested ----
         if estimator is None:
