@@ -10,6 +10,7 @@ from copy import deepcopy
 
 import numpy as np
 import pandas as pd
+from IPython.display import display
 from IPython.utils import io
 from sklearn.base import clone
 from sktime.forecasting.base import ForecastingHorizon
@@ -26,6 +27,7 @@ from pycaret.utils.time_series.forecasting import PyCaretForecastingHorizonTypes
 from pycaret.utils.time_series.forecasting.pipeline import (
     PyCaretForecastingPipeline,
     _add_model_to_pipeline,
+    _are_pipeline_tansformations_empty,
 )
 from pycaret.utils.time_series.forecasting.models import DummyForecaster
 from sktime.forecasting.compose import TransformedTargetForecaster
@@ -1003,7 +1005,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         self.logger.info(f"Setup Display Container: {self.display_container[0]}")
         if self.verbose:
             pd.set_option("display.max_rows", 100)
-            print(self.display_container[0].style.apply(highlight_setup))
+            display(self.display_container[0].style.apply(highlight_setup))
             pd.reset_option("display.max_rows")  # Reset option
 
         return self
@@ -3314,14 +3316,28 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         fh = self._predict_model_reconcile_fh(estimator=estimator_, fh=fh)
         X = self._predict_model_reconcile_X(estimator=estimator_, X=X)
-        result = get_predictions_with_intervals(
-            forecaster=pipeline_with_model,
-            X=X,
-            fh=fh,
-            alpha=alpha,
-            merge=True,
-            round=round,
-        )
+
+        if not _are_pipeline_tansformations_empty(pipeline=pipeline_with_model):
+            result = get_predictions_with_intervals(
+                forecaster=pipeline_with_model,
+                X=X,
+                fh=fh,
+                alpha=alpha,
+                merge=True,
+                round=round,
+            )
+        else:
+            # Currently sktime 0.11.0 and less do not support prediction intervals for
+            # pipelines. Hence if the pipeline is empty, just use the estimator so
+            # that we can get the prediction intervals if the estimator supports it.
+            result = get_predictions_with_intervals(
+                forecaster=estimator_,
+                X=X,
+                fh=fh,
+                alpha=alpha,
+                merge=True,
+                round=round,
+            )
         y_pred = pd.DataFrame(result["y_pred"])
 
         #################
@@ -3596,12 +3612,32 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
     def _create_pipeline(
         self,
         model: BaseForecaster,
-        target_steps: Optional[List] = None,
-        exogenous_steps: Optional[List] = None,
+        target_steps: List,
+        exogenous_steps: List,
     ) -> PyCaretForecastingPipeline:
+        """Creates a PyCaret pipeline based on the steps and model passed.
+        The pipeline structure is as follows
 
-        target_steps = target_steps or []
-        exogenous_steps = exogenous_steps or []
+        PyCaretForecastingPipeline
+          - exogenous_steps
+          - TransformedTargetForecaster
+            - target_steps
+            - model
+
+        Parameters
+        ----------
+        model : BaseForecaster
+            Final model to use for prediction
+        target_steps : List
+            List of transformation steps to apply to the target - y
+        exogenous_steps : List
+            List of transformations to apply to the exogenous variables - X
+
+        Returns
+        -------
+        PyCaretForecastingPipeline
+            A PyCaret Time Series Forecasting Pipeline.
+        """
 
         # Set the pipeline from model
         # Add forecaster (model) to end of target steps ----

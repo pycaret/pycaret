@@ -58,3 +58,29 @@ def _add_model_to_pipeline(
     pipeline_with_model.steps_[-1][1].steps_.extend([("model", model)])
 
     return pipeline_with_model
+
+
+def _are_pipeline_tansformations_empty(pipeline: PyCaretForecastingPipeline) -> bool:
+    """Returns whether the pipeline has transformations for either the target
+    or exogenous variables or whether there are no transformatons for either.
+
+    Reminder: The pipeline structure is as follows:
+        PyCaretForecastingPipeline
+            - exogenous_steps
+            - TransformedTargetForecaster
+            - target_steps
+            - model
+
+    Parameters
+    ----------
+    pipeline : PyCaretForecastingPipeline
+        PyCaret Pipeline
+
+    Returns
+    -------
+    bool
+        True if there are no transformations, False otherwise
+    """
+    num_steps_transform_X = len(pipeline.steps) - 1
+    num_steps_transform_y = len(pipeline.steps[-1][1].steps) - 1
+    return num_steps_transform_X == 0 and num_steps_transform_y == 0
