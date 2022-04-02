@@ -566,7 +566,8 @@ def setup(
     """
 
     global _pycaret_setup_call
-    _pycaret_setup_call = dict(func=setup, params=locals())
+    _pycaret_setup_call = dict(func=setup, params=dict(locals()))
+    # no more python code should be added before this line
 
     if not isinstance(data, pd.DataFrame):
         data = data()
