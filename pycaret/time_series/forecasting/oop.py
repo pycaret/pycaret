@@ -26,6 +26,7 @@ from pycaret.utils.time_series.forecasting import PyCaretForecastingHorizonTypes
 from pycaret.utils.time_series.forecasting.pipeline import (
     PyCaretForecastingPipeline,
     _add_model_to_pipeline,
+    _pipeline_tansformations_empty,
 )
 from pycaret.utils.time_series.forecasting.models import DummyForecaster
 from sktime.forecasting.compose import TransformedTargetForecaster
@@ -3297,7 +3298,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         fh = self._predict_model_reconcile_fh(estimator=estimator_, fh=fh)
         X = self._predict_model_reconcile_X(estimator=estimator_, X=X)
 
-        if not self.pipeline_empty:
+        if not _pipeline_tansformations_empty(pipeline=pipeline_with_model):
             result = get_predictions_with_intervals(
                 forecaster=pipeline_with_model,
                 X=X,
@@ -3614,9 +3615,6 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         PyCaretForecastingPipeline
             A PyCaret Time Series Forecasting Pipeline.
         """
-
-        #### Does the pipeline contains any preprocessing steps? ----
-        self.pipeline_empty = len(target_steps) == 0 and len(exogenous_steps) == 0
 
         # Set the pipeline from model
         # Add forecaster (model) to end of target steps ----
