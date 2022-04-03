@@ -8,7 +8,6 @@ import traceback
 import numpy as np  # type: ignore
 from joblib.memory import Memory
 from IPython.utils import io
-from IPython.display import display
 from sklearn.base import clone  # type: ignore
 from sklearn.preprocessing import LabelEncoder
 from typing import List, Any, Union
@@ -378,9 +377,13 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
             pd.DataFrame(container, columns=["Description", "Value"])
         ]
         self.logger.info(f"Setup display_container: {self.display_container[0]}")
+        display = Display(
+            verbose=self.verbose,
+            html_param=self.html_param,
+        )
         if self.verbose:
             pd.set_option("display.max_rows", 100)
-            display(self.display_container[0].style.apply(highlight_setup))
+            display.display(self.display_container[0].style.apply(highlight_setup))
             pd.reset_option("display.max_rows")  # Reset option
 
         # Wrap-up ================================================== >>
