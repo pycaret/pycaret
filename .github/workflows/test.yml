@@ -26,8 +26,7 @@ jobs:
           python -m pip install -U pytest
           python -m pip install -U codecov
           
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-          if [ -f requirements-optional.txt ]; then pip install -r requirements-optional.txt; fi
+          pip install -e ".[full]"
           if [ -f requirements-prophet.txt ]; then pip install -r requirements-prophet.txt; fi
           if [ -f requirements-test.txt ]; then pip install -r requirements-test.txt; fi
           python -m spacy download en_core_web_sm
@@ -61,8 +60,7 @@ jobs:
           python -m pip install -U pytest
           python -m pip install -U codecov
           
-          pip install -r requirements.txt
-          pip install -r requirements-optional.txt
+          pip install -e ".[full]"
           pip install -r requirements-prophet.txt
           pip install -r requirements-test.txt
           python -m spacy download en_core_web_sm
@@ -163,8 +161,7 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -U pytest
           python -m pip install codecov
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-          if [ -f requirements-optional.txt ]; then pip install -r requirements-optional.txt; fi
+          pip install -e ".[full]"
           if [ -f requirements-test.txt ]; then pip install -r requirements-test.txt; fi
           python -m spacy download en_core_web_sm
       - name: Remove tests
@@ -192,8 +189,7 @@ jobs:
           python -m pip install -U pytest
           python -m pip install -U codecov
           
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-          if [ -f requirements-optional.txt ]; then pip install -r requirements-optional.txt; fi
+          pip install -e ".[full]"
           if [ -f requirements-prophet.txt ]; then pip install -r requirements-prophet.txt; fi
           if [ -f requirements-test.txt ]; then pip install -r requirements-test.txt; fi
           
@@ -223,8 +219,7 @@ jobs:
           python -m pip install -U pytest
           python -m pip install -U codecov
           
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-          if [ -f requirements-optional.txt ]; then pip install -r requirements-optional.txt; fi
+          pip install -e ".[full]"
           if [ -f requirements-prophet.txt ]; then pip install -r requirements-prophet.txt; fi
           if [ -f requirements-test.txt ]; then pip install -r requirements-test.txt; fi
           python -m spacy download en_core_web_sm
