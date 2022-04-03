@@ -182,7 +182,7 @@ class TSForecastingPreprocessor:
                 # apply kwargs to transformer constuctor/__init__
             else:
                 # no kwargs to use
-                trans_kwargs = {} 
+                trans_kwargs = {}
             target_transformer = transform_dict[transform](**trans_kwargs)
             self.pipe_steps_target.extend([("transformer", target_transformer)])
         else:
@@ -190,7 +190,7 @@ class TSForecastingPreprocessor:
                 trans_kwargs: dict = self.transform_exogenous_kwargs
             else:
                 # no kwargs to use
-                trans_kwargs = {} 
+                trans_kwargs = {}
             transformer = transform_dict[transform](**trans_kwargs)
             exog_transformer = ColumnwiseTransformer(transformer)
             self.pipe_steps_exogenous.extend([("transformer", exog_transformer)])
