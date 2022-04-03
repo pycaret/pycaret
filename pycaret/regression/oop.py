@@ -3,7 +3,6 @@ import logging
 import warnings
 import numpy as np  # type: ignore
 from joblib.memory import Memory
-from IPython.display import display
 from typing import List, Tuple, Dict, Union, Optional, Any
 import plotly.express as px  # type: ignore
 import plotly.graph_objects as go  # type: ignore
@@ -22,6 +21,7 @@ import pycaret.containers.metrics.regression
 import pycaret.containers.models.regression
 import pycaret.internal.preprocess
 import pycaret.internal.persistence
+from pycaret.internal.Display import Display
 
 
 warnings.filterwarnings("ignore")
@@ -398,9 +398,13 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             pd.DataFrame(container, columns=["Description", "Value"])
         ]
         self.logger.info(f"Setup display_container: {self.display_container[0]}")
+        display = Display(
+            verbose=self.verbose,
+            html_param=self.html_param,
+        )
         if self.verbose:
             pd.set_option("display.max_rows", 100)
-            display(self.display_container[0].style.apply(highlight_setup))
+            display.display(self.display_container[0].style.apply(highlight_setup))
             pd.reset_option("display.max_rows")  # Reset option
 
         # Wrap-up ================================================== >>

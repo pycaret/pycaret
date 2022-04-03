@@ -10,7 +10,6 @@ from copy import deepcopy
 
 import numpy as np
 import pandas as pd
-from IPython.display import display
 from IPython.utils import io
 from sklearn.base import clone
 from sktime.forecasting.base import ForecastingHorizon
@@ -1003,9 +1002,13 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         self.logger.info("Creating final display dataframe.")
         self.display_container = [self._get_setup_display()]
         self.logger.info(f"Setup Display Container: {self.display_container[0]}")
+        display = Display(
+            verbose=self.verbose,
+            html_param=self.html_param,
+        )
         if self.verbose:
             pd.set_option("display.max_rows", 100)
-            display(self.display_container[0].style.apply(highlight_setup))
+            display.display(self.display_container[0].style.apply(highlight_setup))
             pd.reset_option("display.max_rows")  # Reset option
 
         return self
