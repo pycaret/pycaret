@@ -26,8 +26,8 @@ class TSForecastingPreprocessor:
         self.pipe_steps_target = []
         self.pipe_steps_exogenous = []
         # used for transformation arguments/parameters
-        self.transform_target_kwargs: Optional[dict]=None
-        self.transform_exogenous_kwargs: Optional[dict]=None,
+        self.transform_target_kwargs: Optional[dict] = None
+        self.transform_exogenous_kwargs: Optional[dict] = None
 
     def _imputation(
         self,
