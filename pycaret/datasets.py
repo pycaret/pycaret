@@ -85,7 +85,7 @@ def get_data(
 
     import pandas as pd
     import os.path
-    from IPython.display import display
+    from pycaret.internal.Display import Display
     extension = ".csv"
     filename = str(dataset) + extension
     if address is None:
@@ -140,18 +140,23 @@ def get_data(
         save_name = filename
         data.to_csv(save_name, index=False)
 
+    display = Display(
+        verbose=True,
+        html_param=True,
+    )
+
     if dataset == "index":
-        display(data)
+        display.display(data)
 
     else:
         if profile:
             import pandas_profiling
 
             pf = pandas_profiling.ProfileReport(data_for_profiling)
-            display(pf)
+            display.display(pf)
 
         else:
             if verbose:
-                display(data.head())
+                display.display(data.head())
 
     return data

@@ -4,6 +4,7 @@
 
 import logging
 import traceback
+import os
 from typing import Union, Optional
 
 
@@ -52,7 +53,8 @@ def create_logger(
         return log
 
     logger = logging.getLogger("logs")
-    logger.setLevel(logging.DEBUG)
+    level = os.getenv("PYCARET_CUSTOM_LOGGING_LEVEL", "DEBUG")
+    logger.setLevel(level)
 
     # create console handler and set level to debug
     if logger.hasHandlers():

@@ -5,6 +5,7 @@ import numpy as np  # type: ignore
 import pandas as pd  # type: ignore
 
 from pycaret.time_series import TSForecastingExperiment
+from pycaret.utils.time_series.forecasting.pipeline import PyCaretForecastingPipeline
 
 from .time_series_test_utils import (
     _return_model_parameters,
@@ -55,6 +56,7 @@ def test_create_predict_finalize_model(name, fh, load_pos_and_neg_data):
     ## Test Create Model ##
     #######################
     model = exp.create_model(name)
+    assert not isinstance(model, PyCaretForecastingPipeline)
 
     #########################
     #### Expected Values ####
@@ -72,7 +74,7 @@ def test_create_predict_finalize_model(name, fh, load_pos_and_neg_data):
     ########################
     # Default prediction
     y_pred = exp.predict_model(model)
-    assert isinstance(y_pred, pd.Series)
+    assert isinstance(y_pred, pd.DataFrame)
     assert np.all(y_pred.index == expected_period_index)
 
     # With Prediction Interval (default alpha = 0.05)
@@ -96,18 +98,21 @@ def test_create_predict_finalize_model(name, fh, load_pos_and_neg_data):
     #########################
 
     final_model = exp.finalize_model(model)
-    y_pred = exp.predict_model(final_model)
+    assert not isinstance(final_model, PyCaretForecastingPipeline)
 
+    y_pred = exp.predict_model(final_model)
     assert np.all(y_pred.index == final_expected_period_index)
 
 
-def test_predict_model_warnings(load_pos_and_neg_data):
-    """test predict_model warnings cases"""
+def test_predict_model_metrics_displayed(load_pos_and_neg_data):
+    """Tests different cases in predict_model when metrics should and should not
+    be displayed"""
     exp = TSForecastingExperiment()
+    FH = 12
     exp.setup(
         data=load_pos_and_neg_data,
         fold=2,
-        fh=12,
+        fh=FH,
         fold_strategy="sliding",
         verbose=False,
     )
@@ -121,8 +126,26 @@ def test_predict_model_warnings(load_pos_and_neg_data):
     _ = exp.predict_model(model)
     expected = exp.pull()
 
-    # Prediction horizon larger than test set --> Metrics limited to common indices
-    _ = exp.predict_model(model, fh=np.arange(1, 24))
+    #### Metrics are returned ----
+    # (1) User provides fh resulting in prediction whose indices are same as y_test
+    _ = exp.predict_model(model, fh=FH)
+    metrics = exp.pull()
+    assert metrics.equals(expected)
+
+    #### No metrics returned ----
+    # All values are 0
+    expected.loc[0, 1:] = 0
+    cols = expected.select_dtypes(include=["float"])
+    for col in cols:
+        expected[col] = expected[col].astype(np.int64)
+
+    # (2) User provides fh resulting in prediction whose indices are less than y_test
+    _ = exp.predict_model(model, fh=FH - 1)
+    metrics = exp.pull()
+    assert metrics.equals(expected)
+
+    # (3) User provides fh resulting in prediction whose indices are more than y_test
+    _ = exp.predict_model(model, fh=FH + 1)
     metrics = exp.pull()
     assert metrics.equals(expected)
 
@@ -166,7 +189,8 @@ def test_create_model_no_cv(load_pos_and_neg_data):
     ##################################
     ## Test Create Model without cv ##
     ##################################
-    _ = exp.create_model("naive", cross_validation=False)
+    model = exp.create_model("naive", cross_validation=False)
+    assert not isinstance(model, PyCaretForecastingPipeline)
     metrics = exp.pull()
 
     # Should return only 1 row for the test set (since no CV)
@@ -222,10 +246,14 @@ def test_compare_models(cross_validation, log_experiment, load_pos_and_neg_data)
         n_select=3, cross_validation=cross_validation
     )
     assert len(best_baseline_models) == 3
+    for best in best_baseline_models:
+        assert not isinstance(best, PyCaretForecastingPipeline)
 
 
-def test_save_load_model(load_pos_and_neg_data):
-    """Tests the save_model and load_model functionality"""
+def test_save_load_model_no_setup(load_pos_and_neg_data):
+    """Tests the save_model and load_model functionality without setup.
+    Applicable when user saves the entire pipeline.
+    """
 
     fh = np.arange(1, 13)
     fold = 2
@@ -246,11 +274,11 @@ def test_save_load_model(load_pos_and_neg_data):
 
     model = exp.create_model("ets")
     expected_predictions = exp.predict_model(model)
-    exp.save_model(model, "model_unit_test_oop")
+    exp.save_model(model, "model_unit_test_oop_nosetup")
 
-    # Mimic loading in another session
+    # Mimic loading in another session - Predictions without setup
     exp_loaded = TSForecastingExperiment()
-    loaded_model = exp_loaded.load_model("model_unit_test_oop")
+    loaded_model = exp_loaded.load_model("model_unit_test_oop_nosetup")
     loaded_predictions = exp_loaded.predict_model(loaded_model)
 
     assert np.all(loaded_predictions == expected_predictions)
@@ -271,10 +299,121 @@ def test_save_load_model(load_pos_and_neg_data):
     )
     model = create_model("naive")
     expected_predictions = predict_model(model)
-    save_model(model, "model_unit_test_func")
+    save_model(model, "model_unit_test_func_nosetup")
 
-    # Mimic loading in another session
-    loaded_model = load_model("model_unit_test_func")
+    # Mimic loading in another session - Predictions without setup
+    loaded_model = load_model("model_unit_test_func_nosetup")
     loaded_predictions = predict_model(loaded_model)
 
     assert np.all(loaded_predictions == expected_predictions)
+
+
+def test_save_load_model_setup(load_pos_and_neg_data):
+    """Tests the save_model and load_model functionality with setup.
+    Applicable when user saves the model (without pipeline), then loads the model,
+    runs setup and uses this model.
+    """
+
+    fh = np.arange(1, 13)
+    fold = 2
+    data = load_pos_and_neg_data
+
+    ######################
+    #### OOP Approach ####
+    ######################
+    exp = TSForecastingExperiment()
+    exp.setup(
+        data=data,
+        fh=fh,
+        fold=fold,
+        fold_strategy="sliding",
+        verbose=False,
+        session_id=42,
+    )
+
+    model = exp.create_model("ets")
+    expected_predictions = exp.predict_model(model)
+    exp.save_model(model, "model_unit_test_oop_setup", model_only=True)
+
+    # Mimic loading in another session - Predictions with setup
+    exp_loaded = TSForecastingExperiment()
+    exp_loaded.setup(
+        data=data,
+        fh=fh,
+        fold=fold,
+        fold_strategy="sliding",
+        verbose=False,
+        session_id=42,
+    )
+    loaded_model = exp_loaded.load_model("model_unit_test_oop_setup")
+    loaded_predictions = exp_loaded.predict_model(loaded_model)
+
+    assert np.all(loaded_predictions == expected_predictions)
+
+    ########################
+    #### Functional API ####
+    ########################
+    from pycaret.time_series import (
+        setup,
+        create_model,
+        predict_model,
+        save_model,
+        load_model,
+    )
+
+    _ = setup(
+        data=data, fh=fh, fold=fold, fold_strategy="expanding", session_id=42, n_jobs=-1
+    )
+    model = create_model("naive")
+    expected_predictions = predict_model(model)
+    save_model(model, "model_unit_test_func_setup", model_only=True)
+
+    # Mimic loading in another session - Predictions with setup
+    setup(
+        data=data,
+        fh=fh,
+        fold=fold,
+        fold_strategy="sliding",
+        verbose=False,
+        session_id=42,
+    )
+    loaded_model = load_model("model_unit_test_func_setup")
+    loaded_predictions = predict_model(loaded_model)
+
+    assert np.all(loaded_predictions == expected_predictions)
+
+
+def test_save_load_raises(load_pos_and_neg_data):
+    """Tests the save_model and load_model that raises an exception. i.e. when
+    only model is saved (without pipeline) and after loading, setup is not run.
+    """
+
+    fh = np.arange(1, 13)
+    fold = 2
+    data = load_pos_and_neg_data
+
+    exp = TSForecastingExperiment()
+    exp.setup(
+        data=data,
+        fh=fh,
+        fold=fold,
+        fold_strategy="sliding",
+        verbose=False,
+        session_id=42,
+    )
+
+    model = exp.create_model("ets")
+    exp.save_model(model, "model_unit_test_oop_raises", model_only=True)
+
+    # Mimic loading in another session
+    exp_loaded = TSForecastingExperiment()
+    loaded_model = exp_loaded.load_model("model_unit_test_oop_raises")
+
+    #### Setup not run and only passing a estimator without pipeline ----
+    with pytest.raises(ValueError) as errmsg:
+        _ = exp_loaded.predict_model(loaded_model)
+    exceptionmsg = errmsg.value.args[0]
+    assert (
+        "Setup has not been run and you have provided a estimator without the pipeline"
+        in exceptionmsg
+    )

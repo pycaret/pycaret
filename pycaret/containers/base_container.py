@@ -94,7 +94,7 @@ class BaseContainer:
 
 def get_all_containers(
     container_globals: dict,
-    globals_dict: dict,
+    experiment: Any,
     type_var: type,
     raise_errors: bool = True,
 ) -> Dict[str, BaseContainer]:
@@ -115,14 +115,14 @@ def get_all_containers(
         if raise_errors:
             if hasattr(obj, "active") and not obj.active:
                 continue
-            instance = obj(globals_dict)
+            instance = obj(experiment)
             if instance.active:
                 model_containers.append(instance)
         else:
             try:
                 if hasattr(obj, "active") and not obj.active:
                     continue
-                instance = obj(globals_dict)
+                instance = obj(experiment)
                 if instance.active:
                     model_containers.append(instance)
             except:

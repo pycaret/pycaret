@@ -1,4 +1,4 @@
-from typing import Optional, Any, Union, Dict, Tuple
+from typing import Optional, Any, Union, Dict, Tuple, List
 
 import numpy as np
 import pandas as pd
@@ -34,16 +34,16 @@ __author__ = ["satya-pattnaik", "ngupta23"]
 PlotReturnType = Tuple[Optional[go.Figure], Optional[Dict[str, Any]]]
 
 
-def _plot(
+def _get_plot(
     plot: str,
     fig_defaults: Dict[str, Any],
     data: Optional[pd.Series] = None,
     train: Optional[pd.Series] = None,
     test: Optional[pd.Series] = None,
     X: Optional[pd.DataFrame] = None,
-    predictions: Optional[pd.Series] = None,
+    predictions: Optional[List[pd.DataFrame]] = None,
     cv: Optional[Union[ExpandingWindowSplitter, SlidingWindowSplitter]] = None,
-    model_name: Optional[str] = None,
+    model_names: Optional[List[str]] = None,
     return_pred_int: bool = False,
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
@@ -98,7 +98,7 @@ def _plot(
         fig, plot_data = plot_time_series_decomposition(
             data=data,
             fig_defaults=fig_defaults,
-            model_name=model_name,
+            model_name=model_names,
             plot="decomp",
             data_kwargs=data_kwargs,
             fig_kwargs=fig_kwargs,
@@ -108,7 +108,7 @@ def _plot(
         fig, plot_data = plot_time_series_decomposition(
             data=data,
             fig_defaults=fig_defaults,
-            model_name=model_name,
+            model_name=model_names,
             plot="decomp_stl",
             data_kwargs=data_kwargs,
             fig_kwargs=fig_kwargs,
@@ -118,7 +118,7 @@ def _plot(
         fig, plot_data = plot_acf(
             data=data,
             fig_defaults=fig_defaults,
-            model_name=model_name,
+            model_name=model_names,
             data_kwargs=data_kwargs,
             fig_kwargs=fig_kwargs,
         )
@@ -126,7 +126,7 @@ def _plot(
         fig, plot_data = plot_pacf(
             data=data,
             fig_defaults=fig_defaults,
-            model_name=model_name,
+            model_name=model_names,
             data_kwargs=data_kwargs,
             fig_kwargs=fig_kwargs,
         )
@@ -134,7 +134,7 @@ def _plot(
         fig, plot_data = plot_diagnostics(
             data=data,
             fig_defaults=fig_defaults,
-            model_name=model_name,
+            model_name=model_names,
             data_kwargs=data_kwargs,
             fig_kwargs=fig_kwargs,
         )
@@ -144,7 +144,7 @@ def _plot(
             fig_defaults=fig_defaults,
             X=X,
             hoverinfo=hoverinfo,
-            model_name=model_name,
+            model_name=model_names,
             data_kwargs=data_kwargs,
             fig_kwargs=fig_kwargs,
         )
@@ -152,11 +152,9 @@ def _plot(
         if return_pred_int:
             fig, plot_data = plot_predictions_with_confidence(
                 data=data,
-                predictions=predictions["y_pred"],
-                upper_interval=predictions["upper"],
-                lower_interval=predictions["lower"],
+                predictions=predictions,
                 fig_defaults=fig_defaults,
-                model_name=model_name,
+                model_names=model_names,
                 data_kwargs=data_kwargs,
                 fig_kwargs=fig_kwargs,
             )
@@ -166,7 +164,7 @@ def _plot(
                 predictions=predictions,
                 fig_defaults=fig_defaults,
                 type_=plot,
-                model_name=model_name,
+                model_names=model_names,
                 data_kwargs=data_kwargs,
                 fig_kwargs=fig_kwargs,
             )
@@ -174,7 +172,7 @@ def _plot(
         fig, plot_data = plot_time_series_differences(
             data=data,
             fig_defaults=fig_defaults,
-            model_name=model_name,
+            model_name=model_names,
             hoverinfo=hoverinfo,
             data_kwargs=data_kwargs,
             fig_kwargs=fig_kwargs,
@@ -183,7 +181,7 @@ def _plot(
         fig, plot_data = plot_frequency_components(
             data=data,
             fig_defaults=fig_defaults,
-            model_name=model_name,
+            model_name=model_names,
             plot=plot,
             hoverinfo=hoverinfo,
             data_kwargs=data_kwargs,
@@ -212,7 +210,7 @@ def plot_series(
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
 ) -> PlotReturnType:
-    """Plots the original time series"""
+    """Plots the original time series or residuals"""
     fig, return_data_dict = None, None
 
     data_kwargs = data_kwargs or {}
@@ -227,9 +225,18 @@ def plot_series(
             title = f"{title} | Target = {time_series_name}"
 
     if X is not None:
+        # Exogenous Variables present (predictions).
         plot_data = pd.concat([data, X], axis=1)
     else:
-        plot_data = pd.DataFrame(data, columns=[f"Residuals | {model_name}"])
+        # Exogenous Variables not present (Original Time series or residuals).
+        if isinstance(data, pd.Series):
+            if model_name is None:
+                # Original Time series
+                plot_data = pd.DataFrame(data)
+            else:
+                # Residual
+                plot_data = pd.DataFrame(data)
+                plot_data.columns = [f"Residuals | {model_name}"]
 
     rows = plot_data.shape[1]
     subplot_titles = plot_data.columns
@@ -443,14 +450,38 @@ def plot_acf(
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
 ) -> PlotReturnType:
-    """Plots the ACF on the data provided"""
-    fig, return_data_dict = None, None
+    """Plots the ACF on the data provided
 
+    Parameters
+    ----------
+    data : pd.Series
+        Data whose correlation plot needs to be plotted
+    fig_defaults : Dict[str, Any]
+        The defaults dictionary containing keys for "width" and "height" (mandatory)
+    model_name : Optional[str]
+        If the correlation plot is for model residuals, then, model_name must be 
+        passed for proper display of results. If the correlation plot is for the 
+        original data, model_name should be left None (name is derived from the 
+        data passed in this case).
+    data_kwargs : Dict[str, Any]
+        A dictionary containing options keys for "nlags"
+    fig_kwargs : Dict[str, Any]
+        A dictionary containing options keys for "width" and/or "height"
+
+    Returns
+    -------
+    Tuple[go.Figure, Dict[str, Any]]
+        Returns back the plotly figure along with the correlation data.
+    """
     data_kwargs = data_kwargs or {}
     fig_kwargs = fig_kwargs or {}
 
     nlags = data_kwargs.get("nlags", None)
-    corr_array = acf(data, alpha=0.05, nlags=nlags)
+
+    subplots = make_subplots(rows=1, cols=1)
+    fig, acf_data = corr_subplot(
+        fig=subplots, data=data, col=1, row=1, plot="acf", nlags=nlags
+    )
 
     time_series_name = data.name
     title = "Autocorrelation (ACF)"
@@ -459,71 +490,20 @@ def plot_acf(
     elif time_series_name is not None:
         title = f"{title} | {time_series_name}"
 
-    lower_y = corr_array[1][:, 0] - corr_array[0]
-    upper_y = corr_array[1][:, 1] - corr_array[0]
-
-    fig = go.Figure()
-
-    fig.add_scattergl(
-        x=np.arange(len(corr_array[0])),
-        y=corr_array[0],
-        mode="markers",
-        marker_color="#1f77b4",
-        marker_size=10,
-        name="ACF",
-    )
-
-    [
-        fig.add_scattergl(
-            x=(x, x),
-            y=(0, corr_array[0][x]),
-            mode="lines",
-            line_color="#3f3f3f",
-            name=f"Lag{ind + 1}",
-        )
-        for ind, x in enumerate(range(len(corr_array[0])))
-    ]
-
-    # For some reason scattergl does not work here. Hence switching to scatter.
-    # (refer: https://github.com/pycaret/pycaret/issues/2211).
-    fig.add_scatter(
-        x=np.arange(len(corr_array[0])),
-        y=upper_y,
-        mode="lines",
-        line_color="rgba(255,255,255,0)",
-        name="UC",
-    )
-    fig.add_scatter(
-        x=np.arange(len(corr_array[0])),
-        y=lower_y,
-        mode="lines",
-        fillcolor="rgba(32, 146, 230,0.3)",
-        fill="tonexty",
-        line_color="rgba(255,255,255,0)",
-        name="LC",
-    )
-    fig.add_scattergl(
-        x=(0, len(corr_array[0])),
-        y=(0, 0),
-        mode="lines",
-        line_color="#3f3f3f",
-        name="",
-    )
-
     with fig.batch_update():
-        fig.update_xaxes(range=[-1, 42])
-        fig.update_yaxes(zerolinecolor="#000000")
-
+        fig.update_xaxes(title_text="Lags", row=1, col=1)
+        fig.update_yaxes(title_text="ACF", row=1, col=1)
         template = _resolve_dict_keys(
             dict_=fig_kwargs, key="template", defaults=fig_defaults
         )
         fig.update_layout(title=title, showlegend=False, template=template)
+        fig.update_traces(marker={"size": 10})
         fig = _update_fig_dimensions(
             fig=fig, fig_kwargs=fig_kwargs, fig_defaults=fig_defaults
         )
 
     return_data_dict = {
-        "acf": corr_array,
+        "acf": acf_data
     }
 
     return fig, return_data_dict
@@ -536,16 +516,38 @@ def plot_pacf(
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
 ) -> PlotReturnType:
-    """Plots the PACF on the data provided"""
-    fig, return_data_dict = None, None
+    """Plots the PACF on the data provided
 
+    Parameters
+    ----------
+    data : pd.Series
+        Data whose correlation plot needs to be plotted
+    fig_defaults : Dict[str, Any]
+        The defaults dictionary containing keys for "width" and "height" (mandatory)
+    model_name : Optional[str]
+        If the correlation plot is for model residuals, then, model_name must be 
+        passed for proper display of results. If the correlation plot is for the 
+        original data, model_name should be left None (name is derived from the 
+        data passed in this case).
+    data_kwargs : Dict[str, Any]
+        A dictionary containing options keys for "nlags"
+    fig_kwargs : Dict[str, Any]
+        A dictionary containing options keys for "width" and/or "height"
+
+    Returns
+    -------
+    Tuple[go.Figure, Dict[str, Any]]
+        Returns back the plotly figure along with the correlation data.
+    """
     data_kwargs = data_kwargs or {}
     fig_kwargs = fig_kwargs or {}
 
-    nobs = len(data)
-    nlags_default = min(int(10 * np.log10(nobs)), nobs // 2 - 1)
-    nlags = data_kwargs.get("nlags", nlags_default)
-    corr_array = pacf(data, nlags=nlags, alpha=0.05)
+    nlags = data_kwargs.get("nlags", None)
+
+    subplots = make_subplots(rows=1, cols=1)
+    fig, pacf_data = corr_subplot(
+        fig=subplots, data=data, col=1, row=1, plot="pacf", nlags=nlags
+    )
 
     time_series_name = data.name
     title = "Partial Autocorrelation (PACF)"
@@ -554,73 +556,20 @@ def plot_pacf(
     elif time_series_name is not None:
         title = f"{title} | {time_series_name}"
 
-    lower_y = corr_array[1][:, 0] - corr_array[0]
-    upper_y = corr_array[1][:, 1] - corr_array[0]
-
-    fig = go.Figure()
-
-    fig.add_scattergl(
-        x=np.arange(len(corr_array[0])),
-        y=corr_array[0],
-        mode="markers",
-        marker_color="#1f77b4",
-        marker_size=10,
-        name="PACF",
-    )
-
-    [
-        fig.add_scattergl(
-            x=(x, x),
-            y=(0, corr_array[0][x]),
-            mode="lines",
-            line_color="#3f3f3f",
-            name=f"Lag{ind + 1}",
-        )
-        for ind, x in enumerate(range(len(corr_array[0])))
-    ]
-
-    # For some reason scattergl does not work here. Hence switching to scatter.
-    # (refer: https://github.com/pycaret/pycaret/issues/2211).
-    fig.add_scatter(
-        x=np.arange(len(corr_array[0])),
-        y=upper_y,
-        mode="lines",
-        line_color="rgba(255,255,255,0)",
-        name="UC",
-    )
-    fig.add_scatter(
-        x=np.arange(len(corr_array[0])),
-        y=lower_y,
-        mode="lines",
-        fillcolor="rgba(32, 146, 230,0.3)",
-        fill="tonexty",
-        line_color="rgba(255,255,255,0)",
-        name="LC",
-    )
-
-    fig.add_scattergl(
-        x=(0, len(corr_array[0])),
-        y=(0, 0),
-        mode="lines",
-        line_color="#3f3f3f",
-        name="",
-    )
-
     with fig.batch_update():
-        fig.update_xaxes(range=[-1, len(corr_array[0]) + 1])
-        fig.update_yaxes(zerolinecolor="#000000")
-
+        fig.update_xaxes(title_text="Lags", row=1, col=1)
+        fig.update_yaxes(title_text="PACF", row=1, col=1)
         template = _resolve_dict_keys(
             dict_=fig_kwargs, key="template", defaults=fig_defaults
         )
         fig.update_layout(title=title, showlegend=False, template=template)
-
+        fig.update_traces(marker={"size": 10})
         fig = _update_fig_dimensions(
             fig=fig, fig_kwargs=fig_kwargs, fig_defaults=fig_defaults
         )
 
     return_data_dict = {
-        "pacf": corr_array,
+        "pacf": pacf_data
     }
 
     return fig, return_data_dict
@@ -628,10 +577,10 @@ def plot_pacf(
 
 def plot_predictions(
     data: pd.Series,
-    predictions: pd.Series,
+    predictions: List[pd.DataFrame],
     type_: str,
     fig_defaults: Dict[str, Any],
-    model_name: Optional[str] = None,
+    model_names: Optional[str] = None,
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
 ) -> PlotReturnType:
@@ -647,20 +596,26 @@ def plot_predictions(
     if time_series_name is not None:
         title = f"{title} | {time_series_name}"
 
-    x = (
-        predictions.index.to_timestamp()
-        if isinstance(predictions.index, pd.PeriodIndex)
-        else predictions.index
-    )
-    mean = go.Scatter(
-        name=f"Forecast | {model_name}",
-        x=x,
-        y=predictions,
-        mode="lines+markers",
-        line=dict(color="#1f77b4"),
-        marker=dict(size=5),
-        showlegend=True,
-    )
+    prediction_plot_data = []
+    for i, prediction in enumerate(predictions):
+        # Insample predictions can be None for some of the models ----
+        if prediction is not None:
+            x = (
+                prediction.index.to_timestamp()
+                if isinstance(prediction.index, pd.PeriodIndex)
+                else prediction.index
+            )
+
+            mean = go.Scatter(
+                name=f"Forecast | {model_names[i]}",
+                x=x,
+                y=prediction["y_pred"].values,
+                mode="lines+markers",
+                # line=dict(color="#1f77b4"),
+                marker=dict(size=5),
+                showlegend=True,
+            )
+            prediction_plot_data.append(mean)
 
     x = (
         data.index.to_timestamp()
@@ -676,7 +631,7 @@ def plot_predictions(
         showlegend=True,
     )
 
-    data_for_fig = [mean, original]
+    data_for_fig = prediction_plot_data + [original]
 
     layout = go.Layout(
         yaxis=dict(title="Values"), xaxis=dict(title="Time"), title=title
@@ -783,16 +738,24 @@ def plot_diagnostics(
 
 def plot_predictions_with_confidence(
     data: pd.Series,
-    predictions: pd.Series,
-    upper_interval: pd.Series,
-    lower_interval: pd.Series,
+    predictions: List[pd.DataFrame],
     fig_defaults: Dict[str, Any],
-    model_name: Optional[str] = None,
+    model_names: Optional[str] = None,
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
 ) -> PlotReturnType:
     """Plots the original data and the predictions provided with confidence"""
     fig, return_data_dict = None, None
+
+    if len(predictions) != 1:
+        raise ValueError(
+            "Plotting with predictions only supports one estimator. Please pass only one estimator to fix"
+        )
+
+    preds = predictions[0]["y_pred"]
+    upper_interval = predictions[0]["upper"]
+    lower_interval = predictions[0]["lower"]
+    model_name = model_names[0]
 
     data_kwargs = data_kwargs or {}
     fig_kwargs = fig_kwargs or {}
@@ -820,14 +783,14 @@ def plot_predictions_with_confidence(
     )
 
     x = (
-        predictions.index.to_timestamp()
-        if isinstance(predictions.index, pd.PeriodIndex)
-        else predictions.index
+        preds.index.to_timestamp()
+        if isinstance(preds.index, pd.PeriodIndex)
+        else preds.index
     )
     mean = go.Scatter(
         name=f"Forecast | {model_name}",
         x=x,
-        y=predictions,
+        y=preds,
         mode="lines+markers",
         line=dict(color="#1f77b4"),
         marker=dict(size=5),
@@ -910,9 +873,23 @@ def plot_time_series_decomposition(
         return fig, return_data_dict
 
     data_kwargs = data_kwargs or {}
-    fig_kwargs = fig_kwargs or {}
+    period = data_kwargs.get("seasonal_period", None)
+
+    #### Check period ----
+    if period is None:
+        raise ValueError(
+            "Decomposition plot needed seasonal period to be passed through "
+            "`data_kwargs`. None was passed."
+        )
+    if plot == "decomp_stl" and period < 2:
+        print(
+            "STL Decomposition is not supported for time series that have a "
+            f"seasonal period < 2. The seasonal period computed/provided was {period}."
+        )
+        return fig, return_data_dict
 
     classical_decomp_type = data_kwargs.get("type", "additive")
+    fig_kwargs = fig_kwargs or {}
 
     if plot == "decomp":
         title_name = f"Classical Decomposition ({classical_decomp_type})"
@@ -923,17 +900,17 @@ def plot_time_series_decomposition(
         title = f"{title_name}" if data.name is None else f"{title_name} | {data.name}"
     else:
         title = f"{title_name} | '{model_name}' Residuals"
+    title = title + f"<br>Seasonal Period = {period}"
 
     decomp_result = None
     data_ = data.to_timestamp() if isinstance(data.index, pd.PeriodIndex) else data
 
-    sp_to_use = data_kwargs.get("sp_to_use")
     if plot == "decomp":
         decomp_result = seasonal_decompose(
-            data_, period=sp_to_use, model=classical_decomp_type
+            data_, period=period, model=classical_decomp_type
         )
     elif plot == "decomp_stl":
-        decomp_result = STL(data_, period=sp_to_use).fit()
+        decomp_result = STL(data_, period=period).fit()
 
     fig = make_subplots(
         rows=4,

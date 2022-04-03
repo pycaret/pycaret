@@ -10,6 +10,7 @@ from pycaret.utils.time_series import TSExogenousPresent
 
 from .time_series_test_utils import _BLEND_TEST_MODELS
 
+
 #############################
 #### Fixtures Start Here ####
 #############################
@@ -27,6 +28,35 @@ def load_pos_and_neg_data():
 def load_uni_exo_data_target():
     """Load Pycaret Univariate data with exogenous variables."""
     data = get_data("uschange")
+    target = "Consumption"
+    return data, target
+
+
+@pytest.fixture(scope="session", name="load_uni_exo_data_target_positive")
+def load_uni_exo_data_target_positive():
+    """Load Pycaret Univariate data with exogenous variables (strictly positive)."""
+    data = get_data("uschange")
+    data = data.clip(lower=0.1)
+    target = "Consumption"
+    return data, target
+
+
+@pytest.fixture(scope="session", name="load_pos_and_neg_data_missing")
+def load_pos_and_neg_data_missing():
+    """Load Pycaret Airline dataset (with some negative & missing values)."""
+    data = get_data("airline")
+    data = data - 400  # simulate negative values
+    data[10:20] = np.nan  # In train with FH = 12
+    data[-5:-2] = np.nan  # In test with FH = 12
+    return data
+
+
+@pytest.fixture(scope="session", name="load_uni_exo_data_target_missing")
+def load_uni_exo_data_target_missing():
+    """Load Pycaret Univariate data with exogenous variables & missing values."""
+    data = get_data("uschange")
+    data[10:20] = np.nan  # In train with FH = 12
+    data[-5:-2] = np.nan  # In test with FH = 12
     target = "Consumption"
     return data, target
 
@@ -76,21 +106,16 @@ def load_setup(load_pos_and_neg_data):
 @pytest.fixture(scope="session", name="load_models")
 def load_ts_models(load_setup):
     """Load all time series module models"""
-    globals_dict = {
-        "seed": 0,
-        "n_jobs_param": -1,
-        "gpu_param": False,
-        "X_train": pd.DataFrame(get_data("airline")),
-        "enforce_pi": False,
-        "enforce_exogenous": True,
-        "exogenous_present": TSExogenousPresent.NO,
-        "sp_to_use": 12,
-    }
-    ts_models = get_all_model_containers(globals_dict)
-    ts_experiment = load_setup
+    exp = load_setup
+    model_containers = get_all_model_containers(exp)
+
+    from .time_series_test_utils import (
+        _BLEND_TEST_MODELS,
+    )  # TODO Put it back once preprocessing supports series as X
+
     ts_estimators = [
-        ts_experiment.create_model(key)
-        for key in ts_models.keys()
+        exp.create_model(key)
+        for key in model_containers.keys()
         if key in _BLEND_TEST_MODELS
     ]
 

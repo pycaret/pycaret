@@ -1,12 +1,22 @@
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Tuple, Union, Optional, Union, List
 
 import numpy as np
 import pandas as pd
 
+from sktime.forecasting.base import ForecastingHorizon
+
+
+PyCaretForecastingHorizonTypes = Union[List[int], int, np.ndarray, ForecastingHorizon]
+
 
 def get_predictions_with_intervals(
-    forecaster, X: pd.DataFrame, fh=None, alpha: float = 0.05
-) -> Tuple[pd.Series, pd.Series, pd.Series]:
+    forecaster,
+    X: pd.DataFrame,
+    fh=None,
+    alpha: float = 0.05,
+    merge: bool = False,
+    round: Optional[int] = None,
+) -> Union[pd.DataFrame, Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]]:
     """Returns the predictions, lower and upper interval values for a
     forecaster. If the forecaster does not support prediction intervals,
     then NAN is returned for lower and upper intervals.
@@ -19,10 +29,16 @@ def get_predictions_with_intervals(
         Exogenous Variables
     alpha : float, default = 0.05
         alpha value for prediction interval
+    merge : bool, default = False
+        If True, returns a dataframe with 3 columns called
+        ["y_pred", "lower", "upper"], else retruns 3 separate series.
+    round : Optional[int], default = None
+        If set to an integer value, returned values are rounded to as many digits
+        If set to None, no rounding is performed.
 
     Returns
     -------
-    Tuple[pd.Series, pd.Series, pd.Series]
+    Union[pd.DataFrame, Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]]
         Predictions, Lower and Upper Interval Values
     """
     # Predict and get lower and upper intervals
@@ -33,22 +49,33 @@ def get_predictions_with_intervals(
     )
 
     if return_pred_int:
-        y_pred = return_values[0]
-        lower = return_values[1]["lower"]
-        upper = return_values[1]["upper"]
+        y_pred = pd.DataFrame({"y_pred": return_values[0]})
+        lower = pd.DataFrame({"lower": return_values[1]["lower"]})
+        upper = pd.DataFrame({"upper": return_values[1]["upper"]})
     else:
-        y_pred = return_values
-        lower = pd.Series([np.nan] * len(y_pred))
-        upper = pd.Series([np.nan] * len(y_pred))
+        y_pred = pd.DataFrame({"y_pred": return_values})
+        lower = pd.DataFrame({"lower": [np.nan] * len(y_pred)})
+        upper = pd.DataFrame({"upper": [np.nan] * len(y_pred)})
         lower.index = y_pred.index
         upper.index = y_pred.index
 
-    # Prophet with return_pred_int = True returns datetime index.
-    for series in [y_pred, lower, upper]:
-        if isinstance(series.index, pd.DatetimeIndex):
-            series.index = series.index.to_period()
+    # PyCaret works on Period Index only when developing models. If user passes
+    # DateTimeIndex, it gets converted to PeriodIndex. If the forecaster (such as
+    # Prophet) does not support PeriodIndex, then a patched version is created
+    # which can support a PeriodIndex input and returns a PeriodIndex prediction.
+    # Hence, no casting of index needs to be done here.
 
-    return y_pred, lower, upper
+    if round is not None:
+        # Converting to float since rounding does not support int
+        y_pred = y_pred.astype(float).round(round)
+        lower = lower.astype(float).round(round)
+        upper = upper.astype(float).round(round)
+
+    if merge:
+        results = pd.concat([y_pred, lower, upper], axis=1)
+        return results
+    else:
+        return y_pred, lower, upper
 
 
 def update_additional_scorer_kwargs(
@@ -82,6 +109,6 @@ def update_additional_scorer_kwargs(
     """
     additional_scorer_kwargs = initial_kwargs.copy()
     additional_scorer_kwargs.update(
-        {"y_train": y_train, "lower": lower, "upper": upper,}
+        {"y_train": y_train, "lower": lower, "upper": upper}
     )
     return additional_scorer_kwargs

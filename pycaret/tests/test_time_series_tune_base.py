@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 
 from pycaret.time_series import TSForecastingExperiment
+from pycaret.utils.time_series.forecasting.pipeline import PyCaretForecastingPipeline
 
 from .time_series_test_utils import _ALL_METRICS
 
@@ -56,6 +57,9 @@ def test_tune_custom_grid_and_choose_better(load_pos_and_neg_data):
     # set to False. So pick worse value itself.
     assert tuned_model2.strategy != model.strategy
 
+    assert not isinstance(tuned_model1, PyCaretForecastingPipeline)
+    assert not isinstance(tuned_model2, PyCaretForecastingPipeline)
+
 
 def test_tune_model_custom_folds(load_pos_and_neg_data):
     """test custom folds in tune_model"""
@@ -97,7 +101,7 @@ def test_tune_model_alternate_metric(load_pos_and_neg_data, metric):
 
     tuned_model_obj = exp.tune_model(model_obj, optimize=metric)
     y_pred = exp.predict_model(tuned_model_obj)
-    assert isinstance(y_pred, pd.Series)
+    assert isinstance(y_pred, pd.DataFrame)
 
     expected_period_index = load_pos_and_neg_data.iloc[-fh:].index
     assert np.all(y_pred.index == expected_period_index)

@@ -25,21 +25,16 @@ def test():
 
     # preparation(classification)
     data = pycaret.datasets.get_data("juice")
-    target = "Purchase"
-    le = sklearn.preprocessing.LabelEncoder()
-    le = le.fit(data[target])
-    data[target] = le.transform(data[target])
     train, test = sklearn.model_selection.train_test_split(
         data, train_size=0.8, random_state=1
     )
     clf1 = pycaret.classification.setup(
-        train, target=target, silent=True, html=False, session_id=123, n_jobs=1,
+        train, target="Purchase", silent=True, html=False, session_id=123, n_jobs=1,
     )
     model = pycaret.classification.create_model("lightgbm")
-    data_unseen = test.drop(columns=target)
     final_model = pycaret.classification.finalize_model(model)
-    result = pycaret.classification.predict_model(final_model, data=data_unseen)
-    actual = test[target]
+    result = pycaret.classification.predict_model(final_model, data=test.drop("Purchase", axis=1))
+    actual = clf1.pipeline.transform(y=test["Purchase"])
     prediction = result["Label"]
 
     # provisional support
@@ -82,7 +77,6 @@ def test():
 
     # preparation(regression)
     data = pycaret.datasets.get_data("boston")
-    target = "medv"
     train, test = sklearn.model_selection.train_test_split(
         data, train_size=0.8, random_state=1
     )
@@ -90,10 +84,9 @@ def test():
         data, target="medv", silent=True, html=False, session_id=123, n_jobs=1,
     )
     model = pycaret.regression.create_model("lightgbm")
-    data_unseen = test.drop(columns=target)
     final_model = pycaret.regression.finalize_model(model)
-    result = pycaret.regression.predict_model(final_model, data=data_unseen)
-    actual = test[target]
+    result = pycaret.regression.predict_model(final_model, data=test.drop("medv", axis=1))
+    actual = test["medv"]
     prediction = result["Label"]
 
     # provisional support
@@ -130,7 +123,7 @@ def test():
 
     # Ensure metric is rounded to default value
     mape = pycaret.utils.check_metric(actual, prediction, "MAPE")
-    npt.assert_almost_equal(mape, 0.0469, decimal=4)
+    npt.assert_almost_equal(mape, 0.045, decimal=2)
 
     # preparation (timeseries)
     data = pycaret.datasets.get_data("airline", verbose=False)

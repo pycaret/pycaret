@@ -2,13 +2,14 @@
 """
 import random
 
-import numpy as np  # type: ignore
-import pandas as pd
+import numpy as np
+
+from sktime.forecasting.base import ForecastingHorizon
 
 from pycaret.time_series import TSForecastingExperiment
 from pycaret.datasets import get_data
 from pycaret.containers.models.time_series import get_all_model_containers
-from pycaret.utils.time_series import SeasonalPeriod, TSExogenousPresent
+from pycaret.utils.time_series import SeasonalPeriod
 
 _BLEND_TEST_MODELS = [
     "naive",
@@ -31,6 +32,22 @@ _ALL_STATS_TESTS = [
     "stationarity",
     "all",
 ]
+
+_IMPUTE_METHODS_STR = [
+    "drift",
+    "linear",
+    "nearest",
+    "mean",
+    "median",
+    "backfill",
+    "bfill",
+    "pad",
+    "ffill",
+    "random",
+]
+_TRANSFORMATION_METHODS = ["box-cox", "log", "sqrt", "exp", "cos"]
+_TRANSFORMATION_METHODS_NO_NEG = ["box-cox", "log"]
+_SCALE_METHODS = ["zscore", "minmax", "maxabs", "robust"]
 
 
 def _get_all_plots():
@@ -102,18 +119,14 @@ def _check_windows():
 
 def _return_model_names():
     """Return all model names."""
-    globals_dict = {
-        "seed": 0,
-        "n_jobs_param": -1,
-        "gpu_param": False,
-        "X_train": pd.DataFrame(get_data("airline")),
-        "enforce_pi": False,
-        "enforce_exogenous": True,
-        "exogenous_present": TSExogenousPresent.NO,
-        "seasonal_period": 2,
-        "sp_to_use": 2,
-    }
-    model_containers = get_all_model_containers(globals_dict)
+    data = get_data("airline")
+    exp = TSForecastingExperiment()
+    exp.setup(
+        data=data,
+        seasonal_period=2,
+        session_id=42,
+    )
+    model_containers = get_all_model_containers(exp)
 
     models_to_ignore = (
         ["prophet", "ensemble_forecaster"]
@@ -169,7 +182,7 @@ def _return_splitter_args():
         (random.randint(2, 5), np.arange(1, random.randint(5, 10)), "expanding"),
         (random.randint(2, 5), np.arange(1, random.randint(5, 10)), "rolling"),
         (random.randint(2, 5), np.arange(1, random.randint(5, 10)), "sliding"),
-        # Non continuous np.array
+        # fh: Non continuous np.array
         (
             random.randint(2, 5),
             np.arange(random.randint(3, 5), random.randint(6, 10)),
@@ -183,6 +196,46 @@ def _return_splitter_args():
         (
             random.randint(2, 5),
             np.arange(random.randint(3, 5), random.randint(6, 10)),
+            "sliding",
+        ),
+        # fh: Continuous List
+        (random.randint(2, 5), [1, 2, 3, 4], "expanding"),
+        (random.randint(2, 5), [1, 2, 3, 4], "rolling"),
+        (random.randint(2, 5), [1, 2, 3, 4], "sliding"),
+        # fh: Non Continuous List
+        (random.randint(2, 5), [3, 4], "expanding"),
+        (random.randint(2, 5), [3, 4], "rolling"),
+        (random.randint(2, 5), [3, 4], "sliding"),
+        # fh: Continuous ForecastingHorizon
+        (
+            random.randint(2, 5),
+            ForecastingHorizon(np.arange(1, random.randint(5, 10))),
+            "expanding",
+        ),
+        (
+            random.randint(2, 5),
+            ForecastingHorizon(np.arange(1, random.randint(5, 10))),
+            "rolling",
+        ),
+        (
+            random.randint(2, 5),
+            ForecastingHorizon(np.arange(1, random.randint(5, 10))),
+            "sliding",
+        ),
+        # fh: Non Continuous ForecastingHorizon
+        (
+            random.randint(2, 5),
+            ForecastingHorizon(np.arange(random.randint(3, 5), random.randint(6, 10))),
+            "expanding",
+        ),
+        (
+            random.randint(2, 5),
+            ForecastingHorizon(np.arange(random.randint(3, 5), random.randint(6, 10))),
+            "rolling",
+        ),
+        (
+            random.randint(2, 5),
+            ForecastingHorizon(np.arange(random.randint(3, 5), random.randint(6, 10))),
             "sliding",
         ),
     ]
@@ -227,6 +280,12 @@ def _return_model_names_for_plots_stats():
     - 1 model that does not have in-sample forecasts ("lr_cds_dt")
     """
     model_names = ["theta", "lr_cds_dt"]
+    return model_names
+
+
+def _return_model_names_for_missing_data():
+    """Returns models that do not support missing data"""
+    model_names = ["ets", "theta", "lr_cds_dt"]
     return model_names
 
 
