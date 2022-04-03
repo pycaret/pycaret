@@ -551,3 +551,29 @@ def test_scale_exo(load_uni_exo_data_target, method):
     assert not np.all(exp.X.values == exp.X_transformed.values)
     assert not np.all(exp.X_train.values == exp.X_train_transformed.values)
     assert not np.all(exp.X_test.values == exp.X_test_transformed.values)
+
+
+def test_transform_target_scaledlogit(load_uni_exo_data_target_positive):
+    """Tests Transformation methods for 
+    Univariate forecasting with exogenous variables"""
+    data, target = load_uni_exo_data_target_positive
+    # FIXME : NOT YET COMPLETED.
+
+    exp = TSForecastingExperiment()
+    FH = 12
+    scaled_logit_kwargs ={"upper_bound":max(target)*0.75,"lower_bound":0.0}
+
+    exp.setup(
+        data=data,
+        target=target,
+        fh=FH,
+        seasonal_period=4,
+        transform_target="scaledlogit",
+        transform_target_kwargs=scaled_logit_kwargs)
+
+    # Due to preprocessing not all 'y' values should be the same
+    assert not np.all(exp.y.values == exp.y_transformed.values)
+    assert not np.all(exp.y_train.values == exp.y_train_transformed.values)
+    assert not np.all(exp.y_test.values == exp.y_test_transformed.values)
+
+
