@@ -13,6 +13,7 @@ from sktime.transformations.series.impute import Imputer
 from sktime.transformations.series.boxcox import BoxCoxTransformer, LogTransformer
 from sktime.transformations.series.exponent import ExponentTransformer, SqrtTransformer
 from sktime.transformations.series.cos import CosineTransformer
+from sktime.transformations.series.scaledlogit import ScaledLogitTransformer
 
 from pycaret.utils.time_series import TSApproachTypes, TSExogenousPresent
 
@@ -24,6 +25,9 @@ class TSForecastingPreprocessor:
         # Initialize empty steps ----
         self.pipe_steps_target = []
         self.pipe_steps_exogenous = []
+        # used for transformation arguments/parameters
+        self.transform_target_kwargs: Optional[dict]=None
+        self.transform_exogenous_kwargs: Optional[dict]=None,
 
     def _imputation(
         self,
@@ -136,6 +140,7 @@ class TSForecastingPreprocessor:
                 "sqrt": SqrtTransformer(),
                 "exp": ExponentTransformer(),
                 "cos": CosineTransformer(),
+                "scaledlogit" : ScaledLogitTransformer(),
         target : bool, optional
             If True, transformation is added to the target variable steps
             If False, transformation is added to the exogenous variable steps,
@@ -152,11 +157,13 @@ class TSForecastingPreprocessor:
 
         if isinstance(transform, str):
             transform_dict = {
-                "box-cox": BoxCoxTransformer(),
-                "log": LogTransformer(),
-                "sqrt": SqrtTransformer(),
-                "exp": ExponentTransformer(),
-                "cos": CosineTransformer(),
+                "box-cox": BoxCoxTransformer,
+                "log": LogTransformer,
+                "sqrt": SqrtTransformer,
+                "exp": ExponentTransformer,
+                "cos": CosineTransformer,
+                "scaledlogit" : ScaledLogitTransformer
+
             }
 
             if transform not in transform_dict:
@@ -166,15 +173,27 @@ class TSForecastingPreprocessor:
 
         else:
             raise ValueError(
-                f"{type_} transformaton method '{type(transform)}' is not of allowed type."
+                f"{type_} transformaton method '{type(transform)}' is not of allowed type (str)."
             )
 
         if target:
-            transformer = transform_dict[transform]
-            self.pipe_steps_target.extend([("transformer", transformer)])
+            if self.transform_target_kwargs:
+                trans_kwargs: dict = self.transform_exogenous_kwargs
+                # apply kwargs to transformer constuctor/__init__
+            else:
+                # no kwargs to use
+                trans_kwargs = {} 
+            target_transformer = transform_dict[transform](**trans_kwargs)
+            self.pipe_steps_target.extend([("transformer", target_transformer)])
         else:
-            transformer = ColumnwiseTransformer(transform_dict[transform])
-            self.pipe_steps_exogenous.extend([("transformer", transformer)])
+            if self.transform_exogenous_kwargs:
+                trans_kwargs: dict = self.transform_exogenous_kwargs
+            else:
+                # no kwargs to use
+                trans_kwargs = {} 
+            transformer = transform_dict[transform](**trans_kwargs)
+            exog_transformer = ColumnwiseTransformer(transformer)
+            self.pipe_steps_exogenous.extend([("transformer", exog_transformer)])
 
     def _scaling(
         self,
