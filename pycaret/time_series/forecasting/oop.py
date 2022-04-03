@@ -1075,7 +1075,9 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         numeric_imputation_target: Optional[Union[int, float, str]] = None,
         numeric_imputation_exogenous: Optional[Union[int, float, str]] = None,
         transform_target: Optional[str] = None,
+        transform_target_kwargs: Optional[dict] = None,
         transform_exogenous: Optional[str] = None,
+        transform_exogenous_kwargs: Optional[dict] = None,
         scale_target: Optional[str] = None,
         scale_exogenous: Optional[str] = None,
         fold_strategy: Union[str, Any] = "expanding",
@@ -1165,17 +1167,27 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                 "bfill", "pad", "ffill", "random"
             If int or float, imputation method is set to "constant" with the given value.
 
-
         transform_target: Optional[str], default = None
             Indicates how the target variable should be transformed.
             If None, no transformation is performed. Allowed values are
-                "box-cox", "log", "sqrt", "exp", "cos"
-
+                "box-cox", "log", "sqrt", "exp", "cos", "scaledlogit"
+        
+        transform_target_kwargs: Optional[dict], default = None
+            Used to pass arguments to target transformation constructor.
+            If None, no additional arguments are passed to transformer
+            (defaults used). Currently only used by "scaledlogit" for
+            "upper_bound" and "lower_bound". 
 
         transform_exogenous: Optional[str], default = None
             Indicates how the exogenous variables should be transformed.
             If None, no transformation is performed. Allowed values are
                 "box-cox", "log", "sqrt", "exp", "cos"
+
+        transform_exogenous_kwargs: Optional[dict], default = None
+            Used to pass arguments to exogenous transformation constructor.
+            If None, no additional arguments are passed to transformer
+            (defaults used). Currently only used by "scaledlogit" for
+            "upper_bound" and "lower_bound". 
 
         scale_target: Optional[str], default = None
             Indicates how the target variable should be scaled.
@@ -1389,7 +1401,9 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         self.numeric_imputation_target = numeric_imputation_target
         self.numeric_imputation_exogenous = numeric_imputation_exogenous
         self.transform_target = transform_target
+        self.transform_target_kwargs = transform_target_kwargs
         self.transform_exogenous = transform_exogenous
+        self.transform_exogenous_kwargs = transform_exogenous_kwargs
         self.scale_target = scale_target
         self.scale_exogenous = scale_exogenous
 
