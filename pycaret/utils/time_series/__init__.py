@@ -212,15 +212,73 @@ def get_sp_from_str(str_freq: str) -> int:
 
 
 class SeasonalPeriod(IntEnum):
-    S = 60  # second
-    T = 60  # minute
-    H = 24  # hour
-    D = 7  # day
-    W = 52  # week
-    M = 12  # month
-    Q = 4  # quarter
-    A = 1  # year
-    Y = 1  # year
+    """ENUM corresponding to Seasonal Periods
+
+    Currently supports a subset of these. Eventually try to support all.
+    https://stackoverflow.com/questions/35339139/what-values-are-valid-in-pandas-freq-tags/35339226#35339226
+    B        business day frequency
+    C        custom business day frequency
+    D        calendar day frequency
+    W        weekly frequency
+    M        month end frequency
+    SM       semi-month end frequency (15th and end of month)
+    BM       business month end frequency
+    CBM      custom business month end frequency
+    MS       month start frequency
+    SMS      semi-month start frequency (1st and 15th)
+    BMS      business month start frequency
+    CBMS     custom business month start frequency
+    Q        quarter end frequency
+    BQ       business quarter end frequency
+    QS       quarter start frequency
+    BQS      business quarter start frequency
+    A, Y     year end frequency
+    BA, BY   business year end frequency
+    AS, YS   year start frequency
+    BAS, BYS business year start frequency
+    BH       business hour frequency
+    H        hourly frequency
+    T, min   minutely frequency
+    S        secondly frequency
+    L, ms    milliseconds
+    U, us    microseconds
+    N        nanoseconds
+    """
+
+    B = 5
+    C = 5
+    D = 7
+    W = 52
+    M = 12
+    SM = 24
+    BM = 12
+    CBM = 12
+    MS = 12
+    SMS = 24
+    BMS = 12
+    CBMS = 12
+    Q = 4
+    BQ = 4
+    QS = 4
+    BQS = 4
+    A = 1
+    Y = 1
+    BA = 1
+    BY = 1
+    AS = 1
+    YS = 1
+    BAS = 1
+    BYS = 1
+    # BH = ??
+    H = 24
+    T = 60
+    min = 60
+    S = 60
+    # L = ??
+    # ms = ??
+    # U = ??
+    # us = ??
+    # N = ??
 
 
 class TSModelTypes(Enum):

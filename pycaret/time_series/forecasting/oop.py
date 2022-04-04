@@ -1062,7 +1062,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             self.remove_metric("COVERAGE")
 
         return self
-    
+
     def _check_setup_ran(self):
         if not self._setup_ran:
             raise RuntimeError("This function requires the users to run setup() first.\
@@ -1230,15 +1230,16 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             Seasonal period in timeseries data. If not provided the frequency of the data
             index is mapped to a seasonal period as follows:
 
-            * 'S': 60
-            * 'T': 60
-            * 'H': 24
-            * 'D': 7
-            * 'W': 52
-            * 'M': 12
-            * 'Q': 4
-            * 'A': 1
-            * 'Y': 1
+            * B, C = 5
+            * D = 7
+            * W = 52
+            * M, BM, CBM, MS, BMS, CBMS = 12
+            * SM, SMS = 24
+            * Q, BQ, QS, BQS = 4
+            * A, Y, BA, BY, AS, YS, BAS, BYS = 1
+            * H = 24
+            * T, min = 60
+            * S = 60
 
             Alternatively you can provide a custom `seasonal_period` by passing
             it as an integer or a string corresponding to the keys above (e.g.
@@ -2051,7 +2052,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             Trained Model and Optional Tuner Object when ``return_tuner`` is True.
 
         """
-        
+
         self._check_setup_ran()
 
         search_library = "pycaret"  # only 1 library supported right now
