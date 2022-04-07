@@ -1063,6 +1063,39 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             raise RuntimeError("This function requires the users to run setup() first.\
                 More info: https://pycaret.gitbook.io/docs/get-started/quickstart")
 
+    def _mlflow_log_setup(self, plots=['diagnostics', 'decomp', 'diff']):
+        self.logger.info("Creating MLFlow logs for plots that does not requre an estimator at the setup stage")
+
+        # import mlflow
+        import mlflow
+        import mlflow.sklearn
+
+        mlflow.set_experiment(self.exp_name_log)
+
+        with mlflow.start_run(nested=True) as run:
+
+            self.logger.info(
+                    "Begin logging diagnostics, decomp, and diff plots ================"
+                )
+
+            def _log_plot(plot):
+                try:
+                    plot_name = self.plot_model(
+                        plot=plot,
+                        return_fig=True,
+                    )
+                    mlflow.log_artifact(plot_name)
+                    os.remove(plot_name)
+                except Exception as e:
+                    self.logger.warning(e)
+            for plot in plots:
+                _log_plot(plot)
+            
+            self.logger.info(
+                    "Logging diagnostics, decomp, and diff plots ended ================"
+            )
+         
+
     def setup(
         self,
         data: Union[pd.Series, pd.DataFrame],
@@ -1455,6 +1488,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         self._disable_metrics()
 
         self.logger.info(f"setup() successfully completed in {runtime}s...............")
+        self._mlflow_log_setup()
 
         return self
 
