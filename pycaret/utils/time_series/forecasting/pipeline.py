@@ -1,4 +1,8 @@
 from copy import deepcopy
+from typing import Optional, Tuple
+
+import pandas as pd
+
 from sktime.forecasting.base import BaseForecaster
 from sktime.forecasting.compose import ForecastingPipeline
 from sktime.forecasting.compose import TransformedTargetForecaster
@@ -68,8 +72,8 @@ def _are_pipeline_tansformations_empty(pipeline: PyCaretForecastingPipeline) -> 
         PyCaretForecastingPipeline
             - exogenous_steps
             - TransformedTargetForecaster
-            - target_steps
-            - model
+                - target_steps
+                - model
 
     Parameters
     ----------
@@ -84,3 +88,49 @@ def _are_pipeline_tansformations_empty(pipeline: PyCaretForecastingPipeline) -> 
     num_steps_transform_X = len(pipeline.steps) - 1
     num_steps_transform_y = len(pipeline.steps[-1][1].steps) - 1
     return num_steps_transform_X == 0 and num_steps_transform_y == 0
+
+
+def _get_imputed_data(
+    pipeline: PyCaretForecastingPipeline, y: pd.Series, X: Optional[pd.DataFrame] = None
+) -> Tuple[pd.Series, Optional[pd.DataFrame]]:
+    """Passes y and X through the pipeline and returns the imputed data.
+
+    Parameters
+    ----------
+    pipeline : PyCaretForecastingPipeline
+        The pipeline used to get the imputed values
+    y : pd.Series
+        target data to be used for imputation
+    X : pd.DataFrame, optional
+        Exogenous variable data to be used for imputation, by default None
+
+    Reminder: The pipeline structure is as follows:
+        PyCaretForecastingPipeline
+            - exogenous_steps
+            - TransformedTargetForecaster
+                - target_steps
+                - model
+
+    Returns
+    -------
+    Tuple[pd.Series, Optional[pd.DataFrame]]
+        Imputed y and X values respectively
+    """
+
+    if len(pipeline.steps_) == 1:
+        # No transformation
+        X_imputed = X.copy() if X is not None else None
+    else:
+        # First `exogenous_steps` is the imputer for X
+        imputer_X = pipeline.steps_[0][1]
+        X_imputed = imputer_X.fit_transform(X)
+
+    if len(pipeline.steps_[-1][1].steps_) == 1:
+        # No y transformations
+        y_imputed = y.copy()
+    else:
+        # First `target_steps` is the imputer for y.
+        imputer_y = pipeline.steps_[-1][1].steps_[0][1]
+        y_imputed = imputer_y.fit_transform(y)
+
+    return y_imputed, X_imputed

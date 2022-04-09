@@ -27,6 +27,7 @@ from pycaret.utils.time_series.forecasting.pipeline import (
     PyCaretForecastingPipeline,
     _add_model_to_pipeline,
     _are_pipeline_tansformations_empty,
+    _get_imputed_data,
 )
 from pycaret.utils.time_series.forecasting.models import DummyForecaster
 from sktime.forecasting.compose import TransformedTargetForecaster
@@ -881,6 +882,9 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         )
 
         self.pipeline.fit(y=self.y_train, X=self.X_train, fh=self.fh)
+
+        # TODO: Add check here to make sure that if imputer is present, that it
+        # is the first step for both X and y
         self._check_transformations()
 
         self.logger.info("Finished creating preprocessing pipeline.")
@@ -1065,8 +1069,10 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
     def _check_setup_ran(self):
         if not self._setup_ran:
-            raise RuntimeError("This function requires the users to run setup() first.\
-                More info: https://pycaret.gitbook.io/docs/get-started/quickstart")
+            raise RuntimeError(
+                "This function requires the users to run setup() first. "
+                "More info: https://pycaret.gitbook.io/docs/get-started/quickstart"
+            )
 
     def setup(
         self,
@@ -3205,40 +3211,60 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         return display
 
-    def _predict_model_get_metrics(
-        self, estimator: BaseForecaster, result: pd.DataFrame
+    def _predict_model_get_test_metrics(
+        self,
+        pipeline: PyCaretForecastingPipeline,
+        estimator: BaseForecaster,
+        result: pd.DataFrame,
     ) -> dict:
-        """Return the metrics for the predictions.
+        """Return the test metrics for the predictions if estimator has not been
+        finalized. If the estimator has been finalized, just returns an empty
+        dictionary, since we do not have the true values to compute metrics.
 
         Parameters
         ----------
+        pipeline : PyCaretForecastingPipeline
+            The pipeline used to get the imputed values for metrics
         estimator : BaseForecaster
-            Estimator used to make predictions
+            Estimator used to decide if the model has been finalized or not.
         result : pd.DataFrame
             Predictions with lower and upper bounds.
 
         Returns
         -------
         dict
-            Prediction metrics
+            Test prediction metrics (if estimator has not been finalized) OR
+            empty dictionary (if estimator has been finalized)
         """
-        # Pass additional keyword arguments (like y_train, lower, upper) to
-        # method since they need to be passed to certain metrics like MASE,
-        # INPI, etc. This method will internally orchestrate the passing of
-        # the right arguments to the scorers.
-        initial_kwargs = self.get_additional_scorer_kwargs()
-        additional_scorer_kwargs = update_additional_scorer_kwargs(
-            initial_kwargs=initial_kwargs,
-            y_train=self._get_y_X_used_for_training(estimator=estimator)[0],
-            lower=result["lower"],
-            upper=result["upper"],
-        )
-        metrics = self._calculate_metrics(
-            y_test=self.y_test,
-            pred=result["y_pred"],
-            pred_prob=None,
-            **additional_scorer_kwargs,
-        )
+
+        if not self._is_estimator_finalized(estimator):
+            # Impute the entire dataset
+            # The imputed test portion will be used as `y_true` for metrics
+            # The imputed train portion will be used for metrics such as MASE, RMSSE.
+            # Refer to: https://github.com/pycaret/pycaret/issues/2369
+            y_imputed, _ = _get_imputed_data(pipeline=pipeline, y=self.y, X=self.X)
+            y_test_imputed = y_imputed.loc[self.y_test.index]
+            y_train_imputed = y_imputed.loc[self.y_train.index]
+
+            # Pass additional keyword arguments (like y_train, lower, upper) to
+            # method since they need to be passed to certain metrics like MASE,
+            # INPI, etc. This method will internally orchestrate the passing of
+            # the right arguments to the scorers.
+            initial_kwargs = self.get_additional_scorer_kwargs()
+            additional_scorer_kwargs = update_additional_scorer_kwargs(
+                initial_kwargs=initial_kwargs,
+                y_train=y_train_imputed,
+                lower=result["lower"],
+                upper=result["upper"],
+            )
+            metrics = self._calculate_metrics(
+                y_test=y_test_imputed,
+                pred=result["y_pred"],
+                pred_prob=None,
+                **additional_scorer_kwargs,
+            )
+        else:
+            metrics = {}
 
         return metrics
 
@@ -3322,6 +3348,10 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         X = self._predict_model_reconcile_X(estimator=estimator_, X=X)
 
         if not _are_pipeline_tansformations_empty(pipeline=pipeline_with_model):
+            # TODO: If the model has been finalized, then we have a problem here
+            # `pipeline` will still have memory till the train dataset, but
+            # estimator will have full memory (full dataset). Hence predictions
+            # will not be correct. Check how to resolve this.
             result = get_predictions_with_intervals(
                 forecaster=pipeline_with_model,
                 X=X,
@@ -3349,8 +3379,8 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         #################
         if self._setup_ran:
             #### Get Metrics ----
-            metrics = self._predict_model_get_metrics(
-                estimator=estimator_, result=result
+            metrics = self._predict_model_get_test_metrics(
+                pipeline=pipeline_with_model, estimator=estimator_, result=result
             )
 
             #### Display metrics ----
@@ -4174,13 +4204,8 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         return clean_y, clean_X
 
-    def _get_y_X_used_for_training(
-        self,
-        estimator: BaseForecaster,
-    ) -> Tuple[pd.Series, pd.DataFrame]:
-        """Returns the y and X values passed to the pipeline for training.
-        These values are the values before transformation and can be passed to
-        the complete pipeline again if needed for steps in the workflow.
+    def _is_estimator_finalized(self, estimator: BaseForecaster) -> bool:
+        """Checks to see if the estimator has been finalized or not.
 
         Parameters
         ----------
@@ -4190,34 +4215,69 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         Returns
         -------
-        Tuple[pd.DataFrame, pd.DataFrame]
-            y and X values respectively used for training
+        bool
+            True if estimator has been finalized, False otherwise.
 
         Raises
         ------
         ValueError
-            Indices used to train estimator does not match either y_train or y indices.
+            The training data for the estimator matches neither the train dataset
+            nor the full dataset.
         """
 
         estimator_y, _ = self._get_cleaned_estimator_y_X(estimator=estimator)
         if len(estimator_y) == len(self.y_train) and np.all(
             estimator_y.index == self.y_train.index
         ):
-            # Model has not been finalized ----
-            y = self.y_train
-            X = self.X_train
+            return False
         elif len(estimator_y) == len(self.y) and np.all(
             estimator_y.index == self.y.index
         ):
+            return True
+        else:
+            raise ValueError(
+                "\nData used to train model does not match either train nor full dataset ."
+                "This condition should not have occurred. "
+                "\nPlease file a report issue on GitHub with a reproducible example of "
+                "how this condition was generated."
+                "\nhttps://github.com/pycaret/pycaret/issues/new/choose"
+            )
+
+    def _get_y_X_used_for_training(
+        self, estimator: BaseForecaster
+    ) -> Tuple[pd.Series, pd.DataFrame]:
+        """Returns the y and X values passed to the pipeline for training.
+        These values are the values before transformation and can be passed to
+        the complete pipeline again if needed for steps in the workflow.
+
+        NOTE: We can not use the pipeline here to extract the data used for training
+        since the pipeline might have been trained on the train dataset, but we may
+        have appended a finalized estimator to it. In this case, if we use the
+        pipeline to get the data used for training, we will incorrectly get the
+        train data instead of the full dataset. Hence, it is always better to use
+        the final model to get the data used for training.
+
+        Parameters
+        ----------
+        estimator: BaseForecaster
+            A sktime compatible model (without the pipeline). i.e. last step of
+            the pipeline TransformedTargetForecaster
+
+        Returns
+        -------
+        Tuple[pd.DataFrame, pd.DataFrame]
+            y and X values respectively used for training
+        """
+
+        if not self._is_estimator_finalized(estimator=estimator):
+            # Model has not been finalized ----
+            y = self.y_train
+            X = self.X_train
+        else:
             # Model has been finalized ----
             y = self.y
             X = self.X
-        else:
-            # Should not happen
-            raise ValueError(
-                "y indices in estimator (used for training) do not match with train "
-                "or full dataset. This should not happen"
-            )
+
         return y, X
 
     def get_residuals(self, estimator: BaseForecaster) -> Optional[pd.Series]:

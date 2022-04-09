@@ -27,6 +27,11 @@ from pycaret.utils.time_series.forecasting import (
     update_additional_scorer_kwargs,
 )
 
+from pycaret.utils.time_series.forecasting.pipeline import (
+    PyCaretForecastingPipeline,
+    _get_imputed_data,
+)
+
 
 def get_folds(cv, y) -> Generator[Tuple[pd.Series, pd.Series], None, None]:
     """
@@ -39,7 +44,7 @@ def get_folds(cv, y) -> Generator[Tuple[pd.Series, pd.Series], None, None]:
 
 
 def _fit_and_score(
-    forecaster,
+    forecaster: PyCaretForecastingPipeline,
     y: pd.Series,
     X: Optional[Union[pd.Series, pd.DataFrame]],
     scoring: Dict[str, Union[str, _PredictScorer]],
@@ -93,9 +98,26 @@ def _fit_and_score(
     if parameters is not None:
         forecaster.set_params(**parameters)
 
-    y_train, y_test = y[train], y[test]
+    y_imputed, _ = _get_imputed_data(pipeline=forecaster, y=y, X=X)
+
+    # y_train, X_train, X_test can have missing values since pipeline will impute them
+    y_train = y[train]
     X_train = None if X is None else X.iloc[train]
     X_test = None if X is None else X.iloc[test]
+
+    # y_test is "y_true" and used for metrics, hence it can not have missing values
+    # Hence using y_imputed
+    # Refer to: https://github.com/pycaret/pycaret/issues/2369
+    y_test_imputed = y_imputed[test]
+    y_train_imputed = y_imputed[train]  # Needed for MASE, RMSSE, etc.
+
+    if y_test_imputed.isna().sum() != 0:
+        raise ValueError(
+            "\ny_test has missing values. This condition should not have occurred. "
+            "\nPlease file a report issue on GitHub with a reproducible example of "
+            "how this condition was generated."
+            "\nhttps://github.com/pycaret/pycaret/issues/new/choose"
+        )
 
     #### Fit the forecaster ----
     start = time.time()
@@ -123,10 +145,10 @@ def _fit_and_score(
             forecaster=forecaster, X=X_test
         )
 
-        if (y_test.index.values != y_pred.index.values).any():
+        if (y_test_imputed.index.values != y_pred.index.values).any():
             print(
                 f"\t y_train: {y_train.index.values},"
-                f"\n\t y_test: {y_test.index.values}"
+                f"\n\t y_test: {y_test_imputed.index.values}"
             )
             print(f"\t y_pred: {y_pred.index.values}")
             raise ValueError(
@@ -141,7 +163,7 @@ def _fit_and_score(
     # SP should be passed from outside in additional_scorer_kwargs already
     additional_scorer_kwargs = update_additional_scorer_kwargs(
         initial_kwargs=additional_scorer_kwargs,
-        y_train=y_train,
+        y_train=y_train_imputed,
         lower=lower,
         upper=upper,
     )
@@ -158,7 +180,9 @@ def _fit_and_score(
                 **scorer._kwargs,
             }
             try:
-                metric = scorer._score_func(y_true=y_test, y_pred=y_pred, **kwargs)
+                metric = scorer._score_func(
+                    y_true=y_test_imputed, y_pred=y_pred, **kwargs
+                )
             except:
                 # Missing values in y_train will cause MASE to fail.
                 metric = np.nan
