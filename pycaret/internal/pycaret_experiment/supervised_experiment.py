@@ -4352,6 +4352,18 @@ class _SupervisedExperiment(_TabularExperiment):
                     is_custom=True,
                 )
             )
+        if self._ml_usecase == MLUsecase.TIME_SERIES:
+            new_metric = (
+                pycaret.containers.metrics.time_series.TimeSeriesMetricContainer(
+                    id=id,
+                    name=name,
+                    score_func=score_func,
+                    args=kwargs,
+                    display_name=name,
+                    greater_is_better=greater_is_better,
+                    is_custom=True,
+                )
+            )
         else:
             new_metric = (
                 pycaret.containers.metrics.regression.RegressionMetricContainer(
