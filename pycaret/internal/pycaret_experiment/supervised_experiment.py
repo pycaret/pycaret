@@ -23,6 +23,7 @@ import pycaret.internal.patches.yellowbrick
 from pycaret.internal.distributions import *
 from pycaret.internal.validation import *
 from pycaret.internal.tunable import TunableMixin
+from pycaret.utils._dependencies import _check_soft_dependencies
 import pycaret.internal.preprocess
 import pycaret.internal.persistence
 import pandas as pd  # type ignore
@@ -212,9 +213,9 @@ class _SupervisedExperiment(_TabularExperiment):
         self.experiment__.append(("Transformation Pipeline", self.pipeline))
 
         if self.logging_param:
+            _check_soft_dependencies("mlflow", extra="mlops", error="raise")
 
             self.logger.info("Logging experiment in MLFlow")
-
             import mlflow
 
             try:
