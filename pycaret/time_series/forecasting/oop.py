@@ -440,7 +440,8 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         ValueError
             Raised when
             (1) Index has duplicate values.
-            (2) Index is not one of the allowed types and seasonal period is not provided
+            (2) Data has missing index values.
+            (3) Index is not one of the allowed types and seasonal period is not provided
         """
 
         #### Set Index if necessary ----
@@ -464,7 +465,9 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         #### Data must not have duplicate indices ----
         if len(self.data.index) != len(set(self.data.index)):
-            raise ValueError("Index may not have duplicate values!")
+            raise ValueError(
+                "Index may not have duplicate values! Please check and correct before passing to pycaret"
+            )
 
         #### Check Index Type ----
         allowed_freq_index_types = (pd.PeriodIndex, pd.DatetimeIndex)
@@ -485,6 +488,25 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         # Ref: https://github.com/alan-turing-institute/sktime/blob/v0.10.0/sktime/forecasting/base/_fh.py#L524
         if isinstance(self.data.index, pd.DatetimeIndex):
             self.data.index = self.data.index.to_period()
+
+        #### Data must not have missing indices ----
+        if isinstance(self.data.index, pd.PeriodIndex):
+            expected_idx = pd.period_range(min(self.data.index), max(self.data.index))
+            if len(self.data.index) != len(expected_idx):
+                missing_index = [
+                    index for index in expected_idx if index not in self.data.index
+                ]
+                raise ValueError(
+                    f"Missing Indices\n\n{missing_index}"
+                    "\n\nData has missing indices!"
+                    "\nMany models, plotting, and testing functionality does not work with missing indices."
+                    "\nPlease add missing indices to data before passing to pycaret."
+                    "\nYou can do that by using the following code snippet & then enabling imputation of missing values in `setup`"
+                    "\n\n# Assuming `data` is a pandas dataframe"
+                    "\n>>> import numpy as np"
+                    "\n>>> idx = pd.period_range(min(data.index), max(data.index))"
+                    "\n>>> data = data.reindex(idx, fill_value=np.nan)"
+                )
 
         #### Save index type so that we can disable certain models ----
         # E.g. Prophet when index if of type RangeIndex
@@ -1065,8 +1087,10 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
     def _check_setup_ran(self):
         if not self._setup_ran:
-            raise RuntimeError("This function requires the users to run setup() first.\
-                More info: https://pycaret.gitbook.io/docs/get-started/quickstart")
+            raise RuntimeError(
+                "This function requires the users to run setup() first."
+                "\nMore info: https://pycaret.gitbook.io/docs/get-started/quickstart"
+            )
 
     def setup(
         self,
@@ -4354,15 +4378,3 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         """
         additional_scorer_kwargs = {"sp": self.primary_sp_to_use}
         return additional_scorer_kwargs
-
-
-class TimeSeriesExperiment(TSForecastingExperiment):
-    def __init__(self) -> None:
-        msg = (
-            "DeprecationWarning: TimeSeriesExperiment class will be removed in "
-            "a future release. Please import the following instead. \n"
-            ">>> from pycaret.time_series import TSForecastingExperiment"
-        )
-        warnings.warn(msg, DeprecationWarning)
-        print(msg)
-        super().__init__()

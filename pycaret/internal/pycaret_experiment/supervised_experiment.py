@@ -23,6 +23,7 @@ import pycaret.internal.patches.yellowbrick
 from pycaret.internal.distributions import *
 from pycaret.internal.validation import *
 from pycaret.internal.tunable import TunableMixin
+from pycaret.utils._dependencies import _check_soft_dependencies
 import pycaret.internal.preprocess
 import pycaret.internal.persistence
 import pandas as pd  # type ignore
@@ -212,9 +213,9 @@ class _SupervisedExperiment(_TabularExperiment):
         self.experiment__.append(("Transformation Pipeline", self.pipeline))
 
         if self.logging_param:
+            _check_soft_dependencies("mlflow", extra="mlops", error="raise")
 
             self.logger.info("Logging experiment in MLFlow")
-
             import mlflow
 
             try:
@@ -4348,6 +4349,18 @@ class _SupervisedExperiment(_TabularExperiment):
                     display_name=name,
                     greater_is_better=greater_is_better,
                     is_multiclass=bool(multiclass),
+                    is_custom=True,
+                )
+            )
+        if self._ml_usecase == MLUsecase.TIME_SERIES:
+            new_metric = (
+                pycaret.containers.metrics.time_series.TimeSeriesMetricContainer(
+                    id=id,
+                    name=name,
+                    score_func=score_func,
+                    args=kwargs,
+                    display_name=name,
+                    greater_is_better=greater_is_better,
                     is_custom=True,
                 )
             )
