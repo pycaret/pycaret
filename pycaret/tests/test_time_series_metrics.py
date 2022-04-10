@@ -8,6 +8,7 @@ import pandas as pd  # type: ignore
 from pycaret.datasets import get_data
 from pycaret.time_series import TSForecastingExperiment
 from pycaret.containers.metrics.time_series import coverage
+from pycaret.time_series import TSForecastingExperiment
 
 
 pytestmark = pytest.mark.filterwarnings("ignore::UserWarning")
@@ -183,3 +184,50 @@ def test_metrics_with_missing_values_exo():
     _ = exp.predict_model(model)
     test_results = exp.pull()
     assert test_results.isna().sum().sum() == 0
+
+
+def test_add_custom_metric(load_pos_data):
+    """Tests addition of custom metrics"""
+    exp = TSForecastingExperiment()
+    data = load_pos_data
+    FH = 12
+
+    exp.setup(data=data, fh=FH, session_id=42)
+
+    def abs_bias(y_true, y_pred, norm=True):
+        """Measures the bias in the predictions (aka Cumulative Forecast Error (CFE)
+        Absolute value returned so it can be used in scoring
+
+        Ref: https://medium.com/towards-data-science/forecast-error-measures-intermittent-demand-22617a733c9e
+        """
+        from pycaret.containers.metrics.time_series import _check_series
+
+        y_true = _check_series(y_true)
+        y_pred = _check_series(y_pred)
+
+        abs_bias = np.abs(np.sum(y_pred - y_true))
+        if norm:
+            abs_bias = abs_bias / len(y_true)
+        print(f"abs_bias: {abs_bias}")
+        return abs_bias
+
+    # Add two custom metrics with kwargs
+    exp.add_metric(
+        "abs_bias_norm", "ABS_BIAS_NORM", abs_bias, greater_is_better=False, norm=True
+    )
+    exp.add_metric(
+        "abs_bias_cum", "ABS_BIAS_CUM", abs_bias, greater_is_better=False, norm=False
+    )
+
+    _ = exp.create_model("arima")
+    metrics = exp.pull()
+
+    # test that columns got added properly
+    assert "ABS_BIAS_NORM" in metrics.columns
+    assert "ABS_BIAS_CUM" in metrics.columns
+
+    # test that kwargs works
+    assert (
+        (metrics["ABS_BIAS_CUM"] / FH).values.round(4)
+        == metrics["ABS_BIAS_NORM"].values.round(4)
+    ).all()

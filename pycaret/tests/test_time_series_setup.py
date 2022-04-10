@@ -2,7 +2,8 @@
 """
 import math
 import pytest
-import numpy as np  # type: ignore
+import numpy as np
+import pandas as pd
 
 from pycaret.datasets import get_data
 from pycaret.time_series import TSForecastingExperiment
@@ -359,3 +360,23 @@ def test_train_test_split(load_pos_and_neg_data):
     exp.setup(data=data, fh=fh, session_id=42)
     y_test = exp.get_config("y_test")
     assert len(y_test) == len(fh)
+
+
+def test_missing_indices():
+    """Tests setup when data has missing indices"""
+
+    data = pd.read_csv(
+        "https://raw.githubusercontent.com/facebook/prophet/main/examples/example_wp_log_peyton_manning.csv"
+    )
+    data["ds"] = pd.to_datetime(data["ds"])
+    data.set_index("ds", inplace=True)
+    data.index = data.index.to_period("D")
+    data.info()
+
+    exp = TSForecastingExperiment()
+
+    with pytest.raises(ValueError) as errmsg:
+        exp.setup(data=data, fh=365, session_id=42)
+    exceptionmsg = errmsg.value.args[0]
+
+    assert "Data has missing indices!" in exceptionmsg
