@@ -474,7 +474,7 @@ class _TabularExperiment(_PyCaretExperiment):
                     raise ImportError(message)
                 else:
                     self.logger.warning(message)
-                    
+
         return self
 
     @staticmethod
@@ -2603,11 +2603,16 @@ class _TabularExperiment(_PyCaretExperiment):
         Success_Message
 
         """
+        if self._ml_usecase == MLUsecase.TIME_SERIES:
+            pipeline_to_use = self._get_pipeline_to_use(estimator=model)
+        else:
+            pipeline_to_use = self.pipeline
+
         return pycaret.internal.persistence.save_model(
-            model,
-            model_name,
-            None if model_only else self.pipeline,
-            verbose,
+            model=model,
+            model_name=model_name,
+            prep_pipe_=None if model_only else pipeline_to_use,
+            verbose=verbose,
             use_case=self._ml_usecase,
             **kwargs,
         )

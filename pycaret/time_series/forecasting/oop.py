@@ -880,8 +880,10 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             target_steps=self.pipe_steps_target,
             exogenous_steps=self.pipe_steps_exogenous,
         )
+        self.pipeline_fully_trained = deepcopy(self.pipeline)
 
         self.pipeline.fit(y=self.y_train, X=self.X_train, fh=self.fh)
+        self.pipeline_fully_trained.fit(y=self.y, X=self.X, fh=self.fh)
 
         # TODO: Add check here to make sure that if imputer is present, that it
         # is the first step for both X and y
@@ -1794,6 +1796,9 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         ###############################################
         #### Add the correct model to the pipeline ####
         ###############################################
+        # Since we are always fitting the model here, we can just append the pipeline
+        # irrespective of whether the data is the training data (y_train, X_train), or
+        # the full data (y, X), The fitting process will take care of this appropriately.
         pipeline_with_model = _add_model_to_pipeline(
             pipeline=self.pipeline, model=model
         )
@@ -1869,6 +1874,9 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         ###############################################
         #### Add the correct model to the pipeline ####
         ###############################################
+        # Since we are always fitting the model here, we can just append the pipeline
+        # irrespective of whether the data is the training data (y_train, X_train), or
+        # the full data (y, X), The fitting process will take care of this appropriately.
         pipeline_with_model = _add_model_to_pipeline(
             pipeline=self.pipeline, model=model
         )
@@ -3048,9 +3056,12 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                 # Use Case 1 & 2
                 # Deep Cloning to prevent overwriting the fh when user specifies their own fh
                 estimator_ = deepcopy(estimator)
+
+                pipeline_to_use = self._get_pipeline_to_use(estimator=estimator_)
                 pipeline_with_model = _add_model_to_pipeline(
-                    pipeline=self.pipeline, model=estimator_
+                    pipeline=pipeline_to_use, model=estimator_
                 )
+
             else:
                 raise ValueError(
                     "\n\nSetup has not been run and you have provided a estimator without the pipeline. "
@@ -4414,6 +4425,33 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         """
         additional_scorer_kwargs = {"sp": self.primary_sp_to_use}
         return additional_scorer_kwargs
+
+    def _get_pipeline_to_use(
+        self, estimator: BaseForecaster
+    ) -> PyCaretForecastingPipeline:
+        """Depending on the estimator that must be added to the pipeline, this
+        method will fetch the correct pipeline with the right memory in it. If
+        the estimator has not been finalized, this will fetch the pipeline with
+        memory of y_train, X_train. If the estimator has been finalized, this
+        will fetch the pipeline with memory of the entire dataset (y, X).
+
+        Parameters
+        ----------
+        estimator : BaseForecaster
+           The estimator used to decide the pipeline to fetch
+
+        Returns
+        -------
+        PyCaretForecastingPipeline
+            The pipeline with the correct memory based on the estimator
+        """
+
+        pipeline_to_use = (
+            self.pipeline_fully_trained
+            if self._is_estimator_finalized(estimator)
+            else self.pipeline
+        )
+        return pipeline_to_use
 
 
 class TimeSeriesExperiment(TSForecastingExperiment):

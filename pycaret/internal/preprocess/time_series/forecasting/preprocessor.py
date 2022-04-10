@@ -25,6 +25,13 @@ class TSForecastingPreprocessor:
         self.pipe_steps_target = []
         self.pipe_steps_exogenous = []
 
+        # Pipeline which is trained only on the training split
+        self.pipeline = None
+
+        # Pipeline which is trained only on the complete data
+        # Used when model has been finalized
+        self.pipeline_fully_trained = None
+
     def _imputation(
         self,
         numeric_imputation_target: Optional[Union[str, int, float]],
