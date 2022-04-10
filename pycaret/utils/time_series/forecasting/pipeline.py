@@ -126,11 +126,17 @@ def _get_imputed_data(
         Imputed y and X values respectively
     """
 
-    X_imputed = X.copy() if X is not None else None
-    for _, transformer_X in pipeline.steps_:
-        if isinstance(transformer_X, Imputer):
-            X_imputed = transformer_X.fit_transform(X)
-            continue
+    if X is None:
+        # No exogenous variables
+        # Note: fit_transform does not work when X is None
+        X_imputed = None
+    else:
+        # Exogenous variables present
+        X_imputed = X.copy()
+        for _, transformer_X in pipeline.steps_:
+            if isinstance(transformer_X, Imputer):
+                X_imputed = transformer_X.fit_transform(X, y)
+                continue
 
     y_imputed = y.copy()
     for _, transformer_y in pipeline.steps_[-1][1].steps_:

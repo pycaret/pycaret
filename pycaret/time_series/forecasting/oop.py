@@ -910,9 +910,12 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                 exogenous_present=self.exogenous_present,
             )
 
-        # # Add custom transformers to the pipeline
+        # TODO Add custom transformers to the pipeline
         # if custom_pipeline:
         #     self._add_custom_pipeline(custom_pipeline)
+        # TODO: When adding custom pipeline, also add checks to make sure:
+        # (1) 1st step for both X and y is Imputer
+        # (2) If 1st step is imputer, there can be other imputers as well.
 
         self.pipeline = self._create_pipeline(
             model=DummyForecaster(),

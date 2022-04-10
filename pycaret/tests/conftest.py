@@ -16,6 +16,13 @@ from .time_series_test_utils import _BLEND_TEST_MODELS
 #############################
 
 
+@pytest.fixture(scope="session", name="load_pos_data")
+def load_pos_data():
+    """Load Pycaret Airline dataset."""
+    data = get_data("airline")
+    return data
+
+
 @pytest.fixture(scope="session", name="load_pos_and_neg_data")
 def load_pos_and_neg_data():
     """Load Pycaret Airline dataset (with some negative values)."""
@@ -39,6 +46,17 @@ def load_uni_exo_data_target_positive():
     data = data.clip(lower=0.1)
     target = "Consumption"
     return data, target
+
+
+@pytest.fixture(scope="session", name="load_pos_data_missing")
+def load_pos_data_missing():
+    """Load Pycaret Airline dataset (with missing values)."""
+    data = get_data("airline")
+    remove_n = int(0.4 * len(data))
+    np.random.seed(42)
+    na_indices = np.random.choice(data.index, remove_n, replace=False)
+    data[na_indices] = np.nan
+    return data
 
 
 @pytest.fixture(scope="session", name="load_pos_and_neg_data_missing")
@@ -76,13 +94,6 @@ def load_models_uni_mix_exo_noexo():
     # TODO: Later, get this dynamically from sktime
     models = ["naive", "ets", "arima"]
     return models
-
-
-@pytest.fixture(scope="session", name="load_pos_data")
-def load_pos_data():
-    """Load Pycaret Airline dataset."""
-    data = get_data("airline")
-    return data
 
 
 @pytest.fixture(scope="session", name="load_setup")
