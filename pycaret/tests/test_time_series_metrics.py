@@ -175,7 +175,7 @@ def test_metrics_with_missing_values_exo():
     assert test_results.isna().sum().sum() == 0
 
     #####################################
-    #### 1: Without Cross-Validation ####
+    #### 2: Without Cross-Validation ####
     #####################################
 
     model = exp.create_model("lr_cds_dt", cross_validation=False)
