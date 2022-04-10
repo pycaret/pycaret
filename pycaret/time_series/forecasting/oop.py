@@ -20,6 +20,7 @@ from sktime.forecasting.model_selection import (
 )
 
 from sktime.forecasting.base import BaseForecaster
+from sktime.transformations.series.impute import Imputer
 
 # from sktime.forecasting.compose import ForecastingPipeline
 from pycaret.utils.time_series.forecasting import PyCaretForecastingHorizonTypes
@@ -697,6 +698,44 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         return self
 
+    def _check_pipeline(self):
+        """Checks to make sure that if Imputer is present, that it is the first
+        step for both y and X transformations. Also, note that the user may append
+        a custom imputer after the first step as well. This is fine as long as the
+        first step is an Imputer.
+
+        Raises
+        ------
+        ValueError
+            If Imputer is present for either X or y but is not the first step in
+            the transformation.
+        """
+        imputer_X_first_step_present = False
+        for i, (_, transformer_X) in enumerate(self.pipeline.steps_):
+            if isinstance(transformer_X, Imputer):
+                if i == 0:
+                    imputer_X_first_step_present = True
+                elif i > 0 and imputer_X_first_step_present is False:
+                    raise ValueError(
+                        "Imputer for X is present in the pipeline but is not the first step."
+                        "\nSince many models, tests, and plots depend on the data having no "
+                        "missing values, the Imputer needs to be the first step in the pipeline. "
+                        "\nPlease fix to continue."
+                    )
+
+        imputer_y_first_step_present = False
+        for i, (_, transformer_y) in enumerate(self.pipeline.steps_[-1][1].steps_):
+            if isinstance(transformer_y, Imputer):
+                if i == 0:
+                    imputer_y_first_step_present = True
+                elif i > 0 and imputer_y_first_step_present is False:
+                    raise ValueError(
+                        "Imputer for y is present in the pipeline but is not the first step."
+                        "\nSince many models, tests, and plots depend on the data having no "
+                        "missing values, the Imputer needs to be the first step in the pipeline. "
+                        "\nPlease fix to continue."
+                    )
+
     def _check_transformations(self):
         """Checks that the transformations are valid
 
@@ -880,13 +919,14 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             target_steps=self.pipe_steps_target,
             exogenous_steps=self.pipe_steps_exogenous,
         )
+        self._check_pipeline()
+
         self.pipeline_fully_trained = deepcopy(self.pipeline)
 
+        # Fit pipelines
         self.pipeline.fit(y=self.y_train, X=self.X_train, fh=self.fh)
         self.pipeline_fully_trained.fit(y=self.y, X=self.X, fh=self.fh)
 
-        # TODO: Add check here to make sure that if imputer is present, that it
-        # is the first step for both X and y
         self._check_transformations()
 
         self.logger.info("Finished creating preprocessing pipeline.")

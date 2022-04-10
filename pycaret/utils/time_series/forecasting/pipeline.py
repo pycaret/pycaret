@@ -6,6 +6,7 @@ import pandas as pd
 from sktime.forecasting.base import BaseForecaster
 from sktime.forecasting.compose import ForecastingPipeline
 from sktime.forecasting.compose import TransformedTargetForecaster
+from sktime.transformations.series.impute import Imputer
 
 
 class PyCaretForecastingPipeline(ForecastingPipeline):
@@ -95,6 +96,14 @@ def _get_imputed_data(
 ) -> Tuple[pd.Series, Optional[pd.DataFrame]]:
     """Passes y and X through the pipeline and returns the imputed data.
 
+    Assumption
+    ----------
+    If imputer is present in the pipeline, then it must be the first step.
+    This check is done at the time the pipeline is created and is not repeated
+    here. Also, note that the user may append a custom imputer after the first
+    step as well. This is fine as long as the first step is an Imputer.
+    This function will only return the output of the Imputer in the first step.
+
     Parameters
     ----------
     pipeline : PyCaretForecastingPipeline
@@ -117,20 +126,16 @@ def _get_imputed_data(
         Imputed y and X values respectively
     """
 
-    if len(pipeline.steps_) == 1:
-        # No transformation
-        X_imputed = X.copy() if X is not None else None
-    else:
-        # First `exogenous_steps` is the imputer for X
-        imputer_X = pipeline.steps_[0][1]
-        X_imputed = imputer_X.fit_transform(X)
+    X_imputed = X.copy() if X is not None else None
+    for _, transformer_X in pipeline.steps_:
+        if isinstance(transformer_X, Imputer):
+            X_imputed = transformer_X.fit_transform(X)
+            continue
 
-    if len(pipeline.steps_[-1][1].steps_) == 1:
-        # No y transformations
-        y_imputed = y.copy()
-    else:
-        # First `target_steps` is the imputer for y.
-        imputer_y = pipeline.steps_[-1][1].steps_[0][1]
-        y_imputed = imputer_y.fit_transform(y)
+    y_imputed = y.copy()
+    for _, transformer_y in pipeline.steps_[-1][1].steps_:
+        if isinstance(transformer_y, Imputer):
+            y_imputed = transformer_y.fit_transform(y)
+            continue
 
     return y_imputed, X_imputed
