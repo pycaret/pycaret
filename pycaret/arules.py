@@ -311,31 +311,17 @@ def plot_model(model, plot="2d", scale=1, display_format=None):
     # copy dataframe
     data_ = model.copy()
 
-    antecedents = []
-    for i in data_["antecedents"]:
-        i = str(i)
-        a = i.split(sep="'")
-        a = a[1]
-        antecedents.append(a)
-
-    data_["antecedents"] = antecedents
+    data_["antecedents"] = [list(i) for i in data_["antecedents"]]
 
     antecedents_short = []
 
-    for i in antecedents:
+    for i in data_["antecedents"]:
         a = i[:10]
         antecedents_short.append(a)
 
     data_["antecedents_short"] = antecedents_short
 
-    consequents = []
-    for i in data_["consequents"]:
-        i = str(i)
-        a = i.split(sep="'")
-        a = a[1]
-        consequents.append(a)
-
-    data_["consequents"] = consequents
+    data_["consequents"] = [list(i) for i in data_["consequents"]]
 
     if plot == "2d":
 
