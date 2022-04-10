@@ -45,12 +45,35 @@ _model_names_for_missing_data = _return_model_names_for_missing_data()
 ##########################
 
 
+def test_pipeline_no_exo_but_exo_steps(load_pos_and_neg_data):
+    """Tests preprocessing pipeline data types without exogenous variables"""
+    data = load_pos_and_neg_data
+
+    exp = TSForecastingExperiment()
+
+    #### Make sure that no exogenous steps are added to the pipeline when
+    # there is no exogenous data
+    exp.setup(data=data, numeric_imputation_exogenous=True)
+    assert len(exp.pipeline.steps) == 1
+
+    exp.setup(data=data, numeric_imputation_exogenous=True, transform_exogenous="cos")
+    assert len(exp.pipeline.steps) == 1
+
+    exp.setup(data=data, numeric_imputation_exogenous=True, scale_exogenous="min-max")
+    assert len(exp.pipeline.steps) == 1
+
+    exp.setup(
+        data=data,
+        numeric_imputation_exogenous=True,
+        transform_exogenous="cos",
+        scale_exogenous="min-max",
+    )
+    assert len(exp.pipeline.steps) == 1
+
+
 def test_pipeline_types_no_exo(load_pos_and_neg_data):
     """Tests preprocessing pipeline data types without exogenous variables"""
-    data = load_pos_and_neg_data  # _check_data_for_prophet(name, load_pos_and_neg_data)
-
-    # # Simulate misssing values
-    # data[10:20] = np.nan
+    data = load_pos_and_neg_data
 
     exp = TSForecastingExperiment()
 
