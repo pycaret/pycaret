@@ -29,6 +29,7 @@ from pycaret.utils.time_series.forecasting.pipeline import (
     _add_model_to_pipeline,
     _are_pipeline_tansformations_empty,
     _get_imputed_data,
+    _get_pipeline_estimator_label,
 )
 from pycaret.utils.time_series.forecasting.models import DummyForecaster
 from sktime.forecasting.compose import TransformedTargetForecaster
@@ -1947,7 +1948,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         )
 
         scores, cutoffs = cross_validate(
-            forecaster=pipeline_with_model,
+            pipeline=pipeline_with_model,
             y=data_y,
             X=data_X,
             scoring=metrics_dict,
@@ -2405,25 +2406,28 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         # with estimator_pipeline(self.pipeline, model) as pipeline_with_model:
         if True:
 
-            # fit_kwargs = get_pipeline_fit_kwargs(pipeline_with_model, fit_kwargs)
+            ###############################################
+            #### Add the correct model to the pipeline ####
+            ###############################################
+            # Since we are always fitting the model here, we can just append the pipeline
+            # irrespective of whether the data is the training data (y_train, X_train), or
+            # the full data (y, X), The fitting process will take care of this appropriately.
+            pipeline_with_model = _add_model_to_pipeline(
+                pipeline=self.pipeline, model=model
+            )
 
-            # fh_param = {"fh": cv.fh}
-            # if fit_kwargs is None:
-            #     fit_kwargs = fh_param
-            # else:
-            #     fit_kwargs.update(fh_param)
             fit_kwargs = self.update_fit_kwargs_with_fh_from_cv(
                 fit_kwargs=fit_kwargs, cv=cv
             )
 
-            # actual_estimator_label = get_pipeline_estimator_label(pipeline_with_model)
-            actual_estimator_label = ""
-
-            # suffixes.append(actual_estimator_label)
-
-            # suffixes = "__".join(reversed(suffixes))
-
-            # param_grid = {f"{suffixes}__{k}": v for k, v in param_grid.items()}
+            #### START: Update the param_grid to take the pipeline into account correctly ----
+            actual_estimator_label = _get_pipeline_estimator_label(
+                pipeline=pipeline_with_model
+            )
+            suffixes.append(actual_estimator_label)
+            suffixes = "__".join(reversed(suffixes))
+            param_grid = {f"{suffixes}__{k}": v for k, v in param_grid.items()}
+            #### END: param_grid updated to take the pipeline into account.
 
             if estimator_definition is not None:
                 search_kwargs = {**estimator_definition.tune_args, **kwargs}
@@ -2453,7 +2457,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                     self.logger.info("Initializing ForecastingGridSearchCV")
 
                     model_grid = ForecastingGridSearchCV(
-                        forecaster=model,
+                        forecaster=pipeline_with_model,
                         cv=cv,
                         param_grid=param_grid,
                         scoring=optimize_metric_dict,
@@ -2467,7 +2471,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                     self.logger.info("Initializing ForecastingRandomizedGridSearchCV")
 
                     model_grid = ForecastingRandomizedSearchCV(
-                        forecaster=model,
+                        forecaster=pipeline_with_model,
                         cv=cv,
                         param_distributions=param_grid,
                         n_iter=n_iter,
@@ -2495,11 +2499,16 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             best_params = model_grid.best_params_
             self.logger.info(f"best_params: {best_params}")
             best_params = {**best_params}
+
+            #### START: Strip out the pipeline step names from best parameters and
+            # only keep final model params. e.g. if one of the best params is
+            # `forecaster__model__sp: 12`, this will make it `sp: 12`
             if actual_estimator_label:
                 best_params = {
                     k.replace(f"{actual_estimator_label}__", ""): v
                     for k, v in best_params.items()
                 }
+            #### END Stripping of the pipeline step names.
             cv_results = None
             try:
                 cv_results = model_grid.cv_results_
@@ -3995,6 +4004,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         fold: Optional[Union[int, Any]] = None,
         fold_strategy: Optional[str] = None,
     ) -> Union[ExpandingWindowSplitter, SlidingWindowSplitter]:
+
         """Returns the cv object based on number of folds and fold_strategy
 
         Parameters
@@ -4010,7 +4020,8 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         Returns
         -------
         Union[ExpandingWindowSplitter, SlidingWindowSplitter]
-            The cross-validation object
+            The sktime compatible cross-validation object.
+            e.g. ExpandingWindowSplitter or SlidingWindowSplitter
 
         Raises
         ------

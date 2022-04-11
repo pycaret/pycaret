@@ -145,3 +145,31 @@ def _get_imputed_data(
             continue
 
     return y_imputed, X_imputed
+
+
+def _get_pipeline_estimator_label(
+    pipeline: PyCaretForecastingPipeline,
+) -> str:
+    """Returns the name of the Transformed Target Forecaster in the pipeline along
+    with the name of the final model step in the pipeline.
+
+    These names can be used to adjust the search space while tuning the pipeline in
+    tune_models (defined search space is only for the models, but we pass the entire
+    pipeline for tuning. Hence the model search space has to be adjusted appropriately
+    by adding the step names in front).
+
+    Parameters
+    ----------
+    pipeline : PyCaretForecastingPipeline
+        The pipeline used for modeling
+
+    Returns
+    -------
+    str
+        Name of the TransformedTargetForecaster in the pipeline and the name of
+        the final model inside the TransformedTargetForecaster. Returns a single
+        string appended with "__".
+    """
+    name_ttf, transformed_target_forecaster = pipeline.steps_[-1]
+    name_model, _ = transformed_target_forecaster.steps_[-1]
+    return name_ttf + "__" + name_model

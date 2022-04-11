@@ -78,8 +78,10 @@ def test_custom_models(load_pos_data):
         return_tuner=True,
     )
     assert type(tuned_model) == type(forecaster)
-    assert "param_impute__method" in pd.DataFrame(tuner.cv_results_)
-    for index, method in enumerate(tuner.cv_results_.get("param_impute__method")):
+    assert "param_forecaster__model__impute__method" in pd.DataFrame(tuner.cv_results_)
+    for index, method in enumerate(
+        tuner.cv_results_.get("param_forecaster__model__impute__method")
+    ):
         assert method == impute_values[index]
 
     ############################
