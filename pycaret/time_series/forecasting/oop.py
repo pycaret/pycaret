@@ -20,6 +20,7 @@ from sktime.forecasting.model_selection import (
 )
 
 from sktime.forecasting.base import BaseForecaster
+from sktime.transformations.series.impute import Imputer
 
 # from sktime.forecasting.compose import ForecastingPipeline
 from pycaret.utils.time_series.forecasting import PyCaretForecastingHorizonTypes
@@ -27,6 +28,8 @@ from pycaret.utils.time_series.forecasting.pipeline import (
     PyCaretForecastingPipeline,
     _add_model_to_pipeline,
     _are_pipeline_tansformations_empty,
+    _get_imputed_data,
+    _get_pipeline_estimator_label,
 )
 from pycaret.utils.time_series.forecasting.models import DummyForecaster
 from sktime.forecasting.compose import TransformedTargetForecaster
@@ -718,6 +721,44 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         return self
 
+    def _check_pipeline(self):
+        """Checks to make sure that if Imputer is present, that it is the first
+        step for both y and X transformations. Also, note that the user may append
+        a custom imputer after the first step as well. This is fine as long as the
+        first step is an Imputer.
+
+        Raises
+        ------
+        ValueError
+            If Imputer is present for either X or y but is not the first step in
+            the transformation.
+        """
+        imputer_X_first_step_present = False
+        for i, (_, transformer_X) in enumerate(self.pipeline.steps_):
+            if isinstance(transformer_X, Imputer):
+                if i == 0:
+                    imputer_X_first_step_present = True
+                elif i > 0 and imputer_X_first_step_present is False:
+                    raise ValueError(
+                        "Imputer for X is present in the pipeline but is not the first step."
+                        "\nSince many models, tests, and plots depend on the data having no "
+                        "missing values, the Imputer needs to be the first step in the pipeline. "
+                        "\nPlease fix to continue."
+                    )
+
+        imputer_y_first_step_present = False
+        for i, (_, transformer_y) in enumerate(self.pipeline.steps_[-1][1].steps_):
+            if isinstance(transformer_y, Imputer):
+                if i == 0:
+                    imputer_y_first_step_present = True
+                elif i > 0 and imputer_y_first_step_present is False:
+                    raise ValueError(
+                        "Imputer for y is present in the pipeline but is not the first step."
+                        "\nSince many models, tests, and plots depend on the data having no "
+                        "missing values, the Imputer needs to be the first step in the pipeline. "
+                        "\nPlease fix to continue."
+                    )
+
     def _check_transformations(self):
         """Checks that the transformations are valid
 
@@ -892,17 +933,26 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                 exogenous_present=self.exogenous_present,
             )
 
-        # # Add custom transformers to the pipeline
+        # TODO Add custom transformers to the pipeline
         # if custom_pipeline:
         #     self._add_custom_pipeline(custom_pipeline)
+        # TODO: When adding custom pipeline, also add checks to make sure:
+        # (1) 1st step for both X and y is Imputer
+        # (2) If 1st step is imputer, there can be other imputers as well.
 
         self.pipeline = self._create_pipeline(
             model=DummyForecaster(),
             target_steps=self.pipe_steps_target,
             exogenous_steps=self.pipe_steps_exogenous,
         )
+        self._check_pipeline()
 
+        self.pipeline_fully_trained = deepcopy(self.pipeline)
+
+        # Fit pipelines
         self.pipeline.fit(y=self.y_train, X=self.X_train, fh=self.fh)
+        self.pipeline_fully_trained.fit(y=self.y, X=self.X, fh=self.fh)
+
         self._check_transformations()
 
         self.logger.info("Finished creating preprocessing pipeline.")
@@ -1812,6 +1862,9 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         ###############################################
         #### Add the correct model to the pipeline ####
         ###############################################
+        # Since we are always fitting the model here, we can just append the pipeline
+        # irrespective of whether the data is the training data (y_train, X_train), or
+        # the full data (y, X), The fitting process will take care of this appropriately.
         pipeline_with_model = _add_model_to_pipeline(
             pipeline=self.pipeline, model=model
         )
@@ -1887,12 +1940,15 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         ###############################################
         #### Add the correct model to the pipeline ####
         ###############################################
+        # Since we are always fitting the model here, we can just append the pipeline
+        # irrespective of whether the data is the training data (y_train, X_train), or
+        # the full data (y, X), The fitting process will take care of this appropriately.
         pipeline_with_model = _add_model_to_pipeline(
             pipeline=self.pipeline, model=model
         )
 
         scores, cutoffs = cross_validate(
-            forecaster=pipeline_with_model,
+            pipeline=pipeline_with_model,
             y=data_y,
             X=data_X,
             scoring=metrics_dict,
@@ -2350,25 +2406,28 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         # with estimator_pipeline(self.pipeline, model) as pipeline_with_model:
         if True:
 
-            # fit_kwargs = get_pipeline_fit_kwargs(pipeline_with_model, fit_kwargs)
+            ###############################################
+            #### Add the correct model to the pipeline ####
+            ###############################################
+            # Since we are always fitting the model here, we can just append the pipeline
+            # irrespective of whether the data is the training data (y_train, X_train), or
+            # the full data (y, X), The fitting process will take care of this appropriately.
+            pipeline_with_model = _add_model_to_pipeline(
+                pipeline=self.pipeline, model=model
+            )
 
-            # fh_param = {"fh": cv.fh}
-            # if fit_kwargs is None:
-            #     fit_kwargs = fh_param
-            # else:
-            #     fit_kwargs.update(fh_param)
             fit_kwargs = self.update_fit_kwargs_with_fh_from_cv(
                 fit_kwargs=fit_kwargs, cv=cv
             )
 
-            # actual_estimator_label = get_pipeline_estimator_label(pipeline_with_model)
-            actual_estimator_label = ""
-
-            # suffixes.append(actual_estimator_label)
-
-            # suffixes = "__".join(reversed(suffixes))
-
-            # param_grid = {f"{suffixes}__{k}": v for k, v in param_grid.items()}
+            #### START: Update the param_grid to take the pipeline into account correctly ----
+            actual_estimator_label = _get_pipeline_estimator_label(
+                pipeline=pipeline_with_model
+            )
+            suffixes.append(actual_estimator_label)
+            suffixes = "__".join(reversed(suffixes))
+            param_grid = {f"{suffixes}__{k}": v for k, v in param_grid.items()}
+            #### END: param_grid updated to take the pipeline into account.
 
             if estimator_definition is not None:
                 search_kwargs = {**estimator_definition.tune_args, **kwargs}
@@ -2398,7 +2457,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                     self.logger.info("Initializing ForecastingGridSearchCV")
 
                     model_grid = ForecastingGridSearchCV(
-                        forecaster=model,
+                        forecaster=pipeline_with_model,
                         cv=cv,
                         param_grid=param_grid,
                         scoring=optimize_metric_dict,
@@ -2412,7 +2471,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                     self.logger.info("Initializing ForecastingRandomizedGridSearchCV")
 
                     model_grid = ForecastingRandomizedSearchCV(
-                        forecaster=model,
+                        forecaster=pipeline_with_model,
                         cv=cv,
                         param_distributions=param_grid,
                         n_iter=n_iter,
@@ -2440,11 +2499,16 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             best_params = model_grid.best_params_
             self.logger.info(f"best_params: {best_params}")
             best_params = {**best_params}
+
+            #### START: Strip out the pipeline step names from best parameters and
+            # only keep final model params. e.g. if one of the best params is
+            # `forecaster__model__sp: 12`, this will make it `sp: 12`
             if actual_estimator_label:
                 best_params = {
                     k.replace(f"{actual_estimator_label}__", ""): v
                     for k, v in best_params.items()
                 }
+            #### END Stripping of the pipeline step names.
             cv_results = None
             try:
                 cv_results = model_grid.cv_results_
@@ -3066,9 +3130,12 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                 # Use Case 1 & 2
                 # Deep Cloning to prevent overwriting the fh when user specifies their own fh
                 estimator_ = deepcopy(estimator)
+
+                pipeline_to_use = self._get_pipeline_to_use(estimator=estimator_)
                 pipeline_with_model = _add_model_to_pipeline(
-                    pipeline=self.pipeline, model=estimator_
+                    pipeline=pipeline_to_use, model=estimator_
                 )
+
             else:
                 raise ValueError(
                     "\n\nSetup has not been run and you have provided a estimator without the pipeline. "
@@ -3229,40 +3296,60 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         return display
 
-    def _predict_model_get_metrics(
-        self, estimator: BaseForecaster, result: pd.DataFrame
+    def _predict_model_get_test_metrics(
+        self,
+        pipeline: PyCaretForecastingPipeline,
+        estimator: BaseForecaster,
+        result: pd.DataFrame,
     ) -> dict:
-        """Return the metrics for the predictions.
+        """Return the test metrics for the predictions if estimator has not been
+        finalized. If the estimator has been finalized, just returns an empty
+        dictionary, since we do not have the true values to compute metrics.
 
         Parameters
         ----------
+        pipeline : PyCaretForecastingPipeline
+            The pipeline used to get the imputed values for metrics
         estimator : BaseForecaster
-            Estimator used to make predictions
+            Estimator used to decide if the model has been finalized or not.
         result : pd.DataFrame
             Predictions with lower and upper bounds.
 
         Returns
         -------
         dict
-            Prediction metrics
+            Test prediction metrics (if estimator has not been finalized) OR
+            empty dictionary (if estimator has been finalized)
         """
-        # Pass additional keyword arguments (like y_train, lower, upper) to
-        # method since they need to be passed to certain metrics like MASE,
-        # INPI, etc. This method will internally orchestrate the passing of
-        # the right arguments to the scorers.
-        initial_kwargs = self.get_additional_scorer_kwargs()
-        additional_scorer_kwargs = update_additional_scorer_kwargs(
-            initial_kwargs=initial_kwargs,
-            y_train=self._get_y_X_used_for_training(estimator=estimator)[0],
-            lower=result["lower"],
-            upper=result["upper"],
-        )
-        metrics = self._calculate_metrics(
-            y_test=self.y_test,
-            pred=result["y_pred"],
-            pred_prob=None,
-            **additional_scorer_kwargs,
-        )
+
+        if not self._is_estimator_finalized(estimator):
+            # Impute the entire dataset
+            # The imputed test portion will be used as `y_true` for metrics
+            # The imputed train portion will be used for metrics such as MASE, RMSSE.
+            # Refer to: https://github.com/pycaret/pycaret/issues/2369
+            y_imputed, _ = _get_imputed_data(pipeline=pipeline, y=self.y, X=self.X)
+            y_test_imputed = y_imputed.loc[self.y_test.index]
+            y_train_imputed = y_imputed.loc[self.y_train.index]
+
+            # Pass additional keyword arguments (like y_train, lower, upper) to
+            # method since they need to be passed to certain metrics like MASE,
+            # INPI, etc. This method will internally orchestrate the passing of
+            # the right arguments to the scorers.
+            initial_kwargs = self.get_additional_scorer_kwargs()
+            additional_scorer_kwargs = update_additional_scorer_kwargs(
+                initial_kwargs=initial_kwargs,
+                y_train=y_train_imputed,
+                lower=result["lower"],
+                upper=result["upper"],
+            )
+            metrics = self._calculate_metrics(
+                y_test=y_test_imputed,
+                pred=result["y_pred"],
+                pred_prob=None,
+                **additional_scorer_kwargs,
+            )
+        else:
+            metrics = {}
 
         return metrics
 
@@ -3346,6 +3433,10 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         X = self._predict_model_reconcile_X(estimator=estimator_, X=X)
 
         if not _are_pipeline_tansformations_empty(pipeline=pipeline_with_model):
+            # TODO: If the model has been finalized, then we have a problem here
+            # `pipeline` will still have memory till the train dataset, but
+            # estimator will have full memory (full dataset). Hence predictions
+            # will not be correct. Check how to resolve this.
             result = get_predictions_with_intervals(
                 forecaster=pipeline_with_model,
                 X=X,
@@ -3373,8 +3464,8 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         #################
         if self._setup_ran:
             #### Get Metrics ----
-            metrics = self._predict_model_get_metrics(
-                estimator=estimator_, result=result
+            metrics = self._predict_model_get_test_metrics(
+                pipeline=pipeline_with_model, estimator=estimator_, result=result
             )
 
             #### Display metrics ----
@@ -3913,6 +4004,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         fold: Optional[Union[int, Any]] = None,
         fold_strategy: Optional[str] = None,
     ) -> Union[ExpandingWindowSplitter, SlidingWindowSplitter]:
+
         """Returns the cv object based on number of folds and fold_strategy
 
         Parameters
@@ -3928,7 +4020,8 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         Returns
         -------
         Union[ExpandingWindowSplitter, SlidingWindowSplitter]
-            The cross-validation object
+            The sktime compatible cross-validation object.
+            e.g. ExpandingWindowSplitter or SlidingWindowSplitter
 
         Raises
         ------
@@ -4198,13 +4291,8 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         return clean_y, clean_X
 
-    def _get_y_X_used_for_training(
-        self,
-        estimator: BaseForecaster,
-    ) -> Tuple[pd.Series, pd.DataFrame]:
-        """Returns the y and X values passed to the pipeline for training.
-        These values are the values before transformation and can be passed to
-        the complete pipeline again if needed for steps in the workflow.
+    def _is_estimator_finalized(self, estimator: BaseForecaster) -> bool:
+        """Checks to see if the estimator has been finalized or not.
 
         Parameters
         ----------
@@ -4214,34 +4302,69 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         Returns
         -------
-        Tuple[pd.DataFrame, pd.DataFrame]
-            y and X values respectively used for training
+        bool
+            True if estimator has been finalized, False otherwise.
 
         Raises
         ------
         ValueError
-            Indices used to train estimator does not match either y_train or y indices.
+            The training data for the estimator matches neither the train dataset
+            nor the full dataset.
         """
 
         estimator_y, _ = self._get_cleaned_estimator_y_X(estimator=estimator)
         if len(estimator_y) == len(self.y_train) and np.all(
             estimator_y.index == self.y_train.index
         ):
-            # Model has not been finalized ----
-            y = self.y_train
-            X = self.X_train
+            return False
         elif len(estimator_y) == len(self.y) and np.all(
             estimator_y.index == self.y.index
         ):
+            return True
+        else:
+            raise ValueError(
+                "\nData used to train model does not match either train nor full dataset ."
+                "This condition should not have occurred. "
+                "\nPlease file a report issue on GitHub with a reproducible example of "
+                "how this condition was generated."
+                "\nhttps://github.com/pycaret/pycaret/issues/new/choose"
+            )
+
+    def _get_y_X_used_for_training(
+        self, estimator: BaseForecaster
+    ) -> Tuple[pd.Series, pd.DataFrame]:
+        """Returns the y and X values passed to the pipeline for training.
+        These values are the values before transformation and can be passed to
+        the complete pipeline again if needed for steps in the workflow.
+
+        NOTE: We can not use the pipeline here to extract the data used for training
+        since the pipeline might have been trained on the train dataset, but we may
+        have appended a finalized estimator to it. In this case, if we use the
+        pipeline to get the data used for training, we will incorrectly get the
+        train data instead of the full dataset. Hence, it is always better to use
+        the final model to get the data used for training.
+
+        Parameters
+        ----------
+        estimator: BaseForecaster
+            A sktime compatible model (without the pipeline). i.e. last step of
+            the pipeline TransformedTargetForecaster
+
+        Returns
+        -------
+        Tuple[pd.DataFrame, pd.DataFrame]
+            y and X values respectively used for training
+        """
+
+        if not self._is_estimator_finalized(estimator=estimator):
+            # Model has not been finalized ----
+            y = self.y_train
+            X = self.X_train
+        else:
             # Model has been finalized ----
             y = self.y
             X = self.X
-        else:
-            # Should not happen
-            raise ValueError(
-                "y indices in estimator (used for training) do not match with train "
-                "or full dataset. This should not happen"
-            )
+
         return y, X
 
     def get_residuals(self, estimator: BaseForecaster) -> Optional[pd.Series]:
@@ -4378,3 +4501,42 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         """
         additional_scorer_kwargs = {"sp": self.primary_sp_to_use}
         return additional_scorer_kwargs
+
+    def _get_pipeline_to_use(
+        self, estimator: BaseForecaster
+    ) -> PyCaretForecastingPipeline:
+        """Depending on the estimator that must be added to the pipeline, this
+        method will fetch the correct pipeline with the right memory in it. If
+        the estimator has not been finalized, this will fetch the pipeline with
+        memory of y_train, X_train. If the estimator has been finalized, this
+        will fetch the pipeline with memory of the entire dataset (y, X).
+
+        Parameters
+        ----------
+        estimator : BaseForecaster
+           The estimator used to decide the pipeline to fetch
+
+        Returns
+        -------
+        PyCaretForecastingPipeline
+            The pipeline with the correct memory based on the estimator
+        """
+
+        pipeline_to_use = (
+            self.pipeline_fully_trained
+            if self._is_estimator_finalized(estimator)
+            else self.pipeline
+        )
+        return pipeline_to_use
+
+
+class TimeSeriesExperiment(TSForecastingExperiment):
+    def __init__(self) -> None:
+        msg = (
+            "DeprecationWarning: TimeSeriesExperiment class will be removed in "
+            "a future release. Please import the following instead. \n"
+            ">>> from pycaret.time_series import TSForecastingExperiment"
+        )
+        warnings.warn(msg, DeprecationWarning)
+        print(msg)
+        super().__init__()

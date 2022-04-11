@@ -61,9 +61,9 @@ def test_blend_model_predict(load_setup, load_models):
     mean_voting_equal = np.array_equal(mean_blender_pred, voting_blender_pred)
     median_voting_equal = np.array_equal(median_blender_pred, voting_blender_pred)
 
-    assert mean_median_equal == False
-    assert mean_voting_equal == False
-    assert median_voting_equal == False
+    assert mean_median_equal is False
+    assert mean_voting_equal is False
+    assert median_voting_equal is False
 
 
 def test_blend_model_custom_folds(load_pos_and_neg_data):

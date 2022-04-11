@@ -5,6 +5,8 @@ import pytest
 import numpy as np  # type: ignore
 import pandas as pd  # type: ignore
 
+from pycaret.datasets import get_data
+from pycaret.time_series import TSForecastingExperiment
 from pycaret.containers.metrics.time_series import coverage
 from pycaret.time_series import TSForecastingExperiment
 
@@ -73,6 +75,115 @@ def test_cov_prob_loss():
     y_true = pd.Series([1, 2, 3, 4], index=[0, 1, 2, 4])
     loss = coverage(y_true=y_true, y_pred=y_pred, lower=lower, upper=upper)
     assert loss is np.nan
+
+
+def test_metrics_with_missing_values_noexo():
+    """Checks that metrics produced with data WITHOUT exogenous variables but
+    having missing data in CV and Test split does not produce NA values.
+    i.e. the metrics are computed using the imputed values.
+    """
+
+    #### Load data and simulate missing values ----
+    data = get_data("airline")
+    remove_n = int(0.4 * len(data))
+    np.random.seed(42)
+    na_indices = np.random.choice(data.index, remove_n, replace=False)
+    data[na_indices] = np.nan
+
+    FH = 12
+    # Check that there are missing values in CV splits
+    assert data[-2 * FH : -FH].isna().sum() > 0
+    # Check that here are missing values in test split
+    assert data[-FH:].isna().sum() > 0
+
+    #### Setup Forecasting Experiment (enable imputation) ----
+    exp = TSForecastingExperiment()
+    exp.setup(
+        data=data,
+        fh=FH,
+        session_id=42,
+        numeric_imputation_target="drift",
+    )
+
+    ##################################
+    #### 1: With Cross-Validation ####
+    ##################################
+
+    #### Create a model ----
+    model = exp.create_model("exp_smooth", cross_validation=True)
+    cv_results = exp.pull()
+    assert cv_results.drop(columns="cutoff").isna().sum().sum() == 0
+    _ = exp.predict_model(model)
+    test_results = exp.pull()
+    assert test_results.isna().sum().sum() == 0
+
+    #####################################
+    #### 1: Without Cross-Validation ####
+    #####################################
+
+    model = exp.create_model("exp_smooth", cross_validation=False)
+    test_results = exp.pull()
+    assert test_results.isna().sum().sum() == 0
+    _ = exp.predict_model(model)
+    test_results = exp.pull()
+    assert test_results.isna().sum().sum() == 0
+
+
+def test_metrics_with_missing_values_exo():
+    """Checks that metrics produced with data WITH exogenous variables but
+    having missing data in CV and Test split does not produce NA values.
+    i.e. the metrics are computed using the imputed values.
+    """
+
+    #### Load data and simulate missing values ----
+    data = get_data("uschange")
+    target = "Consumption"
+
+    remove_n = int(0.4 * len(data))
+    np.random.seed(42)
+    na_indices = np.random.choice(data.index, remove_n, replace=False)
+    data.iloc[na_indices] = np.nan
+
+    FH = 12
+    # Check that there are missing values in CV splits
+    assert data[-2 * FH : -FH].isna().sum().sum() > 0
+    # Check that here are missing values in test split
+    assert data[-FH:].isna().sum().sum() > 0
+
+    #### Setup Forecasting Experiment (enable imputation) ----
+    exp = TSForecastingExperiment()
+    exp.setup(
+        data=data,
+        target=target,
+        fh=FH,
+        seasonal_period=4,
+        session_id=42,
+        numeric_imputation_target="drift",
+        numeric_imputation_exogenous="drift",
+    )
+
+    ##################################
+    #### 1: With Cross-Validation ####
+    ##################################
+
+    #### Create a model ----
+    model = exp.create_model("lr_cds_dt", cross_validation=True)
+    cv_results = exp.pull()
+    assert cv_results.drop(columns="cutoff").isna().sum().sum() == 0
+    _ = exp.predict_model(model)
+    test_results = exp.pull()
+    assert test_results.isna().sum().sum() == 0
+
+    #####################################
+    #### 2: Without Cross-Validation ####
+    #####################################
+
+    model = exp.create_model("lr_cds_dt", cross_validation=False)
+    test_results = exp.pull()
+    assert test_results.isna().sum().sum() == 0
+    _ = exp.predict_model(model)
+    test_results = exp.pull()
+    assert test_results.isna().sum().sum() == 0
 
 
 def test_add_custom_metric(load_pos_data):

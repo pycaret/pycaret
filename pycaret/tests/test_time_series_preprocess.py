@@ -45,12 +45,35 @@ _model_names_for_missing_data = _return_model_names_for_missing_data()
 ##########################
 
 
+def test_pipeline_no_exo_but_exo_steps(load_pos_and_neg_data):
+    """Tests preprocessing pipeline data types without exogenous variables"""
+    data = load_pos_and_neg_data
+
+    exp = TSForecastingExperiment()
+
+    #### Make sure that no exogenous steps are added to the pipeline when
+    # there is no exogenous data
+    exp.setup(data=data, numeric_imputation_exogenous=True)
+    assert len(exp.pipeline.steps) == 1
+
+    exp.setup(data=data, numeric_imputation_exogenous=True, transform_exogenous="cos")
+    assert len(exp.pipeline.steps) == 1
+
+    exp.setup(data=data, numeric_imputation_exogenous=True, scale_exogenous="min-max")
+    assert len(exp.pipeline.steps) == 1
+
+    exp.setup(
+        data=data,
+        numeric_imputation_exogenous=True,
+        transform_exogenous="cos",
+        scale_exogenous="min-max",
+    )
+    assert len(exp.pipeline.steps) == 1
+
+
 def test_pipeline_types_no_exo(load_pos_and_neg_data):
     """Tests preprocessing pipeline data types without exogenous variables"""
-    data = load_pos_and_neg_data  # _check_data_for_prophet(name, load_pos_and_neg_data)
-
-    # # Simulate misssing values
-    # data[10:20] = np.nan
+    data = load_pos_and_neg_data
 
     exp = TSForecastingExperiment()
 
@@ -551,3 +574,29 @@ def test_scale_exo(load_uni_exo_data_target, method):
     assert not np.all(exp.X.values == exp.X_transformed.values)
     assert not np.all(exp.X_train.values == exp.X_train_transformed.values)
     assert not np.all(exp.X_test.values == exp.X_test_transformed.values)
+
+
+def test_pipeline_after_finalizing(load_pos_and_neg_data_missing):
+    """After finalizing the model, the data memory in the Forecasting Pipeline
+    must match with the memory in the model used in the pipeline (last step of pipeline)
+    """
+    data = load_pos_and_neg_data_missing
+
+    exp = TSForecastingExperiment()
+    FH = 12
+    exp.setup(data=data, fh=FH, numeric_imputation_target="drift")
+
+    model = exp.create_model("exp_smooth")
+    final = exp.finalize_model(model)
+
+    exp.save_model(final, "my_model")
+    loaded_model = exp.load_model("my_model")
+
+    # Check if pipeline data index (PyCaretForecastingPipeline) matches up with
+    # the actual model data
+    assert len(loaded_model._y.index) == len(
+        loaded_model.steps[-1][1].steps[-1][1]._y.index
+    )
+    assert np.array_equal(
+        loaded_model._y.index, loaded_model.steps[-1][1].steps[-1][1]._y.index
+    )
