@@ -2848,7 +2848,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         elif plot is None and estimator is not None:
             plot = "forecast"
 
-        data, train, test, X, predictions, cv, model_names = (
+        data, train, test, X, model_results, cv, model_names = (
             None,
             None,
             None,
@@ -2896,7 +2896,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                     f"provided. Available plots are: {', '.join(plots_formatted_data)}"
                 )
         else:
-            _support_multiple_estimators = ["forecast", "insample"]
+            _support_multiple_estimators = ["forecast", "insample", "residuals"]
 
             # Estimator is Provided
             # If a single estimator, make a list
@@ -2924,9 +2924,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                 estimators = estimators[0]
                 model_names = model_names[0]
 
-            require_insample_predictions = ["insample"]
             require_residuals = [
-                "residuals",
                 "diagnostics",
                 "acf",
                 "pacf",
@@ -2946,7 +2944,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                     estimator.get_tag("capability:pred_int") for estimator in estimators
                 ]
 
-                predictions = [
+                model_results = [
                     self.predict_model(
                         estimator,
                         fh=fh,
@@ -2964,19 +2962,26 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                     # Disable Prediction Intervals if more than 1 estimator is provided.
                     return_pred_int = False
 
-            elif plot in require_insample_predictions:
+            elif plot == "insample":
                 # Try to get insample forecasts if possible
-                predictions = [
+                model_results = [
                     self.get_insample_predictions(estimator=estimator)
                     for estimator in estimators
                 ]
-                if all(
-                    insample_prediction is None for insample_prediction in predictions
-                ):
+                if all(model_result is None for model_result in model_results):
                     return
                 data = self._get_y_data(split="all")
                 # Do not plot prediction interval for insample predictions
                 return_pred_int = False
+
+            elif plot == "residuals":
+                # Try to get residuals if possible
+                model_results = [
+                    self.get_residuals(estimator=estimator) for estimator in estimators
+                ]
+                if all(model_result is None for model_result in model_results):
+                    return
+                data = self._get_y_data(split="all")
 
             elif plot in require_residuals:
                 resid = self.get_residuals(estimator=estimators)
@@ -2999,7 +3004,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             train=train,
             test=test,
             X=X,
-            predictions=predictions,
+            model_results=model_results,
             cv=cv,
             model_names=model_names,
             return_pred_int=return_pred_int,

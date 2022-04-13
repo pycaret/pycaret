@@ -41,7 +41,7 @@ def _get_plot(
     train: Optional[pd.Series] = None,
     test: Optional[pd.Series] = None,
     X: Optional[pd.DataFrame] = None,
-    predictions: Optional[List[pd.DataFrame]] = None,
+    model_results: Optional[List[pd.DataFrame]] = None,
     cv: Optional[Union[ExpandingWindowSplitter, SlidingWindowSplitter]] = None,
     model_names: Optional[List[str]] = None,
     return_pred_int: bool = False,
@@ -73,7 +73,6 @@ def _get_plot(
             fig_defaults=fig_defaults,
             X=X,
             hoverinfo=hoverinfo,
-            data_kwargs=data_kwargs,
             fig_kwargs=fig_kwargs,
         )
     elif plot == "train_test_split":
@@ -138,21 +137,11 @@ def _get_plot(
             data_kwargs=data_kwargs,
             fig_kwargs=fig_kwargs,
         )
-    elif plot == "residuals":
-        fig, plot_data = plot_series(
-            data=data,
-            fig_defaults=fig_defaults,
-            X=X,
-            hoverinfo=hoverinfo,
-            model_name=model_names,
-            data_kwargs=data_kwargs,
-            fig_kwargs=fig_kwargs,
-        )
-    elif plot in ["forecast", "insample"]:
+    elif plot in ["forecast", "insample", "residuals"]:
         if return_pred_int:
             fig, plot_data = plot_predictions_with_confidence(
                 data=data,
-                predictions=predictions,
+                predictions=model_results,
                 fig_defaults=fig_defaults,
                 model_names=model_names,
                 data_kwargs=data_kwargs,
@@ -161,7 +150,7 @@ def _get_plot(
         else:
             fig, plot_data = plot_model_results(
                 original_data=data,
-                model_results=predictions,
+                model_results=model_results,
                 plot=plot,
                 model_names=model_names,
                 fig_defaults=fig_defaults,
@@ -206,23 +195,17 @@ def plot_series(
     fig_defaults: Dict[str, Any],
     X: Optional[pd.DataFrame] = None,
     hoverinfo: Optional[str] = "text",
-    model_name: Optional[str] = None,
-    data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
 ) -> PlotReturnType:
     """Plots the original time series or residuals"""
     fig, return_data_dict = None, None
 
-    data_kwargs = data_kwargs or {}
     fig_kwargs = fig_kwargs or {}
 
     time_series_name = data.name
-    if model_name is not None:
-        title = "Residuals"
-    else:
-        title = "Time Series"
-        if time_series_name is not None:
-            title = f"{title} | Target = {time_series_name}"
+    title = "Time Series"
+    if time_series_name is not None:
+        title = f"{title} | Target = {time_series_name}"
 
     if X is not None:
         # Exogenous Variables present (predictions).
@@ -230,13 +213,7 @@ def plot_series(
     else:
         # Exogenous Variables not present (Original Time series or residuals).
         if isinstance(data, pd.Series):
-            if model_name is None:
-                # Original Time series
-                plot_data = pd.DataFrame(data)
-            else:
-                # Residual
-                plot_data = pd.DataFrame(data)
-                plot_data.columns = [f"Residuals | {model_name}"]
+            plot_data = pd.DataFrame(data)
 
     rows = plot_data.shape[1]
     subplot_titles = plot_data.columns
@@ -596,7 +573,7 @@ def plot_model_results(
         The type of plot.
             "forecast": Out of Sample Forecasts
             "insample": Insample Forecasts
-            "residual": Model Residuals
+            "residuals": Model Residuals
     model_names : List[str]
         Name(s) of the models whose results are being plotted
     fig_defaults : Dict[str, Any]
@@ -613,16 +590,21 @@ def plot_model_results(
     """
 
     if plot in ["forecast", "insample"]:
-        overlay_data = [prediction["y_pred"] for prediction in model_results]
-    overlay_data = pd.concat(overlay_data, axis=1)
-    overlay_data.columns = model_names
+        model_results = [model_result["y_pred"] for model_result in model_results]
+    model_results = pd.concat(model_results, axis=1)
+    model_results.columns = model_names
 
-    key = "Out-of-Sample" if plot == "forecast" else "In-Sample"
-    title = f"Actual vs. '{key}' Forecast"
+    if plot == "forecast":
+        key = "Forecast (Out-of-Sample)"
+    elif plot == "insample":
+        key = "Forecast (In-Sample)"
+    elif plot == "residuals":
+        key = "Residuals"
+    title = f"Actual vs. {key}"
 
     fig, return_data_dict = plot_original_with_overlays(
         original_data=original_data,
-        overlay_data=overlay_data,
+        overlay_data=model_results,
         title=title,
         fig_defaults=fig_defaults,
         hoverinfo=hoverinfo,
