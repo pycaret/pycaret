@@ -83,6 +83,17 @@ _ALL_PLOTS_ESTIMATOR = _get_all_plots_estimator()
 _ALL_PLOTS_ESTIMATOR_NOT_DATA = list(set(_ALL_PLOTS_ESTIMATOR) - set(_ALL_PLOTS_DATA))
 
 
+def _return_all_plots_estimator_ts_results():
+    """Returns all plots that look at model results in time series format.
+    Also returns whether the plot is supported by all models or not.
+    """
+    return [
+        ("forecast", True),
+        ("insample", False),
+        ("residuals", False),
+    ]
+
+
 def _get_all_metrics():
     exp = TSForecastingExperiment()
     data = get_data("airline")
