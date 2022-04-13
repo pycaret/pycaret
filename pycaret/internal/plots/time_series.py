@@ -24,14 +24,14 @@ from pycaret.internal.plots.utils.time_series import (
     qq_subplot,
     frequency_components_subplot,
     return_frequency_components,
+    plot_original_with_overlays,
     _update_fig_dimensions,
     _get_subplot_rows_cols,
     _resolve_hoverinfo,
+    PlotReturnType,
 )
 
 __author__ = ["satya-pattnaik", "ngupta23"]
-
-PlotReturnType = Tuple[Optional[go.Figure], Optional[Dict[str, Any]]]
 
 
 def _get_plot(
@@ -159,13 +159,13 @@ def _get_plot(
                 fig_kwargs=fig_kwargs,
             )
         else:
-            fig, plot_data = plot_predictions(
-                data=data,
-                predictions=predictions,
-                fig_defaults=fig_defaults,
-                type_=plot,
+            fig, plot_data = plot_model_results(
+                original_data=data,
+                model_results=predictions,
+                plot=plot,
                 model_names=model_names,
-                data_kwargs=data_kwargs,
+                fig_defaults=fig_defaults,
+                hoverinfo=hoverinfo,
                 fig_kwargs=fig_kwargs,
             )
     elif plot == "diff":
@@ -252,11 +252,10 @@ def plot_series(
     for i, col_name in enumerate(plot_data.columns):
         fig = time_series_subplot(
             fig=fig,
-            data=plot_data[col_name],
+            data=pd.DataFrame(plot_data[col_name]),
             row=i + 1,
             col=1,
             hoverinfo=hoverinfo,
-            name=col_name,
         )
 
     with fig.batch_update():
@@ -457,20 +456,20 @@ def plot_acf(
     data : pd.Series
         Data whose correlation plot needs to be plotted
     fig_defaults : Dict[str, Any]
-        The defaults dictionary containing keys for "width" and "height" (mandatory)
+        The defaults dictionary containing keys for "width", "height", and "template"
     model_name : Optional[str]
-        If the correlation plot is for model residuals, then, model_name must be 
-        passed for proper display of results. If the correlation plot is for the 
-        original data, model_name should be left None (name is derived from the 
+        If the correlation plot is for model residuals, then, model_name must be
+        passed for proper display of results. If the correlation plot is for the
+        original data, model_name should be left None (name is derived from the
         data passed in this case).
     data_kwargs : Dict[str, Any]
         A dictionary containing options keys for "nlags"
     fig_kwargs : Dict[str, Any]
-        A dictionary containing options keys for "width" and/or "height"
+        A dictionary containing optional keys for "width", "height" and/or "template"
 
     Returns
     -------
-    Tuple[go.Figure, Dict[str, Any]]
+    PlotReturnType
         Returns back the plotly figure along with the correlation data.
     """
     data_kwargs = data_kwargs or {}
@@ -502,9 +501,7 @@ def plot_acf(
             fig=fig, fig_kwargs=fig_kwargs, fig_defaults=fig_defaults
         )
 
-    return_data_dict = {
-        "acf": acf_data
-    }
+    return_data_dict = {"acf": acf_data}
 
     return fig, return_data_dict
 
@@ -523,21 +520,21 @@ def plot_pacf(
     data : pd.Series
         Data whose correlation plot needs to be plotted
     fig_defaults : Dict[str, Any]
-        The defaults dictionary containing keys for "width" and "height" (mandatory)
+        The defaults dictionary containing keys for "width", "height", and "template"
     model_name : Optional[str]
-        If the correlation plot is for model residuals, then, model_name must be 
-        passed for proper display of results. If the correlation plot is for the 
-        original data, model_name should be left None (name is derived from the 
+        If the correlation plot is for model residuals, then, model_name must be
+        passed for proper display of results. If the correlation plot is for the
+        original data, model_name should be left None (name is derived from the
         data passed in this case).
     data_kwargs : Dict[str, Any]
         A dictionary containing options keys for "nlags"
     fig_kwargs : Dict[str, Any]
-        A dictionary containing options keys for "width" and/or "height"
+        A dictionary containing optional keys for "width", "height" and/or "template"
 
     Returns
     -------
-    Tuple[go.Figure, Dict[str, Any]]
-        Returns back the plotly figure along with the correlation data.
+    PlotReturnType
+        Returns back the plotly figure along with the data used to create the plot.
     """
     data_kwargs = data_kwargs or {}
     fig_kwargs = fig_kwargs or {}
@@ -568,92 +565,69 @@ def plot_pacf(
             fig=fig, fig_kwargs=fig_kwargs, fig_defaults=fig_defaults
         )
 
-    return_data_dict = {
-        "pacf": pacf_data
-    }
+    return_data_dict = {"pacf": pacf_data}
 
     return fig, return_data_dict
 
 
-def plot_predictions(
-    data: pd.Series,
-    predictions: List[pd.DataFrame],
-    type_: str,
+def plot_model_results(
+    original_data: pd.Series,
+    model_results: List[pd.DataFrame],
+    plot: str,
+    model_names: List[str],
     fig_defaults: Dict[str, Any],
-    model_names: Optional[str] = None,
-    data_kwargs: Optional[Dict] = None,
+    hoverinfo: Optional[str] = "text",
     fig_kwargs: Optional[Dict] = None,
 ) -> PlotReturnType:
-    """Plots the original data and the predictions provided"""
-    fig, return_data_dict = None, None
+    """Plots the original target series along with overlaid model results which
+    could be out of sample predictions, insample predictions or residuals.
 
-    data_kwargs = data_kwargs or {}
-    fig_kwargs = fig_kwargs or {}
+    Parameters
+    ----------
+    original_data : pd.Series
+        The original target series to be plotted
+    model_results : List[pd.DataFrame]
+        The model results that must be overlaid over the original data. e.g. out
+        of sample predictions, insample predictions or residuals from possibly
+        multiple models. Each column in the overlay_data is overlaid as a separate
+        series over the original_data. The column names are used as labels for the
+        overlaid data.
+    plot : str
+        The type of plot.
+            "forecast": Out of Sample Forecasts
+            "insample": Insample Forecasts
+            "residual": Model Residuals
+    model_names : List[str]
+        Name(s) of the models whose results are being plotted
+    fig_defaults : Dict[str, Any]
+        The defaults dictionary containing keys for "width", "height", and "template"
+    hoverinfo : Optional[str], optional
+        Whether to display the hoverinfo in the plot, by default "text"
+    fig_kwargs : Optional[Dict], optional
+        A dictionary containing optional keys for "width", "height" and/or "template"
 
-    key = "Out-of-Sample" if type_ == "forecast" else "In-Sample"
+    Returns
+    -------
+    PlotReturnType
+        Returns back the plotly figure along with the data used to create the plot.
+    """
+
+    if plot in ["forecast", "insample"]:
+        overlay_data = [prediction["y_pred"] for prediction in model_results]
+    overlay_data = pd.concat(overlay_data, axis=1)
+    overlay_data.columns = model_names
+
+    key = "Out-of-Sample" if plot == "forecast" else "In-Sample"
     title = f"Actual vs. '{key}' Forecast"
-    time_series_name = data.name
-    if time_series_name is not None:
-        title = f"{title} | {time_series_name}"
 
-    prediction_plot_data = []
-    for i, prediction in enumerate(predictions):
-        # Insample predictions can be None for some of the models ----
-        if prediction is not None:
-            x = (
-                prediction.index.to_timestamp()
-                if isinstance(prediction.index, pd.PeriodIndex)
-                else prediction.index
-            )
-
-            mean = go.Scatter(
-                name=f"Forecast | {model_names[i]}",
-                x=x,
-                y=prediction["y_pred"].values,
-                mode="lines+markers",
-                # line=dict(color="#1f77b4"),
-                marker=dict(size=5),
-                showlegend=True,
-            )
-            prediction_plot_data.append(mean)
-
-    x = (
-        data.index.to_timestamp()
-        if isinstance(data.index, pd.PeriodIndex)
-        else data.index
+    fig, return_data_dict = plot_original_with_overlays(
+        original_data=original_data,
+        overlay_data=overlay_data,
+        title=title,
+        fig_defaults=fig_defaults,
+        hoverinfo=hoverinfo,
+        fig_kwargs=fig_kwargs,
     )
-    original = go.Scatter(
-        name="Original",
-        x=x,
-        y=data,
-        mode="lines+markers",
-        marker=dict(size=5, color="#3f3f3f"),
-        showlegend=True,
-    )
-
-    data_for_fig = prediction_plot_data + [original]
-
-    layout = go.Layout(
-        yaxis=dict(title="Values"), xaxis=dict(title="Time"), title=title
-    )
-
-    fig = go.Figure(data=data_for_fig, layout=layout)
-
-    with fig.batch_update():
-        template = _resolve_dict_keys(
-            dict_=fig_kwargs, key="template", defaults=fig_defaults
-        )
-        fig.update_layout(template=template)
-
-        fig = _update_fig_dimensions(
-            fig=fig, fig_kwargs=fig_kwargs, fig_defaults=fig_defaults
-        )
-        fig.update_layout(showlegend=True)
-
-    return_data_dict = {
-        "data": data,
-        "predictions": predictions,
-    }
 
     return fig, return_data_dict
 
@@ -707,7 +681,9 @@ def plot_diagnostics(
     #### Add diagnostic plots ----
 
     # ROW 1
-    fig = time_series_subplot(fig=fig, data=data, row=1, col=1, hoverinfo=hoverinfo)
+    fig = time_series_subplot(
+        fig=fig, data=pd.DataFrame(data), row=1, col=1, hoverinfo=hoverinfo
+    )
     fig, periodogram_data = frequency_components_subplot(
         fig=fig,
         data=data,
@@ -1072,13 +1048,15 @@ def plot_time_series_differences(
     for i, subplot_data in enumerate(diff_list):
 
         #### Add difference data ----
+
+        ts_to_plot = pd.DataFrame(subplot_data)
+        ts_to_plot.columns = [name_list[i]]
         fig = time_series_subplot(
             fig=fig,
-            data=subplot_data,
+            data=ts_to_plot,
             row=i + 1,
             col=plot_cols[0],
             hoverinfo=hoverinfo,
-            name=name_list[i],
         )
 
         #### Add diagnostics if requested ----

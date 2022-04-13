@@ -13,29 +13,33 @@ from scipy.fft import fft, fftfreq
 import plotly.express as px
 import plotly.graph_objects as go
 import plotly.io as pio
+from plotly.colors import DEFAULT_PLOTLY_COLORS
+from plotly.subplots import make_subplots
 
 from statsmodels.graphics.gofplots import qqplot
 from statsmodels.tsa.stattools import pacf, acf, ccf
 
 from pycaret.utils import _resolve_dict_keys
 
+PlotReturnType = Tuple[Optional[go.Figure], Optional[Dict[str, Any]]]
+
 
 def time_series_subplot(
     fig: go.Figure,
-    data: pd.Series,
+    data: pd.DataFrame,
     row: int,
     col: int,
     hoverinfo: Optional[str],
-    name: Optional[str] = None,
 ) -> go.Figure:
-    """Function to add a time series to a Plotly subplot
+    """Function to add a single or multiple overlaid time series to a Plotly subplot
 
     Parameters
     ----------
     fig : go.Figure
         Plotly figure to which the time series needs to be added
-    data : pd.Series
-        Time Series that needs to be added
+    data : pd.DataFrame
+        Time Series that needs to be added. If more than one column is present,
+        then each column acts as a separate time series that needs to be overlaid.
     row : int
         Row of the figure where the plot needs to be inserted. Starts from 1.
     col : int
@@ -43,8 +47,6 @@ def time_series_subplot(
     hoverinfo : Optional[str]
         Whether hoverinfo should be disabled or not. Options are same as plotly.
         e.g. "text" to display, "skip" or "none" to disable.
-    name : Optional[str], optional
-        Name to show when hovering over plot, by default None
 
     Returns
     -------
@@ -57,39 +59,39 @@ def time_series_subplot(
         else data.index
     )
 
-    name = name or data.name
-
-    # If you add hoverinfo = "text", you must also add the hovertemplate, else no hoverinfo
-    # gets displayed. OR alternately, leave it out and it gets plotted by default.
-    if hoverinfo == "text":
-        # Not specifying the hoverinfo will show it by default
-        fig.add_trace(
-            go.Scatter(
-                x=x,
-                y=data.values,
-                line=dict(color="#1f77b4", width=2),
-                mode="lines+markers",
-                name=name,
-                marker=dict(size=5),
-            ),
-            row=row,
-            col=col,
-        )
-    else:
-        # Disable hoverinfo
-        fig.add_trace(
-            go.Scatter(
-                x=x,
-                y=data.values,
-                line=dict(color="#1f77b4", width=2),
-                mode="lines+markers",
-                name=name,
-                marker=dict(size=5),
-                hoverinfo=hoverinfo,
-            ),
-            row=row,
-            col=col,
-        )
+    for i, col_name in enumerate(data.columns):
+        color = DEFAULT_PLOTLY_COLORS[i % len(DEFAULT_PLOTLY_COLORS)]
+        # If you add hoverinfo = "text", you must also add the hovertemplate, else no hoverinfo
+        # gets displayed. OR alternately, leave it out and it gets plotted by default.
+        if hoverinfo == "text":
+            # Not specifying the hoverinfo will show it by default
+            fig.add_trace(
+                go.Scatter(
+                    x=x,
+                    y=data[col_name].values,
+                    name=col_name,
+                    mode="lines+markers",
+                    line=dict(color=color, width=2),
+                    marker=dict(color=color, size=5),
+                ),
+                row=row,
+                col=col,
+            )
+        else:
+            # Disable hoverinfo
+            fig.add_trace(
+                go.Scatter(
+                    x=x,
+                    y=data[col_name].values,
+                    name=col_name,
+                    mode="lines+markers",
+                    line=dict(width=2),
+                    marker=dict(size=5),
+                    hoverinfo=hoverinfo,
+                ),
+                row=row,
+                col=col,
+            )
 
     return fig
 
@@ -483,7 +485,7 @@ def frequency_components_subplot(
     hoverinfo: Optional[str],
     type: str = "periodogram",
     name: Optional[str] = None,
-) -> go.Figure:
+) -> PlotReturnType:
     """Function to add a time series to a Plotly subplot
 
     Parameters
@@ -507,8 +509,8 @@ def frequency_components_subplot(
 
     Returns
     -------
-    go.Figure
-        Returns back the plotly figure with time series inserted
+    PlotReturnType
+        Returns back the plotly figure along with the data used to create the plot.
     """
     x, y = return_frequency_components(data=data, type=type)
     time_period = [round(1 / freq, 4) for freq in x]
@@ -561,6 +563,69 @@ def frequency_components_subplot(
         # Hence setting explicitly per https://plotly.com/python/subplots/
         fig.update_xaxes(range=[0, 0.5], row=row, col=col)
     return fig, freq_data
+
+
+def plot_original_with_overlays(
+    original_data: pd.Series,
+    overlay_data: pd.DataFrame,
+    title: str,
+    fig_defaults: Dict[str, Any],
+    hoverinfo: Optional[str] = "text",
+    fig_kwargs: Optional[Dict] = None,
+) -> PlotReturnType:
+    """Plots the original data along with the data to be overlaid in a single plot.
+
+    Parameters
+    ----------
+    original_data : pd.Series
+        The original target series to be plotted
+    overlay_data : pd.DataFrame
+        The data that must be overlaid over the original data. e.g. prediction
+        from possibly multiple models. Each column in the overlay_data is overlaid
+        as a separate series over the original_data. The column names are used as
+        labels for the overlaid data.
+    title : str
+        The title to use for the plot (mandatory)
+    fig_defaults : Dict[str, Any]
+        The defaults dictionary containing keys for "width", "height", and "template"
+    hoverinfo : Optional[str], optional
+        Whether to display the hoverinfo in the plot, by default "text"
+    fig_kwargs : Optional[Dict], optional
+        A dictionary containing optional keys for "width", "height" and/or "template"
+
+    Returns
+    -------
+    PlotReturnType
+        Returns back the plotly figure along with the data used to create the plot.
+    """
+    fig, return_data_dict = None, None
+
+    data_to_plot = pd.concat([original_data, overlay_data], axis=1)
+
+    fig = make_subplots(rows=1, cols=1)
+    fig = time_series_subplot(
+        fig=fig, data=data_to_plot, row=1, col=1, hoverinfo=hoverinfo
+    )
+
+    fig_kwargs = fig_kwargs or {}
+    with fig.batch_update():
+        template = _resolve_dict_keys(
+            dict_=fig_kwargs, key="template", defaults=fig_defaults
+        )
+        fig.update_layout(template=template)
+
+        fig = _update_fig_dimensions(
+            fig=fig, fig_kwargs=fig_kwargs, fig_defaults=fig_defaults
+        )
+        fig.update_layout(showlegend=True)
+        fig.update_layout(title=title)
+
+    return_data_dict = {
+        "original_data": original_data,
+        "overlay_data": overlay_data,
+    }
+
+    return fig, return_data_dict
 
 
 def _update_fig_dimensions(
