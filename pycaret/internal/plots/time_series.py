@@ -589,6 +589,20 @@ def plot_model_results(
         Returns back the plotly figure along with the data used to create the plot.
     """
 
+    includes = [
+        True if model_result is not None else False for model_result in model_results
+    ]
+
+    # Remove None results (produced when insample or residuals can not be obtained)
+    model_results = [
+        model_result
+        for include, model_result in zip(includes, model_results)
+        if include
+    ]
+    model_names = [
+        model_name for include, model_name in zip(includes, model_names) if include
+    ]
+
     if plot in ["forecast", "insample"]:
         model_results = [model_result["y_pred"] for model_result in model_results]
     model_results = pd.concat(model_results, axis=1)
