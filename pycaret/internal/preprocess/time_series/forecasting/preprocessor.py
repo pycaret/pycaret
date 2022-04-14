@@ -1,4 +1,4 @@
-from typing import Union, Optional
+from typing import Union, Optional, List
 
 from sklearn.preprocessing import (
     StandardScaler,
@@ -13,6 +13,8 @@ from sktime.transformations.series.impute import Imputer
 from sktime.transformations.series.boxcox import BoxCoxTransformer, LogTransformer
 from sktime.transformations.series.exponent import ExponentTransformer, SqrtTransformer
 from sktime.transformations.series.cos import CosineTransformer
+from sktime.transformations.series.scaledlogit import ScaledLogitTransformer
+from sktime.base import BaseEstimator
 
 from pycaret.utils.time_series import TSApproachTypes, TSExogenousPresent
 
@@ -111,6 +113,54 @@ class TSForecastingPreprocessor:
             self.pipe_steps_target.extend([("numerical_imputer", num_estimator)])
         else:
             self.pipe_steps_exogenous.extend([("numerical_imputer", num_estimator)])
+
+    def _limitation(self, limit_target:Optional[List[Optional[float]]], limit_exogenous:Optional[List[Optional[float]]], exogenous_present: bool):
+
+
+
+     #### Limit target ----
+        if limit_target is not None:
+            self._add_limitation_steps(
+                limits=limit_target, target=True
+            )
+
+        #### Limit Exogenous ----
+        # Only add exogenous pipeline steps if exogenous variables are present.
+        if (
+            exogenous_present == TSExogenousPresent.YES
+            and limit_exogenous is not None
+        ):
+            self._add_limitation_steps(
+                limits=limit_exogenous, target=False
+            )
+
+    def _add_limitation_steps(self, 
+    limits: List[Optional[Union[float,int]]], 
+    target: bool = True):
+
+        type_ = "Target" if target else "Exogenous"
+        self.logger.info(f"Setting up limits for {type_} variable(s).")
+
+        if isinstance(limits, list) and len(limits)==2:
+            # Valid limitation
+            for i in limits:
+                if not (isinstance(i, float, (int,float)) or i is None):
+                    raise ValueError(f"{type_} limit value {i}, '{type(i)}' is not of allowed type.")
+            limiter =  ScaledLogitTransformer(lower_bound=limits[0],upper_bound=limits[1])
+        
+        elif issubclass(limits, BaseEstimator):
+            # TODO: Implement passing sktime compatible transformer directly.
+            raise NotImplementedError(
+                "Using transformers directly is not yet implemented, please use numeric limits only for now.")
+        else:
+             raise TypeError(
+                f"{type_} forecast limit Type '{type(limits)}' is not of allowed type."
+            )
+
+        if target:
+            self.pipe_steps_target.extend([("target_limiter", limiter)])
+        else:
+            self.pipe_steps_exogenous.extend([("exogenous_limiter", limiter)])
 
     def _transformation(
         self,
