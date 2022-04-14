@@ -177,7 +177,8 @@ class TSForecastingPreprocessor:
         elif issubclass(limits, BaseEstimator):
             # TODO: Implement passing sktime compatible transformer directly.
             raise NotImplementedError(
-                "Using transformers directly is not yet implemented, please use numeric limits only for now.")
+                "Using transformers directly is not yet implemented,\
+                    please use numeric limits only for now.")
         else:
             raise TypeError(
                 f"{type_} forecast limit Type '{type(limits)}' is not of allowed type."
