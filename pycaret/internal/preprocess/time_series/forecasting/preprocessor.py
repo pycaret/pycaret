@@ -114,9 +114,10 @@ class TSForecastingPreprocessor:
         else:
             self.pipe_steps_exogenous.extend([("numerical_imputer", num_estimator)])
 
-    def _limitation(self, limit_target:Optional[List[Optional[float]]], limit_exogenous:Optional[List[Optional[float]]], exogenous_present: bool):
-
-
+    def _limitation(self,
+                    limit_target: Optional[List[Optional[float]]],
+                    limit_exogenous: Optional[List[Optional[float]]],
+                    exogenous_present: bool):
 
      #### Limit target ----
         if limit_target is not None:
@@ -134,26 +135,62 @@ class TSForecastingPreprocessor:
                 limits=limit_exogenous, target=False
             )
 
-    def _add_limitation_steps(self, 
-    limits: List[Optional[Union[float,int]]], 
-    target: bool = True):
+    def _add_limitation_steps(self,
+                              limits: List[Optional[Union[float, int]]],
+                              target: bool = True):
+        """Limit/scale Possible forecast values using ScaledLogitTransformer
+
+        Parameters
+        ----------
+        limits : List[Optional[Union[float,int]]]
+            A list (of two values) of the minimum and maximum values
+            Example values:
+                forecast_limit = None # default - no limits
+                forecast_limit = [0, 10000000] # lower and upper limit
+                forecast_limit = [0, None]  # lower limit only
+                forecast_limit = [None, 10000000] # upper limit only
+        target : bool, optional
+            If True, limit is added to the target variable steps
+            If False, limit is added to the exogenous variable steps,
+            by default True
+
+        Raises
+        ------
+        TypeError
+            (1) value in `limits` is not None, 
+            (2) `limits ` is not a list of None | float | int
+        ValueError
+            (1) `limits` is a list of length not equal to 2
+        NotImplementedError
+            (1) `limits` is a subclass of BaseEstimator
+        """
 
         type_ = "Target" if target else "Exogenous"
         self.logger.info(f"Setting up limits for {type_} variable(s).")
 
-        if isinstance(limits, list) and len(limits)==2:
-            # Valid limitation
-            for i in limits:
-                if not (isinstance(i, float, (int,float)) or i is None):
-                    raise ValueError(f"{type_} limit value {i}, '{type(i)}' is not of allowed type.")
-            limiter =  ScaledLogitTransformer(lower_bound=limits[0],upper_bound=limits[1])
-        
+        if isinstance(limits, list):
+            if len(limits) == 2:
+                # Valid limits length
+                for i in limits:
+                    if not (isinstance(i, float, (int, float)) or i is None):
+                        raise TypeError(
+                            f"{type_} limit value {i}, '{type(i)}' is not of allowed type.")
+                if all([i is None for i in limits]):
+                    # No limits as both is none, but exit silently
+                    return
+                # create limiter
+                limiter = ScaledLogitTransformer(
+                    lower_bound=limits[0], upper_bound=limits[1])
+
+            else:
+                raise ValueError(f"{type_} limits list must be of length 2.")
+
         elif issubclass(limits, BaseEstimator):
             # TODO: Implement passing sktime compatible transformer directly.
             raise NotImplementedError(
                 "Using transformers directly is not yet implemented, please use numeric limits only for now.")
         else:
-             raise TypeError(
+            raise TypeError(
                 f"{type_} forecast limit Type '{type(limits)}' is not of allowed type."
             )
 
