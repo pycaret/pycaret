@@ -15,6 +15,7 @@ from pycaret.internal.ensemble import _ENSEMBLE_METHODS
 from .time_series_test_utils import (
     _return_data_with_without_period_index,
     _return_model_names_for_plots_stats,
+    _return_all_plots_estimator_ts_results,
     _ALL_PLOTS_DATA,
     _ALL_PLOTS_ESTIMATOR,
     _ALL_PLOTS_ESTIMATOR_NOT_DATA,
@@ -35,6 +36,8 @@ pytestmark = pytest.mark.filterwarnings("ignore::UserWarning")
 
 _data_with_without_period_index = _return_data_with_without_period_index()
 _model_names_for_plots = _return_model_names_for_plots_stats()
+_all_plots_estimator_ts_results = _return_all_plots_estimator_ts_results()
+
 
 ############################
 #### Functions End Here ####
@@ -287,3 +290,103 @@ def test_plot_model_return_data_estimator(data, model_name, plot):
     # If plot is successful, it will return a dictionary
     # If plot is not possible (e.g. decomposition without index), then it will return None
     assert isinstance(plot_data, dict) or plot_data is None
+
+
+@pytest.mark.parametrize("plot, all_models_supported", _all_plots_estimator_ts_results)
+def test_plot_multiple_model_overlays(
+    load_pos_and_neg_data, plot, all_models_supported
+):
+    """Tests the plot_model functionality on estimators where the results from
+    multiple models get overlaid (time series plots)
+
+    Checks:
+        (1) Plots are correct even when the multiple models are of the same type
+        (2) Plot labels are correct when user provides custom labels
+        (3) When some models do not support certain plots, they are dropped appropriately
+        (4) When some models do not support certain plots, they are dropped appropriately
+            even when user provides custom labels
+        (5) When user provides custom labels, the number of labels must match number of models
+    """
+    data = load_pos_and_neg_data
+
+    exp = TSForecastingExperiment()
+    fh = 12
+    fold = 2
+    exp.setup(data=data, fh=fh, fold=fold, fold_strategy="sliding")
+
+    # Model that produces insample predictions
+    m1 = exp.create_model("exp_smooth")
+
+    #### Check 1: Even if same model type is passed, the plot should make overlays ----
+    models = [m1, m1]
+    fig_data = exp.plot_model(models, plot=plot, return_data=True, system=False)
+    assert fig_data.get("overlay_data").shape[1] == len(models)
+
+    #### Check 2: User specified labels are used in plots
+    labels = ["Model 1", "Model 2"]
+    fig_data = exp.plot_model(
+        models,
+        plot=plot,
+        data_kwargs={"labels": labels},
+        return_data=True,
+        system=False,
+    )
+    assert fig_data.get("overlay_data").shape[1] == len(models)
+    assert np.all(fig_data.get("overlay_data").columns.to_list() == labels)
+
+    if not all_models_supported:
+        # Model that does not produce insample predictions
+        m2 = exp.create_model("lr_cds_dt")
+
+        #### Check 3: If Model does not produce insample predictions, it should be excluded
+        models = [m1, m2, m1]
+        fig_data = exp.plot_model(models, plot=plot, return_data=True, system=False)
+        assert fig_data.get("overlay_data").shape[1] == len(models) - 1
+
+        #### Check 4: If Model does not produce insample predictions, custom labels should exclude it.
+        labels = ["Model 1", "Model 2", "Model 3"]
+        fig_data = exp.plot_model(
+            models,
+            plot=plot,
+            data_kwargs={"labels": labels},
+            return_data=True,
+            system=False,
+        )
+        assert fig_data.get("overlay_data").shape[1] == len(models) - 1
+        labels.remove("Model 2")
+        assert np.all(fig_data.get("overlay_data").columns.to_list() == labels)
+
+    # Check 5: When user provides custom labels, the number of labels must match
+    # number of models
+
+    models = [m1, m1]
+
+    # (A) Less labels than models ----
+    labels = ["Model 1"]
+    with pytest.raises(ValueError) as errmsg:
+        fig_data = exp.plot_model(
+            models, plot=plot, data_kwargs={"labels": labels}, system=False
+        )
+
+    # Capture Error message
+    exceptionmsg = errmsg.value.args[0]
+
+    # Check exact error received
+    assert (
+        "Please provide a label corresponding to each model to proceed." in exceptionmsg
+    )
+
+    # (B) More labels than models ----
+    labels = ["Model 1", "Model 2", "Model 3"]
+    with pytest.raises(ValueError) as errmsg:
+        fig_data = exp.plot_model(
+            models, plot=plot, data_kwargs={"labels": labels}, system=False
+        )
+
+    # Capture Error message
+    exceptionmsg = errmsg.value.args[0]
+
+    # Check exact error received
+    assert (
+        "Please provide a label corresponding to each model to proceed." in exceptionmsg
+    )

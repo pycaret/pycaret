@@ -7,6 +7,7 @@ import traceback
 import warnings
 from typing import Any, Dict, List, Optional, Tuple, Union
 from copy import deepcopy
+from collections import defaultdict
 
 import numpy as np
 import pandas as pd
@@ -2701,6 +2702,68 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             verbose=verbose,
         )
 
+    def _plot_model_get_model_names(
+        self, estimators: List[BaseForecaster], data_kwargs: Dict
+    ) -> List[str]:
+        """Returns the labels (names) to be used for the results corresponsing to
+        each model in the plot
+
+        Parameters
+        ----------
+        estimators : List[BaseForecaster]
+            List of models passed by user
+        data_kwargs : Dict
+            Dictionary of arguments passed to the data for plotting. Specifically,
+            if user passes key = "labels", then the corresponsding values are used
+            as the plot labels corresponding to each model. e.g.
+            >>> data_kwargs={"labels": ["Baseline", "Tuned", "Finalized"]}
+
+        Returns
+        -------
+        List[str]
+            List of labels to use corresponding to each model's results.
+
+        Raises
+        ------
+        ValueError
+            When the number of labels is not equal to the number of estimators
+        """
+
+        #### Get Default Model Names ----
+        if hasattr(self, "_get_model_name") and hasattr(self, "_all_models_internal"):
+            model_names = [self._get_model_name(estimator) for estimator in estimators]
+        else:
+            # If the model is saved and loaded afterwards,
+            # it will not have self._get_model_name
+            model_names = [estimator.__class__.__name__ for estimator in estimators]
+
+        #### If user has provided labels, use as is, else use the default models names ----
+        model_names = data_kwargs.setdefault("labels", model_names)
+
+        n_models = len(estimators)
+        n_labels = len(model_names)
+        if n_models != n_labels:
+            raise ValueError(
+                f"You have passed {n_models} models and {n_labels} labels. These must be equal. "
+                "\nPlease provide a label corresponding to each model to proceed."
+            )
+
+        #### Make sure column names are unique. If not, make them unique by appending numbers ----
+        # Model names may not be unique for example when user passes basline and tuned model.
+        if len(set(model_names)) != len(model_names):
+            name_counts = defaultdict(int)
+            new_model_names = []
+            for model_name in model_names:
+                new_count = name_counts[model_name] + 1
+                if new_count == 1:
+                    new_model_names.append(f"{model_name}")
+                else:
+                    new_model_names.append(f"{model_name} ({new_count})")
+                name_counts[model_name] = new_count
+            model_names = new_model_names
+
+        return model_names
+
     def plot_model(
         self,
         estimator: Optional[Any] = None,
@@ -2735,6 +2798,8 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         >>> plot_model(plot = 'decomp', data_kwargs = {'type' : 'multiplicative'})
         >>> plot_model(plot = 'decomp', data_kwargs = {'seasonal_period': 24})
         >>> plot_model(estimator = arima, plot = 'forecast', data_kwargs = {'fh' : 24})
+        >>> tuned_arima = tune_model(arima)
+        >>> plot_model([arima, tuned_arima], data_kwargs={"labels": ["Baseline", "Tuned"]})
 
 
         estimator: sktime compatible object, default = None
@@ -2905,16 +2970,9 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             else:
                 estimators = [estimator]
 
-            if hasattr(self, "_get_model_name") and hasattr(
-                self, "_all_models_internal"
-            ):
-                model_names = [
-                    self._get_model_name(estimator) for estimator in estimators
-                ]
-            else:
-                # If the model is saved and loaded afterwards,
-                # it will not have self._get_model_name
-                model_names = [estimator.__class__.__name__ for estimator in estimators]
+            model_names = self._plot_model_get_model_names(
+                estimators=estimators, data_kwargs=data_kwargs
+            )
 
             if plot not in _support_multiple_estimators:
                 if len(estimators) > 1:
