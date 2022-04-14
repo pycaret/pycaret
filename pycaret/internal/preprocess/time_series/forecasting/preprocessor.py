@@ -115,28 +115,15 @@ class TSForecastingPreprocessor:
             self.pipe_steps_exogenous.extend([("numerical_imputer", num_estimator)])
 
     def _limitation(self,
-                    limit_target: Optional[List[Optional[float]]],
-                    limit_exogenous: Optional[List[Optional[float]]],
-                    exogenous_present: bool):
+                    limit_target: Optional[List[Union[int,float,None]]]):
 
      #### Limit target ----
         if limit_target is not None:
             self._add_limitation_steps(
-                limits=limit_target, target=True
-            )
-
-        #### Limit Exogenous ----
-        # Only add exogenous pipeline steps if exogenous variables are present.
-        if (
-            exogenous_present == TSExogenousPresent.YES
-            and limit_exogenous is not None
-        ):
-            self._add_limitation_steps(
-                limits=limit_exogenous, target=False
-            )
+                limits=limit_target)
 
     def _add_limitation_steps(self,
-                              limits: List[Optional[Union[float, int]]],
+                              limits: List[Union[int,float,None]],
                               target: bool = True):
         """Limit/scale Possible forecast values using ScaledLogitTransformer
 
@@ -152,17 +139,19 @@ class TSForecastingPreprocessor:
         target : bool, optional
             If True, limit is added to the target variable steps
             If False, limit is added to the exogenous variable steps,
+            (not implemented yet)
             by default True
 
         Raises
         ------
         TypeError
-            (1) value in `limits` is not None, 
-            (2) `limits ` is not a list of None | float | int
+            (1)  value in `limits` is not None or float or int.
+            (2) `limits ` is not a list.
         ValueError
-            (1) `limits` is a list of length not equal to 2
+            (1) `limits` is a list of length not equal to 2.
         NotImplementedError
-            (1) `limits` is a subclass of BaseEstimator
+            (1) `limits` is a subclass of BaseEstimator.
+            (2) `target` is False, as exogenous limiting is not implemented yet.
         """
 
         type_ = "Target" if target else "Exogenous"
@@ -197,7 +186,9 @@ class TSForecastingPreprocessor:
         if target:
             self.pipe_steps_target.extend([("target_limiter", limiter)])
         else:
-            self.pipe_steps_exogenous.extend([("exogenous_limiter", limiter)])
+            raise NotImplementedError(
+                "Limiting exogenous variables is not yet implemented."
+            )
 
     def _transformation(
         self,
