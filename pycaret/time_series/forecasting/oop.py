@@ -920,9 +920,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             )
 
             #### Limit variables
-            self._limitation(limit_target=self.limit_target,
-                             limit_exogenous=self.limit_exogenous,
-                             exogenous_present=self.exogenous_present)
+            self._limitation(limit_target=self.limit_target)
 
             #### Transformations (preferably based on residual analysis) ----
             self._transformation(
