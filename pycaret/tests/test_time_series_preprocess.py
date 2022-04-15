@@ -600,3 +600,17 @@ def test_pipeline_after_finalizing(load_pos_and_neg_data_missing):
     assert np.array_equal(
         loaded_model._y.index, loaded_model.steps[-1][1].steps[-1][1]._y.index
     )
+
+def test_limit_target_lower_only(load_pos_and_neg_data):
+    """Tests if the target is gte to the lower bound"""
+    data = load_pos_and_neg_data
+
+    exp = TSForecastingExperiment()
+    FH = 12
+    lower_bound = 0.0
+    exp.setup(data=data, fh=FH, limit_target=[lower_bound, None], preprocess=True)
+
+    # Currently fails due to missing values
+    assert np.all(exp.y_transformed.values >= lower_bound)
+    assert np.all(exp.y_train_transformed.values >= lower_bound)
+    assert np.all(exp.y_test_transformed.values >= lower_bound)
