@@ -186,8 +186,7 @@ class TSForecastingPreprocessor:
                     # No limits as both is none, but exit silently
                     return
                 # create limiter
-                limiter = ScaledLogitTransformer(
-                    lower_bound=limits[0], upper_bound=limits[1])
+                limiter = ScaledLogitTransformer(*limits)
 
             else:
                 raise ValueError(f"{type_} limits list must be of length 2.")
