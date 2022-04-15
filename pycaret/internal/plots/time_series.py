@@ -88,26 +88,16 @@ def _get_plot(
             fig_kwargs=fig_kwargs,
         )
 
-    elif plot == "decomp":
+    elif plot in ["decomp", "decomp_stl"]:
         fig, plot_data = plot_time_series_decomposition(
-            data=data,
+            y=data,
+            y_label=data_label,
             fig_defaults=fig_defaults,
             model_name=model_names,
-            plot="decomp",
+            plot=plot,
             data_kwargs=data_kwargs,
             fig_kwargs=fig_kwargs,
         )
-
-    elif plot == "decomp_stl":
-        fig, plot_data = plot_time_series_decomposition(
-            data=data,
-            fig_defaults=fig_defaults,
-            model_name=model_names,
-            plot="decomp_stl",
-            data_kwargs=data_kwargs,
-            fig_kwargs=fig_kwargs,
-        )
-
     elif plot in ["acf", "pacf"]:
         fig, plot_data = plot_xacf(
             y=data,
@@ -120,7 +110,8 @@ def _get_plot(
         )
     elif plot == "diagnostics":
         fig, plot_data = plot_diagnostics(
-            data=data,
+            y=data,
+            y_label=data_label,
             fig_defaults=fig_defaults,
             model_name=model_names,
             data_kwargs=data_kwargs,
@@ -148,7 +139,8 @@ def _get_plot(
             )
     elif plot == "diff":
         fig, plot_data = plot_time_series_differences(
-            data=data,
+            y=data,
+            y_label=data_label,
             fig_defaults=fig_defaults,
             model_name=model_names,
             hoverinfo=hoverinfo,
@@ -199,8 +191,6 @@ def plot_series(
     columns corresponding to the various splits of the exogenous variable
     (original, imputed, transformed)
     """
-    fig, return_data_dict = None, None
-
     fig_kwargs = fig_kwargs or {}
 
     title = f"Time Series | Target = {y_label}"
@@ -261,8 +251,6 @@ def plot_cv(
     fig_kwargs: Optional[Dict] = None,
 ) -> PlotReturnType:
     """Plots the cv splits used on the training split"""
-    fig, return_data_dict = None, None
-
     data_kwargs = data_kwargs or {}
     fig_kwargs = fig_kwargs or {}
 
@@ -529,7 +517,8 @@ def plot_model_results(
 
 
 def plot_diagnostics(
-    data: pd.Series,
+    y: pd.DataFrame,
+    y_label: str,
     fig_defaults: Dict[str, Any],
     model_name: Optional[str] = None,
     hoverinfo: Optional[str] = "text",
@@ -537,17 +526,21 @@ def plot_diagnostics(
     fig_kwargs: Optional[Dict] = None,
 ) -> PlotReturnType:
     """Plots the diagnostic data such as ACF, Histogram, QQ plot on the data provided"""
-    fig, return_data_dict = None, None
+    if y.shape[1] != 1:
+        raise ValueError(
+            "plot_diagnostics() only works on a single time series, but {y.shape[1]} "
+            "target series were provided."
+        )
+    y_series = y.iloc[:, 0]
 
     data_kwargs = data_kwargs or {}
     fig_kwargs = fig_kwargs or {}
 
-    time_series_name = data.name
     title = "Diagnostics"
     if model_name is not None:
         title = f"{title} | '{model_name}' Residuals"
-    elif time_series_name is not None:
-        title = f"{title} | {time_series_name}"
+    elif y_label is not None:
+        title = f"{title} | {y_label}"
 
     fig = make_subplots(
         rows=3,
@@ -561,7 +554,6 @@ def plot_diagnostics(
             "ACF",
             "PACF",
         ],
-        x_title=title,
     )
 
     fig.update_layout(showlegend=False)
@@ -577,12 +569,10 @@ def plot_diagnostics(
     #### Add diagnostic plots ----
 
     # ROW 1
-    fig = time_series_subplot(
-        fig=fig, data=pd.DataFrame(data), row=1, col=1, hoverinfo=hoverinfo
-    )
+    fig = time_series_subplot(fig=fig, data=y, row=1, col=1, hoverinfo=hoverinfo)
     fig, periodogram_data = frequency_components_subplot(
         fig=fig,
-        data=data,
+        data=y_series,
         row=1,
         col=2,
         hoverinfo=hoverinfo,
@@ -590,15 +580,24 @@ def plot_diagnostics(
     )
 
     # ROW 2
-    fig = dist_subplot(fig=fig, data=data, row=2, col=1)
-    fig, qqplot_data = qq_subplot(fig=fig, data=data, row=2, col=2)
+    fig = dist_subplot(fig=fig, data=y_series, row=2, col=1)
+    fig, qqplot_data = qq_subplot(fig=fig, data=y_series, row=2, col=2)
 
     # ROW 3
-    fig, acf_data = corr_subplot(fig=fig, data=data, row=3, col=1, plot="acf")
-    fig, pacf_data = corr_subplot(fig=fig, data=data, row=3, col=2, plot="pacf")
+    fig, acf_data = corr_subplot(fig=fig, data=y_series, row=3, col=1, plot="acf")
+    fig, pacf_data = corr_subplot(fig=fig, data=y_series, row=3, col=2, plot="pacf")
+
+    with fig.batch_update():
+        template = _resolve_dict_keys(
+            dict_=fig_kwargs, key="template", defaults=fig_defaults
+        )
+        fig.update_layout(title=title, showlegend=False, template=template)
+        fig = _update_fig_dimensions(
+            fig=fig, fig_kwargs=fig_kwargs, fig_defaults=fig_defaults
+        )
 
     return_data_dict = {
-        "data": data,
+        "data": y,
         "periodogram": periodogram_data,
         "qqplot": qqplot_data,
         "acf": acf_data,
@@ -617,8 +616,6 @@ def plot_predictions_with_confidence(
     fig_kwargs: Optional[Dict] = None,
 ) -> PlotReturnType:
     """Plots the original data and the predictions provided with confidence"""
-    fig, return_data_dict = None, None
-
     if len(predictions) != 1:
         raise ValueError(
             "Plotting with predictions only supports one estimator. Please pass only one estimator to fix"
@@ -727,16 +724,24 @@ def plot_predictions_with_confidence(
 
 
 def plot_time_series_decomposition(
-    data: pd.Series,
+    y: pd.DataFrame,
+    y_label: str,
     fig_defaults: Dict[str, Any],
     model_name: Optional[str] = None,
     plot: str = "decomp",
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
 ) -> PlotReturnType:
+    if y.shape[1] != 1:
+        raise ValueError(
+            "plot_time_series_decomposition() only works on a single time series, but {y.shape[1]} "
+            "target series were provided."
+        )
+    y_series = y.iloc[:, 0]
+
     fig, return_data_dict = None, None
 
-    if not isinstance(data.index, (pd.PeriodIndex, pd.DatetimeIndex)):
+    if not isinstance(y_series.index, (pd.PeriodIndex, pd.DatetimeIndex)):
         print(
             "Decomposition is currently not supported for pandas dataframes "
             "without a PeriodIndex or DatetimeIndex. Please specify a PeriodIndex "
@@ -764,18 +769,18 @@ def plot_time_series_decomposition(
     fig_kwargs = fig_kwargs or {}
 
     if plot == "decomp":
-        title_name = f"Classical Decomposition ({classical_decomp_type})"
+        title = f"Classical Decomposition ({classical_decomp_type})"
     elif plot == "decomp_stl":
-        title_name = "STL Decomposition"
+        title = "STL Decomposition"
 
-    if model_name is None:
-        title = f"{title_name}" if data.name is None else f"{title_name} | {data.name}"
-    else:
-        title = f"{title_name} | '{model_name}' Residuals"
+    if model_name is not None:
+        title = f"{title} | '{model_name}' Residuals"
+    elif y_label is not None:
+        title = f"{title} | {y_label}"
     title = title + f"<br>Seasonal Period = {period}"
 
     decomp_result = None
-    data_ = data.to_timestamp() if isinstance(data.index, pd.PeriodIndex) else data
+    data_ = y.to_timestamp() if isinstance(y.index, pd.PeriodIndex) else y
 
     if plot == "decomp":
         decomp_result = seasonal_decompose(
@@ -793,14 +798,14 @@ def plot_time_series_decomposition(
     )
 
     x = (
-        data.index.to_timestamp()
-        if isinstance(data.index, pd.PeriodIndex)
-        else data.index
+        y_series.index.to_timestamp()
+        if isinstance(y_series.index, pd.PeriodIndex)
+        else y.index
     )
     fig.add_trace(
         go.Scatter(
             x=x,
-            y=data,
+            y=y_series,
             line=dict(color="#1f77b4", width=2),
             mode="lines+markers",
             name="Actual",
@@ -862,7 +867,7 @@ def plot_time_series_decomposition(
         )
 
     return_data_dict = {
-        "data": data,
+        "data": y,
         "seasonal": decomp_result.seasonal,
         "trend": decomp_result.trend,
         "resid": decomp_result.resid,
@@ -872,13 +877,21 @@ def plot_time_series_decomposition(
 
 
 def plot_time_series_differences(
-    data: pd.Series,
+    y: pd.DataFrame,
+    y_label: str,
     fig_defaults: Dict[str, Any],
     model_name: Optional[str] = None,
     hoverinfo: Optional[str] = "text",
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
 ) -> PlotReturnType:
+    if y.shape[1] != 1:
+        raise ValueError(
+            "plot_time_series_differences() only works on a single time series, but {y.shape[1]} "
+            "target series were provided."
+        )
+    y_series = y.iloc[:, 0]
+
     fig, return_data_dict = None, None
 
     data_kwargs = data_kwargs or {}
@@ -892,23 +905,21 @@ def plot_time_series_differences(
     plot_periodogram = data_kwargs.get("periodogram", False)
     plot_fft = data_kwargs.get("fft", False)
 
-    title_name = "Difference Plot"
-    data_name = data.name if model_name is None else f"'{model_name}' Residuals"
-
-    if model_name is None:
-        title = f"{title_name}" if data.name is None else f"{title_name} | {data_name}"
-    else:
-        title = f"{title_name} | {data_name}"
+    title = "Difference Plot"
+    if model_name is not None:
+        title = f"{title} | '{model_name}' Residuals"
+    elif y_label is not None:
+        title = f"{title} | {y_label}"
 
     diff_list, name_list = get_diffs(
-        data=data, order_list=order_list, lags_list=lags_list
+        data=y_series, order_list=order_list, lags_list=lags_list
     )
 
     if len(diff_list) == 0:
         # Issue with reconciliation of orders and diffs
         return fig, return_data_dict
 
-    diff_list = [data] + diff_list
+    diff_list = [y_series] + diff_list
     name_list = ["Actual" if model_name is None else "Residuals"] + name_list
 
     column_titles = ["Time Series"]
@@ -1009,7 +1020,7 @@ def plot_time_series_differences(
         )
 
     return_data_dict = {
-        "data": data,
+        "data": y_series,
         "diff_list": diff_list,
         "name_list": name_list,
     }
