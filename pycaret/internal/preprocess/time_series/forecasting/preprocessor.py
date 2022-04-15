@@ -175,12 +175,11 @@ class TSForecastingPreprocessor:
 
         type_ = "Target" if target else "Exogenous"
         self.logger.info(f"Setting up limits for {type_} variable(s).")
-
         if isinstance(limits, list):
             if len(limits) == 2:
                 # Valid limits length
                 for i in limits:
-                    if not (isinstance(i, float, (int, float)) or i is None):
+                    if not (isinstance(i, (int, float)) or i is None):
                         raise TypeError(
                             f"{type_} limit value {i}, '{type(i)}' is not of allowed type.")
                 if all([i is None for i in limits]):
@@ -204,6 +203,7 @@ class TSForecastingPreprocessor:
             )
 
         if target:
+            print("creating pipeline limit step")
             self.pipe_steps_target.extend([("target_limiter", limiter)])
         else:
             raise NotImplementedError(
