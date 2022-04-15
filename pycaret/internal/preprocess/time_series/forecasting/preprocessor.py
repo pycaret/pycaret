@@ -143,16 +143,18 @@ class TSForecastingPreprocessor:
                               target: bool = True):
         """Limit/scale Possible forecast values using sktime's ScaledLogitTransformer
 
+        Example:
+        --------
+        >>> limits = None # default - no limits
+        >>> limits = [0, 10000000] # lower and upper limit
+        >>> limits = [0, None]  # lower limit only
+        >>> limits = [None, 10000000] # upper limit only
+
         Parameters
         ----------
         limits : List[Union[int,float,None]]
             A list (of two values) of the minimum and maximum values
-            Example:
-            --------
-            >>> limits = None # default - no limits
-            >>> limits = [0, 10000000] # lower and upper limit
-            >>> limits = [0, None]  # lower limit only
-            >>> limits = [None, 10000000] # upper limit only
+            
         target : bool, optional
             If True, limit is added to the target variable steps
             If False, limit is added to the exogenous variable steps,
