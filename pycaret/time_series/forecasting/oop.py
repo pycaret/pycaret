@@ -920,7 +920,9 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             )
 
             #### Limit variables
-            self._limitation(limit_target=self.limit_target)
+            self._limitation(limit_target=self.limit_target,
+                             limit_exogenous=self.limit_exogenous,
+                             exogenous_present=self.exogenous_present)
 
             #### Transformations (preferably based on residual analysis) ----
             self._transformation(
@@ -1480,6 +1482,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         self.numeric_imputation_target = numeric_imputation_target
         self.numeric_imputation_exogenous = numeric_imputation_exogenous
         self.limit_target = limit_target
+        self.limit_exogenous = None
         self.transform_target = transform_target
         self.transform_exogenous = transform_exogenous
         self.scale_target = scale_target
