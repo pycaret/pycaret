@@ -524,7 +524,7 @@ def frequency_components_subplot(
     row: int,
     col: int,
     hoverinfo: Optional[str],
-    type: str = "periodogram",
+    plot: str = "periodogram",
     name: Optional[str] = None,
 ) -> PlotReturnType:
     """Function to add a time series to a Plotly subplot
@@ -542,7 +542,7 @@ def frequency_components_subplot(
     hoverinfo : Optional[str]
         Whether hoverinfo should be disabled or not. Options are same as plotly.
         e.g. "text" to display, "skip" or "none" to disable.
-    type : str, optional
+    plot : str, optional
         Type of method to use to get the frequency components, by default "periodogram"
         Allowed methods are: "periodogram", "fft"
     name : Optional[str], optional
@@ -553,7 +553,7 @@ def frequency_components_subplot(
     PlotReturnType
         Returns back the plotly figure along with the data used to create the plot.
     """
-    x, y = return_frequency_components(data=data, type=type)
+    x, y = return_frequency_components(data=data, type=plot)
     time_period = [round(1 / freq, 4) for freq in x]
     freq_data = pd.DataFrame({"Freq": x, "Amplitude": y, "Time Period": time_period})
 
@@ -901,7 +901,10 @@ def _get_data_types_to_plot(
             f"\n Allowed values are: {ALLOWED_PLOT_DATA_TYPES.get(plot)}"
         )
 
-    if not MULTIPLE_PLOT_TYPES_ALLOWED_AT_ONCE.get(plot) and len(cleaned_data_types) > 1:
+    if (
+        not MULTIPLE_PLOT_TYPES_ALLOWED_AT_ONCE.get(plot)
+        and len(cleaned_data_types) > 1
+    ):
         cleaned_data_types = [cleaned_data_types[0]]
         msg = (
             f"Data Type requested for plot '{plot}' = '{cleaned_data_types}', "

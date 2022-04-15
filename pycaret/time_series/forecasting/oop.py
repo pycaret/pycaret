@@ -2769,11 +2769,11 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         return model_names
 
-    def _plot_model_get_ts_data_y(
+    def _plot_model_get_data_y(
         self, data_types_to_plot: List[str]
     ) -> Tuple[pd.DataFrame, str]:
-        """Return the target series (y) data to be used for plotting the time
-        series along with the y labels
+        """Return the target series (y) data (full - train + test) to be used
+        for plotting the time series along with the y labels.
 
         Parameters
         ----------
@@ -2797,14 +2797,14 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         return y, y_label
 
-    def _plot_model_get_ts_data_X(
+    def _plot_model_get_data_X(
         self,
         data_types_to_plot: List[str],
         include: Optional[List[str]] = None,
         exclude: Optional[List[str]] = None,
     ) -> Tuple[Optional[List[pd.DataFrame]], Optional[List[str]]]:
-        """Return the exogenous variable (X) data to be used for plotting the time
-        series along with the X labels
+        """Return the exogenous variable (X) data (full - train + test) to be
+        used for plotting the time series along with the X labels.
 
         Parameters
         ----------
@@ -3055,10 +3055,10 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         exclude = data_kwargs.get("exclude", None)
 
         if plot == "ts":
-            data, data_label = self._plot_model_get_ts_data_y(
+            data, data_label = self._plot_model_get_data_y(
                 data_types_to_plot=data_types_to_plot
             )
-            X, X_labels = self._plot_model_get_ts_data_X(
+            X, X_labels = self._plot_model_get_data_X(
                 data_types_to_plot=data_types_to_plot, include=include, exclude=exclude
             )
         elif plot == "train_test_split":
@@ -3084,7 +3084,10 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                 "fft",
             ]
             if plot in require_full_data:
-                data = self._get_y_data(split="all")
+                # data = self._get_y_data(split="all")
+                data, data_label = self._plot_model_get_data_y(
+                    data_types_to_plot=data_types_to_plot
+                )
             else:
                 plots_formatted_data = [
                     f"'{plot}'" for plot in self._available_plots_data_keys
@@ -3178,7 +3181,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                 resid = self.get_residuals(estimator=estimators)
                 if resid is None:
                     return
-                data = resid
+                data = pd.DataFrame(resid)
             else:
                 plots_formatted_model = [
                     f"'{plot}'" for plot in self._available_plots_estimator_keys

@@ -108,17 +108,11 @@ def _get_plot(
             fig_kwargs=fig_kwargs,
         )
 
-    elif plot == "acf":
-        fig, plot_data = plot_acf(
-            data=data,
-            fig_defaults=fig_defaults,
-            model_name=model_names,
-            data_kwargs=data_kwargs,
-            fig_kwargs=fig_kwargs,
-        )
-    elif plot == "pacf":
-        fig, plot_data = plot_pacf(
-            data=data,
+    elif plot in ["acf", "pacf"]:
+        fig, plot_data = plot_xacf(
+            y=data,
+            y_label=data_label,
+            plot=plot,
             fig_defaults=fig_defaults,
             model_name=model_names,
             data_kwargs=data_kwargs,
@@ -161,12 +155,13 @@ def _get_plot(
             data_kwargs=data_kwargs,
             fig_kwargs=fig_kwargs,
         )
-    elif plot == "periodogram" or plot == "fft":
+    elif plot in ["periodogram", "fft", "welch"]:
         fig, plot_data = plot_frequency_components(
-            data=data,
+            y=data,
+            y_label=data_label,
+            plot=plot,
             fig_defaults=fig_defaults,
             model_name=model_names,
-            plot=plot,
             hoverinfo=hoverinfo,
             data_kwargs=data_kwargs,
             fig_kwargs=fig_kwargs,
@@ -362,19 +357,28 @@ def plot_cv(
     return fig, return_data_dict
 
 
-def plot_acf(
-    data: pd.Series,
+def plot_xacf(
+    y: pd.DataFrame,
+    y_label: str,
+    plot: str,
     fig_defaults: Dict[str, Any],
     model_name: Optional[str] = None,
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
 ) -> PlotReturnType:
-    """Plots the ACF on the data provided
+    """Plots the ACF or PACF plot for the data provided (could be any data type
+    of the data - original, imputed, transformed) or model residuals
 
     Parameters
     ----------
-    data : pd.Series
-        Data whose correlation plot needs to be plotted
+    data : pd.DataFrame
+        Data whose correlation plot needs to be plotted. If based on the original
+        data, it can contain multiple columns corresponding to the various splits
+        of the targets (full, train, test | original, imputed, transformed).
+    y_label : str
+        The name of the target time series to be used in the plots.
+    plot : str
+        Type of plot, allowed values are ["acf", "pacf"]
     fig_defaults : Dict[str, Any]
         The defaults dictionary containing keys for "width", "height", and "template"
     model_name : Optional[str]
@@ -395,23 +399,40 @@ def plot_acf(
     data_kwargs = data_kwargs or {}
     fig_kwargs = fig_kwargs or {}
 
-    nlags = data_kwargs.get("nlags", None)
-
-    subplots = make_subplots(rows=1, cols=1)
-    fig, acf_data = corr_subplot(
-        fig=subplots, data=data, col=1, row=1, plot="acf", nlags=nlags
+    ncols = len(y.columns)
+    fig = make_subplots(
+        rows=1,
+        cols=ncols,
+        column_titles=y.columns.tolist(),
+        shared_yaxes=True,
     )
 
-    time_series_name = data.name
-    title = "Autocorrelation (ACF)"
+    all_plot_data = {}
+    nlags = data_kwargs.get("nlags", None)
+    for i, col_name in enumerate(y.columns):
+        fig, plot_data = corr_subplot(
+            fig=fig, data=y[col_name], row=1, col=i + 1, plot=plot, nlags=nlags
+        )
+        all_plot_data.update({col_name: plot_data})
+
+    if plot == "acf":
+        title = "Autocorrelation (ACF)"
+    elif plot == "pacf":
+        title = "Partial Autocorrelation (PACF)"
+    else:
+        raise ValueError(f"Plot '{plot}' is not supported by plot_xacf().")
+
     if model_name is not None:
         title = f"{title} | '{model_name}' Residuals"
-    elif time_series_name is not None:
-        title = f"{title} | {time_series_name}"
+    elif y_label is not None:
+        title = f"{title} | {y_label}"
 
     with fig.batch_update():
-        fig.update_xaxes(title_text="Lags", row=1, col=1)
-        fig.update_yaxes(title_text="ACF", row=1, col=1)
+        for i in np.arange(1, ncols + 1):
+            fig.update_xaxes(title_text="Lags", row=1, col=i)
+
+        # Only on first column
+        fig.update_yaxes(title_text=plot.upper(), row=1, col=1)
         template = _resolve_dict_keys(
             dict_=fig_kwargs, key="template", defaults=fig_defaults
         )
@@ -421,71 +442,7 @@ def plot_acf(
             fig=fig, fig_kwargs=fig_kwargs, fig_defaults=fig_defaults
         )
 
-    return_data_dict = {"acf": acf_data}
-
-    return fig, return_data_dict
-
-
-def plot_pacf(
-    data: pd.Series,
-    fig_defaults: Dict[str, Any],
-    model_name: Optional[str] = None,
-    data_kwargs: Optional[Dict] = None,
-    fig_kwargs: Optional[Dict] = None,
-) -> PlotReturnType:
-    """Plots the PACF on the data provided
-
-    Parameters
-    ----------
-    data : pd.Series
-        Data whose correlation plot needs to be plotted
-    fig_defaults : Dict[str, Any]
-        The defaults dictionary containing keys for "width", "height", and "template"
-    model_name : Optional[str]
-        If the correlation plot is for model residuals, then, model_name must be
-        passed for proper display of results. If the correlation plot is for the
-        original data, model_name should be left None (name is derived from the
-        data passed in this case).
-    data_kwargs : Dict[str, Any]
-        A dictionary containing options keys for "nlags"
-    fig_kwargs : Dict[str, Any]
-        A dictionary containing optional keys for "width", "height" and/or "template"
-
-    Returns
-    -------
-    PlotReturnType
-        Returns back the plotly figure along with the data used to create the plot.
-    """
-    data_kwargs = data_kwargs or {}
-    fig_kwargs = fig_kwargs or {}
-
-    nlags = data_kwargs.get("nlags", None)
-
-    subplots = make_subplots(rows=1, cols=1)
-    fig, pacf_data = corr_subplot(
-        fig=subplots, data=data, col=1, row=1, plot="pacf", nlags=nlags
-    )
-
-    time_series_name = data.name
-    title = "Partial Autocorrelation (PACF)"
-    if model_name is not None:
-        title = f"{title} | '{model_name}' Residuals"
-    elif time_series_name is not None:
-        title = f"{title} | {time_series_name}"
-
-    with fig.batch_update():
-        fig.update_xaxes(title_text="Lags", row=1, col=1)
-        fig.update_yaxes(title_text="PACF", row=1, col=1)
-        template = _resolve_dict_keys(
-            dict_=fig_kwargs, key="template", defaults=fig_defaults
-        )
-        fig.update_layout(title=title, showlegend=False, template=template)
-        fig.update_traces(marker={"size": 10})
-        fig = _update_fig_dimensions(
-            fig=fig, fig_kwargs=fig_kwargs, fig_defaults=fig_defaults
-        )
-
-    return_data_dict = {"pacf": pacf_data}
+    return_data_dict = {plot: all_plot_data}
 
     return fig, return_data_dict
 
@@ -629,7 +586,7 @@ def plot_diagnostics(
         row=1,
         col=2,
         hoverinfo=hoverinfo,
-        type="periodogram",
+        plot="periodogram",
     )
 
     # ROW 2
@@ -1027,7 +984,7 @@ def plot_time_series_differences(
                 col=plot_cols[3],
                 hoverinfo=hoverinfo,
                 name=name_list[i],
-                type="periodogram",
+                plot="periodogram",
             )
 
         if plot_fft:
@@ -1038,7 +995,7 @@ def plot_time_series_differences(
                 col=plot_cols[4],
                 hoverinfo=hoverinfo,
                 name=name_list[i],
-                type="fft",
+                plot="fft",
             )
 
     with fig.batch_update():
@@ -1070,72 +1027,67 @@ def plot_time_series_differences(
 
 
 def plot_frequency_components(
-    data: pd.Series,
+    y: pd.Series,
+    y_label: str,
+    plot: str,
     fig_defaults: Dict[str, Any],
     model_name: Optional[str] = None,
-    plot: str = "periodogram",
     hoverinfo: Optional[str] = "text",
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
 ) -> PlotReturnType:
     """Plots the frequency components in the data"""
-    fig, return_data_dict = None, None
-
     data_kwargs = data_kwargs or {}
     fig_kwargs = fig_kwargs or {}
+
+    ncols = len(y.columns)
+    fig = make_subplots(
+        rows=1,
+        cols=ncols,
+        column_titles=y.columns.tolist(),
+        shared_yaxes=True,
+    )
+
+    all_plot_data = {}
+    # nlags = data_kwargs.get("nlags", None)
+    for i, col_name in enumerate(y.columns):
+        fig, plot_data = frequency_components_subplot(
+            fig=fig, data=y[col_name], row=1, col=i + 1, plot=plot, hoverinfo=hoverinfo
+        )
+        all_plot_data.update({col_name: plot_data})
 
     if plot == "periodogram":
         title = "Periodogram"
     elif plot == "fft":
         title = "FFT"
     elif plot == "welch":
-        title = "FFT"
-
-    time_series_name = data.name
-    if model_name is not None:
-        legend = f"Residuals | {model_name}"
+        title = "Welch"
     else:
-        if time_series_name is not None:
-            title = f"{title} | {time_series_name}"
-        legend = "Time Series"
+        raise ValueError(
+            f"Plot '{plot}' is not supported by plot_frequency_components()."
+        )
 
-    x, y = return_frequency_components(data=data, type=plot)
-    time_period = [round(1 / freq, 4) for freq in x]
-    freq_data = pd.DataFrame({"Freq": x, "Amplitude": y, "Time Period": time_period})
-
-    spectral_density = go.Scattergl(
-        name=legend,
-        x=freq_data["Freq"],
-        y=freq_data["Amplitude"],
-        customdata=freq_data.to_numpy(),
-        hovertemplate="Freq:%{customdata[0]:.4f} <br>Ampl:%{customdata[1]:.4f}<br>Time Period: %{customdata[2]:.4f]}",
-        mode="lines+markers",
-        line=dict(color="#1f77b4", width=2),
-        marker=dict(size=5),
-        showlegend=True,
-        hoverinfo=hoverinfo,
-    )
-    plot_data = [spectral_density]
-
-    layout = go.Layout(
-        yaxis=dict(title="dB"), xaxis=dict(title="Frequency"), title=title
-    )
-
-    fig = go.Figure(data=plot_data, layout=layout)
+    if model_name is not None:
+        title = f"{title} | '{model_name}' Residuals"
+    elif y_label is not None:
+        title = f"{title} | {y_label}"
 
     with fig.batch_update():
+        for i in np.arange(1, ncols + 1):
+            fig.update_xaxes(title_text="Frequency", row=1, col=i)
 
+        # Only on first column
+        fig.update_yaxes(title_text="dB", row=1, col=1)
         template = _resolve_dict_keys(
             dict_=fig_kwargs, key="template", defaults=fig_defaults
         )
-        fig.update_layout(template=template)
-        fig.update_layout(showlegend=True)
-
+        fig.update_layout(title=title, showlegend=False, template=template)
+        fig.update_traces(marker={"size": 10})
         fig = _update_fig_dimensions(
             fig=fig, fig_kwargs=fig_kwargs, fig_defaults=fig_defaults
         )
 
-    return_data_dict = {"freq_data": freq_data}
+    return_data_dict = {plot: all_plot_data}
 
     return fig, return_data_dict
 
