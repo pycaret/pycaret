@@ -1,5 +1,6 @@
 from typing import Optional, List, Tuple, Union, Dict, Any
 from math import ceil
+import logging
 
 import numpy as np
 import pandas as pd
@@ -22,6 +23,46 @@ from statsmodels.tsa.stattools import pacf, acf, ccf
 from pycaret.utils import _resolve_dict_keys
 
 PlotReturnType = Tuple[Optional[go.Figure], Optional[Dict[str, Any]]]
+
+
+#### Data Types allowed for each plot type ----
+# First one in the list is the default (if requested is None)
+ALLOWED_PLOT_DATA_TYPES = {
+    "ts": ["original", "imputed", "transformed"],
+    "train_test_split": ["original", "imputed", "transformed"],
+    "cv": ["original"],
+    "acf": ["transformed", "imputed", "original"],
+    "pacf": ["transformed", "imputed", "original"],
+    "decomp": ["transformed", "imputed", "original"],
+    "decomp_stl": ["transformed", "imputed", "original"],
+    "diagnostics": ["transformed", "imputed", "original"],
+    "diff": ["transformed", "imputed", "original"],
+    "forecast": ["original", "imputed"],
+    "insample": ["original", "imputed"],
+    "residuals": ["original", "imputed"],
+    "periodogram": ["transformed", "imputed", "original"],
+    "fft": ["transformed", "imputed", "original"],
+    "ccf": ["transformed", "imputed", "original"],
+}
+
+#### Are multiple plot types allowed at once ----
+MULTIPLE_PLOT_TYPES_ALLOWED_AT_ONCE = {
+    "ts": True,
+    "train_test_split": True,
+    "cv": False,
+    "acf": True,
+    "pacf": True,
+    "decomp": True,
+    "decomp_stl": True,
+    "diagnostics": True,
+    "diff": False,
+    "forecast": False,
+    "insample": False,
+    "residuals": False,
+    "periodogram": True,
+    "fft": True,
+    "ccf": False,
+}
 
 
 def time_series_subplot(
@@ -717,8 +758,6 @@ def _resolve_hoverinfo(
     hoverinfo: Optional[str],
     threshold: int,
     data: Optional[pd.Series],
-    train: Optional[pd.Series],
-    test: Optional[pd.Series],
     X: Optional[pd.DataFrame],
 ) -> str:
     """Decide whether data tip obtained by hovering over a Plotly plot should be
@@ -733,12 +772,10 @@ def _resolve_hoverinfo(
         The number of data points above which the hovering should be disabled.
     data : Optional[pd.Series]
         A series of data
-    train : Optional[pd.Series]
-        A series of train indices
-    test : Optional[pd.Series]
-        A series of test indices
-    X : Optional[pd.DataFrame]
-        A dataframe of exogenous variables
+    X : Optional[List[pd.DataFrame]]
+        A list of dataframe of exogenous variables (1 dataframe per exogenous
+        variable; each dataframe containing multiple columns corresponding to the
+        plot data types requested)
 
     Returns
     -------
@@ -749,11 +786,7 @@ def _resolve_hoverinfo(
         hoverinfo = "text"
         if data is not None and len(data) > threshold:
             hoverinfo = "skip"
-        if train is not None and len(train) > threshold:
-            hoverinfo = "skip"
-        if test is not None and len(test) > threshold:
-            hoverinfo = "skip"
-        if X is not None and len(X) * X.shape[1] > threshold:
+        if X is not None and len(X) * len(X[0]) * X[0].shape[1] > threshold:
             hoverinfo = "skip"
     # if hoverinfo is not None, then use as is.
     return hoverinfo
@@ -763,8 +796,6 @@ def _resolve_renderer(
     renderer: Optional[str],
     threshold: int,
     data: Optional[pd.Series],
-    train: Optional[pd.Series],
-    test: Optional[pd.Series],
     X: Optional[pd.DataFrame],
 ) -> str:
     """Decide the renderer to use for the Plotly plot based user settings and
@@ -779,12 +810,10 @@ def _resolve_renderer(
         The number of data points above which the hovering should be disabled.
     data : Optional[pd.Series]
         A series of data
-    train : Optional[pd.Series]
-        A series of train indices
-    test : Optional[pd.Series]
-        A series of test indices
-    X : Optional[pd.DataFrame]
-        A dataframe of exogenous variables
+    X : Optional[List[pd.DataFrame]]
+        A list of dataframe of exogenous variables (1 dataframe per exogenous
+        variable; each dataframe containing multiple columns corresponding to the
+        plot data types requested)
 
     Returns
     -------
@@ -795,11 +824,7 @@ def _resolve_renderer(
         renderer = pio.renderers.default
         if data is not None and len(data) > threshold:
             renderer = "png"
-        if train is not None and len(train) > threshold:
-            renderer = "png"
-        if test is not None and len(test) > threshold:
-            renderer = "png"
-        if X is not None and len(X) * X.shape[1] > threshold:
+        if X is not None and len(X) * len(X[0]) * X[0].shape[1] > threshold:
             renderer = "png"
     # if renderer is not None, then use as is.
 
@@ -810,3 +835,142 @@ def _resolve_renderer(
         )
 
     return renderer
+
+
+def _get_data_types_to_plot(
+    plot: str, data_types_requested: Optional[Union[str, List[str]]] = None
+) -> List[str]:
+    """Returns the data types to plot based on the requested ones. If all are allowed
+    for the requested plot, they are returned as is, else this function will trim them
+    down to the allowed types only.
+
+    NOTE: Some plots only support one data type. If multiple data types are requested
+    for such plots, only the first one is used (appropriate warning issued).
+
+    Parameters
+    ----------
+    plot : str
+        The plot for which the data types are being requested
+    data_types_requested : Optional[Union[str, List[str]]], optional
+        The data types being requested for the plot, by default None
+        If None, it picks the default from the internal list.
+
+    Returns
+    -------
+    List[str]
+        The allowed data types for the requested plot based on user inputs
+
+    Raises
+    ------
+    ValueError
+        If none of the requested data types are supported by the plot
+    """
+
+    #### Get default if not provided ----
+    if data_types_requested is None:
+        # First one is the default
+        data_types_requested = [ALLOWED_PLOT_DATA_TYPES.get(plot)[0]]
+
+    #### Convert string to list ----
+    if isinstance(data_types_requested, str):
+        data_types_requested = [data_types_requested]
+
+    #### Is the data type allowed for the requested plot?
+    data_types_allowed = [
+        True if data_type_requested in ALLOWED_PLOT_DATA_TYPES.get(plot) else False
+        for data_type_requested in data_types_requested
+    ]
+
+    # Clean up list based on allowed data types
+    cleaned_data_types = []
+    for requested, allowed in zip(data_types_requested, data_types_allowed):
+        if allowed:
+            cleaned_data_types.append(requested)
+        else:
+            msg = (
+                f"Data Type: '{requested}' is not supported for plot: '{plot}'. "
+                "This will be ignored."
+            )
+            logging.warning(msg)
+            print(msg)
+
+    if len(cleaned_data_types) == 0:
+        raise ValueError(
+            "No data to plot. Please check to make sure that you have requested "
+            "an allowed data type for plot."
+            f"\n Allowed values are: {ALLOWED_PLOT_DATA_TYPES.get(plot)}"
+        )
+
+    if not MULTIPLE_PLOT_TYPES_ALLOWED_AT_ONCE.get(plot) and len(cleaned_data_types) > 1:
+        cleaned_data_types = [cleaned_data_types[0]]
+        msg = (
+            f"Data Type requested for plot '{plot}' = '{cleaned_data_types}', "
+            "but this plot only supports a single data type at a time. "
+            "\nThe first one (i.e. '{cleaned_data_types[0]}') will be used."
+        )
+        logging.warning(msg)
+        print(msg)
+
+    return cleaned_data_types
+
+
+def _reformat_dataframes_for_plots(
+    data: List[Union[pd.Series, pd.DataFrame]], labels_suffix: List[str]
+) -> List[pd.DataFrame]:
+    """Take the input list of dataframes (assuming all dataframes have the same columns)
+    and converts them into a list of new dataframes with each new dataframe containing
+    the same column from all of the input dataframe.
+
+    e.g. 1
+    If input list has 2 dataframes D1 and D2 with columns A, B, and C then the
+    output will be a list of 3 dataframes with 2 columns each
+        Output dataframe 1 containing D1.A, D2.A
+        Output dataframe 2 containing D1.B, D2.B
+        Output dataframe 3 containing D1.C, D2.C
+
+    e.g. 2
+    If the input list has series, they are just concatenated together to produce one
+    output dataframe.
+
+    Parameters
+    ----------
+    data : List[Union[pd.Series, pd.DataFrame]]
+        Input list of dataframes or series
+    labels_suffix : List[str]
+        The suffix to use for the output dataframes column names.
+        Must be the same length as the number of input dataframes
+
+        In the example above, if suffix is ["original", "transformed"], then the
+            Output dataframe 1 will have columns ["A (original)", "A (transformed)"]
+            Output dataframe 2 will have columns ["B (original)", "B (transformed)"]
+            Output dataframe 2 will have columns ["C (original)", "C (transformed)"]
+
+    Returns
+    -------
+    List[pd.DataFrame]
+        Output list of dataframes
+
+    Raises
+    ------
+    ValueError
+        When the number of labels provided does not match the number of input dataframes
+    """
+    num_labels = len(labels_suffix)
+    num_input_dfs = len(data)
+    if num_labels != num_input_dfs:
+        raise ValueError(
+            f"Number of labels provided ({num_labels}) does not match the number of input "
+            "dataframes ({num_input_dfs})"
+        )
+
+    cols = pd.DataFrame(data[0]).columns
+
+    data = pd.concat(data, axis=1)
+    output = []
+    for col in cols:
+        temp = pd.DataFrame(data[col])
+        column_names = [f"{col} ({suffix})" for suffix in labels_suffix]
+        temp.columns = column_names
+        output.append(temp)
+
+    return output

@@ -76,7 +76,11 @@ from pycaret.utils.time_series.forecasting.model_selection import (
     ForecastingRandomizedSearchCV,
     cross_validate,
 )
-from pycaret.internal.plots.utils.time_series import _resolve_renderer
+from pycaret.internal.plots.utils.time_series import (
+    _resolve_renderer,
+    _get_data_types_to_plot,
+    _reformat_dataframes_for_plots,
+)
 
 warnings.filterwarnings("ignore")
 LOGGER = get_logger()
@@ -505,7 +509,8 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                     "\n\nData has missing indices!"
                     "\nMany models, plotting, and testing functionality does not work with missing indices."
                     "\nPlease add missing indices to data before passing to pycaret."
-                    "\nYou can do that by using the following code snippet & then enabling imputation of missing values in `setup`"
+                    "\nYou can do that by using the following code snippet & then enabling imputation of missing "
+                    "values in `setup`"
                     "\n\n# Assuming `data` is a pandas dataframe"
                     "\n>>> import numpy as np"
                     "\n>>> idx = pd.period_range(min(data.index), max(data.index))"
@@ -2764,6 +2769,124 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         return model_names
 
+    def _plot_model_get_ts_data_y(
+        self, data_types_to_plot: List[str]
+    ) -> Tuple[pd.DataFrame, str]:
+        """Return the target series (y) data to be used for plotting the time
+        series along with the y labels
+
+        Parameters
+        ----------
+        data_types_to_plot : List[str]
+            Data types to plot. Allowed values in the list are:
+            "original", "imputed" and/or "transformed"
+
+        Returns
+        -------
+        Tuple[pd.DataFrame, str]
+            A single data frame with columns for the target series for the
+            data types requested. Also returns the name of the target series.
+        """
+        #### Get y data (all requested types) ----
+        ys = [
+            self._get_y_data(split="all", data_type=data_type_to_plot)
+            for data_type_to_plot in data_types_to_plot
+        ]
+        y_label = ys[0].name
+        y = _reformat_dataframes_for_plots(data=ys, labels_suffix=data_types_to_plot)[0]
+
+        return y, y_label
+
+    def _plot_model_get_ts_data_X(
+        self,
+        data_types_to_plot: List[str],
+        include: Optional[List[str]] = None,
+        exclude: Optional[List[str]] = None,
+    ) -> Tuple[Optional[List[pd.DataFrame]], Optional[List[str]]]:
+        """Return the exogenous variable (X) data to be used for plotting the time
+        series along with the X labels
+
+        Parameters
+        ----------
+        data_types_to_plot : List[str]
+            Data types to plot. Allowed values in the list are:
+            "original", "imputed" and/or "transformed"
+        include : Optional[List[str]], optional
+            The columns to include in the returned data, by default None which
+            returns all the columns
+        exclude : Optional[List[str]], optional
+            The columns to exclude from the returned data, by default None which
+            does not exclude any columns
+
+        Returns
+        -------
+        Tuple[Optional[List[pd.DataFrame]], Optional[List[str]]]
+            A single data frame with columns for the target series for the
+            data types requested. Also returns the name of the target series.
+        """
+        #### Get X data (all requested types) ----
+        X, X_labels = None, None
+        if self.exogenous_present == TSExogenousPresent.YES:
+            Xs = [
+                self._get_X_data(
+                    split="all",
+                    include=include,
+                    exclude=exclude,
+                    data_type=data_type_to_plot,
+                )
+                for data_type_to_plot in data_types_to_plot
+            ]
+            X_labels = Xs[0].columns
+            X = _reformat_dataframes_for_plots(
+                data=Xs, labels_suffix=data_types_to_plot
+            )
+
+        return X, X_labels
+
+    def _plot_model_get_train_test_split_data(
+        self, data_types_to_plot: List[str]
+    ) -> Tuple[pd.DataFrame, str]:
+        """Returns the data to be used for plotting train test splits along with
+        the data labels.
+
+        Parameters
+        ----------
+        data_types_to_plot : List[str]
+            Data types to plot. Allowed values in the list are:
+            "original", "imputed" and/or "transformed"
+
+        Returns
+        -------
+        Tuple[pd.DataFrame, str]
+            A single data frame with columns for the train test splits for the
+            data types requested. Also returns the name of the target series.
+        """
+        #### Step 1: Get train data (all requested types) ----
+        trains = [
+            self._get_y_data(split="train", data_type=data_type_to_plot)
+            for data_type_to_plot in data_types_to_plot
+        ]
+        data_label = trains[0].name
+        train = _reformat_dataframes_for_plots(
+            data=trains, labels_suffix=data_types_to_plot
+        )[0]
+        train.columns = [col.replace(data_label, "Train") for col in train.columns]
+
+        #### Step 2: Get test data (all requested types) ----
+        tests = [
+            self._get_y_data(split="test", data_type=data_type_to_plot)
+            for data_type_to_plot in data_types_to_plot
+        ]
+        test = _reformat_dataframes_for_plots(
+            data=tests, labels_suffix=data_types_to_plot
+        )[0]
+        test.columns = [col.replace(data_label, "Test") for col in test.columns]
+
+        #### Step 3: Combine train and test data into a single frame ----
+        data = pd.concat([train, test], axis=1)
+
+        return data, data_label
+
     def plot_model(
         self,
         estimator: Optional[Any] = None,
@@ -2913,7 +3036,12 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         elif plot is None and estimator is not None:
             plot = "forecast"
 
-        data, train, test, X, model_results, cv, model_names = (
+        data_types_requested = data_kwargs.setdefault("plot_data_type", None)
+        data_types_to_plot = _get_data_types_to_plot(
+            plot=plot, data_types_requested=data_types_requested
+        )
+
+        data, data_label, X, X_labels, cv, model_results, model_names = (
             None,
             None,
             None,
@@ -2927,11 +3055,16 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         exclude = data_kwargs.get("exclude", None)
 
         if plot == "ts":
-            data = self._get_y_data(split="all")
-            X = self._get_X_data(split="all", include=include, exclude=exclude)
+            data, data_label = self._plot_model_get_ts_data_y(
+                data_types_to_plot=data_types_to_plot
+            )
+            X, X_labels = self._plot_model_get_ts_data_X(
+                data_types_to_plot=data_types_to_plot, include=include, exclude=exclude
+            )
         elif plot == "train_test_split":
-            train = self._get_y_data(split="train")
-            test = self._get_y_data(split="test")
+            data, data_label = self._plot_model_get_train_test_split_data(
+                data_types_to_plot=data_types_to_plot
+            )
         elif plot == "cv":
             data = self._get_y_data(split="train")
             cv = self.get_fold_generator()
@@ -3059,11 +3192,11 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             plot=plot,
             fig_defaults=self.fig_kwargs,
             data=data,
-            train=train,
-            test=test,
+            data_label=data_label,
             X=X,
-            model_results=model_results,
+            X_labels=X_labels,
             cv=cv,
+            model_results=model_results,
             model_names=model_names,
             return_pred_int=return_pred_int,
             data_kwargs=data_kwargs,
@@ -3104,8 +3237,6 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                             renderer=renderer,
                             threshold=big_data_threshold,
                             data=data,
-                            train=train,
-                            test=test,
                             X=X,
                         )
                         fig.show(renderer=renderer)
@@ -3390,9 +3521,8 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             # The imputed test portion will be used as `y_true` for metrics
             # The imputed train portion will be used for metrics such as MASE, RMSSE.
             # Refer to: https://github.com/pycaret/pycaret/issues/2369
-            y_imputed, _ = _get_imputed_data(pipeline=pipeline, y=self.y, X=self.X)
-            y_test_imputed = y_imputed.loc[self.y_test.index]
-            y_train_imputed = y_imputed.loc[self.y_train.index]
+            y_test_imputed = self._get_y_data(split="test", data_type="imputed")
+            y_train_imputed = self._get_y_data(split="train", data_type="imputed")
 
             # Pass additional keyword arguments (like y_train, lower, upper) to
             # method since they need to be passed to certain metrics like MASE,
@@ -4235,7 +4365,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         results.reset_index(inplace=True, drop=True)
         return results
 
-    def _get_y_data(self, split="all") -> pd.Series:
+    def _get_y_data(self, split: str = "all", data_type: str = "original") -> pd.Series:
         """Returns the y data for the requested split
 
         Parameters
@@ -4243,6 +4373,16 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         split : str, optional
             The plot for which the data must be returned. Options are: "all",
             "train" or "test", by default "all".
+        data_type : str, optional
+            The data type to fetch. Options are: "original", "imputed", "transformed".
+            , by default "original".
+
+            NOTE:
+            If data_type = "imputed" or "transformed" and
+            (1) split = "train", then the returned value is based on the pipeline
+                that is trained on the "train" data only.
+            (2) split = "test", then the returned value is based on the pipeline
+                that is trained on the entire data (train + test).
 
         Returns
         -------
@@ -4252,21 +4392,42 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         Raises
         ------
         ValueError
-            When `split` is not one of the allowed types
+            When `split` or `data_type` are not one of the allowed types
         """
-        if split == "all":
-            data = self.y
-        elif split == "train":
-            data = self.y_train
-        elif split == "test":
-            data = self.y_test
-        else:
-            raise ValueError(f"split value: '{split}' is not supported.")
-        return data
+        _validate_split_requested(split=split)
+        _validate_data_type(data_type=data_type)
+
+        if data_type == "original":
+            if split == "train":
+                y = self.y_train
+            elif split == "test":
+                y = self.y_test
+            elif split == "all":
+                y = self.y
+        elif data_type == "imputed":
+            y, _ = _get_imputed_data(pipeline=self.pipeline, y=self.y, X=self.X)
+            if split == "train":
+                y, _ = _get_imputed_data(
+                    pipeline=self.pipeline, y=self.y_train, X=self.X_train
+                )
+            elif split == "test":
+                y = y.loc[self.y_test.index]
+        elif data_type == "transformed":
+            if split == "train":
+                y = self.y_train_transformed
+            elif split == "test":
+                y = self.y_test_transformed
+            elif split == "all":
+                y = self.y_transformed
+            # "transformed" data does not remember the name for some reason
+            y.name = self.y.name
+
+        return y
 
     def _get_X_data(
         self,
-        split="all",
+        split: str = "all",
+        data_type: str = "original",
         include: Optional[List[str]] = None,
         exclude: Optional[List[str]] = None,
     ) -> pd.DataFrame:
@@ -4277,6 +4438,16 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         split : str, optional
             The plot for which the data must be returned. Options are: "all",
             "train" or "test", by default "all".
+        data_type : str, optional
+            The data type to fetch. Options are: "original", "imputed", "transformed".
+            , by default "original".
+
+            NOTE:
+            If data_type = "imputed" or "transformed" and
+            (1) split = "train", then the returned value is based on the pipeline
+                that is trained on the "train" data only.
+            (2) split = "test", then the returned value is based on the pipeline
+                that is trained on the entire data (train + test).
         include : Optional[List[str]], optional
             The columns to include in the returned data, by default None which
             returns all the columns
@@ -4292,24 +4463,43 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         Raises
         ------
         ValueError
-            When `split` is not one of the allowed types
+            When `split` or `data_type` are not one of the allowed types
         """
-        if split == "all":
-            data = self.X
-        elif split == "train":
-            data = self.X_train
-        elif split == "test":
-            data = self.X_test
-        else:
-            raise ValueError(f"split value: '{split}' is not supported.")
+        _validate_split_requested(split=split)
+        _validate_data_type(data_type=data_type)
+
+        if data_type == "original":
+            if split == "train":
+                X = self.X_train
+            elif split == "test":
+                X = self.X_test
+            elif split == "all":
+                X = self.X
+        elif data_type == "imputed":
+            _, X = _get_imputed_data(pipeline=self.pipeline, y=self.y, X=self.X)
+            if split == "train":
+                if X is not None:
+                    _, X = _get_imputed_data(
+                        pipeline=self.pipeline, y=self.y_train, X=self.X_train
+                    )
+            elif split == "test":
+                if X is not None:
+                    X = X.loc[self.X_test.index]
+        elif data_type == "transformed":
+            if split == "test":
+                X = self.X_test_transformed
+            elif split == "all":
+                X = self.X_transformed
+            elif split == "train":
+                X = self.X_train_transformed
 
         # TODO: Move this functionality (of including/excluding cols) to some utility module.
         if include:
-            data = data[include]
+            X = X[include]
         if exclude:
-            data = data.loc[:, ~data.columns.isin(exclude)]
+            X = X.loc[:, ~X.columns.isin(exclude)]
 
-        return data
+        return X
 
     def _get_cleaned_estimator_y_X(
         self, estimator: BaseForecaster
@@ -4603,3 +4793,47 @@ class TimeSeriesExperiment(TSForecastingExperiment):
         warnings.warn(msg, DeprecationWarning)
         print(msg)
         super().__init__()
+
+
+def _validate_split_requested(split: str):
+    """Checks that the spilt of data requested is one of the allowed types
+    Allowed values are: ["all", "train", "test"]
+
+    Parameters
+    ----------
+    split : str
+        The requested split
+
+    Raises
+    ------
+    ValueError
+        If the requested split is not in the allowed list
+    """
+    allowed_splits = ["all", "train", "test"]
+    if split not in allowed_splits:
+        raise ValueError(
+            f"split value: '{split}' is not supported."
+            f"\nAllowed Values are: {allowed_splits}"
+        )
+
+
+def _validate_data_type(data_type: str):
+    """Checks that the data type requested is one of the allowed types
+    Allowed values are: ["original", "imputed", "transformed"]
+
+    Parameters
+    ----------
+    data_type : str
+        The requested plot data
+
+    Raises
+    ------
+    ValueError
+        If the requested plot data is not in the allowed list
+    """
+    allowed_data_types = ["original", "imputed", "transformed"]
+    if data_type not in allowed_data_types:
+        raise ValueError(
+            f"Data type value: '{data_type}' is not supported."
+            f"\nAllowed Values are: {allowed_data_types}"
+        )
