@@ -115,27 +115,43 @@ class TSForecastingPreprocessor:
             self.pipe_steps_exogenous.extend([("numerical_imputer", num_estimator)])
 
     def _limitation(self,
-                    limit_target: Optional[List[Union[int,float,None]]]):
+                    limit_target: Optional[List[Union[int,float,None]]],
+                    limit_exogenous: Optional[List[Union[int,float,None]]],
+                    exogenous_present: bool
+                    ):
 
      #### Limit target ----
         if limit_target is not None:
             self._add_limitation_steps(
                 limits=limit_target)
 
+    #### Limit exogenous ----
+        # TODO: Not yet implemented
+        # Will raise an error
+        # Only add exogenous pipeline steps if exogenous variables are present.
+        if (
+            exogenous_present == TSExogenousPresent.YES
+            and limit_exogenous is not None
+        ):
+            # self._add_limitation_steps(
+            #     limits=limit_exogenous, target=False
+            self.logger.warning("Applying limits to exogenous variables is not yet implemented.")
+            
+
     def _add_limitation_steps(self,
                               limits: List[Union[int,float,None]],
                               target: bool = True):
-        """Limit/scale Possible forecast values using ScaledLogitTransformer
+        """Limit/scale Possible forecast values using sktime's ScaledLogitTransformer
 
         Parameters
         ----------
-        limits : List[Optional[Union[float,int]]]
+        limits : List[Union[int,float,None]]
             A list (of two values) of the minimum and maximum values
             Example values:
-                forecast_limit = None # default - no limits
-                forecast_limit = [0, 10000000] # lower and upper limit
-                forecast_limit = [0, None]  # lower limit only
-                forecast_limit = [None, 10000000] # upper limit only
+                limits = None # default - no limits
+                limits = [0, 10000000] # lower and upper limit
+                limits = [0, None]  # lower limit only
+                limits = [None, 10000000] # upper limit only
         target : bool, optional
             If True, limit is added to the target variable steps
             If False, limit is added to the exogenous variable steps,
@@ -146,7 +162,7 @@ class TSForecastingPreprocessor:
         ------
         TypeError
             (1)  value in `limits` is not None or float or int.
-            (2) `limits ` is not a list.
+            (2) `limits` is not a list.
         ValueError
             (1) `limits` is a list of length not equal to 2.
         NotImplementedError
