@@ -564,7 +564,10 @@ class _PyCaretExperiment:
             # In time series, the order of arguments and returns may be reversed.
             # When transforming the test set, we can and should use all data before that
             _, X = self.pipeline.transform(y=self.y, X=self.X)
-            return X.loc[self.X_test.index]
+            if X is None:
+                return None
+            else:
+                return X.loc[self.X_test.index]
 
     @property
     def y_train_transformed(self):
