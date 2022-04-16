@@ -19,6 +19,7 @@ from plotly.subplots import make_subplots
 
 from statsmodels.graphics.gofplots import qqplot
 from statsmodels.tsa.stattools import pacf, acf, ccf
+from statsmodels.tsa.seasonal import seasonal_decompose, STL
 
 from pycaret.utils import _resolve_dict_keys
 
@@ -440,6 +441,125 @@ def dist_subplot(fig: go.Figure, data: pd.Series, row: int, col: int) -> go.Figu
     return fig
 
 
+def decomp_subplot(
+    fig: go.Figure,
+    data: pd.Series,
+    col: int,
+    plot: str,
+    classical_decomp_type: str,
+    period: int,
+) -> go.Figure:
+    """Function to add decomposition to a Plotly subplot
+
+    Parameters
+    ----------
+    fig : go.Figure
+        Plotly figure to which the decomposition plots need to be added
+    data : pd.Series
+        Data whose decomposition must be added
+    col : int
+        Column of the figure where the plot needs to be inserted. Starts from 1.
+        Note that rows do not need to be specified since there will be 4 rows
+        per column. Must be enforced from outside when creating the figure.
+    plot : str
+        Options are
+          - "decomp": for Classical Decomposition
+          - "decomp_stl": for STL Decomposition
+    classical_decomp_type : str
+        The classical decomposition type. Options are: ["additive", "multiplicative"]
+    period : int
+        The seasonal period to use for decomposition
+
+    Returns
+    -------
+    go.Figure
+        Returns back the plotly figure with the decomposition results inserted.
+    """
+
+    data_ = data.to_timestamp() if isinstance(data.index, pd.PeriodIndex) else data
+
+    x = (
+        data.index.to_timestamp()
+        if isinstance(data.index, pd.PeriodIndex)
+        else data.index
+    )
+
+    #### Plot Original data ----
+    row = 1
+    fig.add_trace(
+        go.Scatter(
+            x=x,
+            y=data_,
+            line=dict(color=DEFAULT_PLOTLY_COLORS[row - 1], width=2),
+            mode="lines+markers",
+            name="Actual",
+            marker=dict(size=2),
+        ),
+        row=row,
+        col=col,
+    )
+
+    if plot == "decomp":
+        try:
+            decomp_result = seasonal_decompose(
+                data_, period=period, model=classical_decomp_type
+            )
+        except ValueError as exception:
+            logging.warning(exception)
+            logging.warning(
+                "Seasonal Decompose plot failed most likely sue to missing data"
+            )
+            return fig, None
+    elif plot == "decomp_stl":
+        decomp_result = STL(data_, period=period).fit()
+
+    row = 2
+    fig.add_trace(
+        go.Scatter(
+            x=x,
+            y=decomp_result.seasonal,
+            line=dict(color=DEFAULT_PLOTLY_COLORS[row - 1], width=2),
+            mode="lines+markers",
+            name="Seasonal",
+            marker=dict(size=2),
+        ),
+        row=row,
+        col=col,
+    )
+
+    row = 3
+    fig.add_trace(
+        go.Scatter(
+            x=x,
+            y=decomp_result.trend,
+            line=dict(color=DEFAULT_PLOTLY_COLORS[row - 1], width=2),
+            mode="lines+markers",
+            name="Trend",
+            marker=dict(size=2),
+        ),
+        row=row,
+        col=col,
+    )
+
+    row = 4
+    fig.add_trace(
+        go.Scatter(
+            x=x,
+            y=decomp_result.resid,
+            line=dict(color=DEFAULT_PLOTLY_COLORS[row - 1], width=2),
+            mode="markers",
+            name="Residuals",
+            marker=dict(
+                size=4,
+            ),
+        ),
+        row=row,
+        col=col,
+    )
+
+    return fig, decomp_result
+
+
 def return_frequency_components(
     data: pd.Series, type: str = "periodogram"
 ) -> Tuple[np.ndarray, np.ndarray]:
@@ -524,7 +644,7 @@ def frequency_components_subplot(
     row: int,
     col: int,
     hoverinfo: Optional[str],
-    type: str = "periodogram",
+    plot: str = "periodogram",
     name: Optional[str] = None,
 ) -> PlotReturnType:
     """Function to add a time series to a Plotly subplot
@@ -542,7 +662,7 @@ def frequency_components_subplot(
     hoverinfo : Optional[str]
         Whether hoverinfo should be disabled or not. Options are same as plotly.
         e.g. "text" to display, "skip" or "none" to disable.
-    type : str, optional
+    plot : str, optional
         Type of method to use to get the frequency components, by default "periodogram"
         Allowed methods are: "periodogram", "fft"
     name : Optional[str], optional
@@ -553,7 +673,7 @@ def frequency_components_subplot(
     PlotReturnType
         Returns back the plotly figure along with the data used to create the plot.
     """
-    x, y = return_frequency_components(data=data, type=type)
+    x, y = return_frequency_components(data=data, type=plot)
     time_period = [round(1 / freq, 4) for freq in x]
     freq_data = pd.DataFrame({"Freq": x, "Amplitude": y, "Time Period": time_period})
 
@@ -901,15 +1021,18 @@ def _get_data_types_to_plot(
             f"\n Allowed values are: {ALLOWED_PLOT_DATA_TYPES.get(plot)}"
         )
 
-    if not MULTIPLE_PLOT_TYPES_ALLOWED_AT_ONCE.get(plot) and len(cleaned_data_types) > 1:
-        cleaned_data_types = [cleaned_data_types[0]]
+    if (
+        not MULTIPLE_PLOT_TYPES_ALLOWED_AT_ONCE.get(plot)
+        and len(cleaned_data_types) > 1
+    ):
         msg = (
-            f"Data Type requested for plot '{plot}' = '{cleaned_data_types}', "
+            f"Data Type requested for plot '{plot}' = {cleaned_data_types}, "
             "but this plot only supports a single data type at a time. "
-            "\nThe first one (i.e. '{cleaned_data_types[0]}') will be used."
+            f"\nThe first one (i.e. '{cleaned_data_types[0]}') will be used."
         )
         logging.warning(msg)
         print(msg)
+        cleaned_data_types = [cleaned_data_types[0]]
 
     return cleaned_data_types
 
@@ -974,3 +1097,41 @@ def _reformat_dataframes_for_plots(
         output.append(temp)
 
     return output
+
+
+def _clean_model_results_names(
+    model_results: List[pd.DataFrame], model_names: List[str]
+) -> Tuple[List[pd.DataFrame], List[str]]:
+    """Cleans the model results and names to remove models that did not produce
+    any results, e.g. no residuals, insample predictions, etc.
+
+    Parameters
+    ----------
+    model_results : List[pd.DataFrame]
+        List of dataframes containing the model results (one dataframe per model)
+        Some values might be None if the model did not produce a result. These
+        will get dropped by this function.
+    model_names : List[str]
+        The names of the models producing the results.
+
+    Returns
+    -------
+    Tuple[List[pd.DataFrame], List[str]]
+        The cleaned model results and names (after removing those that did not
+        produce a result).
+    """
+    includes = [
+        True if model_result is not None else False for model_result in model_results
+    ]
+
+    # Remove None results (produced when insample or residuals can not be obtained)
+    model_results = [
+        model_result
+        for include, model_result in zip(includes, model_results)
+        if include
+    ]
+    model_names = [
+        model_name for include, model_name in zip(includes, model_names) if include
+    ]
+
+    return model_results, model_names

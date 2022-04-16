@@ -916,6 +916,115 @@ def plot_model(
     data_kwargs: dict, default = None
         Dictionary of arguments passed to the data for plotting.
 
+        Available keys are:
+
+        nlags: The number of lags to use when plotting correlation plots, e.g.
+            ACF, PACF, CCF. If not provided, default internally calculated
+            values are used.
+
+        seasonal_period: The seasonal period to use for decomposition plots.
+            If not provided, the default internally detected seasonal period
+            is used.
+
+        type: The type of seasonal decomposition to perform. Options are:
+            ["additive", "multiplicative"]
+
+        order_list: The differencing orders to use for difference plots. e.g.
+            [1, 2] will plot first and second order differences (corresponding
+            to d = 1 and 2 in ARIMA models).
+
+        lags_list: An alternate and more explicit alternate to "order_list"
+            allowing users to specify the exact lags to plot. e.g.
+            [1, [1, 12]] will plot first difference and a second plot with
+            first difference (d = 1 in ARIMA) and seasonal 12th difference
+            (D=1, s=12 in ARIMA models). Also note that "order_list" = [2]
+            can be alternately specified as lags_list = [[1, 1]] i.e. successive
+            differencing twice.
+
+        acf: True/False
+            When specified in difference plots and set to True, this will plot
+            the ACF of the differenced data as well.
+
+        pacf: True/False
+            When specified in difference plots and set to True, this will plot
+            the PACF of the differenced data as well.
+
+        periodogram: True/False
+            When specified in difference plots and set to True, this will plot
+            the Periodogram of the differenced data as well.
+
+        fft: True/False
+            When specified in difference plots and set to True, this will plot
+            the FFT of the differenced data as well.
+
+        labels: When estimator(s) are provided, the corresponding labels to
+            use for the plots. If not provided, the model class is used to
+            derive the labels.
+
+        include: When data contains exogenous variables, then only specific
+            exogenous variables can be plotted using this key.
+            e.g. include = ["col1", "col2"]
+
+        exclude: When data contains exogenous variables, specific exogenous
+            variables can be excluded from the plots using this key.
+            e.g. exclude = ["col1", "col2"]
+
+        fh: The forecast horizon to use for forecasting. If not provided, then
+            the one used during model training is used.
+
+        X: When a model trained with exogenous variables has been finalized,
+            user can provide the future values of the exogenous variables to
+            make future target time series predictions using this key.
+
+        plot_data_type: When plotting the data used for modeling, user may
+            wish to see plots with the original data set provided, the imputed
+            dataset (if imputation is set) or the transformed dataset (which
+            included any imputation and transformation set by the user). This
+            keyword can be used to specify which data type to use.
+
+            NOTE:
+            (1) If no imputation is specified, then plotting the "imputed"
+            data type will produce the same results as the "original" data type.
+            (2) If no transforations are specified, then plotting the "transformed"
+            data type will produce the same results as the "imputed" data type.
+
+            Allowed values are (if not specified, defaults to the first one in the list):
+
+            "ts": ["original", "imputed", "transformed"]
+            "train_test_split": ["original", "imputed", "transformed"]
+            "cv": ["original"]
+            "acf": ["transformed", "imputed", "original"]
+            "pacf": ["transformed", "imputed", "original"]
+            "decomp": ["transformed", "imputed", "original"]
+            "decomp_stl": ["transformed", "imputed", "original"]
+            "diagnostics": ["transformed", "imputed", "original"]
+            "diff": ["transformed", "imputed", "original"]
+            "forecast": ["original", "imputed"]
+            "insample": ["original", "imputed"]
+            "residuals": ["original", "imputed"]
+            "periodogram": ["transformed", "imputed", "original"]
+            "fft": ["transformed", "imputed", "original"]
+            "ccf": ["transformed", "imputed", "original"]
+
+            Some plots (marked as True below) will also allow specifying
+            multiple of data types at once.
+
+            "ts": True
+            "train_test_split": True
+            "cv": False
+            "acf": True
+            "pacf": True
+            "decomp": True
+            "decomp_stl": True
+            "diagnostics": True
+            "diff": False
+            "forecast": False
+            "insample": False
+            "residuals": False
+            "periodogram": True
+            "fft": True
+            "ccf": False
+
 
     fig_kwargs: dict, default = {} (empty dict)
         The setting to be used for the plot. Overrides any global setting

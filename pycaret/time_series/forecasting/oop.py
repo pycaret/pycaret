@@ -1550,12 +1550,12 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         # `big_data_threshold`: Number of data points above which the hovering for
         # some plots is disabled. This is needed else the notebooks become very slow.
         defaults = {
-            "big_data_threshold": 200,
+            "big_data_threshold": 100_000,
             "hoverinfo": None,
             "renderer": None,
             "template": "ggplot2",
             "rows": None,
-            "cols": 4,
+            "cols": None,
             "width": None,
             "height": None,
         }
@@ -2769,11 +2769,11 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         return model_names
 
-    def _plot_model_get_ts_data_y(
+    def _plot_model_get_data_y(
         self, data_types_to_plot: List[str]
     ) -> Tuple[pd.DataFrame, str]:
-        """Return the target series (y) data to be used for plotting the time
-        series along with the y labels
+        """Return the target series (y) data (full - train + test) to be used
+        for plotting the time series along with the y labels.
 
         Parameters
         ----------
@@ -2797,14 +2797,14 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         return y, y_label
 
-    def _plot_model_get_ts_data_X(
+    def _plot_model_get_data_X(
         self,
         data_types_to_plot: List[str],
         include: Optional[List[str]] = None,
         exclude: Optional[List[str]] = None,
     ) -> Tuple[Optional[List[pd.DataFrame]], Optional[List[str]]]:
-        """Return the exogenous variable (X) data to be used for plotting the time
-        series along with the X labels
+        """Return the exogenous variable (X) data (full - train + test) to be
+        used for plotting the time series along with the X labels.
 
         Parameters
         ----------
@@ -2972,6 +2972,115 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         data_kwargs: dict, default = None
             Dictionary of arguments passed to the data for plotting.
 
+            Available keys are:
+
+            nlags: The number of lags to use when plotting correlation plots, e.g.
+                ACF, PACF, CCF. If not provided, default internally calculated
+                values are used.
+
+            seasonal_period: The seasonal period to use for decomposition plots.
+                If not provided, the default internally detected seasonal period
+                is used.
+
+            type: The type of seasonal decomposition to perform. Options are:
+                ["additive", "multiplicative"]
+
+            order_list: The differencing orders to use for difference plots. e.g.
+                [1, 2] will plot first and second order differences (corresponding
+                to d = 1 and 2 in ARIMA models).
+
+            lags_list: An alternate and more explicit alternate to "order_list"
+                allowing users to specify the exact lags to plot. e.g.
+                [1, [1, 12]] will plot first difference and a second plot with
+                first difference (d = 1 in ARIMA) and seasonal 12th difference
+                (D=1, s=12 in ARIMA models). Also note that "order_list" = [2]
+                can be alternately specified as lags_list = [[1, 1]] i.e. successive
+                differencing twice.
+
+            acf: True/False
+                When specified in difference plots and set to True, this will plot
+                the ACF of the differenced data as well.
+
+            pacf: True/False
+                When specified in difference plots and set to True, this will plot
+                the PACF of the differenced data as well.
+
+            periodogram: True/False
+                When specified in difference plots and set to True, this will plot
+                the Periodogram of the differenced data as well.
+
+            fft: True/False
+                When specified in difference plots and set to True, this will plot
+                the FFT of the differenced data as well.
+
+            labels: When estimator(s) are provided, the corresponding labels to
+                use for the plots. If not provided, the model class is used to
+                derive the labels.
+
+            include: When data contains exogenous variables, then only specific
+                exogenous variables can be plotted using this key.
+                e.g. include = ["col1", "col2"]
+
+            exclude: When data contains exogenous variables, specific exogenous
+                variables can be excluded from the plots using this key.
+                e.g. exclude = ["col1", "col2"]
+
+            fh: The forecast horizon to use for forecasting. If not provided, then
+                the one used during model training is used.
+
+            X: When a model trained with exogenous variables has been finalized,
+                user can provide the future values of the exogenous variables to
+                make future target time series predictions using this key.
+
+            plot_data_type: When plotting the data used for modeling, user may
+                wish to see plots with the original data set provided, the imputed
+                dataset (if imputation is set) or the transformed dataset (which
+                included any imputation and transformation set by the user). This
+                keyword can be used to specify which data type to use.
+
+                NOTE:
+                (1) If no imputation is specified, then plotting the "imputed"
+                data type will produce the same results as the "original" data type.
+                (2) If no transforations are specified, then plotting the "transformed"
+                data type will produce the same results as the "imputed" data type.
+
+                Allowed values are (if not specified, defaults to the first one in the list):
+
+                "ts": ["original", "imputed", "transformed"]
+                "train_test_split": ["original", "imputed", "transformed"]
+                "cv": ["original"]
+                "acf": ["transformed", "imputed", "original"]
+                "pacf": ["transformed", "imputed", "original"]
+                "decomp": ["transformed", "imputed", "original"]
+                "decomp_stl": ["transformed", "imputed", "original"]
+                "diagnostics": ["transformed", "imputed", "original"]
+                "diff": ["transformed", "imputed", "original"]
+                "forecast": ["original", "imputed"]
+                "insample": ["original", "imputed"]
+                "residuals": ["original", "imputed"]
+                "periodogram": ["transformed", "imputed", "original"]
+                "fft": ["transformed", "imputed", "original"]
+                "ccf": ["transformed", "imputed", "original"]
+
+                Some plots (marked as True below) will also allow specifying
+                multiple of data types at once.
+
+                "ts": True
+                "train_test_split": True
+                "cv": False
+                "acf": True
+                "pacf": True
+                "decomp": True
+                "decomp_stl": True
+                "diagnostics": True
+                "diff": False
+                "forecast": False
+                "insample": False
+                "residuals": False
+                "periodogram": True
+                "fft": True
+                "ccf": False
+
 
         fig_kwargs: dict, default = {} (empty dict)
             The setting to be used for the plot. Overrides any global setting
@@ -3055,10 +3164,10 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         exclude = data_kwargs.get("exclude", None)
 
         if plot == "ts":
-            data, data_label = self._plot_model_get_ts_data_y(
+            data, data_label = self._plot_model_get_data_y(
                 data_types_to_plot=data_types_to_plot
             )
-            X, X_labels = self._plot_model_get_ts_data_X(
+            X, X_labels = self._plot_model_get_data_X(
                 data_types_to_plot=data_types_to_plot, include=include, exclude=exclude
             )
         elif plot == "train_test_split":
@@ -3069,8 +3178,12 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             data = self._get_y_data(split="train")
             cv = self.get_fold_generator()
         elif plot == "ccf":
-            data = self._get_y_data(split="all")
-            X = self._get_X_data(split="all", include=include, exclude=exclude)
+            data, data_label = self._plot_model_get_data_y(
+                data_types_to_plot=data_types_to_plot
+            )
+            X, X_labels = self._plot_model_get_data_X(
+                data_types_to_plot=data_types_to_plot, include=include, exclude=exclude
+            )
         elif estimator is None:
             # Estimator is not provided
             require_full_data = [
@@ -3084,7 +3197,10 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                 "fft",
             ]
             if plot in require_full_data:
-                data = self._get_y_data(split="all")
+                # data = self._get_y_data(split="all")
+                data, data_label = self._plot_model_get_data_y(
+                    data_types_to_plot=data_types_to_plot
+                )
             else:
                 plots_formatted_data = [
                     f"'{plot}'" for plot in self._available_plots_data_keys
@@ -3178,7 +3294,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                 resid = self.get_residuals(estimator=estimators)
                 if resid is None:
                     return
-                data = resid
+                data = pd.DataFrame(resid)
             else:
                 plots_formatted_model = [
                     f"'{plot}'" for plot in self._available_plots_estimator_keys
