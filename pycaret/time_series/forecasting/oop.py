@@ -1550,7 +1550,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         # `big_data_threshold`: Number of data points above which the hovering for
         # some plots is disabled. This is needed else the notebooks become very slow.
         defaults = {
-            "big_data_threshold": 200,
+            "big_data_threshold": 100_000,
             "hoverinfo": None,
             "renderer": None,
             "template": "ggplot2",
@@ -3069,8 +3069,12 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             data = self._get_y_data(split="train")
             cv = self.get_fold_generator()
         elif plot == "ccf":
-            data = self._get_y_data(split="all")
-            X = self._get_X_data(split="all", include=include, exclude=exclude)
+            data, data_label = self._plot_model_get_data_y(
+                data_types_to_plot=data_types_to_plot
+            )
+            X, X_labels = self._plot_model_get_data_X(
+                data_types_to_plot=data_types_to_plot, include=include, exclude=exclude
+            )
         elif estimator is None:
             # Estimator is not provided
             require_full_data = [

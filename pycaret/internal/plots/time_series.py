@@ -147,7 +147,7 @@ def _get_plot(
             data_kwargs=data_kwargs,
             fig_kwargs=fig_kwargs,
         )
-    elif plot in ["periodogram", "fft", "welch"]:
+    elif plot in ["periodogram", "fft"]:
         fig, plot_data = plot_frequency_components(
             y=data,
             y_label=data_label,
@@ -160,8 +160,10 @@ def _get_plot(
         )
     elif plot == "ccf":
         fig, plot_data = plot_ccf(
-            data=data,
+            y=data,
+            y_label=data_label,
             X=X,
+            X_labels=X_labels,
             fig_defaults=fig_defaults,
             data_kwargs=data_kwargs,
             fig_kwargs=fig_kwargs,
@@ -528,8 +530,8 @@ def plot_diagnostics(
     """Plots the diagnostic data such as ACF, Histogram, QQ plot on the data provided"""
     if y.shape[1] != 1:
         raise ValueError(
-            "plot_diagnostics() only works on a single time series, but {y.shape[1]} "
-            "target series were provided."
+            "plot_diagnostics() only works on a single time series, "
+            f"but {y.shape[1]} target series were provided."
         )
     y_series = y.iloc[:, 0]
 
@@ -734,8 +736,8 @@ def plot_time_series_decomposition(
 ) -> PlotReturnType:
     if y.shape[1] != 1:
         raise ValueError(
-            "plot_time_series_decomposition() only works on a single time series, but {y.shape[1]} "
-            "target series were provided."
+            "plot_time_series_decomposition() only works on a single time series, "
+            f"but {y.shape[1]} target series were provided."
         )
     y_series = y.iloc[:, 0]
 
@@ -887,8 +889,8 @@ def plot_time_series_differences(
 ) -> PlotReturnType:
     if y.shape[1] != 1:
         raise ValueError(
-            "plot_time_series_differences() only works on a single time series, but {y.shape[1]} "
-            "target series were provided."
+            "plot_time_series_differences() only works on a single time series, "
+            f"but {y.shape[1]} target series were provided."
         )
     y_series = y.iloc[:, 0]
 
@@ -1104,21 +1106,44 @@ def plot_frequency_components(
 
 
 def plot_ccf(
-    data: pd.Series,
-    X: pd.DataFrame,
+    y: pd.DataFrame,
+    y_label: str,
+    X: List[pd.DataFrame],
+    X_labels: List[str],
     fig_defaults: Dict[str, Any],
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
 ) -> PlotReturnType:
-    """Plots the Cross Correlation between the data and the exogenous variables X"""
-    fig, return_data_dict = None, None
+    """Plots the Cross Correlation between the data and the exogenous variables X
 
+    X can be a list of dataframes, 1 dataframe per exogenous variable. Each dataframe
+    must have only 1 column at a time since ccf does not work on many data types at a time.
+
+    """
+    if y.shape[1] != 1:
+        raise ValueError(
+            "plot_ccf() only works on a single time series, "
+            f"but {y.shape[1]} target series were provided."
+        )
+    for dataframe in X:
+        if dataframe.shape[1] != 1:
+            raise ValueError(
+                f"plot_ccf() only works on a single time series, but {dataframe.shape[1]} "
+                f"exogenous series were provided: {dataframe.columns}."
+            )
+
+    y_series = y.iloc[:, 0]
     data_kwargs = data_kwargs or {}
     fig_kwargs = fig_kwargs or {}
 
-    title = "Cross Correlation Plot(s)"
+    title = f"Cross Correlation Plot(s) | {y_series.name}"
 
-    plot_data = pd.concat([data, X], axis=1)
+    plot_data = [y_series]
+    plot_data.extend(X)
+    plot_data = pd.concat(plot_data, axis=1)
+    column_names = [y_label]
+    column_names.extend(X_labels)
+    plot_data.columns = column_names
 
     # Decide the number of rows and columns ----
     num_subplots = plot_data.shape[1]
@@ -1128,7 +1153,7 @@ def plot_ccf(
 
     subplot_titles = []
     for i, col_name in enumerate(plot_data.columns):
-        subplot_title = f"{data.name} vs. {col_name}"
+        subplot_title = f"{y_label} vs. {col_name}"
         subplot_titles.append(subplot_title)
 
     fig = make_subplots(
@@ -1144,7 +1169,7 @@ def plot_ccf(
         #### Add CCF plot ----
         fig, ccf_data = corr_subplot(
             fig=fig,
-            data=[data, plot_data[col_name]],
+            data=[y_series, plot_data[col_name]],
             row=row,
             col=col,
             plot="ccf",

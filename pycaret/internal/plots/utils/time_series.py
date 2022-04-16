@@ -905,14 +905,14 @@ def _get_data_types_to_plot(
         not MULTIPLE_PLOT_TYPES_ALLOWED_AT_ONCE.get(plot)
         and len(cleaned_data_types) > 1
     ):
-        cleaned_data_types = [cleaned_data_types[0]]
         msg = (
-            f"Data Type requested for plot '{plot}' = '{cleaned_data_types}', "
+            f"Data Type requested for plot '{plot}' = {cleaned_data_types}, "
             "but this plot only supports a single data type at a time. "
-            "\nThe first one (i.e. '{cleaned_data_types[0]}') will be used."
+            f"\nThe first one (i.e. '{cleaned_data_types[0]}') will be used."
         )
         logging.warning(msg)
         print(msg)
+        cleaned_data_types = [cleaned_data_types[0]]
 
     return cleaned_data_types
 
