@@ -6,10 +6,6 @@ import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-from statsmodels.tsa.stattools import pacf, acf
-from statsmodels.tsa.seasonal import seasonal_decompose, STL
-
-
 from sktime.forecasting.model_selection import (
     ExpandingWindowSplitter,
     SlidingWindowSplitter,
@@ -22,6 +18,7 @@ from pycaret.internal.plots.utils.time_series import (
     corr_subplot,
     dist_subplot,
     qq_subplot,
+    decomp_subplot,
     frequency_components_subplot,
     plot_original_with_overlays,
     _update_fig_dimensions,
@@ -89,12 +86,12 @@ def _get_plot(
 
     elif plot in ["decomp", "decomp_stl"]:
         fig, plot_data = plot_time_series_decomposition(
-            y=data,
-            y_label=data_label,
-            fig_defaults=fig_defaults,
-            model_name=model_names,
+            data=data,
             plot=plot,
+            fig_defaults=fig_defaults,
             data_kwargs=data_kwargs,
+            data_label=data_label,
+            model_name=model_names,
             fig_kwargs=fig_kwargs,
         )
     elif plot in ["acf", "pacf"]:
@@ -413,9 +410,9 @@ def plot_xacf(
     ----------
     data : pd.DataFrame
         Data whose correlation plot needs to be plotted. If based on the original
-        data, it can contain multiple columns corresponding to the various splits
-        of the targets (full, train, test | original, imputed, transformed). If
-        it is based on an estimator, it currently only supports one model.
+        data, it can contain multiple columns corresponding to the various data
+        types of the targets (original, imputed, transformed). If it is based on
+        an estimator, it currently only supports one model.
         TODO: Extend to multiple models with trellised plots like data.
     plot : str
         Type of plot, allowed values are ["acf", "pacf"]
@@ -807,31 +804,57 @@ def plot_predictions_with_confidence(
 
 
 def plot_time_series_decomposition(
-    y: pd.DataFrame,
-    y_label: Optional[str],
+    data: pd.DataFrame,
+    plot: str,
     fig_defaults: Dict[str, Any],
+    data_kwargs: Dict[str, Any],
+    data_label: Optional[str] = None,
     model_name: Optional[str] = None,
-    plot: str = "decomp",
-    data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
 ) -> PlotReturnType:
-    """
-    TODO: refactor and fill docstring
-    y_label: The name of the target time series to be used in the plots. Optional when
-    data is from residuals. In that case, the user must provide model_name argument
-    instead.
-    """
-    # TODO: Remove after we suppot multiple data types for this plot
-    if y.shape[1] != 1:
-        raise ValueError(
-            "plot_time_series_decomposition() only works on a single time series, "
-            f"but {y.shape[1]} series were provided."
-        )
-    y_series = y.iloc[:, 0]
+    """Plots the Decomposition for the target time series (could be any data
+    type of the data - original, imputed, transformed) or model residuals.
 
+    Parameters
+    ----------
+    data : pd.DataFrame
+        Data whose decomposition plot needs to be plotted. If based on the original
+        data, it can contain multiple columns corresponding to the various data
+        types of the targets (original, imputed, transformed). If it is based on
+        an estimator, it currently only supports one model.
+        TODO: Extend to multiple models with trellised plots like data.
+    plot : str, optional
+        Type of plot, allowed values are ["decomp", "decomp_stl"]
+    fig_defaults : Dict[str, Any]
+        The default settings for the plotly plot. Must contain keys for "width",
+        "height", and "template".
+    data_kwargs : Dict[str, Any]
+        A dictionary containing mandatory keys for "seasonal_period"
+    data_label : Optional[str]
+        If data is from the original target series, then the name of the target
+        series, by default None.
+    model_name : Optional[str]
+        If data is from the original target series, then the name of the model,
+        (must be passed for proper display), by default None.
+    fig_kwargs : Optional[Dict], optional
+        Specific overrides by the user for the plotly figure settings,
+        by default None. Can contain keys for "width", "height" and/or "template".
+
+    Returns
+    -------
+    PlotReturnType
+        The plotly figure object along with a dictionary with the plot data.
+        The data can be returned to the user (if requested) so that the plot can
+        be and customized by them if not supported by pycaret by default.
+
+    Raises
+    ------
+    ValueError
+        If seasonal_period is not passed through data_kwargs
+    """
     fig, return_data_dict = None, None
 
-    if not isinstance(y_series.index, (pd.PeriodIndex, pd.DatetimeIndex)):
+    if not isinstance(data.index, (pd.PeriodIndex, pd.DatetimeIndex)):
         print(
             "Decomposition is currently not supported for pandas dataframes "
             "without a PeriodIndex or DatetimeIndex. Please specify a PeriodIndex "
@@ -855,6 +878,16 @@ def plot_time_series_decomposition(
         )
         return fig, return_data_dict
 
+    ncols = len(data.columns)
+    fig = make_subplots(
+        rows=4,
+        cols=ncols,
+        column_titles=data.columns.tolist(),
+        row_titles=["Actual", "Seasonal", "Trend", "Residual"],
+        shared_xaxes=True,
+        shared_yaxes=True,
+    )
+
     classical_decomp_type = data_kwargs.get("type", "additive")
     fig_kwargs = fig_kwargs or {}
 
@@ -865,86 +898,21 @@ def plot_time_series_decomposition(
 
     if model_name is not None:
         title = f"{title} | '{model_name}' Residuals"
-    elif y_label is not None:
-        title = f"{title} | {y_label}"
+    elif data_label is not None:
+        title = f"{title} | {data_label}"
     title = title + f"<br>Seasonal Period = {period}"
 
-    decomp_result = None
-    data_ = y.to_timestamp() if isinstance(y.index, pd.PeriodIndex) else y
-
-    if plot == "decomp":
-        decomp_result = seasonal_decompose(
-            data_, period=period, model=classical_decomp_type
+    all_plot_data = {}
+    for i, col_name in enumerate(data.columns):
+        fig, plot_data = decomp_subplot(
+            fig=fig,
+            data=data[col_name],
+            col=i + 1,
+            plot=plot,
+            classical_decomp_type=classical_decomp_type,
+            period=period,
         )
-    elif plot == "decomp_stl":
-        decomp_result = STL(data_, period=period).fit()
-
-    fig = make_subplots(
-        rows=4,
-        cols=1,
-        row_heights=[0.25, 0.25, 0.25, 0.25],
-        row_titles=["Actual", "Seasonal", "Trend", "Residual"],
-        shared_xaxes=True,
-    )
-
-    x = (
-        y_series.index.to_timestamp()
-        if isinstance(y_series.index, pd.PeriodIndex)
-        else y.index
-    )
-    fig.add_trace(
-        go.Scatter(
-            x=x,
-            y=y_series,
-            line=dict(color="#1f77b4", width=2),
-            mode="lines+markers",
-            name="Actual",
-            marker=dict(size=2),
-        ),
-        row=1,
-        col=1,
-    )
-
-    fig.add_trace(
-        go.Scatter(
-            x=x,
-            y=decomp_result.seasonal,
-            line=dict(color="#1f77b4", width=2),
-            mode="lines+markers",
-            name="Seasonal",
-            marker=dict(size=2),
-        ),
-        row=2,
-        col=1,
-    )
-
-    fig.add_trace(
-        go.Scatter(
-            x=x,
-            y=decomp_result.trend,
-            line=dict(color="#1f77b4", width=2),
-            mode="lines+markers",
-            name="Trend",
-            marker=dict(size=2),
-        ),
-        row=3,
-        col=1,
-    )
-
-    fig.add_trace(
-        go.Scatter(
-            x=x,
-            y=decomp_result.resid,
-            line=dict(color="#1f77b4", width=2),
-            mode="markers",
-            name="Residuals",
-            marker=dict(
-                size=4,
-            ),
-        ),
-        row=4,
-        col=1,
-    )
+        all_plot_data.update({col_name: plot_data})
 
     with fig.batch_update():
         template = _resolve_dict_keys(
@@ -956,12 +924,7 @@ def plot_time_series_decomposition(
             fig=fig, fig_kwargs=fig_kwargs, fig_defaults=fig_defaults
         )
 
-    return_data_dict = {
-        "data": y,
-        "seasonal": decomp_result.seasonal,
-        "trend": decomp_result.trend,
-        "resid": decomp_result.resid,
-    }
+    return_data_dict = {"data": data, plot: all_plot_data}
 
     return fig, return_data_dict
 
@@ -1188,9 +1151,9 @@ def plot_frequency_components(
     ----------
     data : pd.Series
         Data whose frequency components needs to be plotted. If based on the original
-        data, it can contain multiple columns corresponding to the various splits
-        of the targets (full, train, test | original, imputed, transformed). If
-        it is based on an estimator, it currently only supports one model.
+        data, it can contain multiple columns corresponding to the various data
+        types of the targets (original, imputed, transformed). If it is based on
+        an estimator, it currently only supports one model.
         TODO: Extend to multiple models with trellised plots like data.
     plot : str
         Type of plot, allowed values are ["periodogram", "fft", "welch"]
