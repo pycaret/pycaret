@@ -27,6 +27,7 @@ from pycaret.internal.plots.utils.time_series import (
     _update_fig_dimensions,
     _get_subplot_rows_cols,
     _resolve_hoverinfo,
+    _clean_model_results_names,
     PlotReturnType,
 )
 
@@ -83,7 +84,6 @@ def _get_plot(
             data=data,
             cv=cv,
             fig_defaults=fig_defaults,
-            data_kwargs=data_kwargs,
             fig_kwargs=fig_kwargs,
         )
 
@@ -99,20 +99,40 @@ def _get_plot(
         )
     elif plot in ["acf", "pacf"]:
         fig, plot_data = plot_xacf(
-            y=data,
-            y_label=data_label,
+            data=data,
             plot=plot,
             fig_defaults=fig_defaults,
-            model_name=model_names,
+            data_label=data_label,
+            model_label=model_names,
             data_kwargs=data_kwargs,
+            fig_kwargs=fig_kwargs,
+        )
+    elif plot in ["periodogram", "fft"]:
+        fig, plot_data = plot_frequency_components(
+            data=data,
+            plot=plot,
+            fig_defaults=fig_defaults,
+            data_label=data_label,
+            model_name=model_names,
+            hoverinfo=hoverinfo,
             fig_kwargs=fig_kwargs,
         )
     elif plot == "diagnostics":
         fig, plot_data = plot_diagnostics(
-            y=data,
-            y_label=data_label,
+            data=data,
             fig_defaults=fig_defaults,
+            data_label=data_label,
             model_name=model_names,
+            hoverinfo=hoverinfo,
+            fig_kwargs=fig_kwargs,
+        )
+    elif plot == "diff":
+        fig, plot_data = plot_time_series_differences(
+            data=data,
+            fig_defaults=fig_defaults,
+            data_label=data_label,
+            model_name=model_names,
+            hoverinfo=hoverinfo,
             data_kwargs=data_kwargs,
             fig_kwargs=fig_kwargs,
         )
@@ -130,33 +150,12 @@ def _get_plot(
             fig, plot_data = plot_model_results(
                 original_data=data,
                 model_results=model_results,
-                plot=plot,
                 model_names=model_names,
+                plot=plot,
                 fig_defaults=fig_defaults,
                 hoverinfo=hoverinfo,
                 fig_kwargs=fig_kwargs,
             )
-    elif plot == "diff":
-        fig, plot_data = plot_time_series_differences(
-            y=data,
-            y_label=data_label,
-            fig_defaults=fig_defaults,
-            model_name=model_names,
-            hoverinfo=hoverinfo,
-            data_kwargs=data_kwargs,
-            fig_kwargs=fig_kwargs,
-        )
-    elif plot in ["periodogram", "fft"]:
-        fig, plot_data = plot_frequency_components(
-            y=data,
-            y_label=data_label,
-            plot=plot,
-            fig_defaults=fig_defaults,
-            model_name=model_names,
-            hoverinfo=hoverinfo,
-            data_kwargs=data_kwargs,
-            fig_kwargs=fig_kwargs,
-        )
     elif plot == "ccf":
         fig, plot_data = plot_ccf(
             y=data,
@@ -164,7 +163,6 @@ def _get_plot(
             X=X,
             X_labels=X_labels,
             fig_defaults=fig_defaults,
-            data_kwargs=data_kwargs,
             fig_kwargs=fig_kwargs,
         )
     else:
@@ -185,12 +183,46 @@ def plot_series(
     """Plots the target time series (full or specific splits). Can optionally
     plot exogenous variables if available.
 
-    y can contain multiple columns corresponding to the various splits of the targets
-    (full, train, test | original, imputed, transformed)
+    Parameters
+    ----------
+    y : pd.DataFrame
+        A dataframe containing the various plot data types for the target series
+        (original, imputed, transformed), the various splits (full, train, test)
+        or a combination of these two. Each column in the dataframe is plotted as
+        a separate overlaid series in the plot. The names of the columns are used
+        in the plot legend.
+    y_label : str
+        The name of the target time series.
+    fig_defaults : Dict[str, Any]
+        The default settings for the plotly plot. Must contain keys for "width",
+        "height", and "template".
+    X : Optional[List[pd.DataFrame]], optional
+        The exogenous variables in the data, by default None
+        X contains 1 dataframe per exogenous variable. Similar to the target
+        series, each dataframe can contain multiple columns corresponding to the
+        various plot data types (original, imputed, transformed). Each exogenous
+        variable is plotted in a separate subplot and each data type is overlaid
+        within that subplot. The names of the columns are used in the plot legend.
+    X_labels : Optional[List[str]], optional
+        The names of the exogenous variables, by default None
+    hoverinfo : Optional[str], optional
+        Action when hovering over the plotly plot, by default "text"
+    fig_kwargs : Optional[Dict], optional
+        Specific overrides by the user for the plotly figure settings,
+        by default None. Can contain keys for "width", "height" and/or "template".
 
-    X contains 1 dataframe per exogenous variable. Each dataframe can contain multiple
-    columns corresponding to the various splits of the exogenous variable
-    (original, imputed, transformed)
+    Returns
+    -------
+    PlotReturnType
+        The plotly figure object along with a dictionary with the plot data.
+        The data can be returned to the user (if requested) so that the plot can
+        be and customized by them if not supported by pycaret by default.
+
+    Raises
+    ------
+    ValueError
+        When exogenous variables are passed, but their corresponding names are
+        not passed.
     """
     fig_kwargs = fig_kwargs or {}
 
@@ -246,13 +278,32 @@ def plot_series(
 
 def plot_cv(
     data: pd.Series,
-    cv,
+    cv: Union[ExpandingWindowSplitter, SlidingWindowSplitter],
     fig_defaults: Dict[str, Any],
-    data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
 ) -> PlotReturnType:
-    """Plots the cv splits used on the training split"""
-    data_kwargs = data_kwargs or {}
+    """Plots the cv splits used on the training split
+
+    Parameters
+    ----------
+    data : pd.Series
+        The target time series
+    cv : Union[ExpandingWindowSplitter, SlidingWindowSplitter]
+        The sktime compatible cross validation object to use for the plot
+    fig_defaults : Dict[str, Any]
+        The default settings for the plotly plot. Must contain keys for "width",
+        "height", and "template".
+    fig_kwargs : Optional[Dict], optional
+        Specific overrides by the user for the plotly figure settings,
+        by default None. Can contain keys for "width", "height" and/or "template".
+
+    Returns
+    -------
+    PlotReturnType
+        The plotly figure object along with a dictionary with the plot data.
+        The data can be returned to the user (if requested) so that the plot can
+        be and customized by them if not supported by pycaret by default.
+    """
     fig_kwargs = fig_kwargs or {}
 
     def get_windows(y, cv):
@@ -347,62 +398,65 @@ def plot_cv(
 
 
 def plot_xacf(
-    y: pd.DataFrame,
-    y_label: Optional[str],
+    data: pd.DataFrame,
     plot: str,
     fig_defaults: Dict[str, Any],
-    model_name: Optional[str] = None,
+    data_label: Optional[str] = None,
+    model_label: Optional[str] = None,
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
 ) -> PlotReturnType:
-    """Plots the ACF or PACF plot for the data provided (could be any data type
-    of the data - original, imputed, transformed) or model residuals
+    """Plots the ACF or PACF plot for the target time series (could be any data
+    type of the data - original, imputed, transformed) or model residuals.
 
     Parameters
     ----------
     data : pd.DataFrame
         Data whose correlation plot needs to be plotted. If based on the original
         data, it can contain multiple columns corresponding to the various splits
-        of the targets (full, train, test | original, imputed, transformed).
-    y_label : Optional[str]
-        The name of the target time series to be used in the plots. Optional when
-        data is from residuals. In that case, the user must provide model_name argument
-        instead.
+        of the targets (full, train, test | original, imputed, transformed). If
+        it is based on an estimator, it currently only supports one model.
+        TODO: Extend to multiple models with trellised plots like data.
     plot : str
         Type of plot, allowed values are ["acf", "pacf"]
     fig_defaults : Dict[str, Any]
-        The defaults dictionary containing keys for "width", "height", and "template"
+        The default settings for the plotly plot. Must contain keys for "width",
+        "height", and "template".
+    data_label : Optional[str]
+        If data is from the original target series, then the name of the target
+        series, by default None.
     model_name : Optional[str]
-        If the correlation plot is for model residuals, then, model_name must be
-        passed for proper display of results. If the correlation plot is for the
-        original data, model_name should be left None (name is derived from the
-        data passed in this case).
+        If data is from the original target series, then the name of the model,
+        (must be passed for proper display), by default None.
     data_kwargs : Dict[str, Any]
         A dictionary containing options keys for "nlags"
     fig_kwargs : Dict[str, Any]
-        A dictionary containing optional keys for "width", "height" and/or "template"
+        Specific overrides by the user for the plotly figure settings,
+        by default None. Can contain keys for "width", "height" and/or "template".
 
     Returns
     -------
     PlotReturnType
-        Returns back the plotly figure along with the correlation data.
+        The plotly figure object along with a dictionary with the plot data.
+        The data can be returned to the user (if requested) so that the plot can
+        be and customized by them if not supported by pycaret by default.
     """
     data_kwargs = data_kwargs or {}
     fig_kwargs = fig_kwargs or {}
 
-    ncols = len(y.columns)
+    ncols = len(data.columns)
     fig = make_subplots(
         rows=1,
         cols=ncols,
-        column_titles=y.columns.tolist(),
+        column_titles=data.columns.tolist(),
         shared_yaxes=True,
     )
 
     all_plot_data = {}
     nlags = data_kwargs.get("nlags", None)
-    for i, col_name in enumerate(y.columns):
+    for i, col_name in enumerate(data.columns):
         fig, plot_data = corr_subplot(
-            fig=fig, data=y[col_name], row=1, col=i + 1, plot=plot, nlags=nlags
+            fig=fig, data=data[col_name], row=1, col=i + 1, plot=plot, nlags=nlags
         )
         all_plot_data.update({col_name: plot_data})
 
@@ -413,10 +467,10 @@ def plot_xacf(
     else:
         raise ValueError(f"Plot '{plot}' is not supported by plot_xacf().")
 
-    if model_name is not None:
-        title = f"{title} | '{model_name}' Residuals"
-    elif y_label is not None:
-        title = f"{title} | {y_label}"
+    if model_label is not None:
+        title = f"{title} | '{model_label}' Residuals"
+    elif data_label is not None:
+        title = f"{title} | {data_label}"
 
     with fig.batch_update():
         for i in np.arange(1, ncols + 1):
@@ -441,8 +495,8 @@ def plot_xacf(
 def plot_model_results(
     original_data: pd.Series,
     model_results: List[pd.DataFrame],
-    plot: str,
     model_names: List[str],
+    plot: str,
     fig_defaults: Dict[str, Any],
     hoverinfo: Optional[str] = "text",
     fig_kwargs: Optional[Dict] = None,
@@ -460,39 +514,30 @@ def plot_model_results(
         multiple models. Each column in the overlay_data is overlaid as a separate
         series over the original_data. The column names are used as labels for the
         overlaid data.
+    model_names : List[str]
+        Name(s) of the models whose results are being plotted
     plot : str
         The type of plot.
             "forecast": Out of Sample Forecasts
             "insample": Insample Forecasts
             "residuals": Model Residuals
-    model_names : List[str]
-        Name(s) of the models whose results are being plotted
     fig_defaults : Dict[str, Any]
-        The defaults dictionary containing keys for "width", "height", and "template"
+        The defaults dictionary containing keys for "width", "height", and "template".
     hoverinfo : Optional[str], optional
         Whether to display the hoverinfo in the plot, by default "text"
     fig_kwargs : Optional[Dict], optional
-        A dictionary containing optional keys for "width", "height" and/or "template"
+        Specific overrides by the user for the plotly figure settings,
+        by default None. Can contain keys for "width", "height" and/or "template".
 
     Returns
     -------
     PlotReturnType
-        Returns back the plotly figure along with the data used to create the plot.
+        The plotly figure object along with a dictionary with the plot data.
+        The data can be returned to the user (if requested) so that the plot can
+        be and customized by them if not supported by pycaret by default.
     """
 
-    includes = [
-        True if model_result is not None else False for model_result in model_results
-    ]
-
-    # Remove None results (produced when insample or residuals can not be obtained)
-    model_results = [
-        model_result
-        for include, model_result in zip(includes, model_results)
-        if include
-    ]
-    model_names = [
-        model_name for include, model_name in zip(includes, model_names) if include
-    ]
+    model_results, model_names = _clean_model_results_names(model_results, model_names)
 
     if plot in ["forecast", "insample"]:
         model_results = [model_result["y_pred"] for model_result in model_results]
@@ -520,35 +565,63 @@ def plot_model_results(
 
 
 def plot_diagnostics(
-    y: pd.DataFrame,
-    y_label: Optional[str],
+    data: pd.DataFrame,
     fig_defaults: Dict[str, Any],
+    data_label: Optional[str] = None,
     model_name: Optional[str] = None,
     hoverinfo: Optional[str] = "text",
-    data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
 ) -> PlotReturnType:
-    """Plots the diagnostic data such as ACF, Histogram, QQ plot on the data provided
+    """Plots the diagnostic data such as ACF, Histogram, QQ plot on the data
+    provided. Data could be the target series (original, imputed or transformed),
+    or the residuals from a model. If target series is provided, only one data
+    type is supported at a time.
 
-    y_label: The name of the target time series to be used in the plots. Optional when
-    data is from residuals. In that case, the user must provide model_name argument
-    instead.
+    Parameters
+    ----------
+    data : pd.DataFrame
+        Data whose diagnostic plot needs to be plotted.
+    fig_defaults : Dict[str, Any]
+        The default settings for the plotly plot. Must contain keys for "width",
+        "height", and "template".
+    data_label : Optional[str]
+        If data is from the original target series, then the name of the target
+        series, by default None.
+    model_name : Optional[str]
+        If data is from the original target series, then the name of the model,
+        (must be passed for proper display), by default None.
+    hoverinfo : Optional[str], optional
+        Action when hovering over the plotly plot, by default "text"
+    fig_kwargs : Optional[Dict], optional
+        Specific overrides by the user for the plotly figure settings,
+        by default None. Can contain keys for "width", "height" and/or "template".
+
+    Returns
+    -------
+    PlotReturnType
+        The plotly figure object along with a dictionary with the plot data.
+        The data can be returned to the user (if requested) so that the plot can
+        be and customized by them if not supported by pycaret by default.
+
+    Raises
+    ------
+    ValueError
+        When the data contains more than 1 column indicating more than 1 data type.
     """
-    if y.shape[1] != 1:
+    if data.shape[1] != 1:
         raise ValueError(
             "plot_diagnostics() only works on a single time series, "
-            f"but {y.shape[1]} target series were provided."
+            f"but {data.shape[1]} series were provided."
         )
-    y_series = y.iloc[:, 0]
+    data_series = data.iloc[:, 0]
 
-    data_kwargs = data_kwargs or {}
     fig_kwargs = fig_kwargs or {}
 
     title = "Diagnostics"
     if model_name is not None:
         title = f"{title} | '{model_name}' Residuals"
-    elif y_label is not None:
-        title = f"{title} | {y_label}"
+    elif data_label is not None:
+        title = f"{title} | {data_label}"
 
     fig = make_subplots(
         rows=3,
@@ -577,10 +650,10 @@ def plot_diagnostics(
     #### Add diagnostic plots ----
 
     # ROW 1
-    fig = time_series_subplot(fig=fig, data=y, row=1, col=1, hoverinfo=hoverinfo)
+    fig = time_series_subplot(fig=fig, data=data, row=1, col=1, hoverinfo=hoverinfo)
     fig, periodogram_data = frequency_components_subplot(
         fig=fig,
-        data=y_series,
+        data=data_series,
         row=1,
         col=2,
         hoverinfo=hoverinfo,
@@ -588,12 +661,12 @@ def plot_diagnostics(
     )
 
     # ROW 2
-    fig = dist_subplot(fig=fig, data=y_series, row=2, col=1)
-    fig, qqplot_data = qq_subplot(fig=fig, data=y_series, row=2, col=2)
+    fig = dist_subplot(fig=fig, data=data_series, row=2, col=1)
+    fig, qqplot_data = qq_subplot(fig=fig, data=data_series, row=2, col=2)
 
     # ROW 3
-    fig, acf_data = corr_subplot(fig=fig, data=y_series, row=3, col=1, plot="acf")
-    fig, pacf_data = corr_subplot(fig=fig, data=y_series, row=3, col=2, plot="pacf")
+    fig, acf_data = corr_subplot(fig=fig, data=data_series, row=3, col=1, plot="acf")
+    fig, pacf_data = corr_subplot(fig=fig, data=data_series, row=3, col=2, plot="pacf")
 
     with fig.batch_update():
         template = _resolve_dict_keys(
@@ -605,7 +678,7 @@ def plot_diagnostics(
         )
 
     return_data_dict = {
-        "data": y,
+        "data": data,
         "periodogram": periodogram_data,
         "qqplot": qqplot_data,
         "acf": acf_data,
@@ -623,7 +696,9 @@ def plot_predictions_with_confidence(
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
 ) -> PlotReturnType:
-    """Plots the original data and the predictions provided with confidence"""
+    """Plots the original data and the predictions provided with confidence
+    TODO: Refactor and fill docstring
+    """
     if len(predictions) != 1:
         raise ValueError(
             "Plotting with predictions only supports one estimator. Please pass only one estimator to fix"
@@ -741,14 +816,16 @@ def plot_time_series_decomposition(
     fig_kwargs: Optional[Dict] = None,
 ) -> PlotReturnType:
     """
+    TODO: refactor and fill docstring
     y_label: The name of the target time series to be used in the plots. Optional when
     data is from residuals. In that case, the user must provide model_name argument
     instead.
     """
+    # TODO: Remove after we suppot multiple data types for this plot
     if y.shape[1] != 1:
         raise ValueError(
             "plot_time_series_decomposition() only works on a single time series, "
-            f"but {y.shape[1]} target series were provided."
+            f"but {y.shape[1]} series were provided."
         )
     y_series = y.iloc[:, 0]
 
@@ -890,24 +967,65 @@ def plot_time_series_decomposition(
 
 
 def plot_time_series_differences(
-    y: pd.DataFrame,
-    y_label: Optional[str],
+    data: pd.DataFrame,
     fig_defaults: Dict[str, Any],
+    data_label: Optional[str] = None,
     model_name: Optional[str] = None,
     hoverinfo: Optional[str] = "text",
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
 ) -> PlotReturnType:
-    """y_label: The name of the target time series to be used in the plots. Optional when
-    data is from residuals. In that case, the user must provide model_name argument
-    instead.
+    """Plots the differenced data for the target time series (could be any data
+    type of the data - original, imputed, transformed) or model residuals. If
+    target series is provided, only one data type is supported at a time.
+
+    Parameters
+    ----------
+    data : pd.DataFrame
+        Data whose differenced data needs needs to be plotted.
+    fig_defaults : Dict[str, Any]
+        The default settings for the plotly plot. Must contain keys for "width",
+        "height", and "template".
+    data_label : Optional[str], optional
+        If data is from the original target series, then the name of the target
+        series, by default None.
+    model_name : Optional[str], optional
+        If data is from the original target series, then the name of the model,
+        (must be passed for proper display), by default None.
+    hoverinfo : Optional[str], optional
+        Action when hovering over the plotly plot, by default "text"
+    data_kwargs : Optional[Dict], optional
+        The difference orders to use or lags to use for differencing, by default
+        None which plots the original data with first differences. Only one of
+        "order_list" or "lags_list" must be provided. e.g.
+        "order_list" = [1, 2] will plot original, first and second differences.
+        "lags_list" = [1, [1, 12] will plot original, first, and first difference
+        with seasonal difference of 12.
+        Additionally, user can also ask for diagnostic plots for the differnces
+        such as "acf", "pacf", "periodogram", "fft" by setting the value of these
+        keys to True.
+    fig_kwargs : Optional[Dict], optional
+        Specific overrides by the user for the plotly figure settings,
+        by default None. Can contain keys for "width", "height" and/or "template".
+
+    Returns
+    -------
+    PlotReturnType
+        The plotly figure object along with a dictionary with the plot data.
+        The data can be returned to the user (if requested) so that the plot can
+        be and customized by them if not supported by pycaret by default.
+
+    Raises
+    ------
+    ValueError
+        When the data contains more than 1 column indicating more than 1 data type.
     """
-    if y.shape[1] != 1:
+    if data.shape[1] != 1:
         raise ValueError(
             "plot_time_series_differences() only works on a single time series, "
-            f"but {y.shape[1]} target series were provided."
+            f"but {data.shape[1]} series were provided."
         )
-    y_series = y.iloc[:, 0]
+    data_series = data.iloc[:, 0]
 
     fig, return_data_dict = None, None
 
@@ -925,18 +1043,18 @@ def plot_time_series_differences(
     title = "Difference Plot"
     if model_name is not None:
         title = f"{title} | '{model_name}' Residuals"
-    elif y_label is not None:
-        title = f"{title} | {y_label}"
+    elif data_label is not None:
+        title = f"{title} | {data_label}"
 
     diff_list, name_list = get_diffs(
-        data=y_series, order_list=order_list, lags_list=lags_list
+        data=data_series, order_list=order_list, lags_list=lags_list
     )
 
     if len(diff_list) == 0:
         # Issue with reconciliation of orders and diffs
         return fig, return_data_dict
 
-    diff_list = [y_series] + diff_list
+    diff_list = [data_series] + diff_list
     name_list = ["Actual" if model_name is None else "Residuals"] + name_list
 
     column_titles = ["Time Series"]
@@ -1037,7 +1155,7 @@ def plot_time_series_differences(
         )
 
     return_data_dict = {
-        "data": y_series,
+        "data": data_series,
         "diff_list": diff_list,
         "name_list": name_list,
     }
@@ -1055,36 +1173,73 @@ def plot_time_series_differences(
 
 
 def plot_frequency_components(
-    y: pd.Series,
-    y_label: Optional[str],
+    data: pd.Series,
     plot: str,
     fig_defaults: Dict[str, Any],
+    data_label: Optional[str] = None,
     model_name: Optional[str] = None,
     hoverinfo: Optional[str] = "text",
-    data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
 ) -> PlotReturnType:
-    """Plots the frequency components in the data
-    y_label: The name of the target time series to be used in the plots. Optional when
-    data is from residuals. In that case, the user must provide model_name argument
-    instead.
+    """Plots the frequency components for the data provided (could be any data
+    type of the data - original, imputed, transformed) or model residuals.
+
+    Parameters
+    ----------
+    data : pd.Series
+        Data whose frequency components needs to be plotted. If based on the original
+        data, it can contain multiple columns corresponding to the various splits
+        of the targets (full, train, test | original, imputed, transformed). If
+        it is based on an estimator, it currently only supports one model.
+        TODO: Extend to multiple models with trellised plots like data.
+    plot : str
+        Type of plot, allowed values are ["periodogram", "fft", "welch"]
+    fig_defaults : Dict[str, Any]
+        The default settings for the plotly plot. Must contain keys for "width",
+        "height", and "template".
+    data_label : Optional[str], optional
+        If data is from the original target series, then the name of the target
+        series, by default None.
+    model_name : Optional[str], optional
+        If data is from the original target series, then the name of the model,
+        (must be passed for proper display), by default None.
+    hoverinfo : Optional[str], optional
+        Action when hovering over the plotly plot, by default "text"
+    fig_kwargs : Optional[Dict], optional
+        Specific overrides by the user for the plotly figure settings,
+        by default None. Can contain keys for "width", "height" and/or "template".
+
+    Returns
+    -------
+    PlotReturnType
+        The plotly figure object along with a dictionary with the plot data.
+        The data can be returned to the user (if requested) so that the plot can
+        be and customized by them if not supported by pycaret by default.
+
+    Raises
+    ------
+    ValueError
+        When the plot type is not supported.
     """
-    data_kwargs = data_kwargs or {}
     fig_kwargs = fig_kwargs or {}
 
-    ncols = len(y.columns)
+    ncols = len(data.columns)
     fig = make_subplots(
         rows=1,
         cols=ncols,
-        column_titles=y.columns.tolist(),
+        column_titles=data.columns.tolist(),
         shared_yaxes=True,
     )
 
     all_plot_data = {}
-    # nlags = data_kwargs.get("nlags", None)
-    for i, col_name in enumerate(y.columns):
+    for i, col_name in enumerate(data.columns):
         fig, plot_data = frequency_components_subplot(
-            fig=fig, data=y[col_name], row=1, col=i + 1, plot=plot, hoverinfo=hoverinfo
+            fig=fig,
+            data=data[col_name],
+            row=1,
+            col=i + 1,
+            plot=plot,
+            hoverinfo=hoverinfo,
         )
         all_plot_data.update({col_name: plot_data})
 
@@ -1101,8 +1256,8 @@ def plot_frequency_components(
 
     if model_name is not None:
         title = f"{title} | '{model_name}' Residuals"
-    elif y_label is not None:
-        title = f"{title} | {y_label}"
+    elif data_label is not None:
+        title = f"{title} | {data_label}"
 
     with fig.batch_update():
         for i in np.arange(1, ncols + 1):
@@ -1127,17 +1282,45 @@ def plot_frequency_components(
 def plot_ccf(
     y: pd.DataFrame,
     y_label: str,
-    X: List[pd.DataFrame],
-    X_labels: List[str],
     fig_defaults: Dict[str, Any],
-    data_kwargs: Optional[Dict] = None,
+    X: List[pd.DataFrame] = None,
+    X_labels: List[str] = None,
     fig_kwargs: Optional[Dict] = None,
 ) -> PlotReturnType:
-    """Plots the Cross Correlation between the data and the exogenous variables X
+    """Plots the Cross Correlation between the data and the exogenous variables X.
+    When no exogenous variables are present, simply plots the self correlation (ACF).
 
-    X can be a list of dataframes, 1 dataframe per exogenous variable. Each dataframe
-    must have only 1 column at a time since ccf does not work on many data types at a time.
+    Parameters
+    ----------
+    y : pd.DataFrame
+        A dataframe containing the a single plot data types for the target series
+        (original, imputed, OR transformed).
+    y_label : str
+        The name of the target time series.
+    fig_defaults : Dict[str, Any]
+        The default settings for the plotly plot. Must contain keys for "width",
+        "height", and "template".
+    X : List[pd.DataFrame]
+        The exogenous variables in the data, by default None
+        X contains 1 dataframe per exogenous variable. Each dataframe must have only
+        1 column at a time since ccf does not work on many data types at a time.
+    X_labels : List[str]
+        The names of the exogenous variables, by default None
+    fig_kwargs : Optional[Dict], optional
+        Specific overrides by the user for the plotly figure settings,
+        by default None. Can contain keys for "width", "height" and/or "template".
 
+    Returns
+    -------
+    PlotReturnType
+        The plotly figure object along with a dictionary with the plot data.
+        The data can be returned to the user (if requested) so that the plot can
+        be and customized by them if not supported by pycaret by default.
+
+    Raises
+    ------
+    ValueError
+        When any dataframe in y or X contains more than 1 column.
     """
     if y.shape[1] != 1:
         raise ValueError(
@@ -1153,7 +1336,7 @@ def plot_ccf(
                 )
 
     y_series = y.iloc[:, 0]
-    data_kwargs = data_kwargs or {}
+
     fig_kwargs = fig_kwargs or {}
 
     title = f"Cross Correlation Plot(s) | {y_series.name}"
