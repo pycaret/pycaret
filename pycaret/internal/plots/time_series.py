@@ -23,7 +23,6 @@ from pycaret.internal.plots.utils.time_series import (
     dist_subplot,
     qq_subplot,
     frequency_components_subplot,
-    return_frequency_components,
     plot_original_with_overlays,
     _update_fig_dimensions,
     _get_subplot_rows_cols,
@@ -349,7 +348,7 @@ def plot_cv(
 
 def plot_xacf(
     y: pd.DataFrame,
-    y_label: str,
+    y_label: Optional[str],
     plot: str,
     fig_defaults: Dict[str, Any],
     model_name: Optional[str] = None,
@@ -365,8 +364,10 @@ def plot_xacf(
         Data whose correlation plot needs to be plotted. If based on the original
         data, it can contain multiple columns corresponding to the various splits
         of the targets (full, train, test | original, imputed, transformed).
-    y_label : str
-        The name of the target time series to be used in the plots.
+    y_label : Optional[str]
+        The name of the target time series to be used in the plots. Optional when
+        data is from residuals. In that case, the user must provide model_name argument
+        instead.
     plot : str
         Type of plot, allowed values are ["acf", "pacf"]
     fig_defaults : Dict[str, Any]
@@ -520,14 +521,19 @@ def plot_model_results(
 
 def plot_diagnostics(
     y: pd.DataFrame,
-    y_label: str,
+    y_label: Optional[str],
     fig_defaults: Dict[str, Any],
     model_name: Optional[str] = None,
     hoverinfo: Optional[str] = "text",
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
 ) -> PlotReturnType:
-    """Plots the diagnostic data such as ACF, Histogram, QQ plot on the data provided"""
+    """Plots the diagnostic data such as ACF, Histogram, QQ plot on the data provided
+
+    y_label: The name of the target time series to be used in the plots. Optional when
+    data is from residuals. In that case, the user must provide model_name argument
+    instead.
+    """
     if y.shape[1] != 1:
         raise ValueError(
             "plot_diagnostics() only works on a single time series, "
@@ -727,13 +733,18 @@ def plot_predictions_with_confidence(
 
 def plot_time_series_decomposition(
     y: pd.DataFrame,
-    y_label: str,
+    y_label: Optional[str],
     fig_defaults: Dict[str, Any],
     model_name: Optional[str] = None,
     plot: str = "decomp",
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
 ) -> PlotReturnType:
+    """
+    y_label: The name of the target time series to be used in the plots. Optional when
+    data is from residuals. In that case, the user must provide model_name argument
+    instead.
+    """
     if y.shape[1] != 1:
         raise ValueError(
             "plot_time_series_decomposition() only works on a single time series, "
@@ -880,13 +891,17 @@ def plot_time_series_decomposition(
 
 def plot_time_series_differences(
     y: pd.DataFrame,
-    y_label: str,
+    y_label: Optional[str],
     fig_defaults: Dict[str, Any],
     model_name: Optional[str] = None,
     hoverinfo: Optional[str] = "text",
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
 ) -> PlotReturnType:
+    """y_label: The name of the target time series to be used in the plots. Optional when
+    data is from residuals. In that case, the user must provide model_name argument
+    instead.
+    """
     if y.shape[1] != 1:
         raise ValueError(
             "plot_time_series_differences() only works on a single time series, "
@@ -1041,7 +1056,7 @@ def plot_time_series_differences(
 
 def plot_frequency_components(
     y: pd.Series,
-    y_label: str,
+    y_label: Optional[str],
     plot: str,
     fig_defaults: Dict[str, Any],
     model_name: Optional[str] = None,
@@ -1049,7 +1064,11 @@ def plot_frequency_components(
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
 ) -> PlotReturnType:
-    """Plots the frequency components in the data"""
+    """Plots the frequency components in the data
+    y_label: The name of the target time series to be used in the plots. Optional when
+    data is from residuals. In that case, the user must provide model_name argument
+    instead.
+    """
     data_kwargs = data_kwargs or {}
     fig_kwargs = fig_kwargs or {}
 
