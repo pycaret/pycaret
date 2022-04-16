@@ -1125,12 +1125,13 @@ def plot_ccf(
             "plot_ccf() only works on a single time series, "
             f"but {y.shape[1]} target series were provided."
         )
-    for dataframe in X:
-        if dataframe.shape[1] != 1:
-            raise ValueError(
-                f"plot_ccf() only works on a single time series, but {dataframe.shape[1]} "
-                f"exogenous series were provided: {dataframe.columns}."
-            )
+    if X is not None:
+        for dataframe in X:
+            if dataframe.shape[1] != 1:
+                raise ValueError(
+                    f"plot_ccf() only works on a single time series, but {dataframe.shape[1]} "
+                    f"exogenous series were provided: {dataframe.columns}."
+                )
 
     y_series = y.iloc[:, 0]
     data_kwargs = data_kwargs or {}
@@ -1139,10 +1140,12 @@ def plot_ccf(
     title = f"Cross Correlation Plot(s) | {y_series.name}"
 
     plot_data = [y_series]
-    plot_data.extend(X)
-    plot_data = pd.concat(plot_data, axis=1)
     column_names = [y_label]
-    column_names.extend(X_labels)
+    if X is not None:
+        plot_data.extend(X)
+        column_names.extend(X_labels)
+
+    plot_data = pd.concat(plot_data, axis=1)
     plot_data.columns = column_names
 
     # Decide the number of rows and columns ----
