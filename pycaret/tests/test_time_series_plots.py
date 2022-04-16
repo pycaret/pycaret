@@ -1,4 +1,4 @@
-"""Module to test time_series functionality
+"""Module to test time_series plotting functionality
 """
 import os
 from random import uniform

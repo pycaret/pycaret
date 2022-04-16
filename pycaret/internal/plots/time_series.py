@@ -37,18 +37,22 @@ __author__ = ["satya-pattnaik", "ngupta23"]
 def _get_plot(
     plot: str,
     fig_defaults: Dict[str, Any],
-    data: Optional[pd.Series] = None,
-    train: Optional[pd.Series] = None,
-    test: Optional[pd.Series] = None,
-    X: Optional[pd.DataFrame] = None,
-    model_results: Optional[List[pd.DataFrame]] = None,
+    data: Optional[pd.DataFrame] = None,
+    data_label: Optional[str] = None,
+    X: Optional[List[pd.DataFrame]] = None,
+    X_labels: Optional[List[str]] = None,
     cv: Optional[Union[ExpandingWindowSplitter, SlidingWindowSplitter]] = None,
+    model_results: Optional[List[pd.DataFrame]] = None,
     model_names: Optional[List[str]] = None,
     return_pred_int: bool = False,
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
 ) -> PlotReturnType:
-    """TODO: Fill"""
+    """TODO: Fill
+    data = DataFrame for Target Variable (each column can represent one version
+    of the target series, e.g. Original, Transformed, Imputed)
+    data_label = Name of the target series
+    """
     data_kwargs = data_kwargs or {}
     fig_kwargs = fig_kwargs or {}
 
@@ -62,28 +66,19 @@ def _get_plot(
         hoverinfo=hoverinfo,
         threshold=big_data_threshold,
         data=data,
-        train=train,
-        test=test,
         X=X,
     )
 
-    if plot == "ts":
+    if plot in ["ts", "train_test_split"]:
         fig, plot_data = plot_series(
-            data=data,
+            y=data,
+            y_label=data_label,
             fig_defaults=fig_defaults,
             X=X,
+            X_labels=X_labels,
             hoverinfo=hoverinfo,
             fig_kwargs=fig_kwargs,
         )
-    elif plot == "train_test_split":
-        fig, plot_data = plot_splits_train_test_split(
-            train=train,
-            test=test,
-            fig_defaults=fig_defaults,
-            data_kwargs=data_kwargs,
-            fig_kwargs=fig_kwargs,
-        )
-
     elif plot == "cv":
         fig, plot_data = plot_cv(
             data=data,
@@ -191,33 +186,44 @@ def _get_plot(
 
 
 def plot_series(
-    data: pd.Series,
+    y: pd.DataFrame,
+    y_label: str,
     fig_defaults: Dict[str, Any],
-    X: Optional[pd.DataFrame] = None,
+    X: Optional[List[pd.DataFrame]] = None,
+    X_labels: Optional[List[str]] = None,
     hoverinfo: Optional[str] = "text",
     fig_kwargs: Optional[Dict] = None,
 ) -> PlotReturnType:
-    """Plots the original time series or residuals"""
+    """Plots the target time series (full or specific splits). Can optionally
+    plot exogenous variables if available.
+
+    y can contain multiple columns corresponding to the various splits of the targets
+    (full, train, test | original, imputed, transformed)
+
+    X contains 1 dataframe per exogenous variable. Each dataframe can contain multiple
+    columns corresponding to the various splits of the exogenous variable
+    (original, imputed, transformed)
+    """
     fig, return_data_dict = None, None
 
     fig_kwargs = fig_kwargs or {}
 
-    time_series_name = data.name
-    title = "Time Series"
-    if time_series_name is not None:
-        title = f"{title} | Target = {time_series_name}"
+    title = f"Time Series | Target = {y_label}"
 
+    plot_data = [y]
+    subplot_titles = [y_label]
     if X is not None:
-        # Exogenous Variables present (predictions).
-        plot_data = pd.concat([data, X], axis=1)
-    else:
-        # Exogenous Variables not present (Original Time series or residuals).
-        if isinstance(data, pd.Series):
-            plot_data = pd.DataFrame(data)
+        # Exogenous Variables present.
+        plot_data.extend(X)
+        if X_labels is None:
+            raise ValueError(
+                "X is not None, but X_labels is None. This should not have occurred."
+                "\nPlease file a report here with a reproducible example:"
+                "\nhttps://github.com/pycaret/pycaret/issues"
+            )
+        subplot_titles.extend(X_labels)
 
-    rows = plot_data.shape[1]
-    subplot_titles = plot_data.columns
-
+    rows = len(plot_data)
     fig = make_subplots(
         rows=rows,
         cols=1,
@@ -226,10 +232,10 @@ def plot_series(
         shared_xaxes=True,
     )
 
-    for i, col_name in enumerate(plot_data.columns):
+    for i, plot_data_single in enumerate(plot_data):
         fig = time_series_subplot(
             fig=fig,
-            data=pd.DataFrame(plot_data[col_name]),
+            data=plot_data_single,
             row=i + 1,
             col=1,
             hoverinfo=hoverinfo,
@@ -239,7 +245,7 @@ def plot_series(
         template = _resolve_dict_keys(
             dict_=fig_kwargs, key="template", defaults=fig_defaults
         )
-        fig.update_layout(title=title, showlegend=False, template=template)
+        fig.update_layout(title=title, showlegend=True, template=template)
 
         fig = _update_fig_dimensions(
             fig=fig, fig_kwargs=fig_kwargs, fig_defaults=fig_defaults
@@ -247,69 +253,6 @@ def plot_series(
 
     return_data_dict = {
         "data": plot_data,
-    }
-
-    return fig, return_data_dict
-
-
-def plot_splits_train_test_split(
-    train: pd.Series,
-    test: pd.Series,
-    fig_defaults: Dict[str, Any],
-    data_kwargs: Optional[Dict] = None,
-    fig_kwargs: Optional[Dict] = None,
-) -> PlotReturnType:
-    """Plots the train-test split for the time serirs"""
-    fig, return_data_dict = None, None
-
-    data_kwargs = data_kwargs or {}
-    fig_kwargs = fig_kwargs or {}
-
-    fig = go.Figure()
-
-    x = (
-        train.index.to_timestamp()
-        if isinstance(train.index, pd.PeriodIndex)
-        else train.index
-    )
-    fig.add_trace(
-        go.Scatter(
-            x=x, y=train, mode="lines+markers", marker_color="#1f77b4", name="Train"
-        )
-    )
-
-    x = (
-        test.index.to_timestamp()
-        if isinstance(test.index, pd.PeriodIndex)
-        else test.index
-    )
-    fig.add_trace(
-        go.Scatter(
-            x=x, y=test, mode="lines+markers", marker_color="#FFA500", name="Test"
-        )
-    )
-
-    with fig.batch_update():
-        fig.update_layout(
-            {
-                "title": "Train Test Split",
-                "xaxis": {"title": "Time", "zeroline": False},
-                "yaxis": {"title": "Values"},
-                "showlegend": True,
-            }
-        )
-        template = _resolve_dict_keys(
-            dict_=fig_kwargs, key="template", defaults=fig_defaults
-        )
-        fig.update_layout(template=template)
-
-        fig = _update_fig_dimensions(
-            fig=fig, fig_kwargs=fig_kwargs, fig_defaults=fig_defaults
-        )
-
-    return_data_dict = {
-        "train": train,
-        "test": test,
     }
 
     return fig, return_data_dict

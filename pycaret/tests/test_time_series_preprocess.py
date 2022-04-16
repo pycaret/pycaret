@@ -600,3 +600,154 @@ def test_pipeline_after_finalizing(load_pos_and_neg_data_missing):
     assert np.array_equal(
         loaded_model._y.index, loaded_model.steps[-1][1].steps[-1][1]._y.index
     )
+
+
+def test_no_transform_noexo(load_pos_and_neg_data_missing):
+    """
+    NOTE: VERY IMPORTANT TEST ----
+
+    Test to make sure that when modeling univariate data WITHOUT exogenous
+    variables, if there is no transformation in setup, then
+
+    (1A) y_train_imputed = y_train_transformed
+    (1B) X_train_imputed = X_train_transformed = None
+    (2A) y_test_imputed = y_test_transformed
+    (2B) X_test_imputed = X_test_transformed = None
+    (3A) y_imputed = y_transformed
+    (2B) X_imputed = X_transformed = None
+
+    Also: When imputing a dataset, only values in the past should be used
+    (not any future values). i.e.
+        (4) Imputed values in train should not be equal to imputed values in test.
+        (5) Imputed values in test should be equal to imputed values in complete
+            dataset (train + test)
+    """
+    data = load_pos_and_neg_data_missing
+
+    exp = TSForecastingExperiment()
+    FH = 12
+    exp.setup(data=data, fh=FH, numeric_imputation_target="mean")
+
+    #### Tests 1A, 2A, and 3A ----
+    y_train_imputed = exp._get_y_data(split="train", data_type="imputed")
+    y_test_imputed = exp._get_y_data(split="test", data_type="imputed")
+    y_imputed = exp._get_y_data(split="all", data_type="imputed")
+    assert np.array_equal(y_train_imputed, exp.y_train_transformed)
+    assert np.array_equal(y_test_imputed, exp.y_test_transformed)
+    assert np.array_equal(y_imputed, exp.y_transformed)
+
+    #### Tests 1B, 2B, and 3B ----
+    X_train_imputed = exp._get_X_data(split="train", data_type="imputed")
+    X_test_imputed = exp._get_X_data(split="test", data_type="imputed")
+    X_imputed = exp._get_X_data(split="all", data_type="imputed")
+    assert X_train_imputed is None
+    assert exp.X_train_transformed is None
+    assert X_test_imputed is None
+    assert exp.X_test_transformed is None
+    assert X_imputed is None
+    assert exp.X_transformed is None
+
+    #### Tests 4, and 5 ----
+    missing_index_train = exp.y_train.index[exp.y_train.isna()]
+    missing_index_test = exp.y_test.index[exp.y_test.isna()]
+
+    # Test 4 ----
+    missing_imputed_data_train = y_train_imputed.loc[missing_index_train]
+    missing_imputed_data_test = y_test_imputed.loc[missing_index_test]
+    # Just checking first value
+    assert missing_imputed_data_train.iloc[0] != missing_imputed_data_test.iloc[0]
+
+    # Test 5 ----
+    missing_imputed_data_all_train = y_imputed.loc[missing_index_train]
+    # Just checking first value
+    assert missing_imputed_data_test.iloc[0] == missing_imputed_data_all_train.iloc[0]
+
+
+def test_no_transform_exo(load_uni_exo_data_target_missing):
+    """
+    NOTE: VERY IMPORTANT TEST ----
+
+    Test to make sure that when modeling univariate data WITH exogenous
+    variables, if there is no transformation in setup, then
+
+    (1A) y_train_imputed = y_train_transformed
+    (1B) X_train_imputed = X_train_transformed
+    (2A) y_test_imputed = y_test_transformed
+    (2B) X_test_imputed = X_test_transformed
+    (3A) y_imputed = y_transformed
+    (2B) X_imputed = X_transformed
+
+    Also: When imputing a dataset, only values in the past should be used
+    (not any future values). i.e.
+        (4) Imputed values in train should not be equal to imputed values in test.
+        (5) Imputed values in test should be equal to imputed values in complete
+            dataset (train + test)
+    """
+    data, target = load_uni_exo_data_target_missing
+
+    exp = TSForecastingExperiment()
+    FH = 12
+    exp.setup(
+        data=data,
+        target=target,
+        fh=FH,
+        seasonal_period=4,
+        numeric_imputation_target="mean",
+        numeric_imputation_exogenous="mean",
+    )
+
+    #### Tests 1A, 2A, and 3A ----
+    y_train_imputed = exp._get_y_data(split="train", data_type="imputed")
+    y_test_imputed = exp._get_y_data(split="test", data_type="imputed")
+    y_imputed = exp._get_y_data(split="all", data_type="imputed")
+    assert np.array_equal(y_train_imputed, exp.y_train_transformed)
+    assert np.array_equal(y_test_imputed, exp.y_test_transformed)
+    assert np.array_equal(y_imputed, exp.y_transformed)
+
+    #### Tests 1B, 2B, and 3B ----
+    X_train_imputed = exp._get_X_data(split="train", data_type="imputed")
+    X_test_imputed = exp._get_X_data(split="test", data_type="imputed")
+    X_imputed = exp._get_X_data(split="all", data_type="imputed")
+
+    assert exp.X_train_transformed.equals(X_train_imputed)
+    assert exp.X_test_transformed.equals(X_test_imputed)
+    assert exp.X_transformed.equals(X_imputed)
+
+    ################################
+    #### Tests 4, and 5 (for y) ----
+    ################################
+    missing_index_train = exp.y_train.index[exp.y_train.isna()]
+    missing_index_test = exp.y_test.index[exp.y_test.isna()]
+
+    # Test 4 ----
+    missing_imputed_data_train = y_train_imputed.loc[missing_index_train]
+    missing_imputed_data_test = y_test_imputed.loc[missing_index_test]
+    # Just checking first value
+    assert missing_imputed_data_train.iloc[0] != missing_imputed_data_test.iloc[0]
+
+    # Test 5 ----
+    missing_imputed_data_all_train = y_imputed.loc[missing_index_train]
+    # Just checking first value
+    assert missing_imputed_data_test.iloc[0] == missing_imputed_data_all_train.iloc[0]
+
+    ################################
+    #### Tests 4, and 5 (for X) ----
+    ################################
+    # Input is created such that all values in row will be nan
+    missing_index_train = exp.X_train.index[exp.X_train.isna().all(axis=1)]
+    missing_index_test = exp.X_test.index[exp.X_test.isna().all(axis=1)]
+
+    # Test 4 ----
+    missing_imputed_data_train = X_train_imputed.loc[missing_index_train]
+    missing_imputed_data_test = X_test_imputed.loc[missing_index_test]
+    # Just checking first row (all values in row would be missing)
+    assert not missing_imputed_data_train.iloc[0].equals(
+        missing_imputed_data_test.iloc[0]
+    )
+
+    # Test 5 ----
+    missing_imputed_data_all_train = X_imputed.loc[missing_index_train]
+    # Just checking first row (all values in row would be missing)
+    assert missing_imputed_data_test.iloc[0].equals(
+        missing_imputed_data_all_train.iloc[0]
+    )
