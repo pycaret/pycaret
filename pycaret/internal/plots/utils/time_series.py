@@ -977,3 +977,41 @@ def _reformat_dataframes_for_plots(
         output.append(temp)
 
     return output
+
+
+def _clean_model_results_names(
+    model_results: List[pd.DataFrame], model_names: List[str]
+) -> Tuple[List[pd.DataFrame], List[str]]:
+    """Cleans the model results and names to remove models that did not produce
+    any results, e.g. no residuals, insample predictions, etc.
+
+    Parameters
+    ----------
+    model_results : List[pd.DataFrame]
+        List of dataframes containing the model results (one dataframe per model)
+        Some values might be None if the model did not produce a result. These
+        will get dropped by this function.
+    model_names : List[str]
+        The names of the models producing the results.
+
+    Returns
+    -------
+    Tuple[List[pd.DataFrame], List[str]]
+        The cleaned model results and names (after removing those that did not
+        produce a result).
+    """
+    includes = [
+        True if model_result is not None else False for model_result in model_results
+    ]
+
+    # Remove None results (produced when insample or residuals can not be obtained)
+    model_results = [
+        model_result
+        for include, model_result in zip(includes, model_results)
+        if include
+    ]
+    model_names = [
+        model_name for include, model_name in zip(includes, model_names) if include
+    ]
+
+    return model_results, model_names
