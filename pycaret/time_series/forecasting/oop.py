@@ -1555,7 +1555,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             "renderer": None,
             "template": "ggplot2",
             "rows": None,
-            "cols": 4,
+            "cols": None,
             "width": None,
             "height": None,
         }
