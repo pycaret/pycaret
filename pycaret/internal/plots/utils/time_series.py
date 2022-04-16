@@ -19,6 +19,7 @@ from plotly.subplots import make_subplots
 
 from statsmodels.graphics.gofplots import qqplot
 from statsmodels.tsa.stattools import pacf, acf, ccf
+from statsmodels.tsa.seasonal import seasonal_decompose, STL
 
 from pycaret.utils import _resolve_dict_keys
 
@@ -438,6 +439,125 @@ def dist_subplot(fig: go.Figure, data: pd.Series, row: int, col: int) -> go.Figu
         fig.update_xaxes(title_text="Range of Values", row=row, col=col)
         fig.update_yaxes(title_text="PDF", row=row, col=col)
     return fig
+
+
+def decomp_subplot(
+    fig: go.Figure,
+    data: pd.Series,
+    col: int,
+    plot: str,
+    classical_decomp_type: str,
+    period: int,
+) -> go.Figure:
+    """Function to add decomposition to a Plotly subplot
+
+    Parameters
+    ----------
+    fig : go.Figure
+        Plotly figure to which the decomposition plots need to be added
+    data : pd.Series
+        Data whose decomposition must be added
+    col : int
+        Column of the figure where the plot needs to be inserted. Starts from 1.
+        Note that rows do not need to be specified since there will be 4 rows
+        per column. Must be enforced from outside when creating the figure.
+    plot : str
+        Options are
+          - "decomp": for Classical Decomposition
+          - "decomp_stl": for STL Decomposition
+    classical_decomp_type : str
+        The classical decomposition type. Options are: ["additive", "multiplicative"]
+    period : int
+        The seasonal period to use for decomposition
+
+    Returns
+    -------
+    go.Figure
+        Returns back the plotly figure with the decomposition results inserted.
+    """
+
+    data_ = data.to_timestamp() if isinstance(data.index, pd.PeriodIndex) else data
+
+    x = (
+        data.index.to_timestamp()
+        if isinstance(data.index, pd.PeriodIndex)
+        else data.index
+    )
+
+    #### Plot Original data ----
+    row = 1
+    fig.add_trace(
+        go.Scatter(
+            x=x,
+            y=data_,
+            line=dict(color=DEFAULT_PLOTLY_COLORS[row - 1], width=2),
+            mode="lines+markers",
+            name="Actual",
+            marker=dict(size=2),
+        ),
+        row=row,
+        col=col,
+    )
+
+    if plot == "decomp":
+        try:
+            decomp_result = seasonal_decompose(
+                data_, period=period, model=classical_decomp_type
+            )
+        except ValueError as exception:
+            logging.warning(exception)
+            logging.warning(
+                "Seasonal Decompose plot failed most likely sue to missing data"
+            )
+            return fig, None
+    elif plot == "decomp_stl":
+        decomp_result = STL(data_, period=period).fit()
+
+    row = 2
+    fig.add_trace(
+        go.Scatter(
+            x=x,
+            y=decomp_result.seasonal,
+            line=dict(color=DEFAULT_PLOTLY_COLORS[row - 1], width=2),
+            mode="lines+markers",
+            name="Seasonal",
+            marker=dict(size=2),
+        ),
+        row=row,
+        col=col,
+    )
+
+    row = 3
+    fig.add_trace(
+        go.Scatter(
+            x=x,
+            y=decomp_result.trend,
+            line=dict(color=DEFAULT_PLOTLY_COLORS[row - 1], width=2),
+            mode="lines+markers",
+            name="Trend",
+            marker=dict(size=2),
+        ),
+        row=row,
+        col=col,
+    )
+
+    row = 4
+    fig.add_trace(
+        go.Scatter(
+            x=x,
+            y=decomp_result.resid,
+            line=dict(color=DEFAULT_PLOTLY_COLORS[row - 1], width=2),
+            mode="markers",
+            name="Residuals",
+            marker=dict(
+                size=4,
+            ),
+        ),
+        row=row,
+        col=col,
+    )
+
+    return fig, decomp_result
 
 
 def return_frequency_components(
