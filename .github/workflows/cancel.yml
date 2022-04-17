@@ -1,7 +1,7 @@
 name: Cancel Workflows on Push
 on:
   workflow_run:
-    workflows: ["Install and test"]
+    workflows: ["pytest on push"]
     types:
       - requested
 
