@@ -4,6 +4,7 @@ from collections import defaultdict
 
 import pandas as pd
 
+from pycaret import show_versions
 import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
 from pycaret.internal.validation import *
@@ -79,56 +80,7 @@ class _PyCaretExperiment:
             )
 
         self.logger.info("Checking libraries")
-
-        try:
-            from pandas import __version__
-
-            self.logger.info(f"pd=={__version__}")
-        except ImportError:
-            self.logger.warning("pandas not found")
-
-        try:
-            from numpy import __version__
-
-            self.logger.info(f"numpy=={__version__}")
-        except ImportError:
-            self.logger.warning("numpy not found")
-
-        try:
-            from sklearn import __version__
-
-            self.logger.info(f"sklearn=={__version__}")
-        except ImportError:
-            self.logger.warning("sklearn not found")
-
-        try:
-            from lightgbm import __version__
-
-            self.logger.info(f"lightgbm=={__version__}")
-        except ImportError:
-            self.logger.warning("lightgbm not found")
-
-        try:
-            from xgboost import __version__
-
-            self.logger.info(f"xgboost=={__version__}")
-        except ImportError:
-            self.logger.warning("xgboost not found")
-
-        try:
-            from catboost import __version__
-
-            self.logger.info(f"catboost=={__version__}")
-        except ImportError:
-            self.logger.warning("catboost not found")
-
-        try:
-            from mlflow.version import VERSION
-
-            warnings.filterwarnings("ignore")
-            self.logger.info(f"mlflow=={VERSION}")
-        except ImportError:
-            self.logger.warning("mlflow not found")
+        self.logger.warning(show_versions())
 
     def setup(self, *args, **kwargs) -> None:
         return

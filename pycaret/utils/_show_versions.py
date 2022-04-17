@@ -55,6 +55,7 @@ def _get_deps_info():
         "mlflow",
         "lightgbm",
         "xgboost",
+        "catboost",
         "pmdarima",
         "tbats",
         "prophet",
