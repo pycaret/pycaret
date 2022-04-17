@@ -1351,7 +1351,7 @@ class CatBoostClassifierContainer(ClassifierContainer):
         np.random.seed(experiment.seed)
         if _check_soft_dependencies("catboost", extra="models", severity="warning"):
             import catboost
-        else::
+        else:
             logger.warning("Couldn't import catboost.CatBoostClassifier")
             self.active = False
             return
