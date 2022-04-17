@@ -213,7 +213,7 @@ class _SupervisedExperiment(_TabularExperiment):
         self.experiment__.append(("Transformation Pipeline", self.pipeline))
 
         if self.logging_param:
-            _check_soft_dependencies("mlflow", extra="mlops", error="raise")
+            _check_soft_dependencies("mlflow", extra="mlops", severity="error")
 
             self.logger.info("Logging experiment in MLFlow")
             import mlflow
@@ -1793,12 +1793,13 @@ class _SupervisedExperiment(_TabularExperiment):
             )
 
         if search_library == "scikit-optimize":
-            try:
-                import skopt
-            except ImportError:
-                raise ImportError(
-                    "'scikit-optimize' requires scikit-optimize package to be installed. Do: pip install scikit-optimize"
-                )
+            _check_soft_dependencies(
+                "skopt",
+                extra="tuners",
+                severity="error",
+                install_name="scikit-optimize",
+            )
+            import skopt
 
             if not search_algorithm:
                 search_algorithm = "bayesian"
@@ -1810,12 +1811,13 @@ class _SupervisedExperiment(_TabularExperiment):
                 )
 
         elif search_library == "tune-sklearn":
-            try:
-                import tune_sklearn
-            except ImportError:
-                raise ImportError(
-                    "'tune-sklearn' requires tune_sklearn package to be installed. Do: pip install tune-sklearn ray[tune]"
-                )
+            _check_soft_dependencies(
+                "tune_sklearn",
+                extra="tuners",
+                severity="error",
+                install_name="tune-sklearn ray[tune]",
+            )
+            import tune_sklearn
 
             if not search_algorithm:
                 search_algorithm = "random"
@@ -1834,45 +1836,40 @@ class _SupervisedExperiment(_TabularExperiment):
                 )
 
             if search_algorithm == "bohb":
-                try:
-                    from ray.tune.suggest.bohb import TuneBOHB
-                    from ray.tune.schedulers import HyperBandForBOHB
-                    import ConfigSpace as CS
-                    import hpbandster
-                except ImportError:
-                    raise ImportError(
-                        "It appears that either HpBandSter or ConfigSpace is not installed. Do: pip install hpbandster ConfigSpace"
-                    )
+                _check_soft_dependencies("ConfigSpace", extra=None, severity="error")
+                _check_soft_dependencies("hpbandster", extra=None, severity="error")
+                _check_soft_dependencies(
+                    "ray", extra="tuners", severity="error", install_name="ray[tune]"
+                )
+                from ray.tune.suggest.bohb import TuneBOHB
+                from ray.tune.schedulers import HyperBandForBOHB
+                import ConfigSpace as CS
+                import hpbandster
+
             elif search_algorithm == "hyperopt":
-                try:
-                    from ray.tune.suggest.hyperopt import HyperOptSearch
-                    from hyperopt import hp
-                except ImportError:
-                    raise ImportError(
-                        "It appears that hyperopt is not installed. Do: pip install hyperopt"
-                    )
+                _check_soft_dependencies("hyperopt", extra="tuners", severity="error")
+                _check_soft_dependencies(
+                    "ray", extra="tuners", severity="error", install_name="ray[tune]"
+                )
+                from ray.tune.suggest.hyperopt import HyperOptSearch
+                from hyperopt import hp
+
             elif search_algorithm == "bayesian":
-                try:
-                    import skopt
-                except ImportError:
-                    raise ImportError(
-                        "It appears that scikit-optimize is not installed. Do: pip install scikit-optimize"
-                    )
+                _check_soft_dependencies(
+                    "skopt",
+                    extra="tuners",
+                    severity="error",
+                    install_name="scikit-optimize",
+                )
+                import skopt
+
             elif search_algorithm == "optuna":
-                try:
-                    import optuna
-                except ImportError:
-                    raise ImportError(
-                        "'optuna' requires optuna package to be installed. Do: pip install optuna"
-                    )
+                _check_soft_dependencies("optuna", extra="tuners", severity="error")
+                import optuna
 
         elif search_library == "optuna":
-            try:
-                import optuna
-            except ImportError:
-                raise ImportError(
-                    "'optuna' requires optuna package to be installed. Do: pip install optuna"
-                )
+            _check_soft_dependencies("optuna", extra="tuners", severity="error")
+            import optuna
 
             if not search_algorithm:
                 search_algorithm = "tpe"
@@ -3772,51 +3769,23 @@ class _SupervisedExperiment(_TabularExperiment):
 
         # checking if shap available
         if plot in ["summary", "correlation", "reason"]:
-            try:
-                import shap
-            except ImportError:
-                self.logger.error(
-                    "shap library not found. pip install shap to use interpret_model function."
-                )
-                raise ImportError(
-                    "shap library not found. pip install shap to use interpret_model function."
-                )
+            _check_soft_dependencies("shap", extra="analysis", severity="error")
+            import shap
 
         # checking if pdpbox is available
         if plot == "pdp":
-            try:
-                from interpret.blackbox import PartialDependence
-            except ImportError:
-                self.logger.error(
-                    "interpretml library not found. pip install interpret to generate pdp plot in interpret_model function."
-                )
-                raise ImportError(
-                    "interpretml library not found. pip install interpret to generate pdp plot in interpret_model function."
-                )
+            _check_soft_dependencies("interpret", extra="analysis", severity="error")
+            from interpret.blackbox import PartialDependence
 
         # checking interpret is available
         if plot == "msa":
-            try:
-                from interpret.blackbox import MorrisSensitivity
-            except ImportError:
-                self.logger.error(
-                    "interpretml library not found. pip install interpret to generate msa plot in interpret_model function."
-                )
-                raise ImportError(
-                    "interpretml library not found. pip install interpret to generate msa plot in interpret_model function."
-                )
+            _check_soft_dependencies("interpret", extra="analysis", severity="error")
+            from interpret.blackbox import MorrisSensitivity
 
         # checking interpret-community is available
         if plot == "pfi":
-            try:
-                from interpret.ext.blackbox import PFIExplainer
-            except ImportError:
-                self.logger.error(
-                    "interpret-community library not found. pip install interpret-community to generate pfi plot in interpret_model function."
-                )
-                raise ImportError(
-                    "interpret-community library not found. pip install interpret-community to generate pfi plot in interpret_model function."
-                )
+            _check_soft_dependencies("interpret", extra="analysis", severity="error")
+            from interpret.ext.blackbox import PFIExplainer
 
         import matplotlib.pyplot as plt
 
@@ -4686,15 +4655,10 @@ class _SupervisedExperiment(_TabularExperiment):
 
         # generate drift report
         if drift_report:
-            try:
-                from evidently.dashboard import Dashboard
-                from evidently.tabs import DataDriftTab, CatTargetDriftTab
-                from evidently.pipeline.column_mapping import ColumnMapping
-            except ImportError:
-                raise ImportError(
-                    "It appears that evidently (required for `drift_report=True`) is not installed. "
-                    "Do: pip install evidently"
-                )
+            _check_soft_dependencies("evidently", extra="mlops", severity="error")
+            from evidently.dashboard import Dashboard
+            from evidently.tabs import DataDriftTab, CatTargetDriftTab
+            from evidently.pipeline.column_mapping import ColumnMapping
 
             column_mapping = ColumnMapping()
             column_mapping.target = self.target_param
@@ -4903,13 +4867,7 @@ class _SupervisedExperiment(_TabularExperiment):
         metrics between different groups (also called subpopulation).
         """
 
-        try:
-            import fairlearn
-        except ImportError:
-            raise ImportError(
-                "It appears that fairlearn is not installed. Do: pip install fairlearn"
-            )
-
+        _check_soft_dependencies("fairlearn", extra="analysis", severity="error")
         from fairlearn.metrics import MetricFrame, count, selection_rate
 
         all_metrics = self.get_metrics()[["Name", "Score Function"]].set_index("Name")

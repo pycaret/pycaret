@@ -1,4 +1,5 @@
 from typing import Optional, Dict, Any, Dict
+from pycaret.utils._dependencies import _check_soft_dependencies
 
 
 def setup(
@@ -2090,12 +2091,8 @@ def plot_model(
         raise ValueError("display_format can only be None or 'streamlit'.")
 
     if display_format == "streamlit":
-        try:
-            import streamlit as st
-        except ImportError:
-            raise ImportError(
-                "It appears that streamlit is not installed. Do: pip install streamlit"
-            )
+        _check_soft_dependencies("streamlit", extra=None, severity="error")
+        import streamlit as st
 
     """
     error handling ends here

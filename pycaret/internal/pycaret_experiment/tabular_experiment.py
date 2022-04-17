@@ -39,6 +39,8 @@ from pycaret.internal.utils import (
 )
 from pycaret.internal.validation import *
 
+from pycaret.utils._dependencies import _check_soft_dependencies
+
 from pycaret.internal.Display import Display
 
 from sklearn.model_selection import BaseCrossValidator  # type: ignore
@@ -626,12 +628,8 @@ class _TabularExperiment(_PyCaretExperiment):
 
         # Import required libraries ----
         if display_format == "streamlit":
-            try:
-                import streamlit as st
-            except ImportError:
-                raise ImportError(
-                    "It appears that streamlit is not installed. Do: pip install hpbandster ConfigSpace"
-                )
+            _check_soft_dependencies("streamlit", extra=None, severity="error")
+            import streamlit as st
 
         # multiclass plot exceptions:
         multiclass_not_available = ["calibration", "threshold", "manifold", "rfe"]
@@ -2682,12 +2680,8 @@ class _TabularExperiment(_PyCaretExperiment):
         support model inference.
         """
 
-        try:
-            import m2cgen as m2c
-        except ImportError:
-            raise ImportError(
-                "It appears that m2cgen is not installed. Do: pip install m2cgen"
-            )
+        _check_soft_dependencies("m2cgen", extra=None, severity="error")
+        import m2cgen as m2c
 
         if language == "python":
             return m2c.export_to_python(estimator)
@@ -2729,19 +2723,11 @@ class _TabularExperiment(_PyCaretExperiment):
         This function creates API and write it as a python file using FastAPI
         """
 
-        try:
-            import fastapi
-        except ImportError:
-            raise ImportError(
-                "It appears that FastAPI is not installed. Do: pip install fastapi"
-            )
+        _check_soft_dependencies("fastapi", extra="mlops", severity="error")
+        import fastapi
 
-        try:
-            import uvicorn
-        except ImportError:
-            raise ImportError(
-                "It appears that uvicorn is not installed. Do: pip install uvicorn"
-            )
+        _check_soft_dependencies("uvicorn", extra="mlops", severity="error")
+        import uvicorn
 
         MODULE = self._ml_usecase
         INPUT_COLS = list(self.X.columns)
@@ -2805,12 +2791,9 @@ class _TabularExperiment(_PyCaretExperiment):
         """
         Function to generate EDA using AutoVIZ library.
         """
-        try:
-            from autoviz.AutoViz_Class import AutoViz_Class
-        except ImportError:
-            raise ImportError(
-                "It appears that Autoviz is not installed. Do: pip install autoviz"
-            )
+
+        _check_soft_dependencies("autoviz", extra="mlops", severity="error")
+        from autoviz.AutoViz_Class import AutoViz_Class
 
         AV = AutoViz_Class()
         AV.AutoViz(

@@ -11,6 +11,7 @@ from sklearn.model_selection._split import _BaseKFold
 
 from pycaret.internal.logging import get_logger
 from pycaret.internal.validation import *
+from pycaret.utils._dependencies import _check_soft_dependencies
 
 
 def to_df(data, index=None, columns=None, dtypes=None):
@@ -819,13 +820,11 @@ def can_early_stop(
 
     is_xgboost = False
 
-    try:
+    if _check_soft_dependencies("xgboost", extra="models", severity="warning"):
         if consider_xgboost:
             from xgboost.sklearn import XGBModel
 
             is_xgboost = isinstance(base_estimator, XGBModel)
-    except ImportError:
-        pass
 
     logger.info(
         f"can_partial_fit: {can_partial_fit}, can_warm_start: {can_warm_start}, is_xgboost: {is_xgboost}"

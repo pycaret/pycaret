@@ -23,6 +23,8 @@ from sktime.forecasting.model_selection import (
 from sktime.forecasting.base import BaseForecaster
 from sktime.transformations.series.impute import Imputer
 
+from pycaret.utils._dependencies import _check_soft_dependencies
+
 # from sktime.forecasting.compose import ForecastingPipeline
 from pycaret.utils.time_series.forecasting import PyCaretForecastingHorizonTypes
 from pycaret.utils.time_series.forecasting.pipeline import (
@@ -3115,12 +3117,8 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         # Import required libraries ----
         if display_format == "streamlit":
-            try:
-                import streamlit as st
-            except ImportError:
-                raise ImportError(
-                    "It appears that streamlit is not installed. Do: pip install streamlit"
-                )
+            _check_soft_dependencies("streamlit", extra=None, severity="error")
+            import streamlit as st
 
         # Add sp value (used in decomp plots)
         data_kwargs = data_kwargs or {}

@@ -7,7 +7,10 @@ import logging
 
 
 def _check_soft_dependencies(
-    package: str, error: str = "raise", extra: str = "all_extras"
+    package: str,
+    severity: str = "error",
+    extra: Optional[str] = "all_extras",
+    install_name: Optional[str] = None,
 ) -> bool:
     """Check if all soft dependencies are installed and raise appropriate error message
     when not.
@@ -16,16 +19,21 @@ def _check_soft_dependencies(
     ----------
     package : str
         Package to check
-    error : str, optional
-        Whether to raise an error ("raise") or just a warning message ("warn"),
-        by default "raise"
-    extra : str, optional
-        The 'extras' that will install this package, by default "all_extras"
+    severity : str, optional
+        Whether to raise an error ("error") or just a warning message ("warning"),
+        by default "error"
+    extra : Optional[str], optional
+        The 'extras' that will install this package, by default "all_extras".
+        If None, it means that the dependency is not available in optional
+        requirements file and must be installed by the user on their own.
+    install_name : Optional[str], optional
+        The package name to install, by default None
+        If none, the name in `package` argument is used
 
     Returns
     -------
     bool
-        If error is set to "warn", returns True if package can be imported or False
+        If error is set to "warning", returns True if package can be imported or False
         if it can not be imported
 
     Raises
@@ -33,7 +41,10 @@ def _check_soft_dependencies(
     ModuleNotFoundError
         User friendly error with suggested action to install all required soft
         dependencies
+    RuntimeError
+        Is the severity argument is not one of the allowed values
     """
+    install_name = install_name or package
     try:
         import_module(package)
         package_available = True
@@ -41,13 +52,23 @@ def _check_soft_dependencies(
         msg = (
             f"\n{e}."
             f"\n'{package}' is a soft dependency and not included in the "
-            f"pycaret installation. Please run: `pip install {package}`. "
-            f"\nAlternately, you can install this by running `pip install pycaret[{extra}]`"
+            f"pycaret installation. Please run: `pip install {install_name}` to install."
         )
-        if error == "raise":
+        if extra is not None:
+            msg = (
+                msg
+                + f"\nAlternately, you can install this by running `pip install pycaret[{extra}]`"
+            )
+
+        if severity == "error":
             raise ModuleNotFoundError(msg)
-        else:
+        elif severity == "warning":
             logging.warning(f"{msg}")
             package_available = False
+        else:
+            raise RuntimeError(
+                "Error in calling _check_soft_dependencies, severity "
+                f'argument must bee "error" or "warning", found "{severity}".'
+            )
 
     return package_available

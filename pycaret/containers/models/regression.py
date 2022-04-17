@@ -26,6 +26,7 @@ from pycaret.internal.distributions import *
 import pycaret.containers.base_container
 import numpy as np
 from packaging import version
+from pycaret.utils._dependencies import _check_soft_dependencies
 
 
 class RegressorContainer(ModelContainer):
@@ -210,13 +211,11 @@ class LinearRegressionContainer(RegressorContainer):
             logger.info("Imported cuml.linear_model.LinearRegression")
             gpu_imported = True
         elif experiment.gpu_param:
-            try:
+            if _check_soft_dependencies("cuml", extra=None, severity="warning"):
                 from cuml.linear_model import LinearRegression
 
                 logger.info("Imported cuml.linear_model.LinearRegression")
                 gpu_imported = True
-            except ImportError:
-                logger.warning("Couldn't import cuml.linear_model.LinearRegression")
 
         args = {}
         tune_args = {}
@@ -255,13 +254,11 @@ class LassoRegressionContainer(RegressorContainer):
             logger.info("Imported cuml.linear_model.Lasso")
             gpu_imported = True
         elif experiment.gpu_param:
-            try:
+            if _check_soft_dependencies("cuml", extra=None, severity="warning"):
                 from cuml.linear_model import Lasso
 
                 logger.info("Imported cuml.linear_model.Lasso")
                 gpu_imported = True
-            except ImportError:
-                logger.warning("Couldn't import cuml.linear_model.Lasso")
 
         args = {}
         tune_args = {}
@@ -304,13 +301,11 @@ class RidgeRegressionContainer(RegressorContainer):
             logger.info("Imported cuml.linear_model.Ridge")
             gpu_imported = True
         elif experiment.gpu_param:
-            try:
+            if _check_soft_dependencies("cuml", extra=None, severity="warning"):
                 from cuml.linear_model import Ridge
 
                 logger.info("Imported cuml.linear_model.Ridge")
                 gpu_imported = True
-            except ImportError:
-                logger.warning("Couldn't import cuml.linear_model.Ridge")
 
         args = {}
         tune_args = {}
@@ -353,13 +348,11 @@ class ElasticNetContainer(RegressorContainer):
             logger.info("Imported cuml.linear_model.ElasticNet")
             gpu_imported = True
         elif experiment.gpu_param:
-            try:
+            if _check_soft_dependencies("cuml", extra=None, severity="warning"):
                 from cuml.linear_model import ElasticNet
 
                 logger.info("Imported cuml.linear_model.ElasticNet")
                 gpu_imported = True
-            except ImportError:
-                logger.warning("Couldn't import cuml.linear_model.ElasticNet")
 
         args = {}
         tune_args = {}
@@ -951,13 +944,11 @@ class SVRContainer(RegressorContainer):
             logger.info("Imported cuml.svm.SVR")
             gpu_imported = True
         elif experiment.gpu_param:
-            try:
+            if _check_soft_dependencies("cuml", extra=None, severity="warning"):
                 from cuml.svm import SVR
 
                 logger.info("Imported cuml.svm.SVR")
                 gpu_imported = True
-            except ImportError:
-                logger.warning("Couldn't import cuml.svm.SVR")
 
         args = {}
         tune_args = {}
@@ -1003,13 +994,11 @@ class KNeighborsRegressorContainer(RegressorContainer):
             logger.info("Imported cuml.neighbors.KNeighborsRegressor")
             gpu_imported = True
         elif experiment.gpu_param:
-            try:
+            if _check_soft_dependencies("cuml", extra=None, severity="warning"):
                 from cuml.neighbors import KNeighborsRegressor
 
                 logger.info("Imported cuml.neighbors.KNeighborsRegressor")
                 gpu_imported = True
-            except ImportError:
-                logger.warning("Couldn't import cuml.neighbors.KNeighborsRegressor")
 
         args = {}
         tune_args = {}
@@ -1111,13 +1100,11 @@ class RandomForestRegressorContainer(RegressorContainer):
             logger.info("Imported cuml.ensemble")
             gpu_imported = True
         elif experiment.gpu_param:
-            try:
+            if _check_soft_dependencies("cuml", extra=None, severity="warning"):
                 import cuml.ensemble
 
                 logger.info("Imported cuml.ensemble")
                 gpu_imported = True
-            except ImportError:
-                logger.warning("Couldn't import cuml.ensemble")
 
         if gpu_imported:
             RandomForestRegressor = (
@@ -1438,9 +1425,9 @@ class XGBRegressorContainer(RegressorContainer):
     def __init__(self, experiment):
         logger = get_logger()
         np.random.seed(experiment.seed)
-        try:
+        if _check_soft_dependencies("xgboost", extra="models", severity="warning"):
             import xgboost
-        except ImportError:
+        else:
             logger.warning("Couldn't import xgboost.XGBRegressor")
             self.active = False
             return
@@ -1717,9 +1704,9 @@ class CatBoostRegressorContainer(RegressorContainer):
     def __init__(self, experiment):
         logger = get_logger()
         np.random.seed(experiment.seed)
-        try:
+        if _check_soft_dependencies("catboost", extra="models", severity="warning"):
             import catboost
-        except ImportError:
+        else:
             logger.warning("Couldn't import catboost.CatBoostRegressor")
             self.active = False
             return

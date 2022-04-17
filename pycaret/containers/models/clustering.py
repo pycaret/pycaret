@@ -17,6 +17,7 @@ from pycaret.internal.cuml_wrappers import get_dbscan, get_kmeans
 from pycaret.internal.utils import param_grid_to_lists, get_logger
 from pycaret.internal.distributions import *
 import pycaret.containers.base_container
+from pycaret.utils._dependencies import _check_soft_dependencies
 
 
 _DEFAULT_N_CLUSTERS = 4
@@ -170,13 +171,11 @@ class KMeansClusterContainer(ClusterContainer):
             logger.info("Imported cuml.cluster.KMeans")
             gpu_imported = True
         elif experiment.gpu_param:
-            try:
+            if _check_soft_dependencies("cuml", extra=None, severity="warning"):
                 from cuml.cluster import KMeans
 
                 logger.info("Imported cuml.cluster.KMeans")
                 gpu_imported = True
-            except ImportError:
-                logger.warning("Couldn't import cuml.cluster.KMeans")
 
         args = {
             "n_clusters": _DEFAULT_N_CLUSTERS,
@@ -310,13 +309,11 @@ class DBSCANClusterContainer(ClusterContainer):
             logger.info("Imported cuml.cluster.DBSCAN")
             gpu_imported = True
         elif experiment.gpu_param:
-            try:
+            if _check_soft_dependencies("cuml", extra=None, severity="warning"):
                 from cuml.cluster import DBSCAN
 
                 logger.info("Imported cuml.cluster.DBSCAN")
                 gpu_imported = True
-            except ImportError:
-                logger.warning("Couldn't import cuml.cluster.DBSCAN")
 
         args = {}
         tune_args = {}

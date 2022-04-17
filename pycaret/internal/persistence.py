@@ -8,6 +8,7 @@ from pycaret.internal.utils import get_logger
 
 from pycaret.utils.time_series.forecasting.pipeline import _add_model_to_pipeline
 from pycaret.internal.pycaret_experiment.utils import MLUsecase
+from pycaret.utils._dependencies import _check_soft_dependencies
 
 
 def deploy_model(
@@ -138,15 +139,8 @@ def deploy_model(
         logger.info("Platform : AWS S3")
 
         # checking if boto3 is available
-        try:
-            import boto3
-        except ModuleNotFoundError:
-            logger.error(
-                "boto3 library not found. pip install boto3 to use deploy_model function."
-            )
-            raise ImportError(
-                "boto3 library not found. pip install boto3 to use deploy_model function."
-            )
+        _check_soft_dependencies("boto3", extra=None, severity="error")
+        import boto3
 
         # initialize s3
         logger.info("Initializing S3 client")
@@ -190,16 +184,10 @@ def deploy_model(
 
         logger.info("Platform : GCP")
 
-        try:
-            import google.cloud
-
-        except ModuleNotFoundError:
-            logger.error(
-                "google-cloud-storage library not found. pip install google-cloud-storage to use deploy_model function with GCP."
-            )
-            raise ImportError(
-                "google-cloud-storage library not found. pip install google-cloud-storage to use deploy_model function with GCP."
-            )
+        _check_soft_dependencies(
+            "google", extra=None, severity="error", install_name="google-cloud-storage"
+        )
+        import google.cloud
 
         # initialize deployment
         filename = f"{model_name}.pkl"
@@ -229,17 +217,12 @@ def deploy_model(
 
     elif platform == "azure":
 
-        try:
-            import azure.storage.blob
-        except ModuleNotFoundError:
-            logger.error(
-                "azure-storage-blob library not found. pip install azure-storage-blob to use deploy_model function with Azure."
-            )
-            raise ImportError(
-                "azure-storage-blob library not found. pip install azure-storage-blob to use deploy_model function with Azure."
-            )
-
         logger.info("Platform : Azure Blob Storage")
+
+        _check_soft_dependencies(
+            "azure", extra=None, severity="error", install_name="azure-storage-blob"
+        )
+        import azure.storage.blob
 
         # initialize deployment
         filename = f"{model_name}.pkl"
@@ -437,15 +420,8 @@ def load_model(
         import os
 
         # checking if boto3 is available
-        try:
-            import boto3
-        except ModuleNotFoundError:
-            logger.error(
-                "boto3 library not found. pip install boto3 to use deploy_model function."
-            )
-            raise ImportError(
-                "boto3 library not found. pip install boto3 to use deploy_model function."
-            )
+        _check_soft_dependencies("boto3", extra=None, severity="error")
+        import boto3
 
         bucketname = authentication.get("bucket")
 

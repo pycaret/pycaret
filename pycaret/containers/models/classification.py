@@ -26,6 +26,7 @@ from pycaret.internal.distributions import *
 import pycaret.containers.base_container
 import numpy as np
 from packaging import version
+from pycaret.utils._dependencies import _check_soft_dependencies
 
 
 class ClassifierContainer(ModelContainer):
@@ -236,13 +237,11 @@ class LogisticRegressionClassifierContainer(ClassifierContainer):
             logger.info("Imported cuml.linear_model.LogisticRegression")
             gpu_imported = True
         elif experiment.gpu_param:
-            try:
+            if _check_soft_dependencies("cuml", extra=None, severity="warning"):
                 from cuml.linear_model import LogisticRegression
 
                 logger.info("Imported cuml.linear_model.LogisticRegression")
                 gpu_imported = True
-            except ImportError:
-                logger.warning("Couldn't import cuml.linear_model.LogisticRegression")
 
         args = {"max_iter": 1000}
         tune_args = {}
@@ -288,13 +287,11 @@ class KNeighborsClassifierContainer(ClassifierContainer):
             logger.info("Imported cuml.neighbors.KNeighborsClassifier")
             gpu_imported = True
         elif experiment.gpu_param:
-            try:
+            if _check_soft_dependencies("cuml", extra=None, severity="warning"):
                 from cuml.neighbors import KNeighborsClassifier
 
                 logger.info("Imported cuml.neighbors.KNeighborsClassifier")
                 gpu_imported = True
-            except ImportError:
-                logger.warning("Couldn't import cuml.neighbors.KNeighborsClassifier")
 
         args = {}
         tune_args = {}
@@ -449,13 +446,11 @@ class SGDClassifierContainer(ClassifierContainer):
             logger.info("Imported cuml.MBSGDClassifier")
             gpu_imported = True
         elif experiment.gpu_param:
-            try:
+            if _check_soft_dependencies("cuml", extra=None, severity="warning"):
                 from cuml import MBSGDClassifier as SGDClassifier
 
                 logger.info("Imported cuml.MBSGDClassifier")
                 gpu_imported = True
-            except ImportError:
-                logger.warning("Couldn't import cuml.MBSGDClassifier")
 
         args = {"tol": 0.001, "loss": "hinge", "penalty": "l2", "eta0": 0.001}
         tune_args = {}
@@ -537,13 +532,11 @@ class SVCClassifierContainer(ClassifierContainer):
             logger.info("Imported cuml.svm.SVC")
             gpu_imported = True
         elif experiment.gpu_param:
-            try:
+            if _check_soft_dependencies("cuml", extra=None, severity="warning"):
                 from cuml.svm import SVC
 
                 logger.info("Imported cuml.svm.SVC")
                 gpu_imported = True
-            except ImportError:
-                logger.warning("Couldn't import cuml.svm.SVC")
 
         args = {
             "gamma": "auto",
@@ -592,7 +585,7 @@ class GaussianProcessClassifierContainer(ClassifierContainer):
         }
         tune_args = {}
         tune_grid = {
-            "max_iter_predict": [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000,]
+            "max_iter_predict": [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000]
         }
         tune_distributions = {"max_iter_predict": IntUniformDistribution(100, 1000)}
 
@@ -680,13 +673,11 @@ class RidgeClassifierContainer(ClassifierContainer):
             logger.info("Imported cuml.linear_model")
             gpu_imported = True
         elif experiment.gpu_param:
-            try:
+            if _check_soft_dependencies("cuml", extra=None, severity="warning"):
                 import cuml.linear_model
 
                 logger.info("Imported cuml.linear_model")
                 gpu_imported = True
-            except ImportError:
-                logger.warning("Couldn't import cuml.linear_model")
 
         args = {}
         tune_args = {}
@@ -737,13 +728,11 @@ class RandomForestClassifierContainer(ClassifierContainer):
             logger.info("Imported cuml.ensemble")
             gpu_imported = True
         elif experiment.gpu_param:
-            try:
+            if _check_soft_dependencies("cuml", extra=None, severity="warning"):
                 import cuml.ensemble
 
                 logger.info("Imported cuml.ensemble")
                 gpu_imported = True
-            except ImportError:
-                logger.warning("Couldn't import cuml.ensemble")
 
         if gpu_imported:
             RandomForestClassifier = (
@@ -757,6 +746,7 @@ class RandomForestClassifierContainer(ClassifierContainer):
             }
         else:
             import cuml
+
             if version.parse(cuml.__version__) >= version.parse("0.19"):
                 args = {"random_state": experiment.seed}
             else:
@@ -1080,9 +1070,9 @@ class XGBClassifierContainer(ClassifierContainer):
     def __init__(self, experiment):
         logger = get_logger()
         np.random.seed(experiment.seed)
-        try:
+        if _check_soft_dependencies("xgboost", extra="models", severity="warning"):
             import xgboost
-        except ImportError:
+        else:
             logger.warning("Couldn't import xgboost.XGBClassifier")
             self.active = False
             return
@@ -1337,9 +1327,9 @@ class LGBMClassifierContainer(ClassifierContainer):
                             f"LightGBM GPU mode not available. Consult https://lightgbm.readthedocs.io/en/latest/GPU-Tutorial.html."
                         )
 
-        if is_gpu_enabled=="gpu":
+        if is_gpu_enabled == "gpu":
             args["device"] = "gpu"
-        elif is_gpu_enabled=="cuda":
+        elif is_gpu_enabled == "cuda":
             args["device"] = "cuda"
 
         super().__init__(
@@ -1359,9 +1349,9 @@ class CatBoostClassifierContainer(ClassifierContainer):
     def __init__(self, experiment):
         logger = get_logger()
         np.random.seed(experiment.seed)
-        try:
+        if _check_soft_dependencies("catboost", extra="models", severity="warning"):
             import catboost
-        except ImportError:
+        else::
             logger.warning("Couldn't import catboost.CatBoostClassifier")
             self.active = False
             return
@@ -1586,6 +1576,7 @@ class CalibratedClassifierCVContainer(ClassifierContainer):
             is_special=True,
             is_gpu_enabled=False,
         )
+
 
 def get_all_model_containers(
     experiment: Any, raise_errors: bool = True

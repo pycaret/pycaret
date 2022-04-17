@@ -46,6 +46,7 @@ from pycaret.utils.datetime import (
 )
 from pycaret.utils.time_series import TSModelTypes
 from pycaret.utils.time_series.forecasting.models import _check_enforcements
+from pycaret.utils._dependencies import _check_soft_dependencies
 
 
 class TimeSeriesContainer(ModelContainer):
@@ -1054,12 +1055,7 @@ class TBATSContainer(TimeSeriesContainer):
         np.random.seed(experiment.seed)
         self.gpu_imported = False
 
-        try:
-            from sktime.forecasting.tbats import TBATS  # type: ignore
-        except ImportError:
-            logger.warning("Couldn't import sktime.forecasting.bats")
-            self.active = False
-            return
+        from sktime.forecasting.tbats import TBATS
 
         #### Disable container if certain features are not supported but enforced ----
         dummy = TBATS()
@@ -1122,12 +1118,7 @@ class BATSContainer(TimeSeriesContainer):
         np.random.seed(experiment.seed)
         self.gpu_imported = False
 
-        try:
-            from sktime.forecasting.bats import BATS  # type: ignore
-        except ImportError:
-            logger.warning("Couldn't import sktime.forecasting.bats")
-            self.active = False
-            return
+        from sktime.forecasting.bats import BATS  # type: ignore
 
         #### Disable container if certain features are not supported but enforced ----
         dummy = BATS()
@@ -1189,7 +1180,7 @@ class ProphetContainer(TimeSeriesContainer):
         np.random.seed(experiment.seed)
         self.gpu_imported = False
 
-        if not ProphetPeriodPatched:
+        if not _check_soft_dependencies("prophet", extra=None, severity="warning"):
             logger.warning("Couldn't import sktime.forecasting.fbprophet")
             self.active = False
             return
@@ -1402,15 +1393,12 @@ class LinearCdsDtContainer(CdsDtContainer):
             self.logger.info("Imported cuml.linear_model.LinearRegression")
             self.gpu_imported = True
         elif self.gpu_param:
-            try:
+            if _check_soft_dependencies("cuml", extra=None, severity="warning"):
                 from cuml.linear_model import LinearRegression  # type: ignore
 
                 self.logger.info("Imported cuml.linear_model.LinearRegression")
                 self.gpu_imported = True
-            except ImportError:
-                self.logger.warning(
-                    "Couldn't import cuml.linear_model.LinearRegression"
-                )
+
         return LinearRegression
 
     @property
@@ -1457,13 +1445,12 @@ class ElasticNetCdsDtContainer(CdsDtContainer):
             self.logger.info("Imported cuml.linear_model.ElasticNet")
             self.gpu_imported = True
         elif self.gpu_param:
-            try:
+            if _check_soft_dependencies("cuml", extra=None, severity="warning"):
                 from cuml.linear_model import ElasticNet  # type: ignore
 
                 self.logger.info("Imported cuml.linear_model.ElasticNet")
                 self.gpu_imported = True
-            except ImportError:
-                self.logger.warning("Couldn't import cuml.linear_model.ElasticNet")
+
         return ElasticNet
 
     @property
@@ -1514,13 +1501,12 @@ class RidgeCdsDtContainer(CdsDtContainer):
             self.logger.info("Imported cuml.linear_model.Ridge")
             self.gpu_imported = True
         elif self.gpu_param:
-            try:
+            if _check_soft_dependencies("cuml", extra=None, severity="warning"):
                 from cuml.linear_model import Ridge  # type: ignore
 
                 self.logger.info("Imported cuml.linear_model.Ridge")
                 self.gpu_imported = True
-            except ImportError:
-                self.logger.warning("Couldn't import cuml.linear_model.Ridge")
+
         return Ridge
 
     @property
@@ -1571,13 +1557,12 @@ class LassoCdsDtContainer(CdsDtContainer):
             self.logger.info("Imported cuml.linear_model.Lasso")
             self.gpu_imported = True
         elif self.gpu_param:
-            try:
+            if _check_soft_dependencies("cuml", extra=None, severity="warning"):
                 from cuml.linear_model import Lasso  # type: ignore
 
                 self.logger.info("Imported cuml.linear_model.Lasso")
                 self.gpu_imported = True
-            except ImportError:
-                self.logger.warning("Couldn't import cuml.linear_model.Lasso")
+
         return Lasso
 
     @property
@@ -1933,15 +1918,12 @@ class KNeighborsCdsDtContainer(CdsDtContainer):
             self.logger.info("Imported cuml.neighbors.KNeighborsRegressor")
             self.gpu_imported = True
         elif self.gpu_param:
-            try:
+            if _check_soft_dependencies("cuml", extra=None, severity="warning"):
                 from cuml.neighbors import KNeighborsRegressor  # type: ignore
 
                 self.logger.info("Imported cuml.neighbors.KNeighborsRegressor")
                 self.gpu_imported = True
-            except ImportError:
-                self.logger.warning(
-                    "Couldn't import cuml.neighbors.KNeighborsRegressor"
-                )
+
         return KNeighborsRegressor
 
     @property
@@ -2243,18 +2225,17 @@ class XGBCdsDtContainer(CdsDtContainer):
     model_type = TSModelTypes.TREE
 
     def return_regressor_class(self):
-        try:
+        if _check_soft_dependencies("xgboost", extra="models", severity="warning"):
             import xgboost
-        except ImportError:
-            self.logger.warning("Couldn't import xgboost.XGBRegressor")
-            self.active = False
-            return
 
-        xgboost_version = tuple([int(x) for x in xgboost.__version__.split(".")])
-        if xgboost_version < (1, 1, 0):
-            self.logger.warning(
-                f"Wrong xgboost version. Expected xgboost>=1.1.0, got xgboost=={xgboost_version}"
-            )
+            xgboost_version = tuple([int(x) for x in xgboost.__version__.split(".")])
+            if xgboost_version < (1, 1, 0):
+                self.logger.warning(
+                    f"Wrong xgboost version. Expected xgboost>=1.1.0, got xgboost=={xgboost_version}"
+                )
+                self.active = False
+                return
+        else:
             self.active = False
             return
 
@@ -2408,18 +2389,17 @@ class CatBoostCdsDtContainer(CdsDtContainer):
         super().__init__(experiment=experiment)
 
     def return_regressor_class(self):
-        try:
+        if _check_soft_dependencies("catboost", extra="models", severity="warning"):
             import catboost
-        except ImportError:
-            self.logger.warning("Couldn't import catboost.CatBoostRegressor")
-            self.active = False
-            return
 
-        catboost_version = tuple([int(x) for x in catboost.__version__.split(".")])
-        if catboost_version < (0, 23, 2):
-            self.logger.warning(
-                f"Wrong catboost version. Expected catboost>=0.23.2, got catboost=={catboost_version}"
-            )
+            catboost_version = tuple([int(x) for x in catboost.__version__.split(".")])
+            if catboost_version < (0, 23, 2):
+                self.logger.warning(
+                    f"Wrong catboost version. Expected catboost>=0.23.2, got catboost=={catboost_version}"
+                )
+                self.active = False
+                return
+        else:
             self.active = False
             return
 
@@ -2574,7 +2554,7 @@ class BaseCdsDtForecaster(BaseForecaster):
         return y
 
 
-try:
+if _check_soft_dependencies("prophet", extra=None, severity="warning"):
     from sktime.forecasting.base._base import DEFAULT_ALPHA
     from sktime.forecasting.fbprophet import Prophet  # type: ignore
 
@@ -2649,10 +2629,6 @@ try:
                     f"{exception}"
                 )
             return y
-
-except ImportError:
-    Prophet = None
-    ProphetPeriodPatched = None
 
 
 class EnsembleTimeSeriesContainer(TimeSeriesContainer):
