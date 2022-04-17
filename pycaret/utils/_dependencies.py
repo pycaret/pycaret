@@ -68,7 +68,7 @@ def _check_soft_dependencies(
         else:
             raise RuntimeError(
                 "Error in calling _check_soft_dependencies, severity "
-                f'argument must bee "error" or "warning", found "{severity}".'
+                f'argument must be "error" or "warning", found "{severity}".'
             )
 
     return package_available
