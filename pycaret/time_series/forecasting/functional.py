@@ -31,7 +31,6 @@ def setup(
     target: Optional[str] = None,
     index: Optional[str] = None,
     ignore_features: Optional[List] = None,
-    preprocess: bool = True,
     numeric_imputation_target: Optional[Union[int, float, str]] = None,
     numeric_imputation_exogenous: Optional[Union[int, float, str]] = None,
     transform_target: Optional[str] = None,
@@ -95,12 +94,6 @@ def setup(
         List of features to ignore for modeling when the data is a pandas
         Dataframe with more than 1 column. Ignored when data is a pandas Series
         or Dataframe with 1 column.
-
-
-    preprocess: bool, default = True
-        Should preprocessing be done on the data (includes imputation,
-        transformation, scaling)? By default True, but all steps are disabled.
-        Enable the steps that need to be preprocessed using appropriate arguments.
 
 
     numeric_imputation_target: Optional[Union[int, float, str]], default = None
@@ -339,7 +332,6 @@ def setup(
         target=target,
         index=index,
         ignore_features=ignore_features,
-        preprocess=preprocess,
         numeric_imputation_target=numeric_imputation_target,
         numeric_imputation_exogenous=numeric_imputation_exogenous,
         transform_target=transform_target,
