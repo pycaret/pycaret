@@ -596,18 +596,7 @@ class GaussianProcessClassifierContainer(ClassifierContainer):
         }
         tune_args = {}
         tune_grid = {
-            "max_iter_predict": [
-                100,
-                200,
-                300,
-                400,
-                500,
-                600,
-                700,
-                800,
-                900,
-                1000,
-            ]
+            "max_iter_predict": [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000]
         }
         tune_distributions = {"max_iter_predict": IntUniformDistribution(100, 1000)}
 
