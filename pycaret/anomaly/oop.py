@@ -6,7 +6,7 @@ from pycaret.internal.pycaret_experiment.unsupervised_experiment import (
 )
 import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
-from pycaret.internal.validation import *
+from pycaret.internal.logging import get_logger
 import pycaret.containers.metrics.anomaly
 import pycaret.containers.models.anomaly
 import pycaret.internal.preprocess
@@ -40,8 +40,10 @@ class AnomalyExperiment(_UnsupervisedExperiment):
             ).items()
             if not v.is_special
         }
-        all_models_internal = pycaret.containers.models.anomaly.get_all_model_containers(
-            self, raise_errors=raise_errors
+        all_models_internal = (
+            pycaret.containers.models.anomaly.get_all_model_containers(
+                self, raise_errors=raise_errors
+            )
         )
         return all_models, all_models_internal
 

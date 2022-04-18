@@ -6,7 +6,7 @@ import pandas as pd
 
 import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
-from pycaret.internal.validation import *
+from pycaret.internal.logging import get_logger
 import pycaret.internal.persistence
 
 from pycaret.internal.pycaret_experiment.utils import MLUsecase

@@ -5,6 +5,7 @@ import datetime
 import warnings
 import traceback
 import numpy as np  # type: ignore
+import pandas as pd
 from typing import List, Tuple, Union, Any
 from joblib.memory import Memory
 import plotly.express as px  # type: ignore
@@ -25,7 +26,8 @@ from pycaret.internal.utils import color_df, get_label_encoder
 import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
 from pycaret.internal.distributions import *
-from pycaret.internal.validation import *
+from pycaret.internal.logging import get_logger
+from pycaret.internal.validation import is_sklearn_cv_generator
 import pycaret.containers.metrics.classification
 import pycaret.containers.models.classification
 import pycaret.internal.preprocess
@@ -442,7 +444,12 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         self._all_metrics = self._get_metrics()
 
         runtime = np.array(time.time() - runtime_start).round(2)
-        self._set_up_mlflow(runtime, log_data, log_profile, experiment_custom_tags=experiment_custom_tags)
+        self._set_up_mlflow(
+            runtime,
+            log_data,
+            log_profile,
+            experiment_custom_tags=experiment_custom_tags,
+        )
 
         self._setup_ran = True
         self.logger.info(f"setup() successfully completed in {runtime}s...............")
@@ -1976,40 +1983,60 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         self.logger.info("starting optimization loop")
         # loop starts here
         for i in grid:
-            model = self.create_model(estimator, verbose=False, system=False, probability_threshold=i)
+            model = self.create_model(
+                estimator, verbose=False, system=False, probability_threshold=i
+            )
             try:
                 models_by_threshold.append(model[0])
             except:
                 models_by_threshold.append(model)
-            model_results = self.pull(pop=True).loc[['Mean']]
-            model_results['probability_threshold'] = i
+            model_results = self.pull(pop=True).loc[["Mean"]]
+            model_results["probability_threshold"] = i
             results_df.append(model_results)
 
         self.logger.info("optimization loop finished successfully")
 
         results_concat = pd.concat(results_df, axis=0)
-        results_concat_melted = results_concat.melt(id_vars = ['probability_threshold'], value_vars=list(results_concat.columns[:-1]))
-        optimized_metric_index = np.array(results_concat_melted[results_concat_melted['variable'] == optimize]['value']).argmax()
+        results_concat_melted = results_concat.melt(
+            id_vars=["probability_threshold"],
+            value_vars=list(results_concat.columns[:-1]),
+        )
+        optimized_metric_index = np.array(
+            results_concat_melted[results_concat_melted["variable"] == optimize][
+                "value"
+            ]
+        ).argmax()
         best_model_by_metric = models_by_threshold[optimized_metric_index]
 
         self.logger.info("plotting optimization threshold using plotly")
 
         # plotting threshold
         import plotly.express as px
+
         title = f"{model_name} Probability Threshold Optimization (default = 0.5)"
         plot_kwargs = plot_kwargs or {}
-        fig = px.line(results_concat_melted, x="probability_threshold", y="value", title = title,\
-                        color='variable', **plot_kwargs)
+        fig = px.line(
+            results_concat_melted,
+            x="probability_threshold",
+            y="value",
+            title=title,
+            color="variable",
+            **plot_kwargs,
+        )
         self.logger.info("Figure ready for render")
         fig.show()
 
         self.logger.info("returning model with best metric")
         if return_data:
             self.logger.info("also returning data as return_data = True")
-            self.logger.info("optimize_threshold() succesfully completed......................................")
+            self.logger.info(
+                "optimize_threshold() succesfully completed......................................"
+            )
             return (results_concat_melted, best_model_by_metric)
         else:
-            self.logger.info("optimize_threshold() succesfully completed......................................")
+            self.logger.info(
+                "optimize_threshold() succesfully completed......................................"
+            )
             return best_model_by_metric
 
     def predict_model(
