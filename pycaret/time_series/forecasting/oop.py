@@ -989,7 +989,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             The experiment object to allow chaining of methods
         """
         self.white_noise = None
-        wn_results = self.check_stats(test="white_noise")
+        wn_results = self.check_stats(test="white_noise", data_type="transformed")
         wn_values = wn_results.query("Property == 'White Noise'")["Value"]
 
         # There can be multiple lags values tested.
@@ -3035,14 +3035,14 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             plot_data_type: When plotting the data used for modeling, user may
                 wish to see plots with the original data set provided, the imputed
                 dataset (if imputation is set) or the transformed dataset (which
-                included any imputation and transformation set by the user). This
+                includes any imputation and transformation set by the user). This
                 keyword can be used to specify which data type to use.
 
                 NOTE:
                 (1) If no imputation is specified, then plotting the "imputed"
-                data type will produce the same results as the "original" data type.
+                    data type will produce the same results as the "original" data type.
                 (2) If no transforations are specified, then plotting the "transformed"
-                data type will produce the same results as the "imputed" data type.
+                    data type will produce the same results as the "imputed" data type.
 
                 Allowed values are (if not specified, defaults to the first one in the list):
 
@@ -4394,6 +4394,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         test: str = "all",
         alpha: float = 0.05,
         split: str = "all",
+        data_type: str = "transformed",
         data_kwargs: Optional[Dict] = None,
     ) -> pd.DataFrame:
         """This function is used to get summary statistics and run statistical
@@ -4445,6 +4446,24 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             * 'train' - The Training Split of the dataset
             * 'test' - The Test Split of the dataset
 
+        data_type : str, optional
+            The data type to use for the statistical test, by default "transformed".
+
+            User may wish to perform the tests on the original data set provided,
+            the imputed dataset (if imputation is set) or the transformed dataset
+            (which includes any imputation and transformation set by the user).
+            This keyword can be used to specify which data type to use.
+
+            Allowed values are: ["original", "imputed", "transformed"]
+
+            NOTE:
+            (1) If no imputation is specified, then testing on the "imputed"
+                data type will produce the same results as the "original" data type.
+            (2) If no transformations are specified, then testing the "transformed"
+                data type will produce the same results as the "imputed" data type.
+            (3) By default, tests are done on the "transformed" data since that
+                is the data that is fed to the model during training.
+
 
         data_kwargs : Optional[Dict], optional
             Users can specify `lags list` or `order_list` to run the test for the
@@ -4459,11 +4478,10 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         pd.DataFrame
             Dataframe with the test results
         """
-
         #### Step 1: Get the data to be tested ----
         if estimator is None:
-            data = self._get_y_data(split=split)
-            data_name = "Actual"
+            data = self._get_y_data(split=split, data_type=data_type)
+            data_name = data_type.capitalize()
         else:
             data = self.get_residuals(estimator=estimator)
             if data is None:

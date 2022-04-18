@@ -51,6 +51,7 @@ def _summary_stats(
         distinct_counts = dict(data_.value_counts(normalize=True))
         results = {
             "Length": len(data_),
+            "# Missing Values": data_.isna().sum(),
             "Mean": data_.mean(),
             "Median": data_.median(),
             "Standard Deviation": data_.std(),
@@ -168,4 +169,3 @@ def _is_gaussian(
         return is_gaussian_list, results
     else:
         return is_gaussian_list
-

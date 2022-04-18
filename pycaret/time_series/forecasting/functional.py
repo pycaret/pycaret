@@ -979,14 +979,14 @@ def plot_model(
         plot_data_type: When plotting the data used for modeling, user may
             wish to see plots with the original data set provided, the imputed
             dataset (if imputation is set) or the transformed dataset (which
-            included any imputation and transformation set by the user). This
+            includes any imputation and transformation set by the user). This
             keyword can be used to specify which data type to use.
 
             NOTE:
             (1) If no imputation is specified, then plotting the "imputed"
-            data type will produce the same results as the "original" data type.
+                data type will produce the same results as the "original" data type.
             (2) If no transforations are specified, then plotting the "transformed"
-            data type will produce the same results as the "imputed" data type.
+                data type will produce the same results as the "imputed" data type.
 
             Allowed values are (if not specified, defaults to the first one in the list):
 
@@ -1808,6 +1808,25 @@ def check_stats(
         * 'all' - Complete Dataset
         * 'train' - The Training Split of the dataset
         * 'test' - The Test Split of the dataset
+
+
+    data_type : str, optional
+        The data type to use for the statistical test, by default "transformed".
+
+        User may wish to perform the tests on the original data set provided,
+        the imputed dataset (if imputation is set) or the transformed dataset
+        (which includes any imputation and transformation set by the user).
+        This keyword can be used to specify which data type to use.
+
+        Allowed values are: ["original", "imputed", "transformed"]
+
+        NOTE:
+        (1) If no imputation is specified, then testing on the "imputed"
+            data type will produce the same results as the "original" data type.
+        (2) If no transformations are specified, then testing the "transformed"
+            data type will produce the same results as the "imputed" data type.
+        (3) By default, tests are done on the "transformed" data since that
+            is the data that is fed to the model during training.
 
 
     data_kwargs : Optional[Dict], optional
