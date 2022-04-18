@@ -11,7 +11,7 @@ from joblib.memory import Memory
 from IPython.utils import io
 from sklearn.base import clone  # type: ignore
 from sklearn.preprocessing import LabelEncoder
-from typing import List, Any, Union
+from typing import Union, Optional, Dict, List, Any
 import plotly.express as px  # type: ignore
 import plotly.graph_objects as go  # type: ignore
 
@@ -27,7 +27,6 @@ from pycaret.internal.pipeline import (
 from pycaret.internal.utils import to_df, infer_ml_usecase, mlflow_remove_bad_chars
 import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
-from pycaret.internal.distributions import *
 from pycaret.internal.logging import get_logger
 from pycaret.internal.validation import is_sklearn_pipeline
 import pycaret.internal.preprocess

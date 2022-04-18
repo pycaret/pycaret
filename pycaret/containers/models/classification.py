@@ -22,7 +22,11 @@ from pycaret.internal.utils import (
     get_class_name,
     np_list_arange,
 )
-from pycaret.internal.distributions import *
+from pycaret.internal.distributions import (
+    Distribution,
+    UniformDistribution,
+    IntUniformDistribution,
+)
 import pycaret.containers.base_container
 import numpy as np
 from packaging import version
@@ -592,7 +596,18 @@ class GaussianProcessClassifierContainer(ClassifierContainer):
         }
         tune_args = {}
         tune_grid = {
-            "max_iter_predict": [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000,]
+            "max_iter_predict": [
+                100,
+                200,
+                300,
+                400,
+                500,
+                600,
+                700,
+                800,
+                900,
+                1000,
+            ]
         }
         tune_distributions = {"max_iter_predict": IntUniformDistribution(100, 1000)}
 
@@ -757,6 +772,7 @@ class RandomForestClassifierContainer(ClassifierContainer):
             }
         else:
             import cuml
+
             if version.parse(cuml.__version__) >= version.parse("0.19"):
                 args = {"random_state": experiment.seed}
             else:
@@ -1337,9 +1353,9 @@ class LGBMClassifierContainer(ClassifierContainer):
                             f"LightGBM GPU mode not available. Consult https://lightgbm.readthedocs.io/en/latest/GPU-Tutorial.html."
                         )
 
-        if is_gpu_enabled=="gpu":
+        if is_gpu_enabled == "gpu":
             args["device"] = "gpu"
-        elif is_gpu_enabled=="cuda":
+        elif is_gpu_enabled == "cuda":
             args["device"] = "cuda"
 
         super().__init__(
@@ -1586,6 +1602,7 @@ class CalibratedClassifierCVContainer(ClassifierContainer):
             is_special=True,
             is_gpu_enabled=False,
         )
+
 
 def get_all_model_containers(
     experiment: Any, raise_errors: bool = True
