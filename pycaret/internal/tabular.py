@@ -37,7 +37,6 @@ from pycaret.internal.plots.yellowbrick import show_yellowbrick_plot
 from pycaret.internal.plots.helper import MatplotlibDefaultDPI
 from pycaret.internal.Display import Display, is_in_colab
 from pycaret.internal.distributions import *
-from pycaret.internal.validation import *
 from pycaret.internal.tunable import TunableMixin
 from pycaret.internal.drift_report import (
     create_classification_drift_report,

@@ -11,7 +11,6 @@ import pandas.io.formats.style
 import ipywidgets as ipw
 from IPython.display import display, HTML, clear_output, update_display
 from pycaret.internal.logging import get_logger
-from pycaret.internal.validation import *
 from typing import Any, List, Optional, Dict, Tuple, Union
 from sklearn import clone
 from sklearn.model_selection import KFold, StratifiedKFold, BaseCrossValidator
