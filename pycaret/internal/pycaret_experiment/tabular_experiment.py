@@ -911,6 +911,12 @@ class _TabularExperiment(_PyCaretExperiment):
                     b.dropna(axis=0, inplace=True)  # droping rows with NA's
                     b.drop(["Anomaly"], axis=1, inplace=True)
 
+                    _check_soft_dependencies(
+                        "umap",
+                        extra="analysis",
+                        severity="error",
+                        install_name="umap-learn",
+                    )
                     import umap
 
                     reducer = umap.UMAP()
