@@ -10,7 +10,12 @@ from sklearn.model_selection import KFold, StratifiedKFold, BaseCrossValidator
 from sklearn.model_selection._split import _BaseKFold
 
 from pycaret.internal.logging import get_logger
-from pycaret.internal.validation import *
+from copy import deepcopy
+from pycaret.internal.validation import (
+    is_sklearn_pipeline,
+    is_sklearn_cv_generator,
+    supports_partial_fit,
+)
 
 
 def to_df(data, index=None, columns=None, dtypes=None):

@@ -21,7 +21,8 @@ from pycaret.internal.utils import to_df, id_or_display_name, get_label_encoder
 import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
 from pycaret.internal.distributions import *
-from pycaret.internal.validation import *
+from pycaret.internal.logging import get_logger
+from pycaret.internal.validation import is_fitted, is_sklearn_cv_generator
 from pycaret.internal.tunable import TunableMixin
 from pycaret.utils._dependencies import _check_soft_dependencies
 import pycaret.internal.preprocess

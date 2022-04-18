@@ -2,6 +2,7 @@ import time
 import logging
 import warnings
 import numpy as np  # type: ignore
+import pandas as pd
 from joblib.memory import Memory
 from typing import List, Tuple, Dict, Union, Optional, Any
 import plotly.express as px  # type: ignore
@@ -16,7 +17,7 @@ from pycaret.internal.pycaret_experiment.supervised_experiment import (
 )
 import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
-from pycaret.internal.validation import *
+from pycaret.internal.logging import get_logger
 import pycaret.containers.metrics.regression
 import pycaret.containers.models.regression
 import pycaret.internal.preprocess
@@ -417,7 +418,12 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
         self._all_metrics = self._get_metrics()
 
         runtime = np.array(time.time() - runtime_start).round(2)
-        self._set_up_mlflow(runtime, log_data, log_profile, experiment_custom_tags=experiment_custom_tags)
+        self._set_up_mlflow(
+            runtime,
+            log_data,
+            log_profile,
+            experiment_custom_tags=experiment_custom_tags,
+        )
 
         self._setup_ran = True
         self.logger.info(f"setup() successfully completed in {runtime}s...............")

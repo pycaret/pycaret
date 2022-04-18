@@ -6,6 +6,7 @@ import logging
 import warnings
 import traceback
 import numpy as np  # type: ignore
+import pandas as pd
 from joblib.memory import Memory
 from IPython.utils import io
 from sklearn.base import clone  # type: ignore
@@ -27,7 +28,8 @@ from pycaret.internal.utils import to_df, infer_ml_usecase, mlflow_remove_bad_ch
 import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
 from pycaret.internal.distributions import *
-from pycaret.internal.validation import *
+from pycaret.internal.logging import get_logger
+from pycaret.internal.validation import is_sklearn_pipeline
 import pycaret.internal.preprocess
 import pycaret.internal.persistence
 
@@ -73,7 +75,9 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
     def _is_unsupervised(self) -> bool:
         return True
 
-    def _set_up_mlflow(self, runtime, log_data, log_profile, experiment_custom_tags=None):
+    def _set_up_mlflow(
+        self, runtime, log_data, log_profile, experiment_custom_tags=None
+    ):
         # log into experiment
         self.experiment__.append(("Setup Config", self.display_container[0]))
         self.experiment__.append(("Transformed data", self.X_transformed))
@@ -396,7 +400,12 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
         self._all_metrics = self._get_metrics()
 
         runtime = np.array(time.time() - runtime_start).round(2)
-        self._set_up_mlflow(runtime, log_data, log_profile, experiment_custom_tags=experiment_custom_tags)
+        self._set_up_mlflow(
+            runtime,
+            log_data,
+            log_profile,
+            experiment_custom_tags=experiment_custom_tags,
+        )
 
         self._setup_ran = True
         self.logger.info(f"setup() successfully completed in {runtime}s...............")
