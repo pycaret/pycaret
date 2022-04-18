@@ -68,13 +68,13 @@ class _PyCaretExperiment:
         self.logger.info(f"machine: {machine()}")
         self.logger.info(f"platform: {platform()}")
 
-        try:
+        if _check_soft_dependencies("psutil", extra="others", severity="warning"):
             import psutil
 
             self.logger.info(f"Memory: {psutil.virtual_memory()}")
             self.logger.info(f"Physical Core: {psutil.cpu_count(logical=False)}")
             self.logger.info(f"Logical Core: {psutil.cpu_count(logical=True)}")
-        except Exception:
+        else:
             self.logger.warning(
                 "cannot find psutil installation. memory not traceable. Install psutil using pip to enable memory logging."
             )

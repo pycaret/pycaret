@@ -186,6 +186,8 @@ def create_model(
     # loading dependencies
     import pandas as pd
     from IPython.display import display, HTML, clear_output, update_display
+
+    _check_soft_dependencies("mlxtend", extra="models", severity="error")
     from mlxtend.frequent_patterns import apriori
     from mlxtend.frequent_patterns import association_rules
 

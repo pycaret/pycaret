@@ -3,6 +3,8 @@
 from typing import Optional
 import requests
 
+from pycaret.utils._dependencies import _check_soft_dependencies
+
 
 def get_data(
     dataset: str = "index",
@@ -144,6 +146,12 @@ def get_data(
 
     else:
         if profile:
+            _check_soft_dependencies(
+                "pandas_profiling",
+                extra="analysis",
+                severity="error",
+                install_name="pandas-profiling",
+            )
             import pandas_profiling
 
             pf = pandas_profiling.ProfileReport(data_for_profiling)

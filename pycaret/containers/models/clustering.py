@@ -385,6 +385,8 @@ class KModesClusterContainer(ClusterContainer):
     def __init__(self, experiment):
         logger = get_logger()
         np.random.seed(experiment.seed)
+
+        _check_soft_dependencies("kmodes", extra="models", severity="error")
         from kmodes.kmodes import KModes
 
         args = {
