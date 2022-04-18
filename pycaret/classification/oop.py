@@ -6,7 +6,7 @@ import warnings
 import traceback
 import numpy as np  # type: ignore
 import pandas as pd
-from typing import List, Tuple, Union, Any
+from typing import Tuple, Union, Optional, Dict, Any, List
 from joblib.memory import Memory
 import plotly.express as px  # type: ignore
 import plotly.graph_objects as go  # type: ignore
@@ -25,7 +25,6 @@ from pycaret.internal.meta_estimators import (
 from pycaret.internal.utils import color_df, get_label_encoder
 import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
-from pycaret.internal.distributions import *
 from pycaret.internal.logging import get_logger
 from pycaret.internal.validation import is_sklearn_cv_generator
 import pycaret.containers.metrics.classification

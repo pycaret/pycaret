@@ -20,7 +20,17 @@ from pycaret.internal.utils import (
 from pycaret.internal.utils import to_df, id_or_display_name, get_label_encoder
 import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
-from pycaret.internal.distributions import *
+from pycaret.internal.distributions import (
+    Distribution,
+    UniformDistribution,
+    CategoricalDistribution,
+    get_base_distributions,
+    get_skopt_distributions,
+    get_optuna_distributions,
+    get_hyperopt_distributions,
+    get_CS_distributions,
+    get_tune_distributions,
+)
 from pycaret.internal.logging import get_logger
 from pycaret.internal.validation import is_fitted, is_sklearn_cv_generator
 from pycaret.internal.tunable import TunableMixin

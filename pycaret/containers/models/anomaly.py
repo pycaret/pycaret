@@ -10,7 +10,7 @@
 
 import logging
 import pycaret.internal.cuml_wrappers
-from typing import Any
+from typing import Optional, Dict, Any
 from pycaret.containers.models.base_model import (
     ModelContainer,
 )
@@ -18,7 +18,7 @@ from pycaret.internal.utils import (
     param_grid_to_lists,
     get_logger,
 )
-from pycaret.internal.distributions import *
+from pycaret.internal.distributions import Distribution
 import pycaret.containers.base_container
 import numpy as np
 

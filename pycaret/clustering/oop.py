@@ -5,7 +5,6 @@ from pycaret.internal.pycaret_experiment.unsupervised_experiment import (
 import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
 from pycaret.internal.logging import get_logger
-from pycaret.internal.distributions import *
 import pycaret.containers.metrics.clustering
 import pycaret.containers.models.clustering
 import pycaret.internal.preprocess
