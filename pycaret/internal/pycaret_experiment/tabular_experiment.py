@@ -38,11 +38,8 @@ from pycaret.internal.utils import (
     mlflow_remove_bad_chars,
 )
 from pycaret.internal.validation import *
-
 from pycaret.utils._dependencies import _check_soft_dependencies
-
 from pycaret.internal.Display import Display
-
 from sklearn.model_selection import BaseCrossValidator  # type: ignore
 
 

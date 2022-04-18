@@ -11,6 +11,7 @@ from pycaret.internal.validation import *
 import pycaret.internal.persistence
 
 from pycaret.internal.pycaret_experiment.utils import MLUsecase
+from pycaret.utils._dependencies import _check_soft_dependencies
 
 
 warnings.filterwarnings("ignore")
