@@ -1431,7 +1431,6 @@ class XGBRegressorContainer(RegressorContainer):
         if _check_soft_dependencies("xgboost", extra="models", severity="warning"):
             import xgboost
         else:
-            logger.warning("Couldn't import xgboost.XGBRegressor")
             self.active = False
             return
 
@@ -1710,7 +1709,6 @@ class CatBoostRegressorContainer(RegressorContainer):
         if _check_soft_dependencies("catboost", extra="models", severity="warning"):
             import catboost
         else:
-            logger.warning("Couldn't import catboost.CatBoostRegressor")
             self.active = False
             return
 

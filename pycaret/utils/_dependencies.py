@@ -3,7 +3,9 @@
 
 from importlib import import_module
 from typing import Optional
-import logging
+from pycaret.internal.utils import get_logger
+
+logger = get_logger()
 
 
 def _check_soft_dependencies(
@@ -63,7 +65,7 @@ def _check_soft_dependencies(
         if severity == "error":
             raise ModuleNotFoundError(msg)
         elif severity == "warning":
-            logging.warning(f"{msg}")
+            logger.warning(f"{msg}")
             package_available = False
         else:
             raise RuntimeError(

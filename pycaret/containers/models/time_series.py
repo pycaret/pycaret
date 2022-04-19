@@ -13,6 +13,7 @@ import random
 import warnings
 from abc import abstractmethod
 from typing import Any, Dict, List, Optional, Tuple, Union
+from packaging import version
 
 import numpy as np  # type: ignore
 import pandas as pd
@@ -2227,15 +2228,14 @@ class XGBCdsDtContainer(CdsDtContainer):
     def return_regressor_class(self):
         if _check_soft_dependencies("xgboost", extra="models", severity="warning"):
             import xgboost
-
-            xgboost_version = tuple([int(x) for x in xgboost.__version__.split(".")])
-            if xgboost_version < (1, 1, 0):
-                self.logger.warning(
-                    f"Wrong xgboost version. Expected xgboost>=1.1.0, got xgboost=={xgboost_version}"
-                )
-                self.active = False
-                return
         else:
+            self.active = False
+            return
+
+        if version.parse(xgboost.__version__) < version.parse("1.1.0"):
+            self.logger.warning(
+                f"Wrong xgboost version. Expected xgboost>=1.1.0, got xgboost=={xgboost.__version__}"
+            )
             self.active = False
             return
 
@@ -2391,15 +2391,14 @@ class CatBoostCdsDtContainer(CdsDtContainer):
     def return_regressor_class(self):
         if _check_soft_dependencies("catboost", extra="models", severity="warning"):
             import catboost
-
-            catboost_version = tuple([int(x) for x in catboost.__version__.split(".")])
-            if catboost_version < (0, 23, 2):
-                self.logger.warning(
-                    f"Wrong catboost version. Expected catboost>=0.23.2, got catboost=={catboost_version}"
-                )
-                self.active = False
-                return
         else:
+            self.active = False
+            return
+
+        if version.parse(catboost.__version__) < version.parse("0.23.2"):
+            self.logger.warning(
+                f"Wrong catboost version. Expected catboost>=0.23.2, got catboost=={catboost.__version__}"
+            )
             self.active = False
             return
 
