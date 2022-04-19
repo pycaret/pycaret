@@ -412,8 +412,8 @@ def plot_xacf(
         Data whose correlation plot needs to be plotted. If based on the original
         data, it can contain multiple columns corresponding to the various data
         types of the targets (original, imputed, transformed). If it is based on
-        an estimator, it currently only supports one model.
-        TODO: Extend to multiple models with trellised plots like data.
+        a estimator(s), it can contain residuals from multiple models (one column
+        per model).
     plot : str
         Type of plot, allowed values are ["acf", "pacf"]
     fig_defaults : Dict[str, Any]
@@ -465,7 +465,7 @@ def plot_xacf(
         raise ValueError(f"Plot '{plot}' is not supported by plot_xacf().")
 
     if model_label is not None:
-        title = f"{title} | '{model_label}' Residuals"
+        title = f"{title} | Model Residuals"
     elif data_label is not None:
         title = f"{title} | {data_label}"
 
@@ -610,22 +610,36 @@ def plot_diagnostics(
             "plot_diagnostics() only works on a single time series, "
             f"but {data.shape[1]} series were provided."
         )
-    data_series = data.iloc[:, 0]
-
-    fig_kwargs = fig_kwargs or {}
 
     title = "Diagnostics"
     if model_name is not None:
-        title = f"{title} | '{model_name}' Residuals"
+        title = f"{title} | Model Residuals"
+        subplot_title = f"{model_name[0]} Residuals"
     elif data_label is not None:
         title = f"{title} | {data_label}"
+        # Do not use data_label for column titles since the actual column name
+        # has the more detailed data_type (e.g. with "transformed" at the end.)
+        subplot_title = data.columns[0]
+    else:
+        # Both model_name and data_label are None
+        raise ValueError(
+            "Both model_name and data_label can not be None. Please specify one based "
+            "on where the results are coming from (model or data respectively)."
+            "\nIf you believe that this error should not be raised, please file an issue "
+            "on GitHub with a reproducible example:"
+            "\nhttps://github.com/pycaret/pycaret/issues"
+        )
+
+    data_series = data.iloc[:, 0]
+
+    fig_kwargs = fig_kwargs or {}
 
     fig = make_subplots(
         rows=3,
         cols=2,
         row_heights=[0.33, 0.33, 0.33],
         subplot_titles=[
-            "Time Plot",
+            subplot_title,
             "Periodogram",
             "Histogram",
             "Q-Q Plot",
@@ -821,8 +835,8 @@ def plot_time_series_decomposition(
         Data whose decomposition plot needs to be plotted. If based on the original
         data, it can contain multiple columns corresponding to the various data
         types of the targets (original, imputed, transformed). If it is based on
-        an estimator, it currently only supports one model.
-        TODO: Extend to multiple models with trellised plots like data.
+        a estimator(s), it can contain residuals from multiple models (one column
+        per model).
     plot : str, optional
         Type of plot, allowed values are ["decomp", "decomp_stl"]
     fig_defaults : Dict[str, Any]
@@ -897,7 +911,7 @@ def plot_time_series_decomposition(
         title = "STL Decomposition"
 
     if model_name is not None:
-        title = f"{title} | '{model_name}' Residuals"
+        title = f"{title} | Model Residuals"
     elif data_label is not None:
         title = f"{title} | {data_label}"
     title = title + f"<br>Seasonal Period = {period}"
@@ -964,7 +978,7 @@ def plot_time_series_differences(
         "order_list" = [1, 2] will plot original, first and second differences.
         "lags_list" = [1, [1, 12] will plot original, first, and first difference
         with seasonal difference of 12.
-        Additionally, user can also ask for diagnostic plots for the differnces
+        Additionally, user can also ask for diagnostic plots for the differences
         such as "acf", "pacf", "periodogram", "fft" by setting the value of these
         keys to True.
     fig_kwargs : Optional[Dict], optional
@@ -988,6 +1002,26 @@ def plot_time_series_differences(
             "plot_time_series_differences() only works on a single time series, "
             f"but {data.shape[1]} series were provided."
         )
+
+    title = "Difference Plot"
+    if model_name is not None:
+        title = f"{title} | Model Residuals"
+        column_titles = [f"{model_name[0]} Residuals"]
+    elif data_label is not None:
+        title = f"{title} | {data_label}"
+        # Do not use data_label for column titles since the actual column name
+        # has the more detailed data_type (e.g. with "transformed" at the end.)
+        column_titles = [data.columns[0]]
+    else:
+        # Both model_name and data_label are None
+        raise ValueError(
+            "Both model_name and data_label can not be None. Please specify one based "
+            "on where the results are coming from (model or data respectively)."
+            "\nIf you believe that this error should not be raised, please file an issue "
+            "on GitHub with a reproducible example:"
+            "\nhttps://github.com/pycaret/pycaret/issues"
+        )
+
     data_series = data.iloc[:, 0]
 
     fig, return_data_dict = None, None
@@ -1003,12 +1037,6 @@ def plot_time_series_differences(
     plot_periodogram = data_kwargs.get("periodogram", False)
     plot_fft = data_kwargs.get("fft", False)
 
-    title = "Difference Plot"
-    if model_name is not None:
-        title = f"{title} | '{model_name}' Residuals"
-    elif data_label is not None:
-        title = f"{title} | {data_label}"
-
     diff_list, name_list = get_diffs(
         data=data_series, order_list=order_list, lags_list=lags_list
     )
@@ -1020,7 +1048,6 @@ def plot_time_series_differences(
     diff_list = [data_series] + diff_list
     name_list = ["Actual" if model_name is None else "Residuals"] + name_list
 
-    column_titles = ["Time Series"]
     rows = len(diff_list)
     cols = 1
     if plot_acf:
@@ -1153,8 +1180,9 @@ def plot_frequency_components(
         Data whose frequency components needs to be plotted. If based on the original
         data, it can contain multiple columns corresponding to the various data
         types of the targets (original, imputed, transformed). If it is based on
-        an estimator, it currently only supports one model.
-        TODO: Extend to multiple models with trellised plots like data.
+        a estimator(s), it can contain residuals from multiple models (one column
+        per model).
+        per model).
     plot : str
         Type of plot, allowed values are ["periodogram", "fft", "welch"]
     fig_defaults : Dict[str, Any]
@@ -1218,7 +1246,7 @@ def plot_frequency_components(
         )
 
     if model_name is not None:
-        title = f"{title} | '{model_name}' Residuals"
+        title = f"{title} | Model Residuals"
     elif data_label is not None:
         title = f"{title} | {data_label}"
 
