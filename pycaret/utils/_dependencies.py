@@ -3,7 +3,7 @@
 
 from importlib import import_module
 from typing import Optional
-from pycaret.internal.utils import get_logger
+from pycaret.internal.logging import get_logger
 
 logger = get_logger()
 
