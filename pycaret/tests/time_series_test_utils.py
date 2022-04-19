@@ -23,6 +23,8 @@ _BLEND_TEST_MODELS = [
     "lightgbm_cds_dt",
 ]  # Test blend model functionality only in these models
 
+_ALL_DATA_TYPES = ["transformed", "imputed", "original"]
+
 _ALL_STATS_TESTS = [
     "summary",
     "white_noise",
@@ -31,6 +33,17 @@ _ALL_STATS_TESTS = [
     "normality",
     "stationarity",
     "all",
+]
+
+# Does the test support missing data?
+_ALL_STATS_TESTS_MISSING_DATA = [
+    ("summary", True),
+    ("white_noise", False),
+    ("adf", False),
+    ("kpss", False),
+    ("normality", True),
+    ("stationarity", False),
+    ("all", False),
 ]
 
 _IMPUTE_METHODS_STR = [

@@ -1,16 +1,20 @@
 from typing import Optional, Dict, List, Tuple, Union
 import pandas as pd
+import logging
 
 import statsmodels.api as sm
 from statsmodels.tsa.stattools import adfuller
 from statsmodels.tsa.api import kpss
+
+from statsmodels.tools.sm_exceptions import MissingDataError as SmMissingDataError
+from pycaret.utils.time_series.exceptions import MissingDataError
 
 from pmdarima.arima.utils import ndiffs, nsdiffs
 
 from pycaret.internal.tests.stats import _summary_stats, _is_gaussian
 from pycaret.internal.tests import _format_test_results
 
-from pycaret.utils.time_series import get_diffs, _get_diff_name_list
+from pycaret.utils.time_series import _get_diff_name_list
 
 
 #############################################################
@@ -285,7 +289,15 @@ def _is_stationary_adf(
             continue
 
         #### Step 2B: Get Test Results ----
-        results_ = adfuller(data_, autolag="AIC", maxlag=None)
+        try:
+            results_ = adfuller(data_, autolag="AIC", maxlag=None)
+        except SmMissingDataError as exception:
+            logging.warning(exception)
+            raise MissingDataError(
+                "ADF test can not be run on data with missing values. "
+                "Please check input data type."
+            )
+
         test_statistic = results_[0]
         critical_values = results_[4]
         p_value = results_[1]
@@ -389,7 +401,17 @@ def _is_stationary_kpss(
             continue
 
         #### Step 2B: Get Test Results ----
-        results_ = kpss(data_, regression="ct", nlags="auto")
+        try:
+            results_ = kpss(data_, regression="ct", nlags="auto")
+        except ValueError as exception:
+            logging.warning(exception)
+            if data_.isna().sum() > 0:
+                raise MissingDataError(
+                    "KPSS test can not be run on data with missing values. "
+                    "Please check input data type."
+                )
+            else:
+                raise ValueError()
         test_statistic = results_[0]
         p_value = results_[1]
         critical_values = results_[3]
@@ -497,13 +519,20 @@ def _is_white_noise(
         lags_ = None if len(lags_) == 0 else lags_
 
         #### Step 2B: Run test ----
-        results = sm.stats.acorr_ljungbox(data_, lags=lags_, return_df=True)
+        if data_.isna().sum() == 0:
+            results = sm.stats.acorr_ljungbox(data_, lags=lags_, return_df=True)
+        else:
+            raise MissingDataError(
+                "White Noise Test (Ljung-Box) can not be run on data with missing "
+                "values. Please check input data type."
+            )
 
         #### Step 2C: Cleanup results ----
         results[test_category] = results["lb_pvalue"] > alpha
-        is_white_noise = False if results[test_category].all() == False else True
+        is_white_noise = False if results[test_category].all() is False else True
         results.rename(
-            columns={"lb_stat": "Test Statictic", "lb_pvalue": "p-value"}, inplace=True,
+            columns={"lb_stat": "Test Statictic", "lb_pvalue": "p-value"},
+            inplace=True,
         )
         results["Data"] = name_
 

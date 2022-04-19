@@ -175,6 +175,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             ["Data shape", self.data.shape],
             ["Train data shape", self.train.shape],
             ["Test data shape", self.test.shape],
+            ["Missing Values", self.data.isna().sum().sum()],
             ["Fold Generator", type(self.fold_generator).__name__],
             ["Fold Number", self.fold_param],
             ["Enforce Prediction Interval", self.enforce_pi],
@@ -186,21 +187,43 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             ["Target White Noise", self.white_noise],
             ["Recommended d", self.lowercase_d],
             ["Recommended Seasonal D", self.uppercase_d],
-            ["Missing Values", self.data.isna().sum().sum()],
             ["Preprocess", self.preprocess],
-            ["CPU Jobs", self.n_jobs_param],
-            ["Use GPU", self.gpu_param],
-            ["Log Experiment", self.logging_param],
-            ["Experiment Name", self.exp_name_log],
-            ["USI", self.USI],
-            # ["Transformed Train Target", self.y_train.shape],
-            # ["Transformed Test Target", self.y_test.shape],
-            # ["Transformed Train Exogenous", self.X_train.shape],
-            # ["Transformed Test Exogenous", self.X_test.shape],
+            # ["Transformed Train Target", self.y_train_transformed.shape],
+            # ["Transformed Test Target", self.y_test_transformed.shape],
+            # ["Transformed Train Exogenous", self.X_train_transformed.shape],
+            # ["Transformed Test Exogenous", self.X_test_transformed.shape],
         ]
 
-        # if self.preprocess:
-        #     display_container.extend([["Imputation Type", self.imputation_type]])
+        if self.preprocess:
+            display_container.extend(
+                [
+                    ["Numerical Imputation (Target)", self.numeric_imputation_target],
+                    ["Transformation (Target)", self.transform_target],
+                    ["Scaling (Target)", self.scale_target],
+                ]
+            )
+
+            if self.exogenous_present == TSExogenousPresent.YES:
+                display_container.extend(
+                    [
+                        [
+                            "Numerical Imputation (Exogenous)",
+                            self.numeric_imputation_exogenous,
+                        ],
+                        ["Transformation (Exogenous)", self.transform_exogenous],
+                        ["Scaling (Exogenous)", self.scale_exogenous],
+                    ]
+                )
+
+        display_container.extend(
+            [
+                ["CPU Jobs", self.n_jobs_param],
+                ["Use GPU", self.gpu_param],
+                ["Log Experiment", self.logging_param],
+                ["Experiment Name", self.exp_name_log],
+                ["USI", self.USI],
+            ]
+        )
 
         display_container = pd.DataFrame(
             display_container, columns=["Description", "Value"]
@@ -859,6 +882,35 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         return self
 
+    def _set_should_preprocess_data(self) -> "TSForecastingExperiment":
+        """Sets whether preprocessing should be enabled or not (depending on
+        user arguments).
+
+        Returns
+        -------
+        TSForecastingExperiment
+            The experiment object to allow chaining of methods
+        """
+        if (
+            # Target transformations ----
+            self.numeric_imputation_target is not None
+            or self.transform_target is not None
+            or self.scale_target is not None
+        ) or (
+            # Exogenous Transformations ----
+            (self.exogenous_present == TSExogenousPresent.YES)
+            and (
+                self.numeric_imputation_exogenous is not None
+                or self.transform_exogenous is not None
+                or self.scale_exogenous is not None
+            )
+        ):
+            self.preprocess = True
+        else:
+            self.preprocess = False
+
+        return self
+
     def _set_missingness(self) -> "TSForecastingExperiment":
         """Checks and sets flags indicating missing values in the target and
         exogenous variables. These can be used later to make decisions on whether
@@ -989,7 +1041,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             The experiment object to allow chaining of methods
         """
         self.white_noise = None
-        wn_results = self.check_stats(test="white_noise")
+        wn_results = self.check_stats(test="white_noise", data_type="transformed")
         wn_values = wn_results.query("Property == 'White Noise'")["Value"]
 
         # There can be multiple lags values tested.
@@ -1154,7 +1206,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         target: Optional[str] = None,
         index: Optional[str] = None,
         ignore_features: Optional[List] = None,
-        preprocess: bool = True,
+        # preprocess: bool = True,
         numeric_imputation_target: Optional[Union[int, float, str]] = None,
         numeric_imputation_exogenous: Optional[Union[int, float, str]] = None,
         transform_target: Optional[str] = None,
@@ -1219,12 +1271,6 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             List of features to ignore for modeling when the data is a pandas
             Dataframe with more than 1 column. Ignored when data is a pandas Series
             or Dataframe with 1 column.
-
-
-        preprocess: bool, default = True
-            Should preprocessing be done on the data (includes imputation,
-            transformation, scaling)? By default True, but all steps are disabled.
-            Enable the steps that need to be preprocessed using appropriate arguments.
 
 
         numeric_imputation_target: Optional[Union[int, float, str]], default = None
@@ -1469,7 +1515,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         self.enforce_pi = enforce_pi
         self.enforce_exogenous = enforce_exogenous
-        self.preprocess = preprocess
+        # self.preprocess = preprocess
         self.numeric_imputation_target = numeric_imputation_target
         self.numeric_imputation_exogenous = numeric_imputation_exogenous
         self.transform_target = transform_target
@@ -1512,6 +1558,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             ._check_and_set_fh(fh=fh)
             ._setup_train_test_split()
             ._set_fold_generator()
+            ._set_should_preprocess_data()
             ._set_missingness()
             ._initialize_pipeline()
             ##################################################################
@@ -3035,14 +3082,14 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             plot_data_type: When plotting the data used for modeling, user may
                 wish to see plots with the original data set provided, the imputed
                 dataset (if imputation is set) or the transformed dataset (which
-                included any imputation and transformation set by the user). This
+                includes any imputation and transformation set by the user). This
                 keyword can be used to specify which data type to use.
 
                 NOTE:
                 (1) If no imputation is specified, then plotting the "imputed"
-                data type will produce the same results as the "original" data type.
+                    data type will produce the same results as the "original" data type.
                 (2) If no transforations are specified, then plotting the "transformed"
-                data type will produce the same results as the "imputed" data type.
+                    data type will produce the same results as the "imputed" data type.
 
                 Allowed values are (if not specified, defaults to the first one in the list):
 
@@ -4394,6 +4441,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         test: str = "all",
         alpha: float = 0.05,
         split: str = "all",
+        data_type: str = "transformed",
         data_kwargs: Optional[Dict] = None,
     ) -> pd.DataFrame:
         """This function is used to get summary statistics and run statistical
@@ -4445,6 +4493,24 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             * 'train' - The Training Split of the dataset
             * 'test' - The Test Split of the dataset
 
+        data_type : str, optional
+            The data type to use for the statistical test, by default "transformed".
+
+            User may wish to perform the tests on the original data set provided,
+            the imputed dataset (if imputation is set) or the transformed dataset
+            (which includes any imputation and transformation set by the user).
+            This keyword can be used to specify which data type to use.
+
+            Allowed values are: ["original", "imputed", "transformed"]
+
+            NOTE:
+            (1) If no imputation is specified, then testing on the "imputed"
+                data type will produce the same results as the "original" data type.
+            (2) If no transformations are specified, then testing the "transformed"
+                data type will produce the same results as the "imputed" data type.
+            (3) By default, tests are done on the "transformed" data since that
+                is the data that is fed to the model during training.
+
 
         data_kwargs : Optional[Dict], optional
             Users can specify `lags list` or `order_list` to run the test for the
@@ -4459,11 +4525,10 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         pd.DataFrame
             Dataframe with the test results
         """
-
         #### Step 1: Get the data to be tested ----
         if estimator is None:
-            data = self._get_y_data(split=split)
-            data_name = "Actual"
+            data = self._get_y_data(split=split, data_type=data_type)
+            data_name = data_type.capitalize()
         else:
             data = self.get_residuals(estimator=estimator)
             if data is None:
