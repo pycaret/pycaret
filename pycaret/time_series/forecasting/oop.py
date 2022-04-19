@@ -80,7 +80,7 @@ from pycaret.internal.plots.utils.time_series import (
     _resolve_renderer,
     _get_data_types_to_plot,
     _reformat_dataframes_for_plots,
-    _clean_model_results_names,
+    _clean_model_results_labels,
 )
 
 warnings.filterwarnings("ignore")
@@ -2708,7 +2708,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             verbose=verbose,
         )
 
-    def _plot_model_get_model_names(
+    def _plot_model_get_model_labels(
         self, estimators: List[BaseForecaster], data_kwargs: Dict
     ) -> List[str]:
         """Returns the labels (names) to be used for the results corresponsing to
@@ -3151,7 +3151,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             plot=plot, data_types_requested=data_types_requested
         )
 
-        data, data_label, X, X_labels, cv, model_results, model_names = (
+        data, data_label, X, X_labels, cv, model_results, model_labels = (
             None,
             None,
             None,
@@ -3230,7 +3230,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             else:
                 estimators = [estimator]
 
-            model_names = self._plot_model_get_model_names(
+            model_labels = self._plot_model_get_model_labels(
                 estimators=estimators, data_kwargs=data_kwargs
             )
 
@@ -3240,7 +3240,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                     self.logger.warning(msg)
                     print(msg)
                 estimators = [estimators[0]]
-                model_names = [model_names[0]]
+                model_labels = [model_labels[0]]
 
             require_residuals = [
                 "diagnostics",
@@ -3308,11 +3308,11 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                 if all(model_result is None for model_result in model_results):
                     return
 
-                model_results, model_names = _clean_model_results_names(
-                    model_results, model_names
+                model_results, model_labels = _clean_model_results_labels(
+                    model_results=model_results, model_labels=model_labels
                 )
                 data = pd.concat(model_results, axis=1)
-                data.columns = model_names
+                data.columns = model_labels
             else:
                 plots_formatted_model = [
                     f"'{plot}'" for plot in self._available_plots_estimator_keys
@@ -3331,7 +3331,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             X_labels=X_labels,
             cv=cv,
             model_results=model_results,
-            model_names=model_names,
+            model_labels=model_labels,
             return_pred_int=return_pred_int,
             data_kwargs=data_kwargs,
             fig_kwargs=fig_kwargs,

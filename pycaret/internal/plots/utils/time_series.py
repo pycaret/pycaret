@@ -1099,8 +1099,8 @@ def _reformat_dataframes_for_plots(
     return output
 
 
-def _clean_model_results_names(
-    model_results: List[pd.DataFrame], model_names: List[str]
+def _clean_model_results_labels(
+    model_results: List[pd.DataFrame], model_labels: List[str]
 ) -> Tuple[List[pd.DataFrame], List[str]]:
     """Cleans the model results and names to remove models that did not produce
     any results, e.g. no residuals, insample predictions, etc.
@@ -1111,8 +1111,8 @@ def _clean_model_results_names(
         List of dataframes containing the model results (one dataframe per model)
         Some values might be None if the model did not produce a result. These
         will get dropped by this function.
-    model_names : List[str]
-        The names of the models producing the results.
+    model_labels : List[str]
+        The labels of the models producing the results.
 
     Returns
     -------
@@ -1130,8 +1130,8 @@ def _clean_model_results_names(
         for include, model_result in zip(includes, model_results)
         if include
     ]
-    model_names = [
-        model_name for include, model_name in zip(includes, model_names) if include
+    model_labels = [
+        model_name for include, model_name in zip(includes, model_labels) if include
     ]
 
-    return model_results, model_names
+    return model_results, model_labels
