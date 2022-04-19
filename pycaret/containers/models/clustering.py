@@ -11,11 +11,11 @@
 import logging
 import numpy as np
 import pycaret.internal.cuml_wrappers
-from typing import Any
+from typing import Optional, Dict, Any
 from pycaret.containers.models.base_model import ModelContainer
 from pycaret.internal.cuml_wrappers import get_dbscan, get_kmeans
 from pycaret.internal.utils import param_grid_to_lists, get_logger
-from pycaret.internal.distributions import *
+from pycaret.internal.distributions import Distribution
 import pycaret.containers.base_container
 from pycaret.utils._dependencies import _check_soft_dependencies
 

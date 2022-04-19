@@ -5,6 +5,7 @@ import random
 import secrets
 import traceback
 import warnings
+import pandas as pd
 from typing import List, Tuple, Dict, Optional, Any, Union
 from unittest.mock import patch
 from joblib.memory import Memory
@@ -37,8 +38,11 @@ from pycaret.internal.utils import (
     get_model_name,
     mlflow_remove_bad_chars,
 )
-from pycaret.internal.validation import *
 from pycaret.utils._dependencies import _check_soft_dependencies
+from pycaret.internal.logging import get_logger
+from pycaret.internal.validation import is_sklearn_cv_generator
+from copy import deepcopy
+
 from pycaret.internal.Display import Display
 from sklearn.model_selection import BaseCrossValidator  # type: ignore
 

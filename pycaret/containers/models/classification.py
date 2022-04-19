@@ -22,7 +22,11 @@ from pycaret.internal.utils import (
     get_class_name,
     np_list_arange,
 )
-from pycaret.internal.distributions import *
+from pycaret.internal.distributions import (
+    Distribution,
+    UniformDistribution,
+    IntUniformDistribution,
+)
 import pycaret.containers.base_container
 import numpy as np
 from packaging import version

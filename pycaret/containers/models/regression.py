@@ -9,10 +9,14 @@
 # to complete the process. Refer to the existing classes for examples.
 
 import logging
-from typing import Union, Any
+from typing import Union, Optional, Dict, Any
 
 import pycaret.containers.base_container
-from pycaret.internal.distributions import *
+from pycaret.internal.distributions import (
+    Distribution,
+    UniformDistribution,
+    IntUniformDistribution,
+)
 from pycaret.containers.models.base_model import (
     ModelContainer,
     leftover_parameters_to_categorical_distributions,
@@ -22,7 +26,6 @@ from pycaret.internal.utils import (
     get_logger,
     np_list_arange,
 )
-from pycaret.internal.distributions import *
 import pycaret.containers.base_container
 import numpy as np
 from packaging import version
