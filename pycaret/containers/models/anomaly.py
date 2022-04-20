@@ -8,7 +8,6 @@
 # `ClassifierContainer` as a base, set all of the required parameters in the `__init__` and then call `super().__init__`
 # to complete the process. Refer to the existing classes for examples.
 
-import logging
 import pycaret.internal.cuml_wrappers
 from typing import Optional, Dict, Any
 from pycaret.containers.models.base_model import (

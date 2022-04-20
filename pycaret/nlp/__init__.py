@@ -1,4 +1,5 @@
 from typing import Optional, Dict, Any, Dict
+from pycaret import show_versions
 from pycaret.utils._dependencies import _check_soft_dependencies
 
 
@@ -192,74 +193,7 @@ def setup(
         )
 
     logger.info("Checking libraries")
-
-    try:
-        from pandas import __version__
-
-        logger.info("pd==" + str(__version__))
-    except:
-        logger.warning("pandas not found")
-
-    try:
-        from numpy import __version__
-
-        logger.info("numpy==" + str(__version__))
-    except:
-        logger.warning("numpy not found")
-
-    try:
-        import warnings
-
-        warnings.filterwarnings("ignore")
-        from gensim import __version__
-
-        logger.info("gensim==" + str(__version__))
-    except:
-        logger.warning("gensim not found")
-
-    try:
-        from spacy import __version__
-
-        logger.info("spacy==" + str(__version__))
-    except:
-        logger.warning("spacy not found")
-
-    try:
-        from nltk import __version__
-
-        logger.info("nltk==" + str(__version__))
-    except:
-        logger.warning("nltk not found")
-
-    try:
-        from textblob import __version__
-
-        logger.info("textblob==" + str(__version__))
-    except:
-        logger.warning("textblob not found")
-
-    try:
-        from pyLDAvis import __version__
-
-        logger.info("pyLDAvis==" + str(__version__))
-    except:
-        logger.warning("pyLDAvis not found")
-
-    try:
-        from wordcloud import __version__
-
-        logger.info("wordcloud==" + str(__version__))
-    except:
-        logger.warning("wordcloud not found")
-
-    try:
-        from mlflow.version import VERSION
-        import warnings
-
-        warnings.filterwarnings("ignore")
-        logger.info("mlflow==" + str(VERSION))
-    except:
-        logger.warning("mlflow not found")
+    logger.info(show_versions())
 
     logger.info("Checking Exceptions")
 

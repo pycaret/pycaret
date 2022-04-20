@@ -458,7 +458,7 @@ class _TabularExperiment(_PyCaretExperiment):
         if self.gpu_param:
             self.logger.info("Set up GPU usage.")
 
-            try:
+            if _check_soft_dependencies("cuml", extra=None, severity="warning"):
                 from cuml import __version__
 
                 cuml_version = __version__
@@ -466,8 +466,6 @@ class _TabularExperiment(_PyCaretExperiment):
 
                 cuml_version = cuml_version.split(".")
                 cuml_version = (int(cuml_version[0]), int(cuml_version[1]))
-            except Exception:
-                self.logger.warning("cuML not found")
 
             if cuml_version is None or not version.parse(cuml_version) >= version.parse(
                 "0.15"

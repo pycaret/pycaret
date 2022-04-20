@@ -1077,7 +1077,6 @@ class XGBClassifierContainer(ClassifierContainer):
         if _check_soft_dependencies("xgboost", extra="models", severity="warning"):
             import xgboost
         else:
-            logger.warning("Couldn't import xgboost.XGBClassifier")
             self.active = False
             return
 
@@ -1356,7 +1355,6 @@ class CatBoostClassifierContainer(ClassifierContainer):
         if _check_soft_dependencies("catboost", extra="models", severity="warning"):
             import catboost
         else:
-            logger.warning("Couldn't import catboost.CatBoostClassifier")
             self.active = False
             return
 

@@ -49,7 +49,6 @@ from pycaret.utils.time_series import TSModelTypes
 from pycaret.utils.time_series.forecasting.models import _check_enforcements
 from pycaret.utils._dependencies import _check_soft_dependencies
 
-
 class TimeSeriesContainer(ModelContainer):
     """
     Base time series model container class, for easier definition of containers.
@@ -1182,7 +1181,6 @@ class ProphetContainer(TimeSeriesContainer):
         self.gpu_imported = False
 
         if not _check_soft_dependencies("prophet", extra=None, severity="warning"):
-            logger.warning("Couldn't import sktime.forecasting.fbprophet")
             self.active = False
             return
 

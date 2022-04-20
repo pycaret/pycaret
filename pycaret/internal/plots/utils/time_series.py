@@ -1,6 +1,5 @@
 from typing import Optional, List, Tuple, Union, Dict, Any
 from math import ceil
-import logging
 
 import numpy as np
 import pandas as pd
@@ -22,6 +21,9 @@ from statsmodels.tsa.stattools import pacf, acf, ccf
 from statsmodels.tsa.seasonal import seasonal_decompose, STL
 
 from pycaret.utils import _resolve_dict_keys
+from pycaret.internal.logging import get_logger
+
+logger = get_logger()
 
 PlotReturnType = Tuple[Optional[go.Figure], Optional[Dict[str, Any]]]
 
@@ -505,8 +507,8 @@ def decomp_subplot(
                 data_, period=period, model=classical_decomp_type
             )
         except ValueError as exception:
-            logging.warning(exception)
-            logging.warning(
+            logger.warning(exception)
+            logger.warning(
                 "Seasonal Decompose plot failed most likely sue to missing data"
             )
             return fig, None
@@ -1011,7 +1013,7 @@ def _get_data_types_to_plot(
                 f"Data Type: '{requested}' is not supported for plot: '{plot}'. "
                 "This will be ignored."
             )
-            logging.warning(msg)
+            logger.warning(msg)
             print(msg)
 
     if len(cleaned_data_types) == 0:
@@ -1030,7 +1032,7 @@ def _get_data_types_to_plot(
             "but this plot only supports a single data type at a time. "
             f"\nThe first one (i.e. '{cleaned_data_types[0]}') will be used."
         )
-        logging.warning(msg)
+        logger.warning(msg)
         print(msg)
         cleaned_data_types = [cleaned_data_types[0]]
 

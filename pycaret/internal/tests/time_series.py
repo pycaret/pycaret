@@ -1,6 +1,5 @@
 from typing import Optional, Dict, List, Tuple, Union
 import pandas as pd
-import logging
 
 import statsmodels.api as sm
 from statsmodels.tsa.stattools import adfuller
@@ -15,6 +14,9 @@ from pycaret.internal.tests.stats import _summary_stats, _is_gaussian
 from pycaret.internal.tests import _format_test_results
 
 from pycaret.utils.time_series import _get_diff_name_list
+from pycaret.internal.logging import get_logger
+
+logger = get_logger()
 
 
 #############################################################
@@ -292,7 +294,7 @@ def _is_stationary_adf(
         try:
             results_ = adfuller(data_, autolag="AIC", maxlag=None)
         except SmMissingDataError as exception:
-            logging.warning(exception)
+            logger.warning(exception)
             raise MissingDataError(
                 "ADF test can not be run on data with missing values. "
                 "Please check input data type."
@@ -404,7 +406,7 @@ def _is_stationary_kpss(
         try:
             results_ = kpss(data_, regression="ct", nlags="auto")
         except ValueError as exception:
-            logging.warning(exception)
+            logger.warning(exception)
             if data_.isna().sum() > 0:
                 raise MissingDataError(
                     "KPSS test can not be run on data with missing values. "

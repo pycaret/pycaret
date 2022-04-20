@@ -81,7 +81,7 @@ class _PyCaretExperiment:
             )
 
         self.logger.info("Checking libraries")
-        self.logger.warning(show_versions())
+        self.logger.info(show_versions())
 
     def setup(self, *args, **kwargs) -> None:
         return
