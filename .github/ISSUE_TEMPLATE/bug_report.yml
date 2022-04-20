@@ -37,14 +37,18 @@ body:
         Please follow [this guide](https://matthewrocklin.com/blog/work/2018/02/28/minimal-bug-reports) on how to
         provide a minimal, copy-pastable example that can reproduce your issue.
         
+        
         Our preference would be to try and reproduce the issue with an inbuilt data source in pycaret.
         If using a data source other than one that is inbuilt in pycaret, please provide the dataset so that the
         problem can be recreated by the maintainers. 
         
+        
         If the code is too long, feel free to put it in a [Google Colab notebook](https://colab.research.google.com/)
         or [public gist](https://gist.github.com) and link it in the issue.
 
+
         In short, **we are going to copy-paste your code** to run it and we expect to get the same result as you.
+
 
         We acknowledge that crafting a minimal reproducible code example requires some effort on your side but it really
         helps the maintainers quickly reproduce the problem and analyze its cause without any ambiguity.
@@ -107,18 +111,15 @@ body:
     attributes:
       label: Installed Versions
       description: >
-        Please paste the output of 
-        
+        Please paste the output of         
         ```python
-        from pycaret import show_versions
-        show_versions()
+        from pycaret import show_versions; show_versions()
         ```
         
         If this does not work, try this instead 
         
         ```python
-        import pycaret
-        pycaret.__version__
+        import pycaret; pycaret.__version__
         ```
       value: >
         <details>
@@ -128,3 +129,8 @@ body:
         </details>
     validations:
       required: true
+      
+  - type: markdown
+    attributes:
+      value: >
+        Thanks for contributing 🎉!
