@@ -64,7 +64,7 @@ body:
     attributes:
       label: Installed Versions
       description: >
-        Please paste the output of ``from pycaret import show_version; show_versions()``
+        Please paste the output of ``from pycaret import show_versions; show_versions()``
         If this does not work, try this instead ``import pycaret; pycaret.__version__``
       value: >
         <details>
