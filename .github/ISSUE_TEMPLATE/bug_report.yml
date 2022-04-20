@@ -24,15 +24,19 @@ body:
       label: Reproducible Example
       description: >
         Please follow [this guide](https://matthewrocklin.com/blog/work/2018/02/28/minimal-bug-reports) on how to
-        provide a minimal, copy-pastable example. If using a data source other than one that is inbuilt in pycaret,
-        please prvide the dataset so that the problem can be recreated by the person debugging. Providing incomplete
-        information will cause delays in response and resolution.
+        provide a minimal, copy-pastable example.
+        
+        If using a data source other than one that is inbuilt in pycaret, please provide the dataset so that the
+        problem can be recreated by the person debugging.
+        
+        Providing incomplete information will cause delays in response and resolution.
       placeholder: >
         from pycaret.datasets import get_data
         
         from pycaret.classification import setup
         
         data = get_data('diabetes')
+        
         s = setup(data, target = 'Class variable')
 
         ...
