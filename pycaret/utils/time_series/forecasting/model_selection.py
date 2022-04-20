@@ -37,6 +37,10 @@ from pycaret.utils.time_series.forecasting.pipeline import (
     _get_imputed_data,
 )
 
+from pycaret.internal.logging import get_logger
+
+logger = get_logger()
+
 
 def get_folds(cv, y) -> Generator[Tuple[pd.Series, pd.Series], None, None]:
     """
@@ -148,8 +152,8 @@ def _fit_and_score(
     try:
         pipeline.fit(y_train, X_train, **fit_params)
     except Exception as error:
-        logging.error(f"Fit failed on {pipeline}")
-        logging.error(error)
+        logger.error(f"Fit failed on {pipeline}")
+        logger.error(error)
 
         if error_score == "raise":
             raise

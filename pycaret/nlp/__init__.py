@@ -1,4 +1,6 @@
 from typing import Optional, Dict, Any, Dict
+from pycaret import show_versions
+from pycaret.utils._dependencies import _check_soft_dependencies
 
 
 def setup(
@@ -179,86 +181,19 @@ def setup(
     except:
         logger.warning("cannot find platform.platform")
 
-    try:
+    if _check_soft_dependencies("psutil", extra="others", severity="warning"):
         import psutil
 
         logger.info("Memory: " + str(psutil.virtual_memory()))
         logger.info("Physical Core: " + str(psutil.cpu_count(logical=False)))
         logger.info("Logical Core: " + str(psutil.cpu_count(logical=True)))
-    except:
+    else:
         logger.warning(
             "cannot find psutil installation. memory not traceable. Install psutil using pip to enable memory logging. "
         )
 
     logger.info("Checking libraries")
-
-    try:
-        from pandas import __version__
-
-        logger.info("pd==" + str(__version__))
-    except:
-        logger.warning("pandas not found")
-
-    try:
-        from numpy import __version__
-
-        logger.info("numpy==" + str(__version__))
-    except:
-        logger.warning("numpy not found")
-
-    try:
-        import warnings
-
-        warnings.filterwarnings("ignore")
-        from gensim import __version__
-
-        logger.info("gensim==" + str(__version__))
-    except:
-        logger.warning("gensim not found")
-
-    try:
-        from spacy import __version__
-
-        logger.info("spacy==" + str(__version__))
-    except:
-        logger.warning("spacy not found")
-
-    try:
-        from nltk import __version__
-
-        logger.info("nltk==" + str(__version__))
-    except:
-        logger.warning("nltk not found")
-
-    try:
-        from textblob import __version__
-
-        logger.info("textblob==" + str(__version__))
-    except:
-        logger.warning("textblob not found")
-
-    try:
-        from pyLDAvis import __version__
-
-        logger.info("pyLDAvis==" + str(__version__))
-    except:
-        logger.warning("pyLDAvis not found")
-
-    try:
-        from wordcloud import __version__
-
-        logger.info("wordcloud==" + str(__version__))
-    except:
-        logger.warning("wordcloud not found")
-
-    try:
-        from mlflow.version import VERSION
-        import warnings
-
-        warnings.filterwarnings("ignore")
-        logger.info("mlflow==" + str(VERSION))
-    except:
-        logger.warning("mlflow not found")
+    logger.info(show_versions())
 
     logger.info("Checking Exceptions")
 
@@ -308,11 +243,11 @@ def setup(
             sys.exit("(Type Error): session_id parameter must be an integer.")
 
     # check if spacy is loaded
-    try:
+    if _check_soft_dependencies("spacy", extra="nlp", severity="warning"):
         import spacy
 
         sp = spacy.load("en_core_web_sm", disable=["parser", "ner"])
-    except:
+    else:
         sys.exit(
             "(Type Error): spacy english model is not yet downloaded. See the documentation of setup to see installation guide."
         )
@@ -409,12 +344,15 @@ def setup(
     # general dependencies
     import numpy as np
     import random
+
+    _check_soft_dependencies("spacy", extra="nlp", severity="error")
     import spacy
+
+    _check_soft_dependencies("gensim", extra="nlp", severity="error")
     import gensim
     import gensim.corpora as corpora
     from gensim.utils import simple_preprocess
     from gensim.models import CoherenceModel
-    import spacy
     import re
     import secrets
 
@@ -485,7 +423,8 @@ def setup(
     """
     DEFINE STOPWORDS
     """
-    try:
+    if _check_soft_dependencies("nltk", extra="nlp", severity="warning"):
+
         logger.info("Importing stopwords from nltk")
         import nltk
 
@@ -494,7 +433,7 @@ def setup(
 
         stop_words = stopwords.words("english")
 
-    except:
+    else:
         logger.info(
             "Importing stopwords from nltk failed .. loading pre-defined stopwords"
         )
@@ -1281,6 +1220,7 @@ def create_model(
         if multi_core:
             logger.info("LDA multi_core enabled")
 
+            _check_soft_dependencies("gensim", extra="nlp", severity="error")
             from gensim.models.ldamulticore import LdaMulticore
 
             logger.info("LdaMulticore imported successfully")
@@ -1303,7 +1243,7 @@ def create_model(
             progress.value += 1
 
         else:
-
+            _check_soft_dependencies("gensim", extra="nlp", severity="error")
             from gensim.models.ldamodel import LdaModel
 
             logger.info("LdaModel imported successfully")
@@ -1326,7 +1266,7 @@ def create_model(
             progress.value += 1
 
     elif model == "lsi":
-
+        _check_soft_dependencies("gensim", extra="nlp", severity="error")
         from gensim.models.lsimodel import LsiModel
 
         logger.info("LsiModel imported successfully")
@@ -1338,7 +1278,7 @@ def create_model(
         progress.value += 1
 
     elif model == "hdp":
-
+        _check_soft_dependencies("gensim", extra="nlp", severity="error")
         from gensim.models import HdpModel
 
         logger.info("HdpModel imported successfully")
@@ -1357,7 +1297,7 @@ def create_model(
         progress.value += 1
 
     elif model == "rp":
-
+        _check_soft_dependencies("gensim", extra="nlp", severity="error")
         from gensim.models import RpModel
 
         logger.info("RpModel imported successfully")
@@ -2090,12 +2030,8 @@ def plot_model(
         raise ValueError("display_format can only be None or 'streamlit'.")
 
     if display_format == "streamlit":
-        try:
-            import streamlit as st
-        except ImportError:
-            raise ImportError(
-                "It appears that streamlit is not installed. Do: pip install streamlit"
-            )
+        _check_soft_dependencies("streamlit", extra=None, severity="error")
+        import streamlit as st
 
     """
     error handling ends here
@@ -2579,6 +2515,8 @@ def plot_model(
 
             # loadies dependencies
             import plotly.graph_objects as go
+
+            _check_soft_dependencies("textblob", extra="nlp", severity="error")
             from textblob import TextBlob
 
             if topic_num is None:
@@ -2674,7 +2612,7 @@ def plot_model(
             )
 
     elif plot == "pos":
-
+        _check_soft_dependencies("textblob", extra="nlp", severity="error")
         from textblob import TextBlob
 
         b = list(id2word.token2id.keys())
@@ -2776,7 +2714,7 @@ def plot_model(
             fig.write_html(plot_filename)
 
     elif plot == "topic_model":
-
+        _check_soft_dependencies("pyLDAvis", extra="nlp", severity="error")
         import pyLDAvis
         import pyLDAvis.gensim  # don't skip this
 
@@ -2907,8 +2845,7 @@ def plot_model(
 
     elif plot == "wordcloud":
 
-        try:
-
+        if _check_soft_dependencies("wordcloud", extra="nlp", severity="warning"):
             from wordcloud import WordCloud, STOPWORDS
             import matplotlib.pyplot as plt
 
@@ -2966,7 +2903,7 @@ def plot_model(
 
             logger.info("Visual Rendered Successfully")
 
-        except:
+        else:
             logger.warning(
                 "Invalid topic_num param or empty Vocab. Try changing Topic Number."
             )
@@ -3468,6 +3405,7 @@ def tune_model(
                 if html_param:
                     update_display(monitor, display_id="monitor")
 
+            _check_soft_dependencies("textblob", extra="nlp", severity="error")
             from textblob import TextBlob
 
             monitor.iloc[2, 1:] = "Extracting Polarity"

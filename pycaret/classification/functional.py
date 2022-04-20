@@ -7,7 +7,7 @@ from typing import List, Tuple, Any, Union, Optional, Dict, Callable
 
 # Own modules
 import pycaret.internal.tabular
-from pycaret.parallel import ParallelBackend
+# from pycaret.parallel import ParallelBackend # unused
 from pycaret.internal.Display import Display, is_in_colab, enable_colab
 from pycaret.classification import ClassificationExperiment
 from pycaret.internal.utils import check_if_global_is_not_none

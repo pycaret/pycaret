@@ -1,3 +1,6 @@
+from pycaret.utils._dependencies import _check_soft_dependencies
+
+
 def setup(data, transaction_id, item_id, ignore_items=None, session_id=None):
 
     """
@@ -183,6 +186,8 @@ def create_model(
     # loading dependencies
     import pandas as pd
     from IPython.display import display, HTML, clear_output, update_display
+
+    _check_soft_dependencies("mlxtend", extra="models", severity="error")
     from mlxtend.frequent_patterns import apriori
     from mlxtend.frequent_patterns import association_rules
 
@@ -291,12 +296,8 @@ def plot_model(model, plot="2d", scale=1, display_format=None):
         raise ValueError("display_format can only be None or 'streamlit'.")
 
     if display_format == "streamlit":
-        try:
-            import streamlit as st
-        except ImportError:
-            raise ImportError(
-                "It appears that streamlit is not installed. Do: pip install streamlit"
-            )
+        _check_soft_dependencies("streamlit", extra=None, severity="error")
+        import streamlit as st
 
     """
     error handling ends here

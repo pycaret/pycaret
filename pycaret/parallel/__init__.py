@@ -1,6 +1,4 @@
-from .parallel_backend import ParallelBackend, NoDisplay
+from pycaret.utils._dependencies import _check_soft_dependencies
 
-try:
+if _check_soft_dependencies("fugue", extra="others", severity="warning"):
     from .fugue_backend import FugueBackend
-except ImportError:
-    pass

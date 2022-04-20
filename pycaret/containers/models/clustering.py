@@ -8,7 +8,6 @@
 # `ClassifierContainer` as a base, set all of the required parameters in the `__init__` and then call `super().__init__`
 # to complete the process. Refer to the existing classes for examples.
 
-import logging
 import numpy as np
 import pycaret.internal.cuml_wrappers
 from typing import Optional, Dict, Any
@@ -17,6 +16,7 @@ from pycaret.internal.cuml_wrappers import get_dbscan, get_kmeans
 from pycaret.internal.utils import param_grid_to_lists, get_logger
 from pycaret.internal.distributions import Distribution
 import pycaret.containers.base_container
+from pycaret.utils._dependencies import _check_soft_dependencies
 
 
 _DEFAULT_N_CLUSTERS = 4
@@ -170,13 +170,11 @@ class KMeansClusterContainer(ClusterContainer):
             logger.info("Imported cuml.cluster.KMeans")
             gpu_imported = True
         elif experiment.gpu_param:
-            try:
+            if _check_soft_dependencies("cuml", extra=None, severity="warning"):
                 from cuml.cluster import KMeans
 
                 logger.info("Imported cuml.cluster.KMeans")
                 gpu_imported = True
-            except ImportError:
-                logger.warning("Couldn't import cuml.cluster.KMeans")
 
         args = {
             "n_clusters": _DEFAULT_N_CLUSTERS,
@@ -310,13 +308,11 @@ class DBSCANClusterContainer(ClusterContainer):
             logger.info("Imported cuml.cluster.DBSCAN")
             gpu_imported = True
         elif experiment.gpu_param:
-            try:
+            if _check_soft_dependencies("cuml", extra=None, severity="warning"):
                 from cuml.cluster import DBSCAN
 
                 logger.info("Imported cuml.cluster.DBSCAN")
                 gpu_imported = True
-            except ImportError:
-                logger.warning("Couldn't import cuml.cluster.DBSCAN")
 
         args = {}
         tune_args = {}
@@ -388,6 +384,8 @@ class KModesClusterContainer(ClusterContainer):
     def __init__(self, experiment):
         logger = get_logger()
         np.random.seed(experiment.seed)
+
+        _check_soft_dependencies("kmodes", extra="models", severity="error")
         from kmodes.kmodes import KModes
 
         args = {

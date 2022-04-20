@@ -3,6 +3,8 @@
 from typing import Optional
 import requests
 
+from pycaret.utils._dependencies import _check_soft_dependencies
+
 
 def get_data(
     dataset: str = "index",
@@ -86,6 +88,7 @@ def get_data(
     import pandas as pd
     import os.path
     from pycaret.internal.Display import Display
+
     extension = ".csv"
     filename = str(dataset) + extension
     if address is None:
@@ -111,14 +114,7 @@ def get_data(
     elif requests.get(complete_address).status_code == 200:
         data = pd.read_csv(complete_address)
     elif dataset in sktime_datasets:
-        try:
-            from sktime.datasets import load_airline, load_lynx, load_uschange
-        except ImportError as e:
-            print(e)
-            raise ImportError(
-                f"Dataset '{dataset}' is meant for time series analysis and needs"
-                " the sktime library to be installed."
-            )
+        from sktime.datasets import load_airline, load_lynx, load_uschange
 
         ts_dataset_mapping = {
             "airline": load_airline,
@@ -150,6 +146,12 @@ def get_data(
 
     else:
         if profile:
+            _check_soft_dependencies(
+                "pandas_profiling",
+                extra="analysis",
+                severity="error",
+                install_name="pandas-profiling",
+            )
             import pandas_profiling
 
             pf = pandas_profiling.ProfileReport(data_for_profiling)

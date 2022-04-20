@@ -4,7 +4,8 @@ import pandas as pd
 from joblib.memory import Memory
 
 import pycaret.internal.tabular
-from pycaret.parallel import ParallelBackend
+
+# from pycaret.parallel import ParallelBackend # Unused
 from pycaret.internal.Display import Display, is_in_colab, enable_colab
 from typing import List, Tuple, Any, Union, Optional, Dict, Callable
 
