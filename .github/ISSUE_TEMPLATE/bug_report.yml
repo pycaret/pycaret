@@ -111,17 +111,7 @@ body:
     attributes:
       label: Installed Versions
       description: >
-        Please paste the output of 
-        
-        ```python
-        from pycaret import show_versions; show_versions()
-        ```
-        
-        If this does not work, try this instead 
-        
-        ```python
-        import pycaret; pycaret.__version__
-        ```
+        Please paste the output of ``from pycaret import show_versions; show_versions()``. If this does not work, try this instead ``import pycaret; pycaret.__version__``     
       value: >
         <details>
 
