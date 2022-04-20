@@ -30,6 +30,12 @@ jobs:
           if [ -f requirements-prophet.txt ]; then pip install -r requirements-prophet.txt; fi
           if [ -f requirements-test.txt ]; then pip install -r requirements-test.txt; fi
           python -m spacy download en_core_web_sm
+      - name: Python version and dependency list
+        run: |
+          echo "Python version expected: ${{ matrix.python-version }}"
+          python --version
+          which python
+          pip list
       - name: Remove tests
         run: |
           rm pycaret/tests/test_classification_tuning.py
@@ -64,6 +70,12 @@ jobs:
           pip install -r requirements-prophet.txt
           pip install -r requirements-test.txt
           python -m spacy download en_core_web_sm
+      - name: Python version and dependency list
+        run: |
+          echo "Python version expected: ${{ matrix.python-version }}"
+          python --version
+          which python
+          pip list
       - name: Remove tests
         run: |
           remove-item pycaret/tests/* -Include @('test_classification_tuning.py','test_classification_plots.py','test_regression_plots.py', 'test_regression_tuning.py', 'test_time_series_tune_grid.py', 'test_time_series_tune_random.py', 'test_create_api.py', 'test_create_docker.py', 'test_drift_report.py', 'test_eda.py')
@@ -164,6 +176,12 @@ jobs:
           pip install -e ".[full]"
           if [ -f requirements-test.txt ]; then pip install -r requirements-test.txt; fi
           python -m spacy download en_core_web_sm
+      - name: Python version and dependency list
+        run: |
+          echo "Python version expected: ${{ matrix.python-version }}"
+          python --version
+          which python
+          pip list
       - name: Remove tests
         run: |
           find pycaret/tests -type f -not -name '__init__.py' -not -name 'test_classification_plots.py' -not -name 'test_regression_plots.py' -delete
@@ -171,7 +189,7 @@ jobs:
         run: |
           pytest -o log_cli=true
 
-  test_ts_tune_random:
+  test_ts_tune:
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -194,38 +212,15 @@ jobs:
           if [ -f requirements-test.txt ]; then pip install -r requirements-test.txt; fi
           
           python -m spacy download en_core_web_sm
+      - name: Python version and dependency list
+        run: |
+          echo "Python version expected: ${{ matrix.python-version }}"
+          python --version
+          which python
+          pip list
       - name: Remove tests
         run: |
-          find pycaret/tests -type f -not -name '__init__.py' -not -name 'conftest.py' -not -name 'time_series_test_utils.py' -not -name 'test_time_series_tune_random.py' -delete
-      - name: Test with pytest
-        run: |
-          pytest -o log_cli=true
-
-  test_ts_tune_grid:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: [3.8]
-
-    steps:
-      - uses: actions/checkout@v2
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
-        with:
-          python-version: ${{ matrix.python-version }}
-      - name: Install dependencies
-        run: |
-          python -m pip install -U pip
-          python -m pip install -U pytest
-          python -m pip install -U codecov
-          
-          pip install -e ".[full]"
-          if [ -f requirements-prophet.txt ]; then pip install -r requirements-prophet.txt; fi
-          if [ -f requirements-test.txt ]; then pip install -r requirements-test.txt; fi
-          python -m spacy download en_core_web_sm
-      - name: Remove tests
-        run: |
-          find pycaret/tests -type f -not -name '__init__.py' -not -name 'conftest.py' -not -name 'time_series_test_utils.py' -not -name 'test_time_series_tune_grid.py' -delete
+          find pycaret/tests -type f -not -name '__init__.py' -not -name 'conftest.py' -not -name 'time_series_test_utils.py' -not -name 'test_time_series_tune_random.py' -not -name 'test_time_series_tune_grid.py' -delete
       - name: Test with pytest
         run: |
           pytest -o log_cli=true
