@@ -111,7 +111,8 @@ body:
     attributes:
       label: Installed Versions
       description: >
-        Please paste the output of         
+        Please paste the output of 
+        
         ```python
         from pycaret import show_versions; show_versions()
         ```
