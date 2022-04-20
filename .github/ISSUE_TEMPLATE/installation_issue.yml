@@ -51,6 +51,12 @@ body:
     validations:
       required: true
   - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: >
+        Please describe the issue that you are facing during installation.
+  - type: textarea
     id: logs
     attributes:
       label: Installation Logs
