@@ -24,11 +24,27 @@ from pycaret.internal.plots.utils.time_series import (
     _update_fig_dimensions,
     _get_subplot_rows_cols,
     _resolve_hoverinfo,
-    _clean_model_results_names,
+    _clean_model_results_labels,
     PlotReturnType,
 )
 
 __author__ = ["satya-pattnaik", "ngupta23"]
+
+
+msg1 = (
+    "Both model_labels and data_label can not be None. Please specify one based "
+    "on where the results are coming from (model or data respectively)."
+    "\nIf you believe that this error should not be raised, please file an issue "
+    "on GitHub with a reproducible example:"
+    "\nhttps://github.com/pycaret/pycaret/issues"
+)
+
+msg2 = (
+    "model_labels can not be None. Please specify correct value for model_labels."
+    "\nIf you believe that this error should not be raised, please file an issue "
+    "on GitHub with a reproducible example:"
+    "\nhttps://github.com/pycaret/pycaret/issues"
+)
 
 
 def _get_plot(
@@ -40,7 +56,7 @@ def _get_plot(
     X_labels: Optional[List[str]] = None,
     cv: Optional[Union[ExpandingWindowSplitter, SlidingWindowSplitter]] = None,
     model_results: Optional[List[pd.DataFrame]] = None,
-    model_names: Optional[List[str]] = None,
+    model_labels: Optional[List[str]] = None,
     return_pred_int: bool = False,
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
@@ -91,7 +107,7 @@ def _get_plot(
             fig_defaults=fig_defaults,
             data_kwargs=data_kwargs,
             data_label=data_label,
-            model_name=model_names,
+            model_labels=model_labels,
             fig_kwargs=fig_kwargs,
         )
     elif plot in ["acf", "pacf"]:
@@ -100,7 +116,7 @@ def _get_plot(
             plot=plot,
             fig_defaults=fig_defaults,
             data_label=data_label,
-            model_label=model_names,
+            model_labels=model_labels,
             data_kwargs=data_kwargs,
             fig_kwargs=fig_kwargs,
         )
@@ -110,7 +126,7 @@ def _get_plot(
             plot=plot,
             fig_defaults=fig_defaults,
             data_label=data_label,
-            model_name=model_names,
+            model_labels=model_labels,
             hoverinfo=hoverinfo,
             fig_kwargs=fig_kwargs,
         )
@@ -119,7 +135,7 @@ def _get_plot(
             data=data,
             fig_defaults=fig_defaults,
             data_label=data_label,
-            model_name=model_names,
+            model_labels=model_labels,
             hoverinfo=hoverinfo,
             fig_kwargs=fig_kwargs,
         )
@@ -128,7 +144,7 @@ def _get_plot(
             data=data,
             fig_defaults=fig_defaults,
             data_label=data_label,
-            model_name=model_names,
+            model_labels=model_labels,
             hoverinfo=hoverinfo,
             data_kwargs=data_kwargs,
             fig_kwargs=fig_kwargs,
@@ -139,7 +155,7 @@ def _get_plot(
                 data=data,
                 predictions=model_results,
                 fig_defaults=fig_defaults,
-                model_names=model_names,
+                model_labels=model_labels,
                 data_kwargs=data_kwargs,
                 fig_kwargs=fig_kwargs,
             )
@@ -147,7 +163,7 @@ def _get_plot(
             fig, plot_data = plot_model_results(
                 original_data=data,
                 model_results=model_results,
-                model_names=model_names,
+                model_labels=model_labels,
                 plot=plot,
                 fig_defaults=fig_defaults,
                 hoverinfo=hoverinfo,
@@ -399,7 +415,7 @@ def plot_xacf(
     plot: str,
     fig_defaults: Dict[str, Any],
     data_label: Optional[str] = None,
-    model_label: Optional[str] = None,
+    model_labels: Optional[List[str]] = None,
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
 ) -> PlotReturnType:
@@ -412,19 +428,20 @@ def plot_xacf(
         Data whose correlation plot needs to be plotted. If based on the original
         data, it can contain multiple columns corresponding to the various data
         types of the targets (original, imputed, transformed). If it is based on
-        an estimator, it currently only supports one model.
-        TODO: Extend to multiple models with trellised plots like data.
+        a estimator(s), it can contain residuals from multiple models (one column
+        per model). The column names must correspond to the model labels in this
+        case.
     plot : str
         Type of plot, allowed values are ["acf", "pacf"]
     fig_defaults : Dict[str, Any]
         The default settings for the plotly plot. Must contain keys for "width",
         "height", and "template".
-    data_label : Optional[str]
+    data_label : Optional[str], optional
         If data is from the original target series, then the name of the target
         series, by default None.
-    model_name : Optional[str]
-        If data is from the original target series, then the name of the model,
-        (must be passed for proper display), by default None.
+    model_labels : Optional[List[str]], optional
+        If data is from model residuals, then the name(s) of the model(s),
+        by default None. At least one of data_label or model_labels must be provided.
     data_kwargs : Dict[str, Any]
         A dictionary containing options keys for "nlags"
     fig_kwargs : Dict[str, Any]
@@ -437,6 +454,12 @@ def plot_xacf(
         The plotly figure object along with a dictionary with the plot data.
         The data can be returned to the user (if requested) so that the plot can
         be and customized by them if not supported by pycaret by default.
+
+    Raises
+    ------
+    ValueError
+        (1) When the plot type is not supported
+        (2) When both data_label and model_labels are None
     """
     data_kwargs = data_kwargs or {}
     fig_kwargs = fig_kwargs or {}
@@ -464,10 +487,13 @@ def plot_xacf(
     else:
         raise ValueError(f"Plot '{plot}' is not supported by plot_xacf().")
 
-    if model_label is not None:
-        title = f"{title} | '{model_label}' Residuals"
+    if model_labels is not None:
+        title = f"{title} | Model Residuals"
     elif data_label is not None:
         title = f"{title} | {data_label}"
+    else:
+        # Both model_labels and data_label are None
+        raise ValueError(msg1)
 
     with fig.batch_update():
         for i in np.arange(1, ncols + 1):
@@ -492,7 +518,7 @@ def plot_xacf(
 def plot_model_results(
     original_data: pd.Series,
     model_results: List[pd.DataFrame],
-    model_names: List[str],
+    model_labels: List[str],
     plot: str,
     fig_defaults: Dict[str, Any],
     hoverinfo: Optional[str] = "text",
@@ -504,15 +530,15 @@ def plot_model_results(
     Parameters
     ----------
     original_data : pd.Series
-        The original target series to be plotted
+        The original target series to be plotted.
     model_results : List[pd.DataFrame]
         The model results that must be overlaid over the original data. e.g. out
         of sample predictions, insample predictions or residuals from possibly
         multiple models. Each column in the overlay_data is overlaid as a separate
         series over the original_data. The column names are used as labels for the
         overlaid data.
-    model_names : List[str]
-        Name(s) of the models whose results are being plotted
+    model_labels : List[str]
+        The labels corresponding to the models whose results are being plotted.
     plot : str
         The type of plot.
             "forecast": Out of Sample Forecasts
@@ -532,14 +558,23 @@ def plot_model_results(
         The plotly figure object along with a dictionary with the plot data.
         The data can be returned to the user (if requested) so that the plot can
         be and customized by them if not supported by pycaret by default.
-    """
 
-    model_results, model_names = _clean_model_results_names(model_results, model_names)
+    Raises
+    ------
+    ValueError
+        When model_labels is None
+    """
+    if model_labels is None:
+        raise ValueError(msg2)
+
+    model_results, model_labels = _clean_model_results_labels(
+        model_results=model_results, model_labels=model_labels
+    )
 
     if plot in ["forecast", "insample"]:
         model_results = [model_result["y_pred"] for model_result in model_results]
     model_results = pd.concat(model_results, axis=1)
-    model_results.columns = model_names
+    model_results.columns = model_labels
 
     if plot == "forecast":
         key = "Forecast (Out-of-Sample)"
@@ -565,7 +600,7 @@ def plot_diagnostics(
     data: pd.DataFrame,
     fig_defaults: Dict[str, Any],
     data_label: Optional[str] = None,
-    model_name: Optional[str] = None,
+    model_labels: Optional[List[str]] = None,
     hoverinfo: Optional[str] = "text",
     fig_kwargs: Optional[Dict] = None,
 ) -> PlotReturnType:
@@ -581,12 +616,12 @@ def plot_diagnostics(
     fig_defaults : Dict[str, Any]
         The default settings for the plotly plot. Must contain keys for "width",
         "height", and "template".
-    data_label : Optional[str]
+    data_label : Optional[str], optional
         If data is from the original target series, then the name of the target
         series, by default None.
-    model_name : Optional[str]
-        If data is from the original target series, then the name of the model,
-        (must be passed for proper display), by default None.
+    model_labels : Optional[List[str]], optional
+        If data is from model residuals, then the name(s) of the model(s),
+        by default None. At least one of data_label or model_labels must be provided.
     hoverinfo : Optional[str], optional
         Action when hovering over the plotly plot, by default "text"
     fig_kwargs : Optional[Dict], optional
@@ -603,29 +638,38 @@ def plot_diagnostics(
     Raises
     ------
     ValueError
-        When the data contains more than 1 column indicating more than 1 data type.
+        (1) When the data contains more than 1 column indicating more than 1 data type.
+        (2) When both data_label and model_labels are None
     """
     if data.shape[1] != 1:
         raise ValueError(
             "plot_diagnostics() only works on a single time series, "
             f"but {data.shape[1]} series were provided."
         )
+
+    title = "Diagnostics"
+    if model_labels is not None:
+        title = f"{title} | Model Residuals"
+        subplot_title = f"{model_labels[0]} Residuals"
+    elif data_label is not None:
+        title = f"{title} | {data_label}"
+        # Do not use data_label for column titles since the actual column name
+        # has the more detailed data_type (e.g. with "transformed" at the end.)
+        subplot_title = data.columns[0]
+    else:
+        # Both model_labels and data_label are None
+        raise ValueError(msg1)
+
     data_series = data.iloc[:, 0]
 
     fig_kwargs = fig_kwargs or {}
-
-    title = "Diagnostics"
-    if model_name is not None:
-        title = f"{title} | '{model_name}' Residuals"
-    elif data_label is not None:
-        title = f"{title} | {data_label}"
 
     fig = make_subplots(
         rows=3,
         cols=2,
         row_heights=[0.33, 0.33, 0.33],
         subplot_titles=[
-            "Time Plot",
+            subplot_title,
             "Periodogram",
             "Histogram",
             "Q-Q Plot",
@@ -689,7 +733,7 @@ def plot_predictions_with_confidence(
     data: pd.Series,
     predictions: List[pd.DataFrame],
     fig_defaults: Dict[str, Any],
-    model_names: Optional[str] = None,
+    model_labels: Optional[str] = None,
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
 ) -> PlotReturnType:
@@ -704,7 +748,7 @@ def plot_predictions_with_confidence(
     preds = predictions[0]["y_pred"]
     upper_interval = predictions[0]["upper"]
     lower_interval = predictions[0]["lower"]
-    model_name = model_names[0]
+    model_label = model_labels[0]
 
     data_kwargs = data_kwargs or {}
     fig_kwargs = fig_kwargs or {}
@@ -720,7 +764,7 @@ def plot_predictions_with_confidence(
         else upper_interval.index
     )
     upper_bound = go.Scatter(
-        name=f"Prediction Interval | {model_name}",  # Changed since we use only 1 legend
+        name=f"Prediction Interval | {model_label}",  # Changed since we use only 1 legend
         x=x,
         y=upper_interval,
         mode="lines",
@@ -737,7 +781,7 @@ def plot_predictions_with_confidence(
         else preds.index
     )
     mean = go.Scatter(
-        name=f"Forecast | {model_name}",
+        name=f"Forecast | {model_label}",
         x=x,
         y=preds,
         mode="lines+markers",
@@ -809,7 +853,7 @@ def plot_time_series_decomposition(
     fig_defaults: Dict[str, Any],
     data_kwargs: Dict[str, Any],
     data_label: Optional[str] = None,
-    model_name: Optional[str] = None,
+    model_labels: Optional[List[str]] = None,
     fig_kwargs: Optional[Dict] = None,
 ) -> PlotReturnType:
     """Plots the Decomposition for the target time series (could be any data
@@ -821,8 +865,9 @@ def plot_time_series_decomposition(
         Data whose decomposition plot needs to be plotted. If based on the original
         data, it can contain multiple columns corresponding to the various data
         types of the targets (original, imputed, transformed). If it is based on
-        an estimator, it currently only supports one model.
-        TODO: Extend to multiple models with trellised plots like data.
+        a estimator(s), it can contain residuals from multiple models (one column
+        per model). The column names must correspond to the model labels in this
+        case.
     plot : str, optional
         Type of plot, allowed values are ["decomp", "decomp_stl"]
     fig_defaults : Dict[str, Any]
@@ -830,12 +875,12 @@ def plot_time_series_decomposition(
         "height", and "template".
     data_kwargs : Dict[str, Any]
         A dictionary containing mandatory keys for "seasonal_period"
-    data_label : Optional[str]
+    data_label : Optional[str], optional
         If data is from the original target series, then the name of the target
         series, by default None.
-    model_name : Optional[str]
-        If data is from the original target series, then the name of the model,
-        (must be passed for proper display), by default None.
+    model_labels : Optional[List[str]], optional
+        If data is from model residuals, then the name(s) of the model(s),
+        by default None. At least one of data_label or model_labels must be provided.
     fig_kwargs : Optional[Dict], optional
         Specific overrides by the user for the plotly figure settings,
         by default None. Can contain keys for "width", "height" and/or "template".
@@ -850,7 +895,8 @@ def plot_time_series_decomposition(
     Raises
     ------
     ValueError
-        If seasonal_period is not passed through data_kwargs
+        (1) If seasonal_period is not passed through data_kwargs
+        (2) When both data_label and model_labels are None
     """
     fig, return_data_dict = None, None
 
@@ -896,10 +942,14 @@ def plot_time_series_decomposition(
     elif plot == "decomp_stl":
         title = "STL Decomposition"
 
-    if model_name is not None:
-        title = f"{title} | '{model_name}' Residuals"
+    if model_labels is not None:
+        title = f"{title} | Model Residuals"
     elif data_label is not None:
         title = f"{title} | {data_label}"
+    else:
+        # Both model_labels and data_label are None
+        raise ValueError(msg1)
+
     title = title + f"<br>Seasonal Period = {period}"
 
     all_plot_data = {}
@@ -933,7 +983,7 @@ def plot_time_series_differences(
     data: pd.DataFrame,
     fig_defaults: Dict[str, Any],
     data_label: Optional[str] = None,
-    model_name: Optional[str] = None,
+    model_labels: Optional[List[str]] = None,
     hoverinfo: Optional[str] = "text",
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
@@ -952,9 +1002,9 @@ def plot_time_series_differences(
     data_label : Optional[str], optional
         If data is from the original target series, then the name of the target
         series, by default None.
-    model_name : Optional[str], optional
-        If data is from the original target series, then the name of the model,
-        (must be passed for proper display), by default None.
+    model_labels : Optional[List[str]], optional
+        If data is from model residuals, then the name(s) of the model(s),
+        by default None. At least one of data_label or model_labels must be provided.
     hoverinfo : Optional[str], optional
         Action when hovering over the plotly plot, by default "text"
     data_kwargs : Optional[Dict], optional
@@ -964,7 +1014,7 @@ def plot_time_series_differences(
         "order_list" = [1, 2] will plot original, first and second differences.
         "lags_list" = [1, [1, 12] will plot original, first, and first difference
         with seasonal difference of 12.
-        Additionally, user can also ask for diagnostic plots for the differnces
+        Additionally, user can also ask for diagnostic plots for the differences
         such as "acf", "pacf", "periodogram", "fft" by setting the value of these
         keys to True.
     fig_kwargs : Optional[Dict], optional
@@ -981,13 +1031,28 @@ def plot_time_series_differences(
     Raises
     ------
     ValueError
-        When the data contains more than 1 column indicating more than 1 data type.
+        (1) When the data contains more than 1 column indicating more than 1 data type.
+        (2) When both data_label and model_labels are None
     """
     if data.shape[1] != 1:
         raise ValueError(
             "plot_time_series_differences() only works on a single time series, "
             f"but {data.shape[1]} series were provided."
         )
+
+    title = "Difference Plot"
+    if model_labels is not None:
+        title = f"{title} | Model Residuals"
+        column_titles = [f"{model_labels[0]} Residuals"]
+    elif data_label is not None:
+        title = f"{title} | {data_label}"
+        # Do not use data_label for column titles since the actual column name
+        # has the more detailed data_type (e.g. with "transformed" at the end.)
+        column_titles = [data.columns[0]]
+    else:
+        # Both model_labels and data_label are None
+        raise ValueError(msg1)
+
     data_series = data.iloc[:, 0]
 
     fig, return_data_dict = None, None
@@ -1003,12 +1068,6 @@ def plot_time_series_differences(
     plot_periodogram = data_kwargs.get("periodogram", False)
     plot_fft = data_kwargs.get("fft", False)
 
-    title = "Difference Plot"
-    if model_name is not None:
-        title = f"{title} | '{model_name}' Residuals"
-    elif data_label is not None:
-        title = f"{title} | {data_label}"
-
     diff_list, name_list = get_diffs(
         data=data_series, order_list=order_list, lags_list=lags_list
     )
@@ -1018,9 +1077,8 @@ def plot_time_series_differences(
         return fig, return_data_dict
 
     diff_list = [data_series] + diff_list
-    name_list = ["Actual" if model_name is None else "Residuals"] + name_list
+    name_list = ["Actual" if model_labels is None else "Residuals"] + name_list
 
-    column_titles = ["Time Series"]
     rows = len(diff_list)
     cols = 1
     if plot_acf:
@@ -1140,7 +1198,7 @@ def plot_frequency_components(
     plot: str,
     fig_defaults: Dict[str, Any],
     data_label: Optional[str] = None,
-    model_name: Optional[str] = None,
+    model_labels: Optional[List[str]] = None,
     hoverinfo: Optional[str] = "text",
     fig_kwargs: Optional[Dict] = None,
 ) -> PlotReturnType:
@@ -1153,8 +1211,9 @@ def plot_frequency_components(
         Data whose frequency components needs to be plotted. If based on the original
         data, it can contain multiple columns corresponding to the various data
         types of the targets (original, imputed, transformed). If it is based on
-        an estimator, it currently only supports one model.
-        TODO: Extend to multiple models with trellised plots like data.
+        a estimator(s), it can contain residuals from multiple models (one column
+        per model). The column names must correspond to the model labels in this
+        case.
     plot : str
         Type of plot, allowed values are ["periodogram", "fft", "welch"]
     fig_defaults : Dict[str, Any]
@@ -1163,9 +1222,9 @@ def plot_frequency_components(
     data_label : Optional[str], optional
         If data is from the original target series, then the name of the target
         series, by default None.
-    model_name : Optional[str], optional
-        If data is from the original target series, then the name of the model,
-        (must be passed for proper display), by default None.
+    model_labels : Optional[List[str]], optional
+        If data is from model residuals, then the name(s) of the model(s),
+        by default None. At least one of data_label or model_labels must be provided.
     hoverinfo : Optional[str], optional
         Action when hovering over the plotly plot, by default "text"
     fig_kwargs : Optional[Dict], optional
@@ -1182,7 +1241,8 @@ def plot_frequency_components(
     Raises
     ------
     ValueError
-        When the plot type is not supported.
+        (1) When the plot type is not supported.
+        (2) When both data_label and model_labels are None
     """
     fig_kwargs = fig_kwargs or {}
 
@@ -1217,10 +1277,13 @@ def plot_frequency_components(
             f"Plot '{plot}' is not supported by plot_frequency_components()."
         )
 
-    if model_name is not None:
-        title = f"{title} | '{model_name}' Residuals"
+    if model_labels is not None:
+        title = f"{title} | Model Residuals"
     elif data_label is not None:
         title = f"{title} | {data_label}"
+    else:
+        # Both model_labels and data_label are None
+        raise ValueError(msg1)
 
     with fig.batch_update():
         for i in np.arange(1, ncols + 1):
