@@ -1,6 +1,6 @@
 name: Documentation Improvement
 description: Report wrong or missing documentation
-title: "DOC: "
+title: "[DOC]: "
 labels: [documentation]
 
 body:
