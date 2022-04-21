@@ -1,6 +1,6 @@
 name: Installation Issue
 description: Report issues installing the pycaret library on your system
-title: "INSTALLATION: "
+title: "[INSTALL]: "
 labels: [installation]
 
 body:
