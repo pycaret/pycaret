@@ -1,7 +1,7 @@
 from typing import Any, Callable, Dict, List, Optional, Union
 
 from pycaret.internal.Display import Display
-from pycaret.internal.tabular import _get_setup_signature
+from pycaret.internal.tabular import _get_global, _get_setup_signature, _set_global
 
 
 class NoDisplay(Display):
@@ -31,6 +31,7 @@ class ParallelBackend:
             The parameters used to call the ``setup`` function
         """
         self._signature: Optional[str] = _get_setup_signature()
+        self._all_metrics: Any = _get_global("_all_metrics", None)
         self._setup_func = setup_func
         self._setup_params = {k: v for k, v in setup_params.items() if v is not None}
 
@@ -42,6 +43,7 @@ class ParallelBackend:
             params["verbose"] = False
             params["html"] = False
             self._setup_func(**params)
+            _set_global("_all_metrics", self._all_metrics)
 
     def compare_models(
         self, func: Callable, params: Dict[str, Any]
