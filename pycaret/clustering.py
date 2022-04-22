@@ -57,6 +57,7 @@ def setup(
     group_names: Optional[List[str]] = None,
     n_jobs: Optional[int] = -1,
     use_gpu: bool = False,
+    use_intelex: bool = False,
     custom_pipeline: Union[
         Any, Tuple[str, Any], List[Any], List[Tuple[str, Any]]
     ] = None,
@@ -304,6 +305,13 @@ def setup(
           https://github.com/rapidsai/cuml
 
 
+    use_intelex: bool, default = False
+        When set to True, it will use intel optimized machine learning algorithms,
+        and fall back to stock sklearn implementations if they are unavailable.
+        More about sklearnex: https://github.com/intel/scikit-learn-intelex
+        More about intelex algorithms (https://intel.github.io/scikit-learn-intelex/algorithms.html)
+
+
     custom_pipeline: (str, transformer) or list of (str, transformer), default = None
         When passed, will append the custom transformers in the preprocessing pipeline
         and are applied on each CV fold separately and on the final fit. All the custom
@@ -437,6 +445,7 @@ def setup(
         data_split_stratify=False,
         n_jobs=n_jobs,
         use_gpu=use_gpu,
+        use_intelex=use_intelex,
         custom_pipeline=custom_pipeline,
         html=html,
         session_id=session_id,
@@ -1350,6 +1359,7 @@ def get_config(variable: str):
     - log_plots_param: log_plots param set through setup
     - USI: Unique session ID parameter set through setup
     - gpu_param: use_gpu param configured through setup
+    - inetelx_param: use_intelex param configured through setup
 
 
     Example
@@ -1390,6 +1400,7 @@ def set_config(variable: str, value):
     - log_plots_param: log_plots param set through setup
     - USI: Unique session ID parameter set through setup
     - gpu_param: use_gpu param configured through setup
+    - inetelx_param: use_intelex param configured through setup
 
 
     Example

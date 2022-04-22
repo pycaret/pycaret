@@ -165,6 +165,7 @@ def setup(
     fold_groups: Optional[Union[str, pd.DataFrame]] = None,
     n_jobs: Optional[int] = -1,
     use_gpu: bool = False,  # added in pycaret==2.1
+    use_intelex: bool = False,
     custom_pipeline: Union[
         Any, Tuple[str, Any], List[Any], List[Tuple[str, Any]]
     ] = None,
@@ -193,6 +194,35 @@ def setup(
 
     """
     global _setup_signature, _context_lock
+
+    # patching of stock sklearn with intel extension
+    if use_intelex:
+        from sklearnex import patch_sklearn
+        intelex_algorithms_list = [
+            # classification
+            "log_reg",
+            "knn_classifier",
+            "random_forest_classifier",
+            "svc",
+            # regression
+            "linear",
+            "ridge",
+            "elasticnet",
+            "lasso",
+            "knn_regressor",
+            "random_forest_regressor",
+            "svr",
+            # clusterization
+            "kmeans",
+            "dbscan",
+            # decomposition
+            "pca",
+            "tsne",
+            # metrics
+            "roc_auc_score"
+        ]
+
+        patch_sklearn(intelex_algorithms_list)
 
     _setup_signature = str(uuid4())
     _context_lock = RLock()

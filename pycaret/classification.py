@@ -82,6 +82,7 @@ def setup(
     fold_groups: Optional[Union[str, pd.DataFrame]] = None,
     n_jobs: Optional[int] = -1,
     use_gpu: bool = False,
+    use_intelex: bool = False,
     custom_pipeline: Union[
         Any, Tuple[str, Any], List[Any], List[Tuple[str, Any]]
     ] = None,
@@ -491,6 +492,13 @@ def setup(
           Support Vector Machine, requires cuML >= 0.15
           https://github.com/rapidsai/cuml
 
+    
+    use_intelex: bool, default = False
+        When set to True, it will use intel optimized machine learning algorithms,
+        and fall back to stock sklearn implementations if they are unavailable.
+        More about sklearnex: https://github.com/intel/scikit-learn-intelex
+        More about intelex algorithms (https://intel.github.io/scikit-learn-intelex/algorithms.html)
+
 
     custom_pipeline: (str, transformer) or list of (str, transformer), default = None
         When passed, will append the custom transformers in the preprocessing pipeline
@@ -659,6 +667,7 @@ def setup(
         fold_groups=fold_groups,
         n_jobs=n_jobs,
         use_gpu=use_gpu,
+        use_intelex=use_intelex,
         custom_pipeline=custom_pipeline,
         html=html,
         session_id=session_id,
@@ -2725,6 +2734,7 @@ def get_config(variable: str):
     - data_before_preprocess: data before preprocessing
     - target_param: name of target variable
     - gpu_param: use_gpu param configured through setup
+    - inetelx_param: use_intelex param configured through setup
     - fold_generator: CV splitter configured in fold_strategy
     - fold_param: fold params defined in the setup
     - fold_groups_param: fold groups defined in the setup
@@ -2777,6 +2787,7 @@ def set_config(variable: str, value):
     - data_before_preprocess: data before preprocessing
     - target_param: name of target variable
     - gpu_param: use_gpu param configured through setup
+    - inetelx_param: use_intelex param configured through setup
     - fold_generator: CV splitter configured in fold_strategy
     - fold_param: fold params defined in the setup
     - fold_groups_param: fold groups defined in the setup
