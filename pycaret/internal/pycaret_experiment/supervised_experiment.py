@@ -3600,9 +3600,9 @@ class _SupervisedExperiment(_TabularExperiment):
 
         if not display:
             progress_args = {"max": 2 + 4}
-            master_display_columns = self._get_return_train_score_indices + [
-                v.display_name for k, v in self._all_metrics.items()
-            ]
+            master_display_columns = self._get_return_train_score_indices(
+                return_train_score
+            ) + [v.display_name for k, v in self._all_metrics.items()]
             if self._ml_usecase == MLUsecase.TIME_SERIES:
                 master_display_columns.insert(0, "cutoff")
             timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
