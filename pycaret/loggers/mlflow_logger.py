@@ -2,7 +2,7 @@ from copy import deepcopy
 import secrets
 
 import pycaret
-from pycaret.loggers import BaseLogger
+from pycaret.loggers.base_logger import BaseLogger
 from pycaret.utils import __version__
 
 try:

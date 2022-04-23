@@ -1,6 +1,6 @@
 import os
 from copy import deepcopy
-from pycaret.loggers import BaseLogger
+from pycaret.loggers.base_logger import BaseLogger
 import pandas as pd
 
 try:
