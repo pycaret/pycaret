@@ -346,13 +346,13 @@ def setup(
 
     log_profile: bool, default = False
         When set to True, data profile is logged on the ``MLflow`` server as a html file.
-        Ignored when ``log_experiment`` is False. 
+        Ignored when ``log_experiment`` is False.
 
 
     log_data: bool, default = False
         When set to True, dataset is logged on the ``MLflow`` server as a csv file.
         Ignored when ``log_experiment`` is False.
-        
+
 
     silent: bool, default = False
         Controls the confirmation input of data types when ``setup`` is executed. When
