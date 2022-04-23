@@ -5,8 +5,6 @@ from joblib.memory import Memory
 
 # from pycaret.parallel import ParallelBackend # Unused
 from pycaret.loggers.base_logger import BaseLogger
-from pycaret.internal.Display import Display, is_in_colab, enable_colab
-from typing import List, Tuple, Any, Union, Optional, Dict, Callable
 
 from pycaret.regression import RegressionExperiment
 from pycaret.internal.utils import check_if_global_is_not_none

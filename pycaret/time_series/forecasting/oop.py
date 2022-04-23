@@ -84,6 +84,8 @@ from pycaret.internal.plots.utils.time_series import (
     _reformat_dataframes_for_plots,
     _clean_model_results_labels,
 )
+from pycaret.loggers.base_logger import BaseLogger
+
 
 warnings.filterwarnings("ignore")
 LOGGER = get_logger()
@@ -1230,7 +1232,9 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         html: bool = True,
         session_id: Optional[int] = None,
         system_log: Union[bool, logging.Logger] = True,
-        log_experiment: bool = False,
+        log_experiment: Union[
+            bool, str, BaseLogger, List[Union[str, BaseLogger]]
+        ] = False,
         experiment_name: Optional[str] = None,
         experiment_custom_tags: Optional[Dict[str, Any]] = None,
         log_plots: Union[bool, list] = False,

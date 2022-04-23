@@ -5060,6 +5060,9 @@ class _SupervisedExperiment(_TabularExperiment):
             If True, returns the CV training scores along with the CV validation scores.
             This is useful when the user wants to do bias-variance tradeoff. A high CV
             training score with a low corresponding CV validation score indicates overfitting.
+
+        Returns:
+            Trained Model
         """
 
         function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])

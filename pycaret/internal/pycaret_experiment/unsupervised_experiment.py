@@ -31,7 +31,7 @@ from pycaret.internal.logging import get_logger
 from pycaret.internal.validation import is_sklearn_pipeline
 import pycaret.internal.preprocess
 import pycaret.internal.persistence
-
+from pycaret.loggers.base_logger import BaseLogger
 from pycaret.internal.Display import Display
 
 warnings.filterwarnings("ignore")
@@ -75,7 +75,11 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
         return True
 
     def _set_up_logging(
-        self, runtime, log_data, log_profile, experiment_custom_tags=None,
+        self,
+        runtime,
+        log_data,
+        log_profile,
+        experiment_custom_tags=None,
     ):
         # log into experiment
         self.experiment__.append(("Setup Config", self.display_container[0]))
@@ -130,7 +134,9 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
         html: bool = True,
         session_id: Optional[int] = None,
         system_log: Union[bool, logging.Logger] = True,
-        log_experiment: bool = False,
+        log_experiment: Union[
+            bool, str, BaseLogger, List[Union[str, BaseLogger]]
+        ] = False,
         experiment_name: Optional[str] = None,
         experiment_custom_tags: Optional[Dict[str, Any]] = None,
         log_plots: Union[bool, list] = False,
