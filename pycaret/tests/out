@@ -1,0 +1,14 @@
+============================= test session starts ==============================
+platform linux -- Python 3.8.10, pytest-7.0.1, pluggy-1.0.0
+rootdir: /home/ubuntu/pycaret
+collected 1 item
+
+test_optimize_threshold.py .                                             [100%]
+
+=============================== warnings summary ===============================
+../../clean/lib/python3.8/site-packages/scikitplot/plotters.py:33
+  /home/ubuntu/pycaret/clean/lib/python3.8/site-packages/scikitplot/plotters.py:33: DeprecationWarning: This module was deprecated in version 0.3.0 and its functions are spread throughout different modules. Please check the documentation and update your function calls as soon as possible. This module will be removed in 0.4.0
+    warnings.warn("This module was deprecated in version 0.3.0 and its functions "
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+========================= 1 passed, 1 warning in 8.60s =========================

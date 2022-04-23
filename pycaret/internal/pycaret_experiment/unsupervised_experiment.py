@@ -74,8 +74,8 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
     def _is_unsupervised(self) -> bool:
         return True
 
-    def _set_up_mlflow(
-        self, runtime, log_data, log_profile, experiment_custom_tags=None
+    def _set_up_logging(
+        self, runtime, log_data, log_profile, experiment_custom_tags=None,
     ):
         # log into experiment
         self.experiment__.append(("Setup Config", self.display_container[0]))
@@ -83,73 +83,13 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
         self.experiment__.append(("Transformation Pipeline", self.pipeline))
 
         if self.logging_param:
-
-            self.logger.info("Logging experiment in MLFlow")
-
-            import mlflow
-
-            try:
-                self.exp_id = mlflow.create_experiment(self.exp_name_log)
-            except Exception:
-                self.exp_id = None
-                self.logger.warning("Couldn't create mlflow experiment. Exception:")
-                self.logger.warning(traceback.format_exc())
-
-            # mlflow logging
-            mlflow.set_experiment(self.exp_name_log)
-
-            run_name_ = f"Session Initialized {self.USI}"
-
-            mlflow.end_run()
-            mlflow.start_run(run_name=run_name_)
-
-            # Get active run to log as tag
-            RunID = mlflow.active_run().info.run_id
-
-            k = self.display_container[0].copy()
-            k.set_index("Description", drop=True, inplace=True)
-            kdict = k.to_dict()
-            params = kdict.get("Value")
-            params = {mlflow_remove_bad_chars(k): v for k, v in params.items()}
-            mlflow.log_params(params)
-
-            # set tag of compare_models
-            mlflow.set_tag("Source", "setup")
-
-            # set custom tags if applicable
-            if experiment_custom_tags:
-                mlflow.set_tags(experiment_custom_tags)
-
-            import secrets
-
-            URI = secrets.token_hex(nbytes=4)
-            mlflow.set_tag("URI", URI)
-            mlflow.set_tag("USI", self.USI)
-            mlflow.set_tag("Run Time", runtime)
-            mlflow.set_tag("Run ID", RunID)
-
-            # Log the transformation pipeline
-            self.logger.info(
-                "SubProcess save_model() called =================================="
+            self.logging_param.log_experiment(
+                self,
+                log_profile,
+                log_data,
+                experiment_custom_tags,
+                runtime,
             )
-            self.save_model(self.pipeline, "Transformation Pipeline", verbose=False)
-            self.logger.info(
-                "SubProcess save_model() end =================================="
-            )
-            mlflow.log_artifact("Transformation Pipeline.pkl")
-            os.remove("Transformation Pipeline.pkl")
-
-            # Log pandas profile
-            if log_profile and self.report is not None:
-                self.report.to_file("Data Profile.html")
-                mlflow.log_artifact("Data Profile.html")
-                os.remove("Data Profile.html")
-
-            # Log training and testing set
-            if log_data:
-                self.dataset.to_csv("data.csv")
-                mlflow.log_artifact("data.csv")
-                os.remove("data.csv")
 
     def setup(
         self,
@@ -399,7 +339,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
         self._all_metrics = self._get_metrics()
 
         runtime = np.array(time.time() - runtime_start).round(2)
-        self._set_up_mlflow(
+        self._set_up_logging(
             runtime,
             log_data,
             log_profile,
@@ -443,7 +383,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
         if not fit_kwargs:
             fit_kwargs = {}
 
-        if supervised_target not in self.data_before_preprocess.columns:
+        if supervised_target not in self.dataset.columns:
             raise ValueError(
                 f"{supervised_target} is not present as a column in the dataset."
             )
@@ -454,7 +394,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
 
         cols_to_drop = [x for x in self.X.columns if x.startswith(supervised_target)]
         data_X = self.X.drop(cols_to_drop, axis=1)
-        data_y = self.data_before_preprocess[[supervised_target]]
+        data_y = self.dataset[[supervised_target]]
         if data_y.dtypes[0] not in [int, float, bool]:
             data_y[supervised_target] = LabelEncoder().fit_transform(
                 data_y[supervised_target]
@@ -727,23 +667,17 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
 
             metrics_log = {k: v[0] for k, v in best_model_results.items()}
 
-            try:
-                self._mlflow_log_model(
-                    model=model,
-                    model_results=None,
-                    score_dict=metrics_log,
-                    source="tune_model",
-                    runtime=runtime,
-                    model_fit_time=best_model_fit_time,
-                    pipeline=self.pipeline,
-                    log_plots=self.log_plots_param,
-                    display=display,
-                )
-            except Exception:
-                self.logger.error(
-                    f"_mlflow_log_model() for {model} raised an exception:"
-                )
-                self.logger.error(traceback.format_exc())
+            self._log_model(
+                model=model,
+                model_results=None,
+                score_dict=metrics_log,
+                source="tune_model",
+                runtime=runtime,
+                model_fit_time=best_model_fit_time,
+                pipeline=self.pipeline,
+                log_plots=self.log_plots_param,
+                display=display,
+            )
 
         results = results.set_precision(round)
         self.display_container.append(results)
@@ -1103,7 +1037,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
 
         # check ground truth exist in data_
         if ground_truth is not None:
-            if ground_truth not in self.data_before_preprocess.columns:
+            if ground_truth not in self.dataset.columns:
                 raise ValueError(
                     f"ground_truth {ground_truth} doesn't exist in the dataset."
                 )
@@ -1252,7 +1186,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
 
             self.logger.info(f"ground_truth parameter set to {ground_truth}")
 
-            gt = np.array(self.data_before_preprocess[ground_truth])
+            gt = np.array(self.dataset[ground_truth])
         else:
             gt = None
 
@@ -1273,24 +1207,18 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
 
             metrics_log = {k: v for k, v in metrics.items()}
 
-            try:
-                self._mlflow_log_model(
-                    model=model,
-                    model_results=None,
-                    score_dict=metrics_log,
-                    source="create_model",
-                    runtime=runtime,
-                    model_fit_time=model_fit_time,
-                    pipeline=self.pipeline,
-                    log_plots=self.log_plots_param,
-                    experiment_custom_tags=experiment_custom_tags,
-                    display=display,
-                )
-            except Exception:
-                self.logger.error(
-                    f"_mlflow_log_model() for {model} raised an exception:"
-                )
-                self.logger.error(traceback.format_exc())
+            self._log_model(
+                model=model,
+                model_results=None,
+                score_dict=metrics_log,
+                source="create_model",
+                runtime=runtime,
+                model_fit_time=model_fit_time,
+                pipeline=self.pipeline,
+                log_plots=self.log_plots_param,
+                experiment_custom_tags=experiment_custom_tags,
+                display=display,
+            )
 
         display.move_progress()
 

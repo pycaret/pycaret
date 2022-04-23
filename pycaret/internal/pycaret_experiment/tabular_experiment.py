@@ -42,7 +42,10 @@ from pycaret.utils._dependencies import _check_soft_dependencies
 from pycaret.internal.logging import get_logger
 from pycaret.internal.validation import is_sklearn_cv_generator
 from copy import deepcopy
-
+import pycaret.loggers
+from pycaret.loggers.base_logger import BaseLogger
+from pycaret.loggers.mlflow_logger import MlflowLogger
+from pycaret.loggers.wandb_logger import WandbLogger
 from pycaret.internal.Display import Display
 from sklearn.model_selection import BaseCrossValidator  # type: ignore
 
@@ -168,7 +171,7 @@ class _TabularExperiment(_PyCaretExperiment):
 
         return get_model_name(e, models, deep=deep)
 
-    def _mlflow_log_model(
+    def _log_model(
         self,
         model,
         model_results,
@@ -184,186 +187,28 @@ class _TabularExperiment(_PyCaretExperiment):
         experiment_custom_tags=None,
         display: Optional[Display] = None,
     ):
-        self.logger.info("Creating MLFlow logs")
-
-        # Creating Logs message monitor
-        if display:
-            display.update_monitor(1, "Creating Logs")
-            display.display_monitor()
-
-        # import mlflow
-        import mlflow
-        import mlflow.sklearn
-
-        mlflow.set_experiment(self.exp_name_log)
-
-        full_name = self._get_model_name(model)
-        self.logger.info(f"Model: {full_name}")
-
-        with mlflow.start_run(run_name=full_name, nested=True) as run:
-
-            # Get active run to log as tag
-            RunID = run.info.run_id
-
-            # Log model parameters
-            pipeline_estimator_name = get_pipeline_estimator_label(model)
-            if pipeline_estimator_name:
-                params = model.named_steps[pipeline_estimator_name]
-            else:
-                params = model
-
-            # get regressor from meta estimator
-            params = get_estimator_from_meta_estimator(params)
-
-            try:
-                try:
-                    params = params.get_all_params()
-                except Exception:
-                    params = params.get_params()
-            except Exception:
-                self.logger.warning("Couldn't get params for model. Exception:")
-                self.logger.warning(traceback.format_exc())
-                params = {}
-
-            for i in list(params):
-                v = params.get(i)
-                if len(str(v)) > 250:
-                    params.pop(i)
-
-            params = {mlflow_remove_bad_chars(k): v for k, v in params.items()}
-            self.logger.info(f"logged params: {params}")
-            mlflow.log_params(params)
-
-            # Log metrics
-            def try_make_float(val):
-                try:
-                    return np.float64(val)
-                except Exception:
-                    return np.nan
-
-            score_dict = {k: try_make_float(v) for k, v in score_dict.items()}
-            self.logger.info(f"logged metrics: {score_dict}")
-            mlflow.log_metrics(score_dict)
-
-            # set tag of compare_models
-            mlflow.set_tag("Source", source)
-
-            # set custom tags if applicable
-            if experiment_custom_tags:
-                mlflow.set_tags(experiment_custom_tags)
-
-            if not URI:
-                import secrets
-
-                URI = secrets.token_hex(nbytes=4)
-            mlflow.set_tag("URI", URI)
-            mlflow.set_tag("USI", self.USI)
-            mlflow.set_tag("Run Time", runtime)
-            mlflow.set_tag("Run ID", RunID)
-
-            # Log training time in seconds
-            mlflow.log_metric("TT", model_fit_time)
-
-            # Log the CV results as model_results.html artifact
-            if not self._is_unsupervised():
-                try:
-                    model_results.data.to_html(
-                        "Results.html", col_space=65, justify="left"
-                    )
-                except Exception:
-                    model_results.to_html("Results.html", col_space=65, justify="left")
-                mlflow.log_artifact("Results.html")
-                os.remove("Results.html")
-
-                if log_holdout:
-                    # Generate hold-out predictions and save as html
-                    try:
-                        holdout = self.predict_model(model, verbose=False)  # type: ignore
-                        holdout_score = self.pull(pop=True)
-                        del holdout
-                        holdout_score.to_html(
-                            "Holdout.html", col_space=65, justify="left"
-                        )
-                        mlflow.log_artifact("Holdout.html")
-                        os.remove("Holdout.html")
-                    except Exception:
-                        self.logger.warning(
-                            "Couldn't create holdout prediction for model, exception below:"
-                        )
-                        self.logger.warning(traceback.format_exc())
-
-            # Log AUC and Confusion Matrix plot
-            if log_plots:
-
-                self.logger.info(
-                    "SubProcess plot_model() called =================================="
-                )
-
-                def _log_plot(plot):
-                    try:
-                        plot_name = self.plot_model(
-                            model, plot=plot, verbose=False, save=True, system=False
-                        )
-                        mlflow.log_artifact(plot_name)
-                        os.remove(plot_name)
-                    except Exception as e:
-                        self.logger.warning(e)
-
-                for plot in log_plots:
-                    _log_plot(plot)
-
-                self.logger.info(
-                    "SubProcess plot_model() end =================================="
-                )
-
-            # Log hyperparameter tuning grid
-            if tune_cv_results:
-                d1 = tune_cv_results.get("params")
-                dd = pd.DataFrame.from_dict(d1)
-                dd["Score"] = tune_cv_results.get("mean_test_score")
-                dd.to_html("Iterations.html", col_space=75, justify="left")
-                mlflow.log_artifact("Iterations.html")
-                os.remove("Iterations.html")
-
-            # get default conda env
-            from mlflow.sklearn import get_default_conda_env
-
-            default_conda_env = get_default_conda_env()
-            default_conda_env["name"] = f"{self.exp_name_log}-env"
-            default_conda_env.get("dependencies").pop(-3)
-            dependencies = default_conda_env.get("dependencies")[-1]
-            from pycaret.utils import __version__
-
-            dep = f"pycaret=={__version__}"
-            dependencies["pip"] = [dep]
-
-            # define model signature
-            from mlflow.models.signature import infer_signature
-
-            try:
-                signature = infer_signature(self.data.drop([self.target_param], axis=1))
-            except Exception:
-                self.logger.warning("Couldn't infer MLFlow signature.")
-                signature = None
-            if not self._is_unsupervised():
-                input_example = (
-                    self.data.drop([self.target_param], axis=1).iloc[0].to_dict()
-                )
-            else:
-                input_example = self.data.iloc[0].to_dict()
-
-            # log model as sklearn flavor
-            pipeline_temp = deepcopy(pipeline)
-            pipeline_temp.steps.append(["trained_model", model])
-            mlflow.sklearn.log_model(
-                pipeline_temp,
-                "model",
-                conda_env=default_conda_env,
-                signature=signature,
-                input_example=input_example,
+        try:
+            self.logging_param.log_model(
+                experiment=self,
+                model=model,
+                model_results=model_results,
+                pipeline=pipeline,
+                score_dict=score_dict,
+                source=source,
+                runtime=runtime,
+                model_fit_time=model_fit_time,
+                log_plots=log_plots,
+                experiment_custom_tags=experiment_custom_tags,
+                log_holdout=log_holdout,
+                tune_cv_results=tune_cv_results,
+                URI=URI,
+                display=display,
             )
-            del pipeline_temp
-        gc.collect()
+        except Exception:
+            self.logger.error(
+                f"_log_model() for {model} raised an exception:\n"
+                f"{traceback.format_exc()}"
+            )
 
     def _profile(self, profile, profile_kwargs):
         """Create a profile report"""
@@ -387,6 +232,47 @@ class _TabularExperiment(_PyCaretExperiment):
 
         return self
 
+    def _validate_log_experiment(self, obj: Any) -> None:
+        return isinstance(obj, (bool, BaseLogger)) or (
+            isinstance(obj, str) and obj.lower() in ["mlflow", "wandb"]
+        )
+
+    def _convert_log_experiment(
+        self, log_experiment: Any
+    ) -> Union[bool, pycaret.loggers.DashboardLogger]:
+        if not (
+            (
+                isinstance(log_experiment, list)
+                and all(self._validate_log_experiment(x) for x in log_experiment)
+            )
+            or self._validate_log_experiment(log_experiment)
+        ):
+            raise TypeError(
+                "log_experiment parameter must be a bool, BaseLogger, one of 'mlflow', 'wandb'; or a list of the former."
+            )
+
+        def convert_logging_param(obj):
+            if isinstance(obj, BaseLogger):
+                return obj
+            obj = obj.lower()
+            if obj == "mlflow":
+                return MlflowLogger()
+            if obj == "wandb":
+                return WandbLogger()
+
+        if logging_param:
+            loggers_list = []
+            if logging_param is True:
+                loggers_list = [MlflowLogger()]
+            else:
+                if not isinstance(logging_param, list):
+                    logging_param = [logging_param]
+                loggers_list = [convert_logging_param(x) for x in logging_param]
+
+            if loggers_list:
+                return pycaret.loggers.DashboardLogger(loggers_list)
+        return False
+
     def _initialize_setup(
         self,
         n_jobs: Optional[int] = -1,
@@ -394,7 +280,9 @@ class _TabularExperiment(_PyCaretExperiment):
         html: bool = True,
         session_id: Optional[int] = None,
         system_log: Union[bool, logging.Logger] = True,
-        log_experiment: bool = False,
+        log_experiment: Union[
+            bool, str, BaseLogger, List[Union[str, BaseLogger]]
+        ] = False,
         experiment_name: Optional[str] = None,
         memory: Union[bool, str, Memory] = True,
         verbose: bool = True,
@@ -411,7 +299,7 @@ class _TabularExperiment(_PyCaretExperiment):
         self.n_jobs_param = n_jobs
         self.gpu_param = use_gpu
         self.html_param = html
-        self.logging_param = log_experiment
+        self.logging_param = self._convert_log_experiment(log_experiment)
         self.memory = get_memory(memory)
         self.verbose = verbose
 
@@ -787,8 +675,6 @@ class _TabularExperiment(_PyCaretExperiment):
                     if system:
                         resplots.show()
 
-                    plot_filename = f"{plot_name}.html"
-
                     if save:
                         if not isinstance(save, bool):
                             plot_filename = os.path.join(save, plot_filename)
@@ -876,8 +762,6 @@ class _TabularExperiment(_PyCaretExperiment):
                         height=600 * scale, title_text="2D Cluster PCA Plot"
                     )
 
-                    plot_filename = f"{plot_name}.html"
-
                     if save:
                         if not isinstance(save, bool):
                             plot_filename = os.path.join(save, plot_filename)
@@ -948,7 +832,6 @@ class _TabularExperiment(_PyCaretExperiment):
                         width=900 * scale,
                         height=800 * scale,
                     )
-                    plot_filename = f"{plot_name}.html"
 
                     if save:
                         if not isinstance(save, bool):
@@ -956,7 +839,7 @@ class _TabularExperiment(_PyCaretExperiment):
                         else:
                             plot_filename = plot
                         self.logger.info(f"Saving '{plot_filename}'")
-                        fig.write_html(f"{plot_filename}")
+                        fig.write_html(plot_filename)
 
                     elif system:
                         if display_format == "streamlit":
@@ -1034,15 +917,13 @@ class _TabularExperiment(_PyCaretExperiment):
                             height=800 * scale,
                         )
 
-                    plot_filename = f"{plot_name}.html"
-
                     if save:
                         if not isinstance(save, bool):
                             plot_filename = os.path.join(save, plot_filename)
                         else:
                             plot_filename = plot
                         self.logger.info(f"Saving '{plot_filename}'")
-                        fig.write_html(f"{plot_filename}")
+                        fig.write_html(plot_filename)
 
                     elif system:
                         if display_format == "streamlit":
@@ -1136,15 +1017,13 @@ class _TabularExperiment(_PyCaretExperiment):
                             height=800 * scale,
                         )
 
-                    plot_filename = f"{plot_name}.html"
-
                     if save:
                         if not isinstance(save, bool):
                             plot_filename = os.path.join(save, plot_filename)
                         else:
                             plot_filename = plot
                         self.logger.info(f"Saving '{plot_filename}'")
-                        fig.write_html(f"{plot_filename}")
+                        fig.write_html(plot_filename)
 
                     elif system:
                         if display_format == "streamlit":
@@ -1214,15 +1093,13 @@ class _TabularExperiment(_PyCaretExperiment):
                         height=600 * scale,
                     )
 
-                    plot_filename = f"{plot_name}.html"
-
                     if save:
                         if not isinstance(save, bool):
                             plot_filename = os.path.join(save, plot_filename)
                         else:
                             plot_filename = plot
                         self.logger.info(f"Saving '{plot_filename}'")
-                        fig.write_html(f"{plot_filename}")
+                        fig.write_html(plot_filename)
 
                     elif system:
                         if display_format == "streamlit":
@@ -2270,136 +2147,6 @@ class _TabularExperiment(_PyCaretExperiment):
 
     def finalize_model(self) -> None:
         return
-
-    def automl(
-        self, optimize: str = "Accuracy", use_holdout: bool = False, turbo: bool = True
-    ) -> Any:
-
-        """
-        This function returns the best model out of all models created in
-        current active environment based on metric defined in optimize parameter.
-
-        Parameters
-        ----------
-        optimize : str, default = 'Accuracy'
-            Other values you can pass in optimize parameter are 'AUC', 'Recall', 'Precision',
-            'F1', 'Kappa', and 'MCC'.
-
-        use_holdout: bool, default = False
-            When set to True, metrics are evaluated on holdout set instead of CV.
-
-        turbo: bool, default = True
-            When set to True and use_holdout is False, only models created with default fold
-            parameter will be considered. If set to False, models created with a non-default
-            fold parameter will be scored again using default fold settings, so that they can be
-            compared.
-        """
-
-        function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
-
-        self.logger.info("Initializing automl()")
-        self.logger.info(f"automl({function_params_str})")
-
-        # checking optimize parameter
-        optimize = self._get_metric_by_name_or_id(optimize)
-        if optimize is None:
-            raise ValueError(
-                f"Optimize method not supported. See docstring for list of available parameters."
-            )
-
-        # checking optimize parameter for multiclass
-        if self._is_multiclass():
-            if not optimize.is_multiclass:
-                raise TypeError(
-                    f"Optimization metric not supported for multiclass problems. See docstring for list of other optimization parameters."
-                )
-
-        compare_dimension = optimize.display_name
-        greater_is_better = optimize.greater_is_better
-        optimize = optimize.scorer
-
-        best_model = None
-        best_score = None
-
-        def compare_score(new, best):
-            if not best:
-                return True
-            if greater_is_better:
-                return new > best
-            else:
-                return new < best
-
-        if use_holdout:
-            self.logger.info("Model Selection Basis : Holdout set")
-            for i in self.master_model_container:
-                self.logger.info(f"Checking model {i}")
-                model = i["model"]
-                try:
-                    pred_holdout = self.predict_model(model, verbose=False)  # type: ignore
-                except:
-                    self.logger.warning(
-                        f"Model {model} is not fitted, running create_model"
-                    )
-                    model, _ = self.create_model(  # type: ignore
-                        estimator=model,
-                        system=False,
-                        verbose=False,
-                        cross_validation=False,
-                        predict=False,
-                        groups=self.fold_groups_param,
-                    )
-                    self.pull(pop=True)
-                    pred_holdout = self.predict_model(model, verbose=False)  # type: ignore
-
-                p = self.pull(pop=True)
-                p = p[compare_dimension][0]
-                if compare_score(p, best_score):
-                    best_model = model
-                    best_score = p
-
-        else:
-            self.logger.info("Model Selection Basis : CV Results on Training set")
-            for i in range(len(self.master_model_container)):
-                model = self.master_model_container[i]
-                scores = None
-                if model["cv"] is not self.fold_generator:
-                    if turbo or self._is_unsupervised():
-                        continue
-                    self.create_model(  # type: ignore
-                        estimator=model["model"],
-                        system=False,
-                        verbose=False,
-                        cross_validation=True,
-                        predict=False,
-                        groups=self.fold_groups_param,
-                    )
-                    scores = self.pull(pop=True)
-                    self.master_model_container.pop()
-                self.logger.info(f"Checking model {i}")
-                if scores is None:
-                    scores = model["scores"]
-                r = scores[compare_dimension][-2:][0]
-                if compare_score(r, best_score):
-                    best_model = model["model"]
-                    best_score = r
-
-        automl_model, _ = self.create_model(  # type: ignore
-            estimator=best_model,
-            system=False,
-            verbose=False,
-            cross_validation=False,
-            predict=False,
-            groups=self.fold_groups_param,
-        )
-
-        gc.collect()
-
-        self.logger.info(str(automl_model))
-        self.logger.info(
-            "automl() successfully completed......................................"
-        )
-
-        return automl_model
 
     def _get_models(self, raise_errors: bool = True) -> Tuple[dict, dict]:
         return ({}, {})

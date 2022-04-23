@@ -418,7 +418,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
         self._all_metrics = self._get_metrics()
 
         runtime = np.array(time.time() - runtime_start).round(2)
-        self._set_up_mlflow(
+        self._set_up_logging(
             runtime,
             log_data,
             log_profile,
@@ -2051,3 +2051,78 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
         """
 
         return super().get_logs(experiment_name=experiment_name, save=save)
+
+    def dashboard(
+        self,
+        estimator,
+        display_format: str = "dash",
+        dashboard_kwargs: Optional[Dict[str, Any]] = None,
+        run_kwargs: Optional[Dict[str, Any]] = None,
+        **kwargs,
+    ):
+        """
+        This function generates the interactive dashboard for a trained model. The
+        dashboard is implemented using ExplainerDashboard (explainerdashboard.readthedocs.io)
+
+
+        Example
+        -------
+        >>> from pycaret.datasets import get_data
+        >>> juice = get_data('juice')
+        >>> from pycaret.classification import *
+        >>> exp_name = setup(data = juice,  target = 'Purchase')
+        >>> lr = create_model('lr')
+        >>> dashboard(lr)
+
+
+        estimator: scikit-learn compatible object
+            Trained model object
+
+
+        display_format: str, default = 'dash'
+            Render mode for the dashboard. The default is set to ``dash`` which will
+            render a dashboard in browser. There are four possible options:
+
+            - 'dash' - displays the dashboard in browser
+            - 'inline' - displays the dashboard in the jupyter notebook cell.
+            - 'jupyterlab' - displays the dashboard in jupyterlab pane.
+            - 'external' - displays the dashboard in a separate tab. (use in Colab)
+
+
+        dashboard_kwargs: dict, default = {} (empty dict)
+            Dictionary of arguments passed to the ``ExplainerDashboard`` class.
+
+
+        run_kwargs: dict, default = {} (empty dict)
+            Dictionary of arguments passed to the ``run`` method of ``ExplainerDashboard``.
+
+
+        **kwargs:
+            Additional keyword arguments to pass to the ``ClassifierExplainer`` or
+            ``RegressionExplainer`` class.
+
+
+        Returns:
+            ExplainerDashboard
+        """
+
+        # soft dependencies check
+        super().dashboard(
+            estimator, display_format, dashboard_kwargs, run_kwargs, **kwargs
+        )
+
+        dashboard_kwargs = dashboard_kwargs or {}
+        run_kwargs = run_kwargs or {}
+
+        from explainerdashboard import ExplainerDashboard, RegressionExplainer
+
+        # Replaceing chars which dash doesnt accept for column name `.` , `{`, `}`
+        X_test_df = self.X_test_transformed.copy()
+        X_test_df.columns = [
+            col.replace(".", "__").replace("{", "__").replace("}", "__")
+            for col in X_test_df.columns
+        ]
+        explainer = RegressionExplainer(
+            estimator, X_test_df, self.y_test_transformed, **kwargs
+        )
+        return ExplainerDashboard(explainer, mode=display_format, **dashboard_kwargs).run(**run_kwargs)

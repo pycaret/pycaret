@@ -2,6 +2,42 @@
 All notable changes to this project will be documented in this file.
 <br/><br/>
 
+#### Release: PyCaret 2.3.10 | Release Date: April 10th, 2022 (BUG FIXES)
+- Fixed `predict_model` throwing an exception with loaded pipelines (https://github.com/pycaret/pycaret/pull/2349)
+- Fixed potential parameter leaking for `ParallelBackend` - thanks to @goodwanghan (https://github.com/pycaret/pycaret/pull/2339)
+- Refactored a piece of logic in arules - thanks to @daikikatsuragawa (https://github.com/pycaret/pycaret/pull/2316)
+- Added Two Tutorials in Chinese - thanks to @ryanxjhan (https://github.com/pycaret/pycaret/pull/2352)
+- Added CLF101 in Chinese - thanks to @ryanxjhan (https://github.com/pycaret/pycaret/pull/2353)
+- Added new tutorials in Chinese - thanks to @ryanxjhan (https://github.com/pycaret/pycaret/pull/2375)
+<br/><br/><br/>
+
+#### Release: PyCaret 2.3.9 | Release Date: March 27th, 2022 (BUG FIXES)
+- Made `log_experiment` more configurable (https://github.com/pycaret/pycaret/pull/2334, https://github.com/pycaret/pycaret/pull/2335)
+- Made `return_train_score=False` use the old output format (https://github.com/pycaret/pycaret/pull/2333)
+<br/><br/><br/>
+
+#### Release: PyCaret 2.3.8 | Release Date: March 21st, 2022 (BUG FIXES)
+- Fixed `dashboard_logger` key error during `setup` (https://github.com/pycaret/pycaret/pull/2311)
+<br/><br/><br/>
+
+#### Release: PyCaret 2.3.7 | Release Date: March 20th, 2022 (NEW FEATURES, BUG FIXES)
+- Fugue integration - thanks to @goodwanghan (https://github.com/pycaret/pycaret/pull/2035)
+- Added W&B experiment logger - thanks to @AyushExel (https://github.com/pycaret/pycaret/pull/2231)
+- Fixed `check_fairness` exception when index is not and ordinal number - thanks to @reza1615 (https://github.com/pycaret/pycaret/pull/2055)
+- Unsupported characters in dataframes are now replaced - thanks to @reza1615 (https://github.com/pycaret/pycaret/pull/2058)
+- Fixed drift report with categorical columns - thanks to @reza1615 (https://github.com/pycaret/pycaret/pull/2063)
+- Added multivariable time series dataset from UCI - thanks to @reza1615 (https://github.com/pycaret/pycaret/pull/2094)
+- Fixed a UTF error during installation - thanks to @reza1615 (https://github.com/pycaret/pycaret/pull/2113)
+- MLFlow tracking API can now take in custom tags - thanks to @netoferraz (https://github.com/pycaret/pycaret/pull/1526)
+- Updated `create_api` function (https://github.com/pycaret/pycaret/pull/2146)
+- `drift_report` can now work with unseen data - thanks to @reza1615 (https://github.com/pycaret/pycaret/pull/2183)
+- Added Japanese tutorial - thanks to @hanaseleb (https://github.com/pycaret/pycaret/pull/2215)
+- Added Traffic and Drugs Related Violations dataset and example - thanks to @HaithemH (https://github.com/pycaret/pycaret/pull/2191)
+- Train score can now be returned from various supervised learning functions (`return_train_score=True`). Passing an unseen dataset with the label column to `predict_model` will now calculate the metrics for that dataset - thanks to @levelalphaone (https://github.com/pycaret/pycaret/pull/2237)
+- Fixed spelling mistakes in function docstrings - thanks to @aadarshsingh191198 (https://github.com/pycaret/pycaret/pull/2269)
+- Pinned `numba<0.55` (https://github.com/pycaret/pycaret/pull/2056)
+<br/><br/><br/>
+
 #### Release: PyCaret 2.3.6 | Release Date: January 12th, 2022 (NEW FEATURES, BUG FIXES)
 - Added new function `create_app` (https://github.com/pycaret/pycaret/pull/2044)
 - Refactored `optimize_threshold` function (https://github.com/pycaret/pycaret/pull/2041)

@@ -4,20 +4,21 @@
 import logging
 import os
 import warnings
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union, TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
 
-from sktime.forecasting.base import ForecastingHorizon
-
 from pycaret.internal.utils import check_if_global_is_not_none
 from pycaret.time_series import TSForecastingExperiment
+
+if TYPE_CHECKING:
+    from sktime.forecasting.base import ForecastingHorizon
 
 warnings.filterwarnings("ignore")
 
 _EXPERIMENT_CLASS = TSForecastingExperiment
-_CURRENT_EXPERIMENT = None
+_CURRENT_EXPERIMENT: Optional[TSForecastingExperiment] = None
 _CURRENT_EXPERIMENT_EXCEPTION = (
     "_CURRENT_EXPERIMENT global variable is not set. Please run setup() first."
 )
@@ -39,7 +40,7 @@ def setup(
     scale_exogenous: Optional[str] = None,
     fold_strategy: Union[str, Any] = "expanding",
     fold: int = 3,
-    fh: Optional[Union[List[int], int, np.ndarray, ForecastingHorizon]] = 1,
+    fh: Optional[Union[List[int], int, np.ndarray, "ForecastingHorizon"]] = 1,
     seasonal_period: Optional[Union[List[Union[int, str]], int, str]] = None,
     enforce_pi: bool = False,
     enforce_exogenous: bool = True,
@@ -1742,7 +1743,7 @@ def set_current_experiment(experiment: TSForecastingExperiment):
         raise TypeError(
             f"experiment must be a PyCaret TSForecastingExperiment object, got {type(experiment)}."
         )
-    _CURRENT_EXPERIMENT = experiment
+    _CURRENT_EXPERIMENT: TSForecastingExperiment = experiment
 
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)

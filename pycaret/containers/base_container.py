@@ -22,7 +22,7 @@ class BaseContainer:
         The class used for the model, eg. LogisticRegression.
     is_turbo : bool, default = True
         Should the model be used with 'turbo = True' in compare_models().
-    args : dict, default = {}
+    args : dict, default = {} (empty dict)
         The arguments to always pass to constructor when initializing object of class_def class.
 
     Attributes
@@ -35,7 +35,7 @@ class BaseContainer:
         The class used for the model, eg. LogisticRegression.
     is_turbo : bool, default = True
         Should the model be used with 'turbo = True' in compare_models().
-    args : dict, default = {}
+    args : dict, default = {} (empty dict)
         The arguments to always pass to constructor when initializing object of class_def class.
 
     """

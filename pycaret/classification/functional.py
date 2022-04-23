@@ -5,10 +5,8 @@ import pandas as pd
 from joblib.memory import Memory
 from typing import List, Tuple, Any, Union, Optional, Dict, Callable
 
-# Own modules
-import pycaret.internal.tabular
 # from pycaret.parallel import ParallelBackend # unused
-from pycaret.internal.Display import Display, is_in_colab, enable_colab
+from pycaret.loggers.base_logger import BaseLogger
 from pycaret.classification import ClassificationExperiment
 from pycaret.internal.utils import check_if_global_is_not_none
 
@@ -16,7 +14,7 @@ from pycaret.internal.utils import check_if_global_is_not_none
 warnings.filterwarnings("ignore")
 
 _EXPERIMENT_CLASS = ClassificationExperiment
-_CURRENT_EXPERIMENT = None
+_CURRENT_EXPERIMENT: Optional[ClassificationExperiment] = None
 _CURRENT_EXPERIMENT_EXCEPTION = (
     "_CURRENT_EXPERIMENT global variable is not set. Please run setup() first."
 )
@@ -81,7 +79,7 @@ def setup(
     html: bool = True,
     session_id: Optional[int] = None,
     system_log: Union[bool, logging.Logger] = True,
-    log_experiment: bool = False,
+    log_experiment: Union[bool, str, BaseLogger, List[Union[str, BaseLogger]]] = False,
     experiment_name: Optional[str] = None,
     experiment_custom_tags: Optional[Dict[str, Any]] = None,
     log_plots: Union[bool, list] = False,
@@ -461,8 +459,10 @@ def setup(
         for later reproducibility of the entire experiment.
 
 
-    log_experiment: bool, default = False
-        When set to True, all metrics and parameters are logged on the ``MLFlow`` server.
+    log_experiment: bool or str or BaseLogger or list of str or BaseLogger, default = False
+        A (list of) PyCaret ``BaseLogger`` or str (one of 'mlflow', 'wandb')
+        corresponding to a logger to determine which experiment loggers to use.
+        Setting to True will use just MLFlow.
 
 
     system_log: bool or logging.Logger, default = True
@@ -471,7 +471,7 @@ def setup(
 
 
     experiment_name: str, default = None
-        Name of the experiment for logging. Ignored when ``log_experiment`` is not True.
+        Name of the experiment for logging. Ignored when ``log_experiment`` is False.
 
 
     experiment_custom_tags: dict, default = None
@@ -482,17 +482,17 @@ def setup(
     log_plots: bool or list, default = False
         When set to True, certain plots are logged automatically in the ``MLFlow`` server.
         To change the type of plots to be logged, pass a list containing plot IDs. Refer
-        to documentation of ``plot_model``. Ignored when ``log_experiment`` is not True.
+        to documentation of ``plot_model``. Ignored when ``log_experiment`` is False.
 
 
     log_profile: bool, default = False
         When set to True, data profile is logged on the ``MLflow`` server as a html file.
-        Ignored when ``log_experiment`` is not True.
+        Ignored when ``log_experiment`` is False.
 
 
     log_data: bool, default = False
         When set to True, dataset is logged on the ``MLflow`` server as a csv file.
-        Ignored when ``log_experiment`` is not True.
+        Ignored when ``log_experiment`` is False.
 
 
     silent: bool, default = False
@@ -716,13 +716,6 @@ def compare_models(
         Custom display object
 
 
-    parallel: pycaret.parallel.parallel_backend.ParallelBackend, default = None
-        A ParallelBackend instance. For example if you have a SparkSession ``session``,
-        you can use ``FugueBackend(session)`` to make this function running using
-        Spark. For more details, see
-        :class:`~pycaret.parallel.fugue_backend.FugueBackend`
-
-
     Returns:
         Trained model or list of trained models, depending on the ``n_select`` param.
 
@@ -779,6 +772,7 @@ def create_model(
     probability_threshold: Optional[float] = None,
     experiment_custom_tags: Optional[Dict[str, Any]] = None,
     verbose: bool = True,
+    return_train_score: bool = False,
     **kwargs,
 ) -> Any:
 
@@ -866,6 +860,13 @@ def create_model(
         Score grid is not printed when verbose is set to False.
 
 
+    return_train_score: bool, default = False
+        If False, returns the CV Validation scores only.
+        If True, returns the CV training scores along with the CV validation scores.
+        This is useful when the user wants to do bias-variance tradeoff. A high CV
+        training score with a low corresponding CV validation score indicates overfitting.
+
+
     **kwargs:
         Additional keyword arguments to pass to the estimator.
 
@@ -893,6 +894,7 @@ def create_model(
         probability_threshold=probability_threshold,
         experiment_custom_tags=experiment_custom_tags,
         verbose=verbose,
+        return_train_score=return_train_score,
         **kwargs,
     )
 
@@ -916,6 +918,7 @@ def tune_model(
     return_tuner: bool = False,
     verbose: bool = True,
     tuner_verbose: Union[int, bool] = True,
+    return_train_score: bool = False,
     **kwargs,
 ) -> Any:
 
@@ -1063,6 +1066,13 @@ def tune_model(
         print more messages. Ignored when ``verbose`` param is False.
 
 
+    return_train_score: bool, default = False
+        If False, returns the CV Validation scores only.
+        If True, returns the CV training scores along with the CV validation scores.
+        This is useful when the user wants to do bias-variance tradeoff. A high CV
+        training score with a low corresponding CV validation score indicates overfitting.
+
+
     **kwargs:
         Additional keyword arguments to pass to the optimizer.
 
@@ -1099,6 +1109,7 @@ def tune_model(
         return_tuner=return_tuner,
         verbose=verbose,
         tuner_verbose=tuner_verbose,
+        return_train_score=return_train_score,
         **kwargs,
     )
 
@@ -1116,6 +1127,7 @@ def ensemble_model(
     groups: Optional[Union[str, Any]] = None,
     probability_threshold: Optional[float] = None,
     verbose: bool = True,
+    return_train_score: bool = False,
 ) -> Any:
 
     """
@@ -1189,6 +1201,13 @@ def ensemble_model(
         Score grid is not printed when verbose is set to False.
 
 
+    return_train_score: bool, default = False
+        If False, returns the CV Validation scores only.
+        If True, returns the CV training scores along with the CV validation scores.
+        This is useful when the user wants to do bias-variance tradeoff. A high CV
+        training score with a low corresponding CV validation score indicates overfitting.
+
+
     Returns:
         Trained Model
 
@@ -1212,6 +1231,7 @@ def ensemble_model(
         groups=groups,
         verbose=verbose,
         probability_threshold=probability_threshold,
+        return_train_score=return_train_score,
     )
 
 
@@ -1228,6 +1248,7 @@ def blend_models(
     groups: Optional[Union[str, Any]] = None,
     probability_threshold: Optional[float] = None,
     verbose: bool = True,
+    return_train_score: bool = False,
 ) -> Any:
 
     """
@@ -1307,6 +1328,13 @@ def blend_models(
         Score grid is not printed when verbose is set to False.
 
 
+    return_train_score: bool, default = False
+        If False, returns the CV Validation scores only.
+        If True, returns the CV training scores along with the CV validation scores.
+        This is useful when the user wants to do bias-variance tradeoff. A high CV
+        training score with a low corresponding CV validation score indicates overfitting.
+
+
     Returns:
         Trained Model
 
@@ -1324,6 +1352,7 @@ def blend_models(
         groups=groups,
         verbose=verbose,
         probability_threshold=probability_threshold,
+        return_train_score=return_train_score,
     )
 
 
@@ -1342,6 +1371,7 @@ def stack_models(
     groups: Optional[Union[str, Any]] = None,
     probability_threshold: Optional[float] = None,
     verbose: bool = True,
+    return_train_score: bool = False,
 ) -> Any:
 
     """
@@ -1430,6 +1460,13 @@ def stack_models(
         Score grid is not printed when verbose is set to False.
 
 
+    return_train_score: bool, default = False
+        If False, returns the CV Validation scores only.
+        If True, returns the CV training scores along with the CV validation scores.
+        This is useful when the user wants to do bias-variance tradeoff. A high CV
+        training score with a low corresponding CV validation score indicates overfitting.
+
+
     Returns:
         Trained Model
 
@@ -1456,6 +1493,7 @@ def stack_models(
         groups=groups,
         probability_threshold=probability_threshold,
         verbose=verbose,
+        return_train_score=return_train_score,
     )
 
 
@@ -1784,6 +1822,7 @@ def calibrate_model(
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
     verbose: bool = True,
+    return_train_score: bool = False,
 ) -> Any:
 
     """
@@ -1846,6 +1885,13 @@ def calibrate_model(
         Score grid is not printed when verbose is set to False.
 
 
+    return_train_score: bool, default = False
+        If False, returns the CV Validation scores only.
+        If True, returns the CV training scores along with the CV validation scores.
+        This is useful when the user wants to do bias-variance tradeoff. A high CV
+        training score with a low corresponding CV validation score indicates overfitting.
+
+
     Returns:
         Trained Model
 
@@ -1866,6 +1912,7 @@ def calibrate_model(
         fit_kwargs=fit_kwargs,
         groups=groups,
         verbose=verbose,
+        return_train_score=return_train_score,
     )
 
 
@@ -2038,6 +2085,7 @@ def finalize_model(
     groups: Optional[Union[str, Any]] = None,
     model_only: bool = True,
     experiment_custom_tags: Optional[Dict[str, Any]] = None,
+    return_train_score: bool = False,
 ) -> Any:
 
     """
@@ -2079,6 +2127,12 @@ def finalize_model(
         Dictionary of tag_name: String -> value: (String, but will be string-ified
         if not) passed to the mlflow.set_tags to add new custom tags for the experiment.
 
+    return_train_score: bool, default = False
+        If False, returns the CV Validation scores only.
+        If True, returns the CV training scores along with the CV validation scores.
+        This is useful when the user wants to do bias-variance tradeoff. A high CV
+        training score with a low corresponding CV validation score indicates overfitting.
+
 
     Returns:
         Trained Model
@@ -2091,6 +2145,7 @@ def finalize_model(
         groups=groups,
         model_only=model_only,
         experiment_custom_tags=experiment_custom_tags,
+        return_train_score=return_train_score,
     )
 
 
@@ -2304,7 +2359,10 @@ def load_model(
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def automl(
-    optimize: str = "Accuracy", use_holdout: bool = False, turbo: bool = True
+    optimize: str = "Accuracy",
+    use_holdout: bool = False,
+    turbo: bool = True,
+    return_train_score: bool = False,
 ) -> Any:
 
     """
@@ -2342,12 +2400,22 @@ def automl(
         compared.
 
 
+    return_train_score: bool, default = False
+        If False, returns the CV Validation scores only.
+        If True, returns the CV training scores along with the CV validation scores.
+        This is useful when the user wants to do bias-variance tradeoff. A high CV
+        training score with a low corresponding CV validation score indicates overfitting.
+
+
     Returns:
         Trained Model
 
     """
     return _CURRENT_EXPERIMENT.automl(
-        optimize=optimize, use_holdout=use_holdout, turbo=turbo
+        optimize=optimize,
+        use_holdout=use_holdout,
+        turbo=turbo,
+        return_train_score=return_train_score,
     )
 
 
@@ -2453,7 +2521,7 @@ def get_metrics(
 
     """
 
-    return pycaret.internal.tabular.get_metrics(
+    return _CURRENT_EXPERIMENT.get_metrics(
         reset=reset,
         include_custom=include_custom,
         raise_errors=raise_errors,
@@ -2803,8 +2871,13 @@ def get_leaderboard(
     )
 
 
+@check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def dashboard(
-    estimator, display_format="dash", dashboard_kwargs={}, run_kwargs={}, **kwargs
+    estimator,
+    display_format: str = "dash",
+    dashboard_kwargs: Optional[Dict[str, Any]] = None,
+    run_kwargs: Optional[Dict[str, Any]] = None,
+    **kwargs,
 ):
     """
     This function generates the interactive dashboard for a trained model. The
@@ -2849,13 +2922,14 @@ def dashboard(
 
 
     Returns:
-        None
+        ExplainerDashboard
     """
-    return pycaret.internal.tabular.dashboard(
+    return _CURRENT_EXPERIMENT.dashboard(
         estimator, display_format, dashboard_kwargs, run_kwargs, **kwargs
     )
 
 
+@check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def convert_model(estimator, language: str = "python") -> str:
 
     """
@@ -2908,6 +2982,7 @@ def convert_model(estimator, language: str = "python") -> str:
     return _CURRENT_EXPERIMENT.convert_model(estimator, language)
 
 
+@check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def eda(display_format: str = "bokeh", **kwargs):
 
     """
@@ -2939,6 +3014,7 @@ def eda(display_format: str = "bokeh", **kwargs):
     return _CURRENT_EXPERIMENT.eda(display_format=display_format, **kwargs)
 
 
+@check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def check_fairness(estimator, sensitive_features: list, plot_kwargs: dict = {}):
 
     """
@@ -2982,6 +3058,7 @@ def check_fairness(estimator, sensitive_features: list, plot_kwargs: dict = {}):
     )
 
 
+@check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def create_api(
     estimator, api_name: str, host: str = "127.0.0.1", port: int = 8000
 ) -> None:
@@ -3027,6 +3104,7 @@ def create_api(
     )
 
 
+@check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def create_docker(
     api_name: str, base_image: str = "python:3.8-slim", expose_port: int = 8000
 ) -> None:
@@ -3067,6 +3145,7 @@ def create_docker(
     )
 
 
+@check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def create_app(estimator, app_kwargs: Optional[dict] = None) -> None:
 
     """
@@ -3089,15 +3168,46 @@ def create_app(estimator, app_kwargs: Optional[dict] = None) -> None:
         Trained model object
 
 
-    app_kwargs: dict, default = {}
+    app_kwargs: dict, default = {} (empty dict)
         arguments to be passed to app class.
 
 
     Returns:
         None
     """
-    return pycaret.internal.tabular.create_app(
-        estimator=estimator, app_kwargs=app_kwargs
+    return _CURRENT_EXPERIMENT.create_app(estimator=estimator, app_kwargs=app_kwargs)
+
+
+@check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
+def deep_check(estimator, check_kwargs: Optional[dict] = None) -> None:
+    """
+    This function runs a full suite check over a trained model
+    using deepchecks library.
+
+
+    Example
+    -------
+    >>> from pycaret.datasets import get_data
+    >>> juice = get_data('juice')
+    >>> from pycaret.classification import *
+    >>> exp_name = setup(data = juice,  target = 'Purchase')
+    >>> lr = create_model('lr')
+    >>> deep_check(lr)
+
+
+    estimator: scikit-learn compatible object
+        Trained model object
+
+
+    check_kwargs: dict, default = {} (empty dict)
+        arguments to be passed to deepchecks full_suite class.
+
+
+    Returns:
+        Results of deepchecks.suites.full_suite.run
+    """
+    return _CURRENT_EXPERIMENT.deep_check(
+        estimator=estimator, check_kwargs=check_kwargs
     )
 
 
@@ -3108,4 +3218,4 @@ def set_current_experiment(experiment: ClassificationExperiment):
         raise TypeError(
             f"experiment must be a PyCaret ClassificationExperiment object, got {type(experiment)}."
         )
-    _CURRENT_EXPERIMENT = experiment
+    _CURRENT_EXPERIMENT: ClassificationExperiment = experiment
