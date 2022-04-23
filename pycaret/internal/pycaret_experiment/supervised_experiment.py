@@ -217,6 +217,13 @@ class _SupervisedExperiment(_TabularExperiment):
     def _set_up_logging(
         self, runtime, log_data, log_profile, experiment_custom_tags=None
     ):
+        # experiment custom tags
+        if experiment_custom_tags is not None:
+            if not isinstance(experiment_custom_tags, dict):
+                raise TypeError(
+                    "experiment_custom_tags parameter must be dict if not None"
+                )
+
         # log into experiment
         self.experiment__.append(("Setup Config", self.display_container[0]))
         self.experiment__.append(("X_training Set", self.X_train))
@@ -1094,7 +1101,13 @@ class _SupervisedExperiment(_TabularExperiment):
     def _highlight_and_round_model_results(
         self, model_results: pd.DataFrame, return_train_score: bool
     ) -> pd.DataFrame:
-        self._highlight_and_round_model_results(model_results, return_train_score)
+        # yellow the mean
+        if return_train_score:
+            indices = [("CV-Val", "Mean"), ("CV-Train", "Mean")]
+        else:
+            indices = ["Mean"]
+        model_results = color_df(model_results, "yellow", indices, axis=1)
+        model_results = model_results.set_precision(round)
         return model_results
 
     def create_model(
@@ -1542,15 +1555,15 @@ class _SupervisedExperiment(_TabularExperiment):
             getattr(display, "master_display", None) is not None
             and "cutoff" not in display.master_display.columns
         ):
-            model_results.data.drop("cutoff", axis=1, inplace=True, errors="ignore")
+            model_results.drop("cutoff", axis=1, inplace=True, errors="ignore")
 
-        self.display_container.append(model_results.data)
+        self.display_container.append(model_results)
 
         # storing results in master_model_container
         if add_to_model_list:
             self.logger.info("Uploading model into container now")
             self.master_model_container.append(
-                {"model": model, "scores": model_results.data, "cv": cv}
+                {"model": model, "scores": model_results, "cv": cv}
             )
 
         display.display(

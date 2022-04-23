@@ -1410,4 +1410,4 @@ def set_current_experiment(experiment: AnomalyExperiment):
         raise TypeError(
             f"experiment must be a PyCaret AnomalyExperiment object, got {type(experiment)}."
         )
-    _CURRENT_EXPERIMENT: AnomalyExperiment = experiment
+    _CURRENT_EXPERIMENT = experiment

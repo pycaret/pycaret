@@ -3218,4 +3218,4 @@ def set_current_experiment(experiment: ClassificationExperiment):
         raise TypeError(
             f"experiment must be a PyCaret ClassificationExperiment object, got {type(experiment)}."
         )
-    _CURRENT_EXPERIMENT: ClassificationExperiment = experiment
+    _CURRENT_EXPERIMENT = experiment

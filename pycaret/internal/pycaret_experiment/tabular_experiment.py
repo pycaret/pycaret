@@ -260,14 +260,14 @@ class _TabularExperiment(_PyCaretExperiment):
             if obj == "wandb":
                 return WandbLogger()
 
-        if logging_param:
+        if log_experiment:
             loggers_list = []
-            if logging_param is True:
+            if log_experiment is True:
                 loggers_list = [MlflowLogger()]
             else:
-                if not isinstance(logging_param, list):
-                    logging_param = [logging_param]
-                loggers_list = [convert_logging_param(x) for x in logging_param]
+                if not isinstance(log_experiment, list):
+                    log_experiment = [log_experiment]
+                loggers_list = [convert_logging_param(x) for x in log_experiment]
 
             if loggers_list:
                 return pycaret.loggers.DashboardLogger(loggers_list)

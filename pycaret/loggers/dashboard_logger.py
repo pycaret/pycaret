@@ -21,7 +21,7 @@ class DashboardLogger:
         self.loggers = logger_list
 
     def __repr__(self) -> str:
-        return ", ".join(self.loggers)
+        return ", ".join([str(logger) for logger in self.loggers])
 
     def init_loggers(self, exp_name_log, full_name=None):
         for logger in self.loggers:
@@ -58,7 +58,7 @@ class DashboardLogger:
 
         full_name = experiment._get_model_name(model)
         console.info(f"Model: {full_name}")
-        self.init_loggers(self.exp_name_log, full_name)
+        self.init_loggers(experiment.exp_name_log, full_name)
 
         # Log model parameters
         pipeline_estimator_name = get_pipeline_estimator_label(model)
@@ -98,10 +98,15 @@ class DashboardLogger:
             if not experiment._is_unsupervised():
                 results_path = os.path.join(tmpdir, "Results.html")
                 try:
-                    model_results.data.to_html(results_path, col_space=65, justify="left")
+                    model_results.data.to_html(
+                        results_path, col_space=65, justify="left"
+                    )
                 except:
                     model_results.to_html(results_path, col_space=65, justify="left")
-                [logger.log_artifact(results_path, "Results") for logger in self.loggers]
+                [
+                    logger.log_artifact(results_path, "Results")
+                    for logger in self.loggers
+                ]
 
                 if log_holdout:
                     # Generate hold-out predictions and save as html
@@ -186,7 +191,7 @@ class DashboardLogger:
         kdict = k.to_dict()
         params = kdict.get("Value")
         for logger in self.loggers:
-            logger.init_experiment(self.exp_name_log)
+            logger.init_experiment(experiment.exp_name_log)
             logger.log_params(params, "setup")
             logger.set_tags("setup", experiment_custom_tags, runtime)
 
@@ -248,3 +253,6 @@ class DashboardLogger:
     def finish(self):
         for logger in self.loggers:
             logger.finish_experiment()
+
+    def __del__(self):
+        self.finish()

@@ -1743,7 +1743,7 @@ def set_current_experiment(experiment: TSForecastingExperiment):
         raise TypeError(
             f"experiment must be a PyCaret TSForecastingExperiment object, got {type(experiment)}."
         )
-    _CURRENT_EXPERIMENT: TSForecastingExperiment = experiment
+    _CURRENT_EXPERIMENT = experiment
 
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
