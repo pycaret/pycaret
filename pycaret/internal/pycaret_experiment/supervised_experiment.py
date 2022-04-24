@@ -47,6 +47,7 @@ from collections import Iterable
 from copy import deepcopy
 from sklearn.base import clone  # type: ignore
 from sklearn.compose import TransformedTargetRegressor  # type: ignore
+from sklearn.pipeline import Pipeline
 from typing import List, Any, Union, Optional, Dict
 import warnings
 from IPython.utils import io
@@ -4700,10 +4701,10 @@ class _SupervisedExperiment(_TabularExperiment):
 
         """
 
-        def replace_labels_in_column(labels: pd.Series) -> pd.Series:
+        def replace_labels_in_column(pipeline, labels: pd.Series) -> pd.Series:
             # Check if there is a LabelEncoder in the pipeline
             name = labels.name
-            le = get_label_encoder(self.pipeline)
+            le = get_label_encoder(pipeline)
             if le:
                 return pd.Series(le.inverse_transform(labels), name=name)
             else:
@@ -4761,6 +4762,12 @@ class _SupervisedExperiment(_TabularExperiment):
                 html_param=False,
             )
 
+        if isinstance(estimator, Pipeline):
+            pipeline = estimator
+            estimator = pipeline._final_estimator
+        else:
+            pipeline = self.pipeline
+
         y_test_ = None
         if data is None:
             X_test_, y_test_ = self.X_test_transformed, self.y_test_transformed
@@ -4771,7 +4778,7 @@ class _SupervisedExperiment(_TabularExperiment):
                 target = None
             data = to_df(data[self.X.columns])  # Ignore all column but the originals
             if preprocess:
-                X_test_ = self.pipeline.transform(
+                X_test_ = pipeline.transform(
                     X=data, y=(target if preprocess != "features" else None)
                 )
                 if isinstance(X_test_, tuple):
@@ -4859,18 +4866,18 @@ class _SupervisedExperiment(_TabularExperiment):
 
         if data is None:
             if not encoded_labels:
-                label["Label"] = replace_labels_in_column(label["Label"])
+                label["Label"] = replace_labels_in_column(pipeline, label["Label"])
                 if y_test_ is not None:
-                    y_test_ = replace_labels_in_column(y_test_)
+                    y_test_ = replace_labels_in_column(pipeline, y_test_)
             label.index = self.test.index  # Adjust index to join successfully
             if y_test_ is not None:
                 y_test_.index = self.test.index
             X_test_ = pd.concat([self.X_test, y_test_, label], axis=1)
         else:
             if not encoded_labels:
-                label["Label"] = replace_labels_in_column(label["Label"])
+                label["Label"] = replace_labels_in_column(pipeline, label["Label"])
                 if y_test_ is not None:
-                    y_test_ = replace_labels_in_column(y_test_)
+                    y_test_ = replace_labels_in_column(pipeline, y_test_)
             label.index = data.index
             if y_test_ is not None:
                 y_test_.index = data.index
@@ -4885,7 +4892,9 @@ class _SupervisedExperiment(_TabularExperiment):
                 if raw_score:
                     score_columns = pd.Series(range(score.shape[1]))
                     if not encoded_labels:
-                        score_columns = replace_labels_in_column(score_columns)
+                        score_columns = replace_labels_in_column(
+                            pipeline, score_columns
+                        )
                     score.columns = [f"Score_{label}" for label in score_columns]
                 else:
                     score.columns = ["Score"]
