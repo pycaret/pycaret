@@ -910,7 +910,14 @@ class _SupervisedExperiment(_TabularExperiment):
             display.move_progress()
 
             if predict:
-                self.predict_model(pipeline_with_model, verbose=False)
+                # call class explicitly to get access to preprocess arg
+                # in subclasses
+                _SupervisedExperiment.predict_model(
+                    self,
+                    pipeline_with_model,
+                    data=pd.concat([data_X, data_y], axis=1),
+                    preprocess="features",
+                )
                 model_results = self.pull(pop=True).drop("Model", axis=1)
 
                 self.display_container.append(model_results)
@@ -1063,9 +1070,13 @@ class _SupervisedExperiment(_TabularExperiment):
                     pipeline_with_model.fit(data_X, data_y, **fit_kwargs)
                     model_fit_end = time.time()
                     if return_train_score:
-                        self.predict_model(
+                        # call class explicitly to get access to preprocess arg
+                        # in subclasses
+                        _SupervisedExperiment.predict_model(
+                            self,
                             pipeline_with_model,
                             data=pd.concat([data_X, data_y], axis=1),
+                            preprocess="features",
                         )
 
                 # calculating metrics on predictions of complete train dataset
@@ -4630,6 +4641,7 @@ class _SupervisedExperiment(_TabularExperiment):
         verbose: bool = True,
         ml_usecase: Optional[MLUsecase] = None,
         display: Optional[Display] = None,  # added in pycaret==2.2.0
+        preprocess: Union[bool, str] = True,
     ) -> pd.DataFrame:
 
         """
@@ -4673,6 +4685,10 @@ class _SupervisedExperiment(_TabularExperiment):
         verbose: bool, default = True
             Holdout score grid is not printed when verbose is set to False.
 
+        preprocess: bool or 'features', default = True
+            Whether to preprocess unseen data. If 'features', will not
+            preprocess labels.
+
         Returns
         -------
         Predictions
@@ -4691,11 +4707,12 @@ class _SupervisedExperiment(_TabularExperiment):
 
         """
 
-        def replace_labels_in_column(labels):
+        def replace_labels_in_column(labels: pd.Series) -> pd.Series:
             # Check if there is a LabelEncoder in the pipeline
+            name = labels.name
             le = get_label_encoder(self.pipeline)
             if le:
-                return le.inverse_transform(label["Label"])
+                return pd.Series(le.inverse_transform(labels), name=name)
             else:
                 return labels
 
@@ -4760,9 +4777,15 @@ class _SupervisedExperiment(_TabularExperiment):
             else:
                 target = None
             data = to_df(data[self.X.columns])  # Ignore all column but the originals
-            X_test_ = self.pipeline.transform(X=data, y=target)
-            if target is not None:
-                X_test_, y_test_ = X_test_
+            if preprocess:
+                X_test_ = self.pipeline.transform(
+                    X=data, y=(target if preprocess != "features" else None)
+                )
+                if isinstance(X_test_, tuple):
+                    X_test_, y_test_ = X_test_
+            else:
+                X_test_ = data
+                y_test_ = target
 
         # generate drift report
         if drift_report:
@@ -4839,18 +4862,26 @@ class _SupervisedExperiment(_TabularExperiment):
             except:
                 pass
 
-        if y_test_ is not None:
+        if data is None:
+            if not encoded_labels:
+                label["Label"] = replace_labels_in_column(label["Label"])
+                if y_test_ is not None:
+                    y_test_ = replace_labels_in_column(y_test_)
             label.index = self.test.index  # Adjust index to join successfully
-            if encoded_labels:
-                label["Label"] = replace_labels_in_column(label["Label"])
-                X_test_ = pd.concat([self.test, label], axis=1)
-            else:
-                X_test_ = pd.concat([self.X_test, y_test_, label], axis=1)
+            y_test_.index = self.test.index
+            X_test_ = pd.concat([self.X_test, y_test_, label], axis=1)
         else:
-            label.index = data.index
-            if encoded_labels:
+            if not encoded_labels:
                 label["Label"] = replace_labels_in_column(label["Label"])
-            X_test_ = pd.concat([data, label], axis=1)
+                if y_test_ is not None:
+                    y_test_ = replace_labels_in_column(y_test_)
+            label.index = data.index
+            y_test_.index = data.index
+            concat = [data]
+            if y_test_ is not None:
+                concat += [y_test_]
+            concat += [label]
+            X_test_ = pd.concat(concat, axis=1)
 
         if score is not None:
             pred = pred.astype(int)
@@ -4860,7 +4891,7 @@ class _SupervisedExperiment(_TabularExperiment):
                 score = pd.DataFrame(score)
                 if raw_score:
                     score_columns = pd.Series(range(score.shape[1]))
-                    if encoded_labels:
+                    if not encoded_labels:
                         score_columns = replace_labels_in_column(score_columns)
                     score.columns = [f"Score_{label}" for label in score_columns]
                 else:
