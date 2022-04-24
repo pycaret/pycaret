@@ -1911,7 +1911,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
                 display=display,
             )
 
-        self._highlight_and_round_model_results(model_results, return_train_score)
+        model_results = self._highlight_and_round_model_results(model_results, return_train_score)
         display.display(model_results, clear=True)
 
         self.logger.info(f"master_model_container: {len(self.master_model_container)}")

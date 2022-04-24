@@ -1091,9 +1091,6 @@ class _SupervisedExperiment(_TabularExperiment):
 
         model_results = model_results.round(round)
 
-        # yellow the mean
-        self._highlight_and_round_model_results(model_results, return_train_score)
-
         return model, model_fit_time, model_results, avgs_dict
 
     def _get_return_train_score_indices(self, return_train_score: bool) -> List[str]:
@@ -1571,6 +1568,8 @@ class _SupervisedExperiment(_TabularExperiment):
                 {"model": model, "scores": model_results, "cv": cv}
             )
 
+        # yellow the mean
+        model_results = self._highlight_and_round_model_results(model_results, return_train_score)
         display.display(
             model_results, clear=system, override=False if not system else None
         )
@@ -2597,7 +2596,7 @@ class _SupervisedExperiment(_TabularExperiment):
                 display=display,
             )
 
-        self._highlight_and_round_model_results(model_results, return_train_score)
+        model_results = self._highlight_and_round_model_results(model_results, return_train_score)
         display.display(model_results, clear=True)
 
         self.logger.info(f"master_model_container: {len(self.master_model_container)}")
@@ -2975,7 +2974,7 @@ class _SupervisedExperiment(_TabularExperiment):
                 display=display,
             )
 
-        self._highlight_and_round_model_results(model_results, return_train_score)
+        model_results = self._highlight_and_round_model_results(model_results, return_train_score)
         display.display(model_results, clear=True)
 
         self.logger.info(f"master_model_container: {len(self.master_model_container)}")
@@ -3365,7 +3364,7 @@ class _SupervisedExperiment(_TabularExperiment):
                 display=display,
             )
 
-        self._highlight_and_round_model_results(model_results, return_train_score)
+        model_results = self._highlight_and_round_model_results(model_results, return_train_score)
         display.display(model_results, clear=True)
 
         self.logger.info(f"master_model_container: {len(self.master_model_container)}")
@@ -3749,7 +3748,7 @@ class _SupervisedExperiment(_TabularExperiment):
                 display=display,
             )
 
-        self._highlight_and_round_model_results(model_results, return_train_score)
+        model_results = self._highlight_and_round_model_results(model_results, return_train_score)
         display.display(model_results, clear=True)
 
         self.logger.info(f"master_model_container: {len(self.master_model_container)}")
@@ -4604,7 +4603,7 @@ class _SupervisedExperiment(_TabularExperiment):
                 display=display,
             )
 
-        self._highlight_and_round_model_results(model_results, return_train_score)
+        model_results = self._highlight_and_round_model_results(model_results, return_train_score)
         display.display(model_results, clear=True)
 
         self.logger.info(f"master_model_container: {len(self.master_model_container)}")
