@@ -8,7 +8,6 @@ from typing import List, Any, Union, Optional, Dict
 from pycaret.clustering import ClusteringExperiment
 from pycaret.internal.utils import check_if_global_is_not_none
 
-from pycaret.internal.tabular import MLUsecase
 from pycaret.loggers.base_logger import BaseLogger
 
 warnings.filterwarnings("ignore")
