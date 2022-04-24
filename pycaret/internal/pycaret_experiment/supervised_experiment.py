@@ -4783,6 +4783,8 @@ class _SupervisedExperiment(_TabularExperiment):
                 )
                 if isinstance(X_test_, tuple):
                     X_test_, y_test_ = X_test_
+                elif target is not None:
+                    y_test_ = target
             else:
                 X_test_ = data
                 y_test_ = target
