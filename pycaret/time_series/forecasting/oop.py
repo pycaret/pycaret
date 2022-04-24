@@ -2058,11 +2058,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         model_results = model_results.append(model_avgs)
         # Round the results
-        model_results = model_results.round(round)
-
-        # yellow the mean (converts model_results from dataframe to dataframe styler)
-        model_results = color_df(model_results, "yellow", ["Mean"], axis=1)
-        model_results = model_results.set_precision(round)
+        model_results = model_results.round(round) 
 
         if refit:
             # refitting the model on complete X_train, y_train

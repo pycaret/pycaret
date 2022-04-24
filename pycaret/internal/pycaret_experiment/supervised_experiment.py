@@ -43,6 +43,7 @@ import os
 import datetime
 import time
 import gc
+import pandas.io.formats.style
 from collections import Iterable
 from copy import deepcopy
 from sklearn.base import clone  # type: ignore
@@ -1102,7 +1103,7 @@ class _SupervisedExperiment(_TabularExperiment):
 
     def _highlight_and_round_model_results(
         self, model_results: pd.DataFrame, return_train_score: bool
-    ) -> pd.DataFrame:
+    ) -> pandas.io.formats.style.Styler:
         # yellow the mean
         if return_train_score:
             indices = [("CV-Val", "Mean"), ("CV-Train", "Mean")]
