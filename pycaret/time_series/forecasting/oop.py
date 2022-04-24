@@ -1970,6 +1970,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         refit,
         system,
         display,
+        return_train_score: bool = False,  # unused, added for compat
     ):
         """
         MONITOR UPDATE STARTS
