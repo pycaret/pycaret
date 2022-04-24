@@ -910,14 +910,7 @@ class _SupervisedExperiment(_TabularExperiment):
             display.move_progress()
 
             if predict:
-                # call class explicitly to get access to preprocess arg
-                # in subclasses
-                _SupervisedExperiment.predict_model(
-                    self,
-                    pipeline_with_model,
-                    data=pd.concat([data_X, data_y], axis=1),
-                    preprocess="features",
-                )
+                self.predict_model(pipeline_with_model, verbose=False)
                 model_results = self.pull(pop=True).drop("Model", axis=1)
 
                 self.display_container.append(model_results)
