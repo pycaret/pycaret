@@ -4868,7 +4868,8 @@ class _SupervisedExperiment(_TabularExperiment):
                 if y_test_ is not None:
                     y_test_ = replace_labels_in_column(y_test_)
             label.index = self.test.index  # Adjust index to join successfully
-            y_test_.index = self.test.index
+            if y_test_ is not None:
+                y_test_.index = self.test.index
             X_test_ = pd.concat([self.X_test, y_test_, label], axis=1)
         else:
             if not encoded_labels:
@@ -4876,12 +4877,9 @@ class _SupervisedExperiment(_TabularExperiment):
                 if y_test_ is not None:
                     y_test_ = replace_labels_in_column(y_test_)
             label.index = data.index
-            y_test_.index = data.index
-            concat = [data]
             if y_test_ is not None:
-                concat += [y_test_]
-            concat += [label]
-            X_test_ = pd.concat(concat, axis=1)
+                y_test_.index = data.index
+            X_test_ = pd.concat([self.X_test, y_test_, label], axis=1)
 
         if score is not None:
             pred = pred.astype(int)
