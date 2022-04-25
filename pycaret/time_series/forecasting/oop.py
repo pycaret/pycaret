@@ -3854,8 +3854,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             display = self._predict_model_resolve_display(
                 verbose=verbose, y_pred=y_pred
             )
-            df_score = df_score.style.format(precision=round)
-            display.display(df_score, clear=False)
+            display.display(df_score.style.format(precision=round), clear=False)
             self.display_container.append(df_score)
 
         gc.collect()
