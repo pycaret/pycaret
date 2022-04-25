@@ -4,6 +4,7 @@ import gc
 import traceback
 import tempfile
 import pandas as pd
+import numpy as np
 from typing import List, Optional, Dict, Any, TYPE_CHECKING
 
 from .base_logger import BaseLogger
@@ -88,10 +89,20 @@ class DashboardLogger:
 
         console.info(f"Logged params: {params}")
         score_dict["TT"] = model_fit_time
+
+        # Log metrics
+        def try_make_float(val):
+            try:
+                return np.float64(val)
+            except Exception:
+                return np.nan
+
+        score_dict = {k: try_make_float(v) for k, v in score_dict.items()}
+
         for logger in self.loggers:
             logger.log_params(params, model_name=full_name)
             logger.log_metrics(score_dict, source)
-            logger.set_tags(source, experiment_custom_tags, runtime)
+            logger.set_tags(source, experiment_custom_tags, runtime, USI=experiment.USI)
 
         with tempfile.TemporaryDirectory() as tmpdir:
             # Log the CV results as model_results.html artifact
@@ -173,6 +184,7 @@ class DashboardLogger:
                 for logger in self.loggers
             ]
 
+        self.finish()
         gc.collect()
 
     def log_experiment(
@@ -253,6 +265,3 @@ class DashboardLogger:
     def finish(self):
         for logger in self.loggers:
             logger.finish_experiment()
-
-    def __del__(self):
-        self.finish()
