@@ -71,9 +71,7 @@ class Pipeline(imblearn.pipeline.Pipeline):
         super().__init__(steps, memory=memory, verbose=verbose)
         self._fit_vars = set()
 
-    def _iter(
-        self, with_final=True, filter_passthrough=True, filter_train_only=True
-    ):
+    def _iter(self, with_final=True, filter_passthrough=True, filter_train_only=True):
         """Generate (idx, name, trans) tuples from self.steps.
 
         When `filter_passthrough=True`, 'passthrough' and None
@@ -187,7 +185,9 @@ class Pipeline(imblearn.pipeline.Pipeline):
         return self.steps[-1][-1].score(X, y, sample_weight=sample_weight)
 
     def transform(self, X=None, y=None):
-        for _, _, transformer in self._iter():
+        for _, _, transformer in self._iter(
+            with_final=hasattr(self._final_estimator, "transform")
+        ):
             X, y = _transform_one(transformer, X, y)
 
         return variable_return(X, y)

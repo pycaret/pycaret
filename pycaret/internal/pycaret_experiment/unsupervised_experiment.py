@@ -24,7 +24,7 @@ from pycaret.internal.pipeline import (
     estimator_pipeline,
     get_pipeline_fit_kwargs,
 )
-from pycaret.internal.utils import to_df, infer_ml_usecase, mlflow_remove_bad_chars
+from pycaret.internal.utils import to_df, infer_ml_usecase
 import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
 from pycaret.internal.logging import get_logger
@@ -685,7 +685,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
                 display=display,
             )
 
-        results = results.set_precision(round)
+        results = results.format(precision=round)
         self.display_container.append(results)
 
         display.display(results, clear=True)

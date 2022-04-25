@@ -4,6 +4,7 @@ import secrets
 import pycaret
 from pycaret.loggers.base_logger import BaseLogger
 from pycaret.utils import __version__
+from pycaret.internal.utils import mlflow_remove_bad_chars
 
 try:
     import mlflow
@@ -38,6 +39,7 @@ class MlflowLogger(BaseLogger):
         return self.run
 
     def log_params(self, params, model_name=None):
+        params = {mlflow_remove_bad_chars(k): v for k, v in params.items()}
         mlflow.log_params(params)
 
     def log_metrics(self, metrics, source=None):

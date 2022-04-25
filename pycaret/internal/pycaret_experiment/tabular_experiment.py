@@ -36,7 +36,6 @@ from pycaret.internal.pycaret_experiment.utils import MLUsecase
 from pycaret.internal.utils import (
     check_features_exist,
     get_model_name,
-    mlflow_remove_bad_chars,
 )
 from pycaret.utils._dependencies import _check_soft_dependencies
 from pycaret.internal.logging import get_logger

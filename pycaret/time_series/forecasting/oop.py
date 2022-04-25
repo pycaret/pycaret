@@ -1911,7 +1911,16 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         return final_forecaster_only
 
     def _create_model_without_cv(
-        self, model, data_X, data_y, fit_kwargs, predict, system, display: Display
+        self,
+        model,
+        data_X,
+        data_y,
+        fit_kwargs,
+        round,
+        predict,
+        system,
+        display: Display,
+        return_train_score: bool = False,  # unused, added for compat
     ):
         # fit_kwargs = get_pipeline_fit_kwargs(model, fit_kwargs)
         self.logger.info("Cross validation set to False")
@@ -1941,6 +1950,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             # X is not passed here so predict_model picks X_test by default.
             self.predict_model(pipeline_with_model, verbose=False)
             model_results = self.pull(pop=True).drop("Model", axis=1)
+            model_results.index = ["Test"]
 
             self.display_container.append(model_results)
 
@@ -2058,7 +2068,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         model_results = model_results.append(model_avgs)
         # Round the results
-        model_results = model_results.round(round) 
+        model_results = model_results.round(round)
 
         if refit:
             # refitting the model on complete X_train, y_train
@@ -2637,8 +2647,9 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                 display=display,
             )
 
-        model_results = color_df(model_results, "yellow", ["Mean"], axis=1)
-        model_results = model_results.set_precision(round)
+        model_results = self._highlight_and_round_model_results(
+            model_results, False, round
+        )
         display.display(model_results, clear=True)
 
         self.logger.info(f"master_model_container: {len(self.master_model_container)}")
@@ -3843,7 +3854,8 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             display = self._predict_model_resolve_display(
                 verbose=verbose, y_pred=y_pred
             )
-            display.display(df_score.style.set_precision(round), clear=False)
+            df_score = df_score.style.format(precision=round)
+            display.display(df_score, clear=False)
             self.display_container.append(df_score)
 
         gc.collect()

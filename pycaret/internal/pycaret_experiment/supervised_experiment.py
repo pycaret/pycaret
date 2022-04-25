@@ -12,7 +12,6 @@ from pycaret.internal.pipeline import (
 )
 from pycaret.internal.utils import (
     color_df,
-    mlflow_remove_bad_chars,
     nullcontext,
     true_warm_start,
     can_early_stop,
@@ -735,7 +734,7 @@ class _SupervisedExperiment(_TabularExperiment):
 
             master_display_ = master_display.drop(
                 results_columns_to_ignore, axis=1, errors="ignore"
-            ).style.set_precision(round)
+            ).style.format(precision=round)
             master_display_ = master_display_.set_properties(**{"text-align": "left"})
             master_display_ = master_display_.set_table_styles(
                 [dict(selector="th", props=[("text-align", "left")])]
@@ -895,7 +894,16 @@ class _SupervisedExperiment(_TabularExperiment):
         return sorted_models
 
     def _create_model_without_cv(
-        self, model, data_X, data_y, fit_kwargs, predict, system, display
+        self,
+        model,
+        data_X,
+        data_y,
+        fit_kwargs,
+        round,
+        predict,
+        system,
+        display: Display,
+        return_train_score: bool = False,
     ):
         with estimator_pipeline(self.pipeline, model) as pipeline_with_model:
             fit_kwargs = get_pipeline_fit_kwargs(pipeline_with_model, fit_kwargs)
@@ -912,9 +920,28 @@ class _SupervisedExperiment(_TabularExperiment):
             display.move_progress()
 
             if predict:
+                if return_train_score:
+                    # call class explicitly to get access to preprocess arg
+                    # in subclasses
+                    _SupervisedExperiment.predict_model(
+                        self,
+                        pipeline_with_model,
+                        data=pd.concat([data_X, data_y], axis=1),
+                        preprocess="features",
+                        verbose=False,
+                    )
+                    train_results = self.pull(pop=True).drop("Model", axis=1)
+                    train_results.index = ["Train"]
+                else:
+                    train_results = None
+
                 self.predict_model(pipeline_with_model, verbose=False)
                 model_results = self.pull(pop=True).drop("Model", axis=1)
+                model_results.index = ["Test"]
+                if train_results is not None:
+                    model_results = pd.concat([model_results, train_results])
 
+                model_results = model_results.style.format(precision=round)
                 self.display_container.append(model_results)
 
                 display.display(
@@ -1064,18 +1091,18 @@ class _SupervisedExperiment(_TabularExperiment):
                 with io.capture_output():
                     pipeline_with_model.fit(data_X, data_y, **fit_kwargs)
                     model_fit_end = time.time()
-                    if return_train_score:
-                        # call class explicitly to get access to preprocess arg
-                        # in subclasses
-                        _SupervisedExperiment.predict_model(
-                            self,
-                            pipeline_with_model,
-                            data=pd.concat([data_X, data_y], axis=1),
-                            preprocess="features",
-                        )
 
                 # calculating metrics on predictions of complete train dataset
                 if return_train_score:
+                    # call class explicitly to get access to preprocess arg
+                    # in subclasses
+                    _SupervisedExperiment.predict_model(
+                        self,
+                        pipeline_with_model,
+                        data=pd.concat([data_X, data_y], axis=1),
+                        preprocess="features",
+                        verbose=False,
+                    )
                     metrics = self.pull(pop=True).drop("Model", axis=1)
                     df_score = pd.DataFrame({"Split": ["Train"], "Fold": [None]})
                     df_score = pd.concat([df_score, metrics], axis=1)
@@ -1102,7 +1129,7 @@ class _SupervisedExperiment(_TabularExperiment):
         return indices
 
     def _highlight_and_round_model_results(
-        self, model_results: pd.DataFrame, return_train_score: bool
+        self, model_results: pd.DataFrame, return_train_score: bool, round: int
     ) -> pandas.io.formats.style.Styler:
         # yellow the mean
         if return_train_score:
@@ -1110,7 +1137,7 @@ class _SupervisedExperiment(_TabularExperiment):
         else:
             indices = ["Mean"]
         model_results = color_df(model_results, "yellow", indices, axis=1)
-        model_results = model_results.set_precision(round)
+        model_results = model_results.format(precision=round)
         return model_results
 
     def create_model(
@@ -1493,14 +1520,22 @@ class _SupervisedExperiment(_TabularExperiment):
 
         if not cross_validation:
             model, model_fit_time = self._create_model_without_cv(
-                model, data_X, data_y, fit_kwargs, predict, system, display
+                model,
+                data_X,
+                data_y,
+                fit_kwargs,
+                round,
+                predict,
+                system,
+                display,
+                return_train_score=return_train_score,
             )
 
             display.move_progress()
 
             self.logger.info(str(model))
             self.logger.info(
-                "create_models() successfully completed......................................"
+                "create_model() successfully completed......................................"
             )
 
             gc.collect()
@@ -1570,7 +1605,9 @@ class _SupervisedExperiment(_TabularExperiment):
             )
 
         # yellow the mean
-        model_results = self._highlight_and_round_model_results(model_results, return_train_score)
+        model_results = self._highlight_and_round_model_results(
+            model_results, return_train_score, round
+        )
         display.display(
             model_results, clear=system, override=False if not system else None
         )
@@ -2597,7 +2634,9 @@ class _SupervisedExperiment(_TabularExperiment):
                 display=display,
             )
 
-        model_results = self._highlight_and_round_model_results(model_results, return_train_score)
+        model_results = self._highlight_and_round_model_results(
+            model_results, return_train_score, round
+        )
         display.display(model_results, clear=True)
 
         self.logger.info(f"master_model_container: {len(self.master_model_container)}")
@@ -2975,7 +3014,9 @@ class _SupervisedExperiment(_TabularExperiment):
                 display=display,
             )
 
-        model_results = self._highlight_and_round_model_results(model_results, return_train_score)
+        model_results = self._highlight_and_round_model_results(
+            model_results, return_train_score, round
+        )
         display.display(model_results, clear=True)
 
         self.logger.info(f"master_model_container: {len(self.master_model_container)}")
@@ -3365,7 +3406,9 @@ class _SupervisedExperiment(_TabularExperiment):
                 display=display,
             )
 
-        model_results = self._highlight_and_round_model_results(model_results, return_train_score)
+        model_results = self._highlight_and_round_model_results(
+            model_results, return_train_score, round
+        )
         display.display(model_results, clear=True)
 
         self.logger.info(f"master_model_container: {len(self.master_model_container)}")
@@ -3749,7 +3792,9 @@ class _SupervisedExperiment(_TabularExperiment):
                 display=display,
             )
 
-        model_results = self._highlight_and_round_model_results(model_results, return_train_score)
+        model_results = self._highlight_and_round_model_results(
+            model_results, return_train_score, round
+        )
         display.display(model_results, clear=True)
 
         self.logger.info(f"master_model_container: {len(self.master_model_container)}")
@@ -4560,14 +4605,22 @@ class _SupervisedExperiment(_TabularExperiment):
 
         np.random.seed(self.seed)
 
+        data_X = self.X
+
+        # Storing X_train and y_train in data_X and data_y parameter
+        if not self._ml_usecase == MLUsecase.TIME_SERIES:
+            data_y = self.y_transformed
+        else:
+            data_y = self.y
+
         self.logger.info(f"Finalizing {estimator}")
         display.clear_output()
         model_final, model_fit_time = self.create_model(
             estimator=estimator,
             verbose=False,
             system=False,
-            X_train_data=self.X,
-            y_train_data=self.y,
+            X_train_data=data_X,
+            y_train_data=data_y,
             fit_kwargs=fit_kwargs,
             groups=groups,
             add_to_model_list=False,
@@ -4604,7 +4657,9 @@ class _SupervisedExperiment(_TabularExperiment):
                 display=display,
             )
 
-        model_results = self._highlight_and_round_model_results(model_results, return_train_score)
+        model_results = self._highlight_and_round_model_results(
+            model_results, return_train_score, round
+        )
         display.display(model_results, clear=True)
 
         self.logger.info(f"master_model_container: {len(self.master_model_container)}")
@@ -4704,9 +4759,10 @@ class _SupervisedExperiment(_TabularExperiment):
         def replace_labels_in_column(pipeline, labels: pd.Series) -> pd.Series:
             # Check if there is a LabelEncoder in the pipeline
             name = labels.name
+            index = labels.index
             le = get_label_encoder(pipeline)
             if le:
-                return pd.Series(le.inverse_transform(labels), name=name)
+                return pd.Series(le.inverse_transform(labels), name=name, index=index)
             else:
                 return labels
 
@@ -4855,42 +4911,33 @@ class _SupervisedExperiment(_TabularExperiment):
             df_score = pd.DataFrame(metrics, index=[0])
             df_score.insert(0, "Model", full_name)
             df_score = df_score.round(round)
-            display.display(df_score.style.set_precision(round), clear=False)
+            display.display(df_score.style.format(precision=round), clear=False)
 
-        label = pd.DataFrame(pred, columns=["Label"])
+        label = pd.DataFrame(pred, columns=["Label"], index=X_test_.index)
         if ml_usecase == MLUsecase.CLASSIFICATION:
             try:
                 label["Label"] = label["Label"].astype(int)
             except:
                 pass
 
-        if data is None:
-            if not encoded_labels:
-                label["Label"] = replace_labels_in_column(pipeline, label["Label"])
-                if y_test_ is not None:
-                    y_test_ = replace_labels_in_column(pipeline, y_test_)
-            label.index = self.test.index  # Adjust index to join successfully
+        if not encoded_labels:
+            label["Label"] = replace_labels_in_column(pipeline, label["Label"])
             if y_test_ is not None:
-                y_test_.index = self.test.index
-            X_test_ = pd.concat([self.X_test, y_test_, label], axis=1)
-        else:
-            if not encoded_labels:
-                label["Label"] = replace_labels_in_column(pipeline, label["Label"])
-                if y_test_ is not None:
-                    y_test_ = replace_labels_in_column(pipeline, y_test_)
-            label.index = data.index
-            if y_test_ is not None:
-                y_test_.index = data.index
-            X_test_ = pd.concat([self.X_test, y_test_, label], axis=1)
+                y_test_ = replace_labels_in_column(pipeline, y_test_)
+        old_index = X_test_.index
+        X_test_ = pd.concat([X_test_, y_test_, label], axis=1)
+        X_test_.index = old_index
 
         if score is not None:
             pred = pred.astype(int)
             if not raw_score:
                 score = [s[pred[i]] for i, s in enumerate(score)]
             try:
-                score = pd.DataFrame(score)
+                score = pd.DataFrame(score, index=X_test_.index)
                 if raw_score:
-                    score_columns = pd.Series(range(score.shape[1]))
+                    score_columns = pd.Series(
+                        range(score.shape[1]), index=X_test_.index
+                    )
                     if not encoded_labels:
                         score_columns = replace_labels_in_column(
                             pipeline, score_columns
@@ -4899,8 +4946,9 @@ class _SupervisedExperiment(_TabularExperiment):
                 else:
                     score.columns = ["Score"]
                 score = score.round(round)
-                score.index = X_test_.index
+                old_index = X_test_.index
                 X_test_ = pd.concat((X_test_, score), axis=1)
+                X_test_.index = old_index
             except:
                 pass
 
