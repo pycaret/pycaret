@@ -1955,7 +1955,9 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             self.display_container.append(model_results)
 
             display.display(
-                model_results, clear=system, override=False if not system else None
+                model_results.style.format(precision=round),
+                clear=system,
+                override=False if not system else None,
             )
 
             self.logger.info(f"display_container: {len(self.display_container)}")

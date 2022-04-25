@@ -634,14 +634,6 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
             to_highlight = s == s.min()
             return ["background-color: yellow" if v else "" for v in to_highlight]
 
-        results = results.style.apply(
-            highlight_max,
-            subset=[x for x in results.columns if x not in greater_is_worse_columns],
-        ).apply(
-            highlight_min,
-            subset=[x for x in results.columns if x in greater_is_worse_columns],
-        )
-
         # end runtime
         runtime_end = time.time()
         runtime = np.array(runtime_end - runtime_start).round(2)
@@ -685,10 +677,16 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
                 display=display,
             )
 
-        results = results.format(precision=round)
         self.display_container.append(results)
 
-        display.display(results, clear=True)
+        results = results.style.apply(
+            highlight_max,
+            subset=[x for x in results.columns if x not in greater_is_worse_columns],
+        ).apply(
+            highlight_min,
+            subset=[x for x in results.columns if x in greater_is_worse_columns],
+        )
+        display.display(results.format(precision=round), clear=True)
 
         if self.html_param and verbose:
             self.logger.info("Rendering Visual")
@@ -1244,7 +1242,9 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
 
         if self._ml_usecase == MLUsecase.CLUSTERING:
             display.display(
-                model_results, clear=system, override=False if not system else None
+                model_results.style.format(precision=round),
+                clear=system,
+                override=False if not system else None,
             )
         elif system:
             display.clear_output()

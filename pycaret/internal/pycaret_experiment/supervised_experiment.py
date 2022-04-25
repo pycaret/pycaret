@@ -941,8 +941,9 @@ class _SupervisedExperiment(_TabularExperiment):
                 if train_results is not None:
                     model_results = pd.concat([model_results, train_results])
 
-                model_results = model_results.style.format(precision=round)
                 self.display_container.append(model_results)
+
+                model_results = model_results.style.format(precision=round)
 
                 display.display(
                     model_results,
