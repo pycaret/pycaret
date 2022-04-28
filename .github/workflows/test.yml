@@ -2,9 +2,15 @@ name: pytest on push
 
 on:
   push:
+    branches:
+      - master
   pull_request:
   schedule:
     - cron: "0 5 * * *"
+
+concurrency: 
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   # JOBS MUST START WITH test !!!!
@@ -98,8 +104,7 @@ jobs:
   #       python -m pip install --upgrade pip
   #       python -m pip install -U pytest
   #       python -m pip install codecov
-  #       if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-  #       if [ -f requirements-optional.txt ]; then pip install -r requirements-optional.txt; fi
+  #       pip install -e ".[full]"
   #       python -m pip install hpbandster ConfigSpace
   #       python -m spacy download en
   #   - name: Remove tests
@@ -124,8 +129,7 @@ jobs:
   #       python -m pip install --upgrade pip
   #       python -m pip install -U pytest
   #       python -m pip install codecov
-  #       pip install -r requirements.txt
-  #       pip install -r requirements-optional.txt
+  #       pip install -e ".[full]"
   #       python -m spacy download en
   #   - name: Remove tests
   #     run: |
@@ -149,8 +153,7 @@ jobs:
   #       python -m pip install --upgrade pip
   #       python -m pip install -U pytest
   #       python -m pip install codecov
-  #       pip install -r requirements.txt
-  #       pip install -r requirements-optional.txt
+  #       pip install -e ".[full]"
   #       python -m spacy download en
   #   - name: Remove tests
   #     run: |

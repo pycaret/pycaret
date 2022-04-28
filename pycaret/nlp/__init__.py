@@ -2,6 +2,10 @@ from typing import Optional, Dict, Any, Dict
 from pycaret import show_versions
 from pycaret.utils._dependencies import _check_soft_dependencies
 
+from pycaret.loggers import DashboardLogger
+from pycaret.loggers.base_logger import BaseLogger
+from pycaret.loggers.mlflow_logger import MlflowLogger
+from pycaret.loggers.wandb_logger import WandbLogger
 
 def setup(
     data,
@@ -56,11 +60,13 @@ def setup(
 
 
     log_experiment: bool, default = False
-        When set to True, all metrics and parameters are logged on the ``MLFlow`` server.
+        A (list of) PyCaret ``BaseLogger`` or str (one of 'mlflow', 'wandb')
+        corresponding to a logger to determine which experiment loggers to use.
+        Setting to True will use just MLFlow.
 
 
     experiment_name: str, default = None
-        Name of the experiment for logging. Ignored when ``log_experiment`` is not True.
+        Name of the experiment for logging. Ignored when ``log_experiment`` is False.
 
     experiment_custom_tags: dict, default = None
         Dictionary of tag_name: String -> value: (String, but will be string-ified
@@ -73,7 +79,7 @@ def setup(
 
     log_data: bool, default = False
         When set to True, dataset is logged on the ``MLflow`` server as a csv file.
-        Ignored when ``log_experiment`` is not True.
+        Ignored when ``log_experiment`` is False.
 
 
     verbose: bool, default = True
@@ -103,7 +109,7 @@ def setup(
     import logging
 
     # create logger
-    global logger
+    global logger, dashboard_logger
 
     logger = logging.getLogger("logs")
     logger.setLevel(logging.DEBUG)
@@ -257,8 +263,21 @@ def setup(
         sys.exit("(Type Error): html parameter only accepts True or False.")
 
     # log_experiment
-    if type(log_experiment) is not bool:
-        sys.exit("(Type Error): log_experiment parameter only accepts True or False.")
+    def validate_log_experiment(obj):
+        return isinstance(obj, (bool, BaseLogger)) or (
+            isinstance(obj, str) and obj.lower() in ["mlflow", "wandb"]
+        )
+
+    if not (
+        (
+            isinstance(log_experiment, list)
+            and all(validate_log_experiment(x) for x in log_experiment)
+        )
+        or validate_log_experiment(log_experiment)
+    ):
+        raise TypeError(
+            "log_experiment parameter must be a bool, BaseLogger, one of 'mlflow', 'wandb'; or a list of the former."
+        )
 
     # experiment custom tags
     if experiment_custom_tags is not None:
@@ -406,8 +425,29 @@ def setup(
     else:
         data_ = data.copy()
 
-    # create logging parameter
     logging_param = log_experiment
+
+    def convert_logging_param(obj):
+        if isinstance(obj, BaseLogger):
+            return obj
+        obj = obj.lower()
+        if obj == "mlflow":
+            return MlflowLogger()
+        if obj == "wandb":
+            return WandbLogger()
+
+    if logging_param:
+        loggers_list = []
+        if logging_param is True:
+            loggers_list = [MlflowLogger()]
+        else:
+            if not isinstance(logging_param, list):
+                logging_param = [logging_param]
+            loggers_list = [convert_logging_param(x) for x in logging_param]
+
+        if loggers_list:
+            dashboard_logger = DashboardLogger(loggers_list)
+
 
     # create exp_name_log param incase logging is False
     exp_name_log = "no_logging"
@@ -865,7 +905,7 @@ def setup(
 
     if logging_param:
 
-        logger.info("Creating MLFlow logs")
+        logger.info("Creating Dashboard logs")
 
         monitor.iloc[1, 1:] = "Creating Logs"
         monitor.iloc[2, 1:] = "Final"
@@ -885,17 +925,10 @@ def setup(
         URI = secrets.token_hex(nbytes=4)
         exp_name_log = exp_name_
 
-        try:
-            mlflow.create_experiment(exp_name_log)
-        except:
-            pass
-
-        # mlflow logging
-        mlflow.set_experiment(exp_name_log)
 
         run_name_ = "Session Initialized " + str(USI)
-        mlflow.end_run()
-        mlflow.start_run(run_name=run_name_)
+
+        dashboard_logger.init_loggers(exp_name_log, run_name_)
 
         # Get active run to log as tag
         RunID = mlflow.active_run().info.run_id
@@ -904,26 +937,14 @@ def setup(
         k.set_index("Description", drop=True, inplace=True)
         kdict = k.to_dict()
         params = kdict.get("Value")
-        mlflow.log_params(params)
+        [logger.log_params(params) for logger in dashboard_logger.loggers]
 
         # set tag of compare_models
-        mlflow.set_tag("Source", "setup")
-
-        # set custom tags if applicable
-        if isinstance(experiment_custom_tags, dict):
-            mlflow.set_tags(experiment_custom_tags)
-
-        import secrets
-
-        URI = secrets.token_hex(nbytes=4)
-        mlflow.set_tag("URI", URI)
-        mlflow.set_tag("USI", USI)
-        mlflow.set_tag("Run Time", runtime)
-        mlflow.set_tag("Run ID", RunID)
+        [logger.set_tags("setup",experiment_custom_tags, runtime) for logger in dashboard_logger.loggers]
 
         # Log gensim id2word
         id2word.save("id2word")
-        mlflow.log_artifact("id2word")
+        [logger.log_artifact("id2word", "id2word") for logger in dashboard_logger.loggers]
         import os
 
         os.remove("id2word")
@@ -931,7 +952,7 @@ def setup(
         # Log data
         if log_data:
             data_.to_csv("data.csv")
-            mlflow.log_artifact("data.csv")
+            [logger.log_artifact("data.csv", "data") for logger in dashboard_logger.loggers]
             os.remove("data.csv")
 
         # Log plots
@@ -942,19 +963,19 @@ def setup(
             )
 
             plot_model(plot="frequency", save=True, system=False)
-            mlflow.log_artifact("Word Frequency.html")
+            [logger.log_artifact("Word Frequency.html", "word_frequency") for logger in dashboard_logger.loggers]
             os.remove("Word Frequency.html")
 
             plot_model(plot="bigram", save=True, system=False)
-            mlflow.log_artifact("Bigram.html")
+            [logger.log_artifact("Bigram.html", "bigram") for logger in dashboard_logger.loggers]
             os.remove("Bigram.html")
 
             plot_model(plot="trigram", save=True, system=False)
-            mlflow.log_artifact("Trigram.html")
+            [logger.log_artifact("Trigram.html", "trigram") for logger in dashboard_logger.loggers]
             os.remove("Trigram.html")
 
             plot_model(plot="pos", save=True, system=False)
-            mlflow.log_artifact("POS.html")
+            [logger.log_artifact("POS.html", "POS") for logger in dashboard_logger.loggers]
             os.remove("POS.html")
 
             logger.info(
@@ -1349,7 +1370,7 @@ def create_model(
     # mlflow logging
     if logging_param and system:
 
-        logger.info("Creating MLFLow Logs")
+        logger.info("Creating Dashboard Logs")
 
         # Creating Logs message monitor
         monitor.iloc[1, 1:] = "Creating Logs"
@@ -1357,113 +1378,90 @@ def create_model(
             if html_param:
                 update_display(monitor, display_id="monitor")
 
-        # import mlflow
-        import mlflow
         from pathlib import Path
         import os
+        dashboard_logger.init_loggers(exp_name_log)
 
-        mlflow.set_experiment(exp_name_log)
+        # Log model parameters
+        from copy import deepcopy
 
-        with mlflow.start_run(run_name=topic_model_name, nested=True) as run:
+        model_copied = deepcopy(model)
 
-            # Get active run to log as tag
-            RunID = mlflow.active_run().info.run_id
+        try:
+            params = model_copied.get_params()
+        except:
+            import inspect
 
-            # Log model parameters
-            from copy import deepcopy
+            params = inspect.getmembers(model_copied)[2][1]
 
-            model_copied = deepcopy(model)
+        for i in list(params):
+            v = params.get(i)
+            if len(str(v)) > 250:
+                params.pop(i)
 
-            try:
-                params = model_copied.get_params()
-            except:
-                import inspect
+        [logger.log_params(params) for logger in dashboard_logger.loggers]
+        [logger.set_tags("create_model", experiment_custom_tags, runtime) for logger in dashboard_logger.loggers]
 
-                params = inspect.getmembers(model_copied)[2][1]
+        # Log model and related artifacts
+        if model_name_short == "nmf":
+            logger.info(
+                "SubProcess save_model() called =================================="
+            )
+            save_model(model, "model", verbose=False)
+            logger.info(
+                "SubProcess save_model() end =================================="
+            )
+            [logger.log_artifact("model.pkl", "model") for logger in dashboard_logger.loggers]
+            size_bytes = Path("model.pkl").stat().st_size
+            os.remove("model.pkl")
 
-            for i in list(params):
-                v = params.get(i)
-                if len(str(v)) > 250:
-                    params.pop(i)
+        elif model_name_short == "lda":
+            model.save("model")
+            [logger.log_artifact("model", "model") for logger in dashboard_logger.loggers]
+            [logger.log_artifact("model.expElogbeta.npy", "model") for logger in dashboard_logger.loggers]
+            [logger.log_artifact("model.id2word", "model") for logger in dashboard_logger.loggers]
+            [logger.log_artifact("model.state", "model") for logger in dashboard_logger.loggers]
+            size_bytes = (
+                Path("model").stat().st_size
+                + Path("model.id2word").stat().st_size
+                + Path("model.state").stat().st_size
+            )
+            os.remove("model")
+            os.remove("model.expElogbeta.npy")
+            os.remove("model.id2word")
+            os.remove("model.state")
 
-            mlflow.log_params(params)
+        elif model_name_short == "lsi":
+            model.save("model")
+            [logger.log_artifact("model", "model") for logger in dashboard_logger.loggers]
+            [logger.log_artifact("model.projection", "projection") for logger in dashboard_logger.loggers]
+            size_bytes = (
+                Path("model").stat().st_size
+                + Path("model.projection").stat().st_size
+            )
+            os.remove("model")
+            os.remove("model.projection")
 
-            # set tag of compare_models
-            mlflow.set_tag("Source", "create_model")
+        elif model_name_short == "rp":
+            model.save("model")
+            [logger.log_artifact("model", "model") for logger in dashboard_logger.loggers]
+            size_bytes = Path("model").stat().st_size
+            os.remove("model")
 
-            # set custom tags if applicable
-            if isinstance(experiment_custom_tags, dict):
-                mlflow.set_tags(experiment_custom_tags)
+        elif model_name_short == "hdp":
+            model.save("model")
+            [logger.log_artifact("model", "model") for logger in dashboard_logger.loggers]
+            size_bytes = Path("model").stat().st_size
+            os.remove("model")
 
-            import secrets
-
-            URI = secrets.token_hex(nbytes=4)
-            mlflow.set_tag("URI", URI)
-            mlflow.set_tag("USI", USI)
-            mlflow.set_tag("Run Time", runtime)
-            mlflow.set_tag("Run ID", RunID)
-
-            # Log model and related artifacts
-            if model_name_short == "nmf":
-                logger.info(
-                    "SubProcess save_model() called =================================="
-                )
-                save_model(model, "model", verbose=False)
-                logger.info(
-                    "SubProcess save_model() end =================================="
-                )
-                mlflow.log_artifact("model.pkl")
-                size_bytes = Path("model.pkl").stat().st_size
-                os.remove("model.pkl")
-
-            elif model_name_short == "lda":
-                model.save("model")
-                mlflow.log_artifact("model")
-                mlflow.log_artifact("model.expElogbeta.npy")
-                mlflow.log_artifact("model.id2word")
-                mlflow.log_artifact("model.state")
-                size_bytes = (
-                    Path("model").stat().st_size
-                    + Path("model.id2word").stat().st_size
-                    + Path("model.state").stat().st_size
-                )
-                os.remove("model")
-                os.remove("model.expElogbeta.npy")
-                os.remove("model.id2word")
-                os.remove("model.state")
-
-            elif model_name_short == "lsi":
-                model.save("model")
-                mlflow.log_artifact("model")
-                mlflow.log_artifact("model.projection")
-                size_bytes = (
-                    Path("model").stat().st_size
-                    + Path("model.projection").stat().st_size
-                )
-                os.remove("model")
-                os.remove("model.projection")
-
-            elif model_name_short == "rp":
-                model.save("model")
-                mlflow.log_artifact("model")
-                size_bytes = Path("model").stat().st_size
-                os.remove("model")
-
-            elif model_name_short == "hdp":
-                model.save("model")
-                mlflow.log_artifact("model")
-                size_bytes = Path("model").stat().st_size
-                os.remove("model")
-
-            size_kb = np.round(size_bytes / 1000, 2)
-            mlflow.set_tag("Size KB", size_kb)
-
-            # Log training time in seconds
-            mlflow.log_metric("TT", model_fit_time)
-            try:
-                mlflow.log_metrics(model_results.to_dict().get("Metric"))
-            except:
-                pass
+        size_kb = np.round(size_bytes / 1000, 2)
+        try:
+            metrics = model_results.to_dict().get("Metric")
+            metrics["TT"] = model_fit_time
+            [logger.log_metrics(metrics) for logger in dashboard_logger.loggers]
+        except:
+            pass
+  
 
     # storing into experiment
     if verbose:

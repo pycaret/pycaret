@@ -84,6 +84,8 @@ from pycaret.internal.plots.utils.time_series import (
     _reformat_dataframes_for_plots,
     _clean_model_results_labels,
 )
+from pycaret.loggers.base_logger import BaseLogger
+
 
 warnings.filterwarnings("ignore")
 LOGGER = get_logger()
@@ -1230,7 +1232,9 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         html: bool = True,
         session_id: Optional[int] = None,
         system_log: Union[bool, logging.Logger] = True,
-        log_experiment: bool = False,
+        log_experiment: Union[
+            bool, str, BaseLogger, List[Union[str, BaseLogger]]
+        ] = False,
         experiment_name: Optional[str] = None,
         experiment_custom_tags: Optional[Dict[str, Any]] = None,
         log_plots: Union[bool, list] = False,
@@ -1580,7 +1584,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         runtime = np.array(time.time() - runtime_start).round(2)
 
-        self._set_up_mlflow(
+        self._set_up_logging(
             runtime,
             log_data,
             log_profile,
@@ -1907,7 +1911,16 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         return final_forecaster_only
 
     def _create_model_without_cv(
-        self, model, data_X, data_y, fit_kwargs, predict, system, display: Display
+        self,
+        model,
+        data_X,
+        data_y,
+        fit_kwargs,
+        round,
+        predict,
+        system,
+        display: Display,
+        return_train_score: bool = False,  # unused, added for compat
     ):
         # fit_kwargs = get_pipeline_fit_kwargs(model, fit_kwargs)
         self.logger.info("Cross validation set to False")
@@ -1937,11 +1950,14 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             # X is not passed here so predict_model picks X_test by default.
             self.predict_model(pipeline_with_model, verbose=False)
             model_results = self.pull(pop=True).drop("Model", axis=1)
+            model_results.index = ["Test"]
 
             self.display_container.append(model_results)
 
             display.display(
-                model_results, clear=system, override=False if not system else None
+                model_results.style.format(precision=round),
+                clear=system,
+                override=False if not system else None,
             )
 
             self.logger.info(f"display_container: {len(self.display_container)}")
@@ -1966,6 +1982,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         refit,
         system,
         display,
+        return_train_score: bool = False,  # unused, added for compat
     ):
         """
         MONITOR UPDATE STARTS
@@ -2054,10 +2071,6 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         model_results = model_results.append(model_avgs)
         # Round the results
         model_results = model_results.round(round)
-
-        # yellow the mean (converts model_results from dataframe to dataframe styler)
-        model_results = color_df(model_results, "yellow", ["Mean"], axis=1)
-        model_results = model_results.set_precision(round)
 
         if refit:
             # refitting the model on complete X_train, y_train
@@ -2623,27 +2636,22 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
             avgs_dict_log = {k: v for k, v in model_results.loc["Mean"].items()}
 
-            try:
-                self._mlflow_log_model(
-                    model=best_model,
-                    model_results=model_results,
-                    score_dict=avgs_dict_log,
-                    source="tune_model",
-                    runtime=runtime,
-                    model_fit_time=model_fit_time,
-                    pipeline=self.pipeline,
-                    log_plots=self.log_plots_param,
-                    tune_cv_results=cv_results,
-                    display=display,
-                )
-            except:
-                self.logger.error(
-                    f"_mlflow_log_model() for {best_model} raised an exception:"
-                )
-                self.logger.error(traceback.format_exc())
+            self._log_model(
+                model=best_model,
+                model_results=model_results,
+                score_dict=avgs_dict_log,
+                source="tune_model",
+                runtime=runtime,
+                model_fit_time=model_fit_time,
+                pipeline=self.pipeline,
+                log_plots=self.log_plots_param,
+                tune_cv_results=cv_results,
+                display=display,
+            )
 
-        model_results = color_df(model_results, "yellow", ["Mean"], axis=1)
-        model_results = model_results.set_precision(round)
+        model_results = self._highlight_and_round_model_results(
+            model_results, False, round
+        )
         display.display(model_results, clear=True)
 
         self.logger.info(f"master_model_container: {len(self.master_model_container)}")
@@ -3848,7 +3856,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             display = self._predict_model_resolve_display(
                 verbose=verbose, y_pred=y_pred
             )
-            display.display(df_score.style.set_precision(round), clear=False)
+            display.display(df_score.style.format(precision=round), clear=False)
             self.display_container.append(df_score)
 
         gc.collect()

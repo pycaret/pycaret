@@ -33,7 +33,7 @@ def test():
     )
     model = pycaret.classification.create_model("lightgbm")
     final_model = pycaret.classification.finalize_model(model)
-    result = pycaret.classification.predict_model(final_model, data=test.drop("Purchase", axis=1))
+    result = pycaret.classification.predict_model(final_model, data=test.drop("Purchase", axis=1), encoded_labels=True)
     actual = clf1.pipeline.transform(y=test["Purchase"])
     prediction = result["Label"]
 

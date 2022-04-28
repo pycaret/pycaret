@@ -22,7 +22,7 @@ from pycaret.internal.meta_estimators import (
     CustomProbabilityThresholdClassifier,
     get_estimator_from_meta_estimator,
 )
-from pycaret.internal.utils import color_df, get_label_encoder
+from pycaret.internal.utils import get_label_encoder
 import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
 from pycaret.internal.logging import get_logger
@@ -32,6 +32,7 @@ import pycaret.containers.models.classification
 import pycaret.internal.preprocess
 import pycaret.internal.persistence
 from pycaret.internal.Display import Display
+from pycaret.loggers.base_logger import BaseLogger
 
 
 warnings.filterwarnings("ignore")
@@ -39,6 +40,8 @@ LOGGER = get_logger()
 
 
 class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
+    _create_app_predict_kwargs = {"raw_score": True}
+
     def __init__(self) -> None:
         super().__init__()
         self._ml_usecase = MLUsecase.CLASSIFICATION
@@ -155,7 +158,9 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         html: bool = True,
         session_id: Optional[int] = None,
         system_log: Union[bool, logging.Logger] = True,
-        log_experiment: bool = False,
+        log_experiment: Union[
+            bool, str, BaseLogger, List[Union[str, BaseLogger]]
+        ] = False,
         experiment_name: Optional[str] = None,
         experiment_custom_tags: Optional[Dict[str, Any]] = None,
         log_plots: Union[bool, list] = False,
@@ -443,7 +448,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         self._all_metrics = self._get_metrics()
 
         runtime = np.array(time.time() - runtime_start).round(2)
-        self._set_up_mlflow(
+        self._set_up_logging(
             runtime,
             log_data,
             log_profile,
@@ -606,6 +611,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         experiment_custom_tags: Optional[Dict[str, Any]] = None,
         probability_threshold: Optional[float] = None,
         verbose: bool = True,
+        return_train_score: bool = False,
         **kwargs,
     ) -> Any:
 
@@ -692,6 +698,13 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             Additional keyword arguments to pass to the estimator.
 
 
+        return_train_score: bool, default = False
+            If False, returns the CV Validation scores only.
+            If True, returns the CV training scores along with the CV validation scores.
+            This is useful when the user wants to do bias-variance tradeoff. A high CV
+            training score with a low corresponding CV validation score indicates overfitting.
+
+
         Returns:
             Trained Model
 
@@ -715,6 +728,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             verbose=verbose,
             experiment_custom_tags=experiment_custom_tags,
             probability_threshold=probability_threshold,
+            return_train_score=return_train_score,
             **kwargs,
         )
 
@@ -737,6 +751,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         return_tuner: bool = False,
         verbose: bool = True,
         tuner_verbose: Union[int, bool] = True,
+        return_train_score: bool = False,
         **kwargs,
     ) -> Any:
 
@@ -883,6 +898,13 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             print more messages. Ignored when ``verbose`` parameter is False.
 
 
+        return_train_score: bool, default = False
+            If False, returns the CV Validation scores only.
+            If True, returns the CV training scores along with the CV validation scores.
+            This is useful when the user wants to do bias-variance tradeoff. A high CV
+            training score with a low corresponding CV validation score indicates overfitting.
+
+
         **kwargs:
             Additional keyword arguments to pass to the optimizer.
 
@@ -919,6 +941,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             return_tuner=return_tuner,
             verbose=verbose,
             tuner_verbose=tuner_verbose,
+            return_train_score=return_train_score,
             **kwargs,
         )
 
@@ -935,6 +958,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         groups: Optional[Union[str, Any]] = None,
         probability_threshold: Optional[float] = None,
         verbose: bool = True,
+        return_train_score: bool = False,
     ) -> Any:
 
         """
@@ -1008,6 +1032,13 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             Score grid is not printed when verbose is set to False.
 
 
+        return_train_score: bool, default = False
+            If False, returns the CV Validation scores only.
+            If True, returns the CV training scores along with the CV validation scores.
+            This is useful when the user wants to do bias-variance tradeoff. A high CV
+            training score with a low corresponding CV validation score indicates overfitting.
+
+
         Returns:
             Trained Model
 
@@ -1031,6 +1062,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             groups=groups,
             probability_threshold=probability_threshold,
             verbose=verbose,
+            return_train_score=return_train_score,
         )
 
     def blend_models(
@@ -1046,6 +1078,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         groups: Optional[Union[str, Any]] = None,
         probability_threshold: Optional[float] = None,
         verbose: bool = True,
+        return_train_score: bool = False,
     ) -> Any:
 
         """
@@ -1125,6 +1158,13 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             Score grid is not printed when verbose is set to False.
 
 
+        return_train_score: bool, default = False
+            If False, returns the CV Validation scores only.
+            If True, returns the CV training scores along with the CV validation scores.
+            This is useful when the user wants to do bias-variance tradeoff. A high CV
+            training score with a low corresponding CV validation score indicates overfitting.
+
+
         Returns:
             Trained Model
 
@@ -1142,6 +1182,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             groups=groups,
             verbose=verbose,
             probability_threshold=probability_threshold,
+            return_train_score=return_train_score,
         )
 
     def stack_models(
@@ -1159,6 +1200,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         groups: Optional[Union[str, Any]] = None,
         probability_threshold: Optional[float] = None,
         verbose: bool = True,
+        return_train_score: bool = False,
     ) -> Any:
 
         """
@@ -1247,6 +1289,13 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             Score grid is not printed when verbose is set to False.
 
 
+        return_train_score: bool, default = False
+            If False, returns the CV Validation scores only.
+            If True, returns the CV training scores along with the CV validation scores.
+            This is useful when the user wants to do bias-variance tradeoff. A high CV
+            training score with a low corresponding CV validation score indicates overfitting.
+
+
         Returns:
             Trained Model
 
@@ -1273,6 +1322,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             groups=groups,
             verbose=verbose,
             probability_threshold=probability_threshold,
+            return_train_score=return_train_score,
         )
 
     def plot_model(
@@ -1598,6 +1648,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         fit_kwargs: Optional[dict] = None,
         groups: Optional[Union[str, Any]] = None,
         verbose: bool = True,
+        return_train_score: bool = False,
         display: Optional[Display] = None,  # added in pycaret==2.2.0
     ) -> Any:
 
@@ -1657,6 +1708,12 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         verbose: bool, default = True
             Score grid is not printed when verbose is set to False.
 
+        return_train_score: bool, default = False
+            If False, returns the CV Validation scores only.
+            If True, returns the CV training scores along with the CV validation scores.
+            This is useful when the user wants to do bias-variance tradeoff. A high CV
+            training score with a low corresponding CV validation score indicates overfitting.
+
         Returns
         -------
         score_grid
@@ -1709,6 +1766,12 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
                 "Verbose parameter can only take argument as True or False."
             )
 
+        # checking return_train_score parameter
+        if type(return_train_score) is not bool:
+            raise TypeError(
+                "return_train_score can only take argument as True or False"
+            )
+
         """
 
         ERROR HANDLING ENDS HERE
@@ -1727,9 +1790,9 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
 
         if not display:
             progress_args = {"max": 2 + 4}
-            master_display_columns = [
-                v.display_name for k, v in self._all_metrics.items()
-            ]
+            master_display_columns = self._get_return_train_score_indices(
+                return_train_score
+            ) + [v.display_name for k, v in self._all_metrics.items()]
             timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
             monitor_rows = [
                 ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
@@ -1809,6 +1872,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             fit_kwargs=fit_kwargs,
             groups=groups,
             probability_threshold=probability_threshold,
+            return_train_score=return_train_score,
         )
         model_results = self.pull()
         self.logger.info(
@@ -1826,28 +1890,30 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         # mlflow logging
         if self.logging_param:
 
-            avgs_dict_log = {k: v for k, v in model_results.loc["Mean"].items()}
+            if return_train_score:
+                indices = ("CV-Val", "Mean")
+            else:
+                indices = "Mean"
+            avgs_dict_log = {k: v for k, v in model_results.loc[indices].items()}
+            self.logging_param.log_model_comparison(
+                model_results, f"calibrate_models_{self._get_model_name(model)}"
+            )
 
-            try:
-                self._mlflow_log_model(
-                    model=model,
-                    model_results=model_results,
-                    score_dict=avgs_dict_log,
-                    source="calibrate_models",
-                    runtime=runtime,
-                    model_fit_time=model_fit_time,
-                    pipeline=self.pipeline,
-                    log_plots=self.log_plots_param,
-                    display=display,
-                )
-            except:
-                self.logger.error(
-                    f"_mlflow_log_model() for {model} raised an exception:"
-                )
-                self.logger.error(traceback.format_exc())
+            self._log_model(
+                model=model,
+                model_results=model_results,
+                score_dict=avgs_dict_log,
+                source="calibrate_models",
+                runtime=runtime,
+                model_fit_time=model_fit_time,
+                pipeline=self.pipeline,
+                log_plots=self.log_plots_param,
+                display=display,
+            )
 
-        model_results = color_df(model_results, "yellow", ["Mean"], axis=1)
-        model_results = model_results.set_precision(round)
+        model_results = self._highlight_and_round_model_results(
+            model_results, return_train_score, round
+        )
         display.display(model_results, clear=True)
 
         self.logger.info(f"master_model_container: {len(self.master_model_container)}")
@@ -1989,7 +2055,13 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
                 models_by_threshold.append(model[0])
             except:
                 models_by_threshold.append(model)
-            model_results = self.pull(pop=True).loc[["Mean"]]
+            model_results = (
+                self.pull(pop=True)
+                .reset_index()
+                .drop(columns=["Split"], errors="ignore")
+                .set_index(["Fold"])
+                .loc[["Mean"]]
+            )
             model_results["probability_threshold"] = i
             results_df.append(model_results)
 
@@ -2129,6 +2201,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         groups: Optional[Union[str, Any]] = None,
         model_only: bool = True,
         experiment_custom_tags: Optional[Dict[str, Any]] = None,
+        return_train_score: bool = False,
     ) -> Any:
 
         """
@@ -2166,6 +2239,13 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             transformations in Pipeline are ignored.
 
 
+        return_train_score: bool, default = False
+            If False, returns the CV Validation scores only.
+            If True, returns the CV training scores along with the CV validation scores.
+            This is useful when the user wants to do bias-variance tradeoff. A high CV
+            training score with a low corresponding CV validation score indicates overfitting.
+
+
         Returns:
             Trained Model
 
@@ -2177,6 +2257,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             groups=groups,
             model_only=model_only,
             experiment_custom_tags=experiment_custom_tags,
+            return_train_score=return_train_score,
         )
 
     def deploy_model(
@@ -2382,7 +2463,11 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         )
 
     def automl(
-        self, optimize: str = "Accuracy", use_holdout: bool = False, turbo: bool = True
+        self,
+        optimize: str = "Accuracy",
+        use_holdout: bool = False,
+        turbo: bool = True,
+        return_train_score: bool = False,
     ) -> Any:
 
         """
@@ -2420,11 +2505,22 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             compared.
 
 
+        return_train_score: bool, default = False
+            If False, returns the CV Validation scores only.
+            If True, returns the CV training scores along with the CV validation scores.
+            This is useful when the user wants to do bias-variance tradeoff. A high CV
+            training score with a low corresponding CV validation score indicates overfitting.
+
+
         Returns:
             Trained Model
-
         """
-        return super().automl(optimize=optimize, use_holdout=use_holdout, turbo=turbo)
+        return super().automl(
+            optimize=optimize,
+            use_holdout=use_holdout,
+            turbo=turbo,
+            return_train_score=return_train_score,
+        )
 
     def pull(self, pop: bool = False) -> pd.DataFrame:
 
@@ -2659,3 +2755,86 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         """
 
         return super().get_logs(experiment_name=experiment_name, save=save)
+
+    def dashboard(
+        self,
+        estimator,
+        display_format: str = "dash",
+        dashboard_kwargs: Optional[Dict[str, Any]] = None,
+        run_kwargs: Optional[Dict[str, Any]] = None,
+        **kwargs,
+    ):
+        """
+        This function generates the interactive dashboard for a trained model. The
+        dashboard is implemented using ExplainerDashboard (explainerdashboard.readthedocs.io)
+
+
+        Example
+        -------
+        >>> from pycaret.datasets import get_data
+        >>> juice = get_data('juice')
+        >>> from pycaret.classification import *
+        >>> exp_name = setup(data = juice,  target = 'Purchase')
+        >>> lr = create_model('lr')
+        >>> dashboard(lr)
+
+
+        estimator: scikit-learn compatible object
+            Trained model object
+
+
+        display_format: str, default = 'dash'
+            Render mode for the dashboard. The default is set to ``dash`` which will
+            render a dashboard in browser. There are four possible options:
+
+            - 'dash' - displays the dashboard in browser
+            - 'inline' - displays the dashboard in the jupyter notebook cell.
+            - 'jupyterlab' - displays the dashboard in jupyterlab pane.
+            - 'external' - displays the dashboard in a separate tab. (use in Colab)
+
+
+        dashboard_kwargs: dict, default = {} (empty dict)
+            Dictionary of arguments passed to the ``ExplainerDashboard`` class.
+
+
+        run_kwargs: dict, default = {} (empty dict)
+            Dictionary of arguments passed to the ``run`` method of ``ExplainerDashboard``.
+
+
+        **kwargs:
+            Additional keyword arguments to pass to the ``ClassifierExplainer`` or
+            ``RegressionExplainer`` class.
+
+
+        Returns:
+            ExplainerDashboard
+        """
+
+        # soft dependencies check
+        super().dashboard(
+            estimator, display_format, dashboard_kwargs, run_kwargs, **kwargs
+        )
+
+        dashboard_kwargs = dashboard_kwargs or {}
+        run_kwargs = run_kwargs or {}
+
+        from explainerdashboard import ExplainerDashboard, ClassifierExplainer
+
+        le = get_label_encoder(self.pipeline)
+        if le:
+            labels_ = le.classes_
+        else:
+            labels_ = None
+
+        # Replaceing chars which dash doesnt accept for column name `.` , `{`, `}`
+        X_test_df = self.X_test_transformed.copy()
+        X_test_df.columns = [
+            col.replace(".", "__").replace("{", "__").replace("}", "__")
+            for col in X_test_df.columns
+        ]
+        explainer = ClassifierExplainer(
+            estimator, X_test_df, self.y_test_transformed, labels=labels_, **kwargs
+        )
+        return ExplainerDashboard(
+            explainer, mode=display_format, **dashboard_kwargs
+        ).run(**run_kwargs)

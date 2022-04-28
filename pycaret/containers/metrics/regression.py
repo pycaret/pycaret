@@ -38,7 +38,7 @@ class RegressionMetricContainer(MetricContainer):
         score_func and args.
     target : str, default = 'pred'
         The target of the score function. Only 'pred' is supported for regression.
-    args : dict, default = {}
+    args : dict, default = {} (empty dict)
         The arguments to always pass to constructor when initializing score_func of class_def class.
     display_name : str, default = None
         Display name (shorter than name). Used in display dataframe header. If None or empty, will use name.

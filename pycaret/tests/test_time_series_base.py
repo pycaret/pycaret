@@ -134,7 +134,7 @@ def test_predict_model_metrics_displayed(load_pos_and_neg_data):
 
     #### No metrics returned ----
     # All values are 0
-    expected.loc[0, 1:] = 0
+    expected.iloc[0, 1:] = 0
     cols = expected.select_dtypes(include=["float"])
     for col in cols:
         expected[col] = expected[col].astype(np.int64)

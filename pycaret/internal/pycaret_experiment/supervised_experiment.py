@@ -12,7 +12,6 @@ from pycaret.internal.pipeline import (
 )
 from pycaret.internal.utils import (
     color_df,
-    mlflow_remove_bad_chars,
     nullcontext,
     true_warm_start,
     can_early_stop,
@@ -43,10 +42,12 @@ import os
 import datetime
 import time
 import gc
+import pandas.io.formats.style
 from collections import Iterable
 from copy import deepcopy
 from sklearn.base import clone  # type: ignore
 from sklearn.compose import TransformedTargetRegressor  # type: ignore
+from sklearn.pipeline import Pipeline
 from typing import List, Any, Union, Optional, Dict
 import warnings
 from IPython.utils import io
@@ -63,6 +64,8 @@ LOGGER = get_logger()
 
 
 class _SupervisedExperiment(_TabularExperiment):
+    _create_app_predict_kwargs = {}
+
     def __init__(self) -> None:
         super().__init__()
         self.transform_target_param = False  # Default False for both class/reg
@@ -212,9 +215,16 @@ class _SupervisedExperiment(_TabularExperiment):
             fold, default=self.fold_generator, X=X, y=y, groups=groups
         )
 
-    def _set_up_mlflow(
+    def _set_up_logging(
         self, runtime, log_data, log_profile, experiment_custom_tags=None
     ):
+        # experiment custom tags
+        if experiment_custom_tags is not None:
+            if not isinstance(experiment_custom_tags, dict):
+                raise TypeError(
+                    "experiment_custom_tags parameter must be dict if not None"
+                )
+
         # log into experiment
         self.experiment__.append(("Setup Config", self.display_container[0]))
         self.experiment__.append(("X_training Set", self.X_train))
@@ -224,76 +234,13 @@ class _SupervisedExperiment(_TabularExperiment):
         self.experiment__.append(("Transformation Pipeline", self.pipeline))
 
         if self.logging_param:
-            _check_soft_dependencies("mlflow", extra="mlops", severity="error")
-
-            self.logger.info("Logging experiment in MLFlow")
-            import mlflow
-
-            try:
-                self.exp_id = mlflow.create_experiment(self.exp_name_log)
-            except Exception:
-                self.exp_id = None
-                self.logger.warning("Couldn't create mlflow experiment. Exception:")
-                self.logger.warning(traceback.format_exc())
-
-            # mlflow logging
-            mlflow.set_experiment(self.exp_name_log)
-
-            run_name_ = f"Session Initialized {self.USI}"
-
-            mlflow.end_run()
-            mlflow.start_run(run_name=run_name_)
-
-            # Get active run to log as tag
-            RunID = mlflow.active_run().info.run_id
-
-            k = self.display_container[0].copy()
-            k.set_index("Description", drop=True, inplace=True)
-            kdict = k.to_dict()
-            params = kdict.get("Value")
-            params = {mlflow_remove_bad_chars(k): v for k, v in params.items()}
-            mlflow.log_params(params)
-
-            # set tag of compare_models
-            mlflow.set_tag("Source", "setup")
-
-            # set custom tags if applicable
-            if experiment_custom_tags:
-                mlflow.set_tags(experiment_custom_tags)
-
-            import secrets
-
-            URI = secrets.token_hex(nbytes=4)
-            mlflow.set_tag("URI", URI)
-            mlflow.set_tag("USI", self.USI)
-            mlflow.set_tag("Run Time", runtime)
-            mlflow.set_tag("Run ID", RunID)
-
-            # Log the transformation pipeline
-            self.logger.info(
-                "SubProcess save_model() called =================================="
+            self.logging_param.log_experiment(
+                self,
+                log_profile,
+                log_data,
+                experiment_custom_tags,
+                runtime,
             )
-            self.save_model(self.pipeline, "Transformation Pipeline", verbose=False)
-            self.logger.info(
-                "SubProcess save_model() end =================================="
-            )
-            mlflow.log_artifact("Transformation Pipeline.pkl")
-            os.remove("Transformation Pipeline.pkl")
-
-            # Log pandas profile
-            if log_profile and self.report is not None:
-                self.report.to_file("Data Profile.html")
-                mlflow.log_artifact("Data Profile.html")
-                os.remove("Data Profile.html")
-
-            # Log training and testing set
-            if log_data:
-                self.train.to_csv("Train.csv")
-                self.test.to_csv("Test.csv")
-                mlflow.log_artifact("Train.csv")
-                mlflow.log_artifact("Test.csv")
-                os.remove("Train.csv")
-                os.remove("Test.csv")
 
     def compare_models(
         self,
@@ -757,7 +704,9 @@ class _SupervisedExperiment(_TabularExperiment):
                 # cutoff only present in time series and when cv = True
                 if "cutoff" in model_results.columns:
                     model_results.drop("cutoff", axis=1, errors="ignore")
-                compare_models_ = pd.DataFrame(model_results.loc["Mean"]).T
+                compare_models_ = pd.DataFrame(model_results.loc["Mean"]).T.reset_index(
+                    drop=True
+                )
             else:
                 compare_models_ = pd.DataFrame(model_results.iloc[0]).T
             compare_models_.insert(
@@ -785,7 +734,7 @@ class _SupervisedExperiment(_TabularExperiment):
 
             master_display_ = master_display.drop(
                 results_columns_to_ignore, axis=1, errors="ignore"
-            ).style.set_precision(round)
+            ).style.format(precision=round)
             master_display_ = master_display_.set_properties(**{"text-align": "left"})
             master_display_ = master_display_.set_table_styles(
                 [dict(selector="th", props=[("text-align", "left")])]
@@ -847,6 +796,11 @@ class _SupervisedExperiment(_TabularExperiment):
             else:
                 n_select_range = range(0, n_select)
 
+            if self.logging_param:
+                self.logging_param.log_model_comparison(
+                    master_display, "compare_models"
+                )
+
             for index, row in enumerate(master_display.iterrows()):
                 _, row = row
                 model = row["Object"]
@@ -904,26 +858,20 @@ class _SupervisedExperiment(_TabularExperiment):
 
                 if self.logging_param and cross_validation and model is not None:
 
-                    try:
-                        self._mlflow_log_model(
-                            model=model,
-                            model_results=results,
-                            score_dict=avgs_dict_log,
-                            source="compare_models",
-                            runtime=row["runtime"],
-                            model_fit_time=row["TT (Sec)"],
-                            pipeline=self.pipeline,
-                            log_plots=self.log_plots_param if full_logging else False,
-                            log_holdout=full_logging,
-                            URI=URI,
-                            display=display,
-                            experiment_custom_tags=experiment_custom_tags,
-                        )
-                    except Exception:
-                        self.logger.error(
-                            f"_mlflow_log_model() for {model} raised an exception:"
-                        )
-                        self.logger.error(traceback.format_exc())
+                    self._log_model(
+                        model=model,
+                        model_results=results,
+                        score_dict=avgs_dict_log,
+                        source="compare_models",
+                        runtime=row["runtime"],
+                        model_fit_time=row["TT (Sec)"],
+                        pipeline=self.pipeline,
+                        log_plots=self.log_plots_param if full_logging else False,
+                        log_holdout=full_logging,
+                        URI=URI,
+                        display=display,
+                        experiment_custom_tags=experiment_custom_tags,
+                    )
 
         if len(sorted_models) == 1:
             sorted_models = sorted_models[0]
@@ -946,7 +894,16 @@ class _SupervisedExperiment(_TabularExperiment):
         return sorted_models
 
     def _create_model_without_cv(
-        self, model, data_X, data_y, fit_kwargs, predict, system, display
+        self,
+        model,
+        data_X,
+        data_y,
+        fit_kwargs,
+        round,
+        predict,
+        system,
+        display: Display,
+        return_train_score: bool = False,
     ):
         with estimator_pipeline(self.pipeline, model) as pipeline_with_model:
             fit_kwargs = get_pipeline_fit_kwargs(pipeline_with_model, fit_kwargs)
@@ -963,10 +920,30 @@ class _SupervisedExperiment(_TabularExperiment):
             display.move_progress()
 
             if predict:
+                if return_train_score:
+                    # call class explicitly to get access to preprocess arg
+                    # in subclasses
+                    _SupervisedExperiment.predict_model(
+                        self,
+                        pipeline_with_model,
+                        data=pd.concat([data_X, data_y], axis=1),
+                        preprocess="features",
+                        verbose=False,
+                    )
+                    train_results = self.pull(pop=True).drop("Model", axis=1)
+                    train_results.index = ["Train"]
+                else:
+                    train_results = None
+
                 self.predict_model(pipeline_with_model, verbose=False)
                 model_results = self.pull(pop=True).drop("Model", axis=1)
+                model_results.index = ["Test"]
+                if train_results is not None:
+                    model_results = pd.concat([model_results, train_results])
 
                 self.display_container.append(model_results)
+
+                model_results = model_results.style.format(precision=round)
 
                 display.display(
                     model_results,
@@ -991,6 +968,7 @@ class _SupervisedExperiment(_TabularExperiment):
         refit,
         system,
         display,
+        return_train_score: bool = False,
     ):
         """
         MONITOR UPDATE STARTS
@@ -1034,37 +1012,76 @@ class _SupervisedExperiment(_TabularExperiment):
                 scoring=metrics_dict,
                 fit_params=fit_kwargs,
                 n_jobs=n_jobs,
-                return_train_score=False,
+                return_train_score=return_train_score,
                 error_score=0,
             )
             model_fit_end = time.time()
             model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
 
-            score_dict = {
-                v.display_name: scores[f"test_{k}"] * (1 if v.greater_is_better else -1)
-                for k, v in metrics.items()
-            }
+            score_dict = {}
+            for k, v in metrics.items():
+                score_dict[v.display_name] = []
+                if return_train_score:
+                    train_score = scores[f"train_{k}"] * (
+                        1 if v.greater_is_better else -1
+                    )
+                    train_score = train_score.tolist()
+                    score_dict[v.display_name] = train_score
+                test_score = scores[f"test_{k}"] * (1 if v.greater_is_better else -1)
+                test_score = test_score.tolist()
+                score_dict[v.display_name] += test_score
 
             self.logger.info("Calculating mean and std")
 
-            avgs_dict = {k: [np.mean(v), np.std(v)] for k, v in score_dict.items()}
+            avgs_dict = {}
+            for k, v in metrics.items():
+                avgs_dict[v.display_name] = []
+                if return_train_score:
+                    train_score = scores[f"train_{k}"] * (
+                        1 if v.greater_is_better else -1
+                    )
+                    train_score = train_score.tolist()
+                    avgs_dict[v.display_name] = [
+                        np.mean(train_score),
+                        np.std(train_score),
+                    ]
+                test_score = scores[f"test_{k}"] * (1 if v.greater_is_better else -1)
+                test_score = test_score.tolist()
+                avgs_dict[v.display_name] += [np.mean(test_score), np.std(test_score)]
 
             display.move_progress()
 
             self.logger.info("Creating metrics dataframe")
 
-            model_results = pd.DataFrame(score_dict)
-            model_avgs = pd.DataFrame(
-                avgs_dict,
-                index=["Mean", "SD"],
+            fold = cv.n_splits
+
+            if return_train_score:
+                model_results = pd.DataFrame(
+                    {
+                        "Split": ["CV-Train"] * fold
+                        + ["CV-Val"] * fold
+                        + ["CV-Train"] * 2
+                        + ["CV-Val"] * 2,
+                        "Fold": np.arange(fold).tolist()
+                        + np.arange(fold).tolist()
+                        + ["Mean", "Std"] * 2,
+                    }
+                )
+            else:
+                model_results = pd.DataFrame(
+                    {
+                        "Fold": np.arange(fold).tolist() + ["Mean", "Std"],
+                    }
+                )
+
+            model_scores = pd.concat(
+                [pd.DataFrame(score_dict), pd.DataFrame(avgs_dict)]
+            ).reset_index(drop=True)
+
+            model_results = pd.concat([model_results, model_scores], axis=1)
+            model_results.set_index(
+                self._get_return_train_score_indices(return_train_score), inplace=True
             )
-
-            model_results = model_results.append(model_avgs)
-            model_results = model_results.round(round)
-
-            # yellow the mean
-            model_results = color_df(model_results, "yellow", ["Mean"], axis=1)
-            model_results = model_results.set_precision(round)
 
             if refit:
                 # refitting the model on complete X_train, y_train
@@ -1074,7 +1091,26 @@ class _SupervisedExperiment(_TabularExperiment):
                 self.logger.info("Finalizing model")
                 with io.capture_output():
                     pipeline_with_model.fit(data_X, data_y, **fit_kwargs)
-                model_fit_end = time.time()
+                    model_fit_end = time.time()
+
+                # calculating metrics on predictions of complete train dataset
+                if return_train_score:
+                    # call class explicitly to get access to preprocess arg
+                    # in subclasses
+                    _SupervisedExperiment.predict_model(
+                        self,
+                        pipeline_with_model,
+                        data=pd.concat([data_X, data_y], axis=1),
+                        preprocess="features",
+                        verbose=False,
+                    )
+                    metrics = self.pull(pop=True).drop("Model", axis=1)
+                    df_score = pd.DataFrame({"Split": ["Train"], "Fold": [None]})
+                    df_score = pd.concat([df_score, metrics], axis=1)
+                    df_score.set_index(["Split", "Fold"], inplace=True)
+
+                    # concatenating train results to cross-validation socre dataframe
+                    model_results = pd.concat([model_results, df_score])
 
                 model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
             else:
@@ -1082,7 +1118,28 @@ class _SupervisedExperiment(_TabularExperiment):
                     cv, data_X, y=data_y, groups=groups
                 )
 
+        model_results = model_results.round(round)
+
         return model, model_fit_time, model_results, avgs_dict
+
+    def _get_return_train_score_indices(self, return_train_score: bool) -> List[str]:
+        if return_train_score:
+            indices = ["Split", "Fold"]
+        else:
+            indices = ["Fold"]
+        return indices
+
+    def _highlight_and_round_model_results(
+        self, model_results: pd.DataFrame, return_train_score: bool, round: int
+    ) -> pandas.io.formats.style.Styler:
+        # yellow the mean
+        if return_train_score:
+            indices = [("CV-Val", "Mean"), ("CV-Train", "Mean")]
+        else:
+            indices = ["Mean"]
+        model_results = color_df(model_results, "yellow", indices, axis=1)
+        model_results = model_results.format(precision=round)
+        return model_results
 
     def create_model(
         self,
@@ -1103,6 +1160,7 @@ class _SupervisedExperiment(_TabularExperiment):
         y_train_data: Optional[pd.DataFrame] = None,  # added in pycaret==2.2.0
         metrics=None,
         display: Optional[Display] = None,  # added in pycaret==2.2.0
+        return_train_score: bool = False,
         **kwargs,
     ) -> Any:
 
@@ -1198,6 +1256,12 @@ class _SupervisedExperiment(_TabularExperiment):
             If not None, will use this dataframe as training target.
             Intended to be only changed by internal functions.
 
+        return_train_score: bool, default = False
+            If False, returns the CV Validation scores only.
+            If True, returns the CV training scores along with the CV validation scores.
+            This is useful when the user wants to do bias-variance tradeoff. A high CV
+            training score with a low corresponding CV validation score indicates overfitting.
+
         **kwargs:
             Additional keyword arguments to pass to the estimator.
 
@@ -1287,6 +1351,12 @@ class _SupervisedExperiment(_TabularExperiment):
                 "cross_validation parameter can only take argument as True or False."
             )
 
+        # checking return_train_score parameter
+        if type(return_train_score) is not bool:
+            raise TypeError(
+                "return_train_score can only take argument as True or False"
+            )
+
         """
 
         ERROR HANDLING ENDS HERE
@@ -1297,9 +1367,9 @@ class _SupervisedExperiment(_TabularExperiment):
 
         if not display:
             progress_args = {"max": 4}
-            master_display_columns = [
-                v.display_name for k, v in self._all_metrics.items()
-            ]
+            master_display_columns = self._get_return_train_score_indices(
+                return_train_score
+            ) + [v.display_name for k, v in self._all_metrics.items()]
             if self._ml_usecase == MLUsecase.TIME_SERIES:
                 master_display_columns.insert(0, "cutoff")
             timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
@@ -1451,14 +1521,22 @@ class _SupervisedExperiment(_TabularExperiment):
 
         if not cross_validation:
             model, model_fit_time = self._create_model_without_cv(
-                model, data_X, data_y, fit_kwargs, predict, system, display
+                model,
+                data_X,
+                data_y,
+                fit_kwargs,
+                round,
+                predict,
+                system,
+                display,
+                return_train_score=return_train_score,
             )
 
             display.move_progress()
 
             self.logger.info(str(model))
             self.logger.info(
-                "create_models() successfully completed......................................"
+                "create_model() successfully completed......................................"
             )
 
             gc.collect()
@@ -1467,7 +1545,7 @@ class _SupervisedExperiment(_TabularExperiment):
                 return model, model_fit_time
             return model
 
-        model, model_fit_time, model_results, avgs_dict = self._create_model_with_cv(
+        model, model_fit_time, model_results, _ = self._create_model_with_cv(
             model,
             data_X,
             data_y,
@@ -1479,36 +1557,34 @@ class _SupervisedExperiment(_TabularExperiment):
             refit,
             system,
             display,
+            return_train_score=return_train_score,
         )
 
         # end runtime
         runtime_end = time.time()
         runtime = np.array(runtime_end - runtime_start).round(2)
 
-        # mlflow logging
+        # dashboard logging
         if self.logging_param and system and refit:
 
-            avgs_dict_log = avgs_dict.copy()
-            avgs_dict_log = {k: v[0] for k, v in avgs_dict_log.items()}
+            if return_train_score:
+                indices = ("CV-Val", "Mean")
+            else:
+                indices = "Mean"
+            avgs_dict_log = {k: v for k, v in model_results.loc[indices].items()}
 
-            try:
-                self._mlflow_log_model(
-                    model=model,
-                    model_results=model_results,
-                    score_dict=avgs_dict_log,
-                    source="create_model",
-                    runtime=runtime,
-                    model_fit_time=model_fit_time,
-                    pipeline=self.pipeline,
-                    log_plots=self.log_plots_param,
-                    experiment_custom_tags=experiment_custom_tags,
-                    display=display,
-                )
-            except:
-                self.logger.error(
-                    f"_mlflow_log_model() for {model} raised an exception:"
-                )
-                self.logger.error(traceback.format_exc())
+            self._log_model(
+                model=model,
+                model_results=model_results,
+                score_dict=avgs_dict_log,
+                source="create_model",
+                runtime=runtime,
+                model_fit_time=model_fit_time,
+                pipeline=self.pipeline,
+                log_plots=self.log_plots_param,
+                experiment_custom_tags=experiment_custom_tags,
+                display=display,
+            )
 
         display.move_progress()
 
@@ -1518,17 +1594,21 @@ class _SupervisedExperiment(_TabularExperiment):
             getattr(display, "master_display", None) is not None
             and "cutoff" not in display.master_display.columns
         ):
-            model_results.data.drop("cutoff", axis=1, inplace=True, errors="ignore")
+            model_results.drop("cutoff", axis=1, inplace=True, errors="ignore")
 
-        self.display_container.append(model_results.data)
+        self.display_container.append(model_results)
 
         # storing results in master_model_container
         if add_to_model_list:
             self.logger.info("Uploading model into container now")
             self.master_model_container.append(
-                {"model": model, "scores": model_results.data, "cv": cv}
+                {"model": model, "scores": model_results, "cv": cv}
             )
 
+        # yellow the mean
+        model_results = self._highlight_and_round_model_results(
+            model_results, return_train_score, round
+        )
         display.display(
             model_results, clear=system, override=False if not system else None
         )
@@ -1566,6 +1646,7 @@ class _SupervisedExperiment(_TabularExperiment):
         return_tuner: bool = False,
         verbose: bool = True,
         tuner_verbose: Union[int, bool] = True,
+        return_train_score: bool = False,
         display: Optional[Display] = None,
         **kwargs,
     ) -> Any:
@@ -1700,6 +1781,12 @@ class _SupervisedExperiment(_TabularExperiment):
             If True or above 0, will print messages from the tuner. Higher values
             print more messages. Ignored if verbose parameter is False.
 
+        return_train_score: bool, default = False
+            If False, returns the CV Validation scores only.
+            If True, returns the CV training scores along with the CV validation scores.
+            This is useful when the user wants to do bias-variance tradeoff. A high CV
+            training score with a low corresponding CV validation score indicates overfitting.
+
         **kwargs:
             Additional keyword arguments to pass to the optimizer.
 
@@ -1788,6 +1875,12 @@ class _SupervisedExperiment(_TabularExperiment):
         if type(early_stopping_max_iters) is not int:
             raise TypeError(
                 "early_stopping_max_iters parameter only accepts integer value."
+            )
+
+        # checking return_train_score parameter
+        if type(return_train_score) is not bool:
+            raise TypeError(
+                "return_train_score can only take argument as True or False"
             )
 
         # checking search_library parameter
@@ -1962,9 +2055,9 @@ class _SupervisedExperiment(_TabularExperiment):
 
         if not display:
             progress_args = {"max": 3 + 4}
-            master_display_columns = [
-                v.display_name for k, v in self._all_metrics.items()
-            ]
+            master_display_columns = self._get_return_train_score_indices(
+                return_train_score
+            ) + [v.display_name for k, v in self._all_metrics.items()]
             if self._ml_usecase == MLUsecase.TIME_SERIES:
                 master_display_columns.insert(0, "cutoff")
             timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
@@ -2497,6 +2590,7 @@ class _SupervisedExperiment(_TabularExperiment):
             round=round,
             groups=groups,
             fit_kwargs=fit_kwargs,
+            return_train_score=return_train_score,
             **best_params,
         )
         model_results = self.pull()
@@ -2518,32 +2612,32 @@ class _SupervisedExperiment(_TabularExperiment):
         runtime_end = time.time()
         runtime = np.array(runtime_end - runtime_start).round(2)
 
-        # mlflow logging
+        # dashboard logging
         if self.logging_param:
 
-            avgs_dict_log = {k: v for k, v in model_results.loc["Mean"].items()}
+            if return_train_score:
+                indices = ("CV-Val", "Mean")
+            else:
+                indices = "Mean"
+            avgs_dict_log = {k: v for k, v in model_results.loc[indices].items()}
+            self.logging_param.log_model_comparison(model_results, "tune_model")
 
-            try:
-                self._mlflow_log_model(
-                    model=best_model,
-                    model_results=model_results,
-                    score_dict=avgs_dict_log,
-                    source="tune_model",
-                    runtime=runtime,
-                    model_fit_time=model_fit_time,
-                    pipeline=self.pipeline,
-                    log_plots=self.log_plots_param,
-                    tune_cv_results=cv_results,
-                    display=display,
-                )
-            except:
-                self.logger.error(
-                    f"_mlflow_log_model() for {best_model} raised an exception:"
-                )
-                self.logger.error(traceback.format_exc())
+            self._log_model(
+                model=best_model,
+                model_results=model_results,
+                score_dict=avgs_dict_log,
+                source="tune_model",
+                runtime=runtime,
+                model_fit_time=model_fit_time,
+                pipeline=self.pipeline,
+                log_plots=self.log_plots_param,
+                tune_cv_results=cv_results,
+                display=display,
+            )
 
-        model_results = color_df(model_results, "yellow", ["Mean"], axis=1)
-        model_results = model_results.set_precision(round)
+        model_results = self._highlight_and_round_model_results(
+            model_results, return_train_score, round
+        )
         display.display(model_results, clear=True)
 
         self.logger.info(f"master_model_container: {len(self.master_model_container)}")
@@ -2572,6 +2666,7 @@ class _SupervisedExperiment(_TabularExperiment):
         groups: Optional[Union[str, Any]] = None,
         probability_threshold: Optional[float] = None,
         verbose: bool = True,
+        return_train_score: bool = False,
         display: Optional[Display] = None,  # added in pycaret==2.2.0
     ) -> Any:
         """
@@ -2641,6 +2736,12 @@ class _SupervisedExperiment(_TabularExperiment):
 
         verbose: bool, default = True
             Score grid is not printed when verbose is set to False.
+
+        return_train_score: bool, default = False
+            If False, returns the CV Validation scores only.
+            If True, returns the CV training scores along with the CV validation scores.
+            This is useful when the user wants to do bias-variance tradeoff. A high CV
+            training score with a low corresponding CV validation score indicates overfitting.
 
         Returns
         -------
@@ -2743,6 +2844,12 @@ class _SupervisedExperiment(_TabularExperiment):
                     f"Optimization metric not supported for multiclass problems. See docstring for list of other optimization parameters."
                 )
 
+        # checking return_train_score parameter
+        if type(return_train_score) is not bool:
+            raise TypeError(
+                "return_train_score can only take argument as True or False"
+            )
+
         """
 
         ERROR HANDLING ENDS HERE
@@ -2755,9 +2862,9 @@ class _SupervisedExperiment(_TabularExperiment):
 
         if not display:
             progress_args = {"max": 2 + 4}
-            master_display_columns = [
-                v.display_name for k, v in self._all_metrics.items()
-            ]
+            master_display_columns = self._get_return_train_score_indices(
+                return_train_score
+            ) + [v.display_name for k, v in self._all_metrics.items()]
             if self._ml_usecase == MLUsecase.TIME_SERIES:
                 master_display_columns.insert(0, "cutoff")
             timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
@@ -2864,6 +2971,7 @@ class _SupervisedExperiment(_TabularExperiment):
             fit_kwargs=fit_kwargs,
             groups=groups,
             probability_threshold=probability_threshold,
+            return_train_score=return_train_score,
         )
         best_model = model
         model_results = self.pull()
@@ -2875,28 +2983,27 @@ class _SupervisedExperiment(_TabularExperiment):
         runtime_end = time.time()
         runtime = np.array(runtime_end - runtime_start).round(2)
 
-        # mlflow logging
+        # dashboard logging
         if self.logging_param:
 
-            avgs_dict_log = {k: v for k, v in model_results.loc["Mean"].items()}
+            if return_train_score:
+                indices = ("CV-Val", "Mean")
+            else:
+                indices = "Mean"
+            avgs_dict_log = {k: v for k, v in model_results.loc[indices].items()}
+            self.logging_param.log_model_comparison(model_results, "ensemble_model")
 
-            try:
-                self._mlflow_log_model(
-                    model=best_model,
-                    model_results=model_results,
-                    score_dict=avgs_dict_log,
-                    source="ensemble_model",
-                    runtime=runtime,
-                    model_fit_time=model_fit_time,
-                    pipeline=self.pipeline,
-                    log_plots=self.log_plots_param,
-                    display=display,
-                )
-            except:
-                self.logger.error(
-                    f"_mlflow_log_model() for {best_model} raised an exception:"
-                )
-                self.logger.error(traceback.format_exc())
+            self._log_model(
+                model=best_model,
+                model_results=model_results,
+                score_dict=avgs_dict_log,
+                source="ensemble_model",
+                runtime=runtime,
+                model_fit_time=model_fit_time,
+                pipeline=self.pipeline,
+                log_plots=self.log_plots_param,
+                display=display,
+            )
 
         if choose_better:
             model = self._choose_better(
@@ -2908,8 +3015,9 @@ class _SupervisedExperiment(_TabularExperiment):
                 display=display,
             )
 
-        model_results = color_df(model_results, "yellow", ["Mean"], axis=1)
-        model_results = model_results.set_precision(round)
+        model_results = self._highlight_and_round_model_results(
+            model_results, return_train_score, round
+        )
         display.display(model_results, clear=True)
 
         self.logger.info(f"master_model_container: {len(self.master_model_container)}")
@@ -2936,6 +3044,7 @@ class _SupervisedExperiment(_TabularExperiment):
         groups: Optional[Union[str, Any]] = None,
         probability_threshold: Optional[float] = None,
         verbose: bool = True,
+        return_train_score: bool = False,
         display: Optional[Display] = None,  # added in pycaret==2.2.0
     ) -> Any:
 
@@ -3003,6 +3112,12 @@ class _SupervisedExperiment(_TabularExperiment):
 
         verbose: bool, default = True
             Score grid is not printed when verbose is set to False.
+
+        return_train_score: bool, default = False
+            If False, returns the CV Validation scores only.
+            If True, returns the CV training scores along with the CV validation scores.
+            This is useful when the user wants to do bias-variance tradeoff. A high CV
+            training score with a low corresponding CV validation score indicates overfitting.
 
         Returns
         -------
@@ -3121,6 +3236,12 @@ class _SupervisedExperiment(_TabularExperiment):
                     f"Optimization metric not supported for multiclass problems. See docstring for list of other optimization parameters."
                 )
 
+        # checking return_train_score parameter
+        if type(return_train_score) is not bool:
+            raise TypeError(
+                "return_train_score can only take argument as True or False"
+            )
+
         """
 
         ERROR HANDLING ENDS HERE
@@ -3137,9 +3258,9 @@ class _SupervisedExperiment(_TabularExperiment):
 
         if not display:
             progress_args = {"max": 2 + 4}
-            master_display_columns = [
-                v.display_name for k, v in self._all_metrics.items()
-            ]
+            master_display_columns = self._get_return_train_score_indices(
+                return_train_score
+            ) + [v.display_name for k, v in self._all_metrics.items()]
             if self._ml_usecase == MLUsecase.TIME_SERIES:
                 master_display_columns.insert(0, "cutoff")
             timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
@@ -3242,6 +3363,7 @@ class _SupervisedExperiment(_TabularExperiment):
             fit_kwargs=fit_kwargs,
             groups=groups,
             probability_threshold=probability_threshold,
+            return_train_score=return_train_score,
         )
 
         model_results = self.pull()
@@ -3253,28 +3375,27 @@ class _SupervisedExperiment(_TabularExperiment):
         runtime_end = time.time()
         runtime = np.array(runtime_end - runtime_start).round(2)
 
-        # mlflow logging
+        # dashboard logging
         if self.logging_param:
 
-            avgs_dict_log = {k: v for k, v in model_results.loc["Mean"].items()}
+            if return_train_score:
+                indices = ("CV-Val", "Mean")
+            else:
+                indices = "Mean"
+            avgs_dict_log = {k: v for k, v in model_results.loc[indices].items()}
+            self.logging_param.log_model_comparison(model_results, "blend_models")
 
-            try:
-                self._mlflow_log_model(
-                    model=model,
-                    model_results=model_results,
-                    score_dict=avgs_dict_log,
-                    source="blend_models",
-                    runtime=runtime,
-                    model_fit_time=model_fit_time,
-                    pipeline=self.pipeline,
-                    log_plots=self.log_plots_param,
-                    display=display,
-                )
-            except:
-                self.logger.error(
-                    f"_mlflow_log_model() for {model} raised an exception:"
-                )
-                self.logger.error(traceback.format_exc())
+            self._log_model(
+                model=model,
+                model_results=model_results,
+                score_dict=avgs_dict_log,
+                source="blend_models",
+                runtime=runtime,
+                model_fit_time=model_fit_time,
+                pipeline=self.pipeline,
+                log_plots=self.log_plots_param,
+                display=display,
+            )
 
         if choose_better:
             model = self._choose_better(
@@ -3286,8 +3407,9 @@ class _SupervisedExperiment(_TabularExperiment):
                 display=display,
             )
 
-        model_results = color_df(model_results, "yellow", ["Mean"], axis=1)
-        model_results = model_results.set_precision(round)
+        model_results = self._highlight_and_round_model_results(
+            model_results, return_train_score, round
+        )
         display.display(model_results, clear=True)
 
         self.logger.info(f"master_model_container: {len(self.master_model_container)}")
@@ -3316,6 +3438,7 @@ class _SupervisedExperiment(_TabularExperiment):
         groups: Optional[Union[str, Any]] = None,
         probability_threshold: Optional[float] = None,
         verbose: bool = True,
+        return_train_score: bool = False,
         display: Optional[Display] = None,
     ) -> Any:
 
@@ -3402,6 +3525,12 @@ class _SupervisedExperiment(_TabularExperiment):
 
         verbose: bool, default = True
             Score grid is not printed when verbose is set to False.
+
+        return_train_score: bool, default = False
+            If False, returns the CV Validation scores only.
+            If True, returns the CV training scores along with the CV validation scores.
+            This is useful when the user wants to do bias-variance tradeoff. A high CV
+            training score with a low corresponding CV validation score indicates overfitting.
 
         Returns
         -------
@@ -3493,6 +3622,12 @@ class _SupervisedExperiment(_TabularExperiment):
                     f"Optimization metric not supported for multiclass problems. See docstring for list of other optimization parameters."
                 )
 
+        # checking return_train_score parameter
+        if type(return_train_score) is not bool:
+            raise TypeError(
+                "return_train_score can only take argument as True or False"
+            )
+
         """
 
         ERROR HANDLING ENDS HERE
@@ -3514,9 +3649,9 @@ class _SupervisedExperiment(_TabularExperiment):
 
         if not display:
             progress_args = {"max": 2 + 4}
-            master_display_columns = [
-                v.display_name for k, v in self._all_metrics.items()
-            ]
+            master_display_columns = self._get_return_train_score_indices(
+                return_train_score
+            ) + [v.display_name for k, v in self._all_metrics.items()]
             if self._ml_usecase == MLUsecase.TIME_SERIES:
                 master_display_columns.insert(0, "cutoff")
             timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
@@ -3615,6 +3750,7 @@ class _SupervisedExperiment(_TabularExperiment):
             fit_kwargs=fit_kwargs,
             groups=groups,
             probability_threshold=probability_threshold,
+            return_train_score=return_train_score,
         )
         model_results = self.pull()
         self.logger.info(
@@ -3625,28 +3761,27 @@ class _SupervisedExperiment(_TabularExperiment):
         runtime_end = time.time()
         runtime = np.array(runtime_end - runtime_start).round(2)
 
-        # mlflow logging
+        # dashboard logging
         if self.logging_param:
 
-            avgs_dict_log = {k: v for k, v in model_results.loc["Mean"].items()}
+            if return_train_score:
+                indices = ("CV-Val", "Mean")
+            else:
+                indices = "Mean"
+            avgs_dict_log = {k: v for k, v in model_results.loc[indices].items()}
+            self.logging_param.log_model_comparison(model_results, "stack_model")
 
-            try:
-                self._mlflow_log_model(
-                    model=model,
-                    model_results=model_results,
-                    score_dict=avgs_dict_log,
-                    source="stack_models",
-                    runtime=runtime,
-                    model_fit_time=model_fit_time,
-                    pipeline=self.pipeline,
-                    log_plots=self.log_plots_param,
-                    display=display,
-                )
-            except:
-                self.logger.error(
-                    f"_mlflow_log_model() for {model} raised an exception:"
-                )
-                self.logger.error(traceback.format_exc())
+            self._log_model(
+                model=model,
+                model_results=model_results,
+                score_dict=avgs_dict_log,
+                source="stack_models",
+                runtime=runtime,
+                model_fit_time=model_fit_time,
+                pipeline=self.pipeline,
+                log_plots=self.log_plots_param,
+                display=display,
+            )
 
         if choose_better:
             model = self._choose_better(
@@ -3658,8 +3793,9 @@ class _SupervisedExperiment(_TabularExperiment):
                 display=display,
             )
 
-        model_results = color_df(model_results, "yellow", ["Mean"], axis=1)
-        model_results = model_results.set_precision(round)
+        model_results = self._highlight_and_round_model_results(
+            model_results, return_train_score, round
+        )
         display.display(model_results, clear=True)
 
         self.logger.info(f"master_model_container: {len(self.master_model_container)}")
@@ -4390,6 +4526,7 @@ class _SupervisedExperiment(_TabularExperiment):
         groups: Optional[Union[str, Any]] = None,
         model_only: bool = True,
         experiment_custom_tags: Optional[Dict[str, Any]] = None,
+        return_train_score: bool = False,
         display: Optional[Display] = None,
     ) -> Any:  # added in pycaret==2.2.0
 
@@ -4425,6 +4562,12 @@ class _SupervisedExperiment(_TabularExperiment):
         model_only : bool, default = True
             When set to True, only trained model object is saved and all the
             transformations are ignored.
+
+        return_train_score: bool, default = False
+            If False, returns the CV Validation scores only.
+            If True, returns the CV training scores along with the CV validation scores.
+            This is useful when the user wants to do bias-variance tradeoff. A high CV
+            training score with a low corresponding CV validation score indicates overfitting.
 
         Returns
         -------
@@ -4463,17 +4606,26 @@ class _SupervisedExperiment(_TabularExperiment):
 
         np.random.seed(self.seed)
 
+        data_X = self.X
+
+        # Storing X_train and y_train in data_X and data_y parameter
+        if not self._ml_usecase == MLUsecase.TIME_SERIES:
+            data_y = self.y_transformed
+        else:
+            data_y = self.y
+
         self.logger.info(f"Finalizing {estimator}")
         display.clear_output()
         model_final, model_fit_time = self.create_model(
             estimator=estimator,
             verbose=False,
             system=False,
-            X_train_data=self.X,
-            y_train_data=self.y,
+            X_train_data=data_X,
+            y_train_data=data_y,
             fit_kwargs=fit_kwargs,
             groups=groups,
             add_to_model_list=False,
+            return_train_score=return_train_score,
         )
         model_results = self.pull(pop=True)
 
@@ -4481,32 +4633,34 @@ class _SupervisedExperiment(_TabularExperiment):
         runtime_end = time.time()
         runtime = np.array(runtime_end - runtime_start).round(2)
 
-        # mlflow logging
+        # dashboard logging
         if self.logging_param:
 
-            avgs_dict_log = {k: v for k, v in model_results.loc["Mean"].items()}
+            if return_train_score:
+                indices = ("CV-Val", "Mean")
+            else:
+                indices = "Mean"
+            avgs_dict_log = {k: v for k, v in model_results.loc[indices].items()}
+            self.logging_param.log_model_comparison(
+                model_results, f"finalize_model_{self._get_model_name(model_final)}"
+            )
 
-            try:
-                self._mlflow_log_model(
-                    model=model_final,
-                    model_results=model_results,
-                    score_dict=avgs_dict_log,
-                    source="finalize_model",
-                    runtime=runtime,
-                    model_fit_time=model_fit_time,
-                    pipeline=self.pipeline,
-                    log_plots=self.log_plots_param,
-                    experiment_custom_tags=experiment_custom_tags,
-                    display=display,
-                )
-            except:
-                self.logger.error(
-                    f"_mlflow_log_model() for {model_final} raised an exception:"
-                )
-                self.logger.error(traceback.format_exc())
+            self._log_model(
+                model=model_final,
+                model_results=model_results,
+                score_dict=avgs_dict_log,
+                source="finalize_model",
+                runtime=runtime,
+                model_fit_time=model_fit_time,
+                pipeline=self.pipeline,
+                log_plots=self.log_plots_param,
+                experiment_custom_tags=experiment_custom_tags,
+                display=display,
+            )
 
-        model_results = color_df(model_results, "yellow", ["Mean"], axis=1)
-        model_results = model_results.set_precision(round)
+        model_results = self._highlight_and_round_model_results(
+            model_results, return_train_score, round
+        )
         display.display(model_results, clear=True)
 
         self.logger.info(f"master_model_container: {len(self.master_model_container)}")
@@ -4537,6 +4691,7 @@ class _SupervisedExperiment(_TabularExperiment):
         verbose: bool = True,
         ml_usecase: Optional[MLUsecase] = None,
         display: Optional[Display] = None,  # added in pycaret==2.2.0
+        preprocess: Union[bool, str] = True,
     ) -> pd.DataFrame:
 
         """
@@ -4580,6 +4735,10 @@ class _SupervisedExperiment(_TabularExperiment):
         verbose: bool, default = True
             Holdout score grid is not printed when verbose is set to False.
 
+        preprocess: bool or 'features', default = True
+            Whether to preprocess unseen data. If 'features', will not
+            preprocess labels.
+
         Returns
         -------
         Predictions
@@ -4598,11 +4757,13 @@ class _SupervisedExperiment(_TabularExperiment):
 
         """
 
-        def replace_labels_in_column(labels):
+        def replace_labels_in_column(pipeline, labels: pd.Series) -> pd.Series:
             # Check if there is a LabelEncoder in the pipeline
-            le = get_label_encoder(self.pipeline)
+            name = labels.name
+            index = labels.index
+            le = get_label_encoder(pipeline)
             if le:
-                return le.inverse_transform(label["Label"])
+                return pd.Series(le.inverse_transform(labels), name=name, index=index)
             else:
                 return labels
 
@@ -4658,11 +4819,32 @@ class _SupervisedExperiment(_TabularExperiment):
                 html_param=False,
             )
 
+        if isinstance(estimator, Pipeline):
+            pipeline = estimator
+            estimator = pipeline._final_estimator
+        else:
+            pipeline = self.pipeline
+
+        y_test_ = None
         if data is None:
             X_test_, y_test_ = self.X_test_transformed, self.y_test_transformed
         else:
+            if self.y.name in data.columns:
+                target = data[self.y.name]
+            else:
+                target = None
             data = to_df(data[self.X.columns])  # Ignore all column but the originals
-            X_test_ = self.pipeline.transform(data)
+            if preprocess:
+                X_test_ = pipeline.transform(
+                    X=data, y=(target if preprocess != "features" else None)
+                )
+                if isinstance(X_test_, tuple):
+                    X_test_, y_test_ = X_test_
+                elif target is not None:
+                    y_test_ = target
+            else:
+                X_test_ = data
+                y_test_ = target
 
         # generate drift report
         if drift_report:
@@ -4679,8 +4861,16 @@ class _SupervisedExperiment(_TabularExperiment):
             column_mapping.categorical_features = self._fxs["Categorical"]
             column_mapping.datetime_features = self._fxs["Date"]
 
+            drift_data = data if data is not None else self.test
+
+            if not self.y.name in drift_data.columns:
+                raise ValueError(
+                    f"The dataset must contain a label column {self.y.name} "
+                    "in order to create a drift report."
+                )
+
             dashboard = Dashboard(tabs=[DataDriftTab(), CatTargetDriftTab()])
-            dashboard.calculate(self.train, self.test, column_mapping=column_mapping)
+            dashboard.calculate(self.train, drift_data, column_mapping=column_mapping)
             report_name = f"{self._get_model_name(estimator)}_Drift_Report.html"
             dashboard.save(report_name)
             print(f"{report_name} saved successfully.")
@@ -4715,51 +4905,51 @@ class _SupervisedExperiment(_TabularExperiment):
             pred_prob = pred
 
         df_score = None
-        if data is None:
+        if y_test_ is not None:
             # model name
             full_name = self._get_model_name(estimator)
             metrics = self._calculate_metrics(y_test_, pred, pred_prob)  # type: ignore
             df_score = pd.DataFrame(metrics, index=[0])
             df_score.insert(0, "Model", full_name)
             df_score = df_score.round(round)
-            display.display(df_score.style.set_precision(round), clear=False)
+            display.display(df_score.style.format(precision=round), clear=False)
 
-        label = pd.DataFrame(pred, columns=["Label"])
+        label = pd.DataFrame(pred, columns=["Label"], index=X_test_.index)
         if ml_usecase == MLUsecase.CLASSIFICATION:
             try:
                 label["Label"] = label["Label"].astype(int)
             except:
                 pass
 
-        if data is None:
-            label.index = self.test.index  # Adjust index to join successfully
-            if encoded_labels:
-                label["Label"] = replace_labels_in_column(label["Label"])
-                X_test_ = pd.concat([self.test, label], axis=1)
-            else:
-                X_test_ = pd.concat([self.X_test, y_test_, label], axis=1)
-        else:
-            label.index = data.index
-            if encoded_labels:
-                label["Label"] = replace_labels_in_column(label["Label"])
-            X_test_ = pd.concat([data, label], axis=1)
+        if not encoded_labels:
+            label["Label"] = replace_labels_in_column(pipeline, label["Label"])
+            if y_test_ is not None:
+                y_test_ = replace_labels_in_column(pipeline, y_test_)
+        old_index = X_test_.index
+        X_test_ = pd.concat([X_test_, y_test_, label], axis=1)
+        X_test_.index = old_index
 
         if score is not None:
             pred = pred.astype(int)
             if not raw_score:
                 score = [s[pred[i]] for i, s in enumerate(score)]
             try:
-                score = pd.DataFrame(score)
+                score = pd.DataFrame(score, index=X_test_.index)
                 if raw_score:
-                    score_columns = pd.Series(range(score.shape[1]))
-                    if encoded_labels:
-                        score_columns = replace_labels_in_column(score_columns)
+                    score_columns = pd.Series(
+                        range(score.shape[1]), index=X_test_.index
+                    )
+                    if not encoded_labels:
+                        score_columns = replace_labels_in_column(
+                            pipeline, score_columns
+                        )
                     score.columns = [f"Score_{label}" for label in score_columns]
                 else:
                     score.columns = ["Score"]
                 score = score.round(round)
-                score.index = X_test_.index
+                old_index = X_test_.index
                 X_test_ = pd.concat((X_test_, score), axis=1)
+                X_test_.index = old_index
             except:
                 pass
 
@@ -4919,3 +5109,323 @@ class _SupervisedExperiment(_TabularExperiment):
         )
 
         return pd.DataFrame(multi_metric.by_group)
+
+    def automl(
+        self,
+        optimize: str = "Accuracy",
+        use_holdout: bool = False,
+        turbo: bool = True,
+        return_train_score: bool = False,
+    ) -> Any:
+
+        """
+        This function returns the best model out of all models created in
+        current active environment based on metric defined in optimize parameter.
+
+        Parameters
+        ----------
+        optimize : str, default = 'Accuracy'
+            Other values you can pass in optimize parameter are 'AUC', 'Recall', 'Precision',
+            'F1', 'Kappa', and 'MCC'.
+
+        use_holdout: bool, default = False
+            When set to True, metrics are evaluated on holdout set instead of CV.
+
+        turbo: bool, default = True
+            When set to True and use_holdout is False, only models created with default fold
+            parameter will be considered. If set to False, models created with a non-default
+            fold parameter will be scored again using default fold settings, so that they can be
+            compared.
+
+        return_train_score: bool, default = False
+            If False, returns the CV Validation scores only.
+            If True, returns the CV training scores along with the CV validation scores.
+            This is useful when the user wants to do bias-variance tradeoff. A high CV
+            training score with a low corresponding CV validation score indicates overfitting.
+
+        Returns:
+            Trained Model
+        """
+
+        function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
+
+        self.logger.info("Initializing automl()")
+        self.logger.info(f"automl({function_params_str})")
+
+        # checking optimize parameter
+        optimize = self._get_metric_by_name_or_id(optimize)
+        if optimize is None:
+            raise ValueError(
+                f"Optimize method not supported. See docstring for list of available parameters."
+            )
+
+        # checking optimize parameter for multiclass
+        if self._is_multiclass():
+            if not optimize.is_multiclass:
+                raise TypeError(
+                    f"Optimization metric not supported for multiclass problems. See docstring for list of other optimization parameters."
+                )
+
+        # checking return_train_score parameter
+        if type(return_train_score) is not bool:
+            raise TypeError(
+                "return_train_score can only take argument as True or False"
+            )
+
+        compare_dimension = optimize.display_name
+        greater_is_better = optimize.greater_is_better
+        optimize = optimize.scorer
+
+        best_model = None
+        best_score = None
+
+        def compare_score(new, best):
+            if not best:
+                return True
+            if greater_is_better:
+                return new > best
+            else:
+                return new < best
+
+        if use_holdout:
+            self.logger.info("Model Selection Basis : Holdout set")
+            for i in self.master_model_container:
+                self.logger.info(f"Checking model {i}")
+                model = i["model"]
+                try:
+                    self.predict_model(model, verbose=False)  # type: ignore
+                except:
+                    self.logger.warning(
+                        f"Model {model} is not fitted, running create_model"
+                    )
+                    model, _ = self.create_model(  # type: ignore
+                        estimator=model,
+                        system=False,
+                        verbose=False,
+                        cross_validation=False,
+                        predict=False,
+                        groups=self.fold_groups_param,
+                        return_train_score=return_train_score,
+                    )
+                    self.pull(pop=True)
+                    self.predict_model(model, verbose=False)  # type: ignore
+
+                p = self.pull(pop=True)
+                p = p[compare_dimension][0]
+                if compare_score(p, best_score):
+                    best_model = model
+                    best_score = p
+
+        else:
+            self.logger.info("Model Selection Basis : CV Results on Training set")
+            for i in range(len(self.master_model_container)):
+                model = self.master_model_container[i]
+                scores = None
+                if model["cv"] is not self.fold_generator:
+                    if turbo or self._is_unsupervised():
+                        continue
+                    self.create_model(  # type: ignore
+                        estimator=model["model"],
+                        system=False,
+                        verbose=False,
+                        cross_validation=True,
+                        predict=False,
+                        groups=self.fold_groups_param,
+                        return_train_score=return_train_score,
+                    )
+                    scores = self.pull(pop=True)
+                    self.master_model_container.pop()
+                self.logger.info(f"Checking model {i}")
+                if scores is None:
+                    scores = model["scores"]
+                r = scores[compare_dimension][-2:][0]
+                if compare_score(r, best_score):
+                    best_model = model["model"]
+                    best_score = r
+
+        automl_model, _ = self.create_model(  # type: ignore
+            estimator=best_model,
+            system=False,
+            verbose=False,
+            cross_validation=False,
+            predict=False,
+            groups=self.fold_groups_param,
+            return_train_score=return_train_score,
+        )
+
+        gc.collect()
+
+        self.logger.info(str(automl_model))
+        self.logger.info(
+            "automl() successfully completed......................................"
+        )
+
+        return automl_model
+
+    def create_app(self, estimator, app_kwargs: Optional[dict]):
+        """
+        This function creates a basic gradio app for inference.
+        It will later be expanded for other app types such as
+        Streamlit.
+
+
+        Example
+        -------
+        >>> from pycaret.datasets import get_data
+        >>> juice = get_data('juice')
+        >>> from pycaret.classification import *
+        >>> exp_name = setup(data = juice,  target = 'Purchase')
+        >>> lr = create_model('lr')
+        >>> create_app(lr)
+
+
+        estimator: scikit-learn compatible object
+            Trained model object
+
+
+        app_kwargs: dict, default = {} (empty dict)
+            arguments to be passed to app class.
+
+
+        Returns:
+            None
+        """
+
+        _check_soft_dependencies("gradio", extra="mlops", severity="error")
+        import gradio as gr
+
+        all_inputs = []
+        app_kwargs = app_kwargs or {}
+
+        data_without_target = self.X[list(self.X_train_transformed.columns)]
+
+        for i in data_without_target.columns:
+            if i in self._fxs["Categorical"] or i in self._fxs["Ordinal"]:
+                all_inputs.append(
+                    gr.inputs.Dropdown(list(data_without_target[i].unique()), label=i)
+                )
+            else:
+                all_inputs.append(gr.inputs.Textbox(label=i))
+
+        def predict(*dict_input):
+
+            input_df = pd.DataFrame.from_dict([dict_input])
+            input_df.columns = list(data_without_target.columns)
+            return (
+                self.predict_model(
+                    estimator, data=input_df, **self._create_app_predict_kwargs
+                )
+                .iloc[0]
+                .to_dict()
+            )
+
+        return gr.Interface(
+            fn=predict,
+            inputs=all_inputs,
+            outputs="text",
+            live=False,
+            **app_kwargs,
+        ).launch()
+
+    def dashboard(
+        self,
+        estimator,
+        display_format: str = "dash",
+        dashboard_kwargs: Optional[Dict[str, Any]] = None,
+        run_kwargs: Optional[Dict[str, Any]] = None,
+        **kwargs,
+    ):
+        """
+        This function generates the interactive dashboard for a trained model. The
+        dashboard is implemented using ExplainerDashboard (explainerdashboard.readthedocs.io)
+
+
+        Example
+        -------
+        >>> from pycaret.datasets import get_data
+        >>> juice = get_data('juice')
+        >>> from pycaret.classification import *
+        >>> exp_name = setup(data = juice,  target = 'Purchase')
+        >>> lr = create_model('lr')
+        >>> dashboard(lr)
+
+
+        estimator: scikit-learn compatible object
+            Trained model object
+
+
+        display_format: str, default = 'dash'
+            Render mode for the dashboard. The default is set to ``dash`` which will
+            render a dashboard in browser. There are four possible options:
+
+            - 'dash' - displays the dashboard in browser
+            - 'inline' - displays the dashboard in the jupyter notebook cell.
+            - 'jupyterlab' - displays the dashboard in jupyterlab pane.
+            - 'external' - displays the dashboard in a separate tab. (use in Colab)
+
+
+        dashboard_kwargs: dict, default = {} (empty dict)
+            Dictionary of arguments passed to the ``ExplainerDashboard`` class.
+
+
+        run_kwargs: dict, default = {} (empty dict)
+            Dictionary of arguments passed to the ``run`` method of ``ExplainerDashboard``.
+
+
+        **kwargs:
+            Additional keyword arguments to pass to the ``ClassifierExplainer`` or
+            ``RegressionExplainer`` class.
+
+
+        Returns:
+            None
+        """
+
+        _check_soft_dependencies(
+            "explainerdashboard", extra="analysis", severity="error"
+        )
+
+    def deep_check(self, estimator, check_kwargs: Optional[dict]):
+        """
+        This function runs a full suite check over a trained model
+        using deepchecks library.
+
+
+        Example
+        -------
+        >>> from pycaret.datasets import get_data
+        >>> juice = get_data('juice')
+        >>> from pycaret.classification import *
+        >>> exp_name = setup(data = juice,  target = 'Purchase')
+        >>> lr = create_model('lr')
+        >>> deep_check(lr)
+
+
+        estimator: scikit-learn compatible object
+            Trained model object
+
+
+        check_kwargs: dict, default = {} (empty dict)
+            arguments to be passed to deepchecks full_suite class.
+
+
+        Returns:
+            Results of deepchecks.suites.full_suite.run
+        """
+
+        _check_soft_dependencies("deepchecks", extra="analysis", severity="error")
+        check_kwargs = check_kwargs or {}
+
+        from deepchecks import Dataset
+
+        ds_train = Dataset(
+            self.X_train_transformed, label=self.y_train_transformed, cat_features=[]
+        )
+        ds_test = Dataset(
+            self.X_test_transformed, label=self.y_test_transformed, cat_features=[]
+        )
+
+        from deepchecks.suites import full_suite
+
+        suite = full_suite(**check_kwargs)
+        return suite.run(train_dataset=ds_train, test_dataset=ds_test, model=estimator)

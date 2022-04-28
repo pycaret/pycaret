@@ -50,15 +50,15 @@ class RegressorContainer(ModelContainer):
     eq_function : type, default = None
         Function to use to check whether an object (model) can be considered equal to the model
         in the container. If None, will be ``is_instance(x, class_def)`` where x is the object.
-    args : dict, default = {}
+    args : dict, default = {} (empty dict)
         The arguments to always pass to constructor when initializing object of class_def class.
     is_special : bool, default = False
         Is the model special (not intended to be used on its own, eg. VotingClassifier).
-    tune_grid : dict of str : list, default = {}
+    tune_grid : dict of str : list, default = {} (empty dict)
         The hyperparameters tuning grid for random and grid search.
-    tune_distribution : dict of str : Distribution, default = {}
+    tune_distribution : dict of str : Distribution, default = {} (empty dict)
         The hyperparameters tuning grid for other types of searches.
-    tune_args : dict, default = {}
+    tune_args : dict, default = {} (empty dict)
         The arguments to always pass to the tuner.
     shap : bool or str, default = False
         If False, SHAP is not supported. Otherwise, one of 'type1', 'type2' to determine SHAP type.

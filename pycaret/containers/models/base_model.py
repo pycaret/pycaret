@@ -23,7 +23,7 @@ class ModelContainer(BaseContainer):
     eq_function : type, default = None
         Function to use to check whether an object (model) can be considered equal to the model
         in the container. If None, will be ``is_instance(x, class_def)`` where x is the object.
-    args : dict, default = {}
+    args : dict, default = {} (empty dict)
         The arguments to always pass to constructor when initializing object of class_def class.
     is_special : bool, default = False
         Is the model special (not intended to be used on its own, eg. VotingClassifier).

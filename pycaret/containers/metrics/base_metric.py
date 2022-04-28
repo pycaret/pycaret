@@ -25,7 +25,7 @@ class MetricContainer(BaseContainer):
         The scorer passed to models. Can be a string representing a built-in sklearn scorer,
         a sklearn Scorer object, or None, in which case a Scorer object will be created from
         score_func and args.
-    args : dict, default = {}
+    args : dict, default = {} (empty dict)
         The arguments to always pass to constructor when initializing score_func of class_def class.
     display_name : str, default = None
         Display name (shorter than name). If None or empty, will use name.

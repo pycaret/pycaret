@@ -8,11 +8,12 @@ from typing import List, Any, Union, Optional, Dict
 from pycaret.clustering import ClusteringExperiment
 from pycaret.internal.utils import check_if_global_is_not_none
 
+from pycaret.loggers.base_logger import BaseLogger
 
 warnings.filterwarnings("ignore")
 
 _EXPERIMENT_CLASS = ClusteringExperiment
-_CURRENT_EXPERIMENT = None
+_CURRENT_EXPERIMENT: Optional[ClusteringExperiment] = None
 _CURRENT_EXPERIMENT_EXCEPTION = (
     "_CURRENT_EXPERIMENT global variable is not set. Please run setup() first."
 )
@@ -59,7 +60,7 @@ def setup(
     html: bool = True,
     session_id: Optional[int] = None,
     system_log: Union[bool, logging.Logger] = True,
-    log_experiment: bool = False,
+    log_experiment: Union[bool, str, BaseLogger, List[Union[str, BaseLogger]]] = False,
     experiment_name: Optional[str] = None,
     experiment_custom_tags: Optional[Dict[str, Any]] = None,
     log_plots: Union[bool, list] = False,
@@ -321,11 +322,14 @@ def setup(
 
 
     log_experiment: bool, default = False
-        When set to True, all metrics and parameters are logged on the ``MLFlow`` server.
+        A (list of) PyCaret ``BaseLogger`` or str (one of 'mlflow', 'wandb')
+        corresponding to a logger to determine which experiment loggers to use.
+        Setting to True will use just MLFlow.
+        If ``wandb`` (Weights & Biases) is installed, will also log there.
 
 
     experiment_name: str, default = None
-        Name of the experiment for logging. Ignored when ``log_experiment`` is not True.
+        Name of the experiment for logging. Ignored when ``log_experiment`` is False.
 
 
     experiment_custom_tags: dict, default = None
@@ -336,17 +340,17 @@ def setup(
     log_plots: bool or list, default = False
         When set to True, certain plots are logged automatically in the ``MLFlow`` server.
         To change the type of plots to be logged, pass a list containing plot IDs. Refer
-        to documentation of ``plot_model``. Ignored when ``log_experiment`` is not True.
+        to documentation of ``plot_model``. Ignored when ``log_experiment`` is False.
 
 
     log_profile: bool, default = False
         When set to True, data profile is logged on the ``MLflow`` server as a html file.
-        Ignored when ``log_experiment`` is not True.
+        Ignored when ``log_experiment`` is False.
 
 
     log_data: bool, default = False
         When set to True, dataset is logged on the ``MLflow`` server as a csv file.
-        Ignored when ``log_experiment`` is not True.
+        Ignored when ``log_experiment`` is False.
 
 
     silent: bool, default = False
@@ -1516,7 +1520,7 @@ def get_clusters(
     n_jobs: Optional[int] = -1,
     session_id: Optional[int] = None,
     system_log: Union[bool, logging.Logger] = True,
-    log_experiment: bool = False,
+    log_experiment: Union[bool, str, BaseLogger, List[Union[str, BaseLogger]]] = False,
     experiment_name: Optional[str] = None,
     log_plots: Union[bool, list] = False,
     log_profile: bool = False,
