@@ -2,8 +2,8 @@
 # Author: Antoni Baum (Yard1) <antoni.baum@protonmail.com>
 # License: MIT
 
-# The purpose of this module is to serve as a central repository of classification metrics. The `classification` module will
-# call `get_all_metrics_containers()`, which will return instances of all classes in this module that have `ClassificationMetricContainer`
+# The purpose of this module is to serve as a central repository of regression metrics. The `regression` module will
+# call `get_all_metrics_containers()`, which will return instances of all classes in this module that have `RegressionMetricContainer`
 # as a base (but not `RegressionMetricContainer` itself). In order to add a new model, you only need to create a new class that has
 # `RegressionMetricContainer` as a base, set all of the required parameters in the `__init__` and then call `super().__init__`
 # to complete the process. Refer to the existing classes for examples.
@@ -38,7 +38,7 @@ class RegressionMetricContainer(MetricContainer):
         score_func and args.
     target : str, default = 'pred'
         The target of the score function. Only 'pred' is supported for regression.
-    args : dict, default = {}
+    args : dict, default = {} (empty dict)
         The arguments to always pass to constructor when initializing score_func of class_def class.
     display_name : str, default = None
         Display name (shorter than name). Used in display dataframe header. If None or empty, will use name.

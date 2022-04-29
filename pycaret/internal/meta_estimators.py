@@ -1,5 +1,7 @@
 import sklearn.compose
 from sklearn.preprocessing import PowerTransformer
+from sklearn.compose import TransformedTargetRegressor
+
 from sklearn.base import BaseEstimator, ClassifierMixin, clone
 from sklearn.utils.validation import check_is_fitted
 
@@ -214,6 +216,10 @@ def get_estimator_from_meta_estimator(estimator):
     Otherwise return ``estimator``. Will try to return the fitted
     estimator first.
     """
+    # If estimator is not of type Meta Estimator, return as is
+    if not isinstance(estimator, (TransformedTargetRegressor, CustomProbabilityThresholdClassifier)):
+        return estimator
+
     if hasattr(estimator, "regressor_"):
         return get_estimator_from_meta_estimator(estimator.regressor_)
     if hasattr(estimator, "classifier_"):

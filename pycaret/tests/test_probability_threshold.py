@@ -12,7 +12,7 @@ from pycaret.internal.meta_estimators import CustomProbabilityThresholdClassifie
 def test():
     # loading dataset
     data = pycaret.datasets.get_data("juice")
-    assert isinstance(data, pd.core.frame.DataFrame)
+    assert isinstance(data, pd.DataFrame)
 
     # init setup
     clf1 = pycaret.classification.setup(
@@ -94,19 +94,19 @@ def test():
     predict_holdout_0_75 = pycaret.classification.predict_model(
         lr, probability_threshold=probability_threshold
     )
-    assert isinstance(predict_holdout, pd.core.frame.DataFrame)
+    assert isinstance(predict_holdout, pd.DataFrame)
     assert predict_holdout.equals(predict_holdout_0_75)
     assert not predict_holdout.equals(predict_holdout_0_5)
 
     # predictions on new dataset
-    predict_holdout = pycaret.classification.predict_model(lr, data=data)
+    predict_holdout = pycaret.classification.predict_model(lr, data=data.drop("Purchase", axis=1))
     predict_holdout_0_5 = pycaret.classification.predict_model(
-        lr, data=data, probability_threshold=0.5
+        lr, data=data.drop("Purchase", axis=1), probability_threshold=0.5
     )
     predict_holdout_0_75 = pycaret.classification.predict_model(
-        lr, data=data, probability_threshold=probability_threshold
+        lr, data=data.drop("Purchase", axis=1), probability_threshold=probability_threshold
     )
-    assert isinstance(predict_holdout, pd.core.frame.DataFrame)
+    assert isinstance(predict_holdout, pd.DataFrame)
     assert predict_holdout.equals(predict_holdout_0_75)
     assert not predict_holdout.equals(predict_holdout_0_5)
 

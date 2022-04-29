@@ -9,7 +9,14 @@
 # to complete the process. Refer to the existing classes for examples.
 
 import logging
-from typing import Union, Dict, Any, Optional
+from typing import Union, Optional, Dict, Any
+
+import pycaret.containers.base_container
+from pycaret.internal.distributions import (
+    Distribution,
+    UniformDistribution,
+    IntUniformDistribution,
+)
 from pycaret.containers.models.base_model import (
     ModelContainer,
     leftover_parameters_to_categorical_distributions,
@@ -17,13 +24,13 @@ from pycaret.containers.models.base_model import (
 from pycaret.internal.utils import (
     param_grid_to_lists,
     get_logger,
-    get_class_name,
     np_list_arange,
 )
-from pycaret.internal.distributions import *
 import pycaret.containers.base_container
 import numpy as np
 from packaging import version
+from pycaret.utils._dependencies import _check_soft_dependencies
+
 
 class RegressorContainer(ModelContainer):
     """
@@ -43,15 +50,15 @@ class RegressorContainer(ModelContainer):
     eq_function : type, default = None
         Function to use to check whether an object (model) can be considered equal to the model
         in the container. If None, will be ``is_instance(x, class_def)`` where x is the object.
-    args : dict, default = {}
+    args : dict, default = {} (empty dict)
         The arguments to always pass to constructor when initializing object of class_def class.
     is_special : bool, default = False
         Is the model special (not intended to be used on its own, eg. VotingClassifier).
-    tune_grid : dict of str : list, default = {}
+    tune_grid : dict of str : list, default = {} (empty dict)
         The hyperparameters tuning grid for random and grid search.
-    tune_distribution : dict of str : Distribution, default = {}
+    tune_distribution : dict of str : Distribution, default = {} (empty dict)
         The hyperparameters tuning grid for other types of searches.
-    tune_args : dict, default = {}
+    tune_args : dict, default = {} (empty dict)
         The arguments to always pass to the tuner.
     shap : bool or str, default = False
         If False, SHAP is not supported. Otherwise, one of 'type1', 'type2' to determine SHAP type.
@@ -194,26 +201,24 @@ class RegressorContainer(ModelContainer):
 
 
 class LinearRegressionContainer(RegressorContainer):
-    def __init__(self, globals_dict: dict) -> None:
+    def __init__(self, experiment):
         logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+        np.random.seed(experiment.seed)
         gpu_imported = False
 
         from sklearn.linear_model import LinearRegression
 
-        if globals_dict["gpu_param"] == "force":
+        if experiment.gpu_param == "force":
             from cuml.linear_model import LinearRegression
 
             logger.info("Imported cuml.linear_model.LinearRegression")
             gpu_imported = True
-        elif globals_dict["gpu_param"]:
-            try:
+        elif experiment.gpu_param:
+            if _check_soft_dependencies("cuml", extra=None, severity="warning"):
                 from cuml.linear_model import LinearRegression
 
                 logger.info("Imported cuml.linear_model.LinearRegression")
                 gpu_imported = True
-            except ImportError:
-                logger.warning("Couldn't import cuml.linear_model.LinearRegression")
 
         args = {}
         tune_args = {}
@@ -221,7 +226,7 @@ class LinearRegressionContainer(RegressorContainer):
         tune_distributions = {}
 
         if not gpu_imported:
-            args["n_jobs"] = globals_dict["n_jobs_param"]
+            args["n_jobs"] = experiment.n_jobs_param
 
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
@@ -239,26 +244,24 @@ class LinearRegressionContainer(RegressorContainer):
 
 
 class LassoRegressionContainer(RegressorContainer):
-    def __init__(self, globals_dict: dict) -> None:
+    def __init__(self, experiment):
         logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+        np.random.seed(experiment.seed)
         gpu_imported = False
 
         from sklearn.linear_model import Lasso
 
-        if globals_dict["gpu_param"] == "force":
+        if experiment.gpu_param == "force":
             from cuml.linear_model import Lasso
 
             logger.info("Imported cuml.linear_model.Lasso")
             gpu_imported = True
-        elif globals_dict["gpu_param"]:
-            try:
+        elif experiment.gpu_param:
+            if _check_soft_dependencies("cuml", extra=None, severity="warning"):
                 from cuml.linear_model import Lasso
 
                 logger.info("Imported cuml.linear_model.Lasso")
                 gpu_imported = True
-            except ImportError:
-                logger.warning("Couldn't import cuml.linear_model.Lasso")
 
         args = {}
         tune_args = {}
@@ -270,7 +273,7 @@ class LassoRegressionContainer(RegressorContainer):
         tune_distributions = {"alpha": UniformDistribution(0.001, 10)}
 
         if not gpu_imported:
-            args["random_state"] = globals_dict["seed"]
+            args["random_state"] = experiment.seed
 
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
@@ -288,26 +291,24 @@ class LassoRegressionContainer(RegressorContainer):
 
 
 class RidgeRegressionContainer(RegressorContainer):
-    def __init__(self, globals_dict: dict) -> None:
+    def __init__(self, experiment):
         logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+        np.random.seed(experiment.seed)
         gpu_imported = False
 
         from sklearn.linear_model import Ridge
 
-        if globals_dict["gpu_param"] == "force":
+        if experiment.gpu_param == "force":
             from cuml.linear_model import Ridge
 
             logger.info("Imported cuml.linear_model.Ridge")
             gpu_imported = True
-        elif globals_dict["gpu_param"]:
-            try:
+        elif experiment.gpu_param:
+            if _check_soft_dependencies("cuml", extra=None, severity="warning"):
                 from cuml.linear_model import Ridge
 
                 logger.info("Imported cuml.linear_model.Ridge")
                 gpu_imported = True
-            except ImportError:
-                logger.warning("Couldn't import cuml.linear_model.Ridge")
 
         args = {}
         tune_args = {}
@@ -319,7 +320,7 @@ class RidgeRegressionContainer(RegressorContainer):
         tune_distributions = {"alpha": UniformDistribution(0.001, 10)}
 
         if not gpu_imported:
-            args["random_state"] = globals_dict["seed"]
+            args["random_state"] = experiment.seed
 
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
@@ -337,26 +338,24 @@ class RidgeRegressionContainer(RegressorContainer):
 
 
 class ElasticNetContainer(RegressorContainer):
-    def __init__(self, globals_dict: dict) -> None:
+    def __init__(self, experiment):
         logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+        np.random.seed(experiment.seed)
         gpu_imported = False
 
         from sklearn.linear_model import ElasticNet
 
-        if globals_dict["gpu_param"] == "force":
+        if experiment.gpu_param == "force":
             from cuml.linear_model import ElasticNet
 
             logger.info("Imported cuml.linear_model.ElasticNet")
             gpu_imported = True
-        elif globals_dict["gpu_param"]:
-            try:
+        elif experiment.gpu_param:
+            if _check_soft_dependencies("cuml", extra=None, severity="warning"):
                 from cuml.linear_model import ElasticNet
 
                 logger.info("Imported cuml.linear_model.ElasticNet")
                 gpu_imported = True
-            except ImportError:
-                logger.warning("Couldn't import cuml.linear_model.ElasticNet")
 
         args = {}
         tune_args = {}
@@ -372,7 +371,7 @@ class ElasticNetContainer(RegressorContainer):
         }
 
         if not gpu_imported:
-            args["random_state"] = globals_dict["seed"]
+            args["random_state"] = experiment.seed
 
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
@@ -390,13 +389,13 @@ class ElasticNetContainer(RegressorContainer):
 
 
 class LarsContainer(RegressorContainer):
-    def __init__(self, globals_dict: dict) -> None:
+    def __init__(self, experiment):
         logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+        np.random.seed(experiment.seed)
 
         from sklearn.linear_model import Lars
 
-        args = {"random_state": globals_dict["seed"]}
+        args = {"random_state": experiment.seed}
         tune_args = {}
         tune_grid = {
             "fit_intercept": [True, False],
@@ -434,13 +433,13 @@ class LarsContainer(RegressorContainer):
 
 
 class LassoLarsContainer(RegressorContainer):
-    def __init__(self, globals_dict: dict) -> None:
+    def __init__(self, experiment):
         logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+        np.random.seed(experiment.seed)
 
         from sklearn.linear_model import LassoLars
 
-        args = {"random_state": globals_dict["seed"]}
+        args = {"random_state": experiment.seed}
         tune_args = {}
         tune_grid = {
             "fit_intercept": [True, False],
@@ -497,22 +496,22 @@ class LassoLarsContainer(RegressorContainer):
 
 
 class OrthogonalMatchingPursuitContainer(RegressorContainer):
-    def __init__(self, globals_dict: dict) -> None:
+    def __init__(self, experiment):
         logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+        np.random.seed(experiment.seed)
 
         from sklearn.linear_model import OrthogonalMatchingPursuit
 
         args = {}
         tune_args = {}
         tune_grid = {
-            "n_nonzero_coefs": range(1, len(globals_dict["X_train"].columns) + 1),
+            "n_nonzero_coefs": range(1, len(experiment.X_train.columns) + 1),
             "fit_intercept": [True, False],
             "normalize": [True, False],
         }
         tune_distributions = {
             "n_nonzero_coefs": IntUniformDistribution(
-                1, len(globals_dict["X_train"].columns)
+                1, len(experiment.X_train.columns)
             )
         }
 
@@ -531,9 +530,9 @@ class OrthogonalMatchingPursuitContainer(RegressorContainer):
 
 
 class BayesianRidgeContainer(RegressorContainer):
-    def __init__(self, globals_dict: dict) -> None:
+    def __init__(self, experiment):
         logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+        np.random.seed(experiment.seed)
 
         from sklearn.linear_model import BayesianRidge
 
@@ -622,9 +621,9 @@ class BayesianRidgeContainer(RegressorContainer):
 
 
 class AutomaticRelevanceDeterminationContainer(RegressorContainer):
-    def __init__(self, globals_dict: dict) -> None:
+    def __init__(self, experiment):
         logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+        np.random.seed(experiment.seed)
 
         from sklearn.linear_model import ARDRegression
 
@@ -729,13 +728,13 @@ class AutomaticRelevanceDeterminationContainer(RegressorContainer):
 
 
 class PassiveAggressiveRegressorContainer(RegressorContainer):
-    def __init__(self, globals_dict: dict) -> None:
+    def __init__(self, experiment):
         logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+        np.random.seed(experiment.seed)
 
         from sklearn.linear_model import PassiveAggressiveRegressor
 
-        args = {"random_state": globals_dict["seed"]}
+        args = {"random_state": experiment.seed}
         tune_args = {}
         tune_grid = {
             "C": np_list_arange(0, 10, 0.001, inclusive=True),
@@ -764,13 +763,13 @@ class PassiveAggressiveRegressorContainer(RegressorContainer):
 
 
 class RANSACRegressorContainer(RegressorContainer):
-    def __init__(self, globals_dict: dict) -> None:
+    def __init__(self, experiment):
         logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+        np.random.seed(experiment.seed)
 
         from sklearn.linear_model import RANSACRegressor
 
-        args = {"random_state": globals_dict["seed"]}
+        args = {"random_state": experiment.seed}
         tune_args = {}
         tune_grid = {
             "min_samples": np_list_arange(0, 1, 0.05, inclusive=True),
@@ -804,15 +803,15 @@ class RANSACRegressorContainer(RegressorContainer):
 
 
 class TheilSenRegressorContainer(RegressorContainer):
-    def __init__(self, globals_dict: dict) -> None:
+    def __init__(self, experiment):
         logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+        np.random.seed(experiment.seed)
 
         from sklearn.linear_model import TheilSenRegressor
 
         args = {
-            "n_jobs": globals_dict["n_jobs_param"],
-            "random_state": globals_dict["seed"],
+            "n_jobs": experiment.n_jobs_param,
+            "random_state": experiment.seed,
             "max_iter": 1000,
         }
         tune_args = {}
@@ -837,9 +836,9 @@ class TheilSenRegressorContainer(RegressorContainer):
 
 
 class HuberRegressorContainer(RegressorContainer):
-    def __init__(self, globals_dict: dict) -> None:
+    def __init__(self, experiment):
         logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+        np.random.seed(experiment.seed)
 
         from sklearn.linear_model import HuberRegressor
 
@@ -887,9 +886,9 @@ class HuberRegressorContainer(RegressorContainer):
 
 
 class KernelRidgeContainer(RegressorContainer):
-    def __init__(self, globals_dict: dict) -> None:
+    def __init__(self, experiment):
         logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+        np.random.seed(experiment.seed)
 
         from sklearn.kernel_ridge import KernelRidge
 
@@ -935,26 +934,24 @@ class KernelRidgeContainer(RegressorContainer):
 
 
 class SVRContainer(RegressorContainer):
-    def __init__(self, globals_dict: dict) -> None:
+    def __init__(self, experiment):
         logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+        np.random.seed(experiment.seed)
         gpu_imported = False
 
         from sklearn.svm import SVR
 
-        if globals_dict["gpu_param"] == "force":
+        if experiment.gpu_param == "force":
             from cuml.svm import SVR
 
             logger.info("Imported cuml.svm.SVR")
             gpu_imported = True
-        elif globals_dict["gpu_param"]:
-            try:
+        elif experiment.gpu_param:
+            if _check_soft_dependencies("cuml", extra=None, severity="warning"):
                 from cuml.svm import SVR
 
                 logger.info("Imported cuml.svm.SVR")
                 gpu_imported = True
-            except ImportError:
-                logger.warning("Couldn't import cuml.svm.SVR")
 
         args = {}
         tune_args = {}
@@ -987,26 +984,24 @@ class SVRContainer(RegressorContainer):
 
 
 class KNeighborsRegressorContainer(RegressorContainer):
-    def __init__(self, globals_dict: dict) -> None:
+    def __init__(self, experiment):
         logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+        np.random.seed(experiment.seed)
         gpu_imported = False
 
         from sklearn.neighbors import KNeighborsRegressor
 
-        if globals_dict["gpu_param"] == "force":
+        if experiment.gpu_param == "force":
             from cuml.neighbors import KNeighborsRegressor
 
             logger.info("Imported cuml.neighbors.KNeighborsRegressor")
             gpu_imported = True
-        elif globals_dict["gpu_param"]:
-            try:
+        elif experiment.gpu_param:
+            if _check_soft_dependencies("cuml", extra=None, severity="warning"):
                 from cuml.neighbors import KNeighborsRegressor
 
                 logger.info("Imported cuml.neighbors.KNeighborsRegressor")
                 gpu_imported = True
-            except ImportError:
-                logger.warning("Couldn't import cuml.neighbors.KNeighborsRegressor")
 
         args = {}
         tune_args = {}
@@ -1019,7 +1014,7 @@ class KNeighborsRegressorContainer(RegressorContainer):
         tune_grid["metric"] = ["minkowski", "euclidean", "manhattan"]
 
         if not gpu_imported:
-            args["n_jobs"] = globals_dict["n_jobs_param"]
+            args["n_jobs"] = experiment.n_jobs_param
             tune_grid["weights"] += ["distance"]
 
         tune_distributions["n_neighbors"] = IntUniformDistribution(1, 51)
@@ -1040,13 +1035,13 @@ class KNeighborsRegressorContainer(RegressorContainer):
 
 
 class DecisionTreeRegressorContainer(RegressorContainer):
-    def __init__(self, globals_dict: dict) -> None:
+    def __init__(self, experiment):
         logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+        np.random.seed(experiment.seed)
 
         from sklearn.tree import DecisionTreeRegressor
 
-        args = {"random_state": globals_dict["seed"]}
+        args = {"random_state": experiment.seed}
         tune_args = {}
         tune_grid = {
             "max_depth": np_list_arange(1, 16, 1, inclusive=True),
@@ -1095,26 +1090,24 @@ class DecisionTreeRegressorContainer(RegressorContainer):
 
 
 class RandomForestRegressorContainer(RegressorContainer):
-    def __init__(self, globals_dict: dict) -> None:
+    def __init__(self, experiment):
         logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+        np.random.seed(experiment.seed)
         gpu_imported = False
 
         from sklearn.ensemble import RandomForestRegressor
 
-        if globals_dict["gpu_param"] == "force":
+        if experiment.gpu_param == "force":
             import cuml.ensemble
 
             logger.info("Imported cuml.ensemble")
             gpu_imported = True
-        elif globals_dict["gpu_param"]:
-            try:
+        elif experiment.gpu_param:
+            if _check_soft_dependencies("cuml", extra=None, severity="warning"):
                 import cuml.ensemble
 
                 logger.info("Imported cuml.ensemble")
                 gpu_imported = True
-            except ImportError:
-                logger.warning("Couldn't import cuml.ensemble")
 
         if gpu_imported:
             RandomForestRegressor = (
@@ -1123,20 +1116,17 @@ class RandomForestRegressorContainer(RegressorContainer):
 
         if not gpu_imported:
             args = {
-                "random_state": globals_dict["seed"],
-                "n_jobs": globals_dict["n_jobs_param"],
+                "random_state": experiment.seed,
+                "n_jobs": experiment.n_jobs_param,
             }
         else:
             import cuml
+
             if version.parse(cuml.__version__) >= version.parse("0.19"):
-                args = {
-                "random_state": globals_dict["seed"],
-                }
+                args = {"random_state": experiment.seed}
             else:
-                args = {
-                    "seed": globals_dict["seed"]
-                }
-                
+                args = {"seed": experiment.seed}
+
         tune_args = {}
         tune_grid = {
             "n_estimators": np_list_arange(10, 300, 10, inclusive=True),
@@ -1193,16 +1183,16 @@ class RandomForestRegressorContainer(RegressorContainer):
 
 
 class ExtraTreesRegressorContainer(RegressorContainer):
-    def __init__(self, globals_dict: dict) -> None:
+    def __init__(self, experiment):
         logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+        np.random.seed(experiment.seed)
         gpu_imported = False
 
         from sklearn.ensemble import ExtraTreesRegressor
 
         args = {
-            "random_state": globals_dict["seed"],
-            "n_jobs": globals_dict["n_jobs_param"],
+            "random_state": experiment.seed,
+            "n_jobs": experiment.n_jobs_param,
         }
         tune_args = {}
         tune_grid = {
@@ -1255,12 +1245,12 @@ class ExtraTreesRegressorContainer(RegressorContainer):
 
 
 class AdaBoostRegressorContainer(RegressorContainer):
-    def __init__(self, globals_dict: dict) -> None:
+    def __init__(self, experiment):
         logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+        np.random.seed(experiment.seed)
         from sklearn.ensemble import AdaBoostRegressor
 
-        args = {"random_state": globals_dict["seed"]}
+        args = {"random_state": experiment.seed}
         tune_args = {}
         tune_grid = {
             "n_estimators": np_list_arange(10, 300, 10, inclusive=True),
@@ -1302,13 +1292,13 @@ class AdaBoostRegressorContainer(RegressorContainer):
 
 
 class GradientBoostingRegressorContainer(RegressorContainer):
-    def __init__(self, globals_dict: dict) -> None:
+    def __init__(self, experiment):
         logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+        np.random.seed(experiment.seed)
 
         from sklearn.ensemble import GradientBoostingRegressor
 
-        args = {"random_state": globals_dict["seed"]}
+        args = {"random_state": experiment.seed}
         tune_args = {}
         tune_grid = {
             "n_estimators": np_list_arange(10, 300, 10, inclusive=True),
@@ -1377,14 +1367,14 @@ class GradientBoostingRegressorContainer(RegressorContainer):
 
 
 class MLPRegressorContainer(RegressorContainer):
-    def __init__(self, globals_dict: dict) -> None:
+    def __init__(self, experiment):
         logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+        np.random.seed(experiment.seed)
 
         from sklearn.neural_network import MLPRegressor
         from pycaret.internal.tunable import TunableMLPRegressor
 
-        args = {"random_state": globals_dict["seed"], "max_iter": 500}
+        args = {"random_state": experiment.seed, "max_iter": 500}
         tune_args = {}
         tune_grid = {
             "learning_rate": ["constant", "invscaling", "adaptive"],
@@ -1435,13 +1425,12 @@ class MLPRegressorContainer(RegressorContainer):
 
 
 class XGBRegressorContainer(RegressorContainer):
-    def __init__(self, globals_dict: dict) -> None:
+    def __init__(self, experiment):
         logger = get_logger()
-        np.random.seed(globals_dict["seed"])
-        try:
+        np.random.seed(experiment.seed)
+        if _check_soft_dependencies("xgboost", extra="models", severity="warning"):
             import xgboost
-        except ImportError:
-            logger.warning("Couldn't import xgboost.XGBRegressor")
+        else:
             self.active = False
             return
 
@@ -1455,11 +1444,11 @@ class XGBRegressorContainer(RegressorContainer):
         from xgboost import XGBRegressor
 
         args = {
-            "random_state": globals_dict["seed"],
-            "n_jobs": globals_dict["n_jobs_param"],
+            "random_state": experiment.seed,
+            "n_jobs": experiment.n_jobs_param,
             "verbosity": 0,
             "booster": "gbtree",
-            "tree_method": "gpu_hist" if globals_dict["gpu_param"] else "auto",
+            "tree_method": "gpu_hist" if experiment.gpu_param else "auto",
         }
         tune_args = {}
         tune_grid = {
@@ -1555,20 +1544,20 @@ class XGBRegressorContainer(RegressorContainer):
             tune_distribution=tune_distributions,
             tune_args=tune_args,
             shap="type2",
-            is_gpu_enabled=bool(globals_dict["gpu_param"]),
+            is_gpu_enabled=bool(experiment.gpu_param),
         )
 
 
 class LGBMRegressorContainer(RegressorContainer):
-    def __init__(self, globals_dict: dict) -> None:
+    def __init__(self, experiment):
         logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+        np.random.seed(experiment.seed)
         from lightgbm import LGBMRegressor
         from lightgbm.basic import LightGBMError
 
         args = {
-            "random_state": globals_dict["seed"],
-            "n_jobs": globals_dict["n_jobs_param"],
+            "random_state": experiment.seed,
+            "n_jobs": experiment.n_jobs_param,
         }
         tune_args = {}
         tune_grid = {
@@ -1676,7 +1665,7 @@ class LGBMRegressorContainer(RegressorContainer):
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
         is_gpu_enabled = False
-        if globals_dict["gpu_param"]:
+        if experiment.gpu_param:
             try:
                 lgb = LGBMRegressor(device="gpu")
                 lgb.fit(np.zeros((2, 2)), [0, 1])
@@ -1690,14 +1679,14 @@ class LGBMRegressorContainer(RegressorContainer):
                     del lgb
                 except LightGBMError:
                     is_gpu_enabled = False
-                    if globals_dict["gpu_param"] == "force":
+                    if experiment.gpu_param == "force":
                         raise RuntimeError(
                             f"LightGBM GPU mode not available. Consult https://lightgbm.readthedocs.io/en/latest/GPU-Tutorial.html."
                         )
 
-        if is_gpu_enabled=="gpu":
+        if is_gpu_enabled == "gpu":
             args["device"] = "gpu"
-        elif is_gpu_enabled=="cuda":
+        elif is_gpu_enabled == "cuda":
             args["device"] = "cuda"
 
         super().__init__(
@@ -1714,13 +1703,12 @@ class LGBMRegressorContainer(RegressorContainer):
 
 
 class CatBoostRegressorContainer(RegressorContainer):
-    def __init__(self, globals_dict: dict) -> None:
+    def __init__(self, experiment):
         logger = get_logger()
-        np.random.seed(globals_dict["seed"])
-        try:
+        np.random.seed(experiment.seed)
+        if _check_soft_dependencies("catboost", extra="models", severity="warning"):
             import catboost
-        except ImportError:
-            logger.warning("Couldn't import catboost.CatBoostRegressor")
+        else:
             self.active = False
             return
 
@@ -1736,14 +1724,14 @@ class CatBoostRegressorContainer(RegressorContainer):
         # suppress output
         logging.getLogger("catboost").setLevel(logging.ERROR)
 
-        use_gpu = globals_dict["gpu_param"] == "force" or (
-            globals_dict["gpu_param"] and len(globals_dict["X_train"]) >= 50000
+        use_gpu = experiment.gpu_param == "force" or (
+            experiment.gpu_param and len(experiment.X_train) >= 50000
         )
 
         args = {
-            "random_state": globals_dict["seed"],
+            "random_state": experiment.seed,
             "verbose": False,
-            "thread_count": globals_dict["n_jobs_param"],
+            "thread_count": experiment.n_jobs_param,
             "task_type": "GPU" if use_gpu else "CPU",
             "border_count": 32 if use_gpu else 254,
         }
@@ -1796,13 +1784,14 @@ class CatBoostRegressorContainer(RegressorContainer):
             is_gpu_enabled=use_gpu,
         )
 
+
 class DummyRegressorContainer(RegressorContainer):
-    def __init__(self, globals_dict: dict) -> None:
+    def __init__(self, experiment) -> None:
         logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+        np.random.seed(experiment.seed)
         from sklearn.dummy import DummyRegressor
 
-        args = {"strategy":"mean"}
+        args = {"strategy": "mean"}
         tune_args = {}
         tune_grid = {}
         tune_distributions = {}
@@ -1819,16 +1808,17 @@ class DummyRegressorContainer(RegressorContainer):
             tune_args=tune_args,
             shap=False,
         )
-        
+
+
 class BaggingRegressorContainer(RegressorContainer):
-    def __init__(self, globals_dict: dict) -> None:
+    def __init__(self, experiment):
         logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+        np.random.seed(experiment.seed)
         from sklearn.ensemble import BaggingRegressor
 
         args = {
-            "random_state": globals_dict["seed"],
-            "n_jobs": 1 if globals_dict["gpu_param"] else None,
+            "random_state": experiment.seed,
+            "n_jobs": 1 if experiment.gpu_param else None,
         }
         tune_args = {}
         tune_grid = {
@@ -1859,9 +1849,9 @@ class BaggingRegressorContainer(RegressorContainer):
 
 
 class StackingRegressorContainer(RegressorContainer):
-    def __init__(self, globals_dict: dict) -> None:
+    def __init__(self, experiment):
         logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+        np.random.seed(experiment.seed)
         from sklearn.ensemble import StackingRegressor
 
         args = {}
@@ -1886,9 +1876,9 @@ class StackingRegressorContainer(RegressorContainer):
 
 
 class VotingRegressorContainer(RegressorContainer):
-    def __init__(self, globals_dict: dict) -> None:
+    def __init__(self, experiment):
         logger = get_logger()
-        np.random.seed(globals_dict["seed"])
+        np.random.seed(experiment.seed)
         from sklearn.ensemble import VotingRegressor
         from pycaret.internal.tunable import TunableVotingRegressor
 
@@ -1918,8 +1908,8 @@ class VotingRegressorContainer(RegressorContainer):
 
 
 def get_all_model_containers(
-    globals_dict: dict, raise_errors: bool = True
+    experiment: Any, raise_errors: bool = True
 ) -> Dict[str, RegressorContainer]:
     return pycaret.containers.base_container.get_all_containers(
-        globals(), globals_dict, RegressorContainer, raise_errors
+        globals(), experiment, RegressorContainer, raise_errors
     )

@@ -1,4 +1,4 @@
-from typing import Any, Callable, Dict, List, Optional, Union, Iterable
+from typing import Any, Callable, Dict, List, Optional, Union
 
 import cloudpickle
 import pandas as pd

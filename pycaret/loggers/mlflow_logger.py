@@ -1,14 +1,10 @@
-import os
-import gc
 from copy import deepcopy
 import secrets
 
-from typing import Optional, Dict, Any
 import pycaret
-from pycaret.internal.Display import Display
-from pycaret.internal.pipeline import get_pipeline_estimator_label
-from pycaret.internal.meta_estimators import get_estimator_from_meta_estimator
-from pycaret.loggers import BaseLogger
+from pycaret.loggers.base_logger import BaseLogger
+from pycaret.utils import __version__
+from pycaret.internal.utils import mlflow_remove_bad_chars
 
 try:
     import mlflow
@@ -42,18 +38,19 @@ class MlflowLogger(BaseLogger):
 
         return self.run
 
+    def finish_experiment(self):
+        mlflow.end_run()
+
     def log_params(self, params, model_name=None):
+        params = {mlflow_remove_bad_chars(k): v for k, v in params.items()}
         mlflow.log_params(params)
 
     def log_metrics(self, metrics, source=None):
         mlflow.log_metrics(metrics)
 
-    def set_tags(self, source, experiment_custom_tags, runtime):
+    def set_tags(self, source, experiment_custom_tags, runtime, USI=None):
         # get USI from nlp or tabular
-        USI = None
-        try:
-            USI = pycaret.internal.tabular.USI
-        except:
+        if not USI:
             try:
                 USI = pycaret.nlp.USI
             except:
@@ -84,22 +81,14 @@ class MlflowLogger(BaseLogger):
     def log_hpram_grid(self, html_file, title="hpram_grid"):
         self.log_artifact(html_file)
 
-    def log_sklearn_pipeline(self, prep_pipe, model):
+    def log_sklearn_pipeline(self, experiment, prep_pipe, model, path=None):
         # get default conda env
         from mlflow.sklearn import get_default_conda_env
-        from pycaret.internal.tabular import (
-            data_before_preprocess,
-            _is_unsupervised,
-            _ml_usecase,
-            exp_name_log,
-            target_param,
-        )
 
         default_conda_env = get_default_conda_env()
-        default_conda_env["name"] = f"{exp_name_log}-env"
+        default_conda_env["name"] = f"{experiment.exp_name_log}-env"
         default_conda_env.get("dependencies").pop(-3)
         dependencies = default_conda_env.get("dependencies")[-1]
-        from pycaret.utils import __version__
 
         dep = f"pycaret=={__version__}"
         dependencies["pip"] = [dep]

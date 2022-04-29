@@ -1,21 +1,129 @@
-# Module: internal.utils
-# Author: Moez Ali <moez.ali@queensu.ca> and Antoni Baum (Yard1) <antoni.baum@protonmail.com>
-# License: MIT
-
-import os
+import functools
+import inspect
 import numpy as np
-from pycaret.containers.metrics.base_metric import MetricContainer
-from pycaret.containers.models.base_model import ModelContainer
 import pandas as pd
+from scipy import sparse
 import pandas.io.formats.style
-import ipywidgets as ipw
-from IPython.display import display, HTML, clear_output, update_display
-from pycaret.internal.logging import get_logger
-from pycaret.internal.validation import *
-from typing import Any, List, Optional, Dict, Tuple, Union
-from sklearn import clone
+
+from typing import Any, Callable, List, Optional, Dict, Set, Tuple, Union
 from sklearn.model_selection import KFold, StratifiedKFold, BaseCrossValidator
 from sklearn.model_selection._split import _BaseKFold
+
+from pycaret.internal.logging import get_logger
+from pycaret.utils._dependencies import _check_soft_dependencies
+from copy import deepcopy
+from pycaret.internal.validation import (
+    is_sklearn_pipeline,
+    is_sklearn_cv_generator,
+    supports_partial_fit,
+)
+
+
+def to_df(data, index=None, columns=None, dtypes=None):
+    """Convert a dataset to pd.Dataframe.
+
+    Parameters
+    ----------
+    data: list, tuple, dict, np.array, sp.matrix, pd.DataFrame or None
+        Dataset to convert to a dataframe.  If None or already a
+        dataframe, return unchanged.
+
+    index: sequence or pd.Index
+        Values for the dataframe's index.
+
+    columns: sequence or None, optional (default=None)
+        Name of the columns. Use None for automatic naming.
+
+    dtypes: str, dict, dtype or None, optional (default=None)
+        Data types for the output columns. If None, the types are
+        inferred from the data.
+
+    Returns
+    -------
+    df: pd.DataFrame or None
+        Transformed dataframe.
+
+    """
+    # Get number of columns (list/tuple have no shape and sp.matrix has no index)
+    n_cols = lambda data: data.shape[1] if hasattr(data, "shape") else len(data[0])
+
+    if data is not None:
+        if not isinstance(data, pd.DataFrame):
+            # Assign default column names (dict already has column names)
+            if not isinstance(data, dict) and columns is None:
+                columns = [f"feature {str(i)}" for i in range(1, n_cols(data) + 1)]
+
+            # Create dataframe from sparse matrix or directly from data
+            if sparse.issparse(data):
+                data = pd.DataFrame.sparse.from_spmatrix(data, index, columns)
+            else:
+                data = pd.DataFrame(data, index, columns)
+
+            if dtypes is not None:
+                data = data.astype(dtypes)
+
+        else:
+            # Convert all column names to str
+            data.columns = [str(col) for col in data.columns]
+
+    return data
+
+
+def to_series(data, index=None, name="target"):
+    """Convert a column to pd.Series.
+
+    Parameters
+    ----------
+    data: sequence or None
+        Data to convert. If None, return unchanged.
+
+    index: sequence or Index, optional (default=None)
+        Values for the indices.
+
+    name: string, optional (default="target")
+        Name of the target column.
+
+    Returns
+    -------
+    series: pd.Series or None
+        Transformed series.
+
+    """
+    if data is not None and not isinstance(data, pd.Series):
+        data = pd.Series(data, index=index, name=name)
+
+    return data
+
+
+def check_features_exist(features, df):
+    """Raise an error if the features are not in the dataframe."""
+    for fx in features:
+        if fx not in df.columns:
+            raise ValueError(f"Column {fx} not found in the dataset!")
+
+
+def id_or_display_name(metric, input_ml_usecase, target_ml_usecase):
+    """
+    Get id or display_name attribute from metric. In time series experiment
+    the pull() method retrieves the metrics id to name the columns of the results
+    """
+
+    if input_ml_usecase == target_ml_usecase:
+        output = metric.id
+    else:
+        output = metric.display_name
+
+    return output
+
+
+def variable_return(X, y):
+    """Return one or two arguments depending on which is None."""
+    if y is None:
+        return X
+    elif X is None:
+        return y
+    else:
+        return X, y
 
 
 def get_config(variable: str, globals_d: dict):
@@ -25,7 +133,7 @@ def get_config(variable: str, globals_d: dict):
 
     Example
     -------
-    >>> X_train = get_config('X_train') 
+    >>> X_train = get_config('X_train')
 
     This will return X_train transformed dataset.
 
@@ -66,7 +174,7 @@ def set_config(variable: str, value, globals_d: dict):
 
     Example
     -------
-    >>> set_config('seed', 123) 
+    >>> set_config('seed', 123)
 
     This will set the global seed to '123'.
 
@@ -103,14 +211,14 @@ def set_config(variable: str, value, globals_d: dict):
 
 def save_config(file_name: str, globals_d: dict):
     """
-    This function is used to save all enviroment variables to file,
+    This function is used to save all environment variables to file,
     allowing to later resume modeling without rerunning setup().
 
     Example
     -------
-    >>> save_config('myvars.pkl') 
+    >>> save_config('myvars.pkl')
 
-    This will save all enviroment variables to 'myvars.pkl'.
+    This will save all environment variables to 'myvars.pkl'.
 
     """
 
@@ -127,7 +235,6 @@ def save_config(file_name: str, globals_d: dict):
         "_all_models",
         "_all_models_internal",
         "_all_metrics",
-        "create_model_container",
         "master_model_container",
         "display_container",
     }
@@ -156,7 +263,7 @@ def load_config(file_name: str, globals_d: dict):
 
     Example
     -------
-    >>> load_config('myvars.pkl') 
+    >>> load_config('myvars.pkl')
 
     This will load all enviroment variables from 'myvars.pkl'.
 
@@ -193,12 +300,14 @@ def color_df(
     df: pd.DataFrame, color: str, names: list, axis: int = 1
 ) -> pandas.io.formats.style.Styler:
     return df.style.apply(
-        lambda x: [f"background: {color}" if (x.name in names) else "" for i in x],
+        lambda x: [f"background: {color}" if (x.name in names) else "" for _ in x],
         axis=axis,
     )
 
 
-def get_model_id(e, all_models: Dict[str, ModelContainer]) -> str:
+def get_model_id(
+    e, all_models: Dict[str, "pycaret.containers.models.base_model.ModelContainer"]
+) -> str:
     from pycaret.internal.meta_estimators import get_estimator_from_meta_estimator
 
     return next(
@@ -211,7 +320,11 @@ def get_model_id(e, all_models: Dict[str, ModelContainer]) -> str:
     )
 
 
-def get_model_name(e, all_models: Dict[str, ModelContainer], deep: bool = True) -> str:
+def get_model_name(
+    e,
+    all_models: Dict[str, "pycaret.containers.models.base_model.ModelContainer"],
+    deep: bool = True,
+) -> str:
     old_e = e
     if isinstance(e, str) and e in all_models:
         model_id = e
@@ -245,7 +358,9 @@ def get_model_name(e, all_models: Dict[str, ModelContainer], deep: bool = True) 
     return name
 
 
-def is_special_model(e, all_models: Dict[str, ModelContainer]) -> bool:
+def is_special_model(
+    e, all_models: Dict[str, "pycaret.containers.models.base_model.ModelContainer"]
+) -> bool:
     try:
         return all_models[get_model_id(e, all_models)].is_special
     except:
@@ -286,8 +401,8 @@ def np_list_arange(
         start = float(start)
         step = float(step)
     stop = stop + (step if inclusive else 0)
-    range = list(np.arange(start, stop, step))
-    range = [
+    range_ = list(np.arange(start, stop, step))
+    range_ = [
         start
         if x < start
         else stop
@@ -295,15 +410,15 @@ def np_list_arange(
         else float(round(x, 15))
         if isinstance(x, float)
         else x
-        for x in range
+        for x in range_
     ]
-    range[0] = start
-    range[-1] = stop - step
-    return range
+    range_[0] = start
+    range_[-1] = stop - step
+    return range_
 
 
 def calculate_unsupervised_metrics(
-    metrics: Dict[str, MetricContainer],
+    metrics: Dict[str, "pycaret.containers.metrics.base_metric.MetricContainer"],
     X,
     labels,
     ground_truth: Optional[Any] = None,
@@ -324,7 +439,12 @@ def calculate_unsupervised_metrics(
 
 
 def _calculate_unsupervised_metric(
-    container, score_func, display_name, X, labels, ground_truth,
+    container,
+    score_func,
+    display_name,
+    X,
+    labels,
+    ground_truth,
 ):
     if not score_func:
         return None
@@ -337,13 +457,18 @@ def _calculate_unsupervised_metric(
     return (display_name, calculated_metric)
 
 
+def get_function_params(function: Callable) -> Set[str]:
+    return inspect.signature(function).parameters
+
+
 def calculate_metrics(
-    metrics: Dict[str, MetricContainer],
+    metrics: Dict[str, "pycaret.containers.metrics.base_metric.MetricContainer"],
     y_test,
     pred,
     pred_proba: Optional[float] = None,
     score_dict: Optional[Dict[str, np.array]] = None,
     weights: Optional[list] = None,
+    **additional_kwargs,
 ) -> Dict[str, np.array]:
 
     score_dict = []
@@ -351,7 +476,14 @@ def calculate_metrics(
     for k, v in metrics.items():
         score_dict.append(
             _calculate_metric(
-                v, v.score_func, v.display_name, y_test, pred, pred_proba, weights,
+                v,
+                v.score_func,
+                v.display_name,
+                y_test,
+                pred,
+                pred_proba,
+                weights,
+                **additional_kwargs,
             )
         )
 
@@ -360,22 +492,26 @@ def calculate_metrics(
 
 
 def _calculate_metric(
-    container, score_func, display_name, y_test, pred_, pred_proba, weights
+    container, score_func, display_name, y_test, pred_, pred_proba, weights, **kwargs
 ):
     if not score_func:
         return None
+    # get all kwargs in additional_kwargs
+    # that correspond to parameters in function signature
+    kwargs = {
+        **{k: v for k, v in kwargs.items() if k in get_function_params(score_func)},
+        **container.args,
+    }
     target = pred_proba if container.target == "pred_proba" else pred_
     try:
-        calculated_metric = score_func(
-            y_test, target, sample_weight=weights, **container.args
-        )
+        calculated_metric = score_func(y_test, target, sample_weight=weights, **kwargs)
     except:
         try:
-            calculated_metric = score_func(y_test, target, **container.args)
+            calculated_metric = score_func(y_test, target, **kwargs)
         except:
             calculated_metric = 0
 
-    return (display_name, calculated_metric)
+    return display_name, calculated_metric
 
 
 def normalize_custom_transformers(
@@ -391,7 +527,7 @@ def normalize_custom_transformers(
     else:
         _check_custom_transformer(transformers)
         if not isinstance(transformers, tuple):
-            transformers = (f"custom_step", transformers)
+            transformers = ("custom_step", transformers)
         if is_sklearn_pipeline(transformers[0]):
             return transformers.steps
         transformers = [transformers]
@@ -429,6 +565,37 @@ def get_cv_splitter(
     shuffle: bool,
     int_default: str = "kfold",
 ) -> BaseCrossValidator:
+    """Returns the cross validator object used to perform cross validation.
+
+    Parameters
+    ----------
+    fold : Optional[Union[int, BaseCrossValidator]]
+        [description]
+    default : BaseCrossValidator
+        [description]
+    seed : int
+        [description]
+    shuffle : bool
+        [description]
+    int_default : str, optional
+        [description], by default "kfold"
+
+    Returns
+    -------
+    BaseCrossValidator
+        [description]
+
+    Raises
+    ------
+    ValueError
+        [description]
+    ValueError
+        [description]
+    ValueError
+        [description]
+    TypeError
+        [description]
+    """
     if not fold:
         return default
     if is_sklearn_cv_generator(fold):
@@ -465,6 +632,26 @@ def get_cv_splitter(
 def get_cv_n_folds(
     fold: Optional[Union[int, BaseCrossValidator]], default, X, y=None, groups=None
 ) -> int:
+    """Returns the number of folds to use for cross validation
+
+    Parameters
+    ----------
+    fold : Optional[Union[int, BaseCrossValidator]]
+        [description]
+    default : [type]
+        [description]
+    X : [type]
+        [description]
+    y : [type], optional
+        [description], by default None
+    groups : [type], optional
+        [description], by default None
+
+    Returns
+    -------
+    int
+        [description]
+    """
     if not fold:
         fold = default
     if isinstance(fold, int):
@@ -540,7 +727,6 @@ class nullcontext(object):
 def get_groups(
     groups: Union[str, pd.DataFrame], X_train: pd.DataFrame, default: pd.DataFrame
 ):
-    logger = get_logger()
     if groups is None:
         return default
     if isinstance(groups, str):
@@ -552,7 +738,7 @@ def get_groups(
     else:
         if groups.shape[0] != X_train.shape[0]:
             raise ValueError(
-                f"groups has lenght {groups.shape[0]} which doesn't match X_train length of {len(X_train)}."
+                f"groups has length {groups.shape[0]} which doesn't match X_train length of {len(X_train)}."
             )
     return groups
 
@@ -560,10 +746,16 @@ def get_groups(
 def get_all_object_vars_and_properties(object):
     """
     Gets all class, static and dynamic attributes from an object.
-    
+
     Calling ``vars()`` would only return static attributes.
-    
+
     https://stackoverflow.com/a/59769926
+
+    # TODO: Do both:
+    # Option 1: Set fh before calling any model
+    "C:\ProgramData\Anaconda3\envs\pycaret_dev\lib\site-packages\sktime\forecasting\base\_sktime.py", line 187
+    def _set_fh(self, fh):
+    # Option 2: Ignore the exceptions
     """
     d = {}
     for k in object.__dir__():
@@ -582,16 +774,20 @@ def is_fit_var(key):
 
 
 def can_early_stop(
-    estimator, consider_partial_fit, consider_warm_start, consider_xgboost, params,
+    estimator,
+    consider_partial_fit,
+    consider_warm_start,
+    consider_xgboost,
+    params,
 ):
     """
     From https://github.com/ray-project/tune-sklearn/blob/master/tune_sklearn/tune_basesearch.py.
-    
+
     Helper method to determine if it is possible to do early stopping.
     Only sklearn estimators with ``partial_fit`` or ``warm_start`` can be early
     stopped. warm_start works by picking up training from the previous
     call to ``fit``.
-    
+
     Returns
     -------
         bool
@@ -600,8 +796,8 @@ def can_early_stop(
 
     logger = get_logger()
 
-    from sklearn.tree import BaseDecisionTree
     from sklearn.ensemble import BaseEnsemble
+    from sklearn.tree import BaseDecisionTree
 
     try:
         base_estimator = estimator.steps[-1][1]
@@ -629,13 +825,11 @@ def can_early_stop(
 
     is_xgboost = False
 
-    try:
+    if _check_soft_dependencies("xgboost", extra="models", severity="warning"):
         if consider_xgboost:
             from xgboost.sklearn import XGBModel
 
             is_xgboost = isinstance(base_estimator, XGBModel)
-    except ImportError:
-        pass
 
     logger.info(
         f"can_partial_fit: {can_partial_fit}, can_warm_start: {can_warm_start}, is_xgboost: {is_xgboost}"
@@ -659,3 +853,128 @@ def infer_ml_usecase(y: pd.Series) -> Tuple[str, str]:
     else:
         subcase = "binary"
     return ml_usecase, subcase
+
+
+def get_columns_to_stratify_by(
+    X: pd.DataFrame, y: pd.DataFrame, stratify: Union[bool, List[str]]
+) -> pd.DataFrame:
+    if not stratify:
+        stratify = None
+    else:
+        if isinstance(stratify, list):
+            data = pd.concat([X, y], axis=1)
+            if not all(col in data.columns for col in stratify):
+                raise ValueError("Column to stratify by does not exist in the dataset.")
+            stratify = data[stratify]
+        else:
+            stratify = y
+    return stratify
+
+
+def check_if_global_is_not_none(globals_d: dict, global_names: dict):
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            for name, message in global_names.items():
+                if globals_d[name] is None:
+                    raise ValueError(message)
+            return func(*args, **kwargs)
+
+        return wrapper
+
+    return decorator
+
+
+def df_shrink_dtypes(df, skip=[], obj2cat=True, int2uint=False):
+    """Shrink a dataframe.
+
+    Return any possible smaller data types for DataFrame columns.
+    Allows `object`->`category`, `int`->`uint`, and exclusion.
+    From: https://github.com/fastai/fastai/blob/master/fastai/tabular/core.py
+
+    """
+
+    # 1: Build column filter and typemap
+    excl_types, skip = {"category", "datetime64[ns]", "bool"}, set(skip)
+
+    # no int16 as orjson in plotly doesn't support it
+    typemap = {
+        "int": [
+            (np.dtype(x), np.iinfo(x).min, np.iinfo(x).max)
+            for x in (np.int8, np.int32, np.int64)
+        ],
+        "uint": [
+            (np.dtype(x), np.iinfo(x).min, np.iinfo(x).max)
+            for x in (np.uint8, np.uint32, np.uint64)
+        ],
+        "float": [
+            (np.dtype(x), np.finfo(x).min, np.finfo(x).max)
+            for x in (np.float32, np.float64, np.longdouble)
+        ],
+    }
+
+    if obj2cat:
+        # User wants to categorify dtype('Object'), which may not always save space
+        typemap["object"] = "category"
+    else:
+        excl_types.add("object")
+
+    new_dtypes = {}
+    exclude = lambda dt: dt[1].name not in excl_types and dt[0] not in skip
+
+    for c, old_t in filter(exclude, df.dtypes.items()):
+        t = next((v for k, v in typemap.items() if old_t.name.startswith(k)), None)
+
+        if isinstance(t, list):  # Find the smallest type that fits
+            if int2uint and t == typemap["int"] and df[c].min() >= 0:
+                t = typemap["uint"]
+            new_t = next(
+                (r[0] for r in t if r[1] <= df[c].min() and r[2] >= df[c].max()), None
+            )
+            if new_t and new_t == old_t:
+                new_t = None
+        else:
+            new_t = t if isinstance(t, str) else None
+
+        if new_t:
+            new_dtypes[c] = new_t
+
+    return df.astype(new_dtypes)
+
+
+def get_label_encoder(pipeline):
+    """Return the label encoder in the pipeline if any."""
+    try:
+        encoder = next(
+            step[1] for step in pipeline.steps if step[0] == "label_encoding"
+        )
+        return encoder.transformer
+    except StopIteration:
+        return
+
+
+def mlflow_remove_bad_chars(string: str) -> str:
+    """Leaves only alphanumeric, spaces _, -, ., / in a string"""
+    return "".join(c for c in string if c.isalpha() or c in ("_", "-", ".", " ", "/"))
+
+
+def deep_clone(estimator: Any) -> Any:
+    """Does a deep clone of a model/estimator.
+
+    NOTE: A simple clone does not copy the fitted model (only model hyperparameters)
+    # In some cases when we need to copy the fitted parameters, and internal
+    # attributes as well. Deep Clone will do this per https://stackoverflow.com/a/33576345/8925915.
+    This will copy both model hyperparameters as well as all fitted properties.
+
+    Parameters
+    ----------
+    estimator : Any
+        Estimator to be copied
+
+    Returns
+    -------
+    Any
+        Cloned estimator
+    """
+    estimator_ = deepcopy(estimator)
+    return estimator_

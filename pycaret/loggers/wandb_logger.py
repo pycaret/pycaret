@@ -1,10 +1,7 @@
 import os
 from copy import deepcopy
-from xml.etree.ElementTree import PI
-from pycaret.loggers import BaseLogger
+from pycaret.loggers.base_logger import BaseLogger
 import pandas as pd
-import joblib
-import tempfile
 
 try:
     import wandb
@@ -58,14 +55,14 @@ class WandbLogger(BaseLogger):
         elif extension == "csv":
             self.run.log({file_name: pd.read_csv(file)})
 
-    def log_sklearn_pipeline(self, prep_pipe, model):
+    def log_sklearn_pipeline(self, experiment, prep_pipe, model, path=None):
+        path = path or ""
         pipeline = deepcopy(prep_pipe)
         pipeline.steps.append(["trained_model", model])
         art = wandb.Artifact("pipeline", type="model")
-        with art.new_file('pipeline.pkl') as f:
+        with art.new_file(os.path.join(path, "pipeline.pkl")) as f:
             f.write(pipeline)
         self.run.log_artifact(art)
-
 
     def log_model_comparison(self, model_result, source):
         result_copy = deepcopy(model_result)

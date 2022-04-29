@@ -13,6 +13,9 @@ from mlflow.tracking.client import MlflowClient
 @pytest.fixture(scope='module')
 def kiva_dataframe():
     # loading dataset
+    data = pycaret.datasets.get_data("kiva")
+    data = data.head(1000)
+    assert isinstance(data, pd.DataFrame)
     return pycaret.datasets.get_data("kiva")
 
 @pytest.fixture(scope='module')
@@ -22,7 +25,7 @@ def tracking_api():
 
 def test(kiva_dataframe):
     data = kiva_dataframe.head(1000)
-    assert isinstance(data, pd.core.frame.DataFrame)
+    assert isinstance(data, pd.DataFrame)
 
     # init setup
     nlp1 = pycaret.nlp.setup(
@@ -34,7 +37,7 @@ def test(kiva_dataframe):
     )
     assert isinstance(nlp1, tuple)
     assert isinstance(nlp1[0], list)
-    assert isinstance(nlp1[1], pd.core.frame.DataFrame)
+    assert isinstance(nlp1[1], pd.DataFrame)
     assert isinstance(nlp1[2], list)
     assert isinstance(nlp1[4], int)
     assert isinstance(nlp1[5], str)
@@ -48,7 +51,7 @@ def test(kiva_dataframe):
 
     # assign model
     lda_results = pycaret.nlp.assign_model(lda)
-    assert isinstance(lda_results, pd.core.frame.DataFrame)
+    assert isinstance(lda_results, pd.DataFrame)
 
     # evaluate model
     pycaret.nlp.evaluate_model(lda)
@@ -61,7 +64,7 @@ def test(kiva_dataframe):
 
     # returns table of models
     all_models = pycaret.nlp.models()
-    assert isinstance(all_models, pd.core.frame.DataFrame)
+    assert isinstance(all_models, pd.DataFrame)
 
     # get config
     text = pycaret.nlp.get_config("text")

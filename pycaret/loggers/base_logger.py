@@ -1,20 +1,26 @@
-from abc import ABC, abstractclassmethod, abstractmethod
+from abc import ABC
 
 
-class BaseLogger:
+class BaseLogger(ABC):
     def init_logger():
         pass
 
-    def log_params(params, model_name=None):
+    def __del__(self):
+        self.finish_experiment()
+
+    def __repr__(self) -> str:
+        return self.__class__.__name__
+
+    def log_params(self, params, model_name=None):
         pass
 
-    def log_experiment(log_profile, log_data):
+    def init_experiment(self, exp_name_log, full_name=None, **kwargs):
         pass
 
     def set_tags(self, source, experiment_custom_tags, runtime):
         pass
 
-    def log_sklearn_pipeline(self, pipeline):
+    def log_sklearn_pipeline(self, experiment, prep_pipe, model, path=None):
         pass
 
     def log_model_comparison(self, model_result, source):

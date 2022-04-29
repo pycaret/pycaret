@@ -11,13 +11,14 @@ import pycaret.datasets
 def test():
     # loading dataset
     data = pycaret.datasets.get_data("juice")
-    assert isinstance(data, pd.core.frame.DataFrame)
+    assert isinstance(data, pd.DataFrame)
 
     # init setup
     clf1 = pycaret.classification.setup(
         data,
         target="Purchase",
         log_experiment=True,
+        log_plots=True,
         silent=True,
         html=False,
         session_id=123,
@@ -64,7 +65,7 @@ def test():
         for plot in available_shap:
             pycaret.classification.interpret_model(model, plot=plot)
             pycaret.classification.interpret_model(
-                model, plot=plot, X_new_sample=data.iloc[:10]
+                model, plot=plot, X_new_sample=data.drop("Purchase", axis=1).iloc[:10]
             )
 
     assert 1 == 1

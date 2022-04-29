@@ -2,11 +2,9 @@ import os, sys
 
 sys.path.insert(0, os.path.abspath(".."))
 
-import pandas as pd
-import numpy as np
-import pytest
 import pycaret.classification
 import pycaret.datasets
+
 
 def test():
 
@@ -28,6 +26,3 @@ def test():
     # generate drift report
     predictions = pycaret.classification.predict_model(lr, drift_report=True)
     assert 1 == 1
-
-if __name__ == "__main__":
-    test()

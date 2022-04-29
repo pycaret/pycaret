@@ -1,14 +1,14 @@
-import os, sys
-from typing import Type
-
+import os
+import sys
+import uuid
 sys.path.insert(0, os.path.abspath(".."))
 
-import pandas as pd
 import pytest
-import pycaret.regression
+import pandas as pd
 import pycaret.datasets
+import pycaret.regression
 from mlflow.tracking.client import MlflowClient
-import uuid
+
 
 
 @pytest.fixture(scope="module")
@@ -24,7 +24,8 @@ def tracking_api():
 
 def test(boston_dataframe):
     # loading dataset
-    assert isinstance(boston_dataframe, pd.core.frame.DataFrame)
+    data = pycaret.datasets.get_data("boston")
+    assert isinstance(data, pd.DataFrame)
 
     # init setup
     reg1 = pycaret.regression.setup(
@@ -41,7 +42,7 @@ def test(boston_dataframe):
     )
 
     # compare models
-    top3 = pycaret.regression.compare_models(n_select=100, exclude=["catboost"])[:3]
+    top3 = pycaret.regression.compare_models(n_select=100, exclude=["catboost"], errors="raise")[:3]
     assert isinstance(top3, list)
 
     # tune model
@@ -73,11 +74,11 @@ def test(boston_dataframe):
 
     # hold out predictions
     predict_holdout = pycaret.regression.predict_model(best)
-    assert isinstance(predict_holdout, pd.core.frame.DataFrame)
+    assert isinstance(predict_holdout, pd.DataFrame)
 
     # predictions on new dataset
-    predict_holdout = pycaret.regression.predict_model(best, data=boston_dataframe)
-    assert isinstance(predict_holdout, pd.core.frame.DataFrame)
+    predict_holdout = pycaret.regression.predict_model(best, data=data)
+    assert isinstance(predict_holdout, pd.DataFrame)
 
     # finalize model
     final_best = pycaret.regression.finalize_model(best)
@@ -90,17 +91,17 @@ def test(boston_dataframe):
 
     # returns table of models
     all_models = pycaret.regression.models()
-    assert isinstance(all_models, pd.core.frame.DataFrame)
+    assert isinstance(all_models, pd.DataFrame)
 
     # get config
     X_train = pycaret.regression.get_config("X_train")
     X_test = pycaret.regression.get_config("X_test")
     y_train = pycaret.regression.get_config("y_train")
     y_test = pycaret.regression.get_config("y_test")
-    assert isinstance(X_train, pd.core.frame.DataFrame)
-    assert isinstance(X_test, pd.core.frame.DataFrame)
-    assert isinstance(y_train, pd.core.series.Series)
-    assert isinstance(y_test, pd.core.series.Series)
+    assert isinstance(X_train, pd.DataFrame)
+    assert isinstance(X_test, pd.DataFrame)
+    assert isinstance(y_train, pd.Series)
+    assert isinstance(y_test, pd.Series)
 
     # set config
     pycaret.regression.set_config("seed", 124)
@@ -112,7 +113,7 @@ def test(boston_dataframe):
 
 class TestRegressionExperimentCustomTags:
     def test_regression_setup_fails_with_experiment_custom_tags(self, boston_dataframe):
-        with pytest.raises(TypeError):
+        with pytest.raises(Exception):
             # init setup
             _ = pycaret.regression.setup(
                 boston_dataframe,
@@ -130,7 +131,7 @@ class TestRegressionExperimentCustomTags:
     def test_regression_setup_fails_with_experiment_custom_multiples_inputs(
         self, custom_tag
     ):
-        with pytest.raises(TypeError):
+        with pytest.raises(Exception):
             # init setup
             _ = pycaret.regression.setup(
                 pycaret.datasets.get_data("boston"),
@@ -143,54 +144,6 @@ class TestRegressionExperimentCustomTags:
                 experiment_name=uuid.uuid4().hex,
                 experiment_custom_tags=custom_tag,
             )
-
-    def test_regression_compare_models_fails_with_experiment_custom_tags(
-        self, boston_dataframe
-    ):
-        with pytest.raises(TypeError):
-            # init setup
-            _ = pycaret.regression.setup(
-                boston_dataframe,
-                target="medv",
-                silent=True,
-                log_experiment=True,
-                html=False,
-                session_id=123,
-                n_jobs=1,
-                experiment_name=uuid.uuid4().hex,
-            )
-
-            # compare models
-            _ = pycaret.regression.compare_models(
-                n_select=100, experiment_custom_tags="custom_tag"
-            )[:3]
-
-    def test_regression_finalize_models_fails_with_experiment_custom_tags(
-        self, boston_dataframe
-    ):
-        with pytest.raises(TypeError):
-            # init setup
-            _ = pycaret.regression.setup(
-                boston_dataframe,
-                target="medv",
-                silent=True,
-                log_experiment=True,
-                html=False,
-                session_id=123,
-                n_jobs=1,
-                experiment_name=uuid.uuid4().hex,
-            )
-
-            # compare models
-            _ = pycaret.regression.compare_models(
-                n_select=100, experiment_custom_tags={"pytest": "testing"}
-            )[:2]
-
-            # select best model
-            best = pycaret.regression.automl(optimize="MAPE")
-
-            # finalize model
-            _ = pycaret.regression.finalize_model(best, experiment_custom_tags="pytest")
 
     def test_regression_models_with_experiment_custom_tags(
         self, boston_dataframe, tracking_api
