@@ -38,6 +38,9 @@ class MlflowLogger(BaseLogger):
 
         return self.run
 
+    def finish_experiment(self):
+        mlflow.end_run()
+
     def log_params(self, params, model_name=None):
         params = {mlflow_remove_bad_chars(k): v for k, v in params.items()}
         mlflow.log_params(params)
@@ -45,12 +48,9 @@ class MlflowLogger(BaseLogger):
     def log_metrics(self, metrics, source=None):
         mlflow.log_metrics(metrics)
 
-    def set_tags(self, source, experiment_custom_tags, runtime):
+    def set_tags(self, source, experiment_custom_tags, runtime, USI=None):
         # get USI from nlp or tabular
-        USI = None
-        try:
-            USI = pycaret.internal.tabular.USI
-        except:
+        if not USI:
             try:
                 USI = pycaret.nlp.USI
             except:
