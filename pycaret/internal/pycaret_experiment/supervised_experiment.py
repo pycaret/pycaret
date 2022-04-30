@@ -1,3 +1,4 @@
+from functools import partial
 from pycaret.internal.pycaret_experiment.utils import get_ml_task, MLUsecase
 from pycaret.internal.pycaret_experiment.tabular_experiment import _TabularExperiment
 from pycaret.internal.meta_estimators import (
@@ -5071,11 +5072,13 @@ class _SupervisedExperiment(_TabularExperiment):
         _check_soft_dependencies("fairlearn", extra="analysis", severity="error")
         from fairlearn.metrics import MetricFrame, count, selection_rate
 
-        all_metrics = self.get_metrics()[["Name", "Score Function"]].set_index("Name")
+        all_metrics = self.get_metrics()[["Name", "Score Function", "Args"]].set_index(
+            "Name"
+        )
         metric_dict = {}
         metric_dict["Samples"] = count
         for i in all_metrics.index:
-            metric_dict[i] = all_metrics.loc[i][0]
+            metric_dict[i] = partial(all_metrics.loc[i][0], **all_metrics.loc[i][1])
 
         if self._ml_usecase == MLUsecase.CLASSIFICATION:
             metric_dict["Selection Rate"] = selection_rate
