@@ -19,4 +19,5 @@ jobs:
         with:
           issue-inactive-days: '7'
           pr-inactive-days: '3650'
-          exclude-any-issue-labels: 'do not lock'
+          log-output: true
+          # exclude-any-issue-labels: 'do not lock'
