@@ -3143,6 +3143,12 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                 variables can be excluded from the plots using this key.
                 e.g. exclude = ["col1", "col2"]
 
+            alpha: The quantile value to use for point prediction. If not provided,
+                then the value specified during setup is used.
+
+            coverage: The coverage value to use for prediction intervals.  If not
+                provided, then the value specified during setup is used.
+
             fh: The forecast horizon to use for forecasting. If not provided, then
                 the one used during model training is used.
 
