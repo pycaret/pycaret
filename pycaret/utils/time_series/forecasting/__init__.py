@@ -103,7 +103,7 @@ def get_predictions_with_intervals(
     if alpha is not None and return_pred_int is False:
         raise ValueError(
             "\nWhen alpha is not None, sktime `predict_quantiles()` is used to get "
-            "the predictions instead of `predict()`. This forecaster does not "
+            "the predictions instead of `predict()`.\nThis forecaster does not "
             "support `predict_quantiles()`. Please leave `alpha` as `None`."
         )
 
