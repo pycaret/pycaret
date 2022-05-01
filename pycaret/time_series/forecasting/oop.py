@@ -611,11 +611,13 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         return self
 
-    def _set_point_alpha_and_intervals(
+    def _set_point_alpha_intervals_enforce_pi(
         self, point_alpha: Optional[float], coverage: Union[float, List[float]]
     ) -> "TSForecastingExperiment":
         """Sets the alpha value to be used for point predictions and the quantile
-        values to be used for prediction intervals
+        values to be used for prediction intervals. Also sets the enforcement of
+        prediction interval (if point_alpha is not None) so that models that do
+        not support predict_quantiles() can be disabled.
 
         Parameters
         ----------
@@ -631,6 +633,8 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         """
         self.point_alpha = point_alpha
         self.coverage = _check_and_clean_coverage(coverage=coverage)
+        self.enforce_pi = True if point_alpha is not None else False
+
         return self
 
     def _check_and_set_seasonal_period(
@@ -1247,7 +1251,6 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         seasonal_period: Optional[Union[List[Union[int, str]], int, str]] = None,
         point_alpha: Optional[float] = None,
         coverage: Union[float, List[float]] = 0.9,
-        enforce_pi: bool = False,
         enforce_exogenous: bool = True,
         n_jobs: Optional[int] = -1,
         use_gpu: bool = False,
@@ -1413,8 +1416,14 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             point prediction. If this is set to a floating point value, then it
             switches to using the predict_quantiles() method.
 
-            NOTE: Not all models support predict_quantiles(), hence, if a float
+            NOTE:
+            (1) Not all models support predict_quantiles(), hence, if a float
             value is provided, these models will be disabled.
+            (2) Under some conditions, the user may want to only work with models
+            that support prediction intervals. Utilizing note 1 to our advantage,
+            the point_alpha argument can be set to 0.5 (or any float value depending
+            on the quantile that the user wants to use for point predictions).
+            This will disable models that do not support prediction intervals.
 
 
         coverage: Union[float, List[float]], default = 0.9
@@ -1429,11 +1438,6 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             a list of 2 values can be provided directly. e.g. coverage = [0.2. 0.9]
             will return the lower interval corresponding to a quantile of 0.2 and
             an upper interval corresponding to a quantile of 0.9.
-
-
-        enforce_pi: bool, default = False
-            When set to True, only models that support prediction intervals are
-            loaded in the environment.
 
 
         enforce_exogenous: bool, default = True
@@ -1569,9 +1573,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         self.fig_kwargs = fig_kwargs or {}
         self._set_default_fig_kwargs()
 
-        self.enforce_pi = enforce_pi
         self.enforce_exogenous = enforce_exogenous
-        # self.preprocess = preprocess
         self.numeric_imputation_target = numeric_imputation_target
         self.numeric_imputation_exogenous = numeric_imputation_exogenous
         self.transform_target = transform_target
@@ -1612,7 +1614,9 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             ._set_exogenous_names()
             ._check_and_set_forecsting_types()
             ._check_and_set_fh(fh=fh)
-            ._set_point_alpha_and_intervals(point_alpha=point_alpha, coverage=coverage)
+            ._set_point_alpha_intervals_enforce_pi(
+                point_alpha=point_alpha, coverage=coverage
+            )
             ._setup_train_test_split()
             ._set_fold_generator()
             ._set_should_preprocess_data()

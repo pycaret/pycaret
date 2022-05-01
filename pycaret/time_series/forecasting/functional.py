@@ -44,7 +44,6 @@ def setup(
     seasonal_period: Optional[Union[List[Union[int, str]], int, str]] = None,
     point_alpha: Optional[float] = None,
     coverage: Union[float, List[float]] = 0.9,
-    enforce_pi: bool = False,
     enforce_exogenous: bool = True,
     n_jobs: Optional[int] = -1,
     use_gpu: bool = False,
@@ -207,8 +206,14 @@ def setup(
         point prediction. If this is set to a floating point value, then it
         switches to using the predict_quantiles() method.
 
-        NOTE: Not all models support predict_quantiles(), hence, if a float
+        NOTE:
+        (1) Not all models support predict_quantiles(), hence, if a float
         value is provided, these models will be disabled.
+        (2) Under some conditions, the user may want to only work with models
+        that support prediction intervals. Utilizing note 1 to our advantage,
+        the point_alpha argument can be set to 0.5 (or any float value depending
+        on the quantile that the user wants to use for point predictions).
+        This will disable models that do not support prediction intervals.
 
 
     coverage: Union[float, List[float]], default = 0.9
@@ -223,11 +228,6 @@ def setup(
         a list of 2 values can be provided directly. e.g. coverage = [0.2. 0.9]
         will return the lower interval corresponding to a quantile of 0.2 and
         an upper interval corresponding to a quantile of 0.9.
-
-
-    enforce_pi: bool, default = False
-        When set to True, only models that support prediction intervals are
-        loaded in the environment.
 
 
     enforce_exogenous: bool, default = True
@@ -371,7 +371,6 @@ def setup(
         seasonal_period=seasonal_period,
         point_alpha=point_alpha,
         coverage=coverage,
-        enforce_pi=enforce_pi,
         enforce_exogenous=enforce_exogenous,
         n_jobs=n_jobs,
         use_gpu=use_gpu,
