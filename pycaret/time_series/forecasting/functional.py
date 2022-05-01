@@ -42,6 +42,8 @@ def setup(
     fold: int = 3,
     fh: Optional[Union[List[int], int, np.ndarray, "ForecastingHorizon"]] = 1,
     seasonal_period: Optional[Union[List[Union[int, str]], int, str]] = None,
+    point_alpha: Optional[float] = None,
+    coverage: Union[float, List[float]] = 0.9,
     enforce_pi: bool = False,
     enforce_exogenous: bool = True,
     n_jobs: Optional[int] = -1,
@@ -199,6 +201,30 @@ def setup(
         first value of the list will be used as the seasonal period.
 
 
+    point_alpha: Optional[float], default = None
+        The alpha (quantile) value to use for the point predictions. By default
+        this is set to None which uses sktime's predict() method to get the
+        point prediction. If this is set to a floating point value, then it
+        switches to using the predict_quantiles() method.
+
+        NOTE: Not all models support predict_quantiles(), hence, if a float
+        value is provided, these models will be disabled.
+
+
+    coverage: Union[float, List[float]], default = 0.9
+        The coverage to be used for prediction intervals (only applicable for
+        models that support prediction intervals).
+
+        If a float value is provides, it corresponds to the coverage needed
+        (e.g. 0.9 means 90% coverage). This corresponds to lower and upper
+        quantiles = 0.05 and 0.95 respectively.
+
+        Alternately, if user wants to get the intervals at specific quantiles,
+        a list of 2 values can be provided directly. e.g. coverage = [0.2. 0.9]
+        will return the lower interval corresponding to a quantile of 0.2 and
+        an upper interval corresponding to a quantile of 0.9.
+
+
     enforce_pi: bool, default = False
         When set to True, only models that support prediction intervals are
         loaded in the environment.
@@ -343,6 +369,8 @@ def setup(
         fold=fold,
         fh=fh,
         seasonal_period=seasonal_period,
+        point_alpha=point_alpha,
+        coverage=coverage,
         enforce_pi=enforce_pi,
         enforce_exogenous=enforce_exogenous,
         n_jobs=n_jobs,
@@ -1057,7 +1085,8 @@ def predict_model(
     fh=None,
     X=None,
     return_pred_int=False,
-    alpha=0.05,
+    alpha: Optional[float] = None,
+    coverage: Union[float, List[float]] = 0.9,
     round: int = 4,
     verbose: bool = True,
 ) -> pd.DataFrame:
@@ -1103,8 +1132,14 @@ def predict_model(
         prediction interval, in addition to the point prediction.
 
 
-    alpha: float, default = 0.05
-        alpha for prediction interval. CI = 1 - alpha.
+    alpha: Optional[float], default = None
+        The alpha (quantile) value to use for the point predictions. Refer to
+        the "point_alpha" description in the setup docstring for details.
+
+
+    coverage: Union[float, List[float]], default = 0.9
+        The coverage to be used for prediction intervals. Refer to the "coverage"
+        description in the setup docstring for details.
 
 
     round: int, default = 4
@@ -1131,6 +1166,7 @@ def predict_model(
         X=X,
         return_pred_int=return_pred_int,
         alpha=alpha,
+        coverage=coverage,
         round=round,
         verbose=verbose,
     )

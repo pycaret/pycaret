@@ -23,6 +23,6 @@ kaleido>=0.2.1
 
 # Time-series
 statsmodels>=0.12.1
-sktime==0.10.1
+sktime>=0.11.3
 tbats>=1.1.0
 pmdarima>=1.8.0

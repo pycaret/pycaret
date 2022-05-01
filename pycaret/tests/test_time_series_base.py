@@ -1,8 +1,9 @@
 """Module to test time_series functionality
 """
 import pytest
-import numpy as np  # type: ignore
-import pandas as pd  # type: ignore
+import numpy as np
+import pandas as pd
+from pandas.testing import assert_frame_equal
 
 from pycaret.time_series import TSForecastingExperiment
 from pycaret.utils.time_series.forecasting.pipeline import PyCaretForecastingPipeline
@@ -43,7 +44,7 @@ def test_create_predict_finalize_model(name, fh, load_pos_and_neg_data):
     Combined to save run time
     """
     exp = TSForecastingExperiment()
-    data = load_pos_and_neg_data  # _check_data_for_prophet(name, load_pos_and_neg_data)
+    data = load_pos_and_neg_data
 
     exp.setup(
         data=data,
@@ -77,17 +78,21 @@ def test_create_predict_finalize_model(name, fh, load_pos_and_neg_data):
     assert isinstance(y_pred, pd.DataFrame)
     assert np.all(y_pred.index == expected_period_index)
 
-    # With Prediction Interval (default alpha = 0.05)
+    # With Prediction Interval (default coverage = 0.9)
     y_pred = exp.predict_model(model, return_pred_int=True)
     assert isinstance(y_pred, pd.DataFrame)
     assert np.all(y_pred.columns == ["y_pred", "lower", "upper"])
     assert np.all(y_pred.index == expected_period_index)
 
-    # With Prediction Interval (alpha = 0.2)
-    y_pred2 = exp.predict_model(model, return_pred_int=True, alpha=0.2)
+    # With Prediction Interval (coverage float = 0.8)
+    y_pred2 = exp.predict_model(model, return_pred_int=True, coverage=0.8)
     assert isinstance(y_pred2, pd.DataFrame)
     assert np.all(y_pred2.columns == ["y_pred", "lower", "upper"])
     assert np.all(y_pred2.index == expected_period_index)
+
+    # With Prediction Interval (coverage List = [0.1, 0.9])
+    y_pred3 = exp.predict_model(model, return_pred_int=True, coverage=[0.1, 0.9])
+    assert_frame_equal(y_pred2, y_pred3)  # check_exact=False
 
     # Increased forecast horizon to 2 years instead of the original 1 year
     y_pred = exp.predict_model(model, fh=np.arange(1, 25))

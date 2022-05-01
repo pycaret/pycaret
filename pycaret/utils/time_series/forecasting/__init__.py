@@ -9,11 +9,60 @@ from sktime.forecasting.base import ForecastingHorizon
 PyCaretForecastingHorizonTypes = Union[List[int], int, np.ndarray, ForecastingHorizon]
 
 
+def _check_and_clean_coverage(coverage: Union[float, List[float]]) -> List[float]:
+    """Checks the coverage to make sure it is of the allowed types (float or List).
+    Returns the lower and upper quantiles for the coverage.
+
+    If it is of type
+    (1) List, it must have a length 2 indicating the lower and upper quantiles.
+    (2) float, it is converted to a List of length 2 indicating the lower and
+    upper quantiles.
+
+    Parameters
+    ----------
+    coverage : Union[float, List[float]]
+        The coverage value to be checked and cleaned
+
+    Returns
+    -------
+    List[float]
+        A list of length 2, indicating the quantiles corresponding to the lower
+        and upper intervals
+
+    Raises
+    ------
+    TypeError
+        coverage is not of the correct type - List or float
+    ValueError
+        If coverage is of type List but not of length 2
+    """
+    if not isinstance(coverage, (float, list)):
+        raise TypeError(
+            f"'coverage' must be of type float or a List of floats of length 2. "
+            f"You passed coverage of type: '{type(coverage)}'"
+        )
+    elif isinstance(coverage, list) and len(coverage) != 2:
+        raise ValueError(
+            "When coverage is a list, it must be of length 2 corresponding to the "
+            f"lower and upper quantile of the prediction. You specified: '{coverage}'"
+        )
+
+    if isinstance(coverage, float):
+        lower_quantile = (1 - coverage) / 2
+        upper_quantile = 1 - lower_quantile
+        coverage = [lower_quantile, upper_quantile]
+    elif isinstance(coverage, list):
+        coverage.sort()
+
+    return coverage
+
+
 def get_predictions_with_intervals(
     forecaster,
+    alpha: Optional[float],
+    coverage: Union[float, List[float]],
     X: pd.DataFrame,
     fh=None,
-    alpha: float = 0.05,
     merge: bool = False,
     round: Optional[int] = None,
 ) -> Union[pd.DataFrame, Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]]:
@@ -41,19 +90,38 @@ def get_predictions_with_intervals(
     Union[pd.DataFrame, Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]]
         Predictions, Lower and Upper Interval Values
     """
+
+    coverage = _check_and_clean_coverage(coverage)
+
     # Predict and get lower and upper intervals
     return_pred_int = forecaster.get_tag("capability:pred_int")
 
-    return_values = forecaster.predict(
-        fh=fh, X=X, return_pred_int=return_pred_int, alpha=alpha
-    )
+    if alpha is not None and return_pred_int is False:
+        raise ValueError(
+            "\nWhen alpha is not None, sktime `predict_quantiles()` is used to get "
+            "the predictions instead of `predict()`. This forecaster does not "
+            "support `predict_quantiles()`. Please leave `alpha` as `None`."
+        )
 
-    if return_pred_int:
-        y_pred = pd.DataFrame({"y_pred": return_values[0]})
-        lower = pd.DataFrame({"lower": return_values[1]["lower"]})
-        upper = pd.DataFrame({"upper": return_values[1]["upper"]})
+    #### Get Point predictions ----
+    if alpha is None:
+        y_pred = forecaster.predict(fh=fh, X=X)
+        y_pred = pd.DataFrame({"y_pred": y_pred})
     else:
-        y_pred = pd.DataFrame({"y_pred": return_values})
+        y_pred = forecaster.predict_quantiles(fh=fh, X=X, alpha=alpha)
+        if y_pred.shape[1] != 1:
+            raise ValueError(
+                "Something wrong happended during point prediction; received values "
+                "This should not have happened. Please report on GitHub."
+            )
+        y_pred = pd.DataFrame({"y_pred": y_pred.iloc[:, 0]})
+
+    #### Get Intervals ----
+    if return_pred_int:
+        pred_intervals = forecaster.predict_quantiles(fh=fh, X=X, alpha=coverage)
+        lower = pd.DataFrame({"lower": pred_intervals.iloc[:, 0]})
+        upper = pd.DataFrame({"upper": pred_intervals.iloc[:, 1]})
+    else:
         lower = pd.DataFrame({"lower": [np.nan] * len(y_pred)})
         upper = pd.DataFrame({"upper": [np.nan] * len(y_pred)})
         lower.index = y_pred.index
