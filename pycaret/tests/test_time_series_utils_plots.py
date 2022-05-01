@@ -2,7 +2,6 @@
 """
 import pytest
 
-import numpy as np  # type: ignore
 import pandas as pd  # type: ignore
 
 from typing import List
@@ -10,8 +9,6 @@ from typing import List
 from .time_series_test_utils import _ALL_PLOTS
 
 from pycaret.internal.plots.utils.time_series import (
-    _resolve_hoverinfo,
-    _resolve_renderer,
     _get_data_types_to_plot,
     _reformat_dataframes_for_plots,
     ALLOWED_PLOT_DATA_TYPES,

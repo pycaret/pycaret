@@ -1,4 +1,4 @@
-"""Module to test time_series forecasting pipleine utils
+"""Module to test time_series forecasting pipeline utils
 """
 import pytest
 import numpy as np
