@@ -2580,6 +2580,8 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                     model_grid = ForecastingGridSearchCV(
                         forecaster=pipeline_with_model,
                         cv=cv,
+                        alpha=self.point_alpha,
+                        coverage=self.coverage,
                         param_grid=param_grid,
                         scoring=optimize_metric_dict,
                         refit_metric=refit_metric,
@@ -2594,6 +2596,8 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                     model_grid = ForecastingRandomizedSearchCV(
                         forecaster=pipeline_with_model,
                         cv=cv,
+                        alpha=self.point_alpha,
+                        coverage=self.coverage,
                         param_distributions=param_grid,
                         n_iter=n_iter,
                         scoring=optimize_metric_dict,
