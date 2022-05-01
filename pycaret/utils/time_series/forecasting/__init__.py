@@ -62,7 +62,7 @@ def get_predictions_with_intervals(
     alpha: Optional[float],
     coverage: Union[float, List[float]],
     X: pd.DataFrame,
-    fh=None,
+    fh: Optional[ForecastingHorizon] = None,
     merge: bool = False,
     round: Optional[int] = None,
 ) -> Union[pd.DataFrame, Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]]:
@@ -74,10 +74,14 @@ def get_predictions_with_intervals(
     ----------
     forecaster : sktime compatible forecaster
         Forecaster to be used to get the predictions
+    alpha: Optional[float]
+        The alpha (quantile) value to use for the point predictions.
+    coverage: Union[float, List[float]]
+        The coverage to be used for prediction intervals.
     X : pd.DataFrame
         Exogenous Variables
-    alpha : float, default = 0.05
-        alpha value for prediction interval
+    fh : Optional[ForecastingHorizon], default = None
+        The forecasting horizon to use for the predictions
     merge : bool, default = False
         If True, returns a dataframe with 3 columns called
         ["y_pred", "lower", "upper"], else retruns 3 separate series.
