@@ -548,14 +548,19 @@ def create_model(
         model object consistent with scikit-learn API. Estimators available
         in the model library (ID - Name):
 
+        NOTE: The available estimators depend on multiple factors such as what
+        libraries have been installed and the setup of the experiment. As such,
+        some of these may not be available for your experiment. To see the list
+        of available models, please run `setup()` first, then `models()`.
+
         * 'naive' - Naive Forecaster
         * 'grand_means' - Grand Means Forecaster
         * 'snaive' - Seasonal Naive Forecaster (disabled when seasonal_period = 1)
         * 'polytrend' - Polynomial Trend Forecaster
         * 'arima' - ARIMA family of models (ARIMA, SARIMA, SARIMAX)
         * 'auto_arima' - Auto ARIMA
-        * 'arima' - ARIMA
         * 'exp_smooth' - Exponential Smoothing
+        * 'croston' - Croston Forecaster
         * 'ets' - ETS
         * 'theta' - Theta Forecaster
         * 'tbats' - TBATS
@@ -578,6 +583,7 @@ def create_model(
         * 'gbr_cds_dt' - Gradient Boosting w/ Cond. Deseasonalize & Detrending
         * 'ada_cds_dt' - AdaBoost w/ Cond. Deseasonalize & Detrending
         * 'lightgbm_cds_dt' - Light Gradient Boosting w/ Cond. Deseasonalize & Detrending
+        * 'catboost_cds_dt' - CatBoost w/ Cond. Deseasonalize & Detrending
 
 
     fold: int or scikit-learn compatible CV generator, default = None
