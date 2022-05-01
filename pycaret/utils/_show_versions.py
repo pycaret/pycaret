@@ -9,6 +9,8 @@ __all__ = ["show_versions"]
 import importlib
 import platform
 import sys
+import logging
+from typing import Optional
 
 
 required_deps = [
@@ -138,26 +140,35 @@ def _get_deps_info(optional: bool = False):
     return deps_info
 
 
-def show_versions(optional: bool = True):
+def show_versions(optional: bool = True, logger: Optional[logging.Logger] = None):
     """Print useful debugging information (e.g. versions).
 
     Parameters
     ----------
     optional : bool, optional
         Should optional dependencies be documented, by default True
+    logger : Optional[logging.Logger], optional
+        The logger to use. If None, then uses print() command to display results,
+        by default None
     """
-    print("\nSystem:")  # noqa: T001
+
+    if logger is None:
+        print_func = print
+    else:
+        print_func = logger.info
+
+    print_func("\nSystem:")  # noqa: T001
     sys_info = _get_sys_info()
     for k, stat in sys_info.items():
-        print("{k:>10}: {stat}".format(k=k, stat=stat))  # noqa: T001
+        print_func("{k:>10}: {stat}".format(k=k, stat=stat))  # noqa: T001
 
-    print("\nPython required dependencies:")  # noqa: T001
+    print_func("\nPyCaret required dependencies:")  # noqa: T001
     optional_deps_info = _get_deps_info()
     for k, stat in optional_deps_info.items():
-        print("{k:>20}: {stat}".format(k=k, stat=stat))  # noqa: T001
+        print_func("{k:>20}: {stat}".format(k=k, stat=stat))  # noqa: T001
 
     if optional:
-        print("\nPython optional dependencies:")  # noqa: T001
+        print_func("\nPyCaret optional dependencies:")  # noqa: T001
         optional_deps_info = _get_deps_info(optional=True)
         for k, stat in optional_deps_info.items():
-            print("{k:>20}: {stat}".format(k=k, stat=stat))  # noqa: T001
+            print_func("{k:>20}: {stat}".format(k=k, stat=stat))  # noqa: T001
