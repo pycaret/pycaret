@@ -95,11 +95,28 @@ def to_series(data, index=None, name="target"):
     return data
 
 
-def check_features_exist(features, df):
-    """Raise an error if the features are not in the dataframe."""
+def check_features_exist(features: List[str], X: pd.DataFrame):
+    """Raise an error if the features are not in the feature dataframe X.
+
+    Parameters
+    ----------
+    features : List[str]
+        List of features to check
+    X : pd.DataFrame
+        Dataframe of features
+
+    Raises
+    ------
+    ValueError
+        If any feature is not present in the feature dataframe
+    """
     for fx in features:
-        if fx not in df.columns:
-            raise ValueError(f"Column {fx} not found in the dataset!")
+        if fx not in X.columns:
+            raise ValueError(
+                f"Column '{fx}' not found in the feature dataset!"
+                "\nIt is either missing from the features or you have specified "
+                "a target column as a feature."
+            )
 
 
 def id_or_display_name(metric, input_ml_usecase, target_ml_usecase):
