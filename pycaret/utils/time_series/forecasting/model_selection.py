@@ -104,6 +104,10 @@ def _fit_and_score(
         e.g. {'fh': ForecastingHorizon([1, 2, 3], is_relative=True)}
     return_train_score : bool
         Should the training scores be returned. Unused for now.
+    alpha: Optional[float]
+        The alpha (quantile) value to use for the point predictions.
+    coverage: Union[float, List[float]]
+        The coverage to be used for prediction intervals.
     error_score : float, optional
         Unused for now, by default 0
     **additional_scorer_kwargs: Dict[str, Any]
@@ -272,6 +276,10 @@ def cross_validate(
         Number of cores to use to parallelize. Refer to sklearn for details
     return_train_score : bool
         Should the training scores be returned. Unused for now.
+    alpha: Optional[float]
+        The alpha (quantile) value to use for the point predictions.
+    coverage: Union[float, List[float]]
+        The coverage to be used for prediction intervals.
     error_score : float, optional
         Unused for now, by default 0
     verbose : int
@@ -358,6 +366,10 @@ class BaseGridSearch:
             Pycaret Forecasting Pipeline that needs to be used for Grid Search.
         cv : Union[ExpandingWindowSplitter, SlidingWindowSplitter]
             The sktime compatible cross-validation object.
+        alpha: Optional[float]
+            The alpha (quantile) value to use for the point predictions.
+        coverage: Union[float, List[float]]
+            The coverage to be used for prediction intervals.
         n_jobs : Optional[int]
             Number of cores to use to parallelize. Refer to sklearn for details,
             by default None
