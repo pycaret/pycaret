@@ -488,6 +488,7 @@ class _TabularExperiment(_PyCaretExperiment):
 
 
         """
+        self._check_setup_ran()
 
         function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
 
@@ -2305,6 +2306,8 @@ class _TabularExperiment(_PyCaretExperiment):
         the platform.
 
         """
+        self._check_setup_ran()
+
         return pycaret.internal.persistence.deploy_model(
             model, model_name, authentication, platform, self.pipeline
         )
