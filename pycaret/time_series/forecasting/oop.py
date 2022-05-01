@@ -1413,8 +1413,11 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         point_alpha: Optional[float], default = None
             The alpha (quantile) value to use for the point predictions. By default
             this is set to None which uses sktime's predict() method to get the
-            point prediction. If this is set to a floating point value, then it
-            switches to using the predict_quantiles() method.
+            point prediction (the mean or the median of the forecast distribution).
+            If this is set to a floating point value, then it switches to using the
+            predict_quantiles() method to get the point prediction at the user
+            specified quantile.
+            Reference: https://robjhyndman.com/hyndsight/quantile-forecasts-in-r/
 
             NOTE:
             (1) Not all models support predict_quantiles(), hence, if a float
