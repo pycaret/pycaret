@@ -386,6 +386,8 @@ class _SupervisedExperiment(_TabularExperiment):
         - If cross_validation parameter is set to False, no models will be logged with MLFlow.
 
         """
+        self._check_setup_ran()
+
         function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
 
         self.logger.info("Initializing compare_models()")
@@ -1292,6 +1294,8 @@ class _SupervisedExperiment(_TabularExperiment):
         - If cross_validation parameter is set to False, model will not be logged with MLFlow.
 
         """
+        self._check_setup_ran()
+
         function_params_str = ", ".join(
             [
                 f"{k}={v}"
@@ -1821,6 +1825,8 @@ class _SupervisedExperiment(_TabularExperiment):
 
 
         """
+        self._check_setup_ran()
+
         function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
 
         self.logger.info("Initializing tune_model()")
@@ -3147,6 +3153,7 @@ class _SupervisedExperiment(_TabularExperiment):
 
 
         """
+        self._check_setup_ran()
 
         function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
 
@@ -4585,6 +4592,7 @@ class _SupervisedExperiment(_TabularExperiment):
 
 
         """
+        self._check_setup_ran()
 
         function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
 

@@ -1226,13 +1226,6 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         return self
 
-    def _check_setup_ran(self):
-        if not self._setup_ran:
-            raise RuntimeError(
-                "This function requires the users to run setup() first."
-                "\nMore info: https://pycaret.gitbook.io/docs/get-started/quickstart"
-            )
-
     def setup(
         self,
         data: Union[pd.Series, pd.DataFrame],
@@ -1782,8 +1775,6 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         """
 
-        self._check_setup_ran()
-
         return super().compare_models(
             include=include,
             exclude=exclude,
@@ -1910,8 +1901,6 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         is set to False.
 
         """
-
-        self._check_setup_ran()
 
         return super().create_model(
             estimator=estimator,
@@ -2819,8 +2808,6 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
 
         """
-
-        self._check_setup_ran()
 
         return super().blend_models(
             estimator_list=estimator_list,
@@ -3974,8 +3961,6 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         """
 
-        self._check_setup_ran()
-
         return super().finalize_model(
             estimator=estimator,
             fit_kwargs=fit_kwargs,
@@ -4067,8 +4052,6 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             None
 
         """
-
-        self._check_setup_ran()
 
         return super().deploy_model(
             model=model,

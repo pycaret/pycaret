@@ -86,6 +86,23 @@ class _PyCaretExperiment:
     def setup(self, *args, **kwargs) -> None:
         return
 
+    def _check_setup_ran(self):
+        """Checks to see if setup has been run or not. If it has not been run, then
+        an error is raised. Useful for operations that require setup to be run before
+        they can be executed. e.g. in some experiments, setup must be run first before
+        plotting can be done.
+
+        Raises
+        ------
+        RuntimeError
+            If setup has not been run.
+        """
+        if not self._setup_ran:
+            raise RuntimeError(
+                "This function/method requires the users to run setup() first."
+                "\nMore info: https://pycaret.gitbook.io/docs/get-started/quickstart"
+            )
+
     def deploy_model(
         self,
         model,
