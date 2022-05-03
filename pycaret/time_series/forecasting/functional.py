@@ -42,7 +42,8 @@ def setup(
     fold: int = 3,
     fh: Optional[Union[List[int], int, np.ndarray, "ForecastingHorizon"]] = 1,
     seasonal_period: Optional[Union[List[Union[int, str]], int, str]] = None,
-    enforce_pi: bool = False,
+    point_alpha: Optional[float] = None,
+    coverage: Union[float, List[float]] = 0.9,
     enforce_exogenous: bool = True,
     n_jobs: Optional[int] = -1,
     use_gpu: bool = False,
@@ -199,9 +200,37 @@ def setup(
         first value of the list will be used as the seasonal period.
 
 
-    enforce_pi: bool, default = False
-        When set to True, only models that support prediction intervals are
-        loaded in the environment.
+    point_alpha: Optional[float], default = None
+        The alpha (quantile) value to use for the point predictions. By default
+        this is set to None which uses sktime's predict() method to get the
+        point prediction (the mean or the median of the forecast distribution).
+        If this is set to a floating point value, then it switches to using the
+        predict_quantiles() method to get the point prediction at the user
+        specified quantile.
+        Reference: https://robjhyndman.com/hyndsight/quantile-forecasts-in-r/
+
+        NOTE:
+        (1) Not all models support predict_quantiles(), hence, if a float
+        value is provided, these models will be disabled.
+        (2) Under some conditions, the user may want to only work with models
+        that support prediction intervals. Utilizing note 1 to our advantage,
+        the point_alpha argument can be set to 0.5 (or any float value depending
+        on the quantile that the user wants to use for point predictions).
+        This will disable models that do not support prediction intervals.
+
+
+    coverage: Union[float, List[float]], default = 0.9
+        The coverage to be used for prediction intervals (only applicable for
+        models that support prediction intervals).
+
+        If a float value is provides, it corresponds to the coverage needed
+        (e.g. 0.9 means 90% coverage). This corresponds to lower and upper
+        quantiles = 0.05 and 0.95 respectively.
+
+        Alternately, if user wants to get the intervals at specific quantiles,
+        a list of 2 values can be provided directly. e.g. coverage = [0.2. 0.9]
+        will return the lower interval corresponding to a quantile of 0.2 and
+        an upper interval corresponding to a quantile of 0.9.
 
 
     enforce_exogenous: bool, default = True
@@ -343,7 +372,8 @@ def setup(
         fold=fold,
         fh=fh,
         seasonal_period=seasonal_period,
-        enforce_pi=enforce_pi,
+        point_alpha=point_alpha,
+        coverage=coverage,
         enforce_exogenous=enforce_exogenous,
         n_jobs=n_jobs,
         use_gpu=use_gpu,
@@ -518,14 +548,19 @@ def create_model(
         model object consistent with scikit-learn API. Estimators available
         in the model library (ID - Name):
 
+        NOTE: The available estimators depend on multiple factors such as what
+        libraries have been installed and the setup of the experiment. As such,
+        some of these may not be available for your experiment. To see the list
+        of available models, please run `setup()` first, then `models()`.
+
         * 'naive' - Naive Forecaster
         * 'grand_means' - Grand Means Forecaster
         * 'snaive' - Seasonal Naive Forecaster (disabled when seasonal_period = 1)
         * 'polytrend' - Polynomial Trend Forecaster
         * 'arima' - ARIMA family of models (ARIMA, SARIMA, SARIMAX)
         * 'auto_arima' - Auto ARIMA
-        * 'arima' - ARIMA
         * 'exp_smooth' - Exponential Smoothing
+        * 'croston' - Croston Forecaster
         * 'ets' - ETS
         * 'theta' - Theta Forecaster
         * 'tbats' - TBATS
@@ -548,6 +583,7 @@ def create_model(
         * 'gbr_cds_dt' - Gradient Boosting w/ Cond. Deseasonalize & Detrending
         * 'ada_cds_dt' - AdaBoost w/ Cond. Deseasonalize & Detrending
         * 'lightgbm_cds_dt' - Light Gradient Boosting w/ Cond. Deseasonalize & Detrending
+        * 'catboost_cds_dt' - CatBoost w/ Cond. Deseasonalize & Detrending
 
 
     fold: int or scikit-learn compatible CV generator, default = None
@@ -962,6 +998,12 @@ def plot_model(
             variables can be excluded from the plots using this key.
             e.g. exclude = ["col1", "col2"]
 
+        alpha: The quantile value to use for point prediction. If not provided,
+            then the value specified during setup is used.
+
+        coverage: The coverage value to use for prediction intervals.  If not
+            provided, then the value specified during setup is used.
+
         fh: The forecast horizon to use for forecasting. If not provided, then
             the one used during model training is used.
 
@@ -1057,7 +1099,8 @@ def predict_model(
     fh=None,
     X=None,
     return_pred_int=False,
-    alpha=0.05,
+    alpha: Optional[float] = None,
+    coverage: Union[float, List[float]] = 0.9,
     round: int = 4,
     verbose: bool = True,
 ) -> pd.DataFrame:
@@ -1103,8 +1146,14 @@ def predict_model(
         prediction interval, in addition to the point prediction.
 
 
-    alpha: float, default = 0.05
-        alpha for prediction interval. CI = 1 - alpha.
+    alpha: Optional[float], default = None
+        The alpha (quantile) value to use for the point predictions. Refer to
+        the "point_alpha" description in the setup docstring for details.
+
+
+    coverage: Union[float, List[float]], default = 0.9
+        The coverage to be used for prediction intervals. Refer to the "coverage"
+        description in the setup docstring for details.
 
 
     round: int, default = 4
@@ -1131,6 +1180,7 @@ def predict_model(
         X=X,
         return_pred_int=return_pred_int,
         alpha=alpha,
+        coverage=coverage,
         round=round,
         verbose=verbose,
     )

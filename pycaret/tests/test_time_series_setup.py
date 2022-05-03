@@ -132,12 +132,14 @@ def test_enforce_pi(load_pos_and_neg_data):
     """Tests the enforcement of prediction interval"""
     data = load_pos_and_neg_data
 
+    # With enforcement ----
     exp1 = TSForecastingExperiment()
-    exp1.setup(data=data, enforce_pi=True)
+    exp1.setup(data=data, point_alpha=0.5)
     num_models1 = len(exp1.models())
 
+    # Without enforcement ----
     exp2 = TSForecastingExperiment()
-    exp2.setup(data=data, enforce_pi=False)
+    exp2.setup(data=data, point_alpha=None)
     num_models2 = len(exp2.models())
 
     # We know that some models do not offer PI capability, so the following

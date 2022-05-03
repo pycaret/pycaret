@@ -18,7 +18,6 @@ from packaging import version
 import numpy as np  # type: ignore
 import pandas as pd
 from sktime.forecasting.base import BaseForecaster  # type: ignore
-from sktime.forecasting.base._sktime import DEFAULT_ALPHA  # type: ignore
 from sktime.forecasting.compose import (  # type: ignore
     TransformedTargetForecaster,
     make_reduction,
@@ -48,6 +47,7 @@ from pycaret.utils.datetime import (
 from pycaret.utils.time_series import TSModelTypes
 from pycaret.utils.time_series.forecasting.models import _check_enforcements
 from pycaret.utils._dependencies import _check_soft_dependencies
+
 
 class TimeSeriesContainer(ModelContainer):
     """
@@ -2540,19 +2540,14 @@ class BaseCdsDtForecaster(BaseForecaster):
 
         return self
 
-    def _predict(self, fh=None, X=None, return_pred_int=False, alpha=DEFAULT_ALPHA):
-        # check_is_fitted(self)
-
+    def _predict(self, fh=None, X=None):
         self.check_is_fitted()
-        y = self._forecaster.predict(
-            fh=fh, X=X, return_pred_int=return_pred_int, alpha=alpha
-        )
+        y = self._forecaster.predict(fh=fh, X=X)
 
         return y
 
 
 if _check_soft_dependencies("prophet", extra=None, severity="warning"):
-    from sktime.forecasting.base._base import DEFAULT_ALPHA
     from sktime.forecasting.fbprophet import Prophet  # type: ignore
 
     class ProphetPeriodPatched(Prophet):
@@ -2563,69 +2558,114 @@ if _check_soft_dependencies("prophet", extra=None, severity="warning"):
             X = coerce_period_to_datetime_index(X)
             return super().fit(y, X=X, fh=fh, **fit_params)
 
-        def predict(self, fh=None, X=None, return_pred_int=False, alpha=DEFAULT_ALPHA):
-            """Forecast time series at future horizon.
-
-            Parameters
-            ----------
-            fh : int, list, np.ndarray or ForecastingHorizon
-                Forecasting horizon
-            X : pd.DataFrame, or 2D np.ndarray, optional (default=None)
-                Exogeneous time series to predict from
-                if self.get_tag("X-y-must-have-same-index"), X.index must contain fh.index
-            return_pred_int : bool, optional (default=False)
-                If True, returns prediction intervals for given alpha values.
-            alpha : float or list, optional (default=0.95)
-
-            Returns
-            -------
-            y_pred : pd.Series, pd.DataFrame, or np.ndarray (1D or 2D)
-                Point forecasts at fh, with same index as fh
-                y_pred has same type as y passed in fit (most recently)
-            y_pred_int : pd.DataFrame - only if return_pred_int=True
-                in this case, return is 2-tuple (otherwise a single y_pred)
-                Prediction intervals
-            """
-
+        @staticmethod
+        def _get_orig_freq(X):
             #### Store original frequency setting for later ----
             orig_freq = None
             if isinstance(X, (pd.DataFrame, pd.Series)):
                 orig_freq = X.index.freq
+            return orig_freq
 
-            # TODO: Disable Prophet when Index is of any type other than DatetimeIndex or PeriodIndex
-            #### In that case, pycaret will always pass PeriodIndex from outside
-            # since Datetime index are converted to PeriodIndex in pycaret
-            # Ref: https://github.com/alan-turing-institute/sktime/blob/v0.10.0/sktime/forecasting/base/_fh.py#L524
-
-            # But sktime Prophet only supports DatetimeIndex
-            # Hence coerce the index internally if it is not DatetimeIndex
-            X = coerce_period_to_datetime_index(X)
-
-            y = super().predict(
-                fh=fh, X=X, return_pred_int=return_pred_int, alpha=alpha
-            )
-
-            #### sktime Prophet returns back DatetimeIndex
-            #### Convert back to PeriodIndex for pycaret
+        @staticmethod
+        def _coerce_datetime_to_period_index(preds, orig_freq):
             try:
-                if isinstance(y, tuple):
-                    #### Predictions & Prediction Intervals --------
-                    # y[0] and y[1] have freq=None (from prophet).
-                    # Hence passing using original_freq for conversion.
-                    # Note Tuple can not be assigned, hence performing inplace.
-                    coerce_datetime_to_period_index(y[0], freq=orig_freq, inplace=True)
-                    coerce_datetime_to_period_index(y[1], freq=orig_freq, inplace=True)
-                else:
-                    #### Predictions only ----
-                    # y has freq=None. Hence passing using original_freq for conversion.
-                    y = coerce_datetime_to_period_index(y, freq=orig_freq)
+                # preds has freq=None. Hence passing using original_freq for conversion.
+                preds = coerce_datetime_to_period_index(data=preds, freq=orig_freq)
             except Exception as exception:
                 warnings.warn(
                     "Exception occurred in ProphetPeriodPatched predict method "
                     "during conversion from DatetimeIndex to PeriodIndex: \n"
                     f"{exception}"
                 )
+
+            return preds
+
+        def predict(self, fh=None, X=None):
+            """Forecast time series at future horizon.
+            Parameters
+            ----------
+            fh : int, list, np.array or ForecastingHorizon
+                Forecasting horizon
+            X : pd.DataFrame, required
+                Exogenous time series
+            Returns
+            -------
+            y_pred : pd.Series
+                Point predictions
+            """
+
+            #### Store original frequency setting for later ----
+            orig_freq = self._get_orig_freq(X)
+
+            # TODO: Disable Prophet when Index is of any type other than DatetimeIndex or PeriodIndex
+            #### In that case, pycaret will always pass PeriodIndex from outside
+            # since Datetime index are converted to PeriodIndex in pycaret
+            # Ref: https://github.com/alan-turing-institute/sktime/blob/v0.10.0/sktime/forecasting/base/_fh.py#L524
+            # But sktime Prophet only supports DatetimeIndex
+            # Hence coerce the index internally if it is not DatetimeIndex
+            X = coerce_period_to_datetime_index(X)
+
+            y = super().predict(fh=fh, X=X)
+
+            #### sktime Prophet returns back DatetimeIndex
+            #### Convert back to PeriodIndex for pycaret
+            y = self._coerce_datetime_to_period_index(preds=y, orig_freq=orig_freq)
+
             return y
+
+        def predict_quantiles(self, fh, X=None, alpha=None):
+            """Compute/return prediction quantiles for a forecast.
+
+            private _predict_quantiles containing the core logic,
+                called from predict_quantiles and possibly predict_interval
+
+            State required:
+                Requires state to be "fitted".
+
+            Accesses in self:
+                Fitted model attributes ending in "_"
+                self.cutoff
+
+            Parameters
+            ----------
+            fh : guaranteed to be ForecastingHorizon
+                The forecasting horizon with the steps ahead to to predict.
+            X : optional (default=None)
+                guaranteed to be of a type in self.get_tag("X_inner_mtype")
+                Exogeneous time series to predict from.
+            alpha : list of float (guaranteed not None and floats in [0,1] interval)
+                A list of probabilities at which quantile forecasts are computed.
+
+            Returns
+            -------
+            pred_quantiles : pd.DataFrame
+                Column has multi-index: first level is variable name from y in fit,
+                    second level being the quantile forecasts for each alpha.
+                    Quantile forecasts are calculated for each a in alpha.
+                Row index is fh. Entries are quantile forecasts, for var in col index,
+                    at quantile probability in second-level col index, for each row index.
+            """
+
+            #### Store original frequency setting for later ----
+            orig_freq = self._get_orig_freq(X)
+
+            # TODO: Disable Prophet when Index is of any type other than DatetimeIndex or PeriodIndex
+            #### In that case, pycaret will always pass PeriodIndex from outside
+            # since Datetime index are converted to PeriodIndex in pycaret
+            # Ref: https://github.com/alan-turing-institute/sktime/blob/v0.10.0/sktime/forecasting/base/_fh.py#L524
+            # But sktime Prophet only supports DatetimeIndex
+            # Hence coerce the index internally if it is not DatetimeIndex
+            X = coerce_period_to_datetime_index(X)
+
+            preds = super().predict_quantiles(fh=fh, X=X, alpha=alpha)
+
+            #### sktime Prophet returns back DatetimeIndex
+            #### Convert back to PeriodIndex for pycaret
+            preds = self._coerce_datetime_to_period_index(
+                preds=preds, orig_freq=orig_freq
+            )
+
+            return preds
 
 
 class EnsembleTimeSeriesContainer(TimeSeriesContainer):

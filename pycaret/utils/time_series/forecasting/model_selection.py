@@ -3,7 +3,7 @@ import time
 import warnings
 from collections import defaultdict
 from functools import partial
-from typing import Any, Dict, Generator, Optional, Tuple, Union
+from typing import Any, Dict, Generator, Optional, Tuple, Union, List
 
 import numpy as np
 import pandas as pd
@@ -62,6 +62,8 @@ def _fit_and_score(
     parameters: Optional[Dict[str, Any]],
     fit_params: Dict[str, Any],
     return_train_score: bool,
+    alpha: Optional[float],
+    coverage: Union[float, List[float]],
     error_score=0,
     **additional_scorer_kwargs,
 ) -> Tuple[Dict[str, float], float, float, Union[pd.PeriodIndex, Any]]:
@@ -102,6 +104,10 @@ def _fit_and_score(
         e.g. {'fh': ForecastingHorizon([1, 2, 3], is_relative=True)}
     return_train_score : bool
         Should the training scores be returned. Unused for now.
+    alpha: Optional[float]
+        The alpha (quantile) value to use for the point predictions.
+    coverage: Union[float, List[float]]
+        The coverage to be used for prediction intervals.
     error_score : float, optional
         Unused for now, by default 0
     **additional_scorer_kwargs: Dict[str, Any]
@@ -165,12 +171,11 @@ def _fit_and_score(
     cutoff = pipeline.cutoff
 
     #### Score the model ----
-    lower = pd.Series([])
-    upper = pd.Series([])
+    lower = pd.Series(dtype="float64")
+    upper = pd.Series(dtype="float64")
     if pipeline.is_fitted:
-        # TODO: Add alpha here???
         y_pred, lower, upper = get_predictions_with_intervals(
-            forecaster=pipeline, X=X_test
+            forecaster=pipeline, alpha=alpha, coverage=coverage, X=X_test
         )
 
         if (y_test_imputed.index.values != y_pred.index.values).any():
@@ -231,6 +236,8 @@ def cross_validate(
     fit_params: Dict[str, Any],
     n_jobs: Optional[int],
     return_train_score: bool,
+    alpha: Optional[float],
+    coverage: Union[float, List[float]],
     error_score: float = 0,
     verbose: int = 0,
     **additional_scorer_kwargs,
@@ -269,6 +276,10 @@ def cross_validate(
         Number of cores to use to parallelize. Refer to sklearn for details
     return_train_score : bool
         Should the training scores be returned. Unused for now.
+    alpha: Optional[float]
+        The alpha (quantile) value to use for the point predictions.
+    coverage: Union[float, List[float]]
+        The coverage to be used for prediction intervals.
     error_score : float, optional
         Unused for now, by default 0
     verbose : int
@@ -305,6 +316,8 @@ def cross_validate(
                 parameters=None,
                 fit_params=fit_params,
                 return_train_score=return_train_score,
+                alpha=alpha,
+                coverage=coverage,
                 error_score=error_score,
                 **additional_scorer_kwargs,
             )
@@ -334,6 +347,8 @@ class BaseGridSearch:
         self,
         pipeline: PyCaretForecastingPipeline,
         cv: Union[ExpandingWindowSplitter, SlidingWindowSplitter],
+        alpha: Optional[float],
+        coverage: Union[float, List[float]],
         n_jobs=None,
         pre_dispatch=None,
         refit: bool = False,
@@ -351,6 +366,10 @@ class BaseGridSearch:
             Pycaret Forecasting Pipeline that needs to be used for Grid Search.
         cv : Union[ExpandingWindowSplitter, SlidingWindowSplitter]
             The sktime compatible cross-validation object.
+        alpha: Optional[float]
+            The alpha (quantile) value to use for the point predictions.
+        coverage: Union[float, List[float]]
+            The coverage to be used for prediction intervals.
         n_jobs : Optional[int]
             Number of cores to use to parallelize. Refer to sklearn for details,
             by default None
@@ -378,6 +397,8 @@ class BaseGridSearch:
         """
         self.pipeline = pipeline
         self.cv = cv
+        self.alpha = alpha
+        self.coverage = coverage
         self.n_jobs = n_jobs
         self.pre_dispatch = pre_dispatch
         self.refit = refit
@@ -478,6 +499,8 @@ class BaseGridSearch:
                     parameters=parameters,
                     fit_params=fit_params,
                     return_train_score=self.return_train_score,
+                    alpha=self.alpha,
+                    coverage=self.coverage,
                     error_score=self.error_score,
                     **additional_scorer_kwargs,
                 )
@@ -624,6 +647,8 @@ class ForecastingGridSearchCV(BaseGridSearch):
         self,
         forecaster,
         cv,
+        alpha: Optional[float],
+        coverage: Union[float, List[float]],
         param_grid,
         scoring=None,
         n_jobs=None,
@@ -637,6 +662,8 @@ class ForecastingGridSearchCV(BaseGridSearch):
         super(ForecastingGridSearchCV, self).__init__(
             pipeline=forecaster,
             cv=cv,
+            alpha=alpha,
+            coverage=coverage,
             n_jobs=n_jobs,
             pre_dispatch=pre_dispatch,
             refit=refit,
@@ -665,6 +692,8 @@ class ForecastingRandomizedSearchCV(BaseGridSearch):
         self,
         forecaster,
         cv,
+        alpha: Optional[float],
+        coverage: Union[float, List[float]],
         param_distributions,
         n_iter=10,
         scoring=None,
@@ -680,6 +709,8 @@ class ForecastingRandomizedSearchCV(BaseGridSearch):
         super(ForecastingRandomizedSearchCV, self).__init__(
             pipeline=forecaster,
             cv=cv,
+            alpha=alpha,
+            coverage=coverage,
             n_jobs=n_jobs,
             pre_dispatch=pre_dispatch,
             refit=refit,

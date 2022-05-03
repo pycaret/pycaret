@@ -26,11 +26,13 @@ from sktime.transformations.series.impute import Imputer
 from pycaret.utils._dependencies import _check_soft_dependencies
 
 # from sktime.forecasting.compose import ForecastingPipeline
-from pycaret.utils.time_series.forecasting import PyCaretForecastingHorizonTypes
+from pycaret.utils.time_series.forecasting import (
+    PyCaretForecastingHorizonTypes,
+    _check_and_clean_coverage,
+)
 from pycaret.utils.time_series.forecasting.pipeline import (
     PyCaretForecastingPipeline,
     _add_model_to_pipeline,
-    _are_pipeline_tansformations_empty,
     _get_imputed_data,
     _get_pipeline_estimator_label,
 )
@@ -606,6 +608,32 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             # fold value will be reset after the data is split in the parent class setup
 
         self.fh = self._check_fh(fh)
+
+        return self
+
+    def _set_point_alpha_intervals_enforce_pi(
+        self, point_alpha: Optional[float], coverage: Union[float, List[float]]
+    ) -> "TSForecastingExperiment":
+        """Sets the alpha value to be used for point predictions and the quantile
+        values to be used for prediction intervals. Also sets the enforcement of
+        prediction interval (if point_alpha is not None) so that models that do
+        not support predict_quantiles() can be disabled.
+
+        Parameters
+        ----------
+        point_alpha : Optional[float]
+            The alpha value passed by user for point prediction.
+        coverage : Union[float, List[float]]
+            The coverage value passed by user for prediction intervals
+
+        Returns
+        -------
+        TSForecastingExperiment
+            The experiment object to allow chaining of methods
+        """
+        self.point_alpha = point_alpha
+        self.coverage = _check_and_clean_coverage(coverage=coverage)
+        self.enforce_pi = True if point_alpha is not None else False
 
         return self
 
@@ -1211,7 +1239,6 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         target: Optional[str] = None,
         index: Optional[str] = None,
         ignore_features: Optional[List] = None,
-        # preprocess: bool = True,
         numeric_imputation_target: Optional[Union[int, float, str]] = None,
         numeric_imputation_exogenous: Optional[Union[int, float, str]] = None,
         transform_target: Optional[str] = None,
@@ -1222,7 +1249,8 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         fold: int = 3,
         fh: Optional[Union[List[int], int, np.ndarray, ForecastingHorizon]] = 1,
         seasonal_period: Optional[Union[List[Union[int, str]], int, str]] = None,
-        enforce_pi: bool = False,
+        point_alpha: Optional[float] = None,
+        coverage: Union[float, List[float]] = 0.9,
         enforce_exogenous: bool = True,
         n_jobs: Optional[int] = -1,
         use_gpu: bool = False,
@@ -1382,9 +1410,37 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             first value of the list will be used as the seasonal period.
 
 
-        enforce_pi: bool, default = False
-            When set to True, only models that support prediction intervals are
-            loaded in the environment.
+        point_alpha: Optional[float], default = None
+            The alpha (quantile) value to use for the point predictions. By default
+            this is set to None which uses sktime's predict() method to get the
+            point prediction (the mean or the median of the forecast distribution).
+            If this is set to a floating point value, then it switches to using the
+            predict_quantiles() method to get the point prediction at the user
+            specified quantile.
+            Reference: https://robjhyndman.com/hyndsight/quantile-forecasts-in-r/
+
+            NOTE:
+            (1) Not all models support predict_quantiles(), hence, if a float
+            value is provided, these models will be disabled.
+            (2) Under some conditions, the user may want to only work with models
+            that support prediction intervals. Utilizing note 1 to our advantage,
+            the point_alpha argument can be set to 0.5 (or any float value depending
+            on the quantile that the user wants to use for point predictions).
+            This will disable models that do not support prediction intervals.
+
+
+        coverage: Union[float, List[float]], default = 0.9
+            The coverage to be used for prediction intervals (only applicable for
+            models that support prediction intervals).
+
+            If a float value is provides, it corresponds to the coverage needed
+            (e.g. 0.9 means 90% coverage). This corresponds to lower and upper
+            quantiles = 0.05 and 0.95 respectively.
+
+            Alternately, if user wants to get the intervals at specific quantiles,
+            a list of 2 values can be provided directly. e.g. coverage = [0.2. 0.9]
+            will return the lower interval corresponding to a quantile of 0.2 and
+            an upper interval corresponding to a quantile of 0.9.
 
 
         enforce_exogenous: bool, default = True
@@ -1520,9 +1576,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         self.fig_kwargs = fig_kwargs or {}
         self._set_default_fig_kwargs()
 
-        self.enforce_pi = enforce_pi
         self.enforce_exogenous = enforce_exogenous
-        # self.preprocess = preprocess
         self.numeric_imputation_target = numeric_imputation_target
         self.numeric_imputation_exogenous = numeric_imputation_exogenous
         self.transform_target = transform_target
@@ -1563,6 +1617,9 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             ._set_exogenous_names()
             ._check_and_set_forecsting_types()
             ._check_and_set_fh(fh=fh)
+            ._set_point_alpha_intervals_enforce_pi(
+                point_alpha=point_alpha, coverage=coverage
+            )
             ._setup_train_test_split()
             ._set_fold_generator()
             ._set_should_preprocess_data()
@@ -1777,14 +1834,19 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             model object consistent with scikit-learn API. Estimators available
             in the model library (ID - Name):
 
+            NOTE: The available estimators depend on multiple factors such as what
+            libraries have been installed and the setup of the experiment. As such,
+            some of these may not be available for your experiment. To see the list
+            of available models, please run `setup()` first, then `models()`.
+
             * 'naive' - Naive Forecaster
             * 'grand_means' - Grand Means Forecaster
             * 'snaive' - Seasonal Naive Forecaster (disabled when seasonal_period = 1)
             * 'polytrend' - Polynomial Trend Forecaster
             * 'arima' - ARIMA family of models (ARIMA, SARIMA, SARIMAX)
             * 'auto_arima' - Auto ARIMA
-            * 'arima' - ARIMA
             * 'exp_smooth' - Exponential Smoothing
+            * 'croston' - Croston Forecaster
             * 'ets' - ETS
             * 'theta' - Theta Forecaster
             * 'tbats' - TBATS
@@ -1807,6 +1869,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             * 'gbr_cds_dt' - Gradient Boosting w/ Cond. Deseasonalize & Detrending
             * 'ada_cds_dt' - AdaBoost w/ Cond. Deseasonalize & Detrending
             * 'lightgbm_cds_dt' - Light Gradient Boosting w/ Cond. Deseasonalize & Detrending
+            * 'catboost_cds_dt' - CatBoost w/ Cond. Deseasonalize & Detrending
 
 
         fold: int or scikit-learn compatible CV generator, default = None
@@ -2030,6 +2093,8 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             verbose=0,
             fit_params=fit_kwargs,
             return_train_score=False,
+            alpha=self.point_alpha,
+            coverage=self.coverage,
             error_score=0,
             **additional_scorer_kwargs,
         )
@@ -2528,6 +2593,8 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                     model_grid = ForecastingGridSearchCV(
                         forecaster=pipeline_with_model,
                         cv=cv,
+                        alpha=self.point_alpha,
+                        coverage=self.coverage,
                         param_grid=param_grid,
                         scoring=optimize_metric_dict,
                         refit_metric=refit_metric,
@@ -2542,6 +2609,8 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                     model_grid = ForecastingRandomizedSearchCV(
                         forecaster=pipeline_with_model,
                         cv=cv,
+                        alpha=self.point_alpha,
+                        coverage=self.coverage,
                         param_distributions=param_grid,
                         n_iter=n_iter,
                         scoring=optimize_metric_dict,
@@ -3083,6 +3152,12 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                 variables can be excluded from the plots using this key.
                 e.g. exclude = ["col1", "col2"]
 
+            alpha: The quantile value to use for point prediction. If not provided,
+                then the value specified during setup is used.
+
+            coverage: The coverage value to use for prediction intervals.  If not
+                provided, then the value specified during setup is used.
+
             fh: The forecast horizon to use for forecasting. If not provided, then
                 the one used during model training is used.
 
@@ -3309,7 +3384,8 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                 data = self._get_y_data(split="all")
 
                 fh = data_kwargs.get("fh", None)
-                alpha = data_kwargs.get("alpha", 0.05)
+                alpha = data_kwargs.get("alpha", self.point_alpha)
+                coverage = data_kwargs.get("coverage", self.coverage)
                 X = data_kwargs.get("X", None)
                 return_pred_ints = [
                     estimator.get_tag("capability:pred_int") for estimator in estimators
@@ -3320,8 +3396,9 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                         estimator,
                         fh=fh,
                         X=X,
-                        alpha=alpha,
                         return_pred_int=return_pred_int,
+                        alpha=alpha,
+                        coverage=coverage,
                         verbose=False,
                     )
                     for estimator, return_pred_int in zip(estimators, return_pred_ints)
@@ -3737,9 +3814,10 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         self,
         estimator,
         fh=None,
-        X=None,
-        return_pred_int=False,
-        alpha=0.05,
+        X: Optional[pd.DataFrame] = None,
+        return_pred_int: bool = False,
+        alpha: Optional[float] = None,
+        coverage: Union[float, List[float]] = 0.9,
         round: int = 4,
         verbose: bool = True,
     ) -> pd.DataFrame:
@@ -3785,8 +3863,14 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             prediction interval, in addition to the point prediction.
 
 
-        alpha: float, default = 0.05
-            alpha for prediction interval. CI = 1 - alpha.
+        alpha: Optional[float], default = None
+            The alpha (quantile) value to use for the point predictions. Refer to
+            the "point_alpha" description in the setup docstring for details.
+
+
+        coverage: Union[float, List[float]], default = 0.9
+            The coverage to be used for prediction intervals. Refer to the "coverage"
+            description in the setup docstring for details.
 
 
         round: int, default = 4
@@ -3812,31 +3896,15 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         fh = self._predict_model_reconcile_fh(estimator=estimator_, fh=fh)
         X = self._predict_model_reconcile_X(estimator=estimator_, X=X)
 
-        if not _are_pipeline_tansformations_empty(pipeline=pipeline_with_model):
-            # TODO: If the model has been finalized, then we have a problem here
-            # `pipeline` will still have memory till the train dataset, but
-            # estimator will have full memory (full dataset). Hence predictions
-            # will not be correct. Check how to resolve this.
-            result = get_predictions_with_intervals(
-                forecaster=pipeline_with_model,
-                X=X,
-                fh=fh,
-                alpha=alpha,
-                merge=True,
-                round=round,
-            )
-        else:
-            # Currently sktime 0.11.0 and less do not support prediction intervals for
-            # pipelines. Hence if the pipeline is empty, just use the estimator so
-            # that we can get the prediction intervals if the estimator supports it.
-            result = get_predictions_with_intervals(
-                forecaster=estimator_,
-                X=X,
-                fh=fh,
-                alpha=alpha,
-                merge=True,
-                round=round,
-            )
+        result = get_predictions_with_intervals(
+            forecaster=pipeline_with_model,
+            alpha=alpha,
+            coverage=coverage,
+            X=X,
+            fh=fh,
+            merge=True,
+            round=round,
+        )
         y_pred = pd.DataFrame(result["y_pred"])
 
         #################

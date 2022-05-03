@@ -8,7 +8,6 @@
 import pandas as pd
 import numpy as np
 import warnings
-from sktime.forecasting.base._base import DEFAULT_ALPHA
 from sktime.forecasting.base._meta import _HeterogenousEnsembleForecaster
 
 _ENSEMBLE_METHODS = ["voting", "mean", "median"]
@@ -112,10 +111,7 @@ class _EnsembleForecasterWithVoting(_HeterogenousEnsembleForecaster):
             forecaster.update(y, X, update_params=update_params)
         return self
 
-    def _predict(self, fh, X=None, return_pred_int=False, alpha=DEFAULT_ALPHA):
-        if return_pred_int:
-            raise NotImplementedError()
-
+    def _predict(self, fh, X=None):
         self._check_method()
 
         pred_forecasters = pd.concat(self._predict_forecasters(fh, X), axis=1)

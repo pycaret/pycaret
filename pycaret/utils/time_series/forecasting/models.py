@@ -1,5 +1,5 @@
+import pandas as pd
 from sktime.forecasting.base import BaseForecaster
-from sktime.forecasting.base._sktime import DEFAULT_ALPHA
 from pycaret.utils.time_series import TSExogenousPresent
 
 # from pycaret.time_series import TSForecastingExperiment
@@ -123,7 +123,7 @@ class DummyForecaster(BaseForecaster):
         self._is_fitted = True
         return self
 
-    def _predict(self, fh=None, X=None, return_pred_int=False, alpha=DEFAULT_ALPHA):
+    def _predict(self, fh=None, X=None):
         self.check_is_fitted()
         if fh is not None:
             preds = pd.Series([-99_999] * len(fh))
