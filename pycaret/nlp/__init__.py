@@ -7,6 +7,7 @@ from pycaret.loggers.base_logger import BaseLogger
 from pycaret.loggers.mlflow_logger import MlflowLogger
 from pycaret.loggers.wandb_logger import WandbLogger
 
+
 def setup(
     data,
     target=None,
@@ -199,7 +200,7 @@ def setup(
         )
 
     logger.info("Checking libraries")
-    logger.info(show_versions())
+    logger.info(show_versions(logger=logger))
 
     logger.info("Checking Exceptions")
 
@@ -447,7 +448,6 @@ def setup(
 
         if loggers_list:
             dashboard_logger = DashboardLogger(loggers_list)
-
 
     # create exp_name_log param incase logging is False
     exp_name_log = "no_logging"
@@ -925,7 +925,6 @@ def setup(
         URI = secrets.token_hex(nbytes=4)
         exp_name_log = exp_name_
 
-
         run_name_ = "Session Initialized " + str(USI)
 
         dashboard_logger.init_loggers(exp_name_log, run_name_)
@@ -940,11 +939,17 @@ def setup(
         [logger.log_params(params) for logger in dashboard_logger.loggers]
 
         # set tag of compare_models
-        [logger.set_tags("setup",experiment_custom_tags, runtime) for logger in dashboard_logger.loggers]
+        [
+            logger.set_tags("setup", experiment_custom_tags, runtime)
+            for logger in dashboard_logger.loggers
+        ]
 
         # Log gensim id2word
         id2word.save("id2word")
-        [logger.log_artifact("id2word", "id2word") for logger in dashboard_logger.loggers]
+        [
+            logger.log_artifact("id2word", "id2word")
+            for logger in dashboard_logger.loggers
+        ]
         import os
 
         os.remove("id2word")
@@ -952,7 +957,10 @@ def setup(
         # Log data
         if log_data:
             data_.to_csv("data.csv")
-            [logger.log_artifact("data.csv", "data") for logger in dashboard_logger.loggers]
+            [
+                logger.log_artifact("data.csv", "data")
+                for logger in dashboard_logger.loggers
+            ]
             os.remove("data.csv")
 
         # Log plots
@@ -963,19 +971,31 @@ def setup(
             )
 
             plot_model(plot="frequency", save=True, system=False)
-            [logger.log_artifact("Word Frequency.html", "word_frequency") for logger in dashboard_logger.loggers]
+            [
+                logger.log_artifact("Word Frequency.html", "word_frequency")
+                for logger in dashboard_logger.loggers
+            ]
             os.remove("Word Frequency.html")
 
             plot_model(plot="bigram", save=True, system=False)
-            [logger.log_artifact("Bigram.html", "bigram") for logger in dashboard_logger.loggers]
+            [
+                logger.log_artifact("Bigram.html", "bigram")
+                for logger in dashboard_logger.loggers
+            ]
             os.remove("Bigram.html")
 
             plot_model(plot="trigram", save=True, system=False)
-            [logger.log_artifact("Trigram.html", "trigram") for logger in dashboard_logger.loggers]
+            [
+                logger.log_artifact("Trigram.html", "trigram")
+                for logger in dashboard_logger.loggers
+            ]
             os.remove("Trigram.html")
 
             plot_model(plot="pos", save=True, system=False)
-            [logger.log_artifact("POS.html", "POS") for logger in dashboard_logger.loggers]
+            [
+                logger.log_artifact("POS.html", "POS")
+                for logger in dashboard_logger.loggers
+            ]
             os.remove("POS.html")
 
             logger.info(
@@ -1380,6 +1400,7 @@ def create_model(
 
         from pathlib import Path
         import os
+
         dashboard_logger.init_loggers(exp_name_log)
 
         # Log model parameters
@@ -1400,7 +1421,10 @@ def create_model(
                 params.pop(i)
 
         [logger.log_params(params) for logger in dashboard_logger.loggers]
-        [logger.set_tags("create_model", experiment_custom_tags, runtime) for logger in dashboard_logger.loggers]
+        [
+            logger.set_tags("create_model", experiment_custom_tags, runtime)
+            for logger in dashboard_logger.loggers
+        ]
 
         # Log model and related artifacts
         if model_name_short == "nmf":
@@ -1411,16 +1435,31 @@ def create_model(
             logger.info(
                 "SubProcess save_model() end =================================="
             )
-            [logger.log_artifact("model.pkl", "model") for logger in dashboard_logger.loggers]
+            [
+                logger.log_artifact("model.pkl", "model")
+                for logger in dashboard_logger.loggers
+            ]
             size_bytes = Path("model.pkl").stat().st_size
             os.remove("model.pkl")
 
         elif model_name_short == "lda":
             model.save("model")
-            [logger.log_artifact("model", "model") for logger in dashboard_logger.loggers]
-            [logger.log_artifact("model.expElogbeta.npy", "model") for logger in dashboard_logger.loggers]
-            [logger.log_artifact("model.id2word", "model") for logger in dashboard_logger.loggers]
-            [logger.log_artifact("model.state", "model") for logger in dashboard_logger.loggers]
+            [
+                logger.log_artifact("model", "model")
+                for logger in dashboard_logger.loggers
+            ]
+            [
+                logger.log_artifact("model.expElogbeta.npy", "model")
+                for logger in dashboard_logger.loggers
+            ]
+            [
+                logger.log_artifact("model.id2word", "model")
+                for logger in dashboard_logger.loggers
+            ]
+            [
+                logger.log_artifact("model.state", "model")
+                for logger in dashboard_logger.loggers
+            ]
             size_bytes = (
                 Path("model").stat().st_size
                 + Path("model.id2word").stat().st_size
@@ -1433,24 +1472,35 @@ def create_model(
 
         elif model_name_short == "lsi":
             model.save("model")
-            [logger.log_artifact("model", "model") for logger in dashboard_logger.loggers]
-            [logger.log_artifact("model.projection", "projection") for logger in dashboard_logger.loggers]
+            [
+                logger.log_artifact("model", "model")
+                for logger in dashboard_logger.loggers
+            ]
+            [
+                logger.log_artifact("model.projection", "projection")
+                for logger in dashboard_logger.loggers
+            ]
             size_bytes = (
-                Path("model").stat().st_size
-                + Path("model.projection").stat().st_size
+                Path("model").stat().st_size + Path("model.projection").stat().st_size
             )
             os.remove("model")
             os.remove("model.projection")
 
         elif model_name_short == "rp":
             model.save("model")
-            [logger.log_artifact("model", "model") for logger in dashboard_logger.loggers]
+            [
+                logger.log_artifact("model", "model")
+                for logger in dashboard_logger.loggers
+            ]
             size_bytes = Path("model").stat().st_size
             os.remove("model")
 
         elif model_name_short == "hdp":
             model.save("model")
-            [logger.log_artifact("model", "model") for logger in dashboard_logger.loggers]
+            [
+                logger.log_artifact("model", "model")
+                for logger in dashboard_logger.loggers
+            ]
             size_bytes = Path("model").stat().st_size
             os.remove("model")
 
@@ -1461,7 +1511,6 @@ def create_model(
             [logger.log_metrics(metrics) for logger in dashboard_logger.loggers]
         except:
             pass
-  
 
     # storing into experiment
     if verbose:
