@@ -318,15 +318,15 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
         container = []
         container.append(["Session id", self.seed])
         container.append(["Target", self.target_param])
-        container.append(["Target type", "regression"])
-        container.append(["Data shape", self.dataset.shape])
-        container.append(["Train data shape", self.train.shape])
-        container.append(["Test data shape", self.test.shape])
+        container.append(["Target type", "Regression"])
+        container.append(["Data shape", self.dataset_transformed.shape])
+        container.append(["Train data shape", self.train_transformed.shape])
+        container.append(["Test data shape", self.test_transformed.shape])
         for fx, cols in self._fxs.items():
             if len(cols) > 0:
                 container.append([f"{fx} features", len(cols)])
         if self.data.isna().sum().sum():
-            container.append(["Missing Values", self.data.isna().sum().sum()])
+            container.append(["Missing Values", f"{round(self.data.isna().sum().sum() / self.data.size, 2)}%"])
         if preprocess:
             container.append(["Preprocess", preprocess])
             container.append(["Imputation type", imputation_type])
@@ -394,6 +394,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             container.append(["Fold Generator", self.fold_generator.__class__.__name__])
             container.append(["Fold Number", fold])
             container.append(["CPU Jobs", self.n_jobs_param])
+            container.append(["Use GPU", self.gpu_param])
             container.append(["Log Experiment", self.logging_param])
             container.append(["Experiment Name", self.exp_name_log])
             container.append(["USI", self.USI])

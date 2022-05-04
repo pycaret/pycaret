@@ -273,12 +273,13 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
 
         container = []
         container.append(["Session id", self.seed])
-        container.append(["Data shape", self.dataset.shape])
+        container.append(["Original data shape", self.dataset.shape])
+        container.append(["Transformed data shape", self.dataset_transformed.shape])
         for fx, cols in self._fxs.items():
             if len(cols) > 0:
                 container.append([f"{fx} features", len(cols)])
         if self.data.isna().sum().sum():
-            container.append(["Missing Values", self.data.isna().sum().sum()])
+            container.append(["Missing Values", f"{round(self.data.isna().sum().sum() / self.data.size, 2)}%"])
         if preprocess:
             container.append(["Preprocess", preprocess])
             container.append(["Imputation type", imputation_type])
@@ -318,6 +319,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
             if custom_pipeline:
                 container.append(["Custom pipeline", "Yes"])
             container.append(["CPU Jobs", self.n_jobs_param])
+            container.append(["Use GPU", self.gpu_param])
             container.append(["Log Experiment", self.logging_param])
             container.append(["Experiment Name", self.exp_name_log])
             container.append(["USI", self.USI])
