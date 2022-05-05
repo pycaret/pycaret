@@ -51,7 +51,7 @@ def to_df(data, index=None, columns=None, dtypes=None):
         if not isinstance(data, pd.DataFrame):
             # Assign default column names (dict already has column names)
             if not isinstance(data, dict) and columns is None:
-                columns = [f"feature {str(i)}" for i in range(1, n_cols(data) + 1)]
+                columns = [f"feature_{str(i)}" for i in range(1, n_cols(data) + 1)]
 
             # Create dataframe from sparse matrix or directly from data
             if sparse.issparse(data):

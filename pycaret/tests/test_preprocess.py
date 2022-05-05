@@ -10,6 +10,7 @@ Description: Unit tests for pipeline.py
 import pytest
 import numpy as np
 import pandas as pd
+from scipy.sparse import csr_matrix
 from sklearn.pipeline import Pipeline
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
@@ -25,6 +26,34 @@ def test_select_target_by_index():
     data = pycaret.datasets.get_data("juice")
     pc = pycaret.classification.setup(data, target=2)
     assert pc.target_param == "WeekofPurchase"
+
+
+def test_select_target_by_str():
+    """Assert that the target can be selected by its column name."""
+    data = pycaret.datasets.get_data("juice")
+    pc = pycaret.classification.setup(data, target="WeekofPurchase")
+    assert pc.target_param == "WeekofPurchase"
+
+
+def test_select_target_by_sequence():
+    """Assert that the target can be a sequence."""
+    data = pycaret.datasets.get_data("juice")
+    pc = pycaret.classification.setup(data, target=[1] * len(data))
+    assert pc.target_param == "target"
+
+
+def test_input_is_array():
+    """Assert that the input can be a numpy array."""
+    pc = pycaret.classification.setup(np.eye(4), target=[1, 0, 0, 1])
+    assert isinstance(pc.dataset, pd.DataFrame)
+    assert pc.target_param == "target"
+
+
+def test_input_is_sparse():
+    """Assert that the input can be a scipy sparse matrix."""
+    pc = pycaret.classification.setup(csr_matrix((3, 4)), target=[1, 0, 1])
+    assert isinstance(pc.dataset, pd.DataFrame)
+    assert pc.target_param == "target"
 
 
 def test_preprocess_is_False():
