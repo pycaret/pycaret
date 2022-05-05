@@ -179,7 +179,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
 
         # Set up data ============================================== >>
 
-        self._prepare_dataset(data)
+        self.data = self._prepare_dataset(data)
         self._prepare_column_types(
             ordinal_features=ordinal_features,
             numeric_features=numeric_features,

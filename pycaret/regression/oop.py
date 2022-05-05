@@ -192,8 +192,9 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
 
         # Set up data ============================================== >>
 
-        self._prepare_dataset(data)
-        self._prepare_target(target)
+        self.data = self._prepare_dataset(data, target)
+        self.target_param = self.data.columns[-1]
+
         self._prepare_train_test(
             train_size=train_size,
             test_data=test_data,
