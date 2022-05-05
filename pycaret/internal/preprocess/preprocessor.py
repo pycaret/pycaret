@@ -3,6 +3,7 @@
 
 import numpy as np
 import pandas as pd
+from copy import deepcopy
 from sklearn.impute import SimpleImputer, KNNImputer
 from sklearn.decomposition import PCA, IncrementalPCA, KernelPCA
 from sklearn.model_selection import (
@@ -56,6 +57,7 @@ from pycaret.internal.preprocess.transformers import (
 )
 from pycaret.internal.utils import (
     to_df,
+    to_series,
     get_columns_to_stratify_by,
     df_shrink_dtypes,
     check_features_exist,
@@ -66,7 +68,7 @@ from pycaret.internal.utils import (
 class Preprocessor:
     """Class for all standard transformation steps."""
 
-    def _prepare_dataset(self, X, y):
+    def _prepare_dataset(self, X, y=None):
         """Prepare the input data.
 
         Convert X and y to pandas (if not already) and perform standard
@@ -120,14 +122,15 @@ class Preprocessor:
                     f"Column {target} not found in the data."
                 )
 
-            return X.drop(y, axis=1), X[y]
+            X, y = X.drop(y, axis=1), X[y]
 
         elif isinstance(y, int):
-            return X.drop(X.columns[y], axis=1), X[X.columns[y]]
+            X, y = X.drop(X.columns[y], axis=1), X[X.columns[y]]
 
-        data = X.merge(y.to_frame(), left_index=True, right_index=True)
+        else:  # y=None
+            return df_shrink_dtypes(X)
 
-        return df_shrink_dtypes(data)
+        return df_shrink_dtypes(X.merge(y.to_frame(), left_index=True, right_index=True))
 
     def _prepare_column_types(
         self,
