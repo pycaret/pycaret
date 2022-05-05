@@ -66,23 +66,68 @@ from pycaret.internal.utils import (
 class Preprocessor:
     """Class for all standard transformation steps."""
 
-    def _prepare_dataset(self, data):
-        """Convert the dataset to a pd.DataFrame."""
-        self.logger.info("Set up data.")
-        self.data = df_shrink_dtypes(to_df(data))
+    def _prepare_dataset(self, X, y):
+        """Prepare the input data.
 
-    def _prepare_target(self, target):
-        """Assign the target column."""
-        self.logger.info("Set up target column.")
-        if isinstance(target, str):
-            if target not in self.data.columns:
+        Convert X and y to pandas (if not already) and perform standard
+        compatibility checks (dimensions, length, indices, etc...).
+        From https://github.com/tvdboom/ATOM/blob/master/atom/basetransformer.py#L211
+
+        Parameters
+        ----------
+        X: dataframe-like
+            Feature set with shape=(n_samples, n_features).
+
+        y: int, str, sequence or None, optional (default=None)
+            - If None: y is ignored.
+            - If int: Index of the target column in X.
+            - If str: Name of the target column in X.
+            - Else: Target column with shape=(n_samples,).
+
+        """
+        self.logger.info("Set up data.")
+
+        # Make copy to not overwrite mutable arguments
+        X = to_df(deepcopy(X))
+
+        # Convert all column names to str
+        X.columns = [str(col) for col in X.columns]
+
+        # Prepare target column
+        if isinstance(y, (list, tuple, np.ndarray, pd.Series)):
+            if not isinstance(y, pd.Series):
+                # Check that y is one-dimensional
+                ndim = np.array(y).ndim
+                if ndim != 1:
+                    raise ValueError(f"y should be one-dimensional, got ndim={ndim}.")
+
+                # Check X and y have the same number of rows
+                if len(X) != len(y):
+                    raise ValueError(
+                        "X and y don't have the same number of rows,"
+                        f" got len(X)={len(X)} and len(y)={len(y)}."
+                    )
+
+                y = to_series(y, index=X.index)
+
+            elif not X.index.equals(y.index):
+                raise ValueError("X and y don't have the same indices!")
+
+        elif isinstance(y, str):
+            if y not in X.columns:
                 raise ValueError(
                     "Invalid value for the target parameter. "
                     f"Column {target} not found in the data."
                 )
-            self.target_param = target
-        else:
-            self.target_param = self.data.columns[target]
+
+            return X.drop(y, axis=1), X[y]
+
+        elif isinstance(y, int):
+            return X.drop(X.columns[y], axis=1), X[X.columns[y]]
+
+        data = X.merge(y.to_frame(), left_index=True, right_index=True)
+
+        return df_shrink_dtypes(data)
 
     def _prepare_column_types(
         self,
