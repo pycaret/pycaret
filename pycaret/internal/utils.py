@@ -19,6 +19,11 @@ from pycaret.internal.validation import (
 )
 
 
+def get_classification_task(y):
+    """Return if the target column is binary or multiclass."""
+    return "Binary" if y.nunique() == 2 else "Multiclass"
+
+
 def to_df(data, index=None, columns=None, dtypes=None):
     """Convert a dataset to pd.Dataframe.
 

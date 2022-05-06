@@ -22,7 +22,7 @@ from pycaret.internal.meta_estimators import (
     CustomProbabilityThresholdClassifier,
     get_estimator_from_meta_estimator,
 )
-from pycaret.internal.utils import get_label_encoder
+from pycaret.internal.utils import get_classification_task, get_label_encoder
 import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
 from pycaret.internal.logging import get_logger
@@ -339,7 +339,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         container = []
         container.append(["Session id", self.seed])
         container.append(["Target", self.target_param])
-        container.append(["Target type", "Binary" if self.y.nunique() == 2 else "Multiclass"])
+        container.append(["Target type", get_classification_task(self.y)])
         le = get_label_encoder(self.pipeline)
         if le:
             mapping = {str(v): i for i, v in enumerate(le.classes_)}
@@ -354,7 +354,8 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             if len(cols) > 0:
                 container.append([f"{fx} features", len(cols)])
         if self.data.isna().sum().sum():
-            container.append(["Missing Values", f"{round(self.data.isna().sum().sum() / self.data.size, 2)}%"])
+            n_nans = self.data.isna().any(axis=1).sum() / len(self.data)
+            container.append(["Rows with missing values", f"{round(n_nans, 2)}%"])
         if preprocess:
             container.append(["Preprocess", preprocess])
             container.append(["Imputation type", imputation_type])

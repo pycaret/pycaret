@@ -279,7 +279,8 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
             if len(cols) > 0:
                 container.append([f"{fx} features", len(cols)])
         if self.data.isna().sum().sum():
-            container.append(["Missing Values", f"{round(self.data.isna().sum().sum() / self.data.size, 2)}%"])
+            n_nans = self.data.isna().any(axis=1).sum() / len(self.data)
+            container.append(["Rows with missing values", f"{round(n_nans, 2)}%"])
         if preprocess:
             container.append(["Preprocess", preprocess])
             container.append(["Imputation type", imputation_type])
