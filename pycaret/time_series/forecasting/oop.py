@@ -173,16 +173,18 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
     def _get_setup_display(self, **kwargs) -> pd.DataFrame:
         """Returns the dataframe to be displayed at the end of setup"""
+        n_nans = self.data.isna().any(axis=1).sum() / len(self.data)
 
         display_container = [
             ["session_id", self.seed],
             ["Target", self.target_param],
             ["Approach", self.approach_type.value],
             ["Exogenous Variables", self.exogenous_present.value],
-            ["Data shape", self.data.shape],
-            ["Train data shape", self.train.shape],
-            ["Test data shape", self.test.shape],
-            ["Missing Values", self.data.isna().sum().sum()],
+            ["Original data shape", self.dataset.shape],
+            ["Transformed data shape", self.dataset_transformed.shape],
+            ["Transformed train set shape", self.train_transformed.shape],
+            ["Transformed test set shape", self.test_transformed.shape],
+            ["Rows with missing values", f"{round(n_nans, 2)}%"],
             ["Fold Generator", type(self.fold_generator).__name__],
             ["Fold Number", self.fold_param],
             ["Enforce Prediction Interval", self.enforce_pi],
@@ -195,10 +197,6 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             ["Recommended d", self.lowercase_d],
             ["Recommended Seasonal D", self.uppercase_d],
             ["Preprocess", self.preprocess],
-            # ["Transformed Train Target", self.y_train_transformed.shape],
-            # ["Transformed Test Target", self.y_test_transformed.shape],
-            # ["Transformed Train Exogenous", self.X_train_transformed.shape],
-            # ["Transformed Test Exogenous", self.X_test_transformed.shape],
         ]
 
         if self.preprocess:

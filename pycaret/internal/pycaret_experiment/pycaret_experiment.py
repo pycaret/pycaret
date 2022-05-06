@@ -424,7 +424,8 @@ class _PyCaretExperiment:
     @property
     def y(self):
         """Target column."""
-        return self.dataset[self.target_param]
+        if self.target_param:
+            return self.dataset[self.target_param]
 
     @property
     def X_train(self):
@@ -453,29 +454,33 @@ class _PyCaretExperiment:
     @property
     def y_train(self):
         """Target column of the training set."""
-        return self.train[self.target_param]
+        if self.target_param:
+            return self.train[self.target_param]
 
     @property
     def y_test(self):
         """Target column of the test set."""
-        return self.test[self.target_param]
+        if self.target_param:
+            return self.test[self.target_param]
 
     @property
     def dataset_transformed(self):
         """Transformed dataset."""
-        if self._ml_usecase != MLUsecase.TIME_SERIES:
-            return pd.concat([*self.pipeline.transform(self.X, self.y)], axis=1)
+        if self.target_param:
+            return pd.concat([*self.pipeline.transform(X=self.X, y=self.y)], axis=1)
         else:
-            # In time series, the order of arguments and returns may be reversed.
-            return pd.concat([*self.pipeline.transform(y=self.y, X=self.X)], axis=1)
+            return self.pipeline.transform(self.X)
 
     @property
     def train_transformed(self):
         """Transformed training set."""
         if self._ml_usecase != MLUsecase.TIME_SERIES:
-            return pd.concat(
-                [*self.pipeline.transform(self.X_train, self.y_train)], axis=1
-            )
+            if self.target_param:
+                return pd.concat(
+                    [*self.pipeline.transform(X=self.X_train, y=self.y_train)], axis=1
+                )
+            else:
+                return self.pipeline.transform(self.X_train)
         else:
             # In time series, the order of arguments and returns may be reversed.
             return pd.concat(
@@ -486,9 +491,12 @@ class _PyCaretExperiment:
     def test_transformed(self):
         """Transformed test set."""
         if self._ml_usecase != MLUsecase.TIME_SERIES:
-            return pd.concat(
-                [*self.pipeline.transform(self.X_test, self.y_test)], axis=1
-            )
+            if self.target_param:
+                return pd.concat(
+                    [*self.pipeline.transform(X=self.X_test, y=self.y_test)], axis=1
+                )
+            else:
+                return self.pipeline.transform(self.X_test)
         else:
             # In time series, the order of arguments and returns may be reversed.
             return pd.concat(
@@ -520,7 +528,10 @@ class _PyCaretExperiment:
     def X_train_transformed(self):
         """Transformed feature set of the training set."""
         if self._ml_usecase != MLUsecase.TIME_SERIES:
-            return self.pipeline.transform(self.X_train, self.y_train)[0]
+            if self.target_param:
+                return self.pipeline.transform(self.X_train, self.y_train)[0]
+            else:
+                return self.pipeline.transform(self.X_train)
         else:
             # In time series, the order of arguments and returns may be reversed.
             return self.pipeline.transform(y=self.y_train, X=self.X_train)[1]
@@ -529,7 +540,10 @@ class _PyCaretExperiment:
     def X_test_transformed(self):
         """Transformed feature set of the test set."""
         if self._ml_usecase != MLUsecase.TIME_SERIES:
-            return self.pipeline.transform(self.X_test, self.y_test)[0]
+            if self.target_param:
+                return self.pipeline.transform(self.X_test, self.y_test)[0]
+            else:
+                return self.pipeline.transform(self.X_test)
         else:
             # In time series, the order of arguments and returns may be reversed.
             # When transforming the test set, we can and should use all data before that

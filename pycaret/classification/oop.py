@@ -22,7 +22,7 @@ from pycaret.internal.meta_estimators import (
     CustomProbabilityThresholdClassifier,
     get_estimator_from_meta_estimator,
 )
-from pycaret.internal.utils import get_label_encoder
+from pycaret.internal.utils import get_classification_task, get_label_encoder
 import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
 from pycaret.internal.logging import get_logger
@@ -339,21 +339,23 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         container = []
         container.append(["Session id", self.seed])
         container.append(["Target", self.target_param])
-        container.append(["Target type", "classification"])
+        container.append(["Target type", get_classification_task(self.y)])
         le = get_label_encoder(self.pipeline)
         if le:
             mapping = {str(v): i for i, v in enumerate(le.classes_)}
             container.append(
                 ["Target mapping", ", ".join([f"{k}: {v}" for k, v in mapping.items()])]
             )
-        container.append(["Data shape", self.dataset.shape])
-        container.append(["Train data shape", self.train.shape])
-        container.append(["Test data shape", self.test.shape])
+        container.append(["Original data shape", self.dataset.shape])
+        container.append(["Transformed data shape", self.dataset_transformed.shape])
+        container.append(["Transformed train set shape", self.train_transformed.shape])
+        container.append(["Transformed test set shape", self.test_transformed.shape])
         for fx, cols in self._fxs.items():
             if len(cols) > 0:
                 container.append([f"{fx} features", len(cols)])
         if self.data.isna().sum().sum():
-            container.append(["Missing Values", self.data.isna().sum().sum()])
+            n_nans = self.data.isna().any(axis=1).sum() / len(self.data)
+            container.append(["Rows with missing values", f"{round(n_nans, 2)}%"])
         if preprocess:
             container.append(["Preprocess", preprocess])
             container.append(["Imputation type", imputation_type])
@@ -421,6 +423,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             container.append(["Fold Generator", self.fold_generator.__class__.__name__])
             container.append(["Fold Number", fold])
             container.append(["CPU Jobs", self.n_jobs_param])
+            container.append(["Use GPU", self.gpu_param])
             container.append(["Log Experiment", self.logging_param])
             container.append(["Experiment Name", self.exp_name_log])
             container.append(["USI", self.USI])
