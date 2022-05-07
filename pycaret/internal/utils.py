@@ -110,13 +110,18 @@ def check_features_exist(features: List[str], X: pd.DataFrame):
     ValueError
         If any feature is not present in the feature dataframe
     """
+    missing_features = []
     for fx in features:
         if fx not in X.columns:
-            raise ValueError(
-                f"Column '{fx}' not found in the feature dataset!"
-                "\nIt is either missing from the features or you have specified "
-                "a target column as a feature."
-            )
+            missing_features.append(fx)
+
+    if len(missing_features) != 0:
+        raise ValueError(
+            f"Column(s): {missing_features} not found in the feature dataset!"
+            "\nThey are either missing from the features or you have specified "
+            "a target column as a feature."
+            f"\nAvailable feature columns are:\n{X.columns.to_list()}"
+        )
 
 
 def id_or_display_name(metric, input_ml_usecase, target_ml_usecase):
