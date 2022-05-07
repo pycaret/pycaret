@@ -117,10 +117,10 @@ def check_features_exist(features: List[str], X: pd.DataFrame):
 
     if len(missing_features) != 0:
         raise ValueError(
-            f"Column(s): {missing_features} not found in the feature dataset!"
+            f"\n\nColumn(s): {missing_features} not found in the feature dataset!"
             "\nThey are either missing from the features or you have specified "
-            "a target column as a feature."
-            f"\nAvailable feature columns are:\n{X.columns.to_list()}"
+            "a target column as a feature. Available feature columns are:"
+            f"\n{X.columns.to_list()}"
         )
 
 
