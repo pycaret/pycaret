@@ -23,20 +23,12 @@ from pandas.io.formats.style import Styler
 from pycaret.internal.logging import create_logger
 from pycaret.internal.meta_estimators import get_estimator_from_meta_estimator
 from pycaret.internal.pipeline import Pipeline as InternalPipeline
-from pycaret.internal.pipeline import (
-    estimator_pipeline,
-    get_pipeline_estimator_label,
-    get_pipeline_fit_kwargs,
-    get_memory,
-)
+from pycaret.internal.pipeline import get_memory
 from pycaret.internal.plots.helper import MatplotlibDefaultDPI
 from pycaret.internal.plots.yellowbrick import show_yellowbrick_plot
 from pycaret.internal.pycaret_experiment.pycaret_experiment import _PyCaretExperiment
 from pycaret.internal.pycaret_experiment.utils import MLUsecase
-from pycaret.internal.utils import (
-    check_features_exist,
-    get_model_name,
-)
+from pycaret.internal.utils import get_model_name
 from pycaret.utils._dependencies import _check_soft_dependencies
 from pycaret.internal.logging import get_logger
 from pycaret.internal.validation import is_sklearn_cv_generator
