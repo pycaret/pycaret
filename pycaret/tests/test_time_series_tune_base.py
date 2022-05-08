@@ -6,7 +6,8 @@ import numpy as np
 import pandas as pd
 
 from pycaret.time_series import TSForecastingExperiment
-from pycaret.utils.time_series.forecasting.pipeline import PyCaretForecastingPipeline
+from sktime.forecasting.compose import ForecastingPipeline
+
 
 from .time_series_test_utils import _ALL_METRICS
 
@@ -57,8 +58,8 @@ def test_tune_custom_grid_and_choose_better(load_pos_and_neg_data):
     # set to False. So pick worse value itself.
     assert tuned_model2.strategy != model.strategy
 
-    assert not isinstance(tuned_model1, PyCaretForecastingPipeline)
-    assert not isinstance(tuned_model2, PyCaretForecastingPipeline)
+    assert not isinstance(tuned_model1, ForecastingPipeline)
+    assert not isinstance(tuned_model2, ForecastingPipeline)
 
 
 def test_tune_model_custom_folds(load_pos_and_neg_data):

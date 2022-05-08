@@ -14,23 +14,11 @@ from sktime.transformations.series.boxcox import BoxCoxTransformer, LogTransform
 from sktime.transformations.series.exponent import ExponentTransformer, SqrtTransformer
 from sktime.transformations.series.cos import CosineTransformer
 
-from pycaret.utils.time_series import TSApproachTypes, TSExogenousPresent
+from pycaret.utils.time_series import TSExogenousPresent
 
 
 class TSForecastingPreprocessor:
     """Class for preprocessing Time Series Forecasting Experiments."""
-
-    def __init__(self):
-        # Initialize empty steps ----
-        self.pipe_steps_target = []
-        self.pipe_steps_exogenous = []
-
-        # Pipeline which is trained only on the training split
-        self.pipeline = None
-
-        # Pipeline which is trained only on the complete data
-        # Used when model has been finalized
-        self.pipeline_fully_trained = None
 
     def _imputation(
         self,
@@ -108,9 +96,11 @@ class TSForecastingPreprocessor:
             )
 
         if target:
-            self.pipe_steps_target.extend([("numerical_imputer", num_estimator)])
+            self.transformer_steps_target.extend([("numerical_imputer", num_estimator)])
         else:
-            self.pipe_steps_exogenous.extend([("numerical_imputer", num_estimator)])
+            self.transformer_steps_exogenous.extend(
+                [("numerical_imputer", num_estimator)]
+            )
 
     def _transformation(
         self,
@@ -178,10 +168,10 @@ class TSForecastingPreprocessor:
 
         if target:
             transformer = transform_dict[transform]
-            self.pipe_steps_target.extend([("transformer", transformer)])
+            self.transformer_steps_target.extend([("transformer", transformer)])
         else:
             transformer = ColumnwiseTransformer(transform_dict[transform])
-            self.pipe_steps_exogenous.extend([("transformer", transformer)])
+            self.transformer_steps_exogenous.extend([("transformer", transformer)])
 
     def _scaling(
         self,
@@ -242,9 +232,9 @@ class TSForecastingPreprocessor:
             )
 
         if target:
-            self.pipe_steps_target.extend([("scaler", scaler)])
+            self.transformer_steps_target.extend([("scaler", scaler)])
         else:
-            self.pipe_steps_exogenous.extend([("scaler", scaler)])
+            self.transformer_steps_exogenous.extend([("scaler", scaler)])
 
     # def _feature_selection(
     #     self,

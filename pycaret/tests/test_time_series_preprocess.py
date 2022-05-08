@@ -3,9 +3,7 @@
 import pytest
 import numpy as np
 
-# from sktime.forecasting.compose import ForecastingPipeline
-from pycaret.utils.time_series.forecasting.pipeline import PyCaretForecastingPipeline
-from sktime.forecasting.compose import TransformedTargetForecaster
+from sktime.forecasting.compose import ForecastingPipeline, TransformedTargetForecaster
 
 from .time_series_test_utils import (
     _return_model_names_for_missing_data,
@@ -79,17 +77,17 @@ def test_pipeline_types_no_exo(load_pos_and_neg_data):
 
     #### Default
     exp.setup(data=data)
-    assert isinstance(exp.pipeline, PyCaretForecastingPipeline)
+    assert isinstance(exp.pipeline, ForecastingPipeline)
     assert isinstance(exp.pipeline.steps[-1][1], TransformedTargetForecaster)
 
     #### Transform Target only
     exp.setup(data=data, numeric_imputation_target=True)
-    assert isinstance(exp.pipeline, PyCaretForecastingPipeline)
+    assert isinstance(exp.pipeline, ForecastingPipeline)
     assert isinstance(exp.pipeline.steps[-1][1], TransformedTargetForecaster)
 
     #### Transform Exogenous only (but no exogenous present)
     exp.setup(data=data, numeric_imputation_exogenous=True)
-    assert isinstance(exp.pipeline, PyCaretForecastingPipeline)
+    assert isinstance(exp.pipeline, ForecastingPipeline)
     assert isinstance(exp.pipeline.steps[-1][1], TransformedTargetForecaster)
 
     #### Transform Exogenous & Target (but no exogenous present)
@@ -98,12 +96,12 @@ def test_pipeline_types_no_exo(load_pos_and_neg_data):
         numeric_imputation_target=True,
         numeric_imputation_exogenous=True,
     )
-    assert isinstance(exp.pipeline, PyCaretForecastingPipeline)
+    assert isinstance(exp.pipeline, ForecastingPipeline)
     assert isinstance(exp.pipeline.steps[-1][1], TransformedTargetForecaster)
 
     # No preprocessing (still sets empty pipeline internally)
     exp.setup(data=data)
-    assert isinstance(exp.pipeline, PyCaretForecastingPipeline)
+    assert isinstance(exp.pipeline, ForecastingPipeline)
     assert isinstance(exp.pipeline.steps[-1][1], TransformedTargetForecaster)
 
 
@@ -116,7 +114,7 @@ def test_pipeline_types_exo(load_uni_exo_data_target):
 
     #### Default
     exp.setup(data=data, target=target, seasonal_period=4)
-    assert isinstance(exp.pipeline, PyCaretForecastingPipeline)
+    assert isinstance(exp.pipeline, ForecastingPipeline)
     assert isinstance(exp.pipeline.steps[-1][1], TransformedTargetForecaster)
 
     #### Transform Target only
@@ -126,7 +124,7 @@ def test_pipeline_types_exo(load_uni_exo_data_target):
         seasonal_period=4,
         numeric_imputation_target=True,
     )
-    assert isinstance(exp.pipeline, PyCaretForecastingPipeline)
+    assert isinstance(exp.pipeline, ForecastingPipeline)
     assert isinstance(exp.pipeline.steps[-1][1], TransformedTargetForecaster)
 
     #### Transform Exogenous only
@@ -136,7 +134,7 @@ def test_pipeline_types_exo(load_uni_exo_data_target):
         seasonal_period=4,
         numeric_imputation_exogenous=True,
     )
-    assert isinstance(exp.pipeline, PyCaretForecastingPipeline)
+    assert isinstance(exp.pipeline, ForecastingPipeline)
     assert isinstance(exp.pipeline.steps[-1][1], TransformedTargetForecaster)
 
     #### Transform Exogenous & Target
@@ -147,12 +145,12 @@ def test_pipeline_types_exo(load_uni_exo_data_target):
         numeric_imputation_target=True,
         numeric_imputation_exogenous=True,
     )
-    assert isinstance(exp.pipeline, PyCaretForecastingPipeline)
+    assert isinstance(exp.pipeline, ForecastingPipeline)
     assert isinstance(exp.pipeline.steps[-1][1], TransformedTargetForecaster)
 
     # No preprocessing (still sets empty pipeline internally)
     exp.setup(data=data, target=target, seasonal_period=4)
-    assert isinstance(exp.pipeline, PyCaretForecastingPipeline)
+    assert isinstance(exp.pipeline, ForecastingPipeline)
     assert isinstance(exp.pipeline.steps[-1][1], TransformedTargetForecaster)
 
 
@@ -584,7 +582,7 @@ def test_pipeline_after_finalizing(load_pos_and_neg_data_missing):
     exp.save_model(final, "my_model")
     loaded_model = exp.load_model("my_model")
 
-    # Check if pipeline data index (PyCaretForecastingPipeline) matches up with
+    # Check if pipeline data index (ForecastingPipeline) matches up with
     # the actual model data
     assert len(loaded_model._y.index) == len(
         loaded_model.steps[-1][1].steps[-1][1]._y.index
