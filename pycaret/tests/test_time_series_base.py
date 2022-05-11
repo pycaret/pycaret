@@ -6,7 +6,7 @@ import pytest
 from pandas.testing import assert_frame_equal
 
 from pycaret.time_series import TSForecastingExperiment
-from pycaret.utils.time_series.forecasting.pipeline import PyCaretForecastingPipeline
+from sktime.forecasting.compose import ForecastingPipeline
 
 from .time_series_test_utils import _return_compare_model_args, _return_model_parameters
 
@@ -54,7 +54,7 @@ def test_create_predict_finalize_model(name, fh, load_pos_and_neg_data):
     ## Test Create Model ##
     #######################
     model = exp.create_model(name)
-    assert not isinstance(model, PyCaretForecastingPipeline)
+    assert not isinstance(model, ForecastingPipeline)
 
     #########################
     #### Expected Values ####
@@ -100,7 +100,7 @@ def test_create_predict_finalize_model(name, fh, load_pos_and_neg_data):
     #########################
 
     final_model = exp.finalize_model(model)
-    assert not isinstance(final_model, PyCaretForecastingPipeline)
+    assert not isinstance(final_model, ForecastingPipeline)
 
     y_pred = exp.predict_model(final_model)
     assert np.all(y_pred.index == final_expected_period_index)
@@ -192,7 +192,7 @@ def test_create_model_no_cv(load_pos_and_neg_data):
     ## Test Create Model without cv ##
     ##################################
     model = exp.create_model("naive", cross_validation=False)
-    assert not isinstance(model, PyCaretForecastingPipeline)
+    assert not isinstance(model, ForecastingPipeline)
     metrics = exp.pull()
 
     # Should return only 1 row for the test set (since no CV)
@@ -249,7 +249,7 @@ def test_compare_models(cross_validation, log_experiment, load_pos_and_neg_data)
     )
     assert len(best_baseline_models) == 3
     for best in best_baseline_models:
-        assert not isinstance(best, PyCaretForecastingPipeline)
+        assert not isinstance(best, ForecastingPipeline)
 
 
 def test_save_load_model_no_setup(load_pos_and_neg_data):

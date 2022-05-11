@@ -19,6 +19,7 @@ from pycaret.internal.validation import (
 from pycaret.utils._dependencies import _check_soft_dependencies
 
 DATAFRAME_LIKE = Union[dict, list, tuple, np.ndarray, sparse.spmatrix, pd.DataFrame]
+TARGET_LIKE = Union[int, str, list, tuple, np.ndarray, pd.Series]
 
 
 def get_classification_task(y):

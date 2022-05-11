@@ -1,42 +1,39 @@
-import datetime
 import gc
-import logging
 import time
-import traceback
+import logging
+import datetime
 import warnings
-from typing import Any, Dict, List, Optional, Tuple, Union
-
+import traceback
 import numpy as np  # type: ignore
 import pandas as pd
+from typing import Tuple, Union, Optional, Dict, Any, List
+from joblib.memory import Memory
 import plotly.express as px  # type: ignore
 import plotly.graph_objects as go  # type: ignore
-from joblib.memory import Memory
 
-import pycaret.containers.metrics.classification
-import pycaret.containers.models.classification
-import pycaret.internal.patches.sklearn
-import pycaret.internal.patches.yellowbrick
-import pycaret.internal.persistence
-import pycaret.internal.preprocess
-from pycaret.internal.Display import Display
-from pycaret.internal.logging import get_logger
+# Own modules
+from pycaret.internal.pipeline import Pipeline as InternalPipeline
+from pycaret.internal.pycaret_experiment.utils import highlight_setup, MLUsecase
+from pycaret.internal.pycaret_experiment.supervised_experiment import (
+    _SupervisedExperiment,
+)
+from pycaret.internal.preprocess.preprocessor import Preprocessor
 from pycaret.internal.meta_estimators import (
     CustomProbabilityThresholdClassifier,
     get_estimator_from_meta_estimator,
 )
-from pycaret.internal.pipeline import Pipeline as InternalPipeline
-from pycaret.internal.preprocess.preprocessor import Preprocessor
-from pycaret.internal.pycaret_experiment.supervised_experiment import (
-    _SupervisedExperiment,
-)
-from pycaret.internal.pycaret_experiment.utils import MLUsecase, highlight_setup
-from pycaret.internal.utils import (
-    DATAFRAME_LIKE,
-    get_classification_task,
-    get_label_encoder,
-)
+from pycaret.internal.utils import DATAFRAME_LIKE, TARGET_LIKE, get_classification_task, get_label_encoder
+import pycaret.internal.patches.sklearn
+import pycaret.internal.patches.yellowbrick
+from pycaret.internal.logging import get_logger
 from pycaret.internal.validation import is_sklearn_cv_generator
+import pycaret.containers.metrics.classification
+import pycaret.containers.models.classification
+import pycaret.internal.preprocess
+import pycaret.internal.persistence
+from pycaret.internal.Display import Display
 from pycaret.loggers.base_logger import BaseLogger
+
 
 warnings.filterwarnings("ignore")
 LOGGER = get_logger()
@@ -107,7 +104,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
     def setup(
         self,
         data: DATAFRAME_LIKE,
-        target: Union[int, str, list, tuple, np.ndarray, pd.Series] = -1,
+        target: TARGET_LIKE = -1,
         train_size: float = 0.7,
         test_data: Optional[DATAFRAME_LIKE] = None,
         ordinal_features: Optional[Dict[str, list]] = None,
@@ -2000,6 +1997,8 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
 
         self.logger.info("Importing libraries")
 
+        # import libraries
+
         np.random.seed(self.seed)
 
         """
@@ -2823,7 +2822,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         dashboard_kwargs = dashboard_kwargs or {}
         run_kwargs = run_kwargs or {}
 
-        from explainerdashboard import ClassifierExplainer, ExplainerDashboard
+        from explainerdashboard import ExplainerDashboard, ClassifierExplainer
 
         le = get_label_encoder(self.pipeline)
         if le:

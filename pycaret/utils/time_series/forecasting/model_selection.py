@@ -3,7 +3,7 @@ import time
 import warnings
 from collections import defaultdict
 from functools import partial
-from typing import Any, Dict, Generator, List, Optional, Tuple, Union
+from typing import Any, Dict, Generator, Optional, Tuple, Union, List
 
 import numpy as np
 import pandas as pd
@@ -16,25 +16,26 @@ from sklearn.model_selection import (  # type: ignore
     ParameterSampler,
     check_cv,
 )
+from sktime.forecasting.compose import ForecastingPipeline
 from sklearn.model_selection._search import _check_param_grid  # type: ignore
 from sklearn.model_selection._validation import _aggregate_score_dicts  # type: ignore
+from sktime.utils.validation.forecasting import check_y_X  # type: ignore
+
 from sktime.forecasting.model_selection import (
     ExpandingWindowSplitter,
     SlidingWindowSplitter,
 )
-from sktime.utils.validation.forecasting import check_y_X  # type: ignore
 
-from pycaret.internal.logging import get_logger
 from pycaret.internal.utils import get_function_params
 from pycaret.utils import _get_metrics_dict
 from pycaret.utils.time_series.forecasting import (
     get_predictions_with_intervals,
     update_additional_scorer_kwargs,
 )
-from pycaret.utils.time_series.forecasting.pipeline import (
-    PyCaretForecastingPipeline,
-    _get_imputed_data,
-)
+
+from pycaret.utils.time_series.forecasting.pipeline import _get_imputed_data
+
+from pycaret.internal.logging import get_logger
 
 logger = get_logger()
 
@@ -50,7 +51,7 @@ def get_folds(cv, y) -> Generator[Tuple[pd.Series, pd.Series], None, None]:
 
 
 def _fit_and_score(
-    pipeline: PyCaretForecastingPipeline,
+    pipeline: ForecastingPipeline,
     y: pd.Series,
     X: Optional[Union[pd.Series, pd.DataFrame]],
     scoring: Dict[str, Union[str, _PredictScorer]],
@@ -73,8 +74,8 @@ def _fit_and_score(
 
     Parameters
     ----------
-    pipeline : PyCaretForecastingPipeline
-        Pycaret Forecasting Pipeline that needs to be fitted and scored.
+    pipeline : ForecastingPipeline
+        Forecasting Pipeline that needs to be fitted and scored.
     y : pd.Series
         Target variable values that need to be used for forecasting. This should be the
         untransformed (original) values. Transformation will happen in the fitting process.
@@ -225,7 +226,7 @@ def _fit_and_score(
 
 
 def cross_validate(
-    pipeline: PyCaretForecastingPipeline,
+    pipeline: ForecastingPipeline,
     y: pd.Series,
     X: Optional[Union[pd.Series, pd.DataFrame]],
     cv: Union[ExpandingWindowSplitter, SlidingWindowSplitter],
@@ -248,8 +249,8 @@ def cross_validate(
 
     Parameters
     ----------
-    pipeline : PyCaretForecastingPipeline
-        Pycaret Forecasting Pipeline that needs to be cross-validated.
+    pipeline : ForecastingPipeline
+        Forecasting Pipeline that needs to be cross-validated.
     y : pd.Series
         Target variable values that need to be used for forecasting. This should be the
         untransformed (original) values. Transformation will happen in the fitting process.
@@ -342,7 +343,7 @@ class BaseGridSearch:
 
     def __init__(
         self,
-        pipeline: PyCaretForecastingPipeline,
+        pipeline: ForecastingPipeline,
         cv: Union[ExpandingWindowSplitter, SlidingWindowSplitter],
         alpha: Optional[float],
         coverage: Union[float, List[float]],
@@ -359,8 +360,8 @@ class BaseGridSearch:
 
         Parameters
         ----------
-        pipeline : PyCaretForecastingPipeline
-            Pycaret Forecasting Pipeline that needs to be used for Grid Search.
+        pipeline : ForecastingPipeline
+            Forecasting Pipeline that needs to be used for Grid Search.
         cv : Union[ExpandingWindowSplitter, SlidingWindowSplitter]
             The sktime compatible cross-validation object.
         alpha: Optional[float]

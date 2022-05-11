@@ -1,32 +1,31 @@
-import logging
 import time
+import logging
 import warnings
-from typing import Any, Dict, List, Optional, Tuple, Union
-
 import numpy as np  # type: ignore
 import pandas as pd
+from joblib.memory import Memory
+from typing import List, Tuple, Dict, Union, Optional, Any
 import plotly.express as px  # type: ignore
 import plotly.graph_objects as go  # type: ignore
-from joblib.memory import Memory
-
-import pycaret.containers.metrics.regression
-import pycaret.containers.models.regression
-import pycaret.internal.patches.sklearn
-import pycaret.internal.patches.yellowbrick
-import pycaret.internal.persistence
-import pycaret.internal.preprocess
-from pycaret.internal.Display import Display
-from pycaret.internal.logging import get_logger
 
 # Own module
 from pycaret.internal.pipeline import Pipeline as InternalPipeline
 from pycaret.internal.preprocess.preprocessor import Preprocessor
+from pycaret.internal.pycaret_experiment.utils import MLUsecase, highlight_setup
 from pycaret.internal.pycaret_experiment.supervised_experiment import (
     _SupervisedExperiment,
 )
-from pycaret.internal.pycaret_experiment.utils import MLUsecase, highlight_setup
-from pycaret.internal.utils import DATAFRAME_LIKE
+import pycaret.internal.patches.sklearn
+import pycaret.internal.patches.yellowbrick
+from pycaret.internal.logging import get_logger
+import pycaret.containers.metrics.regression
+import pycaret.containers.models.regression
+import pycaret.internal.preprocess
+import pycaret.internal.persistence
+from pycaret.internal.Display import Display
 from pycaret.loggers.base_logger import BaseLogger
+from pycaret.internal.utils import DATAFRAME_LIKE, TARGET_LIKE
+
 
 warnings.filterwarnings("ignore")
 LOGGER = get_logger()
@@ -81,7 +80,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
     def setup(
         self,
         data: DATAFRAME_LIKE,
-        target: Union[int, str, list, tuple, np.ndarray, pd.Series] = -1,
+        target: TARGET_LIKE = -1,
         train_size: float = 0.7,
         test_data: Optional[DATAFRAME_LIKE] = None,
         ordinal_features: Optional[Dict[str, list]] = None,

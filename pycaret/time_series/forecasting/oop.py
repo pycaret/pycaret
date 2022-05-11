@@ -5,22 +5,42 @@ import os
 import time
 import traceback
 import warnings
-from collections import defaultdict
-from copy import deepcopy
 from typing import Any, Dict, List, Optional, Tuple, Union
+from copy import deepcopy
+from collections import defaultdict
 
 import numpy as np
 import pandas as pd
 from IPython.utils import io
 from sklearn.base import clone
-from sktime.forecasting.base import BaseForecaster, ForecastingHorizon
-from sktime.forecasting.compose import TransformedTargetForecaster
+from sktime.forecasting.base import ForecastingHorizon
 from sktime.forecasting.model_selection import (
+    temporal_train_test_split,
     ExpandingWindowSplitter,
     SlidingWindowSplitter,
-    temporal_train_test_split,
 )
+
+from sktime.forecasting.base import BaseForecaster
 from sktime.transformations.series.impute import Imputer
+
+from pycaret.utils._dependencies import _check_soft_dependencies
+
+from pycaret.utils.time_series.forecasting import (
+    PyCaretForecastingHorizonTypes,
+    _check_and_clean_coverage,
+)
+from pycaret.utils.time_series.forecasting.pipeline import (
+    _add_model_to_pipeline,
+    _get_imputed_data,
+    _get_pipeline_estimator_label,
+)
+from pycaret.utils.time_series.forecasting.models import DummyForecaster
+from sktime.transformations.compose import TransformerPipeline
+from sktime.forecasting.compose import ForecastingPipeline, TransformedTargetForecaster
+
+from pycaret.internal.preprocess.time_series.forecasting.preprocessor import (
+    TSForecastingPreprocessor,
+)
 
 import pycaret.containers.metrics.time_series
 import pycaret.containers.models.time_series
@@ -31,59 +51,41 @@ from pycaret.internal.Display import Display
 from pycaret.internal.distributions import get_base_distributions
 from pycaret.internal.logging import get_logger
 
+from pycaret.internal.tests.time_series import (
+    recommend_uppercase_d,
+    recommend_lowercase_d,
+)
+
 # from pycaret.internal.pipeline import get_pipeline_fit_kwargs
 from pycaret.internal.plots.time_series import _get_plot
-from pycaret.internal.plots.utils.time_series import (
-    _clean_model_results_labels,
-    _get_data_types_to_plot,
-    _reformat_dataframes_for_plots,
-    _resolve_renderer,
-)
-from pycaret.internal.preprocess.time_series.forecasting.preprocessor import (
-    TSForecastingPreprocessor,
-)
 from pycaret.internal.pycaret_experiment.supervised_experiment import (
     _SupervisedExperiment,
 )
 from pycaret.internal.pycaret_experiment.utils import MLUsecase, highlight_setup
-from pycaret.internal.tests.time_series import (
-    recommend_lowercase_d,
-    recommend_uppercase_d,
-    run_test,
-)
+from pycaret.internal.tests.time_series import run_test
 from pycaret.internal.tunable import TunableMixin
-from pycaret.internal.utils import color_df
 from pycaret.internal.validation import is_sklearn_cv_generator
-from pycaret.loggers.base_logger import BaseLogger
 from pycaret.utils import _coerce_empty_dataframe_to_none, _resolve_dict_keys
-from pycaret.utils._dependencies import _check_soft_dependencies
 from pycaret.utils.datetime import coerce_datetime_to_period_index
-from pycaret.utils.time_series import (
-    TSApproachTypes,
-    TSExogenousPresent,
-    TSModelTypes,
-    get_sp_from_str,
-)
-
-# from sktime.forecasting.compose import ForecastingPipeline
+from pycaret.utils.time_series import TSModelTypes, get_sp_from_str
 from pycaret.utils.time_series.forecasting import (
-    PyCaretForecastingHorizonTypes,
-    _check_and_clean_coverage,
     get_predictions_with_intervals,
     update_additional_scorer_kwargs,
 )
+from pycaret.utils.time_series import TSApproachTypes, TSExogenousPresent
 from pycaret.utils.time_series.forecasting.model_selection import (
     ForecastingGridSearchCV,
     ForecastingRandomizedSearchCV,
     cross_validate,
 )
-from pycaret.utils.time_series.forecasting.models import DummyForecaster
-from pycaret.utils.time_series.forecasting.pipeline import (
-    PyCaretForecastingPipeline,
-    _add_model_to_pipeline,
-    _get_imputed_data,
-    _get_pipeline_estimator_label,
+from pycaret.internal.plots.utils.time_series import (
+    _resolve_renderer,
+    _get_data_types_to_plot,
+    _reformat_dataframes_for_plots,
+    _clean_model_results_labels,
 )
+from pycaret.loggers.base_logger import BaseLogger
+
 
 warnings.filterwarnings("ignore")
 LOGGER = get_logger()
@@ -991,8 +993,8 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             )
 
         # Initialize empty steps ----
-        self.pipe_steps_target = []
-        self.pipe_steps_exogenous = []
+        self.transformer_steps_target = []
+        self.transformer_steps_exogenous = []
 
         if self.preprocess:
             self.logger.info("Preparing preprocessing pipeline...")
@@ -1027,8 +1029,8 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         self.pipeline = self._create_pipeline(
             model=DummyForecaster(),
-            target_steps=self.pipe_steps_target,
-            exogenous_steps=self.pipe_steps_exogenous,
+            transformer_steps_target=self.transformer_steps_target,
+            transformer_steps_exogenous=self.transformer_steps_exogenous,
         )
         self._check_pipeline()
 
@@ -1931,13 +1933,13 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         return fit_kwargs
 
     def _get_final_model_from_pipeline(
-        self, pipeline: PyCaretForecastingPipeline, check_is_fitted: bool = False
+        self, pipeline: ForecastingPipeline, check_is_fitted: bool = False
     ) -> BaseForecaster:
         """Extracts and returns the final model from the pipeline.
 
         Parameters
         ----------
-        pipeline : PyCaretForecastingPipeline
+        pipeline : ForecastingPipeline
             The pipeline with a final model
         check_is_fitted : bool
             If True, will check if final model is fitted and raise an exception
@@ -1948,7 +1950,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         BaseForecaster
             The final model in the pipeline
         """
-        # Pipeline will always be of type PyCaretForecastingPipeline with final
+        # Pipeline will always be of type ForecastingPipeline with final
         # forecaster being of type TransformedTargetForecaster
         final_forecaster_only = pipeline.steps_[-1][1].steps_[-1][1]
         if check_is_fitted:
@@ -2388,7 +2390,11 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             display.display_monitor()
             display.display_master_display()
 
+        # ignore warnings
+
         warnings.filterwarnings("ignore")
+
+        # import logging
 
         np.random.seed(self.seed)
 
@@ -3520,8 +3526,8 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         return return_obj
 
     def _predict_model_reconcile_pipe_estimator(
-        self, estimator: Union[BaseForecaster, PyCaretForecastingPipeline]
-    ) -> Tuple[PyCaretForecastingPipeline, BaseForecaster]:
+        self, estimator: Union[BaseForecaster, ForecastingPipeline]
+    ) -> Tuple[ForecastingPipeline, BaseForecaster]:
         """Returns the pipeline along with the final model in the pipeline.
 
         # Use Cases:
@@ -3540,12 +3546,12 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         Parameters
         ----------
-        estimator : Union[BaseForecaster, PyCaretForecastingPipeline]
+        estimator : Union[BaseForecaster, ForecastingPipeline]
             Estimator passed by user
 
         Returns
         -------
-        Tuple[PyCaretForecastingPipeline, BaseForecaster]
+        Tuple[ForecastingPipeline, BaseForecaster]
             The pipeline and the final model in the pipeline
 
         Raises
@@ -3554,7 +3560,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             When a model (without pipeline) is loaded into an experiment where
             setup has not been run, but user wants to make a prediction.
         """
-        if isinstance(estimator, PyCaretForecastingPipeline):
+        if isinstance(estimator, ForecastingPipeline):
             # Use Case 3
             pipeline_with_model = deepcopy(estimator)
             estimator_ = self._get_final_model_from_pipeline(
@@ -3733,7 +3739,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
     def _predict_model_get_test_metrics(
         self,
-        pipeline: PyCaretForecastingPipeline,
+        pipeline: ForecastingPipeline,
         estimator: BaseForecaster,
         result: pd.DataFrame,
     ) -> dict:
@@ -3743,7 +3749,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         Parameters
         ----------
-        pipeline : PyCaretForecastingPipeline
+        pipeline : ForecastingPipeline
             The pipeline used to get the imputed values for metrics
         estimator : BaseForecaster
             Estimator used to decide if the model has been finalized or not.
@@ -4152,41 +4158,52 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
     def _create_pipeline(
         self,
         model: BaseForecaster,
-        target_steps: List,
-        exogenous_steps: List,
-    ) -> PyCaretForecastingPipeline:
+        transformer_steps_target: List,
+        transformer_steps_exogenous: List,
+    ) -> ForecastingPipeline:
         """Creates a PyCaret pipeline based on the steps and model passed.
         The pipeline structure is as follows
 
-        PyCaretForecastingPipeline
-          - exogenous_steps
-          - TransformedTargetForecaster
-            - target_steps
-            - model
+        ForecastingPipeline
+            - TransformerPipeline(exogenous_steps) [Optional]
+            - TransformedTargetForecaster
+                - TransformerPipeline(target_steps) [Optional]
+                - model
 
         Parameters
         ----------
         model : BaseForecaster
             Final model to use for prediction
-        target_steps : List
+        transformer_steps_target : List
             List of transformation steps to apply to the target - y
-        exogenous_steps : List
+        transformer_steps_exogenous : List
             List of transformations to apply to the exogenous variables - X
 
         Returns
         -------
-        PyCaretForecastingPipeline
-            A PyCaret Time Series Forecasting Pipeline.
+        ForecastingPipeline
+            A Time Series Forecasting Pipeline.
         """
 
-        # Set the pipeline from model
+        #### Set the pipeline from model
+
         # Add forecaster (model) to end of target steps ----
-        target_steps.extend([("model", model)])
-        forecaster = TransformedTargetForecaster(target_steps)
+        steps_target = []
+        if len(transformer_steps_target) > 0:
+            transformer_target = TransformerPipeline(steps=transformer_steps_target)
+            steps_target.extend([("transformer_target", transformer_target)])
+        steps_target.extend([("model", model)])
+        forecaster = TransformedTargetForecaster(steps_target)
 
         # Create Forecasting Pipeline ----
-        exogenous_steps.extend([("forecaster", forecaster)])
-        pipeline = PyCaretForecastingPipeline(exogenous_steps)
+        steps_exogenous = []
+        if len(transformer_steps_exogenous) > 0:
+            transformer_exogenous = TransformerPipeline(
+                steps=transformer_steps_exogenous
+            )
+            steps_exogenous.extend([("transformer_exogenous", transformer_exogenous)])
+        steps_exogenous.extend([("forecaster", forecaster)])
+        pipeline = ForecastingPipeline(steps_exogenous)
 
         return pipeline
 
@@ -5001,9 +5018,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         additional_scorer_kwargs = {"sp": self.primary_sp_to_use}
         return additional_scorer_kwargs
 
-    def _get_pipeline_to_use(
-        self, estimator: BaseForecaster
-    ) -> PyCaretForecastingPipeline:
+    def _get_pipeline_to_use(self, estimator: BaseForecaster) -> ForecastingPipeline:
         """Depending on the estimator that must be added to the pipeline, this
         method will fetch the correct pipeline with the right memory in it. If
         the estimator has not been finalized, this will fetch the pipeline with
@@ -5017,7 +5032,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         Returns
         -------
-        PyCaretForecastingPipeline
+        ForecastingPipeline
             The pipeline with the correct memory based on the estimator
         """
 

@@ -11,6 +11,7 @@ from pycaret import show_versions
 from pycaret.internal.logging import get_logger
 from pycaret.internal.pycaret_experiment.utils import MLUsecase
 from pycaret.utils._dependencies import _check_soft_dependencies
+from pycaret.utils.time_series.forecasting.pipeline import _pipeline_transform
 
 warnings.filterwarnings("ignore")
 LOGGER = get_logger()
@@ -464,10 +465,16 @@ class _PyCaretExperiment:
     @property
     def dataset_transformed(self):
         """Transformed dataset."""
-        if self.target_param:
-            return pd.concat([*self.pipeline.transform(X=self.X, y=self.y)], axis=1)
+        if self._ml_usecase != MLUsecase.TIME_SERIES:
+            if self.target_param:
+                return pd.concat([*self.pipeline.transform(X=self.X, y=self.y)], axis=1)
+            else:
+                return self.pipeline.transform(self.X)
         else:
-            return self.pipeline.transform(self.X)
+            return pd.concat(
+                [*_pipeline_transform(pipeline=self.pipeline, y=self.y, X=self.X)],
+                axis=1,
+            )
 
     @property
     def train_transformed(self):
@@ -482,7 +489,12 @@ class _PyCaretExperiment:
         else:
             # In time series, the order of arguments and returns may be reversed.
             return pd.concat(
-                [*self.pipeline.transform(y=self.y_train, X=self.X_train)], axis=1
+                [
+                    *_pipeline_transform(
+                        pipeline=self.pipeline, y=self.y_train, X=self.X_train
+                    )
+                ],
+                axis=1,
             )
 
     @property
@@ -498,7 +510,12 @@ class _PyCaretExperiment:
         else:
             # In time series, the order of arguments and returns may be reversed.
             return pd.concat(
-                [*self.pipeline.transform(y=self.y_test, X=self.X_test)], axis=1
+                [
+                    *_pipeline_transform(
+                        pipeline=self.pipeline, y=self.y_test, X=self.X_test
+                    )
+                ],
+                axis=1,
             )
 
     @property
@@ -511,7 +528,7 @@ class _PyCaretExperiment:
                 return self.pipeline.transform(self.X)
         else:
             # In time series, the order of arguments and returns may be reversed.
-            return self.pipeline.transform(y=self.y, X=self.X)[1]
+            return _pipeline_transform(pipeline=self.pipeline, y=self.y, X=self.X)[1]
 
     @property
     def y_transformed(self):
@@ -520,7 +537,7 @@ class _PyCaretExperiment:
             return self.pipeline.transform(self.X, self.y)[1]
         else:
             # In time series, the order of arguments and returns may be reversed.
-            return self.pipeline.transform(y=self.y, X=self.X)[0]
+            return _pipeline_transform(pipeline=self.pipeline, y=self.y, X=self.X)[0]
 
     @property
     def X_train_transformed(self):
@@ -532,7 +549,9 @@ class _PyCaretExperiment:
                 return self.pipeline.transform(self.X_train)
         else:
             # In time series, the order of arguments and returns may be reversed.
-            return self.pipeline.transform(y=self.y_train, X=self.X_train)[1]
+            return _pipeline_transform(
+                pipeline=self.pipeline, y=self.y_train, X=self.X_train
+            )[1]
 
     @property
     def X_test_transformed(self):
@@ -545,7 +564,8 @@ class _PyCaretExperiment:
         else:
             # In time series, the order of arguments and returns may be reversed.
             # When transforming the test set, we can and should use all data before that
-            _, X = self.pipeline.transform(y=self.y, X=self.X)
+            _, X = _pipeline_transform(pipeline=self.pipeline, y=self.y, X=self.X)
+
             if X is None:
                 return None
             else:
@@ -558,7 +578,9 @@ class _PyCaretExperiment:
             return self.pipeline.transform(self.X_train, self.y_train)[1]
         else:
             # In time series, the order of arguments and returns may be reversed.
-            return self.pipeline.transform(y=self.y_train, X=self.X_train)[0]
+            return _pipeline_transform(
+                pipeline=self.pipeline, y=self.y_train, X=self.X_train
+            )[0]
 
     @property
     def y_test_transformed(self):
@@ -568,5 +590,5 @@ class _PyCaretExperiment:
         else:
             # In time series, the order of arguments and returns may be reversed.
             # When transforming the test set, we can and should use all data before that
-            y, _ = self.pipeline.transform(y=self.y, X=self.X)
+            y, _ = _pipeline_transform(pipeline=self.pipeline, y=self.y, X=self.X)
             return y.loc[self.y_test.index]

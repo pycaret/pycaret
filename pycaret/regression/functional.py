@@ -1,16 +1,16 @@
 import logging
-import warnings
-from typing import Any, Dict, List, Optional, Union
-
 import numpy as np
 import pandas as pd
 from joblib.memory import Memory
 
-from pycaret.internal.utils import DATAFRAME_LIKE, check_if_global_is_not_none
-
 # from pycaret.parallel import ParallelBackend # Unused
 from pycaret.loggers.base_logger import BaseLogger
-from pycaret.regression.oop import RegressionExperiment
+
+from pycaret.regression import RegressionExperiment
+from pycaret.internal.utils import DATAFRAME_LIKE, TARGET_LIKE, check_if_global_is_not_none
+
+from typing import List, Any, Union, Optional, Dict
+import warnings
 
 warnings.filterwarnings("ignore")
 
@@ -26,7 +26,7 @@ _CURRENT_EXPERIMENT_DECORATOR_DICT = {
 
 def setup(
     data: DATAFRAME_LIKE,
-    target: Union[int, str, list, tuple, np.ndarray, pd.Series] = -1,
+    target: TARGET_LIKE = -1,
     train_size: float = 0.7,
     test_data: Optional[DATAFRAME_LIKE] = None,
     ordinal_features: Optional[Dict[str, list]] = None,
@@ -2947,7 +2947,6 @@ def deep_check(estimator, check_kwargs: Optional[dict] = None) -> None:
     return _CURRENT_EXPERIMENT.deep_check(
         estimator=estimator, check_kwargs=check_kwargs
     )
-
 
 def set_current_experiment(experiment: RegressionExperiment):
     global _CURRENT_EXPERIMENT

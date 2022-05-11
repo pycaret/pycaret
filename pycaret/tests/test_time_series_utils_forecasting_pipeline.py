@@ -8,6 +8,8 @@ from pycaret.time_series import TSForecastingExperiment
 from pycaret.utils.time_series.forecasting.models import DummyForecaster
 from pycaret.utils.time_series.forecasting.pipeline import (
     _add_model_to_pipeline,
+    _transformations_present_X,
+    _transformations_present_y,
     _are_pipeline_tansformations_empty,
     _get_imputed_data,
 )
@@ -192,7 +194,8 @@ def test_get_imputed_data_exo(load_uni_exo_data_target_missing):
 
 
 def test_are_pipeline_tansformations_empty_noexo(load_pos_data_missing):
-    """Tests _are_pipeline_tansformations_empty WITHOUT exogenous variables"""
+    """Tests _are_pipeline_tansformations_empty, _transformations_present_X, and
+    _transformations_present_y WITHOUT exogenous variables"""
     y = load_pos_data_missing
 
     y_no_miss = y.copy()
@@ -207,6 +210,8 @@ def test_are_pipeline_tansformations_empty_noexo(load_pos_data_missing):
 
     #### 1A: Data has missing values ----
     exp.setup(data=y, fh=FH, numeric_imputation_target="drift")
+    assert not _transformations_present_X(pipeline=exp.pipeline)
+    assert _transformations_present_y(pipeline=exp.pipeline)
     assert not _are_pipeline_tansformations_empty(pipeline=exp.pipeline)
 
     #### 1B: Data has no missing values, but y impute step added ----
@@ -220,11 +225,14 @@ def test_are_pipeline_tansformations_empty_noexo(load_pos_data_missing):
 
     #### 2A: No Imputation in Pipeline ----
     exp.setup(data=y_no_miss, fh=FH)
+    assert not _transformations_present_X(pipeline=exp.pipeline)
+    assert not _transformations_present_y(pipeline=exp.pipeline)
     assert _are_pipeline_tansformations_empty(pipeline=exp.pipeline)
 
 
 def test_are_pipeline_tansformations_empty_exo(load_uni_exo_data_target_missing):
-    """Tests _are_pipeline_tansformations_empty WITH exogenous variables"""
+    """Tests _are_pipeline_tansformations_empty, _transformations_present_X, and
+    _transformations_present_y WITH exogenous variables"""
     data, target = load_uni_exo_data_target_missing
     data_no_miss = data.copy()
     data_no_miss.fillna(10, inplace=True)
@@ -245,6 +253,8 @@ def test_are_pipeline_tansformations_empty_exo(load_uni_exo_data_target_missing)
         numeric_imputation_target="drift",
         numeric_imputation_exogenous="drift",
     )
+    assert _transformations_present_X(pipeline=exp.pipeline)
+    assert _transformations_present_y(pipeline=exp.pipeline)
     assert not _are_pipeline_tansformations_empty(pipeline=exp.pipeline)
 
     #### 1B: Data has no missing values, but y impute step added ----
@@ -256,6 +266,8 @@ def test_are_pipeline_tansformations_empty_exo(load_uni_exo_data_target_missing)
         seasonal_period=4,
         numeric_imputation_target="drift",
     )
+    assert not _transformations_present_X(pipeline=exp.pipeline)
+    assert _transformations_present_y(pipeline=exp.pipeline)
     assert not _are_pipeline_tansformations_empty(pipeline=exp.pipeline)
 
     #### 1C: Data has no missing values, but X impute step added ----
@@ -267,6 +279,8 @@ def test_are_pipeline_tansformations_empty_exo(load_uni_exo_data_target_missing)
         seasonal_period=4,
         numeric_imputation_exogenous="drift",
     )
+    assert _transformations_present_X(pipeline=exp.pipeline)
+    assert not _transformations_present_y(pipeline=exp.pipeline)
     assert not _are_pipeline_tansformations_empty(pipeline=exp.pipeline)
 
     ###########################
@@ -275,6 +289,8 @@ def test_are_pipeline_tansformations_empty_exo(load_uni_exo_data_target_missing)
 
     #### 2A: No Imputation in Pipeline ----
     exp.setup(data=data_no_miss, target=target, fh=FH, seasonal_period=4)
+    assert not _transformations_present_X(pipeline=exp.pipeline)
+    assert not _transformations_present_y(pipeline=exp.pipeline)
     assert _are_pipeline_tansformations_empty(pipeline=exp.pipeline)
 
 
