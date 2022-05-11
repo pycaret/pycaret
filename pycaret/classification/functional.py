@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 from joblib.memory import Memory
 
-from pycaret.classification import ClassificationExperiment
+from pycaret.classification.oop import ClassificationExperiment
 from pycaret.internal.utils import (
     DATAFRAME_LIKE,
     TARGET_LIKE,

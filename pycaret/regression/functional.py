@@ -14,7 +14,7 @@ from pycaret.internal.utils import (
 
 # from pycaret.parallel import ParallelBackend # Unused
 from pycaret.loggers.base_logger import BaseLogger
-from pycaret.regression import RegressionExperiment
+from pycaret.regression.oop import RegressionExperiment
 
 warnings.filterwarnings("ignore")
 
