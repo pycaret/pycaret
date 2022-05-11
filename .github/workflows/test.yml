@@ -18,17 +18,7 @@ concurrency:
 
 jobs:
 
-  isort:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out source repository
-        uses: actions/checkout@v2
-      - name: Check imports
-        uses: jamescurtin/isort-action@master
-        with:
-          sortPaths: pycaret
-
-  black:
+  code_quality:
     runs-on: ubuntu-latest
     steps:
       - name: Check out source repository
@@ -37,6 +27,10 @@ jobs:
         uses: psf/black@stable
         with:
           src: pycaret
+      - name: Check imports
+        uses: jamescurtin/isort-action@master
+        with:
+          sortPaths: pycaret
 
   # JOBS MUST START WITH test !!!!
   test:
