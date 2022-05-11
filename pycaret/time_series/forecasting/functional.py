@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 
 from pycaret.internal.utils import check_if_global_is_not_none
-from pycaret.time_series import TSForecastingExperiment
+from pycaret.time_series.forecasting.oop import TSForecastingExperiment
 
 if TYPE_CHECKING:
     from sktime.forecasting.base import ForecastingHorizon
