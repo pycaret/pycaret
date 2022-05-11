@@ -92,9 +92,6 @@ class Preprocessor:
         # Make copy to not overwrite mutable arguments
         X = to_df(deepcopy(X))
 
-        # Convert all column names to str
-        X.columns = [str(col) for col in X.columns]
-
         # Prepare target column
         if isinstance(y, (list, tuple, np.ndarray, pd.Series)):
             if not isinstance(y, pd.Series):
@@ -119,7 +116,7 @@ class Preprocessor:
             if y not in X.columns:
                 raise ValueError(
                     "Invalid value for the target parameter. "
-                    f"Column {target} not found in the data."
+                    f"Column {y} not found in the data."
                 )
 
             X, y = X.drop(y, axis=1), X[y]
@@ -131,6 +128,33 @@ class Preprocessor:
             return df_shrink_dtypes(X)
 
         return df_shrink_dtypes(X.merge(y.to_frame(), left_index=True, right_index=True))
+
+    def _prepare_train_test(
+        self,
+        train_size,
+        test_data,
+        data_split_stratify,
+        data_split_shuffle,
+    ):
+        """Make the train/test split."""
+        self.logger.info("Set up train/test split.")
+
+        if test_data is None:
+            # self.data is already prepared here
+            train, test = train_test_split(
+                self.data,
+                test_size=1 - train_size,
+                stratify=get_columns_to_stratify_by(self.X, self.y, data_split_stratify),
+                random_state=self.seed,
+                shuffle=data_split_shuffle,
+            )
+            self.data = pd.concat([train, test]).reset_index(drop=True)
+            self.idx = [self.data.index[:len(train)], self.data.index[-len(test):]]
+
+        else:  # test_data is provided
+            test_data = self._prepare_dataset(test_data, self.target_param)
+            self.data = pd.concat([self.data, test_data]).reset_index(drop=True)
+            self.idx = [self.data.index[:-len(test_data)], self.data.index[-len(test_data):]]
 
     def _prepare_column_types(
         self,
@@ -188,30 +212,6 @@ class Preprocessor:
 
         # Features to keep during all preprocessing
         self._fxs["Keep"] = keep_features or []
-
-    def _prepare_train_test(
-        self,
-        train_size,
-        test_data,
-        data_split_stratify,
-        data_split_shuffle,
-    ):
-        """Make the train/test split."""
-        self.logger.info("Set up train/test split.")
-        if test_data is None:
-            train, test = train_test_split(
-                self.data,
-                test_size=1 - train_size,
-                stratify=get_columns_to_stratify_by(self.X, self.y, data_split_stratify),
-                random_state=self.seed,
-                shuffle=data_split_shuffle,
-            )
-            self.data = pd.concat([train, test]).reset_index(drop=True)
-            self.idx = [self.data.index[:len(train)], self.data.index[-len(test):]]
-
-        else:  # test_data is provided
-            self.data = pd.concat([self.data, test_data]).reset_index(drop=True)
-            self.idx = [self.data.index[:len(self.data)], self.data.index[-len(test_data):]]
 
     def _prepare_folds(self, fold_strategy, fold, fold_shuffle, fold_groups):
         """Assign the fold strategy."""

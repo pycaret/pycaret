@@ -22,7 +22,7 @@ from pycaret.internal.meta_estimators import (
     CustomProbabilityThresholdClassifier,
     get_estimator_from_meta_estimator,
 )
-from pycaret.internal.utils import get_classification_task, get_label_encoder
+from pycaret.internal.utils import DATAFRAME_LIKE, TARGET_LIKE, get_classification_task, get_label_encoder
 import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
 from pycaret.internal.logging import get_logger
@@ -103,10 +103,10 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
 
     def setup(
         self,
-        data: pd.DataFrame,
-        target: Union[int, str] = -1,
+        data: DATAFRAME_LIKE,
+        target: TARGET_LIKE = -1,
         train_size: float = 0.7,
-        test_data: Optional[pd.DataFrame] = None,
+        test_data: Optional[DATAFRAME_LIKE] = None,
         ordinal_features: Optional[Dict[str, list]] = None,
         numeric_features: Optional[List[str]] = None,
         categorical_features: Optional[List[str]] = None,
@@ -210,6 +210,13 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         self.data = self._prepare_dataset(data, target)
         self.target_param = self.data.columns[-1]
 
+        self._prepare_train_test(
+            train_size=train_size,
+            test_data=test_data,
+            data_split_stratify=data_split_stratify,
+            data_split_shuffle=data_split_shuffle,
+        )
+
         self._prepare_column_types(
             ordinal_features=ordinal_features,
             numeric_features=numeric_features,
@@ -220,12 +227,6 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             keep_features=keep_features,
         )
 
-        self._prepare_train_test(
-            train_size=train_size,
-            test_data=test_data,
-            data_split_stratify=data_split_stratify,
-            data_split_shuffle=data_split_shuffle,
-        )
         self._prepare_folds(
             fold_strategy=fold_strategy,
             fold=fold,

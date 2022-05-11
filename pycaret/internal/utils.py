@@ -19,6 +19,10 @@ from pycaret.internal.validation import (
 )
 
 
+DATAFRAME_LIKE = Union[dict, list, tuple, np.ndarray, sparse.spmatrix, pd.DataFrame]
+TARGET_LIKE = Union[int, str, list, tuple, np.ndarray, pd.Series]
+
+
 def get_classification_task(y):
     """Return if the target column is binary or multiclass."""
     return "Binary" if y.nunique() == 2 else "Multiclass"
