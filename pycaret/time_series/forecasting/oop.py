@@ -2388,11 +2388,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             display.display_monitor()
             display.display_master_display()
 
-        # ignore warnings
-
         warnings.filterwarnings("ignore")
-
-        # import logging
 
         np.random.seed(self.seed)
 

@@ -2093,8 +2093,7 @@ def plot_model(
     """
 
     logger.info("Importing libraries")
-    # import dependencies
-    # import cufflinks
+
     import cufflinks as cf
     import numpy
     import pandas as pd

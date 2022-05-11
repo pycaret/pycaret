@@ -303,8 +303,6 @@ def plot_model(model, plot="2d", scale=1, display_format=None):
     error handling ends here
     """
 
-    # loading libraries
-    # import cufflinks
     import cufflinks as cf
     import numpy as np
     import pandas as pd

@@ -2000,8 +2000,6 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
 
         self.logger.info("Importing libraries")
 
-        # import libraries
-
         np.random.seed(self.seed)
 
         """
