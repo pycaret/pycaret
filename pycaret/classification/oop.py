@@ -22,7 +22,7 @@ from pycaret.internal.meta_estimators import (
     CustomProbabilityThresholdClassifier,
     get_estimator_from_meta_estimator,
 )
-from pycaret.internal.utils import DATAFRAME_LIKE, get_classification_task, get_label_encoder
+from pycaret.internal.utils import DATAFRAME_LIKE, TARGET_LIKE, get_classification_task, get_label_encoder
 import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
 from pycaret.internal.logging import get_logger
@@ -104,7 +104,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
     def setup(
         self,
         data: DATAFRAME_LIKE,
-        target: Union[int, str, list, tuple, np.ndarray, pd.Series] = -1,
+        target: TARGET_LIKE = -1,
         train_size: float = 0.7,
         test_data: Optional[DATAFRAME_LIKE] = None,
         ordinal_features: Optional[Dict[str, list]] = None,

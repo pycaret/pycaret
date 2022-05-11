@@ -140,6 +140,7 @@ class Preprocessor:
         self.logger.info("Set up train/test split.")
 
         if test_data is None:
+            # self.data is already prepared here
             train, test = train_test_split(
                 self.data,
                 test_size=1 - train_size,

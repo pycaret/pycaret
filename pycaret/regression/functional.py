@@ -7,7 +7,7 @@ from joblib.memory import Memory
 from pycaret.loggers.base_logger import BaseLogger
 
 from pycaret.regression import RegressionExperiment
-from pycaret.internal.utils import DATAFRAME_LIKE, check_if_global_is_not_none
+from pycaret.internal.utils import DATAFRAME_LIKE, TARGET_LIKE, check_if_global_is_not_none
 
 from typing import List, Any, Union, Optional, Dict
 import warnings
@@ -26,7 +26,7 @@ _CURRENT_EXPERIMENT_DECORATOR_DICT = {
 
 def setup(
     data: DATAFRAME_LIKE,
-    target: Union[int, str, list, tuple, np.ndarray, pd.Series] = -1,
+    target: TARGET_LIKE = -1,
     train_size: float = 0.7,
     test_data: Optional[DATAFRAME_LIKE] = None,
     ordinal_features: Optional[Dict[str, list]] = None,
