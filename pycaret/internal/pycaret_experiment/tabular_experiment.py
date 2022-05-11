@@ -12,7 +12,6 @@ from unittest.mock import patch
 import numpy as np  # type: ignore
 import pandas as pd
 import plotly.express as px  # type: ignore
-import plotly.graph_objects as go  # type: ignore
 import scikitplot as skplt  # type: ignore
 from joblib.memory import Memory
 from packaging import version

@@ -25,7 +25,7 @@ def tracking_api():
     return client
 
 
-def test(juice_dataframe):
+def test_classification(juice_dataframe):
 
     assert isinstance(juice_dataframe, pd.core.frame.DataFrame)
 
@@ -192,5 +192,5 @@ class TestClassificationExperimentCustomTags:
 
 
 if __name__ == "__main__":
-    test()
+    test_classification()
     TestClassificationExperimentCustomTags()

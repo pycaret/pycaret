@@ -7,7 +7,7 @@ import pycaret.classification
 import pycaret.datasets
 
 
-def test():
+def test_drift_report():
 
     # loading dataset
     data = pycaret.datasets.get_data("blood")

@@ -2,14 +2,12 @@ import datetime
 import gc
 import logging
 import time
-import traceback
 import warnings
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np  # type: ignore
 import pandas as pd
-import plotly.express as px  # type: ignore
-import plotly.graph_objects as go  # type: ignore
+import plotly.express as px
 from joblib.memory import Memory
 
 import pycaret.containers.metrics.classification
@@ -2088,9 +2086,6 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         best_model_by_metric = models_by_threshold[optimized_metric_index]
 
         self.logger.info("plotting optimization threshold using plotly")
-
-        # plotting threshold
-        import plotly.express as px
 
         title = f"{model_name} Probability Threshold Optimization (default = 0.5)"
         plot_kwargs = plot_kwargs or {}

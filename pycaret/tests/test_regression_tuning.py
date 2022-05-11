@@ -12,7 +12,7 @@ from pycaret.internal.utils import can_early_stop
 
 
 @pytest.mark.skip(reason="no way of currently testing this")
-def test():
+def test_regression_tuning():
     # loading dataset
     data = pycaret.datasets.get_data("boston")
     assert isinstance(data, pd.DataFrame)
@@ -117,4 +117,4 @@ def test():
 
 
 if __name__ == "__main__":
-    test()
+    test_regression_tuning()

@@ -3,8 +3,6 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np  # type: ignore
 import pandas as pd  # type ignore
-import plotly.express as px  # type: ignore
-import plotly.graph_objects as go  # type: ignore
 
 import pycaret.containers.metrics.clustering
 import pycaret.containers.models.clustering

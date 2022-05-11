@@ -28,7 +28,7 @@ def tracking_api():
     return client
 
 
-def test(kiva_dataframe):
+def test_nlp(kiva_dataframe):
     data = kiva_dataframe.head(1000)
     assert isinstance(data, pd.DataFrame)
 
@@ -188,5 +188,5 @@ class TestNLPExperimentCustomTags:
 
 
 if __name__ == "__main__":
-    test()
+    test_nlp()
     TestNLPExperimentCustomTags()

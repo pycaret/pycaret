@@ -16,7 +16,7 @@ import pycaret.regression
 import pycaret.utils
 
 
-def test():
+def test_utils():
     # version
     version = pycaret.utils.version()
     assert isinstance(version, str)
@@ -183,4 +183,4 @@ def test():
 
 
 if __name__ == "__main__":
-    test()
+    test_utils()

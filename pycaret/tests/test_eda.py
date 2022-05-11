@@ -10,7 +10,7 @@ import pycaret.datasets
 
 
 @pytest.mark.skip("AutoViz is broken in 0.1.37 due to panel compat issue")
-def test():
+def test_eda():
 
     # loading dataset
     data = pycaret.datasets.get_data("blood")

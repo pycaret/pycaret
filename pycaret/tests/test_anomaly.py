@@ -18,7 +18,7 @@ def data():
     return pycaret.datasets.get_data("anomaly")
 
 
-def test(data):
+def test_anomaly(data):
     experiment_name = uuid.uuid4().hex
     pycaret.anomaly.setup(
         data,

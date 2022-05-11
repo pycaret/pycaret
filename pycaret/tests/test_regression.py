@@ -23,10 +23,9 @@ def tracking_api():
     return client
 
 
-def test(boston_dataframe):
+def test_regression(boston_dataframe):
     # loading dataset
-    data = pycaret.datasets.get_data("boston")
-    assert isinstance(data, pd.DataFrame)
+    assert isinstance(boston_dataframe, pd.DataFrame)
 
     # init setup
     reg1 = pycaret.regression.setup(
@@ -184,5 +183,5 @@ class TestRegressionExperimentCustomTags:
 
 
 if __name__ == "__main__":
-    test()
+    test_regression()
     TestRegressionExperimentCustomTags()

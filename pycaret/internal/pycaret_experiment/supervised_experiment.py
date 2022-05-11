@@ -13,8 +13,6 @@ from unittest.mock import patch
 import numpy as np  # type: ignore
 import pandas as pd  # type ignore
 import pandas.io.formats.style
-import plotly.express as px  # type: ignore
-import plotly.graph_objects as go  # type: ignore
 from IPython.utils import io
 from sklearn.base import clone  # type: ignore
 from sklearn.compose import TransformedTargetRegressor  # type: ignore

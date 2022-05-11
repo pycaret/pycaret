@@ -5,7 +5,7 @@ from pycaret.datasets import get_data
 
 
 @pytest.mark.skip(reason="no way of currently testing this")
-def test():
+def test_regression_parallel():
     from pycaret.parallel import FugueBackend
 
     pr.setup(

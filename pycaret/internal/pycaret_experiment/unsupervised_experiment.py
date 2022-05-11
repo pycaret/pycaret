@@ -9,7 +9,6 @@ from typing import Any, Dict, List, Optional, Union
 
 import numpy as np  # type: ignore
 import pandas as pd
-import plotly.express as px  # type: ignore
 import plotly.graph_objects as go  # type: ignore
 from IPython.utils import io
 from joblib.memory import Memory

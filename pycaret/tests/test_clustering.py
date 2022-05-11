@@ -18,7 +18,7 @@ def data():
     return pycaret.datasets.get_data("jewellery")
 
 
-def test(data):
+def test_clustering(data):
     experiment_name = uuid.uuid4().hex
     pycaret.clustering.setup(
         data,

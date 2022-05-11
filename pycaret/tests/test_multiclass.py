@@ -10,7 +10,7 @@ import pycaret.classification
 import pycaret.datasets
 
 
-def test():
+def test_multiclass():
     # loading dataset
     data = pycaret.datasets.get_data("iris")
     assert isinstance(data, pd.DataFrame)
@@ -97,4 +97,4 @@ def test():
 
 
 if __name__ == "__main__":
-    test()
+    test_multiclass()

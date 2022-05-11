@@ -3,12 +3,8 @@ import sys
 
 sys.path.insert(0, os.path.abspath(".."))
 
-import numpy as np
-import pandas as pd
-import pytest
 
-
-def test():
+def test_overflow():
     from pycaret.datasets import get_data
 
     data = get_data("boston")
