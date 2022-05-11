@@ -24,6 +24,7 @@ import pycaret.internal.preprocess
 import pycaret.internal.persistence
 from pycaret.internal.Display import Display
 from pycaret.loggers.base_logger import BaseLogger
+from pycaret.internal.utils import DATAFRAME_LIKE
 
 
 warnings.filterwarnings("ignore")
@@ -78,10 +79,10 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
 
     def setup(
         self,
-        data: pd.DataFrame,
-        target: Union[int, str] = -1,
+        data: DATAFRAME_LIKE,
+        target: Union[int, str, list, tuple, np.ndarray, pd.Series] = -1,
         train_size: float = 0.7,
-        test_data: Optional[pd.DataFrame] = None,
+        test_data: Optional[DATAFRAME_LIKE] = None,
         ordinal_features: Optional[Dict[str, list]] = None,
         numeric_features: Optional[List[str]] = None,
         categorical_features: Optional[List[str]] = None,

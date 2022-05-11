@@ -24,7 +24,7 @@ from pycaret.internal.pipeline import (
     estimator_pipeline,
     get_pipeline_fit_kwargs,
 )
-from pycaret.internal.utils import to_df, infer_ml_usecase
+from pycaret.internal.utils import DATAFRAME_LIKE, to_df, infer_ml_usecase
 import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
 from pycaret.internal.logging import get_logger
@@ -97,7 +97,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
 
     def setup(
         self,
-        data: pd.DataFrame,
+        data: DATAFRAME_LIKE,
         ordinal_features: Optional[Dict[str, list]] = None,
         numeric_features: Optional[List[str]] = None,
         categorical_features: Optional[List[str]] = None,
@@ -180,6 +180,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
         # Set up data ============================================== >>
 
         self.data = self._prepare_dataset(data)
+
         self._prepare_column_types(
             ordinal_features=ordinal_features,
             numeric_features=numeric_features,
