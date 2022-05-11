@@ -2,7 +2,8 @@
 # License: MIT, moez.ali@queensu.ca
 
 import time
-from setuptools import setup, find_packages
+
+from setuptools import find_packages, setup
 
 nightly_version = "3.0.0"
 

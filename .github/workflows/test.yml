@@ -13,6 +13,30 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+
+  isort:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source repository
+        uses: actions/checkout@v2
+      - name: Set up Python environment
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+          architecture: x64
+      - name: Check imports
+        uses: jamescurtin/isort-action@master
+        with:
+          sortPaths: pycaret
+
+  black:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source repository
+        uses: actions/checkout@v2
+      - name: Run black
+        uses: psf/black@stable
+
   # JOBS MUST START WITH test !!!!
   test:
     runs-on: ubuntu-latest

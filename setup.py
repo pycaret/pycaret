@@ -1,7 +1,7 @@
 # Copyright (C) 2019-2020 Moez Ali <moez.ali@queensu.ca>
 # License: MIT, moez.ali@queensu.ca
 
-from setuptools import setup, find_packages
+from setuptools import find_packages, setup
 
 
 def readme():

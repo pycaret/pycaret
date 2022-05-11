@@ -4,9 +4,9 @@ import numpy as np
 import pandas as pd
 import pytest
 from pandas.testing import assert_frame_equal
+from sktime.forecasting.compose import ForecastingPipeline
 
 from pycaret.time_series import TSForecastingExperiment
-from sktime.forecasting.compose import ForecastingPipeline
 
 from .time_series_test_utils import _return_compare_model_args, _return_model_parameters
 

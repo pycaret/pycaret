@@ -1,15 +1,20 @@
 import logging
 import warnings
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+
 import numpy as np
 import pandas as pd
 from joblib.memory import Memory
-from typing import List, Tuple, Any, Union, Optional, Dict, Callable
+
+from pycaret.classification import ClassificationExperiment
+from pycaret.internal.utils import (
+    DATAFRAME_LIKE,
+    TARGET_LIKE,
+    check_if_global_is_not_none,
+)
 
 # from pycaret.parallel import ParallelBackend # unused
 from pycaret.loggers.base_logger import BaseLogger
-from pycaret.classification import ClassificationExperiment
-from pycaret.internal.utils import DATAFRAME_LIKE, TARGET_LIKE, check_if_global_is_not_none
-
 
 warnings.filterwarnings("ignore")
 

@@ -8,10 +8,10 @@ from pycaret.time_series import TSForecastingExperiment
 from pycaret.utils.time_series.forecasting.models import DummyForecaster
 from pycaret.utils.time_series.forecasting.pipeline import (
     _add_model_to_pipeline,
-    _transformations_present_X,
-    _transformations_present_y,
     _are_pipeline_tansformations_empty,
     _get_imputed_data,
+    _transformations_present_X,
+    _transformations_present_y,
 )
 
 pytestmark = pytest.mark.filterwarnings("ignore::UserWarning")
