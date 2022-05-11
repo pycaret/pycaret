@@ -3,9 +3,9 @@
 # License: MIT
 
 import logging
-import traceback
 import os
-from typing import Union, Optional
+import traceback
+from typing import Optional, Union
 
 
 class DummyLogger:

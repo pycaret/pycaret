@@ -7,11 +7,10 @@ __author__ = ["Nikhil Gupta"]
 __all__ = ["show_versions"]
 
 import importlib
+import logging
 import platform
 import sys
-import logging
 from typing import Optional
-
 
 required_deps = [
     "pip",

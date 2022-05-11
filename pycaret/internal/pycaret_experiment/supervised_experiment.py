@@ -1,64 +1,66 @@
-from functools import partial
-from pycaret.internal.pycaret_experiment.utils import get_ml_task, MLUsecase
-from pycaret.internal.pycaret_experiment.tabular_experiment import _TabularExperiment
-from pycaret.internal.meta_estimators import (
-    PowerTransformedTargetRegressor,
-    CustomProbabilityThresholdClassifier,
-    get_estimator_from_meta_estimator,
-)
-from pycaret.internal.pipeline import (
-    get_pipeline_estimator_label,
-    estimator_pipeline,
-    get_pipeline_fit_kwargs,
-)
-from pycaret.internal.utils import (
-    color_df,
-    nullcontext,
-    true_warm_start,
-    can_early_stop,
-)
-from pycaret.internal.utils import to_df, id_or_display_name, get_label_encoder
-import pycaret.internal.patches.sklearn
-import pycaret.internal.patches.yellowbrick
-from pycaret.internal.distributions import (
-    Distribution,
-    UniformDistribution,
-    CategoricalDistribution,
-    get_base_distributions,
-    get_skopt_distributions,
-    get_optuna_distributions,
-    get_hyperopt_distributions,
-    get_CS_distributions,
-    get_tune_distributions,
-)
-from pycaret.internal.logging import get_logger
-from pycaret.internal.validation import is_fitted, is_sklearn_cv_generator
-from pycaret.internal.tunable import TunableMixin
-from pycaret.utils._dependencies import _check_soft_dependencies
-import pycaret.internal.preprocess
-import pycaret.internal.persistence
-import pandas as pd  # type ignore
-import numpy as np  # type: ignore
-import os
 import datetime
-import time
 import gc
-import pandas.io.formats.style
+import os
+import time
+import traceback
+import warnings
 from collections import Iterable
 from copy import deepcopy
+from functools import partial
+from typing import Any, Dict, List, Optional, Union
+from unittest.mock import patch
+
+import numpy as np  # type: ignore
+import pandas as pd  # type ignore
+import pandas.io.formats.style
+import plotly.express as px  # type: ignore
+import plotly.graph_objects as go  # type: ignore
+from IPython.utils import io
 from sklearn.base import clone  # type: ignore
 from sklearn.compose import TransformedTargetRegressor  # type: ignore
 from sklearn.pipeline import Pipeline
-from typing import List, Any, Union, Optional, Dict
-import warnings
-from IPython.utils import io
-import traceback
-from unittest.mock import patch
-import plotly.express as px  # type: ignore
-import plotly.graph_objects as go  # type: ignore
 
+import pycaret.internal.patches.sklearn
+import pycaret.internal.patches.yellowbrick
+import pycaret.internal.persistence
+import pycaret.internal.preprocess
 from pycaret.internal.Display import Display
-
+from pycaret.internal.distributions import (
+    CategoricalDistribution,
+    Distribution,
+    UniformDistribution,
+    get_base_distributions,
+    get_CS_distributions,
+    get_hyperopt_distributions,
+    get_optuna_distributions,
+    get_skopt_distributions,
+    get_tune_distributions,
+)
+from pycaret.internal.logging import get_logger
+from pycaret.internal.meta_estimators import (
+    CustomProbabilityThresholdClassifier,
+    PowerTransformedTargetRegressor,
+    get_estimator_from_meta_estimator,
+)
+from pycaret.internal.pipeline import (
+    estimator_pipeline,
+    get_pipeline_estimator_label,
+    get_pipeline_fit_kwargs,
+)
+from pycaret.internal.pycaret_experiment.tabular_experiment import _TabularExperiment
+from pycaret.internal.pycaret_experiment.utils import MLUsecase, get_ml_task
+from pycaret.internal.tunable import TunableMixin
+from pycaret.internal.utils import (
+    can_early_stop,
+    color_df,
+    get_label_encoder,
+    id_or_display_name,
+    nullcontext,
+    to_df,
+    true_warm_start,
+)
+from pycaret.internal.validation import is_fitted, is_sklearn_cv_generator
+from pycaret.utils._dependencies import _check_soft_dependencies
 
 warnings.filterwarnings("ignore")
 LOGGER = get_logger()
@@ -1952,18 +1954,18 @@ class _SupervisedExperiment(_TabularExperiment):
                 _check_soft_dependencies(
                     "ray", extra="tuners", severity="error", install_name="ray[tune]"
                 )
-                from ray.tune.suggest.bohb import TuneBOHB
-                from ray.tune.schedulers import HyperBandForBOHB
                 import ConfigSpace as CS
                 import hpbandster
+                from ray.tune.schedulers import HyperBandForBOHB
+                from ray.tune.suggest.bohb import TuneBOHB
 
             elif search_algorithm == "hyperopt":
                 _check_soft_dependencies("hyperopt", extra="tuners", severity="error")
                 _check_soft_dependencies(
                     "ray", extra="tuners", severity="error", install_name="ray[tune]"
                 )
-                from ray.tune.suggest.hyperopt import HyperOptSearch
                 from hyperopt import hp
+                from ray.tune.suggest.hyperopt import HyperOptSearch
 
             elif search_algorithm == "bayesian":
                 _check_soft_dependencies(
@@ -2396,7 +2398,7 @@ class _SupervisedExperiment(_TabularExperiment):
                                 "parameter grid cannot contain n_estimators or max_iter if early_stopping is True and the model is warm started. Use early_stopping_max_iters params to set the upper bound of n_estimators or max_iter."
                             )
 
-                from tune_sklearn import TuneSearchCV, TuneGridSearchCV
+                from tune_sklearn import TuneGridSearchCV, TuneSearchCV
 
                 with true_warm_start(
                     pipeline_with_model
@@ -4859,8 +4861,8 @@ class _SupervisedExperiment(_TabularExperiment):
         if drift_report:
             _check_soft_dependencies("evidently", extra="mlops", severity="error")
             from evidently.dashboard import Dashboard
-            from evidently.tabs import DataDriftTab, CatTargetDriftTab
             from evidently.pipeline.column_mapping import ColumnMapping
+            from evidently.tabs import CatTargetDriftTab, DataDriftTab
 
             column_mapping = ColumnMapping()
             column_mapping.target = self.target_param

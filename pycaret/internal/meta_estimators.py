@@ -1,9 +1,9 @@
 import sklearn.compose
-from sklearn.preprocessing import PowerTransformer
-from sklearn.compose import TransformedTargetRegressor
-
 from sklearn.base import BaseEstimator, ClassifierMixin, clone
+from sklearn.compose import TransformedTargetRegressor
+from sklearn.preprocessing import PowerTransformer
 from sklearn.utils.validation import check_is_fitted
+
 
 class PowerTransformedTargetRegressor(sklearn.compose.TransformedTargetRegressor):
     def __init__(

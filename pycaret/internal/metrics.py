@@ -1,5 +1,5 @@
 import numpy as np
-from sklearn.metrics._scorer import _ProbaScorer, _ThresholdScorer, _PredictScorer
+from sklearn.metrics._scorer import _PredictScorer, _ProbaScorer, _ThresholdScorer
 
 
 class BinaryMulticlassScoreFunc:

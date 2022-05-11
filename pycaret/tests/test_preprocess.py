@@ -7,18 +7,18 @@ Description: Unit tests for pipeline.py
 
 """
 
-import pytest
 import numpy as np
 import pandas as pd
-from scipy.sparse import csr_matrix
-from sklearn.pipeline import Pipeline
-from sklearn.decomposition import PCA
-from sklearn.preprocessing import StandardScaler
+import pytest
 from imblearn.over_sampling import ADASYN
+from scipy.sparse import csr_matrix
+from sklearn.decomposition import PCA
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
 
+import pycaret.classification
 import pycaret.datasets
 import pycaret.regression
-import pycaret.classification
 
 
 def test_select_target_by_index():

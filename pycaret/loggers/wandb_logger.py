@@ -1,7 +1,9 @@
 import os
 from copy import deepcopy
-from pycaret.loggers.base_logger import BaseLogger
+
 import pandas as pd
+
+from pycaret.loggers.base_logger import BaseLogger
 
 try:
     import wandb

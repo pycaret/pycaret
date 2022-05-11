@@ -5,9 +5,10 @@
 
 # This Ensemble is only to be used internally.
 
-import pandas as pd
-import numpy as np
 import warnings
+
+import numpy as np
+import pandas as pd
 from sktime.forecasting.base._meta import _HeterogenousEnsembleForecaster
 
 _ENSEMBLE_METHODS = ["voting", "mean", "median"]

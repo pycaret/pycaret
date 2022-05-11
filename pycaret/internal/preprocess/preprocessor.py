@@ -1,19 +1,33 @@
 # Author: Mavs (m.524687@gmail.com)
 # License: MIT
 
+from copy import deepcopy
+
 import numpy as np
 import pandas as pd
-from copy import deepcopy
-from sklearn.impute import SimpleImputer, KNNImputer
+from category_encoders.leave_one_out import LeaveOneOutEncoder
+from category_encoders.one_hot import OneHotEncoder
+from category_encoders.ordinal import OrdinalEncoder
+from imblearn.over_sampling import SMOTE
 from sklearn.decomposition import PCA, IncrementalPCA, KernelPCA
+from sklearn.feature_selection import (
+    SelectFromModel,
+    SelectKBest,
+    SequentialFeatureSelector,
+    VarianceThreshold,
+    f_classif,
+    f_regression,
+)
+from sklearn.impute import KNNImputer, SimpleImputer
 from sklearn.model_selection import (
-    train_test_split,
     GroupKFold,
     KFold,
     StratifiedKFold,
     TimeSeriesSplit,
+    train_test_split,
 )
 from sklearn.preprocessing import (
+    KBinsDiscretizer,
     LabelEncoder,
     MaxAbsScaler,
     MinMaxScaler,
@@ -22,23 +36,8 @@ from sklearn.preprocessing import (
     QuantileTransformer,
     RobustScaler,
     StandardScaler,
-    KBinsDiscretizer,
 )
-from sklearn.feature_selection import (
-    VarianceThreshold,
-    f_classif,
-    f_regression,
-    SelectKBest,
-    SelectFromModel,
-    SequentialFeatureSelector,
-)
-from category_encoders.one_hot import OneHotEncoder
-from category_encoders.ordinal import OrdinalEncoder
-from category_encoders.leave_one_out import LeaveOneOutEncoder
-from imblearn.over_sampling import SMOTE
 
-# Own modules
-from pycaret.internal.pycaret_experiment.utils import MLUsecase
 from pycaret.containers.models.classification import (
     get_all_model_containers as get_classifiers,
 )
@@ -47,21 +46,24 @@ from pycaret.containers.models.regression import (
 )
 from pycaret.internal.preprocess.iterative_imputer import IterativeImputer
 from pycaret.internal.preprocess.transformers import (
-    TransfomerWrapper,
-    ExtractDateTimeFeatures,
     DropImputer,
     EmbedTextFeatures,
+    ExtractDateTimeFeatures,
+    FixImbalancer,
     RemoveMulticollinearity,
     RemoveOutliers,
-    FixImbalancer,
+    TransfomerWrapper,
 )
+
+# Own modules
+from pycaret.internal.pycaret_experiment.utils import MLUsecase
 from pycaret.internal.utils import (
+    check_features_exist,
+    df_shrink_dtypes,
+    get_columns_to_stratify_by,
+    normalize_custom_transformers,
     to_df,
     to_series,
-    get_columns_to_stratify_by,
-    df_shrink_dtypes,
-    check_features_exist,
-    normalize_custom_transformers,
 )
 
 

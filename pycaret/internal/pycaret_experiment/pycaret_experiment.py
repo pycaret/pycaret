@@ -1,18 +1,16 @@
 import warnings
-from typing import Dict, Optional, Any
 from collections import defaultdict
+from typing import Any, Dict, Optional
 
 import pandas as pd
 
-from pycaret import show_versions
 import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
-from pycaret.internal.logging import get_logger
 import pycaret.internal.persistence
-
+from pycaret import show_versions
+from pycaret.internal.logging import get_logger
 from pycaret.internal.pycaret_experiment.utils import MLUsecase
 from pycaret.utils._dependencies import _check_soft_dependencies
-
 
 warnings.filterwarnings("ignore")
 LOGGER = get_logger()
@@ -62,7 +60,7 @@ class _PyCaretExperiment:
         # logging environment and libraries
         self.logger.info("Checking environment")
 
-        from platform import python_version, platform, python_build, machine
+        from platform import machine, platform, python_build, python_version
 
         self.logger.info(f"python_version: {python_version()}")
         self.logger.info(f"python_build: {python_build()}")

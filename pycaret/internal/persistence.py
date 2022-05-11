@@ -3,12 +3,13 @@
 # License: MIT
 import gc
 from typing import Dict, Optional
-from sklearn.pipeline import Pipeline
-from pycaret.internal.utils import get_logger
 
-from pycaret.utils.time_series.forecasting.pipeline import _add_model_to_pipeline
+from sklearn.pipeline import Pipeline
+
 from pycaret.internal.pycaret_experiment.utils import MLUsecase
+from pycaret.internal.utils import get_logger
 from pycaret.utils._dependencies import _check_soft_dependencies
+from pycaret.utils.time_series.forecasting.pipeline import _add_model_to_pipeline
 
 
 def deploy_model(
@@ -126,8 +127,9 @@ def deploy_model(
             raise ValueError("Authentication is missing.")
 
     # general dependencies
-    from IPython.display import clear_output
     import os
+
+    from IPython.display import clear_output
 
     logger.info("Saving model in active working directory")
     logger.info("SubProcess save_model() called ==================================")
@@ -299,10 +301,9 @@ def save_model(
     logger.info("Initializing save_model()")
     logger.info(f"save_model({function_params_str})")
 
-    from copy import deepcopy
-
     # ignore warnings
     import warnings
+    from copy import deepcopy
 
     warnings.filterwarnings("ignore")
 
@@ -535,9 +536,8 @@ def _create_bucket_gcp(project_name: str, bucket_name: str):
     logger = get_logger()
 
     # bucket_name = "your-new-bucket-name"
-    from google.cloud import storage
-
     import google.auth.exceptions
+    from google.cloud import storage
 
     try:
         storage_client = storage.Client(project_name)
@@ -598,9 +598,8 @@ def _upload_blob_gcp(
     # bucket_name = "your-bucket-name"
     # source_file_name = "local/path/to/file"
     # destination_blob_name = "storage-object-name"
-    from google.cloud import storage
-
     import google.auth.exceptions
+    from google.cloud import storage
 
     try:
         storage_client = storage.Client(project_name)
@@ -662,8 +661,8 @@ def _download_blob_gcp(
     # bucket_name = "your-bucket-name"
     # source_blob_name = "storage-object-name"
     # destination_file_name = "local/path/to/file"
-    from google.cloud import storage
     import google.auth.exceptions
+    from google.cloud import storage
 
     try:
         storage_client = storage.Client(project_name)
@@ -713,6 +712,7 @@ def _create_container_azure(container_name: str):
 
     # Create the container
     import os
+
     from azure.storage.blob import BlobServiceClient
 
     connect_str = os.getenv("AZURE_STORAGE_CONNECTION_STRING")
@@ -753,6 +753,7 @@ def _upload_blob_azure(
     logger = get_logger()
 
     import os
+
     from azure.storage.blob import BlobServiceClient
 
     connect_str = os.getenv("AZURE_STORAGE_CONNECTION_STRING")
@@ -799,6 +800,7 @@ def _download_blob_azure(
     logger = get_logger()
 
     import os
+
     from azure.storage.blob import BlobServiceClient
 
     connect_str = os.getenv("AZURE_STORAGE_CONNECTION_STRING")

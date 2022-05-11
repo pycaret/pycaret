@@ -1,10 +1,10 @@
 """Module to test the datetime utility functions
 """
-import pytest
 import numpy as np  # type: ignore
 import pandas as pd  # type: ignore
-from pycaret.datasets import get_data
+import pytest
 
+from pycaret.datasets import get_data
 from pycaret.utils.datetime import (
     coerce_datetime_to_period_index,
     coerce_period_to_datetime_index,

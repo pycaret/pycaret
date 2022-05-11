@@ -1,12 +1,12 @@
 import logging
 import warnings
+from typing import Any, Dict, List, Optional, Union
+
 import pandas as pd
 from joblib.memory import Memory
 
 from pycaret.anomaly import AnomalyExperiment
 from pycaret.internal.utils import check_if_global_is_not_none
-
-from typing import List, Any, Union, Optional, Dict
 from pycaret.loggers.base_logger import BaseLogger
 
 warnings.filterwarnings("ignore")

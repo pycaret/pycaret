@@ -8,18 +8,15 @@
 # `ClassifierContainer` as a base, set all of the required parameters in the `__init__` and then call `super().__init__`
 # to complete the process. Refer to the existing classes for examples.
 
-import pycaret.internal.cuml_wrappers
-from typing import Optional, Dict, Any
-from pycaret.containers.models.base_model import (
-    ModelContainer,
-)
-from pycaret.internal.utils import (
-    param_grid_to_lists,
-    get_logger,
-)
-from pycaret.internal.distributions import Distribution
-import pycaret.containers.base_container
+from typing import Any, Dict, Optional
+
 import numpy as np
+
+import pycaret.containers.base_container
+import pycaret.internal.cuml_wrappers
+from pycaret.containers.models.base_model import ModelContainer
+from pycaret.internal.distributions import Distribution
+from pycaret.internal.utils import get_logger, param_grid_to_lists
 
 _DEFAULT_N_ANOMALYS = 4
 

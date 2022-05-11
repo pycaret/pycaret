@@ -4,7 +4,6 @@ import pytest
 
 from pycaret.utils.time_series.forecasting import _check_and_clean_coverage
 
-
 pytestmark = pytest.mark.filterwarnings("ignore::UserWarning")
 
 ##############################

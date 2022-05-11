@@ -2,10 +2,12 @@
 # Author: Antoni Baum (Yard1) <antoni.baum@protonmail.com>
 # License: MIT
 
-from typing import Dict, Any, Union, Optional
-from pycaret.containers.base_container import BaseContainer
-from sklearn.metrics._scorer import _BaseScorer  # type: ignore
+from typing import Any, Dict, Optional, Union
+
 from sklearn.metrics import make_scorer  # type: ignore
+from sklearn.metrics._scorer import _BaseScorer  # type: ignore
+
+from pycaret.containers.base_container import BaseContainer
 
 
 class MetricContainer(BaseContainer):

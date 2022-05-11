@@ -2,10 +2,8 @@ from copy import deepcopy
 from typing import Optional, Tuple
 
 import pandas as pd
-
 from sktime.forecasting.base import BaseForecaster
-from sktime.forecasting.compose import ForecastingPipeline
-from sktime.forecasting.compose import TransformedTargetForecaster
+from sktime.forecasting.compose import ForecastingPipeline, TransformedTargetForecaster
 from sktime.transformations.series.impute import Imputer
 
 

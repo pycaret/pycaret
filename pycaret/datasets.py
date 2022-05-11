@@ -1,6 +1,7 @@
 """Module to get datasets in pycaret
 """
 from typing import Optional
+
 import requests
 
 from pycaret.utils._dependencies import _check_soft_dependencies
@@ -85,8 +86,10 @@ def get_data(
         (2) If the data does not exist
     """
 
-    import pandas as pd
     import os.path
+
+    import pandas as pd
+
     from pycaret.internal.Display import Display
 
     extension = ".csv"

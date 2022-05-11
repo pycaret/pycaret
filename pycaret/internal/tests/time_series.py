@@ -1,20 +1,17 @@
-from typing import Optional, Dict, List, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
+
 import pandas as pd
-
 import statsmodels.api as sm
-from statsmodels.tsa.stattools import adfuller
-from statsmodels.tsa.api import kpss
-
-from statsmodels.tools.sm_exceptions import MissingDataError as SmMissingDataError
-from pycaret.utils.time_series.exceptions import MissingDataError
-
 from pmdarima.arima.utils import ndiffs, nsdiffs
+from statsmodels.tools.sm_exceptions import MissingDataError as SmMissingDataError
+from statsmodels.tsa.api import kpss
+from statsmodels.tsa.stattools import adfuller
 
-from pycaret.internal.tests.stats import _summary_stats, _is_gaussian
-from pycaret.internal.tests import _format_test_results
-
-from pycaret.utils.time_series import _get_diff_name_list
 from pycaret.internal.logging import get_logger
+from pycaret.internal.tests import _format_test_results
+from pycaret.internal.tests.stats import _is_gaussian, _summary_stats
+from pycaret.utils.time_series import _get_diff_name_list
+from pycaret.utils.time_series.exceptions import MissingDataError
 
 logger = get_logger()
 

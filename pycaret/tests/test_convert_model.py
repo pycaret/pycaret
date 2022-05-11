@@ -1,10 +1,11 @@
-import os, sys
+import os
+import sys
 
 sys.path.insert(0, os.path.abspath(".."))
 
 import pycaret.classification
-import pycaret.regression
 import pycaret.datasets
+import pycaret.regression
 
 
 def test_classification_convert_model():

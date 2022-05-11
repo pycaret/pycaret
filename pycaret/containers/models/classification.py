@@ -9,27 +9,29 @@
 # to complete the process. Refer to the existing classes for examples.
 
 import logging
+from typing import Any, Dict, Optional, Union
+
+import numpy as np
+from packaging import version
+
+import pycaret.containers.base_container
 import pycaret.internal.cuml_wrappers
-from typing import Union, Dict, Any, Optional
 from pycaret.containers.models.base_model import (
     ModelContainer,
     leftover_parameters_to_categorical_distributions,
 )
 from pycaret.internal.cuml_wrappers import get_svc_classifier
-from pycaret.internal.utils import (
-    param_grid_to_lists,
-    get_logger,
-    get_class_name,
-    np_list_arange,
-)
 from pycaret.internal.distributions import (
     Distribution,
-    UniformDistribution,
     IntUniformDistribution,
+    UniformDistribution,
 )
-import pycaret.containers.base_container
-import numpy as np
-from packaging import version
+from pycaret.internal.utils import (
+    get_class_name,
+    get_logger,
+    np_list_arange,
+    param_grid_to_lists,
+)
 from pycaret.utils._dependencies import _check_soft_dependencies
 
 
@@ -611,6 +613,7 @@ class MLPClassifierContainer(ClassifierContainer):
         logger = get_logger()
         np.random.seed(experiment.seed)
         from sklearn.neural_network import MLPClassifier
+
         from pycaret.internal.tunable import TunableMLPClassifier
 
         args = {"random_state": experiment.seed, "max_iter": 500}
@@ -1526,6 +1529,7 @@ class VotingClassifierContainer(ClassifierContainer):
         logger = get_logger()
         np.random.seed(experiment.seed)
         from sklearn.ensemble import VotingClassifier
+
         from pycaret.internal.tunable import TunableVotingClassifier
 
         args = {}

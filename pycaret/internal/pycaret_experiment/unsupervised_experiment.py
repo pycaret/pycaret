@@ -1,38 +1,37 @@
+import datetime
 import gc
+import logging
 import os
 import time
-import datetime
-import logging
-import warnings
 import traceback
+import warnings
+from typing import Any, Dict, List, Optional, Union
+
 import numpy as np  # type: ignore
 import pandas as pd
-from joblib.memory import Memory
-from IPython.utils import io
-from sklearn.base import clone  # type: ignore
-from sklearn.preprocessing import LabelEncoder
-from typing import Union, Optional, Dict, List, Any
 import plotly.express as px  # type: ignore
 import plotly.graph_objects as go  # type: ignore
+from IPython.utils import io
+from joblib.memory import Memory
+from sklearn.base import clone  # type: ignore
+from sklearn.preprocessing import LabelEncoder
+
+import pycaret.internal.patches.sklearn
+import pycaret.internal.patches.yellowbrick
+import pycaret.internal.persistence
+import pycaret.internal.preprocess
+from pycaret.internal.Display import Display
+from pycaret.internal.logging import get_logger
+from pycaret.internal.pipeline import Pipeline as InternalPipeline
+from pycaret.internal.pipeline import estimator_pipeline, get_pipeline_fit_kwargs
 
 # Own modules
 from pycaret.internal.preprocess.preprocessor import Preprocessor
-from pycaret.internal.pycaret_experiment.utils import highlight_setup, MLUsecase
 from pycaret.internal.pycaret_experiment.tabular_experiment import _TabularExperiment
-from pycaret.internal.pipeline import (
-    Pipeline as InternalPipeline,
-    estimator_pipeline,
-    get_pipeline_fit_kwargs,
-)
-from pycaret.internal.utils import to_df, infer_ml_usecase
-import pycaret.internal.patches.sklearn
-import pycaret.internal.patches.yellowbrick
-from pycaret.internal.logging import get_logger
+from pycaret.internal.pycaret_experiment.utils import MLUsecase, highlight_setup
+from pycaret.internal.utils import infer_ml_usecase, to_df
 from pycaret.internal.validation import is_sklearn_pipeline
-import pycaret.internal.preprocess
-import pycaret.internal.persistence
 from pycaret.loggers.base_logger import BaseLogger
-from pycaret.internal.Display import Display
 
 warnings.filterwarnings("ignore")
 LOGGER = get_logger()

@@ -1,13 +1,15 @@
-import os, sys
+import os
+import sys
 
 sys.path.insert(0, os.path.abspath(".."))
 
-import pandas as pd
 import numpy as np
+import pandas as pd
 import pytest
+
 import pycaret.classification
-import pycaret.regression
 import pycaret.datasets
+import pycaret.regression
 
 
 def test_check_fairness_binary_classification():

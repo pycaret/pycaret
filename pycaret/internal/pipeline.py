@@ -8,22 +8,20 @@
 
 # This pipeline is only to be used internally.
 
-from copy import deepcopy
-from typing import Union
-import imblearn.pipeline
-from joblib.memory import Memory
 import tempfile
-from sklearn.utils import _print_elapsed_time
+from copy import deepcopy
+from inspect import signature
+from typing import Union
+
+import imblearn.pipeline
+import sklearn.pipeline
+from joblib.memory import Memory
 from sklearn.base import clone
+from sklearn.utils import _print_elapsed_time
 from sklearn.utils.metaestimators import if_delegate_has_method
 from sklearn.utils.validation import check_memory
-import sklearn.pipeline
-from inspect import signature
 
-from pycaret.internal.utils import (
-    get_all_object_vars_and_properties,
-    variable_return,
-)
+from pycaret.internal.utils import get_all_object_vars_and_properties, variable_return
 
 
 def _fit_one(transformer, X=None, y=None, message=None, **fit_params):

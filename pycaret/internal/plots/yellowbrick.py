@@ -2,12 +2,14 @@
 # Author: Moez Ali <moez.ali@queensu.ca> and Antoni Baum (Yard1) <antoni.baum@protonmail.com>
 # License: MIT
 
-from typing import Any, Optional
-from pycaret.internal.logging import get_logger
-from pycaret.internal.Display import Display
-import scikitplot as skplt
-import matplotlib.pyplot as plt
 import os
+from typing import Any, Optional
+
+import matplotlib.pyplot as plt
+import scikitplot as skplt
+
+from pycaret.internal.Display import Display
+from pycaret.internal.logging import get_logger
 
 
 def show_yellowbrick_in_streamlit(

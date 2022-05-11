@@ -1,22 +1,21 @@
 """Module to test time_series functionality
 """
-import pytest
 import numpy as np
-
-# from sktime.forecasting.compose import ForecastingPipeline
-from pycaret.utils.time_series.forecasting.pipeline import PyCaretForecastingPipeline
+import pytest
 from sktime.forecasting.compose import TransformedTargetForecaster
-
-from .time_series_test_utils import (
-    _return_model_names_for_missing_data,
-    _IMPUTE_METHODS_STR,
-    _TRANSFORMATION_METHODS,
-    _TRANSFORMATION_METHODS_NO_NEG,
-    _SCALE_METHODS,
-)
 
 from pycaret.time_series import TSForecastingExperiment
 
+# from sktime.forecasting.compose import ForecastingPipeline
+from pycaret.utils.time_series.forecasting.pipeline import PyCaretForecastingPipeline
+
+from .time_series_test_utils import (
+    _IMPUTE_METHODS_STR,
+    _SCALE_METHODS,
+    _TRANSFORMATION_METHODS,
+    _TRANSFORMATION_METHODS_NO_NEG,
+    _return_model_names_for_missing_data,
+)
 
 pytestmark = pytest.mark.filterwarnings("ignore::UserWarning")
 

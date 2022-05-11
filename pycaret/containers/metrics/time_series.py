@@ -8,18 +8,20 @@
 # `TimeSeriesMetricContainer` as a base, set all of the required parameters in the `__init__` and then call `super().__init__`
 # to complete the process. Refer to the existing classes for examples.
 
-from typing import Optional, Union, Dict, Any
-from pycaret.containers.metrics.base_metric import MetricContainer
-from sklearn.metrics._scorer import _BaseScorer  # type: ignore
-import pycaret.internal.metrics
+from typing import Any, Dict, Optional, Union
+
 import numpy as np
 import pandas as pd
 from sklearn import metrics  # type: ignore
+from sklearn.metrics._scorer import _BaseScorer  # type: ignore
 from sktime.performance_metrics.forecasting._functions import (  # type: ignore
+    mean_absolute_percentage_error,
     mean_absolute_scaled_error,
     mean_squared_scaled_error,
-    mean_absolute_percentage_error,
 )
+
+import pycaret.internal.metrics
+from pycaret.containers.metrics.base_metric import MetricContainer
 
 
 class TimeSeriesMetricContainer(MetricContainer):

@@ -1,9 +1,8 @@
 """Module to test time_series functionality
 """
-import pytest
-
 import numpy as np  # type: ignore
 import pandas as pd  # type: ignore
+import pytest
 
 from pycaret.time_series import TSForecastingExperiment
 

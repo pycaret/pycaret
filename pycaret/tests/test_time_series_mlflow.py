@@ -5,7 +5,6 @@ import pytest
 
 from pycaret.time_series import TSForecastingExperiment
 
-
 ##########################
 #### Tests Start Here ####
 ##########################

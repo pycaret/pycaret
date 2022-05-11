@@ -3,15 +3,17 @@
 # License: MIT
 
 from typing import Dict, Hashable, Optional
-from scipy.stats import uniform, loguniform, randint
+
+from scipy.stats import loguniform, randint, uniform
 
 try:
     from collections.abc import Hashable
 except:
     from collections import Hashable
 
-import numpy as np
 from copy import copy
+
+import numpy as np
 
 
 class Distribution:
@@ -169,8 +171,7 @@ class IntUniformDistribution(Distribution):
         )
 
     def get_tune(self):
-        from ray.tune.sample import Integer
-        from ray.tune.sample import LogUniform
+        from ray.tune.sample import Integer, LogUniform
 
         class LogUniformInteger(Integer):
             class _LogUniform(LogUniform):

@@ -1,9 +1,10 @@
-import os, sys
+import os
+import sys
 
 sys.path.insert(0, os.path.abspath(".."))
 
-import pandas as pd
 import numpy as np
+import pandas as pd
 import pytest
 
 
@@ -11,7 +12,7 @@ def test():
     from pycaret.datasets import get_data
 
     data = get_data("boston")
-    from pycaret.regression import setup, create_model, tune_model
+    from pycaret.regression import create_model, setup, tune_model
 
     s = setup(data, target="medv", silent=True, html=False, session_id=123, n_jobs=1,)
     gbr = create_model("gbr")

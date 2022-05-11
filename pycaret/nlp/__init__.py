@@ -1,11 +1,11 @@
-from typing import Optional, Dict, Any, Dict
-from pycaret import show_versions
-from pycaret.utils._dependencies import _check_soft_dependencies
+from typing import Any, Dict, Optional
 
+from pycaret import show_versions
 from pycaret.loggers import DashboardLogger
 from pycaret.loggers.base_logger import BaseLogger
 from pycaret.loggers.mlflow_logger import MlflowLogger
 from pycaret.loggers.wandb_logger import WandbLogger
+from pycaret.utils._dependencies import _check_soft_dependencies
 
 
 def setup(
@@ -166,7 +166,7 @@ def setup(
     # logging environment and libraries
     logger.info("Checking environment")
 
-    from platform import python_version, platform, python_build, machine
+    from platform import machine, platform, python_build, python_version
 
     try:
         logger.info("python_version: " + str(python_version()))
@@ -205,7 +205,8 @@ def setup(
     logger.info("Checking Exceptions")
 
     # run_time
-    import datetime, time
+    import datetime
+    import time
 
     runtime_start = time.time()
 
@@ -304,10 +305,12 @@ def setup(
     logger.info("Preloading libraries")
 
     # pre-load libraries
-    import pandas as pd
+    import datetime
+    import time
+
     import ipywidgets as ipw
-    from IPython.display import display, HTML, clear_output, update_display
-    import datetime, time
+    import pandas as pd
+    from IPython.display import HTML, clear_output, display, update_display
 
     # global html_param
     global html_param
@@ -362,22 +365,24 @@ def setup(
     logger.info("Importing libraries")
 
     # general dependencies
-    import numpy as np
     import random
+
+    import numpy as np
 
     _check_soft_dependencies("spacy", extra="nlp", severity="error")
     import spacy
 
     _check_soft_dependencies("gensim", extra="nlp", severity="error")
-    import gensim
-    import gensim.corpora as corpora
-    from gensim.utils import simple_preprocess
-    from gensim.models import CoherenceModel
     import re
     import secrets
 
+    import gensim
+    import gensim.corpora as corpora
+
     # setting sklearn config to print all parameters including default
     import sklearn
+    from gensim.models import CoherenceModel
+    from gensim.utils import simple_preprocess
 
     sklearn.set_config(print_changed_only=False)
 
@@ -913,9 +918,10 @@ def setup(
             if html_param:
                 update_display(monitor, display_id="monitor")
 
-        import mlflow
-        from pathlib import Path
         import os
+        from pathlib import Path
+
+        import mlflow
 
         if experiment_name is None:
             exp_name_ = "nlp-default-name"
@@ -1093,9 +1099,8 @@ def create_model(
     """
 
     # exception checking
-    import sys
-
     import logging
+    import sys
 
     try:
         hasattr(logger, "name")
@@ -1129,7 +1134,8 @@ def create_model(
     logger.info("Checking exceptions")
 
     # run_time
-    import datetime, time
+    import datetime
+    import time
 
     runtime_start = time.time()
 
@@ -1185,11 +1191,13 @@ def create_model(
     logger.info("Preloading libraries")
 
     # pre-load libraries
-    import pandas as pd
-    import numpy as np
+    import datetime
+    import time
+
     import ipywidgets as ipw
-    from IPython.display import display, HTML, clear_output, update_display
-    import datetime, time
+    import numpy as np
+    import pandas as pd
+    from IPython.display import HTML, clear_output, display, update_display
 
     """
     monitor starts
@@ -1351,8 +1359,8 @@ def create_model(
 
     elif model == "nmf":
 
-        from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
         from sklearn.decomposition import NMF
+        from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
         from sklearn.preprocessing import normalize
 
         logger.info(
@@ -1398,8 +1406,8 @@ def create_model(
             if html_param:
                 update_display(monitor, display_id="monitor")
 
-        from pathlib import Path
         import os
+        from pathlib import Path
 
         dashboard_logger.init_loggers(exp_name_log)
 
@@ -1554,9 +1562,8 @@ def assign_model(model, verbose=True):
     """
 
     # exception checking
-    import sys
-
     import logging
+    import sys
 
     try:
         hasattr(logger, "name")
@@ -1642,11 +1649,13 @@ def assign_model(model, verbose=True):
 
     logger.info("Preloading libraries")
     # pre-load libraries
+    import datetime
+    import time
+
+    import ipywidgets as ipw
     import numpy as np
     import pandas as pd
-    import ipywidgets as ipw
-    from IPython.display import display, HTML, clear_output, update_display
-    import datetime, time
+    from IPython.display import HTML, clear_output, display, update_display
 
     logger.info("Preparing display monitor")
     # progress bar and monitor control
@@ -1812,8 +1821,8 @@ def assign_model(model, verbose=True):
         this section will go away in future release through better handling
         """
 
-        from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
         from sklearn.decomposition import NMF
+        from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
         from sklearn.preprocessing import normalize
 
         text_join = []
@@ -1962,9 +1971,8 @@ def plot_model(
     """
 
     # exception checking
-    import sys
-
     import logging
+    import sys
 
     try:
         hasattr(logger, "name")
@@ -2086,11 +2094,10 @@ def plot_model(
 
     logger.info("Importing libraries")
     # import dependencies
-    import pandas as pd
-    import numpy
-
     # import cufflinks
     import cufflinks as cf
+    import numpy
+    import pandas as pd
 
     cf.go_offline()
     cf.set_config_file(offline=False, world_readable=True)
@@ -2762,10 +2769,10 @@ def plot_model(
 
     elif plot == "topic_model":
         _check_soft_dependencies("pyLDAvis", extra="nlp", severity="error")
+        import warnings
+
         import pyLDAvis
         import pyLDAvis.gensim  # don't skip this
-
-        import warnings
 
         warnings.filterwarnings("ignore")
         pyLDAvis.enable_notebook()
@@ -2893,8 +2900,8 @@ def plot_model(
     elif plot == "wordcloud":
 
         if _check_soft_dependencies("wordcloud", extra="nlp", severity="warning"):
-            from wordcloud import WordCloud, STOPWORDS
             import matplotlib.pyplot as plt
+            from wordcloud import STOPWORDS, WordCloud
 
             stopwords = set(STOPWORDS)
 
@@ -2966,10 +2973,10 @@ def plot_model(
         matplotlib_axes_logger.setLevel("ERROR")
 
         # loading dependencies
+        import matplotlib.pyplot as plt
         from sklearn.cluster import KMeans
         from sklearn.feature_extraction.text import TfidfVectorizer
         from yellowbrick.text import UMAPVisualizer
-        import matplotlib.pyplot as plt
 
         tfidf = TfidfVectorizer()
         logger.info("Fitting TfidfVectorizer()")
@@ -3326,11 +3333,13 @@ def tune_model(
     logger.info("Preloading libraries")
 
     # pre-load libraries
-    import pandas as pd
+    import datetime
+    import time
+
     import ipywidgets as ipw
+    import pandas as pd
+    from IPython.display import HTML, clear_output, display, update_display
     from ipywidgets import Output
-    from IPython.display import display, HTML, clear_output, update_display
-    import datetime, time
 
     logger.info("Preparing display monitor")
 
@@ -3372,14 +3381,13 @@ def tune_model(
     logger.info("Importing libraries")
 
     # General Dependencies
-    from sklearn.linear_model import LogisticRegression
-    from sklearn.model_selection import cross_val_predict
-    from sklearn import metrics
-    import numpy as np
-    import plotly.express as px
-
     # setting up cufflinks
     import cufflinks as cf
+    import numpy as np
+    import plotly.express as px
+    from sklearn import metrics
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.model_selection import cross_val_predict
 
     cf.go_offline()
     cf.set_config_file(offline=False, world_readable=True)
@@ -4280,9 +4288,9 @@ def evaluate_model(model):
 
     """
 
-    from ipywidgets import widgets
-    from ipywidgets.widgets import interact, fixed, interact_manual
     import numpy as np
+    from ipywidgets import widgets
+    from ipywidgets.widgets import fixed, interact, interact_manual
 
     """
     generate sorted list

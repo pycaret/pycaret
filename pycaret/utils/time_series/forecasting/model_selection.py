@@ -3,7 +3,7 @@ import time
 import warnings
 from collections import defaultdict
 from functools import partial
-from typing import Any, Dict, Generator, Optional, Tuple, Union, List
+from typing import Any, Dict, Generator, List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -18,26 +18,23 @@ from sklearn.model_selection import (  # type: ignore
 )
 from sklearn.model_selection._search import _check_param_grid  # type: ignore
 from sklearn.model_selection._validation import _aggregate_score_dicts  # type: ignore
-from sktime.utils.validation.forecasting import check_y_X  # type: ignore
-
 from sktime.forecasting.model_selection import (
     ExpandingWindowSplitter,
     SlidingWindowSplitter,
 )
+from sktime.utils.validation.forecasting import check_y_X  # type: ignore
 
+from pycaret.internal.logging import get_logger
 from pycaret.internal.utils import get_function_params
 from pycaret.utils import _get_metrics_dict
 from pycaret.utils.time_series.forecasting import (
     get_predictions_with_intervals,
     update_additional_scorer_kwargs,
 )
-
 from pycaret.utils.time_series.forecasting.pipeline import (
     PyCaretForecastingPipeline,
     _get_imputed_data,
 )
-
-from pycaret.internal.logging import get_logger
 
 logger = get_logger()
 

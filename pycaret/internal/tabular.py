@@ -1,6 +1,7 @@
-import pandas as pd
-from typing import Optional, Any
 from threading import RLock
+from typing import Any, Optional
+
+import pandas as pd
 
 # Onw modules
 from pycaret.internal.Display import Display

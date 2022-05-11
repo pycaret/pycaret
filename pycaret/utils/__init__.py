@@ -1,8 +1,5 @@
 import functools
-from typing import Dict, Optional, Union, Any
-
-import functools
-from typing import Optional
+from typing import Any, Dict, Optional, Union
 
 import numpy as np
 import pandas as pd

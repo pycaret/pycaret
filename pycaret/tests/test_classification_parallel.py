@@ -1,6 +1,7 @@
-from pycaret.datasets import get_data
-import pycaret.classification as pc
 import pytest
+
+import pycaret.classification as pc
+from pycaret.datasets import get_data
 
 
 @pytest.mark.skip(reason="no way of currently testing this")

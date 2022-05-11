@@ -1,12 +1,10 @@
-from typing import List, Optional, Dict, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
 
-from scipy.stats import shapiro
 import pandas as pd
-
+from scipy.stats import shapiro
 
 from pycaret.internal.tests import _format_test_results
-from pycaret.utils.time_series import get_diffs, _get_diff_name_list
-
+from pycaret.utils.time_series import _get_diff_name_list, get_diffs
 
 ##########################
 #### Individual Tests ####

@@ -1,27 +1,23 @@
-from typing import Optional, List, Tuple, Union, Dict, Any
 from math import ceil
+from typing import Any, Dict, List, Optional, Tuple, Union
 
-import numpy as np
-import pandas as pd
 import matplotlib
 import matplotlib.pyplot as plt
-
-
-from scipy.signal import periodogram
-from scipy.fft import fft, fftfreq
-
+import numpy as np
+import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import plotly.io as pio
 from plotly.colors import DEFAULT_PLOTLY_COLORS
 from plotly.subplots import make_subplots
-
+from scipy.fft import fft, fftfreq
+from scipy.signal import periodogram
 from statsmodels.graphics.gofplots import qqplot
-from statsmodels.tsa.stattools import pacf, acf, ccf
-from statsmodels.tsa.seasonal import seasonal_decompose, STL
+from statsmodels.tsa.seasonal import STL, seasonal_decompose
+from statsmodels.tsa.stattools import acf, ccf, pacf
 
-from pycaret.utils import _resolve_dict_keys
 from pycaret.internal.logging import get_logger
+from pycaret.utils import _resolve_dict_keys
 
 logger = get_logger()
 

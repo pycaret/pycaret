@@ -1,14 +1,15 @@
 import os
 import sys
 import uuid
+
 sys.path.insert(0, os.path.abspath(".."))
 
-import pytest
 import pandas as pd
-import pycaret.datasets
-import pycaret.regression
+import pytest
 from mlflow.tracking.client import MlflowClient
 
+import pycaret.datasets
+import pycaret.regression
 
 
 @pytest.fixture(scope="module")

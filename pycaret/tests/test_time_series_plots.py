@@ -2,23 +2,21 @@
 """
 import os
 from random import uniform
-import pytest
 
 import numpy as np  # type: ignore
 import pandas as pd  # type: ignore
+import pytest
 
-
-from pycaret.time_series import TSForecastingExperiment
 from pycaret.internal.ensemble import _ENSEMBLE_METHODS
-
+from pycaret.time_series import TSForecastingExperiment
 
 from .time_series_test_utils import (
-    _return_data_with_without_period_index,
-    _return_model_names_for_plots_stats,
-    _return_all_plots_estimator_ts_results,
     _ALL_PLOTS_DATA,
     _ALL_PLOTS_ESTIMATOR,
     _ALL_PLOTS_ESTIMATOR_NOT_DATA,
+    _return_all_plots_estimator_ts_results,
+    _return_data_with_without_period_index,
+    _return_model_names_for_plots_stats,
 )
 
 pytestmark = pytest.mark.filterwarnings("ignore::UserWarning")
@@ -79,7 +77,7 @@ def test_plot_model_data(data, plot):
     ########################
     #### Functional API ####
     ########################
-    from pycaret.time_series import setup, plot_model
+    from pycaret.time_series import plot_model, setup
 
     os.environ["PYCARET_TESTING"] = "1"
 
@@ -129,7 +127,7 @@ def test_plot_model_estimator(model_name, data, plot):
     ########################
     #### Functional API ####
     ########################
-    from pycaret.time_series import setup, create_model, plot_model
+    from pycaret.time_series import create_model, plot_model, setup
 
     os.environ["PYCARET_TESTING"] = "1"
 

@@ -1,26 +1,31 @@
-import os
 import gc
 import logging
+import os
 import random
 import secrets
 import traceback
 import warnings
-import pandas as pd
-from typing import List, Tuple, Dict, Optional, Any, Union
+from copy import deepcopy
+from typing import Any, Dict, List, Optional, Tuple, Union
 from unittest.mock import patch
-from joblib.memory import Memory
-from packaging import version
 
 import numpy as np  # type: ignore
+import pandas as pd
 import plotly.express as px  # type: ignore
 import plotly.graph_objects as go  # type: ignore
+import scikitplot as skplt  # type: ignore
+from joblib.memory import Memory
+from packaging import version
+from pandas.io.formats.style import Styler
+from sklearn.model_selection import BaseCrossValidator  # type: ignore
+
 import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
 import pycaret.internal.persistence
 import pycaret.internal.preprocess
-import scikitplot as skplt  # type: ignore
-from pandas.io.formats.style import Styler
-from pycaret.internal.logging import create_logger
+import pycaret.loggers
+from pycaret.internal.Display import Display
+from pycaret.internal.logging import create_logger, get_logger
 from pycaret.internal.meta_estimators import get_estimator_from_meta_estimator
 from pycaret.internal.pipeline import Pipeline as InternalPipeline
 from pycaret.internal.pipeline import get_memory
@@ -29,17 +34,11 @@ from pycaret.internal.plots.yellowbrick import show_yellowbrick_plot
 from pycaret.internal.pycaret_experiment.pycaret_experiment import _PyCaretExperiment
 from pycaret.internal.pycaret_experiment.utils import MLUsecase
 from pycaret.internal.utils import get_model_name
-from pycaret.utils._dependencies import _check_soft_dependencies
-from pycaret.internal.logging import get_logger
 from pycaret.internal.validation import is_sklearn_cv_generator
-from copy import deepcopy
-import pycaret.loggers
 from pycaret.loggers.base_logger import BaseLogger
 from pycaret.loggers.mlflow_logger import MlflowLogger
 from pycaret.loggers.wandb_logger import WandbLogger
-from pycaret.internal.Display import Display
-from sklearn.model_selection import BaseCrossValidator  # type: ignore
-
+from pycaret.utils._dependencies import _check_soft_dependencies
 
 warnings.filterwarnings("ignore")
 LOGGER = get_logger()

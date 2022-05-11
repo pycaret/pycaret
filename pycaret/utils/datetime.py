@@ -1,6 +1,6 @@
 """Module containing utility functions for datatime manipulation"""
 
-from typing import Optional, Union, Any
+from typing import Any, Optional, Union
 
 import pandas as pd
 

@@ -28,12 +28,13 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from __future__ import print_function, division
+from __future__ import division, print_function
+
 import numpy as np
-from numpy.lib import twodim_base
 import scipy as sp
-from sklearn.utils import check_random_state, check_X_y
 from boruta import BorutaPy
+from numpy.lib import twodim_base
+from sklearn.utils import check_random_state, check_X_y
 
 
 class BorutaPyPatched(BorutaPy):

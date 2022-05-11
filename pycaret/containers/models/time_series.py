@@ -13,10 +13,10 @@ import random
 import warnings
 from abc import abstractmethod
 from typing import Any, Dict, List, Optional, Tuple, Union
-from packaging import version
 
 import numpy as np  # type: ignore
 import pandas as pd
+from packaging import version
 from sktime.forecasting.base import BaseForecaster  # type: ignore
 from sktime.forecasting.compose import (  # type: ignore
     TransformedTargetForecaster,
@@ -40,13 +40,13 @@ from pycaret.internal.distributions import (
     UniformDistribution,
 )
 from pycaret.internal.utils import get_logger, np_list_arange, param_grid_to_lists
+from pycaret.utils._dependencies import _check_soft_dependencies
 from pycaret.utils.datetime import (
     coerce_datetime_to_period_index,
     coerce_period_to_datetime_index,
 )
 from pycaret.utils.time_series import TSModelTypes
 from pycaret.utils.time_series.forecasting.models import _check_enforcements
-from pycaret.utils._dependencies import _check_soft_dependencies
 
 
 class TimeSeriesContainer(ModelContainer):

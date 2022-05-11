@@ -1,4 +1,5 @@
-import os, sys
+import os
+import sys
 
 sys.path.insert(0, os.path.abspath(".."))
 
@@ -6,12 +7,13 @@ import numpy as np
 import numpy.testing as npt
 import pandas as pd
 import pytest
-import pycaret.utils
+import sklearn.model_selection
+import sklearn.preprocessing
+
 import pycaret.classification
 import pycaret.datasets
 import pycaret.regression
-import sklearn.model_selection
-import sklearn.preprocessing
+import pycaret.utils
 
 
 def test():

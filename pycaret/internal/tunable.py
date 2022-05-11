@@ -4,10 +4,11 @@
 
 # Provides a VotingClassifier which weights can be tuned.
 
+import inspect
+
 from sklearn.base import clone
 from sklearn.ensemble import VotingClassifier, VotingRegressor
 from sklearn.neural_network import MLPClassifier, MLPRegressor
-import inspect
 
 try:
     from collections.abc import Iterable

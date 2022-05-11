@@ -1,12 +1,11 @@
 """Module to test time_series forecasting - univariate with exogenous variables
 """
-import pytest
 import numpy as np  # type: ignore
 import pandas as pd  # type: ignore
+import pytest
 
 from pycaret.time_series import TSForecastingExperiment
 from pycaret.utils.time_series import TSApproachTypes, TSExogenousPresent
-
 
 pytestmark = pytest.mark.filterwarnings("ignore::UserWarning")
 

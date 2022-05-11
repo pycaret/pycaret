@@ -1,7 +1,7 @@
 from typing import Any
 
-from sklearn.utils import check_random_state
 import numpy as np
+from sklearn.utils import check_random_state
 
 # Monkey patching sklearn.model_selection._search to avoid overflows on windows.
 

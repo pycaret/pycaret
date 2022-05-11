@@ -1,18 +1,16 @@
 """Module to test time_series forecasting pipeline utils
 """
-import pytest
 import numpy as np
-
+import pytest
 from sktime.forecasting.naive import NaiveForecaster
 
+from pycaret.time_series import TSForecastingExperiment
+from pycaret.utils.time_series.forecasting.models import DummyForecaster
 from pycaret.utils.time_series.forecasting.pipeline import (
     _add_model_to_pipeline,
     _are_pipeline_tansformations_empty,
     _get_imputed_data,
 )
-from pycaret.utils.time_series.forecasting.models import DummyForecaster
-from pycaret.time_series import TSForecastingExperiment
-
 
 pytestmark = pytest.mark.filterwarnings("ignore::UserWarning")
 

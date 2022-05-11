@@ -1,18 +1,17 @@
-from typing import Any, Dict, Optional, Union, Sequence
+from typing import Any, Dict, Optional, Sequence, Union
 
-from scipy import stats
-import plotly.graph_objects as go
-import plotly.express as px
-from plotly.basewidget import BaseFigureWidget
-import pandas as pd
 import numpy as np
-from ipywidgets import widgets, Layout
+import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
+from ipywidgets import Layout, widgets
+from plotly.basewidget import BaseFigureWidget
+from scipy import stats
 
 import pycaret.internal.plots.helper as helper
-from pycaret.internal.validation import is_fitted
 from pycaret.internal.Display import Display
 from pycaret.internal.logging import get_logger
-from pycaret.internal.validation import fit_if_not_fitted
+from pycaret.internal.validation import fit_if_not_fitted, is_fitted
 
 
 class QQPlotWidget(BaseFigureWidget):
