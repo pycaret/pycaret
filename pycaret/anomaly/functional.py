@@ -1,12 +1,12 @@
 import logging
 import warnings
-from typing import Any, Dict, List, Optional, Union
-
 import pandas as pd
 from joblib.memory import Memory
 
 from pycaret.anomaly import AnomalyExperiment
-from pycaret.internal.utils import check_if_global_is_not_none
+from pycaret.internal.utils import DATAFRAME_LIKE, check_if_global_is_not_none
+
+from typing import List, Any, Union, Optional, Dict
 from pycaret.loggers.base_logger import BaseLogger
 
 warnings.filterwarnings("ignore")
@@ -22,7 +22,7 @@ _CURRENT_EXPERIMENT_DECORATOR_DICT = {
 
 
 def setup(
-    data,
+    data: DATAFRAME_LIKE,
     ordinal_features: Optional[Dict[str, list]] = None,
     numeric_features: Optional[List[str]] = None,
     categorical_features: Optional[List[str]] = None,
@@ -87,8 +87,10 @@ def setup(
 
 
     data: dataframe-like
-        Shape (n_samples, n_features), where n_samples is the number of samples and
-        n_features is the number of features.
+        Data set with shape (n_samples, n_features), where n_samples is the
+        number of samples and n_features is the number of features. If data
+        is not a pandas dataframe, it's converted to one using default column
+        names.
 
 
     ordinal_features: dict, default = None

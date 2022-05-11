@@ -1,16 +1,16 @@
 import logging
-import warnings
-from typing import Any, Dict, List, Optional, Union
-
 import numpy as np
 import pandas as pd
 from joblib.memory import Memory
 
-from pycaret.internal.utils import check_if_global_is_not_none
-
 # from pycaret.parallel import ParallelBackend # Unused
 from pycaret.loggers.base_logger import BaseLogger
+
 from pycaret.regression import RegressionExperiment
+from pycaret.internal.utils import DATAFRAME_LIKE, check_if_global_is_not_none
+
+from typing import List, Any, Union, Optional, Dict
+import warnings
 
 warnings.filterwarnings("ignore")
 
@@ -25,10 +25,10 @@ _CURRENT_EXPERIMENT_DECORATOR_DICT = {
 
 
 def setup(
-    data: Union[np.array, pd.DataFrame],
-    target: Union[int, str] = -1,
+    data: DATAFRAME_LIKE,
+    target: Union[int, str, list, tuple, np.ndarray, pd.Series] = -1,
     train_size: float = 0.7,
-    test_data: Optional[pd.DataFrame] = None,
+    test_data: Optional[DATAFRAME_LIKE] = None,
     ordinal_features: Optional[Dict[str, list]] = None,
     numeric_features: Optional[List[str]] = None,
     categorical_features: Optional[List[str]] = None,
@@ -107,13 +107,17 @@ def setup(
 
 
     data: dataframe-like
-        Shape (n_samples, n_features), where n_samples is the number of samples and
-        n_features is the number of features.
+        Data set with shape (n_samples, n_features), where n_samples is the
+        number of samples and n_features is the number of features. If data
+        is not a pandas dataframe, it's converted to one using default column
+        names.
 
 
-    target: int or str, default = -1
-        Name or index of the target column. The default value selects the last
-        column in the dataset. The target can be either binary or multiclass.
+    target: int, str or sequence, default = -1
+        If int or str, respectivcely index or name of the target column in data.
+        The default value selects the last column in the dataset. If sequence,
+        it should have shape (n_samples,). The target can be either binary or
+        multiclass.
 
 
     train_size: float, default = 0.7
@@ -121,10 +125,10 @@ def setup(
         between 0.0 and 1.0.
 
 
-    test_data: pandas.DataFrame, default = None
-        If not None, test_data is used as a hold-out set and ``train_size`` parameter is
-        ignored. test_data must be labelled and the shape of data and test_data must
-        match.
+    test_data: dataframe-like or None, default = None
+        If not None, test_data is used as a hold-out set and `train_size` parameter
+        is ignored. The columns of data and test_data must match. If it's a pandas
+        dataframe, the indices must match as well.
 
 
     ordinal_features: dict, default = None
