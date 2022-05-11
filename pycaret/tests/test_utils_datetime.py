@@ -12,8 +12,7 @@ from pycaret.utils.datetime import (
 
 
 def test_coerce_period_to_datetime_index():
-    """Tests coercion of PeriodIndex to DatetimeIndex
-    """
+    """Tests coercion of PeriodIndex to DatetimeIndex"""
 
     #### TODO: Get both Series and DataFrame with Period Index later
     data = get_data("airline")

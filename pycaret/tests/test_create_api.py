@@ -33,6 +33,7 @@ def test_classification_create_api():
     pycaret.classification.create_api(lr, "blood_api")
     assert 1 == 1
 
+
 def test_regression_create_api():
 
     # loading dataset
@@ -53,6 +54,7 @@ def test_regression_create_api():
     # create api
     pycaret.regression.create_api(lr, "boston_api")
     assert 1 == 1
+
 
 if __name__ == "__main__":
     test_classification_create_api()

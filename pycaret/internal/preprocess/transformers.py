@@ -58,11 +58,15 @@ class TransfomerWrapper(BaseEstimator):
         transformer_params = signature(self.transformer.fit).parameters
         if "X" in transformer_params and X is not None:
             if self._include is None:
-                self._include = [c for c in X.columns if c in X and c not in self._exclude]
+                self._include = [
+                    c for c in X.columns if c in X and c not in self._exclude
+                ]
             elif not self._include:  # Don't fit if empty list
                 return self
             else:
-                self._include = [c for c in self._include if c in X and c not in self._exclude]
+                self._include = [
+                    c for c in self._include if c in X and c not in self._exclude
+                ]
             args.append(X[self._include])
         if "y" in transformer_params and y is not None:
             args.append(y)
@@ -71,7 +75,6 @@ class TransfomerWrapper(BaseEstimator):
         return self
 
     def transform(self, X=None, y=None):
-
         def name_cols(array, df):
             """Get the column names after a transformation.
 
@@ -178,7 +181,9 @@ class TransfomerWrapper(BaseEstimator):
         if "X" in transform_params:
             if X is not None:
                 if self._include is None:
-                    self._include = [c for c in X.columns if c in X and c not in self._exclude]
+                    self._include = [
+                        c for c in X.columns if c in X and c not in self._exclude
+                    ]
                 elif not self._include:  # Don't transform if empty list
                     return variable_return(X, y)
             else:

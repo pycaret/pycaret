@@ -8,8 +8,6 @@ from joblib.memory import Memory
 
 from pycaret.classification import ClassificationExperiment
 from pycaret.internal.utils import DATAFRAME_LIKE, check_if_global_is_not_none
-
-# from pycaret.parallel import ParallelBackend # unused
 from pycaret.loggers.base_logger import BaseLogger
 
 warnings.filterwarnings("ignore")

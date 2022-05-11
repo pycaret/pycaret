@@ -13,7 +13,7 @@ import pycaret.anomaly
 import pycaret.datasets
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope="module")
 def data():
     return pycaret.datasets.get_data("anomaly")
 

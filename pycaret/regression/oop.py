@@ -25,8 +25,8 @@ from pycaret.internal.pycaret_experiment.supervised_experiment import (
     _SupervisedExperiment,
 )
 from pycaret.internal.pycaret_experiment.utils import MLUsecase, highlight_setup
-from pycaret.loggers.base_logger import BaseLogger
 from pycaret.internal.utils import DATAFRAME_LIKE
+from pycaret.loggers.base_logger import BaseLogger
 
 warnings.filterwarnings("ignore")
 LOGGER = get_logger()

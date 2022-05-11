@@ -57,7 +57,9 @@ def test():
     assert isinstance(predict_holdout, pd.DataFrame)
 
     # predictions on new dataset
-    predict_holdout = pycaret.classification.predict_model(best, data=data.drop("species", axis=1))
+    predict_holdout = pycaret.classification.predict_model(
+        best, data=data.drop("species", axis=1)
+    )
     assert isinstance(predict_holdout, pd.DataFrame)
 
     # calibrate model

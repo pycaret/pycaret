@@ -13,6 +13,7 @@ import pycaret.regression
 
 # 18/12/2021 issues with test hence commenting out.
 
+
 def test_classification_dashboard():
 
     # loading dataset
@@ -26,7 +27,7 @@ def test_classification_dashboard():
     #   html=False,
     #   n_jobs=1,
     # )
-   
+
     # train model
     # lr = pycaret.classification.create_model("lr")
 
@@ -35,6 +36,7 @@ def test_classification_dashboard():
 
     # assert statement
     assert 1 == 1
+
 
 if __name__ == "__main__":
     test_classification_dashboard()

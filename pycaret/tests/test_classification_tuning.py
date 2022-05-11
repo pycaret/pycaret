@@ -31,7 +31,9 @@ def test():
         n_jobs=1,
     )
 
-    models = pycaret.classification.compare_models(turbo=False, n_select=100, verbose=False)
+    models = pycaret.classification.compare_models(
+        turbo=False, n_select=100, verbose=False
+    )
 
     models.append(pycaret.classification.stack_models(models[:3], verbose=False))
     models.append(pycaret.classification.ensemble_model(models[0], verbose=False))

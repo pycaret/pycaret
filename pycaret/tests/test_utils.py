@@ -31,11 +31,18 @@ def test():
         data, train_size=0.8, random_state=1
     )
     clf1 = pycaret.classification.setup(
-        train, target="Purchase", silent=True, html=False, session_id=123, n_jobs=1,
+        train,
+        target="Purchase",
+        silent=True,
+        html=False,
+        session_id=123,
+        n_jobs=1,
     )
     model = pycaret.classification.create_model("lightgbm")
     final_model = pycaret.classification.finalize_model(model)
-    result = pycaret.classification.predict_model(final_model, data=test.drop("Purchase", axis=1), encoded_labels=True)
+    result = pycaret.classification.predict_model(
+        final_model, data=test.drop("Purchase", axis=1), encoded_labels=True
+    )
     actual = clf1.pipeline.transform(y=test["Purchase"])
     prediction = result["Label"]
 
@@ -83,11 +90,18 @@ def test():
         data, train_size=0.8, random_state=1
     )
     reg1 = pycaret.regression.setup(
-        data, target="medv", silent=True, html=False, session_id=123, n_jobs=1,
+        data,
+        target="medv",
+        silent=True,
+        html=False,
+        session_id=123,
+        n_jobs=1,
     )
     model = pycaret.regression.create_model("lightgbm")
     final_model = pycaret.regression.finalize_model(model)
-    result = pycaret.regression.predict_model(final_model, data=test.drop("medv", axis=1))
+    result = pycaret.regression.predict_model(
+        final_model, data=test.drop("medv", axis=1)
+    )
     actual = test["medv"]
     prediction = result["Label"]
 
@@ -133,7 +147,7 @@ def test():
         data, train_size=0.8, random_state=1, shuffle=False
     )
 
-    prediction = pd.Series([100]*len(test), index=test.index)
+    prediction = pd.Series([100] * len(test), index=test.index)
     actual = test
 
     # check metric(timeseries)

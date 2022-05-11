@@ -25,7 +25,7 @@ def test():
     )
 
     # EDA
-    pycaret.classification.eda(display_format='svg')
+    pycaret.classification.eda(display_format="svg")
 
     # assert
     assert 1 == 1
