@@ -79,7 +79,7 @@ def test_regression(boston_dataframe):
     assert isinstance(predict_holdout, pd.DataFrame)
 
     # predictions on new dataset
-    predict_holdout = pycaret.regression.predict_model(best, data=data)
+    predict_holdout = pycaret.regression.predict_model(best, data=boston_dataframe)
     assert isinstance(predict_holdout, pd.DataFrame)
 
     # finalize model
