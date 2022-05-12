@@ -1,13 +1,16 @@
-import os, sys
+import os
+import sys
 
 sys.path.insert(0, os.path.abspath(".."))
 
-import pytest
+import uuid
+
 import pandas as pd
+import pytest
+from mlflow.tracking.client import MlflowClient
+
 import pycaret.classification
 import pycaret.datasets
-from mlflow.tracking.client import MlflowClient
-import uuid
 
 
 @pytest.fixture(scope="module")
@@ -22,7 +25,7 @@ def tracking_api():
     return client
 
 
-def test(juice_dataframe):
+def test_classification(juice_dataframe):
 
     assert isinstance(juice_dataframe, pd.core.frame.DataFrame)
 
@@ -189,5 +192,5 @@ class TestClassificationExperimentCustomTags:
 
 
 if __name__ == "__main__":
-    test()
+    test_classification()
     TestClassificationExperimentCustomTags()

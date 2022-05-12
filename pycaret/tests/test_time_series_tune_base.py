@@ -1,16 +1,14 @@
 """Module to test time_series "tune_model" BASE functionality
 """
 
-import pytest
 import numpy as np
 import pandas as pd
-
-from pycaret.time_series import TSForecastingExperiment
+import pytest
 from sktime.forecasting.compose import ForecastingPipeline
 
+from pycaret.time_series import TSForecastingExperiment
 
 from .time_series_test_utils import _ALL_METRICS
-
 
 ##########################
 #### Tests Start Here ####

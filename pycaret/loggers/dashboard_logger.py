@@ -1,15 +1,16 @@
-import os
-import traceback
 import gc
-import traceback
+import os
 import tempfile
-import pandas as pd
-import numpy as np
-from typing import List, Optional, Dict, Any, TYPE_CHECKING
+import traceback
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
-from .base_logger import BaseLogger
+import numpy as np
+import pandas as pd
+
 from pycaret.internal.meta_estimators import get_estimator_from_meta_estimator
 from pycaret.internal.pipeline import get_pipeline_estimator_label
+
+from .base_logger import BaseLogger
 
 if TYPE_CHECKING:
     from pycaret.internal.pycaret_experiment.tabular_experiment import (

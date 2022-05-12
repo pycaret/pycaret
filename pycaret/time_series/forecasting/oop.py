@@ -5,42 +5,23 @@ import os
 import time
 import traceback
 import warnings
-from typing import Any, Dict, List, Optional, Tuple, Union
-from copy import deepcopy
 from collections import defaultdict
+from copy import deepcopy
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
 from IPython.utils import io
 from sklearn.base import clone
-from sktime.forecasting.base import ForecastingHorizon
+from sktime.forecasting.base import BaseForecaster, ForecastingHorizon
+from sktime.forecasting.compose import ForecastingPipeline, TransformedTargetForecaster
 from sktime.forecasting.model_selection import (
-    temporal_train_test_split,
     ExpandingWindowSplitter,
     SlidingWindowSplitter,
+    temporal_train_test_split,
 )
-
-from sktime.forecasting.base import BaseForecaster
-from sktime.transformations.series.impute import Imputer
-
-from pycaret.utils._dependencies import _check_soft_dependencies
-
-from pycaret.utils.time_series.forecasting import (
-    PyCaretForecastingHorizonTypes,
-    _check_and_clean_coverage,
-)
-from pycaret.utils.time_series.forecasting.pipeline import (
-    _add_model_to_pipeline,
-    _get_imputed_data,
-    _get_pipeline_estimator_label,
-)
-from pycaret.utils.time_series.forecasting.models import DummyForecaster
 from sktime.transformations.compose import TransformerPipeline
-from sktime.forecasting.compose import ForecastingPipeline, TransformedTargetForecaster
-
-from pycaret.internal.preprocess.time_series.forecasting.preprocessor import (
-    TSForecastingPreprocessor,
-)
+from sktime.transformations.series.impute import Imputer
 
 import pycaret.containers.metrics.time_series
 import pycaret.containers.models.time_series
@@ -51,41 +32,55 @@ from pycaret.internal.Display import Display
 from pycaret.internal.distributions import get_base_distributions
 from pycaret.internal.logging import get_logger
 
-from pycaret.internal.tests.time_series import (
-    recommend_uppercase_d,
-    recommend_lowercase_d,
-)
-
 # from pycaret.internal.pipeline import get_pipeline_fit_kwargs
 from pycaret.internal.plots.time_series import _get_plot
+from pycaret.internal.plots.utils.time_series import (
+    _clean_model_results_labels,
+    _get_data_types_to_plot,
+    _reformat_dataframes_for_plots,
+    _resolve_renderer,
+)
+from pycaret.internal.preprocess.time_series.forecasting.preprocessor import (
+    TSForecastingPreprocessor,
+)
 from pycaret.internal.pycaret_experiment.supervised_experiment import (
     _SupervisedExperiment,
 )
 from pycaret.internal.pycaret_experiment.utils import MLUsecase, highlight_setup
-from pycaret.internal.tests.time_series import run_test
+from pycaret.internal.tests.time_series import (
+    recommend_lowercase_d,
+    recommend_uppercase_d,
+    run_test,
+)
 from pycaret.internal.tunable import TunableMixin
 from pycaret.internal.validation import is_sklearn_cv_generator
+from pycaret.loggers.base_logger import BaseLogger
 from pycaret.utils import _coerce_empty_dataframe_to_none, _resolve_dict_keys
+from pycaret.utils._dependencies import _check_soft_dependencies
 from pycaret.utils.datetime import coerce_datetime_to_period_index
-from pycaret.utils.time_series import TSModelTypes, get_sp_from_str
+from pycaret.utils.time_series import (
+    TSApproachTypes,
+    TSExogenousPresent,
+    TSModelTypes,
+    get_sp_from_str,
+)
 from pycaret.utils.time_series.forecasting import (
+    PyCaretForecastingHorizonTypes,
+    _check_and_clean_coverage,
     get_predictions_with_intervals,
     update_additional_scorer_kwargs,
 )
-from pycaret.utils.time_series import TSApproachTypes, TSExogenousPresent
 from pycaret.utils.time_series.forecasting.model_selection import (
     ForecastingGridSearchCV,
     ForecastingRandomizedSearchCV,
     cross_validate,
 )
-from pycaret.internal.plots.utils.time_series import (
-    _resolve_renderer,
-    _get_data_types_to_plot,
-    _reformat_dataframes_for_plots,
-    _clean_model_results_labels,
+from pycaret.utils.time_series.forecasting.models import DummyForecaster
+from pycaret.utils.time_series.forecasting.pipeline import (
+    _add_model_to_pipeline,
+    _get_imputed_data,
+    _get_pipeline_estimator_label,
 )
-from pycaret.loggers.base_logger import BaseLogger
-
 
 warnings.filterwarnings("ignore")
 LOGGER = get_logger()
@@ -171,7 +166,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
     def _get_setup_display(self, **kwargs) -> pd.DataFrame:
         """Returns the dataframe to be displayed at the end of setup"""
-        n_nans = self.data.isna().any(axis=1).sum() / len(self.data)
+        n_nans = 100 * self.data.isna().any(axis=1).sum() / len(self.data)
 
         display_container = [
             ["session_id", self.seed],
@@ -182,7 +177,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             ["Transformed data shape", self.dataset_transformed.shape],
             ["Transformed train set shape", self.train_transformed.shape],
             ["Transformed test set shape", self.test_transformed.shape],
-            ["Rows with missing values", f"{round(n_nans, 2)}%"],
+            ["Rows with missing values", f"{round(n_nans, 1)}%"],
             ["Fold Generator", type(self.fold_generator).__name__],
             ["Fold Number", self.fold_param],
             ["Enforce Prediction Interval", self.enforce_pi],

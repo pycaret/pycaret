@@ -63,9 +63,10 @@ def setup(data, transaction_id, item_id, ignore_items=None, session_id=None):
 
     # load dependencies
     import random
-    import pandas as pd
+
     import numpy as np
-    from IPython.display import display, HTML, clear_output, update_display
+    import pandas as pd
+    from IPython.display import HTML, clear_output, display, update_display
 
     global X, txid, iid, ignore_list, seed, experiment__
 
@@ -185,11 +186,10 @@ def create_model(
 
     # loading dependencies
     import pandas as pd
-    from IPython.display import display, HTML, clear_output, update_display
+    from IPython.display import HTML, clear_output, display, update_display
 
     _check_soft_dependencies("mlxtend", extra="models", severity="error")
-    from mlxtend.frequent_patterns import apriori
-    from mlxtend.frequent_patterns import association_rules
+    from mlxtend.frequent_patterns import apriori, association_rules
 
     # reshaping the dataframe
     basket = (
@@ -303,14 +303,11 @@ def plot_model(model, plot="2d", scale=1, display_format=None):
     error handling ends here
     """
 
-    # loading libraries
+    import cufflinks as cf
     import numpy as np
     import pandas as pd
     import plotly.express as px
-    from IPython.display import display, HTML, clear_output, update_display
-
-    # import cufflinks
-    import cufflinks as cf
+    from IPython.display import HTML, clear_output, display, update_display
 
     cf.go_offline()
     cf.set_config_file(offline=False, world_readable=True)

@@ -2,12 +2,14 @@
 # Author: Antoni Baum (Yard1) <antoni.baum@protonmail.com>
 # License: MIT
 
-from pycaret.internal.logging import get_logger
-import pandas as pd
+from typing import Any, Dict, List, Optional
+
 import ipywidgets as ipw
+import pandas as pd
 from IPython import get_ipython
-from IPython.display import display, clear_output, update_display
-from typing import Optional, List, Dict, Any
+from IPython.display import clear_output, display, update_display
+
+from pycaret.internal.logging import get_logger
 from pycaret.utils import enable_colab  # Imported in other modules - do not remove
 
 

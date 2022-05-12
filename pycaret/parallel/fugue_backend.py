@@ -1,18 +1,20 @@
+import random
+from math import ceil
+from threading import RLock
 from typing import Any, Callable, Dict, List, Optional, Union
 
 import cloudpickle
 import pandas as pd
 from fugue import transform
+
+from pycaret.internal.Display import Display
 from pycaret.internal.tabular import (
     _append_display_container,
-    pull,
     _create_display,
     _get_context_lock,
+    pull,
 )
-from pycaret.internal.Display import Display
-from threading import RLock
-from math import ceil
-import random
+
 from .parallel_backend import NoDisplay, ParallelBackend
 
 try:

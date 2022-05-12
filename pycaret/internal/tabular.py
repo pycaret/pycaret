@@ -1,6 +1,7 @@
-import pandas as pd
-from typing import Optional, Any
 from threading import RLock
+from typing import Any, Optional
+
+import pandas as pd
 
 # Onw modules
 from pycaret.internal.Display import Display
@@ -24,11 +25,14 @@ def _create_display(progress: int, verbose: bool, monitor_rows: Any) -> Display:
 def _get_setup_signature() -> Optional[str]:
     return globals().get("_setup_signature", None)
 
-def _get_global(key:str, value:Any) -> Any:
+
+def _get_global(key: str, value: Any) -> Any:
     return globals().get(key, value)
 
-def _set_global(key:str, value:Any) -> None:
+
+def _set_global(key: str, value: Any) -> None:
     globals()[key] = value
+
 
 def _get_context_lock() -> RLock:
     return globals()["_context_lock"]

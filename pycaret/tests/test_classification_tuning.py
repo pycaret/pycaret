@@ -1,4 +1,5 @@
-import os, sys
+import os
+import sys
 
 sys.path.insert(0, os.path.abspath(".."))
 os.environ["TUNE_DISABLE_AUTO_CALLBACK_LOGGERS"] = "1"
@@ -6,13 +7,14 @@ os.environ["TUNE_MAX_LEN_IDENTIFIER"] = "1"
 
 import pandas as pd
 import pytest
+
 import pycaret.classification
 import pycaret.datasets
 from pycaret.internal.utils import can_early_stop
 
 
 @pytest.mark.skip(reason="no way of currently testing this")
-def test():
+def test_classification_tuning():
     # loading dataset
     data = pycaret.datasets.get_data("juice")
     assert isinstance(data, pd.DataFrame)
@@ -29,7 +31,9 @@ def test():
         n_jobs=1,
     )
 
-    models = pycaret.classification.compare_models(turbo=False, n_select=100, verbose=False)
+    models = pycaret.classification.compare_models(
+        turbo=False, n_select=100, verbose=False
+    )
 
     models.append(pycaret.classification.stack_models(models[:3], verbose=False))
     models.append(pycaret.classification.ensemble_model(models[0], verbose=False))
@@ -117,4 +121,4 @@ def test():
 
 
 if __name__ == "__main__":
-    test()
+    test_classification_tuning()

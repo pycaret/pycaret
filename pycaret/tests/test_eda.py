@@ -1,5 +1,6 @@
 import os
 import sys
+
 import pytest
 
 sys.path.insert(0, os.path.abspath(".."))
@@ -7,8 +8,9 @@ sys.path.insert(0, os.path.abspath(".."))
 import pycaret.classification
 import pycaret.datasets
 
+
 @pytest.mark.skip("AutoViz is broken in 0.1.37 due to panel compat issue")
-def test():
+def test_eda():
 
     # loading dataset
     data = pycaret.datasets.get_data("blood")
@@ -23,7 +25,7 @@ def test():
     )
 
     # EDA
-    pycaret.classification.eda(display_format='svg')
+    pycaret.classification.eda(display_format="svg")
 
     # assert
     assert 1 == 1

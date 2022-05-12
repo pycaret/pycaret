@@ -1,9 +1,10 @@
 from copy import deepcopy
 
 import pandas as pd
-from pycaret.internal.logging import get_logger
-from sklearn.utils.validation import check_is_fitted
 from sklearn.pipeline import Pipeline
+from sklearn.utils.validation import check_is_fitted
+
+from pycaret.internal.logging import get_logger
 
 
 def is_sklearn_pipeline(object):

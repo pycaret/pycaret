@@ -1,23 +1,22 @@
 import functools
 import inspect
+from copy import deepcopy
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Union
+
 import numpy as np
 import pandas as pd
-from scipy import sparse
 import pandas.io.formats.style
-
-from typing import Any, Callable, List, Optional, Dict, Set, Tuple, Union
-from sklearn.model_selection import KFold, StratifiedKFold, BaseCrossValidator
+from scipy import sparse
+from sklearn.model_selection import BaseCrossValidator, KFold, StratifiedKFold
 from sklearn.model_selection._split import _BaseKFold
 
 from pycaret.internal.logging import get_logger
-from pycaret.utils._dependencies import _check_soft_dependencies
-from copy import deepcopy
 from pycaret.internal.validation import (
-    is_sklearn_pipeline,
     is_sklearn_cv_generator,
+    is_sklearn_pipeline,
     supports_partial_fit,
 )
-
+from pycaret.utils._dependencies import _check_soft_dependencies
 
 DATAFRAME_LIKE = Union[dict, list, tuple, np.ndarray, sparse.spmatrix, pd.DataFrame]
 TARGET_LIKE = Union[int, str, list, tuple, np.ndarray, pd.Series]

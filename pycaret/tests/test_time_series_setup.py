@@ -1,20 +1,20 @@
 """Module to test time_series "setup" functionality
 """
 import math
-import pytest
+
 import numpy as np
 import pandas as pd
+import pytest
 
 from pycaret.datasets import get_data
 from pycaret.time_series import TSForecastingExperiment
 
 from .time_series_test_utils import (
-    _return_splitter_args,
-    _return_setup_args_raises,
     _get_seasonal_values,
     _get_seasonal_values_alphanumeric,
+    _return_setup_args_raises,
+    _return_splitter_args,
 )
-
 
 ##############################
 #### Functions Start Here ####
@@ -43,11 +43,12 @@ _setup_args_raises = _return_setup_args_raises()
 def test_splitter_using_fold_and_fh(fold, fh, fold_strategy, load_pos_and_neg_data):
     """Tests the splitter creation using fold, fh and a string value for fold_strategy."""
 
-    from pycaret.time_series import setup
     from sktime.forecasting.model_selection._split import (
         ExpandingWindowSplitter,
         SlidingWindowSplitter,
     )
+
+    from pycaret.time_series import setup
 
     exp_name = setup(
         data=load_pos_and_neg_data,
@@ -78,8 +79,9 @@ def test_splitter_using_fold_and_fh(fold, fh, fold_strategy, load_pos_and_neg_da
 def test_splitter_pass_cv_object(load_pos_and_neg_data):
     """Tests the passing of a `sktime` cv splitter to fold_strategy"""
 
-    from pycaret.time_series import setup
     from sktime.forecasting.model_selection._split import ExpandingWindowSplitter
+
+    from pycaret.time_series import setup
 
     fold = 3
     fh = np.arange(1, 13)  # regular horizon of 12 months

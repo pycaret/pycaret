@@ -3,7 +3,8 @@
 # License: MIT
 
 import inspect
-from typing import Dict, Any
+from typing import Any, Dict
+
 import pycaret.internal.utils
 
 

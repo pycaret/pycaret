@@ -1,15 +1,12 @@
 """Module to test time_series functionality
 """
-import pytest
-
 import numpy as np  # type: ignore
 import pandas as pd  # type: ignore
+import pytest
 
+from pycaret.containers.metrics.time_series import coverage
 from pycaret.datasets import get_data
 from pycaret.time_series import TSForecastingExperiment
-from pycaret.containers.metrics.time_series import coverage
-from pycaret.time_series import TSForecastingExperiment
-
 
 pytestmark = pytest.mark.filterwarnings("ignore::UserWarning")
 

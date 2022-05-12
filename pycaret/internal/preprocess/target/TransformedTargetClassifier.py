@@ -1,13 +1,16 @@
-import pandas as pd
-import numpy as np
 import warnings
 
+import numpy as np
+import pandas as pd
 from sklearn.base import BaseEstimator, ClassifierMixin, clone
-from sklearn.utils.validation import check_is_fitted, check_X_y
-from sklearn.utils.validation import _deprecate_positional_args
-from sklearn.utils import _safe_indexing
 from sklearn.exceptions import NotFittedError
 from sklearn.preprocessing import LabelEncoder
+from sklearn.utils import _safe_indexing
+from sklearn.utils.validation import (
+    _deprecate_positional_args,
+    check_is_fitted,
+    check_X_y,
+)
 
 from .utils import TargetTransformerMixin
 

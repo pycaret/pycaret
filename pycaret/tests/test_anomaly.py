@@ -1,21 +1,24 @@
-import os, sys
+import os
+import sys
 
 sys.path.insert(0, os.path.abspath(".."))
 
 import uuid
-import pytest
+
 import pandas as pd
-import pycaret.anomaly
-import pycaret.datasets
+import pytest
 from mlflow.tracking.client import MlflowClient
 
+import pycaret.anomaly
+import pycaret.datasets
 
-@pytest.fixture(scope='module')
+
+@pytest.fixture(scope="module")
 def data():
     return pycaret.datasets.get_data("anomaly")
 
 
-def test(data):
+def test_anomaly(data):
     experiment_name = uuid.uuid4().hex
     pycaret.anomaly.setup(
         data,

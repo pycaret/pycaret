@@ -9,26 +9,22 @@
 # to complete the process. Refer to the existing classes for examples.
 
 import logging
-from typing import Union, Optional, Dict, Any
+from typing import Any, Dict, Optional, Union
+
+import numpy as np
+from packaging import version
 
 import pycaret.containers.base_container
-from pycaret.internal.distributions import (
-    Distribution,
-    UniformDistribution,
-    IntUniformDistribution,
-)
 from pycaret.containers.models.base_model import (
     ModelContainer,
     leftover_parameters_to_categorical_distributions,
 )
-from pycaret.internal.utils import (
-    param_grid_to_lists,
-    get_logger,
-    np_list_arange,
+from pycaret.internal.distributions import (
+    Distribution,
+    IntUniformDistribution,
+    UniformDistribution,
 )
-import pycaret.containers.base_container
-import numpy as np
-from packaging import version
+from pycaret.internal.utils import get_logger, np_list_arange, param_grid_to_lists
 from pycaret.utils._dependencies import _check_soft_dependencies
 
 
@@ -1372,6 +1368,7 @@ class MLPRegressorContainer(RegressorContainer):
         np.random.seed(experiment.seed)
 
         from sklearn.neural_network import MLPRegressor
+
         from pycaret.internal.tunable import TunableMLPRegressor
 
         args = {"random_state": experiment.seed, "max_iter": 500}
@@ -1880,6 +1877,7 @@ class VotingRegressorContainer(RegressorContainer):
         logger = get_logger()
         np.random.seed(experiment.seed)
         from sklearn.ensemble import VotingRegressor
+
         from pycaret.internal.tunable import TunableVotingRegressor
 
         args = {}

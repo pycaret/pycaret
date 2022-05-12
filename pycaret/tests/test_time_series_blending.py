@@ -1,12 +1,12 @@
 """Module to test time_series `blend_model` functionality
 """
 from random import uniform
-import pytest
+
 import numpy as np  # type: ignore
+import pytest
 
-from pycaret.time_series import TSForecastingExperiment
 from pycaret.internal.ensemble import _ENSEMBLE_METHODS
-
+from pycaret.time_series import TSForecastingExperiment
 
 ##########################
 #### Tests Start Here ####

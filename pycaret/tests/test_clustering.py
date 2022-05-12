@@ -1,13 +1,16 @@
-import os, sys
+import os
+import sys
 
 sys.path.insert(0, os.path.abspath(".."))
 
 import uuid
-import pytest
+
 import pandas as pd
+import pytest
+from mlflow.tracking.client import MlflowClient
+
 import pycaret.clustering
 import pycaret.datasets
-from mlflow.tracking.client import MlflowClient
 
 
 @pytest.fixture(scope="module")
@@ -15,7 +18,7 @@ def data():
     return pycaret.datasets.get_data("jewellery")
 
 
-def test(data):
+def test_clustering(data):
     experiment_name = uuid.uuid4().hex
     pycaret.clustering.setup(
         data,

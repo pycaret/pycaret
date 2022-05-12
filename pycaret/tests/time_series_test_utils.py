@@ -3,12 +3,11 @@
 import random
 
 import numpy as np
-
 from sktime.forecasting.base import ForecastingHorizon
 
-from pycaret.time_series import TSForecastingExperiment
-from pycaret.datasets import get_data
 from pycaret.containers.models.time_series import get_all_model_containers
+from pycaret.datasets import get_data
+from pycaret.time_series import TSForecastingExperiment
 from pycaret.utils.time_series import SeasonalPeriod
 
 _BLEND_TEST_MODELS = [

@@ -1,14 +1,15 @@
 import os
 import sys
 import uuid
+
 sys.path.insert(0, os.path.abspath(".."))
 
-import pytest
 import pandas as pd
-import pycaret.datasets
-import pycaret.regression
+import pytest
 from mlflow.tracking.client import MlflowClient
 
+import pycaret.datasets
+import pycaret.regression
 
 
 @pytest.fixture(scope="module")
@@ -22,10 +23,9 @@ def tracking_api():
     return client
 
 
-def test(boston_dataframe):
+def test_regression(boston_dataframe):
     # loading dataset
-    data = pycaret.datasets.get_data("boston")
-    assert isinstance(data, pd.DataFrame)
+    assert isinstance(boston_dataframe, pd.DataFrame)
 
     # init setup
     reg1 = pycaret.regression.setup(
@@ -42,7 +42,9 @@ def test(boston_dataframe):
     )
 
     # compare models
-    top3 = pycaret.regression.compare_models(n_select=100, exclude=["catboost"], errors="raise")[:3]
+    top3 = pycaret.regression.compare_models(
+        n_select=100, exclude=["catboost"], errors="raise"
+    )[:3]
     assert isinstance(top3, list)
 
     # tune model
@@ -77,7 +79,7 @@ def test(boston_dataframe):
     assert isinstance(predict_holdout, pd.DataFrame)
 
     # predictions on new dataset
-    predict_holdout = pycaret.regression.predict_model(best, data=data)
+    predict_holdout = pycaret.regression.predict_model(best, data=boston_dataframe)
     assert isinstance(predict_holdout, pd.DataFrame)
 
     # finalize model
@@ -181,5 +183,5 @@ class TestRegressionExperimentCustomTags:
 
 
 if __name__ == "__main__":
-    test()
+    test_regression()
     TestRegressionExperimentCustomTags()

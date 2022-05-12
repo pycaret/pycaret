@@ -69,7 +69,7 @@ def calculate_standardized_residual(
     m = featuresize
     if m is None:
         m = 1
-    s2_hat = 1 / (n - m) * np.sum(residuals ** 2)
+    s2_hat = 1 / (n - m) * np.sum(residuals**2)
     leverage = 1 / n + (expected - np.mean(expected)) / np.sum(
         (expected - np.mean(expected)) ** 2
     )

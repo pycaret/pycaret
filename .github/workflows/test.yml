@@ -1,10 +1,14 @@
-name: pytest on push
+name: pycaret
 
 on:
   push:
     branches:
       - master
+      - develop
   pull_request:
+    branches:
+      - master
+      - develop
   schedule:
     - cron: "0 5 * * *"
 
@@ -13,6 +17,21 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+
+  code_quality:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source repository
+        uses: actions/checkout@v2
+      - name: Run black
+        uses: psf/black@stable
+        with:
+          src: pycaret
+      - name: Check imports
+        uses: jamescurtin/isort-action@master
+        with:
+          sortPaths: pycaret
+
   # JOBS MUST START WITH test !!!!
   test:
     runs-on: ubuntu-latest

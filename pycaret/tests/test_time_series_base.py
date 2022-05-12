@@ -1,17 +1,14 @@
 """Module to test time_series functionality
 """
-import pytest
 import numpy as np
 import pandas as pd
+import pytest
 from pandas.testing import assert_frame_equal
-
-from pycaret.time_series import TSForecastingExperiment
 from sktime.forecasting.compose import ForecastingPipeline
 
-from .time_series_test_utils import (
-    _return_model_parameters,
-    _return_compare_model_args,
-)
+from pycaret.time_series import TSForecastingExperiment
+
+from .time_series_test_utils import _return_compare_model_args, _return_model_parameters
 
 pytestmark = pytest.mark.filterwarnings("ignore::UserWarning")
 
@@ -292,11 +289,11 @@ def test_save_load_model_no_setup(load_pos_and_neg_data):
     #### Functional API ####
     ########################
     from pycaret.time_series import (
-        setup,
         create_model,
+        load_model,
         predict_model,
         save_model,
-        load_model,
+        setup,
     )
 
     _ = setup(
@@ -359,11 +356,11 @@ def test_save_load_model_setup(load_pos_and_neg_data):
     #### Functional API ####
     ########################
     from pycaret.time_series import (
-        setup,
         create_model,
+        load_model,
         predict_model,
         save_model,
-        load_model,
+        setup,
     )
 
     _ = setup(

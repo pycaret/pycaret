@@ -1,4 +1,5 @@
-import os, sys
+import os
+import sys
 
 sys.path.insert(0, os.path.abspath(".."))
 
@@ -6,7 +7,7 @@ import pycaret.classification
 import pycaret.datasets
 
 
-def test():
+def test_drift_report():
 
     # loading dataset
     data = pycaret.datasets.get_data("blood")

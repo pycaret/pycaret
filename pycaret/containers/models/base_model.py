@@ -2,9 +2,10 @@
 # Author: Antoni Baum (Yard1) <antoni.baum@protonmail.com>
 # License: MIT
 
-from pycaret.internal.distributions import CategoricalDistribution
+from typing import Any, Dict, Optional
+
 from pycaret.containers.base_container import BaseContainer
-from typing import Dict, Any, Optional
+from pycaret.internal.distributions import CategoricalDistribution
 
 
 class ModelContainer(BaseContainer):

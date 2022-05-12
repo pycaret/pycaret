@@ -8,15 +8,17 @@
 # `RegressionMetricContainer` as a base, set all of the required parameters in the `__init__` and then call `super().__init__`
 # to complete the process. Refer to the existing classes for examples.
 
-from typing import Optional, Union, Dict, Any
-from pycaret.containers.metrics.base_metric import MetricContainer
-from sklearn.metrics._scorer import _BaseScorer
-import pycaret.containers.base_container
-import pycaret.internal.metrics
+from typing import Any, Dict, Optional, Union
+
 import numpy as np
 from sklearn import metrics
-from sklearn.utils.validation import check_consistent_length
 from sklearn.metrics._regression import _check_reg_targets
+from sklearn.metrics._scorer import _BaseScorer
+from sklearn.utils.validation import check_consistent_length
+
+import pycaret.containers.base_container
+import pycaret.internal.metrics
+from pycaret.containers.metrics.base_metric import MetricContainer
 
 
 class RegressionMetricContainer(MetricContainer):

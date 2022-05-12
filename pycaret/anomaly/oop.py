@@ -1,22 +1,17 @@
-from pycaret.internal.pycaret_experiment.utils import (
-    MLUsecase,
-)
+import warnings
+from typing import List, Tuple
+
+import pycaret.containers.metrics.anomaly
+import pycaret.containers.models.anomaly
+import pycaret.internal.patches.sklearn
+import pycaret.internal.patches.yellowbrick
+import pycaret.internal.persistence
+import pycaret.internal.preprocess
+from pycaret.internal.logging import get_logger
 from pycaret.internal.pycaret_experiment.unsupervised_experiment import (
     _UnsupervisedExperiment,
 )
-import pycaret.internal.patches.sklearn
-import pycaret.internal.patches.yellowbrick
-from pycaret.internal.logging import get_logger
-import pycaret.containers.metrics.anomaly
-import pycaret.containers.models.anomaly
-import pycaret.internal.preprocess
-import pycaret.internal.persistence
-import numpy as np  # type: ignore
-from typing import List, Tuple
-import warnings
-import plotly.express as px  # type: ignore
-import plotly.graph_objects as go  # type: ignore
-
+from pycaret.internal.pycaret_experiment.utils import MLUsecase
 
 warnings.filterwarnings("ignore")
 LOGGER = get_logger()

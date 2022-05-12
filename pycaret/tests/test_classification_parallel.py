@@ -1,11 +1,13 @@
-from pycaret.datasets import get_data
-import pycaret.classification as pc
 import pytest
+
+import pycaret.classification as pc
+from pycaret.datasets import get_data
 
 
 @pytest.mark.skip(reason="no way of currently testing this")
-def test():
+def test_classification_parallel():
     from pycaret.parallel import FugueBackend
+
     pc.setup(
         data=lambda: get_data("juice", verbose=False, profile=False),
         target="Purchase",

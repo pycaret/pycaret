@@ -1,32 +1,30 @@
-from typing import Optional, Any, Union, Dict, Tuple, List
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
-
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-
 from sktime.forecasting.model_selection import (
     ExpandingWindowSplitter,
     SlidingWindowSplitter,
 )
 
-from pycaret.utils import _resolve_dict_keys
-from pycaret.utils.time_series import get_diffs
 from pycaret.internal.plots.utils.time_series import (
-    time_series_subplot,
-    corr_subplot,
-    dist_subplot,
-    qq_subplot,
-    decomp_subplot,
-    frequency_components_subplot,
-    plot_original_with_overlays,
-    _update_fig_dimensions,
+    PlotReturnType,
+    _clean_model_results_labels,
     _get_subplot_rows_cols,
     _resolve_hoverinfo,
-    _clean_model_results_labels,
-    PlotReturnType,
+    _update_fig_dimensions,
+    corr_subplot,
+    decomp_subplot,
+    dist_subplot,
+    frequency_components_subplot,
+    plot_original_with_overlays,
+    qq_subplot,
+    time_series_subplot,
 )
+from pycaret.utils import _resolve_dict_keys
+from pycaret.utils.time_series import get_diffs
 
 __author__ = ["satya-pattnaik", "ngupta23"]
 

@@ -1,31 +1,30 @@
-import time
 import logging
+import time
 import warnings
+from typing import Any, Dict, List, Optional, Tuple, Union
+
 import numpy as np  # type: ignore
 import pandas as pd
 from joblib.memory import Memory
-from typing import List, Tuple, Dict, Union, Optional, Any
-import plotly.express as px  # type: ignore
-import plotly.graph_objects as go  # type: ignore
+
+import pycaret.containers.metrics.regression
+import pycaret.containers.models.regression
+import pycaret.internal.patches.sklearn
+import pycaret.internal.patches.yellowbrick
+import pycaret.internal.persistence
+import pycaret.internal.preprocess
+from pycaret.internal.Display import Display
+from pycaret.internal.logging import get_logger
 
 # Own module
 from pycaret.internal.pipeline import Pipeline as InternalPipeline
 from pycaret.internal.preprocess.preprocessor import Preprocessor
-from pycaret.internal.pycaret_experiment.utils import MLUsecase, highlight_setup
 from pycaret.internal.pycaret_experiment.supervised_experiment import (
     _SupervisedExperiment,
 )
-import pycaret.internal.patches.sklearn
-import pycaret.internal.patches.yellowbrick
-from pycaret.internal.logging import get_logger
-import pycaret.containers.metrics.regression
-import pycaret.containers.models.regression
-import pycaret.internal.preprocess
-import pycaret.internal.persistence
-from pycaret.internal.Display import Display
-from pycaret.loggers.base_logger import BaseLogger
+from pycaret.internal.pycaret_experiment.utils import MLUsecase, highlight_setup
 from pycaret.internal.utils import DATAFRAME_LIKE, TARGET_LIKE
-
+from pycaret.loggers.base_logger import BaseLogger
 
 warnings.filterwarnings("ignore")
 LOGGER = get_logger()
@@ -328,8 +327,8 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             if len(cols) > 0:
                 container.append([f"{fx} features", len(cols)])
         if self.data.isna().sum().sum():
-            n_nans = self.data.isna().any(axis=1).sum() / len(self.data)
-            container.append(["Rows with missing values", f"{round(n_nans, 2)}%"])
+            n_nans = 100 * self.data.isna().any(axis=1).sum() / len(self.data)
+            container.append(["Rows with missing values", f"{round(n_nans, 1)}%"])
         if preprocess:
             container.append(["Preprocess", preprocess])
             container.append(["Imputation type", imputation_type])

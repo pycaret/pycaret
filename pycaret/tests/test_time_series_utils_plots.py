@@ -1,19 +1,18 @@
 """Module to test time_series plotting functionality
 """
-import pytest
-
-import pandas as pd  # type: ignore
-
 from typing import List
 
-from .time_series_test_utils import _ALL_PLOTS
+import pandas as pd  # type: ignore
+import pytest
 
 from pycaret.internal.plots.utils.time_series import (
-    _get_data_types_to_plot,
-    _reformat_dataframes_for_plots,
     ALLOWED_PLOT_DATA_TYPES,
     MULTIPLE_PLOT_TYPES_ALLOWED_AT_ONCE,
+    _get_data_types_to_plot,
+    _reformat_dataframes_for_plots,
 )
+
+from .time_series_test_utils import _ALL_PLOTS
 
 pytestmark = pytest.mark.filterwarnings("ignore::UserWarning")
 

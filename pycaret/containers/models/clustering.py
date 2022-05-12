@@ -8,16 +8,17 @@
 # `ClassifierContainer` as a base, set all of the required parameters in the `__init__` and then call `super().__init__`
 # to complete the process. Refer to the existing classes for examples.
 
+from typing import Any, Dict, Optional
+
 import numpy as np
+
+import pycaret.containers.base_container
 import pycaret.internal.cuml_wrappers
-from typing import Optional, Dict, Any
 from pycaret.containers.models.base_model import ModelContainer
 from pycaret.internal.cuml_wrappers import get_dbscan, get_kmeans
-from pycaret.internal.utils import param_grid_to_lists, get_logger
 from pycaret.internal.distributions import Distribution
-import pycaret.containers.base_container
+from pycaret.internal.utils import get_logger, param_grid_to_lists
 from pycaret.utils._dependencies import _check_soft_dependencies
-
 
 _DEFAULT_N_CLUSTERS = 4
 

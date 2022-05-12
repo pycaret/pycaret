@@ -1,14 +1,16 @@
-import os, sys
+import os
+import sys
 
 sys.path.insert(0, os.path.abspath(".."))
 
 import pandas as pd
 import pytest
+
 import pycaret.classification
 import pycaret.datasets
 
 
-def test():
+def test_multiclass():
     # loading dataset
     data = pycaret.datasets.get_data("iris")
     assert isinstance(data, pd.DataFrame)
@@ -55,7 +57,9 @@ def test():
     assert isinstance(predict_holdout, pd.DataFrame)
 
     # predictions on new dataset
-    predict_holdout = pycaret.classification.predict_model(best, data=data.drop("species", axis=1))
+    predict_holdout = pycaret.classification.predict_model(
+        best, data=data.drop("species", axis=1)
+    )
     assert isinstance(predict_holdout, pd.DataFrame)
 
     # calibrate model
@@ -93,4 +97,4 @@ def test():
 
 
 if __name__ == "__main__":
-    test()
+    test_multiclass()

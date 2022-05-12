@@ -1,10 +1,12 @@
 import os
+
 import pandas as pd
 import pytest
+
 from pycaret.datasets import get_data
 
 
-def test():
+def test_datasets():
     #########################
     #### Load Local File ####
     #########################
@@ -77,4 +79,4 @@ def test():
 
 
 if __name__ == "__main__":
-    test()
+    test_datasets()

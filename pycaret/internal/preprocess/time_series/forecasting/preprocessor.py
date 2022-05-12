@@ -1,18 +1,17 @@
-from typing import Union, Optional
+from typing import Optional, Union
 
 from sklearn.preprocessing import (
-    StandardScaler,
-    MinMaxScaler,
     MaxAbsScaler,
+    MinMaxScaler,
     RobustScaler,
+    StandardScaler,
 )
-
-from sktime.transformations.series.compose import ColumnwiseTransformer
 from sktime.transformations.series.adapt import TabularToSeriesAdaptor
-from sktime.transformations.series.impute import Imputer
 from sktime.transformations.series.boxcox import BoxCoxTransformer, LogTransformer
-from sktime.transformations.series.exponent import ExponentTransformer, SqrtTransformer
+from sktime.transformations.series.compose import ColumnwiseTransformer
 from sktime.transformations.series.cos import CosineTransformer
+from sktime.transformations.series.exponent import ExponentTransformer, SqrtTransformer
+from sktime.transformations.series.impute import Imputer
 
 from pycaret.utils.time_series import TSExogenousPresent
 

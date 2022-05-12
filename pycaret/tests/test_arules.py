@@ -1,14 +1,15 @@
-import os, sys
+import os
+import sys
 
 sys.path.insert(0, os.path.abspath(".."))
 
 import pandas as pd
-import pytest
+
 import pycaret.arules
 import pycaret.datasets
 
 
-def test():
+def test_arules():
     # loading dataset
     data = pycaret.datasets.get_data("france")
     assert isinstance(data, pd.DataFrame)
@@ -53,4 +54,4 @@ def test():
 
 
 if __name__ == "__main__":
-    test()
+    test_arules()

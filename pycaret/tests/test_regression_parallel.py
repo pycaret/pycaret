@@ -1,11 +1,13 @@
-from pycaret.datasets import get_data
-import pycaret.regression as pr
 import pytest
+
+import pycaret.regression as pr
+from pycaret.datasets import get_data
 
 
 @pytest.mark.skip(reason="no way of currently testing this")
-def test():
+def test_regression_parallel():
     from pycaret.parallel import FugueBackend
+
     pr.setup(
         data=lambda: get_data("insurance", verbose=False, profile=False),
         target="charges",

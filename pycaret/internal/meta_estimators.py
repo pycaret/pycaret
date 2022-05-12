@@ -1,9 +1,9 @@
 import sklearn.compose
-from sklearn.preprocessing import PowerTransformer
-from sklearn.compose import TransformedTargetRegressor
-
 from sklearn.base import BaseEstimator, ClassifierMixin, clone
+from sklearn.compose import TransformedTargetRegressor
+from sklearn.preprocessing import PowerTransformer
 from sklearn.utils.validation import check_is_fitted
+
 
 class PowerTransformedTargetRegressor(sklearn.compose.TransformedTargetRegressor):
     def __init__(
@@ -88,7 +88,9 @@ class PowerTransformedTargetRegressor(sklearn.compose.TransformedTargetRegressor
             self.power_transformer_method = params.pop("power_transformer_method")
             self.transformer.set_params(**{"method": self.power_transformer_method})
         if "power_transformer_standardize" in params:
-            self.power_transformer_standardize = params.pop("power_transformer_standardize")
+            self.power_transformer_standardize = params.pop(
+                "power_transformer_standardize"
+            )
             self.transformer.set_params(
                 **{"standardize": self.power_transformer_standardize}
             )
@@ -131,7 +133,11 @@ class CustomProbabilityThresholdClassifier(ClassifierMixin, BaseEstimator):
         self.set_params(**kwargs)
 
     def fit(self, X, y, **fit_params):
-        if not isinstance(self.probability_threshold, (int, float)) or self.probability_threshold > 1 or self.probability_threshold < 0:
+        if (
+            not isinstance(self.probability_threshold, (int, float))
+            or self.probability_threshold > 1
+            or self.probability_threshold < 0
+        ):
             raise TypeError(
                 "probability_threshold parameter only accepts value between 0 to 1."
             )
@@ -217,7 +223,9 @@ def get_estimator_from_meta_estimator(estimator):
     estimator first.
     """
     # If estimator is not of type Meta Estimator, return as is
-    if not isinstance(estimator, (TransformedTargetRegressor, CustomProbabilityThresholdClassifier)):
+    if not isinstance(
+        estimator, (TransformedTargetRegressor, CustomProbabilityThresholdClassifier)
+    ):
         return estimator
 
     if hasattr(estimator, "regressor_"):

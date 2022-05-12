@@ -1,19 +1,33 @@
 # Author: Mavs (m.524687@gmail.com)
 # License: MIT
 
+from copy import deepcopy
+
 import numpy as np
 import pandas as pd
-from copy import deepcopy
-from sklearn.impute import SimpleImputer, KNNImputer
+from category_encoders.leave_one_out import LeaveOneOutEncoder
+from category_encoders.one_hot import OneHotEncoder
+from category_encoders.ordinal import OrdinalEncoder
+from imblearn.over_sampling import SMOTE
 from sklearn.decomposition import PCA, IncrementalPCA, KernelPCA
+from sklearn.feature_selection import (
+    SelectFromModel,
+    SelectKBest,
+    SequentialFeatureSelector,
+    VarianceThreshold,
+    f_classif,
+    f_regression,
+)
+from sklearn.impute import KNNImputer, SimpleImputer
 from sklearn.model_selection import (
-    train_test_split,
     GroupKFold,
     KFold,
     StratifiedKFold,
     TimeSeriesSplit,
+    train_test_split,
 )
 from sklearn.preprocessing import (
+    KBinsDiscretizer,
     LabelEncoder,
     MaxAbsScaler,
     MinMaxScaler,
@@ -22,23 +36,8 @@ from sklearn.preprocessing import (
     QuantileTransformer,
     RobustScaler,
     StandardScaler,
-    KBinsDiscretizer,
 )
-from sklearn.feature_selection import (
-    VarianceThreshold,
-    f_classif,
-    f_regression,
-    SelectKBest,
-    SelectFromModel,
-    SequentialFeatureSelector,
-)
-from category_encoders.one_hot import OneHotEncoder
-from category_encoders.ordinal import OrdinalEncoder
-from category_encoders.leave_one_out import LeaveOneOutEncoder
-from imblearn.over_sampling import SMOTE
 
-# Own modules
-from pycaret.internal.pycaret_experiment.utils import MLUsecase
 from pycaret.containers.models.classification import (
     get_all_model_containers as get_classifiers,
 )
@@ -47,21 +46,22 @@ from pycaret.containers.models.regression import (
 )
 from pycaret.internal.preprocess.iterative_imputer import IterativeImputer
 from pycaret.internal.preprocess.transformers import (
-    TransfomerWrapper,
-    ExtractDateTimeFeatures,
     DropImputer,
     EmbedTextFeatures,
+    ExtractDateTimeFeatures,
+    FixImbalancer,
     RemoveMulticollinearity,
     RemoveOutliers,
-    FixImbalancer,
+    TransfomerWrapper,
 )
+from pycaret.internal.pycaret_experiment.utils import MLUsecase
 from pycaret.internal.utils import (
+    check_features_exist,
+    df_shrink_dtypes,
+    get_columns_to_stratify_by,
+    normalize_custom_transformers,
     to_df,
     to_series,
-    get_columns_to_stratify_by,
-    df_shrink_dtypes,
-    check_features_exist,
-    normalize_custom_transformers,
 )
 
 
@@ -127,7 +127,9 @@ class Preprocessor:
         else:  # y=None
             return df_shrink_dtypes(X)
 
-        return df_shrink_dtypes(X.merge(y.to_frame(), left_index=True, right_index=True))
+        return df_shrink_dtypes(
+            X.merge(y.to_frame(), left_index=True, right_index=True)
+        )
 
     def _prepare_train_test(
         self,
@@ -144,17 +146,22 @@ class Preprocessor:
             train, test = train_test_split(
                 self.data,
                 test_size=1 - train_size,
-                stratify=get_columns_to_stratify_by(self.X, self.y, data_split_stratify),
+                stratify=get_columns_to_stratify_by(
+                    self.X, self.y, data_split_stratify
+                ),
                 random_state=self.seed,
                 shuffle=data_split_shuffle,
             )
             self.data = pd.concat([train, test]).reset_index(drop=True)
-            self.idx = [self.data.index[:len(train)], self.data.index[-len(test):]]
+            self.idx = [self.data.index[: len(train)], self.data.index[-len(test) :]]
 
         else:  # test_data is provided
             test_data = self._prepare_dataset(test_data, self.target_param)
             self.data = pd.concat([self.data, test_data]).reset_index(drop=True)
-            self.idx = [self.data.index[:-len(test_data)], self.data.index[-len(test_data):]]
+            self.idx = [
+                self.data.index[: -len(test_data)],
+                self.data.index[-len(test_data) :],
+            ]
 
     def _prepare_column_types(
         self,
@@ -264,7 +271,9 @@ class Preprocessor:
     def _encode_target_column(self):
         """Add LabelEncoder to the pipeline."""
         self.logger.info("Set up label encoding.")
-        self.pipeline.steps.append(("label_encoding", TransfomerWrapper(LabelEncoder())))
+        self.pipeline.steps.append(
+            ("label_encoding", TransfomerWrapper(LabelEncoder()))
+        )
 
     def _date_feature_engineering(self):
         """Convert date features to numerical values."""
@@ -320,14 +329,14 @@ class Preprocessor:
             )
         else:
             cat_estimator = TransfomerWrapper(
-                SimpleImputer(strategy="constant", fill_value=categorical_imputation)
-                , include=self._fxs["Categorical"],
+                SimpleImputer(strategy="constant", fill_value=categorical_imputation),
+                include=self._fxs["Categorical"],
             )
 
         self.pipeline.steps.extend(
             [
                 ("numerical_imputer", num_estimator),
-                ("categorical_imputer", cat_estimator)
+                ("categorical_imputer", cat_estimator),
             ],
         )
 
@@ -341,16 +350,10 @@ class Preprocessor:
         self.logger.info("Set up iterative imputation.")
 
         # Dict of all regressor models available
-        regressors = {
-            k: v
-            for k, v in get_regressors(self).items()
-            if not v.is_special
-        }
+        regressors = {k: v for k, v in get_regressors(self).items() if not v.is_special}
         # Dict of all classifier models available
         classifiers = {
-            k: v
-            for k, v in get_classifiers(self).items()
-            if not v.is_special
+            k: v for k, v in get_classifiers(self).items() if not v.is_special
         }
 
         if isinstance(numeric_iterative_imputer, str):
@@ -360,9 +363,9 @@ class Preprocessor:
                     f"parameter, got {numeric_iterative_imputer}. "
                     f"Allowed estimators are: {', '.join(regressors)}."
                 )
-            numeric_iterative_imputer = regressors[
-                numeric_iterative_imputer
-            ].class_def(**regressors[numeric_iterative_imputer].args)
+            numeric_iterative_imputer = regressors[numeric_iterative_imputer].class_def(
+                **regressors[numeric_iterative_imputer].args
+            )
         elif not hasattr(numeric_iterative_imputer, "predict"):
             raise ValueError(
                 "Invalid value for the numeric_iterative_imputer "
@@ -400,25 +403,21 @@ class Preprocessor:
                 return estimator, fit_params
             if isinstance(estimator, estimators_dict["lightgbm"].class_def):
                 return "fit_params_categorical_feature"
-            elif isinstance(
-                    estimator, estimators_dict["catboost"].class_def
-            ):
+            elif isinstance(estimator, estimators_dict["catboost"].class_def):
                 return "params_cat_features"
             elif isinstance(
-                    estimator,
-                    (
-                            estimators_dict["xgboost"].class_def,
-                            estimators_dict["rf"].class_def,
-                            estimators_dict["et"].class_def,
-                            estimators_dict["dt"].class_def,
-                            estimators_dict["ada"].class_def,
-                            estimators_dict.get(
-                                "gbr",
-                                estimators_dict.get(
-                                    "gbc", estimators_dict["xgboost"]
-                                ),
-                            ).class_def,
-                    ),
+                estimator,
+                (
+                    estimators_dict["xgboost"].class_def,
+                    estimators_dict["rf"].class_def,
+                    estimators_dict["et"].class_def,
+                    estimators_dict["dt"].class_def,
+                    estimators_dict["ada"].class_def,
+                    estimators_dict.get(
+                        "gbr",
+                        estimators_dict.get("gbc", estimators_dict["xgboost"]),
+                    ).class_def,
+                ),
             ):
                 return "ordinal"
             else:
@@ -460,9 +459,7 @@ class Preprocessor:
                 f"or tf-idf, got {text_features_method}."
             )
 
-        self.pipeline.steps.append(
-            ("text_embedding", embed_estimator)
-        )
+        self.pipeline.steps.append(("text_embedding", embed_estimator))
 
     def _encoding(self, max_encoding_ohe, encoding_method):
         """Encode categorical columns."""
@@ -500,22 +497,18 @@ class Preprocessor:
 
             ord_estimator = TransfomerWrapper(
                 transformer=OrdinalEncoder(
-                    mapping=[
-                        {"col": k, "mapping": val} for k, val in mapping.items()
-                    ],
+                    mapping=[{"col": k, "mapping": val} for k, val in mapping.items()],
                     handle_missing="return_nan",
                     handle_unknown="value",
                 ),
                 include=list(self._fxs["Ordinal"].keys()),
             )
 
-            self.pipeline.steps.append(
-                ("ordinal_encoding", ord_estimator)
-            )
+            self.pipeline.steps.append(("ordinal_encoding", ord_estimator))
 
         if self._fxs["Categorical"]:
             self.logger.info("Set up encoding of categorical features.")
-    
+
             if len(one_hot_cols) > 0:
                 onehot_estimator = TransfomerWrapper(
                     transformer=OneHotEncoder(
@@ -525,11 +518,9 @@ class Preprocessor:
                     ),
                     include=one_hot_cols,
                 )
-    
-                self.pipeline.steps.append(
-                    ("onehot_encoding", onehot_estimator)
-                )
-    
+
+                self.pipeline.steps.append(("onehot_encoding", onehot_estimator))
+
             # Encode the rest of the categorical columns
             if len(rest_cols) > 0:
                 if not encoding_method:
@@ -538,14 +529,13 @@ class Preprocessor:
                         handle_unknown="value",
                         random_state=self.seed,
                     )
-    
+
                 rest_estimator = TransfomerWrapper(
-                    transformer=encoding_method, include=rest_cols,
+                    transformer=encoding_method,
+                    include=rest_cols,
                 )
-    
-                self.pipeline.steps.append(
-                    ("rest_encoding", rest_estimator)
-                )
+
+                self.pipeline.steps.append(("rest_encoding", rest_estimator))
 
     def _polynomial_features(self, polynomial_degree):
         """Create polynomial features from the existing ones."""
@@ -560,9 +550,7 @@ class Preprocessor:
             ),
         )
 
-        self.pipeline.steps.append(
-            ("polynomial_features", polynomial)
-        )
+        self.pipeline.steps.append(("polynomial_features", polynomial))
 
     def _low_variance(self, low_variance_threshold):
         """Drop features with too low variance."""
@@ -579,9 +567,7 @@ class Preprocessor:
                 exclude=self._fxs["Keep"],
             )
 
-        self.pipeline.steps.append(
-            ("low_variance", variance_estimator)
-        )
+        self.pipeline.steps.append(("low_variance", variance_estimator))
 
     def _remove_multicollinearity(self, multicollinearity_threshold):
         """Drop features that are collinear with other features."""
@@ -599,9 +585,7 @@ class Preprocessor:
             exclude=self._fxs["Keep"],
         )
 
-        self.pipeline.steps.append(
-            ("remove_multicollinearity", multicollinearity)
-        )
+        self.pipeline.steps.append(("remove_multicollinearity", multicollinearity))
 
     def _bin_numerical_features(self, bin_numeric_features):
         """Bin numerical features to 5 clusters."""
@@ -613,9 +597,7 @@ class Preprocessor:
             include=bin_numeric_features,
         )
 
-        self.pipeline.steps.append(
-            ("bin_numeric_features", binning_estimator)
-        )
+        self.pipeline.steps.append(("bin_numeric_features", binning_estimator))
 
     def _remove_outliers(self, outliers_method, outliers_threshold):
         """Remove outliers from the dataset."""
@@ -630,7 +612,8 @@ class Preprocessor:
 
         outliers = TransfomerWrapper(
             RemoveOutliers(
-                method=outliers_method, threshold=outliers_threshold,
+                method=outliers_method,
+                threshold=outliers_threshold,
             ),
         )
 
@@ -664,7 +647,8 @@ class Preprocessor:
             )
         elif transformation_method == "quantile":
             transformation_estimator = QuantileTransformer(
-                random_state=self.seed, output_distribution="normal",
+                random_state=self.seed,
+                output_distribution="normal",
             )
         else:
             raise ValueError(
@@ -724,7 +708,8 @@ class Preprocessor:
         }
         if pca_method in pca_dict:
             pca_estimator = TransfomerWrapper(
-                transformer=pca_dict[pca_method], exclude=self._fxs["Keep"],
+                transformer=pca_dict[pca_method],
+                exclude=self._fxs["Keep"],
             )
         else:
             raise ValueError(
@@ -797,14 +782,10 @@ class Preprocessor:
                 "'classic' or 'boruta'."
             )
 
-        self.pipeline.steps.append(
-            ("feature_selection", feature_selector)
-        )
+        self.pipeline.steps.append(("feature_selection", feature_selector))
 
     def _add_custom_pipeline(self, custom_pipeline):
         """Add custom transformers to the pipeline."""
         self.logger.info("Set up custom pipeline.")
         for name, estimator in normalize_custom_transformers(custom_pipeline):
-            self.pipeline.steps.append(
-                (name, TransfomerWrapper(estimator))
-            )
+            self.pipeline.steps.append((name, TransfomerWrapper(estimator)))

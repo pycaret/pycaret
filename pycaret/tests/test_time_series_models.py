@@ -1,10 +1,9 @@
 """Module to test time_series models
 """
-import pytest
 import pandas as pd  # type: ignore
+import pytest
 
 from pycaret.time_series import TSForecastingExperiment
-
 
 ##########################
 #### Tests Start Here ####
@@ -48,10 +47,10 @@ def test_custom_models(load_pos_data):
     )
 
     #### Create a sktime pipeline with preprocessing ----
-    from sktime.transformations.series.impute import Imputer
-    from sktime.transformations.series.boxcox import LogTransformer
-    from sktime.forecasting.compose import TransformedTargetForecaster
     from sktime.forecasting.arima import ARIMA
+    from sktime.forecasting.compose import TransformedTargetForecaster
+    from sktime.transformations.series.boxcox import LogTransformer
+    from sktime.transformations.series.impute import Imputer
 
     forecaster = TransformedTargetForecaster(
         [

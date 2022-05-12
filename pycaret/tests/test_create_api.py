@@ -1,13 +1,15 @@
-import os, sys
+import os
+import sys
 
 sys.path.insert(0, os.path.abspath(".."))
 
-import pandas as pd
 import numpy as np
+import pandas as pd
 import pytest
+
 import pycaret.classification
-import pycaret.regression
 import pycaret.datasets
+import pycaret.regression
 
 
 def test_classification_create_api():
@@ -31,6 +33,7 @@ def test_classification_create_api():
     pycaret.classification.create_api(lr, "blood_api")
     assert 1 == 1
 
+
 def test_regression_create_api():
 
     # loading dataset
@@ -51,6 +54,7 @@ def test_regression_create_api():
     # create api
     pycaret.regression.create_api(lr, "boston_api")
     assert 1 == 1
+
 
 if __name__ == "__main__":
     test_classification_create_api()

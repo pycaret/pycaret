@@ -1,24 +1,24 @@
-from pycaret.anomaly.oop import AnomalyExperiment
 from pycaret.anomaly.functional import (
-    setup,
-    create_model,
     assign_model,
-    tune_model,
-    plot_model,
-    evaluate_model,
-    predict_model,
+    create_model,
     deploy_model,
-    save_model,
+    evaluate_model,
+    get_config,
+    get_logs,
+    get_outliers,
+    load_config,
     load_model,
     models,
-    get_logs,
-    get_config,
-    set_config,
+    plot_model,
+    predict_model,
     save_config,
-    load_config,
-    get_outliers,
+    save_model,
+    set_config,
     set_current_experiment,
+    setup,
+    tune_model,
 )
+from pycaret.anomaly.oop import AnomalyExperiment
 
 __all__ = [
     "RegressionExperiment",
