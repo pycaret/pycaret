@@ -2686,7 +2686,9 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             avgs_dict_log = {
                 k: v
                 for k, v in model_results.loc[
-                    self._get_return_train_score_indices_for_logging(False)
+                    self._get_return_train_score_indices_for_logging(
+                        return_train_score=False
+                    )
                 ].items()
             }
 

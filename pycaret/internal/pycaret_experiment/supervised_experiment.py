@@ -175,10 +175,14 @@ class _SupervisedExperiment(_TabularExperiment):
         for model, result in models_and_results:
             if result is not None and is_fitted(model):
                 try:
-                    indices = self._get_return_train_score_indices_for_logging(True)
+                    indices = self._get_return_train_score_indices_for_logging(
+                        return_train_score=True
+                    )
                     result = result.loc[indices][compare_dimension]
                 except KeyError:
-                    indices = self._get_return_train_score_indices_for_logging(False)
+                    indices = self._get_return_train_score_indices_for_logging(
+                        return_train_score=False
+                    )
                     result = result.loc[indices][compare_dimension]
             else:
                 self.logger.info(
@@ -196,7 +200,9 @@ class _SupervisedExperiment(_TabularExperiment):
                     "SubProcess create_model() end =================================="
                 )
                 result = self.pull(pop=True).loc[
-                    self._get_return_train_score_indices_for_logging(False)
+                    self._get_return_train_score_indices_for_logging(
+                        return_train_score=False
+                    )
                 ][compare_dimension]
             self.logger.info(f"{model} result for {compare_dimension} is {result}")
             if not metric.greater_is_better:
@@ -716,7 +722,9 @@ class _SupervisedExperiment(_TabularExperiment):
                     model_results.drop("cutoff", axis=1, errors="ignore")
                 compare_models_ = pd.DataFrame(
                     model_results.loc[
-                        self._get_return_train_score_indices_for_display(False)
+                        self._get_return_train_score_indices_for_logging(
+                            return_train_score=False
+                        )
                     ]
                 ).T.reset_index(drop=True)
             else:
@@ -2639,7 +2647,7 @@ class _SupervisedExperiment(_TabularExperiment):
         # dashboard logging
         if self.logging_param:
             indices = self._get_return_train_score_indices_for_logging(
-                return_train_score
+                return_train_score=return_train_score
             )
             avgs_dict_log = {k: v for k, v in model_results.loc[indices].items()}
             self.logging_param.log_model_comparison(model_results, "tune_model")
@@ -3008,7 +3016,7 @@ class _SupervisedExperiment(_TabularExperiment):
         # dashboard logging
         if self.logging_param:
             indices = self._get_return_train_score_indices_for_logging(
-                return_train_score
+                return_train_score=return_train_score
             )
             avgs_dict_log = {k: v for k, v in model_results.loc[indices].items()}
             self.logging_param.log_model_comparison(model_results, "ensemble_model")
@@ -3399,7 +3407,7 @@ class _SupervisedExperiment(_TabularExperiment):
         # dashboard logging
         if self.logging_param:
             indices = self._get_return_train_score_indices_for_logging(
-                return_train_score
+                return_train_score=return_train_score
             )
             avgs_dict_log = {k: v for k, v in model_results.loc[indices].items()}
             self.logging_param.log_model_comparison(model_results, "blend_models")
@@ -3783,7 +3791,7 @@ class _SupervisedExperiment(_TabularExperiment):
         # dashboard logging
         if self.logging_param:
             indices = self._get_return_train_score_indices_for_logging(
-                return_train_score
+                return_train_score=return_train_score
             )
             avgs_dict_log = {k: v for k, v in model_results.loc[indices].items()}
             self.logging_param.log_model_comparison(model_results, "stack_model")
@@ -4655,7 +4663,7 @@ class _SupervisedExperiment(_TabularExperiment):
         # dashboard logging
         if self.logging_param:
             indices = self._get_return_train_score_indices_for_logging(
-                return_train_score
+                return_train_score=return_train_score
             )
             avgs_dict_log = {k: v for k, v in model_results.loc[indices].items()}
             self.logging_param.log_model_comparison(
