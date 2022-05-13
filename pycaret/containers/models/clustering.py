@@ -386,7 +386,10 @@ class KModesClusterContainer(ClusterContainer):
         logger = get_logger()
         np.random.seed(experiment.seed)
 
-        _check_soft_dependencies("kmodes", extra="models", severity="error")
+        if not _check_soft_dependencies("kmodes", extra="models", severity="warning"):
+            self.active = False
+            return
+
         from kmodes.kmodes import KModes
 
         args = {
