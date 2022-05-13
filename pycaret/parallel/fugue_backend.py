@@ -7,7 +7,7 @@ import cloudpickle
 import pandas as pd
 from fugue import transform
 
-from pycaret.internal.Display import Display
+from pycaret.internal.Display import CommonDisplay
 from pycaret.internal.parallel.parallel_backend import NoDisplay, ParallelBackend
 from pycaret.internal.tabular import _get_context_lock
 

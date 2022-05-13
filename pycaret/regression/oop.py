@@ -13,7 +13,7 @@ import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
 import pycaret.internal.persistence
 import pycaret.internal.preprocess
-from pycaret.internal.Display import Display
+from pycaret.internal.display import Display
 from pycaret.internal.logging import get_logger
 
 # Own module

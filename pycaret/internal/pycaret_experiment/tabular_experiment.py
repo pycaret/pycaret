@@ -24,7 +24,7 @@ import pycaret.internal.patches.yellowbrick
 import pycaret.internal.persistence
 import pycaret.internal.preprocess
 import pycaret.loggers
-from pycaret.internal.Display import Display
+from pycaret.internal.display import Display
 from pycaret.internal.logging import create_logger, get_logger
 from pycaret.internal.meta_estimators import get_estimator_from_meta_estimator
 from pycaret.internal.pipeline import Pipeline as InternalPipeline

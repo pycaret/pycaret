@@ -9,7 +9,7 @@ from plotly.basewidget import BaseFigureWidget
 from scipy import stats
 
 import pycaret.internal.plots.helper as helper
-from pycaret.internal.Display import Display
+from pycaret.internal.display import Display
 from pycaret.internal.logging import get_logger
 from pycaret.internal.validation import fit_if_not_fitted, is_fitted
 

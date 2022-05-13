@@ -8,7 +8,7 @@ from typing import Any, Optional
 import matplotlib.pyplot as plt
 import scikitplot as skplt
 
-from pycaret.internal.Display import Display
+from pycaret.internal.display import Display
 from pycaret.internal.logging import get_logger
 
 

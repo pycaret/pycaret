@@ -32,7 +32,7 @@ from pycaret.containers.models.time_series import (
     ALL_ALLOWED_ENGINES,
     get_container_default_engines,
 )
-from pycaret.internal.Display import Display
+from pycaret.internal.Display import CommonDisplay
 from pycaret.internal.distributions import get_base_distributions
 from pycaret.internal.logging import get_logger
 

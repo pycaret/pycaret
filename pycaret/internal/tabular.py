@@ -4,7 +4,7 @@ from typing import Any, Optional
 import pandas as pd
 
 # Onw modules
-from pycaret.internal.Display import Display
+from pycaret.internal.display import Display
 
 
 def _append_display_container(df: pd.DataFrame) -> None:

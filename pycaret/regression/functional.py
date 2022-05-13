@@ -692,6 +692,10 @@ def compare_models(
     errors: str, default = 'ignore'
         When set to 'ignore', will skip the model with exceptions and continue.
         If 'raise', will break the function when exceptions are raised.
+        
+
+    display: pycaret.internal.display.Display, default = None
+            Custom display object
 
 
     fit_kwargs: dict, default = {} (empty dict)
