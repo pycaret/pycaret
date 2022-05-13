@@ -23,7 +23,7 @@ import pycaret.internal.patches.yellowbrick
 import pycaret.internal.persistence
 import pycaret.internal.preprocess
 import pycaret.loggers
-from pycaret.internal.display import Display
+from pycaret.internal.display import CommonDisplay
 from pycaret.internal.logging import create_logger, get_logger
 from pycaret.internal.meta_estimators import get_estimator_from_meta_estimator
 from pycaret.internal.pipeline import Pipeline as InternalPipeline
@@ -174,7 +174,7 @@ class _TabularExperiment(_PyCaretExperiment):
         tune_cv_results=None,
         URI=None,
         experiment_custom_tags=None,
-        display: Optional[Display] = None,
+        display: Optional[CommonDisplay] = None,
     ):
         try:
             self.logging_param.log_model(
@@ -378,7 +378,7 @@ class _TabularExperiment(_PyCaretExperiment):
         use_train_data: bool = False,
         verbose: bool = True,
         system: bool = True,
-        display: Optional[Display] = None,  # added in pycaret==2.2.0
+        display: Optional[CommonDisplay] = None,  # added in pycaret==2.2.0
         display_format: Optional[str] = None,
     ) -> str:
 
@@ -596,10 +596,9 @@ class _TabularExperiment(_PyCaretExperiment):
 
         if not display:
             progress_args = {"max": 5}
-            display = Display(
+            display = CommonDisplay(
                 verbose=verbose, html_param=self.html_param, progress_args=progress_args
             )
-            display.display_progress()
 
         plot_kwargs = plot_kwargs or {}
 
@@ -661,7 +660,7 @@ class _TabularExperiment(_PyCaretExperiment):
                         display=display,
                     )
 
-                    display.clear_output()
+                    # display.clear_output()
                     if system:
                         resplots.show()
 
@@ -722,7 +721,7 @@ class _TabularExperiment(_PyCaretExperiment):
                     sorting ends
                     """
 
-                    display.clear_output()
+                    # display.clear_output()
 
                     self.logger.info("Rendering Visual")
 
@@ -807,7 +806,7 @@ class _TabularExperiment(_PyCaretExperiment):
                     else:
                         df["Feature"] = self.data[self.data.columns[0]]
 
-                    display.clear_output()
+                    # display.clear_output()
 
                     self.logger.info("Rendering Visual")
 
@@ -876,7 +875,7 @@ class _TabularExperiment(_PyCaretExperiment):
 
                     df = X
 
-                    display.clear_output()
+                    # display.clear_output()
 
                     self.logger.info("Rendering Visual")
 
@@ -974,7 +973,7 @@ class _TabularExperiment(_PyCaretExperiment):
 
                     df = X_embedded
 
-                    display.clear_output()
+                    # display.clear_output()
 
                     self.logger.info("Rendering Visual")
 
@@ -1066,7 +1065,7 @@ class _TabularExperiment(_PyCaretExperiment):
                     else:
                         x_col = feature_name
 
-                    display.clear_output()
+                    # display.clear_output()
 
                     self.logger.info("Rendering Visual")
 
@@ -1463,7 +1462,7 @@ class _TabularExperiment(_PyCaretExperiment):
                     predict_proba__ = estimator.predict_proba(self.X_test_transformed)
                     display.move_progress()
                     display.move_progress()
-                    display.clear_output()
+                    # display.clear_output()
                     with MatplotlibDefaultDPI(base_dpi=_base_dpi, scale_to_set=scale):
                         fig = skplt.metrics.plot_lift_curve(
                             y_test__, predict_proba__, figsize=(10, 6)
@@ -1488,7 +1487,7 @@ class _TabularExperiment(_PyCaretExperiment):
                     predict_proba__ = estimator.predict_proba(self.X_test_transformed)
                     display.move_progress()
                     display.move_progress()
-                    display.clear_output()
+                    # display.clear_output()
                     with MatplotlibDefaultDPI(base_dpi=_base_dpi, scale_to_set=scale):
                         fig = skplt.metrics.plot_cumulative_gain(
                             y_test__, predict_proba__, figsize=(10, 6)
@@ -1639,7 +1638,7 @@ class _TabularExperiment(_PyCaretExperiment):
                     display.move_progress()
 
                     display.move_progress()
-                    display.clear_output()
+                    # display.clear_output()
                     if save:
                         plot_filename = f"{plot_name}.png"
                         if not isinstance(save, bool):
@@ -1687,7 +1686,7 @@ class _TabularExperiment(_PyCaretExperiment):
                     ax1.grid(b=True, color="grey", linewidth=0.5, linestyle="-")
                     plt.tight_layout()
                     display.move_progress()
-                    display.clear_output()
+                    # display.clear_output()
                     if save:
                         plot_filename = f"{plot_name}.png"
                         if not isinstance(save, bool):
@@ -1711,7 +1710,7 @@ class _TabularExperiment(_PyCaretExperiment):
                         except:
                             model_params = estimator.get_params()
                     except:
-                        display.clear_output()
+                        # display.clear_output()
                         self.logger.error("VC plot failed. Exception:")
                         self.logger.error(traceback.format_exc())
                         raise TypeError(
@@ -1774,7 +1773,7 @@ class _TabularExperiment(_PyCaretExperiment):
                             param_range = np.arange(100, 1000, 100)
 
                         else:
-                            display.clear_output()
+                            # display.clear_output()
                             raise TypeError(
                                 "Plot not supported for this estimator. Try different estimator."
                             )
@@ -1837,7 +1836,7 @@ class _TabularExperiment(_PyCaretExperiment):
                             param_range = np.arange(0.01, 1, 0.1)
 
                         else:
-                            display.clear_output()
+                            # display.clear_output()
                             raise TypeError(
                                 "Plot not supported for this estimator. Try different estimator."
                             )
@@ -1967,7 +1966,7 @@ class _TabularExperiment(_PyCaretExperiment):
                     plt.xlabel("Variable Importance")
                     plt.ylabel("Features")
                     display.move_progress()
-                    display.clear_output()
+                    # display.clear_output()
                     if save:
                         plot_filename = f"{plot_name}.png"
                         if not isinstance(save, bool):
@@ -2002,7 +2001,7 @@ class _TabularExperiment(_PyCaretExperiment):
                     predict_proba__ = estimator.predict_proba(self.X_train_transformed)
                     display.move_progress()
                     display.move_progress()
-                    display.clear_output()
+                    # display.clear_output()
                     with MatplotlibDefaultDPI(base_dpi=_base_dpi, scale_to_set=scale):
                         fig = skplt.metrics.plot_ks_statistic(
                             self.y_train_transformed, predict_proba__, figsize=(10, 6)

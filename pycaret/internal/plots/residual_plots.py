@@ -9,7 +9,7 @@ from plotly.basewidget import BaseFigureWidget
 from scipy import stats
 
 import pycaret.internal.plots.helper as helper
-from pycaret.internal.display import Display
+from pycaret.internal.display import CommonDisplay
 from pycaret.internal.logging import get_logger
 from pycaret.internal.validation import fit_if_not_fitted, is_fitted
 
@@ -604,7 +604,7 @@ class InteractiveResidualsPlot:
 
     def __init__(
         self,
-        display: Display,
+        display: CommonDisplay,
         model,
         x: np.ndarray,
         y: np.ndarray,
@@ -631,14 +631,14 @@ class InteractiveResidualsPlot:
         """
 
         self.figures: [BaseFigureWidget] = []
-        self.display: Display = display
+        self.display: CommonDisplay = display
         self.plot = self.__create_resplots(model, x, y, x_test, y_test)
 
     def show(self):
         """
         Show the plots within the provided Display instance
         """
-        if self.display.enviroment == "google.colab":
+        if self.display.environment == "google.colab":
             for figure in self.figures:
                 figure.show()
         else:

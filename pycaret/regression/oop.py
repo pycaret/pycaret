@@ -13,7 +13,7 @@ import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
 import pycaret.internal.persistence
 import pycaret.internal.preprocess
-from pycaret.internal.display import Display
+from pycaret.internal.display import CommonDisplay
 from pycaret.internal.logging import get_logger
 
 # Own module
@@ -405,7 +405,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             pd.DataFrame(container, columns=["Description", "Value"])
         ]
         self.logger.info(f"Setup display_container: {self.display_container[0]}")
-        display = Display(
+        display = CommonDisplay(
             verbose=self.verbose,
             html_param=self.html_param,
         )

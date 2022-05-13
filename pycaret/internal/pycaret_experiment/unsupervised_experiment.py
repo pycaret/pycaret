@@ -19,7 +19,7 @@ import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
 import pycaret.internal.persistence
 import pycaret.internal.preprocess
-from pycaret.internal.display import Display
+from pycaret.internal.display import CommonDisplay
 from pycaret.internal.logging import get_logger
 from pycaret.internal.pipeline import Pipeline as InternalPipeline
 from pycaret.internal.pipeline import estimator_pipeline, get_pipeline_fit_kwargs
@@ -326,7 +326,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
             pd.DataFrame(container, columns=["Description", "Value"])
         ]
         self.logger.info(f"Setup display_container: {self.display_container[0]}")
-        display = Display(
+        display = CommonDisplay(
             verbose=self.verbose,
             html_param=self.html_param,
         )
@@ -372,7 +372,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
         fit_kwargs: Optional[dict] = None,
         round: int = 4,
         verbose: bool = True,
-        display: Optional[Display] = None,
+        display: Optional[CommonDisplay] = None,
         **kwargs,
     ):
 
@@ -509,7 +509,6 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
 
         if not display:
             progress_args = {"max": len(param_grid) * 3 + (len(param_grid) + 1) * 4}
-            master_display_columns = None
             timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
             monitor_rows = [
                 ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
@@ -524,17 +523,12 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
                     "Compiling Library",
                 ],
             ]
-            display = Display(
+            display = CommonDisplay(
                 verbose=verbose,
                 html_param=self.html_param,
                 progress_args=progress_args,
-                master_display_columns=master_display_columns,
                 monitor_rows=monitor_rows,
             )
-
-            display.display_progress()
-            display.display_monitor()
-            display.display_master_display()
 
         unsupervised_models = {}
         unsupervised_models_results = {}
@@ -889,7 +883,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
         add_to_model_list: bool = True,
         raise_num_clusters: bool = False,
         X_data: Optional[pd.DataFrame] = None,  # added in pycaret==2.2.0
-        display: Optional[Display] = None,  # added in pycaret==2.2.0
+        display: Optional[CommonDisplay] = None,  # added in pycaret==2.2.0
         **kwargs,
     ) -> Any:
 
@@ -1054,9 +1048,6 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
 
         if not display:
             progress_args = {"max": 3}
-            master_display_columns = [
-                v.display_name for k, v in self._all_metrics.items()
-            ]
             timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
             monitor_rows = [
                 ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
@@ -1071,16 +1062,12 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
                     "Compiling Library",
                 ],
             ]
-            display = Display(
+            display = CommonDisplay(
                 verbose=verbose,
                 html_param=self.html_param,
                 progress_args=progress_args,
-                master_display_columns=master_display_columns,
                 monitor_rows=monitor_rows,
             )
-            display.display_progress()
-            display.display_monitor()
-            display.display_master_display()
 
         self.logger.info("Importing libraries")
 
@@ -1095,7 +1082,6 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
         MONITOR UPDATE STARTS
         """
         display.update_monitor(1, "Selecting Estimator")
-        display.display_monitor()
         """
         MONITOR UPDATE ENDS
         """
@@ -1120,7 +1106,6 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
             full_name = self._get_model_name(model)
 
         display.update_monitor(2, full_name)
-        display.display_monitor()
 
         if self._ml_usecase == MLUsecase.CLUSTERING:
             if raise_num_clusters:
@@ -1153,7 +1138,6 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
             display.update_monitor(1, f"Fitting {num_clusters} Clusters")
         else:
             display.update_monitor(1, f"Fitting {fraction} Fraction")
-        display.display_monitor()
         """
         MONITOR UPDATE ENDS
         """
@@ -1163,7 +1147,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
 
             self.logger.info("Fitting Model")
             model_fit_start = time.time()
-            with io.capture_output():
+            with io.capture_output():  # todo redirect to log
                 if is_cblof and "n_clusters" not in kwargs:
                     try:
                         pipeline_with_model.fit(data_X, **fit_kwargs)
@@ -1240,14 +1224,10 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
                 {"model": model, "scores": model_results, "cv": None}
             )
 
-        if self._ml_usecase == MLUsecase.CLUSTERING:
+        if self._ml_usecase == MLUsecase.CLUSTERING and not system:
             display.display(
                 model_results.style.format(precision=round),
-                clear=system,
-                override=False if not system else None,
             )
-        elif system:
-            display.clear_output()
 
         self.logger.info(f"master_model_container: {len(self.master_model_container)}")
         self.logger.info(f"display_container: {len(self.display_container)}")

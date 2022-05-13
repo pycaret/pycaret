@@ -18,6 +18,7 @@ required_deps = [
     "pycaret",
     "ipython",
     "ipywidgets",
+    "tqdm",
     "numpy",
     "pandas",
     "jinja2",

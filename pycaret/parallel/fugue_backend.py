@@ -7,7 +7,7 @@ import cloudpickle
 import pandas as pd
 from fugue import transform
 
-from pycaret.internal.display import Display
+from pycaret.internal.display import CommonDisplay
 from pycaret.internal.tabular import (
     _append_display_container,
     _create_display,
@@ -30,7 +30,7 @@ except Exception:
 
 class _DisplayUtil:
     def __init__(
-        self, display: Optional[Display], progress: int, verbose: bool, sort: str
+        self, display: Optional[CommonDisplay], progress: int, verbose: bool, sort: str
     ):
         self._lock = RLock()
         self._display = display or _create_display(
@@ -136,7 +136,7 @@ class FugueBackend(ParallelBackend):
                 )
             )
         )
-        du: Optional[Display] = (
+        du: Optional[CommonDisplay] = (
             None
             if not self._display_remote
             else _DisplayUtil(
