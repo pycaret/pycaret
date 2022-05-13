@@ -23,7 +23,8 @@ def tracking_api():
     return client
 
 
-def test_regression(boston_dataframe):
+@pytest.mark.parametrize("return_train_score", [True, False])
+def test_regression(boston_dataframe, return_train_score):
     # loading dataset
     assert isinstance(boston_dataframe, pd.DataFrame)
 
@@ -43,30 +44,47 @@ def test_regression(boston_dataframe):
 
     # compare models
     top3 = pycaret.regression.compare_models(
-        n_select=100, exclude=["catboost"], errors="raise"
+        n_select=100,
+        exclude=["catboost"],
+        errors="raise",
+        return_train_score=return_train_score,
     )[:3]
     assert isinstance(top3, list)
 
     # tune model
-    tuned_top3 = [pycaret.regression.tune_model(i, n_iter=3) for i in top3]
+    tuned_top3 = [
+        pycaret.regression.tune_model(
+            i, n_iter=3, return_train_score=return_train_score
+        )
+        for i in top3
+    ]
     assert isinstance(tuned_top3, list)
 
-    pycaret.regression.tune_model(top3[0], n_iter=3, choose_better=True)
+    pycaret.regression.tune_model(
+        top3[0], n_iter=3, choose_better=True, return_train_score=return_train_score
+    )
 
     # ensemble model
-    bagged_top3 = [pycaret.regression.ensemble_model(i) for i in tuned_top3]
+    bagged_top3 = [
+        pycaret.regression.ensemble_model(i, return_train_score=return_train_score)
+        for i in tuned_top3
+    ]
     assert isinstance(bagged_top3, list)
 
     # blend models
-    blender = pycaret.regression.blend_models(top3)
+    blender = pycaret.regression.blend_models(
+        top3, return_train_score=return_train_score
+    )
 
     # stack models
     stacker = pycaret.regression.stack_models(
-        estimator_list=top3[1:], meta_model=top3[0]
+        estimator_list=top3[1:],
+        meta_model=top3[0],
+        return_train_score=return_train_score,
     )
 
     # plot model
-    lr = pycaret.regression.create_model("lr")
+    lr = pycaret.regression.create_model("lr", return_train_score=return_train_score)
     pycaret.regression.plot_model(
         lr, save=True
     )  # scale removed because build failed due to large image size
@@ -83,7 +101,9 @@ def test_regression(boston_dataframe):
     assert isinstance(predict_holdout, pd.DataFrame)
 
     # finalize model
-    final_best = pycaret.regression.finalize_model(best)
+    final_best = pycaret.regression.finalize_model(
+        best, return_train_score=return_train_score
+    )
 
     # save model
     pycaret.regression.save_model(best, "best_model_23122019")
