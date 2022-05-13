@@ -4860,9 +4860,14 @@ class _SupervisedExperiment(_TabularExperiment):
                 target = None
             data = to_df(data[self.X.columns])  # Ignore all column but the originals
             if preprocess:
+                # Temporarily remove final estimator so it's not used for transform
+                final_step = pipeline.steps[-1]
+                pipeline.steps = pipeline.steps[:-1]
                 X_test_ = pipeline.transform(
                     X=data, y=(target if preprocess != "features" else None)
                 )
+                pipeline.steps.append(final_step)
+
                 if isinstance(X_test_, tuple):
                     X_test_, y_test_ = X_test_
                 elif target is not None:
