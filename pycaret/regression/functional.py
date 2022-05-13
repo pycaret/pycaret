@@ -698,7 +698,7 @@ def compare_models(
             Dictionary of arguments passed to the fit method of the model.
 
 
-        display: pycaret.internal.Display.Display, default = None
+        display: pycaret.internal.display.Display, default = None
             Custom display object
 
     <<<<<<< HEAD:pycaret/regression/functional.py

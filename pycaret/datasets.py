@@ -90,7 +90,7 @@ def get_data(
 
     import pandas as pd
 
-    from pycaret.internal.Display import Display
+    from pycaret.internal.display import Display
 
     extension = ".csv"
     filename = str(dataset) + extension

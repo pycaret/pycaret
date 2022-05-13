@@ -7,7 +7,7 @@ import cloudpickle
 import pandas as pd
 from fugue import transform
 
-from pycaret.internal.Display import Display
+from pycaret.internal.display import Display
 from pycaret.internal.tabular import (
     _append_display_container,
     _create_display,

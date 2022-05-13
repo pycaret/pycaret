@@ -28,7 +28,7 @@ import pycaret.containers.models.time_series
 import pycaret.internal.patches.sklearn
 import pycaret.internal.persistence
 import pycaret.internal.preprocess
-from pycaret.internal.Display import Display
+from pycaret.internal.display import Display
 from pycaret.internal.distributions import get_base_distributions
 from pycaret.internal.logging import get_logger
 
