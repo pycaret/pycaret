@@ -2026,6 +2026,8 @@ class _TabularExperiment(_PyCaretExperiment):
                 ret = locals()[plot]()
                 if ret:
                     plot_filename = ret
+                else:
+                    plot_filename = base_plot_filename
 
                 try:
                     plt.close()
