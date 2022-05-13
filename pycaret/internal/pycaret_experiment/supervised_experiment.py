@@ -1100,7 +1100,7 @@ class _SupervisedExperiment(_TabularExperiment):
 
             model_results = pd.concat([model_results, model_scores], axis=1)
             model_results.set_index(
-                self._get_return_train_score_indices_for_display(return_train_score),
+                self._get_return_train_score_columns_for_display(return_train_score),
                 inplace=True,
             )
 
@@ -1143,14 +1143,14 @@ class _SupervisedExperiment(_TabularExperiment):
 
         return model, model_fit_time, model_results, avgs_dict
 
-    def _get_return_train_score_indices_for_display(
+    def _get_return_train_score_columns_for_display(
         self, return_train_score: bool
     ) -> List[str]:
         if return_train_score:
-            indices = ["Split", "Fold"]
+            columns = ["Split", "Fold"]
         else:
-            indices = ["Fold"]
-        return indices
+            columns = ["Fold"]
+        return columns
 
     def _get_return_train_score_indices_for_logging(self, return_train_score: bool):
         if return_train_score:
@@ -1399,7 +1399,7 @@ class _SupervisedExperiment(_TabularExperiment):
 
         if not display:
             progress_args = {"max": 4}
-            master_display_columns = self._get_return_train_score_indices_for_display(
+            master_display_columns = self._get_return_train_score_columns_for_display(
                 return_train_score
             ) + [v.display_name for k, v in self._all_metrics.items()]
             if self._ml_usecase == MLUsecase.TIME_SERIES:
@@ -1598,7 +1598,7 @@ class _SupervisedExperiment(_TabularExperiment):
 
         # dashboard logging
         if self.logging_param and system and refit:
-            indices = self._get_return_train_score_indices_for_display(
+            indices = self._get_return_train_score_indices_for_logging(
                 return_train_score
             )
             avgs_dict_log = {k: v for k, v in model_results.loc[indices].items()}
@@ -2087,7 +2087,7 @@ class _SupervisedExperiment(_TabularExperiment):
 
         if not display:
             progress_args = {"max": 3 + 4}
-            master_display_columns = self._get_return_train_score_indices_for_display(
+            master_display_columns = self._get_return_train_score_columns_for_display(
                 return_train_score
             ) + [v.display_name for k, v in self._all_metrics.items()]
             if self._ml_usecase == MLUsecase.TIME_SERIES:
@@ -2892,7 +2892,7 @@ class _SupervisedExperiment(_TabularExperiment):
 
         if not display:
             progress_args = {"max": 2 + 4}
-            master_display_columns = self._get_return_train_score_indices_for_display(
+            master_display_columns = self._get_return_train_score_columns_for_display(
                 return_train_score
             ) + [v.display_name for k, v in self._all_metrics.items()]
             if self._ml_usecase == MLUsecase.TIME_SERIES:
@@ -3287,7 +3287,7 @@ class _SupervisedExperiment(_TabularExperiment):
 
         if not display:
             progress_args = {"max": 2 + 4}
-            master_display_columns = self._get_return_train_score_indices_for_display(
+            master_display_columns = self._get_return_train_score_columns_for_display(
                 return_train_score
             ) + [v.display_name for k, v in self._all_metrics.items()]
             if self._ml_usecase == MLUsecase.TIME_SERIES:
@@ -3676,7 +3676,7 @@ class _SupervisedExperiment(_TabularExperiment):
 
         if not display:
             progress_args = {"max": 2 + 4}
-            master_display_columns = self._get_return_train_score_indices_for_display(
+            master_display_columns = self._get_return_train_score_columns_for_display(
                 return_train_score
             ) + [v.display_name for k, v in self._all_metrics.items()]
             if self._ml_usecase == MLUsecase.TIME_SERIES:

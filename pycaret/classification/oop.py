@@ -1796,7 +1796,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
 
         if not display:
             progress_args = {"max": 2 + 4}
-            master_display_columns = self._get_return_train_score_indices_for_display(
+            master_display_columns = self._get_return_train_score_columns_for_display(
                 return_train_score
             ) + [v.display_name for k, v in self._all_metrics.items()]
             timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
