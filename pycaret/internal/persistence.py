@@ -129,8 +129,6 @@ def deploy_model(
     # general dependencies
     import os
 
-    from IPython.display import clear_output
-
     logger.info("Saving model in active working directory")
     logger.info("SubProcess save_model() called ==================================")
     save_model(model, prep_pipe_=prep_pipe_, model_name=model_name, verbose=False)
@@ -176,7 +174,6 @@ def deploy_model(
                 "Boto3 credentials not configured. Refer boto3 documentation "
                 "(https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html)"
             )
-        clear_output()
         os.remove(filename)
         print("Model Successfully Deployed on AWS S3")
         logger.info("Model Successfully Deployed on AWS S3")

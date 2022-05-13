@@ -90,7 +90,7 @@ def get_data(
 
     import pandas as pd
 
-    from pycaret.internal.display import Display
+    from pycaret.internal.display import CommonDisplay
 
     extension = ".csv"
     filename = str(dataset) + extension
@@ -139,7 +139,7 @@ def get_data(
         save_name = filename
         data.to_csv(save_name, index=False)
 
-    display = Display(
+    display = CommonDisplay(
         verbose=True,
         html_param=True,
     )

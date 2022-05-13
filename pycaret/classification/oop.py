@@ -17,7 +17,7 @@ import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
 import pycaret.internal.persistence
 import pycaret.internal.preprocess
-from pycaret.internal.display import Display
+from pycaret.internal.display import CommonDisplay
 from pycaret.internal.logging import get_logger
 from pycaret.internal.meta_estimators import (
     CustomProbabilityThresholdClassifier,
@@ -788,7 +788,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
 
         self.pipeline.fit(self.X_train, self.y_train)
 
-        self.logger.info(f"Finished creating preprocessing pipeline.")
+        self.logger.info("Finished creating preprocessing pipeline.")
         self.logger.info(f"Pipeline: {self.pipeline}")
 
         # Final display ============================================ >>
@@ -891,7 +891,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             pd.DataFrame(container, columns=["Description", "Value"])
         ]
         self.logger.info(f"Setup display_container: {self.display_container[0]}")
-        display = Display(
+        display = CommonDisplay(
             verbose=self.verbose,
             html_param=self.html_param,
         )
@@ -2127,7 +2127,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         groups: Optional[Union[str, Any]] = None,
         verbose: bool = True,
         return_train_score: bool = False,
-        display: Optional[Display] = None,  # added in pycaret==2.2.0
+        display: Optional[CommonDisplay] = None,  # added in pycaret==2.2.0
     ) -> Any:
 
         """
@@ -2285,17 +2285,12 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
                     "Compiling Library",
                 ],
             ]
-            display = Display(
+            display = CommonDisplay(
                 verbose=verbose,
                 html_param=self.html_param,
                 progress_args=progress_args,
-                master_display_columns=master_display_columns,
                 monitor_rows=monitor_rows,
             )
-
-            display.display_progress()
-            display.display_monitor()
-            display.display_master_display()
 
         np.random.seed(self.seed)
 
@@ -2311,14 +2306,12 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         self.logger.info(f"Base model : {full_name}")
 
         display.update_monitor(2, full_name)
-        display.display_monitor()
 
         """
         MONITOR UPDATE STARTS
         """
 
         display.update_monitor(1, "Selecting Estimator")
-        display.display_monitor()
 
         """
         MONITOR UPDATE ENDS

@@ -1,0 +1,76 @@
+# Module: internal.display class
+# Author: Antoni Baum (Yard1) <antoni.baum@protonmail.com>
+# License: MIT
+
+from typing import Any, Dict, List, Optional
+
+from pycaret.internal.display.display_backend import detect_backend
+from pycaret.internal.display.display_component import MonitorDisplay
+from pycaret.internal.display.progress_bar import ProgressBarDisplay
+from pycaret.internal.logging import get_logger
+
+
+class CommonDisplay:
+    """
+    Provides a common interface to handle method displays.
+    """
+
+    def display_progress(self):
+        if self._progress_bar_display:
+            self._progress_bar_display.display()
+
+    def move_progress(self, value: int = 1):
+        if self._progress_bar_display:
+            self._progress_bar_display.step(value)
+
+    def update_monitor(self, row_idx: int, message: str):
+        if self._monitor_display:
+            self._monitor_display.update(row_idx, message)
+
+    def display(self, df, clear=False):
+        if clear:
+            self._general_display.clear_display()
+        self._general_display.display(df)
+
+    def clear_output(self):
+        self._general_display.clear_output()
+
+    def close(self):
+        if self._progress_bar_display:
+            self._progress_bar_display.close()
+
+    @property
+    def can_update(self) -> bool:
+        return self._general_display.can_update
+
+    def __init__(
+        self,
+        verbose: bool = True,
+        html_param: bool = True,
+        progress_args: Optional[Dict[str, Any]] = None,
+        monitor_rows: Optional[List[List[str]]] = None,
+    ):
+        self.logger = get_logger()
+        self.verbose = verbose
+        self.html_param = html_param
+
+        backend_id = "cli" if not html_param else None
+
+        if monitor_rows:
+            self._monitor_display = MonitorDisplay(
+                monitor_rows, backend=backend_id, verbose=self.verbose
+            )
+            self._monitor_display.display()
+        else:
+            self._monitor_display = None
+
+        if progress_args:
+            self._progress_bar_display = ProgressBarDisplay(
+                **progress_args, backend=backend_id, verbose=self.verbose
+            )
+            self._progress_bar_display.display()
+        else:
+            self._progress_bar_display = None
+
+        self._general_display = detect_backend(backend_id)
+        self._general_display.display(None)

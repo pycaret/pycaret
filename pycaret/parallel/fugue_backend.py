@@ -21,7 +21,7 @@ def _get_context_lock():
 
 class _DisplayUtil:
     def __init__(
-        self, display: Optional[Display], progress: int, verbose: bool, sort: str
+        self, display: Optional[CommonDisplay], progress: int, verbose: bool, sort: str
     ):
         self._lock = RLock()
         self._display = display or self._create_display(
