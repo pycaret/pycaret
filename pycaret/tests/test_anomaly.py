@@ -18,18 +18,6 @@ def data():
     return pycaret.datasets.get_data("anomaly")
 
 
-def test_basic_setup():
-    """Tests that a basic wildcard import works.
-    See: https://github.com/pycaret/pycaret/issues/2541
-    """
-    from pycaret.datasets import get_data
-
-    data = get_data("jewellery")
-    from pycaret.anomaly import *
-
-    s = setup(data, session_id=123)
-
-
 def test_anomaly(data):
     experiment_name = uuid.uuid4().hex
     pycaret.anomaly.setup(
