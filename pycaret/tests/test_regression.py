@@ -47,7 +47,6 @@ def test_regression(boston_dataframe, return_train_score):
         n_select=100,
         exclude=["catboost"],
         errors="raise",
-        return_train_score=return_train_score,
     )[:3]
     assert isinstance(top3, list)
 

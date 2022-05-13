@@ -44,9 +44,7 @@ def test_classification(juice_dataframe, return_train_score):
     )
 
     # compare models
-    top3 = pycaret.classification.compare_models(
-        errors="raise", n_select=100, return_train_score=return_train_score
-    )[:3]
+    top3 = pycaret.classification.compare_models(errors="raise", n_select=100)[:3]
     assert isinstance(top3, list)
 
     # tune model
