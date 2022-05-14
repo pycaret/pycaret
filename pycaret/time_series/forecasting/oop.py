@@ -2683,7 +2683,14 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         # mlflow logging
         if self.logging_param:
 
-            avgs_dict_log = {k: v for k, v in model_results.loc["Mean"].items()}
+            avgs_dict_log = {
+                k: v
+                for k, v in model_results.loc[
+                    self._get_return_train_score_indices_for_logging(
+                        return_train_score=False
+                    )
+                ].items()
+            }
 
             self._log_model(
                 model=best_model,

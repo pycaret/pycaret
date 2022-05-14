@@ -1796,7 +1796,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
 
         if not display:
             progress_args = {"max": 2 + 4}
-            master_display_columns = self._get_return_train_score_indices(
+            master_display_columns = self._get_return_train_score_columns_for_display(
                 return_train_score
             ) + [v.display_name for k, v in self._all_metrics.items()]
             timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
@@ -1895,12 +1895,14 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
 
         # mlflow logging
         if self.logging_param:
-
-            if return_train_score:
-                indices = ("CV-Val", "Mean")
-            else:
-                indices = "Mean"
-            avgs_dict_log = {k: v for k, v in model_results.loc[indices].items()}
+            avgs_dict_log = {
+                k: v
+                for k, v in model_results.loc[
+                    self._get_return_train_score_indices_for_logging(
+                        return_train_score=return_train_score
+                    )
+                ].items()
+            }
             self.logging_param.log_model_comparison(
                 model_results, f"calibrate_models_{self._get_model_name(model)}"
             )
@@ -2066,7 +2068,13 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
                 .reset_index()
                 .drop(columns=["Split"], errors="ignore")
                 .set_index(["Fold"])
-                .loc[["Mean"]]
+                .loc[
+                    [
+                        self._get_return_train_score_indices_for_logging(
+                            return_train_score=False
+                        )
+                    ]
+                ]
             )
             model_results["probability_threshold"] = i
             results_df.append(model_results)

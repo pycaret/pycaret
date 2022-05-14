@@ -10,7 +10,8 @@ import pycaret.classification
 import pycaret.datasets
 
 
-def test_multiclass():
+@pytest.mark.parametrize("return_train_score", [True, False])
+def test_multiclass(return_train_score):
     # loading dataset
     data = pycaret.datasets.get_data("iris")
     assert isinstance(data, pd.DataFrame)
@@ -31,22 +32,34 @@ def test_multiclass():
     assert isinstance(top3, list)
 
     # tune model
-    tuned_top3 = [pycaret.classification.tune_model(i) for i in top3]
+    tuned_top3 = [
+        pycaret.classification.tune_model(i, return_train_score=return_train_score)
+        for i in top3
+    ]
     assert isinstance(tuned_top3, list)
 
     # ensemble model
-    bagged_top3 = [pycaret.classification.ensemble_model(i) for i in tuned_top3]
+    bagged_top3 = [
+        pycaret.classification.ensemble_model(i, return_train_score=return_train_score)
+        for i in tuned_top3
+    ]
     assert isinstance(bagged_top3, list)
 
     # blend models
-    blender = pycaret.classification.blend_models(top3)
+    blender = pycaret.classification.blend_models(
+        top3, return_train_score=return_train_score
+    )
 
     # stack models
-    stacker = pycaret.classification.stack_models(estimator_list=top3)
+    stacker = pycaret.classification.stack_models(
+        estimator_list=top3, return_train_score=return_train_score
+    )
     predict_holdout = pycaret.classification.predict_model(stacker)
 
     # plot model
-    lr = pycaret.classification.create_model("lr")
+    lr = pycaret.classification.create_model(
+        "lr", return_train_score=return_train_score
+    )
     pycaret.classification.plot_model(lr, save=True, scale=5)
 
     # select best model
@@ -63,10 +76,14 @@ def test_multiclass():
     assert isinstance(predict_holdout, pd.DataFrame)
 
     # calibrate model
-    calibrated_best = pycaret.classification.calibrate_model(best)
+    calibrated_best = pycaret.classification.calibrate_model(
+        best, return_train_score=return_train_score
+    )
 
     # finalize model
-    final_best = pycaret.classification.finalize_model(best)
+    final_best = pycaret.classification.finalize_model(
+        best, return_train_score=return_train_score
+    )
 
     # save model
     pycaret.classification.save_model(best, "best_model_23122019")
