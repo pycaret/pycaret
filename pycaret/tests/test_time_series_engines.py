@@ -1,10 +1,9 @@
 """Module to test setting of engines in time series
 """
-from pycaret.time_series import TSForecastingExperiment
-
 from sktime.forecasting.arima import AutoARIMA as PmdAutoARIMA
 from sktime.forecasting.statsforecast import StatsForecastAutoARIMA
 
+from pycaret.time_series import TSForecastingExperiment
 
 ##############################
 #### Functions Start Here ####
