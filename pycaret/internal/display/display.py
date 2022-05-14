@@ -27,10 +27,10 @@ class CommonDisplay:
         if self._monitor_display:
             self._monitor_display.update(row_idx, message)
 
-    def display(self, df, clear=False):
+    def display(self, df, *, clear: bool = False, final_display: bool = True):
         if clear:
             self._general_display.clear_display()
-        self._general_display.display(df)
+        self._general_display.display(df, final_display=final_display)
 
     def clear_output(self):
         self._general_display.clear_output()
@@ -40,8 +40,12 @@ class CommonDisplay:
             self._progress_bar_display.close()
 
     @property
-    def can_update(self) -> bool:
-        return self._general_display.can_update
+    def can_update_text(self) -> bool:
+        return self._general_display.can_update_text
+
+    @property
+    def can_update_rich(self) -> bool:
+        return self._general_display.can_update_rich
 
     def __init__(
         self,

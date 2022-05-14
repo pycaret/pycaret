@@ -45,7 +45,7 @@ class MonitorDisplay(DisplayComponent):
         backend: Optional[Union[str, DisplayBackend]] = None,
     ):
         super().__init__(verbose=verbose, backend=backend)
-        if not self._backend.can_update:
+        if not self._backend.can_update_rich:
             self.backend = SilentBackend()
 
         self.monitor = pd.DataFrame(
