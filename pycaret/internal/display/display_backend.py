@@ -162,6 +162,7 @@ def detect_backend(
         class_name = ""
 
         if IN_DATABRICKS:
+            print("databricks")
             return DatabricksBackend()
 
         try:
