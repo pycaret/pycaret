@@ -21,7 +21,7 @@ from pycaret.anomaly.functional import (
 from pycaret.anomaly.oop import AnomalyExperiment
 
 __all__ = [
-    "RegressionExperiment",
+    "AnomalyExperiment",
     "setup",
     "create_model",
     "assign_model",

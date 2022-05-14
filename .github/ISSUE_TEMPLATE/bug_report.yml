@@ -18,7 +18,7 @@ body:
             [latest version](https://github.com/pycaret/pycaret/releases) of pycaret.
           required: true
         - label: >
-            I have confirmed this bug exists on the main branch of pycaret.
+            I have confirmed this bug exists on the develop branch of pycaret (pip install -U git+https://github.com/pycaret/pycaret.git@develop).
   
   - type: textarea
     id: problem
