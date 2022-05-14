@@ -17,6 +17,7 @@ jobs:
     steps:
       - uses: dessant/lock-threads@v3
         with:
-          issue-inactive-days: '7'
+          issue-inactive-days: '30'
           pr-inactive-days: '3650'
-          exclude-any-issue-labels: 'do not lock'
+          log-output: true
+          # exclude-any-issue-labels: 'do not lock'
