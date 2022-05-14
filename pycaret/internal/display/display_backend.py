@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from pprint import pprint
-from typing import Any, Optional
+from typing import Any, Optional, Union
 
 import pandas as pd
 from IPython import get_ipython
@@ -17,11 +17,18 @@ except ImportError:
 
 class DisplayBackend(ABC):
     id: str
-    can_update: bool
+    can_update_text: bool
+    can_update_rich: bool
 
     @abstractmethod
-    def display(self, obj: Any) -> None:
-        """Display obj."""
+    def display(self, obj: Any, *, final_display: bool = True) -> None:
+        """Display obj.
+
+        Args:
+            final_display: If True, this is considered the final
+            display of the caller. Set to False if display
+            will be updated. Allows for special Databricks
+            logic."""
         pass
 
     @abstractmethod
@@ -37,9 +44,10 @@ class DisplayBackend(ABC):
 
 class SilentBackend(DisplayBackend):
     id: str = "silent"
-    can_update: bool = False
+    can_update_text: bool = False
+    can_update_rich: bool = False
 
-    def display(self, obj: Any) -> None:
+    def display(self, obj: Any, *, final_display: bool = True) -> None:
         pass
 
     def clear_display(self) -> None:
@@ -51,9 +59,10 @@ class SilentBackend(DisplayBackend):
 
 class CLIBackend(DisplayBackend):
     id: str = "cli"
-    can_update: bool = False
+    can_update_text: bool = False
+    can_update_rich: bool = False
 
-    def display(self, obj: Any) -> None:
+    def display(self, obj: Any, *, final_display: bool = True) -> None:
         obj = self._handle_input(obj)
         if obj is not None:
             if hasattr(obj, "show"):
@@ -77,17 +86,21 @@ class CLIBackend(DisplayBackend):
 
 class JupyterBackend(DisplayBackend):
     id: str = "jupyter"
-    can_update: bool = True
+    can_update_text: bool = True
+    can_update_rich: bool = True
 
     def __init__(self) -> None:
         self._display_ref: Optional[DisplayHandle] = None
 
-    def display(self, obj: Any) -> None:
+    def display(self, obj: Any, *, final_display: bool = True) -> None:
+        self._display(obj)
+
+    def _display(self, obj: Any, **display_kwargs):
         if not self._display_ref:
-            self._display_ref = display(display_id=True)
+            self._display_ref = display(display_id=True, **display_kwargs)
         obj = self._handle_input(obj)
         if obj is not None:
-            self._display_ref.update(obj)
+            self._display_ref.update(obj, **display_kwargs)
 
     def clear_display(self) -> None:
         if self._display_ref:
@@ -111,13 +124,28 @@ class ColabBackend(JupyterBackend):
 
 class DatabricksBackend(JupyterBackend):
     id: str = "databricks"
+    can_update_rich: bool = False
+
+    def display(self, obj: Any, *, final_display: bool = True) -> None:
+        display_kwargs = {}
+        if not final_display:
+            display_kwargs = dict(include=["text/plain"])
+        self._display(obj, **display_kwargs)
+
+    def _handle_input(self, obj: Any) -> Any:
+        if isinstance(obj, Styler):
+            return obj.data
+
+        return obj
 
 
 backends = [CLIBackend, JupyterBackend, ColabBackend, DatabricksBackend, SilentBackend]
 backends = {b.id: b for b in backends}
 
 
-def detect_backend(backend) -> DisplayBackend:
+def detect_backend(
+    backend: Optional[Union[str, DisplayBackend]] = None
+) -> DisplayBackend:
     if backend is None:
         class_name = ""
 

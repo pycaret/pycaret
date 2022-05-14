@@ -555,8 +555,8 @@ class _SupervisedExperiment(_TabularExperiment):
                 progress_args=progress_args,
                 monitor_rows=monitor_rows,
             )
-            if display.can_update:
-                display.display(master_display)
+            if display.can_update_text:
+                display.display(master_display, final_display=False)
 
         input_ml_usecase = self._ml_usecase
         target_ml_usecase = MLUsecase.TIME_SERIES
@@ -780,8 +780,8 @@ class _SupervisedExperiment(_TabularExperiment):
                 [dict(selector="th", props=[("text-align", "left")])]
             )
 
-            if display.can_update:
-                display.display(master_display_)
+            if display.can_update_text:
+                display.display(master_display_, final_display=False)
 
         display.move_progress()
 
@@ -2713,7 +2713,7 @@ class _SupervisedExperiment(_TabularExperiment):
         model_results = self._highlight_and_round_model_results(
             model_results, return_train_score, round
         )
-        display.display(model_results, clear=True)
+        display.display(model_results)
 
         self.logger.info(f"master_model_container: {len(self.master_model_container)}")
         self.logger.info(f"display_container: {len(self.display_container)}")
@@ -3087,7 +3087,7 @@ class _SupervisedExperiment(_TabularExperiment):
         model_results = self._highlight_and_round_model_results(
             model_results, return_train_score, round
         )
-        display.display(model_results, clear=True)
+        display.display(model_results)
 
         self.logger.info(f"master_model_container: {len(self.master_model_container)}")
         self.logger.info(f"display_container: {len(self.display_container)}")
@@ -3475,7 +3475,7 @@ class _SupervisedExperiment(_TabularExperiment):
         model_results = self._highlight_and_round_model_results(
             model_results, return_train_score, round
         )
-        display.display(model_results, clear=True)
+        display.display(model_results)
 
         self.logger.info(f"master_model_container: {len(self.master_model_container)}")
         self.logger.info(f"display_container: {len(self.display_container)}")
@@ -3857,7 +3857,7 @@ class _SupervisedExperiment(_TabularExperiment):
         model_results = self._highlight_and_round_model_results(
             model_results, return_train_score, round
         )
-        display.display(model_results, clear=True)
+        display.display(model_results)
 
         self.logger.info(f"master_model_container: {len(self.master_model_container)}")
         self.logger.info(f"display_container: {len(self.display_container)}")
@@ -4726,7 +4726,7 @@ class _SupervisedExperiment(_TabularExperiment):
         model_results = self._highlight_and_round_model_results(
             model_results, return_train_score, round
         )
-        display.display(model_results, clear=True)
+        display.display(model_results)
 
         self.logger.info(f"master_model_container: {len(self.master_model_container)}")
         self.logger.info(f"display_container: {len(self.display_container)}")
@@ -4996,7 +4996,7 @@ class _SupervisedExperiment(_TabularExperiment):
             df_score = pd.DataFrame(metrics, index=[0])
             df_score.insert(0, "Model", full_name)
             df_score = df_score.round(round)
-            display.display(df_score.style.format(precision=round), clear=False)
+            display.display(df_score.style.format(precision=round))
 
         label = pd.DataFrame(pred, columns=["Label"], index=X_test_.index)
         if ml_usecase == MLUsecase.CLASSIFICATION:

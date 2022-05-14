@@ -1975,7 +1975,7 @@ class _TabularExperiment(_PyCaretExperiment):
                         orient="index",
                         columns=["Parameters"],
                     )
-                    display.display(param_df, clear=True)
+                    display.display(param_df)
                     self.logger.info("Visual Rendered Successfully")
 
                 def ks():

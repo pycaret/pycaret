@@ -684,7 +684,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
             highlight_min,
             subset=[x for x in results.columns if x in greater_is_worse_columns],
         )
-        display.display(results.format(precision=round), clear=True)
+        display.display(results.format(precision=round))
 
         if self.html_param and verbose:
             self.logger.info("Rendering Visual")
@@ -1162,9 +1162,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
             )
 
         if self._ml_usecase == MLUsecase.CLUSTERING and not system:
-            display.display(
-                model_results.style.format(precision=round),
-            )
+            display.display(model_results.style.format(precision=round))
 
         self.logger.info(f"master_model_container: {len(self.master_model_container)}")
         self.logger.info(f"display_container: {len(self.display_container)}")
