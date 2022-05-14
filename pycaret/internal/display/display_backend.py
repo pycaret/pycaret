@@ -127,10 +127,16 @@ class DatabricksBackend(JupyterBackend):
     can_update_rich: bool = False
 
     def display(self, obj: Any, *, final_display: bool = True) -> None:
-        display_kwargs = {}
         if not final_display:
             display_kwargs = dict(include=["text/plain"])
-        self._display(obj, **display_kwargs)
+            self._display(obj, **display_kwargs)
+        else:
+            self._final_display(obj)
+
+    def _final_display(self, obj: Any):
+        self.clear_display()
+        obj = self._handle_input(obj)
+        dbruntime.display.display(obj)
 
     def _handle_input(self, obj: Any) -> Any:
         if isinstance(obj, Styler):
