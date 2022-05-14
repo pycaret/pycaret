@@ -109,29 +109,11 @@ class ColabBackend(JupyterBackend):
         return obj
 
 
-class DatabricksBackend(DisplayBackend):
+class DatabricksBackend(JupyterBackend):
     id: str = "databricks"
-    can_update: bool = False
-
-    def __init__(self) -> None:
-        assert IN_DATABRICKS
-
-    def display(self, obj: Any) -> None:
-        obj = self._handle_input(obj)
-        dbruntime.display(obj)
-
-    def clear_display(self) -> None:
-        # no better way of doing this
-        self.clear_output()
-
-    def clear_output(self) -> None:
-        clear_output(wait=True)
-
-    def _handle_input(self, obj: Any) -> Any:
-        return obj
 
 
-backends = [CLIBackend, JupyterBackend, ColabBackend, SilentBackend]
+backends = [CLIBackend, JupyterBackend, ColabBackend, DatabricksBackend, SilentBackend]
 backends = {b.id: b for b in backends}
 
 
