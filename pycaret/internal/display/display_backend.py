@@ -109,7 +109,7 @@ class JupyterBackend(DisplayBackend):
 
     def clear_display(self) -> None:
         if self._display_ref:
-            self._display_ref.update()
+            self._display_ref.update({}, raw=True)
 
     def clear_output(self) -> None:
         clear_output(wait=True)
@@ -142,6 +142,7 @@ class DatabricksBackend(JupyterBackend):
     def _final_display(self, obj: Any):
         self.clear_display()
         obj = self._handle_input(obj)
+        print(display)
         display(obj)  # noqa
 
     def _handle_input(self, obj: Any) -> Any:
