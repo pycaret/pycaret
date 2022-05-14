@@ -857,7 +857,8 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
         if data is None:
             data_transformed = self.X_transformed
         else:
-            data_transformed = self.pipeline.transform(to_df(data[self.X.columns]))
+            data = self._prepare_dataset(data)[self.X.columns]
+            data_transformed = self.pipeline.transform(data)
 
         # exception checking for predict param
         if hasattr(estimator, "predict"):

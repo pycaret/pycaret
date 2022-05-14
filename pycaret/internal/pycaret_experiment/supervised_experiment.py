@@ -4855,10 +4855,12 @@ class _SupervisedExperiment(_TabularExperiment):
             X_test_, y_test_ = self.X_test_transformed, self.y_test_transformed
         else:
             if self.y.name in data.columns:
+                data = self._prepare_dataset(data, self.y.name)
                 target = data[self.y.name]
             else:
+                data = self._prepare_dataset(data)
                 target = None
-            data = to_df(data[self.X.columns])  # Ignore all column but the originals
+            data = data[self.X.columns]  # Ignore all column but the originals
             if preprocess:
                 # Temporarily remove final estimator so it's not used for transform
                 final_step = pipeline.steps[-1]
@@ -4872,6 +4874,7 @@ class _SupervisedExperiment(_TabularExperiment):
                     X_test_, y_test_ = X_test_
                 elif target is not None:
                     y_test_ = target
+                X_test_ = X_test_[self.X_train_transformed.columns]
             else:
                 X_test_ = data
                 y_test_ = target
