@@ -58,7 +58,7 @@ class CommonDisplay:
         self.verbose = verbose
         self.html_param = html_param
 
-        backend_id = "cli" if not html_param else None
+        backend_id = "cli" if html_param is False else None
 
         if monitor_rows:
             self._monitor_display = MonitorDisplay(
