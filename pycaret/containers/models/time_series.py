@@ -644,7 +644,16 @@ class AutoArimaContainer(TimeSeriesContainer):
         np.random.seed(self.seed)
         self.gpu_imported = False
 
-        from sktime.forecasting.arima import AutoARIMA  # type: ignore
+        id = "auto_arima"
+        self.engine = experiment.get_engine(id)
+
+        if self.engine == "pmdarima":
+            from sktime.forecasting.arima import AutoARIMA
+        elif self.engine == "statsforecast":
+            _check_soft_dependencies("statsforecast", extra="models", severity="error")
+            from sktime.forecasting.statsforecast import (
+                StatsForecastAutoARIMA as AutoARIMA,
+            )
 
         #### Disable container if certain features are not supported but enforced ----
         dummy = AutoARIMA()
@@ -662,7 +671,7 @@ class AutoArimaContainer(TimeSeriesContainer):
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
         super().__init__(
-            id="auto_arima",
+            id=id,
             name="Auto ARIMA",
             class_def=AutoARIMA,
             args=args,
@@ -676,9 +685,11 @@ class AutoArimaContainer(TimeSeriesContainer):
     def _set_args(self) -> Dict[str, Any]:
         # TODO: Check if there is a formal test for type of seasonality
         args = {"sp": self.sp} if self.seasonality_present else {}
-        # Add irrespective of whether seasonality is present or not
-        args["random_state"] = self.seed
-        args["suppress_warnings"] = True
+
+        if self.engine == "pmdarima":
+            # Add irrespective of whether seasonality is present or not
+            args["random_state"] = self.seed
+            args["suppress_warnings"] = True
         return args
 
     @property
