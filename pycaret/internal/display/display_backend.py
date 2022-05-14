@@ -7,6 +7,13 @@ from IPython import get_ipython
 from IPython.display import HTML, DisplayHandle, clear_output, display
 from pandas.io.formats.style import Styler
 
+try:
+    import dbruntime.display
+
+    IN_DATABRICKS = True
+except ImportError:
+    IN_DATABRICKS = False
+
 
 class DisplayBackend(ABC):
     id: str
@@ -102,6 +109,28 @@ class ColabBackend(JupyterBackend):
         return obj
 
 
+class DatabricksBackend(DisplayBackend):
+    id: str = "databricks"
+    can_update: bool = False
+
+    def __init__(self) -> None:
+        assert IN_DATABRICKS
+
+    def display(self, obj: Any) -> None:
+        obj = self._handle_input(obj)
+        dbruntime.display(obj)
+
+    def clear_display(self) -> None:
+        # no better way of doing this
+        self.clear_output()
+
+    def clear_output(self) -> None:
+        clear_output(wait=True)
+
+    def _handle_input(self, obj: Any) -> Any:
+        return obj
+
+
 backends = [CLIBackend, JupyterBackend, ColabBackend, SilentBackend]
 backends = {b.id: b for b in backends}
 
@@ -109,6 +138,10 @@ backends = {b.id: b for b in backends}
 def detect_backend(backend) -> DisplayBackend:
     if backend is None:
         class_name = ""
+
+        if IN_DATABRICKS:
+            return DatabricksBackend()
+
         try:
             ipython = get_ipython()
             assert ipython
