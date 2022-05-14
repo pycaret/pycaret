@@ -25,7 +25,8 @@ def tracking_api():
     return client
 
 
-def test_classification(juice_dataframe):
+@pytest.mark.parametrize("return_train_score", [True, False])
+def test_classification(juice_dataframe, return_train_score):
 
     assert isinstance(juice_dataframe, pd.core.frame.DataFrame)
 
@@ -47,24 +48,40 @@ def test_classification(juice_dataframe):
     assert isinstance(top3, list)
 
     # tune model
-    tuned_top3 = [pycaret.classification.tune_model(i, n_iter=3) for i in top3]
+    tuned_top3 = [
+        pycaret.classification.tune_model(
+            i, n_iter=3, return_train_score=return_train_score
+        )
+        for i in top3
+    ]
     assert isinstance(tuned_top3, list)
 
-    pycaret.classification.tune_model(top3[0], n_iter=3, choose_better=True)
+    pycaret.classification.tune_model(
+        top3[0], n_iter=3, choose_better=True, return_train_score=return_train_score
+    )
 
     # ensemble model
-    bagged_top3 = [pycaret.classification.ensemble_model(i) for i in tuned_top3]
+    bagged_top3 = [
+        pycaret.classification.ensemble_model(i, return_train_score=return_train_score)
+        for i in tuned_top3
+    ]
     assert isinstance(bagged_top3, list)
 
     # blend models
-    blender = pycaret.classification.blend_models(top3)
+    blender = pycaret.classification.blend_models(
+        top3, return_train_score=return_train_score
+    )
 
     # stack models
-    stacker = pycaret.classification.stack_models(estimator_list=top3)
+    stacker = pycaret.classification.stack_models(
+        estimator_list=top3, return_train_score=return_train_score
+    )
     predict_holdout = pycaret.classification.predict_model(stacker)
 
     # plot model
-    lr = pycaret.classification.create_model("lr")
+    lr = pycaret.classification.create_model(
+        "lr", return_train_score=return_train_score
+    )
     pycaret.classification.plot_model(lr, save=True, scale=5)
 
     # select best model
@@ -79,10 +96,14 @@ def test_classification(juice_dataframe):
     assert isinstance(predict_holdout, pd.DataFrame)
 
     # calibrate model
-    calibrated_best = pycaret.classification.calibrate_model(best)
+    calibrated_best = pycaret.classification.calibrate_model(
+        best, return_train_score=return_train_score
+    )
 
     # finalize model
-    final_best = pycaret.classification.finalize_model(best)
+    final_best = pycaret.classification.finalize_model(
+        best, return_train_score=return_train_score
+    )
 
     # save model
     pycaret.classification.save_model(best, "best_model_23122019")

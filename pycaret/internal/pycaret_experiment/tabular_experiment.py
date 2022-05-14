@@ -299,11 +299,6 @@ class _TabularExperiment(_PyCaretExperiment):
 
         # Initialization =========================================== >>
 
-        # Get local parameters to write to logger
-        function_params_str = ", ".join(
-            [f"{k}={v}" for k, v in locals().items() if k != "self"]
-        )
-
         if experiment_name:
             if not isinstance(experiment_name, str):
                 raise TypeError(
@@ -635,7 +630,7 @@ class _TabularExperiment(_PyCaretExperiment):
         # yellowbrick workaround end
 
         model_name = self._get_model_name(model)
-        plot_filename = f"{plot_name}.png"
+        base_plot_filename = f"{plot_name}.png"
         with patch(
             "yellowbrick.utils.types.is_estimator",
             pycaret.internal.patches.yellowbrick.is_estimator,
@@ -666,9 +661,9 @@ class _TabularExperiment(_PyCaretExperiment):
 
                     if save:
                         if not isinstance(save, bool):
-                            plot_filename = os.path.join(save, plot_filename)
+                            plot_filename = os.path.join(save, base_plot_filename)
                         else:
-                            plot_filename = plot
+                            plot_filename = base_plot_filename
                         self.logger.info(f"Saving '{plot_filename}'")
                         resplots.write_html(plot_filename)
 
@@ -753,9 +748,9 @@ class _TabularExperiment(_PyCaretExperiment):
 
                     if save:
                         if not isinstance(save, bool):
-                            plot_filename = os.path.join(save, plot_filename)
+                            plot_filename = os.path.join(save, base_plot_filename)
                         else:
-                            plot_filename = plot
+                            plot_filename = base_plot_filename
                         self.logger.info(f"Saving '{plot_filename}'")
                         fig.write_html(plot_filename)
 
@@ -824,9 +819,9 @@ class _TabularExperiment(_PyCaretExperiment):
 
                     if save:
                         if not isinstance(save, bool):
-                            plot_filename = os.path.join(save, plot_filename)
+                            plot_filename = os.path.join(save, base_plot_filename)
                         else:
-                            plot_filename = plot
+                            plot_filename = base_plot_filename
                         self.logger.info(f"Saving '{plot_filename}'")
                         fig.write_html(plot_filename)
 
@@ -908,9 +903,9 @@ class _TabularExperiment(_PyCaretExperiment):
 
                     if save:
                         if not isinstance(save, bool):
-                            plot_filename = os.path.join(save, plot_filename)
+                            plot_filename = os.path.join(save, base_plot_filename)
                         else:
-                            plot_filename = plot
+                            plot_filename = base_plot_filename
                         self.logger.info(f"Saving '{plot_filename}'")
                         fig.write_html(plot_filename)
 
@@ -1008,9 +1003,9 @@ class _TabularExperiment(_PyCaretExperiment):
 
                     if save:
                         if not isinstance(save, bool):
-                            plot_filename = os.path.join(save, plot_filename)
+                            plot_filename = os.path.join(save, base_plot_filename)
                         else:
-                            plot_filename = plot
+                            plot_filename = base_plot_filename
                         self.logger.info(f"Saving '{plot_filename}'")
                         fig.write_html(plot_filename)
 
@@ -1084,9 +1079,9 @@ class _TabularExperiment(_PyCaretExperiment):
 
                     if save:
                         if not isinstance(save, bool):
-                            plot_filename = os.path.join(save, plot_filename)
+                            plot_filename = os.path.join(save, base_plot_filename)
                         else:
-                            plot_filename = plot
+                            plot_filename = base_plot_filename
                         self.logger.info(f"Saving '{plot_filename}'")
                         fig.write_html(plot_filename)
 
@@ -1464,13 +1459,14 @@ class _TabularExperiment(_PyCaretExperiment):
                     display.move_progress()
                     # display.clear_output()
                     with MatplotlibDefaultDPI(base_dpi=_base_dpi, scale_to_set=scale):
-                        fig = skplt.metrics.plot_lift_curve(
+                        skplt.metrics.plot_lift_curve(
                             y_test__, predict_proba__, figsize=(10, 6)
                         )
                         if save:
-                            plot_filename = f"{plot_name}.png"
                             if not isinstance(save, bool):
-                                plot_filename = os.path.join(save, plot_filename)
+                                plot_filename = os.path.join(save, base_plot_filename)
+                            else:
+                                plot_filename = base_plot_filename
                             self.logger.info(f"Saving '{plot_filename}'")
                             plt.savefig(plot_filename, bbox_inches="tight")
                         elif system:
@@ -1489,13 +1485,14 @@ class _TabularExperiment(_PyCaretExperiment):
                     display.move_progress()
                     # display.clear_output()
                     with MatplotlibDefaultDPI(base_dpi=_base_dpi, scale_to_set=scale):
-                        fig = skplt.metrics.plot_cumulative_gain(
+                        skplt.metrics.plot_cumulative_gain(
                             y_test__, predict_proba__, figsize=(10, 6)
                         )
                         if save:
-                            plot_filename = f"{plot_name}.png"
                             if not isinstance(save, bool):
-                                plot_filename = os.path.join(save, plot_filename)
+                                plot_filename = os.path.join(save, base_plot_filename)
+                            else:
+                                plot_filename = base_plot_filename
                             self.logger.info(f"Saving '{plot_filename}'")
                             plt.savefig(plot_filename, bbox_inches="tight")
                         elif system:
@@ -1541,20 +1538,22 @@ class _TabularExperiment(_PyCaretExperiment):
                     is_ensemble_of_forests = False
 
                     if "final_estimator" in estimator.get_params():
-                        estimator = estimator.final_estimator
+                        tree_estimator = estimator.final_estimator
                         is_stacked_model = True
+                    else:
+                        tree_estimator = estimator
 
                     if (
-                        "base_estimator" in estimator.get_params()
-                        and "n_estimators" in estimator.base_estimator.get_params()
+                        "base_estimator" in tree_estimator.get_params()
+                        and "n_estimators" in tree_estimator.base_estimator.get_params()
                     ):
                         n_estimators = (
-                            estimator.get_params()["n_estimators"]
-                            * estimator.base_estimator.get_params()["n_estimators"]
+                            tree_estimator.get_params()["n_estimators"]
+                            * tree_estimator.base_estimator.get_params()["n_estimators"]
                         )
                         is_ensemble_of_forests = True
-                    elif "n_estimators" in estimator.get_params():
-                        n_estimators = estimator.get_params()["n_estimators"]
+                    elif "n_estimators" in tree_estimator.get_params():
+                        n_estimators = tree_estimator.get_params()["n_estimators"]
                     else:
                         n_estimators = 1
                     if n_estimators > 10:
@@ -1588,7 +1587,7 @@ class _TabularExperiment(_PyCaretExperiment):
                         }
                     else:
                         class_names = None
-                    fitted_estimator = estimator.steps[-1][1]
+                    fitted_estimator = tree_estimator.steps[-1][1]
                     if is_stacked_model:
                         stacked_feature_names = []
                         if self._ml_usecase == MLUsecase.CLASSIFICATION:
@@ -1612,12 +1611,12 @@ class _TabularExperiment(_PyCaretExperiment):
                             feature_names = stacked_feature_names + feature_names
                         fitted_estimator = fitted_estimator.final_estimator_
                     if is_ensemble_of_forests:
-                        for estimator in fitted_estimator.estimators_:
-                            trees.extend(estimator.estimators_)
+                        for tree_estimator in fitted_estimator.estimators_:
+                            trees.extend(tree_estimator.estimators_)
                     else:
                         try:
                             trees = fitted_estimator.estimators_
-                        except:
+                        except Exception:
                             trees = [fitted_estimator]
                     if self._ml_usecase == MLUsecase.CLASSIFICATION:
                         class_names = list(class_names.values())
@@ -1640,9 +1639,10 @@ class _TabularExperiment(_PyCaretExperiment):
                     display.move_progress()
                     # display.clear_output()
                     if save:
-                        plot_filename = f"{plot_name}.png"
                         if not isinstance(save, bool):
-                            plot_filename = os.path.join(save, plot_filename)
+                            plot_filename = os.path.join(save, base_plot_filename)
+                        else:
+                            plot_filename = base_plot_filename
                         self.logger.info(f"Saving '{plot_filename}'")
                         plt.savefig(plot_filename, bbox_inches="tight")
                     elif system:
@@ -1688,9 +1688,10 @@ class _TabularExperiment(_PyCaretExperiment):
                     display.move_progress()
                     # display.clear_output()
                     if save:
-                        plot_filename = f"{plot_name}.png"
                         if not isinstance(save, bool):
-                            plot_filename = os.path.join(save, plot_filename)
+                            plot_filename = os.path.join(save, base_plot_filename)
+                        else:
+                            plot_filename = base_plot_filename
                         self.logger.info(f"Saving '{plot_filename}'")
                         plt.savefig(plot_filename, bbox_inches="tight")
                     elif system:
@@ -1968,9 +1969,10 @@ class _TabularExperiment(_PyCaretExperiment):
                     display.move_progress()
                     # display.clear_output()
                     if save:
-                        plot_filename = f"{plot_name}.png"
                         if not isinstance(save, bool):
-                            plot_filename = os.path.join(save, plot_filename)
+                            plot_filename = os.path.join(save, base_plot_filename)
+                        else:
+                            plot_filename = base_plot_filename
                         self.logger.info(f"Saving '{plot_filename}'")
                         plt.savefig(plot_filename, bbox_inches="tight")
                     elif system:
@@ -2007,9 +2009,10 @@ class _TabularExperiment(_PyCaretExperiment):
                             self.y_train_transformed, predict_proba__, figsize=(10, 6)
                         )
                         if save:
-                            plot_filename = f"{plot_name}.png"
                             if not isinstance(save, bool):
-                                plot_filename = os.path.join(save, plot_filename)
+                                plot_filename = os.path.join(save, base_plot_filename)
+                            else:
+                                plot_filename = base_plot_filename
                             self.logger.info(f"Saving '{plot_filename}'")
                             plt.savefig(plot_filename, bbox_inches="tight")
                         elif system:
@@ -2022,6 +2025,8 @@ class _TabularExperiment(_PyCaretExperiment):
                 ret = locals()[plot]()
                 if ret:
                     plot_filename = ret
+                else:
+                    plot_filename = base_plot_filename
 
                 try:
                     plt.close()
