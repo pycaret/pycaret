@@ -65,6 +65,7 @@ from pycaret.utils.time_series import (
     get_sp_from_str,
 )
 from pycaret.utils.time_series.forecasting import (
+    ALL_ALLOWED_ENGINES,
     PyCaretForecastingHorizonTypes,
     _check_and_clean_coverage,
     get_predictions_with_intervals,
@@ -123,6 +124,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                 "X_train_transformed",
                 "y_test_transformed",
                 "X_test_transformed",
+                "model_engines",
             }
         )
         self._available_plots = {
@@ -1217,6 +1219,124 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         return self
 
+    def get_allowed_engines(self, estimator: str) -> Optional[str]:
+        """Get all the allowed engines for the specified model
+
+        Parameters
+        ----------
+        estimator : str
+            Identifier for the model for which the engines should be retrieved,
+            e.g. "auto_arima"
+
+        Returns
+        -------
+        Optional[str]
+            The allowed engines for the model. If the model only supports the
+            default sktime engine, then it return `None`.
+        """
+        allowed_engines = ALL_ALLOWED_ENGINES.get(estimator, None)
+        return allowed_engines
+
+    def get_engine(self, estimator: str) -> Optional[str]:
+        """Gets the model engine currently set in the experiment for the specified
+        model.
+
+        Parameters
+        ----------
+        estimator : str
+            Identifier for the model for which the engine should be retrieved,
+            e.g. "auto_arima"
+
+        Returns
+        -------
+        Optional[str]
+            The engine for the model. If the model only supports the default sktime
+            engine, then it return `None`.
+        """
+        engine = self.model_engines.get(estimator, None)
+        if engine is None:
+            msg = (
+                f"get_engine: Either model '{estimator}' has only 1 default sktime engine, "
+                "or the model is not in the allowed list of models for this setup."
+            )
+            self.logger.info(msg)
+            print(msg)
+        return engine
+
+    def set_engine(self, estimator: str, engine: str, severity="error"):
+        """Sets the engine to use for a particular model.
+
+        Parameters
+        ----------
+        estimator : str
+            Identifier for the model for which the engine should be set, e.g.
+            "auto_arima"
+        engine : str
+            Engine to set for the model. All available engines for the model
+            can be retrieved using get_allowed_engines()
+        severity : str, optional
+            How to handle incorrectly specified engines. Allowed values are "error"
+            and "warning". If set to "warning", the existing engine is left
+            unchanged if the specified engine is not correct., by default "error".
+
+        Raises
+        ------
+        ValueError
+            (1) If specified engine is not in the allowed list of engines and
+                severity is set to "error"
+            (2) If the value of "severity" is not one of the allowed values
+        """
+        allowed_engines = self.get_allowed_engines(estimator=estimator)
+        if allowed_engines is None:
+            msg = (
+                f"Either model '{estimator}' has only 1 engine and hence can not be changed, "
+                "or the model is not in the allowed list of models for this setup."
+            )
+
+            if severity == "error":
+                raise ValueError(msg)
+            elif severity == "warning":
+                self.logger.warning(msg)
+                print(msg)
+            else:
+                raise ValueError(
+                    "Error in calling set_engine, severity "
+                    f'argument must be "error" or "warning", found "{severity}".'
+                )
+        else:
+            self.model_engines[estimator] = engine
+            self.logger.info(
+                f"Engine successfully changes for model '{estimator}' to '{engine}'."
+            )
+
+        # Need to do this, else internal class variables are not reset with new engine.
+        self._set_all_models()
+
+    def _set_default_model_engines(
+        self, engines: Optional[Dict[str, str]] = None
+    ) -> "TSForecastingExperiment":
+        """Set all the default model engines
+
+        engines: Optional[Dict[str, str]] = None
+            The engine to use for the models, e.g. for auto_arima, users can
+            switch between "pmdarima" and "statsforecast" by specifying
+            engines={"auto_arima": "statsforecast"}
+
+        Returns
+        -------
+        TSForecastingExperiment
+            The experiment object to allow chaining of methods
+        """
+        # Other engines will default to sktime defaults
+        defaults = {"auto_arima": "pmdarima"}
+        engines = engines or {}
+        for key in defaults:
+            # If provided by user, then use that, else get from the defaults
+            engine = engines.get(key, defaults.get(key))
+            self.set_engine(estimator=key, engine=engine, severity="error")
+
+        return self
+
     def setup(
         self,
         data: Union[pd.Series, pd.DataFrame],
@@ -1252,6 +1372,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         log_plots: Union[bool, list] = False,
         log_profile: bool = False,
         log_data: bool = False,
+        engines: Optional[Dict[str, str]] = None,
         verbose: bool = True,
         profile: bool = False,
         profile_kwargs: Optional[Dict[str, Any]] = None,
@@ -1325,10 +1446,12 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             If None, no transformation is performed. Allowed values are
                 "box-cox", "log", "sqrt", "exp", "cos"
 
+
         scale_target: Optional[str], default = None
             Indicates how the target variable should be scaled.
             If None, no scaling is performed. Allowed values are
                 "zscore", "minmax", "maxabs", "robust"
+
 
         scale_exogenous: Optional[str], default = None
             Indicates how the exogenous variables should be scaled.
@@ -1490,6 +1613,12 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             Ignored when ``log_experiment`` is not True.
 
 
+        engines: Optional[Dict[str, str]] = None
+            The engine to use for the models, e.g. for auto_arima, users can
+            switch between "pmdarima" and "statsforecast" by specifying
+            engines={"auto_arima": "statsforecast"}
+
+
         verbose: bool, default = True
             When set to False, Information grid is not printed.
 
@@ -1557,6 +1686,8 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         runtime_start = time.time()
 
         #### Define parameter attrs ----
+        self.model_engines = {}
+
         self.fig_kwargs = fig_kwargs or {}
         self._set_default_fig_kwargs()
 
@@ -1619,6 +1750,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             ._perform_setup_eda()
             ._setup_display_container()
             ._profile(profile, profile_kwargs)
+            ._set_default_model_engines(engines=engines)
             ._set_all_models()
             ._set_all_metrics()
         )
@@ -1673,6 +1805,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         errors: str = "ignore",
         fit_kwargs: Optional[dict] = None,
         experiment_custom_tags: Optional[Dict[str, Any]] = None,
+        engines: Optional[Dict[str, str]] = None,
         verbose: bool = True,
     ):
 
@@ -1750,6 +1883,12 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             Dictionary of arguments passed to the fit method of the model.
 
 
+        engines: Optional[Dict[str, str]] = None
+            The engine to use for the models, e.g. for auto_arima, users can
+            switch between "pmdarima" and "statsforecast" by specifying
+            engines={"auto_arima": "statsforecast"}
+
+
         verbose: bool, default = True
             Score grid is not printed when verbose is set to False.
 
@@ -1766,7 +1905,13 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         """
 
-        return super().compare_models(
+        if engines is not None:
+            # Save current engines, then set to user specified options
+            initial_model_engines = self.model_engines.copy()
+            for estimator, engine in engines.items():
+                self.set_engine(estimator=estimator, engine=engine, severity="error")
+
+        return_values = super().compare_models(
             include=include,
             exclude=exclude,
             fold=fold,
@@ -1782,6 +1927,12 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             verbose=verbose,
         )
 
+        if engines is not None:
+            # Reset the models back to the default engines
+            self._set_default_model_engines(engines=initial_model_engines)
+
+        return return_values
+
     def create_model(
         self,
         estimator: Union[str, Any],
@@ -1790,6 +1941,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         cross_validation: bool = True,
         fit_kwargs: Optional[dict] = None,
         experiment_custom_tags: Optional[Dict[str, Any]] = None,
+        engine: Optional[str] = None,
         verbose: bool = True,
         **kwargs,
     ):
@@ -1874,6 +2026,12 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             Dictionary of arguments passed to the fit method of the model.
 
 
+        engine: Optional[str] = None
+            The engine to use for the model, e.g. for auto_arima, users can
+            switch between "pmdarima" and "statsforecast" by specifying
+            engine="statsforecast".
+
+
         verbose: bool, default = True
             Score grid is not printed when verbose is set to False.
 
@@ -1893,7 +2051,12 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         """
 
-        return super().create_model(
+        if engine is not None:
+            # Save current engines, then set to user specified options
+            initial_model_engines = self.model_engines.copy()
+            self.set_engine(estimator=estimator, engine=engine, severity="error")
+
+        return_values = super().create_model(
             estimator=estimator,
             fold=fold,
             round=round,
@@ -1903,6 +2066,12 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             verbose=verbose,
             **kwargs,
         )
+
+        if engine is not None:
+            # Reset the models back to the default engines
+            self._set_default_model_engines(engines=initial_model_engines)
+
+        return return_values
 
     @staticmethod
     def update_fit_kwargs_with_fh_from_cv(fit_kwargs: Optional[Dict], cv) -> Dict:
