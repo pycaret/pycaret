@@ -132,6 +132,7 @@ class DatabricksBackend(JupyterBackend):
     can_update_rich: bool = False
 
     def display(self, obj: Any, *, final_display: bool = True) -> None:
+        print(f"final_display {final_display}")
         if not final_display:
             display_kwargs = dict(include=["text/plain"])
             self._display(obj, **display_kwargs)
