@@ -4,9 +4,12 @@ from typing import Optional, Union
 import tqdm.notebook
 import tqdm.std
 
-from pycaret.internal.display.display_backend import DisplayBackend, JupyterBackend
+from pycaret.internal.display.display_backend import (
+    DatabricksBackend,
+    DisplayBackend,
+    JupyterBackend,
+)
 from pycaret.internal.display.display_component import DisplayComponent
-from pycaret.internal.logging import get_logger
 
 
 class ProgressBarBackend(ABC):
@@ -95,7 +98,9 @@ class ProgressBarDisplay(DisplayComponent):
         backend: Optional[Union[str, DisplayBackend]] = None
     ) -> None:
         super().__init__(verbose=verbose, backend=backend)
-        if isinstance(self.backend, JupyterBackend):
+        if isinstance(self.backend, JupyterBackend) and not isinstance(
+            self.backend, DatabricksBackend
+        ):
             self.pbar_backend_cls = JupyterProgressBarBackend
         else:
             self.pbar_backend_cls = CLIProgressBarBackend
