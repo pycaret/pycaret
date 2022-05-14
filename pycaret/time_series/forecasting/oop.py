@@ -1666,7 +1666,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         fold: Optional[Union[int, Any]] = None,
         round: int = 4,
         cross_validation: bool = True,
-        sort: str = "smape",
+        sort: str = "MASE",
         n_select: int = 1,
         budget_time: Optional[float] = None,
         turbo: bool = True,
@@ -1721,7 +1721,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             is ignored when cross_validation is set to False.
 
 
-        sort: str, default = 'SMAPE'
+        sort: str, default = 'MASE'
             The sort order of the score grid. It also accepts custom metrics that are
             added through the ``add_metric`` function.
 
@@ -2143,7 +2143,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         round: int = 4,
         n_iter: int = 10,
         custom_grid: Optional[Union[Dict[str, list], Any]] = None,
-        optimize: str = "SMAPE",
+        optimize: str = "MASE",
         custom_scorer=None,
         search_algorithm: Optional[str] = None,
         choose_better: bool = True,
@@ -2199,7 +2199,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             supported by the defined ``search_library``.
 
 
-        optimize: str, default = 'SMAPE'
+        optimize: str, default = 'MASE'
             Metric name to be evaluated for hyperparameter tuning. It also accepts custom
             metrics that are added through the ``add_metric`` function.
 
@@ -2730,7 +2730,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         fold: Optional[Union[int, Any]] = None,
         round: int = 4,
         choose_better: bool = False,
-        optimize: str = "SMAPE",
+        optimize: str = "MASE",
         weights: Optional[List[float]] = None,
         fit_kwargs: Optional[dict] = None,
         verbose: bool = True,
@@ -2783,7 +2783,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             metric used for comparison is defined by the ``optimize`` parameter.
 
 
-        optimize: str, default = 'SMAPE'
+        optimize: str, default = 'MASE'
             Metric to compare for model selection when ``choose_better`` is True.
 
 

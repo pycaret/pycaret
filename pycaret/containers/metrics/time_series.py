@@ -243,6 +243,20 @@ def _set_y_as_series(y):
     return pd.Series(y.iloc[:, 0])
 
 
+class MASEMetricContainer(TimeSeriesMetricContainer):
+    def __init__(self, globals_dict: dict) -> None:
+        super().__init__(
+            id="mase", name="MASE", score_func=mase, greater_is_better=False
+        )
+
+
+class RMSSEMetricContainer(TimeSeriesMetricContainer):
+    def __init__(self, globals_dict: dict) -> None:
+        super().__init__(
+            id="rmsse", name="RMSSE", score_func=rmsse, greater_is_better=False
+        )
+
+
 class MAEMetricContainer(TimeSeriesMetricContainer):
     def __init__(self, globals_dict: dict) -> None:
         super().__init__(
@@ -278,20 +292,6 @@ class SMAPEMetricContainer(TimeSeriesMetricContainer):
     def __init__(self, globals_dict: dict) -> None:
         super().__init__(
             id="smape", name="SMAPE", score_func=_smape_loss, greater_is_better=False
-        )
-
-
-class MASEMetricContainer(TimeSeriesMetricContainer):
-    def __init__(self, globals_dict: dict) -> None:
-        super().__init__(
-            id="mase", name="MASE", score_func=mase, greater_is_better=False
-        )
-
-
-class RMSSEMetricContainer(TimeSeriesMetricContainer):
-    def __init__(self, globals_dict: dict) -> None:
-        super().__init__(
-            id="rmsse", name="RMSSE", score_func=rmsse, greater_is_better=False
         )
 
 
