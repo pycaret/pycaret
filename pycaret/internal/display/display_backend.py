@@ -4,7 +4,12 @@ from typing import Any, Optional, Union
 
 import pandas as pd
 from IPython import get_ipython
-from IPython.display import HTML, DisplayHandle, clear_output, display
+from IPython.display import (
+    HTML,
+    DisplayHandle,
+    clear_output,
+    display as ipython_display,
+)
 from pandas.io.formats.style import Styler
 
 try:
@@ -97,7 +102,7 @@ class JupyterBackend(DisplayBackend):
 
     def _display(self, obj: Any, **display_kwargs):
         if not self._display_ref:
-            self._display_ref = display(display_id=True, **display_kwargs)
+            self._display_ref = ipython_display(display_id=True, **display_kwargs)
         obj = self._handle_input(obj)
         if obj is not None:
             self._display_ref.update(obj, **display_kwargs)
@@ -136,7 +141,7 @@ class DatabricksBackend(JupyterBackend):
     def _final_display(self, obj: Any):
         self.clear_display()
         obj = self._handle_input(obj)
-        dbruntime.display.display(obj)
+        display(obj)  # noqa
 
     def _handle_input(self, obj: Any) -> Any:
         if isinstance(obj, Styler):
