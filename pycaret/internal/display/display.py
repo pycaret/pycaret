@@ -68,6 +68,9 @@ class CommonDisplay:
         else:
             self._monitor_display = None
 
+        self._general_display = detect_backend(backend_id)
+        self._general_display.display(None)
+
         if progress_args:
             self._progress_bar_display = ProgressBarDisplay(
                 **progress_args, backend=backend_id, verbose=self.verbose
@@ -75,6 +78,3 @@ class CommonDisplay:
             self._progress_bar_display.display()
         else:
             self._progress_bar_display = None
-
-        self._general_display = detect_backend(backend_id)
-        self._general_display.display(None)
