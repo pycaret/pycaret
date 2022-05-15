@@ -137,13 +137,7 @@ class DatabricksBackend(JupyterBackend):
             display_kwargs = dict(include=["text/plain"])
             self._display(obj, **display_kwargs)
         else:
-            self._final_display(obj)
-
-    def _final_display(self, obj: Any):
-        self.clear_display()
-        obj = self._handle_input(obj)
-        print(display)
-        display(obj)  # noqa
+            self._display(obj)
 
     def _handle_input(self, obj: Any) -> Any:
         if isinstance(obj, Styler):
