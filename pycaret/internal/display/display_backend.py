@@ -104,7 +104,9 @@ class JupyterBackend(DisplayBackend):
         obj = self._handle_input(obj)
         if obj is not None:
             if not self._display_ref:
-                self._display_ref = ipython_display(obj, display_id=True, **display_kwargs)
+                self._display_ref = ipython_display(
+                    obj, display_id=True, **display_kwargs
+                )
             else:
                 self._display_ref.update(obj, **display_kwargs)
 

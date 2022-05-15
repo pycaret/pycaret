@@ -111,6 +111,8 @@ class ProgressBarDisplay(DisplayComponent):
         self.description = description
 
     def display(self):
+        if not self.verbose:
+            return
         if self.pbar_backend:
             self.pbar_backend.close()
         self.pbar_backend = self.pbar_backend_cls(
@@ -123,8 +125,12 @@ class ProgressBarDisplay(DisplayComponent):
         self.pbar_backend.open()
 
     def step(self, value: int = 1):
+        if not self.verbose:
+            return
         self.pbar_backend.step(value)
 
     def close(self):
+        if not self.verbose:
+            return
         self.pbar_backend.close()
         return super().close()
