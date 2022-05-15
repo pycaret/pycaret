@@ -4,7 +4,7 @@
 
 from typing import Any, Dict, List, Optional
 
-from pycaret.internal.display.display_backend import detect_backend
+from pycaret.internal.display.display_backend import SilentBackend, detect_backend
 from pycaret.internal.display.display_component import MonitorDisplay
 from pycaret.internal.display.progress_bar import ProgressBarDisplay
 from pycaret.internal.logging import get_logger
@@ -68,7 +68,9 @@ class CommonDisplay:
         else:
             self._monitor_display = None
 
-        self._general_display = detect_backend(backend_id)
+        self._general_display = (
+            detect_backend(backend_id) if self.verbose else SilentBackend()
+        )
         self._general_display.display(None)
 
         if progress_args:

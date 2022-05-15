@@ -101,11 +101,12 @@ class JupyterBackend(DisplayBackend):
         self._display(obj)
 
     def _display(self, obj: Any, **display_kwargs):
-        if not self._display_ref:
-            self._display_ref = ipython_display(display_id=True, **display_kwargs)
         obj = self._handle_input(obj)
         if obj is not None:
-            self._display_ref.update(obj, **display_kwargs)
+            if not self._display_ref:
+                self._display_ref = ipython_display(obj, display_id=True, **display_kwargs)
+            else:
+                self._display_ref.update(obj, **display_kwargs)
 
     def clear_display(self) -> None:
         if self._display_ref:
@@ -137,6 +138,10 @@ class DatabricksBackend(JupyterBackend):
             self._display(obj, **display_kwargs)
         else:
             self._display(obj)
+
+    def clear_display(self) -> None:
+        if self._display_ref:
+            self._display_ref.update("")
 
     def _handle_input(self, obj: Any) -> Any:
         if isinstance(obj, Styler):
