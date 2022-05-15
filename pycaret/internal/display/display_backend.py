@@ -102,13 +102,15 @@ class JupyterBackend(DisplayBackend):
 
     def _display(self, obj: Any, **display_kwargs):
         obj = self._handle_input(obj)
-        if obj is not None:
-            if not self._display_ref:
+        if not self._display_ref:
+            if obj is not None:
                 self._display_ref = ipython_display(
                     obj, display_id=True, **display_kwargs
                 )
             else:
-                self._display_ref.update(obj, **display_kwargs)
+                self._display_ref = ipython_display(display_id=True, **display_kwargs)
+        elif obj is not None:
+            self._display_ref.update(obj, **display_kwargs)
 
     def clear_display(self) -> None:
         if self._display_ref:
