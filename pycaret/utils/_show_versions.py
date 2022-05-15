@@ -53,6 +53,7 @@ optional_deps = [
     "catboost",
     "kmodes",
     "mlxtend",
+    "statsforecast",
     "tune_sklearn",
     "ray",
     "hyperopt",
