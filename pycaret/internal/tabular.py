@@ -200,26 +200,19 @@ def setup(
         from sklearnex import patch_sklearn
         intelex_algorithms_list = [
             # classification
-            "log_reg",
+            "logistic",
             "knn_classifier",
-            "random_forest_classifier",
             "svc",
             # regression
             "linear",
             "ridge",
-            "elasticnet",
             "lasso",
             "knn_regressor",
-            "random_forest_regressor",
             "svr",
             # clusterization
             "kmeans",
-            "dbscan",
             # decomposition
-            "pca",
-            "tsne",
-            # metrics
-            "roc_auc_score"
+            "tsne"
         ]
 
         patch_sklearn(intelex_algorithms_list)
