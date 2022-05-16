@@ -35,6 +35,14 @@ def test_select_target_by_str():
     assert pc.target_param == "WeekofPurchase"
 
 
+def test_nans_in_target_column():
+    """Assert that the target can be selected by its column name."""
+    data = pycaret.datasets.get_data("juice")
+    data.loc[3, "WeekofPurchase"] = np.nan
+    with pytest.raises(ValueError, match=r".*missing values found.*"):
+        pycaret.classification.setup(data, target="WeekofPurchase")
+
+
 def test_select_target_by_sequence():
     """Assert that the target can be a sequence."""
     data = pycaret.datasets.get_data("juice")

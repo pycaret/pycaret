@@ -121,7 +121,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
         n_features_to_select: int = 10,
         transform_target: bool = False,
         transform_target_method: str = "box-cox",
-        custom_pipeline: Any = None,
+        custom_pipeline: Optional[Any] = None,
         data_split_shuffle: bool = True,
         data_split_stratify: Union[bool, List[str]] = False,
         fold_strategy: Union[str, Any] = "kfold",

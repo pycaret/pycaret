@@ -127,6 +127,13 @@ class Preprocessor:
         else:  # y=None
             return df_shrink_dtypes(X)
 
+        # Check that y has no missing values
+        if y.isna().any():
+            raise ValueError(
+                f"{y.isna().sum()} missing values found in the target column: "
+                f"{y.name}. To proceed, remove the respective rows from the data. "
+            )
+
         return df_shrink_dtypes(
             X.merge(y.to_frame(), left_index=True, right_index=True)
         )

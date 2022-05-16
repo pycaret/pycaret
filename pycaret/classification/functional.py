@@ -72,7 +72,7 @@ def setup(
     feature_selection_method: str = "classic",
     feature_selection_estimator: Union[str, Any] = "lightgbm",
     n_features_to_select: int = 10,
-    custom_pipeline: Any = None,
+    custom_pipeline: Optional[Any] = None,
     data_split_shuffle: bool = True,
     data_split_stratify: Union[bool, List[str]] = False,
     fold_strategy: Union[str, Any] = "stratifiedkfold",
@@ -385,7 +385,7 @@ def setup(
         when counting.
 
 
-    custom_pipeline: (str, transformer), list of (str, transformer) or dict, default = None
+    custom_pipeline: list of (str, transformer), dict or Pipeline, default = None
         Addidiotnal custom transformers. If passed, they are applied to the
         pipeline last, after all the build-in transformers.
 

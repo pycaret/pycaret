@@ -124,7 +124,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
         pca: bool = False,
         pca_method: str = "linear",
         pca_components: Union[int, float] = 1.0,
-        custom_pipeline: Any = None,
+        custom_pipeline: Optional[Any] = None,
         n_jobs: Optional[int] = -1,
         use_gpu: bool = False,
         html: bool = True,

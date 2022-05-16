@@ -47,9 +47,7 @@ def setup(
     enforce_exogenous: bool = True,
     n_jobs: Optional[int] = -1,
     use_gpu: bool = False,
-    custom_pipeline: Union[
-        Any, Tuple[str, Any], List[Any], List[Tuple[str, Any]]
-    ] = None,
+    custom_pipeline: Optional[Any] = None,
     html: bool = True,
     session_id: Optional[int] = None,
     system_log: Union[bool, logging.Logger] = True,
@@ -251,7 +249,7 @@ def setup(
         Parameter not in use for now. Behavior may change in future.
 
 
-    custom_pipeline: (str, transformer) or list of (str, transformer), default = None
+    custom_pipeline: list of (str, transformer), dict or Pipeline, default = None
         Parameter not in use for now. Behavior may change in future.
 
 
