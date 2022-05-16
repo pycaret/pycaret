@@ -308,8 +308,6 @@ def setup(
     use_intelex: bool, default = False
         When set to True, it will use intel optimized machine learning algorithms,
         and fall back to stock sklearn implementations if they are unavailable.
-        More about sklearnex: https://github.com/intel/scikit-learn-intelex
-        More about intelex algorithms (https://intel.github.io/scikit-learn-intelex/algorithms.html)
 
 
     custom_pipeline: (str, transformer) or list of (str, transformer), default = None
