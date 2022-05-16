@@ -1178,7 +1178,7 @@ def get_config(variable: str):
     - log_plots_param: log_plots param set through setup
     - USI: Unique session ID parameter set through setup
     - gpu_param: use_gpu param configured through setup
-    - inetelx_param: use_intelex param configured through setup
+    - intelex_param: use_intelex param configured through setup
 
 
     Example
@@ -1218,7 +1218,7 @@ def set_config(variable: str, value):
     - log_plots_param: log_plots param set through setup
     - USI: Unique session ID parameter set through setup
     - gpu_param: use_gpu param configured through setup
-    - inetelx_param: use_intelex param configured through setup
+    - intelex_param: use_intelex param configured through setup
 
 
     Example

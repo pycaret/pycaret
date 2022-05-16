@@ -2443,7 +2443,7 @@ def get_config(variable: str):
     - data_before_preprocess: data before preprocessing
     - target_param: name of target variable
     - gpu_param: use_gpu param configured through setup
-    - inetelx_param: use_intelex param configured through setup
+    - intelex_param: use_intelex param configured through setup
     - fold_generator: CV splitter configured in fold_strategy
     - fold_param: fold params defined in the setup
     - fold_groups_param: fold groups defined in the setup
@@ -2499,7 +2499,7 @@ def set_config(variable: str, value):
     - data_before_preprocess: data before preprocessing
     - target_param: name of target variable
     - gpu_param: use_gpu param configured through setup
-    - inetelx_param: use_intelex param configured through setup
+    - intelex_param: use_intelex param configured through setup
     - fold_generator: CV splitter configured in fold_strategy
     - fold_param: fold params defined in the setup
     - fold_groups_param: fold groups defined in the setup
