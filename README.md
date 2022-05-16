@@ -128,8 +128,7 @@ With PyCaret >= 2.2, you can train models on GPU and speed up your workflow by 1
 
 ## PyCaret intel sklearnex support
 
-You can apply [intel optimizations](https://github.com/intel/scikit-learn-intelex) for machine learning algorithms and speed up your worklow. To train models with intel optimizations pass `use_intelex = True` in the setup function. There is no change in the use of the API, however, installation of intel sklearnex is required.
-Intel extension for scikit-learn can be installed with folowing command:
+You can apply [intel optimizations](https://github.com/intel/scikit-learn-intelex) for machine learning algorithms and speed up your worklow. To train models with intel optimizations pass `use_intelex = True` in the setup function. There is no change in the use of the API, however, installation of intel sklearnex is required:
 
 ```pip install scikit-learn-intelex```
 
