@@ -252,7 +252,8 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             self.logger.info("Preparing preprocessing pipeline...")
 
             # Encode the target column
-            if sorted(list(self.y.unique())) != list(range(self.y.nunique())):
+            y_unique = self.y.unique()
+            if sorted(list(y_unique)) != list(range(len(y_unique))):
                 self._encode_target_column()
 
             # Convert date feature to numerical values
