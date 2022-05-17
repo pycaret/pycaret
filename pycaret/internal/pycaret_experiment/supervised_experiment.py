@@ -4480,7 +4480,7 @@ class _SupervisedExperiment(_TabularExperiment):
                     is_custom=True,
                 )
             )
-        if self._ml_usecase == MLUsecase.TIME_SERIES:
+        elif self._ml_usecase == MLUsecase.TIME_SERIES:
             new_metric = (
                 pycaret.containers.metrics.time_series.TimeSeriesMetricContainer(
                     id=id,
@@ -5462,7 +5462,7 @@ class _SupervisedExperiment(_TabularExperiment):
             self.X_test_transformed, label=self.y_test_transformed, cat_features=[]
         )
 
-        from deepchecks.suites import full_suite
+        from deepchecks.tabular.suites import full_suite
 
         suite = full_suite(**check_kwargs)
         return suite.run(train_dataset=ds_train, test_dataset=ds_test, model=estimator)

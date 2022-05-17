@@ -72,7 +72,7 @@ def setup(
     n_features_to_select: int = 10,
     transform_target: bool = False,
     transform_target_method: str = "box-cox",
-    custom_pipeline: Any = None,
+    custom_pipeline: Optional[Any] = None,
     data_split_shuffle: bool = True,
     data_split_stratify: Union[bool, List[str]] = False,
     fold_strategy: Union[str, Any] = "kfold",
@@ -386,7 +386,7 @@ def setup(
         values, method is internally forced to 'yeo-johnson' to avoid exceptions.
 
 
-    custom_pipeline: (str, transformer), list of (str, transformer) or dict, default = None
+    custom_pipeline: list of (str, transformer), dict or Pipeline, default = None
         Addidiotnal custom transformers. If passed, they are applied to the
         pipeline last, after all the build-in transformers.
 
@@ -2328,7 +2328,6 @@ def add_metric(
         id=id,
         name=name,
         score_func=score_func,
-        target="pred",
         greater_is_better=greater_is_better,
         **kwargs,
     )

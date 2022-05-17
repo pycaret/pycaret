@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import numpy as np  # type: ignore
 import pandas as pd
 import plotly.express as px
+import sklearn
 from joblib.memory import Memory
 
 import pycaret.containers.metrics.classification
@@ -148,7 +149,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         feature_selection_method: str = "classic",
         feature_selection_estimator: Union[str, Any] = "lightgbm",
         n_features_to_select: int = 10,
-        custom_pipeline: Any = None,
+        custom_pipeline: Optional[Any] = None,
         data_split_shuffle: bool = True,
         data_split_stratify: Union[bool, List[str]] = False,
         fold_strategy: Union[str, Any] = "stratifiedkfold",
@@ -177,6 +178,9 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         # Setup initialization ===================================== >>
 
         runtime_start = time.time()
+
+        # Configuration
+        sklearn.set_config(print_changed_only=False)
 
         # Define parameter attrs
         self.fold_shuffle_param = fold_shuffle
@@ -248,7 +252,8 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             self.logger.info("Preparing preprocessing pipeline...")
 
             # Encode the target column
-            if self.y.dtype.kind not in "ifu":
+            y_unique = self.y.unique()
+            if sorted(list(y_unique)) != list(range(len(y_unique))):
                 self._encode_target_column()
 
             # Convert date feature to numerical values
