@@ -42,6 +42,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             }
         )
         self._available_plots = {
+            "pipeline": "Pipeline Plot",
             "parameter": "Hyperparameters",
             "residuals": "Residuals",
             "error": "Prediction Error",
@@ -1278,6 +1279,8 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
         plot: str, default = 'residual'
             List of available plots (ID - Name):
 
+            * 'pipeline' - Schematic drawing of the preprocessing pipeline
+            * 'residuals_interactive' - Interactive Residual plots
             * 'residuals' - Residuals Plot
             * 'error' - Prediction Error Plot
             * 'cooks' - Cooks Distance Plot

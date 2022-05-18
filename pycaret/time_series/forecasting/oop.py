@@ -126,6 +126,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             }
         )
         self._available_plots = {
+            "pipeline": "Pipeline Plot",
             "ts": "Time Series Plot",
             "train_test_split": "Train Test Split",
             "cv": "Cross Validation",
