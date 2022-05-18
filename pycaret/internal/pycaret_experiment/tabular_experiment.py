@@ -663,7 +663,9 @@ class _TabularExperiment(_PyCaretExperiment):
                     display.clear_output()
 
                     with MatplotlibDefaultDPI(base_dpi=_base_dpi, scale_to_set=scale):
-                        fig, ax = plt.subplots(figsize=((2 + len(self.pipeline) * 6), 6))
+                        fig, ax = plt.subplots(
+                            figsize=((2 + len(self.pipeline) * 2), 6)
+                        )
 
                         # Convert schemdraw drawing to mpl figure
                         drawing.draw(ax=ax, showframe=False, show=False)
