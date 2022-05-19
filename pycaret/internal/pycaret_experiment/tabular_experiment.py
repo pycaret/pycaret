@@ -655,7 +655,9 @@ class _TabularExperiment(_PyCaretExperiment):
                     for est in self.pipeline:
                         name = getattr(est, "transformer", est).__class__.__name__
                         d += Arrow().right()
-                        d += RoundBox(w=max(len(name), 7), h=5, cornerradius=1).label(name)
+                        d += RoundBox(w=max(len(name), 7), h=5, cornerradius=1).label(
+                            name
+                        )
 
                     # Add the model box
                     name = estimator.__class__.__name__
