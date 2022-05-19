@@ -16,7 +16,6 @@ from sklearn.model_selection import (  # type: ignore
     ParameterSampler,
     check_cv,
 )
-# from sklearn.model_selection._search import _check_param_grid  # type: ignore
 from sklearn.model_selection._validation import _aggregate_score_dicts  # type: ignore
 from sktime.forecasting.compose import ForecastingPipeline
 from sktime.forecasting.model_selection import (
