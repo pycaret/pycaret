@@ -660,6 +660,7 @@ class _TabularExperiment(_PyCaretExperiment):
                     if system:
                         resplots.show()
 
+                    plot_filename = None
                     if save:
                         if not isinstance(save, bool):
                             plot_filename = os.path.join(save, base_plot_filename)
@@ -747,6 +748,7 @@ class _TabularExperiment(_PyCaretExperiment):
                         height=600 * scale, title_text="2D Cluster PCA Plot"
                     )
 
+                    plot_filename = None
                     if save:
                         if not isinstance(save, bool):
                             plot_filename = os.path.join(save, base_plot_filename)
@@ -818,6 +820,7 @@ class _TabularExperiment(_PyCaretExperiment):
                         height=800 * scale,
                     )
 
+                    plot_filename = None
                     if save:
                         if not isinstance(save, bool):
                             plot_filename = os.path.join(save, base_plot_filename)
@@ -902,6 +905,7 @@ class _TabularExperiment(_PyCaretExperiment):
                             height=800 * scale,
                         )
 
+                    plot_filename = None
                     if save:
                         if not isinstance(save, bool):
                             plot_filename = os.path.join(save, base_plot_filename)
@@ -1002,6 +1006,7 @@ class _TabularExperiment(_PyCaretExperiment):
                             height=800 * scale,
                         )
 
+                    plot_filename = None
                     if save:
                         if not isinstance(save, bool):
                             plot_filename = os.path.join(save, base_plot_filename)
@@ -1078,6 +1083,7 @@ class _TabularExperiment(_PyCaretExperiment):
                         height=600 * scale,
                     )
 
+                    plot_filename = None
                     if save:
                         if not isinstance(save, bool):
                             plot_filename = os.path.join(save, base_plot_filename)
@@ -1102,7 +1108,7 @@ class _TabularExperiment(_PyCaretExperiment):
                         visualizer = KElbowVisualizer(
                             estimator, timings=False, **plot_kwargs
                         )
-                        show_yellowbrick_plot(
+                        return show_yellowbrick_plot(
                             visualizer=visualizer,
                             X_train=self.X_train_transformed,
                             y_train=None,
@@ -1130,7 +1136,7 @@ class _TabularExperiment(_PyCaretExperiment):
                         visualizer = SilhouetteVisualizer(
                             estimator, colors="yellowbrick", **plot_kwargs
                         )
-                        show_yellowbrick_plot(
+                        return show_yellowbrick_plot(
                             visualizer=visualizer,
                             X_train=self.X_train_transformed,
                             y_train=None,
@@ -1155,7 +1161,7 @@ class _TabularExperiment(_PyCaretExperiment):
 
                     try:
                         visualizer = InterclusterDistance(estimator, **plot_kwargs)
-                        show_yellowbrick_plot(
+                        return show_yellowbrick_plot(
                             visualizer=visualizer,
                             X_train=self.X_train_transformed,
                             y_train=None,
@@ -1180,7 +1186,7 @@ class _TabularExperiment(_PyCaretExperiment):
                     from yellowbrick.regressor import ResidualsPlot
 
                     visualizer = ResidualsPlot(estimator, **plot_kwargs)
-                    show_yellowbrick_plot(
+                    return show_yellowbrick_plot(
                         visualizer=visualizer,
                         X_train=self.X_train_transformed,
                         y_train=self.y_train_transformed,
@@ -1200,7 +1206,7 @@ class _TabularExperiment(_PyCaretExperiment):
                     from yellowbrick.classifier import ROCAUC
 
                     visualizer = ROCAUC(estimator, **plot_kwargs)
-                    show_yellowbrick_plot(
+                    return show_yellowbrick_plot(
                         visualizer=visualizer,
                         X_train=self.X_train_transformed,
                         y_train=self.y_train_transformed,
@@ -1222,7 +1228,7 @@ class _TabularExperiment(_PyCaretExperiment):
                     visualizer = DiscriminationThreshold(
                         estimator, random_state=self.seed, **plot_kwargs
                     )
-                    show_yellowbrick_plot(
+                    return show_yellowbrick_plot(
                         visualizer=visualizer,
                         X_train=self.X_train_transformed,
                         y_train=self.y_train_transformed,
@@ -1244,7 +1250,7 @@ class _TabularExperiment(_PyCaretExperiment):
                     visualizer = PrecisionRecallCurve(
                         estimator, random_state=self.seed, **plot_kwargs
                     )
-                    show_yellowbrick_plot(
+                    return show_yellowbrick_plot(
                         visualizer=visualizer,
                         X_train=self.X_train_transformed,
                         y_train=self.y_train_transformed,
@@ -1269,7 +1275,7 @@ class _TabularExperiment(_PyCaretExperiment):
                     visualizer = ConfusionMatrix(
                         estimator, random_state=self.seed, **plot_kwargs
                     )
-                    show_yellowbrick_plot(
+                    return show_yellowbrick_plot(
                         visualizer=visualizer,
                         X_train=self.X_train_transformed,
                         y_train=self.y_train_transformed,
@@ -1300,7 +1306,7 @@ class _TabularExperiment(_PyCaretExperiment):
                             estimator, random_state=self.seed, **plot_kwargs
                         )
 
-                    show_yellowbrick_plot(
+                    return show_yellowbrick_plot(
                         visualizer=visualizer,  # type: ignore
                         X_train=self.X_train_transformed,
                         y_train=self.y_train_transformed,
@@ -1320,7 +1326,7 @@ class _TabularExperiment(_PyCaretExperiment):
                     from yellowbrick.regressor import CooksDistance
 
                     visualizer = CooksDistance()
-                    show_yellowbrick_plot(
+                    return show_yellowbrick_plot(
                         visualizer=visualizer,
                         X_train=self.X,
                         y_train=self.y,
@@ -1343,7 +1349,7 @@ class _TabularExperiment(_PyCaretExperiment):
                     visualizer = ClassificationReport(
                         estimator, random_state=self.seed, support=True, **plot_kwargs
                     )
-                    show_yellowbrick_plot(
+                    return show_yellowbrick_plot(
                         visualizer=visualizer,
                         X_train=self.X_train_transformed,
                         y_train=self.y_train_transformed,
@@ -1383,7 +1389,7 @@ class _TabularExperiment(_PyCaretExperiment):
                     test_X_transformed = pca.fit_transform(test_X_transformed)
 
                     viz_ = DecisionViz(estimator, **plot_kwargs)
-                    show_yellowbrick_plot(
+                    return show_yellowbrick_plot(
                         visualizer=viz_,
                         X_train=data_X_transformed,
                         y_train=np.array(self.y_train_transformed),
@@ -1406,7 +1412,7 @@ class _TabularExperiment(_PyCaretExperiment):
                     from yellowbrick.model_selection import RFECV
 
                     visualizer = RFECV(estimator, cv=cv, **plot_kwargs)
-                    show_yellowbrick_plot(
+                    return show_yellowbrick_plot(
                         visualizer=visualizer,
                         X_train=self.X_train_transformed,
                         y_train=self.y_train_transformed,
@@ -1434,7 +1440,7 @@ class _TabularExperiment(_PyCaretExperiment):
                         n_jobs=self._gpu_n_jobs_param,
                         random_state=self.seed,
                     )
-                    show_yellowbrick_plot(
+                    return show_yellowbrick_plot(
                         visualizer=visualizer,
                         X_train=self.X_train_transformed,
                         y_train=self.y_train_transformed,
@@ -1463,6 +1469,7 @@ class _TabularExperiment(_PyCaretExperiment):
                         skplt.metrics.plot_lift_curve(
                             y_test__, predict_proba__, figsize=(10, 6)
                         )
+                        plot_filename = None
                         if save:
                             if not isinstance(save, bool):
                                 plot_filename = os.path.join(save, base_plot_filename)
@@ -1475,6 +1482,7 @@ class _TabularExperiment(_PyCaretExperiment):
                         plt.close()
 
                     self.logger.info("Visual Rendered Successfully")
+                    return plot_filename
 
                 def gain():
 
@@ -1489,6 +1497,7 @@ class _TabularExperiment(_PyCaretExperiment):
                         skplt.metrics.plot_cumulative_gain(
                             y_test__, predict_proba__, figsize=(10, 6)
                         )
+                        plot_filename = None
                         if save:
                             if not isinstance(save, bool):
                                 plot_filename = os.path.join(save, base_plot_filename)
@@ -1501,6 +1510,7 @@ class _TabularExperiment(_PyCaretExperiment):
                         plt.close()
 
                     self.logger.info("Visual Rendered Successfully")
+                    return plot_filename
 
                 def manifold():
 
@@ -1512,7 +1522,7 @@ class _TabularExperiment(_PyCaretExperiment):
                     visualizer = Manifold(
                         manifold="tsne", random_state=self.seed, **plot_kwargs
                     )
-                    show_yellowbrick_plot(
+                    return show_yellowbrick_plot(
                         visualizer=visualizer,
                         X_train=data_X_transformed,
                         y_train=self.y_train_transformed,
@@ -1639,6 +1649,7 @@ class _TabularExperiment(_PyCaretExperiment):
 
                     display.move_progress()
                     display.clear_output()
+                    plot_filename = None
                     if save:
                         if not isinstance(save, bool):
                             plot_filename = os.path.join(save, base_plot_filename)
@@ -1651,6 +1662,7 @@ class _TabularExperiment(_PyCaretExperiment):
                     plt.close()
 
                     self.logger.info("Visual Rendered Successfully")
+                    return plot_filename
 
                 def calibration():
 
@@ -1688,6 +1700,7 @@ class _TabularExperiment(_PyCaretExperiment):
                     plt.tight_layout()
                     display.move_progress()
                     display.clear_output()
+                    plot_filename = None
                     if save:
                         if not isinstance(save, bool):
                             plot_filename = os.path.join(save, base_plot_filename)
@@ -1700,6 +1713,7 @@ class _TabularExperiment(_PyCaretExperiment):
                     plt.close()
 
                     self.logger.info("Visual Rendered Successfully")
+                    return plot_filename
 
                 def vc():
 
@@ -1857,7 +1871,7 @@ class _TabularExperiment(_PyCaretExperiment):
                         random_state=self.seed,
                         n_jobs=self._gpu_n_jobs_param,
                     )
-                    show_yellowbrick_plot(
+                    return show_yellowbrick_plot(
                         visualizer=viz,
                         X_train=self.X_train_transformed,
                         y_train=self.y_train_transformed,
@@ -1900,7 +1914,7 @@ class _TabularExperiment(_PyCaretExperiment):
                     classes = self.y_train_transformed.unique().tolist()
                     visualizer = RadViz(classes=classes, alpha=0.25, **plot_kwargs)
 
-                    show_yellowbrick_plot(
+                    return show_yellowbrick_plot(
                         visualizer=visualizer,
                         X_train=data_X_transformed,
                         y_train=np.array(self.y_train_transformed),
@@ -1969,6 +1983,7 @@ class _TabularExperiment(_PyCaretExperiment):
                     plt.ylabel("Features")
                     display.move_progress()
                     display.clear_output()
+                    plot_filename = None
                     if save:
                         if not isinstance(save, bool):
                             plot_filename = os.path.join(save, base_plot_filename)
@@ -1981,6 +1996,7 @@ class _TabularExperiment(_PyCaretExperiment):
                     plt.close()
 
                     self.logger.info("Visual Rendered Successfully")
+                    return plot_filename
 
                 def parameter():
 
@@ -2009,6 +2025,7 @@ class _TabularExperiment(_PyCaretExperiment):
                         fig = skplt.metrics.plot_ks_statistic(
                             self.y_train_transformed, predict_proba__, figsize=(10, 6)
                         )
+                        plot_filename = None
                         if save:
                             if not isinstance(save, bool):
                                 plot_filename = os.path.join(save, base_plot_filename)
@@ -2021,6 +2038,7 @@ class _TabularExperiment(_PyCaretExperiment):
                         plt.close()
 
                     self.logger.info("Visual Rendered Successfully")
+                    return plot_filename
 
                 # execute the plot method
                 ret = locals()[plot]()
