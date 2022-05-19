@@ -646,7 +646,7 @@ class _TabularExperiment(_PyCaretExperiment):
                 def pipeline():
 
                     from schemdraw import Drawing
-                    from schemdraw.flow import Subroutine, Arrow, RoundBox, Data
+                    from schemdraw.flow import Arrow, Data, RoundBox, Subroutine
 
                     # Create schematic drawing
                     d = Drawing(backend="matplotlib")
