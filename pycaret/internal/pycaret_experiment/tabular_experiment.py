@@ -645,31 +645,31 @@ class _TabularExperiment(_PyCaretExperiment):
 
                 def pipeline():
 
-                    import schemdraw
-                    from schemdraw import flow
+                    from schemdraw import Drawing
+                    from schemdraw.flow import Subroutine, Arrow, RoundBox, Data
 
-                    # Create schematic drawing of the pipeline
-                    drawing = schemdraw.Drawing(backend="matplotlib")
-                    drawing += flow.Subroutine().label("Raw data").drop("E")
+                    # Create schematic drawing
+                    d = Drawing(backend="matplotlib")
+                    d.config(fontsize=12)
+                    d += Subroutine(w=10, h=5, s=1).label("Raw data").drop("E")
                     for est in self.pipeline:
                         name = getattr(est, "transformer", est).__class__.__name__
+                        d += Arrow().right()
+                        d += RoundBox(w=max(len(name), 7), h=5, cornerradius=1).label(name)
 
-                        drawing += flow.Arrow().right()
-                        drawing += flow.RoundBox().label(name)
-
-                    drawing += flow.Arrow().right()
-                    drawing += flow.Data().label(estimator.__class__.__name__)
+                    # Add the model box
+                    name = estimator.__class__.__name__
+                    d += Arrow().right()
+                    d += Data(w=max(len(name), 7), h=5).label(name)
 
                     display.clear_output()
 
                     with MatplotlibDefaultDPI(base_dpi=_base_dpi, scale_to_set=scale):
                         fig, ax = plt.subplots(
-                            figsize=((2 + len(self.pipeline) * 2), 6)
+                            figsize=((2 + len(self.pipeline) * 5), 6)
                         )
 
-                        # Convert schemdraw drawing to mpl figure
-                        drawing.draw(ax=ax, showframe=False, show=False)
-
+                        d.draw(ax=ax, showframe=False, show=False)
                         ax.set_aspect("equal")
                         plt.axis("off")
                         plt.tight_layout()
