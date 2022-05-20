@@ -16,7 +16,6 @@ from sklearn.model_selection import (  # type: ignore
     ParameterSampler,
     check_cv,
 )
-from sklearn.model_selection._search import _check_param_grid  # type: ignore
 from sklearn.model_selection._validation import _aggregate_score_dicts  # type: ignore
 from sktime.forecasting.compose import ForecastingPipeline
 from sktime.forecasting.model_selection import (
@@ -669,7 +668,7 @@ class ForecastingGridSearchCV(BaseGridSearch):
             return_train_score=return_train_score,
         )
         self.param_grid = param_grid
-        _check_param_grid(param_grid)
+        # _check_param_grid(param_grid)  # TODO: Need refactor for sklearn 1.1
 
     def _run_search(self, evaluate_candidates):
         """Search all candidates in param_grid"""

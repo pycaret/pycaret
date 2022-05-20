@@ -1542,6 +1542,7 @@ def plot_model(
     plot: str, default = 'auc'
         List of available plots (ID - Name):
 
+        * 'pipeline' - Schematic drawing of the preprocessing pipeline
         * 'auc' - Area Under the Curve
         * 'threshold' - Discrimination Threshold
         * 'pr' - Precision Recall Curve

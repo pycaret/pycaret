@@ -53,6 +53,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             {"fix_imbalance_param", "fix_imbalance_method_param"}
         )
         self._available_plots = {
+            "pipeline": "Pipeline Plot",
             "parameter": "Hyperparameters",
             "auc": "AUC",
             "confusion_matrix": "Confusion Matrix",
@@ -1372,7 +1373,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         plot: str, default = 'auc'
             List of available plots (ID - Name):
 
-            * 'residuals_interactive' - Interactive Residual plots
+            * 'pipeline' - Schematic drawing of the preprocessing pipeline
             * 'auc' - Area Under the Curve
             * 'threshold' - Discrimination Threshold
             * 'pr' - Precision Recall Curve

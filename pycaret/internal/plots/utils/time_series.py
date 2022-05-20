@@ -27,6 +27,7 @@ PlotReturnType = Tuple[Optional[go.Figure], Optional[Dict[str, Any]]]
 #### Data Types allowed for each plot type ----
 # First one in the list is the default (if requested is None)
 ALLOWED_PLOT_DATA_TYPES = {
+    "pipeline": ["original", "imputed", "transformed"],
     "ts": ["original", "imputed", "transformed"],
     "train_test_split": ["original", "imputed", "transformed"],
     "cv": ["original"],

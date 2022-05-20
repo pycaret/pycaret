@@ -402,6 +402,7 @@ class _TabularExperiment(_PyCaretExperiment):
         plot : str, default = auc
             Enter abbreviation of type of plot. The current list of plots supported are (Plot - Name):
 
+            * 'pipeline' - Schematic drawing of the preprocessing pipeline
             * 'residuals_interactive' - Interactive Residual plots
             * 'auc' - Area Under the Curve
             * 'threshold' - Discrimination Threshold
@@ -641,6 +642,52 @@ class _TabularExperiment(_PyCaretExperiment):
                 pycaret.internal.patches.yellowbrick.is_estimator,
             ):
                 _base_dpi = 100
+
+                def pipeline():
+
+                    from schemdraw import Drawing
+                    from schemdraw.flow import Arrow, Data, RoundBox, Subroutine
+
+                    # Create schematic drawing
+                    d = Drawing(backend="matplotlib")
+                    d.config(fontsize=12)
+                    d += Subroutine(w=10, h=5, s=1).label("Raw data").drop("E")
+                    for est in self.pipeline:
+                        name = getattr(est, "transformer", est).__class__.__name__
+                        d += Arrow().right()
+                        d += RoundBox(w=max(len(name), 7), h=5, cornerradius=1).label(
+                            name
+                        )
+
+                    # Add the model box
+                    name = estimator.__class__.__name__
+                    d += Arrow().right()
+                    d += Data(w=max(len(name), 7), h=5).label(name)
+
+                    display.clear_output()
+
+                    with MatplotlibDefaultDPI(base_dpi=_base_dpi, scale_to_set=scale):
+                        fig, ax = plt.subplots(
+                            figsize=((2 + len(self.pipeline) * 5), 6)
+                        )
+
+                        d.draw(ax=ax, showframe=False, show=False)
+                        ax.set_aspect("equal")
+                        plt.axis("off")
+                        plt.tight_layout()
+
+                    if save:
+                        if not isinstance(save, bool):
+                            plot_filename = os.path.join(save, base_plot_filename)
+                        else:
+                            plot_filename = base_plot_filename
+                        self.logger.info(f"Saving '{plot_filename}'")
+                        plt.savefig(plot_filename, bbox_inches="tight")
+                    elif system:
+                        plt.show()
+                    plt.close()
+
+                    self.logger.info("Visual Rendered Successfully")
 
                 def residuals_interactive():
                     from pycaret.internal.plots.residual_plots import (

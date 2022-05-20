@@ -1489,6 +1489,7 @@ def plot_model(
     plot: str, default = 'residual'
         List of available plots (ID - Name):
 
+        * 'pipeline' - Schematic drawing of the preprocessing pipeline
         * 'residuals_interactive' - Interactive Residual plots
         * 'residuals' - Residuals Plot
         * 'error' - Prediction Error Plot
