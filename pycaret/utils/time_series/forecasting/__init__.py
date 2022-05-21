@@ -182,6 +182,3 @@ def update_additional_scorer_kwargs(
         {"y_train": y_train, "lower": lower, "upper": upper}
     )
     return additional_scorer_kwargs
-
-
-ALL_ALLOWED_ENGINES = {"auto_arima": ["pmdarima", "statsforecast"]}

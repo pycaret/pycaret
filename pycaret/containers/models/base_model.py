@@ -2,10 +2,12 @@
 # Author: Antoni Baum (Yard1) <antoni.baum@protonmail.com>
 # License: MIT
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from pycaret.containers.base_container import BaseContainer
 from pycaret.internal.distributions import CategoricalDistribution
+from pycaret.internal.pycaret_experiment.pycaret_experiment import _PyCaretExperiment
+from pycaret.internal.utils import get_logger
 
 
 class ModelContainer(BaseContainer):
@@ -63,6 +65,7 @@ class ModelContainer(BaseContainer):
             eq_function = lambda x: isinstance(x, self.class_def)
         self.eq_function = eq_function
         self.is_special = is_special
+        self.logger = get_logger()
 
     def is_estimator_equal(self, estimator):
         return self.eq_function(estimator)
@@ -94,6 +97,80 @@ class ModelContainer(BaseContainer):
             ]
 
         return dict(d)
+
+    def get_allowed_engines(
+        self, id: str, all_allowed_engines: Dict[str, List[str]]
+    ) -> Optional[str]:
+        """Get all the allowed engines for the specified model
+
+        Parameters
+        ----------
+        id : str
+            Identifier for the model for which the engines should be retrieved,
+            e.g. "auto_arima"
+        all_allowed_engines : Dict[str, List[str]]
+            All allowed engines for models of this experiment class to which the
+            model belongs
+
+        Returns
+        -------
+        Optional[str]
+            The allowed engines for the model. If the model only supports the
+            default sktime engine, then it return `None`.
+        """
+        allowed_engines = all_allowed_engines.get(id, None)
+        return allowed_engines
+
+    def _set_engine(
+        self,
+        id: str,
+        experiment: _PyCaretExperiment,
+        allowed_engines,
+        severity: str = "error",
+    ):
+        """Sets the engine to use for a particular model.
+
+        Parameters
+        ----------
+        id : str
+            Identifier for the model for which the engine should be set, e.g.
+            "auto_arima"
+        experiment : _PyCaretExperiment
+            The experiment object to which the model belongs. The engine to use
+            for this model is extracted from this experiment object.
+        allowed_engines : str
+            The allowed engines for this model ID
+        severity : str, optional
+            How to handle incorrectly specified engines. Allowed values are "error"
+            and "warning". If set to "warning", the existing engine is left
+            unchanged if the specified engine is not correct., by default "error".
+
+        Raises
+        ------
+        ValueError
+            (1) If specified engine is not in the allowed list of engines and
+                severity is set to "error"
+            (2) If the value of "severity" is not one of the allowed values
+        """
+        engine_to_use = experiment.get_engine(id)
+        if engine_to_use not in allowed_engines:
+            msg = (
+                f"Engine '{engine_to_use}' for estimator '{id}' is not allowed.\n"
+                f"Allowed values are '{allowed_engines}'."
+            )
+
+            if severity == "error":
+                raise ValueError(msg)
+            elif severity == "warning":
+                self.logger.warning(msg)
+                print(msg)
+            else:
+                raise ValueError(
+                    "Error in calling set_engine, severity "
+                    f'argument must be "error" or "warning", got "{severity}".'
+                )
+
+        self.engine = engine_to_use
 
 
 def leftover_parameters_to_categorical_distributions(
