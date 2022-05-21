@@ -156,7 +156,7 @@ class _TabularExperiment(_PyCaretExperiment):
         Get model name.
         """
         if models is None:
-            models = self._all_models_internal
+            models = getattr(self, "_all_models_internal", None)
 
         return get_model_name(e, models, deep=deep)
 
