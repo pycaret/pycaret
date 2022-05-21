@@ -355,6 +355,7 @@ def get_model_name(
     all_models: Dict[str, "pycaret.containers.models.base_model.ModelContainer"],
     deep: bool = True,
 ) -> str:
+    all_models = all_models or {}
     old_e = e
     if isinstance(e, str) and e in all_models:
         model_id = e

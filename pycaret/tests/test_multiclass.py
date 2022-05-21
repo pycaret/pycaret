@@ -10,15 +10,20 @@ import pycaret.classification
 import pycaret.datasets
 
 
-@pytest.mark.parametrize("return_train_score", [True, False])
-def test_multiclass(return_train_score):
+@pytest.fixture(scope="module")
+def iris_dataframe():
     # loading dataset
-    data = pycaret.datasets.get_data("iris")
-    assert isinstance(data, pd.DataFrame)
+    return pycaret.datasets.get_data("iris")
+
+
+@pytest.mark.parametrize("return_train_score", [True, False])
+def test_multiclass(iris_dataframe, return_train_score):
+    # loading dataset
+    assert isinstance(iris_dataframe, pd.DataFrame)
 
     # init setup
     clf1 = pycaret.classification.setup(
-        data,
+        iris_dataframe,
         target="species",
         log_experiment=True,
         silent=True,
@@ -71,7 +76,7 @@ def test_multiclass(return_train_score):
 
     # predictions on new dataset
     predict_holdout = pycaret.classification.predict_model(
-        best, data=data.drop("species", axis=1)
+        best, data=iris_dataframe.drop("species", axis=1)
     )
     assert isinstance(predict_holdout, pd.DataFrame)
 
@@ -113,5 +118,29 @@ def test_multiclass(return_train_score):
     assert 1 == 1
 
 
+def test_multiclass_predict_on_unseen(iris_dataframe):
+    exp = pycaret.classification.ClassificationExperiment()
+    # init setup
+    exp.setup(
+        iris_dataframe,
+        target="species",
+        log_experiment=True,
+        silent=True,
+        html=False,
+        session_id=123,
+        n_jobs=1,
+    )
+    model = exp.create_model("dt", cross_validation=False)
+
+    # save model
+    exp.save_model(model, "best_model_23122019")
+
+    exp = pycaret.classification.ClassificationExperiment()
+    # load model
+    model = exp.load_model("best_model_23122019")
+    exp.predict_model(model, iris_dataframe)
+
+
 if __name__ == "__main__":
     test_multiclass()
+    test_multiclass_predict_on_unseen()

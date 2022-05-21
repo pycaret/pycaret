@@ -133,6 +133,31 @@ def test_classification(juice_dataframe, return_train_score):
     assert 1 == 1
 
 
+def test_classification_predict_on_unseen(juice_dataframe):
+    exp = pycaret.classification.ClassificationExperiment()
+    # init setup
+    exp.setup(
+        juice_dataframe,
+        target="Purchase",
+        remove_multicollinearity=True,
+        multicollinearity_threshold=0.95,
+        log_experiment=True,
+        silent=True,
+        html=False,
+        session_id=123,
+        n_jobs=1,
+    )
+    model = exp.create_model("dt", cross_validation=False)
+
+    # save model
+    exp.save_model(model, "best_model_23122019")
+
+    exp = pycaret.classification.ClassificationExperiment()
+    # load model
+    model = exp.load_model("best_model_23122019")
+    exp.predict_model(model, juice_dataframe)
+
+
 class TestClassificationExperimentCustomTags:
     def test_classification_setup_fails_with_experiment_custom_tags(
         self, juice_dataframe
@@ -214,4 +239,5 @@ class TestClassificationExperimentCustomTags:
 
 if __name__ == "__main__":
     test_classification()
+    test_classification_predict_on_unseen()
     TestClassificationExperimentCustomTags()
