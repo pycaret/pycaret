@@ -52,6 +52,7 @@ class CLIProgressBarBackend(ProgressBarBackend):
             desc=self.description,
             total=self.max,
             initial=self.min,
+            leave=False,
         )
 
 
@@ -66,11 +67,15 @@ class CustomDisplayNotebookTqdm(tqdm.notebook.tqdm):
         # trick tqdm into doing all the updating without displaying in its own display
         original_displayed = self.displayed
         self.displayed = True
+        _, pbar, _ = self.container.children
         super().display(msg, pos, close, bar_style, check_delay)
         self.displayed = original_displayed
         if check_delay and self.delay > 0 and not self.displayed:
             self.display_backend.display(self.container)
             self.displayed = True
+
+        if close and pbar.bar_style != "danger":
+            self.display_backend.clear_display()
 
 
 class JupyterProgressBarBackend(ProgressBarBackend):
@@ -81,6 +86,7 @@ class JupyterProgressBarBackend(ProgressBarBackend):
             initial=self.min,
             display_backend=self.backend,
             display=False,
+            leave=False,
         )
         self._pbar.delay = 1
         self._pbar.display()

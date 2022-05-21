@@ -913,7 +913,7 @@ class _SupervisedExperiment(_TabularExperiment):
         if len(sorted_models) == 1:
             sorted_models = sorted_models[0]
 
-        display.display(compare_models_)
+        display.display(compare_models_, final_display=True)
 
         pd.reset_option("display.max_columns")
 
