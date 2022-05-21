@@ -28,6 +28,7 @@ import pycaret.containers.models.time_series
 import pycaret.internal.patches.sklearn
 import pycaret.internal.persistence
 import pycaret.internal.preprocess
+from pycaret.containers.models.time_series import ALL_ALLOWED_ENGINES
 from pycaret.internal.Display import Display
 from pycaret.internal.distributions import get_base_distributions
 from pycaret.internal.logging import get_logger
@@ -65,7 +66,6 @@ from pycaret.utils.time_series import (
     get_sp_from_str,
 )
 from pycaret.utils.time_series.forecasting import (
-    ALL_ALLOWED_ENGINES,
     PyCaretForecastingHorizonTypes,
     _check_and_clean_coverage,
     get_predictions_with_intervals,
@@ -1256,14 +1256,14 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         engine = self.model_engines.get(estimator, None)
         if engine is None:
             msg = (
-                f"get_engine: Either model '{estimator}' has only 1 default sktime engine, "
+                f"get_engine: Either model '{estimator}' has only 1 default engine, "
                 "or the model is not in the allowed list of models for this setup."
             )
             self.logger.info(msg)
             print(msg)
         return engine
 
-    def set_engine(self, estimator: str, engine: str, severity="error"):
+    def _set_engine(self, estimator: str, engine: str, severity: str = "error"):
         """Sets the engine to use for a particular model.
 
         Parameters
@@ -1301,7 +1301,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             else:
                 raise ValueError(
                     "Error in calling set_engine, severity "
-                    f'argument must be "error" or "warning", found "{severity}".'
+                    f'argument must be "error" or "warning", got "{severity}".'
                 )
         else:
             self.model_engines[estimator] = engine
@@ -1333,7 +1333,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         for key in defaults:
             # If provided by user, then use that, else get from the defaults
             engine = engines.get(key, defaults.get(key))
-            self.set_engine(estimator=key, engine=engine, severity="error")
+            self._set_engine(estimator=key, engine=engine, severity="error")
 
         return self
 
@@ -1909,7 +1909,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             # Save current engines, then set to user specified options
             initial_model_engines = self.model_engines.copy()
             for estimator, engine in engines.items():
-                self.set_engine(estimator=estimator, engine=engine, severity="error")
+                self._set_engine(estimator=estimator, engine=engine, severity="error")
 
         return_values = super().compare_models(
             include=include,
@@ -2054,7 +2054,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         if engine is not None:
             # Save current engines, then set to user specified options
             initial_model_engines = self.model_engines.copy()
-            self.set_engine(estimator=estimator, engine=engine, severity="error")
+            self._set_engine(estimator=estimator, engine=engine, severity="error")
 
         return_values = super().create_model(
             estimator=estimator,

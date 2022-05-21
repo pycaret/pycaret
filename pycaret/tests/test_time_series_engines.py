@@ -65,7 +65,7 @@ def test_engines_global_methods(load_pos_and_neg_data):
     assert exp.get_engine("auto_arima") == "statsforecast"
 
     #### Globally reset engine ----
-    exp.set_engine("auto_arima", "pmdarima")
+    exp._set_engine("auto_arima", "pmdarima")
     assert exp.get_engine("auto_arima") == "pmdarima"
     model = exp.create_model("auto_arima", cross_validation=False)
     assert isinstance(model, PmdAutoARIMA)

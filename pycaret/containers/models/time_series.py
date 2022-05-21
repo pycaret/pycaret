@@ -48,6 +48,10 @@ from pycaret.utils.datetime import (
 from pycaret.utils.time_series import TSModelTypes
 from pycaret.utils.time_series.forecasting.models import _check_enforcements
 
+ALL_ALLOWED_ENGINES: Dict[str, List[str]] = {
+    "auto_arima": ["pmdarima", "statsforecast"]
+}
+
 
 class TimeSeriesContainer(ModelContainer):
     """
@@ -645,7 +649,15 @@ class AutoArimaContainer(TimeSeriesContainer):
         self.gpu_imported = False
 
         id = "auto_arima"
-        self.engine = experiment.get_engine(id)
+        allowed_engines = self.get_allowed_engines(
+            id=id, all_allowed_engines=ALL_ALLOWED_ENGINES
+        )
+        self._set_engine(
+            id=id,
+            experiment=experiment,
+            allowed_engines=allowed_engines,
+            severity="error",
+        )
 
         if self.engine == "pmdarima":
             from sktime.forecasting.arima import AutoARIMA
