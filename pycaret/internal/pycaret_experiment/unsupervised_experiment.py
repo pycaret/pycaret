@@ -177,6 +177,9 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
 
         self.data = self._prepare_dataset(data)
 
+        # Train and Test indices
+        self.idx = [self.data.index, None]
+
         self._prepare_column_types(
             ordinal_features=ordinal_features,
             numeric_features=numeric_features,
