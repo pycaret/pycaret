@@ -49,11 +49,20 @@ class TransfomerWrapper(BaseEstimator):
         self._train_only = getattr(transformer, "_train_only", False)
         self._include = self.include
         self._exclude = self.exclude or []
+        self._feature_names_in = None
 
     def __repr__(self, N_CHAR_MAX=1400):
         return self.transformer.__repr__()
 
+    @property
+    def feature_names_in_(self):
+        return self._feature_names_in
+
     def fit(self, X=None, y=None, **fit_params):
+        # Save the incoming feature names (if pandas objects)
+        if hasattr(X, "columns") and hasattr(y, "name"):
+            self._feature_names_in = list(X.columns) + [y.name]
+
         args = []
         transformer_params = signature(self.transformer.fit).parameters
         if "X" in transformer_params and X is not None:

@@ -68,6 +68,11 @@ class Pipeline(imblearn.pipeline.Pipeline):
     def __init__(self, steps, *, memory=None, verbose=False):
         super().__init__(steps, memory=memory, verbose=verbose)
         self._fit_vars = set()
+        self._feature_names_in = None
+
+    @property
+    def feature_names_in_(self):
+        return self._feature_names_in
 
     def _iter(self, with_final=True, filter_passthrough=True, filter_train_only=True):
         """Generate (idx, name, trans) tuples from self.steps.
@@ -88,6 +93,10 @@ class Pipeline(imblearn.pipeline.Pipeline):
     def _fit(self, X=None, y=None, **fit_params_steps):
         self.steps = list(self.steps)
         self._validate_steps()
+
+        # Save the incoming feature names (if pandas objects)
+        if hasattr(X, "columns") and hasattr(y, "name"):
+            self._feature_names_in = list(X.columns) + [y.name]
 
         # Set up the memory
         memory = check_memory(self.memory).cache(_fit_transform_one)
