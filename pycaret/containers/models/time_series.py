@@ -48,9 +48,25 @@ from pycaret.utils.datetime import (
 from pycaret.utils.time_series import TSModelTypes
 from pycaret.utils.time_series.forecasting.models import _check_enforcements
 
+# First one in the list is the default ----
 ALL_ALLOWED_ENGINES: Dict[str, List[str]] = {
     "auto_arima": ["pmdarima", "statsforecast"]
 }
+
+
+def get_container_default_engines() -> Dict[str, str]:
+    """Get the default engines from all models
+
+    Returns
+    -------
+    Dict[str, str]
+        Default engines for all containers. If unspecified, it is not included
+        in the return dictionary.
+    """
+    default_engines = {}
+    for id, all_engines in ALL_ALLOWED_ENGINES.items():
+        default_engines[id] = all_engines[0]
+    return default_engines
 
 
 class TimeSeriesContainer(ModelContainer):
@@ -643,20 +659,13 @@ class AutoArimaContainer(TimeSeriesContainer):
     model_type = TSModelTypes.CLASSICAL
 
     def __init__(self, experiment) -> None:
-        logger = get_logger()
         self.seed = experiment.seed
         np.random.seed(self.seed)
         self.gpu_imported = False
 
         id = "auto_arima"
-        allowed_engines = self.get_allowed_engines(
-            id=id, all_allowed_engines=ALL_ALLOWED_ENGINES
-        )
-        self._set_engine(
-            id=id,
-            experiment=experiment,
-            allowed_engines=allowed_engines,
-            severity="error",
+        self._set_engine_related_vars(
+            id=id, all_allowed_engines=ALL_ALLOWED_ENGINES, experiment=experiment
         )
 
         if self.engine == "pmdarima":
