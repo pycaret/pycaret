@@ -661,7 +661,7 @@ class _TabularExperiment(_PyCaretExperiment):
 
                     # Create schematic drawing
                     d = Drawing(backend="matplotlib")
-                    d.config(fontsize=12)
+                    d.config(fontsize=plot_kwargs.get("fontsize", 14))
                     d += Subroutine(w=10, h=5, s=1).label("Raw data").drop("E")
                     for est in self.pipeline:
                         name = getattr(est, "transformer", est).__class__.__name__
