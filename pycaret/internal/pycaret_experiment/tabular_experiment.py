@@ -46,6 +46,8 @@ LOGGER = get_logger()
 class _TabularExperiment(_PyCaretExperiment):
     def __init__(self) -> None:
         super().__init__()
+        self.fold_shuffle_param = False
+        self.fold_groups_param = None
         self.variable_keys = self.variable_keys.union(
             {
                 "_ml_usecase",

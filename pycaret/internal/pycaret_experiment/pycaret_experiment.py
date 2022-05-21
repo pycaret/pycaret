@@ -429,7 +429,12 @@ class _PyCaretExperiment:
     @property
     def X_train(self):
         """Feature set of the training set."""
-        X_train = self.train.drop(self.target_param, axis=1)
+        if self.target_param is not None:
+            # Supervised Learning
+            X_train = self.train.drop(self.target_param, axis=1)
+        else:
+            # Unsupervised Learning
+            X_train = self.train.copy()
         if self._ml_usecase != MLUsecase.TIME_SERIES:
             return X_train
         else:
@@ -441,7 +446,11 @@ class _PyCaretExperiment:
     @property
     def X_test(self):
         """Feature set of the test set."""
-        X_test = self.test.drop(self.target_param, axis=1)
+        if self.target_param is not None:
+            X_test = self.test.drop(self.target_param, axis=1)
+        else:
+            # Unsupervised Learning
+            X_test = self.test.copy()
         if self._ml_usecase != MLUsecase.TIME_SERIES:
             return X_test
         else:

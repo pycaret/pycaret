@@ -41,6 +41,10 @@ def test_clustering(data):
         "kmodes", experiment_custom_tags={"tag": 1}
     )
 
+    # Plot Model
+    pycaret.clustering.plot_model(kmeans)
+    pycaret.clustering.plot_model(kmodes)
+
     # assign model
     kmeans_results = pycaret.clustering.assign_model(kmeans)
     kmodes_results = pycaret.clustering.assign_model(kmodes)
