@@ -38,4 +38,4 @@ textblob>=0.17.1
 
 # Others
 psutil>=5.9.0
-fugue>=0.6.5
+fugue>=0.6.6
