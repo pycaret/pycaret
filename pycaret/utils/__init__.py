@@ -1,5 +1,5 @@
 import functools
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
 import pandas as pd
@@ -226,3 +226,27 @@ def _resolve_dict_keys(
     if key not in defaults:
         raise KeyError(f"Key '{key}' not present in Defaults dictionary.")
     return dict_.get(key, defaults[key])
+
+
+def get_allowed_engines(
+    estimator: str, all_allowed_engines: Dict[str, List[str]]
+) -> Optional[str]:
+    """Get all the allowed engines for the specified estimator
+
+    Parameters
+    ----------
+    estimator : str
+        Identifier for the model for which the engines should be retrieved,
+        e.g. "auto_arima"
+    all_allowed_engines : Dict[str, List[str]]
+        All allowed engines for models of this experiment class to which the
+        model belongs
+
+    Returns
+    -------
+    Optional[str]
+        The allowed engines for the model. If the model only supports the
+        default sktime engine, then it return `None`.
+    """
+    allowed_engines = all_allowed_engines.get(estimator, None)
+    return allowed_engines

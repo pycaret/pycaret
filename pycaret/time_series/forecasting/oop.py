@@ -28,7 +28,10 @@ import pycaret.containers.models.time_series
 import pycaret.internal.patches.sklearn
 import pycaret.internal.persistence
 import pycaret.internal.preprocess
-from pycaret.containers.models.time_series import ALL_ALLOWED_ENGINES
+from pycaret.containers.models.time_series import (
+    ALL_ALLOWED_ENGINES,
+    get_container_default_engines,
+)
 from pycaret.internal.Display import Display
 from pycaret.internal.distributions import get_base_distributions
 from pycaret.internal.logging import get_logger
@@ -1170,28 +1173,6 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         return self
 
-    def _set_all_models(self) -> "TSForecastingExperiment":
-        """Set all available models
-
-        Returns
-        -------
-        TSForecastingExperiment
-            The experiment object to allow chaining of methods
-        """
-        self._all_models, self._all_models_internal = self._get_models()
-        return self
-
-    def _set_all_metrics(self) -> "TSForecastingExperiment":
-        """Set all available metrics
-
-        Returns
-        -------
-        TSForecastingExperiment
-            The experiment object to allow chaining of methods
-        """
-        self._all_metrics = self._get_metrics()
-        return self
-
     def _disable_metrics(self) -> "TSForecastingExperiment":
         """Disable metrics that are not applicable based on data and user inputs. e.g.
         (1) R2 needs at least 2 data points so should be disabled if there is only
@@ -1217,124 +1198,6 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         # Refer: https://github.com/pycaret/pycaret/issues/1900
         if not self.enforce_pi and "coverage" in self._get_metrics():
             self.remove_metric("COVERAGE")
-
-        return self
-
-    def get_allowed_engines(self, estimator: str) -> Optional[str]:
-        """Get all the allowed engines for the specified model
-
-        Parameters
-        ----------
-        estimator : str
-            Identifier for the model for which the engines should be retrieved,
-            e.g. "auto_arima"
-
-        Returns
-        -------
-        Optional[str]
-            The allowed engines for the model. If the model only supports the
-            default sktime engine, then it return `None`.
-        """
-        allowed_engines = ALL_ALLOWED_ENGINES.get(estimator, None)
-        return allowed_engines
-
-    def get_engine(self, estimator: str) -> Optional[str]:
-        """Gets the model engine currently set in the experiment for the specified
-        model.
-
-        Parameters
-        ----------
-        estimator : str
-            Identifier for the model for which the engine should be retrieved,
-            e.g. "auto_arima"
-
-        Returns
-        -------
-        Optional[str]
-            The engine for the model. If the model only supports the default sktime
-            engine, then it return `None`.
-        """
-        engine = self.model_engines.get(estimator, None)
-        if engine is None:
-            msg = (
-                f"get_engine: Either model '{estimator}' has only 1 default engine, "
-                "or the model is not in the allowed list of models for this setup."
-            )
-            self.logger.info(msg)
-            print(msg)
-        return engine
-
-    def _set_engine(self, estimator: str, engine: str, severity: str = "error"):
-        """Sets the engine to use for a particular model.
-
-        Parameters
-        ----------
-        estimator : str
-            Identifier for the model for which the engine should be set, e.g.
-            "auto_arima"
-        engine : str
-            Engine to set for the model. All available engines for the model
-            can be retrieved using get_allowed_engines()
-        severity : str, optional
-            How to handle incorrectly specified engines. Allowed values are "error"
-            and "warning". If set to "warning", the existing engine is left
-            unchanged if the specified engine is not correct., by default "error".
-
-        Raises
-        ------
-        ValueError
-            (1) If specified engine is not in the allowed list of engines and
-                severity is set to "error"
-            (2) If the value of "severity" is not one of the allowed values
-        """
-        allowed_engines = self.get_allowed_engines(estimator=estimator)
-        if allowed_engines is None:
-            msg = (
-                f"Either model '{estimator}' has only 1 engine and hence can not be changed, "
-                "or the model is not in the allowed list of models for this setup."
-            )
-
-            if severity == "error":
-                raise ValueError(msg)
-            elif severity == "warning":
-                self.logger.warning(msg)
-                print(msg)
-            else:
-                raise ValueError(
-                    "Error in calling set_engine, severity "
-                    f'argument must be "error" or "warning", got "{severity}".'
-                )
-        else:
-            self.model_engines[estimator] = engine
-            self.logger.info(
-                f"Engine successfully changes for model '{estimator}' to '{engine}'."
-            )
-
-        # Need to do this, else internal class variables are not reset with new engine.
-        self._set_all_models()
-
-    def _set_default_model_engines(
-        self, engines: Optional[Dict[str, str]] = None
-    ) -> "TSForecastingExperiment":
-        """Set all the default model engines
-
-        engines: Optional[Dict[str, str]] = None
-            The engine to use for the models, e.g. for auto_arima, users can
-            switch between "pmdarima" and "statsforecast" by specifying
-            engines={"auto_arima": "statsforecast"}
-
-        Returns
-        -------
-        TSForecastingExperiment
-            The experiment object to allow chaining of methods
-        """
-        # Other engines will default to sktime defaults
-        defaults = {"auto_arima": "pmdarima"}
-        engines = engines or {}
-        for key in defaults:
-            # If provided by user, then use that, else get from the defaults
-            engine = engines.get(key, defaults.get(key))
-            self._set_engine(estimator=key, engine=engine, severity="error")
 
         return self
 
@@ -1685,7 +1548,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         runtime_start = time.time()
 
         #### Define parameter attrs ----
-        self.model_engines = {}
+        self.all_allowed_engines = ALL_ALLOWED_ENGINES
 
         self.fig_kwargs = fig_kwargs or {}
         self._set_default_fig_kwargs()
@@ -1749,7 +1612,10 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             ._perform_setup_eda()
             ._setup_display_container()
             ._profile(profile, profile_kwargs)
-            ._set_default_model_engines(engines=engines)
+            ._set_exp_model_engines(
+                container_default_engines=get_container_default_engines(),
+                engines=engines,
+            )
             ._set_all_models()
             ._set_all_metrics()
         )
@@ -1906,29 +1772,33 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         if engines is not None:
             # Save current engines, then set to user specified options
-            initial_model_engines = self.model_engines.copy()
+            initial_model_engines = self.exp_model_engines.copy()
             for estimator, engine in engines.items():
                 self._set_engine(estimator=estimator, engine=engine, severity="error")
 
-        return_values = super().compare_models(
-            include=include,
-            exclude=exclude,
-            fold=fold,
-            round=round,
-            cross_validation=cross_validation,
-            sort=sort,
-            n_select=n_select,
-            budget_time=budget_time,
-            turbo=turbo,
-            errors=errors,
-            fit_kwargs=fit_kwargs,
-            experiment_custom_tags=experiment_custom_tags,
-            verbose=verbose,
-        )
-
-        if engines is not None:
-            # Reset the models back to the default engines
-            self._set_default_model_engines(engines=initial_model_engines)
+        try:
+            return_values = super().compare_models(
+                include=include,
+                exclude=exclude,
+                fold=fold,
+                round=round,
+                cross_validation=cross_validation,
+                sort=sort,
+                n_select=n_select,
+                budget_time=budget_time,
+                turbo=turbo,
+                errors=errors,
+                fit_kwargs=fit_kwargs,
+                experiment_custom_tags=experiment_custom_tags,
+                verbose=verbose,
+            )
+        finally:
+            if engines is not None:
+                # Reset the models back to the default engines
+                self._set_exp_model_engines(
+                    container_default_engines=get_container_default_engines(),
+                    engines=initial_model_engines,
+                )
 
         return return_values
 
@@ -2052,23 +1922,27 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         if engine is not None:
             # Save current engines, then set to user specified options
-            initial_model_engines = self.model_engines.copy()
+            initial_default_model_engines = self.exp_model_engines.copy()
             self._set_engine(estimator=estimator, engine=engine, severity="error")
 
-        return_values = super().create_model(
-            estimator=estimator,
-            fold=fold,
-            round=round,
-            cross_validation=cross_validation,
-            fit_kwargs=fit_kwargs,
-            experiment_custom_tags=experiment_custom_tags,
-            verbose=verbose,
-            **kwargs,
-        )
-
-        if engine is not None:
-            # Reset the models back to the default engines
-            self._set_default_model_engines(engines=initial_model_engines)
+        try:
+            return_values = super().create_model(
+                estimator=estimator,
+                fold=fold,
+                round=round,
+                cross_validation=cross_validation,
+                fit_kwargs=fit_kwargs,
+                experiment_custom_tags=experiment_custom_tags,
+                verbose=verbose,
+                **kwargs,
+            )
+        finally:
+            if engine is not None:
+                # Reset the models back to the default engines
+                self._set_exp_model_engines(
+                    container_default_engines=get_container_default_engines(),
+                    engines=initial_default_model_engines,
+                )
 
         return return_values
 
