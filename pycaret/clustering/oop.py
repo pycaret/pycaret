@@ -26,6 +26,7 @@ class ClusteringExperiment(_UnsupervisedExperiment):
         self._ml_usecase = MLUsecase.CLUSTERING
         self.exp_name_log = "cluster-default-name"
         self._available_plots = {
+            "pipeline": "Pipeline Plot",
             "cluster": "t-SNE (3d) Dimension Plot",
             "tsne": "Cluster t-SNE (3d)",
             "elbow": "Elbow Plot",
@@ -33,7 +34,6 @@ class ClusteringExperiment(_UnsupervisedExperiment):
             "distance": "Distance Plot",
             "distribution": "Distribution Plot",
         }
-        return
 
     def _get_models(self, raise_errors: bool = True) -> Tuple[dict, dict]:
         all_models = {

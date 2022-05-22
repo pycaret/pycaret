@@ -42,6 +42,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             }
         )
         self._available_plots = {
+            "pipeline": "Pipeline Plot",
             "parameter": "Hyperparameters",
             "residuals": "Residuals",
             "error": "Prediction Error",
@@ -121,7 +122,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
         n_features_to_select: int = 10,
         transform_target: bool = False,
         transform_target_method: str = "box-cox",
-        custom_pipeline: Any = None,
+        custom_pipeline: Optional[Any] = None,
         data_split_shuffle: bool = True,
         data_split_stratify: Union[bool, List[str]] = False,
         fold_strategy: Union[str, Any] = "kfold",
@@ -1278,6 +1279,8 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
         plot: str, default = 'residual'
             List of available plots (ID - Name):
 
+            * 'pipeline' - Schematic drawing of the preprocessing pipeline
+            * 'residuals_interactive' - Interactive Residual plots
             * 'residuals' - Residuals Plot
             * 'error' - Prediction Error Plot
             * 'cooks' - Cooks Distance Plot

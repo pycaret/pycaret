@@ -124,7 +124,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
         pca: bool = False,
         pca_method: str = "linear",
         pca_components: Union[int, float] = 1.0,
-        custom_pipeline: Any = None,
+        custom_pipeline: Optional[Any] = None,
         n_jobs: Optional[int] = -1,
         use_gpu: bool = False,
         html: bool = True,
@@ -176,6 +176,9 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
         # Set up data ============================================== >>
 
         self.data = self._prepare_dataset(data)
+
+        # Train and Test indices
+        self.idx = [self.data.index, None]
 
         self._prepare_column_types(
             ordinal_features=ordinal_features,
@@ -857,7 +860,8 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
         if data is None:
             data_transformed = self.X_transformed
         else:
-            data_transformed = self.pipeline.transform(to_df(data[self.X.columns]))
+            data = self._prepare_dataset(data)[self.X.columns]
+            data_transformed = self.pipeline.transform(data)
 
         # exception checking for predict param
         if hasattr(estimator, "predict"):

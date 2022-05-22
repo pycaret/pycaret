@@ -131,6 +131,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             }
         )
         self._available_plots = {
+            "pipeline": "Pipeline Plot",
             "ts": "Time Series Plot",
             "train_test_split": "Train Test Split",
             "cv": "Cross Validation",
@@ -1221,9 +1222,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         enforce_exogenous: bool = True,
         n_jobs: Optional[int] = -1,
         use_gpu: bool = False,
-        custom_pipeline: Union[
-            Any, Tuple[str, Any], List[Any], List[Tuple[str, Any]]
-        ] = None,
+        custom_pipeline: Optional[Any] = None,
         html: bool = True,
         session_id: Optional[int] = None,
         system_log: Union[bool, logging.Logger] = True,
@@ -1431,7 +1430,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             Parameter not in use for now. Behavior may change in future.
 
 
-        custom_pipeline: (str, transformer) or list of (str, transformer), default = None
+        custom_pipeline: list of (str, transformer), dict or Pipeline, default = None
             Parameter not in use for now. Behavior may change in future.
 
 
@@ -1664,7 +1663,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         fold: Optional[Union[int, Any]] = None,
         round: int = 4,
         cross_validation: bool = True,
-        sort: str = "smape",
+        sort: str = "MASE",
         n_select: int = 1,
         budget_time: Optional[float] = None,
         turbo: bool = True,
@@ -1720,7 +1719,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             is ignored when cross_validation is set to False.
 
 
-        sort: str, default = 'SMAPE'
+        sort: str, default = 'MASE'
             The sort order of the score grid. It also accepts custom metrics that are
             added through the ``add_metric`` function.
 
@@ -2186,7 +2185,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         round: int = 4,
         n_iter: int = 10,
         custom_grid: Optional[Union[Dict[str, list], Any]] = None,
-        optimize: str = "SMAPE",
+        optimize: str = "MASE",
         custom_scorer=None,
         search_algorithm: Optional[str] = None,
         choose_better: bool = True,
@@ -2242,7 +2241,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             supported by the defined ``search_library``.
 
 
-        optimize: str, default = 'SMAPE'
+        optimize: str, default = 'MASE'
             Metric name to be evaluated for hyperparameter tuning. It also accepts custom
             metrics that are added through the ``add_metric`` function.
 
@@ -2726,7 +2725,14 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         # mlflow logging
         if self.logging_param:
 
-            avgs_dict_log = {k: v for k, v in model_results.loc["Mean"].items()}
+            avgs_dict_log = {
+                k: v
+                for k, v in model_results.loc[
+                    self._get_return_train_score_indices_for_logging(
+                        return_train_score=False
+                    )
+                ].items()
+            }
 
             self._log_model(
                 model=best_model,
@@ -2766,7 +2772,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         fold: Optional[Union[int, Any]] = None,
         round: int = 4,
         choose_better: bool = False,
-        optimize: str = "SMAPE",
+        optimize: str = "MASE",
         weights: Optional[List[float]] = None,
         fit_kwargs: Optional[dict] = None,
         verbose: bool = True,
@@ -2819,7 +2825,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             metric used for comparison is defined by the ``optimize`` parameter.
 
 
-        optimize: str, default = 'SMAPE'
+        optimize: str, default = 'MASE'
             Metric to compare for model selection when ``choose_better`` is True.
 
 

@@ -53,7 +53,7 @@ def setup(
     pca: bool = False,
     pca_method: str = "linear",
     pca_components: Union[int, float] = 1.0,
-    custom_pipeline: Any = None,
+    custom_pipeline: Optional[Any] = None,
     n_jobs: Optional[int] = -1,
     use_gpu: bool = False,
     html: bool = True,
@@ -283,7 +283,7 @@ def setup(
         of original features. This parameter is ignored when `pca=False`.
 
 
-    custom_pipeline: (str, transformer), list of (str, transformer) or dict, default = None
+    custom_pipeline: list of (str, transformer), dict or Pipeline, default = None
         Addidiotnal custom transformers. If passed, they are applied to the
         pipeline last, after all the build-in transformers.
 

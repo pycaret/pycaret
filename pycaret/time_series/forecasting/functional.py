@@ -47,9 +47,7 @@ def setup(
     enforce_exogenous: bool = True,
     n_jobs: Optional[int] = -1,
     use_gpu: bool = False,
-    custom_pipeline: Union[
-        Any, Tuple[str, Any], List[Any], List[Tuple[str, Any]]
-    ] = None,
+    custom_pipeline: Optional[Any] = None,
     html: bool = True,
     session_id: Optional[int] = None,
     system_log: Union[bool, logging.Logger] = True,
@@ -253,7 +251,7 @@ def setup(
         Parameter not in use for now. Behavior may change in future.
 
 
-    custom_pipeline: (str, transformer) or list of (str, transformer), default = None
+    custom_pipeline: list of (str, transformer), dict or Pipeline, default = None
         Parameter not in use for now. Behavior may change in future.
 
 
@@ -402,7 +400,7 @@ def compare_models(
     fold: Optional[Union[int, Any]] = None,
     round: int = 4,
     cross_validation: bool = True,
-    sort: str = "SMAPE",
+    sort: str = "MASE",
     n_select: int = 1,
     budget_time: Optional[float] = None,
     turbo: bool = True,
@@ -457,7 +455,7 @@ def compare_models(
         is ignored when cross_validation is set to False.
 
 
-    sort: str, default = 'SMAPE'
+    sort: str, default = 'MASE'
         The sort order of the score grid. It also accepts custom metrics that are
         added through the ``add_metric`` function.
 
@@ -702,7 +700,7 @@ def tune_model(
     round: int = 4,
     n_iter: int = 10,
     custom_grid: Optional[Union[Dict[str, list], Any]] = None,
-    optimize: str = "SMAPE",
+    optimize: str = "MASE",
     custom_scorer=None,
     search_algorithm: Optional[str] = None,
     choose_better: bool = True,
@@ -757,7 +755,7 @@ def tune_model(
         supported by the defined ``search_library``.
 
 
-    optimize: str, default = 'SMAPE'
+    optimize: str, default = 'MASE'
         Metric name to be evaluated for hyperparameter tuning. It also accepts custom
         metrics that are added through the ``add_metric`` function.
 
@@ -830,7 +828,7 @@ def blend_models(
     fold: Optional[Union[int, Any]] = None,
     round: int = 4,
     choose_better: bool = False,
-    optimize: str = "SMAPE",
+    optimize: str = "MASE",
     weights: Optional[List[float]] = None,
     fit_kwargs: Optional[dict] = None,
     verbose: bool = True,
@@ -883,7 +881,7 @@ def blend_models(
         metric used for comparison is defined by the ``optimize`` parameter.
 
 
-    optimize: str, default = 'SMAPE'
+    optimize: str, default = 'MASE'
         Metric to compare for model selection when ``choose_better`` is True.
 
 

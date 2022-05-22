@@ -174,7 +174,16 @@ class _SupervisedExperiment(_TabularExperiment):
         best_model = None
         for model, result in models_and_results:
             if result is not None and is_fitted(model):
-                result = result.loc["Mean"][compare_dimension]
+                try:
+                    indices = self._get_return_train_score_indices_for_logging(
+                        return_train_score=True
+                    )
+                    result = result.loc[indices][compare_dimension]
+                except KeyError:
+                    indices = self._get_return_train_score_indices_for_logging(
+                        return_train_score=False
+                    )
+                    result = result.loc[indices][compare_dimension]
             else:
                 self.logger.info(
                     "SubProcess create_model() called =================================="
@@ -190,7 +199,11 @@ class _SupervisedExperiment(_TabularExperiment):
                 self.logger.info(
                     "SubProcess create_model() end =================================="
                 )
-                result = self.pull(pop=True).loc["Mean"][compare_dimension]
+                result = self.pull(pop=True).loc[
+                    self._get_return_train_score_indices_for_logging(
+                        return_train_score=False
+                    )
+                ][compare_dimension]
             self.logger.info(f"{model} result for {compare_dimension} is {result}")
             if not metric.greater_is_better:
                 result *= -1
@@ -707,9 +720,13 @@ class _SupervisedExperiment(_TabularExperiment):
                 # cutoff only present in time series and when cv = True
                 if "cutoff" in model_results.columns:
                     model_results.drop("cutoff", axis=1, errors="ignore")
-                compare_models_ = pd.DataFrame(model_results.loc["Mean"]).T.reset_index(
-                    drop=True
-                )
+                compare_models_ = pd.DataFrame(
+                    model_results.loc[
+                        self._get_return_train_score_indices_for_logging(
+                            return_train_score=False
+                        )
+                    ]
+                ).T.reset_index(drop=True)
             else:
                 compare_models_ = pd.DataFrame(model_results.iloc[0]).T
             compare_models_.insert(
@@ -1083,7 +1100,8 @@ class _SupervisedExperiment(_TabularExperiment):
 
             model_results = pd.concat([model_results, model_scores], axis=1)
             model_results.set_index(
-                self._get_return_train_score_indices(return_train_score), inplace=True
+                self._get_return_train_score_columns_for_display(return_train_score),
+                inplace=True,
             )
 
             if refit:
@@ -1125,11 +1143,20 @@ class _SupervisedExperiment(_TabularExperiment):
 
         return model, model_fit_time, model_results, avgs_dict
 
-    def _get_return_train_score_indices(self, return_train_score: bool) -> List[str]:
+    def _get_return_train_score_columns_for_display(
+        self, return_train_score: bool
+    ) -> List[str]:
         if return_train_score:
-            indices = ["Split", "Fold"]
+            columns = ["Split", "Fold"]
         else:
-            indices = ["Fold"]
+            columns = ["Fold"]
+        return columns
+
+    def _get_return_train_score_indices_for_logging(self, return_train_score: bool):
+        if return_train_score:
+            indices = ("CV-Val", "Mean")
+        else:
+            indices = "Mean"
         return indices
 
     def _highlight_and_round_model_results(
@@ -1372,7 +1399,7 @@ class _SupervisedExperiment(_TabularExperiment):
 
         if not display:
             progress_args = {"max": 4}
-            master_display_columns = self._get_return_train_score_indices(
+            master_display_columns = self._get_return_train_score_columns_for_display(
                 return_train_score
             ) + [v.display_name for k, v in self._all_metrics.items()]
             if self._ml_usecase == MLUsecase.TIME_SERIES:
@@ -1571,11 +1598,9 @@ class _SupervisedExperiment(_TabularExperiment):
 
         # dashboard logging
         if self.logging_param and system and refit:
-
-            if return_train_score:
-                indices = ("CV-Val", "Mean")
-            else:
-                indices = "Mean"
+            indices = self._get_return_train_score_indices_for_logging(
+                return_train_score
+            )
             avgs_dict_log = {k: v for k, v in model_results.loc[indices].items()}
 
             self._log_model(
@@ -2062,7 +2087,7 @@ class _SupervisedExperiment(_TabularExperiment):
 
         if not display:
             progress_args = {"max": 3 + 4}
-            master_display_columns = self._get_return_train_score_indices(
+            master_display_columns = self._get_return_train_score_columns_for_display(
                 return_train_score
             ) + [v.display_name for k, v in self._all_metrics.items()]
             if self._ml_usecase == MLUsecase.TIME_SERIES:
@@ -2621,11 +2646,9 @@ class _SupervisedExperiment(_TabularExperiment):
 
         # dashboard logging
         if self.logging_param:
-
-            if return_train_score:
-                indices = ("CV-Val", "Mean")
-            else:
-                indices = "Mean"
+            indices = self._get_return_train_score_indices_for_logging(
+                return_train_score=return_train_score
+            )
             avgs_dict_log = {k: v for k, v in model_results.loc[indices].items()}
             self.logging_param.log_model_comparison(model_results, "tune_model")
 
@@ -2869,7 +2892,7 @@ class _SupervisedExperiment(_TabularExperiment):
 
         if not display:
             progress_args = {"max": 2 + 4}
-            master_display_columns = self._get_return_train_score_indices(
+            master_display_columns = self._get_return_train_score_columns_for_display(
                 return_train_score
             ) + [v.display_name for k, v in self._all_metrics.items()]
             if self._ml_usecase == MLUsecase.TIME_SERIES:
@@ -2992,11 +3015,9 @@ class _SupervisedExperiment(_TabularExperiment):
 
         # dashboard logging
         if self.logging_param:
-
-            if return_train_score:
-                indices = ("CV-Val", "Mean")
-            else:
-                indices = "Mean"
+            indices = self._get_return_train_score_indices_for_logging(
+                return_train_score=return_train_score
+            )
             avgs_dict_log = {k: v for k, v in model_results.loc[indices].items()}
             self.logging_param.log_model_comparison(model_results, "ensemble_model")
 
@@ -3266,7 +3287,7 @@ class _SupervisedExperiment(_TabularExperiment):
 
         if not display:
             progress_args = {"max": 2 + 4}
-            master_display_columns = self._get_return_train_score_indices(
+            master_display_columns = self._get_return_train_score_columns_for_display(
                 return_train_score
             ) + [v.display_name for k, v in self._all_metrics.items()]
             if self._ml_usecase == MLUsecase.TIME_SERIES:
@@ -3385,11 +3406,9 @@ class _SupervisedExperiment(_TabularExperiment):
 
         # dashboard logging
         if self.logging_param:
-
-            if return_train_score:
-                indices = ("CV-Val", "Mean")
-            else:
-                indices = "Mean"
+            indices = self._get_return_train_score_indices_for_logging(
+                return_train_score=return_train_score
+            )
             avgs_dict_log = {k: v for k, v in model_results.loc[indices].items()}
             self.logging_param.log_model_comparison(model_results, "blend_models")
 
@@ -3657,7 +3676,7 @@ class _SupervisedExperiment(_TabularExperiment):
 
         if not display:
             progress_args = {"max": 2 + 4}
-            master_display_columns = self._get_return_train_score_indices(
+            master_display_columns = self._get_return_train_score_columns_for_display(
                 return_train_score
             ) + [v.display_name for k, v in self._all_metrics.items()]
             if self._ml_usecase == MLUsecase.TIME_SERIES:
@@ -3771,11 +3790,9 @@ class _SupervisedExperiment(_TabularExperiment):
 
         # dashboard logging
         if self.logging_param:
-
-            if return_train_score:
-                indices = ("CV-Val", "Mean")
-            else:
-                indices = "Mean"
+            indices = self._get_return_train_score_indices_for_logging(
+                return_train_score=return_train_score
+            )
             avgs_dict_log = {k: v for k, v in model_results.loc[indices].items()}
             self.logging_param.log_model_comparison(model_results, "stack_model")
 
@@ -3796,6 +3813,7 @@ class _SupervisedExperiment(_TabularExperiment):
                 [(model, model_results)] + estimator_list,
                 compare_dimension,
                 fold,
+                return_train_score,
                 groups=groups,
                 fit_kwargs=fit_kwargs,
                 display=display,
@@ -4462,7 +4480,7 @@ class _SupervisedExperiment(_TabularExperiment):
                     is_custom=True,
                 )
             )
-        if self._ml_usecase == MLUsecase.TIME_SERIES:
+        elif self._ml_usecase == MLUsecase.TIME_SERIES:
             new_metric = (
                 pycaret.containers.metrics.time_series.TimeSeriesMetricContainer(
                     id=id,
@@ -4644,11 +4662,9 @@ class _SupervisedExperiment(_TabularExperiment):
 
         # dashboard logging
         if self.logging_param:
-
-            if return_train_score:
-                indices = ("CV-Val", "Mean")
-            else:
-                indices = "Mean"
+            indices = self._get_return_train_score_indices_for_logging(
+                return_train_score=return_train_score
+            )
             avgs_dict_log = {k: v for k, v in model_results.loc[indices].items()}
             self.logging_param.log_model_comparison(
                 model_results, f"finalize_model_{self._get_model_name(model_final)}"
@@ -4830,27 +4846,37 @@ class _SupervisedExperiment(_TabularExperiment):
 
         if isinstance(estimator, Pipeline):
             pipeline = estimator
-            estimator = pipeline._final_estimator
+            # Temporarily remove final estimator so it's not used for transform
+            final_step = pipeline.steps[-1]
+            estimator = final_step[-1]
+            pipeline.steps = pipeline.steps[:-1]
         else:
             pipeline = self.pipeline
+            final_step = None
 
         y_test_ = None
         if data is None:
             X_test_, y_test_ = self.X_test_transformed, self.y_test_transformed
         else:
             if self.y.name in data.columns:
+                data = self._prepare_dataset(data, self.y.name)
                 target = data[self.y.name]
             else:
+                data = self._prepare_dataset(data)
                 target = None
-            data = to_df(data[self.X.columns])  # Ignore all column but the originals
+            data = data[self.X.columns]  # Ignore all column but the originals
             if preprocess:
                 X_test_ = pipeline.transform(
                     X=data, y=(target if preprocess != "features" else None)
                 )
+                if final_step:
+                    pipeline.steps.append(final_step)
+
                 if isinstance(X_test_, tuple):
                     X_test_, y_test_ = X_test_
                 elif target is not None:
                     y_test_ = target
+                X_test_ = X_test_[self.X_test_transformed.columns]
             else:
                 X_test_ = data
                 y_test_ = target
@@ -5436,7 +5462,7 @@ class _SupervisedExperiment(_TabularExperiment):
             self.X_test_transformed, label=self.y_test_transformed, cat_features=[]
         )
 
-        from deepchecks.suites import full_suite
+        from deepchecks.tabular.suites import full_suite
 
         suite = full_suite(**check_kwargs)
         return suite.run(train_dataset=ds_train, test_dataset=ds_test, model=estimator)

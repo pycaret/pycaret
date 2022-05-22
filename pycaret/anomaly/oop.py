@@ -23,6 +23,7 @@ class AnomalyExperiment(_UnsupervisedExperiment):
         self._ml_usecase = MLUsecase.ANOMALY
         self.exp_name_log = "anomaly-default-name"
         self._available_plots = {
+            "pipeline": "Pipeline Plot",
             "tsne": "t-SNE (3d) Dimension Plot",
             "umap": "UMAP Dimensionality Plot",
         }

@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import numpy as np  # type: ignore
 import pandas as pd
 import plotly.express as px
+import sklearn
 from joblib.memory import Memory
 
 import pycaret.containers.metrics.classification
@@ -52,6 +53,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             {"fix_imbalance_param", "fix_imbalance_method_param"}
         )
         self._available_plots = {
+            "pipeline": "Pipeline Plot",
             "parameter": "Hyperparameters",
             "auc": "AUC",
             "confusion_matrix": "Confusion Matrix",
@@ -148,7 +150,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         feature_selection_method: str = "classic",
         feature_selection_estimator: Union[str, Any] = "lightgbm",
         n_features_to_select: int = 10,
-        custom_pipeline: Any = None,
+        custom_pipeline: Optional[Any] = None,
         data_split_shuffle: bool = True,
         data_split_stratify: Union[bool, List[str]] = False,
         fold_strategy: Union[str, Any] = "stratifiedkfold",
@@ -177,6 +179,9 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         # Setup initialization ===================================== >>
 
         runtime_start = time.time()
+
+        # Configuration
+        sklearn.set_config(print_changed_only=False)
 
         # Define parameter attrs
         self.fold_shuffle_param = fold_shuffle
@@ -248,7 +253,8 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             self.logger.info("Preparing preprocessing pipeline...")
 
             # Encode the target column
-            if self.y.dtype.kind not in "ifu":
+            y_unique = self.y.unique()
+            if sorted(list(y_unique)) != list(range(len(y_unique))):
                 self._encode_target_column()
 
             # Convert date feature to numerical values
@@ -1367,7 +1373,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         plot: str, default = 'auc'
             List of available plots (ID - Name):
 
-            * 'residuals_interactive' - Interactive Residual plots
+            * 'pipeline' - Schematic drawing of the preprocessing pipeline
             * 'auc' - Area Under the Curve
             * 'threshold' - Discrimination Threshold
             * 'pr' - Precision Recall Curve
@@ -1796,7 +1802,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
 
         if not display:
             progress_args = {"max": 2 + 4}
-            master_display_columns = self._get_return_train_score_indices(
+            master_display_columns = self._get_return_train_score_columns_for_display(
                 return_train_score
             ) + [v.display_name for k, v in self._all_metrics.items()]
             timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
@@ -1895,12 +1901,14 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
 
         # mlflow logging
         if self.logging_param:
-
-            if return_train_score:
-                indices = ("CV-Val", "Mean")
-            else:
-                indices = "Mean"
-            avgs_dict_log = {k: v for k, v in model_results.loc[indices].items()}
+            avgs_dict_log = {
+                k: v
+                for k, v in model_results.loc[
+                    self._get_return_train_score_indices_for_logging(
+                        return_train_score=return_train_score
+                    )
+                ].items()
+            }
             self.logging_param.log_model_comparison(
                 model_results, f"calibrate_models_{self._get_model_name(model)}"
             )
@@ -2066,7 +2074,13 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
                 .reset_index()
                 .drop(columns=["Split"], errors="ignore")
                 .set_index(["Fold"])
-                .loc[["Mean"]]
+                .loc[
+                    [
+                        self._get_return_train_score_indices_for_logging(
+                            return_train_score=False
+                        )
+                    ]
+                ]
             )
             model_results["probability_threshold"] = i
             results_df.append(model_results)
