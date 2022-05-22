@@ -48,6 +48,26 @@ from pycaret.utils.datetime import (
 from pycaret.utils.time_series import TSModelTypes
 from pycaret.utils.time_series.forecasting.models import _check_enforcements
 
+# First one in the list is the default ----
+ALL_ALLOWED_ENGINES: Dict[str, List[str]] = {
+    "auto_arima": ["pmdarima", "statsforecast"]
+}
+
+
+def get_container_default_engines() -> Dict[str, str]:
+    """Get the default engines from all models
+
+    Returns
+    -------
+    Dict[str, str]
+        Default engines for all containers. If unspecified, it is not included
+        in the return dictionary.
+    """
+    default_engines = {}
+    for id, all_engines in ALL_ALLOWED_ENGINES.items():
+        default_engines[id] = all_engines[0]
+    return default_engines
+
 
 class TimeSeriesContainer(ModelContainer):
     """
@@ -639,12 +659,22 @@ class AutoArimaContainer(TimeSeriesContainer):
     model_type = TSModelTypes.CLASSICAL
 
     def __init__(self, experiment) -> None:
-        logger = get_logger()
         self.seed = experiment.seed
         np.random.seed(self.seed)
         self.gpu_imported = False
 
-        from sktime.forecasting.arima import AutoARIMA  # type: ignore
+        id = "auto_arima"
+        self._set_engine_related_vars(
+            id=id, all_allowed_engines=ALL_ALLOWED_ENGINES, experiment=experiment
+        )
+
+        if self.engine == "pmdarima":
+            from sktime.forecasting.arima import AutoARIMA
+        elif self.engine == "statsforecast":
+            _check_soft_dependencies("statsforecast", extra="models", severity="error")
+            from sktime.forecasting.statsforecast import (
+                StatsForecastAutoARIMA as AutoARIMA,
+            )
 
         #### Disable container if certain features are not supported but enforced ----
         dummy = AutoARIMA()
@@ -662,7 +692,7 @@ class AutoArimaContainer(TimeSeriesContainer):
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
         super().__init__(
-            id="auto_arima",
+            id=id,
             name="Auto ARIMA",
             class_def=AutoARIMA,
             args=args,
@@ -676,9 +706,11 @@ class AutoArimaContainer(TimeSeriesContainer):
     def _set_args(self) -> Dict[str, Any]:
         # TODO: Check if there is a formal test for type of seasonality
         args = {"sp": self.sp} if self.seasonality_present else {}
-        # Add irrespective of whether seasonality is present or not
-        args["random_state"] = self.seed
-        args["suppress_warnings"] = True
+
+        if self.engine == "pmdarima":
+            # Add irrespective of whether seasonality is present or not
+            args["random_state"] = self.seed
+            args["suppress_warnings"] = True
         return args
 
     @property

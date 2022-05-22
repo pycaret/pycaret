@@ -37,6 +37,7 @@ from pycaret.internal.validation import is_sklearn_cv_generator
 from pycaret.loggers.base_logger import BaseLogger
 from pycaret.loggers.mlflow_logger import MlflowLogger
 from pycaret.loggers.wandb_logger import WandbLogger
+from pycaret.utils import get_allowed_engines
 from pycaret.utils._dependencies import _check_soft_dependencies
 
 warnings.filterwarnings("ignore")
@@ -46,6 +47,7 @@ LOGGER = get_logger()
 class _TabularExperiment(_PyCaretExperiment):
     def __init__(self) -> None:
         super().__init__()
+        self.all_allowed_engines = None
         self.fold_shuffle_param = False
         self.fold_groups_param = None
         self.variable_keys = self.variable_keys.union(
@@ -2686,3 +2688,158 @@ CMD ["python", "{API_NAME}.py"]
     To build image you have to run --> !docker image build -f "Dockerfile" -t IMAGE_NAME:IMAGE_TAG .
             """
         )
+
+    def _set_all_models(self) -> "_TabularExperiment":
+        """Set all available models
+
+        Returns
+        -------
+        _TabularExperiment
+            The experiment object to allow chaining of methods
+        """
+        self._all_models, self._all_models_internal = self._get_models()
+        return self
+
+    def get_allowed_engines(self, estimator: str) -> Optional[str]:
+        """Get all the allowed engines for the specified estimator
+
+        Parameters
+        ----------
+        estimator : str
+            Identifier for the model for which the engines should be retrieved,
+            e.g. "auto_arima"
+
+        Returns
+        -------
+        Optional[str]
+            The allowed engines for the model. If the model only supports the
+            default sktime engine, then it return `None`.
+        """
+        allowed_engines = get_allowed_engines(
+            estimator=estimator, all_allowed_engines=self.all_allowed_engines
+        )
+        return allowed_engines
+
+    def get_engine(self, estimator: str) -> Optional[str]:
+        """Gets the model engine currently set in the experiment for the specified
+        model.
+
+        Parameters
+        ----------
+        estimator : str
+            Identifier for the model for which the engine should be retrieved,
+            e.g. "auto_arima"
+
+        Returns
+        -------
+        Optional[str]
+            The engine for the model. If the model only supports the default sktime
+            engine, then it return `None`.
+        """
+        engine = self.exp_model_engines.get(estimator, None)
+        if engine is None:
+            msg = (
+                f"Engine for model '{estimator}' has not been set explicitly, "
+                "hence returning None."
+            )
+            self.logger.info(msg)
+            print(msg)
+        return engine
+
+    def _set_engine(self, estimator: str, engine: str, severity: str = "error"):
+        """Sets the engine to use for a particular model.
+
+        Parameters
+        ----------
+        estimator : str
+            Identifier for the model for which the engine should be set, e.g.
+            "auto_arima"
+        engine : str
+            Engine to set for the model. All available engines for the model
+            can be retrieved using get_allowed_engines()
+        severity : str, optional
+            How to handle incorrectly specified engines. Allowed values are "error"
+            and "warning". If set to "warning", the existing engine is left
+            unchanged if the specified engine is not correct., by default "error".
+
+        Raises
+        ------
+        ValueError
+            (1) If specified engine is not in the allowed list of engines and
+                severity is set to "error"
+            (2) If the value of "severity" is not one of the allowed values
+        """
+        allowed_engines = self.get_allowed_engines(estimator=estimator)
+        if allowed_engines is None:
+            msg = (
+                f"Either model '{estimator}' has only 1 engine and hence can not be changed, "
+                "or the model is not in the allowed list of models for this setup."
+            )
+
+            if severity == "error":
+                raise ValueError(msg)
+            elif severity == "warning":
+                self.logger.warning(msg)
+                print(msg)
+            else:
+                raise ValueError(
+                    "Error in calling set_engine, severity "
+                    f'argument must be "error" or "warning", got "{severity}".'
+                )
+        else:
+            self.exp_model_engines[estimator] = engine
+            self.logger.info(
+                f"Engine successfully changes for model '{estimator}' to '{engine}'."
+            )
+
+        # Need to do this, else internal class variables are not reset with new engine.
+        self._set_all_models()
+
+    def _set_exp_model_engines(
+        self,
+        container_default_engines: Dict[str, str],
+        engines: Optional[Dict[str, str]] = None,
+    ) -> "_TabularExperiment":
+        """Set all the model engines for the experiment.
+
+        container_default_model_engines : Dict[str, str]
+            Default engines obtained from the model containers
+
+        engines: Optional[Dict[str, str]] = None
+            The engine to use for the models, e.g. for auto_arima, users can
+            switch between "pmdarima" and "statsforecast" by specifying
+            engines={"auto_arima": "statsforecast"}
+
+            If model ID is not present in key, default value will be obtained
+            from the model container (i.e. container_default_model_engines).
+
+            If a model container does not define the engines (means that the
+            container does not support multiple engines), but the model's ID is
+            present in the "engines" argument, it is simply ignored.
+
+        Returns
+        -------
+        _TabularExperiment
+            The experiment object to allow chaining of methods
+        """
+        self.exp_model_engines = {}
+
+        # If user provides their own value, override the container defaults
+        engines = engines or {}
+        for key in container_default_engines:
+            # If provided by user, then use that, else get from the defaults
+            engine = engines.get(key, container_default_engines.get(key))
+            self._set_engine(estimator=key, engine=engine, severity="error")
+
+        return self
+
+    def _set_all_metrics(self) -> "_TabularExperiment":
+        """Set all available metrics
+
+        Returns
+        -------
+        _TabularExperiment
+            The experiment object to allow chaining of methods
+        """
+        self._all_metrics = self._get_metrics()
+        return self

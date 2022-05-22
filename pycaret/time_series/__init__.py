@@ -6,7 +6,9 @@ from pycaret.time_series.forecasting.functional import (
     create_model,
     deploy_model,
     finalize_model,
+    get_allowed_engines,
     get_config,
+    get_engine,
     get_logs,
     get_metrics,
     load_config,
@@ -50,4 +52,6 @@ __all__ = [
     "load_config",
     "set_current_experiment",
     "check_stats",
+    "get_allowed_engines",
+    "get_engine",
 ]
