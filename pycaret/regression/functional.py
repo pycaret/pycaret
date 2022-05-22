@@ -2726,7 +2726,7 @@ def convert_model(estimator, language: str = "python") -> str:
     >>> from pycaret.regression import *
     >>> exp_name = setup(data = boston,  target = 'medv')
     >>> lr = create_model('lr')
-    >>> lr_java = export_model(lr, 'java')
+    >>> lr_java = convert_model(lr, 'java')
 
 
     estimator: scikit-learn compatible object
