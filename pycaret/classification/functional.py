@@ -2959,7 +2959,7 @@ def convert_model(estimator, language: str = "python") -> str:
     >>> from pycaret.classification import *
     >>> exp_name = setup(data = juice,  target = 'Purchase')
     >>> lr = create_model('lr')
-    >>> lr_java = export_model(lr, 'java')
+    >>> lr_java = convert_model(lr, 'java')
 
 
     estimator: scikit-learn compatible object
