@@ -1592,6 +1592,7 @@ def plot_model(
 
     plot_kwargs: dict, default = {} (empty dict)
         Dictionary of arguments passed to the visualizer class.
+            - pipeline: fontsize -> int
 
 
     groups: str or array-like, with shape (n_samples,), default = None

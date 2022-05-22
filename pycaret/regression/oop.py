@@ -1313,6 +1313,11 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             Dictionary of arguments passed to the fit method of the model.
 
 
+    plot_kwargs: dict, default = {} (empty dict)
+        Dictionary of arguments passed to the visualizer class.
+            - pipeline: fontsize -> int
+
+
         groups: str or array-like, with shape (n_samples,), default = None
             Optional group labels when GroupKFold is used for the cross validation.
             It takes an array with shape (n_samples, ) where n_samples is the number
