@@ -1258,89 +1258,89 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
     ) -> str:
 
         """
-        This function analyzes the performance of a trained model on holdout set.
-        It may require re-training the model in certain cases.
+            This function analyzes the performance of a trained model on holdout set.
+            It may require re-training the model in certain cases.
 
 
-        Example
-        --------
-        >>> from pycaret.datasets import get_data
-        >>> boston = get_data('boston')
-        >>> from pycaret.regression import *
-        >>> exp_name = setup(data = boston,  target = 'medv')
-        >>> lr = create_model('lr')
-        >>> plot_model(lr, plot = 'residual')
+            Example
+            --------
+            >>> from pycaret.datasets import get_data
+            >>> boston = get_data('boston')
+            >>> from pycaret.regression import *
+            >>> exp_name = setup(data = boston,  target = 'medv')
+            >>> lr = create_model('lr')
+            >>> plot_model(lr, plot = 'residual')
 
 
-        estimator: scikit-learn compatible object
-            Trained model object
+            estimator: scikit-learn compatible object
+                Trained model object
 
 
-        plot: str, default = 'residual'
-            List of available plots (ID - Name):
+            plot: str, default = 'residual'
+                List of available plots (ID - Name):
 
-            * 'pipeline' - Schematic drawing of the preprocessing pipeline
-            * 'residuals_interactive' - Interactive Residual plots
-            * 'residuals' - Residuals Plot
-            * 'error' - Prediction Error Plot
-            * 'cooks' - Cooks Distance Plot
-            * 'rfe' - Recursive Feat. Selection
-            * 'learning' - Learning Curve
-            * 'vc' - Validation Curve
-            * 'manifold' - Manifold Learning
-            * 'feature' - Feature Importance
-            * 'feature_all' - Feature Importance (All)
-            * 'parameter' - Model Hyperparameter
-            * 'tree' - Decision Tree
-
-
-        scale: float, default = 1
-            The resolution scale of the figure.
+                * 'pipeline' - Schematic drawing of the preprocessing pipeline
+                * 'residuals_interactive' - Interactive Residual plots
+                * 'residuals' - Residuals Plot
+                * 'error' - Prediction Error Plot
+                * 'cooks' - Cooks Distance Plot
+                * 'rfe' - Recursive Feat. Selection
+                * 'learning' - Learning Curve
+                * 'vc' - Validation Curve
+                * 'manifold' - Manifold Learning
+                * 'feature' - Feature Importance
+                * 'feature_all' - Feature Importance (All)
+                * 'parameter' - Model Hyperparameter
+                * 'tree' - Decision Tree
 
 
-        save: bool, default = False
-            When set to True, plot is saved in the current working directory.
+            scale: float, default = 1
+                The resolution scale of the figure.
 
 
-        fold: int or scikit-learn compatible CV generator, default = None
-            Controls cross-validation. If None, the CV generator in the ``fold_strategy``
-            parameter of the ``setup`` function is used. When an integer is passed,
-            it is interpreted as the 'n_splits' parameter of the CV generator in the
-            ``setup`` function.
+            save: bool, default = False
+                When set to True, plot is saved in the current working directory.
 
 
-        fit_kwargs: dict, default = {} (empty dict)
-            Dictionary of arguments passed to the fit method of the model.
+            fold: int or scikit-learn compatible CV generator, default = None
+                Controls cross-validation. If None, the CV generator in the ``fold_strategy``
+                parameter of the ``setup`` function is used. When an integer is passed,
+                it is interpreted as the 'n_splits' parameter of the CV generator in the
+                ``setup`` function.
 
 
-    plot_kwargs: dict, default = {} (empty dict)
-        Dictionary of arguments passed to the visualizer class.
-            - pipeline: fontsize -> int
+            fit_kwargs: dict, default = {} (empty dict)
+                Dictionary of arguments passed to the fit method of the model.
 
 
-        groups: str or array-like, with shape (n_samples,), default = None
-            Optional group labels when GroupKFold is used for the cross validation.
-            It takes an array with shape (n_samples, ) where n_samples is the number
-            of rows in training dataset. When string is passed, it is interpreted as
-            the column name in the dataset containing group labels.
+        plot_kwargs: dict, default = {} (empty dict)
+            Dictionary of arguments passed to the visualizer class.
+                - pipeline: fontsize -> int
 
 
-        use_train_data: bool, default = False
-            When set to true, train data will be used for plots, instead
-            of test data.
+            groups: str or array-like, with shape (n_samples,), default = None
+                Optional group labels when GroupKFold is used for the cross validation.
+                It takes an array with shape (n_samples, ) where n_samples is the number
+                of rows in training dataset. When string is passed, it is interpreted as
+                the column name in the dataset containing group labels.
 
 
-        verbose: bool, default = True
-            When set to False, progress bar is not displayed.
+            use_train_data: bool, default = False
+                When set to true, train data will be used for plots, instead
+                of test data.
 
 
-        display_format: str, default = None
-            To display plots in Streamlit (https://www.streamlit.io/), set this to 'streamlit'.
-            Currently, not all plots are supported.
+            verbose: bool, default = True
+                When set to False, progress bar is not displayed.
 
 
-        Returns:
-            None
+            display_format: str, default = None
+                To display plots in Streamlit (https://www.streamlit.io/), set this to 'streamlit'.
+                Currently, not all plots are supported.
+
+
+            Returns:
+                None
 
         """
 
