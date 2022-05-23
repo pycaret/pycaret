@@ -728,7 +728,11 @@ def compare_models(
         Score grid is not printed when verbose is set to False.
 
 
+<<<<<<< HEAD
     display: pycaret.internal.display.Display, default = None
+=======
+    display: pycaret.internal.Display.Display, default = None
+>>>>>>> 380cb29d (make classification work)
         Custom display object
 
     parallel: pycaret.internal.parallel.parallel_backend.ParallelBackend, default = None
