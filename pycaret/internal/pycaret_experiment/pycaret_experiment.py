@@ -40,6 +40,19 @@ class _PyCaretExperiment:
         self.display_container = None
         self._fxs = defaultdict(list)
         self._setup_ran = False
+        self._setup_params = None
+
+    def _pack_for_remote(self) -> dict:
+        return {"_setup_params": self._setup_params}
+
+    def _unpack_at_remote(self, data: dict) -> None:
+        for k, v in data.items():
+            setattr(self, k, v)
+
+    def _register_setup_params(self, params: dict) -> None:
+        self._setup_params = {
+            k: v for k, v in params.items() if k != "self" and v is not None
+        }
 
     @property
     def _gpu_n_jobs_param(self) -> int:

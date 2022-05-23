@@ -23,6 +23,7 @@ from pycaret.internal.meta_estimators import (
     CustomProbabilityThresholdClassifier,
     get_estimator_from_meta_estimator,
 )
+from pycaret.internal.parallel.parallel_backend import ParallelBackend
 from pycaret.internal.pipeline import Pipeline as InternalPipeline
 from pycaret.internal.preprocess.preprocessor import Preprocessor
 from pycaret.internal.pycaret_experiment.supervised_experiment import (
@@ -176,6 +177,9 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         profile: bool = False,
         profile_kwargs: Dict[str, Any] = None,
     ):
+        self._register_setup_params(dict(locals()))
+
+        # No extra code above this line
         # Setup initialization ===================================== >>
 
         runtime_start = time.time()
@@ -489,6 +493,8 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         experiment_custom_tags: Optional[Dict[str, Any]] = None,
         probability_threshold: Optional[float] = None,
         verbose: bool = True,
+        display: Optional[Display] = None,
+        parallel: Optional[ParallelBackend] = None,
     ) -> Union[Any, List[Any]]:
 
         """
@@ -580,6 +586,14 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         verbose: bool, default = True
             Score grid is not printed when verbose is set to False.
 
+        display: pycaret.internal.Display.Display, default = None
+            Custom display object
+
+        parallel: pycaret.internal.parallel.parallel_backend.ParallelBackend, default = None
+            A ParallelBackend instance. For example if you have a SparkSession ``session``,
+            you can use ``FugueBackend(session)`` to make this function running using
+            Spark. For more details, see
+            :class:`~pycaret.parallel.fugue_backend.FugueBackend`
 
         Returns:
             Trained model or list of trained models, depending on the ``n_select`` param.
@@ -610,6 +624,8 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             experiment_custom_tags=experiment_custom_tags,
             verbose=verbose,
             probability_threshold=probability_threshold,
+            display=display,
+            parallel=parallel,
         )
 
     def create_model(

@@ -7,6 +7,8 @@ import pandas as pd
 from joblib.memory import Memory
 
 from pycaret.classification.oop import ClassificationExperiment
+from pycaret.internal.Display import Display
+from pycaret.internal.parallel.parallel_backend import ParallelBackend
 from pycaret.internal.utils import (
     DATAFRAME_LIKE,
     TARGET_LIKE,
@@ -623,7 +625,8 @@ def compare_models(
     experiment_custom_tags: Optional[Dict[str, Any]] = None,
     probability_threshold: Optional[float] = None,
     verbose: bool = True,
-    # parallel: Optional[ParallelBackend] = None,
+    display: Optional[Display] = None,
+    parallel: Optional[ParallelBackend] = None,
 ) -> Union[Any, List[Any]]:
 
     """
@@ -724,6 +727,11 @@ def compare_models(
     display: pycaret.internal.Display.Display, default = None
         Custom display object
 
+    parallel: pycaret.internal.parallel.parallel_backend.ParallelBackend, default = None
+        A ParallelBackend instance. For example if you have a SparkSession ``session``,
+        you can use ``FugueBackend(session)`` to make this function running using
+        Spark. For more details, see
+        :class:`~pycaret.parallel.fugue_backend.FugueBackend`
 
     Returns:
         Trained model or list of trained models, depending on the ``n_select`` param.
@@ -738,18 +746,6 @@ def compare_models(
 
     - No models are logged in ``MLFlow`` when ``cross_validation`` parameter is False.
     """
-    # params = dict(locals())
-    parallel = None
-    if parallel is not None:
-        global _pycaret_setup_call
-        parallel.attach(_pycaret_setup_call["func"], _pycaret_setup_call["params"])
-        if params.get("include", None) is None:
-            _models = models()
-            if turbo:
-                _models = _models[_models.Turbo]
-            params["include"] = _models.index.tolist()
-        del params["parallel"]
-        return parallel.compare_models(compare_models, params)
 
     return _CURRENT_EXPERIMENT.compare_models(
         include=include,
@@ -767,6 +763,8 @@ def compare_models(
         experiment_custom_tags=experiment_custom_tags,
         probability_threshold=probability_threshold,
         verbose=verbose,
+        display=display,
+        parallel=parallel,
     )
 
 
