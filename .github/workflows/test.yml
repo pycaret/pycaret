@@ -2,9 +2,15 @@ name: pytest on push
 
 on:
   push:
+    branches:
+      - master
   pull_request:
   schedule:
     - cron: "0 5 * * *"
+
+concurrency: 
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   # JOBS MUST START WITH test !!!!
