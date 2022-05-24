@@ -64,12 +64,6 @@ def test_anomaly(data):
     seed = pycaret.anomaly.get_config("seed")
     assert seed == 124
 
-    # save model
-    pycaret.anomaly.save_model(knn, "knn_model_23122019")
-
-    # load model
-    pycaret.anomaly.load_model("knn_model_23122019")
-
     # returns table of models
     all_models = pycaret.anomaly.models()
     assert isinstance(all_models, pd.DataFrame)
@@ -80,3 +74,16 @@ def test_anomaly(data):
     for experiment_run in client.list_run_infos(experiment.experiment_id):
         run = client.get_run(experiment_run.run_id)
         assert run.data.tags.get("tag") == "1"
+
+    # save model
+    pycaret.anomaly.save_model(knn, "knn_model_23122019")
+
+    # reset
+    pycaret.anomaly.set_current_experiment(pycaret.anomaly.AnomalyExperiment())
+
+    # load model
+    knn = pycaret.anomaly.load_model("knn_model_23122019")
+
+    # predict model
+    knn_predictions = pycaret.anomaly.predict_model(model=knn, data=data)
+    assert isinstance(knn_predictions, pd.DataFrame)

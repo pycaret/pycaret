@@ -95,8 +95,10 @@ class Pipeline(imblearn.pipeline.Pipeline):
         self._validate_steps()
 
         # Save the incoming feature names (if pandas objects)
-        if hasattr(X, "columns") and hasattr(y, "name"):
-            self._feature_names_in = list(X.columns) + [y.name]
+        if hasattr(X, "columns"):
+            self._feature_names_in = list(X.columns) + (
+                [y.name] if hasattr(y, "name") else []
+            )
 
         # Set up the memory
         memory = check_memory(self.memory).cache(_fit_transform_one)
