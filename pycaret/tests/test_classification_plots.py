@@ -29,26 +29,8 @@ def test_plot():
 
     model = pycaret.classification.create_model("lr")
 
-    available_plots = [
-        "parameter",
-        "auc",
-        "confusion_matrix",
-        "threshold",
-        "pr",
-        "error",
-        "class_report",
-        "rfe",
-        "learning",
-        "manifold",
-        "calibration",
-        "vc",
-        "dimension",
-        "feature",
-        "boundary",
-        "lift",
-        "gain",
-        "ks",
-    ]
+    exp = pycaret.classification.ClassificationExperiment()
+    available_plots = exp._available_plots
 
     for plot in available_plots:
         pycaret.classification.plot_model(model, plot=plot, use_train_data=False)
