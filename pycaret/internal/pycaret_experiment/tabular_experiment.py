@@ -12,6 +12,7 @@ import numpy as np  # type: ignore
 import pandas as pd
 import plotly.express as px  # type: ignore
 import scikitplot as skplt  # type: ignore
+from IPython.display import display as ipython_display
 from joblib.memory import Memory
 from packaging import version
 from pandas.io.formats.style import Styler
@@ -23,7 +24,6 @@ import pycaret.internal.patches.yellowbrick
 import pycaret.internal.persistence
 import pycaret.internal.preprocess
 import pycaret.loggers
-from IPython.display import display as ipython_display
 from pycaret.internal.display import CommonDisplay
 from pycaret.internal.logging import create_logger, get_logger, redirect_output
 from pycaret.internal.meta_estimators import get_estimator_from_meta_estimator
