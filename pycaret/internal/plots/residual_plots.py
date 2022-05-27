@@ -638,11 +638,7 @@ class InteractiveResidualsPlot:
         """
         Show the plots within the provided Display instance
         """
-        if self.display.environment == "google.colab":
-            for figure in self.figures:
-                figure.show()
-        else:
-            self.display.display(self.plot)
+        self.display.display(self.plot)
 
     def get_html(self):
         """
