@@ -3734,7 +3734,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
     def _predict_model_resolve_display(
         self, verbose: bool, y_pred: pd.DataFrame
-    ) -> Display:
+    ) -> CommonDisplay:
         """Returns the display object after appropriately deciding whether metrics
         should be displayed or not.
 

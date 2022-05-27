@@ -12,7 +12,7 @@ def _append_display_container(df: pd.DataFrame) -> None:
     display_container.append(df)
 
 
-def _create_display(progress: int, verbose: bool, monitor_rows: Any) -> Display:
+def _create_display(progress: int, verbose: bool, monitor_rows: Any) -> CommonDisplay:
     progress_args = {"max": progress}
     return CommonDisplay(
         verbose=verbose,
