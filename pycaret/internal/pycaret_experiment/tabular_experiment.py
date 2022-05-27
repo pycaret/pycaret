@@ -1290,8 +1290,8 @@ class _TabularExperiment(_PyCaretExperiment):
                     visualizer = CooksDistance()
                     return show_yellowbrick_plot(
                         visualizer=visualizer,
-                        X_train=self.X,
-                        y_train=self.y,
+                        X_train=self.X_train_transformed,
+                        y_train=self.y_train_transformed,
                         X_test=self.X_test_transformed,
                         y_test=self.y_test_transformed,
                         name=plot_name,
