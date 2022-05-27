@@ -17,6 +17,7 @@ from joblib.memory import Memory
 from packaging import version
 from pandas.io.formats.style import Styler
 from sklearn.model_selection import BaseCrossValidator  # type: ignore
+from sklearn.pipeline import Pipeline
 
 import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
@@ -1503,18 +1504,21 @@ class _TabularExperiment(_PyCaretExperiment):
 
                 def tree():
 
-                    from sklearn.base import is_classifier
-                    from sklearn.model_selection import check_cv
                     from sklearn.tree import plot_tree
 
                     is_stacked_model = False
                     is_ensemble_of_forests = False
 
-                    if "final_estimator" in estimator.get_params():
-                        tree_estimator = estimator.final_estimator
+                    if isinstance(estimator, Pipeline):
+                        fitted_estimator = estimator._final_estimator
+                    else:
+                        fitted_estimator = estimator
+
+                    if "final_estimator" in fitted_estimator.get_params():
+                        tree_estimator = fitted_estimator.final_estimator
                         is_stacked_model = True
                     else:
-                        tree_estimator = estimator
+                        tree_estimator = fitted_estimator
 
                     if (
                         "base_estimator" in tree_estimator.get_params()
@@ -1560,7 +1564,7 @@ class _TabularExperiment(_PyCaretExperiment):
                         }
                     else:
                         class_names = None
-                    fitted_estimator = tree_estimator.steps[-1][1]
+                    fitted_estimator = tree_estimator
                     if is_stacked_model:
                         stacked_feature_names = []
                         if self._ml_usecase == MLUsecase.CLASSIFICATION:

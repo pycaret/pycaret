@@ -27,7 +27,7 @@ def test_plot():
         n_jobs=1,
     )
 
-    model = pycaret.classification.create_model("lr")
+    model = pycaret.classification.create_model("rf", max_depth=2, n_estimators=5)
 
     exp = pycaret.classification.ClassificationExperiment()
     available_plots = exp._available_plots
