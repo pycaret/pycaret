@@ -111,7 +111,7 @@ def show_yellowbrick_plot(
     display.move_progress()
     display.clear_output()
 
-    plot_filename = f"{plot_filename}.png"
+    plot_filename = f"{name}.png"
     if save:
         if not isinstance(save, bool):
             plot_filename = os.path.join(save, plot_filename)
