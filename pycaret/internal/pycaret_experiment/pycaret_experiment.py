@@ -1,4 +1,3 @@
-import warnings
 from collections import defaultdict
 from typing import Any, Dict, Optional
 
@@ -13,7 +12,6 @@ from pycaret.internal.pycaret_experiment.utils import MLUsecase
 from pycaret.utils._dependencies import _check_soft_dependencies
 from pycaret.utils.time_series.forecasting.pipeline import _pipeline_transform
 
-warnings.filterwarnings("ignore")
 LOGGER = get_logger()
 
 

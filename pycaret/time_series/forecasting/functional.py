@@ -3,7 +3,6 @@
 
 import logging
 import os
-import warnings
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
@@ -14,8 +13,6 @@ from pycaret.time_series.forecasting.oop import TSForecastingExperiment
 
 if TYPE_CHECKING:
     from sktime.forecasting.base import ForecastingHorizon
-
-warnings.filterwarnings("ignore")
 
 _EXPERIMENT_CLASS = TSForecastingExperiment
 _CURRENT_EXPERIMENT: Optional[TSForecastingExperiment] = None

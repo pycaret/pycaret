@@ -13,7 +13,6 @@ from unittest.mock import patch
 import numpy as np  # type: ignore
 import pandas as pd  # type ignore
 import pandas.io.formats.style
-from IPython.utils import io
 from sklearn.base import clone  # type: ignore
 from sklearn.compose import TransformedTargetRegressor  # type: ignore
 from sklearn.pipeline import Pipeline
@@ -34,7 +33,7 @@ from pycaret.internal.distributions import (
     get_skopt_distributions,
     get_tune_distributions,
 )
-from pycaret.internal.logging import get_logger
+from pycaret.internal.logging import get_logger, redirect_output
 from pycaret.internal.meta_estimators import (
     CustomProbabilityThresholdClassifier,
     PowerTransformedTargetRegressor,
@@ -55,13 +54,11 @@ from pycaret.internal.utils import (
     get_label_encoder,
     id_or_display_name,
     nullcontext,
-    to_df,
     true_warm_start,
 )
 from pycaret.internal.validation import is_fitted, is_sklearn_cv_generator
 from pycaret.utils._dependencies import _check_soft_dependencies
 
-warnings.filterwarnings("ignore")
 LOGGER = get_logger()
 
 
@@ -102,37 +99,36 @@ class _SupervisedExperiment(_TabularExperiment):
         """
         from pycaret.internal.utils import calculate_metrics
 
-        try:
-            return calculate_metrics(
-                metrics=self._all_metrics,
-                y_test=y_test,
-                pred=pred,
-                pred_proba=pred_prob,
-                weights=weights,
-                **additional_kwargs,
-            )
-        except Exception:
-            ml_usecase = get_ml_task(y_test)
-            if ml_usecase == MLUsecase.CLASSIFICATION:
-                metrics = (
-                    pycaret.containers.metrics.classification.get_all_metric_containers(
+        with redirect_output(self.logger):
+            try:
+                return calculate_metrics(
+                    metrics=self._all_metrics,
+                    y_test=y_test,
+                    pred=pred,
+                    pred_proba=pred_prob,
+                    weights=weights,
+                    **additional_kwargs,
+                )
+            except Exception:
+                ml_usecase = get_ml_task(y_test)
+                if ml_usecase == MLUsecase.CLASSIFICATION:
+                    metrics = pycaret.containers.metrics.classification.get_all_metric_containers(
                         self.variables, True
                     )
-                )
-            elif ml_usecase == MLUsecase.REGRESSION:
-                metrics = (
-                    pycaret.containers.metrics.regression.get_all_metric_containers(
-                        self.variables, True
+                elif ml_usecase == MLUsecase.REGRESSION:
+                    metrics = (
+                        pycaret.containers.metrics.regression.get_all_metric_containers(
+                            self.variables, True
+                        )
                     )
+                return calculate_metrics(
+                    metrics=metrics,  # type: ignore
+                    y_test=y_test,
+                    pred=pred,
+                    pred_proba=pred_prob,
+                    weights=weights,
+                    **additional_kwargs,
                 )
-            return calculate_metrics(
-                metrics=metrics,  # type: ignore
-                y_test=y_test,
-                pred=pred,
-                pred_proba=pred_prob,
-                weights=weights,
-                **additional_kwargs,
-            )
 
     def _is_unsupervised(self) -> bool:
         return False
@@ -948,7 +944,7 @@ class _SupervisedExperiment(_TabularExperiment):
 
             self.logger.info("Fitting Model")
             model_fit_start = time.time()
-            with io.capture_output():  # todo redirect to log
+            with redirect_output(self.logger):
                 pipeline_with_model.fit(data_X, data_y, **fit_kwargs)
             model_fit_end = time.time()
 
@@ -1036,7 +1032,7 @@ class _SupervisedExperiment(_TabularExperiment):
             self.logger.info(f"Cross validating with {cv}, n_jobs={n_jobs}")
 
             model_fit_start = time.time()
-            with io.capture_output():  # todo redirect to log
+            with redirect_output(self.logger):
                 scores = cross_validate(
                     pipeline_with_model,
                     data_X,
@@ -1123,7 +1119,7 @@ class _SupervisedExperiment(_TabularExperiment):
                 display.update_monitor(1, "Finalizing Model")
                 model_fit_start = time.time()
                 self.logger.info("Finalizing model")
-                with io.capture_output():  # todo redirect to log
+                with redirect_output(self.logger):
                     pipeline_with_model.fit(data_X, data_y, **fit_kwargs)
                     model_fit_end = time.time()
 
@@ -2165,10 +2161,6 @@ class _SupervisedExperiment(_TabularExperiment):
                 monitor_rows=monitor_rows,
             )
 
-        # ignore warnings
-
-        warnings.filterwarnings("ignore")
-
         import logging
 
         np.random.seed(self.seed)
@@ -2612,7 +2604,6 @@ class _SupervisedExperiment(_TabularExperiment):
                         **search_kwargs,
                     )
 
-            # with io.capture_output():
             if search_library == "scikit-learn":
                 # monkey patching to fix overflows on Windows
                 with patch(
@@ -2876,7 +2867,7 @@ class _SupervisedExperiment(_TabularExperiment):
                     n_estimators=n_estimators,
                     **boosting_model_definition.args,
                 )
-                with io.capture_output():  # todo redirect to log
+                with redirect_output(self.logger):
                     check_model.fit(self.X_train_transformed, self.y_train_transformed)
             except:
                 raise TypeError(

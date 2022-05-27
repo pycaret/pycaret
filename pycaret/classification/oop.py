@@ -39,7 +39,6 @@ from pycaret.internal.utils import (
 from pycaret.internal.validation import is_sklearn_cv_generator
 from pycaret.loggers.base_logger import BaseLogger
 
-warnings.filterwarnings("ignore")
 LOGGER = get_logger()
 
 

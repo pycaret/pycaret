@@ -1,16 +1,13 @@
 import datetime
 import gc
 import logging
-import os
 import time
 import traceback
-import warnings
 from typing import Any, Dict, List, Optional, Union
 
 import numpy as np  # type: ignore
 import pandas as pd
 import plotly.graph_objects as go  # type: ignore
-from IPython.utils import io
 from joblib.memory import Memory
 from sklearn.base import clone  # type: ignore
 from sklearn.pipeline import Pipeline
@@ -21,7 +18,7 @@ import pycaret.internal.patches.yellowbrick
 import pycaret.internal.persistence
 import pycaret.internal.preprocess
 from pycaret.internal.display import CommonDisplay
-from pycaret.internal.logging import get_logger
+from pycaret.internal.logging import get_logger, redirect_output
 from pycaret.internal.pipeline import Pipeline as InternalPipeline
 from pycaret.internal.pipeline import estimator_pipeline, get_pipeline_fit_kwargs
 from pycaret.internal.preprocess.preprocessor import Preprocessor
@@ -31,7 +28,6 @@ from pycaret.internal.utils import DATAFRAME_LIKE, infer_ml_usecase, to_df
 from pycaret.internal.validation import is_sklearn_pipeline
 from pycaret.loggers.base_logger import BaseLogger
 
-warnings.filterwarnings("ignore")
 LOGGER = get_logger()
 
 
@@ -397,8 +393,6 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
             raise ValueError(
                 f"{supervised_target} is not present as a column in the dataset."
             )
-
-        warnings.filterwarnings("ignore")
 
         np.random.seed(self.seed)
 
@@ -1084,7 +1078,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
 
             self.logger.info("Fitting Model")
             model_fit_start = time.time()
-            with io.capture_output():  # todo redirect to log
+            with redirect_output(self.logger):
                 if is_cblof and "n_clusters" not in kwargs:
                     try:
                         pipeline_with_model.fit(data_X, **fit_kwargs)

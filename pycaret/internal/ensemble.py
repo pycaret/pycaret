@@ -41,7 +41,7 @@ class _EnsembleForecasterWithVoting(_HeterogenousEnsembleForecaster):
     _required_parameters = ["forecasters"]
     _not_required_weights = ["mean", "median"]
     _required_weights = ["voting", "mean"]
-    _available_methods = ["voting", "mean", "median"]
+    _available_methods = _ENSEMBLE_METHODS
 
     def __init__(self, forecasters, method="mean", weights=None, n_jobs=None):
         self.forecasters = forecasters

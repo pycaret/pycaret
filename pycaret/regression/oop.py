@@ -1,6 +1,5 @@
 import logging
 import time
-import warnings
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np  # type: ignore
@@ -26,7 +25,6 @@ from pycaret.internal.pycaret_experiment.utils import MLUsecase, highlight_setup
 from pycaret.internal.utils import DATAFRAME_LIKE, TARGET_LIKE
 from pycaret.loggers.base_logger import BaseLogger
 
-warnings.filterwarnings("ignore")
 LOGGER = get_logger()
 
 
