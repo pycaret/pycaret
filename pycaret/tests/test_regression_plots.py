@@ -27,20 +27,10 @@ def test_plot():
         n_jobs=1,
     )
 
-    model = pycaret.regression.create_model("rf")
+    model = pycaret.regression.create_model("rf", max_depth=2, n_estimators=5)
 
-    available_plots = [
-        "parameter",
-        "residuals",
-        "error",
-        "cooks",
-        "rfe",
-        "learning",
-        "manifold",
-        "vc",
-        "feature",
-        "feature_all",
-    ]
+    exp = pycaret.regression.RegressionExperiment()
+    available_plots = exp._available_plots
 
     for plot in available_plots:
         pycaret.regression.plot_model(model, plot=plot, use_train_data=False)

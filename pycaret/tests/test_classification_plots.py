@@ -27,28 +27,10 @@ def test_plot():
         n_jobs=1,
     )
 
-    model = pycaret.classification.create_model("lr")
+    model = pycaret.classification.create_model("rf", max_depth=2, n_estimators=5)
 
-    available_plots = [
-        "parameter",
-        "auc",
-        "confusion_matrix",
-        "threshold",
-        "pr",
-        "error",
-        "class_report",
-        "rfe",
-        "learning",
-        "manifold",
-        "calibration",
-        "vc",
-        "dimension",
-        "feature",
-        "boundary",
-        "lift",
-        "gain",
-        "ks",
-    ]
+    exp = pycaret.classification.ClassificationExperiment()
+    available_plots = exp._available_plots
 
     for plot in available_plots:
         pycaret.classification.plot_model(model, plot=plot, use_train_data=False)
