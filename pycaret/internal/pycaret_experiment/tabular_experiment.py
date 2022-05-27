@@ -22,8 +22,9 @@ import pycaret.internal.patches.yellowbrick
 import pycaret.internal.persistence
 import pycaret.internal.preprocess
 import pycaret.loggers
+from IPython.display import display as ipython_display
 from pycaret.internal.display import CommonDisplay
-from pycaret.internal.logging import create_logger, get_logger
+from pycaret.internal.logging import create_logger, get_logger, redirect_output
 from pycaret.internal.meta_estimators import get_estimator_from_meta_estimator
 from pycaret.internal.pipeline import Pipeline as InternalPipeline
 from pycaret.internal.pipeline import get_memory
@@ -2053,12 +2054,15 @@ class _TabularExperiment(_PyCaretExperiment):
                     except:
                         params = estimator.get_params(deep=False)
 
+                    display.move_progress()
                     param_df = pd.DataFrame.from_dict(
                         {str(k): str(v) for k, v in params.items()},
                         orient="index",
                         columns=["Parameters"],
                     )
-                    display.display(param_df)
+                    display.move_progress()
+                    # use ipython directly to show it in the widget
+                    ipython_display(param_df)
                     self.logger.info("Visual Rendered Successfully")
 
                 def ks():
@@ -2089,7 +2093,8 @@ class _TabularExperiment(_PyCaretExperiment):
                     return plot_filename
 
                 # execute the plot method
-                ret = locals()[plot]()
+                with redirect_output(self.logger):
+                    ret = locals()[plot]()
                 if ret:
                     plot_filename = ret
                 else:
@@ -2189,7 +2194,7 @@ class _TabularExperiment(_PyCaretExperiment):
             estimator=fixed(estimator),
             plot=a,
             save=fixed(False),
-            verbose=fixed(True),
+            verbose=fixed(False),
             scale=fixed(1),
             fold=fixed(fold),
             fit_kwargs=fixed(fit_kwargs),
