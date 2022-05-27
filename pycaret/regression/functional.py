@@ -625,119 +625,105 @@ def compare_models(
 ):
 
     """
-        This function trains and evaluates performance of all estimators available in the
-        model library using cross validation. The output of this function is a score grid
-        with average cross validated scores. Metrics evaluated during CV can be accessed
-        using the ``get_metrics`` function. Custom metrics can be added or removed using
-        ``add_metric`` and ``remove_metric`` function.
+    This function trains and evaluates performance of all estimators available in the
+    model library using cross validation. The output of this function is a score grid
+    with average cross validated scores. Metrics evaluated during CV can be accessed
+    using the ``get_metrics`` function. Custom metrics can be added or removed using
+    ``add_metric`` and ``remove_metric`` function.
 
 
-        Example
-        --------
-        >>> from pycaret.datasets import get_data
-        >>> boston = get_data('boston')
-        >>> from pycaret.regression import *
-        >>> exp_name = setup(data = boston,  target = 'medv')
-        >>> best_model = compare_models()
+    Example
+    --------
+    >>> from pycaret.datasets import get_data
+    >>> boston = get_data('boston')
+    >>> from pycaret.regression import *
+    >>> exp_name = setup(data = boston,  target = 'medv')
+    >>> best_model = compare_models()
 
 
-        include: list of str or scikit-learn compatible object, default = None
-            To train and evaluate select models, list containing model ID or scikit-learn
-            compatible object can be passed in include param. To see a list of all models
-            available in the model library use the ``models`` function.
+    include: list of str or scikit-learn compatible object, default = None
+        To train and evaluate select models, list containing model ID or scikit-learn
+        compatible object can be passed in include param. To see a list of all models
+        available in the model library use the ``models`` function.
 
 
-        exclude: list of str, default = None
-            To omit certain models from training and evaluation, pass a list containing
-            model id in the exclude parameter. To see a list of all models available
-            in the model library use the ``models`` function.
+    exclude: list of str, default = None
+        To omit certain models from training and evaluation, pass a list containing
+        model id in the exclude parameter. To see a list of all models available
+        in the model library use the ``models`` function.
 
 
-        fold: int or scikit-learn compatible CV generator, default = None
-            Controls cross-validation. If None, the CV generator in the ``fold_strategy``
-            parameter of the ``setup`` function is used. When an integer is passed,
-            it is interpreted as the 'n_splits' parameter of the CV generator in the
-            ``setup`` function.
+    fold: int or scikit-learn compatible CV generator, default = None
+        Controls cross-validation. If None, the CV generator in the ``fold_strategy``
+        parameter of the ``setup`` function is used. When an integer is passed,
+        it is interpreted as the 'n_splits' parameter of the CV generator in the
+        ``setup`` function.
 
 
-        round: int, default = 4
-            Number of decimal places the metrics in the score grid will be rounded to.
+    round: int, default = 4
+        Number of decimal places the metrics in the score grid will be rounded to.
 
 
-        cross_validation: bool, default = True
-            When set to False, metrics are evaluated on holdout set. ``fold`` param
-            is ignored when cross_validation is set to False.
+    cross_validation: bool, default = True
+        When set to False, metrics are evaluated on holdout set. ``fold`` param
+        is ignored when cross_validation is set to False.
 
 
-        sort: str, default = 'R2'
-            The sort order of the score grid. It also accepts custom metrics that are
-            added through the ``add_metric`` function.
+    sort: str, default = 'R2'
+        The sort order of the score grid. It also accepts custom metrics that are
+        added through the ``add_metric`` function.
 
 
-        n_select: int, default = 1
-            Number of top_n models to return. For example, to select top 3 models use
-            n_select = 3.
+    n_select: int, default = 1
+        Number of top_n models to return. For example, to select top 3 models use
+        n_select = 3.
 
 
-        budget_time: int or float, default = None
-            If not None, will terminate execution of the function after budget_time
-            minutes have passed and return results up to that point.
+    budget_time: int or float, default = None
+        If not None, will terminate execution of the function after budget_time
+        minutes have passed and return results up to that point.
 
 
-        turbo: bool, default = True
-            When set to True, it excludes estimators with longer training times. To
-            see which algorithms are excluded use the ``models`` function.
+    turbo: bool, default = True
+        When set to True, it excludes estimators with longer training times. To
+        see which algorithms are excluded use the ``models`` function.
 
 
-        errors: str, default = 'ignore'
-            When set to 'ignore', will skip the model with exceptions and continue.
-            If 'raise', will break the function when exceptions are raised.
+    errors: str, default = 'ignore'
+        When set to 'ignore', will skip the model with exceptions and continue.
+        If 'raise', will break the function when exceptions are raised.
 
 
-        fit_kwargs: dict, default = {} (empty dict)
-            Dictionary of arguments passed to the fit method of the model.
+    fit_kwargs: dict, default = {} (empty dict)
+        Dictionary of arguments passed to the fit method of the model.
 
 
-        display: pycaret.internal.Display.Display, default = None
-            Custom display object
-
-    <<<<<<< HEAD:pycaret/regression/functional.py
-
-    =======
-    >>>>>>> master:pycaret/regression.py
-        parallel: pycaret.parallel.parallel_backend.ParallelBackend, default = None
-            A ParallelBackend instance. For example if you have a SparkSession ``session``,
-            you can use ``FugueBackend(session)`` to make this function running using
-            Spark. For more details, see
-            :class:`~pycaret.parallel.fugue_backend.FugueBackend`
+    groups: str or array-like, with shape (n_samples,), default = None
+        Optional group labels when 'GroupKFold' is used for the cross validation.
+        It takes an array with shape (n_samples, ) where n_samples is the number
+        of rows in the training dataset. When string is passed, it is interpreted
+        as the column name in the dataset containing group labels.
 
 
-        groups: str or array-like, with shape (n_samples,), default = None
-            Optional group labels when 'GroupKFold' is used for the cross validation.
-            It takes an array with shape (n_samples, ) where n_samples is the number
-            of rows in the training dataset. When string is passed, it is interpreted
-            as the column name in the dataset containing group labels.
+    experiment_custom_tags: dict, default = None
+        Dictionary of tag_name: String -> value: (String, but will be string-ified
+        if not) passed to the mlflow.set_tags to add new custom tags for the experiment.
 
 
-        experiment_custom_tags: dict, default = None
-            Dictionary of tag_name: String -> value: (String, but will be string-ified
-            if not) passed to the mlflow.set_tags to add new custom tags for the experiment.
+    verbose: bool, default = True
+        Score grid is not printed when verbose is set to False.
 
 
-        verbose: bool, default = True
-            Score grid is not printed when verbose is set to False.
+    Returns:
+        Trained model or list of trained models, depending on the ``n_select`` param.
 
 
-        Returns:
-            Trained model or list of trained models, depending on the ``n_select`` param.
+    Warnings
+    --------
+    - Changing turbo parameter to False may result in very high training times with
+      datasets exceeding 10,000 rows.
 
-
-        Warnings
-        --------
-        - Changing turbo parameter to False may result in very high training times with
-          datasets exceeding 10,000 rows.
-
-        - No models are logged in ``MLFlow`` when ``cross_validation`` parameter is False.
+    - No models are logged in ``MLFlow`` when ``cross_validation`` parameter is False.
 
     """
     # params = dict(locals())

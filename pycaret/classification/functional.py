@@ -721,10 +721,6 @@ def compare_models(
         Score grid is not printed when verbose is set to False.
 
 
-    display: pycaret.internal.Display.Display, default = None
-        Custom display object
-
-
     Returns:
         Trained model or list of trained models, depending on the ``n_select`` param.
 
