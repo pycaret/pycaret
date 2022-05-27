@@ -72,7 +72,7 @@ def test_plot_model_data(data, plot):
         seasonal_period=sp,
     )
 
-    exp.plot_model(plot=plot, system=False)
+    exp._plot_model(plot=plot, system=False)
 
     ########################
     #### Functional API ####
@@ -122,7 +122,7 @@ def test_plot_model_estimator(model_name, data, plot):
     )
 
     model = exp.create_model(model_name)
-    exp.plot_model(estimator=model, plot=plot, system=False)
+    exp._plot_model(estimator=model, plot=plot, system=False)
 
     ########################
     #### Functional API ####
@@ -168,7 +168,7 @@ def test_plot_model_data_raises(load_pos_and_neg_data, plot):
 
     with pytest.raises(ValueError) as errmsg:
         # Some code that produces a value error
-        exp.plot_model(plot=plot, system=False)
+        exp._plot_model(plot=plot, system=False)
 
     # Capture Error message
     exceptionmsg = errmsg.value.args[0]
@@ -209,7 +209,7 @@ def test_plot_model_customization(data):
     #######################
 
     print("\n\n==== Testing Customization ON DATA ====")
-    exp.plot_model(
+    exp._plot_model(
         plot="pacf",
         data_kwargs={
             "nlags": 36,
@@ -217,12 +217,12 @@ def test_plot_model_customization(data):
         fig_kwargs={"fig_size": [800, 500], "fig_template": "simple_white"},
         system=False,
     )
-    exp.plot_model(
+    exp._plot_model(
         plot="decomp_classical", data_kwargs={"type": "multiplicative"}, system=False
     )
 
     print("\n\n====  Testing Customization ON ESTIMATOR ====")
-    exp.plot_model(
+    exp._plot_model(
         estimator=model, plot="forecast", data_kwargs={"fh": 24}, system=False
     )
 
@@ -250,7 +250,7 @@ def test_plot_model_return_data_original_data(data, plot):
         seasonal_period=sp,
     )
 
-    plot_data = exp.plot_model(plot=plot, return_data=True, system=False)
+    plot_data = exp._plot_model(plot=plot, return_data=True, system=False)
     # If plot is successful, it will return a dictionary
     # If plot is not possible (e.g. decomposition without index), then it will return None
     assert isinstance(plot_data, dict) or plot_data is None
@@ -282,7 +282,7 @@ def test_plot_model_return_data_estimator(data, model_name, plot):
 
     model = exp.create_model(model_name)
 
-    plot_data = exp.plot_model(
+    plot_data = exp._plot_model(
         estimator=model, plot=plot, return_data=True, system=False
     )
     # If plot is successful, it will return a dictionary
@@ -317,12 +317,12 @@ def test_plot_multiple_model_overlays(
 
     #### Check 1: Even if same model type is passed, the plot should make overlays ----
     models = [m1, m1]
-    fig_data = exp.plot_model(models, plot=plot, return_data=True, system=False)
+    fig_data = exp._plot_model(models, plot=plot, return_data=True, system=False)
     assert fig_data.get("overlay_data").shape[1] == len(models)
 
     #### Check 2: User specified labels are used in plots
     labels = ["Model 1", "Model 2"]
-    fig_data = exp.plot_model(
+    fig_data = exp._plot_model(
         models,
         plot=plot,
         data_kwargs={"labels": labels},
@@ -338,12 +338,12 @@ def test_plot_multiple_model_overlays(
 
         #### Check 3: If Model does not produce insample predictions, it should be excluded
         models = [m1, m2, m1]
-        fig_data = exp.plot_model(models, plot=plot, return_data=True, system=False)
+        fig_data = exp._plot_model(models, plot=plot, return_data=True, system=False)
         assert fig_data.get("overlay_data").shape[1] == len(models) - 1
 
         #### Check 4: If Model does not produce insample predictions, custom labels should exclude it.
         labels = ["Model 1", "Model 2", "Model 3"]
-        fig_data = exp.plot_model(
+        fig_data = exp._plot_model(
             models,
             plot=plot,
             data_kwargs={"labels": labels},
@@ -362,7 +362,7 @@ def test_plot_multiple_model_overlays(
     # (A) Less labels than models ----
     labels = ["Model 1"]
     with pytest.raises(ValueError) as errmsg:
-        fig_data = exp.plot_model(
+        fig_data = exp._plot_model(
             models, plot=plot, data_kwargs={"labels": labels}, system=False
         )
 
@@ -377,7 +377,7 @@ def test_plot_multiple_model_overlays(
     # (B) More labels than models ----
     labels = ["Model 1", "Model 2", "Model 3"]
     with pytest.raises(ValueError) as errmsg:
-        fig_data = exp.plot_model(
+        fig_data = exp._plot_model(
             models, plot=plot, data_kwargs={"labels": labels}, system=False
         )
 

@@ -18,12 +18,12 @@ def create_models(exp: TSForecastingExperiment, prophet: bool = True):
 
     model = exp.create_model("arima")
     exp.predict_model(model)
-    exp.plot_model(model, system=False)
+    exp._plot_model(model, system=False)
 
     if "prophet" in exp.models().index:
         model = exp.create_model("prophet")
         exp.predict_model(model)
-        exp.plot_model(model, system=False)
+        exp._plot_model(model, system=False)
 
 
 def test_time_series_indices():
