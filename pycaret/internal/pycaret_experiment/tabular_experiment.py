@@ -33,7 +33,7 @@ from pycaret.internal.plots.helper import MatplotlibDefaultDPI
 from pycaret.internal.plots.yellowbrick import show_yellowbrick_plot
 from pycaret.internal.pycaret_experiment.pycaret_experiment import _PyCaretExperiment
 from pycaret.internal.pycaret_experiment.utils import MLUsecase
-from pycaret.internal.utils import get_model_name
+from pycaret.internal.utils import get_label_encoder, get_model_name
 from pycaret.internal.validation import is_sklearn_cv_generator
 from pycaret.loggers.base_logger import BaseLogger
 from pycaret.loggers.mlflow_logger import MlflowLogger
@@ -1646,10 +1646,10 @@ class _TabularExperiment(_PyCaretExperiment):
                     feature_names = list(self.X_train_transformed.columns)
                     if self._ml_usecase == MLUsecase.CLASSIFICATION:
                         class_names = {
-                            v: k
-                            for k, v in self.pipeline.named_steps[
-                                "dtypes"
-                            ].replacement.items()
+                            i: class_name
+                            for i, class_name in enumerate(
+                                get_label_encoder(self.pipeline).classes_
+                            )
                         }
                     else:
                         class_names = None
