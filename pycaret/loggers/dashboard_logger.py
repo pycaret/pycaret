@@ -2,6 +2,7 @@ import gc
 import os
 import tempfile
 import traceback
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 import numpy as np
@@ -152,7 +153,7 @@ class DashboardLogger:
                             model, plot=plot, verbose=False, save=tmpdir, system=False
                         )
                         [
-                            logger.log_plot(plot_name, plot_name.split(".")[0])
+                            logger.log_plot(plot_name, Path(plot_name).stem)
                             for logger in self.loggers
                         ]
                     except Exception:

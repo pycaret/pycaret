@@ -1887,10 +1887,10 @@ class _TabularExperiment(_PyCaretExperiment):
                     )
 
                 def feature():
-                    _feature(10)
+                    return _feature(10)
 
                 def feature_all():
-                    _feature(len(self.X_train_transformed.columns))
+                    return _feature(len(self.X_train_transformed.columns))
 
                 def _feature(n: int):
                     variables = None
