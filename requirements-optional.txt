@@ -16,6 +16,7 @@ statsforecast>=0.5.5
 
 # Tuners
 tune-sklearn>=0.2.1
+protobuf<4.0.0  # broken in Ray <1.13
 ray[tune]>=1.0.0
 hyperopt>=0.2.7
 optuna>=2.2.0
