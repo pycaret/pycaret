@@ -273,19 +273,19 @@ def test_pipeline_works_no_exo(load_pos_and_neg_data_missing, model_name):
     model = exp.create_model(model_name)
     preds = exp.predict_model(model)
     assert len(preds) == FH
-    plot_data = exp.plot_model(model, return_data=True, system=False)
+    plot_data = exp._plot_model(model, return_data=True, system=False)
     assert isinstance(plot_data, dict)
 
     tuned = exp.tune_model(model)
     preds = exp.predict_model(tuned)
     assert len(preds) == FH
-    plot_data = exp.plot_model(tuned, return_data=True, system=False)
+    plot_data = exp._plot_model(tuned, return_data=True, system=False)
     assert isinstance(plot_data, dict)
 
     final = exp.finalize_model(tuned)
     preds = exp.predict_model(final)
     assert len(preds) == FH
-    plot_data = exp.plot_model(final, return_data=True, system=False)
+    plot_data = exp._plot_model(final, return_data=True, system=False)
     assert isinstance(plot_data, dict)
 
 
@@ -315,13 +315,13 @@ def test_pipeline_works_exo(load_uni_exo_data_target_missing, model_name):
     model = exp.create_model(model_name)
     preds = exp.predict_model(model)
     assert len(preds) == FH
-    plot_data = exp.plot_model(model, return_data=True, system=False)
+    plot_data = exp._plot_model(model, return_data=True, system=False)
     assert isinstance(plot_data, dict)
 
     tuned = exp.tune_model(model)
     preds = exp.predict_model(tuned)
     assert len(preds) == FH
-    plot_data = exp.plot_model(tuned, return_data=True, system=False)
+    plot_data = exp._plot_model(tuned, return_data=True, system=False)
     assert isinstance(plot_data, dict)
 
     _ = exp.finalize_model(tuned)
@@ -329,7 +329,7 @@ def test_pipeline_works_exo(load_uni_exo_data_target_missing, model_name):
     # # values. Hence disabling this test.
     # preds = exp.predict_model(final)
     # assert len(preds) == FH
-    # plot_data = exp.plot_model(final, return_data=True, system=False)
+    # plot_data = exp._plot_model(final, return_data=True, system=False)
     # assert isinstance(plot_data, dict)
 
 
