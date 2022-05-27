@@ -176,6 +176,444 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         profile: bool = False,
         profile_kwargs: Dict[str, Any] = None,
     ):
+
+        """
+        This function initializes the training environment and creates the transformation
+        pipeline. Setup function must be called before executing any other function. It takes
+        two mandatory parameters: ``data`` and ``target``. All the other parameters are
+        optional.
+
+        Example
+        -------
+        >>> from pycaret.datasets import get_data
+        >>> juice = get_data('juice')
+        >>> from pycaret.classification import *
+        >>> exp_name = setup(data = juice,  target = 'Purchase')
+
+
+        data: dataframe-like
+            Data set with shape (n_samples, n_features), where n_samples is the
+            number of samples and n_features is the number of features. If data
+            is not a pandas dataframe, it's converted to one using default column
+            names.
+
+
+        target: int, str or sequence, default = -1
+            If int or str, respectivcely index or name of the target column in data.
+            The default value selects the last column in the dataset. If sequence,
+            it should have shape (n_samples,). The target can be either binary or
+            multiclass.
+
+
+        train_size: float, default = 0.7
+            Proportion of the dataset to be used for training and validation. Should be
+            between 0.0 and 1.0.
+
+
+        test_data: dataframe-like or None, default = None
+            If not None, test_data is used as a hold-out set and `train_size` parameter
+            is ignored. The columns of data and test_data must match. If it's a pandas
+            dataframe, the indices must match as well.
+
+
+        ordinal_features: dict, default = None
+            Categorical features to be encoded ordinally. For example, a categorical
+            feature with 'low', 'medium', 'high' values where low < medium < high can
+            be passed as ordinal_features = {'column_name' : ['low', 'medium', 'high']}.
+
+
+        numeric_features: list of str, default = None
+            If the inferred data types are not correct, the numeric_features param can
+            be used to define the data types. It takes a list of strings with column
+            names that are numeric.
+
+
+        categorical_features: list of str, default = None
+            If the inferred data types are not correct, the categorical_features param
+            can be used to define the data types. It takes a list of strings with column
+            names that are categorical.
+
+
+        date_features: list of str, default = None
+            If the inferred data types are not correct, the date_features param can be
+            used to overwrite the data types. It takes a list of strings with column
+            names that are DateTime.
+
+
+        text_features: list of str, default = None
+            Column names that contain a text corpus. If None, no text features are
+            selected.
+
+
+        ignore_features: list of str, default = None
+            ignore_features param can be used to ignore features during preprocessing
+            and model training. It takes a list of strings with column names that are
+            to be ignored.
+
+
+        keep_features: list of str, default = None
+            keep_features param can be used to always keep specific features during
+            preprocessing, i.e. these features are never dropped by any kind of
+            feature selection. It takes a list of strings with column names that are
+            to be kept.
+
+
+        preprocess: bool, default = True
+            When set to False, no transformations are applied except for train_test_split
+            and custom transformations passed in ``custom_pipeline`` param. Data must be
+            ready for modeling (no missing values, no dates, categorical data encoding),
+            when preprocess is set to False.
+
+
+        imputation_type: str or None, default = 'simple'
+            The type of imputation to use. Can be either 'simple' or 'iterative'.
+            If None, no imputation of missing values is performed.
+
+
+        numeric_imputation: int, float or str, default = 'mean'
+            Imputing strategy for numerical columns. Ignored when ``imputation_type=
+            iterative``. Choose from:
+                - "drop": Drop rows containing missing values.
+                - "mean": Impute with mean of column.
+                - "median": Impute with median of column.
+                - "mode": Impute with most frequent value.
+                - "knn": Impute using a K-Nearest Neighbors approach.
+                - int or float: Impute with provided numerical value.
+
+
+        categorical_imputation: str, default = 'mode'
+            Imputing strategy for categorical columns. Ignored when ``imputation_type=
+            iterative``. Choose from:
+                - "drop": Drop rows containing missing values.
+                - "mode": Impute with most frequent value.
+                - str: Impute with provided string.
+
+
+        iterative_imputation_iters: int, default = 5
+            Number of iterations. Ignored when ``imputation_type=simple``.
+
+
+        numeric_iterative_imputer: str or sklearn estimator, default = 'lightgbm'
+            Regressor for iterative imputation of missing values in numeric features.
+            If None, it uses LGBClassifier. Ignored when ``imputation_type=simple``.
+
+
+        categorical_iterative_imputer: str or sklearn estimator, default = 'lightgbm'
+            Regressor for iterative imputation of missing values in categorical features.
+            If None, it uses LGBClassifier. Ignored when ``imputation_type=simple``.
+
+
+        text_features_method: str, default = "tf-idf"
+            Method with which to embed the text features in the dataset. Choose
+            between "bow" (Bag of Words - CountVectorizer) or "tf-idf" (TfidfVectorizer).
+            Be aware that the sparse matrix output of the transformer is converted
+            internally to its full array. This can cause memory issues for large
+            text embeddings.
+
+
+        max_encoding_ohe: int, default = 5
+            Categorical columns with `max_encoding_ohe` or less unique values are
+            encoded using OneHotEncoding. If more, the `encoding_method` estimator
+            is used. Note that columns with exactly two classes are always encoded
+            ordinally.
+
+
+        encoding_method: category-encoders estimator, default = None
+            A `category-encoders` estimator to encode the categorical columns
+            with more than `max_encoding_ohe` unique values. If None,
+            `category_encoders.leave_one_out.LeaveOneOutEncoder` is used.
+
+
+        polynomial_features: bool, default = False
+            When set to True, new features are derived using existing numeric features.
+
+
+        polynomial_degree: int, default = 2
+            Degree of polynomial features. For example, if an input sample is two dimensional
+            and of the form [a, b], the polynomial features with degree = 2 are:
+            [1, a, b, a^2, ab, b^2]. Ignored when ``polynomial_features`` is not True.
+
+
+        low_variance_threshold: float or None, default = 0
+            Remove features with a training-set variance lower than the provided
+            threshold. The default is to keep all features with non-zero variance,
+            i.e. remove the features that have the same value in all samples. If
+            None, skip this treansformation step.
+
+
+        remove_multicollinearity: bool, default = False
+            When set to True, features with the inter-correlations higher than the defined
+            threshold are removed. When two features are highly correlated with each other,
+            the feature that is less correlated with the target variable is removed. Only
+            considers numeric features.
+
+        multicollinearity_threshold: float, default = 0.9
+            Threshold for correlated features. Ignored when ``remove_multicollinearity``
+            is not True.
+
+
+        bin_numeric_features: list of str, default = None
+            To convert numeric features into categorical, bin_numeric_features parameter can
+            be used. It takes a list of strings with column names to be discretized. It does
+            so by using 'sturges' rule to determine the number of clusters and then apply
+            KMeans algorithm. Original values of the feature are then replaced by the
+            cluster label.
+
+
+        remove_outliers: bool, default = False
+            When set to True, outliers from the training data are removed using an
+            Isolation Forest.
+
+
+        outliers_method: str, default = "iforest"
+            Method with which to remove outliers. Ignored when `remove_outliers=False`.
+            Possible values are:
+                - 'iforest': Uses sklearn's IsolationForest.
+                - 'ee': Uses sklearn's EllipticEnvelope.
+                - 'lof': Uses sklearn's LocalOutlierFactor.
+
+
+        outliers_threshold: float, default = 0.05
+            The percentage of outliers to be removed from the dataset. Ignored
+            when ``remove_outliers=False``.
+
+
+        fix_imbalance: bool, default = False
+            When training dataset has unequal distribution of target class it can be balanced
+            using this parameter. When set to True, SMOTE (Synthetic Minority Over-sampling
+            Technique) is applied by default to create synthetic datapoints for minority class.
+
+
+        fix_imbalance_method: imblearn estimator, default = None
+            When ``fix_imbalance`` is True, `imblearn` compatible estimator with a
+            `fit_resample` method can be passed. If None, `imblearn.over_sampling.SMOTE`
+            is used.
+
+
+        transformation: bool, default = False
+            When set to True, it applies the power transform to make data more Gaussian-like.
+            Type of transformation is defined by the ``transformation_method`` parameter.
+
+
+        transformation_method: str, default = 'yeo-johnson'
+            Defines the method for transformation. By default, the transformation method is
+            set to 'yeo-johnson'. The other available option for transformation is 'quantile'.
+            Ignored when ``transformation`` is not True.
+
+
+        normalize: bool, default = False
+            When set to True, it transforms the features by scaling them to a given
+            range. Type of scaling is defined by the ``normalize_method`` parameter.
+
+
+        normalize_method: str, default = 'zscore'
+            Defines the method for scaling. By default, normalize method is set to 'zscore'
+            The standard zscore is calculated as z = (x - u) / s. Ignored when ``normalize``
+            is not True. The other options are:
+
+            - minmax: scales and translates each feature individually such that it is in
+            the range of 0 - 1.
+            - maxabs: scales and translates each feature individually such that the
+            maximal absolute value of each feature will be 1.0. It does not
+            shift/center the data, and thus does not destroy any sparsity.
+            - robust: scales and translates each feature according to the Interquartile
+            range. When the dataset contains outliers, robust scaler often gives
+            better results.
+
+
+        pca: bool, default = False
+            When set to True, dimensionality reduction is applied to project the data into
+            a lower dimensional space using the method defined in ``pca_method`` parameter.
+
+
+        pca_method: str, default = 'linear'
+            Method with which to apply PCA. Possible values are:
+                - 'linear': Uses Singular Value  Decomposition.
+                - kernel: Dimensionality reduction through the use of RBF kernel.
+                - incremental: Similar to 'linear', but more efficient for large datasets.
+
+
+        pca_components: int or float, default = 1.0
+            Number of components to keep. If >1, it selects that number of
+            components. If <= 1, it selects that fraction of components from
+            the original features. The value must be smaller than the number
+            of original features. This parameter is ignored when `pca=False`.
+
+
+        feature_selection: bool, default = False
+            When set to True, a subset of features is selected based on a feature
+            importance score determined by ``feature_selection_estimator``.
+
+
+        feature_selection_method: str, default = 'classic'
+            Algorithm for feature selection. Choose from:
+                - 'univariate': Uses sklearn's SelectKBest.
+                - 'classic': Uses sklearn's SelectFromModel.
+                - 'sequential': Uses sklearn's SequtnailFeatureSelector.
+
+
+        feature_selection_estimator: str or sklearn estimator, default = 'lightgbm'
+            Classifier used to determine the feature importances. The
+            estimator should have a `feature_importances_` or `coef_`
+            attribute after fitting. If None, it uses LGBClassifier. This
+            parameter is ignored when `feature_selection_method=univariate`.
+
+
+        n_features_to_select: int, default = 10
+            The number of features to select. Note that this parameter doesn't
+            take features in ``ignore_features`` or ``keep_features`` into account
+            when counting.
+
+
+        custom_pipeline: list of (str, transformer), dict or Pipeline, default = None
+            Addidiotnal custom transformers. If passed, they are applied to the
+            pipeline last, after all the build-in transformers.
+
+
+        data_split_shuffle: bool, default = True
+            When set to False, prevents shuffling of rows during 'train_test_split'.
+
+
+        data_split_stratify: bool or list, default = False
+            Controls stratification during 'train_test_split'. When set to True, will
+            stratify by target column. To stratify on any other columns, pass a list of
+            column names. Ignored when ``data_split_shuffle`` is False.
+
+
+        fold_strategy: str or sklearn CV generator object, default = 'stratifiedkfold'
+            Choice of cross validation strategy. Possible values are:
+
+            * 'kfold'
+            * 'stratifiedkfold'
+            * 'groupkfold'
+            * 'timeseries'
+            * a custom CV generator object compatible with scikit-learn.
+
+
+        fold: int, default = 10
+            Number of folds to be used in cross validation. Must be at least 2. This is
+            a global setting that can be over-written at function level by using ``fold``
+            parameter. Ignored when ``fold_strategy`` is a custom object.
+
+
+        fold_shuffle: bool, default = False
+            Controls the shuffle parameter of CV. Only applicable when ``fold_strategy``
+            is 'kfold' or 'stratifiedkfold'. Ignored when ``fold_strategy`` is a custom
+            object.
+
+
+        fold_groups: str or array-like, with shape (n_samples,), default = None
+            Optional group labels when 'GroupKFold' is used for the cross validation.
+            It takes an array with shape (n_samples, ) where n_samples is the number
+            of rows in the training dataset. When string is passed, it is interpreted
+            as the column name in the dataset containing group labels.
+
+
+        n_jobs: int, default = -1
+            The number of jobs to run in parallel (for functions that supports parallel
+            processing) -1 means using all processors. To run all functions on single
+            processor set n_jobs to None.
+
+
+        use_gpu: bool or str, default = False
+            When set to True, it will use GPU for training with algorithms that support it,
+            and fall back to CPU if they are unavailable. When set to 'force', it will only
+            use GPU-enabled algorithms and raise exceptions when they are unavailable. When
+            False, all algorithms are trained using CPU only.
+
+            GPU enabled algorithms:
+
+            - Extreme Gradient Boosting, requires no further installation
+
+            - CatBoost Classifier, requires no further installation
+            (GPU is only enabled when data > 50,000 rows)
+
+            - Light Gradient Boosting Machine, requires GPU installation
+            https://lightgbm.readthedocs.io/en/latest/GPU-Tutorial.html
+
+            - Logistic Regression, Ridge Classifier, Random Forest, K Neighbors Classifier,
+            Support Vector Machine, requires cuML >= 0.15
+            https://github.com/rapidsai/cuml
+
+
+        html: bool, default = True
+            When set to False, prevents runtime display of monitor. This must be set to False
+            when the environment does not support IPython. For example, command line terminal,
+            Databricks Notebook, Spyder and other similar IDEs.
+
+
+        session_id: int, default = None
+            Controls the randomness of experiment. It is equivalent to 'random_state' in
+            scikit-learn. When None, a pseudo random number is generated. This can be used
+            for later reproducibility of the entire experiment.
+
+
+        log_experiment: bool or str or BaseLogger or list of str or BaseLogger, default = False
+            A (list of) PyCaret ``BaseLogger`` or str (one of 'mlflow', 'wandb')
+            corresponding to a logger to determine which experiment loggers to use.
+            Setting to True will use just MLFlow.
+
+
+        system_log: bool or logging.Logger, default = True
+            Whether to save the system logging file (as logs.log). If the input
+            already is a logger object, that one is used instead.
+
+
+        experiment_name: str, default = None
+            Name of the experiment for logging. Ignored when ``log_experiment`` is False.
+
+
+        experiment_custom_tags: dict, default = None
+            Dictionary of tag_name: String -> value: (String, but will be string-ified
+            if not) passed to the mlflow.set_tags to add new custom tags for the experiment.
+
+
+        log_plots: bool or list, default = False
+            When set to True, certain plots are logged automatically in the ``MLFlow`` server.
+            To change the type of plots to be logged, pass a list containing plot IDs. Refer
+            to documentation of ``plot_model``. Ignored when ``log_experiment`` is False.
+
+
+        log_profile: bool, default = False
+            When set to True, data profile is logged on the ``MLflow`` server as a html file.
+            Ignored when ``log_experiment`` is False.
+
+
+        log_data: bool, default = False
+            When set to True, dataset is logged on the ``MLflow`` server as a csv file.
+            Ignored when ``log_experiment`` is False.
+
+
+        silent: bool, default = False
+            Controls the confirmation input of data types when ``setup`` is executed. When
+            executing in completely automated mode or on a remote kernel, this must be True.
+
+
+        verbose: bool, default = True
+            When set to False, Information grid is not printed.
+
+
+        memory: str, bool or Memory, default=True
+            Used to cache the fitted transformers of the pipeline.
+                If False: No caching is performed.
+                If True: A default temp directory is used.
+                If str: Path to the caching directory.
+
+
+        profile: bool, default = False
+            When set to True, an interactive EDA report is displayed.
+
+
+        profile_kwargs: dict, default = {} (empty dict)
+            Dictionary of arguments passed to the ProfileReport method used
+            to create the EDA report. Ignored if ``profile`` is False.
+
+
+        Returns:
+            Global variables that can be changed using the ``set_config`` function.
+
+        """
+
         # Setup initialization ===================================== >>
 
         runtime_start = time.time()
