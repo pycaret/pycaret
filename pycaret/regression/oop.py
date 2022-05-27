@@ -131,7 +131,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
         use_gpu: bool = False,
         html: bool = True,
         session_id: Optional[int] = None,
-        system_log: Union[bool, logging.Logger] = True,
+        system_log: Union[bool, str, logging.Logger] = True,
         log_experiment: Union[
             bool, str, BaseLogger, List[Union[str, BaseLogger]]
         ] = False,
@@ -526,9 +526,10 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             If ``wandb`` (Weights & Biases) is installed, will also log there.
 
 
-        system_log: bool or logging.Logger, default = True
+        system_log: bool or str or logging.Logger, default = True
             Whether to save the system logging file (as logs.log). If the input
-            already is a logger object, that one is used instead.
+            is a string, use that as the path to the logging file. If the input
+            already is a logger object, use that one instead.
 
 
         experiment_name: str, default = None
