@@ -111,14 +111,12 @@ def show_yellowbrick_plot(
     display.move_progress()
     display.clear_output()
 
-    plot_filename = None
+    plot_filename = f"{plot_filename}.png"
     if save:
         if not isinstance(save, bool):
-            plot_filename = os.path.join(save, name)
-        else:
-            plot_filename = name
-        logger.info(f"Saving '{plot_filename}.png'")
-        plt.savefig(f"{plot_filename}.png", bbox_inches="tight")
+            plot_filename = os.path.join(save, plot_filename)
+        logger.info(f"Saving '{plot_filename}'")
+        plt.savefig(plot_filename, bbox_inches="tight")
     else:
         if display_format == "streamlit":
             show_yellowbrick_in_streamlit(visualizer, clear_figure=True)
