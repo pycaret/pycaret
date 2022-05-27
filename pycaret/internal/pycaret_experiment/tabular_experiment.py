@@ -37,6 +37,7 @@ from pycaret.internal.validation import is_sklearn_cv_generator
 from pycaret.loggers.base_logger import BaseLogger
 from pycaret.loggers.mlflow_logger import MlflowLogger
 from pycaret.loggers.wandb_logger import WandbLogger
+from pycaret.utils import get_allowed_engines
 from pycaret.utils._dependencies import _check_soft_dependencies
 
 warnings.filterwarnings("ignore")
@@ -46,6 +47,9 @@ LOGGER = get_logger()
 class _TabularExperiment(_PyCaretExperiment):
     def __init__(self) -> None:
         super().__init__()
+        self.all_allowed_engines = None
+        self.fold_shuffle_param = False
+        self.fold_groups_param = None
         self.variable_keys = self.variable_keys.union(
             {
                 "_ml_usecase",
@@ -156,7 +160,7 @@ class _TabularExperiment(_PyCaretExperiment):
         Get model name.
         """
         if models is None:
-            models = self._all_models_internal
+            models = getattr(self, "_all_models_internal", None)
 
         return get_model_name(e, models, deep=deep)
 
@@ -402,6 +406,7 @@ class _TabularExperiment(_PyCaretExperiment):
         plot : str, default = auc
             Enter abbreviation of type of plot. The current list of plots supported are (Plot - Name):
 
+            * 'pipeline' - Schematic drawing of the preprocessing pipeline
             * 'residuals_interactive' - Interactive Residual plots
             * 'auc' - Area Under the Curve
             * 'threshold' - Discrimination Threshold
@@ -641,6 +646,52 @@ class _TabularExperiment(_PyCaretExperiment):
             ):
                 _base_dpi = 100
 
+                def pipeline():
+
+                    from schemdraw import Drawing
+                    from schemdraw.flow import Arrow, Data, RoundBox, Subroutine
+
+                    # Create schematic drawing
+                    d = Drawing(backend="matplotlib")
+                    d.config(fontsize=plot_kwargs.get("fontsize", 14))
+                    d += Subroutine(w=10, h=5, s=1).label("Raw data").drop("E")
+                    for est in self.pipeline:
+                        name = getattr(est, "transformer", est).__class__.__name__
+                        d += Arrow().right()
+                        d += RoundBox(w=max(len(name), 7), h=5, cornerradius=1).label(
+                            name
+                        )
+
+                    # Add the model box
+                    name = estimator.__class__.__name__
+                    d += Arrow().right()
+                    d += Data(w=max(len(name), 7), h=5).label(name)
+
+                    display.clear_output()
+
+                    with MatplotlibDefaultDPI(base_dpi=_base_dpi, scale_to_set=scale):
+                        fig, ax = plt.subplots(
+                            figsize=((2 + len(self.pipeline) * 5), 6)
+                        )
+
+                        d.draw(ax=ax, showframe=False, show=False)
+                        ax.set_aspect("equal")
+                        plt.axis("off")
+                        plt.tight_layout()
+
+                    if save:
+                        if not isinstance(save, bool):
+                            plot_filename = os.path.join(save, base_plot_filename)
+                        else:
+                            plot_filename = base_plot_filename
+                        self.logger.info(f"Saving '{plot_filename}'")
+                        plt.savefig(plot_filename, bbox_inches="tight")
+                    elif system:
+                        plt.show()
+                    plt.close()
+
+                    self.logger.info("Visual Rendered Successfully")
+
                 def residuals_interactive():
                     from pycaret.internal.plots.residual_plots import (
                         InteractiveResidualsPlot,
@@ -659,6 +710,7 @@ class _TabularExperiment(_PyCaretExperiment):
                     if system:
                         resplots.show()
 
+                    plot_filename = None
                     if save:
                         if not isinstance(save, bool):
                             plot_filename = os.path.join(save, base_plot_filename)
@@ -746,6 +798,7 @@ class _TabularExperiment(_PyCaretExperiment):
                         height=600 * scale, title_text="2D Cluster PCA Plot"
                     )
 
+                    plot_filename = None
                     if save:
                         if not isinstance(save, bool):
                             plot_filename = os.path.join(save, base_plot_filename)
@@ -817,6 +870,7 @@ class _TabularExperiment(_PyCaretExperiment):
                         height=800 * scale,
                     )
 
+                    plot_filename = None
                     if save:
                         if not isinstance(save, bool):
                             plot_filename = os.path.join(save, base_plot_filename)
@@ -901,6 +955,7 @@ class _TabularExperiment(_PyCaretExperiment):
                             height=800 * scale,
                         )
 
+                    plot_filename = None
                     if save:
                         if not isinstance(save, bool):
                             plot_filename = os.path.join(save, base_plot_filename)
@@ -1001,6 +1056,7 @@ class _TabularExperiment(_PyCaretExperiment):
                             height=800 * scale,
                         )
 
+                    plot_filename = None
                     if save:
                         if not isinstance(save, bool):
                             plot_filename = os.path.join(save, base_plot_filename)
@@ -1077,6 +1133,7 @@ class _TabularExperiment(_PyCaretExperiment):
                         height=600 * scale,
                     )
 
+                    plot_filename = None
                     if save:
                         if not isinstance(save, bool):
                             plot_filename = os.path.join(save, base_plot_filename)
@@ -1101,7 +1158,7 @@ class _TabularExperiment(_PyCaretExperiment):
                         visualizer = KElbowVisualizer(
                             estimator, timings=False, **plot_kwargs
                         )
-                        show_yellowbrick_plot(
+                        return show_yellowbrick_plot(
                             visualizer=visualizer,
                             X_train=self.X_train_transformed,
                             y_train=None,
@@ -1129,7 +1186,7 @@ class _TabularExperiment(_PyCaretExperiment):
                         visualizer = SilhouetteVisualizer(
                             estimator, colors="yellowbrick", **plot_kwargs
                         )
-                        show_yellowbrick_plot(
+                        return show_yellowbrick_plot(
                             visualizer=visualizer,
                             X_train=self.X_train_transformed,
                             y_train=None,
@@ -1154,7 +1211,7 @@ class _TabularExperiment(_PyCaretExperiment):
 
                     try:
                         visualizer = InterclusterDistance(estimator, **plot_kwargs)
-                        show_yellowbrick_plot(
+                        return show_yellowbrick_plot(
                             visualizer=visualizer,
                             X_train=self.X_train_transformed,
                             y_train=None,
@@ -1179,7 +1236,7 @@ class _TabularExperiment(_PyCaretExperiment):
                     from yellowbrick.regressor import ResidualsPlot
 
                     visualizer = ResidualsPlot(estimator, **plot_kwargs)
-                    show_yellowbrick_plot(
+                    return show_yellowbrick_plot(
                         visualizer=visualizer,
                         X_train=self.X_train_transformed,
                         y_train=self.y_train_transformed,
@@ -1199,7 +1256,7 @@ class _TabularExperiment(_PyCaretExperiment):
                     from yellowbrick.classifier import ROCAUC
 
                     visualizer = ROCAUC(estimator, **plot_kwargs)
-                    show_yellowbrick_plot(
+                    return show_yellowbrick_plot(
                         visualizer=visualizer,
                         X_train=self.X_train_transformed,
                         y_train=self.y_train_transformed,
@@ -1221,7 +1278,7 @@ class _TabularExperiment(_PyCaretExperiment):
                     visualizer = DiscriminationThreshold(
                         estimator, random_state=self.seed, **plot_kwargs
                     )
-                    show_yellowbrick_plot(
+                    return show_yellowbrick_plot(
                         visualizer=visualizer,
                         X_train=self.X_train_transformed,
                         y_train=self.y_train_transformed,
@@ -1243,7 +1300,7 @@ class _TabularExperiment(_PyCaretExperiment):
                     visualizer = PrecisionRecallCurve(
                         estimator, random_state=self.seed, **plot_kwargs
                     )
-                    show_yellowbrick_plot(
+                    return show_yellowbrick_plot(
                         visualizer=visualizer,
                         X_train=self.X_train_transformed,
                         y_train=self.y_train_transformed,
@@ -1268,7 +1325,7 @@ class _TabularExperiment(_PyCaretExperiment):
                     visualizer = ConfusionMatrix(
                         estimator, random_state=self.seed, **plot_kwargs
                     )
-                    show_yellowbrick_plot(
+                    return show_yellowbrick_plot(
                         visualizer=visualizer,
                         X_train=self.X_train_transformed,
                         y_train=self.y_train_transformed,
@@ -1299,7 +1356,7 @@ class _TabularExperiment(_PyCaretExperiment):
                             estimator, random_state=self.seed, **plot_kwargs
                         )
 
-                    show_yellowbrick_plot(
+                    return show_yellowbrick_plot(
                         visualizer=visualizer,  # type: ignore
                         X_train=self.X_train_transformed,
                         y_train=self.y_train_transformed,
@@ -1319,7 +1376,7 @@ class _TabularExperiment(_PyCaretExperiment):
                     from yellowbrick.regressor import CooksDistance
 
                     visualizer = CooksDistance()
-                    show_yellowbrick_plot(
+                    return show_yellowbrick_plot(
                         visualizer=visualizer,
                         X_train=self.X,
                         y_train=self.y,
@@ -1342,7 +1399,7 @@ class _TabularExperiment(_PyCaretExperiment):
                     visualizer = ClassificationReport(
                         estimator, random_state=self.seed, support=True, **plot_kwargs
                     )
-                    show_yellowbrick_plot(
+                    return show_yellowbrick_plot(
                         visualizer=visualizer,
                         X_train=self.X_train_transformed,
                         y_train=self.y_train_transformed,
@@ -1382,7 +1439,7 @@ class _TabularExperiment(_PyCaretExperiment):
                     test_X_transformed = pca.fit_transform(test_X_transformed)
 
                     viz_ = DecisionViz(estimator, **plot_kwargs)
-                    show_yellowbrick_plot(
+                    return show_yellowbrick_plot(
                         visualizer=viz_,
                         X_train=data_X_transformed,
                         y_train=np.array(self.y_train_transformed),
@@ -1405,7 +1462,7 @@ class _TabularExperiment(_PyCaretExperiment):
                     from yellowbrick.model_selection import RFECV
 
                     visualizer = RFECV(estimator, cv=cv, **plot_kwargs)
-                    show_yellowbrick_plot(
+                    return show_yellowbrick_plot(
                         visualizer=visualizer,
                         X_train=self.X_train_transformed,
                         y_train=self.y_train_transformed,
@@ -1433,7 +1490,7 @@ class _TabularExperiment(_PyCaretExperiment):
                         n_jobs=self._gpu_n_jobs_param,
                         random_state=self.seed,
                     )
-                    show_yellowbrick_plot(
+                    return show_yellowbrick_plot(
                         visualizer=visualizer,
                         X_train=self.X_train_transformed,
                         y_train=self.y_train_transformed,
@@ -1462,6 +1519,7 @@ class _TabularExperiment(_PyCaretExperiment):
                         skplt.metrics.plot_lift_curve(
                             y_test__, predict_proba__, figsize=(10, 6)
                         )
+                        plot_filename = None
                         if save:
                             if not isinstance(save, bool):
                                 plot_filename = os.path.join(save, base_plot_filename)
@@ -1474,6 +1532,7 @@ class _TabularExperiment(_PyCaretExperiment):
                         plt.close()
 
                     self.logger.info("Visual Rendered Successfully")
+                    return plot_filename
 
                 def gain():
 
@@ -1488,6 +1547,7 @@ class _TabularExperiment(_PyCaretExperiment):
                         skplt.metrics.plot_cumulative_gain(
                             y_test__, predict_proba__, figsize=(10, 6)
                         )
+                        plot_filename = None
                         if save:
                             if not isinstance(save, bool):
                                 plot_filename = os.path.join(save, base_plot_filename)
@@ -1500,6 +1560,7 @@ class _TabularExperiment(_PyCaretExperiment):
                         plt.close()
 
                     self.logger.info("Visual Rendered Successfully")
+                    return plot_filename
 
                 def manifold():
 
@@ -1511,7 +1572,7 @@ class _TabularExperiment(_PyCaretExperiment):
                     visualizer = Manifold(
                         manifold="tsne", random_state=self.seed, **plot_kwargs
                     )
-                    show_yellowbrick_plot(
+                    return show_yellowbrick_plot(
                         visualizer=visualizer,
                         X_train=data_X_transformed,
                         y_train=self.y_train_transformed,
@@ -1638,6 +1699,7 @@ class _TabularExperiment(_PyCaretExperiment):
 
                     display.move_progress()
                     # display.clear_output()
+                    plot_filename = None
                     if save:
                         if not isinstance(save, bool):
                             plot_filename = os.path.join(save, base_plot_filename)
@@ -1650,6 +1712,7 @@ class _TabularExperiment(_PyCaretExperiment):
                     plt.close()
 
                     self.logger.info("Visual Rendered Successfully")
+                    return plot_filename
 
                 def calibration():
 
@@ -1687,6 +1750,7 @@ class _TabularExperiment(_PyCaretExperiment):
                     plt.tight_layout()
                     display.move_progress()
                     # display.clear_output()
+                    plot_filename = None
                     if save:
                         if not isinstance(save, bool):
                             plot_filename = os.path.join(save, base_plot_filename)
@@ -1699,6 +1763,7 @@ class _TabularExperiment(_PyCaretExperiment):
                     plt.close()
 
                     self.logger.info("Visual Rendered Successfully")
+                    return plot_filename
 
                 def vc():
 
@@ -1856,7 +1921,7 @@ class _TabularExperiment(_PyCaretExperiment):
                         random_state=self.seed,
                         n_jobs=self._gpu_n_jobs_param,
                     )
-                    show_yellowbrick_plot(
+                    return show_yellowbrick_plot(
                         visualizer=viz,
                         X_train=self.X_train_transformed,
                         y_train=self.y_train_transformed,
@@ -1899,7 +1964,7 @@ class _TabularExperiment(_PyCaretExperiment):
                     classes = self.y_train_transformed.unique().tolist()
                     visualizer = RadViz(classes=classes, alpha=0.25, **plot_kwargs)
 
-                    show_yellowbrick_plot(
+                    return show_yellowbrick_plot(
                         visualizer=visualizer,
                         X_train=data_X_transformed,
                         y_train=np.array(self.y_train_transformed),
@@ -1968,6 +2033,7 @@ class _TabularExperiment(_PyCaretExperiment):
                     plt.ylabel("Features")
                     display.move_progress()
                     # display.clear_output()
+                    plot_filename = None
                     if save:
                         if not isinstance(save, bool):
                             plot_filename = os.path.join(save, base_plot_filename)
@@ -1980,6 +2046,7 @@ class _TabularExperiment(_PyCaretExperiment):
                     plt.close()
 
                     self.logger.info("Visual Rendered Successfully")
+                    return plot_filename
 
                 def parameter():
 
@@ -2008,6 +2075,7 @@ class _TabularExperiment(_PyCaretExperiment):
                         fig = skplt.metrics.plot_ks_statistic(
                             self.y_train_transformed, predict_proba__, figsize=(10, 6)
                         )
+                        plot_filename = None
                         if save:
                             if not isinstance(save, bool):
                                 plot_filename = os.path.join(save, base_plot_filename)
@@ -2020,6 +2088,7 @@ class _TabularExperiment(_PyCaretExperiment):
                         plt.close()
 
                     self.logger.info("Visual Rendered Successfully")
+                    return plot_filename
 
                 # execute the plot method
                 ret = locals()[plot]()
@@ -2618,3 +2687,158 @@ CMD ["python", "{API_NAME}.py"]
     To build image you have to run --> !docker image build -f "Dockerfile" -t IMAGE_NAME:IMAGE_TAG .
             """
         )
+
+    def _set_all_models(self) -> "_TabularExperiment":
+        """Set all available models
+
+        Returns
+        -------
+        _TabularExperiment
+            The experiment object to allow chaining of methods
+        """
+        self._all_models, self._all_models_internal = self._get_models()
+        return self
+
+    def get_allowed_engines(self, estimator: str) -> Optional[str]:
+        """Get all the allowed engines for the specified estimator
+
+        Parameters
+        ----------
+        estimator : str
+            Identifier for the model for which the engines should be retrieved,
+            e.g. "auto_arima"
+
+        Returns
+        -------
+        Optional[str]
+            The allowed engines for the model. If the model only supports the
+            default sktime engine, then it return `None`.
+        """
+        allowed_engines = get_allowed_engines(
+            estimator=estimator, all_allowed_engines=self.all_allowed_engines
+        )
+        return allowed_engines
+
+    def get_engine(self, estimator: str) -> Optional[str]:
+        """Gets the model engine currently set in the experiment for the specified
+        model.
+
+        Parameters
+        ----------
+        estimator : str
+            Identifier for the model for which the engine should be retrieved,
+            e.g. "auto_arima"
+
+        Returns
+        -------
+        Optional[str]
+            The engine for the model. If the model only supports the default sktime
+            engine, then it return `None`.
+        """
+        engine = self.exp_model_engines.get(estimator, None)
+        if engine is None:
+            msg = (
+                f"Engine for model '{estimator}' has not been set explicitly, "
+                "hence returning None."
+            )
+            self.logger.info(msg)
+            print(msg)
+        return engine
+
+    def _set_engine(self, estimator: str, engine: str, severity: str = "error"):
+        """Sets the engine to use for a particular model.
+
+        Parameters
+        ----------
+        estimator : str
+            Identifier for the model for which the engine should be set, e.g.
+            "auto_arima"
+        engine : str
+            Engine to set for the model. All available engines for the model
+            can be retrieved using get_allowed_engines()
+        severity : str, optional
+            How to handle incorrectly specified engines. Allowed values are "error"
+            and "warning". If set to "warning", the existing engine is left
+            unchanged if the specified engine is not correct., by default "error".
+
+        Raises
+        ------
+        ValueError
+            (1) If specified engine is not in the allowed list of engines and
+                severity is set to "error"
+            (2) If the value of "severity" is not one of the allowed values
+        """
+        allowed_engines = self.get_allowed_engines(estimator=estimator)
+        if allowed_engines is None:
+            msg = (
+                f"Either model '{estimator}' has only 1 engine and hence can not be changed, "
+                "or the model is not in the allowed list of models for this setup."
+            )
+
+            if severity == "error":
+                raise ValueError(msg)
+            elif severity == "warning":
+                self.logger.warning(msg)
+                print(msg)
+            else:
+                raise ValueError(
+                    "Error in calling set_engine, severity "
+                    f'argument must be "error" or "warning", got "{severity}".'
+                )
+        else:
+            self.exp_model_engines[estimator] = engine
+            self.logger.info(
+                f"Engine successfully changes for model '{estimator}' to '{engine}'."
+            )
+
+        # Need to do this, else internal class variables are not reset with new engine.
+        self._set_all_models()
+
+    def _set_exp_model_engines(
+        self,
+        container_default_engines: Dict[str, str],
+        engines: Optional[Dict[str, str]] = None,
+    ) -> "_TabularExperiment":
+        """Set all the model engines for the experiment.
+
+        container_default_model_engines : Dict[str, str]
+            Default engines obtained from the model containers
+
+        engines: Optional[Dict[str, str]] = None
+            The engine to use for the models, e.g. for auto_arima, users can
+            switch between "pmdarima" and "statsforecast" by specifying
+            engines={"auto_arima": "statsforecast"}
+
+            If model ID is not present in key, default value will be obtained
+            from the model container (i.e. container_default_model_engines).
+
+            If a model container does not define the engines (means that the
+            container does not support multiple engines), but the model's ID is
+            present in the "engines" argument, it is simply ignored.
+
+        Returns
+        -------
+        _TabularExperiment
+            The experiment object to allow chaining of methods
+        """
+        self.exp_model_engines = {}
+
+        # If user provides their own value, override the container defaults
+        engines = engines or {}
+        for key in container_default_engines:
+            # If provided by user, then use that, else get from the defaults
+            engine = engines.get(key, container_default_engines.get(key))
+            self._set_engine(estimator=key, engine=engine, severity="error")
+
+        return self
+
+    def _set_all_metrics(self) -> "_TabularExperiment":
+        """Set all available metrics
+
+        Returns
+        -------
+        _TabularExperiment
+            The experiment object to allow chaining of methods
+        """
+        self._all_metrics = self._get_metrics()
+        return self

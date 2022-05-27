@@ -47,9 +47,7 @@ def setup(
     enforce_exogenous: bool = True,
     n_jobs: Optional[int] = -1,
     use_gpu: bool = False,
-    custom_pipeline: Union[
-        Any, Tuple[str, Any], List[Any], List[Tuple[str, Any]]
-    ] = None,
+    custom_pipeline: Optional[Any] = None,
     html: bool = True,
     session_id: Optional[int] = None,
     system_log: Union[bool, logging.Logger] = True,
@@ -131,10 +129,12 @@ def setup(
         If None, no transformation is performed. Allowed values are
             "box-cox", "log", "sqrt", "exp", "cos"
 
+
     scale_target: Optional[str], default = None
         Indicates how the target variable should be scaled.
         If None, no scaling is performed. Allowed values are
             "zscore", "minmax", "maxabs", "robust"
+
 
     scale_exogenous: Optional[str], default = None
         Indicates how the exogenous variables should be scaled.
@@ -251,7 +251,7 @@ def setup(
         Parameter not in use for now. Behavior may change in future.
 
 
-    custom_pipeline: (str, transformer) or list of (str, transformer), default = None
+    custom_pipeline: list of (str, transformer), dict or Pipeline, default = None
         Parameter not in use for now. Behavior may change in future.
 
 
@@ -400,12 +400,13 @@ def compare_models(
     fold: Optional[Union[int, Any]] = None,
     round: int = 4,
     cross_validation: bool = True,
-    sort: str = "SMAPE",
+    sort: str = "MASE",
     n_select: int = 1,
     budget_time: Optional[float] = None,
     turbo: bool = True,
     errors: str = "ignore",
     fit_kwargs: Optional[dict] = None,
+    engines: Optional[Dict[str, str]] = None,
     verbose: bool = True,
 ):
 
@@ -454,7 +455,7 @@ def compare_models(
         is ignored when cross_validation is set to False.
 
 
-    sort: str, default = 'SMAPE'
+    sort: str, default = 'MASE'
         The sort order of the score grid. It also accepts custom metrics that are
         added through the ``add_metric`` function.
 
@@ -481,6 +482,12 @@ def compare_models(
 
     fit_kwargs: dict, default = {} (empty dict)
         Dictionary of arguments passed to the fit method of the model.
+
+
+    engines: Optional[Dict[str, str]] = None
+        The engine to use for the models, e.g. for auto_arima, users can
+        switch between "pmdarima" and "statsforecast" by specifying
+        engines={"auto_arima": "statsforecast"}
 
 
     verbose: bool, default = True
@@ -511,8 +518,50 @@ def compare_models(
         turbo=turbo,
         errors=errors,
         fit_kwargs=fit_kwargs,
+        engines=engines,
         verbose=verbose,
     )
+
+
+@check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
+def get_allowed_engines(estimator: str) -> Optional[str]:
+    """Get all the allowed engines for the specified model
+
+    Parameters
+    ----------
+    estimator : str
+        Identifier for the model for which the engines should be retrieved,
+        e.g. "auto_arima"
+
+    Returns
+    -------
+    Optional[str]
+        The allowed engines for the model. If the model only supports the
+        default sktime engine, then it return `None`.
+    """
+
+    return _CURRENT_EXPERIMENT.get_allowed_engines(estimator=estimator)
+
+
+@check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
+def get_engine(estimator: str) -> Optional[str]:
+    """Gets the model engine currently set in the experiment for the specified
+    model.
+
+    Parameters
+    ----------
+    estimator : str
+        Identifier for the model for which the engine should be retrieved,
+        e.g. "auto_arima"
+
+    Returns
+    -------
+    Optional[str]
+        The engine for the model. If the model only supports the default sktime
+        engine, then it return `None`.
+    """
+
+    return _CURRENT_EXPERIMENT.get_engine(estimator=estimator)
 
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
@@ -522,6 +571,7 @@ def create_model(
     round: int = 4,
     cross_validation: bool = True,
     fit_kwargs: Optional[dict] = None,
+    engine: Optional[str] = None,
     verbose: bool = True,
     **kwargs,
 ):
@@ -606,6 +656,12 @@ def create_model(
         Dictionary of arguments passed to the fit method of the model.
 
 
+    engine: Optional[str] = None
+        The engine to use for the model, e.g. for auto_arima, users can
+        switch between "pmdarima" and "statsforecast" by specifying
+        engine="statsforecast".
+
+
     verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
 
@@ -631,6 +687,7 @@ def create_model(
         round=round,
         cross_validation=cross_validation,
         fit_kwargs=fit_kwargs,
+        engine=engine,
         verbose=verbose,
         **kwargs,
     )
@@ -643,7 +700,7 @@ def tune_model(
     round: int = 4,
     n_iter: int = 10,
     custom_grid: Optional[Union[Dict[str, list], Any]] = None,
-    optimize: str = "SMAPE",
+    optimize: str = "MASE",
     custom_scorer=None,
     search_algorithm: Optional[str] = None,
     choose_better: bool = True,
@@ -698,7 +755,7 @@ def tune_model(
         supported by the defined ``search_library``.
 
 
-    optimize: str, default = 'SMAPE'
+    optimize: str, default = 'MASE'
         Metric name to be evaluated for hyperparameter tuning. It also accepts custom
         metrics that are added through the ``add_metric`` function.
 
@@ -771,7 +828,7 @@ def blend_models(
     fold: Optional[Union[int, Any]] = None,
     round: int = 4,
     choose_better: bool = False,
-    optimize: str = "SMAPE",
+    optimize: str = "MASE",
     weights: Optional[List[float]] = None,
     fit_kwargs: Optional[dict] = None,
     verbose: bool = True,
@@ -824,7 +881,7 @@ def blend_models(
         metric used for comparison is defined by the ``optimize`` parameter.
 
 
-    optimize: str, default = 'SMAPE'
+    optimize: str, default = 'MASE'
         Metric to compare for model selection when ``choose_better`` is True.
 
 

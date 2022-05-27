@@ -111,6 +111,7 @@ def show_yellowbrick_plot(
     display.move_progress()
     # display.clear_output()
 
+    plot_filename = None
     if save:
         if not isinstance(save, bool):
             plot_filename = os.path.join(save, name)
@@ -125,3 +126,4 @@ def show_yellowbrick_plot(
             visualizer.show(clear_figure=True)
 
     logger.info("Visual Rendered Successfully")
+    return plot_filename

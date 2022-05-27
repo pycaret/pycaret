@@ -4,12 +4,8 @@ from typing import Any, Optional, Union
 
 import pandas as pd
 from IPython import get_ipython
-from IPython.display import (
-    HTML,
-    DisplayHandle,
-    clear_output,
-    display as ipython_display,
-)
+from IPython.display import HTML, DisplayHandle, clear_output
+from IPython.display import display as ipython_display
 from pandas.io.formats.style import Styler
 
 try:

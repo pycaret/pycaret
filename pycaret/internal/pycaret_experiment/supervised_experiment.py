@@ -4405,7 +4405,7 @@ class _SupervisedExperiment(_TabularExperiment):
                     is_custom=True,
                 )
             )
-        if self._ml_usecase == MLUsecase.TIME_SERIES:
+        elif self._ml_usecase == MLUsecase.TIME_SERIES:
             new_metric = (
                 pycaret.containers.metrics.time_series.TimeSeriesMetricContainer(
                     id=id,
@@ -4770,26 +4770,36 @@ class _SupervisedExperiment(_TabularExperiment):
             )
 
         if isinstance(estimator, Pipeline):
+            if not hasattr(estimator, "feature_names_in_"):
+                raise ValueError(
+                    "If estimator is a Pipeline, it must implement `feature_names_in_`."
+                )
             pipeline = estimator
             # Temporarily remove final estimator so it's not used for transform
             final_step = pipeline.steps[-1]
             estimator = final_step[-1]
             pipeline.steps = pipeline.steps[:-1]
+        elif not self._setup_ran:
+            raise ValueError(
+                "If estimator is not a Pipeline, you must run setup() first."
+            )
         else:
             pipeline = self.pipeline
             final_step = None
 
+        X_columns = pipeline.feature_names_in_[:-1]
+        y_name = pipeline.feature_names_in_[-1]
         y_test_ = None
         if data is None:
             X_test_, y_test_ = self.X_test_transformed, self.y_test_transformed
         else:
-            if self.y.name in data.columns:
-                data = self._prepare_dataset(data, self.y.name)
-                target = data[self.y.name]
+            if y_name in data.columns:
+                data = self._prepare_dataset(data, y_name)
+                target = data[y_name]
             else:
                 data = self._prepare_dataset(data)
                 target = None
-            data = data[self.X.columns]  # Ignore all column but the originals
+            data = data[X_columns]  # Ignore all column but the originals
             if preprocess:
                 X_test_ = pipeline.transform(
                     X=data, y=(target if preprocess != "features" else None)
@@ -4801,7 +4811,6 @@ class _SupervisedExperiment(_TabularExperiment):
                     X_test_, y_test_ = X_test_
                 elif target is not None:
                     y_test_ = target
-                X_test_ = X_test_[self.X_test_transformed.columns]
             else:
                 X_test_ = data
                 y_test_ = target
@@ -4823,9 +4832,9 @@ class _SupervisedExperiment(_TabularExperiment):
 
             drift_data = data if data is not None else self.test
 
-            if not self.y.name in drift_data.columns:
+            if not y_name in drift_data.columns:
                 raise ValueError(
-                    f"The dataset must contain a label column {self.y.name} "
+                    f"The dataset must contain a label column {y_name} "
                     "in order to create a drift report."
                 )
 
@@ -4865,7 +4874,7 @@ class _SupervisedExperiment(_TabularExperiment):
             pred_prob = pred
 
         df_score = None
-        if y_test_ is not None:
+        if y_test_ is not None and self._setup_ran:
             # model name
             full_name = self._get_model_name(estimator)
             metrics = self._calculate_metrics(y_test_, pred, pred_prob)  # type: ignore
@@ -5384,7 +5393,7 @@ class _SupervisedExperiment(_TabularExperiment):
             self.X_test_transformed, label=self.y_test_transformed, cat_features=[]
         )
 
-        from deepchecks.suites import full_suite
+        from deepchecks.tabular.suites import full_suite
 
         suite = full_suite(**check_kwargs)
         return suite.run(train_dataset=ds_train, test_dataset=ds_test, model=estimator)

@@ -40,6 +40,7 @@ def test_fit(pipeline):
     """Assert that the pipeline can be fitted normally."""
     data = get_data("juice", verbose=False)
     assert pipeline.fit(data.iloc[:, :-1], data.iloc[:, -1])
+    assert isinstance(pipeline.feature_names_in_, list)
 
 
 def test_transforms_only_y():

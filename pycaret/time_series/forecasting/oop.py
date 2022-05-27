@@ -28,6 +28,10 @@ import pycaret.containers.models.time_series
 import pycaret.internal.patches.sklearn
 import pycaret.internal.persistence
 import pycaret.internal.preprocess
+from pycaret.containers.models.time_series import (
+    ALL_ALLOWED_ENGINES,
+    get_container_default_engines,
+)
 from pycaret.internal.display import CommonDisplay
 from pycaret.internal.distributions import get_base_distributions
 from pycaret.internal.logging import get_logger
@@ -123,9 +127,11 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                 "X_train_transformed",
                 "y_test_transformed",
                 "X_test_transformed",
+                "model_engines",
             }
         )
         self._available_plots = {
+            "pipeline": "Pipeline Plot",
             "ts": "Time Series Plot",
             "train_test_split": "Train Test Split",
             "cv": "Cross Validation",
@@ -1167,28 +1173,6 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         return self
 
-    def _set_all_models(self) -> "TSForecastingExperiment":
-        """Set all available models
-
-        Returns
-        -------
-        TSForecastingExperiment
-            The experiment object to allow chaining of methods
-        """
-        self._all_models, self._all_models_internal = self._get_models()
-        return self
-
-    def _set_all_metrics(self) -> "TSForecastingExperiment":
-        """Set all available metrics
-
-        Returns
-        -------
-        TSForecastingExperiment
-            The experiment object to allow chaining of methods
-        """
-        self._all_metrics = self._get_metrics()
-        return self
-
     def _disable_metrics(self) -> "TSForecastingExperiment":
         """Disable metrics that are not applicable based on data and user inputs. e.g.
         (1) R2 needs at least 2 data points so should be disabled if there is only
@@ -1238,9 +1222,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         enforce_exogenous: bool = True,
         n_jobs: Optional[int] = -1,
         use_gpu: bool = False,
-        custom_pipeline: Union[
-            Any, Tuple[str, Any], List[Any], List[Tuple[str, Any]]
-        ] = None,
+        custom_pipeline: Optional[Any] = None,
         html: bool = True,
         session_id: Optional[int] = None,
         system_log: Union[bool, logging.Logger] = True,
@@ -1252,6 +1234,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         log_plots: Union[bool, list] = False,
         log_profile: bool = False,
         log_data: bool = False,
+        engines: Optional[Dict[str, str]] = None,
         verbose: bool = True,
         profile: bool = False,
         profile_kwargs: Optional[Dict[str, Any]] = None,
@@ -1325,10 +1308,12 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             If None, no transformation is performed. Allowed values are
                 "box-cox", "log", "sqrt", "exp", "cos"
 
+
         scale_target: Optional[str], default = None
             Indicates how the target variable should be scaled.
             If None, no scaling is performed. Allowed values are
                 "zscore", "minmax", "maxabs", "robust"
+
 
         scale_exogenous: Optional[str], default = None
             Indicates how the exogenous variables should be scaled.
@@ -1445,7 +1430,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             Parameter not in use for now. Behavior may change in future.
 
 
-        custom_pipeline: (str, transformer) or list of (str, transformer), default = None
+        custom_pipeline: list of (str, transformer), dict or Pipeline, default = None
             Parameter not in use for now. Behavior may change in future.
 
 
@@ -1488,6 +1473,12 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         log_data: bool, default = False
             When set to True, dataset is logged on the ``MLflow`` server as a csv file.
             Ignored when ``log_experiment`` is not True.
+
+
+        engines: Optional[Dict[str, str]] = None
+            The engine to use for the models, e.g. for auto_arima, users can
+            switch between "pmdarima" and "statsforecast" by specifying
+            engines={"auto_arima": "statsforecast"}
 
 
         verbose: bool, default = True
@@ -1557,6 +1548,8 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         runtime_start = time.time()
 
         #### Define parameter attrs ----
+        self.all_allowed_engines = ALL_ALLOWED_ENGINES
+
         self.fig_kwargs = fig_kwargs or {}
         self._set_default_fig_kwargs()
 
@@ -1619,6 +1612,10 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             ._perform_setup_eda()
             ._setup_display_container()
             ._profile(profile, profile_kwargs)
+            ._set_exp_model_engines(
+                container_default_engines=get_container_default_engines(),
+                engines=engines,
+            )
             ._set_all_models()
             ._set_all_metrics()
         )
@@ -1666,13 +1663,14 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         fold: Optional[Union[int, Any]] = None,
         round: int = 4,
         cross_validation: bool = True,
-        sort: str = "smape",
+        sort: str = "MASE",
         n_select: int = 1,
         budget_time: Optional[float] = None,
         turbo: bool = True,
         errors: str = "ignore",
         fit_kwargs: Optional[dict] = None,
         experiment_custom_tags: Optional[Dict[str, Any]] = None,
+        engines: Optional[Dict[str, str]] = None,
         verbose: bool = True,
     ):
 
@@ -1721,7 +1719,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             is ignored when cross_validation is set to False.
 
 
-        sort: str, default = 'SMAPE'
+        sort: str, default = 'MASE'
             The sort order of the score grid. It also accepts custom metrics that are
             added through the ``add_metric`` function.
 
@@ -1750,6 +1748,12 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             Dictionary of arguments passed to the fit method of the model.
 
 
+        engines: Optional[Dict[str, str]] = None
+            The engine to use for the models, e.g. for auto_arima, users can
+            switch between "pmdarima" and "statsforecast" by specifying
+            engines={"auto_arima": "statsforecast"}
+
+
         verbose: bool, default = True
             Score grid is not printed when verbose is set to False.
 
@@ -1766,21 +1770,37 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         """
 
-        return super().compare_models(
-            include=include,
-            exclude=exclude,
-            fold=fold,
-            round=round,
-            cross_validation=cross_validation,
-            sort=sort,
-            n_select=n_select,
-            budget_time=budget_time,
-            turbo=turbo,
-            errors=errors,
-            fit_kwargs=fit_kwargs,
-            experiment_custom_tags=experiment_custom_tags,
-            verbose=verbose,
-        )
+        if engines is not None:
+            # Save current engines, then set to user specified options
+            initial_model_engines = self.exp_model_engines.copy()
+            for estimator, engine in engines.items():
+                self._set_engine(estimator=estimator, engine=engine, severity="error")
+
+        try:
+            return_values = super().compare_models(
+                include=include,
+                exclude=exclude,
+                fold=fold,
+                round=round,
+                cross_validation=cross_validation,
+                sort=sort,
+                n_select=n_select,
+                budget_time=budget_time,
+                turbo=turbo,
+                errors=errors,
+                fit_kwargs=fit_kwargs,
+                experiment_custom_tags=experiment_custom_tags,
+                verbose=verbose,
+            )
+        finally:
+            if engines is not None:
+                # Reset the models back to the default engines
+                self._set_exp_model_engines(
+                    container_default_engines=get_container_default_engines(),
+                    engines=initial_model_engines,
+                )
+
+        return return_values
 
     def create_model(
         self,
@@ -1790,6 +1810,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         cross_validation: bool = True,
         fit_kwargs: Optional[dict] = None,
         experiment_custom_tags: Optional[Dict[str, Any]] = None,
+        engine: Optional[str] = None,
         verbose: bool = True,
         **kwargs,
     ):
@@ -1874,6 +1895,12 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             Dictionary of arguments passed to the fit method of the model.
 
 
+        engine: Optional[str] = None
+            The engine to use for the model, e.g. for auto_arima, users can
+            switch between "pmdarima" and "statsforecast" by specifying
+            engine="statsforecast".
+
+
         verbose: bool, default = True
             Score grid is not printed when verbose is set to False.
 
@@ -1893,16 +1920,31 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         """
 
-        return super().create_model(
-            estimator=estimator,
-            fold=fold,
-            round=round,
-            cross_validation=cross_validation,
-            fit_kwargs=fit_kwargs,
-            experiment_custom_tags=experiment_custom_tags,
-            verbose=verbose,
-            **kwargs,
-        )
+        if engine is not None:
+            # Save current engines, then set to user specified options
+            initial_default_model_engines = self.exp_model_engines.copy()
+            self._set_engine(estimator=estimator, engine=engine, severity="error")
+
+        try:
+            return_values = super().create_model(
+                estimator=estimator,
+                fold=fold,
+                round=round,
+                cross_validation=cross_validation,
+                fit_kwargs=fit_kwargs,
+                experiment_custom_tags=experiment_custom_tags,
+                verbose=verbose,
+                **kwargs,
+            )
+        finally:
+            if engine is not None:
+                # Reset the models back to the default engines
+                self._set_exp_model_engines(
+                    container_default_engines=get_container_default_engines(),
+                    engines=initial_default_model_engines,
+                )
+
+        return return_values
 
     @staticmethod
     def update_fit_kwargs_with_fh_from_cv(fit_kwargs: Optional[Dict], cv) -> Dict:
@@ -2141,7 +2183,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         round: int = 4,
         n_iter: int = 10,
         custom_grid: Optional[Union[Dict[str, list], Any]] = None,
-        optimize: str = "SMAPE",
+        optimize: str = "MASE",
         custom_scorer=None,
         search_algorithm: Optional[str] = None,
         choose_better: bool = True,
@@ -2197,7 +2239,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             supported by the defined ``search_library``.
 
 
-        optimize: str, default = 'SMAPE'
+        optimize: str, default = 'MASE'
             Metric name to be evaluated for hyperparameter tuning. It also accepts custom
             metrics that are added through the ``add_metric`` function.
 
@@ -2716,7 +2758,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         fold: Optional[Union[int, Any]] = None,
         round: int = 4,
         choose_better: bool = False,
-        optimize: str = "SMAPE",
+        optimize: str = "MASE",
         weights: Optional[List[float]] = None,
         fit_kwargs: Optional[dict] = None,
         verbose: bool = True,
@@ -2769,7 +2811,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             metric used for comparison is defined by the ``optimize`` parameter.
 
 
-        optimize: str, default = 'SMAPE'
+        optimize: str, default = 'MASE'
             Metric to compare for model selection when ``choose_better`` is True.
 
 

@@ -132,6 +132,32 @@ def test_regression(boston_dataframe, return_train_score):
     assert 1 == 1
 
 
+def test_regression_predict_on_unseen(boston_dataframe):
+    exp = pycaret.regression.RegressionExperiment()
+    # init setup
+    exp.setup(
+        boston_dataframe,
+        target="medv",
+        remove_multicollinearity=True,
+        multicollinearity_threshold=0.95,
+        silent=True,
+        log_experiment=True,
+        html=False,
+        session_id=123,
+        n_jobs=1,
+        experiment_name=uuid.uuid4().hex,
+    )
+    model = exp.create_model("dt", cross_validation=False)
+
+    # save model
+    exp.save_model(model, "best_model_23122019")
+
+    exp = pycaret.regression.RegressionExperiment()
+    # load model
+    model = exp.load_model("best_model_23122019")
+    exp.predict_model(model, boston_dataframe)
+
+
 class TestRegressionExperimentCustomTags:
     def test_regression_setup_fails_with_experiment_custom_tags(self, boston_dataframe):
         with pytest.raises(Exception):
@@ -203,4 +229,5 @@ class TestRegressionExperimentCustomTags:
 
 if __name__ == "__main__":
     test_regression()
+    test_regression_predict_on_unseen()
     TestRegressionExperimentCustomTags()

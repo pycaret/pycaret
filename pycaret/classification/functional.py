@@ -72,7 +72,7 @@ def setup(
     feature_selection_method: str = "classic",
     feature_selection_estimator: Union[str, Any] = "lightgbm",
     n_features_to_select: int = 10,
-    custom_pipeline: Any = None,
+    custom_pipeline: Optional[Any] = None,
     data_split_shuffle: bool = True,
     data_split_stratify: Union[bool, List[str]] = False,
     fold_strategy: Union[str, Any] = "stratifiedkfold",
@@ -385,7 +385,7 @@ def setup(
         when counting.
 
 
-    custom_pipeline: (str, transformer), list of (str, transformer) or dict, default = None
+    custom_pipeline: list of (str, transformer), dict or Pipeline, default = None
         Addidiotnal custom transformers. If passed, they are applied to the
         pipeline last, after all the build-in transformers.
 
@@ -1542,6 +1542,7 @@ def plot_model(
     plot: str, default = 'auc'
         List of available plots (ID - Name):
 
+        * 'pipeline' - Schematic drawing of the preprocessing pipeline
         * 'auc' - Area Under the Curve
         * 'threshold' - Discrimination Threshold
         * 'pr' - Precision Recall Curve
@@ -1585,6 +1586,7 @@ def plot_model(
 
     plot_kwargs: dict, default = {} (empty dict)
         Dictionary of arguments passed to the visualizer class.
+            - pipeline: fontsize -> int
 
 
     groups: str or array-like, with shape (n_samples,), default = None
@@ -2957,7 +2959,7 @@ def convert_model(estimator, language: str = "python") -> str:
     >>> from pycaret.classification import *
     >>> exp_name = setup(data = juice,  target = 'Purchase')
     >>> lr = create_model('lr')
-    >>> lr_java = export_model(lr, 'java')
+    >>> lr_java = convert_model(lr, 'java')
 
 
     estimator: scikit-learn compatible object

@@ -27,6 +27,7 @@ PlotReturnType = Tuple[Optional[go.Figure], Optional[Dict[str, Any]]]
 #### Data Types allowed for each plot type ----
 # First one in the list is the default (if requested is None)
 ALLOWED_PLOT_DATA_TYPES = {
+    "pipeline": ["original", "imputed", "transformed"],
     "ts": ["original", "imputed", "transformed"],
     "train_test_split": ["original", "imputed", "transformed"],
     "cv": ["original"],
@@ -187,31 +188,37 @@ def corr_subplot(
     """
 
     lower, upper = None, None
+
+    # Compute n_lags
+    if nlags is None:
+        if plot in ["acf", "ccf"]:
+            nlags = 40
+        elif plot in ["pacf"]:
+            nobs = len(data)
+            nlags = min(int(10 * np.log10(nobs)), nobs // 2 - 1)
+
     if plot in ["acf", "pacf"]:
         if plot == "acf":
             default_name = "ACF"
-            corr_array = acf(data, alpha=0.05)
+            corr_array = acf(data, nlags=nlags, alpha=0.05)
         elif plot == "pacf":
             default_name = "PACF"
-            nobs = len(data)
-            nlags = min(int(10 * np.log10(nobs)), nobs // 2 - 1)
             corr_array = pacf(data, nlags=nlags, alpha=0.05)
         corr_values = corr_array[0]
         lower = corr_array[1][:, 0] - corr_array[0]
         upper = corr_array[1][:, 1] - corr_array[0]
     elif plot == "ccf":
         default_name = "CCF"
-        [target, exog] = data
+        target, exog = data
         corr_values = ccf(target, exog, unbiased=False)
+        # Default, returns lags = len of data, hence limit it.
+        corr_values = corr_values[: nlags + 1]
         # No upper and lower bounds available for CCF
     else:
         raise ValueError(
             f"plot must be one of 'acf', 'pacf' or 'ccf'. You passed '{plot}'"
         )
 
-    if not nlags:
-        nlags = 40
-    corr_values = corr_values[: nlags + 1]
     lags = np.arange(len(corr_values))
     name = name or default_name
 

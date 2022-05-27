@@ -41,17 +41,15 @@ def test_clustering(data):
         "kmodes", experiment_custom_tags={"tag": 1}
     )
 
+    # Plot Model
+    pycaret.clustering.plot_model(kmeans)
+    pycaret.clustering.plot_model(kmodes)
+
     # assign model
     kmeans_results = pycaret.clustering.assign_model(kmeans)
     kmodes_results = pycaret.clustering.assign_model(kmodes)
     assert isinstance(kmeans_results, pd.DataFrame)
     assert isinstance(kmodes_results, pd.DataFrame)
-
-    # save model
-    pycaret.clustering.save_model(kmeans, "kmeans_model_23122019")
-
-    # load model
-    pycaret.clustering.load_model("kmeans_model_23122019")
 
     # predict model
     kmeans_predictions = pycaret.clustering.predict_model(model=kmeans, data=data)
@@ -78,3 +76,16 @@ def test_clustering(data):
     for experiment_run in client.list_run_infos(experiment.experiment_id):
         run = client.get_run(experiment_run.run_id)
         assert run.data.tags.get("tag") == "1"
+
+    # save model
+    pycaret.clustering.save_model(kmeans, "kmeans_model_23122019")
+
+    # reset
+    pycaret.clustering.set_current_experiment(pycaret.clustering.ClusteringExperiment())
+
+    # load model
+    kmeans = pycaret.clustering.load_model("kmeans_model_23122019")
+
+    # predict model
+    kmeans_predictions = pycaret.clustering.predict_model(model=kmeans, data=data)
+    assert isinstance(kmeans_predictions, pd.DataFrame)

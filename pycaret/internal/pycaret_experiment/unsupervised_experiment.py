@@ -13,6 +13,7 @@ import plotly.graph_objects as go  # type: ignore
 from IPython.utils import io
 from joblib.memory import Memory
 from sklearn.base import clone  # type: ignore
+from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import LabelEncoder
 
 import pycaret.internal.patches.sklearn
@@ -124,7 +125,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
         pca: bool = False,
         pca_method: str = "linear",
         pca_components: Union[int, float] = 1.0,
-        custom_pipeline: Any = None,
+        custom_pipeline: Optional[Any] = None,
         n_jobs: Optional[int] = -1,
         use_gpu: bool = False,
         html: bool = True,
@@ -176,6 +177,9 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
         # Set up data ============================================== >>
 
         self.data = self._prepare_dataset(data)
+
+        # Train and Test indices
+        self.idx = [self.data.index, None]
 
         self._prepare_column_types(
             ordinal_features=ordinal_features,
@@ -845,14 +849,35 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
         self.logger.info("Initializing predict_model()")
         self.logger.info(f"predict_model({function_params_str})")
 
+        if isinstance(estimator, Pipeline):
+            if not hasattr(estimator, "feature_names_in_"):
+                raise ValueError(
+                    "If estimator is a Pipeline, it must implement `feature_names_in_`."
+                )
+            pipeline = estimator
+            # Temporarily remove final estimator so it's not used for transform
+            final_step = pipeline.steps[-1]
+            estimator = final_step[-1]
+            pipeline.steps = pipeline.steps[:-1]
+        elif not self._setup_ran:
+            raise ValueError(
+                "If estimator is not a Pipeline, you must run setup() first."
+            )
+        else:
+            pipeline = self.pipeline
+            final_step = None
+
         if ml_usecase is None:
             ml_usecase = self._ml_usecase
 
+        X_columns = pipeline.feature_names_in_
         if data is None:
             data_transformed = self.X_transformed
         else:
-            data = self._prepare_dataset(data)[self.X.columns]
-            data_transformed = self.pipeline.transform(data)
+            data = self._prepare_dataset(data)[X_columns]
+            data_transformed = pipeline.transform(data)
+            if final_step:
+                pipeline.steps.append(final_step)
 
         # exception checking for predict param
         if hasattr(estimator, "predict"):
