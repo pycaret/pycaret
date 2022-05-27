@@ -362,7 +362,7 @@ class _TabularExperiment(_PyCaretExperiment):
         if display_format not in plot_formats:
             raise ValueError("display_format can only be None or 'streamlit'.")
 
-    def plot_model(
+    def _plot_model(
         self,
         estimator,
         plot: str = "auc",
@@ -381,103 +381,7 @@ class _TabularExperiment(_PyCaretExperiment):
         display_format: Optional[str] = None,
     ) -> str:
 
-        """
-        This function takes a trained model object and returns a plot based on the
-        test / hold-out set. The process may require the model to be re-trained in
-        certain cases. See list of plots supported below.
-
-        Model must be created using create_model() or tune_model().
-
-        Example
-        -------
-        >>> from pycaret.datasets import get_data
-        >>> juice = get_data('juice')
-        >>> experiment_name = setup(data = juice,  target = 'Purchase')
-        >>> lr = create_model('lr')
-        >>> plot_model(lr)
-
-        This will return an AUC plot of a trained Logistic Regression model.
-
-        Parameters
-        ----------
-        estimator : object, default = none
-            A trained model object should be passed as an estimator.
-
-        plot : str, default = auc
-            Enter abbreviation of type of plot. The current list of plots supported are (Plot - Name):
-
-            * 'pipeline' - Schematic drawing of the preprocessing pipeline
-            * 'residuals_interactive' - Interactive Residual plots
-            * 'auc' - Area Under the Curve
-            * 'threshold' - Discrimination Threshold
-            * 'pr' - Precision Recall Curve
-            * 'confusion_matrix' - Confusion Matrix
-            * 'error' - Class Prediction Error
-            * 'class_report' - Classification Report
-            * 'boundary' - Decision Boundary
-            * 'rfe' - Recursive Feature Selection
-            * 'learning' - Learning Curve
-            * 'manifold' - Manifold Learning
-            * 'calibration' - Calibration Curve
-            * 'vc' - Validation Curve
-            * 'dimension' - Dimension Learning
-            * 'feature' - Feature Importance
-            * 'feature_all' - Feature Importance (All)
-            * 'parameter' - Model Hyperparameter
-            * 'lift' - Lift Curve
-            * 'gain' - Gain Chart
-
-        scale: float, default = 1
-            The resolution scale of the figure.
-
-        save: string or bool, default = False
-            When set to True, Plot is saved as a 'png' file in current working directory.
-            When a path destination is given, Plot is saved as a 'png' file the given path to the directory of choice.
-
-        fold: integer or scikit-learn compatible CV generator, default = None
-            Controls cross-validation used in certain plots. If None, will use the CV generator
-            defined in setup(). If integer, will use KFold CV with that many folds.
-            When cross_validation is False, this parameter is ignored.
-
-        fit_kwargs: dict, default = {} (empty dict)
-            Dictionary of arguments passed to the fit method of the model.
-
-        groups: str or array-like, with shape (n_samples,), default = None
-            Optional Group labels for the samples used while splitting the dataset into train/test set.
-            If string is passed, will use the data column with that name as the groups.
-            Only used if a group based cross-validation generator is used (eg. GroupKFold).
-            If None, will use the value set in fold_groups parameter in setup().
-
-        verbose: bool, default = True
-            Progress bar not shown when verbose set to False.
-
-        system: bool, default = True
-            Must remain True all times. Only to be changed by internal functions.
-
-        display_format: str, default = None
-            To display plots in Streamlit (https://www.streamlit.io/), set this to 'streamlit'.
-            Currently, not all plots are supported.
-
-        Returns
-        -------
-        Visual_Plot
-            Prints the visual plot.
-        str:
-            If save parameter is True, will return the name of the saved file.
-
-        Warnings
-        --------
-        -  'svm' and 'ridge' doesn't support the predict_proba method. As such, AUC and
-            calibration plots are not available for these estimators.
-
-        -   When the 'max_features' parameter of a trained model object is not equal to
-            the number of samples in training set, the 'rfe' plot is not available.
-
-        -   'calibration', 'threshold', 'manifold' and 'rfe' plots are not available for
-            multiclass problems.
-
-
-        """
+        """Internal version of ``plot_model`` with ``system`` arg."""
         self._check_setup_ran()
 
         function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
@@ -2112,6 +2016,136 @@ class _TabularExperiment(_PyCaretExperiment):
         if save:
             return plot_filename
 
+    def plot_model(
+        self,
+        estimator,
+        plot: str = "auc",
+        scale: float = 1,  # added in pycaret==2.1.0
+        save: Union[str, bool] = False,
+        fold: Optional[Union[int, Any]] = None,
+        fit_kwargs: Optional[dict] = None,
+        plot_kwargs: Optional[dict] = None,
+        groups: Optional[Union[str, Any]] = None,
+        feature_name: Optional[str] = None,
+        label: bool = False,
+        use_train_data: bool = False,
+        verbose: bool = True,
+        display_format: Optional[str] = None,
+    ) -> str:
+
+        """
+        This function takes a trained model object and returns a plot based on the
+        test / hold-out set. The process may require the model to be re-trained in
+        certain cases. See list of plots supported below.
+
+        Model must be created using create_model() or tune_model().
+
+        Example
+        -------
+        >>> from pycaret.datasets import get_data
+        >>> juice = get_data('juice')
+        >>> experiment_name = setup(data = juice,  target = 'Purchase')
+        >>> lr = create_model('lr')
+        >>> plot_model(lr)
+
+        This will return an AUC plot of a trained Logistic Regression model.
+
+        Parameters
+        ----------
+        estimator : object, default = none
+            A trained model object should be passed as an estimator.
+
+        plot : str, default = auc
+            Enter abbreviation of type of plot. The current list of plots supported are (Plot - Name):
+
+            * 'pipeline' - Schematic drawing of the preprocessing pipeline
+            * 'residuals_interactive' - Interactive Residual plots
+            * 'auc' - Area Under the Curve
+            * 'threshold' - Discrimination Threshold
+            * 'pr' - Precision Recall Curve
+            * 'confusion_matrix' - Confusion Matrix
+            * 'error' - Class Prediction Error
+            * 'class_report' - Classification Report
+            * 'boundary' - Decision Boundary
+            * 'rfe' - Recursive Feature Selection
+            * 'learning' - Learning Curve
+            * 'manifold' - Manifold Learning
+            * 'calibration' - Calibration Curve
+            * 'vc' - Validation Curve
+            * 'dimension' - Dimension Learning
+            * 'feature' - Feature Importance
+            * 'feature_all' - Feature Importance (All)
+            * 'parameter' - Model Hyperparameter
+            * 'lift' - Lift Curve
+            * 'gain' - Gain Chart
+
+        scale: float, default = 1
+            The resolution scale of the figure.
+
+        save: string or bool, default = False
+            When set to True, Plot is saved as a 'png' file in current working directory.
+            When a path destination is given, Plot is saved as a 'png' file the given path to the directory of choice.
+
+        fold: integer or scikit-learn compatible CV generator, default = None
+            Controls cross-validation used in certain plots. If None, will use the CV generator
+            defined in setup(). If integer, will use KFold CV with that many folds.
+            When cross_validation is False, this parameter is ignored.
+
+        fit_kwargs: dict, default = {} (empty dict)
+            Dictionary of arguments passed to the fit method of the model.
+
+        groups: str or array-like, with shape (n_samples,), default = None
+            Optional Group labels for the samples used while splitting the dataset into train/test set.
+            If string is passed, will use the data column with that name as the groups.
+            Only used if a group based cross-validation generator is used (eg. GroupKFold).
+            If None, will use the value set in fold_groups parameter in setup().
+
+        verbose: bool, default = True
+            Progress bar not shown when verbose set to False.
+
+        system: bool, default = True
+            Must remain True all times. Only to be changed by internal functions.
+
+        display_format: str, default = None
+            To display plots in Streamlit (https://www.streamlit.io/), set this to 'streamlit'.
+            Currently, not all plots are supported.
+
+        Returns
+        -------
+        Visual_Plot
+            Prints the visual plot.
+        str:
+            If save parameter is True, will return the name of the saved file.
+
+        Warnings
+        --------
+        -  'svm' and 'ridge' doesn't support the predict_proba method. As such, AUC and
+            calibration plots are not available for these estimators.
+
+        -   When the 'max_features' parameter of a trained model object is not equal to
+            the number of samples in training set, the 'rfe' plot is not available.
+
+        -   'calibration', 'threshold', 'manifold' and 'rfe' plots are not available for
+            multiclass problems.
+
+
+        """
+        return self._plot_model(
+            estimator=estimator,
+            plot=plot,
+            scale=scale,
+            save=save,
+            fold=fold,
+            fit_kwargs=fit_kwargs,
+            plot_kwargs=plot_kwargs,
+            groups=groups,
+            feature_name=feature_name,
+            label=label,
+            use_train_data=use_train_data,
+            verbose=verbose,
+            display_format=display_format,
+        )
+
     def evaluate_model(
         self,
         estimator,
@@ -2188,7 +2222,7 @@ class _TabularExperiment(_PyCaretExperiment):
         groups = self._get_groups(groups)
 
         interact(
-            self.plot_model,
+            self._plot_model,
             estimator=fixed(estimator),
             plot=a,
             save=fixed(False),

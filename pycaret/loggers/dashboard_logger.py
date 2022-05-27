@@ -148,7 +148,7 @@ class DashboardLogger:
 
                 def _log_plot(plot):
                     try:
-                        plot_name = experiment.plot_model(
+                        plot_name = experiment._plot_model(
                             model, plot=plot, verbose=False, save=tmpdir, system=False
                         )
                         [
