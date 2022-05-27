@@ -55,7 +55,7 @@ def setup(
     use_gpu: bool = False,
     html: bool = True,
     session_id: Optional[int] = None,
-    system_log: Union[bool, logging.Logger] = True,
+    system_log: Union[bool, str, logging.Logger] = True,
     log_experiment: Union[bool, str, BaseLogger, List[Union[str, BaseLogger]]] = False,
     experiment_name: Optional[str] = None,
     experiment_custom_tags: Optional[Dict[str, Any]] = None,
@@ -313,9 +313,10 @@ def setup(
         for later reproducibility of the entire experiment.
 
 
-    system_log: bool or logging.Logger, default = True
+    system_log: bool or str or logging.Logger, default = True
         Whether to save the system logging file (as logs.log). If the input
-        already is a logger object, that one is used instead.
+        is a string, use that as the path to the logging file. If the input
+        already is a logger object, use that one instead.
 
 
     log_experiment: bool, default = False
@@ -1330,7 +1331,7 @@ def get_outliers(
     group_names: Optional[List[str]] = None,
     n_jobs: Optional[int] = -1,
     session_id: Optional[int] = None,
-    system_log: Union[bool, logging.Logger] = True,
+    system_log: Union[bool, str, logging.Logger] = True,
     log_experiment: Union[bool, str, BaseLogger, List[Union[str, BaseLogger]]] = False,
     experiment_name: Optional[str] = None,
     log_plots: Union[bool, list] = False,
