@@ -2,7 +2,6 @@ import datetime
 import gc
 import logging
 import time
-import warnings
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np  # type: ignore
@@ -38,7 +37,6 @@ from pycaret.internal.utils import (
 from pycaret.internal.validation import is_sklearn_cv_generator
 from pycaret.loggers.base_logger import BaseLogger
 
-warnings.filterwarnings("ignore")
 LOGGER = get_logger()
 
 

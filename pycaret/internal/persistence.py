@@ -107,11 +107,6 @@ def deploy_model(
     logger.info("Initializing deploy_model()")
     logger.info(f"deploy_model({function_params_str})")
 
-    # ignore warnings
-    import warnings
-
-    warnings.filterwarnings("ignore")
-
     allowed_platforms = ["aws", "gcp", "azure"]
 
     if platform not in allowed_platforms:
@@ -298,11 +293,7 @@ def save_model(
     logger.info("Initializing save_model()")
     logger.info(f"save_model({function_params_str})")
 
-    # ignore warnings
-    import warnings
     from copy import deepcopy
-
-    warnings.filterwarnings("ignore")
 
     logger.info("Adding model into prep_pipe")
 
@@ -391,11 +382,6 @@ def load_model(
 
     logger.info("Initializing load_model()")
     logger.info(f"load_model({function_params_str})")
-
-    # ignore warnings
-    import warnings
-
-    warnings.filterwarnings("ignore")
 
     # exception checking
 

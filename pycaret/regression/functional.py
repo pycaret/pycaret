@@ -1,5 +1,4 @@
 import logging
-import warnings
 from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
@@ -15,8 +14,6 @@ from pycaret.internal.utils import (
 # from pycaret.parallel import ParallelBackend # Unused
 from pycaret.loggers.base_logger import BaseLogger
 from pycaret.regression.oop import RegressionExperiment
-
-warnings.filterwarnings("ignore")
 
 _EXPERIMENT_CLASS = RegressionExperiment
 _CURRENT_EXPERIMENT: Optional[RegressionExperiment] = None

@@ -1,8 +1,6 @@
 import logging
-import warnings
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Union
 
-import numpy as np
 import pandas as pd
 from joblib.memory import Memory
 
@@ -15,8 +13,6 @@ from pycaret.internal.utils import (
 
 # from pycaret.parallel import ParallelBackend # unused
 from pycaret.loggers.base_logger import BaseLogger
-
-warnings.filterwarnings("ignore")
 
 _EXPERIMENT_CLASS = ClassificationExperiment
 _CURRENT_EXPERIMENT: Optional[ClassificationExperiment] = None

@@ -1,5 +1,4 @@
 import logging
-import warnings
 from typing import Any, Dict, List, Optional, Union
 
 import pandas as pd
@@ -8,8 +7,6 @@ from joblib.memory import Memory
 from pycaret.anomaly.oop import AnomalyExperiment
 from pycaret.internal.utils import DATAFRAME_LIKE, check_if_global_is_not_none
 from pycaret.loggers.base_logger import BaseLogger
-
-warnings.filterwarnings("ignore")
 
 _EXPERIMENT_CLASS = AnomalyExperiment
 _CURRENT_EXPERIMENT: Optional[AnomalyExperiment] = None

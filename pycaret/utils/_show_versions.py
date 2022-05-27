@@ -12,6 +12,8 @@ import platform
 import sys
 from typing import Optional
 
+from pycaret.internal.logging import redirect_output
+
 required_deps = [
     "pip",
     "setuptools",
@@ -98,7 +100,7 @@ def _get_sys_info():
     return dict(blob)
 
 
-def _get_deps_info(optional: bool = False):
+def _get_deps_info(optional: bool = False, logger: Optional[logging.Logger] = None):
     """
     Overview of the installed version of dependencies.
 
@@ -129,7 +131,8 @@ def _get_deps_info(optional: bool = False):
             if modname in sys.modules:
                 mod = sys.modules[modname]
             else:
-                mod = importlib.import_module(modname)
+                with redirect_output(logger):
+                    mod = importlib.import_module(modname)
             ver = get_version(mod)
             deps_info[modname] = ver
         except ImportError:
@@ -164,12 +167,12 @@ def show_versions(optional: bool = True, logger: Optional[logging.Logger] = None
         print_func("{k:>10}: {stat}".format(k=k, stat=stat))  # noqa: T001
 
     print_func("\nPyCaret required dependencies:")  # noqa: T001
-    optional_deps_info = _get_deps_info()
+    optional_deps_info = _get_deps_info(logger=logger)
     for k, stat in optional_deps_info.items():
         print_func("{k:>20}: {stat}".format(k=k, stat=stat))  # noqa: T001
 
     if optional:
         print_func("\nPyCaret optional dependencies:")  # noqa: T001
-        optional_deps_info = _get_deps_info(optional=True)
+        optional_deps_info = _get_deps_info(logger=logger, optional=True)
         for k, stat in optional_deps_info.items():
             print_func("{k:>20}: {stat}".format(k=k, stat=stat))  # noqa: T001

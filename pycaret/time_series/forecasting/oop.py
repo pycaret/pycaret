@@ -11,7 +11,6 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
-from IPython.utils import io
 from sklearn.base import clone
 from sktime.forecasting.base import BaseForecaster, ForecastingHorizon
 from sktime.forecasting.compose import ForecastingPipeline, TransformedTargetForecaster
@@ -34,7 +33,7 @@ from pycaret.containers.models.time_series import (
 )
 from pycaret.internal.display import CommonDisplay
 from pycaret.internal.distributions import get_base_distributions
-from pycaret.internal.logging import get_logger
+from pycaret.internal.logging import get_logger, redirect_output
 
 # from pycaret.internal.pipeline import get_pipeline_fit_kwargs
 from pycaret.internal.plots.time_series import _get_plot
@@ -86,7 +85,6 @@ from pycaret.utils.time_series.forecasting.pipeline import (
     _get_pipeline_estimator_label,
 )
 
-warnings.filterwarnings("ignore")
 LOGGER = get_logger()
 
 
@@ -2023,7 +2021,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             pipeline=self.pipeline, model=model
         )
 
-        with io.capture_output():  # todo redirect to log
+        with redirect_output(self.logger):
             pipeline_with_model.fit(data_y, data_X, **fit_kwargs)
         model_fit_end = time.time()
 
@@ -2103,7 +2101,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             pipeline=self.pipeline, model=model
         )
 
-        with io.capture_output():  # todo redirect to log
+        with redirect_output(self.logger):
             scores, cutoffs = cross_validate(
                 pipeline=pipeline_with_model,
                 y=data_y,
@@ -2163,7 +2161,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             display.update_monitor(1, "Finalizing Model")
             model_fit_start = time.time()
             self.logger.info("Finalizing model")
-            with io.capture_output():  # todo redirect to log
+            with redirect_output(self.logger):
                 pipeline_with_model.fit(y=data_y, X=data_X, **fit_kwargs)
             model_fit_end = time.time()
             model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
@@ -2414,10 +2412,6 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                 progress_args=progress_args,
                 monitor_rows=monitor_rows,
             )
-
-        # ignore warnings
-
-        warnings.filterwarnings("ignore")
 
         # import logging
 

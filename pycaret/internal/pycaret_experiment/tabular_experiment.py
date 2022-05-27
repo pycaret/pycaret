@@ -4,7 +4,6 @@ import os
 import random
 import secrets
 import traceback
-import warnings
 from copy import deepcopy
 from typing import Any, Dict, List, Optional, Tuple, Union
 from unittest.mock import patch
@@ -40,7 +39,6 @@ from pycaret.loggers.wandb_logger import WandbLogger
 from pycaret.utils import get_allowed_engines
 from pycaret.utils._dependencies import _check_soft_dependencies
 
-warnings.filterwarnings("ignore")
 LOGGER = get_logger()
 
 
