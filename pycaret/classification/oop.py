@@ -1931,7 +1931,6 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             groups=groups,
             verbose=verbose,
             use_train_data=use_train_data,
-            system=True,
             display_format=display_format,
         )
 
@@ -2342,7 +2341,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         self.logger.info(
             "SubProcess create_model() called =================================="
         )
-        model, model_fit_time = self.create_model(
+        model, model_fit_time = self._create_model(
             estimator=model,
             system=False,
             display=display,
@@ -2529,7 +2528,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         self.logger.info("starting optimization loop")
         # loop starts here
         for i in grid:
-            model = self.create_model(
+            model = self._create_model(
                 estimator, verbose=False, system=False, probability_threshold=i
             )
             try:
