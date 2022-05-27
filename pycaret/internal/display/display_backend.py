@@ -110,7 +110,7 @@ class JupyterBackend(DisplayBackend):
 
     def clear_display(self) -> None:
         if self._display_ref:
-            self._display_ref.update({}, raw=True)
+            ipython_display(display_id=self._display_ref.display_id)
 
     def clear_output(self) -> None:
         clear_output(wait=True)
