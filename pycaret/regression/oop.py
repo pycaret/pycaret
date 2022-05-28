@@ -1,6 +1,5 @@
 import logging
 import time
-import warnings
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np  # type: ignore
@@ -13,7 +12,7 @@ import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
 import pycaret.internal.persistence
 import pycaret.internal.preprocess
-from pycaret.internal.Display import Display
+from pycaret.internal.display import CommonDisplay
 from pycaret.internal.logging import get_logger
 
 # Own module
@@ -26,7 +25,6 @@ from pycaret.internal.pycaret_experiment.utils import MLUsecase, highlight_setup
 from pycaret.internal.utils import DATAFRAME_LIKE, TARGET_LIKE
 from pycaret.loggers.base_logger import BaseLogger
 
-warnings.filterwarnings("ignore")
 LOGGER = get_logger()
 
 
@@ -133,7 +131,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
         use_gpu: bool = False,
         html: bool = True,
         session_id: Optional[int] = None,
-        system_log: Union[bool, logging.Logger] = True,
+        system_log: Union[bool, str, logging.Logger] = True,
         log_experiment: Union[
             bool, str, BaseLogger, List[Union[str, BaseLogger]]
         ] = False,
@@ -528,9 +526,10 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             If ``wandb`` (Weights & Biases) is installed, will also log there.
 
 
-        system_log: bool or logging.Logger, default = True
+        system_log: bool or str or logging.Logger, default = True
             Whether to save the system logging file (as logs.log). If the input
-            already is a logger object, that one is used instead.
+            is a string, use that as the path to the logging file. If the input
+            already is a logger object, use that one instead.
 
 
         experiment_name: str, default = None
@@ -845,7 +844,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             pd.DataFrame(container, columns=["Description", "Value"])
         ]
         self.logger.info(f"Setup display_container: {self.display_container[0]}")
-        display = Display(
+        display = CommonDisplay(
             verbose=self.verbose,
             html_param=self.html_param,
         )

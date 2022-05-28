@@ -1,5 +1,4 @@
-import warnings
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import List, Tuple
 
 import numpy as np  # type: ignore
 import pandas as pd  # type ignore
@@ -16,7 +15,6 @@ from pycaret.internal.pycaret_experiment.unsupervised_experiment import (
 )
 from pycaret.internal.pycaret_experiment.utils import MLUsecase
 
-warnings.filterwarnings("ignore")
 LOGGER = get_logger()
 
 

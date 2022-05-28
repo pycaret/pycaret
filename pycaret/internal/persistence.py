@@ -107,11 +107,6 @@ def deploy_model(
     logger.info("Initializing deploy_model()")
     logger.info(f"deploy_model({function_params_str})")
 
-    # ignore warnings
-    import warnings
-
-    warnings.filterwarnings("ignore")
-
     allowed_platforms = ["aws", "gcp", "azure"]
 
     if platform not in allowed_platforms:
@@ -128,8 +123,6 @@ def deploy_model(
 
     # general dependencies
     import os
-
-    from IPython.display import clear_output
 
     logger.info("Saving model in active working directory")
     logger.info("SubProcess save_model() called ==================================")
@@ -176,7 +169,6 @@ def deploy_model(
                 "Boto3 credentials not configured. Refer boto3 documentation "
                 "(https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html)"
             )
-        clear_output()
         os.remove(filename)
         print("Model Successfully Deployed on AWS S3")
         logger.info("Model Successfully Deployed on AWS S3")
@@ -301,11 +293,7 @@ def save_model(
     logger.info("Initializing save_model()")
     logger.info(f"save_model({function_params_str})")
 
-    # ignore warnings
-    import warnings
     from copy import deepcopy
-
-    warnings.filterwarnings("ignore")
 
     logger.info("Adding model into prep_pipe")
 
@@ -394,11 +382,6 @@ def load_model(
 
     logger.info("Initializing load_model()")
     logger.info(f"load_model({function_params_str})")
-
-    # ignore warnings
-    import warnings
-
-    warnings.filterwarnings("ignore")
 
     # exception checking
 

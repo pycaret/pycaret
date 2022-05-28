@@ -39,7 +39,10 @@ class MlflowLogger(BaseLogger):
         return self.run
 
     def finish_experiment(self):
-        mlflow.end_run()
+        try:
+            mlflow.end_run()
+        except Exception:
+            pass
 
     def log_params(self, params, model_name=None):
         params = {mlflow_remove_bad_chars(k): v for k, v in params.items()}
