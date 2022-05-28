@@ -12,12 +12,11 @@ on:
   schedule:
     - cron: "0 5 * * *"
 
-concurrency: 
+concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-
   code_quality:
     runs-on: ubuntu-latest
     steps:
@@ -50,7 +49,7 @@ jobs:
           python -m pip install -U pip
           python -m pip install -U pytest
           python -m pip install -U codecov
-          
+
           pip install -e ".[full]"
           if [ -f requirements-prophet.txt ]; then pip install -r requirements-prophet.txt; fi
           if [ -f requirements-test.txt ]; then pip install -r requirements-test.txt; fi
@@ -69,9 +68,11 @@ jobs:
           rm pycaret/tests/test_regression_tuning.py
           rm pycaret/tests/test_time_series_tune_grid.py
           rm pycaret/tests/test_time_series_tune_random.py
+          rm pycaret/tests/test_time_series_plots.py
+          rm pycaret/tests/test_time_series_utils_plots.py
       - name: Test with pytest
         run: |
-          pytest
+          pytest --durations=0 -o log_cli=true
 
   test_windows:
     runs-on: windows-latest
@@ -90,7 +91,7 @@ jobs:
           python -m pip install -U pip
           python -m pip install -U pytest
           python -m pip install -U codecov
-          
+
           pip install -e ".[full]"
           pip install -r requirements-prophet.txt
           pip install -r requirements-test.txt
@@ -103,10 +104,10 @@ jobs:
           pip list
       - name: Remove tests
         run: |
-          remove-item pycaret/tests/* -Include @('test_classification_tuning.py','test_classification_plots.py','test_regression_plots.py', 'test_regression_tuning.py', 'test_time_series_tune_grid.py', 'test_time_series_tune_random.py', 'test_create_api.py', 'test_create_docker.py', 'test_drift_report.py', 'test_eda.py')
+          remove-item pycaret/tests/* -Include @('test_classification_tuning.py','test_classification_plots.py','test_regression_plots.py', 'test_regression_tuning.py', 'test_time_series_tune_grid.py', 'test_time_series_tune_random.py', 'test_create_api.py', 'test_create_docker.py', 'test_drift_report.py', 'test_eda.py', 'test_time_series_plots.py', 'test_time_series_utils_plots.py')
       - name: Test with pytest
         run: |
-          pytest
+          pytest --durations=0 -o log_cli=true
 
   # test_tuning:
 
@@ -131,7 +132,7 @@ jobs:
   #       find pycaret/tests -type f -not -name '__init__.py' -not -name 'test_classification_tuning.py' -not -name 'test_regression_tuning.py' -delete
   #   - name: Test with pytest
   #     run: |
-  #       pytest -o log_cli=true
+  #       pytest --durations=0 -o log_cli=true
 
   # test_tuning_clf_windows:
 
@@ -155,7 +156,7 @@ jobs:
   #       remove-item pycaret/tests/* -Exclude @('__init__.py','test_classification_tuning.py')
   #   - name: Test with pytest
   #     run: |
-  #       pytest -o log_cli=true
+  #       pytest --durations=0 -o log_cli=true
 
   # test_tuning_reg_windows:
 
@@ -179,7 +180,7 @@ jobs:
   #       remove-item pycaret/tests/* -Exclude @('__init__.py','test_regression_tuning.py')
   #   - name: Test with pytest
   #     run: |
-  #       pytest -o log_cli=true
+  #       pytest --durations=0 -o log_cli=true
 
   test_plots:
     runs-on: ubuntu-latest
@@ -206,10 +207,10 @@ jobs:
           pip list
       - name: Remove tests
         run: |
-          find pycaret/tests -type f -not -name '__init__.py' -not -name 'test_classification_plots.py' -not -name 'test_regression_plots.py' -delete
+          find pycaret/tests -type f -not -name '__init__.py' -not -name 'test_classification_plots.py' -not -name 'test_regression_plots.py' -not -name 'conftest.py' -not -name 'time_series_test_utils.py' -not -name 'test_time_series_plots.py' -not -name 'test_time_series_utils_plots.py' -delete
       - name: Test with pytest
         run: |
-          pytest -o log_cli=true
+          pytest --durations=0 -o log_cli=true
 
   test_ts_tune_random:
     runs-on: ubuntu-latest
@@ -228,11 +229,11 @@ jobs:
           python -m pip install -U pip
           python -m pip install -U pytest
           python -m pip install -U codecov
-          
+
           pip install -e ".[full]"
           if [ -f requirements-prophet.txt ]; then pip install -r requirements-prophet.txt; fi
           if [ -f requirements-test.txt ]; then pip install -r requirements-test.txt; fi
-          
+
           python -m spacy download en_core_web_sm
       - name: Python version and dependency list
         run: |
@@ -245,8 +246,8 @@ jobs:
           find pycaret/tests -type f -not -name '__init__.py' -not -name 'conftest.py' -not -name 'time_series_test_utils.py' -not -name 'test_time_series_tune_random.py' -delete
       - name: Test with pytest
         run: |
-          pytest -o log_cli=true
-          
+          pytest --durations=0 -o log_cli=true
+
   test_ts_tune_grid:
     runs-on: ubuntu-latest
     strategy:
@@ -264,11 +265,11 @@ jobs:
           python -m pip install -U pip
           python -m pip install -U pytest
           python -m pip install -U codecov
-          
+
           pip install -e ".[full]"
           if [ -f requirements-prophet.txt ]; then pip install -r requirements-prophet.txt; fi
           if [ -f requirements-test.txt ]; then pip install -r requirements-test.txt; fi
-          
+
           python -m spacy download en_core_web_sm
       - name: Python version and dependency list
         run: |
@@ -281,5 +282,4 @@ jobs:
           find pycaret/tests -type f -not -name '__init__.py' -not -name 'conftest.py' -not -name 'time_series_test_utils.py' -not -name 'test_time_series_tune_grid.py' -delete
       - name: Test with pytest
         run: |
-          pytest -o log_cli=true
-
+          pytest --durations=0 -o log_cli=true

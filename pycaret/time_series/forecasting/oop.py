@@ -11,7 +11,6 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
-from IPython.utils import io
 from sklearn.base import clone
 from sktime.forecasting.base import BaseForecaster, ForecastingHorizon
 from sktime.forecasting.compose import ForecastingPipeline, TransformedTargetForecaster
@@ -32,9 +31,9 @@ from pycaret.containers.models.time_series import (
     ALL_ALLOWED_ENGINES,
     get_container_default_engines,
 )
-from pycaret.internal.Display import Display
+from pycaret.internal.display import CommonDisplay
 from pycaret.internal.distributions import get_base_distributions
-from pycaret.internal.logging import get_logger
+from pycaret.internal.logging import get_logger, redirect_output
 
 # from pycaret.internal.pipeline import get_pipeline_fit_kwargs
 from pycaret.internal.plots.time_series import _get_plot
@@ -86,7 +85,6 @@ from pycaret.utils.time_series.forecasting.pipeline import (
     _get_pipeline_estimator_label,
 )
 
-warnings.filterwarnings("ignore")
 LOGGER = get_logger()
 
 
@@ -1162,7 +1160,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         self.logger.info("Creating final display dataframe.")
         self.display_container = [self._get_setup_display()]
         self.logger.info(f"Setup Display Container: {self.display_container[0]}")
-        display = Display(
+        display = CommonDisplay(
             verbose=self.verbose,
             html_param=self.html_param,
         )
@@ -1225,7 +1223,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         custom_pipeline: Optional[Any] = None,
         html: bool = True,
         session_id: Optional[int] = None,
-        system_log: Union[bool, logging.Logger] = True,
+        system_log: Union[bool, str, logging.Logger] = True,
         log_experiment: Union[
             bool, str, BaseLogger, List[Union[str, BaseLogger]]
         ] = False,
@@ -1446,9 +1444,10 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             for later reproducibility of the entire experiment.
 
 
-        system_log: bool or logging.Logger, default = True
-            Whether to save the system logging file (as logs.log). If the input already is a
-            logger object, that one is used instead.
+        system_log: bool or str or logging.Logger, default = True
+            Whether to save the system logging file (as logs.log). If the input
+            is a string, use that as the path to the logging file. If the input
+            already is a logger object, use that one instead.
 
 
         log_experiment: bool, default = False
@@ -2004,7 +2003,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         round,
         predict,
         system,
-        display: Display,
+        display: CommonDisplay,
         return_train_score: bool = False,  # unused, added for compat
     ):
         # fit_kwargs = get_pipeline_fit_kwargs(model, fit_kwargs)
@@ -2023,7 +2022,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             pipeline=self.pipeline, model=model
         )
 
-        with io.capture_output():
+        with redirect_output(self.logger):
             pipeline_with_model.fit(data_y, data_X, **fit_kwargs)
         model_fit_end = time.time()
 
@@ -2039,11 +2038,10 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
             self.display_container.append(model_results)
 
-            display.display(
-                model_results.style.format(precision=round),
-                clear=system,
-                override=False if not system else None,
-            )
+            if system:
+                display.display(
+                    model_results.style.format(precision=round),
+                )
 
             self.logger.info(f"display_container: {len(self.display_container)}")
 
@@ -2074,7 +2072,6 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         """
 
         display.update_monitor(1, f"Fitting {cv.get_n_splits(data_y)} Folds")
-        display.display_monitor()
         """
         MONITOR UPDATE ENDS
         """
@@ -2105,21 +2102,22 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             pipeline=self.pipeline, model=model
         )
 
-        scores, cutoffs = cross_validate(
-            pipeline=pipeline_with_model,
-            y=data_y,
-            X=data_X,
-            scoring=metrics_dict,
-            cv=cv,
-            n_jobs=n_jobs,
-            verbose=0,
-            fit_params=fit_kwargs,
-            return_train_score=False,
-            alpha=self.point_alpha,
-            coverage=self.coverage,
-            error_score=0,
-            **additional_scorer_kwargs,
-        )
+        with redirect_output(self.logger):
+            scores, cutoffs = cross_validate(
+                pipeline=pipeline_with_model,
+                y=data_y,
+                X=data_X,
+                scoring=metrics_dict,
+                cv=cv,
+                n_jobs=n_jobs,
+                verbose=0,
+                fit_params=fit_kwargs,
+                return_train_score=False,
+                alpha=self.point_alpha,
+                coverage=self.coverage,
+                error_score=0,
+                **additional_scorer_kwargs,
+            )
 
         model_fit_end = time.time()
         model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
@@ -2162,10 +2160,9 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         if refit:
             # refitting the model on complete X_train, y_train
             display.update_monitor(1, "Finalizing Model")
-            display.display_monitor()
             model_fit_start = time.time()
             self.logger.info("Finalizing model")
-            with io.capture_output():
+            with redirect_output(self.logger):
                 pipeline_with_model.fit(y=data_y, X=data_X, **fit_kwargs)
             model_fit_end = time.time()
             model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
@@ -2193,7 +2190,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         return_tuner: bool = False,
         verbose: bool = True,
         tuner_verbose: Union[int, bool] = True,
-        display: Optional[Display] = None,
+        display: Optional[CommonDisplay] = None,
         **kwargs,
     ):
 
@@ -2396,11 +2393,6 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         if not display:
             progress_args = {"max": 3 + 4}
-            master_display_columns = [
-                v.display_name for k, v in self._all_metrics.items()
-            ]
-            if self._ml_usecase == MLUsecase.TIME_SERIES:
-                master_display_columns.insert(0, "cutoff")
             timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
             monitor_rows = [
                 ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
@@ -2415,21 +2407,12 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                     "Compiling Library",
                 ],
             ]
-            display = Display(
+            display = CommonDisplay(
                 verbose=verbose,
                 html_param=self.html_param,
                 progress_args=progress_args,
-                master_display_columns=master_display_columns,
                 monitor_rows=monitor_rows,
             )
-
-            display.display_progress()
-            display.display_monitor()
-            display.display_master_display()
-
-        # ignore warnings
-
-        warnings.filterwarnings("ignore")
 
         # import logging
 
@@ -2507,7 +2490,6 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         # base_estimator = model
 
         display.update_monitor(2, estimator_name)
-        display.display_monitor()
 
         display.move_progress()
 
@@ -2518,7 +2500,6 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         """
 
         display.update_monitor(1, "Searching Hyperparameters")
-        display.display_monitor()
 
         """
         MONITOR UPDATE ENDS
@@ -3783,7 +3764,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
     def _predict_model_resolve_display(
         self, verbose: bool, y_pred: pd.DataFrame
-    ) -> Display:
+    ) -> CommonDisplay:
         """Returns the display object after appropriately deciding whether metrics
         should be displayed or not.
 
@@ -3804,10 +3785,10 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         verbose = self._predict_model_resolve_verbose(verbose=verbose, y_pred=y_pred)
         if hasattr(self, "html_param"):
             np.random.seed(self.seed)
-            display = Display(verbose=verbose, html_param=self.html_param)
+            display = CommonDisplay(verbose=verbose, html_param=self.html_param)
         else:
             # Setup has not been run, hence self.html_param is not available
-            display = Display(verbose=verbose, html_param=False)
+            display = CommonDisplay(verbose=verbose, html_param=False)
 
         return display
 

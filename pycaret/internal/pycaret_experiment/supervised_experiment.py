@@ -13,7 +13,6 @@ from unittest.mock import patch
 import numpy as np  # type: ignore
 import pandas as pd  # type ignore
 import pandas.io.formats.style
-from IPython.utils import io
 from sklearn.base import clone  # type: ignore
 from sklearn.compose import TransformedTargetRegressor  # type: ignore
 from sklearn.pipeline import Pipeline
@@ -22,7 +21,7 @@ import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
 import pycaret.internal.persistence
 import pycaret.internal.preprocess
-from pycaret.internal.Display import Display
+from pycaret.internal.display import CommonDisplay
 from pycaret.internal.distributions import (
     CategoricalDistribution,
     Distribution,
@@ -34,7 +33,7 @@ from pycaret.internal.distributions import (
     get_skopt_distributions,
     get_tune_distributions,
 )
-from pycaret.internal.logging import get_logger
+from pycaret.internal.logging import get_logger, redirect_output
 from pycaret.internal.meta_estimators import (
     CustomProbabilityThresholdClassifier,
     PowerTransformedTargetRegressor,
@@ -54,13 +53,11 @@ from pycaret.internal.utils import (
     get_label_encoder,
     id_or_display_name,
     nullcontext,
-    to_df,
     true_warm_start,
 )
 from pycaret.internal.validation import is_fitted, is_sklearn_cv_generator
 from pycaret.utils._dependencies import _check_soft_dependencies
 
-warnings.filterwarnings("ignore")
 LOGGER = get_logger()
 
 
@@ -101,37 +98,36 @@ class _SupervisedExperiment(_TabularExperiment):
         """
         from pycaret.internal.utils import calculate_metrics
 
-        try:
-            return calculate_metrics(
-                metrics=self._all_metrics,
-                y_test=y_test,
-                pred=pred,
-                pred_proba=pred_prob,
-                weights=weights,
-                **additional_kwargs,
-            )
-        except Exception:
-            ml_usecase = get_ml_task(y_test)
-            if ml_usecase == MLUsecase.CLASSIFICATION:
-                metrics = (
-                    pycaret.containers.metrics.classification.get_all_metric_containers(
+        with redirect_output(self.logger):
+            try:
+                return calculate_metrics(
+                    metrics=self._all_metrics,
+                    y_test=y_test,
+                    pred=pred,
+                    pred_proba=pred_prob,
+                    weights=weights,
+                    **additional_kwargs,
+                )
+            except Exception:
+                ml_usecase = get_ml_task(y_test)
+                if ml_usecase == MLUsecase.CLASSIFICATION:
+                    metrics = pycaret.containers.metrics.classification.get_all_metric_containers(
                         self.variables, True
                     )
-                )
-            elif ml_usecase == MLUsecase.REGRESSION:
-                metrics = (
-                    pycaret.containers.metrics.regression.get_all_metric_containers(
-                        self.variables, True
+                elif ml_usecase == MLUsecase.REGRESSION:
+                    metrics = (
+                        pycaret.containers.metrics.regression.get_all_metric_containers(
+                            self.variables, True
+                        )
                     )
+                return calculate_metrics(
+                    metrics=metrics,  # type: ignore
+                    y_test=y_test,
+                    pred=pred,
+                    pred_proba=pred_prob,
+                    weights=weights,
+                    **additional_kwargs,
                 )
-            return calculate_metrics(
-                metrics=metrics,  # type: ignore
-                y_test=y_test,
-                pred=pred,
-                pred_proba=pred_prob,
-                weights=weights,
-                **additional_kwargs,
-            )
 
     def _is_unsupervised(self) -> bool:
         return False
@@ -143,7 +139,7 @@ class _SupervisedExperiment(_TabularExperiment):
         fold: int,
         fit_kwargs: Optional[dict] = None,
         groups: Optional[Union[str, Any]] = None,
-        display: Optional[Display] = None,
+        display: Optional[CommonDisplay] = None,
     ):
         """
         When choose_better is set to True, optimize metric in scoregrid is
@@ -155,7 +151,6 @@ class _SupervisedExperiment(_TabularExperiment):
         self.logger.info("choose_better activated")
         if display is not None:
             display.update_monitor(1, "Compiling Final Results")
-            display.display_monitor()
 
         if not fit_kwargs:
             fit_kwargs = {}
@@ -277,7 +272,7 @@ class _SupervisedExperiment(_TabularExperiment):
         experiment_custom_tags: Optional[Dict[str, Any]] = None,
         probability_threshold: Optional[float] = None,
         verbose: bool = True,
-        display: Optional[Display] = None,
+        display: Optional[CommonDisplay] = None,
     ) -> List[Any]:
 
         """
@@ -509,6 +504,7 @@ class _SupervisedExperiment(_TabularExperiment):
                 + [v.display_name for k, v in self._all_metrics.items()]
                 + ["TT (Sec)"]
             )
+            master_display = pd.DataFrame(columns=master_display_columns)
             timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
             monitor_rows = [
                 ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
@@ -523,17 +519,14 @@ class _SupervisedExperiment(_TabularExperiment):
                     "Compiling Library",
                 ],
             ]
-            display = Display(
+            display = CommonDisplay(
                 verbose=verbose,
                 html_param=self.html_param,
                 progress_args=progress_args,
-                master_display_columns=master_display_columns,
                 monitor_rows=monitor_rows,
             )
-
-            display.display_progress()
-            display.display_monitor()
-            display.display_master_display()
+            if display.can_update_text:
+                display.display(master_display, final_display=False)
 
         input_ml_usecase = self._ml_usecase
         target_ml_usecase = MLUsecase.TIME_SERIES
@@ -563,7 +556,6 @@ class _SupervisedExperiment(_TabularExperiment):
         """
 
         display.update_monitor(1, "Loading Estimator")
-        display.display_monitor()
 
         """
         MONITOR UPDATE ENDS
@@ -640,12 +632,10 @@ class _SupervisedExperiment(_TabularExperiment):
             """
 
             display.update_monitor(2, model_name)
-            display.display_monitor()
 
             """
             MONITOR UPDATE ENDS
             """
-            display.replace_master_display(None)
 
             self.logger.info(
                 "SubProcess create_model() called =================================="
@@ -760,9 +750,8 @@ class _SupervisedExperiment(_TabularExperiment):
                 [dict(selector="th", props=[("text-align", "left")])]
             )
 
-            display.replace_master_display(master_display_)
-
-            display.display_master_display()
+            if display.can_update_text:
+                display.display(master_display_, final_display=False)
 
         display.move_progress()
 
@@ -802,7 +791,6 @@ class _SupervisedExperiment(_TabularExperiment):
             compare_models_ = pd.DataFrame().style
 
         display.update_monitor(1, "Compiling Final Models")
-        display.display_monitor()
 
         display.move_progress()
 
@@ -835,7 +823,6 @@ class _SupervisedExperiment(_TabularExperiment):
 
                 if index in n_select_range:
                     display.update_monitor(2, self._get_model_name(model))
-                    display.display_monitor()
                     create_model_args = dict(
                         estimator=model,
                         system=False,
@@ -896,7 +883,7 @@ class _SupervisedExperiment(_TabularExperiment):
         if len(sorted_models) == 1:
             sorted_models = sorted_models[0]
 
-        display.display(compare_models_, clear=True)
+        display.display(compare_models_, final_display=True)
 
         pd.reset_option("display.max_columns")
 
@@ -922,7 +909,7 @@ class _SupervisedExperiment(_TabularExperiment):
         round,
         predict,
         system,
-        display: Display,
+        display: CommonDisplay,
         return_train_score: bool = False,
     ):
         with estimator_pipeline(self.pipeline, model) as pipeline_with_model:
@@ -931,7 +918,7 @@ class _SupervisedExperiment(_TabularExperiment):
 
             self.logger.info("Fitting Model")
             model_fit_start = time.time()
-            with io.capture_output():
+            with redirect_output(self.logger):
                 pipeline_with_model.fit(data_X, data_y, **fit_kwargs)
             model_fit_end = time.time()
 
@@ -965,11 +952,8 @@ class _SupervisedExperiment(_TabularExperiment):
 
                 model_results = model_results.style.format(precision=round)
 
-                display.display(
-                    model_results,
-                    clear=system,
-                    override=False if not system else None,
-                )
+                if system:
+                    display.display(model_results)
 
                 self.logger.info(f"display_container: {len(self.display_container)}")
 
@@ -997,7 +981,6 @@ class _SupervisedExperiment(_TabularExperiment):
             1,
             f"Fitting {self._get_cv_n_folds(cv, data_X, y=data_y, groups=groups)} Folds",
         )
-        display.display_monitor()
         """
         MONITOR UPDATE ENDS
         """
@@ -1023,18 +1006,19 @@ class _SupervisedExperiment(_TabularExperiment):
             self.logger.info(f"Cross validating with {cv}, n_jobs={n_jobs}")
 
             model_fit_start = time.time()
-            scores = cross_validate(
-                pipeline_with_model,
-                data_X,
-                data_y,
-                cv=cv,
-                groups=groups,
-                scoring=metrics_dict,
-                fit_params=fit_kwargs,
-                n_jobs=n_jobs,
-                return_train_score=return_train_score,
-                error_score=0,
-            )
+            with redirect_output(self.logger):
+                scores = cross_validate(
+                    pipeline_with_model,
+                    data_X,
+                    data_y,
+                    cv=cv,
+                    groups=groups,
+                    scoring=metrics_dict,
+                    fit_params=fit_kwargs,
+                    n_jobs=n_jobs,
+                    return_train_score=return_train_score,
+                    error_score=0,
+                )
             model_fit_end = time.time()
             model_fit_time = np.array(model_fit_end - model_fit_start).round(2)
 
@@ -1107,10 +1091,9 @@ class _SupervisedExperiment(_TabularExperiment):
             if refit:
                 # refitting the model on complete X_train, y_train
                 display.update_monitor(1, "Finalizing Model")
-                display.display_monitor()
                 model_fit_start = time.time()
                 self.logger.info("Finalizing model")
-                with io.capture_output():
+                with redirect_output(self.logger):
                     pipeline_with_model.fit(data_X, data_y, **fit_kwargs)
                     model_fit_end = time.time()
 
@@ -1189,7 +1172,7 @@ class _SupervisedExperiment(_TabularExperiment):
         X_train_data: Optional[pd.DataFrame] = None,  # added in pycaret==2.2.0
         y_train_data: Optional[pd.DataFrame] = None,  # added in pycaret==2.2.0
         metrics=None,
-        display: Optional[Display] = None,  # added in pycaret==2.2.0
+        display: Optional[CommonDisplay] = None,  # added in pycaret==2.2.0
         return_train_score: bool = False,
         **kwargs,
     ) -> Any:
@@ -1275,11 +1258,6 @@ class _SupervisedExperiment(_TabularExperiment):
 
         if not display:
             progress_args = {"max": 4}
-            master_display_columns = self._get_return_train_score_columns_for_display(
-                return_train_score
-            ) + [v.display_name for k, v in self._all_metrics.items()]
-            if self._ml_usecase == MLUsecase.TIME_SERIES:
-                master_display_columns.insert(0, "cutoff")
             timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
             monitor_rows = [
                 ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
@@ -1294,16 +1272,12 @@ class _SupervisedExperiment(_TabularExperiment):
                     "Compiling Library",
                 ],
             ]
-            display = Display(
+            display = CommonDisplay(
                 verbose=verbose,
                 html_param=self.html_param,
                 progress_args=progress_args,
-                master_display_columns=master_display_columns,
                 monitor_rows=monitor_rows,
             )
-            display.display_progress()
-            display.display_monitor()
-            display.display_master_display()
 
         self.logger.info("Importing libraries")
 
@@ -1364,7 +1338,6 @@ class _SupervisedExperiment(_TabularExperiment):
         MONITOR UPDATE STARTS
         """
         display.update_monitor(1, "Selecting Estimator")
-        display.display_monitor()
         """
         MONITOR UPDATE ENDS
         """
@@ -1389,7 +1362,6 @@ class _SupervisedExperiment(_TabularExperiment):
         model = clone(model)
 
         display.update_monitor(2, full_name)
-        display.display_monitor()
 
         if self.transform_target_param and not isinstance(
             model, TransformedTargetRegressor
@@ -1422,7 +1394,6 @@ class _SupervisedExperiment(_TabularExperiment):
         else:
             display.update_monitor(1, "Initializing CV")
 
-        display.display_monitor()
         """
         MONITOR UPDATE ENDS
         """
@@ -1496,10 +1467,7 @@ class _SupervisedExperiment(_TabularExperiment):
 
         self.logger.info("Uploading results into container")
 
-        if (
-            getattr(display, "master_display", None) is not None
-            and "cutoff" not in display.master_display.columns
-        ):
+        if not self._ml_usecase == MLUsecase.TIME_SERIES:
             model_results.drop("cutoff", axis=1, inplace=True, errors="ignore")
 
         self.display_container.append(model_results)
@@ -1515,9 +1483,8 @@ class _SupervisedExperiment(_TabularExperiment):
         model_results = self._highlight_and_round_model_results(
             model_results, return_train_score, round
         )
-        display.display(
-            model_results, clear=system, override=False if not system else None
-        )
+        if system:
+            display.display(model_results)
 
         self.logger.info(f"master_model_container: {len(self.master_model_container)}")
         self.logger.info(f"display_container: {len(self.display_container)}")
@@ -1724,7 +1691,7 @@ class _SupervisedExperiment(_TabularExperiment):
         verbose: bool = True,
         tuner_verbose: Union[int, bool] = True,
         return_train_score: bool = False,
-        display: Optional[Display] = None,
+        display: Optional[CommonDisplay] = None,
         **kwargs,
     ) -> Any:
 
@@ -2134,11 +2101,6 @@ class _SupervisedExperiment(_TabularExperiment):
 
         if not display:
             progress_args = {"max": 3 + 4}
-            master_display_columns = self._get_return_train_score_columns_for_display(
-                return_train_score
-            ) + [v.display_name for k, v in self._all_metrics.items()]
-            if self._ml_usecase == MLUsecase.TIME_SERIES:
-                master_display_columns.insert(0, "cutoff")
             timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
             monitor_rows = [
                 ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
@@ -2153,21 +2115,12 @@ class _SupervisedExperiment(_TabularExperiment):
                     "Compiling Library",
                 ],
             ]
-            display = Display(
+            display = CommonDisplay(
                 verbose=verbose,
                 html_param=self.html_param,
                 progress_args=progress_args,
-                master_display_columns=master_display_columns,
                 monitor_rows=monitor_rows,
             )
-
-            display.display_progress()
-            display.display_monitor()
-            display.display_master_display()
-
-        # ignore warnings
-
-        warnings.filterwarnings("ignore")
 
         import logging
 
@@ -2223,7 +2176,6 @@ class _SupervisedExperiment(_TabularExperiment):
         base_estimator = model
 
         display.update_monitor(2, estimator_name)
-        display.display_monitor()
 
         display.move_progress()
 
@@ -2234,7 +2186,6 @@ class _SupervisedExperiment(_TabularExperiment):
         """
 
         display.update_monitor(1, "Searching Hyperparameters")
-        display.display_monitor()
 
         """
         MONITOR UPDATE ENDS
@@ -2614,7 +2565,6 @@ class _SupervisedExperiment(_TabularExperiment):
                         **search_kwargs,
                     )
 
-            # with io.capture_output():
             if search_library == "scikit-learn":
                 # monkey patching to fix overflows on Windows
                 with patch(
@@ -2715,7 +2665,7 @@ class _SupervisedExperiment(_TabularExperiment):
         model_results = self._highlight_and_round_model_results(
             model_results, return_train_score, round
         )
-        display.display(model_results, clear=True)
+        display.display(model_results)
 
         self.logger.info(f"master_model_container: {len(self.master_model_container)}")
         self.logger.info(f"display_container: {len(self.display_container)}")
@@ -2744,7 +2694,7 @@ class _SupervisedExperiment(_TabularExperiment):
         probability_threshold: Optional[float] = None,
         verbose: bool = True,
         return_train_score: bool = False,
-        display: Optional[Display] = None,  # added in pycaret==2.2.0
+        display: Optional[CommonDisplay] = None,  # added in pycaret==2.2.0
     ) -> Any:
         """
         This function ensembles the trained base estimator using the method defined in
@@ -2878,7 +2828,7 @@ class _SupervisedExperiment(_TabularExperiment):
                     n_estimators=n_estimators,
                     **boosting_model_definition.args,
                 )
-                with io.capture_output():
+                with redirect_output(self.logger):
                     check_model.fit(self.X_train_transformed, self.y_train_transformed)
             except:
                 raise TypeError(
@@ -2939,11 +2889,6 @@ class _SupervisedExperiment(_TabularExperiment):
 
         if not display:
             progress_args = {"max": 2 + 4}
-            master_display_columns = self._get_return_train_score_columns_for_display(
-                return_train_score
-            ) + [v.display_name for k, v in self._all_metrics.items()]
-            if self._ml_usecase == MLUsecase.TIME_SERIES:
-                master_display_columns.insert(0, "cutoff")
             timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
             monitor_rows = [
                 ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
@@ -2958,17 +2903,12 @@ class _SupervisedExperiment(_TabularExperiment):
                     "Compiling Library",
                 ],
             ]
-            display = Display(
+            display = CommonDisplay(
                 verbose=verbose,
                 html_param=self.html_param,
                 progress_args=progress_args,
-                master_display_columns=master_display_columns,
                 monitor_rows=monitor_rows,
             )
-
-            display.display_progress()
-            display.display_monitor()
-            display.display_master_display()
 
         self.logger.info("Importing libraries")
 
@@ -2999,14 +2939,12 @@ class _SupervisedExperiment(_TabularExperiment):
         self.logger.info(f"Base model : {estimator_name}")
 
         display.update_monitor(2, estimator_name)
-        display.display_monitor()
 
         """
         MONITOR UPDATE STARTS
         """
 
         display.update_monitor(1, "Selecting Estimator")
-        display.display_monitor()
 
         """
         MONITOR UPDATE ENDS
@@ -3093,7 +3031,7 @@ class _SupervisedExperiment(_TabularExperiment):
         model_results = self._highlight_and_round_model_results(
             model_results, return_train_score, round
         )
-        display.display(model_results, clear=True)
+        display.display(model_results)
 
         self.logger.info(f"master_model_container: {len(self.master_model_container)}")
         self.logger.info(f"display_container: {len(self.display_container)}")
@@ -3120,7 +3058,7 @@ class _SupervisedExperiment(_TabularExperiment):
         probability_threshold: Optional[float] = None,
         verbose: bool = True,
         return_train_score: bool = False,
-        display: Optional[Display] = None,  # added in pycaret==2.2.0
+        display: Optional[CommonDisplay] = None,  # added in pycaret==2.2.0
     ) -> Any:
 
         """
@@ -3334,11 +3272,6 @@ class _SupervisedExperiment(_TabularExperiment):
 
         if not display:
             progress_args = {"max": 2 + 4}
-            master_display_columns = self._get_return_train_score_columns_for_display(
-                return_train_score
-            ) + [v.display_name for k, v in self._all_metrics.items()]
-            if self._ml_usecase == MLUsecase.TIME_SERIES:
-                master_display_columns.insert(0, "cutoff")
             timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
             monitor_rows = [
                 ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
@@ -3353,16 +3286,12 @@ class _SupervisedExperiment(_TabularExperiment):
                     "Compiling Library",
                 ],
             ]
-            display = Display(
+            display = CommonDisplay(
                 verbose=verbose,
                 html_param=self.html_param,
                 progress_args=progress_args,
-                master_display_columns=master_display_columns,
                 monitor_rows=monitor_rows,
             )
-            display.display_progress()
-            display.display_monitor()
-            display.display_master_display()
 
         self.logger.info("Importing libraries")
 
@@ -3381,7 +3310,6 @@ class _SupervisedExperiment(_TabularExperiment):
         """
 
         display.update_monitor(1, "Compiling Estimators")
-        display.display_monitor()
 
         """
         MONITOR UPDATE ENDS
@@ -3423,7 +3351,6 @@ class _SupervisedExperiment(_TabularExperiment):
             )
 
         display.update_monitor(2, voting_model_definition.name)
-        display.display_monitor()
 
         display.move_progress()
 
@@ -3484,7 +3411,7 @@ class _SupervisedExperiment(_TabularExperiment):
         model_results = self._highlight_and_round_model_results(
             model_results, return_train_score, round
         )
-        display.display(model_results, clear=True)
+        display.display(model_results)
 
         self.logger.info(f"master_model_container: {len(self.master_model_container)}")
         self.logger.info(f"display_container: {len(self.display_container)}")
@@ -3513,7 +3440,7 @@ class _SupervisedExperiment(_TabularExperiment):
         probability_threshold: Optional[float] = None,
         verbose: bool = True,
         return_train_score: bool = False,
-        display: Optional[Display] = None,
+        display: Optional[CommonDisplay] = None,
     ) -> Any:
 
         """
@@ -3723,11 +3650,6 @@ class _SupervisedExperiment(_TabularExperiment):
 
         if not display:
             progress_args = {"max": 2 + 4}
-            master_display_columns = self._get_return_train_score_columns_for_display(
-                return_train_score
-            ) + [v.display_name for k, v in self._all_metrics.items()]
-            if self._ml_usecase == MLUsecase.TIME_SERIES:
-                master_display_columns.insert(0, "cutoff")
             timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
             monitor_rows = [
                 ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
@@ -3742,16 +3664,12 @@ class _SupervisedExperiment(_TabularExperiment):
                     "Compiling Library",
                 ],
             ]
-            display = Display(
+            display = CommonDisplay(
                 verbose=verbose,
                 html_param=self.html_param,
                 progress_args=progress_args,
-                master_display_columns=master_display_columns,
                 monitor_rows=monitor_rows,
             )
-            display.display_progress()
-            display.display_monitor()
-            display.display_master_display()
 
         np.random.seed(self.seed)
 
@@ -3766,7 +3684,6 @@ class _SupervisedExperiment(_TabularExperiment):
         """
 
         display.update_monitor(1, "Compiling Estimators")
-        display.display_monitor()
 
         """
         MONITOR UPDATE ENDS
@@ -3808,7 +3725,6 @@ class _SupervisedExperiment(_TabularExperiment):
             )
 
         display.update_monitor(2, stacking_model_definition.name)
-        display.display_monitor()
 
         display.move_progress()
 
@@ -3869,7 +3785,7 @@ class _SupervisedExperiment(_TabularExperiment):
         model_results = self._highlight_and_round_model_results(
             model_results, return_train_score, round
         )
-        display.display(model_results, clear=True)
+        display.display(model_results)
 
         self.logger.info(f"master_model_container: {len(self.master_model_container)}")
         self.logger.info(f"display_container: {len(self.display_container)}")
@@ -4600,7 +4516,7 @@ class _SupervisedExperiment(_TabularExperiment):
         model_only: bool = True,
         experiment_custom_tags: Optional[Dict[str, Any]] = None,
         return_train_score: bool = False,
-        display: Optional[Display] = None,
+        display: Optional[CommonDisplay] = None,
     ) -> Any:  # added in pycaret==2.2.0
 
         """
@@ -4673,7 +4589,7 @@ class _SupervisedExperiment(_TabularExperiment):
         groups = self._get_groups(groups, data=self.X)
 
         if not display:
-            display = Display(
+            display = CommonDisplay(
                 verbose=False,
                 html_param=self.html_param,
             )
@@ -4689,7 +4605,7 @@ class _SupervisedExperiment(_TabularExperiment):
             data_y = self.y
 
         self.logger.info(f"Finalizing {estimator}")
-        display.clear_output()
+        # display.clear_output()
         model_final, model_fit_time = self._create_model(
             estimator=estimator,
             verbose=False,
@@ -4733,7 +4649,7 @@ class _SupervisedExperiment(_TabularExperiment):
         model_results = self._highlight_and_round_model_results(
             model_results, return_train_score, round
         )
-        display.display(model_results, clear=True)
+        display.display(model_results)
 
         self.logger.info(f"master_model_container: {len(self.master_model_container)}")
         self.logger.info(f"display_container: {len(self.display_container)}")
@@ -4762,7 +4678,7 @@ class _SupervisedExperiment(_TabularExperiment):
         round: int = 4,  # added in pycaret==2.2.0
         verbose: bool = True,
         ml_usecase: Optional[MLUsecase] = None,
-        display: Optional[Display] = None,  # added in pycaret==2.2.0
+        display: Optional[CommonDisplay] = None,  # added in pycaret==2.2.0
         preprocess: Union[bool, str] = True,
     ) -> pd.DataFrame:
 
@@ -4881,12 +4797,12 @@ class _SupervisedExperiment(_TabularExperiment):
         try:
             np.random.seed(self.seed)
             if not display:
-                display = Display(
+                display = CommonDisplay(
                     verbose=verbose,
                     html_param=self.html_param,
                 )
         except:
-            display = Display(
+            display = CommonDisplay(
                 verbose=False,
                 html_param=False,
             )
@@ -5003,7 +4919,7 @@ class _SupervisedExperiment(_TabularExperiment):
             df_score = pd.DataFrame(metrics, index=[0])
             df_score.insert(0, "Model", full_name)
             df_score = df_score.round(round)
-            display.display(df_score.style.format(precision=round), clear=False)
+            display.display(df_score.style.format(precision=round))
 
         label = pd.DataFrame(pred, columns=["Label"], index=X_test_.index)
         if ml_usecase == MLUsecase.CLASSIFICATION:
@@ -5058,7 +4974,7 @@ class _SupervisedExperiment(_TabularExperiment):
         fit_kwargs: Optional[dict] = None,
         groups: Optional[Union[str, Any]] = None,
         verbose: bool = True,
-        display: Optional[Display] = None,
+        display: Optional[CommonDisplay] = None,
     ):
         """
         generates leaderboard for all models run in current run.
@@ -5081,15 +4997,12 @@ class _SupervisedExperiment(_TabularExperiment):
                     "Compiling Library",
                 ],
             ]
-            display = Display(
+            display = CommonDisplay(
                 verbose=verbose,
                 html_param=self.html_param,
                 progress_args=progress_args,
                 monitor_rows=monitor_rows,
             )
-
-            display.display_progress()
-            display.display_monitor()
 
         result_container_mean = []
         finalized_models = []
@@ -5145,7 +5058,7 @@ class _SupervisedExperiment(_TabularExperiment):
         rearranged_columns = ["Model Name", "Model"] + rearranged_columns
         results = results[rearranged_columns]
         results.set_index("Index", inplace=True, drop=True)
-        display.clear_output()
+        # display.clear_output()
         return results
 
     def check_fairness(

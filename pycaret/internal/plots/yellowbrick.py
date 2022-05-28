@@ -8,7 +8,7 @@ from typing import Any, Optional
 import matplotlib.pyplot as plt
 import scikitplot as skplt
 
-from pycaret.internal.Display import Display
+from pycaret.internal.display import CommonDisplay
 from pycaret.internal.logging import get_logger
 
 
@@ -68,7 +68,7 @@ def show_yellowbrick_plot(
     save: bool = False,
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Any] = None,
-    display: Optional[Display] = None,
+    display: Optional[CommonDisplay] = None,
     display_format: Optional[str] = None,
     **kwargs,
 ):
@@ -109,7 +109,7 @@ def show_yellowbrick_plot(
         visualizer.score(X_test, y_test)
 
     display.move_progress()
-    display.clear_output()
+    # display.clear_output()
 
     plot_filename = f"{name}.png"
     if save:

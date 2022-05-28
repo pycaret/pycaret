@@ -57,7 +57,6 @@ class DashboardLogger:
         # Creating Logs message monitor
         if display:
             display.update_monitor(1, "Creating Logs")
-            display.display_monitor()
 
         full_name = experiment._get_model_name(model)
         console.info(f"Model: {full_name}")

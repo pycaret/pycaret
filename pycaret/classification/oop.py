@@ -2,7 +2,6 @@ import datetime
 import gc
 import logging
 import time
-import warnings
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np  # type: ignore
@@ -17,7 +16,7 @@ import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
 import pycaret.internal.persistence
 import pycaret.internal.preprocess
-from pycaret.internal.Display import Display
+from pycaret.internal.display import CommonDisplay
 from pycaret.internal.logging import get_logger
 from pycaret.internal.meta_estimators import (
     CustomProbabilityThresholdClassifier,
@@ -38,7 +37,6 @@ from pycaret.internal.utils import (
 from pycaret.internal.validation import is_sklearn_cv_generator
 from pycaret.loggers.base_logger import BaseLogger
 
-warnings.filterwarnings("ignore")
 LOGGER = get_logger()
 
 
@@ -161,7 +159,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         use_gpu: bool = False,
         html: bool = True,
         session_id: Optional[int] = None,
-        system_log: Union[bool, logging.Logger] = True,
+        system_log: Union[bool, str, logging.Logger] = True,
         log_experiment: Union[
             bool, str, BaseLogger, List[Union[str, BaseLogger]]
         ] = False,
@@ -554,9 +552,10 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             Setting to True will use just MLFlow.
 
 
-        system_log: bool or logging.Logger, default = True
+        system_log: bool or str or logging.Logger, default = True
             Whether to save the system logging file (as logs.log). If the input
-            already is a logger object, that one is used instead.
+            is a string, use that as the path to the logging file. If the input
+            already is a logger object, use that one instead.
 
 
         experiment_name: str, default = None
@@ -776,7 +775,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
 
         self.pipeline.fit(self.X_train, self.y_train)
 
-        self.logger.info(f"Finished creating preprocessing pipeline.")
+        self.logger.info("Finished creating preprocessing pipeline.")
         self.logger.info(f"Pipeline: {self.pipeline}")
 
         # Final display ============================================ >>
@@ -879,7 +878,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             pd.DataFrame(container, columns=["Description", "Value"])
         ]
         self.logger.info(f"Setup display_container: {self.display_container[0]}")
-        display = Display(
+        display = CommonDisplay(
             verbose=self.verbose,
             html_param=self.html_param,
         )
@@ -2103,7 +2102,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         groups: Optional[Union[str, Any]] = None,
         verbose: bool = True,
         return_train_score: bool = False,
-        display: Optional[Display] = None,  # added in pycaret==2.2.0
+        display: Optional[CommonDisplay] = None,  # added in pycaret==2.2.0
     ) -> Any:
 
         """
@@ -2244,9 +2243,6 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
 
         if not display:
             progress_args = {"max": 2 + 4}
-            master_display_columns = self._get_return_train_score_columns_for_display(
-                return_train_score
-            ) + [v.display_name for k, v in self._all_metrics.items()]
             timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
             monitor_rows = [
                 ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
@@ -2261,17 +2257,12 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
                     "Compiling Library",
                 ],
             ]
-            display = Display(
+            display = CommonDisplay(
                 verbose=verbose,
                 html_param=self.html_param,
                 progress_args=progress_args,
-                master_display_columns=master_display_columns,
                 monitor_rows=monitor_rows,
             )
-
-            display.display_progress()
-            display.display_monitor()
-            display.display_master_display()
 
         np.random.seed(self.seed)
 
@@ -2287,14 +2278,12 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         self.logger.info(f"Base model : {full_name}")
 
         display.update_monitor(2, full_name)
-        display.display_monitor()
 
         """
         MONITOR UPDATE STARTS
         """
 
         display.update_monitor(1, "Selecting Estimator")
-        display.display_monitor()
 
         """
         MONITOR UPDATE ENDS
@@ -2370,7 +2359,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         model_results = self._highlight_and_round_model_results(
             model_results, return_train_score, round
         )
-        display.display(model_results, clear=True)
+        display.display(model_results)
 
         self.logger.info(f"master_model_container: {len(self.master_model_container)}")
         self.logger.info(f"display_container: {len(self.display_container)}")

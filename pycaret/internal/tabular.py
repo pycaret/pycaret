@@ -4,7 +4,7 @@ from typing import Any, Optional
 import pandas as pd
 
 # Onw modules
-from pycaret.internal.Display import Display
+from pycaret.internal.display import CommonDisplay
 
 
 def _append_display_container(df: pd.DataFrame) -> None:
@@ -12,9 +12,9 @@ def _append_display_container(df: pd.DataFrame) -> None:
     display_container.append(df)
 
 
-def _create_display(progress: int, verbose: bool, monitor_rows: Any) -> Display:
+def _create_display(progress: int, verbose: bool, monitor_rows: Any) -> CommonDisplay:
     progress_args = {"max": progress}
-    return Display(
+    return CommonDisplay(
         verbose=verbose,
         html_param=html_param,
         progress_args=progress_args,
