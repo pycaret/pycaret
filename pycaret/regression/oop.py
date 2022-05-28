@@ -746,7 +746,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
         if len(self.pipeline) > 1:
             self.pipeline.steps.pop(0)
 
-        self.pipeline.fit(self.X_train, self.y_train)
+        self._fit_pipeline_in_setup()
 
         self.logger.info(f"Finished creating preprocessing pipeline.")
         self.logger.info(f"Pipeline: {self.pipeline}")

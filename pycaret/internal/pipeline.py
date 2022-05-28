@@ -205,32 +205,10 @@ class Pipeline(imblearn.pipeline.Pipeline):
         # override getattr to allow grabbing of final estimator attrs
         return getattr(self._final_estimator, name)
 
-    def _clear_final_estimator_fit_vars(self, all: bool = False):
-        vars_to_remove = []
-        try:
-            for var in self._fit_vars:
-                if (
-                    all
-                    or var
-                    not in get_all_object_vars_and_properties(
-                        self._final_estimator
-                    ).items()
-                ):
-                    vars_to_remove.append(var)
-            for var in vars_to_remove:
-                try:
-                    delattr(self, var)
-                    self._fit_vars.remove(var)
-                except:
-                    pass
-        except:
-            pass
-
     def get_sklearn_pipeline(self) -> sklearn.pipeline.Pipeline:
         return sklearn.pipeline.Pipeline(self.steps)
 
     def replace_final_estimator(self, new_final_estimator, name: str = None):
-        self._clear_final_estimator_fit_vars(all=True)
         if hasattr(self._final_estimator, "fit"):
             self.steps[-1] = (
                 self.steps[-1][0] if not name else name,

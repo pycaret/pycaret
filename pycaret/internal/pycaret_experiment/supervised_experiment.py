@@ -85,6 +85,15 @@ class _SupervisedExperiment(_TabularExperiment):
             }
         )
 
+    def _fit_pipeline_in_setup(self) -> None:
+        # add dummy estimator so all preprocessing
+        # steps are fitted correctly
+        self.pipeline.steps.append(["dummy", "passthrough"])
+        try:
+            self.pipeline.fit(self.X_train, self.y_train)
+        finally:
+            self.pipeline.steps.pop()
+
     def _calculate_metrics(
         self,
         y_test,

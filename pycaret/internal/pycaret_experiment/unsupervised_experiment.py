@@ -64,6 +64,15 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
                 ground_truth=ground_truth,
             )
 
+    def _fit_pipeline_in_setup(self) -> None:
+        # add dummy estimator so all preprocessing
+        # steps are fitted correctly
+        self.pipeline.steps.append(["dummy", "passthrough"])
+        try:
+            self.pipeline.fit(self.X)
+        finally:
+            self.pipeline.steps.pop()
+
     def _is_unsupervised(self) -> bool:
         return True
 
@@ -259,7 +268,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
         if len(self.pipeline) > 1:
             self.pipeline.steps.pop(0)
 
-        self.pipeline.fit(self.X)
+        self._fit_pipeline_in_setup()
 
         self.logger.info(f"Finished creating preprocessing pipeline.")
         self.logger.info(f"Pipeline: {self.pipeline}")

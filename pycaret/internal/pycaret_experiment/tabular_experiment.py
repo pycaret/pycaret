@@ -89,6 +89,10 @@ class _TabularExperiment(_PyCaretExperiment):
     def _get_default_plots_to_log(self) -> List[str]:
         return []
 
+    def _fit_pipeline_in_setup(self) -> None:
+        """Fit pipeline during setup in-place."""
+        pass
+
     def _get_groups(
         self,
         groups,
