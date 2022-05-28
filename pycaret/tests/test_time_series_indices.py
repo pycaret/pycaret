@@ -1,7 +1,11 @@
+import os
+
 import pandas as pd
 
 from pycaret.datasets import get_data
 from pycaret.time_series import TSForecastingExperiment
+
+os.environ["PYCARET_TESTING"] = "1"
 
 
 def create_models(exp: TSForecastingExperiment, prophet: bool = True):
@@ -18,12 +22,12 @@ def create_models(exp: TSForecastingExperiment, prophet: bool = True):
 
     model = exp.create_model("arima")
     exp.predict_model(model)
-    exp._plot_model(model, system=False)
+    exp.plot_model(model)
 
     if "prophet" in exp.models().index:
         model = exp.create_model("prophet")
         exp.predict_model(model)
-        exp._plot_model(model, system=False)
+        exp.plot_model(model)
 
 
 def test_time_series_indices():

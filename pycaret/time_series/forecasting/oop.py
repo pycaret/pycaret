@@ -3583,6 +3583,9 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         """
 
+        system = os.environ.get("PYCARET_TESTING", "0")
+        system = system == "0"
+
         return self._plot_model(
             estimator=estimator,
             plot=plot,
@@ -3593,6 +3596,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             data_kwargs=data_kwargs,
             fig_kwargs=fig_kwargs,
             save=save,
+            system=system,
         )
 
     def _predict_model_reconcile_pipe_estimator(
