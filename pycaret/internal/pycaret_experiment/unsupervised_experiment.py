@@ -372,7 +372,6 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
         fit_kwargs: Optional[dict] = None,
         round: int = 4,
         verbose: bool = True,
-        display: Optional[CommonDisplay] = None,
         **kwargs,
     ):
 
@@ -505,28 +504,27 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
                 pass
         param_grid.sort()
 
-        if not display:
-            progress_args = {"max": len(param_grid) * 3 + (len(param_grid) + 1) * 4}
-            timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
-            monitor_rows = [
-                ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
-                [
-                    "Status",
-                    ". . . . . . . . . . . . . . . . . .",
-                    "Loading Dependencies",
-                ],
-                [
-                    "Estimator",
-                    ". . . . . . . . . . . . . . . . . .",
-                    "Compiling Library",
-                ],
-            ]
-            display = CommonDisplay(
-                verbose=verbose,
-                html_param=self.html_param,
-                progress_args=progress_args,
-                monitor_rows=monitor_rows,
-            )
+        progress_args = {"max": len(param_grid) * 3 + (len(param_grid) + 1) * 4}
+        timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
+        monitor_rows = [
+            ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
+            [
+                "Status",
+                ". . . . . . . . . . . . . . . . . .",
+                "Loading Dependencies",
+            ],
+            [
+                "Estimator",
+                ". . . . . . . . . . . . . . . . . .",
+                "Compiling Library",
+            ],
+        ]
+        display = CommonDisplay(
+            verbose=verbose,
+            html_param=self.html_param,
+            progress_args=progress_args,
+            monitor_rows=monitor_rows,
+        )
 
         unsupervised_models = {}
         unsupervised_models_results = {}
