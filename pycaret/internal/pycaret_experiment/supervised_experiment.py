@@ -272,7 +272,6 @@ class _SupervisedExperiment(_TabularExperiment):
         experiment_custom_tags: Optional[Dict[str, Any]] = None,
         probability_threshold: Optional[float] = None,
         verbose: bool = True,
-        display: Optional[CommonDisplay] = None,
     ) -> List[Any]:
 
         """
@@ -497,36 +496,35 @@ class _SupervisedExperiment(_TabularExperiment):
         elif exclude:
             len_mod -= len(exclude)
 
-        if not display:
-            progress_args = {"max": (4 * len_mod) + 4 + len_mod}
-            master_display_columns = (
-                ["Model"]
-                + [v.display_name for k, v in self._all_metrics.items()]
-                + ["TT (Sec)"]
-            )
-            master_display = pd.DataFrame(columns=master_display_columns)
-            timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
-            monitor_rows = [
-                ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
-                [
-                    "Status",
-                    ". . . . . . . . . . . . . . . . . .",
-                    "Loading Dependencies",
-                ],
-                [
-                    "Estimator",
-                    ". . . . . . . . . . . . . . . . . .",
-                    "Compiling Library",
-                ],
-            ]
-            display = CommonDisplay(
-                verbose=verbose,
-                html_param=self.html_param,
-                progress_args=progress_args,
-                monitor_rows=monitor_rows,
-            )
-            if display.can_update_text:
-                display.display(master_display, final_display=False)
+        progress_args = {"max": (4 * len_mod) + 4 + len_mod}
+        master_display_columns = (
+            ["Model"]
+            + [v.display_name for k, v in self._all_metrics.items()]
+            + ["TT (Sec)"]
+        )
+        master_display = pd.DataFrame(columns=master_display_columns)
+        timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
+        monitor_rows = [
+            ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
+            [
+                "Status",
+                ". . . . . . . . . . . . . . . . . .",
+                "Loading Dependencies",
+            ],
+            [
+                "Estimator",
+                ". . . . . . . . . . . . . . . . . .",
+                "Compiling Library",
+            ],
+        ]
+        display = CommonDisplay(
+            verbose=verbose,
+            html_param=self.html_param,
+            progress_args=progress_args,
+            monitor_rows=monitor_rows,
+        )
+        if display.can_update_text:
+            display.display(master_display, final_display=False)
 
         input_ml_usecase = self._ml_usecase
         target_ml_usecase = MLUsecase.TIME_SERIES
@@ -1691,7 +1689,6 @@ class _SupervisedExperiment(_TabularExperiment):
         verbose: bool = True,
         tuner_verbose: Union[int, bool] = True,
         return_train_score: bool = False,
-        display: Optional[CommonDisplay] = None,
         **kwargs,
     ) -> Any:
 
@@ -2099,28 +2096,27 @@ class _SupervisedExperiment(_TabularExperiment):
 
         groups = self._get_groups(groups)
 
-        if not display:
-            progress_args = {"max": 3 + 4}
-            timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
-            monitor_rows = [
-                ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
-                [
-                    "Status",
-                    ". . . . . . . . . . . . . . . . . .",
-                    "Loading Dependencies",
-                ],
-                [
-                    "Estimator",
-                    ". . . . . . . . . . . . . . . . . .",
-                    "Compiling Library",
-                ],
-            ]
-            display = CommonDisplay(
-                verbose=verbose,
-                html_param=self.html_param,
-                progress_args=progress_args,
-                monitor_rows=monitor_rows,
-            )
+        progress_args = {"max": 3 + 4}
+        timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
+        monitor_rows = [
+            ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
+            [
+                "Status",
+                ". . . . . . . . . . . . . . . . . .",
+                "Loading Dependencies",
+            ],
+            [
+                "Estimator",
+                ". . . . . . . . . . . . . . . . . .",
+                "Compiling Library",
+            ],
+        ]
+        display = CommonDisplay(
+            verbose=verbose,
+            html_param=self.html_param,
+            progress_args=progress_args,
+            monitor_rows=monitor_rows,
+        )
 
         import logging
 
@@ -2694,7 +2690,6 @@ class _SupervisedExperiment(_TabularExperiment):
         probability_threshold: Optional[float] = None,
         verbose: bool = True,
         return_train_score: bool = False,
-        display: Optional[CommonDisplay] = None,  # added in pycaret==2.2.0
     ) -> Any:
         """
         This function ensembles the trained base estimator using the method defined in
@@ -2887,28 +2882,27 @@ class _SupervisedExperiment(_TabularExperiment):
 
         groups = self._get_groups(groups)
 
-        if not display:
-            progress_args = {"max": 2 + 4}
-            timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
-            monitor_rows = [
-                ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
-                [
-                    "Status",
-                    ". . . . . . . . . . . . . . . . . .",
-                    "Loading Dependencies",
-                ],
-                [
-                    "Estimator",
-                    ". . . . . . . . . . . . . . . . . .",
-                    "Compiling Library",
-                ],
-            ]
-            display = CommonDisplay(
-                verbose=verbose,
-                html_param=self.html_param,
-                progress_args=progress_args,
-                monitor_rows=monitor_rows,
-            )
+        progress_args = {"max": 2 + 4}
+        timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
+        monitor_rows = [
+            ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
+            [
+                "Status",
+                ". . . . . . . . . . . . . . . . . .",
+                "Loading Dependencies",
+            ],
+            [
+                "Estimator",
+                ". . . . . . . . . . . . . . . . . .",
+                "Compiling Library",
+            ],
+        ]
+        display = CommonDisplay(
+            verbose=verbose,
+            html_param=self.html_param,
+            progress_args=progress_args,
+            monitor_rows=monitor_rows,
+        )
 
         self.logger.info("Importing libraries")
 
@@ -3058,7 +3052,6 @@ class _SupervisedExperiment(_TabularExperiment):
         probability_threshold: Optional[float] = None,
         verbose: bool = True,
         return_train_score: bool = False,
-        display: Optional[CommonDisplay] = None,  # added in pycaret==2.2.0
     ) -> Any:
 
         """
@@ -3270,28 +3263,27 @@ class _SupervisedExperiment(_TabularExperiment):
 
         groups = self._get_groups(groups)
 
-        if not display:
-            progress_args = {"max": 2 + 4}
-            timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
-            monitor_rows = [
-                ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
-                [
-                    "Status",
-                    ". . . . . . . . . . . . . . . . . .",
-                    "Loading Dependencies",
-                ],
-                [
-                    "Estimator",
-                    ". . . . . . . . . . . . . . . . . .",
-                    "Compiling Library",
-                ],
-            ]
-            display = CommonDisplay(
-                verbose=verbose,
-                html_param=self.html_param,
-                progress_args=progress_args,
-                monitor_rows=monitor_rows,
-            )
+        progress_args = {"max": 2 + 4}
+        timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
+        monitor_rows = [
+            ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
+            [
+                "Status",
+                ". . . . . . . . . . . . . . . . . .",
+                "Loading Dependencies",
+            ],
+            [
+                "Estimator",
+                ". . . . . . . . . . . . . . . . . .",
+                "Compiling Library",
+            ],
+        ]
+        display = CommonDisplay(
+            verbose=verbose,
+            html_param=self.html_param,
+            progress_args=progress_args,
+            monitor_rows=monitor_rows,
+        )
 
         self.logger.info("Importing libraries")
 
@@ -3440,7 +3432,6 @@ class _SupervisedExperiment(_TabularExperiment):
         probability_threshold: Optional[float] = None,
         verbose: bool = True,
         return_train_score: bool = False,
-        display: Optional[CommonDisplay] = None,
     ) -> Any:
 
         """
@@ -3648,28 +3639,27 @@ class _SupervisedExperiment(_TabularExperiment):
         else:
             meta_model = clone(get_estimator_from_meta_estimator(meta_model))
 
-        if not display:
-            progress_args = {"max": 2 + 4}
-            timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
-            monitor_rows = [
-                ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
-                [
-                    "Status",
-                    ". . . . . . . . . . . . . . . . . .",
-                    "Loading Dependencies",
-                ],
-                [
-                    "Estimator",
-                    ". . . . . . . . . . . . . . . . . .",
-                    "Compiling Library",
-                ],
-            ]
-            display = CommonDisplay(
-                verbose=verbose,
-                html_param=self.html_param,
-                progress_args=progress_args,
-                monitor_rows=monitor_rows,
-            )
+        progress_args = {"max": 2 + 4}
+        timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
+        monitor_rows = [
+            ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
+            [
+                "Status",
+                ". . . . . . . . . . . . . . . . . .",
+                "Loading Dependencies",
+            ],
+            [
+                "Estimator",
+                ". . . . . . . . . . . . . . . . . .",
+                "Compiling Library",
+            ],
+        ]
+        display = CommonDisplay(
+            verbose=verbose,
+            html_param=self.html_param,
+            progress_args=progress_args,
+            monitor_rows=monitor_rows,
+        )
 
         np.random.seed(self.seed)
 
@@ -4516,7 +4506,6 @@ class _SupervisedExperiment(_TabularExperiment):
         model_only: bool = True,
         experiment_custom_tags: Optional[Dict[str, Any]] = None,
         return_train_score: bool = False,
-        display: Optional[CommonDisplay] = None,
     ) -> Any:  # added in pycaret==2.2.0
 
         """
@@ -4588,11 +4577,10 @@ class _SupervisedExperiment(_TabularExperiment):
 
         groups = self._get_groups(groups, data=self.X)
 
-        if not display:
-            display = CommonDisplay(
-                verbose=False,
-                html_param=self.html_param,
-            )
+        display = CommonDisplay(
+            verbose=False,
+            html_param=self.html_param,
+        )
 
         np.random.seed(self.seed)
 
@@ -4678,7 +4666,6 @@ class _SupervisedExperiment(_TabularExperiment):
         round: int = 4,  # added in pycaret==2.2.0
         verbose: bool = True,
         ml_usecase: Optional[MLUsecase] = None,
-        display: Optional[CommonDisplay] = None,  # added in pycaret==2.2.0
         preprocess: Union[bool, str] = True,
     ) -> pd.DataFrame:
 
@@ -4796,11 +4783,10 @@ class _SupervisedExperiment(_TabularExperiment):
 
         try:
             np.random.seed(self.seed)
-            if not display:
-                display = CommonDisplay(
-                    verbose=verbose,
-                    html_param=self.html_param,
-                )
+            display = CommonDisplay(
+                verbose=verbose,
+                html_param=self.html_param,
+            )
         except:
             display = CommonDisplay(
                 verbose=False,
@@ -4974,35 +4960,33 @@ class _SupervisedExperiment(_TabularExperiment):
         fit_kwargs: Optional[dict] = None,
         groups: Optional[Union[str, Any]] = None,
         verbose: bool = True,
-        display: Optional[CommonDisplay] = None,
     ):
         """
         generates leaderboard for all models run in current run.
         """
         model_container = self.master_model_container
 
-        if not display:
-            progress_args = {"max": len(model_container) + 1}
-            timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
-            monitor_rows = [
-                ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
-                [
-                    "Status",
-                    ". . . . . . . . . . . . . . . . . .",
-                    "Loading Dependencies",
-                ],
-                [
-                    "Estimator",
-                    ". . . . . . . . . . . . . . . . . .",
-                    "Compiling Library",
-                ],
-            ]
-            display = CommonDisplay(
-                verbose=verbose,
-                html_param=self.html_param,
-                progress_args=progress_args,
-                monitor_rows=monitor_rows,
-            )
+        progress_args = {"max": len(model_container) + 1}
+        timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
+        monitor_rows = [
+            ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
+            [
+                "Status",
+                ". . . . . . . . . . . . . . . . . .",
+                "Loading Dependencies",
+            ],
+            [
+                "Estimator",
+                ". . . . . . . . . . . . . . . . . .",
+                "Compiling Library",
+            ],
+        ]
+        display = CommonDisplay(
+            verbose=verbose,
+            html_param=self.html_param,
+            progress_args=progress_args,
+            monitor_rows=monitor_rows,
+        )
 
         result_container_mean = []
         finalized_models = []

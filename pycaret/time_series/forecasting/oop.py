@@ -2190,7 +2190,6 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         return_tuner: bool = False,
         verbose: bool = True,
         tuner_verbose: Union[int, bool] = True,
-        display: Optional[CommonDisplay] = None,
         **kwargs,
     ):
 
@@ -2391,28 +2390,27 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         # cross validation setup starts here
         cv = self.get_fold_generator(fold=fold)
 
-        if not display:
-            progress_args = {"max": 3 + 4}
-            timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
-            monitor_rows = [
-                ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
-                [
-                    "Status",
-                    ". . . . . . . . . . . . . . . . . .",
-                    "Loading Dependencies",
-                ],
-                [
-                    "Estimator",
-                    ". . . . . . . . . . . . . . . . . .",
-                    "Compiling Library",
-                ],
-            ]
-            display = CommonDisplay(
-                verbose=verbose,
-                html_param=self.html_param,
-                progress_args=progress_args,
-                monitor_rows=monitor_rows,
-            )
+        progress_args = {"max": 3 + 4}
+        timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
+        monitor_rows = [
+            ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
+            [
+                "Status",
+                ". . . . . . . . . . . . . . . . . .",
+                "Loading Dependencies",
+            ],
+            [
+                "Estimator",
+                ". . . . . . . . . . . . . . . . . .",
+                "Compiling Library",
+            ],
+        ]
+        display = CommonDisplay(
+            verbose=verbose,
+            html_param=self.html_param,
+            progress_args=progress_args,
+            monitor_rows=monitor_rows,
+        )
 
         # import logging
 
