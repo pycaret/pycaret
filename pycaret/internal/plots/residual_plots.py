@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional, Sequence, Union
+from typing import List
 
 import numpy as np
 import pandas as pd
@@ -11,7 +11,7 @@ from scipy import stats
 import pycaret.internal.plots.helper as helper
 from pycaret.internal.display import CommonDisplay
 from pycaret.internal.logging import get_logger
-from pycaret.internal.validation import fit_if_not_fitted, is_fitted
+from pycaret.internal.validation import fit_if_not_fitted
 
 
 class QQPlotWidget(BaseFigureWidget):
@@ -616,7 +616,7 @@ class InteractiveResidualsPlot:
 
         Parameters
         ----------
-        display:  Display
+        display: CommonDisplay
             this object is required to show the plots and move the progressbar
         model
             describes the regression model which is to be evaluated
@@ -630,7 +630,7 @@ class InteractiveResidualsPlot:
             optional, the labels to the provided test data (requires x_test)
         """
 
-        self.figures: [BaseFigureWidget] = []
+        self.figures: List[BaseFigureWidget] = []
         self.display: CommonDisplay = display
         self.plot = self.__create_resplots(model, x, y, x_test, y_test)
 

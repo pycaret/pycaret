@@ -1793,7 +1793,6 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             groups=groups,
             verbose=verbose,
             use_train_data=use_train_data,
-            system=True,
             display_format=display_format,
         )
 

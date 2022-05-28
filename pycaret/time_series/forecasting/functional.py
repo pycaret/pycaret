@@ -1132,9 +1132,6 @@ def plot_model(
 
     """
 
-    system = os.environ.get("PYCARET_TESTING", "0")
-    system = system == "0"
-
     return _CURRENT_EXPERIMENT.plot_model(
         estimator=estimator,
         plot=plot,
@@ -1143,7 +1140,6 @@ def plot_model(
         display_format=display_format,
         data_kwargs=data_kwargs,
         fig_kwargs=fig_kwargs,
-        system=system,
         save=save,
     )
 

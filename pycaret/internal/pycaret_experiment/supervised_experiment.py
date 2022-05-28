@@ -183,7 +183,7 @@ class _SupervisedExperiment(_TabularExperiment):
                 self.logger.info(
                     "SubProcess create_model() called =================================="
                 )
-                model, _ = self.create_model(
+                model, _ = self._create_model(
                     model,
                     verbose=False,
                     system=False,
@@ -272,7 +272,6 @@ class _SupervisedExperiment(_TabularExperiment):
         experiment_custom_tags: Optional[Dict[str, Any]] = None,
         probability_threshold: Optional[float] = None,
         verbose: bool = True,
-        display: Optional[CommonDisplay] = None,
     ) -> List[Any]:
 
         """
@@ -497,36 +496,35 @@ class _SupervisedExperiment(_TabularExperiment):
         elif exclude:
             len_mod -= len(exclude)
 
-        if not display:
-            progress_args = {"max": (4 * len_mod) + 4 + len_mod}
-            master_display_columns = (
-                ["Model"]
-                + [v.display_name for k, v in self._all_metrics.items()]
-                + ["TT (Sec)"]
-            )
-            master_display = pd.DataFrame(columns=master_display_columns)
-            timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
-            monitor_rows = [
-                ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
-                [
-                    "Status",
-                    ". . . . . . . . . . . . . . . . . .",
-                    "Loading Dependencies",
-                ],
-                [
-                    "Estimator",
-                    ". . . . . . . . . . . . . . . . . .",
-                    "Compiling Library",
-                ],
-            ]
-            display = CommonDisplay(
-                verbose=verbose,
-                html_param=self.html_param,
-                progress_args=progress_args,
-                monitor_rows=monitor_rows,
-            )
-            if display.can_update_text:
-                display.display(master_display, final_display=False)
+        progress_args = {"max": (4 * len_mod) + 4 + len_mod}
+        master_display_columns = (
+            ["Model"]
+            + [v.display_name for k, v in self._all_metrics.items()]
+            + ["TT (Sec)"]
+        )
+        master_display = pd.DataFrame(columns=master_display_columns)
+        timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
+        monitor_rows = [
+            ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
+            [
+                "Status",
+                ". . . . . . . . . . . . . . . . . .",
+                "Loading Dependencies",
+            ],
+            [
+                "Estimator",
+                ". . . . . . . . . . . . . . . . . .",
+                "Compiling Library",
+            ],
+        ]
+        display = CommonDisplay(
+            verbose=verbose,
+            html_param=self.html_param,
+            progress_args=progress_args,
+            monitor_rows=monitor_rows,
+        )
+        if display.can_update_text:
+            display.display(master_display, final_display=False)
 
         input_ml_usecase = self._ml_usecase
         target_ml_usecase = MLUsecase.TIME_SERIES
@@ -655,11 +653,11 @@ class _SupervisedExperiment(_TabularExperiment):
             )
             results_columns_to_ignore = ["Object", "runtime", "cutoff"]
             if errors == "raise":
-                model, model_fit_time = self.create_model(**create_model_args)
+                model, model_fit_time = self._create_model(**create_model_args)
                 model_results = self.pull(pop=True)
             else:
                 try:
-                    model, model_fit_time = self.create_model(**create_model_args)
+                    model, model_fit_time = self._create_model(**create_model_args)
                     model_results = self.pull(pop=True)
                     assert (
                         np.sum(
@@ -675,7 +673,7 @@ class _SupervisedExperiment(_TabularExperiment):
                     )
                     self.logger.warning(traceback.format_exc())
                     try:
-                        model, model_fit_time = self.create_model(**create_model_args)
+                        model, model_fit_time = self._create_model(**create_model_args)
                         model_results = self.pull(pop=True)
                         assert (
                             np.sum(
@@ -836,11 +834,11 @@ class _SupervisedExperiment(_TabularExperiment):
                         probability_threshold=probability_threshold,
                     )
                     if errors == "raise":
-                        model, model_fit_time = self.create_model(**create_model_args)
+                        model, model_fit_time = self._create_model(**create_model_args)
                         sorted_models.append(model)
                     else:
                         try:
-                            model, model_fit_time = self.create_model(
+                            model, model_fit_time = self._create_model(
                                 **create_model_args
                             )
                             sorted_models.append(model)
@@ -1154,7 +1152,7 @@ class _SupervisedExperiment(_TabularExperiment):
         model_results = model_results.format(precision=round)
         return model_results
 
-    def create_model(
+    def _create_model(
         self,
         estimator,
         fold: Optional[Union[int, Any]] = None,
@@ -1178,131 +1176,7 @@ class _SupervisedExperiment(_TabularExperiment):
     ) -> Any:
 
         """
-        This is an internal version of the create_model function.
-
-        This function creates a model and scores it using Cross Validation.
-        The output prints a score grid that shows Accuracy, AUC, Recall, Precision,
-        F1, Kappa and MCC by fold (default = 10 Fold).
-
-        This function returns a trained model object.
-
-        setup() function must be called before using create_model()
-
-        Example
-        -------
-        >>> from pycaret.datasets import get_data
-        >>> juice = get_data('juice')
-        >>> experiment_name = setup(data = juice,  target = 'Purchase')
-        >>> lr = create_model('lr')
-
-        This will create a trained Logistic Regression model.
-
-        Parameters
-        ----------
-        estimator : str / object, default = None
-            Enter ID of the estimators available in model library or pass an untrained model
-            object consistent with fit / predict API to train and evaluate model. All
-            estimators support binary or multiclass problem. List of estimators in model
-            library (ID - Name):
-
-            * 'lr' - Logistic Regression
-            * 'knn' - K Nearest Neighbour
-            * 'nb' - Naive Bayes
-            * 'dt' - Decision Tree Classifier
-            * 'svm' - SVM - Linear Kernel
-            * 'rbfsvm' - SVM - Radial Kernel
-            * 'gpc' - Gaussian Process Classifier
-            * 'mlp' - Multi Level Perceptron
-            * 'ridge' - Ridge Classifier
-            * 'rf' - Random Forest Classifier
-            * 'qda' - Quadratic Discriminant Analysis
-            * 'ada' - Ada Boost Classifier
-            * 'gbc' - Gradient Boosting Classifier
-            * 'lda' - Linear Discriminant Analysis
-            * 'et' - Extra Trees Classifier
-            * 'xgboost' - Extreme Gradient Boosting
-            * 'lightgbm' - Light Gradient Boosting
-            * 'catboost' - CatBoost Classifier
-
-        fold: integer or scikit-learn compatible CV generator, default = None
-            Controls cross-validation. If None, will use the CV generator defined in setup().
-            If integer, will use KFold CV with that many folds.
-            When cross_validation is False, this parameter is ignored.
-
-        round: integer, default = 4
-            Number of decimal places the metrics in the score grid will be rounded to.
-
-        cross_validation: bool, default = True
-            When cross_validation set to False fold parameter is ignored and model is trained
-            on entire training dataset.
-
-        predict: bool, default = True
-            Whether to predict model on holdout if cross_validation == False.
-
-        fit_kwargs: dict, default = {} (empty dict)
-            Dictionary of arguments passed to the fit method of the model.
-
-        groups: str or array-like, with shape (n_samples,), default = None
-            Optional Group labels for the samples used while splitting the dataset into train/test set.
-            If string is passed, will use the data column with that name as the groups.
-            Only used if a group based cross-validation generator is used (eg. GroupKFold).
-            If None, will use the value set in fold_groups parameter in setup().
-
-        refit: bool, default = True
-            Whether to refit the model on the entire dataset after CV. Ignored if cross_validation == False.
-
-        verbose: bool, default = True
-            Score grid is not printed when verbose is set to False.
-
-        system: bool, default = True
-            Must remain True all times. Only to be changed by internal functions.
-            If False, method will return a tuple of model and the model fit time.
-
-        add_to_model_list: bool, default = True
-            Whether to save model and results in master_model_container.
-
-        X_train_data: pandas.DataFrame, default = None
-            If not None, will use this dataframe as training features.
-            Intended to be only changed by internal functions.
-
-        y_train_data: pandas.DataFrame, default = None
-            If not None, will use this dataframe as training target.
-            Intended to be only changed by internal functions.
-
-        return_train_score: bool, default = False
-            If False, returns the CV Validation scores only.
-            If True, returns the CV training scores along with the CV validation scores.
-            This is useful when the user wants to do bias-variance tradeoff. A high CV
-            training score with a low corresponding CV validation score indicates overfitting.
-
-        **kwargs:
-            Additional keyword arguments to pass to the estimator.
-
-        Returns
-        -------
-        score_grid
-            A table containing the scores of the model across the kfolds.
-            Scoring metrics used are Accuracy, AUC, Recall, Precision, F1,
-            Kappa and MCC. Mean and standard deviation of the scores across
-            the folds are highlighted in yellow.
-
-        model
-            trained model object
-
-        Warnings
-        --------
-        - 'svm' and 'ridge' doesn't support predict_proba method. As such, AUC will be
-        returned as zero (0.0)
-
-        - If target variable is multiclass (more than 2 classes), AUC will be returned
-        as zero (0.0)
-
-        - 'rbfsvm' and 'gpc' uses non-linear kernel and hence the fit time complexity is
-        more than quadratic. These estimators are hard to scale on datasets with more
-        than 10,000 samples.
-
-        - If cross_validation parameter is set to False, model will not be logged with MLFlow.
-
+        Internal version of ``create_model`` with private arguments.
         """
         self._check_setup_ran()
 
@@ -1624,6 +1498,177 @@ class _SupervisedExperiment(_TabularExperiment):
 
         return model
 
+    def create_model(
+        self,
+        estimator,
+        fold: Optional[Union[int, Any]] = None,
+        round: int = 4,
+        cross_validation: bool = True,
+        predict: bool = True,
+        fit_kwargs: Optional[dict] = None,
+        groups: Optional[Union[str, Any]] = None,
+        refit: bool = True,
+        probability_threshold: Optional[float] = None,
+        experiment_custom_tags: Optional[Dict[str, Any]] = None,
+        verbose: bool = True,
+        return_train_score: bool = False,
+        **kwargs,
+    ) -> Any:
+
+        """
+        This function creates a model and scores it using Cross Validation.
+        The output prints a score grid that shows Accuracy, AUC, Recall, Precision,
+        F1, Kappa and MCC by fold (default = 10 Fold).
+
+        This function returns a trained model object.
+
+        setup() function must be called before using create_model()
+
+        Example
+        -------
+        >>> from pycaret.datasets import get_data
+        >>> juice = get_data('juice')
+        >>> experiment_name = setup(data = juice,  target = 'Purchase')
+        >>> lr = create_model('lr')
+
+        This will create a trained Logistic Regression model.
+
+        Parameters
+        ----------
+        estimator : str / object, default = None
+            Enter ID of the estimators available in model library or pass an untrained model
+            object consistent with fit / predict API to train and evaluate model. All
+            estimators support binary or multiclass problem. List of estimators in model
+            library (ID - Name):
+
+            * 'lr' - Logistic Regression
+            * 'knn' - K Nearest Neighbour
+            * 'nb' - Naive Bayes
+            * 'dt' - Decision Tree Classifier
+            * 'svm' - SVM - Linear Kernel
+            * 'rbfsvm' - SVM - Radial Kernel
+            * 'gpc' - Gaussian Process Classifier
+            * 'mlp' - Multi Level Perceptron
+            * 'ridge' - Ridge Classifier
+            * 'rf' - Random Forest Classifier
+            * 'qda' - Quadratic Discriminant Analysis
+            * 'ada' - Ada Boost Classifier
+            * 'gbc' - Gradient Boosting Classifier
+            * 'lda' - Linear Discriminant Analysis
+            * 'et' - Extra Trees Classifier
+            * 'xgboost' - Extreme Gradient Boosting
+            * 'lightgbm' - Light Gradient Boosting
+            * 'catboost' - CatBoost Classifier
+
+        fold: integer or scikit-learn compatible CV generator, default = None
+            Controls cross-validation. If None, will use the CV generator defined in setup().
+            If integer, will use KFold CV with that many folds.
+            When cross_validation is False, this parameter is ignored.
+
+        round: integer, default = 4
+            Number of decimal places the metrics in the score grid will be rounded to.
+
+        cross_validation: bool, default = True
+            When cross_validation set to False fold parameter is ignored and model is trained
+            on entire training dataset.
+
+        predict: bool, default = True
+            Whether to predict model on holdout if cross_validation == False.
+
+        fit_kwargs: dict, default = {} (empty dict)
+            Dictionary of arguments passed to the fit method of the model.
+
+        groups: str or array-like, with shape (n_samples,), default = None
+            Optional Group labels for the samples used while splitting the dataset into train/test set.
+            If string is passed, will use the data column with that name as the groups.
+            Only used if a group based cross-validation generator is used (eg. GroupKFold).
+            If None, will use the value set in fold_groups parameter in setup().
+
+        refit: bool, default = True
+            Whether to refit the model on the entire dataset after CV. Ignored if cross_validation == False.
+
+        verbose: bool, default = True
+            Score grid is not printed when verbose is set to False.
+
+        system: bool, default = True
+            Must remain True all times. Only to be changed by internal functions.
+            If False, method will return a tuple of model and the model fit time.
+
+        add_to_model_list: bool, default = True
+            Whether to save model and results in master_model_container.
+
+        X_train_data: pandas.DataFrame, default = None
+            If not None, will use this dataframe as training features.
+            Intended to be only changed by internal functions.
+
+        y_train_data: pandas.DataFrame, default = None
+            If not None, will use this dataframe as training target.
+            Intended to be only changed by internal functions.
+
+        return_train_score: bool, default = False
+            If False, returns the CV Validation scores only.
+            If True, returns the CV training scores along with the CV validation scores.
+            This is useful when the user wants to do bias-variance tradeoff. A high CV
+            training score with a low corresponding CV validation score indicates overfitting.
+
+        **kwargs:
+            Additional keyword arguments to pass to the estimator.
+
+        Returns
+        -------
+        score_grid
+            A table containing the scores of the model across the kfolds.
+            Scoring metrics used are Accuracy, AUC, Recall, Precision, F1,
+            Kappa and MCC. Mean and standard deviation of the scores across
+            the folds are highlighted in yellow.
+
+        model
+            trained model object
+
+        Warnings
+        --------
+        - 'svm' and 'ridge' doesn't support predict_proba method. As such, AUC will be
+        returned as zero (0.0)
+
+        - If target variable is multiclass (more than 2 classes), AUC will be returned
+        as zero (0.0)
+
+        - 'rbfsvm' and 'gpc' uses non-linear kernel and hence the fit time complexity is
+        more than quadratic. These estimators are hard to scale on datasets with more
+        than 10,000 samples.
+
+        - If cross_validation parameter is set to False, model will not be logged with MLFlow.
+
+        """
+
+        # TODO improve error message
+        assert not any(
+            x
+            in (
+                "system",
+                "add_to_model_list",
+                "X_train_data",
+                "y_train_data",
+                "metrics",
+            )
+            for x in kwargs
+        )
+        return self._create_model(
+            estimator=estimator,
+            fold=fold,
+            round=round,
+            cross_validation=cross_validation,
+            predict=predict,
+            fit_kwargs=fit_kwargs,
+            groups=groups,
+            refit=refit,
+            probability_threshold=probability_threshold,
+            experiment_custom_tags=experiment_custom_tags,
+            verbose=verbose,
+            return_train_score=return_train_score,
+            **kwargs,
+        )
+
     def tune_model(
         self,
         estimator,
@@ -1644,7 +1689,6 @@ class _SupervisedExperiment(_TabularExperiment):
         verbose: bool = True,
         tuner_verbose: Union[int, bool] = True,
         return_train_score: bool = False,
-        display: Optional[CommonDisplay] = None,
         **kwargs,
     ) -> Any:
 
@@ -2052,28 +2096,27 @@ class _SupervisedExperiment(_TabularExperiment):
 
         groups = self._get_groups(groups)
 
-        if not display:
-            progress_args = {"max": 3 + 4}
-            timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
-            monitor_rows = [
-                ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
-                [
-                    "Status",
-                    ". . . . . . . . . . . . . . . . . .",
-                    "Loading Dependencies",
-                ],
-                [
-                    "Estimator",
-                    ". . . . . . . . . . . . . . . . . .",
-                    "Compiling Library",
-                ],
-            ]
-            display = CommonDisplay(
-                verbose=verbose,
-                html_param=self.html_param,
-                progress_args=progress_args,
-                monitor_rows=monitor_rows,
-            )
+        progress_args = {"max": 3 + 4}
+        timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
+        monitor_rows = [
+            ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
+            [
+                "Status",
+                ". . . . . . . . . . . . . . . . . .",
+                "Loading Dependencies",
+            ],
+            [
+                "Estimator",
+                ". . . . . . . . . . . . . . . . . .",
+                "Compiling Library",
+            ],
+        ]
+        display = CommonDisplay(
+            verbose=verbose,
+            html_param=self.html_param,
+            progress_args=progress_args,
+            monitor_rows=monitor_rows,
+        )
 
         import logging
 
@@ -2564,7 +2607,7 @@ class _SupervisedExperiment(_TabularExperiment):
         self.logger.info(
             "SubProcess create_model() called =================================="
         )
-        best_model, model_fit_time = self.create_model(
+        best_model, model_fit_time = self._create_model(
             estimator=model,
             system=False,
             display=display,
@@ -2647,7 +2690,6 @@ class _SupervisedExperiment(_TabularExperiment):
         probability_threshold: Optional[float] = None,
         verbose: bool = True,
         return_train_score: bool = False,
-        display: Optional[CommonDisplay] = None,  # added in pycaret==2.2.0
     ) -> Any:
         """
         This function ensembles the trained base estimator using the method defined in
@@ -2840,28 +2882,27 @@ class _SupervisedExperiment(_TabularExperiment):
 
         groups = self._get_groups(groups)
 
-        if not display:
-            progress_args = {"max": 2 + 4}
-            timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
-            monitor_rows = [
-                ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
-                [
-                    "Status",
-                    ". . . . . . . . . . . . . . . . . .",
-                    "Loading Dependencies",
-                ],
-                [
-                    "Estimator",
-                    ". . . . . . . . . . . . . . . . . .",
-                    "Compiling Library",
-                ],
-            ]
-            display = CommonDisplay(
-                verbose=verbose,
-                html_param=self.html_param,
-                progress_args=progress_args,
-                monitor_rows=monitor_rows,
-            )
+        progress_args = {"max": 2 + 4}
+        timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
+        monitor_rows = [
+            ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
+            [
+                "Status",
+                ". . . . . . . . . . . . . . . . . .",
+                "Loading Dependencies",
+            ],
+            [
+                "Estimator",
+                ". . . . . . . . . . . . . . . . . .",
+                "Compiling Library",
+            ],
+        ]
+        display = CommonDisplay(
+            verbose=verbose,
+            html_param=self.html_param,
+            progress_args=progress_args,
+            monitor_rows=monitor_rows,
+        )
 
         self.logger.info("Importing libraries")
 
@@ -2930,7 +2971,7 @@ class _SupervisedExperiment(_TabularExperiment):
         self.logger.info(
             "SubProcess create_model() called =================================="
         )
-        model, model_fit_time = self.create_model(
+        model, model_fit_time = self._create_model(
             estimator=model,
             system=False,
             display=display,
@@ -3011,7 +3052,6 @@ class _SupervisedExperiment(_TabularExperiment):
         probability_threshold: Optional[float] = None,
         verbose: bool = True,
         return_train_score: bool = False,
-        display: Optional[CommonDisplay] = None,  # added in pycaret==2.2.0
     ) -> Any:
 
         """
@@ -3223,28 +3263,27 @@ class _SupervisedExperiment(_TabularExperiment):
 
         groups = self._get_groups(groups)
 
-        if not display:
-            progress_args = {"max": 2 + 4}
-            timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
-            monitor_rows = [
-                ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
-                [
-                    "Status",
-                    ". . . . . . . . . . . . . . . . . .",
-                    "Loading Dependencies",
-                ],
-                [
-                    "Estimator",
-                    ". . . . . . . . . . . . . . . . . .",
-                    "Compiling Library",
-                ],
-            ]
-            display = CommonDisplay(
-                verbose=verbose,
-                html_param=self.html_param,
-                progress_args=progress_args,
-                monitor_rows=monitor_rows,
-            )
+        progress_args = {"max": 2 + 4}
+        timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
+        monitor_rows = [
+            ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
+            [
+                "Status",
+                ". . . . . . . . . . . . . . . . . .",
+                "Loading Dependencies",
+            ],
+            [
+                "Estimator",
+                ". . . . . . . . . . . . . . . . . .",
+                "Compiling Library",
+            ],
+        ]
+        display = CommonDisplay(
+            verbose=verbose,
+            html_param=self.html_param,
+            progress_args=progress_args,
+            monitor_rows=monitor_rows,
+        )
 
         self.logger.info("Importing libraries")
 
@@ -3310,7 +3349,7 @@ class _SupervisedExperiment(_TabularExperiment):
         self.logger.info(
             "SubProcess create_model() called =================================="
         )
-        model, model_fit_time = self.create_model(
+        model, model_fit_time = self._create_model(
             estimator=model,
             system=False,
             display=display,
@@ -3393,7 +3432,6 @@ class _SupervisedExperiment(_TabularExperiment):
         probability_threshold: Optional[float] = None,
         verbose: bool = True,
         return_train_score: bool = False,
-        display: Optional[CommonDisplay] = None,
     ) -> Any:
 
         """
@@ -3601,28 +3639,27 @@ class _SupervisedExperiment(_TabularExperiment):
         else:
             meta_model = clone(get_estimator_from_meta_estimator(meta_model))
 
-        if not display:
-            progress_args = {"max": 2 + 4}
-            timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
-            monitor_rows = [
-                ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
-                [
-                    "Status",
-                    ". . . . . . . . . . . . . . . . . .",
-                    "Loading Dependencies",
-                ],
-                [
-                    "Estimator",
-                    ". . . . . . . . . . . . . . . . . .",
-                    "Compiling Library",
-                ],
-            ]
-            display = CommonDisplay(
-                verbose=verbose,
-                html_param=self.html_param,
-                progress_args=progress_args,
-                monitor_rows=monitor_rows,
-            )
+        progress_args = {"max": 2 + 4}
+        timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
+        monitor_rows = [
+            ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
+            [
+                "Status",
+                ". . . . . . . . . . . . . . . . . .",
+                "Loading Dependencies",
+            ],
+            [
+                "Estimator",
+                ". . . . . . . . . . . . . . . . . .",
+                "Compiling Library",
+            ],
+        ]
+        display = CommonDisplay(
+            verbose=verbose,
+            html_param=self.html_param,
+            progress_args=progress_args,
+            monitor_rows=monitor_rows,
+        )
 
         np.random.seed(self.seed)
 
@@ -3684,7 +3721,7 @@ class _SupervisedExperiment(_TabularExperiment):
         self.logger.info(
             "SubProcess create_model() called =================================="
         )
-        model, model_fit_time = self.create_model(
+        model, model_fit_time = self._create_model(
             estimator=model,
             system=False,
             display=display,
@@ -4469,7 +4506,6 @@ class _SupervisedExperiment(_TabularExperiment):
         model_only: bool = True,
         experiment_custom_tags: Optional[Dict[str, Any]] = None,
         return_train_score: bool = False,
-        display: Optional[CommonDisplay] = None,
     ) -> Any:  # added in pycaret==2.2.0
 
         """
@@ -4541,11 +4577,10 @@ class _SupervisedExperiment(_TabularExperiment):
 
         groups = self._get_groups(groups, data=self.X)
 
-        if not display:
-            display = CommonDisplay(
-                verbose=False,
-                html_param=self.html_param,
-            )
+        display = CommonDisplay(
+            verbose=False,
+            html_param=self.html_param,
+        )
 
         np.random.seed(self.seed)
 
@@ -4559,7 +4594,7 @@ class _SupervisedExperiment(_TabularExperiment):
 
         self.logger.info(f"Finalizing {estimator}")
         # display.clear_output()
-        model_final, model_fit_time = self.create_model(
+        model_final, model_fit_time = self._create_model(
             estimator=estimator,
             verbose=False,
             system=False,
@@ -4631,7 +4666,6 @@ class _SupervisedExperiment(_TabularExperiment):
         round: int = 4,  # added in pycaret==2.2.0
         verbose: bool = True,
         ml_usecase: Optional[MLUsecase] = None,
-        display: Optional[CommonDisplay] = None,  # added in pycaret==2.2.0
         preprocess: Union[bool, str] = True,
     ) -> pd.DataFrame:
 
@@ -4749,11 +4783,10 @@ class _SupervisedExperiment(_TabularExperiment):
 
         try:
             np.random.seed(self.seed)
-            if not display:
-                display = CommonDisplay(
-                    verbose=verbose,
-                    html_param=self.html_param,
-                )
+            display = CommonDisplay(
+                verbose=verbose,
+                html_param=self.html_param,
+            )
         except:
             display = CommonDisplay(
                 verbose=False,
@@ -4927,35 +4960,33 @@ class _SupervisedExperiment(_TabularExperiment):
         fit_kwargs: Optional[dict] = None,
         groups: Optional[Union[str, Any]] = None,
         verbose: bool = True,
-        display: Optional[CommonDisplay] = None,
     ):
         """
         generates leaderboard for all models run in current run.
         """
         model_container = self.master_model_container
 
-        if not display:
-            progress_args = {"max": len(model_container) + 1}
-            timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
-            monitor_rows = [
-                ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
-                [
-                    "Status",
-                    ". . . . . . . . . . . . . . . . . .",
-                    "Loading Dependencies",
-                ],
-                [
-                    "Estimator",
-                    ". . . . . . . . . . . . . . . . . .",
-                    "Compiling Library",
-                ],
-            ]
-            display = CommonDisplay(
-                verbose=verbose,
-                html_param=self.html_param,
-                progress_args=progress_args,
-                monitor_rows=monitor_rows,
-            )
+        progress_args = {"max": len(model_container) + 1}
+        timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
+        monitor_rows = [
+            ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
+            [
+                "Status",
+                ". . . . . . . . . . . . . . . . . .",
+                "Loading Dependencies",
+            ],
+            [
+                "Estimator",
+                ". . . . . . . . . . . . . . . . . .",
+                "Compiling Library",
+            ],
+        ]
+        display = CommonDisplay(
+            verbose=verbose,
+            html_param=self.html_param,
+            progress_args=progress_args,
+            monitor_rows=monitor_rows,
+        )
 
         result_container_mean = []
         finalized_models = []
@@ -4982,7 +5013,7 @@ class _SupervisedExperiment(_TabularExperiment):
             else:
                 model = deepcopy(model)
                 if not is_fitted(model):
-                    model, _ = self.create_model(
+                    model, _ = self._create_model(
                         estimator=model,
                         verbose=False,
                         system=False,
@@ -5157,7 +5188,7 @@ class _SupervisedExperiment(_TabularExperiment):
                     self.logger.warning(
                         f"Model {model} is not fitted, running create_model"
                     )
-                    model, _ = self.create_model(  # type: ignore
+                    model, _ = self._create_model(  # type: ignore
                         estimator=model,
                         system=False,
                         verbose=False,
@@ -5183,7 +5214,7 @@ class _SupervisedExperiment(_TabularExperiment):
                 if model["cv"] is not self.fold_generator:
                     if turbo or self._is_unsupervised():
                         continue
-                    self.create_model(  # type: ignore
+                    self._create_model(  # type: ignore
                         estimator=model["model"],
                         system=False,
                         verbose=False,
@@ -5202,7 +5233,7 @@ class _SupervisedExperiment(_TabularExperiment):
                     best_model = model["model"]
                     best_score = r
 
-        automl_model, _ = self.create_model(  # type: ignore
+        automl_model, _ = self._create_model(  # type: ignore
             estimator=best_model,
             system=False,
             verbose=False,

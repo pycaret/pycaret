@@ -2190,7 +2190,6 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         return_tuner: bool = False,
         verbose: bool = True,
         tuner_verbose: Union[int, bool] = True,
-        display: Optional[CommonDisplay] = None,
         **kwargs,
     ):
 
@@ -2391,28 +2390,27 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         # cross validation setup starts here
         cv = self.get_fold_generator(fold=fold)
 
-        if not display:
-            progress_args = {"max": 3 + 4}
-            timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
-            monitor_rows = [
-                ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
-                [
-                    "Status",
-                    ". . . . . . . . . . . . . . . . . .",
-                    "Loading Dependencies",
-                ],
-                [
-                    "Estimator",
-                    ". . . . . . . . . . . . . . . . . .",
-                    "Compiling Library",
-                ],
-            ]
-            display = CommonDisplay(
-                verbose=verbose,
-                html_param=self.html_param,
-                progress_args=progress_args,
-                monitor_rows=monitor_rows,
-            )
+        progress_args = {"max": 3 + 4}
+        timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
+        monitor_rows = [
+            ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
+            [
+                "Status",
+                ". . . . . . . . . . . . . . . . . .",
+                "Loading Dependencies",
+            ],
+            [
+                "Estimator",
+                ". . . . . . . . . . . . . . . . . .",
+                "Compiling Library",
+            ],
+        ]
+        display = CommonDisplay(
+            verbose=verbose,
+            html_param=self.html_param,
+            progress_args=progress_args,
+            monitor_rows=monitor_rows,
+        )
 
         # import logging
 
@@ -2676,7 +2674,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             "SubProcess create_model() called =================================="
         )
 
-        best_model, model_fit_time = self.create_model(
+        best_model, model_fit_time = self._create_model(
             estimator=model,
             system=False,
             display=display,
@@ -3022,7 +3020,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         return data, data_label
 
-    def plot_model(
+    def _plot_model(
         self,
         estimator: Optional[Any] = None,
         plot: Optional[str] = None,
@@ -3035,209 +3033,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         system: bool = True,
         save: Union[str, bool] = False,
     ) -> Optional[Tuple[str, Any]]:
-
-        """
-        This function analyzes the performance of a trained model on holdout set.
-        When used without any estimator, this function generates plots on the
-        original data set. When used with an estimator, it will generate plots on
-        the model residuals.
-
-
-        Example
-        --------
-        >>> from pycaret.datasets import get_data
-        >>> airline = get_data('airline')
-        >>> from pycaret.time_series import *
-        >>> exp_name = setup(data = airline,  fh = 12)
-        >>> plot_model(plot="diff", data_kwargs={"order_list": [1, 2], "acf": True, "pacf": True})
-        >>> plot_model(plot="diff", data_kwargs={"lags_list": [[1], [1, 12]], "acf": True, "pacf": True})
-        >>> arima = create_model('arima')
-        >>> plot_model(plot = 'ts')
-        >>> plot_model(plot = 'decomp', data_kwargs = {'type' : 'multiplicative'})
-        >>> plot_model(plot = 'decomp', data_kwargs = {'seasonal_period': 24})
-        >>> plot_model(estimator = arima, plot = 'forecast', data_kwargs = {'fh' : 24})
-        >>> tuned_arima = tune_model(arima)
-        >>> plot_model([arima, tuned_arima], data_kwargs={"labels": ["Baseline", "Tuned"]})
-
-
-        estimator: sktime compatible object, default = None
-            Trained model object
-
-
-        plot: str, default = None
-            Default is 'ts' when estimator is None, When estimator is not None,
-            default is changed to 'forecast'. List of available plots (ID - Name):
-
-            * 'ts' - Time Series Plot
-            * 'train_test_split' - Train Test Split
-            * 'cv' - Cross Validation
-            * 'acf' - Auto Correlation (ACF)
-            * 'pacf' - Partial Auto Correlation (PACF)
-            * 'decomp' - Classical Decomposition
-            * 'decomp_stl' - STL Decomposition
-            * 'diagnostics' - Diagnostics Plot
-            * 'diff' - Difference Plot
-            * 'periodogram' - Frequency Components (Periodogram)
-            * 'fft' - Frequency Components (FFT)
-            * 'ccf' - Cross Correlation (CCF)
-            * 'forecast' - "Out-of-Sample" Forecast Plot
-            * 'insample' - "In-Sample" Forecast Plot
-            * 'residuals' - Residuals Plot
-
-
-        return_fig: : bool, default = False
-            When set to True, it returns the figure used for plotting.
-
-
-        return_data: bool, default = False
-            When set to True, it returns the data for plotting.
-            If both return_fig and return_data is set to True, order of return
-            is figure then data.
-
-
-        verbose: bool, default = True
-            Unused for now
-
-
-        display_format: str, default = None
-            To display plots in Streamlit (https://www.streamlit.io/), set this to 'streamlit'.
-            Currently, not all plots are supported.
-
-
-        data_kwargs: dict, default = None
-            Dictionary of arguments passed to the data for plotting.
-
-            Available keys are:
-
-            nlags: The number of lags to use when plotting correlation plots, e.g.
-                ACF, PACF, CCF. If not provided, default internally calculated
-                values are used.
-
-            seasonal_period: The seasonal period to use for decomposition plots.
-                If not provided, the default internally detected seasonal period
-                is used.
-
-            type: The type of seasonal decomposition to perform. Options are:
-                ["additive", "multiplicative"]
-
-            order_list: The differencing orders to use for difference plots. e.g.
-                [1, 2] will plot first and second order differences (corresponding
-                to d = 1 and 2 in ARIMA models).
-
-            lags_list: An alternate and more explicit alternate to "order_list"
-                allowing users to specify the exact lags to plot. e.g.
-                [1, [1, 12]] will plot first difference and a second plot with
-                first difference (d = 1 in ARIMA) and seasonal 12th difference
-                (D=1, s=12 in ARIMA models). Also note that "order_list" = [2]
-                can be alternately specified as lags_list = [[1, 1]] i.e. successive
-                differencing twice.
-
-            acf: True/False
-                When specified in difference plots and set to True, this will plot
-                the ACF of the differenced data as well.
-
-            pacf: True/False
-                When specified in difference plots and set to True, this will plot
-                the PACF of the differenced data as well.
-
-            periodogram: True/False
-                When specified in difference plots and set to True, this will plot
-                the Periodogram of the differenced data as well.
-
-            fft: True/False
-                When specified in difference plots and set to True, this will plot
-                the FFT of the differenced data as well.
-
-            labels: When estimator(s) are provided, the corresponding labels to
-                use for the plots. If not provided, the model class is used to
-                derive the labels.
-
-            include: When data contains exogenous variables, then only specific
-                exogenous variables can be plotted using this key.
-                e.g. include = ["col1", "col2"]
-
-            exclude: When data contains exogenous variables, specific exogenous
-                variables can be excluded from the plots using this key.
-                e.g. exclude = ["col1", "col2"]
-
-            alpha: The quantile value to use for point prediction. If not provided,
-                then the value specified during setup is used.
-
-            coverage: The coverage value to use for prediction intervals.  If not
-                provided, then the value specified during setup is used.
-
-            fh: The forecast horizon to use for forecasting. If not provided, then
-                the one used during model training is used.
-
-            X: When a model trained with exogenous variables has been finalized,
-                user can provide the future values of the exogenous variables to
-                make future target time series predictions using this key.
-
-            plot_data_type: When plotting the data used for modeling, user may
-                wish to see plots with the original data set provided, the imputed
-                dataset (if imputation is set) or the transformed dataset (which
-                includes any imputation and transformation set by the user). This
-                keyword can be used to specify which data type to use.
-
-                NOTE:
-                (1) If no imputation is specified, then plotting the "imputed"
-                    data type will produce the same results as the "original" data type.
-                (2) If no transforations are specified, then plotting the "transformed"
-                    data type will produce the same results as the "imputed" data type.
-
-                Allowed values are (if not specified, defaults to the first one in the list):
-
-                "ts": ["original", "imputed", "transformed"]
-                "train_test_split": ["original", "imputed", "transformed"]
-                "cv": ["original"]
-                "acf": ["transformed", "imputed", "original"]
-                "pacf": ["transformed", "imputed", "original"]
-                "decomp": ["transformed", "imputed", "original"]
-                "decomp_stl": ["transformed", "imputed", "original"]
-                "diagnostics": ["transformed", "imputed", "original"]
-                "diff": ["transformed", "imputed", "original"]
-                "forecast": ["original", "imputed"]
-                "insample": ["original", "imputed"]
-                "residuals": ["original", "imputed"]
-                "periodogram": ["transformed", "imputed", "original"]
-                "fft": ["transformed", "imputed", "original"]
-                "ccf": ["transformed", "imputed", "original"]
-
-                Some plots (marked as True below) will also allow specifying
-                multiple of data types at once.
-
-                "ts": True
-                "train_test_split": True
-                "cv": False
-                "acf": True
-                "pacf": True
-                "decomp": True
-                "decomp_stl": True
-                "diagnostics": True
-                "diff": False
-                "forecast": False
-                "insample": False
-                "residuals": False
-                "periodogram": True
-                "fft": True
-                "ccf": False
-
-
-        fig_kwargs: dict, default = {} (empty dict)
-            The setting to be used for the plot. Overrides any global setting
-            passed during setup. Pass these as key-value pairs. For available
-            keys, refer to the `setup` documentation.
-
-
-        save: string or bool, default = False
-            When set to True, Plot is saved as a 'png' file in current working directory.
-            When a path destination is given, Plot is saved as a 'png' file the given path to the directory of choice.
-
-
-        Returns:
-            Optional[Tuple[str, Any]]
-
-        """
+        """Internal version of ``plot_model`` with ``system`` arg."""
 
         self._check_setup_ran()
 
@@ -3549,6 +3345,238 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         elif len(return_obj) == 1:
             return_obj = return_obj[0]
         return return_obj
+
+    def plot_model(
+        self,
+        estimator: Optional[Any] = None,
+        plot: Optional[str] = None,
+        return_fig: bool = False,
+        return_data: bool = False,
+        verbose: bool = False,
+        display_format: Optional[str] = None,
+        data_kwargs: Optional[Dict] = None,
+        fig_kwargs: Optional[Dict] = None,
+        save: Union[str, bool] = False,
+    ) -> Optional[Tuple[str, Any]]:
+
+        """
+        This function analyzes the performance of a trained model on holdout set.
+        When used without any estimator, this function generates plots on the
+        original data set. When used with an estimator, it will generate plots on
+        the model residuals.
+
+
+        Example
+        --------
+        >>> from pycaret.datasets import get_data
+        >>> airline = get_data('airline')
+        >>> from pycaret.time_series import *
+        >>> exp_name = setup(data = airline,  fh = 12)
+        >>> plot_model(plot="diff", data_kwargs={"order_list": [1, 2], "acf": True, "pacf": True})
+        >>> plot_model(plot="diff", data_kwargs={"lags_list": [[1], [1, 12]], "acf": True, "pacf": True})
+        >>> arima = create_model('arima')
+        >>> plot_model(plot = 'ts')
+        >>> plot_model(plot = 'decomp', data_kwargs = {'type' : 'multiplicative'})
+        >>> plot_model(plot = 'decomp', data_kwargs = {'seasonal_period': 24})
+        >>> plot_model(estimator = arima, plot = 'forecast', data_kwargs = {'fh' : 24})
+        >>> tuned_arima = tune_model(arima)
+        >>> plot_model([arima, tuned_arima], data_kwargs={"labels": ["Baseline", "Tuned"]})
+
+
+        estimator: sktime compatible object, default = None
+            Trained model object
+
+
+        plot: str, default = None
+            Default is 'ts' when estimator is None, When estimator is not None,
+            default is changed to 'forecast'. List of available plots (ID - Name):
+
+            * 'ts' - Time Series Plot
+            * 'train_test_split' - Train Test Split
+            * 'cv' - Cross Validation
+            * 'acf' - Auto Correlation (ACF)
+            * 'pacf' - Partial Auto Correlation (PACF)
+            * 'decomp' - Classical Decomposition
+            * 'decomp_stl' - STL Decomposition
+            * 'diagnostics' - Diagnostics Plot
+            * 'diff' - Difference Plot
+            * 'periodogram' - Frequency Components (Periodogram)
+            * 'fft' - Frequency Components (FFT)
+            * 'ccf' - Cross Correlation (CCF)
+            * 'forecast' - "Out-of-Sample" Forecast Plot
+            * 'insample' - "In-Sample" Forecast Plot
+            * 'residuals' - Residuals Plot
+
+
+        return_fig: : bool, default = False
+            When set to True, it returns the figure used for plotting.
+
+
+        return_data: bool, default = False
+            When set to True, it returns the data for plotting.
+            If both return_fig and return_data is set to True, order of return
+            is figure then data.
+
+
+        verbose: bool, default = True
+            Unused for now
+
+
+        display_format: str, default = None
+            To display plots in Streamlit (https://www.streamlit.io/), set this to 'streamlit'.
+            Currently, not all plots are supported.
+
+
+        data_kwargs: dict, default = None
+            Dictionary of arguments passed to the data for plotting.
+
+            Available keys are:
+
+            nlags: The number of lags to use when plotting correlation plots, e.g.
+                ACF, PACF, CCF. If not provided, default internally calculated
+                values are used.
+
+            seasonal_period: The seasonal period to use for decomposition plots.
+                If not provided, the default internally detected seasonal period
+                is used.
+
+            type: The type of seasonal decomposition to perform. Options are:
+                ["additive", "multiplicative"]
+
+            order_list: The differencing orders to use for difference plots. e.g.
+                [1, 2] will plot first and second order differences (corresponding
+                to d = 1 and 2 in ARIMA models).
+
+            lags_list: An alternate and more explicit alternate to "order_list"
+                allowing users to specify the exact lags to plot. e.g.
+                [1, [1, 12]] will plot first difference and a second plot with
+                first difference (d = 1 in ARIMA) and seasonal 12th difference
+                (D=1, s=12 in ARIMA models). Also note that "order_list" = [2]
+                can be alternately specified as lags_list = [[1, 1]] i.e. successive
+                differencing twice.
+
+            acf: True/False
+                When specified in difference plots and set to True, this will plot
+                the ACF of the differenced data as well.
+
+            pacf: True/False
+                When specified in difference plots and set to True, this will plot
+                the PACF of the differenced data as well.
+
+            periodogram: True/False
+                When specified in difference plots and set to True, this will plot
+                the Periodogram of the differenced data as well.
+
+            fft: True/False
+                When specified in difference plots and set to True, this will plot
+                the FFT of the differenced data as well.
+
+            labels: When estimator(s) are provided, the corresponding labels to
+                use for the plots. If not provided, the model class is used to
+                derive the labels.
+
+            include: When data contains exogenous variables, then only specific
+                exogenous variables can be plotted using this key.
+                e.g. include = ["col1", "col2"]
+
+            exclude: When data contains exogenous variables, specific exogenous
+                variables can be excluded from the plots using this key.
+                e.g. exclude = ["col1", "col2"]
+
+            alpha: The quantile value to use for point prediction. If not provided,
+                then the value specified during setup is used.
+
+            coverage: The coverage value to use for prediction intervals.  If not
+                provided, then the value specified during setup is used.
+
+            fh: The forecast horizon to use for forecasting. If not provided, then
+                the one used during model training is used.
+
+            X: When a model trained with exogenous variables has been finalized,
+                user can provide the future values of the exogenous variables to
+                make future target time series predictions using this key.
+
+            plot_data_type: When plotting the data used for modeling, user may
+                wish to see plots with the original data set provided, the imputed
+                dataset (if imputation is set) or the transformed dataset (which
+                includes any imputation and transformation set by the user). This
+                keyword can be used to specify which data type to use.
+
+                NOTE:
+                (1) If no imputation is specified, then plotting the "imputed"
+                    data type will produce the same results as the "original" data type.
+                (2) If no transforations are specified, then plotting the "transformed"
+                    data type will produce the same results as the "imputed" data type.
+
+                Allowed values are (if not specified, defaults to the first one in the list):
+
+                "ts": ["original", "imputed", "transformed"]
+                "train_test_split": ["original", "imputed", "transformed"]
+                "cv": ["original"]
+                "acf": ["transformed", "imputed", "original"]
+                "pacf": ["transformed", "imputed", "original"]
+                "decomp": ["transformed", "imputed", "original"]
+                "decomp_stl": ["transformed", "imputed", "original"]
+                "diagnostics": ["transformed", "imputed", "original"]
+                "diff": ["transformed", "imputed", "original"]
+                "forecast": ["original", "imputed"]
+                "insample": ["original", "imputed"]
+                "residuals": ["original", "imputed"]
+                "periodogram": ["transformed", "imputed", "original"]
+                "fft": ["transformed", "imputed", "original"]
+                "ccf": ["transformed", "imputed", "original"]
+
+                Some plots (marked as True below) will also allow specifying
+                multiple of data types at once.
+
+                "ts": True
+                "train_test_split": True
+                "cv": False
+                "acf": True
+                "pacf": True
+                "decomp": True
+                "decomp_stl": True
+                "diagnostics": True
+                "diff": False
+                "forecast": False
+                "insample": False
+                "residuals": False
+                "periodogram": True
+                "fft": True
+                "ccf": False
+
+
+        fig_kwargs: dict, default = {} (empty dict)
+            The setting to be used for the plot. Overrides any global setting
+            passed during setup. Pass these as key-value pairs. For available
+            keys, refer to the `setup` documentation.
+
+
+        save: string or bool, default = False
+            When set to True, Plot is saved as a 'png' file in current working directory.
+            When a path destination is given, Plot is saved as a 'png' file the given path to the directory of choice.
+
+
+        Returns:
+            Optional[Tuple[str, Any]]
+
+        """
+
+        system = os.environ.get("PYCARET_TESTING", "0")
+        system = system == "0"
+
+        return self._plot_model(
+            estimator=estimator,
+            plot=plot,
+            return_fig=return_fig,
+            return_data=return_data,
+            verbose=verbose,
+            display_format=display_format,
+            data_kwargs=data_kwargs,
+            fig_kwargs=fig_kwargs,
+            save=save,
+            system=system,
+        )
 
     def _predict_model_reconcile_pipe_estimator(
         self, estimator: Union[BaseForecaster, ForecastingPipeline]

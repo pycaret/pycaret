@@ -20,6 +20,7 @@ from .time_series_test_utils import (
 )
 
 pytestmark = pytest.mark.filterwarnings("ignore::UserWarning")
+os.environ["PYCARET_TESTING"] = "1"
 
 
 ##############################
@@ -49,7 +50,7 @@ _all_plots_estimator_ts_results = _return_all_plots_estimator_ts_results()
 
 @pytest.mark.parametrize("data", _data_with_without_period_index)
 @pytest.mark.parametrize("plot", _ALL_PLOTS_DATA)
-def test_plot_model_data(data, plot):
+def testplot_model_data(data, plot):
     """Tests the plot_model functionality on original dataset
     NOTE: Want to show multiplicative plot here so can not take data with negative values
     """
@@ -72,14 +73,12 @@ def test_plot_model_data(data, plot):
         seasonal_period=sp,
     )
 
-    exp.plot_model(plot=plot, system=False)
+    exp.plot_model(plot=plot)
 
     ########################
     #### Functional API ####
     ########################
     from pycaret.time_series import plot_model, setup
-
-    os.environ["PYCARET_TESTING"] = "1"
 
     _ = setup(
         data=data,
@@ -96,7 +95,7 @@ def test_plot_model_data(data, plot):
 @pytest.mark.parametrize("model_name", _model_names_for_plots)
 @pytest.mark.parametrize("data", _data_with_without_period_index)
 @pytest.mark.parametrize("plot", _ALL_PLOTS_ESTIMATOR)
-def test_plot_model_estimator(model_name, data, plot):
+def testplot_model_estimator(model_name, data, plot):
     """Tests the plot_model functionality on estimators
     NOTE: Want to show multiplicative plot here so can not take data with negative values
     """
@@ -122,14 +121,12 @@ def test_plot_model_estimator(model_name, data, plot):
     )
 
     model = exp.create_model(model_name)
-    exp.plot_model(estimator=model, plot=plot, system=False)
+    exp.plot_model(estimator=model, plot=plot)
 
     ########################
     #### Functional API ####
     ########################
     from pycaret.time_series import create_model, plot_model, setup
-
-    os.environ["PYCARET_TESTING"] = "1"
 
     _ = setup(
         data=data,
@@ -145,7 +142,7 @@ def test_plot_model_estimator(model_name, data, plot):
 
 
 @pytest.mark.parametrize("plot", _ALL_PLOTS_ESTIMATOR_NOT_DATA)
-def test_plot_model_data_raises(load_pos_and_neg_data, plot):
+def testplot_model_data_raises(load_pos_and_neg_data, plot):
     """Tests the plot_model functionality when it raises an exception
     on data plots (i.e. estimator is not passed)
     """
@@ -168,7 +165,7 @@ def test_plot_model_data_raises(load_pos_and_neg_data, plot):
 
     with pytest.raises(ValueError) as errmsg:
         # Some code that produces a value error
-        exp.plot_model(plot=plot, system=False)
+        exp.plot_model(plot=plot)
 
     # Capture Error message
     exceptionmsg = errmsg.value.args[0]
@@ -181,7 +178,7 @@ def test_plot_model_data_raises(load_pos_and_neg_data, plot):
 
 
 @pytest.mark.parametrize("data", _data_with_without_period_index)
-def test_plot_model_customization(data):
+def testplot_model_customization(data):
     """Tests the customization of plot_model
     NOTE: Want to show multiplicative plot here so can not take data with negative values
     """
@@ -215,21 +212,16 @@ def test_plot_model_customization(data):
             "nlags": 36,
         },
         fig_kwargs={"fig_size": [800, 500], "fig_template": "simple_white"},
-        system=False,
     )
-    exp.plot_model(
-        plot="decomp_classical", data_kwargs={"type": "multiplicative"}, system=False
-    )
+    exp.plot_model(plot="decomp_classical", data_kwargs={"type": "multiplicative"})
 
     print("\n\n====  Testing Customization ON ESTIMATOR ====")
-    exp.plot_model(
-        estimator=model, plot="forecast", data_kwargs={"fh": 24}, system=False
-    )
+    exp.plot_model(estimator=model, plot="forecast", data_kwargs={"fh": 24})
 
 
 @pytest.mark.parametrize("data", _data_with_without_period_index)
 @pytest.mark.parametrize("plot", _ALL_PLOTS_DATA)
-def test_plot_model_return_data_original_data(data, plot):
+def testplot_model_return_data_original_data(data, plot):
     """Tests whether the return_data parameter of the plot_model function works
     properly or not for the original data
     """
@@ -250,7 +242,7 @@ def test_plot_model_return_data_original_data(data, plot):
         seasonal_period=sp,
     )
 
-    plot_data = exp.plot_model(plot=plot, return_data=True, system=False)
+    plot_data = exp.plot_model(plot=plot, return_data=True)
     # If plot is successful, it will return a dictionary
     # If plot is not possible (e.g. decomposition without index), then it will return None
     assert isinstance(plot_data, dict) or plot_data is None
@@ -259,7 +251,7 @@ def test_plot_model_return_data_original_data(data, plot):
 @pytest.mark.parametrize("data", _data_with_without_period_index)
 @pytest.mark.parametrize("model_name", _model_names_for_plots)
 @pytest.mark.parametrize("plot", _ALL_PLOTS_ESTIMATOR)
-def test_plot_model_return_data_estimator(data, model_name, plot):
+def testplot_model_return_data_estimator(data, model_name, plot):
     """Tests whether the return_data parameter of the plot_model function works
     properly or not for the estimator
     """
@@ -282,9 +274,7 @@ def test_plot_model_return_data_estimator(data, model_name, plot):
 
     model = exp.create_model(model_name)
 
-    plot_data = exp.plot_model(
-        estimator=model, plot=plot, return_data=True, system=False
-    )
+    plot_data = exp.plot_model(estimator=model, plot=plot, return_data=True)
     # If plot is successful, it will return a dictionary
     # If plot is not possible (e.g. decomposition without index), then it will return None
     assert isinstance(plot_data, dict) or plot_data is None
@@ -317,7 +307,7 @@ def test_plot_multiple_model_overlays(
 
     #### Check 1: Even if same model type is passed, the plot should make overlays ----
     models = [m1, m1]
-    fig_data = exp.plot_model(models, plot=plot, return_data=True, system=False)
+    fig_data = exp.plot_model(models, plot=plot, return_data=True)
     assert fig_data.get("overlay_data").shape[1] == len(models)
 
     #### Check 2: User specified labels are used in plots
@@ -327,7 +317,6 @@ def test_plot_multiple_model_overlays(
         plot=plot,
         data_kwargs={"labels": labels},
         return_data=True,
-        system=False,
     )
     assert fig_data.get("overlay_data").shape[1] == len(models)
     assert np.all(fig_data.get("overlay_data").columns.to_list() == labels)
@@ -338,7 +327,7 @@ def test_plot_multiple_model_overlays(
 
         #### Check 3: If Model does not produce insample predictions, it should be excluded
         models = [m1, m2, m1]
-        fig_data = exp.plot_model(models, plot=plot, return_data=True, system=False)
+        fig_data = exp.plot_model(models, plot=plot, return_data=True)
         assert fig_data.get("overlay_data").shape[1] == len(models) - 1
 
         #### Check 4: If Model does not produce insample predictions, custom labels should exclude it.
@@ -348,7 +337,6 @@ def test_plot_multiple_model_overlays(
             plot=plot,
             data_kwargs={"labels": labels},
             return_data=True,
-            system=False,
         )
         assert fig_data.get("overlay_data").shape[1] == len(models) - 1
         labels.remove("Model 2")
@@ -362,9 +350,7 @@ def test_plot_multiple_model_overlays(
     # (A) Less labels than models ----
     labels = ["Model 1"]
     with pytest.raises(ValueError) as errmsg:
-        fig_data = exp.plot_model(
-            models, plot=plot, data_kwargs={"labels": labels}, system=False
-        )
+        fig_data = exp.plot_model(models, plot=plot, data_kwargs={"labels": labels})
 
     # Capture Error message
     exceptionmsg = errmsg.value.args[0]
@@ -377,9 +363,7 @@ def test_plot_multiple_model_overlays(
     # (B) More labels than models ----
     labels = ["Model 1", "Model 2", "Model 3"]
     with pytest.raises(ValueError) as errmsg:
-        fig_data = exp.plot_model(
-            models, plot=plot, data_kwargs={"labels": labels}, system=False
-        )
+        fig_data = exp.plot_model(models, plot=plot, data_kwargs={"labels": labels})
 
     # Capture Error message
     exceptionmsg = errmsg.value.args[0]

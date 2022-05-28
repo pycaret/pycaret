@@ -372,7 +372,6 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
         fit_kwargs: Optional[dict] = None,
         round: int = 4,
         verbose: bool = True,
-        display: Optional[CommonDisplay] = None,
         **kwargs,
     ):
 
@@ -505,28 +504,27 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
                 pass
         param_grid.sort()
 
-        if not display:
-            progress_args = {"max": len(param_grid) * 3 + (len(param_grid) + 1) * 4}
-            timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
-            monitor_rows = [
-                ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
-                [
-                    "Status",
-                    ". . . . . . . . . . . . . . . . . .",
-                    "Loading Dependencies",
-                ],
-                [
-                    "Estimator",
-                    ". . . . . . . . . . . . . . . . . .",
-                    "Compiling Library",
-                ],
-            ]
-            display = CommonDisplay(
-                verbose=verbose,
-                html_param=self.html_param,
-                progress_args=progress_args,
-                monitor_rows=monitor_rows,
-            )
+        progress_args = {"max": len(param_grid) * 3 + (len(param_grid) + 1) * 4}
+        timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
+        monitor_rows = [
+            ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
+            [
+                "Status",
+                ". . . . . . . . . . . . . . . . . .",
+                "Loading Dependencies",
+            ],
+            [
+                "Estimator",
+                ". . . . . . . . . . . . . . . . . .",
+                "Compiling Library",
+            ],
+        ]
+        display = CommonDisplay(
+            verbose=verbose,
+            html_param=self.html_param,
+            progress_args=progress_args,
+            monitor_rows=monitor_rows,
+        )
 
         unsupervised_models = {}
         unsupervised_models_results = {}
@@ -537,7 +535,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
         for k in param_grid:
             if self._ml_usecase == MLUsecase.CLUSTERING:
                 try:
-                    new_model, _ = self.create_model(
+                    new_model, _ = self._create_model(
                         model,
                         num_clusters=k,
                         X_data=data_X,
@@ -554,7 +552,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
                         f"Model {model} cannot be used in this function as its number of clusters cannot be set (n_clusters parameter required)."
                     )
             else:
-                new_model, _ = self.create_model(
+                new_model, _ = self._create_model(
                     model,
                     fraction=k,
                     X_data=data_X,
@@ -587,7 +585,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
         self.logger.info("Fitting supervised estimator")
 
         for k, v in unsupervised_grids.items():
-            self.create_model(
+            self._create_model(
                 supervised_estimator,
                 fold=fold,
                 display=display,
@@ -631,7 +629,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
         runtime = np.array(runtime_end - runtime_start).round(2)
 
         if self._ml_usecase == MLUsecase.CLUSTERING:
-            best_model, best_model_fit_time = self.create_model(
+            best_model, best_model_fit_time = self._create_model(
                 unsupervised_models[best_model_idx],
                 num_clusters=best_model_idx,
                 system=False,
@@ -642,7 +640,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
                 **kwargs,
             )
         else:
-            best_model, best_model_fit_time = self.create_model(
+            best_model, best_model_fit_time = self._create_model(
                 unsupervised_models[best_model_idx],
                 fraction=best_model_idx,
                 system=False,
@@ -889,7 +887,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
 
         return data_transformed
 
-    def create_model(
+    def _create_model(
         self,
         estimator,
         num_clusters: int = 4,
@@ -908,97 +906,8 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
     ) -> Any:
 
         """
-        This is an internal version of the create_model function.
-
-        This function creates a model and scores it using Cross Validation.
-        The output prints a score grid that shows Accuracy, AUC, Recall, Precision,
-        F1, Kappa and MCC by fold (default = 10 Fold).
-
-        This function returns a trained model object.
-
-        setup() function must be called before using create_model()
-
-        Example
-        -------
-        >>> from pycaret.datasets import get_data
-        >>> juice = get_data('juice')
-        >>> experiment_name = setup(data = juice,  target = 'Purchase')
-        >>> lr = create_model('lr')
-
-        This will create a trained Logistic Regression model.
-
-        Parameters
-        ----------
-        model : string / object, default = None
-            Enter ID of the models available in model library or pass an untrained model
-            object consistent with fit / predict API to train and evaluate model. List of
-            models available in model library (ID - Model):
-
-            * 'kmeans' - K-Means Clustering
-            * 'ap' - Affinity Propagation
-            * 'meanshift' - Mean shift Clustering
-            * 'sc' - Spectral Clustering
-            * 'hclust' - Agglomerative Clustering
-            * 'dbscan' - Density-Based Spatial Clustering
-            * 'optics' - OPTICS Clustering
-            * 'birch' - Birch Clustering
-            * 'kmodes' - K-Modes Clustering
-
-        num_clusters: int, default = 4
-            Number of clusters to be generated with the dataset.
-
-        ground_truth: string, default = None
-            When ground_truth is provided, Homogeneity Score, Rand Index, and
-            Completeness Score is evaluated and printer along with other metrics.
-
-        round: integer, default = 4
-            Number of decimal places the metrics in the score grid will be rounded to.
-
-        fit_kwargs: dict, default = {} (empty dict)
-            Dictionary of arguments passed to the fit method of the model.
-
-        verbose: bool, default = True
-            Score grid is not printed when verbose is set to False.
-
-        system: bool, default = True
-            Must remain True all times. Only to be changed by internal functions.
-            If False, method will return a tuple of model and the model fit time.
-
-        add_to_model_list: bool, default = True
-            Whether to save model and results in master_model_container.
-
-        **kwargs:
-            Additional keyword arguments to pass to the estimator.
-
-        Returns
-        -------
-        score_grid
-            A table containing the Silhouette, Calinski-Harabasz,
-            Davies-Bouldin, Homogeneity Score, Rand Index, and
-            Completeness Score. Last 3 are only evaluated when
-            ground_truth parameter is provided.
-
-        model
-            trained model object
-
-        Warnings
-        --------
-        - num_clusters not required for Affinity Propagation ('ap'), Mean shift
-        clustering ('meanshift'), Density-Based Spatial Clustering ('dbscan')
-        and OPTICS Clustering ('optics'). num_clusters parameter for these models
-        are automatically determined.
-
-        - When fit doesn't converge in Affinity Propagation ('ap') model, all
-        datapoints are labelled as -1.
-
-        - Noisy samples are given the label -1, when using Density-Based Spatial
-        ('dbscan') or OPTICS Clustering ('optics').
-
-        - OPTICS ('optics') clustering may take longer training times on large
-        datasets.
-
+        Internal version of ``create_model`` with private arguments.
         """
-
         function_params_str = ", ".join(
             [f"{k}={v}" for k, v in locals().items() if k not in ("X_data")]
         )
@@ -1260,3 +1169,131 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
             return (model, model_fit_time)
 
         return model
+
+    def create_model(
+        self,
+        estimator,
+        num_clusters: int = 4,
+        fraction: float = 0.05,
+        ground_truth: Optional[str] = None,
+        round: int = 4,
+        fit_kwargs: Optional[dict] = None,
+        experiment_custom_tags: Optional[Dict[str, Any]] = None,
+        verbose: bool = True,
+        **kwargs,
+    ) -> Any:
+
+        """
+        This function creates a model and scores it using Cross Validation.
+        The output prints a score grid that shows Accuracy, AUC, Recall, Precision,
+        F1, Kappa and MCC by fold (default = 10 Fold).
+
+        This function returns a trained model object.
+
+        setup() function must be called before using create_model()
+
+        Example
+        -------
+        >>> from pycaret.datasets import get_data
+        >>> juice = get_data('juice')
+        >>> experiment_name = setup(data = juice,  target = 'Purchase')
+        >>> lr = create_model('lr')
+
+        This will create a trained Logistic Regression model.
+
+        Parameters
+        ----------
+        model : string / object, default = None
+            Enter ID of the models available in model library or pass an untrained model
+            object consistent with fit / predict API to train and evaluate model. List of
+            models available in model library (ID - Model):
+
+            * 'kmeans' - K-Means Clustering
+            * 'ap' - Affinity Propagation
+            * 'meanshift' - Mean shift Clustering
+            * 'sc' - Spectral Clustering
+            * 'hclust' - Agglomerative Clustering
+            * 'dbscan' - Density-Based Spatial Clustering
+            * 'optics' - OPTICS Clustering
+            * 'birch' - Birch Clustering
+            * 'kmodes' - K-Modes Clustering
+
+        num_clusters: int, default = 4
+            Number of clusters to be generated with the dataset.
+
+        ground_truth: string, default = None
+            When ground_truth is provided, Homogeneity Score, Rand Index, and
+            Completeness Score is evaluated and printer along with other metrics.
+
+        round: integer, default = 4
+            Number of decimal places the metrics in the score grid will be rounded to.
+
+        fit_kwargs: dict, default = {} (empty dict)
+            Dictionary of arguments passed to the fit method of the model.
+
+        verbose: bool, default = True
+            Score grid is not printed when verbose is set to False.
+
+        system: bool, default = True
+            Must remain True all times. Only to be changed by internal functions.
+            If False, method will return a tuple of model and the model fit time.
+
+        add_to_model_list: bool, default = True
+            Whether to save model and results in master_model_container.
+
+        **kwargs:
+            Additional keyword arguments to pass to the estimator.
+
+        Returns
+        -------
+        score_grid
+            A table containing the Silhouette, Calinski-Harabasz,
+            Davies-Bouldin, Homogeneity Score, Rand Index, and
+            Completeness Score. Last 3 are only evaluated when
+            ground_truth parameter is provided.
+
+        model
+            trained model object
+
+        Warnings
+        --------
+        - num_clusters not required for Affinity Propagation ('ap'), Mean shift
+        clustering ('meanshift'), Density-Based Spatial Clustering ('dbscan')
+        and OPTICS Clustering ('optics'). num_clusters parameter for these models
+        are automatically determined.
+
+        - When fit doesn't converge in Affinity Propagation ('ap') model, all
+        datapoints are labelled as -1.
+
+        - Noisy samples are given the label -1, when using Density-Based Spatial
+        ('dbscan') or OPTICS Clustering ('optics').
+
+        - OPTICS ('optics') clustering may take longer training times on large
+        datasets.
+
+        """
+
+        # TODO improve error message
+        assert not any(
+            x
+            in (
+                "system",
+                "add_to_model_list",
+                "raise_num_clusters",
+                "X_data",
+                "metrics",
+            )
+            for x in kwargs
+        )
+
+        return self._create_model(
+            estimator=estimator,
+            num_clusters=num_clusters,
+            fraction=fraction,
+            ground_truth=ground_truth,
+            round=round,
+            fit_kwargs=fit_kwargs,
+            experiment_custom_tags=experiment_custom_tags,
+            verbose=verbose,
+            **kwargs,
+        )
