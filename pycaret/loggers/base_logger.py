@@ -6,7 +6,10 @@ class BaseLogger(ABC):
         pass
 
     def __del__(self):
-        self.finish_experiment()
+        try:
+            self.finish_experiment()
+        except Exception:
+            pass
 
     def __repr__(self) -> str:
         return self.__class__.__name__

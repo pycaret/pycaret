@@ -212,7 +212,6 @@ def testplot_model_customization(data):
             "nlags": 36,
         },
         fig_kwargs={"fig_size": [800, 500], "fig_template": "simple_white"},
-        system=False,
     )
     exp.plot_model(plot="decomp_classical", data_kwargs={"type": "multiplicative"})
 
@@ -318,7 +317,6 @@ def test_plot_multiple_model_overlays(
         plot=plot,
         data_kwargs={"labels": labels},
         return_data=True,
-        system=False,
     )
     assert fig_data.get("overlay_data").shape[1] == len(models)
     assert np.all(fig_data.get("overlay_data").columns.to_list() == labels)
@@ -339,7 +337,6 @@ def test_plot_multiple_model_overlays(
             plot=plot,
             data_kwargs={"labels": labels},
             return_data=True,
-            system=False,
         )
         assert fig_data.get("overlay_data").shape[1] == len(models) - 1
         labels.remove("Model 2")
