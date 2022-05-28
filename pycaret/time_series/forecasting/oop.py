@@ -962,20 +962,11 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         return self
 
     def _fit_pipeline_in_setup(self) -> None:
-        # add dummy estimator so all preprocessing
-        # steps are fitted correctly
-        self.pipeline.steps.append(["dummy", "passthrough"])
         self.pipeline_fully_trained = deepcopy(self.pipeline)
 
         # Fit pipelines
-        try:
-            self.pipeline.fit(y=self.y_train, X=self.X_train, fh=self.fh)
-        finally:
-            self.pipeline.steps.pop()
-        try:
-            self.pipeline_fully_trained.fit(y=self.y, X=self.X, fh=self.fh)
-        finally:
-            self.pipeline_fully_trained.steps.pop()
+        self.pipeline.fit(y=self.y_train, X=self.X_train, fh=self.fh)
+        self.pipeline_fully_trained.fit(y=self.y, X=self.X, fh=self.fh)
 
     def _initialize_pipeline(self) -> "TSForecastingExperiment":
         """Sets the preprocessing pipeline according to the user inputs
