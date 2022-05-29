@@ -1,11 +1,11 @@
 import logging
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, List, Optional, Union
 
 import pandas as pd
 from joblib.memory import Memory
 
 from pycaret.classification.oop import ClassificationExperiment
-from pycaret.internal.Display import Display
+from pycaret.internal.Display import CommonDisplay
 from pycaret.internal.parallel.parallel_backend import ParallelBackend
 from pycaret.internal.utils import (
     DATAFRAME_LIKE,

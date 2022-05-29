@@ -7,11 +7,7 @@ import cloudpickle
 import pandas as pd
 from fugue import transform
 
-<<<<<<< HEAD
 from pycaret.internal.Display import CommonDisplay
-=======
-from pycaret.internal.Display import Display
->>>>>>> 380cb29d (make classification work)
 from pycaret.internal.parallel.parallel_backend import NoDisplay, ParallelBackend
 from pycaret.internal.tabular import _get_context_lock
 
@@ -140,15 +136,7 @@ class FugueBackend(ParallelBackend):
                 )
             )
         )
-<<<<<<< HEAD
         du: Optional[_DisplayUtil] = (
-=======
-<<<<<<< HEAD
-        du: Optional[CommonDisplay] = (
-=======
-        du: Optional[_DisplayUtil] = (
->>>>>>> 51757b8f (make classification work)
->>>>>>> 380cb29d (make classification work)
             None
             if not self._display_remote
             else _DisplayUtil(

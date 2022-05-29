@@ -199,6 +199,14 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             names.
 
 
+        data_func: Callable[[], DATAFRAME_LIKE] = None
+            The function that generate ``data`` (the dataframe-like input). This
+            is useful when the dataset is large, and you need parallel operations
+            such as ``compare_models``. It can avoid boradcasting large dataset
+            from driver to workers. Notice one and only one of ``data`` and
+            ``data_func`` must be set.
+
+
         target: int, str or sequence, default = -1
             If int or str, respectivcely index or name of the target column in data.
             The default value selects the last column in the dataset. If sequence,

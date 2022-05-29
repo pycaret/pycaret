@@ -1,9 +1,9 @@
 from typing import Any, Dict, List, Optional, Type, Union
 
-from pycaret.internal.Display import Display
+from pycaret.internal.Display import CommonDisplay
 
 
-class NoDisplay(Display):
+class NoDisplay(CommonDisplay):
     """The Display class to completely turn off all displays"""
 
     def can_display(self, override):
