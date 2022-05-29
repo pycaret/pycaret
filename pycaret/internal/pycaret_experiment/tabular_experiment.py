@@ -2536,6 +2536,45 @@ class _TabularExperiment(_PyCaretExperiment):
         Ruby, F#). This functionality is very useful if you want to deploy models
         into environments where you can't install your normal Python stack to
         support model inference.
+
+
+        Example
+        -------
+        >>> from pycaret.datasets import get_data
+        >>> juice = get_data('juice')
+        >>> from pycaret.classification import *
+        >>> exp_name = setup(data = juice,  target = 'Purchase')
+        >>> lr = create_model('lr')
+        >>> lr_java = convert_model(lr, 'java')
+
+
+        estimator: scikit-learn compatible object
+            Trained model object
+
+
+        language: str, default = 'python'
+            Language in which inference script to be generated. Following
+            options are available:
+
+            * 'python'
+            * 'java'
+            * 'javascript'
+            * 'c'
+            * 'c#'
+            * 'f#'
+            * 'go'
+            * 'haskell'
+            * 'php'
+            * 'powershell'
+            * 'r'
+            * 'ruby'
+            * 'vb'
+            * 'dart'
+
+
+        Returns:
+            str
+
         """
 
         _check_soft_dependencies("m2cgen", extra=None, severity="error")
@@ -2578,7 +2617,40 @@ class _TabularExperiment(_PyCaretExperiment):
     def create_api(self, estimator, api_name, host="127.0.0.1", port=8000):
 
         """
-        This function creates API and write it as a python file using FastAPI
+        This function takes an input ``estimator`` and creates a POST API for
+        inference. It only creates the API and doesn't run it automatically.
+        To run the API, you must run the Python file using ``!python``.
+
+
+        Example
+        -------
+        >>> from pycaret.datasets import get_data
+        >>> juice = get_data('juice')
+        >>> from pycaret.classification import *
+        >>> exp_name = setup(data = juice,  target = 'Purchase')
+        >>> lr = create_model('lr')
+        >>> create_api(lr, 'lr_api'
+        >>> !python lr_api.py
+
+
+        estimator: scikit-learn compatible object
+            Trained model object
+
+
+        api_name: scikit-learn compatible object
+            Trained model object
+
+
+        host: str, default = '127.0.0.1'
+            API host address.
+
+
+        port: int, default = 8000
+            port for API.
+
+
+        Returns:
+            None
         """
 
         _check_soft_dependencies("fastapi", extra="mlops", severity="error")
@@ -2647,7 +2719,30 @@ class _TabularExperiment(_PyCaretExperiment):
 
     def eda(self, display_format: str = "bokeh", **kwargs):
         """
-        Function to generate EDA using AutoVIZ library.
+        This function generates AutoEDA using AutoVIZ library. You must
+        install Autoviz separately ``pip install autoviz`` to use this
+        function.
+
+
+        Example
+        -------
+        >>> from pycaret.datasets import get_data
+        >>> juice = get_data('juice')
+        >>> from pycaret.classification import *
+        >>> exp_name = setup(data = juice,  target = 'Purchase')
+        >>> eda(display_format = 'bokeh')
+
+        display_format: str, default = 'bokeh'
+            When set to 'bokeh' the plots are interactive. Other option is ``svg`` for static
+            plots that are generated using matplotlib and seaborn.
+
+
+        **kwargs:
+            Additional keyword arguments to pass to the AutoVIZ class.
+
+
+        Returns:
+            None
         """
 
         _check_soft_dependencies("autoviz", extra="mlops", severity="error")
@@ -2671,6 +2766,8 @@ class _TabularExperiment(_PyCaretExperiment):
         """
         This function creates a ``Dockerfile`` and ``requirements.txt`` for
         productionalizing API end-point.
+
+
         Example
         -------
         >>> from pycaret.datasets import get_data
@@ -2680,12 +2777,20 @@ class _TabularExperiment(_PyCaretExperiment):
         >>> lr = create_model('lr')
         >>> create_api(lr, 'lr_api')
         >>> create_docker('lr_api')
+
+
         api_name: str
             Name of API. Must be saved as a .py file in the same folder.
+
+
         base_image: str, default = "python:3.8-slim"
             Name of the base image for Dockerfile.
+
+
         expose_port: int, default = 8000
             port for expose for API in the Dockerfile.
+
+
         Returns:
             None
         """

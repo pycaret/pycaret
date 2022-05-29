@@ -620,7 +620,6 @@ def compare_models(
     experiment_custom_tags: Optional[Dict[str, Any]] = None,
     probability_threshold: Optional[float] = None,
     verbose: bool = True,
-    # parallel: Optional[ParallelBackend] = None,
 ) -> Union[Any, List[Any]]:
 
     """
@@ -731,18 +730,6 @@ def compare_models(
 
     - No models are logged in ``MLFlow`` when ``cross_validation`` parameter is False.
     """
-    # params = dict(locals())
-    parallel = None
-    if parallel is not None:
-        global _pycaret_setup_call
-        parallel.attach(_pycaret_setup_call["func"], _pycaret_setup_call["params"])
-        if params.get("include", None) is None:
-            _models = models()
-            if turbo:
-                _models = _models[_models.Turbo]
-            params["include"] = _models.index.tolist()
-        del params["parallel"]
-        return parallel.compare_models(compare_models, params)
 
     return _CURRENT_EXPERIMENT.compare_models(
         include=include,
@@ -1727,7 +1714,8 @@ def interpret_model(
     """
     This function analyzes the predictions generated from a trained model. Most plots
     in this function are implemented based on the SHAP (SHapley Additive exPlanations).
-    For more info on this, please see https://shap.readthedocs.io/en/latest/
+    For more info on this, please see https://shap.readthedocs.io/en/latest/.
+    For more info on Partial Dependence Plot see https://github.com/SauceCat/PDPbox.
 
 
     Example
@@ -1834,7 +1822,10 @@ def calibrate_model(
     or logistic regression. The output of this function is a score grid with CV
     scores by fold. Metrics evaluated during CV can be accessed using the
     ``get_metrics`` function. Custom metrics can be added or removed using
-    ``add_metric`` and ``remove_metric`` function.
+    ``add_metric`` and ``remove_metric`` function. The ouput of the original estimator
+    and the calibrated estimator (created using this function) might not differ much.
+    In order to see the calibration differences, use 'calibration' plot in ``plot_model``
+    to see the difference before and after.
 
 
     Example
@@ -2544,7 +2535,7 @@ def add_metric(
 ) -> pd.Series:
 
     """
-    Adds a custom metric to be used for CV.
+    Adds a custom metric to be used in the experiment.
 
 
     Example
@@ -2609,7 +2600,7 @@ def add_metric(
 def remove_metric(name_or_id: str):
 
     """
-    Removes a metric from CV.
+    Removes a metric from experiment.
 
 
     Example
@@ -2670,48 +2661,17 @@ def get_logs(experiment_name: Optional[str] = None, save: bool = False) -> pd.Da
 def get_config(variable: str):
 
     """
-    This function retrieves the global variables created when initializing the
-    ``setup`` function. Following variables are accessible:
-
-    - dataset: Transformed dataset
-    - train: Transformed training set
-    - test: Transformed test set
-    - X: Transformed feature set
-    - y: Transformed target column
-    - X_train, X_test, y_train, y_test: Subsets of the train and test sets.
-    - seed: random state set through session_id
-    - pipeline: Transformation pipeline configured through setup
-    - fold_shuffle_param: shuffle parameter used in Kfolds
-    - n_jobs_param: n_jobs parameter used in model training
-    - html_param: html_param configured through setup
-    - master_model_container: model storage container
-    - display_container: results display container
-    - exp_name_log: Name of experiment
-    - logging_param: log_experiment param
-    - log_plots_param: log_plots param
-    - USI: Unique session ID parameter
-    - fix_imbalance_param: fix_imbalance param
-    - fix_imbalance_method_param: fix_imbalance_method param
-    - data_before_preprocess: data before preprocessing
-    - target_param: name of target variable
-    - gpu_param: use_gpu param configured through setup
-    - fold_generator: CV splitter configured in fold_strategy
-    - fold_param: fold params defined in the setup
-    - fold_groups_param: fold groups defined in the setup
-    - stratify_param: stratify parameter defined in the setup
-
+    This function is used to access global environment variables.
 
     Example
     -------
-    >>> from pycaret.datasets import get_data
-    >>> juice = get_data('juice')
-    >>> from pycaret.classification import *
-    >>> exp_name = setup(data = juice,  target = 'Purchase')
     >>> X_train = get_config('X_train')
 
+    This will return X_train transformed dataset.
 
-    Returns:
-        Global variable
+    Returns
+    -------
+    variable
 
     """
 
@@ -2722,50 +2682,15 @@ def get_config(variable: str):
 def set_config(variable: str, value):
 
     """
-    This function resets the global variables. Following variables are
-    accessible:
-
-    - X: Transformed dataset (X)
-    - y: Transformed dataset (y)
-    - X_train: Transformed train dataset (X)
-    - X_test: Transformed test/holdout dataset (X)
-    - y_train: Transformed train dataset (y)
-    - y_test: Transformed test/holdout dataset (y)
-    - seed: random state set through session_id
-    - prep_pipe: Transformation pipeline
-    - fold_shuffle_param: shuffle parameter used in Kfolds
-    - n_jobs_param: n_jobs parameter used in model training
-    - html_param: html_param configured through setup
-    - master_model_container: model storage container
-    - display_container: results display container
-    - exp_name_log: Name of experiment
-    - logging_param: log_experiment param
-    - log_plots_param: log_plots param
-    - USI: Unique session ID parameter
-    - fix_imbalance_param: fix_imbalance param
-    - fix_imbalance_method_param: fix_imbalance_method param
-    - data_before_preprocess: data before preprocessing
-    - target_param: name of target variable
-    - gpu_param: use_gpu param configured through setup
-    - fold_generator: CV splitter configured in fold_strategy
-    - fold_param: fold params defined in the setup
-    - fold_groups_param: fold groups defined in the setup
-    - stratify_param: stratify parameter defined in the setup
+    This function is used to reset global environment variables.
 
     Example
     -------
-    >>> from pycaret.datasets import get_data
-    >>> juice = get_data('juice')
-    >>> from pycaret.classification import *
-    >>> exp_name = setup(data = juice,  target = 'Purchase')
     >>> set_config('seed', 123)
 
-
-    Returns:
-        None
+    This will set the global seed to '123'.
 
     """
-
     return _CURRENT_EXPERIMENT.set_config(variable=variable, value=value)
 
 
@@ -3215,7 +3140,16 @@ def deep_check(estimator, check_kwargs: Optional[dict] = None) -> None:
     )
 
 
-def set_current_experiment(experiment: ClassificationExperiment):
+def set_current_experiment(experiment: ClassificationExperiment) -> None:
+    """
+    Set the current experiment to be used with the functional API.
+
+    experiment: ClassificationExperiment
+        Experiment object to use.
+
+    Returns:
+        None
+    """
     global _CURRENT_EXPERIMENT
 
     if not isinstance(experiment, ClassificationExperiment):

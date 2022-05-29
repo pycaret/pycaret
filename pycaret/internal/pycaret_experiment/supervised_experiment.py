@@ -5054,6 +5054,34 @@ class _SupervisedExperiment(_TabularExperiment):
         the approach known as group fairness, which asks: Which groups of individuals
         are at risk for experiencing harms. This function provides fairness-related
         metrics between different groups (also called subpopulation).
+
+
+        Example
+        -------
+        >>> from pycaret.datasets import get_data
+        >>> income = get_data('income')
+        >>> from pycaret.classification import *
+        >>> exp_name = setup(data = income,  target = 'income >50K')
+        >>> lr = create_model('lr')
+        >>> lr_fairness = check_fairness(lr, sensitive_features = ['sex', 'race'])
+
+
+        estimator: scikit-learn compatible object
+            Trained model object
+
+
+        sensitive_features: list
+            List of column names as present in the original dataset before any
+            transformations.
+
+
+        plot_kwargs: dict, default = {} (empty dict)
+            Dictionary of arguments passed to the matplotlib plot.
+
+
+        Returns:
+            pandas.DataFrame
+
         """
 
         _check_soft_dependencies("fairlearn", extra="analysis", severity="error")
