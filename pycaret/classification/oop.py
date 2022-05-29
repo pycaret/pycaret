@@ -3,7 +3,7 @@ import gc
 import logging
 import time
 import warnings
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import numpy as np  # type: ignore
 import pandas as pd
@@ -108,7 +108,8 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
 
     def setup(
         self,
-        data: DATAFRAME_LIKE,
+        data: Optional[DATAFRAME_LIKE] = None,
+        data_func: Optional[Callable[[], DATAFRAME_LIKE]] = None,
         target: TARGET_LIKE = -1,
         train_size: float = 0.7,
         test_data: Optional[DATAFRAME_LIKE] = None,
@@ -179,10 +180,17 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
     ):
         self._register_setup_params(dict(locals()))
 
+        assert (data is None and data_func is not None) or (
+            data is not None and data_func is None
+        ), "One and only one of data and data_func must be set"
+
         # No extra code above this line
         # Setup initialization ===================================== >>
 
         runtime_start = time.time()
+
+        if data_func is not None:
+            data = data_func()
 
         # Configuration
         sklearn.set_config(print_changed_only=False)

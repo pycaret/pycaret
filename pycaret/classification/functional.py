@@ -31,7 +31,8 @@ _CURRENT_EXPERIMENT_DECORATOR_DICT = {
 
 
 def setup(
-    data: DATAFRAME_LIKE,
+    data: Optional[DATAFRAME_LIKE] = None,
+    data_func: Optional[Callable[[], DATAFRAME_LIKE]] = None,
     target: TARGET_LIKE = -1,
     train_size: float = 0.7,
     test_data: Optional[DATAFRAME_LIKE] = None,
@@ -113,12 +114,18 @@ def setup(
     >>> exp_name = setup(data = juice,  target = 'Purchase')
 
 
-    data: dataframe-like
+    data: dataframe-like = None
         Data set with shape (n_samples, n_features), where n_samples is the
         number of samples and n_features is the number of features. If data
         is not a pandas dataframe, it's converted to one using default column
         names.
 
+    data_func: Callable[[], DATAFRAME_LIKE] = None
+        The function that generate ``data`` (the dataframe-like input). This
+        is useful when the dataset is large, and you need parallel operations
+        such as ``compare_models``. It can avoid boradcasting large dataset
+        from driver to workers. Notice one and only one of ``data`` and
+        ``data_func`` must be set.
 
     target: int, str or sequence, default = -1
         If int or str, respectivcely index or name of the target column in data.
@@ -540,6 +547,7 @@ def setup(
     set_current_experiment(exp)
     return exp.setup(
         data=data,
+        data_func=data_func,
         target=target,
         train_size=train_size,
         test_data=test_data,
