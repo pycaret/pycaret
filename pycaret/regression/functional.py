@@ -87,7 +87,6 @@ def setup(
     log_plots: Union[bool, list] = False,
     log_profile: bool = False,
     log_data: bool = False,
-    silent: bool = False,
     verbose: bool = True,
     memory: Union[bool, str, Memory] = True,
     profile: bool = False,
@@ -503,11 +502,6 @@ def setup(
         Ignored when ``log_experiment`` is False.
 
 
-    silent: bool, default = False
-        When executing in completely automated mode or on a remote kernel, this must be True.
-        Leave False otherwise
-
-
     verbose: bool, default = True
         When set to False, Information grid is not printed.
 
@@ -595,7 +589,6 @@ def setup(
         log_plots=log_plots,
         log_profile=log_profile,
         log_data=log_data,
-        silent=silent,
         verbose=verbose,
         memory=memory,
         profile=profile,
@@ -619,7 +612,6 @@ def compare_models(
     groups: Optional[Union[str, Any]] = None,
     experiment_custom_tags: Optional[Dict[str, Any]] = None,
     verbose: bool = True,
-    # parallel: Optional[ParallelBackend] = None,
 ):
 
     """
@@ -724,19 +716,6 @@ def compare_models(
     - No models are logged in ``MLFlow`` when ``cross_validation`` parameter is False.
 
     """
-    # params = dict(locals())
-    parallel = None
-    if parallel is not None:
-        global _pycaret_setup_call
-        parallel.attach(_pycaret_setup_call["func"], _pycaret_setup_call["params"])
-        if params.get("include", None) is None:
-            _models = models()
-            if turbo:
-                _models = _models[_models.Turbo]
-            params["include"] = _models.index.tolist()
-        del params["parallel"]
-        return parallel.compare_models(compare_models, params)
-
     return _CURRENT_EXPERIMENT.compare_models(
         include=include,
         exclude=exclude,
@@ -1123,79 +1102,79 @@ def ensemble_model(
 ) -> Any:
 
     """
-     This function ensembles a given estimator. The output of this function is
-     a score grid with CV scores by fold. Metrics evaluated during CV can be
-     accessed using the ``get_metrics`` function. Custom metrics can be added
-     or removed using ``add_metric`` and ``remove_metric`` function.
+    This function ensembles a given estimator. The output of this function is
+    a score grid with CV scores by fold. Metrics evaluated during CV can be
+    accessed using the ``get_metrics`` function. Custom metrics can be added
+    or removed using ``add_metric`` and ``remove_metric`` function.
 
 
-     Example
-     --------
-     >>> from pycaret.datasets import get_data
-     >>> boston = get_data('boston')
-     >>> from pycaret.regression import *
-     >>> exp_name = setup(data = boston,  target = 'medv')
-     >>> dt = create_model('dt')
-     >>> bagged_dt = ensemble_model(dt, method = 'Bagging')
+    Example
+    --------
+    >>> from pycaret.datasets import get_data
+    >>> boston = get_data('boston')
+    >>> from pycaret.regression import *
+    >>> exp_name = setup(data = boston,  target = 'medv')
+    >>> dt = create_model('dt')
+    >>> bagged_dt = ensemble_model(dt, method = 'Bagging')
 
 
     estimator: scikit-learn compatible object
-         Trained model object
+        Trained model object
 
 
-     method: str, default = 'Bagging'
-         Method for ensembling base estimator. It can be 'Bagging' or 'Boosting'.
+    method: str, default = 'Bagging'
+        Method for ensembling base estimator. It can be 'Bagging' or 'Boosting'.
 
 
-     fold: int or scikit-learn compatible CV generator, default = None
-         Controls cross-validation. If None, the CV generator in the ``fold_strategy``
-         parameter of the ``setup`` function is used. When an integer is passed,
-         it is interpreted as the 'n_splits' parameter of the CV generator in the
-         ``setup`` function.
+    fold: int or scikit-learn compatible CV generator, default = None
+        Controls cross-validation. If None, the CV generator in the ``fold_strategy``
+        parameter of the ``setup`` function is used. When an integer is passed,
+        it is interpreted as the 'n_splits' parameter of the CV generator in the
+        ``setup`` function.
 
 
-     n_estimators: int, default = 10
-         The number of base estimators in the ensemble. In case of perfect fit, the
-         learning procedure is stopped early.
+    n_estimators: int, default = 10
+        The number of base estimators in the ensemble. In case of perfect fit, the
+        learning procedure is stopped early.
 
 
-     round: int, default = 4
-         Number of decimal places the metrics in the score grid will be rounded to.
+    round: int, default = 4
+        Number of decimal places the metrics in the score grid will be rounded to.
 
 
-     choose_better: bool, default = False
-         When set to True, the returned object is always better performing. The
-         metric used for comparison is defined by the ``optimize`` parameter.
+    choose_better: bool, default = False
+        When set to True, the returned object is always better performing. The
+        metric used for comparison is defined by the ``optimize`` parameter.
 
 
-     optimize: str, default = 'R2'
-         Metric to compare for model selection when ``choose_better`` is True.
+    optimize: str, default = 'R2'
+        Metric to compare for model selection when ``choose_better`` is True.
 
 
-     fit_kwargs: dict, default = {} (empty dict)
-         Dictionary of arguments passed to the fit method of the model.
+    fit_kwargs: dict, default = {} (empty dict)
+        Dictionary of arguments passed to the fit method of the model.
 
 
-     groups: str or array-like, with shape (n_samples,), default = None
-         Optional group labels when GroupKFold is used for the cross validation.
-         It takes an array with shape (n_samples, ) where n_samples is the number
-         of rows in training dataset. When string is passed, it is interpreted as
-         the column name in the dataset containing group labels.
+    groups: str or array-like, with shape (n_samples,), default = None
+        Optional group labels when GroupKFold is used for the cross validation.
+        It takes an array with shape (n_samples, ) where n_samples is the number
+        of rows in training dataset. When string is passed, it is interpreted as
+        the column name in the dataset containing group labels.
 
 
     return_train_score: bool, default = False
-        If False, returns the CV Validation scores only.
-        If True, returns the CV training scores along with the CV validation scores.
-        This is useful when the user wants to do bias-variance tradeoff. A high CV
-        training score with a low corresponding CV validation score indicates overfitting.
+       If False, returns the CV Validation scores only.
+       If True, returns the CV training scores along with the CV validation scores.
+       This is useful when the user wants to do bias-variance tradeoff. A high CV
+       training score with a low corresponding CV validation score indicates overfitting.
 
 
-     verbose: bool, default = True
-         Score grid is not printed when verbose is set to False.
+    verbose: bool, default = True
+        Score grid is not printed when verbose is set to False.
 
 
-     Returns:
-         Trained Model
+    Returns:
+        Trained Model
 
     """
 
@@ -1379,7 +1358,7 @@ def stack_models(
         Number of decimal places the metrics in the score grid will be rounded to.
 
 
-    restack: bool, default = True
+    restack: bool, default = False
         When set to False, only the predictions of estimators will be used as
         training data for the ``meta_model``.
 
@@ -1648,15 +1627,16 @@ def interpret_model(
 
     """
     This function takes a trained model object and returns an interpretation plot
-    based on the test / hold-out set. It only supports tree based algorithms.
+    based on the test / hold-out set.
 
     This function is implemented based on the SHAP (SHapley Additive exPlanations),
     which is a unified approach to explain the output of any machine learning model.
     SHAP connects game theory with local explanations.
 
-    For more information : https://shap.readthedocs.io/en/latest/
+    For more information: https://shap.readthedocs.io/en/latest/
 
-    For Partial Dependence Plot : https://github.com/SauceCat/PDPbox
+    For more information on Partial Dependence Plot: https://github.com/SauceCat/PDPbox
+
 
     Example
     --------
@@ -2162,17 +2142,18 @@ def automl(
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def pull(pop: bool = False) -> pd.DataFrame:
     """
-    Returns last printed score grid. Use ``pull`` function after
-    any training function to store the score grid in pandas.DataFrame.
+    Returns the latest displayed table.
 
-
-    pop: bool, default = False
-        If True, will pop (remove) the returned dataframe from the
+    Parameters
+    ----------
+    pop : bool, default = False
+        If true, will pop (remove) the returned dataframe from the
         display container.
 
-
-    Returns:
-        pandas.DataFrame
+    Returns
+    -------
+    pandas.DataFrame
+        Equivalent to get_config('display_container')[-1]
 
     """
     return _CURRENT_EXPERIMENT.pull(pop=pop)
@@ -2184,7 +2165,6 @@ def models(
     internal: bool = False,
     raise_errors: bool = True,
 ) -> pd.DataFrame:
-
     """
     Returns table of models available in the model library.
 
@@ -2216,6 +2196,7 @@ def models(
         pandas.DataFrame
 
     """
+
     return _CURRENT_EXPERIMENT.models(
         type=type, internal=internal, raise_errors=raise_errors
     )
@@ -2227,9 +2208,8 @@ def get_metrics(
     include_custom: bool = True,
     raise_errors: bool = True,
 ) -> pd.DataFrame:
-
     """
-    Returns table of available metrics used for CV.
+    Returns table of available metrics used in the experiment.
 
 
     Example
@@ -2275,9 +2255,8 @@ def add_metric(
     greater_is_better: bool = True,
     **kwargs,
 ) -> pd.Series:
-
     """
-    Adds a custom metric to be used for CV.
+    Adds a custom metric to be used in the experiment.
 
 
     Example
@@ -2326,9 +2305,8 @@ def add_metric(
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def remove_metric(name_or_id: str):
-
     """
-    Removes a metric from CV.
+    Removes a metric from experiment.
 
 
     Example
@@ -2348,12 +2326,12 @@ def remove_metric(name_or_id: str):
         None
 
     """
+
     return _CURRENT_EXPERIMENT.remove_metric(name_or_id=name_or_id)
 
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def get_logs(experiment_name: Optional[str] = None, save: bool = False) -> pd.DataFrame:
-
     """
     Returns a table of experiment logs. Only works when ``log_experiment``
     is True when initializing the ``setup`` function.
@@ -2389,51 +2367,17 @@ def get_logs(experiment_name: Optional[str] = None, save: bool = False) -> pd.Da
 def get_config(variable: str):
 
     """
-    This function retrieves the global variables created when initializing the
-    ``setup`` function. Following variables are accessible:
-
-    - dataset: Transformed dataset
-    - train: Transformed training set
-    - test: Transformed test set
-    - X: Transformed feature set
-    - y: Transformed target column
-    - X_train, X_test, y_train, y_test: Subsets of the train and test sets.
-    - seed: random state set through session_id
-    - pipeline: Transformation pipeline configured through setup
-    - fold_shuffle_param: shuffle parameter used in Kfolds
-    - n_jobs_param: n_jobs parameter used in model training
-    - html_param: html_param configured through setup
-    - master_model_container: model storage container
-    - display_container: results display container
-    - exp_name_log: Name of experiment
-    - logging_param: log_experiment param
-    - log_plots_param: log_plots param
-    - USI: Unique session ID parameter
-    - fix_imbalance_param: fix_imbalance param
-    - fix_imbalance_method_param: fix_imbalance_method param
-    - data_before_preprocess: data before preprocessing
-    - target_param: name of target variable
-    - gpu_param: use_gpu param configured through setup
-    - fold_generator: CV splitter configured in fold_strategy
-    - fold_param: fold params defined in the setup
-    - fold_groups_param: fold groups defined in the setup
-    - stratify_param: stratify parameter defined in the setup
-    - transform_target_param: transform_target_param in setup
-    - transform_target_method_param: transform_target_method_param in setup
-
+    This function is used to access global environment variables.
 
     Example
     -------
-    >>> from pycaret.datasets import get_data
-    >>> boston = get_data('boston')
-    >>> from pycaret.regression import *
-    >>> exp_name = setup(data = boston,  target = 'medv')
     >>> X_train = get_config('X_train')
 
+    This will return X_train transformed dataset.
 
-    Returns:
-        Global variable
-
+    Returns
+    -------
+    variable
 
     """
 
@@ -2444,53 +2388,15 @@ def get_config(variable: str):
 def set_config(variable: str, value):
 
     """
-    This function resets the global variables. Following variables are
-    accessible:
-
-    - X: Transformed dataset (X)
-    - y: Transformed dataset (y)
-    - X_train: Transformed train dataset (X)
-    - X_test: Transformed test/holdout dataset (X)
-    - y_train: Transformed train dataset (y)
-    - y_test: Transformed test/holdout dataset (y)
-    - seed: random state set through session_id
-    - prep_pipe: Transformation pipeline
-    - fold_shuffle_param: shuffle parameter used in Kfolds
-    - n_jobs_param: n_jobs parameter used in model training
-    - html_param: html_param configured through setup
-    - master_model_container: model storage container
-    - display_container: results display container
-    - exp_name_log: Name of experiment
-    - logging_param: log_experiment param
-    - log_plots_param: log_plots param
-    - USI: Unique session ID parameter
-    - fix_imbalance_param: fix_imbalance param
-    - fix_imbalance_method_param: fix_imbalance_method param
-    - data_before_preprocess: data before preprocessing
-    - target_param: name of target variable
-    - gpu_param: use_gpu param configured through setup
-    - fold_generator: CV splitter configured in fold_strategy
-    - fold_param: fold params defined in the setup
-    - fold_groups_param: fold groups defined in the setup
-    - stratify_param: stratify parameter defined in the setup
-    - transform_target_param: transform_target_param in setup
-    - transform_target_method_param: transform_target_method_param in setup
-
+    This function is used to reset global environment variables.
 
     Example
     -------
-    >>> from pycaret.datasets import get_data
-    >>> boston = get_data('boston')
-    >>> from pycaret.regression import *
-    >>> exp_name = setup(data = boston,  target = 'medv')
     >>> set_config('seed', 123)
 
-
-    Returns:
-        None
+    This will set the global seed to '123'.
 
     """
-
     return _CURRENT_EXPERIMENT.set_config(variable=variable, value=value)
 
 
@@ -2653,6 +2559,7 @@ def dashboard(
     Returns:
         ExplainerDashboard
     """
+
     return _CURRENT_EXPERIMENT.dashboard(
         estimator, display_format, dashboard_kwargs, run_kwargs, **kwargs
     )

@@ -1709,7 +1709,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             of the value from 'predict_proba', 'decision_function' or 'predict'.
 
 
-        restack: bool, default = True
+        restack: bool, default = False
             When set to False, only the predictions of estimators will be used as
             training data for the ``meta_model``.
 
@@ -2004,10 +2004,16 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
     ):
 
         """
-        This function analyzes the predictions generated from a trained model. Most plots
-        in this function are implemented based on the SHAP (SHapley Additive exPlanations).
-        For more info on this, please see https://shap.readthedocs.io/en/latest/.
-        For more info on Partial Dependence Plot see https://github.com/SauceCat/PDPbox.
+        This function takes a trained model object and returns an interpretation plot
+        based on the test / hold-out set.
+
+        This function is implemented based on the SHAP (SHapley Additive exPlanations),
+        which is a unified approach to explain the output of any machine learning model.
+        SHAP connects game theory with local explanations.
+
+        For more information: https://shap.readthedocs.io/en/latest/
+
+        For more information on Partial Dependence Plot: https://github.com/SauceCat/PDPbox
 
 
         Example
@@ -3031,7 +3037,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
     ) -> pd.DataFrame:
 
         """
-        Returns table of available metrics used for CV.
+        Returns table of available metrics used in the experiment.
 
 
         Example
@@ -3143,7 +3149,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
     def remove_metric(self, name_or_id: str):
 
         """
-        Removes a metric from experiment.
+        Removes a metric from the experiment.
 
 
         Example

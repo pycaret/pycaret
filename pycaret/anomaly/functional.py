@@ -62,7 +62,6 @@ def setup(
     log_plots: Union[bool, list] = False,
     log_profile: bool = False,
     log_data: bool = False,
-    silent: bool = False,
     verbose: bool = True,
     memory: Union[bool, str, Memory] = True,
     profile: bool = False,
@@ -350,11 +349,6 @@ def setup(
         Ignored when ``log_experiment`` is False.
 
 
-    silent: bool, default = False
-        Controls the confirmation input of data types when ``setup`` is executed. When
-        executing in completely automated mode or on a remote kernel, this must be True.
-
-
     verbose: bool, default = True
         When set to False, Information grid is not printed.
 
@@ -426,7 +420,6 @@ def setup(
         log_plots=log_plots,
         log_profile=log_profile,
         log_data=log_data,
-        silent=silent,
         verbose=verbose,
         memory=memory,
         profile=profile,

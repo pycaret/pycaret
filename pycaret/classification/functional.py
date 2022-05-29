@@ -86,7 +86,6 @@ def setup(
     log_plots: Union[bool, list] = False,
     log_profile: bool = False,
     log_data: bool = False,
-    silent: bool = False,
     verbose: bool = True,
     memory: Union[bool, str, Memory] = True,
     profile: bool = False,
@@ -499,11 +498,6 @@ def setup(
     log_data: bool, default = False
         When set to True, dataset is logged on the ``MLflow`` server as a csv file.
         Ignored when ``log_experiment`` is False.
-
-
-    silent: bool, default = False
-        Controls the confirmation input of data types when ``setup`` is executed. When
-        executing in completely automated mode or on a remote kernel, this must be True.
 
 
     verbose: bool, default = True
@@ -1414,7 +1408,7 @@ def stack_models(
         of the value from 'predict_proba', 'decision_function' or 'predict'.
 
 
-    restack: bool, default = True
+    restack: bool, default = False
         When set to False, only the predictions of estimators will be used as
         training data for the ``meta_model``.
 
@@ -1712,10 +1706,16 @@ def interpret_model(
 ):
 
     """
-    This function analyzes the predictions generated from a trained model. Most plots
-    in this function are implemented based on the SHAP (SHapley Additive exPlanations).
-    For more info on this, please see https://shap.readthedocs.io/en/latest/.
-    For more info on Partial Dependence Plot see https://github.com/SauceCat/PDPbox.
+    This function takes a trained model object and returns an interpretation plot
+    based on the test / hold-out set.
+
+    This function is implemented based on the SHAP (SHapley Additive exPlanations),
+    which is a unified approach to explain the output of any machine learning model.
+    SHAP connects game theory with local explanations.
+
+    For more information: https://shap.readthedocs.io/en/latest/
+
+    For more information on Partial Dependence Plot: https://github.com/SauceCat/PDPbox
 
 
     Example
@@ -2416,19 +2416,19 @@ def automl(
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def pull(pop: bool = False) -> pd.DataFrame:
-
     """
-    Returns last printed score grid. Use ``pull`` function after
-    any training function to store the score grid in pandas.DataFrame.
+    Returns the latest displayed table.
 
-
-    pop: bool, default = False
-        If True, will pop (remove) the returned dataframe from the
+    Parameters
+    ----------
+    pop : bool, default = False
+        If true, will pop (remove) the returned dataframe from the
         display container.
 
-
-    Returns:
-        pandas.DataFrame
+    Returns
+    -------
+    pandas.DataFrame
+        Equivalent to get_config('display_container')[-1]
 
     """
     return _CURRENT_EXPERIMENT.pull(pop=pop)
@@ -2485,7 +2485,7 @@ def get_metrics(
 ) -> pd.DataFrame:
 
     """
-    Returns table of available metrics used for CV.
+    Returns table of available metrics used in the experiment.
 
 
     Example
@@ -2600,7 +2600,7 @@ def add_metric(
 def remove_metric(name_or_id: str):
 
     """
-    Removes a metric from experiment.
+    Removes a metric from the experiment.
 
 
     Example
@@ -2691,6 +2691,7 @@ def set_config(variable: str, value):
     This will set the global seed to '123'.
 
     """
+
     return _CURRENT_EXPERIMENT.set_config(variable=variable, value=value)
 
 

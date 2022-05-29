@@ -135,7 +135,6 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
         log_plots: Union[bool, list] = False,
         log_profile: bool = False,
         log_data: bool = False,
-        silent: bool = False,
         verbose: bool = True,
         memory: Union[bool, str, Memory] = True,
         profile: bool = False,
