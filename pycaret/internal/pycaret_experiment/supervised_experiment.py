@@ -1283,11 +1283,6 @@ class _SupervisedExperiment(_TabularExperiment):
 
         if not display:
             progress_args = {"max": 4}
-            master_display_columns = self._get_return_train_score_columns_for_display(
-                return_train_score
-            ) + [v.display_name for k, v in self._all_metrics.items()]
-            if self._ml_usecase == MLUsecase.TIME_SERIES:
-                master_display_columns.insert(0, "cutoff")
             timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
             monitor_rows = [
                 ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
@@ -2128,38 +2123,6 @@ class _SupervisedExperiment(_TabularExperiment):
 
         groups = self._get_groups(groups)
 
-<<<<<<< HEAD
-        if not display:
-            progress_args = {"max": 3 + 4}
-<<<<<<< HEAD
-            master_display_columns = self._get_return_train_score_columns_for_display(
-                return_train_score
-            ) + [v.display_name for k, v in self._all_metrics.items()]
-            if self._ml_usecase == MLUsecase.TIME_SERIES:
-                master_display_columns.insert(0, "cutoff")
-=======
->>>>>>> 9dd3d482 (New display structure)
-            timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
-            monitor_rows = [
-                ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
-                [
-                    "Status",
-                    ". . . . . . . . . . . . . . . . . .",
-                    "Loading Dependencies",
-                ],
-                [
-                    "Estimator",
-                    ". . . . . . . . . . . . . . . . . .",
-                    "Compiling Library",
-                ],
-            ]
-            display = CommonDisplay(
-                verbose=verbose,
-                html_param=self.html_param,
-                progress_args=progress_args,
-                monitor_rows=monitor_rows,
-            )
-=======
         progress_args = {"max": 3 + 4}
         timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
         monitor_rows = [
@@ -2181,7 +2144,6 @@ class _SupervisedExperiment(_TabularExperiment):
             progress_args=progress_args,
             monitor_rows=monitor_rows,
         )
->>>>>>> b09ec824 (Remove display argument where unnecessary)
 
         import logging
 
@@ -2947,38 +2909,6 @@ class _SupervisedExperiment(_TabularExperiment):
 
         groups = self._get_groups(groups)
 
-<<<<<<< HEAD
-        if not display:
-            progress_args = {"max": 2 + 4}
-<<<<<<< HEAD
-            master_display_columns = self._get_return_train_score_columns_for_display(
-                return_train_score
-            ) + [v.display_name for k, v in self._all_metrics.items()]
-            if self._ml_usecase == MLUsecase.TIME_SERIES:
-                master_display_columns.insert(0, "cutoff")
-=======
->>>>>>> 9dd3d482 (New display structure)
-            timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
-            monitor_rows = [
-                ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
-                [
-                    "Status",
-                    ". . . . . . . . . . . . . . . . . .",
-                    "Loading Dependencies",
-                ],
-                [
-                    "Estimator",
-                    ". . . . . . . . . . . . . . . . . .",
-                    "Compiling Library",
-                ],
-            ]
-            display = CommonDisplay(
-                verbose=verbose,
-                html_param=self.html_param,
-                progress_args=progress_args,
-                monitor_rows=monitor_rows,
-            )
-=======
         progress_args = {"max": 2 + 4}
         timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
         monitor_rows = [
@@ -3000,7 +2930,6 @@ class _SupervisedExperiment(_TabularExperiment):
             progress_args=progress_args,
             monitor_rows=monitor_rows,
         )
->>>>>>> b09ec824 (Remove display argument where unnecessary)
 
         self.logger.info("Importing libraries")
 
@@ -3361,38 +3290,6 @@ class _SupervisedExperiment(_TabularExperiment):
 
         groups = self._get_groups(groups)
 
-<<<<<<< HEAD
-        if not display:
-            progress_args = {"max": 2 + 4}
-<<<<<<< HEAD
-            master_display_columns = self._get_return_train_score_columns_for_display(
-                return_train_score
-            ) + [v.display_name for k, v in self._all_metrics.items()]
-            if self._ml_usecase == MLUsecase.TIME_SERIES:
-                master_display_columns.insert(0, "cutoff")
-=======
->>>>>>> 9dd3d482 (New display structure)
-            timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
-            monitor_rows = [
-                ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
-                [
-                    "Status",
-                    ". . . . . . . . . . . . . . . . . .",
-                    "Loading Dependencies",
-                ],
-                [
-                    "Estimator",
-                    ". . . . . . . . . . . . . . . . . .",
-                    "Compiling Library",
-                ],
-            ]
-            display = CommonDisplay(
-                verbose=verbose,
-                html_param=self.html_param,
-                progress_args=progress_args,
-                monitor_rows=monitor_rows,
-            )
-=======
         progress_args = {"max": 2 + 4}
         timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
         monitor_rows = [
@@ -3414,7 +3311,6 @@ class _SupervisedExperiment(_TabularExperiment):
             progress_args=progress_args,
             monitor_rows=monitor_rows,
         )
->>>>>>> b09ec824 (Remove display argument where unnecessary)
 
         self.logger.info("Importing libraries")
 
@@ -3770,38 +3666,6 @@ class _SupervisedExperiment(_TabularExperiment):
         else:
             meta_model = clone(get_estimator_from_meta_estimator(meta_model))
 
-<<<<<<< HEAD
-        if not display:
-            progress_args = {"max": 2 + 4}
-<<<<<<< HEAD
-            master_display_columns = self._get_return_train_score_columns_for_display(
-                return_train_score
-            ) + [v.display_name for k, v in self._all_metrics.items()]
-            if self._ml_usecase == MLUsecase.TIME_SERIES:
-                master_display_columns.insert(0, "cutoff")
-=======
->>>>>>> 9dd3d482 (New display structure)
-            timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
-            monitor_rows = [
-                ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
-                [
-                    "Status",
-                    ". . . . . . . . . . . . . . . . . .",
-                    "Loading Dependencies",
-                ],
-                [
-                    "Estimator",
-                    ". . . . . . . . . . . . . . . . . .",
-                    "Compiling Library",
-                ],
-            ]
-            display = CommonDisplay(
-                verbose=verbose,
-                html_param=self.html_param,
-                progress_args=progress_args,
-                monitor_rows=monitor_rows,
-            )
-=======
         progress_args = {"max": 2 + 4}
         timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
         monitor_rows = [
@@ -3823,7 +3687,6 @@ class _SupervisedExperiment(_TabularExperiment):
             progress_args=progress_args,
             monitor_rows=monitor_rows,
         )
->>>>>>> b09ec824 (Remove display argument where unnecessary)
 
         np.random.seed(self.seed)
 
@@ -4757,13 +4620,8 @@ class _SupervisedExperiment(_TabularExperiment):
             data_y = self.y
 
         self.logger.info(f"Finalizing {estimator}")
-<<<<<<< HEAD
-        display.clear_output()
-        model_final, model_fit_time = self._create_model(
-=======
         # display.clear_output()
-        model_final, model_fit_time = self.create_model(
->>>>>>> 9dd3d482 (New display structure)
+        model_final, model_fit_time = self._create_model(
             estimator=estimator,
             verbose=False,
             system=False,
