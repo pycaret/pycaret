@@ -618,13 +618,10 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
 
         self._register_setup_params(dict(locals()))
 
-<<<<<<< HEAD
         assert (data is None and data_func is not None) or (
             data is not None and data_func is None
         ), "One and only one of data and data_func must be set"
 
-=======
->>>>>>> 380cb29d (make classification work)
         # No extra code above this line
         # Setup initialization ===================================== >>
 
