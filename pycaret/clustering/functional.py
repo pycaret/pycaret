@@ -1344,40 +1344,17 @@ def get_logs(experiment_name: Optional[str] = None, save: bool = False) -> pd.Da
 def get_config(variable: str):
 
     """
-    This function retrieves the global variables created when initializing the
-    ``setup`` function. Following variables are accessible:
-
-    - dataset: Transformed dataset
-    - train: Transformed training set
-    - test: Transformed test set
-    - X: Transformed feature set
-    - y: Transformed target column
-    - X_train, X_test, y_train, y_test: Subsets of the train and test sets.
-    - seed: random state set through session_id
-    - pipeline: Transformation pipeline configured through setup
-    - n_jobs_param: n_jobs parameter used in model training
-    - html_param: html_param configured through setup
-    - master_model_container: model storage container
-    - display_container: results display container
-    - exp_name_log: Name of experiment set through setup
-    - logging_param: log_experiment param set through setup
-    - log_plots_param: log_plots param set through setup
-    - USI: Unique session ID parameter set through setup
-    - gpu_param: use_gpu param configured through setup
-
+    This function is used to access global environment variables.
 
     Example
     -------
-    >>> from pycaret.datasets import get_data
-    >>> jewellery = get_data('jewellery')
-    >>> from pycaret.clustering import *
-    >>> exp_name = setup(data = jewellery)
-    >>> X = get_config('X')
+    >>> X_train = get_config('X_train')
 
+    This will return X_train transformed dataset.
 
-    Returns:
-        Global variable
-
+    Returns
+    -------
+    variable
 
     """
 
@@ -1388,38 +1365,15 @@ def get_config(variable: str):
 def set_config(variable: str, value):
 
     """
-    This function resets the global variables. Following variables are
-    accessible:
-
-    - X: Transformed dataset (X)
-    - data_before_preprocess: data before preprocessing
-    - seed: random state set through session_id
-    - prep_pipe: Transformation pipeline configured through setup
-    - n_jobs_param: n_jobs parameter used in model training
-    - html_param: html_param configured through setup
-    - master_model_container: model storage container
-    - display_container: results display container
-    - exp_name_log: Name of experiment set through setup
-    - logging_param: log_experiment param set through setup
-    - log_plots_param: log_plots param set through setup
-    - USI: Unique session ID parameter set through setup
-    - gpu_param: use_gpu param configured through setup
-
+    This function is used to reset global environment variables.
 
     Example
     -------
-    >>> from pycaret.datasets import get_data
-    >>> jewellery = get_data('jewellery')
-    >>> from pycaret.clustering import *
-    >>> exp_name = setup(data = jewellery)
     >>> set_config('seed', 123)
 
-
-    Returns:
-        None
+    This will set the global seed to '123'.
 
     """
-
     return _CURRENT_EXPERIMENT.set_config(variable=variable, value=value)
 
 
@@ -1586,6 +1540,15 @@ def get_clusters(
 
 
 def set_current_experiment(experiment: ClusteringExperiment):
+    """
+    Set the current experiment to be used with the functional API.
+
+    experiment: ClusteringExperiment
+        Experiment object to use.
+
+    Returns:
+        None
+    """
     global _CURRENT_EXPERIMENT
 
     if not isinstance(experiment, ClusteringExperiment):

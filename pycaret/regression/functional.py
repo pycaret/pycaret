@@ -2851,6 +2851,15 @@ def deep_check(estimator, check_kwargs: Optional[dict] = None) -> None:
 
 
 def set_current_experiment(experiment: RegressionExperiment):
+    """
+    Set the current experiment to be used with the functional API.
+
+    experiment: RegressionExperiment
+        Experiment object to use.
+
+    Returns:
+        None
+    """
     global _CURRENT_EXPERIMENT
 
     if not isinstance(experiment, RegressionExperiment):

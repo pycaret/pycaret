@@ -1838,6 +1838,15 @@ def load_config(file_name: str):
 
 
 def set_current_experiment(experiment: TSForecastingExperiment):
+    """
+    Set the current experiment to be used with the functional API.
+
+    experiment: TSForecastingExperiment
+        Experiment object to use.
+
+    Returns:
+        None
+    """
     global _CURRENT_EXPERIMENT
 
     if not isinstance(experiment, TSForecastingExperiment):
