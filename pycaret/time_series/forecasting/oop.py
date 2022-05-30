@@ -7,7 +7,7 @@ import traceback
 import warnings
 from collections import defaultdict
 from copy import deepcopy
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -34,6 +34,7 @@ from pycaret.containers.models.time_series import (
 from pycaret.internal.display import CommonDisplay
 from pycaret.internal.distributions import get_base_distributions
 from pycaret.internal.logging import get_logger, redirect_output
+from pycaret.internal.parallel.parallel_backend import ParallelBackend
 
 # from pycaret.internal.pipeline import get_pipeline_fit_kwargs
 from pycaret.internal.plots.time_series import _get_plot
@@ -1201,7 +1202,8 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
     def setup(
         self,
-        data: Union[pd.Series, pd.DataFrame],
+        data: Union[pd.Series, pd.DataFrame] = None,
+        data_func: Optional[Callable[[], Union[pd.Series, pd.DataFrame]]] = None,
         target: Optional[str] = None,
         index: Optional[str] = None,
         ignore_features: Optional[List] = None,
@@ -1251,8 +1253,16 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         >>> exp_name = setup(data = airline,  fh = 12)
 
 
-        data : pandas.Series or pandas.DataFrame
+        data : pandas.Series or pandas.DataFrame = None
             Shape (n_samples, 1), when pandas.DataFrame, otherwise (n_samples, ).
+
+
+        data_func: Callable[[], Union[pd.Series, pd.DataFrame]] = None
+            The function that generate ``data`` (the dataframe-like input). This
+            is useful when the dataset is large, and you need parallel operations
+            such as ``compare_models``. It can avoid boradcasting large dataset
+            from driver to workers. Notice one and only one of ``data`` and
+            ``data_func`` must be set.
 
 
         target : Optional[str], default = None
@@ -1540,11 +1550,21 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         """
 
+        self._register_setup_params(dict(locals()))
+
+        assert (data is None and data_func is not None) or (
+            data is not None and data_func is None
+        ), "One and only one of data and data_func must be set"
+
+        # No extra code above this line
         ##############################
         #### Setup initialization ####
         ##############################
 
         runtime_start = time.time()
+
+        if data_func is not None:
+            data = data_func()
 
         #### Define parameter attrs ----
         self.all_allowed_engines = ALL_ALLOWED_ENGINES
@@ -1671,6 +1691,8 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         experiment_custom_tags: Optional[Dict[str, Any]] = None,
         engines: Optional[Dict[str, str]] = None,
         verbose: bool = True,
+        display: Optional[CommonDisplay] = None,
+        parallel: Optional[ParallelBackend] = None,
     ):
 
         """
@@ -1757,6 +1779,17 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             Score grid is not printed when verbose is set to False.
 
 
+        display: pycaret.internal.Display.Display, default = None
+            Custom display object
+
+
+        parallel: pycaret.internal.parallel.parallel_backend.ParallelBackend, default = None
+            A ParallelBackend instance. For example if you have a SparkSession ``session``,
+            you can use ``FugueBackend(session)`` to make this function running using
+            Spark. For more details, see
+            :class:`~pycaret.parallel.fugue_backend.FugueBackend`
+
+
         Returns:
             Trained model or list of trained models, depending on the ``n_select`` param.
 
@@ -1768,6 +1801,10 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         - No models are logged in ``MLflow`` when ``cross_validation`` parameter is False.
 
         """
+
+        caller_params = dict(locals())
+
+        # No extra code above this line
 
         if engines is not None:
             # Save current engines, then set to user specified options
@@ -1790,6 +1827,9 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                 fit_kwargs=fit_kwargs,
                 experiment_custom_tags=experiment_custom_tags,
                 verbose=verbose,
+                display=display,
+                parallel=parallel,
+                caller_params=caller_params,
             )
         finally:
             if engines is not None:

@@ -170,7 +170,6 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         log_plots: Union[bool, list] = False,
         log_profile: bool = False,
         log_data: bool = False,
-        silent: bool = False,
         verbose: bool = True,
         memory: Union[bool, str, Memory] = True,
         profile: bool = False,
@@ -591,11 +590,6 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         log_data: bool, default = False
             When set to True, dataset is logged on the ``MLflow`` server as a csv file.
             Ignored when ``log_experiment`` is False.
-
-
-        silent: bool, default = False
-            Controls the confirmation input of data types when ``setup`` is executed. When
-            executing in completely automated mode or on a remote kernel, this must be True.
 
 
         verbose: bool, default = True
@@ -1040,7 +1034,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             Score grid is not printed when verbose is set to False.
 
 
-        display: pycaret.internal.Display.Display, default = None
+        display: pycaret.internal.display.CommonDisplay, default = None
             Custom display object
 
 
@@ -1064,6 +1058,10 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         - No models are logged in ``MLFlow`` when ``cross_validation`` parameter is False.
         """
 
+        caller_params = dict(locals())
+
+        # No extra code above this line
+
         return super().compare_models(
             include=include,
             exclude=exclude,
@@ -1082,6 +1080,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             probability_threshold=probability_threshold,
             display=display,
             parallel=parallel,
+            caller_params=caller_params,
         )
 
     def create_model(

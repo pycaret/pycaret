@@ -1,6 +1,6 @@
 import logging
 import time
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import numpy as np  # type: ignore
 import pandas as pd
@@ -14,6 +14,7 @@ import pycaret.internal.persistence
 import pycaret.internal.preprocess
 from pycaret.internal.display import CommonDisplay
 from pycaret.internal.logging import get_logger
+from pycaret.internal.parallel.parallel_backend import ParallelBackend
 
 # Own module
 from pycaret.internal.pipeline import Pipeline as InternalPipeline
@@ -77,7 +78,8 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
 
     def setup(
         self,
-        data: DATAFRAME_LIKE,
+        data: Optional[DATAFRAME_LIKE] = None,
+        data_func: Optional[Callable[[], DATAFRAME_LIKE]] = None,
         target: TARGET_LIKE = -1,
         train_size: float = 0.7,
         test_data: Optional[DATAFRAME_LIKE] = None,
@@ -140,7 +142,6 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
         log_plots: Union[bool, list] = False,
         log_profile: bool = False,
         log_data: bool = False,
-        silent: bool = False,
         verbose: bool = True,
         memory: Union[bool, str, Memory] = True,
         profile: bool = False,
@@ -161,11 +162,19 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
         >>> exp_name = setup(data = juice,  target = 'Purchase')
 
 
-        data: dataframe-like
+        data: dataframe-like = None
             Data set with shape (n_samples, n_features), where n_samples is the
             number of samples and n_features is the number of features. If data
             is not a pandas dataframe, it's converted to one using default column
             names.
+
+
+        data_func: Callable[[], DATAFRAME_LIKE] = None
+            The function that generate ``data`` (the dataframe-like input). This
+            is useful when the dataset is large, and you need parallel operations
+            such as ``compare_models``. It can avoid boradcasting large dataset
+            from driver to workers. Notice one and only one of ``data`` and
+            ``data_func`` must be set.
 
 
         target: int, str or sequence, default = -1
@@ -557,11 +566,6 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             Ignored when ``log_experiment`` is False.
 
 
-        silent: bool, default = False
-            When executing in completely automated mode or on a remote kernel, this must be True.
-            Leave False otherwise
-
-
         verbose: bool, default = True
             When set to False, Information grid is not printed.
 
@@ -586,9 +590,19 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
 
         """
 
+        self._register_setup_params(dict(locals()))
+
+        assert (data is None and data_func is not None) or (
+            data is not None and data_func is None
+        ), "One and only one of data and data_func must be set"
+
+        # No extra code above this line
         # Setup initialization ===================================== >>
 
         runtime_start = time.time()
+
+        if data_func is not None:
+            data = data_func()
 
         # Define parameter attrs
         self.fold_shuffle_param = fold_shuffle
@@ -891,6 +905,8 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
         groups: Optional[Union[str, Any]] = None,
         experiment_custom_tags: Optional[Dict[str, Any]] = None,
         verbose: bool = True,
+        display: Optional[CommonDisplay] = None,
+        parallel: Optional[ParallelBackend] = None,
     ):
 
         """
@@ -978,6 +994,17 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             Score grid is not printed when verbose is set to False.
 
 
+        display: pycaret.internal.display.CommonDisplay, default = None
+            Custom display object
+
+
+        parallel: pycaret.internal.parallel.parallel_backend.ParallelBackend, default = None
+            A ParallelBackend instance. For example if you have a SparkSession ``session``,
+            you can use ``FugueBackend(session)`` to make this function running using
+            Spark. For more details, see
+            :class:`~pycaret.parallel.fugue_backend.FugueBackend`
+
+
         Returns:
             Trained model or list of trained models, depending on the ``n_select`` param.
 
@@ -990,6 +1017,10 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
         - No models are logged in ``MLFlow`` when ``cross_validation`` parameter is False.
 
         """
+
+        caller_params = dict(locals())
+
+        # No extra code above this line
 
         return super().compare_models(
             include=include,
@@ -1006,6 +1037,9 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             groups=groups,
             experiment_custom_tags=experiment_custom_tags,
             verbose=verbose,
+            display=display,
+            parallel=parallel,
+            caller_params=caller_params,
         )
 
     def create_model(

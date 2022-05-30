@@ -3,11 +3,13 @@
 
 import logging
 import os
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
 
+from pycaret.internal.display import CommonDisplay
+from pycaret.internal.parallel.parallel_backend import ParallelBackend
 from pycaret.internal.utils import check_if_global_is_not_none
 from pycaret.time_series.forecasting.oop import TSForecastingExperiment
 
@@ -25,7 +27,8 @@ _CURRENT_EXPERIMENT_DECORATOR_DICT = {
 
 
 def setup(
-    data: Union[pd.Series, pd.DataFrame],
+    data: Union[pd.Series, pd.DataFrame] = None,
+    data_func: Optional[Callable[[], Union[pd.Series, pd.DataFrame]]] = None,
     target: Optional[str] = None,
     index: Optional[str] = None,
     ignore_features: Optional[List] = None,
@@ -71,8 +74,16 @@ def setup(
     >>> exp_name = setup(data = airline,  fh = 12)
 
 
-    data : pandas.Series or pandas.DataFrame
+    data : pandas.Series or pandas.DataFrame = None
         Shape (n_samples, 1), when pandas.DataFrame, otherwise (n_samples, ).
+
+
+    data_func: Callable[[], Union[pd.Series, pd.DataFrame]] = None
+            The function that generate ``data`` (the dataframe-like input). This
+            is useful when the dataset is large, and you need parallel operations
+            such as ``compare_models``. It can avoid boradcasting large dataset
+            from driver to workers. Notice one and only one of ``data`` and
+            ``data_func`` must be set.
 
 
     target : Optional[str], default = None
@@ -357,6 +368,7 @@ def setup(
     set_current_experiment(exp)
     return exp.setup(
         data=data,
+        data_func=data_func,
         target=target,
         index=index,
         ignore_features=ignore_features,
@@ -406,6 +418,8 @@ def compare_models(
     fit_kwargs: Optional[dict] = None,
     engines: Optional[Dict[str, str]] = None,
     verbose: bool = True,
+    display: Optional[CommonDisplay] = None,
+    parallel: Optional[ParallelBackend] = None,
 ):
 
     """
@@ -492,6 +506,17 @@ def compare_models(
         Score grid is not printed when verbose is set to False.
 
 
+    display: pycaret.internal.display.CommonDisplay, default = None
+        Custom display object
+
+
+    parallel: pycaret.internal.parallel.parallel_backend.ParallelBackend, default = None
+        A ParallelBackend instance. For example if you have a SparkSession ``session``,
+        you can use ``FugueBackend(session)`` to make this function running using
+        Spark. For more details, see
+        :class:`~pycaret.parallel.fugue_backend.FugueBackend`
+
+
     Returns:
         Trained model or list of trained models, depending on the ``n_select`` param.
 
@@ -518,6 +543,8 @@ def compare_models(
         fit_kwargs=fit_kwargs,
         engines=engines,
         verbose=verbose,
+        display=display,
+        parallel=parallel,
     )
 
 

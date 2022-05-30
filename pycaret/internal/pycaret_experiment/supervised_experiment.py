@@ -275,6 +275,7 @@ class _SupervisedExperiment(_TabularExperiment):
         verbose: bool = True,
         display: Optional[CommonDisplay] = None,
         parallel: Optional[ParallelBackend] = None,
+        caller_params: Optional[dict] = None,
     ) -> List[Any]:
 
         """
@@ -382,6 +383,17 @@ class _SupervisedExperiment(_TabularExperiment):
             :class:`~pycaret.parallel.fugue_backend.FugueBackend`
 
 
+        caller_params: dict, default = None
+            The parameters used to call this function in the subclass. There are inconsistencies
+            in this function's signature between this base class and the subclasses, so this is
+            used to prevent inconsistencies. It must be set when ``parallel`` is not None
+
+
+        extra_params: Any
+            Extra parameters used to call the same method in the derived class. These parameters
+            are mainly used when ``parallel`` is not None.
+
+
         Returns
         -------
         score_grid
@@ -409,8 +421,9 @@ class _SupervisedExperiment(_TabularExperiment):
         """
         self._check_setup_ran()
 
-        params = dict(locals())
         if parallel is not None:
+            assert caller_params is not None
+            params = dict(caller_params)
             parallel.attach(self)
             if params.get("include", None) is None:
                 _models = self.models()
@@ -418,6 +431,7 @@ class _SupervisedExperiment(_TabularExperiment):
                     _models = _models[_models.Turbo]
                 params["include"] = _models.index.tolist()
             del params["self"]
+            del params["__class__"]
             del params["parallel"]
             return parallel.compare_models(self, params)
 

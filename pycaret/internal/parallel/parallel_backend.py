@@ -31,12 +31,11 @@ class ParallelBackend:
     def remote_setup(self) -> Any:
         """Call setup on a worker."""
         instance = self._exp_class()
-        instance._unpack_at_remote(self._instance_pack)
-        params = dict(instance._setup_params)
-        params["silent"] = True
+        params = dict(self._instance_pack["_setup_params"])
         params["verbose"] = False
         params["html"] = False
         instance.setup(**params)
+        instance._unpack_at_remote(self._instance_pack)
         return instance
 
     def compare_models(
