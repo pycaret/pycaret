@@ -4816,7 +4816,8 @@ class _SupervisedExperiment(_TabularExperiment):
             data = data[X_columns]  # Ignore all columns but the originals
             if preprocess:
                 X_test_ = pipeline.transform(
-                    X=data, y=(target if preprocess != "features" else None),
+                    X=data,
+                    y=(target if preprocess != "features" else None),
                 )
                 if final_step:
                     pipeline.steps.append(final_step)
