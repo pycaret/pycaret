@@ -752,7 +752,7 @@ def compare_models(
 
     - No models are logged in ``MLFlow`` when ``cross_validation`` parameter is False.
     """
-    
+
     return _CURRENT_EXPERIMENT.compare_models(
         include=include,
         exclude=exclude,
