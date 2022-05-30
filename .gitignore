@@ -38,3 +38,5 @@ demo4.py
 dask*/
 /.venv
 /.devcontainer
+tmp
+tmp/*

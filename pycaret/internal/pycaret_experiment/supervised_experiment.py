@@ -39,6 +39,7 @@ from pycaret.internal.meta_estimators import (
     PowerTransformedTargetRegressor,
     get_estimator_from_meta_estimator,
 )
+from pycaret.internal.parallel.parallel_backend import ParallelBackend
 from pycaret.internal.pipeline import (
     estimator_pipeline,
     get_pipeline_estimator_label,
@@ -272,6 +273,8 @@ class _SupervisedExperiment(_TabularExperiment):
         experiment_custom_tags: Optional[Dict[str, Any]] = None,
         probability_threshold: Optional[float] = None,
         verbose: bool = True,
+        display: Optional[CommonDisplay] = None,
+        parallel: Optional[ParallelBackend] = None,
     ) -> List[Any]:
 
         """
@@ -368,6 +371,17 @@ class _SupervisedExperiment(_TabularExperiment):
         verbose: bool, default = True
             Score grid is not printed when verbose is set to False.
 
+        display: pycaret.internal.Display.CommonDisplay, default = None
+            Custom display object
+
+
+        parallel: pycaret.internal.parallel.parallel_backend.ParallelBackend, default = None
+            A ParallelBackend instance. For example if you have a SparkSession ``session``,
+            you can use ``FugueBackend(session)`` to make this function running using
+            Spark. For more details, see
+            :class:`~pycaret.parallel.fugue_backend.FugueBackend`
+
+
         Returns
         -------
         score_grid
@@ -394,6 +408,21 @@ class _SupervisedExperiment(_TabularExperiment):
 
         """
         self._check_setup_ran()
+
+        params = dict(locals())
+        if parallel is not None:
+            parallel.attach(self)
+            if params.get("include", None) is None:
+                _models = self.models()
+                if turbo:
+                    _models = _models[_models.Turbo]
+                params["include"] = _models.index.tolist()
+            del params["self"]
+            del params["parallel"]
+            return parallel.compare_models(self, params)
+
+        # No extra code should be added above this line
+        # --------------------------------------------------------------
 
         function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
 
