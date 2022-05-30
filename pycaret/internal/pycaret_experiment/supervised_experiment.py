@@ -1286,17 +1286,10 @@ class _SupervisedExperiment(_TabularExperiment):
         self.logger.info("Copying training dataset")
 
         # Storing X_train and y_train in data_X and data_y parameter
-        if not self._ml_usecase == MLUsecase.TIME_SERIES:
-            data_X = (
-                self.X_train.copy() if X_train_data is None else X_train_data.copy()
-            )
-            data_y = (
-                self.y_train_transformed.copy()
-                if y_train_data is None
-                else y_train_data.copy()
-            )
+        if self._ml_usecase != MLUsecase.TIME_SERIES:
+            data_X = self.X_train if X_train_data is None else X_train_data.copy()
+            data_y = self.y_train if y_train_data is None else y_train_data.copy()
 
-            # reset index
             data_X.reset_index(drop=True, inplace=True)
             data_y.reset_index(drop=True, inplace=True)
         else:
@@ -1306,10 +1299,8 @@ class _SupervisedExperiment(_TabularExperiment):
                 if self.X_train is None:
                     data_X = None
                 else:
-                    data_X = self.X_train.copy()
-            data_y = (
-                self.y_train.copy() if y_train_data is None else y_train_data.copy()
-            )
+                    data_X = self.X_train
+            data_y = self.y_train if y_train_data is None else y_train_data.copy()
 
         if metrics is None:
             metrics = self._all_metrics
@@ -2124,8 +2115,8 @@ class _SupervisedExperiment(_TabularExperiment):
 
         self.logger.info("Copying training dataset")
         # Storing X_train and y_train in data_X and data_y parameter
-        data_X = self.X_train.copy()
-        data_y = self.y_train_transformed.copy()
+        data_X = self.X_train
+        data_y = self.y_train
 
         # reset index
         data_X.reset_index(drop=True, inplace=True)

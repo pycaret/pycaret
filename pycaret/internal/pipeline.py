@@ -193,9 +193,10 @@ class Pipeline(imblearn.pipeline.Pipeline):
 
         return self.steps[-1][-1].score(X, y, sample_weight=sample_weight)
 
-    def transform(self, X=None, y=None):
+    def transform(self, X=None, y=None, filter_train_only=True):
         for _, _, transformer in self._iter(
-            with_final=hasattr(self._final_estimator, "transform")
+            with_final=hasattr(self._final_estimator, "transform"),
+            filter_train_only=filter_train_only,
         ):
             X, y = _transform_one(transformer, X, y)
 
