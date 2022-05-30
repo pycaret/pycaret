@@ -140,6 +140,314 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
         profile: bool = False,
         profile_kwargs: Dict[str, Any] = None,
     ):
+        """
+
+        This function initializes the training environment and creates the transformation
+        pipeline. Setup function must be called before executing any other function. It
+        takes one mandatory parameter: ``data``. All the other parameters are optional.
+
+
+        Example
+        -------
+        >>> from pycaret.datasets import get_data
+        >>> jewellery = get_data('jewellery')
+        >>> from pycaret.clustering import *
+        >>> exp_name = setup(data = jewellery)
+
+
+        data: dataframe-like
+            Data set with shape (n_samples, n_features), where n_samples is the
+            number of samples and n_features is the number of features. If data
+            is not a pandas dataframe, it's converted to one using default column
+            names.
+
+
+        ordinal_features: dict, default = None
+            Categorical features to be encoded ordinally. For example, a categorical
+            feature with 'low', 'medium', 'high' values where low < medium < high can
+            be passed as ordinal_features = {'column_name' : ['low', 'medium', 'high']}.
+
+
+        numeric_features: list of str, default = None
+            If the inferred data types are not correct, the numeric_features param can
+            be used to define the data types. It takes a list of strings with column
+            names that are numeric.
+
+
+        categorical_features: list of str, default = None
+            If the inferred data types are not correct, the categorical_features param
+            can be used to define the data types. It takes a list of strings with column
+            names that are categorical.
+
+
+        date_features: list of str, default = None
+            If the inferred data types are not correct, the date_features param can be
+            used to overwrite the data types. It takes a list of strings with column
+            names that are DateTime.
+
+
+        text_features: list of str, default = None
+            Column names that contain a text corpus. If None, no text features are
+            selected.
+
+
+        ignore_features: list of str, default = None
+            ignore_features param can be used to ignore features during preprocessing
+            and model training. It takes a list of strings with column names that are
+            to be ignored.
+
+
+        keep_features: list of str, default = None
+            keep_features param can be used to always keep specific features during
+            preprocessing, i.e. these features are never dropped by any kind of
+            feature selection. It takes a list of strings with column names that are
+            to be kept.
+
+
+        preprocess: bool, default = True
+            When set to False, no transformations are applied except for train_test_split
+            and custom transformations passed in ``custom_pipeline`` param. Data must be
+            ready for modeling (no missing values, no dates, categorical data encoding),
+            when preprocess is set to False.
+
+
+        imputation_type: str or None, default = 'simple'
+            The type of imputation to use. Can be either 'simple' or 'iterative'.
+            If None, no imputation of missing values is performed.
+
+
+        numeric_imputation: str, default = 'mean'
+            Missing values in numeric features are imputed with 'mean' value of the feature
+            in the training dataset. The other available option is 'median' or 'zero'.
+
+
+        categorical_imputation: str, default = 'constant'
+            Missing values in categorical features are imputed with a constant 'not_available'
+            value. The other available option is 'mode'.
+
+
+        text_features_method: str, default = "tf-idf"
+            Method with which to embed the text features in the dataset. Choose
+            between "bow" (Bag of Words - CountVectorizer) or "tf-idf" (TfidfVectorizer).
+            Be aware that the sparse matrix output of the transformer is converted
+            internally to its full array. This can cause memory issues for large
+            text embeddings.
+
+
+        max_encoding_ohe: int, default = 5
+            Categorical columns with `max_encoding_ohe` or less unique values are
+            encoded using OneHotEncoding. If more, the `encoding_method` estimator
+            is used. Note that columns with exactly two classes are always encoded
+            ordinally.
+
+
+        encoding_method: category-encoders estimator, default = None
+            A `category-encoders` estimator to encode the categorical columns
+            with more than `max_encoding_ohe` unique values. If None,
+            `category_encoders.leave_one_out.LeaveOneOutEncoder` is used.
+
+
+        polynomial_features: bool, default = False
+            When set to True, new features are derived using existing numeric features.
+
+
+        polynomial_degree: int, default = 2
+            Degree of polynomial features. For example, if an input sample is two dimensional
+            and of the form [a, b], the polynomial features with degree = 2 are:
+            [1, a, b, a^2, ab, b^2]. Ignored when ``polynomial_features`` is not True.
+
+
+        low_variance_threshold: float or None, default = 0
+            Remove features with a training-set variance lower than the provided
+            threshold. The default is to keep all features with non-zero variance,
+            i.e. remove the features that have the same value in all samples. If
+            None, skip this treansformation step.
+
+
+        remove_multicollinearity: bool, default = False
+            When set to True, features with the inter-correlations higher than the defined
+            threshold are removed. When two features are highly correlated with each other,
+            the feature that is less correlated with the target variable is removed. Only
+            considers numeric features.
+
+
+        multicollinearity_threshold: float, default = 0.9
+            Threshold for correlated features. Ignored when ``remove_multicollinearity``
+            is not True.
+
+
+        bin_numeric_features: list of str, default = None
+            To convert numeric features into categorical, bin_numeric_features parameter can
+            be used. It takes a list of strings with column names to be discretized. It does
+            so by using 'sturges' rule to determine the number of clusters and then apply
+            KMeans algorithm. Original values of the feature are then replaced by the
+            cluster label.
+
+
+        remove_outliers: bool, default = False
+            When set to True, outliers from the training data are removed using an
+            Isolation Forest.
+
+
+        outliers_method: str, default = "iforest"
+            Method with which to remove outliers. Possible values are:
+                - 'iforest': Uses sklearn's IsolationForest.
+                - 'ee': Uses sklearn's EllipticEnvelope.
+                - 'lof': Uses sklearn's LocalOutlierFactor.
+
+
+        outliers_threshold: float, default = 0.05
+            The percentage outliers to be removed from the dataset. Ignored
+            when ``remove_outliers=False``.
+
+
+        transformation: bool, default = False
+            When set to True, it applies the power transform to make data more Gaussian-like.
+            Type of transformation is defined by the ``transformation_method`` parameter.
+
+
+        transformation_method: str, default = 'yeo-johnson'
+            Defines the method for transformation. By default, the transformation method is
+            set to 'yeo-johnson'. The other available option for transformation is 'quantile'.
+            Ignored when ``transformation`` is not True.
+
+
+        normalize: bool, default = False
+            When set to True, it transforms the features by scaling them to a given
+            range. Type of scaling is defined by the ``normalize_method`` parameter.
+
+
+        normalize_method: str, default = 'zscore'
+            Defines the method for scaling. By default, normalize method is set to 'zscore'
+            The standard zscore is calculated as z = (x - u) / s. Ignored when ``normalize``
+            is not True. The other options are:
+
+            - minmax: scales and translates each feature individually such that it is in
+            the range of 0 - 1.
+            - maxabs: scales and translates each feature individually such that the
+            maximal absolute value of each feature will be 1.0. It does not
+            shift/center the data, and thus does not destroy any sparsity.
+            - robust: scales and translates each feature according to the Interquartile
+            range. When the dataset contains outliers, robust scaler often gives
+            better results.
+
+
+        pca: bool, default = False
+            When set to True, dimensionality reduction is applied to project the data into
+            a lower dimensional space using the method defined in ``pca_method`` parameter.
+
+
+        pca_method: str, default = 'linear'
+            Method with which to apply PCA. Possible values are:
+                - 'linear': Uses Singular Value  Decomposition.
+                - kernel: Dimensionality reduction through the use of RBF kernel.
+                - incremental: Similar to 'linear', but more efficient for large datasets.
+
+
+        pca_components: int or float, default = 1.0
+            Number of components to keep. If >1, it selects that number of
+            components. If <= 1, it selects that fraction of components from
+            the original features. The value must be smaller than the number
+            of original features. This parameter is ignored when `pca=False`.
+
+
+        custom_pipeline: list of (str, transformer), dict or Pipeline, default = None
+            Addidiotnal custom transformers. If passed, they are applied to the
+            pipeline last, after all the build-in transformers.
+
+
+        n_jobs: int, default = -1
+            The number of jobs to run in parallel (for functions that supports parallel
+            processing) -1 means using all processors. To run all functions on single
+            processor set n_jobs to None.
+
+
+        use_gpu: bool or str, default = False
+            When set to True, it will use GPU for training with algorithms that support it,
+            and fall back to CPU if they are unavailable. When set to 'force', it will only
+            use GPU-enabled algorithms and raise exceptions when they are unavailable. When
+            False, all algorithms are trained using CPU only.
+
+            GPU enabled algorithms:
+
+            - None at this moment.
+
+
+        html: bool, default = True
+            When set to False, prevents runtime display of monitor. This must be set to False
+            when the environment does not support IPython. For example, command line terminal,
+            Databricks Notebook, Spyder and other similar IDEs.
+
+
+        session_id: int, default = None
+            Controls the randomness of experiment. It is equivalent to 'random_state' in
+            scikit-learn. When None, a pseudo random number is generated. This can be used
+            for later reproducibility of the entire experiment.
+
+
+        system_log: bool or str or logging.Logger, default = True
+            Whether to save the system logging file (as logs.log). If the input
+            is a string, use that as the path to the logging file. If the input
+            already is a logger object, use that one instead.
+
+
+        log_experiment: bool, default = False
+            A (list of) PyCaret ``BaseLogger`` or str (one of 'mlflow', 'wandb')
+            corresponding to a logger to determine which experiment loggers to use.
+            Setting to True will use just MLFlow.
+            If ``wandb`` (Weights & Biases) is installed, will also log there.
+
+
+        experiment_name: str, default = None
+            Name of the experiment for logging. Ignored when ``log_experiment`` is False.
+
+
+        experiment_custom_tags: dict, default = None
+            Dictionary of tag_name: String -> value: (String, but will be string-ified
+            if not) passed to the mlflow.set_tags to add new custom tags for the experiment.
+
+
+        log_plots: bool or list, default = False
+            When set to True, certain plots are logged automatically in the ``MLFlow`` server.
+            To change the type of plots to be logged, pass a list containing plot IDs. Refer
+            to documentation of ``plot_model``. Ignored when ``log_experiment`` is False.
+
+
+        log_profile: bool, default = False
+            When set to True, data profile is logged on the ``MLflow`` server as a html file.
+            Ignored when ``log_experiment`` is False.
+
+
+        log_data: bool, default = False
+            When set to True, dataset is logged on the ``MLflow`` server as a csv file.
+            Ignored when ``log_experiment`` is False.
+
+
+        verbose: bool, default = True
+            When set to False, Information grid is not printed.
+
+
+        memory: str, bool or Memory, default=True
+            Used to cache the fitted transformers of the pipeline.
+                If False: No caching is performed.
+                If True: A default temp directory is used.
+                If str: Path to the caching directory.
+
+
+        profile: bool, default = False
+            When set to True, an interactive EDA report is displayed.
+
+
+        profile_kwargs: dict, default = {} (empty dict)
+            Dictionary of arguments passed to the ProfileReport method used
+            to create the EDA report. Ignored if ``profile`` is False.
+
+
+        Returns:
+            Global variables that can be changed using the ``set_config`` function.
+
+        """
+
         # Setup initialization ===================================== >>
 
         runtime_start = time.time()
@@ -373,6 +681,122 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
         verbose: bool = True,
         **kwargs,
     ):
+        """
+        This function tunes the ``num_clusters`` parameter of a given model.
+
+
+        Example
+        -------
+        >>> from pycaret.datasets import get_data
+        >>> juice = get_data('juice')
+        >>> from pycaret.clustering import *
+        >>> exp_name = setup(data = juice)
+        >>> tuned_kmeans = tune_model(model = 'kmeans', supervised_target = 'Purchase')
+
+
+        model: str
+            ID of an model available in the model library. Models that can be
+            tuned in this function (ID - Model):
+
+            * 'kmeans' - K-Means Clustering
+            * 'sc' - Spectral Clustering
+            * 'hclust' - Agglomerative Clustering
+            * 'birch' - Birch Clustering
+            * 'kmodes' - K-Modes Clustering
+
+
+        supervised_target: str
+            Name of the target column containing labels.
+
+
+        supervised_type: str, default = None
+            Type of task. 'classification' or 'regression'. Automatically inferred
+            when None.
+
+
+        supervised_estimator: str, default = None
+            Classification (ID - Name):
+                * 'lr' - Logistic Regression (Default)
+                * 'knn' - K Nearest Neighbour
+                * 'nb' - Naive Bayes
+                * 'dt' - Decision Tree Classifier
+                * 'svm' - SVM - Linear Kernel
+                * 'rbfsvm' - SVM - Radial Kernel
+                * 'gpc' - Gaussian Process Classifier
+                * 'mlp' - Multi Level Perceptron
+                * 'ridge' - Ridge Classifier
+                * 'rf' - Random Forest Classifier
+                * 'qda' - Quadratic Discriminant Analysis
+                * 'ada' - Ada Boost Classifier
+                * 'gbc' - Gradient Boosting Classifier
+                * 'lda' - Linear Discriminant Analysis
+                * 'et' - Extra Trees Classifier
+                * 'xgboost' - Extreme Gradient Boosting
+                * 'lightgbm' - Light Gradient Boosting
+                * 'catboost' - CatBoost Classifier
+
+            Regression (ID - Name):
+                * 'lr' - Linear Regression (Default)
+                * 'lasso' - Lasso Regression
+                * 'ridge' - Ridge Regression
+                * 'en' - Elastic Net
+                * 'lar' - Least Angle Regression
+                * 'llar' - Lasso Least Angle Regression
+                * 'omp' - Orthogonal Matching Pursuit
+                * 'br' - Bayesian Ridge
+                * 'ard' - Automatic Relevance Determ.
+                * 'par' - Passive Aggressive Regressor
+                * 'ransac' - Random Sample Consensus
+                * 'tr' - TheilSen Regressor
+                * 'huber' - Huber Regressor
+                * 'kr' - Kernel Ridge
+                * 'svm' - Support Vector Machine
+                * 'knn' - K Neighbors Regressor
+                * 'dt' - Decision Tree
+                * 'rf' - Random Forest
+                * 'et' - Extra Trees Regressor
+                * 'ada' - AdaBoost Regressor
+                * 'gbr' - Gradient Boosting
+                * 'mlp' - Multi Level Perceptron
+                * 'xgboost' - Extreme Gradient Boosting
+                * 'lightgbm' - Light Gradient Boosting
+                * 'catboost' - CatBoost Regressor
+
+
+        optimize: str, default = None
+            For Classification tasks:
+                Accuracy, AUC, Recall, Precision, F1, Kappa (default = 'Accuracy')
+
+            For Regression tasks:
+                MAE, MSE, RMSE, R2, RMSLE, MAPE (default = 'R2')
+
+
+        custom_grid: list, default = None
+            By default, a pre-defined number of clusters is iterated over to
+            optimize the supervised objective. To overwrite default iteration,
+            pass a list of num_clusters to iterate over in custom_grid param.
+
+
+        fold: int, default = 10
+            Number of folds to be used in Kfold CV. Must be at least 2.
+
+
+        verbose: bool, default = True
+            Status update is not printed when verbose is set to False.
+
+
+        Returns:
+            Trained Model with optimized ``num_clusters`` parameter.
+
+
+        Warnings
+        --------
+        - Affinity Propagation, Mean shift, Density-Based Spatial Clustering
+        and OPTICS Clustering cannot be used in this function since they donot
+        support the ``num_clusters`` param.
+
+
+        """
 
         function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
 
@@ -734,37 +1158,34 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
     ) -> pd.DataFrame:
 
         """
-        This function assigns each of the data point in the dataset passed during setup
-        stage to one of the clusters using trained model object passed as model param.
-        create_model() function must be called before using assign_model().
+        This function assigns cluster labels to the dataset for a given model.
 
-        This function returns a pandas.DataFrame.
 
         Example
         -------
         >>> from pycaret.datasets import get_data
         >>> jewellery = get_data('jewellery')
-        >>> experiment_name = setup(data = jewellery, normalize = True)
+        >>> from pycaret.clustering import *
+        >>> exp_name = setup(data = jewellery)
         >>> kmeans = create_model('kmeans')
         >>> kmeans_df = assign_model(kmeans)
 
-        This will return a pandas.DataFrame with inferred clusters using trained model.
 
-        Parameters
-        ----------
-        model: trained model object, default = None
+
+        model: scikit-learn compatible object
+            Trained model object
+
 
         transformation: bool, default = False
-            When set to True, assigned clusters are returned on transformed dataset instead
-            of original dataset passed during setup().
+            Whether to apply cluster labels on the transformed dataset.
 
-        verbose: Boolean, default = True
+
+        verbose: bool, default = True
             Status update is not printed when verbose is set to False.
 
-        Returns
-        -------
-        pandas.DataFrame
-            Returns a DataFrame with assigned clusters using a trained model.
+
+        Returns:
+            pandas.DataFrame
 
         """
 
@@ -1183,29 +1604,26 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
     ) -> Any:
 
         """
-        This function creates a model and scores it using Cross Validation.
-        The output prints a score grid that shows Accuracy, AUC, Recall, Precision,
-        F1, Kappa and MCC by fold (default = 10 Fold).
+        This function trains and evaluates the performance of a given model.
+        Metrics evaluated can be accessed using the ``get_metrics`` function.
+        Custom metrics can be added or removed using the ``add_metric`` and
+        ``remove_metric`` function. All the available models can be accessed
+        using the ``models`` function.
 
-        This function returns a trained model object.
-
-        setup() function must be called before using create_model()
 
         Example
         -------
         >>> from pycaret.datasets import get_data
-        >>> juice = get_data('juice')
-        >>> experiment_name = setup(data = juice,  target = 'Purchase')
-        >>> lr = create_model('lr')
+        >>> jewellery = get_data('jewellery')
+        >>> from pycaret.clustering import *
+        >>> exp_name = setup(data = jewellery)
+        >>> kmeans = create_model('kmeans')
 
-        This will create a trained Logistic Regression model.
 
-        Parameters
-        ----------
-        model : string / object, default = None
-            Enter ID of the models available in model library or pass an untrained model
-            object consistent with fit / predict API to train and evaluate model. List of
-            models available in model library (ID - Model):
+        model: str or scikit-learn compatible object
+            ID of an model available in the model library or pass an untrained
+            model object consistent with scikit-learn API. Models available
+            in the model library (ID - Name):
 
             * 'kmeans' - K-Means Clustering
             * 'ap' - Affinity Propagation
@@ -1217,49 +1635,47 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
             * 'birch' - Birch Clustering
             * 'kmodes' - K-Modes Clustering
 
+
         num_clusters: int, default = 4
-            Number of clusters to be generated with the dataset.
+            The number of clusters to form.
 
-        ground_truth: string, default = None
-            When ground_truth is provided, Homogeneity Score, Rand Index, and
-            Completeness Score is evaluated and printer along with other metrics.
 
-        round: integer, default = 4
+        ground_truth: str, default = None
+            ground_truth to be provided to evaluate metrics that require true labels.
+            When None, such metrics are returned as 0.0. All metrics evaluated can
+            be accessed using ``get_metrics`` function.
+
+
+        round: int, default = 4
             Number of decimal places the metrics in the score grid will be rounded to.
+
 
         fit_kwargs: dict, default = {} (empty dict)
             Dictionary of arguments passed to the fit method of the model.
 
+
         verbose: bool, default = True
-            Score grid is not printed when verbose is set to False.
+            Status update is not printed when verbose is set to False.
 
-        system: bool, default = True
-            Must remain True all times. Only to be changed by internal functions.
-            If False, method will return a tuple of model and the model fit time.
 
-        add_to_model_list: bool, default = True
-            Whether to save model and results in master_model_container.
+        experiment_custom_tags: dict, default = None
+            Dictionary of tag_name: String -> value: (String, but will be string-ified
+            if not) passed to the mlflow.set_tags to add new custom tags for the experiment.
+
 
         **kwargs:
             Additional keyword arguments to pass to the estimator.
 
-        Returns
-        -------
-        score_grid
-            A table containing the Silhouette, Calinski-Harabasz,
-            Davies-Bouldin, Homogeneity Score, Rand Index, and
-            Completeness Score. Last 3 are only evaluated when
-            ground_truth parameter is provided.
 
-        model
-            trained model object
+        Returns:
+            Trained Model
+
 
         Warnings
         --------
-        - num_clusters not required for Affinity Propagation ('ap'), Mean shift
-        clustering ('meanshift'), Density-Based Spatial Clustering ('dbscan')
-        and OPTICS Clustering ('optics'). num_clusters parameter for these models
-        are automatically determined.
+        - ``num_clusters`` param not required for Affinity Propagation ('ap'),
+        Mean shift ('meanshift'), Density-Based Spatial Clustering ('dbscan')
+        and OPTICS Clustering ('optics').
 
         - When fit doesn't converge in Affinity Propagation ('ap') model, all
         datapoints are labelled as -1.
@@ -1269,6 +1685,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
 
         - OPTICS ('optics') clustering may take longer training times on large
         datasets.
+
 
         """
 
@@ -1295,4 +1712,64 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
             experiment_custom_tags=experiment_custom_tags,
             verbose=verbose,
             **kwargs,
+        )
+
+    def evaluate_model(
+        self,
+        estimator,
+        fold: Optional[Union[int, Any]] = None,
+        fit_kwargs: Optional[dict] = None,
+        plot_kwargs: Optional[dict] = None,
+        feature_name: Optional[str] = None,
+        groups: Optional[Union[str, Any]] = None,
+        use_train_data: bool = False,
+    ):
+        """
+        This function displays a user interface for analyzing performance of a trained
+        model. It calls the ``plot_model`` function internally.
+
+        Example
+        --------
+        >>> from pycaret.datasets import get_data
+        >>> jewellery = get_data('jewellery')
+        >>> from pycaret.clustering import *
+        >>> exp_name = setup(data = jewellery)
+        >>> kmeans = create_model('kmeans')
+        >>> evaluate_model(kmeans)
+
+
+        model: scikit-learn compatible object
+            Trained model object
+
+
+        feature: str, default = None
+            Feature to be evaluated when plot = 'distribution'. When ``plot`` type is
+            'cluster' or 'tsne' feature column is used as a hoverover tooltip and/or
+            label when the ``label`` param is set to True. When the ``plot`` type is
+            'cluster' or 'tsne' and feature is None, first column of the dataset is
+            used.
+
+
+        fit_kwargs: dict, default = {} (empty dict)
+            Dictionary of arguments passed to the fit method of the model.
+
+
+        Returns:
+            None
+
+
+        Warnings
+        --------
+        -   This function only works in IPython enabled Notebook.
+
+        """
+
+        return super().evaluate_model(
+            estimator,
+            fold,
+            fit_kwargs,
+            plot_kwargs,
+            feature_name,
+            groups,
+            use_train_data,
         )
