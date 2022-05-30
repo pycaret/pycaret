@@ -94,6 +94,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             self.variables, raise_errors=raise_errors
         )
 
+    @property
     def _is_multiclass(self) -> bool:
         """
         Method to check if the problem is multiclass.
@@ -101,6 +102,8 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         # Cache the result to avoid calculating it every time
         if hasattr(self, "__is_multiclass"):
             return self.__is_multiclass
+        if getattr(self, "y", None) is None:
+            return False
         try:
             self.__is_multiclass = self.y.value_counts().count() > 2
         except Exception:
