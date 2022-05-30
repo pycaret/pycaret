@@ -2,7 +2,6 @@ import datetime
 import gc
 import logging
 import time
-from functools import cached_property
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np  # type: ignore
@@ -95,15 +94,18 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             self.variables, raise_errors=raise_errors
         )
 
-    @cached_property
     def _is_multiclass(self) -> bool:
         """
         Method to check if the problem is multiclass.
         """
+        # Cache the result to avoid calculating it every time
+        if hasattr(self, "__is_multiclass"):
+            return self.__is_multiclass
         try:
-            return self.y.value_counts().count() > 2
+            self.__is_multiclass = self.y.value_counts().count() > 2
         except Exception:
-            return False
+            self.__is_multiclass = False
+        return self.__is_multiclass
 
     def setup(
         self,
