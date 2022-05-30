@@ -170,8 +170,6 @@ class ClassificationMetricContainer(MetricContainer):
 
 
 def _get_pos_label_arg(globals_dict: dict):
-    if globals_dict["_is_multiclass"]:
-        return {}
     le = get_label_encoder(globals_dict["pipeline"])
     if le:
         return {"pos_label": {i: str(v) for i, v in enumerate(le.classes_)}[1]}
