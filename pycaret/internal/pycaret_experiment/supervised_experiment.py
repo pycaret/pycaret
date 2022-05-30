@@ -932,7 +932,6 @@ class _SupervisedExperiment(_TabularExperiment):
                         self,
                         pipeline_with_model,
                         data=pd.concat([data_X, data_y], axis=1),
-                        preprocess="features",
                         verbose=False,
                     )
                     train_results = self.pull(pop=True).drop("Model", axis=1)
@@ -1103,7 +1102,6 @@ class _SupervisedExperiment(_TabularExperiment):
                         self,
                         pipeline_with_model,
                         data=pd.concat([data_X, data_y], axis=1),
-                        preprocess="features",
                         verbose=False,
                     )
                     metrics = self.pull(pop=True).drop("Model", axis=1)
@@ -4811,13 +4809,14 @@ class _SupervisedExperiment(_TabularExperiment):
             if y_name in data.columns:
                 data = self._prepare_dataset(data, y_name)
                 target = data[y_name]
+                data = data.drop(y_name, axis=1)
             else:
                 data = self._prepare_dataset(data)
                 target = None
-            data = data[X_columns]  # Ignore all column but the originals
+            data = data[X_columns]  # Ignore all columns but the originals
             if preprocess:
                 X_test_ = pipeline.transform(
-                    X=data, y=(target if preprocess != "features" else None)
+                    X=data, y=(target if preprocess != "features" else None),
                 )
                 if final_step:
                     pipeline.steps.append(final_step)

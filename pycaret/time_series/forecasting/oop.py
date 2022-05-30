@@ -2421,8 +2421,8 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         if self.X_train is None:
             data_X = None
         else:
-            data_X = self.X_train.copy()
-        data_y = self.y_train.copy()
+            data_X = self.X_train
+        data_y = self.y_train
 
         # # Replace Empty DataFrame with None as empty DataFrame causes issues
         # if (data_X.shape[0] == 0) or (data_X.shape[1] == 0):

@@ -144,6 +144,15 @@ class Pipeline(imblearn.pipeline.Pipeline):
 
         return self
 
+    def transform(self, X=None, y=None, filter_train_only=True):
+        for _, _, transformer in self._iter(
+            with_final=hasattr(self._final_estimator, "transform"),
+            filter_train_only=filter_train_only,
+        ):
+            X, y = _transform_one(transformer, X, y)
+
+        return variable_return(X, y)
+
     def fit_transform(self, X=None, y=None, **fit_params):
         fit_params_steps = self._check_fit_params(**fit_params)
         X, y, _ = self._fit(X, y, **fit_params_steps)
@@ -192,15 +201,6 @@ class Pipeline(imblearn.pipeline.Pipeline):
             X, y = _transform_one(transformer, X, y)
 
         return self.steps[-1][-1].score(X, y, sample_weight=sample_weight)
-
-    def transform(self, X=None, y=None, filter_train_only=True):
-        for _, _, transformer in self._iter(
-            with_final=hasattr(self._final_estimator, "transform"),
-            filter_train_only=filter_train_only,
-        ):
-            X, y = _transform_one(transformer, X, y)
-
-        return variable_return(X, y)
 
     def __getattr__(self, name: str):
         # override getattr to allow grabbing of final estimator attrs
