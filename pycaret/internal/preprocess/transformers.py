@@ -11,11 +11,12 @@ from sklearn.covariance import EllipticEnvelope
 from sklearn.ensemble import IsolationForest
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 from sklearn.neighbors import LocalOutlierFactor
+from sklearn.utils.metaestimators import if_delegate_has_method
 
 from ..utils import to_df, to_series, variable_return
 
 
-class TransfomerWrapper(BaseEstimator):
+class TransformerWrapper(BaseEstimator):
     """Meta-estimator for transformers.
 
     Wrapper for all transformers in preprocess to return a pandas
@@ -58,6 +59,104 @@ class TransfomerWrapper(BaseEstimator):
     def feature_names_in_(self):
         return self._feature_names_in
 
+    def _name_cols(self, array, df):
+        """Get the column names after a transformation.
+
+        If the number of columns is unchanged, the original
+        column names are returned. Else, give the column a
+        default name if the column values changed.
+
+        Parameters
+        ----------
+        array: np.ndarray
+            Transformed dataset.
+
+        df: pd.DataFrame
+            Original dataset.
+
+        """
+        # If columns were only transformed, return og names
+        if array.shape[1] == len(self._include):
+            return self._include
+
+        # If columns were added or removed
+        temp_cols = []
+        for i, col in enumerate(array.T, start=2):
+            mask = df.apply(lambda c: np.array_equal(c, col, equal_nan=True))
+            if any(mask) and mask[mask].index.values[0] not in temp_cols:
+                temp_cols.append(mask[mask].index.values[0])
+            else:
+                # If the column is new, use a default name
+                counter = 1
+                while True:
+                    n = f"feature {i + counter + df.shape[1] - len(self._include)}"
+                    if (n not in df or n in self._include) and n not in temp_cols:
+                        temp_cols.append(n)
+                        break
+                    else:
+                        counter += 1
+
+        return temp_cols
+
+    def _reorder_cols(self, df, original_df):
+        """Reorder the columns to their original order.
+
+        This function is necessary in case only a subset of the
+        columns in the dataset was used. In that case, we need
+        to reorder them to their original order.
+
+        Parameters
+        ----------
+        df: pd.DataFrame
+            Dataset to reorder.
+
+        original_df: pd.DataFrame
+            Original dataframe (states the order).
+
+        """
+        # Check if columns returned by the transformer are already in the dataset
+        for col in df.columns:
+            if col in original_df.columns and col not in self._include:
+                raise RuntimeError(
+                    f"Column '{col}' returned by the transformer "
+                    "already exists in the original dataset."
+                )
+
+        temp_df = pd.DataFrame(index=df.index)
+        for col in dict.fromkeys(list(original_df.columns) + list(df.columns)):
+            if col in df.columns:
+                temp_df[col] = df[col]
+            elif col not in self._include:
+                if len(df) != len(original_df):
+                    raise ValueError(
+                        f"Length of values ({len(df)}) does not match length of "
+                        f"index ({len(original_df)}). This usually happens when "
+                        "transformations that drop rows aren't applied on all "
+                        "the columns."
+                    )
+
+                # Take values to adapt to new index
+                temp_df[col] = original_df[col].values
+
+            # Derivative cols are added after original (e.g. for one-hot encoding)
+            for col_derivative in df.columns:
+                if str(col_derivative).startswith(f"{col}_"):
+                    temp_df[col_derivative] = df[col_derivative]
+
+        return temp_df
+
+    def _prepare_df(self, X, out):
+        """Convert to df and set correct column names and order."""
+        # Convert to pandas and assign proper column names
+        if not isinstance(out, pd.DataFrame):
+            out = to_df(out, index=X.index, columns=self._name_cols(out, X))
+
+        # Reorder columns if only a subset was used
+        if len(self._include) != X.shape[1]:
+            return self._reorder_cols(out, X)
+        else:
+            return out
+
     def fit(self, X=None, y=None, **fit_params):
         # Save the incoming feature names (if pandas objects)
         if hasattr(X, "columns") and hasattr(y, "name"):
@@ -84,104 +183,6 @@ class TransfomerWrapper(BaseEstimator):
         return self
 
     def transform(self, X=None, y=None):
-        def name_cols(array, df):
-            """Get the column names after a transformation.
-
-            If the number of columns is unchanged, the original
-            column names are returned. Else, give the column a
-            default name if the column values changed.
-
-            Parameters
-            ----------
-            array: np.ndarray
-                Transformed dataset.
-
-            df: pd.DataFrame
-                Original dataset.
-
-            """
-            # If columns were only transformed, return og names
-            if array.shape[1] == len(self._include):
-                return self._include
-
-            # If columns were added or removed
-            temp_cols = []
-            for i, col in enumerate(array.T, start=2):
-                mask = df.apply(lambda c: np.array_equal(c, col, equal_nan=True))
-                if any(mask) and mask[mask].index.values[0] not in temp_cols:
-                    temp_cols.append(mask[mask].index.values[0])
-                else:
-                    # If the column is new, use a default name
-                    counter = 1
-                    while True:
-                        n = f"feature {i + counter + df.shape[1] - len(self._include)}"
-                        if (n not in df or n in self._include) and n not in temp_cols:
-                            temp_cols.append(n)
-                            break
-                        else:
-                            counter += 1
-
-            return temp_cols
-
-        def reorder_cols(df, original_df):
-            """Reorder the columns to their original order.
-
-            This function is necessary in case only a subset of the
-            columns in the dataset was used. In that case, we need
-            to reorder them to their original order.
-
-            Parameters
-            ----------
-            df: pd.DataFrame
-                Dataset to reorder.
-
-            original_df: pd.DataFrame
-                Original dataframe (states the order).
-
-            """
-            # Check if columns returned by the transformer are already in the dataset
-            for col in df.columns:
-                if col in original_df.columns and col not in self._include:
-                    raise RuntimeError(
-                        f"Column '{col}' returned by the transformer "
-                        "already exists in the original dataset."
-                    )
-
-            temp_df = pd.DataFrame(index=df.index)
-            for col in dict.fromkeys(list(original_df.columns) + list(df.columns)):
-                if col in df.columns:
-                    temp_df[col] = df[col]
-                elif col not in self._include:
-                    if len(df) != len(original_df):
-                        raise ValueError(
-                            f"Length of values ({len(df)}) does not match length of "
-                            f"index ({len(original_df)}). This usually happens when "
-                            "transformations that drop rows aren't applied on all "
-                            "the columns."
-                        )
-
-                    # Take values to adapt to new index
-                    temp_df[col] = original_df[col].values
-
-                # Derivative cols are added after original (e.g. for one-hot encoding)
-                for col_derivative in df.columns:
-                    if str(col_derivative).startswith(f"{col}_"):
-                        temp_df[col_derivative] = df[col_derivative]
-
-            return temp_df
-
-        def prepare_df(out):
-            """Convert to df and set correct column names and order."""
-            # Convert to pandas and assign proper column names
-            if not isinstance(out, pd.DataFrame):
-                out = to_df(out, index=X.index, columns=name_cols(out, X))
-
-            # Reorder columns if only a subset was used
-            if len(self._include) != X.shape[1]:
-                return reorder_cols(out, X)
-            else:
-                return out
-
         X = to_df(X, index=getattr(y, "index", None))
         y = to_series(y, index=getattr(X, "index", None))
 
@@ -208,11 +209,11 @@ class TransfomerWrapper(BaseEstimator):
 
         # Transform can return X, y or both
         if isinstance(output, tuple):
-            new_X = prepare_df(output[0])
+            new_X = self._prepare_df(X, output[0])
             new_y = to_series(output[1], index=new_X.index, name=y.name)
         else:
             if len(output.shape) > 1:
-                new_X = prepare_df(output)
+                new_X = self._prepare_df(X, output)
                 new_y = y if y is None else y.set_axis(new_X.index)
             else:
                 new_y = to_series(output, index=y.index, name=y.name)
@@ -222,6 +223,14 @@ class TransfomerWrapper(BaseEstimator):
 
     def fit_transform(self, *args, **kwargs):
         return self.fit(*args, **kwargs).transform(*args, **kwargs)
+
+
+class TransformerWrapperWithInverse(TransformerWrapper):
+    def inverse_transform(self, y):
+        y = to_series(y, index=getattr(y, "index", None))
+        output = self.transformer.inverse_transform(y)
+        new_y = to_series(output, index=y.index, name=y.name)
+        return variable_return(None, new_y)
 
 
 class ExtractDateTimeFeatures(BaseEstimator):
@@ -379,3 +388,40 @@ class FixImbalancer(BaseEstimator):
 
     def transform(self, X, y):
         return self.estimator.fit_resample(X, y)
+
+
+class TargetTransformer(BaseEstimator):
+    """Wrapper for a transformer to be used on target instead."""
+
+    def __init__(self, estimator, enforce_2d: bool = True):
+        self.estimator = estimator
+        self._train_only = False
+        self.enforce_2d = enforce_2d
+
+    def _enforce_2d_on_y(self, y: pd.Series):
+        index = y.index
+        name = y.name
+        if self.enforce_2d:
+            if not isinstance(y, pd.DataFrame):
+                y = to_df(y, index=index, columns=[name])
+        return y, index, name
+
+    def fit(self, y: pd.Series, **fit_params):
+        y, _, _ = self._enforce_2d_on_y(y)
+        return self.estimator.fit(y, **fit_params)
+
+    def transform(self, y: pd.Series):
+        y, index, name = self._enforce_2d_on_y(y)
+        output = self.estimator.transform(y)
+        return to_series(output, index=index, name=name)
+
+    @if_delegate_has_method("estimator")
+    def inverse_transform(self, y: pd.Series):
+        y, index, name = self._enforce_2d_on_y(y)
+        output = self.estimator.inverse_transform(y)
+        return to_series(output, index=index, name=name)
+
+    def fit_transform(self, y: pd.Series):
+        y, index, name = self._enforce_2d_on_y(y)
+        output = self.estimator.fit_transform(y)
+        return to_series(output, index=index, name=name)

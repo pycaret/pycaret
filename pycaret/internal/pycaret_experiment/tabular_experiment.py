@@ -76,9 +76,6 @@ class _TabularExperiment(_PyCaretExperiment):
                 "_all_metrics",
                 "pipeline",
                 "memory",
-                "imputation_regressor",
-                "imputation_classifier",
-                "iterative_imputation_iters_param",
             }
         )
         return
@@ -414,7 +411,7 @@ class _TabularExperiment(_PyCaretExperiment):
 
         # multiclass plot exceptions:
         multiclass_not_available = ["calibration", "threshold", "manifold", "rfe"]
-        if self._is_multiclass():
+        if self._is_multiclass:
             if plot in multiclass_not_available:
                 raise ValueError(
                     "Plot Not Available for multiclass problems. Please see docstring for list of available Plots."

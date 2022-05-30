@@ -2,6 +2,7 @@ import datetime
 import gc
 import logging
 import time
+from functools import cached_property
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np  # type: ignore
@@ -48,7 +49,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         self._ml_usecase = MLUsecase.CLASSIFICATION
         self.exp_name_log = "clf-default-name"
         self.variable_keys = self.variable_keys.union(
-            {"fix_imbalance_param", "fix_imbalance_method_param"}
+            {"fix_imbalance", "_is_multiclass"}
         )
         self._available_plots = {
             "pipeline": "Pipeline Plot",
@@ -94,6 +95,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             self.variables, raise_errors=raise_errors
         )
 
+    @cached_property
     def _is_multiclass(self) -> bool:
         """
         Method to check if the problem is multiclass.
@@ -2449,7 +2451,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         self.logger.info("Checking exceptions")
 
         # exception 1 for multi-class
-        if self._is_multiclass():
+        if self._is_multiclass:
             raise TypeError(
                 "optimize_threshold() cannot be used when target is multi-class."
             )

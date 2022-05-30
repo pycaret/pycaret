@@ -98,11 +98,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         self.variable_keys = self.variable_keys.difference(
             {
                 "target_param",
-                "iterative_imputation_iters_param",
-                "imputation_regressor",
-                "imputation_classifier",
                 "fold_shuffle_param",
-                "stratify_param",
                 "fold_groups_param",
             }
         )
@@ -1568,7 +1564,6 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         # Needed for compatibility with Regression and Classification.
         # Not used in Time Series
         self.fold_groups_param = None
-        self.fold_groups_param_full = None
         self.transform_target_param = None
 
         self.ignore_features = ignore_features

@@ -77,11 +77,8 @@ class _SupervisedExperiment(_TabularExperiment):
                 "y_test",
                 "target_param",
                 "fold_shuffle_param",
-                "stratify_param",
                 "fold_generator",
-                "fold_param",
                 "fold_groups_param",
-                "fold_groups_param_full",
             }
         )
 
@@ -464,7 +461,7 @@ class _SupervisedExperiment(_TabularExperiment):
             )
 
         # checking optimize parameter for multiclass
-        if self._is_multiclass():
+        if self._is_multiclass:
             if not sort.is_multiclass:
                 raise TypeError(
                     f"{sort} metric not supported for multiclass problems. See docstring for list of other optimization parameters."
@@ -1350,17 +1347,10 @@ class _SupervisedExperiment(_TabularExperiment):
 
         display.update_monitor(2, full_name)
 
-        if self.transform_target_param and not isinstance(
-            model, TransformedTargetRegressor
-        ):
-            model = PowerTransformedTargetRegressor(
-                regressor=model,
-                power_transformer_method=self.transform_target_method_param,
-            )
         if (
             probability_threshold
             and self._ml_usecase == MLUsecase.CLASSIFICATION
-            and not self._is_multiclass()
+            and not self._is_multiclass
         ):
             if not isinstance(model, CustomProbabilityThresholdClassifier):
                 model = CustomProbabilityThresholdClassifier(
@@ -2042,7 +2032,7 @@ class _SupervisedExperiment(_TabularExperiment):
                 )
 
             # checking optimize parameter for multiclass
-            if self._is_multiclass():
+            if self._is_multiclass:
                 if not optimize.is_multiclass:
                     raise TypeError(
                         "Optimization metric not supported for multiclass problems. See docstring for list of other optimization parameters."
@@ -2849,7 +2839,7 @@ class _SupervisedExperiment(_TabularExperiment):
             )
 
         # checking optimize parameter for multiclass
-        if self._is_multiclass():
+        if self._is_multiclass:
             if not optimize.is_multiclass:
                 raise TypeError(
                     f"Optimization metric not supported for multiclass problems. See docstring for list of other optimization parameters."
@@ -3226,7 +3216,7 @@ class _SupervisedExperiment(_TabularExperiment):
             )
 
         # checking optimize parameter for multiclass
-        if self._is_multiclass():
+        if self._is_multiclass:
             if not optimize.is_multiclass:
                 raise TypeError(
                     f"Optimization metric not supported for multiclass problems. See docstring for list of other optimization parameters."
@@ -3597,7 +3587,7 @@ class _SupervisedExperiment(_TabularExperiment):
             )
 
         # checking optimize parameter for multiclass
-        if self._is_multiclass():
+        if self._is_multiclass:
             if not optimize.is_multiclass:
                 raise TypeError(
                     f"Optimization metric not supported for multiclass problems. See docstring for list of other optimization parameters."
@@ -5141,7 +5131,7 @@ class _SupervisedExperiment(_TabularExperiment):
             )
 
         # checking optimize parameter for multiclass
-        if self._is_multiclass():
+        if self._is_multiclass:
             if not optimize.is_multiclass:
                 raise TypeError(
                     f"Optimization metric not supported for multiclass problems. See docstring for list of other optimization parameters."

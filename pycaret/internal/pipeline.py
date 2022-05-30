@@ -56,6 +56,15 @@ def _transform_one(transformer, X=None, y=None):
     return X, y
 
 
+def _inverse_transform_one(transformer, y=None):
+    """Inverse transform the data using one transformer."""
+    if not hasattr(transformer, "inverse_transform"):
+        return y
+    output = transformer.inverse_transform(y)
+
+    return output
+
+
 def _fit_transform_one(transformer, X=None, y=None, message=None, **fit_params):
     """Fit and transform the data using one transformer."""
     _fit_one(transformer, X, y, message, **fit_params)
@@ -172,7 +181,11 @@ class Pipeline(imblearn.pipeline.Pipeline):
         for _, name, transformer in self._iter(with_final=False):
             X, _ = _transform_one(transformer, X)
 
-        return self.steps[-1][-1].predict(X, **predict_params)
+        y = self.steps[-1][-1].predict(X, **predict_params)
+
+        for _, name, transformer in self._iter(with_final=False):
+            y = _inverse_transform_one(transformer, y)
+        return y
 
     @if_delegate_has_method(delegate="_final_estimator")
     def predict_proba(self, X):

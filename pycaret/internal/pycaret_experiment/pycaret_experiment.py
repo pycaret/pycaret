@@ -45,10 +45,9 @@ class _PyCaretExperiment:
 
     @property
     def variables(self) -> dict:
-        return {
-            k: (vars(self)[k] if k in vars(self) else None) for k in self.variable_keys
-        }
+        return {k: getattr(self, k, None) for k in self.variable_keys}
 
+    @property
     def _is_multiclass(self) -> bool:
         """
         Method to check if the problem is multiclass.

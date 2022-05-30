@@ -68,7 +68,7 @@ def setup(
     feature_selection_estimator: Union[str, Any] = "lightgbm",
     n_features_to_select: int = 10,
     transform_target: bool = False,
-    transform_target_method: str = "box-cox",
+    transform_target_method: str = "yeo-johnson",
     custom_pipeline: Optional[Any] = None,
     data_split_shuffle: bool = True,
     data_split_stratify: Union[bool, List[str]] = False,
@@ -376,11 +376,10 @@ def setup(
         from feature transformations.
 
 
-    transform_target_method: str, default = 'box-cox'
-        'Box-cox' and 'yeo-johnson' methods are supported. Box-Cox requires input data to
-        be strictly positive, while Yeo-Johnson supports both positive or negative data.
-        When transform_target_method is 'box-cox' and target variable contains negative
-        values, method is internally forced to 'yeo-johnson' to avoid exceptions.
+    transform_target_method: str, default = 'yeo-johnson'
+        Defines the method for transformation. By default, the transformation method is
+        set to 'yeo-johnson'. The other available option for transformation is 'quantile'.
+        Ignored when ``transform_target`` is not True.
 
 
     custom_pipeline: list of (str, transformer), dict or Pipeline, default = None
