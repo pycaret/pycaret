@@ -524,7 +524,9 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         #### Data must not have missing indices ----
         if isinstance(self.data.index, pd.PeriodIndex):
-            expected_idx = pd.period_range(min(self.data.index), max(self.data.index))
+            expected_idx = pd.period_range(
+                min(self.data.index), max(self.data.index), freq=self.data.index.freq
+            )
             if len(self.data.index) != len(expected_idx):
                 missing_index = [
                     index for index in expected_idx if index not in self.data.index
