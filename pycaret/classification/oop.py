@@ -157,7 +157,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         n_features_to_select: int = 10,
         custom_pipeline: Optional[Any] = None,
         data_split_shuffle: bool = True,
-        data_split_stratify: Union[bool, List[str]] = False,
+        data_split_stratify: Union[bool, List[str]] = True,
         fold_strategy: Union[str, Any] = "stratifiedkfold",
         fold: int = 10,
         fold_shuffle: bool = False,
@@ -2656,7 +2656,6 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         groups: Optional[Union[str, Any]] = None,
         model_only: bool = True,
         experiment_custom_tags: Optional[Dict[str, Any]] = None,
-        return_train_score: bool = False,
     ) -> Any:
 
         """
@@ -2694,13 +2693,6 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             transformations in Pipeline are ignored.
 
 
-        return_train_score: bool, default = False
-            If False, returns the CV Validation scores only.
-            If True, returns the CV training scores along with the CV validation scores.
-            This is useful when the user wants to do bias-variance tradeoff. A high CV
-            training score with a low corresponding CV validation score indicates overfitting.
-
-
         Returns:
             Trained Model
 
@@ -2712,7 +2704,6 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             groups=groups,
             model_only=model_only,
             experiment_custom_tags=experiment_custom_tags,
-            return_train_score=return_train_score,
         )
 
     def deploy_model(

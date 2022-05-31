@@ -868,7 +868,7 @@ class _SupervisedExperiment(_TabularExperiment):
                         runtime=row["runtime"],
                         model_fit_time=row["TT (Sec)"],
                         pipeline=self.pipeline,
-                        log_plots=self.log_plots_param if full_logging else False,
+                        log_plots=self.log_plots_param if full_logging else [],
                         log_holdout=full_logging,
                         URI=URI,
                         display=display,
@@ -4484,7 +4484,6 @@ class _SupervisedExperiment(_TabularExperiment):
         groups: Optional[Union[str, Any]] = None,
         model_only: bool = True,
         experiment_custom_tags: Optional[Dict[str, Any]] = None,
-        return_train_score: bool = False,
     ) -> Any:  # added in pycaret==2.2.0
 
         """
@@ -4520,11 +4519,6 @@ class _SupervisedExperiment(_TabularExperiment):
             When set to True, only trained model object is saved and all the
             transformations are ignored.
 
-        return_train_score: bool, default = False
-            If False, returns the CV Validation scores only.
-            If True, returns the CV training scores along with the CV validation scores.
-            This is useful when the user wants to do bias-variance tradeoff. A high CV
-            training score with a low corresponding CV validation score indicates overfitting.
 
         Returns
         -------
@@ -4560,16 +4554,9 @@ class _SupervisedExperiment(_TabularExperiment):
             verbose=False,
             html_param=self.html_param,
         )
+        return_train_score = False
 
         np.random.seed(self.seed)
-
-        data_X = self.X
-
-        # Storing X_train and y_train in data_X and data_y parameter
-        if not self._ml_usecase == MLUsecase.TIME_SERIES:
-            data_y = self.y_transformed
-        else:
-            data_y = self.y
 
         self.logger.info(f"Finalizing {estimator}")
         # display.clear_output()
@@ -4577,12 +4564,13 @@ class _SupervisedExperiment(_TabularExperiment):
             estimator=estimator,
             verbose=False,
             system=False,
-            X_train_data=data_X,
-            y_train_data=data_y,
+            X_train_data=self.X,
+            y_train_data=self.y,
             fit_kwargs=fit_kwargs,
             groups=groups,
             add_to_model_list=False,
             return_train_score=return_train_score,
+            cross_validation=False,
         )
         model_results = self.pull(pop=True)
 
@@ -4612,11 +4600,6 @@ class _SupervisedExperiment(_TabularExperiment):
                 experiment_custom_tags=experiment_custom_tags,
                 display=display,
             )
-
-        model_results = self._highlight_and_round_model_results(
-            model_results, return_train_score, round
-        )
-        display.display(model_results)
 
         self.logger.info(f"master_model_container: {len(self.master_model_container)}")
         self.logger.info(f"display_container: {len(self.display_container)}")
@@ -5051,8 +5034,9 @@ class _SupervisedExperiment(_TabularExperiment):
         if self._ml_usecase == MLUsecase.CLASSIFICATION:
             metric_dict["Selection Rate"] = selection_rate
 
-        y_pred = estimator.predict(self.X_test_transformed)
-        y_true = np.array(self.y_test_transformed)
+        y_pred = self.predict_model(estimator)["Label"]
+        y_true = self.y_test
+
         try:
             multi_metric = MetricFrame(
                 metrics=metric_dict,

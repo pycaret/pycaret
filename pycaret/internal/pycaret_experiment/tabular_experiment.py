@@ -171,12 +171,13 @@ class _TabularExperiment(_PyCaretExperiment):
         model_fit_time: float,
         pipeline,
         log_holdout: bool = True,
-        log_plots: bool = False,
+        log_plots: Optional[List[str]] = None,
         tune_cv_results=None,
         URI=None,
         experiment_custom_tags=None,
         display: Optional[CommonDisplay] = None,
     ):
+        log_plots = log_plots or []
         try:
             self.logging_param.log_model(
                 experiment=self,

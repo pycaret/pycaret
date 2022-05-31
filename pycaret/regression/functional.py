@@ -1823,7 +1823,6 @@ def finalize_model(
     groups: Optional[Union[str, Any]] = None,
     model_only: bool = True,
     experiment_custom_tags: Optional[Dict[str, Any]] = None,
-    return_train_score: bool = False,
 ) -> Any:
 
     """
@@ -1864,12 +1863,6 @@ def finalize_model(
         Dictionary of tag_name: String -> value: (String, but will be string-ified if
         not) passed to the mlflow.set_tags to add new custom tags for the experiment.
 
-    return_train_score: bool, default = False
-        If False, returns the CV Validation scores only.
-        If True, returns the CV training scores along with the CV validation scores.
-        This is useful when the user wants to do bias-variance tradeoff. A high CV
-        training score with a low corresponding CV validation score indicates overfitting.
-
 
     Returns:
         Trained Model
@@ -1883,7 +1876,6 @@ def finalize_model(
         groups=groups,
         model_only=model_only,
         experiment_custom_tags=experiment_custom_tags,
-        return_train_score=return_train_score,
     )
 
 

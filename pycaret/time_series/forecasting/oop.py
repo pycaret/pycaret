@@ -122,6 +122,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                 "y_test_transformed",
                 "X_test_transformed",
                 "model_engines",
+                "fold_param",
             }
         )
         self._available_plots = {

@@ -59,7 +59,7 @@ def test_input_is_array():
 
 def test_input_is_sparse():
     """Assert that the input can be a scipy sparse matrix."""
-    pc = pycaret.classification.setup(csr_matrix((3, 4)), target=[1, 0, 1])
+    pc = pycaret.classification.setup(csr_matrix((300, 4)), target=[1, 0, 1] * 100)
     assert isinstance(pc.dataset, pd.DataFrame)
     assert pc.target_param == "target"
 

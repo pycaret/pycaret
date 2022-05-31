@@ -170,9 +170,13 @@ class ClassificationMetricContainer(MetricContainer):
 
 
 def _get_pos_label_arg(globals_dict: dict):
-    le = get_label_encoder(globals_dict["pipeline"])
-    if le:
-        return {"pos_label": {i: str(v) for i, v in enumerate(le.classes_)}[1]}
+    if globals_dict.get("pipeline"):
+        le = get_label_encoder(globals_dict["pipeline"])
+        if le:
+            return {"pos_label": le.classes_[-1], "labels": le.classes_}
+    elif globals_dict.get("y") is not None:
+        known_classes = np.unique(globals_dict["y"].values)
+        return {"pos_label": known_classes[-1], "labels": known_classes}
     return {}
 
 
