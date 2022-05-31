@@ -75,6 +75,9 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             self.variables, raise_errors=raise_errors
         )
 
+    def _get_default_plots_to_log(self) -> List[str]:
+        return ["residuals", "error", "feature"]
+
     def setup(
         self,
         data: DATAFRAME_LIKE,
@@ -608,7 +611,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
 
         self.log_plots_param = log_plots
         if self.log_plots_param is True:
-            self.log_plots_param = ["residuals", "error", "feature"]
+            self.log_plots_param = self._get_default_plots_to_log()
         elif isinstance(self.log_plots_param, list):
             for i in self.log_plots_param:
                 if i not in self._available_plots:

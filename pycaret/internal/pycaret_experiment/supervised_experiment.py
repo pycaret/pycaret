@@ -4570,7 +4570,8 @@ class _SupervisedExperiment(_TabularExperiment):
             groups=groups,
             add_to_model_list=False,
             return_train_score=return_train_score,
-            cross_validation=False,
+            # TODO fix this, TS should work without CV
+            cross_validation=self._ml_usecase != MLUsecase.TIME_SERIES,
         )
         model_results = self.pull(pop=True)
 

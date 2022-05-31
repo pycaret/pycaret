@@ -1561,6 +1561,8 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         self.fold = fold
 
         self.log_plots_param = log_plots
+        if self.log_plots_param is True:
+            self.log_plots_param = self._get_default_plots_to_log()
 
         # Needed for compatibility with Regression and Classification.
         # Not used in Time Series
