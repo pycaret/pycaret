@@ -1,17 +1,16 @@
 import logging
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, List, Optional, Union
 
 import pandas as pd
 from joblib.memory import Memory
 
 from pycaret.classification.oop import ClassificationExperiment
+from pycaret.internal.parallel.parallel_backend import ParallelBackend
 from pycaret.internal.utils import (
     DATAFRAME_LIKE,
     TARGET_LIKE,
     check_if_global_is_not_none,
 )
-
-# from pycaret.parallel import ParallelBackend # unused
 from pycaret.loggers.base_logger import BaseLogger
 
 _EXPERIMENT_CLASS = ClassificationExperiment
@@ -25,7 +24,8 @@ _CURRENT_EXPERIMENT_DECORATOR_DICT = {
 
 
 def setup(
-    data: DATAFRAME_LIKE,
+    data: Optional[DATAFRAME_LIKE] = None,
+    data_func: Optional[Callable[[], DATAFRAME_LIKE]] = None,
     target: TARGET_LIKE = -1,
     train_size: float = 0.7,
     test_data: Optional[DATAFRAME_LIKE] = None,
@@ -106,11 +106,19 @@ def setup(
     >>> exp_name = setup(data = juice,  target = 'Purchase')
 
 
-    data: dataframe-like
+    data: dataframe-like = None
         Data set with shape (n_samples, n_features), where n_samples is the
         number of samples and n_features is the number of features. If data
         is not a pandas dataframe, it's converted to one using default column
         names.
+
+
+    data_func: Callable[[], DATAFRAME_LIKE] = None
+        The function that generate ``data`` (the dataframe-like input). This
+        is useful when the dataset is large, and you need parallel operations
+        such as ``compare_models``. It can avoid boradcasting large dataset
+        from driver to workers. Notice one and only one of ``data`` and
+        ``data_func`` must be set.
 
 
     target: int, str or sequence, default = -1
@@ -529,6 +537,7 @@ def setup(
     set_current_experiment(exp)
     return exp.setup(
         data=data,
+        data_func=data_func,
         target=target,
         train_size=train_size,
         test_data=test_data,
@@ -614,6 +623,7 @@ def compare_models(
     experiment_custom_tags: Optional[Dict[str, Any]] = None,
     probability_threshold: Optional[float] = None,
     verbose: bool = True,
+    parallel: Optional[ParallelBackend] = None,
 ) -> Union[Any, List[Any]]:
 
     """
@@ -711,6 +721,12 @@ def compare_models(
         Score grid is not printed when verbose is set to False.
 
 
+    parallel: pycaret.internal.parallel.parallel_backend.ParallelBackend, default = None
+        A ParallelBackend instance. For example if you have a SparkSession ``session``,
+        you can use ``FugueBackend(session)`` to make this function running using
+        Spark. For more details, see
+        :class:`~pycaret.parallel.fugue_backend.FugueBackend`
+
     Returns:
         Trained model or list of trained models, depending on the ``n_select`` param.
 
@@ -741,6 +757,7 @@ def compare_models(
         experiment_custom_tags=experiment_custom_tags,
         probability_threshold=probability_threshold,
         verbose=verbose,
+        parallel=parallel,
     )
 
 
