@@ -906,7 +906,6 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
         groups: Optional[Union[str, Any]] = None,
         experiment_custom_tags: Optional[Dict[str, Any]] = None,
         verbose: bool = True,
-        display: Optional[CommonDisplay] = None,
         parallel: Optional[ParallelBackend] = None,
     ):
 
@@ -995,10 +994,6 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             Score grid is not printed when verbose is set to False.
 
 
-        display: pycaret.internal.display.CommonDisplay, default = None
-            Custom display object
-
-
         parallel: pycaret.internal.parallel.parallel_backend.ParallelBackend, default = None
             A ParallelBackend instance. For example if you have a SparkSession ``session``,
             you can use ``FugueBackend(session)`` to make this function running using
@@ -1038,7 +1033,6 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             groups=groups,
             experiment_custom_tags=experiment_custom_tags,
             verbose=verbose,
-            display=display,
             parallel=parallel,
             caller_params=caller_params,
         )

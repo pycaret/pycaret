@@ -1691,7 +1691,6 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         experiment_custom_tags: Optional[Dict[str, Any]] = None,
         engines: Optional[Dict[str, str]] = None,
         verbose: bool = True,
-        display: Optional[CommonDisplay] = None,
         parallel: Optional[ParallelBackend] = None,
     ):
 
@@ -1779,10 +1778,6 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             Score grid is not printed when verbose is set to False.
 
 
-        display: pycaret.internal.Display.Display, default = None
-            Custom display object
-
-
         parallel: pycaret.internal.parallel.parallel_backend.ParallelBackend, default = None
             A ParallelBackend instance. For example if you have a SparkSession ``session``,
             you can use ``FugueBackend(session)`` to make this function running using
@@ -1827,7 +1822,6 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                 fit_kwargs=fit_kwargs,
                 experiment_custom_tags=experiment_custom_tags,
                 verbose=verbose,
-                display=display,
                 parallel=parallel,
                 caller_params=caller_params,
             )

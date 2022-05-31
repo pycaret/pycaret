@@ -8,7 +8,7 @@ import pandas as pd
 from fugue import transform
 
 from pycaret.internal.display import CommonDisplay
-from pycaret.internal.parallel.parallel_backend import NoDisplay, ParallelBackend
+from pycaret.internal.parallel.parallel_backend import ParallelBackend
 from pycaret.internal.tabular import _get_context_lock
 
 _LOCK = RLock()
@@ -174,7 +174,6 @@ class FugueBackend(ParallelBackend):
         instance = self.remote_setup()
         params = dict(self._params)
         params.pop("include")
-        params["display"] = NoDisplay()
         params["verbose"] = False
         results: List[List[Any]] = []
 

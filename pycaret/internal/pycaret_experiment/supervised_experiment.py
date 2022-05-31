@@ -21,7 +21,7 @@ import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
 import pycaret.internal.persistence
 import pycaret.internal.preprocess
-from pycaret.internal.display import CommonDisplay
+from pycaret.internal.display import CommonDisplay, DummyDisplay
 from pycaret.internal.distributions import (
     CategoricalDistribution,
     Distribution,
@@ -273,7 +273,6 @@ class _SupervisedExperiment(_TabularExperiment):
         experiment_custom_tags: Optional[Dict[str, Any]] = None,
         probability_threshold: Optional[float] = None,
         verbose: bool = True,
-        display: Optional[CommonDisplay] = None,
         parallel: Optional[ParallelBackend] = None,
         caller_params: Optional[dict] = None,
     ) -> List[Any]:
@@ -371,9 +370,6 @@ class _SupervisedExperiment(_TabularExperiment):
 
         verbose: bool, default = True
             Score grid is not printed when verbose is set to False.
-
-        display: pycaret.internal.Display.CommonDisplay, default = None
-            Custom display object
 
 
         parallel: pycaret.internal.parallel.parallel_backend.ParallelBackend, default = None
@@ -560,11 +556,15 @@ class _SupervisedExperiment(_TabularExperiment):
                 "Compiling Library",
             ],
         ]
-        display = CommonDisplay(
-            verbose=verbose,
-            html_param=self.html_param,
-            progress_args=progress_args,
-            monitor_rows=monitor_rows,
+        display = (
+            DummyDisplay()
+            if self._remote
+            else CommonDisplay(
+                verbose=verbose,
+                html_param=self.html_param,
+                progress_args=progress_args,
+                monitor_rows=monitor_rows,
+            )
         )
         if display.can_update_text:
             display.display(master_display, final_display=False)

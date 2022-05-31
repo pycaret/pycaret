@@ -40,8 +40,10 @@ class _PyCaretExperiment:
         self._setup_ran = False
         self._setup_params = None
 
+        self._remote = False
+
     def _pack_for_remote(self) -> dict:
-        return {"_setup_params": self._setup_params}
+        return {"_setup_params": self._setup_params, "_remote": True}
 
     def _unpack_at_remote(self, data: dict) -> None:
         for k, v in data.items():

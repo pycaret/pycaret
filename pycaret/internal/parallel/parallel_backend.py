@@ -1,14 +1,5 @@
 from typing import Any, Dict, List, Optional, Type, Union
 
-from pycaret.internal.display import CommonDisplay
-
-
-class NoDisplay(CommonDisplay):
-    """The Display class to completely turn off all displays"""
-
-    def can_display(self, override):
-        return False
-
 
 class ParallelBackend:
     """The parallel backend base class for different parallel implementations.
@@ -34,6 +25,7 @@ class ParallelBackend:
         params = dict(self._instance_pack["_setup_params"])
         params["verbose"] = False
         params["html"] = False
+        instance._remote = True
         instance.setup(**params)
         instance._unpack_at_remote(self._instance_pack)
         return instance

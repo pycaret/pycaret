@@ -5,7 +5,6 @@ import pandas as pd
 from joblib.memory import Memory
 
 from pycaret.classification.oop import ClassificationExperiment
-from pycaret.internal.display import CommonDisplay
 from pycaret.internal.parallel.parallel_backend import ParallelBackend
 from pycaret.internal.utils import (
     DATAFRAME_LIKE,
@@ -625,7 +624,6 @@ def compare_models(
     experiment_custom_tags: Optional[Dict[str, Any]] = None,
     probability_threshold: Optional[float] = None,
     verbose: bool = True,
-    display: Optional[CommonDisplay] = None,
     parallel: Optional[ParallelBackend] = None,
 ) -> Union[Any, List[Any]]:
 
@@ -724,10 +722,6 @@ def compare_models(
         Score grid is not printed when verbose is set to False.
 
 
-    display: pycaret.internal.Display.CommonDisplay, default = None
-        Custom display object
-
-
     parallel: pycaret.internal.parallel.parallel_backend.ParallelBackend, default = None
         A ParallelBackend instance. For example if you have a SparkSession ``session``,
         you can use ``FugueBackend(session)`` to make this function running using
@@ -764,7 +758,6 @@ def compare_models(
         experiment_custom_tags=experiment_custom_tags,
         probability_threshold=probability_threshold,
         verbose=verbose,
-        display=display,
         parallel=parallel,
     )
 

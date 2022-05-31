@@ -8,7 +8,6 @@ from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple, Un
 import numpy as np
 import pandas as pd
 
-from pycaret.internal.display import CommonDisplay
 from pycaret.internal.parallel.parallel_backend import ParallelBackend
 from pycaret.internal.utils import check_if_global_is_not_none
 from pycaret.time_series.forecasting.oop import TSForecastingExperiment
@@ -418,7 +417,6 @@ def compare_models(
     fit_kwargs: Optional[dict] = None,
     engines: Optional[Dict[str, str]] = None,
     verbose: bool = True,
-    display: Optional[CommonDisplay] = None,
     parallel: Optional[ParallelBackend] = None,
 ):
 
@@ -506,10 +504,6 @@ def compare_models(
         Score grid is not printed when verbose is set to False.
 
 
-    display: pycaret.internal.display.CommonDisplay, default = None
-        Custom display object
-
-
     parallel: pycaret.internal.parallel.parallel_backend.ParallelBackend, default = None
         A ParallelBackend instance. For example if you have a SparkSession ``session``,
         you can use ``FugueBackend(session)`` to make this function running using
@@ -543,7 +537,6 @@ def compare_models(
         fit_kwargs=fit_kwargs,
         engines=engines,
         verbose=verbose,
-        display=display,
         parallel=parallel,
     )
 
