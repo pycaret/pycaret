@@ -16,7 +16,6 @@ def test_drift_report():
     clf1 = pycaret.classification.setup(
         data,
         target="Class",
-        silent=True,
         html=False,
         n_jobs=1,
     )

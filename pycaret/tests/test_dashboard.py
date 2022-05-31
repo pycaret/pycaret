@@ -23,7 +23,6 @@ def test_classification_dashboard():
     # clf1 = pycaret.classification.setup(
     #   data,
     #   target="Class",
-    #   silent=True,
     #   html=False,
     #   n_jobs=1,
     # )

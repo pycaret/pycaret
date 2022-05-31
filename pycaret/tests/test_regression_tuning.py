@@ -23,7 +23,6 @@ def test_regression_tuning():
         target="medv",
         train_size=0.99,
         fold=2,
-        silent=True,
         html=False,
         session_id=123,
         n_jobs=1,

@@ -25,7 +25,6 @@ def test_classification_tuning():
         target="Purchase",
         train_size=0.7,
         fold=2,
-        silent=True,
         html=False,
         session_id=123,
         n_jobs=1,

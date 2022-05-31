@@ -598,7 +598,6 @@ def setup(
         log_plots=log_plots,
         log_profile=log_profile,
         log_data=log_data,
-        silent=silent,
         verbose=verbose,
         memory=memory,
         profile=profile,

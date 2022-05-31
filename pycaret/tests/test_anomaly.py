@@ -27,7 +27,6 @@ def test_anomaly(data):
         experiment_name=experiment_name,
         experiment_custom_tags={"tag": 1},
         log_plots=True,
-        silent=True,
         html=False,
         session_id=123,
         n_jobs=1,
