@@ -252,6 +252,24 @@ class _SupervisedExperiment(_TabularExperiment):
                 runtime,
             )
 
+    def _parallel_compare_models(
+        self,
+        parallel: Optional[ParallelBackend],
+        caller_params: Optional[dict],
+        turbo: bool,
+    ) -> List[Any]:
+        params = dict(caller_params)
+        parallel.attach(self)
+        if params.get("include", None) is None:
+            _models = self.models()
+            if turbo:
+                _models = _models[_models.Turbo]
+            params["include"] = _models.index.tolist()
+        del params["self"]
+        del params["__class__"]
+        del params["parallel"]
+        return parallel.compare_models(self, params)
+
     def compare_models(
         self,
         include: Optional[
@@ -418,18 +436,7 @@ class _SupervisedExperiment(_TabularExperiment):
         self._check_setup_ran()
 
         if parallel is not None:
-            assert caller_params is not None
-            params = dict(caller_params)
-            parallel.attach(self)
-            if params.get("include", None) is None:
-                _models = self.models()
-                if turbo:
-                    _models = _models[_models.Turbo]
-                params["include"] = _models.index.tolist()
-            del params["self"]
-            del params["__class__"]
-            del params["parallel"]
-            return parallel.compare_models(self, params)
+            return self._parallel_compare_models(parallel, caller_params, turbo=turbo)
 
         # No extra code should be added above this line
         # --------------------------------------------------------------

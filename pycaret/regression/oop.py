@@ -593,9 +593,10 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
 
         self._register_setup_params(dict(locals()))
 
-        assert (data is None and data_func is not None) or (
-            data is not None and data_func is None
-        ), "One and only one of data and data_func must be set"
+        if (data is None and data_func is None) or (
+            data is not None and data_func is not None
+        ):
+            raise ValueError("One and only one of data and data_func must be set")
 
         # No extra code above this line
         # Setup initialization ===================================== >>
