@@ -2,7 +2,7 @@ import datetime
 import gc
 import logging
 import time
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import numpy as np  # type: ignore
 import pandas as pd
@@ -22,6 +22,7 @@ from pycaret.internal.meta_estimators import (
     CustomProbabilityThresholdClassifier,
     get_estimator_from_meta_estimator,
 )
+from pycaret.internal.parallel.parallel_backend import ParallelBackend
 from pycaret.internal.pipeline import Pipeline as InternalPipeline
 from pycaret.internal.preprocess.preprocessor import Preprocessor
 from pycaret.internal.pycaret_experiment.supervised_experiment import (
@@ -105,7 +106,8 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
 
     def setup(
         self,
-        data: DATAFRAME_LIKE,
+        data: Optional[DATAFRAME_LIKE] = None,
+        data_func: Optional[Callable[[], DATAFRAME_LIKE]] = None,
         target: TARGET_LIKE = -1,
         train_size: float = 0.7,
         test_data: Optional[DATAFRAME_LIKE] = None,
@@ -189,11 +191,19 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         >>> exp_name = setup(data = juice,  target = 'Purchase')
 
 
-        data: dataframe-like
+        data: dataframe-like = None
             Data set with shape (n_samples, n_features), where n_samples is the
             number of samples and n_features is the number of features. If data
             is not a pandas dataframe, it's converted to one using default column
             names.
+
+
+        data_func: Callable[[], DATAFRAME_LIKE] = None
+            The function that generate ``data`` (the dataframe-like input). This
+            is useful when the dataset is large, and you need parallel operations
+            such as ``compare_models``. It can avoid boradcasting large dataset
+            from driver to workers. Notice one and only one of ``data`` and
+            ``data_func`` must be set.
 
 
         target: int, str or sequence, default = -1
@@ -583,11 +593,6 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             Ignored when ``log_experiment`` is False.
 
 
-        silent: bool, default = False
-            Controls the confirmation input of data types when ``setup`` is executed. When
-            executing in completely automated mode or on a remote kernel, this must be True.
-
-
         verbose: bool, default = True
             When set to False, Information grid is not printed.
 
@@ -613,9 +618,20 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
 
         """
 
+        self._register_setup_params(dict(locals()))
+
+        if (data is None and data_func is None) or (
+            data is not None and data_func is not None
+        ):
+            raise ValueError("One and only one of data and data_func must be set")
+
+        # No extra code above this line
         # Setup initialization ===================================== >>
 
         runtime_start = time.time()
+
+        if data_func is not None:
+            data = data_func()
 
         # Configuration
         sklearn.set_config(print_changed_only=False)
@@ -926,6 +942,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         experiment_custom_tags: Optional[Dict[str, Any]] = None,
         probability_threshold: Optional[float] = None,
         verbose: bool = True,
+        parallel: Optional[ParallelBackend] = None,
     ) -> Union[Any, List[Any]]:
 
         """
@@ -1018,6 +1035,13 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             Score grid is not printed when verbose is set to False.
 
 
+        parallel: pycaret.internal.parallel.parallel_backend.ParallelBackend, default = None
+            A ParallelBackend instance. For example if you have a SparkSession ``session``,
+            you can use ``FugueBackend(session)`` to make this function running using
+            Spark. For more details, see
+            :class:`~pycaret.parallel.fugue_backend.FugueBackend`
+
+
         Returns:
             Trained model or list of trained models, depending on the ``n_select`` param.
 
@@ -1030,6 +1054,10 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
 
         - No models are logged in ``MLFlow`` when ``cross_validation`` parameter is False.
         """
+
+        caller_params = dict(locals())
+
+        # No extra code above this line
 
         return super().compare_models(
             include=include,
@@ -1047,6 +1075,8 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             experiment_custom_tags=experiment_custom_tags,
             verbose=verbose,
             probability_threshold=probability_threshold,
+            parallel=parallel,
+            caller_params=caller_params,
         )
 
     def create_model(

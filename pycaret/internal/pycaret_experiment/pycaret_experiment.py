@@ -38,6 +38,33 @@ class _PyCaretExperiment:
         self.display_container = None
         self._fxs = defaultdict(list)
         self._setup_ran = False
+        self._setup_params = None
+
+        self._remote = False
+
+    def _pack_for_remote(self) -> dict:
+        """Serialize local member variables and send to remote. Note we should not use
+        ``__getstate__`` here because it will be hard to maintain.
+        We are using a different mechanism that is more resistant to further
+        code change. This private method is for parallel processing.
+        """
+        return {"_setup_params": self._setup_params, "_remote": True}
+
+    def _unpack_at_remote(self, data: dict) -> None:
+        """Deserialize member variables at remote to reconstruct the experiment.
+        This private method is for parallel processing.
+        """
+        for k, v in data.items():
+            setattr(self, k, v)
+
+    def _register_setup_params(self, params: dict) -> None:
+        """Register the parameters used to call ``setup`` at local machine.
+        This information will be sent to remote workers to re-setup the experiments.
+        This private method is for parallel processing.
+        """
+        self._setup_params = {
+            k: v for k, v in params.items() if k != "self" and v is not None
+        }
 
     @property
     def _gpu_n_jobs_param(self) -> int:
