@@ -35,4 +35,3 @@ def test_regression_parallel():
 
     res = pr.pull()
     assert res.shape[0] > 10
-    assert res.index[0] == "gbr"
