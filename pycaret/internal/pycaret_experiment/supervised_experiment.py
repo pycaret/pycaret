@@ -21,7 +21,7 @@ import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
 import pycaret.internal.persistence
 import pycaret.internal.preprocess
-from pycaret.internal.display import CommonDisplay
+from pycaret.internal.display import CommonDisplay, DummyDisplay
 from pycaret.internal.distributions import (
     CategoricalDistribution,
     Distribution,
@@ -39,6 +39,7 @@ from pycaret.internal.meta_estimators import (
     PowerTransformedTargetRegressor,
     get_estimator_from_meta_estimator,
 )
+from pycaret.internal.parallel.parallel_backend import ParallelBackend
 from pycaret.internal.pipeline import (
     estimator_pipeline,
     get_pipeline_estimator_label,
@@ -248,6 +249,24 @@ class _SupervisedExperiment(_TabularExperiment):
                 runtime,
             )
 
+    def _parallel_compare_models(
+        self,
+        parallel: Optional[ParallelBackend],
+        caller_params: Optional[dict],
+        turbo: bool,
+    ) -> List[Any]:
+        params = dict(caller_params)
+        parallel.attach(self)
+        if params.get("include", None) is None:
+            _models = self.models()
+            if turbo:
+                _models = _models[_models.Turbo]
+            params["include"] = _models.index.tolist()
+        del params["self"]
+        del params["__class__"]
+        del params["parallel"]
+        return parallel.compare_models(self, params)
+
     def compare_models(
         self,
         include: Optional[
@@ -269,6 +288,8 @@ class _SupervisedExperiment(_TabularExperiment):
         experiment_custom_tags: Optional[Dict[str, Any]] = None,
         probability_threshold: Optional[float] = None,
         verbose: bool = True,
+        parallel: Optional[ParallelBackend] = None,
+        caller_params: Optional[dict] = None,
     ) -> List[Any]:
 
         """
@@ -365,6 +386,25 @@ class _SupervisedExperiment(_TabularExperiment):
         verbose: bool, default = True
             Score grid is not printed when verbose is set to False.
 
+
+        parallel: pycaret.internal.parallel.parallel_backend.ParallelBackend, default = None
+            A ParallelBackend instance. For example if you have a SparkSession ``session``,
+            you can use ``FugueBackend(session)`` to make this function running using
+            Spark. For more details, see
+            :class:`~pycaret.parallel.fugue_backend.FugueBackend`
+
+
+        caller_params: dict, default = None
+            The parameters used to call this function in the subclass. There are inconsistencies
+            in this function's signature between this base class and the subclasses, so this is
+            used to prevent inconsistencies. It must be set when ``parallel`` is not None
+
+
+        extra_params: Any
+            Extra parameters used to call the same method in the derived class. These parameters
+            are mainly used when ``parallel`` is not None.
+
+
         Returns
         -------
         score_grid
@@ -391,6 +431,12 @@ class _SupervisedExperiment(_TabularExperiment):
 
         """
         self._check_setup_ran()
+
+        if parallel is not None:
+            return self._parallel_compare_models(parallel, caller_params, turbo=turbo)
+
+        # No extra code should be added above this line
+        # --------------------------------------------------------------
 
         function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
 
@@ -514,11 +560,15 @@ class _SupervisedExperiment(_TabularExperiment):
                 "Compiling Library",
             ],
         ]
-        display = CommonDisplay(
-            verbose=verbose,
-            html_param=self.html_param,
-            progress_args=progress_args,
-            monitor_rows=monitor_rows,
+        display = (
+            DummyDisplay()
+            if self._remote
+            else CommonDisplay(
+                verbose=verbose,
+                html_param=self.html_param,
+                progress_args=progress_args,
+                monitor_rows=monitor_rows,
+            )
         )
         if display.can_update_text:
             display.display(master_display, final_display=False)
