@@ -2190,7 +2190,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         model_avgs = pd.DataFrame(avgs_dict, index=["Mean", "SD"])
         model_avgs.insert(0, "cutoff", np.nan)
 
-        model_results = model_results.append(model_avgs)
+        model_results = pd.concat((model_results, model_avgs), axis=0)
         # Round the results
         model_results = model_results.round(round)
 
