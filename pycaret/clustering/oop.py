@@ -1,5 +1,4 @@
-from ctypes import Union
-from typing import Any, List, Optional, Tuple
+from typing import Any, List, Optional, Tuple, Union
 
 import numpy as np  # type: ignore
 import pandas as pd  # type ignore
