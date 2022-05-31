@@ -74,11 +74,6 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
         log_profile,
         experiment_custom_tags=None,
     ):
-        # log into experiment
-        self.experiment__.append(("Setup Config", self.display_container[0]))
-        self.experiment__.append(("Transformed data", self.X_transformed))
-        self.experiment__.append(("Transformation Pipeline", self.pipeline))
-
         if self.logging_param:
             self.logging_param.log_experiment(
                 self,

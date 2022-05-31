@@ -89,3 +89,7 @@ def test_clustering(data):
     # predict model
     kmeans_predictions = pycaret.clustering.predict_model(model=kmeans, data=data)
     assert isinstance(kmeans_predictions, pd.DataFrame)
+
+
+if __name__ == "__main__":
+    test_clustering()

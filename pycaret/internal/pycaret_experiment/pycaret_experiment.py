@@ -1,6 +1,7 @@
 from collections import defaultdict
 from typing import Any, Dict, Optional
 
+import joblib
 import pandas as pd
 
 import pycaret.internal.patches.sklearn
@@ -24,7 +25,6 @@ class _PyCaretExperiment:
         self.gpu_param = False
         self.n_jobs_param = -1
         self.logger = LOGGER
-        self.experiment__ = []
         self.master_model_container = []
 
         # Data attrs
@@ -332,10 +332,12 @@ class _PyCaretExperiment:
         }
 
         globals_to_dump = {
-            k: v for k, v in self.variables.items() if k not in globals_to_ignore
+            k: v
+            for k, v in self.variables.items()
+            if k not in globals_to_ignore
+            and not isinstance(getattr(self.__class__, k, None), property)
+            and not k.startswith("_")
         }
-
-        import joblib
 
         joblib.dump(globals_to_dump, file_name)
 
@@ -346,6 +348,8 @@ class _PyCaretExperiment:
         return
 
     def load_config(self, file_name: str) -> None:
+        self._check_setup_ran()
+
         function_params_str = ", ".join(
             [f"{k}={v}" for k, v in locals().items() if not k == "globals_d"]
         )
@@ -353,14 +357,12 @@ class _PyCaretExperiment:
         self.logger.info("Initializing load_config()")
         self.logger.info(f"load_config({function_params_str})")
 
-        import joblib
-
         loaded_globals = joblib.load(file_name)
 
         self.logger.info(f"Global variables loaded from {file_name}")
 
         for k, v in loaded_globals.items():
-            setattr(self, k, v)
+            self.set_config(k, v)
             self.logger.info(f"Global variable: {k} updated to {v}")
 
         self.logger.info(f"Global variables set to match those in {file_name}")
