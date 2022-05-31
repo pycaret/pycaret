@@ -235,14 +235,6 @@ class _SupervisedExperiment(_TabularExperiment):
                     "experiment_custom_tags parameter must be dict if not None"
                 )
 
-        # log into experiment
-        self.experiment__.append(("Setup Config", self.display_container[0]))
-        self.experiment__.append(("X_training Set", self.X_train))
-        self.experiment__.append(("y_training Set", self.y_train))
-        self.experiment__.append(("X_test Set", self.X_test))
-        self.experiment__.append(("y_test Set", self.y_test))
-        self.experiment__.append(("Transformation Pipeline", self.pipeline))
-
         if self.logging_param:
             self.logging_param.log_experiment(
                 self,
