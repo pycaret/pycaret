@@ -80,6 +80,13 @@ class _TabularExperiment(_PyCaretExperiment):
         )
         return
 
+    def _pack_for_remote(self) -> dict:
+        pack = super()._pack_for_remote()
+        for k in ["_all_metrics"]:
+            if hasattr(self, k):
+                pack[k] = getattr(self, k)
+        return pack
+
     def _get_setup_display(self, **kwargs) -> Styler:
         return pd.DataFrame().style
 

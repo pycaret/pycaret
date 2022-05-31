@@ -1,20 +1,20 @@
-import pytest
-
 import pycaret.classification as pc
 from pycaret.datasets import get_data
 
 
-@pytest.mark.skip(reason="no way of currently testing this")
+def _score_dummy(y_true, y_prob, axis=0):
+    return 0.0
+
+
 def test_classification_parallel():
     from pycaret.parallel import FugueBackend
 
     pc.setup(
-        data=lambda: get_data("juice", verbose=False, profile=False),
+        data_func=lambda: get_data("juice", verbose=False),
         target="Purchase",
         session_id=0,
         n_jobs=1,
         verbose=False,
-        silent=True,
         html=False,
     )
 
@@ -35,3 +35,14 @@ def test_classification_parallel():
 
     res = pc.pull()
     assert res.shape[0] > 10
+
+    pc.add_metric(
+        id="mydummy",
+        name="DUMMY",
+        score_func=_score_dummy,
+        target="pred_proba",
+        greater_is_better=True,
+    )
+
+    pc.compare_models(n_select=2, sort="DUMMY", parallel=be)
+    pc.pull()

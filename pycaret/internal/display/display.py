@@ -84,3 +84,10 @@ class CommonDisplay:
             self._progress_bar_display.display()
         else:
             self._progress_bar_display = None
+
+
+class DummyDisplay(CommonDisplay):
+    """The Display class to completely turn off all displays"""
+
+    def can_display(self, override):
+        return False
