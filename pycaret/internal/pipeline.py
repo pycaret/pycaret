@@ -56,6 +56,15 @@ def _transform_one(transformer, X=None, y=None):
     return X, y
 
 
+def _inverse_transform_one(transformer, y=None):
+    """Inverse transform the data using one transformer."""
+    if not hasattr(transformer, "inverse_transform"):
+        return y
+    output = transformer.inverse_transform(y)
+
+    return output
+
+
 def _fit_transform_one(transformer, X=None, y=None, message=None, **fit_params):
     """Fit and transform the data using one transformer."""
     _fit_one(transformer, X, y, message, **fit_params)
@@ -144,6 +153,15 @@ class Pipeline(imblearn.pipeline.Pipeline):
 
         return self
 
+    def transform(self, X=None, y=None, filter_train_only=True):
+        for _, _, transformer in self._iter(
+            with_final=hasattr(self._final_estimator, "transform"),
+            filter_train_only=filter_train_only,
+        ):
+            X, y = _transform_one(transformer, X, y)
+
+        return variable_return(X, y)
+
     def fit_transform(self, X=None, y=None, **fit_params):
         fit_params_steps = self._check_fit_params(**fit_params)
         X, y, _ = self._fit(X, y, **fit_params_steps)
@@ -163,7 +181,11 @@ class Pipeline(imblearn.pipeline.Pipeline):
         for _, name, transformer in self._iter(with_final=False):
             X, _ = _transform_one(transformer, X)
 
-        return self.steps[-1][-1].predict(X, **predict_params)
+        y = self.steps[-1][-1].predict(X, **predict_params)
+
+        for _, name, transformer in self._iter(with_final=False):
+            y = _inverse_transform_one(transformer, y)
+        return y
 
     @if_delegate_has_method(delegate="_final_estimator")
     def predict_proba(self, X):
@@ -192,14 +214,6 @@ class Pipeline(imblearn.pipeline.Pipeline):
             X, y = _transform_one(transformer, X, y)
 
         return self.steps[-1][-1].score(X, y, sample_weight=sample_weight)
-
-    def transform(self, X=None, y=None):
-        for _, _, transformer in self._iter(
-            with_final=hasattr(self._final_estimator, "transform")
-        ):
-            X, y = _transform_one(transformer, X, y)
-
-        return variable_return(X, y)
 
     def __getattr__(self, name: str):
         # override getattr to allow grabbing of final estimator attrs

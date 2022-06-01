@@ -99,11 +99,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         self.variable_keys = self.variable_keys.difference(
             {
                 "target_param",
-                "iterative_imputation_iters_param",
-                "imputation_regressor",
-                "imputation_classifier",
                 "fold_shuffle_param",
-                "stratify_param",
                 "fold_groups_param",
             }
         )
@@ -127,6 +123,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                 "y_test_transformed",
                 "X_test_transformed",
                 "model_engines",
+                "fold_param",
             }
         )
         self._available_plots = {
@@ -1587,11 +1584,12 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         self.fold = fold
 
         self.log_plots_param = log_plots
+        if self.log_plots_param is True:
+            self.log_plots_param = self._get_default_plots_to_log()
 
         # Needed for compatibility with Regression and Classification.
         # Not used in Time Series
         self.fold_groups_param = None
-        self.fold_groups_param_full = None
         self.transform_target_param = None
 
         self.ignore_features = ignore_features
@@ -2190,7 +2188,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         model_avgs = pd.DataFrame(avgs_dict, index=["Mean", "SD"])
         model_avgs.insert(0, "cutoff", np.nan)
 
-        model_results = model_results.append(model_avgs)
+        model_results = pd.concat((model_results, model_avgs), axis=0)
         # Round the results
         model_results = model_results.round(round)
 
@@ -2458,8 +2456,8 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         if self.X_train is None:
             data_X = None
         else:
-            data_X = self.X_train.copy()
-        data_y = self.y_train.copy()
+            data_X = self.X_train
+        data_y = self.y_train
 
         # # Replace Empty DataFrame with None as empty DataFrame causes issues
         # if (data_X.shape[0] == 0) or (data_X.shape[1] == 0):

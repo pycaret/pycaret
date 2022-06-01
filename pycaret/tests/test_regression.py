@@ -99,9 +99,7 @@ def test_regression(boston_dataframe, return_train_score):
     assert isinstance(predict_holdout, pd.DataFrame)
 
     # finalize model
-    final_best = pycaret.regression.finalize_model(
-        best, return_train_score=return_train_score
-    )
+    final_best = pycaret.regression.finalize_model(best)
 
     # save model
     pycaret.regression.save_model(best, "best_model_23122019")

@@ -9,6 +9,7 @@ import pytest
 
 import pycaret.classification
 import pycaret.datasets
+from pycaret.internal.meta_estimators import CustomProbabilityThresholdClassifier
 
 
 def test_optimize_threshold():
@@ -32,6 +33,7 @@ def test_optimize_threshold():
         lr, return_data=True
     )
     assert isinstance(optimized_data, pd.core.frame.DataFrame)
+    assert isinstance(optimized_model, CustomProbabilityThresholdClassifier)
 
 
 if __name__ == "__main__":

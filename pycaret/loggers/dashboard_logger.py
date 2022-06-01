@@ -45,12 +45,13 @@ class DashboardLogger:
         runtime: float,
         model_fit_time: float,
         log_holdout: bool = True,
-        log_plots: bool = False,
+        log_plots: Optional[List[str]] = None,
         experiment_custom_tags: Optional[Dict[str, Any]] = None,
         tune_cv_results=None,
         URI=None,
         display=None,
     ):
+        log_plots = log_plots or []
         console = experiment.logger
         console.info("Creating Dashboard logs")
 

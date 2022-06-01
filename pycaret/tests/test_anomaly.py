@@ -86,3 +86,7 @@ def test_anomaly(data):
     # predict model
     knn_predictions = pycaret.anomaly.predict_model(model=knn, data=data)
     assert isinstance(knn_predictions, pd.DataFrame)
+
+
+if __name__ == "__main__":
+    test_anomaly()

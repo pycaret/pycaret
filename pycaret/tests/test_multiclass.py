@@ -85,9 +85,7 @@ def test_multiclass(iris_dataframe, return_train_score):
     )
 
     # finalize model
-    final_best = pycaret.classification.finalize_model(
-        best, return_train_score=return_train_score
-    )
+    final_best = pycaret.classification.finalize_model(best)
 
     # save model
     pycaret.classification.save_model(best, "best_model_23122019")

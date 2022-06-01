@@ -35,7 +35,6 @@ def test_classification_parallel():
 
     res = pc.pull()
     assert res.shape[0] > 10
-    assert res.index[0] == "lda"
 
     pc.add_metric(
         id="mydummy",

@@ -17,6 +17,7 @@ from sklearn.metrics._scorer import _BaseScorer
 import pycaret.containers.base_container
 import pycaret.internal.metrics
 from pycaret.containers.metrics.base_metric import MetricContainer
+from pycaret.internal.utils import get_label_encoder
 
 
 class ClassificationMetricContainer(MetricContainer):
@@ -168,6 +169,17 @@ class ClassificationMetricContainer(MetricContainer):
         return d
 
 
+def _get_pos_label_arg(globals_dict: dict):
+    if globals_dict.get("pipeline"):
+        le = get_label_encoder(globals_dict["pipeline"])
+        if le:
+            return {"pos_label": le.classes_[-1], "labels": le.classes_}
+    elif globals_dict.get("y") is not None:
+        known_classes = np.unique(globals_dict["y"].values)
+        return {"pos_label": known_classes[-1], "labels": known_classes}
+    return {}
+
+
 class AccuracyMetricContainer(ClassificationMetricContainer):
     def __init__(self, globals_dict: dict) -> None:
         super().__init__(
@@ -180,24 +192,22 @@ class AccuracyMetricContainer(ClassificationMetricContainer):
 
 class ROCAUCMetricContainer(ClassificationMetricContainer):
     def __init__(self, globals_dict: dict) -> None:
+        args = {"average": "weighted", "multi_class": "ovr"}
         super().__init__(
             id="auc",
             name="AUC",
             score_func=metrics.roc_auc_score,
             scorer=pycaret.internal.metrics.make_scorer_with_error_score(
-                metrics.roc_auc_score,
-                needs_proba=True,
-                error_score=0.0,
-                average="weighted",
-                multi_class="ovr",
+                metrics.roc_auc_score, needs_proba=True, error_score=0.0, **args
             ),
             target="pred_proba",
-            args={"average": "weighted", "multi_class": "ovr"},
+            args=args,
         )
 
 
 class RecallMetricContainer(ClassificationMetricContainer):
     def __init__(self, globals_dict: dict) -> None:
+        args = {"average": "weighted", **_get_pos_label_arg(globals_dict)}
         super().__init__(
             id="recall",
             name="Recall",
@@ -208,14 +218,15 @@ class RecallMetricContainer(ClassificationMetricContainer):
                 pycaret.internal.metrics.BinaryMulticlassScoreFunc(
                     metrics.recall_score
                 ),
-                average="macro",
+                **args,
             ),
-            args={"average": "macro"},
+            args=args,
         )
 
 
 class PrecisionMetricContainer(ClassificationMetricContainer):
     def __init__(self, globals_dict: dict) -> None:
+        args = {"average": "weighted", **_get_pos_label_arg(globals_dict)}
         super().__init__(
             id="precision",
             name="Precision",
@@ -227,14 +238,15 @@ class PrecisionMetricContainer(ClassificationMetricContainer):
                 pycaret.internal.metrics.BinaryMulticlassScoreFunc(
                     metrics.precision_score
                 ),
-                average="weighted",
+                **args,
             ),
-            args={"average": "weighted"},
+            args=args,
         )
 
 
 class F1MetricContainer(ClassificationMetricContainer):
     def __init__(self, globals_dict: dict) -> None:
+        args = {"average": "weighted", **_get_pos_label_arg(globals_dict)}
         super().__init__(
             id="f1",
             name="F1",
@@ -243,9 +255,9 @@ class F1MetricContainer(ClassificationMetricContainer):
             ),
             scorer=metrics.make_scorer(
                 pycaret.internal.metrics.BinaryMulticlassScoreFunc(metrics.f1_score),
-                average="weighted",
+                **args,
             ),
-            args={"average": "weighted"},
+            args=args,
         )
 
 

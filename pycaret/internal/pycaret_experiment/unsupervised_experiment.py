@@ -74,11 +74,6 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
         log_profile,
         experiment_custom_tags=None,
     ):
-        # log into experiment
-        self.experiment__.append(("Setup Config", self.display_container[0]))
-        self.experiment__.append(("Transformed data", self.X_transformed))
-        self.experiment__.append(("Transformation Pipeline", self.pipeline))
-
         if self.logging_param:
             self.logging_param.log_experiment(
                 self,
@@ -1561,10 +1556,12 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
 
         self.logger.info("Uploading results into container")
 
-        model_results = pd.DataFrame(metrics, index=[0])
-        model_results = model_results.round(round)
-
-        self.display_container.append(model_results)
+        if metrics:
+            model_results = pd.DataFrame(metrics, index=[0])
+            model_results = model_results.round(round)
+            self.display_container.append(model_results)
+        else:
+            model_results = None
 
         if add_to_model_list:
             # storing results in master_model_container
@@ -1573,8 +1570,10 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
                 {"model": model, "scores": model_results, "cv": None}
             )
 
-        if self._ml_usecase == MLUsecase.CLUSTERING and not system:
+        if model_results is not None and system:
             display.display(model_results.style.format(precision=round))
+        else:
+            display.close()
 
         self.logger.info(f"master_model_container: {len(self.master_model_container)}")
         self.logger.info(f"display_container: {len(self.display_container)}")

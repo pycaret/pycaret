@@ -76,6 +76,9 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             self.variables, raise_errors=raise_errors
         )
 
+    def _get_default_plots_to_log(self) -> List[str]:
+        return ["residuals", "error", "feature"]
+
     def setup(
         self,
         data: Optional[DATAFRAME_LIKE] = None,
@@ -121,7 +124,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
         feature_selection_estimator: Union[str, Any] = "lightgbm",
         n_features_to_select: int = 10,
         transform_target: bool = False,
-        transform_target_method: str = "box-cox",
+        transform_target_method: str = "yeo-johnson",
         custom_pipeline: Optional[Any] = None,
         data_split_shuffle: bool = True,
         data_split_stratify: Union[bool, List[str]] = False,
@@ -439,12 +442,10 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             from feature transformations.
 
 
-        transform_target_method: str, default = 'box-cox'
-            'Box-cox' and 'yeo-johnson' methods are supported. Box-Cox requires input data to
-            be strictly positive, while Yeo-Johnson supports both positive or negative data.
-            When transform_target_method is 'box-cox' and target variable contains negative
-            values, method is internally forced to 'yeo-johnson' to avoid exceptions.
-
+        transform_target_method: str, default = 'yeo-johnson'
+            Defines the method for transformation. By default, the transformation method is
+            set to 'yeo-johnson'. The other available option for transformation is 'quantile'.
+            Ignored when ``transform_target`` is not True.
 
         custom_pipeline: list of (str, transformer), dict or Pipeline, default = None
             Addidiotnal custom transformers. If passed, they are applied to the
@@ -625,7 +626,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
 
         self.log_plots_param = log_plots
         if self.log_plots_param is True:
-            self.log_plots_param = ["residuals", "error", "feature"]
+            self.log_plots_param = self._get_default_plots_to_log()
         elif isinstance(self.log_plots_param, list):
             for i in self.log_plots_param:
                 if i not in self._available_plots:
@@ -635,7 +636,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
                     )
 
         # Check transform_target_method
-        allowed_transform_target_method = ["box-cox", "yeo-johnson"]
+        allowed_transform_target_method = ["quantile", "yeo-johnson"]
         if transform_target_method not in allowed_transform_target_method:
             raise ValueError(
                 "Invalid value for the transform_target_method parameter. "
@@ -685,6 +686,10 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             # Encode the target column
             if self.y.dtype.kind not in "ifu":
                 self._encode_target_column()
+
+            # Power transform the target to be more Gaussian-like
+            if transform_target:
+                self._target_transformation(transform_target_method)
 
             # Convert date feature to numerical values
             if self._fxs["Date"]:
@@ -2098,7 +2103,6 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
         groups: Optional[Union[str, Any]] = None,
         model_only: bool = True,
         experiment_custom_tags: Optional[Dict[str, Any]] = None,
-        return_train_score: bool = False,
     ) -> Any:
 
         """
@@ -2139,13 +2143,6 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             Dictionary of tag_name: String -> value: (String, but will be string-ified if
             not) passed to the mlflow.set_tags to add new custom tags for the experiment.
 
-        return_train_score: bool, default = False
-            If False, returns the CV Validation scores only.
-            If True, returns the CV training scores along with the CV validation scores.
-            This is useful when the user wants to do bias-variance tradeoff. A high CV
-            training score with a low corresponding CV validation score indicates overfitting.
-
-
         Returns:
             Trained Model
 
@@ -2158,7 +2155,6 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             groups=groups,
             model_only=model_only,
             experiment_custom_tags=experiment_custom_tags,
-            return_train_score=return_train_score,
         )
 
     def deploy_model(

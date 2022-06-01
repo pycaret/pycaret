@@ -78,11 +78,8 @@ class _SupervisedExperiment(_TabularExperiment):
                 "y_test",
                 "target_param",
                 "fold_shuffle_param",
-                "stratify_param",
                 "fold_generator",
-                "fold_param",
                 "fold_groups_param",
-                "fold_groups_param_full",
             }
         )
 
@@ -234,14 +231,6 @@ class _SupervisedExperiment(_TabularExperiment):
                 raise TypeError(
                     "experiment_custom_tags parameter must be dict if not None"
                 )
-
-        # log into experiment
-        self.experiment__.append(("Setup Config", self.display_container[0]))
-        self.experiment__.append(("X_training Set", self.X_train))
-        self.experiment__.append(("y_training Set", self.y_train))
-        self.experiment__.append(("X_test Set", self.X_test))
-        self.experiment__.append(("y_test Set", self.y_test))
-        self.experiment__.append(("Transformation Pipeline", self.pipeline))
 
         if self.logging_param:
             self.logging_param.log_experiment(
@@ -510,7 +499,7 @@ class _SupervisedExperiment(_TabularExperiment):
             )
 
         # checking optimize parameter for multiclass
-        if self._is_multiclass():
+        if self._is_multiclass:
             if not sort.is_multiclass:
                 raise TypeError(
                     f"{sort} metric not supported for multiclass problems. See docstring for list of other optimization parameters."
@@ -921,7 +910,7 @@ class _SupervisedExperiment(_TabularExperiment):
                         runtime=row["runtime"],
                         model_fit_time=row["TT (Sec)"],
                         pipeline=self.pipeline,
-                        log_plots=self.log_plots_param if full_logging else False,
+                        log_plots=self.log_plots_param if full_logging else [],
                         log_holdout=full_logging,
                         URI=URI,
                         display=display,
@@ -982,7 +971,6 @@ class _SupervisedExperiment(_TabularExperiment):
                         self,
                         pipeline_with_model,
                         data=pd.concat([data_X, data_y], axis=1),
-                        preprocess="features",
                         verbose=False,
                     )
                     train_results = self.pull(pop=True).drop("Model", axis=1)
@@ -1153,7 +1141,6 @@ class _SupervisedExperiment(_TabularExperiment):
                         self,
                         pipeline_with_model,
                         data=pd.concat([data_X, data_y], axis=1),
-                        preprocess="features",
                         verbose=False,
                     )
                     metrics = self.pull(pop=True).drop("Model", axis=1)
@@ -1336,17 +1323,10 @@ class _SupervisedExperiment(_TabularExperiment):
         self.logger.info("Copying training dataset")
 
         # Storing X_train and y_train in data_X and data_y parameter
-        if not self._ml_usecase == MLUsecase.TIME_SERIES:
-            data_X = (
-                self.X_train.copy() if X_train_data is None else X_train_data.copy()
-            )
-            data_y = (
-                self.y_train_transformed.copy()
-                if y_train_data is None
-                else y_train_data.copy()
-            )
+        if self._ml_usecase != MLUsecase.TIME_SERIES:
+            data_X = self.X_train if X_train_data is None else X_train_data.copy()
+            data_y = self.y_train if y_train_data is None else y_train_data.copy()
 
-            # reset index
             data_X.reset_index(drop=True, inplace=True)
             data_y.reset_index(drop=True, inplace=True)
         else:
@@ -1356,10 +1336,8 @@ class _SupervisedExperiment(_TabularExperiment):
                 if self.X_train is None:
                     data_X = None
                 else:
-                    data_X = self.X_train.copy()
-            data_y = (
-                self.y_train.copy() if y_train_data is None else y_train_data.copy()
-            )
+                    data_X = self.X_train
+            data_y = self.y_train if y_train_data is None else y_train_data.copy()
 
         if metrics is None:
             metrics = self._all_metrics
@@ -1411,17 +1389,10 @@ class _SupervisedExperiment(_TabularExperiment):
 
         display.update_monitor(2, full_name)
 
-        if self.transform_target_param and not isinstance(
-            model, TransformedTargetRegressor
-        ):
-            model = PowerTransformedTargetRegressor(
-                regressor=model,
-                power_transformer_method=self.transform_target_method_param,
-            )
         if (
             probability_threshold
             and self._ml_usecase == MLUsecase.CLASSIFICATION
-            and not self._is_multiclass()
+            and not self._is_multiclass
         ):
             if not isinstance(model, CustomProbabilityThresholdClassifier):
                 model = CustomProbabilityThresholdClassifier(
@@ -2103,7 +2074,7 @@ class _SupervisedExperiment(_TabularExperiment):
                 )
 
             # checking optimize parameter for multiclass
-            if self._is_multiclass():
+            if self._is_multiclass:
                 if not optimize.is_multiclass:
                     raise TypeError(
                         "Optimization metric not supported for multiclass problems. See docstring for list of other optimization parameters."
@@ -2174,8 +2145,8 @@ class _SupervisedExperiment(_TabularExperiment):
 
         self.logger.info("Copying training dataset")
         # Storing X_train and y_train in data_X and data_y parameter
-        data_X = self.X_train.copy()
-        data_y = self.y_train_transformed.copy()
+        data_X = self.X_train
+        data_y = self.y_train
 
         # reset index
         data_X.reset_index(drop=True, inplace=True)
@@ -2910,7 +2881,7 @@ class _SupervisedExperiment(_TabularExperiment):
             )
 
         # checking optimize parameter for multiclass
-        if self._is_multiclass():
+        if self._is_multiclass:
             if not optimize.is_multiclass:
                 raise TypeError(
                     f"Optimization metric not supported for multiclass problems. See docstring for list of other optimization parameters."
@@ -3287,7 +3258,7 @@ class _SupervisedExperiment(_TabularExperiment):
             )
 
         # checking optimize parameter for multiclass
-        if self._is_multiclass():
+        if self._is_multiclass:
             if not optimize.is_multiclass:
                 raise TypeError(
                     f"Optimization metric not supported for multiclass problems. See docstring for list of other optimization parameters."
@@ -3658,7 +3629,7 @@ class _SupervisedExperiment(_TabularExperiment):
             )
 
         # checking optimize parameter for multiclass
-        if self._is_multiclass():
+        if self._is_multiclass:
             if not optimize.is_multiclass:
                 raise TypeError(
                     f"Optimization metric not supported for multiclass problems. See docstring for list of other optimization parameters."
@@ -4555,7 +4526,6 @@ class _SupervisedExperiment(_TabularExperiment):
         groups: Optional[Union[str, Any]] = None,
         model_only: bool = True,
         experiment_custom_tags: Optional[Dict[str, Any]] = None,
-        return_train_score: bool = False,
     ) -> Any:  # added in pycaret==2.2.0
 
         """
@@ -4591,11 +4561,6 @@ class _SupervisedExperiment(_TabularExperiment):
             When set to True, only trained model object is saved and all the
             transformations are ignored.
 
-        return_train_score: bool, default = False
-            If False, returns the CV Validation scores only.
-            If True, returns the CV training scores along with the CV validation scores.
-            This is useful when the user wants to do bias-variance tradeoff. A high CV
-            training score with a low corresponding CV validation score indicates overfitting.
 
         Returns
         -------
@@ -4631,16 +4596,9 @@ class _SupervisedExperiment(_TabularExperiment):
             verbose=False,
             html_param=self.html_param,
         )
+        return_train_score = False
 
         np.random.seed(self.seed)
-
-        data_X = self.X
-
-        # Storing X_train and y_train in data_X and data_y parameter
-        if not self._ml_usecase == MLUsecase.TIME_SERIES:
-            data_y = self.y_transformed
-        else:
-            data_y = self.y
 
         self.logger.info(f"Finalizing {estimator}")
         # display.clear_output()
@@ -4648,12 +4606,14 @@ class _SupervisedExperiment(_TabularExperiment):
             estimator=estimator,
             verbose=False,
             system=False,
-            X_train_data=data_X,
-            y_train_data=data_y,
+            X_train_data=self.X,
+            y_train_data=self.y,
             fit_kwargs=fit_kwargs,
             groups=groups,
             add_to_model_list=False,
             return_train_score=return_train_score,
+            # TODO fix this, finalize should work without CV
+            cross_validation=True,
         )
         model_results = self.pull(pop=True)
 
@@ -4683,11 +4643,6 @@ class _SupervisedExperiment(_TabularExperiment):
                 experiment_custom_tags=experiment_custom_tags,
                 display=display,
             )
-
-        model_results = self._highlight_and_round_model_results(
-            model_results, return_train_score, round
-        )
-        display.display(model_results)
 
         self.logger.info(f"master_model_container: {len(self.master_model_container)}")
         self.logger.info(f"display_container: {len(self.display_container)}")
@@ -4870,13 +4825,15 @@ class _SupervisedExperiment(_TabularExperiment):
             if y_name in data.columns:
                 data = self._prepare_dataset(data, y_name)
                 target = data[y_name]
+                data = data.drop(y_name, axis=1)
             else:
                 data = self._prepare_dataset(data)
                 target = None
-            data = data[X_columns]  # Ignore all column but the originals
+            data = data[X_columns]  # Ignore all columns but the originals
             if preprocess:
                 X_test_ = pipeline.transform(
-                    X=data, y=(target if preprocess != "features" else None)
+                    X=data,
+                    y=(target if preprocess != "features" else None),
                 )
                 if final_step:
                     pipeline.steps.append(final_step)
@@ -5148,8 +5105,9 @@ class _SupervisedExperiment(_TabularExperiment):
         if self._ml_usecase == MLUsecase.CLASSIFICATION:
             metric_dict["Selection Rate"] = selection_rate
 
-        y_pred = estimator.predict(self.X_test_transformed)
-        y_true = np.array(self.y_test_transformed)
+        y_pred = self.predict_model(estimator)["Label"]
+        y_true = self.y_test
+
         try:
             multi_metric = MetricFrame(
                 metrics=metric_dict,
@@ -5228,7 +5186,7 @@ class _SupervisedExperiment(_TabularExperiment):
             )
 
         # checking optimize parameter for multiclass
-        if self._is_multiclass():
+        if self._is_multiclass:
             if not optimize.is_multiclass:
                 raise TypeError(
                     f"Optimization metric not supported for multiclass problems. See docstring for list of other optimization parameters."
