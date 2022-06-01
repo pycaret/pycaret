@@ -10,6 +10,7 @@ from scipy import stats
 
 import pycaret.internal.plots.helper as helper
 from pycaret.internal.display import CommonDisplay
+from pycaret.internal.display.display_backend import ColabBackend, DatabricksBackend
 from pycaret.internal.logging import get_logger
 from pycaret.internal.validation import fit_if_not_fitted
 
@@ -632,6 +633,10 @@ class InteractiveResidualsPlot:
 
         self.figures: List[BaseFigureWidget] = []
         self.display: CommonDisplay = display or CommonDisplay()
+        if isinstance(self.display._general_display, (ColabBackend, DatabricksBackend)):
+            raise ValueError(
+                f"residuals_interactive plot is not supported on Google Colab or Databricks."
+            )
         self.plot = self.__create_resplots(model, x, y, x_test, y_test)
 
     def show(self):
