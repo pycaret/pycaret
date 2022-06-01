@@ -114,7 +114,7 @@ class ClusteringExperiment(_UnsupervisedExperiment):
         use_train_data: bool = False,
         verbose: bool = True,
         display_format: Optional[str] = None,
-    ) -> str:
+    ) -> Optional[str]:
         """
         This function analyzes the performance of a trained model.
 
@@ -171,7 +171,7 @@ class ClusteringExperiment(_UnsupervisedExperiment):
 
 
         Returns:
-            None
+            Path to saved file, if any.
 
         """
         return super().plot_model(

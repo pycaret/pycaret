@@ -590,7 +590,7 @@ def plot_model(
     scale: float = 1,
     save: bool = False,
     display_format: Optional[str] = None,
-):
+) -> Optional[str]:
 
     """
     This function analyzes the performance of a trained model.
@@ -648,7 +648,7 @@ def plot_model(
 
 
     Returns:
-        None
+        Path to saved file, if any.
 
     """
     return _CURRENT_EXPERIMENT.plot_model(

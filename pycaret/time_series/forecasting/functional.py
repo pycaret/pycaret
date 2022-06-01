@@ -947,7 +947,7 @@ def plot_model(
     data_kwargs: Optional[Dict] = None,
     fig_kwargs: Optional[Dict] = None,
     save: Union[str, bool] = False,
-) -> Optional[Tuple[str, Any]]:
+) -> Optional[Tuple[str, list]]:
 
     """
     This function analyzes the performance of a trained model on holdout set.
@@ -999,7 +999,7 @@ def plot_model(
 
 
     return_fig: : bool, default = False
-            When set to True, it returns the figure used for plotting.
+        When set to True, it returns the figure used for plotting.
 
 
     return_data: bool, default = False
@@ -1148,7 +1148,7 @@ def plot_model(
 
 
     Returns:
-        Optional[Tuple[str, Any]]
+        Path to saved file and list containing figure and data, if any.
 
     """
 

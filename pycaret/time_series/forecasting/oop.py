@@ -3392,7 +3392,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         data_kwargs: Optional[Dict] = None,
         fig_kwargs: Optional[Dict] = None,
         save: Union[str, bool] = False,
-    ) -> Optional[Tuple[str, Any]]:
+    ) -> Optional[Tuple[str, list]]:
 
         """
         This function analyzes the performance of a trained model on holdout set.
@@ -3593,7 +3593,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
 
         Returns:
-            Optional[Tuple[str, Any]]
+            Path to saved file and list containing figure and data, if any.
 
         """
 

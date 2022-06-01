@@ -1733,7 +1733,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
         use_train_data: bool = False,
         verbose: bool = True,
         display_format: Optional[str] = None,
-    ) -> str:
+    ) -> Optional[str]:
 
         """
         This function analyzes the performance of a trained model on holdout set.
@@ -1823,7 +1823,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
 
 
         Returns:
-            None
+            Path to saved file, if any.
 
         """
 

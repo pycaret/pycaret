@@ -2040,7 +2040,7 @@ class _TabularExperiment(_PyCaretExperiment):
         use_train_data: bool = False,
         verbose: bool = True,
         display_format: Optional[str] = None,
-    ) -> str:
+    ) -> Optional[str]:
 
         """
         This function takes a trained model object and returns a plot based on the
