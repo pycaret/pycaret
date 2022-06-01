@@ -1139,10 +1139,9 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
         if metrics:
             model_results = pd.DataFrame(metrics, index=[0])
             model_results = model_results.round(round)
+            self.display_container.append(model_results)
         else:
             model_results = None
-
-        self.display_container.append(model_results)
 
         if add_to_model_list:
             # storing results in master_model_container
