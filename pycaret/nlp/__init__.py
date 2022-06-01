@@ -1,3 +1,4 @@
+import warnings
 from typing import Any, Dict, Optional
 
 from pycaret import show_versions
@@ -6,6 +7,13 @@ from pycaret.loggers.base_logger import BaseLogger
 from pycaret.loggers.mlflow_logger import MlflowLogger
 from pycaret.loggers.wandb_logger import WandbLogger
 from pycaret.utils._dependencies import _check_soft_dependencies
+
+warnings.warn(
+    "PyCaret NLP module is deprecated and not representative "
+    "of the current state of the library. "
+    "It may be removed and/or reworked in a future update.",
+    DeprecationWarning,
+)
 
 
 def setup(

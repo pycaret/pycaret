@@ -124,7 +124,8 @@ def _get_metrics_dict(
 
 
 def enable_colab():
-    from IPython.display import HTML, clear_output, display, update_display
+    import IPython
+    from IPython.display import display
 
     """
     Function to render plotly visuals in colab.
@@ -150,12 +151,9 @@ def enable_colab():
             )
         )
 
-    import IPython
-
     IPython.get_ipython().events.register(
         "pre_run_cell", configure_plotly_browser_state
     )
-    print("Colab mode enabled.")
 
 
 def get_system_logs():

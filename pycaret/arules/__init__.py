@@ -1,4 +1,13 @@
+import warnings
+
 from pycaret.utils._dependencies import _check_soft_dependencies
+
+warnings.warn(
+    "PyCaret ARules module is deprecated and not representative "
+    "of the current state of the library. "
+    "It may be removed and/or reworked in a future update.",
+    DeprecationWarning,
+)
 
 
 def setup(data, transaction_id, item_id, ignore_items=None, session_id=None):
