@@ -502,10 +502,7 @@ class _TabularExperiment(_PyCaretExperiment):
         groups = self._get_groups(groups)
 
         if not display:
-            progress_args = {"max": 5}
-            display = CommonDisplay(
-                verbose=verbose, html_param=self.html_param, progress_args=progress_args
-            )
+            display = CommonDisplay(verbose=verbose, html_param=self.html_param)
 
         plot_kwargs = plot_kwargs or {}
 
@@ -515,16 +512,12 @@ class _TabularExperiment(_PyCaretExperiment):
 
         np.random.seed(self.seed)
 
-        display.move_progress()
-
         # defining estimator as model locally
         # deepcopy instead of clone so we have a fitted estimator
         if isinstance(estimator, InternalPipeline):
             estimator = estimator.steps[-1][1]
         estimator = deepcopy(estimator)
         model = estimator
-
-        display.move_progress()
 
         # plots used for logging (controlled through plots_log_param)
         # AUC, #Confusion Matrix and #Feature Importance
@@ -533,7 +526,6 @@ class _TabularExperiment(_PyCaretExperiment):
 
         self.logger.info(f"Plot type: {plot}")
         plot_name = self._available_plots[plot]
-        display.move_progress()
 
         # yellowbrick workaround start
         import yellowbrick.utils.helpers
@@ -1415,12 +1407,9 @@ class _TabularExperiment(_PyCaretExperiment):
 
                 def lift():
 
-                    display.move_progress()
                     self.logger.info("Generating predictions / predict_proba on X_test")
                     y_test__ = self.y_test_transformed
                     predict_proba__ = estimator.predict_proba(self.X_test_transformed)
-                    display.move_progress()
-                    display.move_progress()
                     # display.clear_output()
                     with MatplotlibDefaultDPI(base_dpi=_base_dpi, scale_to_set=scale):
                         skplt.metrics.plot_lift_curve(
@@ -1443,12 +1432,9 @@ class _TabularExperiment(_PyCaretExperiment):
 
                 def gain():
 
-                    display.move_progress()
                     self.logger.info("Generating predictions / predict_proba on X_test")
                     y_test__ = self.y_test_transformed
                     predict_proba__ = estimator.predict_proba(self.X_test_transformed)
-                    display.move_progress()
-                    display.move_progress()
                     # display.clear_output()
                     with MatplotlibDefaultDPI(base_dpi=_base_dpi, scale_to_set=scale):
                         skplt.metrics.plot_cumulative_gain(
@@ -1545,7 +1531,6 @@ class _TabularExperiment(_PyCaretExperiment):
 
                     fig.suptitle("Decision Trees")
 
-                    display.move_progress()
                     self.logger.info("Plotting decision trees")
                     trees = []
                     feature_names = list(self.X_train_transformed.columns)
@@ -1605,9 +1590,7 @@ class _TabularExperiment(_PyCaretExperiment):
                         axes[i].set_title(f"Tree {i}")
                     for i in range(len(trees), len(axes)):
                         axes[i].set_visible(False)
-                    display.move_progress()
 
-                    display.move_progress()
                     # display.clear_output()
                     plot_filename = None
                     if save:
@@ -1632,7 +1615,6 @@ class _TabularExperiment(_PyCaretExperiment):
                     ax1 = plt.subplot2grid((3, 1), (0, 0), rowspan=2)
 
                     ax1.plot([0, 1], [0, 1], "k:", label="Perfectly calibrated")
-                    display.move_progress()
                     self.logger.info("Scoring test/hold-out set")
                     prob_pos = estimator.predict_proba(self.X_test_transformed)[:, 1]
                     prob_pos = (prob_pos - prob_pos.min()) / (
@@ -1642,7 +1624,6 @@ class _TabularExperiment(_PyCaretExperiment):
                         fraction_of_positives,
                         mean_predicted_value,
                     ) = calibration_curve(self.y_test_transformed, prob_pos, n_bins=10)
-                    display.move_progress()
                     ax1.plot(
                         mean_predicted_value,
                         fraction_of_positives,
@@ -1658,7 +1639,6 @@ class _TabularExperiment(_PyCaretExperiment):
                     ax1.set_facecolor("white")
                     ax1.grid(b=True, color="grey", linewidth=0.5, linestyle="-")
                     plt.tight_layout()
-                    display.move_progress()
                     # display.clear_output()
                     plot_filename = None
                     if save:
@@ -1819,8 +1799,6 @@ class _TabularExperiment(_PyCaretExperiment):
 
                     self.logger.info(f"param_name: {param_name}")
 
-                    display.move_progress()
-
                     from yellowbrick.model_selection import ValidationCurve
 
                     viz = ValidationCurve(
@@ -1870,7 +1848,6 @@ class _TabularExperiment(_PyCaretExperiment):
                     pca = PCA(n_components=features, random_state=self.seed)
                     self.logger.info("Fitting PCA()")
                     data_X_transformed = pca.fit_transform(data_X_transformed)
-                    display.move_progress()
                     classes = self.y_train_transformed.unique().tolist()
                     visualizer = RadViz(classes=classes, alpha=0.25, **plot_kwargs)
 
@@ -1927,7 +1904,6 @@ class _TabularExperiment(_PyCaretExperiment):
                         .sort_values(by="Value")
                     )
                     my_range = range(1, len(sorted_df.index) + 1)
-                    display.move_progress()
                     plt.figure(figsize=(8, 5 * (n // 10)), dpi=_base_dpi * scale)
                     plt.hlines(
                         y=my_range,
@@ -1936,12 +1912,10 @@ class _TabularExperiment(_PyCaretExperiment):
                         color="skyblue",
                     )
                     plt.plot(sorted_df["Value"], my_range, "o")
-                    display.move_progress()
                     plt.yticks(my_range, sorted_df["Variable"])
                     plt.title("Feature Importance Plot")
                     plt.xlabel("Variable Importance")
                     plt.ylabel("Features")
-                    display.move_progress()
                     # display.clear_output()
                     plot_filename = None
                     if save:
@@ -1965,24 +1939,19 @@ class _TabularExperiment(_PyCaretExperiment):
                     except:
                         params = estimator.get_params(deep=False)
 
-                    display.move_progress()
                     param_df = pd.DataFrame.from_dict(
                         {str(k): str(v) for k, v in params.items()},
                         orient="index",
                         columns=["Parameters"],
                     )
-                    display.move_progress()
                     # use ipython directly to show it in the widget
                     ipython_display(param_df)
                     self.logger.info("Visual Rendered Successfully")
 
                 def ks():
 
-                    display.move_progress()
                     self.logger.info("Generating predictions / predict_proba on X_test")
                     predict_proba__ = estimator.predict_proba(self.X_train_transformed)
-                    display.move_progress()
-                    display.move_progress()
                     # display.clear_output()
                     with MatplotlibDefaultDPI(base_dpi=_base_dpi, scale_to_set=scale):
                         fig = skplt.metrics.plot_ks_statistic(
