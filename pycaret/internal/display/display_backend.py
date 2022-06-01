@@ -110,7 +110,6 @@ class JupyterBackend(DisplayBackend):
     can_update_rich: bool = True
 
     def __init__(self) -> None:
-        _enable_matplotlib_inline()
         self._display_ref: Optional[DisplayHandle] = None
 
     def display(self, obj: Any, *, final_display: bool = True) -> None:
@@ -144,7 +143,6 @@ class ColabBackend(JupyterBackend):
     id: str = "colab"
 
     def __init__(self) -> None:
-        _enable_colab()
         super().__init__()
 
     def _handle_input(self, obj: Any) -> Any:
@@ -186,6 +184,7 @@ def detect_backend(
         class_name = ""
 
         if IN_DATABRICKS:
+            _enable_matplotlib_inline()
             return DatabricksBackend()
 
         try:
@@ -199,7 +198,9 @@ def detect_backend(
         if not is_notebook:
             return CLIBackend()
         if "google.colab" in class_name:
+            _enable_colab()
             return ColabBackend()
+        _enable_matplotlib_inline()
         return JupyterBackend()
 
     if isinstance(backend, str):
@@ -217,3 +218,6 @@ def detect_backend(
     raise TypeError(
         f"Wrong backend type. Expected None, str or DisplayBackend, got {type(backend)}."
     )
+
+
+detect_backend()

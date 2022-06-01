@@ -602,7 +602,6 @@ class _TabularExperiment(_PyCaretExperiment):
                         x_test=self.X_test_transformed,
                         y_test=self.y_test_transformed,
                         model=estimator,
-                        display=display,
                     )
 
                     # display.clear_output()
@@ -1069,7 +1068,6 @@ class _TabularExperiment(_PyCaretExperiment):
                             save=save,
                             fit_kwargs=fit_kwargs,
                             groups=groups,
-                            display=display,
                             display_format=display_format,
                         )
 
@@ -1097,7 +1095,6 @@ class _TabularExperiment(_PyCaretExperiment):
                             save=save,
                             fit_kwargs=fit_kwargs,
                             groups=groups,
-                            display=display,
                             display_format=display_format,
                         )
                     except:
@@ -1122,7 +1119,6 @@ class _TabularExperiment(_PyCaretExperiment):
                             save=save,
                             fit_kwargs=fit_kwargs,
                             groups=groups,
-                            display=display,
                             display_format=display_format,
                         )
                     except:
@@ -1146,7 +1142,6 @@ class _TabularExperiment(_PyCaretExperiment):
                         save=save,
                         fit_kwargs=fit_kwargs,
                         groups=groups,
-                        display=display,
                         display_format=display_format,
                     )
 
@@ -1166,7 +1161,6 @@ class _TabularExperiment(_PyCaretExperiment):
                         save=save,
                         fit_kwargs=fit_kwargs,
                         groups=groups,
-                        display=display,
                         display_format=display_format,
                     )
 
@@ -1188,7 +1182,6 @@ class _TabularExperiment(_PyCaretExperiment):
                         save=save,
                         fit_kwargs=fit_kwargs,
                         groups=groups,
-                        display=display,
                         display_format=display_format,
                     )
 
@@ -1210,7 +1203,6 @@ class _TabularExperiment(_PyCaretExperiment):
                         save=save,
                         fit_kwargs=fit_kwargs,
                         groups=groups,
-                        display=display,
                         display_format=display_format,
                     )
 
@@ -1235,7 +1227,6 @@ class _TabularExperiment(_PyCaretExperiment):
                         save=save,
                         fit_kwargs=fit_kwargs,
                         groups=groups,
-                        display=display,
                         display_format=display_format,
                     )
 
@@ -1266,7 +1257,6 @@ class _TabularExperiment(_PyCaretExperiment):
                         save=save,
                         fit_kwargs=fit_kwargs,
                         groups=groups,
-                        display=display,
                         display_format=display_format,
                     )
 
@@ -1287,7 +1277,6 @@ class _TabularExperiment(_PyCaretExperiment):
                         fit_kwargs=fit_kwargs,
                         handle_test="",
                         groups=groups,
-                        display=display,
                         display_format=display_format,
                     )
 
@@ -1309,7 +1298,6 @@ class _TabularExperiment(_PyCaretExperiment):
                         save=save,
                         fit_kwargs=fit_kwargs,
                         groups=groups,
-                        display=display,
                         display_format=display_format,
                     )
 
@@ -1350,7 +1338,6 @@ class _TabularExperiment(_PyCaretExperiment):
                         save=save,
                         fit_kwargs=fit_kwargs,
                         groups=groups,
-                        display=display,
                         features=["Feature One", "Feature Two"],
                         classes=["A", "B"],
                         display_format=display_format,
@@ -1373,7 +1360,6 @@ class _TabularExperiment(_PyCaretExperiment):
                         save=save,
                         fit_kwargs=fit_kwargs,
                         groups=groups,
-                        display=display,
                         display_format=display_format,
                     )
 
@@ -1401,7 +1387,6 @@ class _TabularExperiment(_PyCaretExperiment):
                         save=save,
                         fit_kwargs=fit_kwargs,
                         groups=groups,
-                        display=display,
                         display_format=display_format,
                     )
 
@@ -1478,7 +1463,6 @@ class _TabularExperiment(_PyCaretExperiment):
                         save=save,
                         fit_kwargs=fit_kwargs,
                         groups=groups,
-                        display=display,
                         display_format=display_format,
                     )
 
@@ -1822,7 +1806,6 @@ class _TabularExperiment(_PyCaretExperiment):
                         save=save,
                         fit_kwargs=fit_kwargs,
                         groups=groups,
-                        display=display,
                         display_format=display_format,
                     )
 
@@ -1864,7 +1847,6 @@ class _TabularExperiment(_PyCaretExperiment):
                         save=save,
                         fit_kwargs=fit_kwargs,
                         groups=groups,
-                        display=display,
                         display_format=display_format,
                     )
 
