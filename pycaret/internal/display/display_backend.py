@@ -10,14 +10,19 @@ from IPython.display import DisplayHandle, clear_output
 from IPython.display import display as ipython_display
 from pandas.io.formats.style import Styler
 
-from pycaret.utils import enable_colab
-
 try:
     import dbruntime.display
 
     IN_DATABRICKS = True
 except ImportError:
     IN_DATABRICKS = False
+
+try:
+    import google.colab
+
+    IN_COLAB = True
+except ImportError:
+    IN_COLAB = False
 
 COLAB_ENABLED = False
 
@@ -29,7 +34,9 @@ def _enable_matplotlib_inline():
 def _enable_colab():
     global COLAB_ENABLED
     if not COLAB_ENABLED:
-        enable_colab()
+        from google.colab import output
+
+        output.enable_custom_widget_manager()
         COLAB_ENABLED = True
 
 
@@ -181,6 +188,9 @@ def detect_backend(
         if IN_DATABRICKS:
             return DatabricksBackend()
 
+        if IN_COLAB:
+            return ColabBackend()
+
         try:
             ipython = get_ipython()
             assert ipython
@@ -191,8 +201,6 @@ def detect_backend(
 
         if not is_notebook:
             return CLIBackend()
-        if "google.colab" in class_name:
-            return ColabBackend()
         return JupyterBackend()
 
     if isinstance(backend, str):
