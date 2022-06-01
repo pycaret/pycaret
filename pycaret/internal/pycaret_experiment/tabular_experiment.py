@@ -74,9 +74,6 @@ class _TabularExperiment(_PyCaretExperiment):
                 "_all_models_internal",
                 "_all_metrics",
                 "memory",
-                "imputation_regressor",
-                "imputation_classifier",
-                "iterative_imputation_iters_param",
             }
         )
         return
@@ -179,12 +176,13 @@ class _TabularExperiment(_PyCaretExperiment):
         model_fit_time: float,
         pipeline,
         log_holdout: bool = True,
-        log_plots: bool = False,
+        log_plots: Optional[List[str]] = None,
         tune_cv_results=None,
         URI=None,
         experiment_custom_tags=None,
         display: Optional[CommonDisplay] = None,
     ):
+        log_plots = log_plots or []
         try:
             self.logging_param.log_model(
                 experiment=self,
@@ -419,7 +417,7 @@ class _TabularExperiment(_PyCaretExperiment):
 
         # multiclass plot exceptions:
         multiclass_not_available = ["calibration", "threshold", "manifold", "rfe"]
-        if self._is_multiclass():
+        if self._is_multiclass:
             if plot in multiclass_not_available:
                 raise ValueError(
                     "Plot Not Available for multiclass problems. Please see docstring for list of available Plots."

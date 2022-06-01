@@ -46,10 +46,11 @@ def test_check_fairness_multiclass_classification():
         silent=True,
         html=False,
         n_jobs=1,
+        train_size=0.8,
     )
 
     # train model
-    lightgbm = pycaret.classification.create_model("lightgbm", fold=3)
+    lightgbm = pycaret.classification.create_model("lightgbm", cross_validation=False)
 
     # check fairness
     lightgbm_fairness = pycaret.classification.check_fairness(

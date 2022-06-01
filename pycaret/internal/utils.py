@@ -98,6 +98,13 @@ def to_series(data, index=None, name="target"):
 
     """
     if data is not None and not isinstance(data, pd.Series):
+        if isinstance(data, pd.DataFrame):
+            try:
+                data = data[name]
+            except Exception:
+                data = data.squeeze()
+        elif isinstance(data, np.ndarray) and data.ndim > 1:
+            data = data.flatten()
         data = pd.Series(data, index=index, name=name)
 
     return data

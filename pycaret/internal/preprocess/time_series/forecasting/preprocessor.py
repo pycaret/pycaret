@@ -250,4 +250,4 @@ class TSForecastingPreprocessor:
     #     """Add custom transformers to the pipeline."""
     #     self.logger.info("Set up custom pipeline.")
     #     for name, estimator in normalize_custom_transformers(custom_pipeline):
-    #         self.pipeline.steps.append((name, TransfomerWrapper(estimator)))
+    #         self.pipeline.steps.append((name, TransformerWrapper(estimator)))

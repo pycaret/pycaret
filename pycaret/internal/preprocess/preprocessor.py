@@ -52,7 +52,9 @@ from pycaret.internal.preprocess.transformers import (
     FixImbalancer,
     RemoveMulticollinearity,
     RemoveOutliers,
-    TransfomerWrapper,
+    TargetTransformer,
+    TransformerWrapper,
+    TransformerWrapperWithInverse,
 )
 from pycaret.internal.pycaret_experiment.utils import MLUsecase
 from pycaret.internal.utils import (
@@ -279,14 +281,43 @@ class Preprocessor:
         """Add LabelEncoder to the pipeline."""
         self.logger.info("Set up label encoding.")
         self.pipeline.steps.append(
-            ("label_encoding", TransfomerWrapper(LabelEncoder()))
+            ("label_encoding", TransformerWrapperWithInverse(LabelEncoder()))
+        )
+
+    def _target_transformation(self, transformation_method):
+        """Power transform the data to be more Gaussian-like."""
+        self.logger.info("Set up target transformation.")
+
+        if transformation_method == "yeo-johnson":
+            transformation_estimator = PowerTransformer(
+                method="yeo-johnson", standardize=False, copy=True
+            )
+        elif transformation_method == "quantile":
+            transformation_estimator = QuantileTransformer(
+                random_state=self.seed,
+                output_distribution="normal",
+            )
+        else:
+            raise ValueError(
+                "Invalid value for the transform_target_method parameter. "
+                "The value should be either yeo-johnson or quantile, "
+                f"got {transformation_method}."
+            )
+
+        self.pipeline.steps.append(
+            (
+                "target_transformation",
+                TransformerWrapperWithInverse(
+                    TargetTransformer(transformation_estimator)
+                ),
+            )
         )
 
     def _date_feature_engineering(self):
         """Convert date features to numerical values."""
         self.logger.info("Set up date feature engineering.")
         # TODO: Could be improved allowing the user to choose which features to add
-        date_estimator = TransfomerWrapper(
+        date_estimator = TransformerWrapper(
             transformer=ExtractDateTimeFeatures(), include=self._fxs["Date"]
         )
         self.pipeline.steps.append(
@@ -301,16 +332,16 @@ class Preprocessor:
         num_dict = {"mode": "most_frequent", "mean": "mean", "median": "median"}
         if isinstance(numeric_imputation, str):
             if numeric_imputation.lower() == "drop":
-                num_estimator = TransfomerWrapper(
+                num_estimator = TransformerWrapper(
                     transformer=DropImputer(columns=self._fxs["Numeric"])
                 )
             elif numeric_imputation.lower() == "knn":
-                num_estimator = TransfomerWrapper(
+                num_estimator = TransformerWrapper(
                     transformer=KNNImputer(),
                     include=self._fxs["Numeric"],
                 )
             elif numeric_imputation.lower() in num_dict:
-                num_estimator = TransfomerWrapper(
+                num_estimator = TransformerWrapper(
                     SimpleImputer(strategy=num_dict[numeric_imputation.lower()]),
                     include=self._fxs["Numeric"],
                 )
@@ -320,22 +351,22 @@ class Preprocessor:
                     f"{numeric_imputation}. Choose from: drop, mean, median, mode, knn."
                 )
         else:
-            num_estimator = TransfomerWrapper(
+            num_estimator = TransformerWrapper(
                 SimpleImputer(strategy="constant", fill_value=numeric_imputation),
                 include=self._fxs["Numeric"],
             )
 
         if categorical_imputation.lower() == "drop":
-            cat_estimator = TransfomerWrapper(
+            cat_estimator = TransformerWrapper(
                 transformer=DropImputer(columns=self._fxs["Categorical"])
             )
         elif categorical_imputation.lower() == "mode":
-            cat_estimator = TransfomerWrapper(
+            cat_estimator = TransformerWrapper(
                 transformer=SimpleImputer(strategy="most_frequent"),
                 include=self._fxs["Categorical"],
             )
         else:
-            cat_estimator = TransfomerWrapper(
+            cat_estimator = TransformerWrapper(
                 SimpleImputer(strategy="constant", fill_value=categorical_imputation),
                 include=self._fxs["Categorical"],
             )
@@ -430,7 +461,7 @@ class Preprocessor:
             else:
                 return "one_hot"
 
-        imputer = TransfomerWrapper(
+        imputer = TransformerWrapper(
             transformer=IterativeImputer(
                 num_estimator=numeric_iterative_imputer,
                 cat_estimator=categorical_iterative_imputer,
@@ -455,7 +486,7 @@ class Preprocessor:
         self.logger.info("Set up text embedding.")
 
         if text_features_method.lower() in ("bow", "tfidf", "tf-idf"):
-            embed_estimator = TransfomerWrapper(
+            embed_estimator = TransformerWrapper(
                 transformer=EmbedTextFeatures(method=text_features_method),
                 include=self._fxs["Text"],
             )
@@ -502,7 +533,7 @@ class Preprocessor:
                 # Encoder always needs mapping of NaN value
                 mapping[key].setdefault(np.NaN, -1)
 
-            ord_estimator = TransfomerWrapper(
+            ord_estimator = TransformerWrapper(
                 transformer=OrdinalEncoder(
                     mapping=[{"col": k, "mapping": val} for k, val in mapping.items()],
                     handle_missing="return_nan",
@@ -517,7 +548,7 @@ class Preprocessor:
             self.logger.info("Set up encoding of categorical features.")
 
             if len(one_hot_cols) > 0:
-                onehot_estimator = TransfomerWrapper(
+                onehot_estimator = TransformerWrapper(
                     transformer=OneHotEncoder(
                         use_cat_names=True,
                         handle_missing="return_nan",
@@ -537,7 +568,7 @@ class Preprocessor:
                         random_state=self.seed,
                     )
 
-                rest_estimator = TransfomerWrapper(
+                rest_estimator = TransformerWrapper(
                     transformer=encoding_method,
                     include=rest_cols,
                 )
@@ -548,7 +579,7 @@ class Preprocessor:
         """Create polynomial features from the existing ones."""
         self.logger.info("Set up polynomial features.")
 
-        polynomial = TransfomerWrapper(
+        polynomial = TransformerWrapper(
             transformer=PolynomialFeatures(
                 degree=polynomial_degree,
                 interaction_only=False,
@@ -569,7 +600,7 @@ class Preprocessor:
                 f"The value should be >0, got {low_variance_threshold}."
             )
         else:
-            variance_estimator = TransfomerWrapper(
+            variance_estimator = TransformerWrapper(
                 transformer=VarianceThreshold(low_variance_threshold),
                 exclude=self._fxs["Keep"],
             )
@@ -587,7 +618,7 @@ class Preprocessor:
                 f"{multicollinearity_threshold}."
             )
 
-        multicollinearity = TransfomerWrapper(
+        multicollinearity = TransformerWrapper(
             transformer=RemoveMulticollinearity(multicollinearity_threshold),
             exclude=self._fxs["Keep"],
         )
@@ -599,7 +630,7 @@ class Preprocessor:
         self.logger.info("Set up binning of numerical features.")
 
         check_features_exist(bin_numeric_features, self.X)
-        binning_estimator = TransfomerWrapper(
+        binning_estimator = TransformerWrapper(
             transformer=KBinsDiscretizer(encode="ordinal", strategy="kmeans"),
             include=bin_numeric_features,
         )
@@ -617,7 +648,7 @@ class Preprocessor:
                 "'iforest', 'ee' or 'lof'."
             )
 
-        outliers = TransfomerWrapper(
+        outliers = TransformerWrapper(
             RemoveOutliers(
                 method=outliers_method,
                 threshold=outliers_threshold,
@@ -641,7 +672,7 @@ class Preprocessor:
         else:
             balance_estimator = FixImbalancer(fix_imbalance_method)
 
-        balance_estimator = TransfomerWrapper(balance_estimator)
+        balance_estimator = TransformerWrapper(balance_estimator)
         self.pipeline.steps.append(("balance", balance_estimator))
 
     def _transformation(self, transformation_method):
@@ -665,7 +696,7 @@ class Preprocessor:
             )
 
         self.pipeline.steps.append(
-            ("transformation", TransfomerWrapper(transformation_estimator))
+            ("transformation", TransformerWrapper(transformation_estimator))
         )
 
     def _normalization(self, normalize_method):
@@ -679,7 +710,7 @@ class Preprocessor:
             "robust": RobustScaler(),
         }
         if normalize_method in norm_dict:
-            normalize_estimator = TransfomerWrapper(norm_dict[normalize_method])
+            normalize_estimator = TransformerWrapper(norm_dict[normalize_method])
         else:
             raise ValueError(
                 "Invalid value for the normalize_method parameter, got "
@@ -714,7 +745,7 @@ class Preprocessor:
             "incremental": IncrementalPCA(n_components=pca_components),
         }
         if pca_method in pca_dict:
-            pca_estimator = TransfomerWrapper(
+            pca_estimator = TransformerWrapper(
                 transformer=pca_dict[pca_method],
                 exclude=self._fxs["Keep"],
             )
@@ -760,12 +791,12 @@ class Preprocessor:
                 func = f_classif
             else:
                 func = f_regression
-            feature_selector = TransfomerWrapper(
+            feature_selector = TransformerWrapper(
                 transformer=SelectKBest(score_func=func, k=n_features_to_select),
                 exclude=self._fxs["Keep"],
             )
         elif feature_selection_method.lower() == "classic":
-            feature_selector = TransfomerWrapper(
+            feature_selector = TransformerWrapper(
                 transformer=SelectFromModel(
                     estimator=fs_estimator,
                     threshold=-np.inf,
@@ -774,7 +805,7 @@ class Preprocessor:
                 exclude=self._fxs["Keep"],
             )
         elif feature_selection_method.lower() == "sequential":
-            feature_selector = TransfomerWrapper(
+            feature_selector = TransformerWrapper(
                 transformer=SequentialFeatureSelector(
                     estimator=fs_estimator,
                     n_features_to_select=n_features_to_select,
@@ -795,4 +826,4 @@ class Preprocessor:
         """Add custom transformers to the pipeline."""
         self.logger.info("Set up custom pipeline.")
         for name, estimator in normalize_custom_transformers(custom_pipeline):
-            self.pipeline.steps.append((name, TransfomerWrapper(estimator)))
+            self.pipeline.steps.append((name, TransformerWrapper(estimator)))
