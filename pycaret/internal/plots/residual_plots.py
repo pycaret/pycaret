@@ -209,13 +209,13 @@ class ScaleLocationWidget(BaseFigureWidget):
                 {
                     "Predictions": fitted,
                     "Split": split_origin,
-                    "$\sqrt{|Standardized Residuals|}$": sqrt_abs_standardized_residuals,
+                    "Standardized Residuals^1/2": sqrt_abs_standardized_residuals,
                 }
             )
             fig = px.scatter(
                 dataframe,
                 x="Predictions",
-                y="$\sqrt{|Standardized Residuals|}$",
+                y="Standardized Residuals^1/2",
                 trendline="lowess",
                 color="Split",
                 color_discrete_sequence=["blue", "green"],
@@ -228,13 +228,13 @@ class ScaleLocationWidget(BaseFigureWidget):
             dataframe = pd.DataFrame(
                 {
                     "Predictions": fitted,
-                    "$\sqrt{|Standardized Residuals|}$": sqrt_abs_standardized_residuals,
+                    "Standardized Residuals^1/2": sqrt_abs_standardized_residuals,
                 }
             )
             fig = px.scatter(
                 dataframe,
                 x="Predictions",
-                y="$\sqrt{|Standardized Residuals|}$",
+                y="Standardized Residuals^1/2",
                 trendline="lowess",
                 title="Scale-Location Plot",
                 opacity=0.3,
@@ -246,7 +246,7 @@ class ScaleLocationWidget(BaseFigureWidget):
             fig.add_annotation(
                 x=fitted[i],
                 y=sqrt_abs_standardized_residuals[i],
-                text=f"$\sqrt{{|\\tilde r_{{{i}}}|}}$",
+                text=f"~r_{i}^1/2",
             )
         fig.update_annotations(
             dict(xref="x", yref="y", showarrow=True, arrowhead=7, ax=0, ay=-40)
@@ -384,7 +384,7 @@ class CooksDistanceWidget(BaseFigureWidget):
             fig.add_annotation(
                 x=model_leverage[i],
                 y=standardized_residuals[i],
-                text=f"$\\tilde r_{{{i}}}$",
+                text=f"~r_{i}",
             )
 
         fig.update_annotations(
@@ -556,7 +556,7 @@ class TukeyAnscombeWidget(BaseFigureWidget):
         abs_resid = model_abs_resid.sort_values(ascending=False)
         abs_resid_top_3 = abs_resid[:3]
         for i in abs_resid_top_3.index:
-            fig.add_annotation(x=predictions[i], y=residuals[i], text=f"$r_{{{i}}}$")
+            fig.add_annotation(x=predictions[i], y=residuals[i], text=f"r_{i}")
         fig.update_annotations(
             dict(xref="x", yref="y", showarrow=True, arrowhead=7, ax=0, ay=-40)
         )
