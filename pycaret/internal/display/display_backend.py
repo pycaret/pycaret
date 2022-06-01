@@ -198,6 +198,7 @@ def detect_backend(
         if not is_notebook:
             return CLIBackend()
         if "google.colab" in class_name:
+            _enable_matplotlib_inline()
             _enable_colab()
             return ColabBackend()
         _enable_matplotlib_inline()

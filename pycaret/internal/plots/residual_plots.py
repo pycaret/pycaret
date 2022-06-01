@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 import numpy as np
 import pandas as pd
@@ -604,20 +604,18 @@ class InteractiveResidualsPlot:
 
     def __init__(
         self,
-        display: CommonDisplay,
         model,
         x: np.ndarray,
         y: np.ndarray,
         x_test: np.ndarray = None,
         y_test: np.ndarray = None,
+        display: Optional[CommonDisplay] = None,
     ):
         """
         Instantiates the interactive residual plots for the given data
 
         Parameters
         ----------
-        display: CommonDisplay
-            this object is required to show the plots and move the progressbar
         model
             describes the regression model which is to be evaluated
         x: np.ndarray
@@ -628,10 +626,12 @@ class InteractiveResidualsPlot:
             optional, some test data (requires y_test)
         y_test: np.ndarray
             optional, the labels to the provided test data (requires x_test)
+        display: CommonDisplay
+            this object is required to show the plots
         """
 
         self.figures: List[BaseFigureWidget] = []
-        self.display: CommonDisplay = display
+        self.display: CommonDisplay = display or CommonDisplay()
         self.plot = self.__create_resplots(model, x, y, x_test, y_test)
 
     def show(self):
@@ -703,21 +703,18 @@ class InteractiveResidualsPlot:
                 split_origin = None
 
         logger.info("Calculated model residuals")
-        self.display.move_progress()
 
         tukey_anscombe_widget = TukeyAnscombeWidget(
             predictions, residuals, split_origin=split_origin
         )
         logger.info("Calculated Tunkey-Anscombe Plot")
         self.figures.append(tukey_anscombe_widget)
-        self.display.move_progress()
 
         qq_plot_widget = QQPlotWidget(
             predictions, y, split_origin=split_origin, featuresize=x.shape[1]
         )
         logger.info("Calculated Normal QQ Plot")
         self.figures.append(qq_plot_widget)
-        self.display.move_progress()
 
         standardized_residuals = helper.calculate_standardized_residual(
             predictions, y, None
@@ -728,7 +725,6 @@ class InteractiveResidualsPlot:
         )
         logger.info("Calculated Scale-Location Plot")
         self.figures.append(scale_location_widget)
-        self.display.move_progress()
 
         leverage = helper.leverage_statistic(np.array(x))
 
@@ -745,7 +741,6 @@ class InteractiveResidualsPlot:
         )
         logger.info("Calculated Residual vs Leverage Plot inc. Cook's distance")
         self.figures.append(cooks_distance_widget)
-        self.display.move_progress()
 
         items_layout = Layout(width="1000px")
         h0 = widgets.HBox(self.figures[:2], layout=items_layout)
