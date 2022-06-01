@@ -17,15 +17,11 @@ try:
 except ImportError:
     IN_DATABRICKS = False
 
-MATPLOTLIB_INLINE_ENABLED = False
 COLAB_ENABLED = False
 
 
 def _enable_matplotlib_inline():
-    global MATPLOTLIB_INLINE_ENABLED
-    if not MATPLOTLIB_INLINE_ENABLED:
-        get_ipython().run_line_magic("matplotlib", "inline")
-        MATPLOTLIB_INLINE_ENABLED = True
+    get_ipython().run_line_magic("matplotlib", "inline")
 
 
 def _enable_colab():
@@ -110,6 +106,7 @@ class JupyterBackend(DisplayBackend):
     can_update_rich: bool = True
 
     def __init__(self) -> None:
+        _enable_matplotlib_inline()
         self._display_ref: Optional[DisplayHandle] = None
 
     def display(self, obj: Any, *, final_display: bool = True) -> None:
@@ -143,12 +140,8 @@ class ColabBackend(JupyterBackend):
     id: str = "colab"
 
     def __init__(self) -> None:
+        _enable_colab()
         super().__init__()
-
-    def _handle_input(self, obj: Any) -> Any:
-        if isinstance(obj, Styler):
-            return HTML(obj.to_html())
-        return obj
 
 
 class DatabricksBackend(JupyterBackend):
@@ -184,13 +177,12 @@ def detect_backend(
         class_name = ""
 
         if IN_DATABRICKS:
-            _enable_matplotlib_inline()
             return DatabricksBackend()
 
         try:
             ipython = get_ipython()
             assert ipython
-            class_name = ipython.__class__.__name__
+            class_name = str(ipython.__class__)
             is_notebook = True if "Terminal" not in class_name else False
         except Exception:
             is_notebook = False
@@ -198,10 +190,7 @@ def detect_backend(
         if not is_notebook:
             return CLIBackend()
         if "google.colab" in class_name:
-            _enable_matplotlib_inline()
-            _enable_colab()
             return ColabBackend()
-        _enable_matplotlib_inline()
         return JupyterBackend()
 
     if isinstance(backend, str):
