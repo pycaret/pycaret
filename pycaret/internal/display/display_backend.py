@@ -8,12 +8,31 @@ from IPython.display import HTML, DisplayHandle, clear_output
 from IPython.display import display as ipython_display
 from pandas.io.formats.style import Styler
 
+from pycaret.utils import enable_colab
+
 try:
     import dbruntime.display
 
     IN_DATABRICKS = True
 except ImportError:
     IN_DATABRICKS = False
+
+MATPLOTLIB_INLINE_ENABLED = False
+COLAB_ENABLED = False
+
+
+def _enable_matplotlib_inline():
+    global MATPLOTLIB_INLINE_ENABLED
+    if not MATPLOTLIB_INLINE_ENABLED:
+        get_ipython().run_line_magic("matplotlib", "inline")
+        MATPLOTLIB_INLINE_ENABLED = True
+
+
+def _enable_colab():
+    global COLAB_ENABLED
+    if not COLAB_ENABLED:
+        enable_colab()
+        COLAB_ENABLED = True
 
 
 class DisplayBackend(ABC):
@@ -91,6 +110,7 @@ class JupyterBackend(DisplayBackend):
     can_update_rich: bool = True
 
     def __init__(self) -> None:
+        _enable_matplotlib_inline()
         self._display_ref: Optional[DisplayHandle] = None
 
     def display(self, obj: Any, *, final_display: bool = True) -> None:
@@ -122,6 +142,10 @@ class JupyterBackend(DisplayBackend):
 
 class ColabBackend(JupyterBackend):
     id: str = "colab"
+
+    def __init__(self) -> None:
+        _enable_colab()
+        super().__init__()
 
     def _handle_input(self, obj: Any) -> Any:
         if isinstance(obj, Styler):
