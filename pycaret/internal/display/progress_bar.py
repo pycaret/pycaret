@@ -74,8 +74,23 @@ class CustomDisplayNotebookTqdm(tqdm.notebook.tqdm):
             self.display_backend.display(self.container)
             self.displayed = True
 
-        if close and pbar.bar_style != "danger":
+        if close:
+            try:
+                self.container.close()
+            except AttributeError:
+                self.container.visible = False
             self.display_backend.clear_display()
+
+    def close(self):
+        if self.disable:
+            return
+        super().close()
+        # Try to detect if there was an error or KeyboardInterrupt
+        # in manual mode: if n < total, things probably got wrong
+        if self.leave:
+            self.disp(bar_style="success", check_delay=False)
+        else:
+            self.disp(close=True, check_delay=False)
 
 
 class JupyterProgressBarBackend(ProgressBarBackend):
