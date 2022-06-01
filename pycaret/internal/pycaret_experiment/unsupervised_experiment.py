@@ -1136,8 +1136,11 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
 
         self.logger.info("Uploading results into container")
 
-        model_results = pd.DataFrame(metrics, index=[0])
-        model_results = model_results.round(round)
+        if metrics:
+            model_results = pd.DataFrame(metrics, index=[0])
+            model_results = model_results.round(round)
+        else:
+            model_results = None
 
         self.display_container.append(model_results)
 
@@ -1148,8 +1151,10 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
                 {"model": model, "scores": model_results, "cv": None}
             )
 
-        if self._ml_usecase == MLUsecase.CLUSTERING and not system:
+        if model_results is not None and system:
             display.display(model_results.style.format(precision=round))
+        else:
+            display.close()
 
         self.logger.info(f"master_model_container: {len(self.master_model_container)}")
         self.logger.info(f"display_container: {len(self.display_container)}")
