@@ -1421,6 +1421,9 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
 
         # Storing X_train and y_train in data_X and data_y parameter
         data_X = self.X if X_data is None else X_data
+        transformed_data = (
+            self.X_transformed if X_data is None else self.pipeline.transform(X_data)
+        )
 
         """
         MONITOR UPDATE STARTS
@@ -1523,7 +1526,10 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
             gt = None
 
         if self._ml_usecase == MLUsecase.CLUSTERING:
-            metrics = self._calculate_metrics(data_X, model.labels_, ground_truth=gt)
+            with redirect_output(self.logger):
+                metrics = self._calculate_metrics(
+                    transformed_data, model.labels_, ground_truth=gt
+                )
         else:
             metrics = {}
 
