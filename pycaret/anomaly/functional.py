@@ -32,7 +32,7 @@ def setup(
     numeric_imputation: str = "mean",
     categorical_imputation: str = "constant",
     text_features_method: str = "tf-idf",
-    max_encoding_ohe: int = 5,
+    max_encoding_ohe: int = -1,
     encoding_method: Optional[Any] = None,
     polynomial_features: bool = False,
     polynomial_degree: int = 2,
@@ -161,11 +161,11 @@ def setup(
         text embeddings.
 
 
-    max_encoding_ohe: int, default = 5
+    max_encoding_ohe: int, default = -1
         Categorical columns with `max_encoding_ohe` or less unique values are
         encoded using OneHotEncoding. If more, the `encoding_method` estimator
         is used. Note that columns with exactly two classes are always encoded
-        ordinally.
+        ordinally. Set to below 0 to always use OneHotEncoding.
 
 
     encoding_method: category-encoders estimator, default = None

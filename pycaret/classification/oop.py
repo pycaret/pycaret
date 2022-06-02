@@ -332,7 +332,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             Categorical columns with `max_encoding_ohe` or less unique values are
             encoded using OneHotEncoding. If more, the `encoding_method` estimator
             is used. Note that columns with exactly two classes are always encoded
-            ordinally.
+            ordinally. Set to below 0 to always use OneHotEncoding.
 
 
         encoding_method: category-encoders estimator, default = None

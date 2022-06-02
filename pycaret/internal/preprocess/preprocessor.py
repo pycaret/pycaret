@@ -507,7 +507,7 @@ class Preprocessor:
             n_unique = self.X[col].nunique(dropna=False)
             if n_unique == 2:
                 self._fxs["Ordinal"][col] = list(sorted(self.X[col].unique()))
-            elif n_unique <= max_encoding_ohe:
+            elif max_encoding_ohe < 0 or n_unique <= max_encoding_ohe:
                 one_hot_cols.append(col)
             else:
                 rest_cols.append(col)
