@@ -21,7 +21,6 @@ def test_optimize_threshold():
     clf1 = pycaret.classification.setup(
         data,
         target="Class",
-        silent=True,
         html=False,
         n_jobs=1,
     )

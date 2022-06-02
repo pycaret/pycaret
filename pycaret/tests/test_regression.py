@@ -34,7 +34,6 @@ def test_regression(boston_dataframe, return_train_score):
         target="medv",
         remove_multicollinearity=True,
         multicollinearity_threshold=0.95,
-        silent=True,
         log_experiment=True,
         html=False,
         session_id=123,
@@ -138,7 +137,6 @@ def test_regression_predict_on_unseen(boston_dataframe):
         target="medv",
         remove_multicollinearity=True,
         multicollinearity_threshold=0.95,
-        silent=True,
         log_experiment=True,
         html=False,
         session_id=123,
@@ -163,7 +161,6 @@ class TestRegressionExperimentCustomTags:
             _ = pycaret.regression.setup(
                 boston_dataframe,
                 target="medv",
-                silent=True,
                 log_experiment=True,
                 html=False,
                 session_id=123,
@@ -181,7 +178,6 @@ class TestRegressionExperimentCustomTags:
             _ = pycaret.regression.setup(
                 pycaret.datasets.get_data("boston"),
                 target="medv",
-                silent=True,
                 log_experiment=True,
                 html=False,
                 session_id=123,
@@ -198,7 +194,6 @@ class TestRegressionExperimentCustomTags:
         _ = pycaret.regression.setup(
             boston_dataframe,
             target="medv",
-            silent=True,
             log_experiment=True,
             html=False,
             session_id=123,

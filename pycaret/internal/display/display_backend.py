@@ -3,12 +3,12 @@ from pprint import pprint
 from typing import Any, Optional, Union
 
 import pandas as pd
-from IPython import get_ipython
-from IPython.display import HTML, DisplayHandle, clear_output
+
+if not "get_ipython" in globals():
+    from IPython import get_ipython
+from IPython.display import DisplayHandle, clear_output
 from IPython.display import display as ipython_display
 from pandas.io.formats.style import Styler
-
-from pycaret.utils import enable_colab
 
 try:
     import dbruntime.display
@@ -17,21 +17,26 @@ try:
 except ImportError:
     IN_DATABRICKS = False
 
-MATPLOTLIB_INLINE_ENABLED = False
+try:
+    import google.colab
+
+    IN_COLAB = True
+except ImportError:
+    IN_COLAB = False
+
 COLAB_ENABLED = False
 
 
 def _enable_matplotlib_inline():
-    global MATPLOTLIB_INLINE_ENABLED
-    if not MATPLOTLIB_INLINE_ENABLED:
-        get_ipython().run_line_magic("matplotlib", "inline")
-        MATPLOTLIB_INLINE_ENABLED = True
+    get_ipython().run_line_magic("matplotlib", "inline")
 
 
 def _enable_colab():
     global COLAB_ENABLED
     if not COLAB_ENABLED:
-        enable_colab()
+        from google.colab import output
+
+        output.enable_custom_widget_manager()
         COLAB_ENABLED = True
 
 
@@ -147,11 +152,6 @@ class ColabBackend(JupyterBackend):
         _enable_colab()
         super().__init__()
 
-    def _handle_input(self, obj: Any) -> Any:
-        if isinstance(obj, Styler):
-            return HTML(obj.to_html())
-        return obj
-
 
 class DatabricksBackend(JupyterBackend):
     id: str = "databricks"
@@ -188,18 +188,19 @@ def detect_backend(
         if IN_DATABRICKS:
             return DatabricksBackend()
 
+        if IN_COLAB:
+            return ColabBackend()
+
         try:
             ipython = get_ipython()
             assert ipython
-            class_name = ipython.__class__.__name__
+            class_name = str(ipython.__class__)
             is_notebook = True if "Terminal" not in class_name else False
         except Exception:
             is_notebook = False
 
         if not is_notebook:
             return CLIBackend()
-        if "google.colab" in class_name:
-            return ColabBackend()
         return JupyterBackend()
 
     if isinstance(backend, str):
@@ -217,3 +218,6 @@ def detect_backend(
     raise TypeError(
         f"Wrong backend type. Expected None, str or DisplayBackend, got {type(backend)}."
     )
+
+
+detect_backend()

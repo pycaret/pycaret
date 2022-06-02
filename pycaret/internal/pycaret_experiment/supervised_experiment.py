@@ -531,7 +531,7 @@ class _SupervisedExperiment(_TabularExperiment):
         elif exclude:
             len_mod -= len(exclude)
 
-        progress_args = {"max": (4 * len_mod) + 4 + len_mod}
+        progress_args = {"max": (4 * len_mod) + 4 + min(len_mod, abs(n_select))}
         master_display_columns = (
             ["Model"]
             + [v.display_name for k, v in self._all_metrics.items()]
@@ -661,8 +661,6 @@ class _SupervisedExperiment(_TabularExperiment):
                 )
                 break
             total_runtime_start = runtime_start
-
-            display.move_progress()
 
             """
             MONITOR UPDATE STARTS
@@ -834,12 +832,13 @@ class _SupervisedExperiment(_TabularExperiment):
         sorted_models = []
 
         if master_display is not None:
+            clamped_n_select = min(len(master_display), abs(n_select))
             if n_select < 0:
                 n_select_range = range(
-                    len(master_display) - n_select, len(master_display)
+                    len(master_display) - clamped_n_select, len(master_display)
                 )
             else:
-                n_select_range = range(0, n_select)
+                n_select_range = range(0, clamped_n_select)
 
             if self.logging_param:
                 self.logging_param.log_model_comparison(
@@ -897,7 +896,9 @@ class _SupervisedExperiment(_TabularExperiment):
                             )
                             self.logger.error(traceback.format_exc())
                             model = None
+                            display.move_progress()
                             continue
+                    display.move_progress()
                     full_logging = True
 
                 if self.logging_param and cross_validation and model is not None:
@@ -5061,6 +5062,34 @@ class _SupervisedExperiment(_TabularExperiment):
         the approach known as group fairness, which asks: Which groups of individuals
         are at risk for experiencing harms. This function provides fairness-related
         metrics between different groups (also called subpopulation).
+
+
+        Example
+        -------
+        >>> from pycaret.datasets import get_data
+        >>> income = get_data('income')
+        >>> from pycaret.classification import *
+        >>> exp_name = setup(data = income,  target = 'income >50K')
+        >>> lr = create_model('lr')
+        >>> lr_fairness = check_fairness(lr, sensitive_features = ['sex', 'race'])
+
+
+        estimator: scikit-learn compatible object
+            Trained model object
+
+
+        sensitive_features: list
+            List of column names as present in the original dataset before any
+            transformations.
+
+
+        plot_kwargs: dict, default = {} (empty dict)
+            Dictionary of arguments passed to the matplotlib plot.
+
+
+        Returns:
+            pandas.DataFrame
+
         """
 
         _check_soft_dependencies("fairlearn", extra="analysis", severity="error")

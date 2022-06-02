@@ -32,7 +32,7 @@ def setup(
     numeric_imputation: str = "mean",
     categorical_imputation: str = "constant",
     text_features_method: str = "tf-idf",
-    max_encoding_ohe: int = 5,
+    max_encoding_ohe: int = -1,
     encoding_method: Optional[Any] = None,
     polynomial_features: bool = False,
     polynomial_degree: int = 2,
@@ -62,7 +62,6 @@ def setup(
     log_plots: Union[bool, list] = False,
     log_profile: bool = False,
     log_data: bool = False,
-    silent: bool = False,
     verbose: bool = True,
     memory: Union[bool, str, Memory] = True,
     profile: bool = False,
@@ -162,11 +161,11 @@ def setup(
         text embeddings.
 
 
-    max_encoding_ohe: int, default = 5
+    max_encoding_ohe: int, default = -1
         Categorical columns with `max_encoding_ohe` or less unique values are
         encoded using OneHotEncoding. If more, the `encoding_method` estimator
         is used. Note that columns with exactly two classes are always encoded
-        ordinally.
+        ordinally. Set to below 0 to always use OneHotEncoding.
 
 
     encoding_method: category-encoders estimator, default = None
@@ -350,11 +349,6 @@ def setup(
         Ignored when ``log_experiment`` is False.
 
 
-    silent: bool, default = False
-        Controls the confirmation input of data types when ``setup`` is executed. When
-        executing in completely automated mode or on a remote kernel, this must be True.
-
-
     verbose: bool, default = True
         When set to False, Information grid is not printed.
 
@@ -426,7 +420,6 @@ def setup(
         log_plots=log_plots,
         log_profile=log_profile,
         log_data=log_data,
-        silent=silent,
         verbose=verbose,
         memory=memory,
         profile=profile,
@@ -568,7 +561,7 @@ def plot_model(
     scale: float = 1,
     save: bool = False,
     display_format: Optional[str] = None,
-):
+) -> Optional[str]:
 
     """
     This function analyzes the performance of a trained model.
@@ -619,7 +612,7 @@ def plot_model(
 
 
     Returns:
-        None
+        Path to saved file, if any.
 
     """
     return _CURRENT_EXPERIMENT.plot_model(
@@ -1095,6 +1088,26 @@ def load_model(
 
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
+def pull(pop: bool = False) -> pd.DataFrame:
+    """
+    Returns the latest displayed table.
+
+    Parameters
+    ----------
+    pop : bool, default = False
+        If true, will pop (remove) the returned dataframe from the
+        display container.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Equivalent to get_config('display_container')[-1]
+
+    """
+    return _CURRENT_EXPERIMENT.pull(pop=pop)
+
+
+@check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def models(
     internal: bool = False,
     raise_errors: bool = True,
@@ -1167,39 +1180,17 @@ def get_logs(experiment_name: Optional[str] = None, save: bool = False) -> pd.Da
 def get_config(variable: str):
 
     """
-    This function retrieves the global variables created when initializing the
-    ``setup`` function. Following variables are accessible:
-
-    - dataset: Transformed dataset
-    - train: Transformed training set
-    - test: Transformed test set
-    - X: Transformed feature set
-    - y: Transformed target column
-    - X_train, X_test, y_train, y_test: Subsets of the train and test sets.
-    - seed: random state set through session_id
-    - pipeline: Transformation pipeline configured through setup
-    - n_jobs_param: n_jobs parameter used in model training
-    - html_param: html_param configured through setup
-    - master_model_container: model storage container
-    - display_container: results display container
-    - exp_name_log: Name of experiment set through setup
-    - logging_param: log_experiment param set through setup
-    - log_plots_param: log_plots param set through setup
-    - USI: Unique session ID parameter set through setup
-    - gpu_param: use_gpu param configured through setup
-
+    This function is used to access global environment variables.
 
     Example
     -------
-    >>> from pycaret.datasets import get_data
-    >>> anomaly = get_data('anomaly')
-    >>> from pycaret.anomaly import *
-    >>> exp_name = setup(data = anomaly)
-    >>> X = get_config('X')
+    >>> X_train = get_config('X_train')
 
+    This will return X_train transformed dataset.
 
-    Returns:
-        Global variable
+    Returns
+    -------
+    variable
 
     """
 
@@ -1210,38 +1201,15 @@ def get_config(variable: str):
 def set_config(variable: str, value):
 
     """
-    This function resets the global variables. Following variables are
-    accessible:
-
-    - X: Transformed dataset (X)
-    - data_before_preprocess: data before preprocessing
-    - seed: random state set through session_id
-    - prep_pipe: Transformation pipeline configured through setup
-    - n_jobs_param: n_jobs parameter used in model training
-    - html_param: html_param configured through setup
-    - master_model_container: model storage container
-    - display_container: results display container
-    - exp_name_log: Name of experiment set through setup
-    - logging_param: log_experiment param set through setup
-    - log_plots_param: log_plots param set through setup
-    - USI: Unique session ID parameter set through setup
-    - gpu_param: use_gpu param configured through setup
-
+    This function is used to reset global environment variables.
 
     Example
     -------
-    >>> from pycaret.datasets import get_data
-    >>> anomaly = get_data('anomaly')
-    >>> from pycaret.anomaly import *
-    >>> exp_name = setup(data = anomaly)
     >>> set_config('seed', 123)
 
-
-    Returns:
-        None
+    This will set the global seed to '123'.
 
     """
-
     return _CURRENT_EXPERIMENT.set_config(variable=variable, value=value)
 
 
@@ -1292,118 +1260,16 @@ def load_config(file_name: str):
     return _CURRENT_EXPERIMENT.load_config(file_name=file_name)
 
 
-def get_outliers(
-    data,
-    model: Union[str, Any] = "knn",
-    fraction: float = 0.05,
-    fit_kwargs: Optional[dict] = None,
-    preprocess: bool = True,
-    imputation_type: str = "simple",
-    iterative_imputation_iters: int = 5,
-    categorical_features: Optional[List[str]] = None,
-    categorical_imputation: str = "mode",
-    categorical_iterative_imputer: Union[str, Any] = "lightgbm",
-    ordinal_features: Optional[Dict[str, list]] = None,
-    high_cardinality_features: Optional[List[str]] = None,
-    high_cardinality_method: str = "frequency",
-    numeric_features: Optional[List[str]] = None,
-    numeric_imputation: str = "mean",  # method 'zero' added in pycaret==2.1
-    numeric_iterative_imputer: Union[str, Any] = "lightgbm",
-    date_features: Optional[List[str]] = None,
-    ignore_features: Optional[List[str]] = None,
-    normalize: bool = False,
-    normalize_method: str = "zscore",
-    transformation: bool = False,
-    transformation_method: str = "yeo-johnson",
-    handle_unknown_categorical: bool = True,
-    unknown_categorical_method: str = "least_frequent",
-    pca: bool = False,
-    pca_method: str = "linear",
-    pca_components: Union[int, float] = 1.0,
-    low_variance_threshold: float = 0,
-    combine_rare_levels: bool = False,
-    rare_level_threshold: float = 0.10,
-    bin_numeric_features: Optional[List[str]] = None,
-    remove_multicollinearity: bool = False,
-    multicollinearity_threshold: float = 0.9,
-    remove_perfect_collinearity: bool = False,
-    group_features: Optional[List[str]] = None,
-    group_names: Optional[List[str]] = None,
-    n_jobs: Optional[int] = -1,
-    session_id: Optional[int] = None,
-    system_log: Union[bool, str, logging.Logger] = True,
-    log_experiment: Union[bool, str, BaseLogger, List[Union[str, BaseLogger]]] = False,
-    experiment_name: Optional[str] = None,
-    log_plots: Union[bool, list] = False,
-    log_profile: bool = False,
-    log_data: bool = False,
-    profile: bool = False,
-    **kwargs,
-) -> pd.DataFrame:
-
-    """
-    Callable from any external environment without requiring setup initialization.
-    """
-    exp = _EXPERIMENT_CLASS()
-    exp.setup(
-        data=data,
-        preprocess=preprocess,
-        imputation_type=imputation_type,
-        iterative_imputation_iters=iterative_imputation_iters,
-        categorical_features=categorical_features,
-        categorical_imputation=categorical_imputation,
-        categorical_iterative_imputer=categorical_iterative_imputer,
-        ordinal_features=ordinal_features,
-        high_cardinality_features=high_cardinality_features,
-        high_cardinality_method=high_cardinality_method,
-        numeric_features=numeric_features,
-        numeric_imputation=numeric_imputation,
-        numeric_iterative_imputer=numeric_iterative_imputer,
-        date_features=date_features,
-        ignore_features=ignore_features,
-        normalize=normalize,
-        normalize_method=normalize_method,
-        transformation=transformation,
-        transformation_method=transformation_method,
-        handle_unknown_categorical=handle_unknown_categorical,
-        unknown_categorical_method=unknown_categorical_method,
-        pca=pca,
-        pca_method=pca_method,
-        pca_components=pca_components,
-        low_variance_threshold=low_variance_threshold,
-        combine_rare_levels=combine_rare_levels,
-        rare_level_threshold=rare_level_threshold,
-        bin_numeric_features=bin_numeric_features,
-        remove_multicollinearity=remove_multicollinearity,
-        multicollinearity_threshold=multicollinearity_threshold,
-        remove_perfect_collinearity=remove_perfect_collinearity,
-        group_features=group_features,
-        group_names=group_names,
-        n_jobs=n_jobs,
-        html=False,
-        session_id=session_id,
-        system_log=system_log,
-        log_experiment=log_experiment,
-        experiment_name=experiment_name,
-        log_plots=log_plots,
-        log_profile=log_profile,
-        log_data=log_data,
-        silent=True,
-        verbose=False,
-        profile=profile,
-    )
-
-    c = exp.create_model(
-        model=model,
-        fraction=fraction,
-        fit_kwargs=fit_kwargs,
-        verbose=False,
-        **kwargs,
-    )
-    return exp.assign_model(c, verbose=False)
-
-
 def set_current_experiment(experiment: AnomalyExperiment):
+    """
+    Set the current experiment to be used with the functional API.
+
+    experiment: AnomalyExperiment
+        Experiment object to use.
+
+    Returns:
+        None
+    """
     global _CURRENT_EXPERIMENT
 
     if not isinstance(experiment, AnomalyExperiment):

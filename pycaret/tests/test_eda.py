@@ -19,7 +19,6 @@ def test_eda():
     pycaret.classification.setup(
         data,
         target="Class",
-        silent=True,
         html=False,
         n_jobs=1,
     )

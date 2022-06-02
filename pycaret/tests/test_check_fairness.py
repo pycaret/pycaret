@@ -21,7 +21,6 @@ def test_check_fairness_binary_classification():
     clf1 = pycaret.classification.setup(
         data,
         target="income >50K",
-        silent=True,
         html=False,
         n_jobs=1,
     )
@@ -43,7 +42,6 @@ def test_check_fairness_multiclass_classification():
     clf1 = pycaret.classification.setup(
         data,
         target="species",
-        silent=True,
         html=False,
         n_jobs=1,
         train_size=0.8,
@@ -68,7 +66,6 @@ def test_check_fairness_regression():
     reg1 = pycaret.regression.setup(
         data,
         target="medv",
-        silent=True,
         html=False,
         n_jobs=1,
     )

@@ -342,6 +342,24 @@ class _PyCaretExperiment:
         return
 
     def save_config(self, file_name: str) -> None:
+        """
+        This function save all global variables to a pickle file, allowing to
+        later resume without rerunning the ``setup``.
+
+
+        Example
+        -------
+        >>> from pycaret.datasets import get_data
+        >>> juice = get_data('juice')
+        >>> from pycaret.classification import *
+        >>> exp_name = setup(data = juice,  target = 'Purchase')
+        >>> save_config('myvars.pkl')
+
+
+        Returns:
+            None
+
+        """
         function_params_str = ", ".join(
             [f"{k}={v}" for k, v in locals().items() if not k == "globals_d"]
         )
@@ -374,6 +392,21 @@ class _PyCaretExperiment:
         return
 
     def load_config(self, file_name: str) -> None:
+        """
+        This function loads global variables from a pickle file into Python
+        environment.
+
+
+        Example
+        -------
+        >>> from pycaret.classification import load_config
+        >>> load_config('myvars.pkl')
+
+
+        Returns:
+            Global variables
+
+        """
         self._check_setup_ran()
 
         function_params_str = ", ".join(

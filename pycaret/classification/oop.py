@@ -180,7 +180,6 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         log_plots: Union[bool, list] = False,
         log_profile: bool = False,
         log_data: bool = False,
-        silent: bool = False,
         verbose: bool = True,
         memory: Union[bool, str, Memory] = True,
         profile: bool = False,
@@ -333,7 +332,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             Categorical columns with `max_encoding_ohe` or less unique values are
             encoded using OneHotEncoding. If more, the `encoding_method` estimator
             is used. Note that columns with exactly two classes are always encoded
-            ordinally.
+            ordinally. Set to below 0 to always use OneHotEncoding.
 
 
         encoding_method: category-encoders estimator, default = None
@@ -624,7 +623,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
 
 
         Returns:
-            Global variables that can be changed using the ``set_config`` function.
+           ClassificationExperiment object.
 
         """
 
@@ -1035,6 +1034,11 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             as the column name in the dataset containing group labels.
 
 
+        experiment_custom_tags: dict, default = None
+            Dictionary of tag_name: String -> value: (String, but will be string-ified
+            if not) passed to the mlflow.set_tags to add new custom tags for the experiment.
+
+
         probability_threshold: float, default = None
             Threshold for converting predicted probability to class label.
             It defaults to 0.5 for all classifiers unless explicitly defined
@@ -1054,6 +1058,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
 
         Returns:
             Trained model or list of trained models, depending on the ``n_select`` param.
+
 
         Warnings
         --------
@@ -1179,12 +1184,13 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             in this parameter. Only applicable for binary classification.
 
 
+        experiment_custom_tags: dict, default = None
+            Dictionary of tag_name: String -> value: (String, but will be string-ified
+            if not) passed to the mlflow.set_tags to add new custom tags for the experiment.
+
+
         verbose: bool, default = True
             Score grid is not printed when verbose is set to False.
-
-
-        **kwargs:
-            Additional keyword arguments to pass to the estimator.
 
 
         return_train_score: bool, default = False
@@ -1192,6 +1198,10 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             If True, returns the CV training scores along with the CV validation scores.
             This is useful when the user wants to do bias-variance tradeoff. A high CV
             training score with a low corresponding CV validation score indicates overfitting.
+
+
+        **kwargs:
+            Additional keyword arguments to pass to the estimator.
 
 
         Returns:
@@ -1333,6 +1343,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
                 - 'grid' : grid search
                 - 'bayesian' : ``pip install scikit-optimize``
                 - 'hyperopt' : ``pip install hyperopt``
+                - 'optuna' : ``pip install optuna``
                 - 'bohb' : ``pip install hpbandster ConfigSpace``
 
             - 'optuna' possible values:
@@ -1384,7 +1395,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
 
         tuner_verbose: bool or in, default = True
             If True or above 0, will print messages from the tuner. Higher values
-            print more messages. Ignored when ``verbose`` parameter is False.
+            print more messages. Ignored when ``verbose`` param is False.
 
 
         return_train_score: bool, default = False
@@ -1827,7 +1838,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         use_train_data: bool = False,
         verbose: bool = True,
         display_format: Optional[str] = None,
-    ) -> str:
+    ) -> Optional[str]:
 
         """
         This function analyzes the performance of a trained model on holdout set.
@@ -1919,7 +1930,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
 
 
         Returns:
-            None
+            Path to saved file, if any.
 
 
         Warnings
@@ -1989,6 +2000,10 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             Dictionary of arguments passed to the fit method of the model.
 
 
+        plot_kwargs: dict, default = {} (empty dict)
+            Dictionary of arguments passed to the visualizer class.
+
+
         groups: str or array-like, with shape (n_samples,), default = None
             Optional group labels when GroupKFold is used for the cross validation.
             It takes an array with shape (n_samples, ) where n_samples is the number
@@ -2035,15 +2050,15 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
 
         """
         This function takes a trained model object and returns an interpretation plot
-        based on the test / hold-out set. It only supports tree based algorithms.
+        based on the test / hold-out set.
 
         This function is implemented based on the SHAP (SHapley Additive exPlanations),
         which is a unified approach to explain the output of any machine learning model.
         SHAP connects game theory with local explanations.
 
-        For more information : https://shap.readthedocs.io/en/latest/
+        For more information: https://shap.readthedocs.io/en/latest/
 
-        For Partial Dependence Plot : https://github.com/SauceCat/PDPbox
+        For more information on Partial Dependence Plot: https://github.com/SauceCat/PDPbox
 
 
         Example
@@ -2142,38 +2157,37 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         groups: Optional[Union[str, Any]] = None,
         verbose: bool = True,
         return_train_score: bool = False,
-        display: Optional[CommonDisplay] = None,  # added in pycaret==2.2.0
     ) -> Any:
 
         """
-        This function takes the input of trained estimator and performs probability
-        calibration with sigmoid or isotonic regression. The output prints a score
-        grid that shows Accuracy, AUC, Recall, Precision, F1, Kappa and MCC by fold
-        (default = 10 Fold). The ouput of the original estimator and the calibrated
-        estimator (created using this function) might not differ much. In order
-        to see the calibration differences, use 'calibration' plot in plot_model to
-        see the difference before and after.
+        This function calibrates the probability of a given estimator using isotonic
+        or logistic regression. The output of this function is a score grid with CV
+        scores by fold. Metrics evaluated during CV can be accessed using the
+        ``get_metrics`` function. Custom metrics can be added or removed using
+        ``add_metric`` and ``remove_metric`` function. The ouput of the original estimator
+        and the calibrated estimator (created using this function) might not differ much.
+        In order to see the calibration differences, use 'calibration' plot in ``plot_model``
+        to see the difference before and after.
 
-        This function returns a trained model object.
 
         Example
         -------
         >>> from pycaret.datasets import get_data
         >>> juice = get_data('juice')
-        >>> experiment_name = setup(data = juice,  target = 'Purchase')
-        >>> dt_boosted = create_model('dt', ensemble = True, method = 'Boosting')
-        >>> calibrated_dt = calibrate_model(dt_boosted)
+        >>> from pycaret.classification import *
+        >>> exp_name = setup(data = juice,  target = 'Purchase')
+        >>> dt = create_model('dt')
+        >>> calibrated_dt = calibrate_model(dt)
 
-        This will return Calibrated Boosted Decision Tree Model.
 
-        Parameters
-        ----------
-        estimator : object
+        estimator: scikit-learn compatible object
+            Trained model object
 
-        method : str, default = 'sigmoid'
-            The method to use for calibration. Can be 'sigmoid' which corresponds to Platt's
-            method or 'isotonic' which is a non-parametric approach. It is not advised to use
-            isotonic calibration with too few calibration samples
+
+        method: str, default = 'sigmoid'
+            The method to use for calibration. Can be 'sigmoid' which corresponds to
+            Platt's method or 'isotonic' which is a non-parametric approach.
+
 
         calibrate_fold: integer or scikit-learn compatible CV generator, default = 5
             Controls internal cross-validation. Can be an integer or a scikit-learn
@@ -2181,25 +2195,32 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             that many folds. See scikit-learn documentation on Stacking for
             more details.
 
-        fold: integer or scikit-learn compatible CV generator, default = None
-            Controls cross-validation. If None, will use the CV generator defined in setup().
-            If integer, will use KFold CV with that many folds.
-            When cross_validation is False, this parameter is ignored.
 
-        round: integer, default = 4
+        fold: int or scikit-learn compatible CV generator, default = None
+            Controls cross-validation. If None, the CV generator in the ``fold_strategy``
+            parameter of the ``setup`` function is used. When an integer is passed,
+            it is interpreted as the 'n_splits' parameter of the CV generator in the
+            ``setup`` function.
+
+
+        round: int, default = 4
             Number of decimal places the metrics in the score grid will be rounded to.
+
 
         fit_kwargs: dict, default = {} (empty dict)
             Dictionary of arguments passed to the fit method of the model.
 
+
         groups: str or array-like, with shape (n_samples,), default = None
-            Optional Group labels for the samples used while splitting the dataset into train/test set.
-            If string is passed, will use the data column with that name as the groups.
-            Only used if a group based cross-validation generator is used (eg. GroupKFold).
-            If None, will use the value set in fold_groups parameter in setup().
+            Optional group labels when GroupKFold is used for the cross validation.
+            It takes an array with shape (n_samples, ) where n_samples is the number
+            of rows in training dataset. When string is passed, it is interpreted as
+            the column name in the dataset containing group labels.
+
 
         verbose: bool, default = True
             Score grid is not printed when verbose is set to False.
+
 
         return_train_score: bool, default = False
             If False, returns the CV Validation scores only.
@@ -2207,24 +2228,15 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             This is useful when the user wants to do bias-variance tradeoff. A high CV
             training score with a low corresponding CV validation score indicates overfitting.
 
-        Returns
-        -------
-        score_grid
-            A table containing the scores of the model across the kfolds.
-            Scoring metrics used are Accuracy, AUC, Recall, Precision, F1,
-            Kappa and MCC. Mean and standard deviation of the scores across
-            the folds are also returned.
 
-        model
-            trained and calibrated model object.
+        Returns:
+            Trained Model
+
 
         Warnings
         --------
-        - Avoid isotonic calibration with too few calibration samples (<1000) since it
+        - Avoid isotonic calibration with too few calibration samples (< 1000) since it
         tends to overfit.
-
-        - calibration plot not available for multiclass problems.
-
 
         """
 
@@ -2281,28 +2293,27 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
 
         self.logger.info("Preparing display monitor")
 
-        if not display:
-            progress_args = {"max": 2 + 4}
-            timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
-            monitor_rows = [
-                ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
-                [
-                    "Status",
-                    ". . . . . . . . . . . . . . . . . .",
-                    "Loading Dependencies",
-                ],
-                [
-                    "Estimator",
-                    ". . . . . . . . . . . . . . . . . .",
-                    "Compiling Library",
-                ],
-            ]
-            display = CommonDisplay(
-                verbose=verbose,
-                html_param=self.html_param,
-                progress_args=progress_args,
-                monitor_rows=monitor_rows,
-            )
+        progress_args = {"max": 2 + 4}
+        timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
+        monitor_rows = [
+            ["Initiated", ". . . . . . . . . . . . . . . . . .", timestampStr],
+            [
+                "Status",
+                ". . . . . . . . . . . . . . . . . .",
+                "Loading Dependencies",
+            ],
+            [
+                "Estimator",
+                ". . . . . . . . . . . . . . . . . .",
+                "Compiling Library",
+            ],
+        ]
+        display = CommonDisplay(
+            verbose=verbose,
+            html_param=self.html_param,
+            progress_args=progress_args,
+            monitor_rows=monitor_rows,
+        )
 
         np.random.seed(self.seed)
 
@@ -2464,11 +2475,10 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         -------
         Trained Model
 
+
         Warnings
         --------
-        - This function is not supported for multiclass problems.
-
-
+        - This function does not support multiclass classification problems.
         """
 
         function_params_str = ", ".join([f"{k}={v}" for k, v in locals().items()])
@@ -2638,8 +2648,9 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
 
         probability_threshold: float, default = None
             Threshold for converting predicted probability to class label.
-            It defaults to 0.5 for all classifiers unless explicitly defined
-            in this parameter.
+            Unless this parameter is set, it will default to the value set
+            during model creation. If that wasn't set, the default will be 0.5
+            for all classifiers. Only applicable for binary classification.
 
 
         encoded_labels: bool, default = False
@@ -2648,6 +2659,11 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
 
         raw_score: bool, default = False
             When set to True, scores for all labels will be returned.
+
+
+        drift_report: bool, default = False
+            When set to True, interactive drift report is generated on test set
+            with the evidently library.
 
 
         round: int, default = 4
@@ -2724,6 +2740,11 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         model_only: bool, default = True
             When set to False, only model object is re-trained and all the
             transformations in Pipeline are ignored.
+
+
+        experiment_custom_tags: dict, default = None
+            Dictionary of tag_name: String -> value: (String, but will be string-ified
+            if not) passed to the mlflow.set_tags to add new custom tags for the experiment.
 
 
         Returns:
@@ -2872,6 +2893,10 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             Success message is not printed when verbose is set to False.
 
 
+        **kwargs:
+            Additional keyword arguments to pass to joblib.dump().
+
+
         Returns:
             Tuple of the model object and the filename.
 
@@ -2916,7 +2941,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             dictionary of applicable authentication tokens.
 
             when platform = 'aws':
-            {'bucket' : 'S3-bucket-name'}
+            {'bucket' : 'Name of Bucket on S3', 'path': (optional) folder name under the bucket}
 
             when platform = 'gcp':
             {'project': 'gcp-project-name', 'bucket' : 'gcp-bucket-name'}
@@ -3001,24 +3026,6 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             return_train_score=return_train_score,
         )
 
-    def pull(self, pop: bool = False) -> pd.DataFrame:
-
-        """
-        Returns last printed score grid. Use ``pull`` function after
-        any training function to store the score grid in pandas.DataFrame.
-
-
-        pop: bool, default = False
-            If True, will pop (remove) the returned dataframe from the
-            display container.
-
-
-        Returns:
-            pandas.DataFrame
-
-        """
-        return super().pull(pop=pop)
-
     def models(
         self,
         type: Optional[str] = None,
@@ -3067,7 +3074,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
     ) -> pd.DataFrame:
 
         """
-        Returns table of available metrics used for CV.
+        Returns table of available metrics used in the experiment.
 
 
         Example
@@ -3116,7 +3123,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
     ) -> pd.Series:
 
         """
-        Adds a custom metric to be used for CV.
+        Adds a custom metric to be used in the experiment.
 
 
         Example
@@ -3179,7 +3186,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
     def remove_metric(self, name_or_id: str):
 
         """
-        Removes a metric from CV.
+        Removes a metric from the experiment.
 
 
         Example
@@ -3199,6 +3206,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             None
 
         """
+
         return super().remove_metric(name_or_id=name_or_id)
 
     def get_logs(

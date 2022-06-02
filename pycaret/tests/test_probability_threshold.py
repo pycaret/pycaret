@@ -20,7 +20,6 @@ def test_probability_threshold():
     clf1 = pycaret.classification.setup(
         data,
         target="Purchase",
-        silent=True,
         log_experiment=True,
         html=False,
         session_id=123,

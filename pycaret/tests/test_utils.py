@@ -33,7 +33,6 @@ def test_utils():
     clf1 = pycaret.classification.setup(
         train,
         target="Purchase",
-        silent=True,
         html=False,
         session_id=123,
         n_jobs=1,
@@ -92,7 +91,6 @@ def test_utils():
     reg1 = pycaret.regression.setup(
         data,
         target="medv",
-        silent=True,
         html=False,
         session_id=123,
         n_jobs=1,

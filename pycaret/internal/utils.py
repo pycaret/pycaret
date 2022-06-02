@@ -487,10 +487,13 @@ def _calculate_unsupervised_metric(
     if not score_func:
         return None
     target = ground_truth if container.needs_ground_truth else X
-    try:
-        calculated_metric = score_func(target, labels, **container.args)
-    except:
+    if target is None:
         calculated_metric = 0
+    else:
+        try:
+            calculated_metric = score_func(target, labels, **container.args)
+        except Exception:
+            calculated_metric = 0
 
     return (display_name, calculated_metric)
 

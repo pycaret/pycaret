@@ -145,7 +145,6 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
         log_plots: Union[bool, list] = False,
         log_profile: bool = False,
         log_data: bool = False,
-        silent: bool = False,
         verbose: bool = True,
         memory: Union[bool, str, Memory] = True,
         profile: bool = False,
@@ -298,7 +297,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             Categorical columns with `max_encoding_ohe` or less unique values are
             encoded using OneHotEncoding. If more, the `encoding_method` estimator
             is used. Note that columns with exactly two classes are always encoded
-            ordinally.
+            ordinally. Set to below 0 to always use OneHotEncoding.
 
 
         encoding_method: category-encoders estimator, default = None
@@ -1134,6 +1133,11 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             the column name in the dataset containing group labels.
 
 
+        experiment_custom_tags: dict, default = None
+            Dictionary of tag_name: String -> value: (String, but will be string-ified
+            if not) passed to the mlflow.set_tags to add new custom tags for the experiment.
+
+
         verbose: bool, default = True
             Score grid is not printed when verbose is set to False.
 
@@ -1286,6 +1290,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
                 - 'grid' : grid search
                 - 'bayesian' : ``pip install scikit-optimize``
                 - 'hyperopt' : ``pip install hyperopt``
+                - 'optuna' : ``pip install optuna``
                 - 'bohb' : ``pip install hpbandster ConfigSpace``
 
             - 'optuna' possible values:
@@ -1337,7 +1342,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
 
         tuner_verbose: bool or in, default = True
             If True or above 0, will print messages from the tuner. Higher values
-            print more messages. Ignored when ``verbose`` parameter is False.
+            print more messages. Ignored when ``verbose`` param is False.
 
 
         return_train_score: bool, default = False
@@ -1403,24 +1408,24 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
     ) -> Any:
 
         """
-            This function ensembles a given estimator. The output of this function is
-            a score grid with CV scores by fold. Metrics evaluated during CV can be
-            accessed using the ``get_metrics`` function. Custom metrics can be added
-            or removed using ``add_metric`` and ``remove_metric`` function.
+        This function ensembles a given estimator. The output of this function is
+        a score grid with CV scores by fold. Metrics evaluated during CV can be
+        accessed using the ``get_metrics`` function. Custom metrics can be added
+        or removed using ``add_metric`` and ``remove_metric`` function.
 
 
-            Example
-            --------
-            >>> from pycaret.datasets import get_data
-            >>> boston = get_data('boston')
-            >>> from pycaret.regression import *
-            >>> exp_name = setup(data = boston,  target = 'medv')
-            >>> dt = create_model('dt')
-            >>> bagged_dt = ensemble_model(dt, method = 'Bagging')
+        Example
+        --------
+        >>> from pycaret.datasets import get_data
+        >>> boston = get_data('boston')
+        >>> from pycaret.regression import *
+        >>> exp_name = setup(data = boston,  target = 'medv')
+        >>> dt = create_model('dt')
+        >>> bagged_dt = ensemble_model(dt, method = 'Bagging')
 
 
         estimator: scikit-learn compatible object
-                Trained model object
+            Trained model object
 
 
         method: str, default = 'Bagging'
@@ -1463,19 +1468,19 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             the column name in the dataset containing group labels.
 
 
+        return_train_score: bool, default = False
+        If False, returns the CV Validation scores only.
+        If True, returns the CV training scores along with the CV validation scores.
+        This is useful when the user wants to do bias-variance tradeoff. A high CV
+        training score with a low corresponding CV validation score indicates overfitting.
+
+
         verbose: bool, default = True
             Score grid is not printed when verbose is set to False.
 
 
-        return_train_score: bool, default = False
-            If False, returns the CV Validation scores only.
-            If True, returns the CV training scores along with the CV validation scores.
-            This is useful when the user wants to do bias-variance tradeoff. A high CV
-            training score with a low corresponding CV validation score indicates overfitting.
-
-
-            Returns:
-                Trained Model
+        Returns:
+            Trained Model
 
         """
 
@@ -1728,62 +1733,62 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
         use_train_data: bool = False,
         verbose: bool = True,
         display_format: Optional[str] = None,
-    ) -> str:
+    ) -> Optional[str]:
 
         """
-            This function analyzes the performance of a trained model on holdout set.
-            It may require re-training the model in certain cases.
+        This function analyzes the performance of a trained model on holdout set.
+        It may require re-training the model in certain cases.
 
 
-            Example
-            --------
-            >>> from pycaret.datasets import get_data
-            >>> boston = get_data('boston')
-            >>> from pycaret.regression import *
-            >>> exp_name = setup(data = boston,  target = 'medv')
-            >>> lr = create_model('lr')
-            >>> plot_model(lr, plot = 'residual')
+        Example
+        --------
+        >>> from pycaret.datasets import get_data
+        >>> boston = get_data('boston')
+        >>> from pycaret.regression import *
+        >>> exp_name = setup(data = boston,  target = 'medv')
+        >>> lr = create_model('lr')
+        >>> plot_model(lr, plot = 'residual')
 
 
-            estimator: scikit-learn compatible object
-                Trained model object
+        estimator: scikit-learn compatible object
+            Trained model object
 
 
-            plot: str, default = 'residual'
-                List of available plots (ID - Name):
+        plot: str, default = 'residual'
+            List of available plots (ID - Name):
 
-                * 'pipeline' - Schematic drawing of the preprocessing pipeline
-                * 'residuals_interactive' - Interactive Residual plots
-                * 'residuals' - Residuals Plot
-                * 'error' - Prediction Error Plot
-                * 'cooks' - Cooks Distance Plot
-                * 'rfe' - Recursive Feat. Selection
-                * 'learning' - Learning Curve
-                * 'vc' - Validation Curve
-                * 'manifold' - Manifold Learning
-                * 'feature' - Feature Importance
-                * 'feature_all' - Feature Importance (All)
-                * 'parameter' - Model Hyperparameter
-                * 'tree' - Decision Tree
-
-
-            scale: float, default = 1
-                The resolution scale of the figure.
+            * 'pipeline' - Schematic drawing of the preprocessing pipeline
+            * 'residuals_interactive' - Interactive Residual plots
+            * 'residuals' - Residuals Plot
+            * 'error' - Prediction Error Plot
+            * 'cooks' - Cooks Distance Plot
+            * 'rfe' - Recursive Feat. Selection
+            * 'learning' - Learning Curve
+            * 'vc' - Validation Curve
+            * 'manifold' - Manifold Learning
+            * 'feature' - Feature Importance
+            * 'feature_all' - Feature Importance (All)
+            * 'parameter' - Model Hyperparameter
+            * 'tree' - Decision Tree
 
 
-            save: bool, default = False
-                When set to True, plot is saved in the current working directory.
+        scale: float, default = 1
+            The resolution scale of the figure.
 
 
-            fold: int or scikit-learn compatible CV generator, default = None
-                Controls cross-validation. If None, the CV generator in the ``fold_strategy``
-                parameter of the ``setup`` function is used. When an integer is passed,
-                it is interpreted as the 'n_splits' parameter of the CV generator in the
-                ``setup`` function.
+        save: bool, default = False
+            When set to True, plot is saved in the current working directory.
 
 
-            fit_kwargs: dict, default = {} (empty dict)
-                Dictionary of arguments passed to the fit method of the model.
+        fold: int or scikit-learn compatible CV generator, default = None
+            Controls cross-validation. If None, the CV generator in the ``fold_strategy``
+            parameter of the ``setup`` function is used. When an integer is passed,
+            it is interpreted as the 'n_splits' parameter of the CV generator in the
+            ``setup`` function.
+
+
+        fit_kwargs: dict, default = {} (empty dict)
+            Dictionary of arguments passed to the fit method of the model.
 
 
         plot_kwargs: dict, default = {} (empty dict)
@@ -1791,29 +1796,34 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
                 - pipeline: fontsize -> int
 
 
-            groups: str or array-like, with shape (n_samples,), default = None
-                Optional group labels when GroupKFold is used for the cross validation.
-                It takes an array with shape (n_samples, ) where n_samples is the number
-                of rows in training dataset. When string is passed, it is interpreted as
-                the column name in the dataset containing group labels.
+        plot_kwargs: dict, default = {} (empty dict)
+            Dictionary of arguments passed to the visualizer class.
+                - pipeline: fontsize -> int
 
 
-            use_train_data: bool, default = False
-                When set to true, train data will be used for plots, instead
-                of test data.
+        groups: str or array-like, with shape (n_samples,), default = None
+            Optional group labels when GroupKFold is used for the cross validation.
+            It takes an array with shape (n_samples, ) where n_samples is the number
+            of rows in training dataset. When string is passed, it is interpreted as
+            the column name in the dataset containing group labels.
 
 
-            verbose: bool, default = True
-                When set to False, progress bar is not displayed.
+        use_train_data: bool, default = False
+            When set to true, train data will be used for plots, instead
+            of test data.
 
 
-            display_format: str, default = None
-                To display plots in Streamlit (https://www.streamlit.io/), set this to 'streamlit'.
-                Currently, not all plots are supported.
+        verbose: bool, default = True
+            When set to False, progress bar is not displayed.
 
 
-            Returns:
-                None
+        display_format: str, default = None
+            To display plots in Streamlit (https://www.streamlit.io/), set this to 'streamlit'.
+            Currently, not all plots are supported.
+
+
+        Returns:
+            Path to saved file, if any.
 
         """
 
@@ -1870,6 +1880,10 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             Dictionary of arguments passed to the fit method of the model.
 
 
+        plot_kwargs: dict, default = {} (empty dict)
+            Dictionary of arguments passed to the visualizer class.
+
+
         groups: str or array-like, with shape (n_samples,), default = None
             Optional group labels when GroupKFold is used for the cross validation.
             It takes an array with shape (n_samples, ) where n_samples is the number
@@ -1916,15 +1930,16 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
 
         """
         This function takes a trained model object and returns an interpretation plot
-        based on the test / hold-out set. It only supports tree based algorithms.
+        based on the test / hold-out set.
 
         This function is implemented based on the SHAP (SHapley Additive exPlanations),
         which is a unified approach to explain the output of any machine learning model.
         SHAP connects game theory with local explanations.
 
-        For more information : https://shap.readthedocs.io/en/latest/
+        For more information: https://shap.readthedocs.io/en/latest/
 
-        For Partial Dependence Plot : https://github.com/SauceCat/PDPbox
+        For more information on Partial Dependence Plot: https://github.com/SauceCat/PDPbox
+
 
         Example
         --------
@@ -2044,6 +2059,11 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             must be available in the unseen dataset.
 
 
+        drift_report: bool, default = False
+            When set to True, interactive drift report is generated on test set
+            with the evidently library.
+
+
         round: int, default = 4
             Number of decimal places to round predictions to.
 
@@ -2119,9 +2139,14 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             When set to False, only model object is re-trained and all the
             transformations in Pipeline are ignored.
 
+        experiment_custom_tags: dict, default = None
+            Dictionary of tag_name: String -> value: (String, but will be string-ified if
+            not) passed to the mlflow.set_tags to add new custom tags for the experiment.
 
         Returns:
             Trained Model
+
+
         """
 
         return super().finalize_model(
@@ -2261,6 +2286,10 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             entire pipeline.
 
 
+        **kwargs:
+            Additional keyword arguments to pass to joblib.dump().
+
+
         verbose: bool, default = True
             Success message is not printed when verbose is set to False.
 
@@ -2308,7 +2337,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             dictionary of applicable authentication tokens.
 
             when platform = 'aws':
-            {'bucket' : 'S3-bucket-name'}
+            {'bucket' : 'Name of Bucket on S3', 'path': (optional) folder name under the bucket}
 
             when platform = 'gcp':
             {'project': 'gcp-project-name', 'bucket' : 'gcp-bucket-name'}
@@ -2385,6 +2414,8 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
 
         Returns:
             Trained Model
+
+
         """
 
         return super().automl(
@@ -2432,6 +2463,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             pandas.DataFrame
 
         """
+
         return super().models(type=type, internal=internal, raise_errors=raise_errors)
 
     def get_metrics(
@@ -2442,7 +2474,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
     ) -> pd.DataFrame:
 
         """
-        Returns table of available metrics used for CV.
+        Returns table of available metrics used in the experiment.
 
 
         Example
@@ -2489,7 +2521,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
     ) -> pd.Series:
 
         """
-        Adds a custom metric to be used for CV.
+        Adds a custom metric to be used in the experiment.
 
 
         Example
@@ -2539,7 +2571,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
     def remove_metric(self, name_or_id: str):
 
         """
-        Removes a metric from CV.
+        Removes a metric from experiment.
 
 
         Example
@@ -2559,6 +2591,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             None
 
         """
+
         return super().remove_metric(name_or_id=name_or_id)
 
     def get_logs(

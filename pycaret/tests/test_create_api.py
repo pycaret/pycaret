@@ -21,7 +21,6 @@ def test_classification_create_api():
     clf1 = pycaret.classification.setup(
         data,
         target="Class",
-        silent=True,
         html=False,
         n_jobs=1,
     )
@@ -43,7 +42,6 @@ def test_regression_create_api():
     reg1 = pycaret.regression.setup(
         data,
         target="medv",
-        silent=True,
         html=False,
         n_jobs=1,
     )
