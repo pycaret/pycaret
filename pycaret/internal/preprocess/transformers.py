@@ -179,10 +179,6 @@ class TransformerWrapper(BaseEstimator):
         if "y" in transformer_params and y is not None:
             args.append(y)
 
-        print(X, y)
-        print(transformer_params)
-        print(self.transformer)
-        print(args)
         self.transformer.fit(*args, **fit_params)
         return self
 
