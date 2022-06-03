@@ -1,19 +1,21 @@
-import os, sys
+import os
+import sys
 
 sys.path.insert(0, os.path.abspath(".."))
 
 import pandas as pd
 import pytest
-import pycaret.regression
+
 import pycaret.datasets
+import pycaret.regression
 from pycaret.internal.utils import can_early_stop
 
 
 @pytest.mark.skip(reason="no way of currently testing this")
-def test():
+def test_regression_tuning():
     # loading dataset
     data = pycaret.datasets.get_data("boston")
-    assert isinstance(data, pd.core.frame.DataFrame)
+    assert isinstance(data, pd.DataFrame)
 
     # init setup
     reg = pycaret.regression.setup(
@@ -21,7 +23,6 @@ def test():
         target="medv",
         train_size=0.99,
         fold=2,
-        silent=True,
         html=False,
         session_id=123,
         n_jobs=1,
@@ -34,6 +35,8 @@ def test():
 
     for model in models:
         print(f"Testing model {model}")
+        if "Dummy" in str(model):
+            continue
         pycaret.regression.tune_model(
             model,
             fold=2,
@@ -58,22 +61,23 @@ def test():
             search_algorithm="tpe",
             early_stopping=False,
         )
-        pycaret.regression.tune_model(
-            model,
-            fold=2,
-            n_iter=2,
-            search_library="tune-sklearn",
-            search_algorithm="random",
-            early_stopping=False,
-        )
-        pycaret.regression.tune_model(
-            model,
-            fold=2,
-            n_iter=2,
-            search_library="tune-sklearn",
-            search_algorithm="optuna",
-            early_stopping=False,
-        )
+        # TODO: Enable ray after fix is released
+        # pycaret.regression.tune_model(
+        #     model,
+        #     fold=2,
+        #     n_iter=2,
+        #     search_library="tune-sklearn",
+        #     search_algorithm="random",
+        #     early_stopping=False,
+        # )
+        # pycaret.regression.tune_model(
+        #     model,
+        #     fold=2,
+        #     n_iter=2,
+        #     search_library="tune-sklearn",
+        #     search_algorithm="optuna",
+        #     early_stopping=False,
+        # )
         pycaret.regression.tune_model(
             model,
             fold=2,
@@ -82,22 +86,22 @@ def test():
             search_algorithm="tpe",
             early_stopping="asha",
         )
-        pycaret.regression.tune_model(
-            model,
-            fold=2,
-            n_iter=2,
-            search_library="tune-sklearn",
-            search_algorithm="hyperopt",
-            early_stopping="asha",
-        )
-        pycaret.regression.tune_model(
-            model,
-            fold=2,
-            n_iter=2,
-            search_library="tune-sklearn",
-            search_algorithm="bayesian",
-            early_stopping="asha",
-        )
+        # pycaret.regression.tune_model(
+        #     model,
+        #     fold=2,
+        #     n_iter=2,
+        #     search_library="tune-sklearn",
+        #     search_algorithm="hyperopt",
+        #     early_stopping="asha",
+        # )
+        # pycaret.regression.tune_model(
+        #     model,
+        #     fold=2,
+        #     n_iter=2,
+        #     search_library="tune-sklearn",
+        #     search_algorithm="bayesian",
+        #     early_stopping="asha",
+        # )
         if can_early_stop(model, True, True, True, {}):
             pycaret.regression.tune_model(
                 model,
@@ -112,4 +116,4 @@ def test():
 
 
 if __name__ == "__main__":
-    test()
+    test_regression_tuning()

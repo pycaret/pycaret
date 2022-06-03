@@ -1,16 +1,16 @@
-from pycaret.datasets import get_data
 import pycaret.regression as pr
-from pycaret.parallel import FugueBackend
+from pycaret.datasets import get_data
 
 
-def test():
+def test_regression_parallel():
+    from pycaret.parallel import FugueBackend
+
     pr.setup(
-        data=lambda: get_data("insurance", verbose=False, profile=False),
+        data=get_data("insurance", verbose=False),
         target="charges",
         session_id=0,
         n_jobs=1,
         verbose=False,
-        silent=True,
         html=False,
     )
 
@@ -31,4 +31,3 @@ def test():
 
     res = pr.pull()
     assert res.shape[0] > 10
-    assert res.index[0] == "gbr"

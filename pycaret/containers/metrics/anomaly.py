@@ -8,13 +8,15 @@
 # `AnomalyMetricContainer` as a base, set all of the required parameters in the `__init__` and then call `super().__init__`
 # to complete the process. Refer to the existing classes for examples.
 
-from typing import Optional, Union, Dict, Any
-from pycaret.containers.metrics.base_metric import MetricContainer
-from sklearn.metrics._scorer import _BaseScorer
-import pycaret.containers.base_container
-import pycaret.internal.metrics
+from typing import Any, Dict, Optional, Union
+
 import numpy as np
 from sklearn import metrics
+from sklearn.metrics._scorer import _BaseScorer
+
+import pycaret.containers.base_container
+import pycaret.internal.metrics
+from pycaret.containers.metrics.base_metric import MetricContainer
 
 
 class AnomalyMetricContainer(MetricContainer):
@@ -39,7 +41,7 @@ class AnomalyMetricContainer(MetricContainer):
         - 'pred' for the prediction table
         - 'pred_proba' for pred_proba
         - 'threshold' for decision_function or predict_proba
-    args : dict, default = {}
+    args : dict, default = {} (empty dict)
         The arguments to always pass to constructor when initializing score_func of class_def class.
     display_name : str, default = None
         Display name (shorter than name). Used in display dataframe header. If None or empty, will use name.

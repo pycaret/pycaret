@@ -4,10 +4,11 @@
 
 # Provides a VotingClassifier which weights can be tuned.
 
+import inspect
+
 from sklearn.base import clone
 from sklearn.ensemble import VotingClassifier, VotingRegressor
 from sklearn.neural_network import MLPClassifier, MLPRegressor
-import inspect
 
 try:
     from collections.abc import Iterable
@@ -44,7 +45,7 @@ class TunableMLPClassifier(MLPClassifier, TunableMixin):
     parameters will change as well, and vice versa.
 
     scikit-learn description below:
-    
+
     Multi-layer Perceptron classifier.
 
     This model optimizes the log-loss function using LBFGS or stochastic
@@ -205,7 +206,7 @@ class TunableMLPClassifier(MLPClassifier, TunableMixin):
         .. versionadded:: 0.22
 
     **kwargs:
-        Hidden layer sizes in format ``hidden_layer_size_n`` where ``n`` 
+        Hidden layer sizes in format ``hidden_layer_size_n`` where ``n``
         is an integer corresponding to the index of the estimator.
         If value is lesser or equal to zero, the hidden layer will be removed.
         Will overwrite ``hidden_layer_sizes``.
@@ -475,7 +476,7 @@ class TunableMLPRegressor(MLPRegressor, TunableMixin):
     parameters will change as well, and vice versa.
 
     scikit-learn description below:
-    
+
     Multi-layer Perceptron regressor.
 
     This model optimizes the squared-loss using LBFGS or stochastic gradient
@@ -889,7 +890,7 @@ class TunableVotingClassifier(VotingClassifier, TunableMixin):
     The kwargs need to be in format ``weight_n``, where n is an integer corresponding
     to the index of the estimator.
 
-    If ``weights`` parameter is changed with ``set_params()``, ``weight_n`` parameters 
+    If ``weights`` parameter is changed with ``set_params()``, ``weight_n`` parameters
     will change as well, and vice versa.
 
     scikit-learn description below:
@@ -1090,7 +1091,7 @@ class TunableVotingRegressor(VotingRegressor, TunableMixin):
     The kwargs need to be in format ``weight_n``, where n is an integer corresponding
     to the index of the estimator.
 
-    If ``weights`` parameter is changed with ``set_params()``, ``weight_n`` parameters 
+    If ``weights`` parameter is changed with ``set_params()``, ``weight_n`` parameters
     will change as well, and vice versa.
 
     scikit-learn description below:
@@ -1165,12 +1166,21 @@ class TunableVotingRegressor(VotingRegressor, TunableMixin):
     """
 
     def __init__(
-        self, estimators, *, weights=None, n_jobs=None, verbose=False, **kwargs,
+        self,
+        estimators,
+        *,
+        weights=None,
+        n_jobs=None,
+        verbose=False,
+        **kwargs,
     ):
         self.weights = weights
         self._weight_kwargs_to_weights(kwargs, estimators=estimators)
         super().__init__(
-            estimators=estimators, weights=self.weights, n_jobs=n_jobs, verbose=verbose,
+            estimators=estimators,
+            weights=self.weights,
+            n_jobs=n_jobs,
+            verbose=verbose,
         )
 
     def _weight_kwargs_to_weights(self, kwargs, estimators=None):

@@ -1,30 +1,82 @@
-import os, sys
-
-sys.path.insert(0, os.path.abspath(".."))
+import os
 
 import pandas as pd
 import pytest
-import pycaret.datasets
+
+from pycaret.datasets import get_data
 
 
-def test():
+def test_datasets():
+    #########################
+    #### Load Local File ####
+    #########################
+
+    # # loading dataset
+    # os.chdir(os.path.dirname(os.path.realpath(__file__)))
+    # data = get_data("test_files/dummy_dataset")
+    # assert isinstance(data, pd.DataFrame)
+    # rows, cols = data.shape
+    # assert rows >= 1
+    # assert cols >= 1
+
+    ##############################
+    #### GitHub Common folder ####
+    ##############################
+
     # loading list of datasets
-    data = pycaret.datasets.get_data("index")
-    assert isinstance(data, pd.core.frame.DataFrame)
-    row, col = data.shape
-    assert row > 1
-    assert col == 8
+    index = get_data("index")
+    assert isinstance(index, pd.DataFrame)
+    rows, cols = index.shape
+    assert rows > 1
+    assert cols == 8
 
     # loading dataset
-    credit = pycaret.datasets.get_data("credit")
-    assert isinstance(credit, pd.core.frame.DataFrame)
-    row, col = credit.shape
-    assert row == 24000
-    assert col == 24
-    assert credit.size == 576000
+    data = get_data("credit")
+    assert isinstance(data, pd.DataFrame)
+    rows, cols = data.shape
+    assert rows == 24000
+    assert cols == 24
+    assert data.size == 576000
 
-    assert 1 == 1
+    ################################
+    #### GitHub Specific folder ####
+    ################################
+
+    folder = "time_series/seasonal"
+    # loading list of datasets
+    index = get_data("index", folder=folder)
+    assert isinstance(index, pd.DataFrame)
+    rows, cols = index.shape
+    assert rows > 1
+    assert cols == 12
+
+    # loading dataset
+    data = get_data("1", folder=folder)
+    assert isinstance(data, pd.DataFrame)
+    rows, cols = data.shape
+    assert rows >= 1
+    assert cols >= 1
+
+    ###########################
+    #### `sktime` datasets ####
+    ###########################
+
+    # loading dataset
+    data = get_data("airline")
+    assert isinstance(data, pd.Series)
+    rows = len(data)
+    assert rows >= 1
+
+    ###########################
+    #### Incorrect dataset ####
+    ###########################
+
+    with pytest.raises(ValueError) as errmsg:
+        _ = get_data("wrong")
+
+    exceptionmsg = errmsg.value.args[0]
+    assert exceptionmsg == f"Data could not be read. Please check your inputs..."
 
 
 if __name__ == "__main__":
-    test()
+    test_datasets()

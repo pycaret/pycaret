@@ -4,17 +4,23 @@
 
 from typing import Dict, Hashable, Optional
 
+from scipy.stats import loguniform, randint, uniform
+
 try:
     from collections.abc import Hashable
 except:
     from collections import Hashable
 
-import numpy as np
 from copy import copy
+
+import numpy as np
 
 
 class Distribution:
     def __init__(self):
+        raise NotImplementedError("This is an abstract class.")
+
+    def get_base(self):
         raise NotImplementedError("This is an abstract class.")
 
     def get_skopt(self):
@@ -51,6 +57,12 @@ class UniformDistribution(Distribution):
         self.lower = lower
         self.upper = upper
         self.log = log
+
+    def get_base(self):
+        """get distributions from base libraries such as scipy, numpy, etc."""
+        if self.log:
+            return loguniform(self.lower, self.upper)
+        return uniform(self.lower, self.upper)  # log = False
 
     def get_skopt(self):
         import skopt.space
@@ -114,6 +126,14 @@ class IntUniformDistribution(Distribution):
         self.upper = upper
         self.log = log
 
+    def get_base(self):
+        """get distributions from base libraries such as scipy, numpy, etc."""
+        if self.log:
+            raise NotImplementedError(
+                "integer log sampling for base library has not been implemented yet."
+            )
+        return randint(self.lower, self.upper)  # log = False
+
     def get_skopt(self):
         import skopt.space
 
@@ -151,24 +171,21 @@ class IntUniformDistribution(Distribution):
         )
 
     def get_tune(self):
-        from ray import tune
-        from ray.tune.sample import Integer
-        from ray.tune.sample import LogUniform
+        from ray.tune.sample import Integer, LogUniform
 
         class LogUniformInteger(Integer):
             class _LogUniform(LogUniform):
-                def sample(self,
-                        domain: "Integer",
-                        spec = None,
-                        size: int = 1):
-                    assert domain.lower > 0, \
-                        "LogUniform needs a lower bound greater than 0"
-                    assert 0 < domain.upper < float("inf"), \
-                        "LogUniform needs a upper bound greater than 0"
+                def sample(self, domain: "Integer", spec=None, size: int = 1):
+                    assert (
+                        domain.lower > 0
+                    ), "LogUniform needs a lower bound greater than 0"
+                    assert (
+                        0 < domain.upper < float("inf")
+                    ), "LogUniform needs a upper bound greater than 0"
                     logmin = np.log(domain.lower) / np.log(self.base)
                     logmax = np.log(domain.upper) / np.log(self.base)
 
-                    items = self.base**(np.random.uniform(logmin, logmax, size=size))
+                    items = self.base ** (np.random.uniform(logmin, logmax, size=size))
                     items = np.round(items).astype(int)
                     return items if len(items) > 1 else domain.cast(items[0])
 
@@ -178,13 +195,15 @@ class IntUniformDistribution(Distribution):
                         "LogUniform requires a lower bound greater than 0."
                         f"Got: {self.lower}. Did you pass a variable that has "
                         "been log-transformed? If so, pass the non-transformed value "
-                        "instead.")
+                        "instead."
+                    )
                 if not 0 < self.upper < float("inf"):
                     raise ValueError(
                         "LogUniform requires a upper bound greater than 0. "
                         f"Got: {self.lower}. Did you pass a variable that has "
                         "been log-transformed? If so, pass the non-transformed value "
-                        "instead.")
+                        "instead."
+                    )
                 new = copy(self)
                 new.set_sampler(self._LogUniform(base))
                 return new
@@ -221,6 +240,12 @@ class DiscreteUniformDistribution(Distribution):
         self.lower = lower
         self.upper = upper
         self.q = q
+
+    def get_base(self):
+        """get distributions from base libraries such as scipy, numpy, etc."""
+        raise NotImplementedError(
+            "DiscreteUniformDistribution for base library has not been implemented yet."
+        )
 
     def get_skopt(self):
         import skopt.space
@@ -273,6 +298,10 @@ class CategoricalDistribution(Distribution):
     def __init__(self, values):
         self.values = list(values)
 
+    def get_base(self):
+        """get distributions from base libraries such as scipy, numpy, etc."""
+        return self.values
+
     def get_skopt(self):
         import skopt.space
 
@@ -307,24 +336,49 @@ class CategoricalDistribution(Distribution):
         return f"CategoricalDistribution(values={self.values})"
 
 
+def get_base_distributions(distributions: Dict[str, Distribution]) -> dict:
+    """Returns the distributions from the base libraries.
+    Distributions are of types that can be used with scikit-learn `ParamSampler`
+    """
+    return {
+        k: (v.get_base() if isinstance(v, Distribution) else v)
+        for k, v in distributions.items()
+    }
+
+
 def get_skopt_distributions(distributions: Dict[str, Distribution]) -> dict:
-    return {k: v.get_skopt() for k, v in distributions.items()}
+    return {
+        k: (v.get_skopt() if isinstance(v, Distribution) else v)
+        for k, v in distributions.items()
+    }
 
 
 def get_optuna_distributions(distributions: Dict[str, Distribution]) -> dict:
-    return {k: v.get_optuna() for k, v in distributions.items()}
+    return {
+        k: (v.get_optuna() if isinstance(v, Distribution) else v)
+        for k, v in distributions.items()
+    }
 
 
 def get_hyperopt_distributions(distributions: Dict[str, Distribution]) -> dict:
-    return {k: v.get_hyperopt(k) for k, v in distributions.items()}
+    return {
+        k: (v.get_hyperopt(k) if isinstance(v, Distribution) else v)
+        for k, v in distributions.items()
+    }
 
 
 def get_CS_distributions(distributions: Dict[str, Distribution]) -> dict:
-    return {k: v.get_CS(k) for k, v in distributions.items()}
+    return {
+        k: (v.get_CS(k) if isinstance(v, Distribution) else v)
+        for k, v in distributions.items()
+    }
 
 
 def get_tune_distributions(distributions: Dict[str, Distribution]) -> dict:
-    return {k: v.get_tune() for k, v in distributions.items()}
+    return {
+        k: (v.get_tune() if isinstance(v, Distribution) else v)
+        for k, v in distributions.items()
+    }
 
 
 def get_min_max(o):

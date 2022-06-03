@@ -1,15 +1,18 @@
-import os, sys
+import os
+import sys
 
 sys.path.insert(0, os.path.abspath(".."))
 
-import pandas as pd
 import numpy as np
+import pandas as pd
 import pytest
+
 import pycaret.classification
-import pycaret.regression
 import pycaret.datasets
+import pycaret.regression
 
 # 18/12/2021 issues with test hence commenting out.
+
 
 def test_classification_dashboard():
 
@@ -20,11 +23,10 @@ def test_classification_dashboard():
     # clf1 = pycaret.classification.setup(
     #   data,
     #   target="Class",
-    #   silent=True,
     #   html=False,
     #   n_jobs=1,
     # )
-   
+
     # train model
     # lr = pycaret.classification.create_model("lr")
 
@@ -33,6 +35,7 @@ def test_classification_dashboard():
 
     # assert statement
     assert 1 == 1
+
 
 if __name__ == "__main__":
     test_classification_dashboard()

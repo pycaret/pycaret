@@ -1,12 +1,10 @@
 from copy import deepcopy
-from typing import Any, Optional, Union
 
 import pandas as pd
-from pycaret.internal.logging import get_logger
-from pycaret.internal.Display import Display
-from sklearn.base import clone
-from sklearn.utils.validation import check_is_fitted
 from sklearn.pipeline import Pipeline
+from sklearn.utils.validation import check_is_fitted
+
+from pycaret.internal.logging import get_logger
 
 
 def is_sklearn_pipeline(object):
@@ -43,10 +41,6 @@ class fit_if_not_fitted(object):
         logger = get_logger()
         self.estimator = deepcopy(estimator)
         if not is_fitted(self.estimator):
-            try:
-                self.estimator._carry_over_final_estimator_fit_vars()
-            except:
-                pass
             if not is_fitted(self.estimator):
                 logger.info(f"fit_if_not_fitted: {estimator} is not fitted, fitting")
                 try:

@@ -1,6 +1,5 @@
-# for testing
-pytest
-moto
-codecov
-
-dask[dataframe]
+pytest>=7.0.1
+moto>=3.0.7
+codecov>=2.1.12
+dask[dataframe]>=2022.2.0
+dash[testing]

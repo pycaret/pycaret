@@ -1,42 +1,39 @@
-from typing import Any, Callable, Dict, List, Optional, Union, Iterable
+import random
+from math import ceil
+from threading import RLock
+from typing import Any, Callable, Dict, List, Optional, Union
 
 import cloudpickle
 import pandas as pd
 from fugue import transform
-from pycaret.internal.tabular import (
-    _append_display_container,
-    pull,
-    _create_display,
-    _get_context_lock,
-)
-from pycaret.internal.Display import Display
-from threading import RLock
-from math import ceil
-import random
-from .parallel_backend import NoDisplay, ParallelBackend
 
-try:
-    import fugue_dask
-except Exception:
-    pass
+from pycaret.internal.display import CommonDisplay
+from pycaret.internal.parallel.parallel_backend import ParallelBackend
 
-try:
-    import fugue_spark
-except Exception:
-    pass
+_LOCK = RLock()  # noqa
+
+
+def _get_context_lock():
+    # This function may not be necessary, but it's safe
+    return globals()["_LOCK"]
 
 
 class _DisplayUtil:
     def __init__(
-        self, display: Optional[Display], progress: int, verbose: bool, sort: str
+        self,
+        display: Optional[CommonDisplay],
+        progress: int,
+        verbose: bool,
+        sort: str,
+        asc: bool,
     ):
         self._lock = RLock()
-        self._display = display or _create_display(
+        self._display = display or self._create_display(
             progress, verbose=verbose, monitor_rows=None
         )
         self._sort = sort
+        self._asc = asc
         self._df: Optional[pd.DataFrame] = None
-        self._display.display_progress()
 
     def update(self, df: pd.DataFrame) -> None:
         with self._lock:
@@ -44,14 +41,23 @@ class _DisplayUtil:
                 self._df = df
             else:
                 self._df = pd.concat([self._df, df]).sort_values(
-                    self._sort, ascending=False
+                    self._sort, ascending=self._asc
                 )
             self._display.move_progress(df.shape[0])
-            self._display.replace_master_display(self._df)
-            self._display.display_master_display()
+            self._display.display(self._df, final_display=False)
 
-    def finish(self) -> None:
-        self._display.display_master_display()
+    def finish(self, df: Any = None) -> None:
+        self._display.display(df if df is not None else self._df, final_display=True)
+
+    def _create_display(
+        self, progress: int, verbose: bool, monitor_rows: Any
+    ) -> CommonDisplay:
+        progress_args = {"max": progress}
+        return CommonDisplay(
+            verbose=verbose,
+            progress_args=None if progress < 0 else progress_args,
+            monitor_rows=monitor_rows,
+        )
 
 
 class FugueBackend(ParallelBackend):
@@ -120,12 +126,13 @@ class FugueBackend(ParallelBackend):
         return res
 
     def compare_models(
-        self, func: Callable, params: Dict[str, Any]
+        self, instance: Any, params: Dict[str, Any]
     ) -> Union[Any, List[Any]]:
-        self._func = func
         self._params = dict(params)
         assert "include" in self._params
         assert "sort" in self._params
+
+        sort_col, asc = instance._process_sort(self._params["sort"])
 
         shuffled_idx = pd.DataFrame(
             dict(
@@ -134,15 +141,12 @@ class FugueBackend(ParallelBackend):
                 )
             )
         )
-        du: Optional[Display] = (
-            None
-            if not self._display_remote
-            else _DisplayUtil(
-                self._params.get("display", None),
-                progress=shuffled_idx.shape[0],
-                verbose=self._params.get("verbose", False),
-                sort=self._params["sort"],
-            )
+        du = _DisplayUtil(
+            self._params.get("display", None),
+            progress=-1 if not self._display_remote else shuffled_idx.shape[0],
+            verbose=self._params.get("verbose", False),
+            sort=sort_col,
+            asc=asc,
         )
         outputs = transform(
             shuffled_idx,
@@ -154,39 +158,39 @@ class FugueBackend(ParallelBackend):
             },
             engine=self._engine,
             engine_conf=self._conf,
-            callback=None if du is None else du.update,
+            callback=None if not self._display_remote else du.update,
             force_output_fugue_dataframe=True,
             as_local=True,
         ).as_array()
         res = pd.concat(cloudpickle.loads(x[0]) for x in outputs)
-        res = res.sort_values(self._params["sort"], ascending=False)
+        res = res.sort_values(sort_col, ascending=asc)
         top = res.head(self._params.get("n_select", 1))
-        _append_display_container(res.iloc[:, :-1])
+        instance.display_container.append(res.iloc[:, :-1])
         top_models = [cloudpickle.loads(x) for x in top._model]
-        if du is not None:
-            du.finish()
+        du.finish(res.iloc[:, :-1])
         return top_models[0] if len(top_models) == 1 else top_models
 
     def _remote_compare_models(
         self, idx: List[List[Any]], report: Optional[Callable]
     ) -> List[List[Any]]:
         include = [self._params["include"][i[0]] for i in idx]
-        self.remote_setup()
+        instance = self.remote_setup()
         params = dict(self._params)
         params.pop("include")
-        params["display"] = NoDisplay()
+        params["verbose"] = False
         results: List[List[Any]] = []
-        with _get_context_lock():
+
+        with _get_context_lock():  # protection for non-distributed dask
             top = (
                 min(params.get("n_select", 1), len(include))
                 if self._top_only
                 else len(include)
             )
             params["n_select"] = top
-            m = self._func(include=include, **params)
+            m = instance.compare_models(include=include, **params)
             if not isinstance(m, list):
                 m = [m]
-            res = pull()[:top]
+            res = instance.pull()[:top]
             if report is not None:
                 report(res)
             results.append(
@@ -196,4 +200,5 @@ class FugueBackend(ParallelBackend):
                     )
                 ]
             )
+
         return results

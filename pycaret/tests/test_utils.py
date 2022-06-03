@@ -1,18 +1,22 @@
-import os, sys
+import os
+import sys
 
 sys.path.insert(0, os.path.abspath(".."))
 
 import numpy as np
+import numpy.testing as npt
+import pandas as pd
 import pytest
-import pycaret.utils
-import pycaret.classification
-import pycaret.datasets
-import pycaret.regression
 import sklearn.model_selection
 import sklearn.preprocessing
 
+import pycaret.classification
+import pycaret.datasets
+import pycaret.regression
+import pycaret.utils
 
-def test():
+
+def test_utils():
     # version
     version = pycaret.utils.version()
     assert isinstance(version, str)
@@ -23,21 +27,22 @@ def test():
 
     # preparation(classification)
     data = pycaret.datasets.get_data("juice")
-    target = "Purchase"
-    le = sklearn.preprocessing.LabelEncoder()
-    le = le.fit(data[target])
-    data[target] = le.transform(data[target])
     train, test = sklearn.model_selection.train_test_split(
         data, train_size=0.8, random_state=1
     )
     clf1 = pycaret.classification.setup(
-        train, target=target, silent=True, html=False, session_id=123, n_jobs=1,
+        train,
+        target="Purchase",
+        html=False,
+        session_id=123,
+        n_jobs=1,
     )
     model = pycaret.classification.create_model("lightgbm")
-    data_unseen = test.drop(columns=target)
     final_model = pycaret.classification.finalize_model(model)
-    result = pycaret.classification.predict_model(final_model, data=data_unseen)
-    actual = test[target]
+    result = pycaret.classification.predict_model(
+        final_model, data=test.drop("Purchase", axis=1), encoded_labels=True
+    )
+    actual = clf1.pipeline.transform(y=test["Purchase"])
     prediction = result["Label"]
 
     # provisional support
@@ -80,18 +85,22 @@ def test():
 
     # preparation(regression)
     data = pycaret.datasets.get_data("boston")
-    target = "medv"
     train, test = sklearn.model_selection.train_test_split(
         data, train_size=0.8, random_state=1
     )
     reg1 = pycaret.regression.setup(
-        data, target="medv", silent=True, html=False, session_id=123, n_jobs=1,
+        data,
+        target="medv",
+        html=False,
+        session_id=123,
+        n_jobs=1,
     )
     model = pycaret.regression.create_model("lightgbm")
-    data_unseen = test.drop(columns=target)
     final_model = pycaret.regression.finalize_model(model)
-    result = pycaret.regression.predict_model(final_model, data=data_unseen)
-    actual = test[target]
+    result = pycaret.regression.predict_model(
+        final_model, data=test.drop("medv", axis=1)
+    )
+    actual = test["medv"]
     prediction = result["Label"]
 
     # provisional support
@@ -124,11 +133,45 @@ def test():
 
     # Ensure metric is rounded to 2 decimals
     mape = pycaret.utils.check_metric(actual, prediction, "MAPE", 2)
-    assert mape == 0.05
+    npt.assert_almost_equal(mape, 0.05, decimal=2)
 
     # Ensure metric is rounded to default value
     mape = pycaret.utils.check_metric(actual, prediction, "MAPE")
-    assert mape == 0.0469
+    npt.assert_almost_equal(mape, 0.045, decimal=2)
+
+    # preparation (timeseries)
+    data = pycaret.datasets.get_data("airline", verbose=False)
+    train, test = sklearn.model_selection.train_test_split(
+        data, train_size=0.8, random_state=1, shuffle=False
+    )
+
+    prediction = pd.Series([100] * len(test), index=test.index)
+    actual = test
+
+    # check metric(timeseries)
+    smape = pycaret.utils.check_metric(actual, prediction, "SMAPE")
+    assert isinstance(smape, float)
+    assert smape >= 0
+    mape = pycaret.utils.check_metric(actual, prediction, "MAPE")
+    assert isinstance(mape, float)
+    assert mape >= 0
+    # mase = pycaret.utils.check_metric(test, prediction, "MASE", train=train)
+    # assert isinstance(mase, float)
+    # assert mase >= 0
+    mae = pycaret.utils.check_metric(actual, prediction, "MAE")
+    assert isinstance(mae, float)
+    assert mae >= 0
+    rmse = pycaret.utils.check_metric(actual, prediction, "RMSE")
+    assert isinstance(rmse, float)
+    assert rmse >= 0
+
+    # Ensure metric is rounded to 2 decimals
+    smape = pycaret.utils.check_metric(actual, prediction, "SMAPE", 2)
+    npt.assert_almost_equal(smape, 1.24, decimal=2)
+
+    # Ensure metric is rounded to default value
+    smape = pycaret.utils.check_metric(actual, prediction, "SMAPE")
+    npt.assert_almost_equal(smape, 1.2448, decimal=4)
 
     # Metric does not exist
     with pytest.raises(ValueError, match="Couldn't find metric"):
@@ -138,4 +181,4 @@ def test():
 
 
 if __name__ == "__main__":
-    test()
+    test_utils()

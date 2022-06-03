@@ -6,8 +6,6 @@ catboost_info
 /stacker.py
 /stacknet.py
 /cli.py
-/nb_test.ipynb
-/nb_test2.ipynb
 /app.py
 /cli_app.py
 /logo.png
@@ -19,6 +17,7 @@ catboost_info
 /pycaret.egg-info
 /dist
 .vscode/settings.json
+*code-workspace
 /logs.log
 examples/logs.log
 .log
@@ -26,6 +25,10 @@ pycaret/__pycache__/
 pycaret/tests/__pycache__/
 tutorials/logs.log
 /docs/build
+.idea/
+mlruns/
+/pycaret/tests/mlruns/
+*.log
 trained_models/
 *.pkl
 /mlruns.db
@@ -33,3 +36,7 @@ trained_models/
 mlflow_backend.py
 demo4.py
 dask*/
+/.venv
+/.devcontainer
+tmp
+tmp/*

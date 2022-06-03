@@ -24,20 +24,16 @@ If you are willing to make major contribution you can always look out for the ac
 - Example Notebooks required. Send PR to https://github.com/pycaret/pycaret/tree/master/examples
 
 ## Development setup
-Follow [installation instructions](https://pycaret.readthedocs.io/en/latest/installation.html#installing-the-latest-release) to first create a virtual environment. Then, install development version of the package:
+Follow [installation instructions](https://pycaret.readthedocs.io/en/latest/installation.html#installing-the-latest-release) to first create a virtual environment. Then, install the development version of the package:
 ```shell
 pip install -e .[test]
 ```
-We use [pre-commit](https://pre-commit.com) with [black](https://github.com/psf/black) for code formatting. It runs automatically before you make a new commit. To set up pre-commit, follow these steps:
 
-1. Install pre-commit:
-```shell
-pip install pre-commit
-```
-2. Set up pre-commit:
-```shell
-pre-commit install
-```
+We use [black](https://github.com/psf/black) and [isort](https://github.com/PyCQA/isort)
+for code formatting. Make sure to run `isort pycaret` and `black pycaret`
+from the home directory before creating the PR. Failing to do so can result
+in a failed build, which would prevent the adoption of your code.
+
 
 ## Unit testing
 Install development version of the package with additional extra dependencies required for unit testing:

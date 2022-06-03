@@ -1,6 +1,7 @@
-from datetime import datetime, timedelta
 import sys
 import traceback
+from datetime import datetime, timedelta
+
 import requests
 
 # Author: Antoni Baum (Yard1)

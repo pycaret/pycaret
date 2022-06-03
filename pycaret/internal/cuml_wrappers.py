@@ -1,17 +1,16 @@
 import numpy as np
-from sklearn.utils.metaestimators import if_delegate_has_method
-from pycaret.internal.utils import get_all_object_vars_and_properties, is_fit_var
-from sklearn.multiclass import OneVsRestClassifier
 from scipy import sparse
 from sklearn.linear_model._base import LinearClassifierMixin
 from sklearn.multiclass import OneVsRestClassifier
-from sklearn.utils import check_array
-from sklearn.utils import column_or_1d
-from sklearn.utils.validation import check_X_y
-from sklearn.utils.validation import _deprecate_positional_args
 from sklearn.preprocessing import LabelBinarizer
+from sklearn.utils import check_array, column_or_1d
+from sklearn.utils.metaestimators import if_delegate_has_method
+from sklearn.utils.validation import _deprecate_positional_args, check_X_y
 
-try:
+from pycaret.internal.utils import get_all_object_vars_and_properties, is_fit_var
+from pycaret.utils._dependencies import _check_soft_dependencies
+
+if _check_soft_dependencies("cuml", extra=None, severity="warning"):
     from cuml.cluster import DBSCAN as cuMLDBSCAN
 
     class DBSCAN(cuMLDBSCAN):
@@ -21,8 +20,7 @@ try:
         def fit_predict(self, X, y=None, out_dtype="int32"):
             return super().fit_predict(X, out_dtype=out_dtype)
 
-
-except ImportError:
+else:
     DBSCAN = None
 
 
@@ -30,7 +28,7 @@ def get_dbscan():
     return DBSCAN
 
 
-try:
+if _check_soft_dependencies("cuml", extra=None, severity="warning"):
     from cuml.cluster import KMeans as cuMLKMeans
 
     class KMeans(cuMLKMeans):
@@ -40,8 +38,7 @@ try:
         def fit_predict(self, X, y=None, sample_weight=None):
             return super().fit_predict(X, sample_weight=sample_weight)
 
-
-except ImportError:
+else:
     KMeans = None
 
 
@@ -50,7 +47,7 @@ def get_kmeans():
     return KMeans
 
 
-try:
+if _check_soft_dependencies("cuml", extra=None, severity="warning"):
     from cuml.svm import SVC as cuMLSVC
 
     class SVC(OneVsRestClassifier):
@@ -139,8 +136,7 @@ try:
 
             return self
 
-
-except ImportError:
+else:
     SVC = None
 
 
@@ -148,7 +144,7 @@ def get_svc_classifier():
     return SVC
 
 
-try:
+if _check_soft_dependencies("cuml", extra=None, severity="warning"):
     from cuml.linear_model import Ridge
 
     class RidgeClassifier(OneVsRestClassifier):
@@ -289,7 +285,7 @@ try:
 
     class _RidgeClassifierBase(LinearClassifierMixin, Ridge):
         """Classifier using Ridge regression.
-        
+
         Does not support multiclass problems. Use RidgeClassifier instead.
 
         Ridge extends LinearRegression by providing L2 regularization on the
@@ -520,8 +516,7 @@ try:
         def classes_(self):
             return self._label_binarizer.classes_
 
-
-except ImportError:
+else:
     RidgeClassifier = None
 
 
