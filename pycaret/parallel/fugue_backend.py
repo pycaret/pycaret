@@ -9,7 +9,6 @@ from fugue import transform
 
 from pycaret.internal.display import CommonDisplay
 from pycaret.internal.parallel.parallel_backend import ParallelBackend
-from pycaret.internal.tabular import _get_context_lock
 
 _LOCK = RLock()
 
@@ -41,8 +40,8 @@ class _DisplayUtil:
             self._display.move_progress(df.shape[0])
             self._display.display(self._df, final_display=False)
 
-    def finish(self) -> None:
-        self._display.display(self._df, final_display=True)
+    def finish(self, df: Any = None) -> None:
+        self._display.display(df or self._df, final_display=True)
 
     def _create_display(
         self, progress: int, verbose: bool, monitor_rows: Any
@@ -134,15 +133,11 @@ class FugueBackend(ParallelBackend):
                 )
             )
         )
-        du: Optional[_DisplayUtil] = (
-            None
-            if not self._display_remote
-            else _DisplayUtil(
-                self._params.get("display", None),
-                progress=shuffled_idx.shape[0],
-                verbose=self._params.get("verbose", False),
-                sort=self._params["sort"],
-            )
+        du = _DisplayUtil(
+            self._params.get("display", None),
+            progress=shuffled_idx.shape[0],
+            verbose=self._params.get("verbose", False),
+            sort=self._params["sort"],
         )
         outputs = transform(
             shuffled_idx,
@@ -154,7 +149,7 @@ class FugueBackend(ParallelBackend):
             },
             engine=self._engine,
             engine_conf=self._conf,
-            callback=None if du is None else du.update,
+            callback=None if not self._display_remote else du.update,
             force_output_fugue_dataframe=True,
             as_local=True,
         ).as_array()
@@ -163,8 +158,7 @@ class FugueBackend(ParallelBackend):
         top = res.head(self._params.get("n_select", 1))
         instance.display_container.append(res.iloc[:, :-1])
         top_models = [cloudpickle.loads(x) for x in top._model]
-        if du is not None:
-            du.finish()
+        du.finish(res.iloc[:, :-1])
         return top_models[0] if len(top_models) == 1 else top_models
 
     def _remote_compare_models(
