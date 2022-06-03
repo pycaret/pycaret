@@ -42,6 +42,7 @@ required_deps = [
     "sktime",
     "tbats",
     "pmdarima",
+    "psutil",
 ]
 
 optional_deps = [
@@ -74,7 +75,6 @@ optional_deps = [
     "spacy",
     "wordcloud",
     "textblob",
-    "psutil",
     "fugue",
     "streamlit",
     "prophet",
