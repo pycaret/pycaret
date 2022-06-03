@@ -9,9 +9,8 @@ from fugue import transform
 
 from pycaret.internal.display import CommonDisplay
 from pycaret.internal.parallel.parallel_backend import ParallelBackend
-from pycaret.utils._dependencies import _check_soft_dependencies
 
-_LOCK = RLock()
+_LOCK = RLock()  # noqa
 
 
 def _get_context_lock():
@@ -112,7 +111,6 @@ class FugueBackend(ParallelBackend):
         display_remote: bool = False,
         top_only: bool = False,
     ):
-        _check_soft_dependencies("fugue", extra="parallel", severity="error")
         super().__init__()
         self._engine = engine
         self._conf: Dict[str, Any] = conf or {}
