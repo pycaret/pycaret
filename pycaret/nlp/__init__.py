@@ -196,16 +196,11 @@ def setup(
     except:
         logger.warning("cannot find platform.platform")
 
-    if _check_soft_dependencies("psutil", extra="others", severity="warning"):
-        import psutil
+    import psutil
 
-        logger.info("Memory: " + str(psutil.virtual_memory()))
-        logger.info("Physical Core: " + str(psutil.cpu_count(logical=False)))
-        logger.info("Logical Core: " + str(psutil.cpu_count(logical=True)))
-    else:
-        logger.warning(
-            "cannot find psutil installation. memory not traceable. Install psutil using pip to enable memory logging. "
-        )
+    logger.info("Memory: " + str(psutil.virtual_memory()))
+    logger.info("Physical Core: " + str(psutil.cpu_count(logical=False)))
+    logger.info("Logical Core: " + str(psutil.cpu_count(logical=True)))
 
     logger.info("Checking libraries")
     logger.info(show_versions(logger=logger))
