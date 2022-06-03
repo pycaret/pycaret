@@ -6,7 +6,7 @@ import pandas as pd
 
 if not "get_ipython" in globals():
     from IPython import get_ipython
-from IPython.display import DisplayHandle, clear_output
+from IPython.display import DisplayHandle, clear_output, HTML
 from IPython.display import display as ipython_display
 from pandas.io.formats.style import Styler
 
@@ -25,6 +25,8 @@ except ImportError:
     IN_COLAB = False
 
 COLAB_ENABLED = False
+EMPTY_HTML = HTML("")
+EMPTY = ""
 
 
 def _enable_matplotlib_inline():
@@ -113,6 +115,7 @@ class JupyterBackend(DisplayBackend):
     id: str = "jupyter"
     can_update_text: bool = True
     can_update_rich: bool = True
+    _empty_content = EMPTY_HTML
 
     def __init__(self) -> None:
         _enable_matplotlib_inline()
@@ -129,14 +132,15 @@ class JupyterBackend(DisplayBackend):
                     obj, display_id=True, **display_kwargs
                 )
             else:
-                self._display_ref = ipython_display(display_id=True, **display_kwargs)
+                self._display_ref = ipython_display(
+                    self._empty_content, display_id=True, **display_kwargs
+                )
         elif obj is not None:
             self._display_ref.update(obj, **display_kwargs)
 
     def clear_display(self) -> None:
         if self._display_ref:
-            self._display_ref.update("")
-            self._display_ref.update({}, raw=True)
+            self._display_ref.update(self._empty_content)
 
     def clear_output(self) -> None:
         clear_output(wait=True)
@@ -156,6 +160,7 @@ class ColabBackend(JupyterBackend):
 class DatabricksBackend(JupyterBackend):
     id: str = "databricks"
     can_update_rich: bool = False
+    _empty_content = EMPTY
 
     def display(self, obj: Any, *, final_display: bool = True) -> None:
         if not final_display:
@@ -163,10 +168,6 @@ class DatabricksBackend(JupyterBackend):
             self._display(obj, **display_kwargs)
         else:
             self._display(obj)
-
-    def clear_display(self) -> None:
-        if self._display_ref:
-            self._display_ref.update("")
 
     def _handle_input(self, obj: Any) -> Any:
         if isinstance(obj, Styler):
