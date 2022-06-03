@@ -19,6 +19,22 @@ with open("requirements-optional.txt") as f:
 with open("requirements-test.txt") as f:
     required_test = f.read().splitlines()
 
+
+extras_require = {
+    "analysis": required_optional.split("\n\n")[0].splitlines(),
+    "models": required_optional.split("\n\n")[1].splitlines(),
+    "tuners": required_optional.split("\n\n")[2].splitlines(),
+    "mlops": required_optional.split("\n\n")[3].splitlines(),
+    "nlp": required_optional.split("\n\n")[4].splitlines(),
+}
+
+extras_require["full"] = (
+    extras_require["analysis"]
+    + extras_require["models"]
+    + extras_require["tuners"]
+    + extras_require["mlops"]
+)
+
 setup(
     name="pycaret",
     version="3.0.0.rc1",
@@ -41,14 +57,7 @@ setup(
     packages=find_packages(include=["pycaret*"]),
     include_package_data=True,
     install_requires=required,
-    extras_require={
-        "analysis": required_optional.split("\n\n")[0].splitlines(),
-        "models": required_optional.split("\n\n")[1].splitlines(),
-        "tuners": required_optional.split("\n\n")[2].splitlines(),
-        "mlops": required_optional.split("\n\n")[3].splitlines(),
-        "nlp": required_optional.split("\n\n")[4].splitlines(),
-        "full": required_optional.splitlines(),
-    },
+    extras_require=extras_require,
     tests_require=required_test,
     python_requires=">=3.7",
 )
