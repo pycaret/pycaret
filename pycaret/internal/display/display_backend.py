@@ -6,7 +6,8 @@ import pandas as pd
 
 if not "get_ipython" in globals():
     from IPython import get_ipython
-from IPython.display import DisplayHandle, clear_output, HTML
+
+from IPython.display import HTML, DisplayHandle, clear_output
 from IPython.display import display as ipython_display
 from pandas.io.formats.style import Styler
 
