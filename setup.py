@@ -59,14 +59,7 @@ setup(
     packages=find_packages(include=["pycaret*"]),
     include_package_data=True,
     install_requires=required,
-    extras_require={
-        "analysis": required_optional.split("\n\n")[0].splitlines(),
-        "models": required_optional.split("\n\n")[1].splitlines(),
-        "tuners": required_optional.split("\n\n")[2].splitlines(),
-        "mlops": required_optional.split("\n\n")[3].splitlines(),
-        "nlp": required_optional.split("\n\n")[4].splitlines(),
-        "full": required_optional.splitlines(),
-    },
+    extras_require=extras_require,
     tests_require=required_test,
     python_requires=">=3.7",
 )

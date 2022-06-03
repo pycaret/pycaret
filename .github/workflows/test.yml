@@ -50,7 +50,7 @@ jobs:
           python -m pip install -U pytest
           python -m pip install -U codecov
 
-          pip install -e ".[full]"
+          pip install -e ".[full, nlp]"
           if [ -f requirements-prophet.txt ]; then pip install -r requirements-prophet.txt; fi
           if [ -f requirements-test.txt ]; then pip install -r requirements-test.txt; fi
           python -m spacy download en_core_web_sm
@@ -92,7 +92,7 @@ jobs:
           python -m pip install -U pytest
           python -m pip install -U codecov
 
-          pip install -e ".[full]"
+          pip install -e ".[full, nlp]"
           pip install -r requirements-prophet.txt
           pip install -r requirements-test.txt
           python -m spacy download en_core_web_sm
@@ -124,7 +124,7 @@ jobs:
   #       python -m pip install --upgrade pip
   #       python -m pip install -U pytest
   #       python -m pip install codecov
-  #       pip install -e ".[full]"
+  #       pip install -e ".[full, nlp]"
   #       python -m pip install hpbandster ConfigSpace
   #       python -m spacy download en
   #   - name: Remove tests
@@ -149,7 +149,7 @@ jobs:
   #       python -m pip install --upgrade pip
   #       python -m pip install -U pytest
   #       python -m pip install codecov
-  #       pip install -e ".[full]"
+  #       pip install -e ".[full, nlp]"
   #       python -m spacy download en
   #   - name: Remove tests
   #     run: |
@@ -173,7 +173,7 @@ jobs:
   #       python -m pip install --upgrade pip
   #       python -m pip install -U pytest
   #       python -m pip install codecov
-  #       pip install -e ".[full]"
+  #       pip install -e ".[full, nlp]"
   #       python -m spacy download en
   #   - name: Remove tests
   #     run: |
@@ -196,7 +196,7 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -U pytest
           python -m pip install codecov
-          pip install -e ".[full]"
+          pip install -e ".[full, nlp]"
           if [ -f requirements-test.txt ]; then pip install -r requirements-test.txt; fi
           python -m spacy download en_core_web_sm
       - name: Python version and dependency list
@@ -230,7 +230,7 @@ jobs:
           python -m pip install -U pytest
           python -m pip install -U codecov
 
-          pip install -e ".[full]"
+          pip install -e ".[full, nlp]"
           if [ -f requirements-prophet.txt ]; then pip install -r requirements-prophet.txt; fi
           if [ -f requirements-test.txt ]; then pip install -r requirements-test.txt; fi
 
@@ -266,7 +266,7 @@ jobs:
           python -m pip install -U pytest
           python -m pip install -U codecov
 
-          pip install -e ".[full]"
+          pip install -e ".[full, nlp]"
           if [ -f requirements-prophet.txt ]; then pip install -r requirements-prophet.txt; fi
           if [ -f requirements-test.txt ]; then pip install -r requirements-test.txt; fi
 
