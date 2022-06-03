@@ -80,7 +80,7 @@ class _TabularExperiment(_PyCaretExperiment):
 
     def _pack_for_remote(self) -> dict:
         pack = super()._pack_for_remote()
-        for k in ["_all_metrics"]:
+        for k in ["_all_metrics", "seed"]:
             if hasattr(self, k):
                 pack[k] = getattr(self, k)
         return pack
