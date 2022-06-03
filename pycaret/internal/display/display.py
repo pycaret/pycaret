@@ -16,18 +16,26 @@ class CommonDisplay:
     """
 
     def display_progress(self):
+        if not self.can_display:
+            return
         if self._progress_bar_display:
             self._progress_bar_display.display()
 
     def move_progress(self, value: int = 1):
+        if not self.can_display:
+            return
         if self._progress_bar_display:
             self._progress_bar_display.step(value)
 
     def update_monitor(self, row_idx: int, message: str):
+        if not self.can_display:
+            return
         if self._monitor_display:
             self._monitor_display.update(row_idx, message)
 
     def display(self, df, *, clear: bool = False, final_display: bool = True):
+        if not self.can_display:
+            return
         if clear:
             self._general_display.clear_display()
         if final_display:
@@ -35,9 +43,13 @@ class CommonDisplay:
         self._general_display.display(df, final_display=final_display)
 
     def clear_output(self):
+        if not self.can_display:
+            return
         self._general_display.clear_output()
 
     def close(self):
+        if not self.can_display:
+            return
         if self._progress_bar_display:
             self._progress_bar_display.close()
         if self._monitor_display:
@@ -50,6 +62,10 @@ class CommonDisplay:
     @property
     def can_update_rich(self) -> bool:
         return self._general_display.can_update_rich
+
+    @property
+    def can_display(self) -> bool:
+        return True
 
     def __init__(
         self,
@@ -89,5 +105,9 @@ class CommonDisplay:
 class DummyDisplay(CommonDisplay):
     """The Display class to completely turn off all displays"""
 
-    def can_display(self, override):
+    def __init__(self):
+        super().__init__(verbose=False)
+
+    @property
+    def can_display(self):
         return False

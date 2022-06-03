@@ -7,7 +7,7 @@ import warnings
 from collections import Iterable
 from copy import deepcopy
 from functools import partial
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Set, Tuple, Union
 from unittest.mock import patch
 
 import numpy as np  # type: ignore
@@ -258,6 +258,82 @@ class _SupervisedExperiment(_TabularExperiment):
         del params["__class__"]
         del params["parallel"]
         return parallel.compare_models(self, params)
+
+    def _get_greater_is_worse_columns(self) -> Set[str]:
+        input_ml_usecase = self._ml_usecase
+        target_ml_usecase = MLUsecase.TIME_SERIES
+
+        greater_is_worse_columns = {
+            id_or_display_name(v, input_ml_usecase, target_ml_usecase).upper()
+            for k, v in self._all_metrics.items()
+            if not v.greater_is_better
+        }
+        greater_is_worse_columns.add("TT (Sec)")
+        return greater_is_worse_columns
+
+    def _highlight_models(self, master_display_: Any) -> Any:
+        def highlight_max(s):
+            to_highlight = s == s.max()
+            return ["background-color: yellow" if v else "" for v in to_highlight]
+
+        def highlight_min(s):
+            to_highlight = s == s.min()
+            return ["background-color: yellow" if v else "" for v in to_highlight]
+
+        def highlight_cols(s):
+            color = "lightgrey"
+            return f"background-color: {color}"
+
+        greater_is_worse_columns = self._get_greater_is_worse_columns()
+
+        if master_display_ is not None:
+            return (
+                master_display_.apply(
+                    highlight_max,
+                    subset=[
+                        x
+                        for x in master_display_.columns[1:]
+                        if x not in greater_is_worse_columns
+                    ],
+                )
+                .apply(
+                    highlight_min,
+                    subset=[
+                        x
+                        for x in master_display_.columns[1:]
+                        if x in greater_is_worse_columns
+                    ],
+                )
+                .applymap(highlight_cols, subset=["TT (Sec)"])
+            )
+        else:
+            return pd.DataFrame().style
+
+    def _process_sort(self, sort: Any) -> Tuple[str, bool]:
+        """This function is extracted from different parts from the
+        compare_models function, and it is used for parallel compare_models
+        """
+        input_ml_usecase = self._ml_usecase
+        target_ml_usecase = MLUsecase.TIME_SERIES
+
+        if not (isinstance(sort, str) and (sort == "TT" or sort == "TT (Sec)")):
+            sort = self._get_metric_by_name_or_id(sort)
+            if sort is None:
+                raise ValueError(
+                    "Sort method not supported. See docstring for list of available parameters."
+                )
+
+        if not (isinstance(sort, str) and (sort == "TT" or sort == "TT (Sec)")):
+            sort_ascending = not sort.greater_is_better
+            sort = id_or_display_name(sort, input_ml_usecase, target_ml_usecase)
+        else:
+            sort_ascending = True
+            sort = "TT (Sec)"
+
+        if self._ml_usecase == MLUsecase.TIME_SERIES:
+            sort = sort.upper()
+
+        return sort, sort_ascending
 
     def compare_models(
         self,
@@ -568,12 +644,7 @@ class _SupervisedExperiment(_TabularExperiment):
         input_ml_usecase = self._ml_usecase
         target_ml_usecase = MLUsecase.TIME_SERIES
 
-        greater_is_worse_columns = {
-            id_or_display_name(v, input_ml_usecase, target_ml_usecase).upper()
-            for k, v in self._all_metrics.items()
-            if not v.greater_is_better
-        }
-        greater_is_worse_columns.add("TT (Sec)")
+        greater_is_worse_columns = self._get_greater_is_worse_columns()
 
         np.random.seed(self.seed)
 
@@ -790,40 +861,7 @@ class _SupervisedExperiment(_TabularExperiment):
 
         display.move_progress()
 
-        def highlight_max(s):
-            to_highlight = s == s.max()
-            return ["background-color: yellow" if v else "" for v in to_highlight]
-
-        def highlight_min(s):
-            to_highlight = s == s.min()
-            return ["background-color: yellow" if v else "" for v in to_highlight]
-
-        def highlight_cols(s):
-            color = "lightgrey"
-            return f"background-color: {color}"
-
-        if master_display_ is not None:
-            compare_models_ = (
-                master_display_.apply(
-                    highlight_max,
-                    subset=[
-                        x
-                        for x in master_display_.columns[1:]
-                        if x not in greater_is_worse_columns
-                    ],
-                )
-                .apply(
-                    highlight_min,
-                    subset=[
-                        x
-                        for x in master_display_.columns[1:]
-                        if x in greater_is_worse_columns
-                    ],
-                )
-                .applymap(highlight_cols, subset=["TT (Sec)"])
-            )
-        else:
-            compare_models_ = pd.DataFrame().style
+        compare_models_ = self._highlight_models(master_display_)
 
         display.update_monitor(1, "Compiling Final Models")
 

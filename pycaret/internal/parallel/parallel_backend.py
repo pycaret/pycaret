@@ -25,6 +25,7 @@ class ParallelBackend:
         params = dict(self._instance_pack["_setup_params"])
         params["verbose"] = False
         params["html"] = False
+        params["session_id"] = self._instance_pack.get("seed", None)
         instance._remote = True
         instance.setup(**params)
         instance._unpack_at_remote(self._instance_pack)
