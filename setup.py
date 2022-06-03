@@ -19,6 +19,24 @@ with open("requirements-optional.txt") as f:
 with open("requirements-test.txt") as f:
     required_test = f.read().splitlines()
 
+
+extras_require = {
+    "analysis": required_optional.split("\n\n")[0].splitlines(),
+    "models": required_optional.split("\n\n")[1].splitlines(),
+    "tuners": required_optional.split("\n\n")[2].splitlines(),
+    "mlops": required_optional.split("\n\n")[3].splitlines(),
+    "nlp": required_optional.split("\n\n")[4].splitlines(),
+    "parallel": required_optional.split("\n\n")[4].splitlines(),
+}
+
+extras_require["full"] = (
+    extras_require["analysis"]
+    + extras_require["models"]
+    + extras_require["tuners"]
+    + extras_require["mlops"]
+    + extras_require["parallel"]
+)
+
 setup(
     name="pycaret",
     version="3.0.0.rc1",
