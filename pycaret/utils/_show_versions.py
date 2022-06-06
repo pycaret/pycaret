@@ -18,7 +18,7 @@ required_deps = [
     "pip",
     "setuptools",
     "pycaret",
-    "ipython",
+    "IPython",
     "ipywidgets",
     "tqdm",
     "numpy",
@@ -100,6 +100,14 @@ def _get_sys_info():
     return dict(blob)
 
 
+def _get_module_version(module) -> str:
+    try:
+        return module.__version__
+    except AttributeError:
+        #### Version could not be obtained
+        return "Installed but version unavailable"
+
+
 def _get_deps_info(optional: bool = False, logger: Optional[logging.Logger] = None):
     """
     Overview of the installed version of dependencies.
@@ -116,9 +124,6 @@ def _get_deps_info(optional: bool = False, logger: Optional[logging.Logger] = No
         version information on relevant Python libraries
     """
 
-    def get_version(module):
-        return module.__version__
-
     deps_info = {}
 
     if optional:
@@ -133,24 +138,21 @@ def _get_deps_info(optional: bool = False, logger: Optional[logging.Logger] = No
             else:
                 with redirect_output(logger):
                     mod = importlib.import_module(modname)
-            ver = get_version(mod)
+            ver = _get_module_version(mod)
             deps_info[modname] = ver
         except ImportError:
             deps_info[modname] = "Not installed"
-        except AttributeError:
-            #### Version could not be obtained
-            deps_info[modname] = "Installed but version unavailable"
 
     return deps_info
 
 
-def show_versions(optional: bool = True, logger: Optional[logging.Logger] = None):
+def show_versions(optional: bool = False, logger: Optional[logging.Logger] = None):
     """Print useful debugging information (e.g. versions).
 
     Parameters
     ----------
     optional : bool, optional
-        Should optional dependencies be documented, by default True
+        Should optional dependencies be documented, by default False
     logger : Optional[logging.Logger], optional
         The logger to use. If None, then uses print() command to display results,
         by default None
@@ -158,21 +160,23 @@ def show_versions(optional: bool = True, logger: Optional[logging.Logger] = None
 
     if logger is None:
         print_func = print
+        prefix = "\n"
     else:
         print_func = logger.info
+        prefix = ""
 
-    print_func("\nSystem:")  # noqa: T001
+    print_func(f"{prefix}System:")  # noqa: T001
     sys_info = _get_sys_info()
     for k, stat in sys_info.items():
         print_func("{k:>10}: {stat}".format(k=k, stat=stat))  # noqa: T001
 
-    print_func("\nPyCaret required dependencies:")  # noqa: T001
+    print_func(f"{prefix}PyCaret required dependencies:")  # noqa: T001
     optional_deps_info = _get_deps_info(logger=logger)
     for k, stat in optional_deps_info.items():
         print_func("{k:>20}: {stat}".format(k=k, stat=stat))  # noqa: T001
 
     if optional:
-        print_func("\nPyCaret optional dependencies:")  # noqa: T001
+        print_func(f"{prefix}PyCaret optional dependencies:")  # noqa: T001
         optional_deps_info = _get_deps_info(logger=logger, optional=True)
         for k, stat in optional_deps_info.items():
             print_func("{k:>20}: {stat}".format(k=k, stat=stat))  # noqa: T001
