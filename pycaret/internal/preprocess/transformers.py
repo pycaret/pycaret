@@ -151,7 +151,7 @@ class TransformerWrapper(BaseEstimator):
             right_index=True,
             suffixes=("", "__drop__"),
         )
-        new_df = new_df.drop(new_df.filter(regex='__drop__$').columns, axis=1)
+        new_df = new_df.drop(new_df.filter(regex="__drop__$").columns, axis=1)
 
         return new_df[columns]
 
@@ -310,7 +310,8 @@ class EmbedTextFeatures(BaseEstimator):
         for col in X:
             data = self._estimators[col].transform(X[col]).toarray()
             columns = [
-                f"{col}_{word}" for word in self._estimators[col].get_feature_names_out()
+                f"{col}_{word}"
+                for word in self._estimators[col].get_feature_names_out()
             ]
 
             # Merge the new columns with the dataset
