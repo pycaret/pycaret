@@ -104,7 +104,7 @@ def create_logger(
 
     """
     if not log:
-        return DummyLogger()
+        return DummyLogger(name="DummyLogger")
     elif isinstance(log, logging.Logger):
         return log
 
