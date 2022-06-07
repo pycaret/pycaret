@@ -77,8 +77,11 @@ class Pipeline(imblearn.pipeline.Pipeline):
         super().__init__(steps, memory=memory, verbose=verbose)
         self._fit_vars = set()
         self._feature_names_in = None
-        self._memory_fit = check_memory(self.memory).cache(_fit_transform_one)
-        self._memory_transform = check_memory(self.memory).cache(_transform_one)
+
+        # Set up cache memory objects
+        memory = check_memory(self.memory)
+        self._memory_fit = memory.cache(_fit_transform_one)
+        self._memory_transform = memory.cache(_transform_one)
 
     @property
     def feature_names_in_(self):
