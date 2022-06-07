@@ -52,9 +52,6 @@ class TransformerWrapper(BaseEstimator):
         self._exclude = self.exclude or []
         self._feature_names_in = None
 
-    def __repr__(self, N_CHAR_MAX=1400):
-        return self.transformer.__repr__()
-
     @property
     def feature_names_in_(self):
         return self._feature_names_in
@@ -115,35 +112,48 @@ class TransformerWrapper(BaseEstimator):
 
         """
         # Check if columns returned by the transformer are already in the dataset
-        for col in df.columns:
-            if col in original_df.columns and col not in self._include:
-                raise RuntimeError(
+        for col in df:
+            if col in original_df and col not in self._include:
+                raise ValueError(
                     f"Column '{col}' returned by the transformer "
                     "already exists in the original dataset."
                 )
 
-        temp_df = pd.DataFrame(index=df.index)
-        for col in dict.fromkeys(list(original_df.columns) + list(df.columns)):
-            if col in df.columns:
-                temp_df[col] = df[col]
-            elif col not in self._include:
-                if len(df) != len(original_df):
-                    raise ValueError(
-                        f"Length of values ({len(df)}) does not match length of "
-                        f"index ({len(original_df)}). This usually happens when "
-                        "transformations that drop rows aren't applied on all "
-                        "the columns."
-                    )
+        # Force new indices on old dataset for merge
+        try:
+            original_df.index = df.index
+        except ValueError:  # Length mismatch
+            raise IndexError(
+                f"Length of values ({len(df)}) does not match length of "
+                f"index ({len(original_df)}). This usually happens when "
+                "transformations that drop rows aren't applied on all "
+                "the columns."
+            )
 
-                # Take values to adapt to new index
-                temp_df[col] = original_df[col].values
+        # Define new column order
+        columns = []
+        for col in original_df:
+            if col in df or col not in self._include:
+                columns.append(col)
 
-            # Derivative cols are added after original (e.g. for one-hot encoding)
-            for col_derivative in df.columns:
-                if str(col_derivative).startswith(f"{col}_"):
-                    temp_df[col_derivative] = df[col_derivative]
+            # Add all derivative columns: cols that originate from another
+            # and start with its progenitor name, e.g. one-hot encoded columns
+            columns.extend(list(df.columns[df.columns.str.startswith(f"{col}_")]))
 
-        return temp_df
+        # Add remaining new columns (non-derivatives)
+        columns.extend([col for col in df if col not in columns])
+
+        # Merge the new and old datasets keeping the newest columns
+        new_df = df.merge(
+            right=original_df[[col for col in original_df if col in columns]],
+            how="outer",
+            left_index=True,
+            right_index=True,
+            suffixes=("", "__drop__"),
+        )
+        new_df = new_df.drop(new_df.filter(regex='__drop__$').columns, axis=1)
+
+        return new_df[columns]
 
     def _prepare_df(self, X, out):
         """Convert to df and set correct column names and order."""
@@ -298,11 +308,19 @@ class EmbedTextFeatures(BaseEstimator):
 
     def transform(self, X, y=None):
         for col in X:
-            matrix = self._estimators[col].transform(X[col]).toarray()
-            for i, word in enumerate(self._estimators[col].get_feature_names()):
-                X[f"{col}_{word}"] = matrix[:, i]
+            data = self._estimators[col].transform(X[col]).toarray()
+            columns = [
+                f"{col}_{word}" for word in self._estimators[col].get_feature_names_out()
+            ]
 
-            X = X.drop(col, axis=1)  # Drop original column
+            # Merge the new columns with the dataset
+            X = pd.concat(
+                [X, pd.DataFrame(data=data, index=X.index, columns=columns)],
+                axis=1,
+            )
+
+            # Drop original text column
+            X = X.drop(col, axis=1)
 
         return X
 

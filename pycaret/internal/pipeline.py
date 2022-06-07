@@ -60,9 +60,8 @@ def _inverse_transform_one(transformer, y=None):
     """Inverse transform the data using one transformer."""
     if not hasattr(transformer, "inverse_transform"):
         return y
-    output = transformer.inverse_transform(y)
 
-    return output
+    return transformer.inverse_transform(y)
 
 
 def _fit_transform_one(transformer, X=None, y=None, message=None, **fit_params):
@@ -78,6 +77,8 @@ class Pipeline(imblearn.pipeline.Pipeline):
         super().__init__(steps, memory=memory, verbose=verbose)
         self._fit_vars = set()
         self._feature_names_in = None
+        self._memory_fit = check_memory(self.memory).cache(_fit_transform_one)
+        self._memory_transform = check_memory(self.memory).cache(_transform_one)
 
     @property
     def feature_names_in_(self):
@@ -109,16 +110,13 @@ class Pipeline(imblearn.pipeline.Pipeline):
                 [y.name] if hasattr(y, "name") else []
             )
 
-        # Set up the memory
-        memory = check_memory(self.memory).cache(_fit_transform_one)
-
         for (step_idx, name, transformer) in self._iter(False, False, False):
             if transformer is None or transformer == "passthrough":
                 with _print_elapsed_time("Pipeline", self._log_message(step_idx)):
                     continue
 
             if hasattr(transformer, "transform"):
-                if getattr(memory, "location", "") is None:
+                if getattr(self._memory_fit, "location", "") is None:
                     # Don't clone when caching is disabled to
                     # preserve backward compatibility
                     cloned = transformer
@@ -126,7 +124,7 @@ class Pipeline(imblearn.pipeline.Pipeline):
                     cloned = clone(transformer)
 
                 # Fit or load the current transformer from cache
-                X, y, fitted_transformer = memory(
+                X, y, fitted_transformer = self._memory_fit(
                     transformer=cloned,
                     X=X,
                     y=y,
@@ -158,7 +156,7 @@ class Pipeline(imblearn.pipeline.Pipeline):
             with_final=hasattr(self._final_estimator, "transform"),
             filter_train_only=filter_train_only,
         ):
-            X, y = _transform_one(transformer, X, y)
+            X, y = self._memory_transform(transformer, X, y)
 
         return variable_return(X, y)
 
@@ -179,39 +177,40 @@ class Pipeline(imblearn.pipeline.Pipeline):
     @if_delegate_has_method(delegate="_final_estimator")
     def predict(self, X, **predict_params):
         for _, name, transformer in self._iter(with_final=False):
-            X, _ = _transform_one(transformer, X)
+            X, _ = self._memory_transform(transformer, X)
 
         y = self.steps[-1][-1].predict(X, **predict_params)
 
         for _, name, transformer in self._iter(with_final=False):
             y = _inverse_transform_one(transformer, y)
+
         return y
 
     @if_delegate_has_method(delegate="_final_estimator")
     def predict_proba(self, X):
         for _, _, transformer in self._iter(with_final=False):
-            X, _ = _transform_one(transformer, X)
+            X, _ = self._memory_transform(transformer, X)
 
         return self.steps[-1][-1].predict_proba(X)
 
     @if_delegate_has_method(delegate="_final_estimator")
     def predict_log_proba(self, X):
         for _, _, transformer in self._iter(with_final=False):
-            X, _ = _transform_one(transformer, X)
+            X, _ = self._memory_transform(transformer, X)
 
         return self.steps[-1][-1].predict_log_proba(X)
 
     @if_delegate_has_method(delegate="_final_estimator")
     def decision_function(self, X):
         for _, _, transformer in self._iter(with_final=False):
-            X, _ = _transform_one(transformer, X)
+            X, _ = self._memory_transform(transformer, X)
 
         return self.steps[-1][-1].decision_function(X)
 
     @if_delegate_has_method(delegate="_final_estimator")
     def score(self, X, y, sample_weight=None):
         for _, _, transformer in self._iter(with_final=False):
-            X, y = _transform_one(transformer, X, y)
+            X, y = self._memory_transform(transformer, X, y)
 
         return self.steps[-1][-1].score(X, y, sample_weight=sample_weight)
 

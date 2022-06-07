@@ -81,7 +81,7 @@ class _PyCaretExperiment:
         """
         return False
 
-    def _check_enviroment(self) -> None:
+    def _check_environment(self) -> None:
         # logging environment and libraries
         self.logger.info("Checking environment")
 
