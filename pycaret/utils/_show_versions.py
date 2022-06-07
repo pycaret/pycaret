@@ -136,7 +136,10 @@ def _get_deps_info(optional: bool = False, logger: Optional[logging.Logger] = No
             if modname in sys.modules:
                 mod = sys.modules[modname]
             else:
-                with redirect_output(logger):
+                if logger:
+                    with redirect_output(logger):
+                        mod = importlib.import_module(modname)
+                else:
                     mod = importlib.import_module(modname)
             ver = _get_module_version(mod)
             deps_info[modname] = ver
