@@ -2039,6 +2039,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         predict,
         system,
         display: CommonDisplay,
+        model_only: bool = False,
         return_train_score: bool = False,  # unused, added for compat
     ):
         # fit_kwargs = get_pipeline_fit_kwargs(model, fit_kwargs)
@@ -2084,6 +2085,9 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         final_model = self._get_final_model_from_pipeline(
             pipeline=pipeline_with_model, check_is_fitted=True
         )
+
+        if not model_only:
+            return pipeline_with_model, model_fit_time
 
         return final_model, model_fit_time
 
@@ -4008,7 +4012,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         self,
         estimator,
         fit_kwargs: Optional[dict] = None,
-        model_only: bool = True,
+        model_only: bool = False,
         experiment_custom_tags: Optional[Dict[str, Any]] = None,
     ) -> Any:
 
@@ -4040,7 +4044,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
 
         Returns:
-            Trained Model
+            Trained pipeline or model object fitted on complete dataset.
 
 
         """

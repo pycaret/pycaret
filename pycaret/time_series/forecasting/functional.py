@@ -1259,7 +1259,7 @@ def predict_model(
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def finalize_model(
-    estimator, fit_kwargs: Optional[dict] = None, model_only: bool = True
+    estimator, fit_kwargs: Optional[dict] = None, model_only: bool = False
 ) -> Any:
 
     """
@@ -1290,7 +1290,7 @@ def finalize_model(
 
 
     Returns:
-        Trained Model
+        Trained pipeline or model object fitted on complete dataset.
 
 
     """

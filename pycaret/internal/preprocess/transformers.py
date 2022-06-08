@@ -168,9 +168,11 @@ class TransformerWrapper(BaseEstimator):
             return out
 
     def fit(self, X=None, y=None, **fit_params):
-        # Save the incoming feature names (if pandas objects)
-        if hasattr(X, "columns") and hasattr(y, "name"):
-            self._feature_names_in = list(X.columns) + [y.name]
+        # Save the incoming feature names
+        if hasattr(X, "columns"):
+            self._feature_names_in = list(X.columns) + (
+                [y.name] if hasattr(y, "name") else []
+            )
 
         args = []
         transformer_params = signature(self.transformer.fit).parameters
@@ -283,7 +285,7 @@ class DropImputer(BaseEstimator):
         if y is not None:
             y = y[y.index.isin(X.index)]
 
-        return X, y
+        return variable_return(X, y)
 
 
 class EmbedTextFeatures(BaseEstimator):

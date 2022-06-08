@@ -147,6 +147,7 @@ class Pipeline(imblearn.pipeline.Pipeline):
     def fit(self, X=None, y=None, **fit_params):
         fit_params_steps = self._check_fit_params(**fit_params)
         X, y, _ = self._fit(X, y, **fit_params_steps)
+
         with _print_elapsed_time("Pipeline", self._log_message(len(self.steps) - 1)):
             if self._final_estimator != "passthrough":
                 fit_params_last_step = fit_params_steps[self.steps[-1][0]]
