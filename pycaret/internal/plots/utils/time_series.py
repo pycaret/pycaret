@@ -17,7 +17,7 @@ from statsmodels.tsa.seasonal import STL, seasonal_decompose
 from statsmodels.tsa.stattools import acf, ccf, pacf
 
 from pycaret.internal.logging import get_logger
-from pycaret.utils import _resolve_dict_keys
+from pycaret.utils import TSAllowedPlotDataTypes, _resolve_dict_keys
 
 logger = get_logger()
 
@@ -27,22 +27,70 @@ PlotReturnType = Tuple[Optional[go.Figure], Optional[Dict[str, Any]]]
 #### Data Types allowed for each plot type ----
 # First one in the list is the default (if requested is None)
 ALLOWED_PLOT_DATA_TYPES = {
-    "pipeline": ["original", "imputed", "transformed"],
-    "ts": ["original", "imputed", "transformed"],
-    "train_test_split": ["original", "imputed", "transformed"],
-    "cv": ["original"],
-    "acf": ["transformed", "imputed", "original"],
-    "pacf": ["transformed", "imputed", "original"],
-    "decomp": ["transformed", "imputed", "original"],
-    "decomp_stl": ["transformed", "imputed", "original"],
-    "diagnostics": ["transformed", "imputed", "original"],
-    "diff": ["transformed", "imputed", "original"],
-    "forecast": ["original", "imputed"],
-    "insample": ["original", "imputed"],
-    "residuals": ["original", "imputed"],
-    "periodogram": ["transformed", "imputed", "original"],
-    "fft": ["transformed", "imputed", "original"],
-    "ccf": ["transformed", "imputed", "original"],
+    "pipeline": [
+        TSAllowedPlotDataTypes.ORIGINAL,
+        TSAllowedPlotDataTypes.IMPUTED,
+        TSAllowedPlotDataTypes.TRANSFORMED,
+    ],
+    "ts": [
+        TSAllowedPlotDataTypes.ORIGINAL,
+        TSAllowedPlotDataTypes.IMPUTED,
+        TSAllowedPlotDataTypes.TRANSFORMED,
+    ],
+    "train_test_split": [
+        TSAllowedPlotDataTypes.ORIGINAL,
+        TSAllowedPlotDataTypes.IMPUTED,
+        TSAllowedPlotDataTypes.TRANSFORMED,
+    ],
+    "cv": [TSAllowedPlotDataTypes.ORIGINAL],
+    "acf": [
+        TSAllowedPlotDataTypes.TRANSFORMED,
+        TSAllowedPlotDataTypes.IMPUTED,
+        TSAllowedPlotDataTypes.ORIGINAL,
+    ],
+    "pacf": [
+        TSAllowedPlotDataTypes.TRANSFORMED,
+        TSAllowedPlotDataTypes.IMPUTED,
+        TSAllowedPlotDataTypes.ORIGINAL,
+    ],
+    "decomp": [
+        TSAllowedPlotDataTypes.TRANSFORMED,
+        TSAllowedPlotDataTypes.IMPUTED,
+        TSAllowedPlotDataTypes.ORIGINAL,
+    ],
+    "decomp_stl": [
+        TSAllowedPlotDataTypes.TRANSFORMED,
+        TSAllowedPlotDataTypes.IMPUTED,
+        TSAllowedPlotDataTypes.ORIGINAL,
+    ],
+    "diagnostics": [
+        TSAllowedPlotDataTypes.TRANSFORMED,
+        TSAllowedPlotDataTypes.IMPUTED,
+        TSAllowedPlotDataTypes.ORIGINAL,
+    ],
+    "diff": [
+        TSAllowedPlotDataTypes.TRANSFORMED,
+        TSAllowedPlotDataTypes.IMPUTED,
+        TSAllowedPlotDataTypes.ORIGINAL,
+    ],
+    "forecast": [TSAllowedPlotDataTypes.ORIGINAL, TSAllowedPlotDataTypes.IMPUTED],
+    "insample": [TSAllowedPlotDataTypes.ORIGINAL, TSAllowedPlotDataTypes.IMPUTED],
+    "residuals": [TSAllowedPlotDataTypes.ORIGINAL, TSAllowedPlotDataTypes.IMPUTED],
+    "periodogram": [
+        TSAllowedPlotDataTypes.TRANSFORMED,
+        TSAllowedPlotDataTypes.IMPUTED,
+        TSAllowedPlotDataTypes.ORIGINAL,
+    ],
+    "fft": [
+        TSAllowedPlotDataTypes.TRANSFORMED,
+        TSAllowedPlotDataTypes.IMPUTED,
+        TSAllowedPlotDataTypes.ORIGINAL,
+    ],
+    "ccf": [
+        TSAllowedPlotDataTypes.TRANSFORMED,
+        TSAllowedPlotDataTypes.IMPUTED,
+        TSAllowedPlotDataTypes.ORIGINAL,
+    ],
 }
 
 #### Are multiple plot types allowed at once ----
