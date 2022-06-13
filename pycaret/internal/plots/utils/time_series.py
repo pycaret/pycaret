@@ -74,9 +74,18 @@ ALLOWED_PLOT_DATA_TYPES = {
         TSAllowedPlotDataTypes.IMPUTED.value,
         TSAllowedPlotDataTypes.ORIGINAL.value,
     ],
-    "forecast": [TSAllowedPlotDataTypes.ORIGINAL.value, TSAllowedPlotDataTypes.IMPUTED.value],
-    "insample": [TSAllowedPlotDataTypes.ORIGINAL.value, TSAllowedPlotDataTypes.IMPUTED.value],
-    "residuals": [TSAllowedPlotDataTypes.ORIGINAL.value, TSAllowedPlotDataTypes.IMPUTED.value],
+    "forecast": [
+        TSAllowedPlotDataTypes.ORIGINAL.value,
+        TSAllowedPlotDataTypes.IMPUTED.value,
+    ],
+    "insample": [
+        TSAllowedPlotDataTypes.ORIGINAL.value,
+        TSAllowedPlotDataTypes.IMPUTED.value,
+    ],
+    "residuals": [
+        TSAllowedPlotDataTypes.ORIGINAL.value,
+        TSAllowedPlotDataTypes.IMPUTED.value,
+    ],
     "periodogram": [
         TSAllowedPlotDataTypes.TRANSFORMED.value,
         TSAllowedPlotDataTypes.IMPUTED.value,
@@ -1050,8 +1059,12 @@ def _get_data_types_to_plot(
         data_types_requested = [data_types_requested]
 
     #### Is the data type allowed for the requested plot?
+    all_plot_data_types = [member.value for member in TSAllowedPlotDataTypes]
     data_types_allowed = [
-        True if data_type_requested in ALLOWED_PLOT_DATA_TYPES.get(plot) else False
+        True
+        if data_type_requested in ALLOWED_PLOT_DATA_TYPES.get(plot)
+        and data_type_requested in all_plot_data_types
+        else False
         for data_type_requested in data_types_requested
     ]
 
