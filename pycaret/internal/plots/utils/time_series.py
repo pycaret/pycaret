@@ -17,7 +17,8 @@ from statsmodels.tsa.seasonal import STL, seasonal_decompose
 from statsmodels.tsa.stattools import acf, ccf, pacf
 
 from pycaret.internal.logging import get_logger
-from pycaret.utils import TSAllowedPlotDataTypes, _resolve_dict_keys
+from pycaret.utils import _resolve_dict_keys
+from pycaret.utils.time_series import TSAllowedPlotDataTypes
 
 logger = get_logger()
 
@@ -28,68 +29,68 @@ PlotReturnType = Tuple[Optional[go.Figure], Optional[Dict[str, Any]]]
 # First one in the list is the default (if requested is None)
 ALLOWED_PLOT_DATA_TYPES = {
     "pipeline": [
-        TSAllowedPlotDataTypes.ORIGINAL,
-        TSAllowedPlotDataTypes.IMPUTED,
-        TSAllowedPlotDataTypes.TRANSFORMED,
+        TSAllowedPlotDataTypes.ORIGINAL.value,
+        TSAllowedPlotDataTypes.IMPUTED.value,
+        TSAllowedPlotDataTypes.TRANSFORMED.value,
     ],
     "ts": [
-        TSAllowedPlotDataTypes.ORIGINAL,
-        TSAllowedPlotDataTypes.IMPUTED,
-        TSAllowedPlotDataTypes.TRANSFORMED,
+        TSAllowedPlotDataTypes.ORIGINAL.value,
+        TSAllowedPlotDataTypes.IMPUTED.value,
+        TSAllowedPlotDataTypes.TRANSFORMED.value,
     ],
     "train_test_split": [
-        TSAllowedPlotDataTypes.ORIGINAL,
-        TSAllowedPlotDataTypes.IMPUTED,
-        TSAllowedPlotDataTypes.TRANSFORMED,
+        TSAllowedPlotDataTypes.ORIGINAL.value,
+        TSAllowedPlotDataTypes.IMPUTED.value,
+        TSAllowedPlotDataTypes.TRANSFORMED.value,
     ],
-    "cv": [TSAllowedPlotDataTypes.ORIGINAL],
+    "cv": [TSAllowedPlotDataTypes.ORIGINAL.value],
     "acf": [
-        TSAllowedPlotDataTypes.TRANSFORMED,
-        TSAllowedPlotDataTypes.IMPUTED,
-        TSAllowedPlotDataTypes.ORIGINAL,
+        TSAllowedPlotDataTypes.TRANSFORMED.value,
+        TSAllowedPlotDataTypes.IMPUTED.value,
+        TSAllowedPlotDataTypes.ORIGINAL.value,
     ],
     "pacf": [
-        TSAllowedPlotDataTypes.TRANSFORMED,
-        TSAllowedPlotDataTypes.IMPUTED,
-        TSAllowedPlotDataTypes.ORIGINAL,
+        TSAllowedPlotDataTypes.TRANSFORMED.value,
+        TSAllowedPlotDataTypes.IMPUTED.value,
+        TSAllowedPlotDataTypes.ORIGINAL.value,
     ],
     "decomp": [
-        TSAllowedPlotDataTypes.TRANSFORMED,
-        TSAllowedPlotDataTypes.IMPUTED,
-        TSAllowedPlotDataTypes.ORIGINAL,
+        TSAllowedPlotDataTypes.TRANSFORMED.value,
+        TSAllowedPlotDataTypes.IMPUTED.value,
+        TSAllowedPlotDataTypes.ORIGINAL.value,
     ],
     "decomp_stl": [
-        TSAllowedPlotDataTypes.TRANSFORMED,
-        TSAllowedPlotDataTypes.IMPUTED,
-        TSAllowedPlotDataTypes.ORIGINAL,
+        TSAllowedPlotDataTypes.TRANSFORMED.value,
+        TSAllowedPlotDataTypes.IMPUTED.value,
+        TSAllowedPlotDataTypes.ORIGINAL.value,
     ],
     "diagnostics": [
-        TSAllowedPlotDataTypes.TRANSFORMED,
-        TSAllowedPlotDataTypes.IMPUTED,
-        TSAllowedPlotDataTypes.ORIGINAL,
+        TSAllowedPlotDataTypes.TRANSFORMED.value,
+        TSAllowedPlotDataTypes.IMPUTED.value,
+        TSAllowedPlotDataTypes.ORIGINAL.value,
     ],
     "diff": [
-        TSAllowedPlotDataTypes.TRANSFORMED,
-        TSAllowedPlotDataTypes.IMPUTED,
-        TSAllowedPlotDataTypes.ORIGINAL,
+        TSAllowedPlotDataTypes.TRANSFORMED.value,
+        TSAllowedPlotDataTypes.IMPUTED.value,
+        TSAllowedPlotDataTypes.ORIGINAL.value,
     ],
-    "forecast": [TSAllowedPlotDataTypes.ORIGINAL, TSAllowedPlotDataTypes.IMPUTED],
-    "insample": [TSAllowedPlotDataTypes.ORIGINAL, TSAllowedPlotDataTypes.IMPUTED],
-    "residuals": [TSAllowedPlotDataTypes.ORIGINAL, TSAllowedPlotDataTypes.IMPUTED],
+    "forecast": [TSAllowedPlotDataTypes.ORIGINAL.value, TSAllowedPlotDataTypes.IMPUTED.value],
+    "insample": [TSAllowedPlotDataTypes.ORIGINAL.value, TSAllowedPlotDataTypes.IMPUTED.value],
+    "residuals": [TSAllowedPlotDataTypes.ORIGINAL.value, TSAllowedPlotDataTypes.IMPUTED.value],
     "periodogram": [
-        TSAllowedPlotDataTypes.TRANSFORMED,
-        TSAllowedPlotDataTypes.IMPUTED,
-        TSAllowedPlotDataTypes.ORIGINAL,
+        TSAllowedPlotDataTypes.TRANSFORMED.value,
+        TSAllowedPlotDataTypes.IMPUTED.value,
+        TSAllowedPlotDataTypes.ORIGINAL.value,
     ],
     "fft": [
-        TSAllowedPlotDataTypes.TRANSFORMED,
-        TSAllowedPlotDataTypes.IMPUTED,
-        TSAllowedPlotDataTypes.ORIGINAL,
+        TSAllowedPlotDataTypes.TRANSFORMED.value,
+        TSAllowedPlotDataTypes.IMPUTED.value,
+        TSAllowedPlotDataTypes.ORIGINAL.value,
     ],
     "ccf": [
-        TSAllowedPlotDataTypes.TRANSFORMED,
-        TSAllowedPlotDataTypes.IMPUTED,
-        TSAllowedPlotDataTypes.ORIGINAL,
+        TSAllowedPlotDataTypes.TRANSFORMED.value,
+        TSAllowedPlotDataTypes.IMPUTED.value,
+        TSAllowedPlotDataTypes.ORIGINAL.value,
     ],
 }
 
