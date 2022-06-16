@@ -89,7 +89,7 @@ def setup(
     verbose: bool = True,
     memory: Union[bool, str, Memory] = True,
     profile: bool = False,
-    profile_kwargs: Dict[str, Any] = None,
+    profile_kwargs: Optional[Dict[str, Any]] = None,
 ):
 
     """
@@ -2301,7 +2301,7 @@ def save_model(
 
 # not using check_if_global_is_not_none on purpose
 def load_model(
-    model_name,
+    model_name: str,
     platform: Optional[str] = None,
     authentication: Optional[Dict[str, str]] = None,
     verbose: bool = True,
