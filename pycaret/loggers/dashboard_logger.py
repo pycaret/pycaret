@@ -158,7 +158,7 @@ class DashboardLogger:
                         ]
                     except Exception:
                         console.warning(
-                            "Couldn't create plot for model, exception below:\n"
+                            f"Couldn't create plot {plot} for model, exception below:\n"
                             f"{traceback.format_exc()}"
                         )
 
