@@ -7,6 +7,8 @@ import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+from plotly.basedatatypes import BaseFigure
+from plotly_resampler import FigureResampler
 import plotly.io as pio
 from plotly.colors import DEFAULT_PLOTLY_COLORS
 from plotly.subplots import make_subplots
@@ -66,7 +68,7 @@ MULTIPLE_PLOT_TYPES_ALLOWED_AT_ONCE = {
 
 
 def time_series_subplot(
-    fig: go.Figure,
+    fig: BaseFigure,
     data: pd.DataFrame,
     row: int,
     col: int,
@@ -107,9 +109,7 @@ def time_series_subplot(
         if hoverinfo == "text":
             # Not specifying the hoverinfo will show it by default
             fig.add_trace(
-                go.Scatter(
-                    x=x,
-                    y=data[col_name].values,
+                go.Scattergl(
                     name=col_name,
                     mode="lines+markers",
                     line=dict(color=color, width=2),
@@ -117,13 +117,14 @@ def time_series_subplot(
                 ),
                 row=row,
                 col=col,
+                hf_x=x,
+                hf_y=data[col_name],
+                limit_to_view=True,
             )
         else:
             # Disable hoverinfo
             fig.add_trace(
-                go.Scatter(
-                    x=x,
-                    y=data[col_name].values,
+                go.Scattergl(
                     name=col_name,
                     mode="lines+markers",
                     line=dict(width=2),
@@ -132,6 +133,9 @@ def time_series_subplot(
                 ),
                 row=row,
                 col=col,
+                hf_x=x,
+                hf_y=data[col_name],
+                limit_to_view=True,
             )
 
     return fig
@@ -447,13 +451,13 @@ def dist_subplot(fig: go.Figure, data: pd.Series, row: int, col: int) -> go.Figu
 
 
 def decomp_subplot(
-    fig: go.Figure,
+    fig: BaseFigure,
     data: pd.Series,
     col: int,
     plot: str,
     classical_decomp_type: str,
     period: int,
-) -> go.Figure:
+) -> BaseFigure:
     """Function to add decomposition to a Plotly subplot
 
     Parameters
@@ -477,7 +481,7 @@ def decomp_subplot(
 
     Returns
     -------
-    go.Figure
+    go.Figure  # TODO
         Returns back the plotly figure with the decomposition results inserted.
     """
 
@@ -492,9 +496,7 @@ def decomp_subplot(
     #### Plot Original data ----
     row = 1
     fig.add_trace(
-        go.Scatter(
-            x=x,
-            y=data_,
+        go.Scattergl(
             line=dict(color=DEFAULT_PLOTLY_COLORS[row - 1], width=2),
             mode="lines+markers",
             name="Actual",
@@ -502,6 +504,9 @@ def decomp_subplot(
         ),
         row=row,
         col=col,
+        hf_x=x,
+        hf_y=data_,
+        limit_to_view=True,
     )
 
     if plot == "decomp":
@@ -520,9 +525,7 @@ def decomp_subplot(
 
     row = 2
     fig.add_trace(
-        go.Scatter(
-            x=x,
-            y=decomp_result.seasonal,
+        go.Scattergl(
             line=dict(color=DEFAULT_PLOTLY_COLORS[row - 1], width=2),
             mode="lines+markers",
             name="Seasonal",
@@ -530,13 +533,14 @@ def decomp_subplot(
         ),
         row=row,
         col=col,
+        hf_x=x,
+        hf_y=decomp_result.seasonal,
+        limit_to_view=True,
     )
 
     row = 3
     fig.add_trace(
-        go.Scatter(
-            x=x,
-            y=decomp_result.trend,
+        go.Scattergl(
             line=dict(color=DEFAULT_PLOTLY_COLORS[row - 1], width=2),
             mode="lines+markers",
             name="Trend",
@@ -544,13 +548,14 @@ def decomp_subplot(
         ),
         row=row,
         col=col,
+        hf_x=x,
+        hf_y=decomp_result.trend,
+        limit_to_view=True,
     )
 
     row = 4
     fig.add_trace(
-        go.Scatter(
-            x=x,
-            y=decomp_result.resid,
+        go.Scattergl(
             line=dict(color=DEFAULT_PLOTLY_COLORS[row - 1], width=2),
             mode="markers",
             name="Residuals",
@@ -560,6 +565,9 @@ def decomp_subplot(
         ),
         row=row,
         col=col,
+        hf_x=x,
+        hf_y=decomp_result.resid,
+        limit_to_view=True,
     )
 
     return fig, decomp_result
@@ -644,7 +652,7 @@ def _return_fft(data: pd.Series) -> Tuple[np.ndarray, np.ndarray]:
 
 
 def frequency_components_subplot(
-    fig: go.Figure,
+    fig: BaseFigure,
     data: pd.Series,
     row: int,
     col: int,
@@ -687,14 +695,20 @@ def frequency_components_subplot(
     # If you add hoverinfo = "text", you must also add the hovertemplate, else no hoverinfo
     # gets displayed. OR alternately, leave it out and it gets plotted by default.
     if hoverinfo == "text":
-        hovertemplate = "Freq:%{customdata[0]:.4f} <br>Ampl:%{customdata[1]:.4f}<br>Time Period: %{customdata[2]:.4f]}"
+        freq_data_str = freq_data.round(4).astype("str")
+        hf_hovertext = (
+            "Freq: "
+            + freq_data_str["Freq"]
+            + "<br>Ampl: "
+            + freq_data_str["Amplitude"]
+            + "<br>Time periode: "
+            + freq_data_str["Time Period"]
+        )
+
+        # TODO -> maybe we do not need to resample this trace
         fig.add_trace(
             go.Scattergl(
                 name=name,
-                x=freq_data["Freq"],
-                y=freq_data["Amplitude"],
-                customdata=freq_data.to_numpy(),
-                hovertemplate=hovertemplate,
                 mode="lines+markers",
                 line=dict(color="#1f77b4", width=2),
                 marker=dict(size=5),
@@ -703,14 +717,16 @@ def frequency_components_subplot(
             ),
             row=row,
             col=col,
+            hf_x=freq_data["Freq"],
+            hf_y=freq_data["Amplitude"],
+            hf_hovertext=hf_hovertext,
+            limit_to_view=True,
         )
     else:
         # Disable hoverinfo
         fig.add_trace(
             go.Scattergl(
                 name=name,
-                x=freq_data["Freq"],
-                y=freq_data["Amplitude"],
                 mode="lines+markers",
                 line=dict(color="#1f77b4", width=2),
                 marker=dict(size=5),
@@ -719,6 +735,8 @@ def frequency_components_subplot(
             ),
             row=row,
             col=col,
+            hf_x=freq_data["Freq"],
+            hf_y=freq_data["Amplitude"],
         )
 
     with fig.batch_update():
@@ -768,7 +786,7 @@ def plot_original_with_overlays(
 
     data_to_plot = pd.concat([original_data, overlay_data], axis=1)
 
-    fig = make_subplots(rows=1, cols=1)
+    fig = FigureResampler(make_subplots(rows=1, cols=1))
     fig = time_series_subplot(
         fig=fig, data=data_to_plot, row=1, col=1, hoverinfo=hoverinfo
     )
