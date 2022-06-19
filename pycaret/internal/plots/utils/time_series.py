@@ -7,8 +7,8 @@ import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-from plotly.basedatatypes import BaseFigure
 from plotly_resampler import FigureResampler
+from plotly_resampler.figure_resampler.figure_resampler_interface import AbstractFigureAggregator
 import plotly.io as pio
 from plotly.colors import DEFAULT_PLOTLY_COLORS
 from plotly.subplots import make_subplots
@@ -68,7 +68,7 @@ MULTIPLE_PLOT_TYPES_ALLOWED_AT_ONCE = {
 
 
 def time_series_subplot(
-    fig: BaseFigure,
+    fig: AbstractFigureAggregator,
     data: pd.DataFrame,
     row: int,
     col: int,
@@ -451,13 +451,13 @@ def dist_subplot(fig: go.Figure, data: pd.Series, row: int, col: int) -> go.Figu
 
 
 def decomp_subplot(
-    fig: BaseFigure,
+    fig: AbstractFigureAggregator,
     data: pd.Series,
     col: int,
     plot: str,
     classical_decomp_type: str,
     period: int,
-) -> BaseFigure:
+) -> AbstractFigureAggregator:
     """Function to add decomposition to a Plotly subplot
 
     Parameters
@@ -652,7 +652,7 @@ def _return_fft(data: pd.Series) -> Tuple[np.ndarray, np.ndarray]:
 
 
 def frequency_components_subplot(
-    fig: BaseFigure,
+    fig: AbstractFigureAggregator,
     data: pd.Series,
     row: int,
     col: int,

@@ -3062,7 +3062,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         # Note that we need to override this method from the `_TabularExperiment` class
         # As we have way more display formats available for time-series data
         # TODO: does the name plotly dash make sense? isn't it better to use plotly-figure
-        plot_formats = [None, "streamlit", "plotly-dash", "plotly-widget", 'plotly-static']
+        plot_formats = [None, "streamlit", "plotly-dash", "plotly-widget"]
 
         if display_format not in plot_formats:
             raise ValueError(f"display_format can only be one of {plot_formats}.")
@@ -3105,6 +3105,10 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         elif display_format == "plotly-widget":
             _check_soft_dependencies("IPython", extra=None, severity="error")
             from IPython.display import display as ipython_display
+
+        if display_format in ["plotly-dash", 'plotly-widget']:
+            # register plotly-resampler
+            pass
 
         # Add sp value (used in decomp plots)
         data_kwargs = data_kwargs or {}
@@ -3350,7 +3354,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                 elif display_format == "plotly-dash":
                     fig.update_layout(autosize=True)
                     FigureResampler(fig, **display_kwargs).show_dash(**show_dash_kwargs)
-                elif display_format == 'plotly-static': # just a plain plotly-figure
+                else:  # just a plain plotly-figure
                     try:
                         big_data_threshold = _resolve_dict_keys(
                             dict_=fig_kwargs,
@@ -3366,12 +3370,16 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                             data=data,
                             X=X,
                         )
-                        fig.show(renderer=renderer)
+                        # TODO -> this figure should not be aggregated
+                        import plotly.graph_objects as go
+                        go.Figure(fig).show() #renderer=renderer)
                         self.logger.info("Visual Rendered Successfully")
                     except ValueError as exception:
                         self.logger.info(exception)
                         self.logger.info("Visual Rendered Unsuccessfully")
                         print(exception)
+                        # TODO -> maybe update this text and add the 'plotly-widget' &
+                        # 'plotly-dash' options into this
                         print(
                             "When data exceeds a certain threshold (determined by "
                             "`big_data_threshold`), the renderer is switched to a "
