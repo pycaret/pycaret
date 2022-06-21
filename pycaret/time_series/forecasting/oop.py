@@ -3105,10 +3105,6 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             _check_soft_dependencies("IPython", extra=None, severity="error")
             from IPython.display import display as ipython_display
 
-        if display_format in ["plotly-dash", "plotly-widget"]:
-            # register plotly-resampler
-            pass
-
         # Add sp value (used in decomp plots)
         data_kwargs = data_kwargs or {}
         data_kwargs.setdefault("seasonal_period", self.primary_sp_to_use)
