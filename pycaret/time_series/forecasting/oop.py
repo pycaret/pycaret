@@ -3061,7 +3061,6 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         """Checks if the display format is in the allowed list"""
         # Note that we need to override this method from the `_TabularExperiment` class
         # As we have way more display formats available for time-series data
-        # TODO: does the name plotly dash make sense? isn't it better to use plotly-figure
         plot_formats = [None, "streamlit", "plotly-dash", "plotly-widget"]
 
         if display_format not in plot_formats:
@@ -3106,7 +3105,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             _check_soft_dependencies("IPython", extra=None, severity="error")
             from IPython.display import display as ipython_display
 
-        if display_format in ["plotly-dash", 'plotly-widget']:
+        if display_format in ["plotly-dash", "plotly-widget"]:
             # register plotly-resampler
             pass
 
@@ -3350,10 +3349,20 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                     st.write(fig)
                 elif display_format == "plotly-widget":
                     fig.update_layout(autosize=True)
-                    ipython_display(FigureWidgetResampler(fig, **display_kwargs))
+                    ipython_display(
+                        FigureWidgetResampler(
+                            fig,
+                            **display_kwargs,
+                            convert_traces_kwargs=dict(limit_to_views=True),
+                        )
+                    )
                 elif display_format == "plotly-dash":
                     fig.update_layout(autosize=True)
-                    FigureResampler(fig, **display_kwargs).show_dash(**show_dash_kwargs)
+                    FigureResampler(
+                        fig,
+                        **display_kwargs,
+                        convert_traces_kwargs=dict(limit_to_views=True),
+                    ).show_dash(**show_dash_kwargs)
                 else:  # just a plain plotly-figure
                     try:
                         big_data_threshold = _resolve_dict_keys(
@@ -3370,16 +3379,12 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                             data=data,
                             X=X,
                         )
-                        # TODO -> this figure should not be aggregated
-                        import plotly.graph_objects as go
-                        go.Figure(fig).show() #renderer=renderer)
+                        fig.show(renderer=renderer)
                         self.logger.info("Visual Rendered Successfully")
                     except ValueError as exception:
                         self.logger.info(exception)
                         self.logger.info("Visual Rendered Unsuccessfully")
                         print(exception)
-                        # TODO -> maybe update this text and add the 'plotly-widget' &
-                        # 'plotly-dash' options into this
                         print(
                             "When data exceeds a certain threshold (determined by "
                             "`big_data_threshold`), the renderer is switched to a "
@@ -3387,11 +3392,18 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                             "This renderer may need to be installed manually by users.\n"
                             "Alternately:\n"
                             "Option 1: "
+                            "Users can increase the scalability of the visualization "
+                            "tool by eiter using the plotly-resampler functionality to "
+                            "render the data, this can be achieved by setting the "
+                            "`display_format` argument of the `plot_model` method to "
+                            "either 'plotly-widget' or 'plotly-dash'. For more info, "
+                            "see the display format docs of this method."
+                            "Option 2: "
                             "Users can increase `big_data_threshold` in either `setup` "
                             "(globally) or `plot_model` (plot specific). Examples.\n"
                             "\t>>> setup(..., fig_kwargs={'big_data_threshold': 1000})\n"
                             "\t>>> plot_model(..., fig_kwargs={'big_data_threshold': 1000})\n"
-                            "Option 2: "
+                            "Option 3: "
                             "Users can specify any plotly renderer directly in either `setup` "
                             "(globally) or `plot_model` (plot specific). Examples.\n"
                             "\t>>> setup(..., fig_kwargs={'renderer': 'notebook'})\n"
@@ -3401,7 +3413,6 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         ### Add figure and data to return object if required ----
         if return_fig:
-            # from plotly_resampler import FigureWidgetResampler
             return_obj.append(fig)
         if return_data:
             return_obj.append(plot_data)
@@ -3492,9 +3503,26 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
 
         display_format: str, default = None
-            To display plots in Streamlit (https://www.streamlit.io/), set this to 'streamlit'.
-            Currently, not all plots are supported.
-            # TODO -> update docs
+            Display format of the plot. Must be one of  [None, 'streamlit', 
+            'plotly-dash', 'plotly-widget'], if None, it will render the plot as a plain 
+            plotly figure.
+
+            The 'plotly-dash' and 'plotly-widget' formats will render the figure via 
+            plotly-resampler (https://github.com/predict-idlab/plotly-resampler) 
+            figures. These plots perform dynamic aggregation of the data based on the 
+            front-end graph view. This approach is especially useful when dealing with 
+            large data, as it will retain snappy, interactive performance.
+            * 'plotly-dash' uses a dash-app to realize this dynamic aggregation. The 
+               dash app requires a network port, and can be configured with various 
+               modes more information can be found at the show_dash documentation. 
+               (https://predict-idlab.github.io/plotly-resampler/figure_resampler.html#plotly_resampler.figure_resampler.FigureResampler.show_dash)
+            * 'plotly-widget' uses a plotly FigureWidget to realize this dynamic 
+              aggregation, and should work in IPython based environments (given that the
+              external widgets are supported and the jupyterlab-plotly extension is 
+              installed).
+
+            To display plots in Streamlit (https://www.streamlit.io/), set this to
+            'streamlit'.
 
         data_kwargs: dict, default = None
             Dictionary of arguments passed to the data for plotting.
@@ -3622,11 +3650,20 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         display_kwargs: dict, default = {} (empty dict)
             Additional keyword arguments that are fed to the display function.
-            This is mainly used for configuring `plotly-resampler` viusalizations (e.g.)
-            which downsampler will be used; how many datapoints are 
-            shown in the front-end.
+            This is mainly used for configuring `plotly-resampler` visualizations (e.g.)
+            which downsampler will be used; how many datapoints are shown in the
+            front-end.
 
-            # TODO: here also show_dash kwargs? or a `show_dash` key within display_kwargs?
+            When the plotly-resampler figure is renderd via Dash (by setting the
+            ``display_format`` to "plotly-dash"), one can also use the
+            ``show_dash`` key within this dictionary to configure the show_dash args.
+
+            example::
+
+                display_kwargs ={
+                    'default_n_shown_samples': 1000,
+                    show_dash: {'mode': 'inline', 'port': '9012}
+                }
 
 
         save: string or bool, default = False

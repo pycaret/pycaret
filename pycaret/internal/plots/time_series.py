@@ -4,7 +4,6 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from plotly_resampler import FigureResampler
 from sktime.forecasting.model_selection import (
     ExpandingWindowSplitter,
     SlidingWindowSplitter,
@@ -254,14 +253,12 @@ def plot_series(
         subplot_titles.extend(X_labels)
 
     rows = len(plot_data)
-    fig = FigureResampler(
-        make_subplots(
-            rows=rows,
-            cols=1,
-            subplot_titles=subplot_titles,
-            vertical_spacing=0.02,
-            shared_xaxes=True,
-        )
+    fig = make_subplots(
+        rows=rows,
+        cols=1,
+        subplot_titles=subplot_titles,
+        vertical_spacing=0.02,
+        shared_xaxes=True,
     )
 
     for i, plot_data_single in enumerate(plot_data):
@@ -333,7 +330,7 @@ def plot_cv(
         return train_windows, test_windows
 
     def plot_windows(data, train_windows, test_windows):
-        fig = FigureResampler()
+        fig = go.Figure()
         for num_window in reversed(range(len(train_windows))):
 
             x = (
@@ -347,42 +344,40 @@ def plot_cv(
             [
                 fig.add_trace(
                     go.Scattergl(
+                        x=(time_stamps[i], time_stamps[i + 1]),
+                        y=(y_axis_label, y_axis_label),
                         mode="lines+markers",
                         line_color="#C0C0C0",
                         name="Unchanged",
                         hoverinfo="skip",
                     ),
-                    hf_x=(time_stamps[i], time_stamps[i + 1]),
-                    hf_y=(y_axis_label, y_axis_label),
-                    limit_to_view=True,
                 )
                 for i in range(len(data) - 1)
             ]
             [
                 fig.add_trace(
                     go.Scattergl(
+                        x=(time_stamps[i], time_stamps[i + 1]),
+                        y=(y_axis_label, y_axis_label),
                         mode="lines+markers",
                         line_color="#1f77b4",
                         name="Train",
                         showlegend=False,
                         hoverinfo="skip",
                     ),
-                    hf_x=(time_stamps[i], time_stamps[i + 1]),
-                    hf_y=(y_axis_label, y_axis_label),
-                    limit_to_view=True,
                 )
                 for i in train_windows[num_window][:-1]
             ]
             [
                 fig.add_trace(
                     go.Scattergl(
+                        x=(time_stamps[i], time_stamps[i + 1]),
+                        y=(y_axis_label, y_axis_label),
                         mode="lines+markers",
                         line_color="#DE970B",
                         name="ForecastHorizon",
                         hoverinfo="skip",
                     ),
-                    hf_x=(time_stamps[i], time_stamps[i + 1]),
-                    hf_y=(y_axis_label, y_axis_label),
                 )
                 for i in test_windows[num_window][:-1]
             ]
@@ -673,20 +668,18 @@ def plot_diagnostics(
 
     fig_kwargs = fig_kwargs or {}
 
-    fig = FigureResampler(
-        make_subplots(
-            rows=3,
-            cols=2,
-            row_heights=[0.33, 0.33, 0.33],
-            subplot_titles=[
-                subplot_title,
-                "Periodogram",
-                "Histogram",
-                "Q-Q Plot",
-                "ACF",
-                "PACF",
-            ],
-        )
+    fig = make_subplots(
+        rows=3,
+        cols=2,
+        row_heights=[0.33, 0.33, 0.33],
+        subplot_titles=[
+            subplot_title,
+            "Periodogram",
+            "Histogram",
+            "Q-Q Plot",
+            "ACF",
+            "PACF",
+        ],
     )
 
     fig.update_layout(showlegend=False)
@@ -936,15 +929,13 @@ def plot_time_series_decomposition(
         return fig, return_data_dict
 
     ncols = len(data.columns)
-    fig = FigureResampler(
-        make_subplots(
-            rows=4,
-            cols=ncols,
-            column_titles=data.columns.tolist(),
-            row_titles=["Actual", "Seasonal", "Trend", "Residual"],
-            shared_xaxes=True,
-            shared_yaxes=True,
-        )
+    fig = make_subplots(
+        rows=4,
+        cols=ncols,
+        column_titles=data.columns.tolist(),
+        row_titles=["Actual", "Seasonal", "Trend", "Residual"],
+        shared_xaxes=True,
+        shared_yaxes=True,
     )
 
     classical_decomp_type = data_kwargs.get("type", "additive")
@@ -1107,14 +1098,12 @@ def plot_time_series_differences(
         cols = cols + 1
         column_titles.append("FFT")
 
-    fig = FigureResampler(
-        make_subplots(
-            rows=rows,
-            cols=cols,
-            row_titles=name_list,
-            column_titles=column_titles,
-            shared_xaxes=True,
-        )
+    fig = make_subplots(
+        rows=rows,
+        cols=cols,
+        row_titles=name_list,
+        column_titles=column_titles,
+        shared_xaxes=True,
     )
 
     # Should the following be plotted - Time Series, ACF, PACF, Periodogram, FFT
@@ -1262,13 +1251,11 @@ def plot_frequency_components(
     fig_kwargs = fig_kwargs or {}
 
     ncols = len(data.columns)
-    fig = FigureResampler(
-        make_subplots(
-            rows=1,
-            cols=ncols,
-            column_titles=data.columns.tolist(),
-            shared_yaxes=True,
-        )
+    fig = make_subplots(
+        rows=1,
+        cols=ncols,
+        column_titles=data.columns.tolist(),
+        shared_yaxes=True,
     )
 
     all_plot_data = {}
