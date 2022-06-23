@@ -3375,7 +3375,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         #### Return None if empty, return as list if more than one object,
         # else return object directly ----
-        if len(return_obj) == 0:
+        if not return_obj:
             return_obj = None
         elif len(return_obj) == 1:
             return_obj = return_obj[0]
