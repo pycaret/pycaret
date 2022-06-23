@@ -284,9 +284,10 @@ class _TabularExperiment(_PyCaretExperiment):
         verbose: bool = True,
     ):
         """
-        This function initializes the environment in pycaret.
-        setup() must called before executing any other function in pycaret. It
-        takes only two mandatory parameters: data and name of the target column.
+        This function initializes the environment in pycaret. setup()
+        must be called before executing any other function in pycaret.
+        It takes only two mandatory parameters: data and name of the
+        target column.
 
         """
         from pycaret.utils import __version__
@@ -323,7 +324,7 @@ class _TabularExperiment(_PyCaretExperiment):
 
         self.logger.info(f"self.variable_keys: {self.variable_keys}")
 
-        self._check_enviroment()
+        self._check_environment()
 
         # Set up GPU usage ========================================= >>
 

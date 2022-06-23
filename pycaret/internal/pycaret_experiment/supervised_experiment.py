@@ -4640,7 +4640,6 @@ class _SupervisedExperiment(_TabularExperiment):
         np.random.seed(self.seed)
 
         self.logger.info(f"Finalizing {estimator}")
-        # display.clear_output()
         model_final, model_fit_time = self._create_model(
             estimator=estimator,
             verbose=False,
@@ -4688,7 +4687,7 @@ class _SupervisedExperiment(_TabularExperiment):
 
         self.logger.info(str(model_final))
         self.logger.info(
-            "finalize_model() succesfully completed......................................"
+            "finalize_model() successfully completed......................................"
         )
 
         gc.collect()
