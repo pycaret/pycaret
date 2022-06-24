@@ -15,6 +15,7 @@ mlxtend>=0.19.0
 statsforecast>=0.5.5
 
 # Tuners
+scikit-learn-intelex>=2021.6.3
 tune-sklearn>=0.2.1
 protobuf<4.0.0  # broken in Ray <1.13
 ray[tune]>=1.0.0

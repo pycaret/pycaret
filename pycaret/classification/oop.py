@@ -37,6 +37,10 @@ from pycaret.internal.utils import (
 )
 from pycaret.internal.validation import is_sklearn_cv_generator
 from pycaret.loggers.base_logger import BaseLogger
+from pycaret.containers.models.classification import (
+    ALL_ALLOWED_ENGINES,
+    get_container_default_engines,
+)
 
 LOGGER = get_logger()
 
@@ -180,6 +184,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         log_plots: Union[bool, list] = False,
         log_profile: bool = False,
         log_data: bool = False,
+        engines: Optional[Dict[str, str]] = None,
         verbose: bool = True,
         memory: Union[bool, str, Memory] = True,
         profile: bool = False,
@@ -602,6 +607,12 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             Ignored when ``log_experiment`` is False.
 
 
+        engines: Optional[Dict[str, str]] = None
+            The engine to use for the models, e.g. for lr, users can
+            switch between "sklearn" and "sklearnex" by specifying
+            engines={"lr": "sklearnex"}
+
+
         verbose: bool, default = True
             When set to False, Information grid is not printed.
 
@@ -644,6 +655,8 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
 
         # Configuration
         sklearn.set_config(print_changed_only=False)
+        
+        self.all_allowed_engines = ALL_ALLOWED_ENGINES
 
         # Define parameter attrs
         self.fold_shuffle_param = fold_shuffle
@@ -701,6 +714,11 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             fold=fold,
             fold_shuffle=fold_shuffle,
             fold_groups=fold_groups,
+        )
+
+        self._set_exp_model_engines(
+                container_default_engines=get_container_default_engines(),
+                engines=engines,
         )
 
         # Preprocessing ============================================ >>
@@ -950,6 +968,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         groups: Optional[Union[str, Any]] = None,
         experiment_custom_tags: Optional[Dict[str, Any]] = None,
         probability_threshold: Optional[float] = None,
+        engines: Optional[Dict[str, str]] = None,
         verbose: bool = True,
         parallel: Optional[ParallelBackend] = None,
     ) -> Union[Any, List[Any]]:
@@ -1045,6 +1064,12 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             in this parameter. Only applicable for binary classification.
 
 
+        engines: Optional[Dict[str, str]] = None
+            The engine to use for the models, e.g. for lr, users can
+            switch between "sklearn" and "sklearnex" by specifying
+            engines={"lr": "sklearnex"}
+
+
         verbose: bool, default = True
             Score grid is not printed when verbose is set to False.
 
@@ -1074,25 +1099,42 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
 
         # No extra code above this line
 
-        return super().compare_models(
-            include=include,
-            exclude=exclude,
-            fold=fold,
-            round=round,
-            cross_validation=cross_validation,
-            sort=sort,
-            n_select=n_select,
-            budget_time=budget_time,
-            turbo=turbo,
-            errors=errors,
-            fit_kwargs=fit_kwargs,
-            groups=groups,
-            experiment_custom_tags=experiment_custom_tags,
-            verbose=verbose,
-            probability_threshold=probability_threshold,
-            parallel=parallel,
-            caller_params=caller_params,
-        )
+        if engines is not None:
+            # Save current engines, then set to user specified options
+            initial_model_engines = self.exp_model_engines.copy()
+            for estimator, engine in engines.items():
+                self._set_engine(estimator=estimator, engine=engine, severity="error")
+
+        try:
+            return_values = super().compare_models(
+                include=include,
+                exclude=exclude,
+                fold=fold,
+                round=round,
+                cross_validation=cross_validation,
+                sort=sort,
+                n_select=n_select,
+                budget_time=budget_time,
+                turbo=turbo,
+                errors=errors,
+                fit_kwargs=fit_kwargs,
+                groups=groups,
+                experiment_custom_tags=experiment_custom_tags,
+                verbose=verbose,
+                probability_threshold=probability_threshold,
+                parallel=parallel,
+                caller_params=caller_params,
+            )
+        finally:
+            if engines is not None:
+                # Reset the models back to the default engines
+                self._set_exp_model_engines(
+                    container_default_engines=get_container_default_engines(),
+                    engines=initial_model_engines,
+                )
+
+        return return_values
+
 
     def create_model(
         self,
@@ -1104,6 +1146,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         groups: Optional[Union[str, Any]] = None,
         experiment_custom_tags: Optional[Dict[str, Any]] = None,
         probability_threshold: Optional[float] = None,
+        engine: Optional[str] = None,
         verbose: bool = True,
         return_train_score: bool = False,
         **kwargs,
@@ -1189,6 +1232,12 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             if not) passed to the mlflow.set_tags to add new custom tags for the experiment.
 
 
+        engine: Optional[str] = None
+            The engine to use for the model, e.g. for lr, users can
+            switch between "sklearn" and "sklearnex" by specifying
+            engine="sklearnex".
+
+
         verbose: bool, default = True
             Score grid is not printed when verbose is set to False.
 
@@ -1217,19 +1266,35 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
 
         """
 
-        return super().create_model(
-            estimator=estimator,
-            fold=fold,
-            round=round,
-            cross_validation=cross_validation,
-            fit_kwargs=fit_kwargs,
-            groups=groups,
-            verbose=verbose,
-            experiment_custom_tags=experiment_custom_tags,
-            probability_threshold=probability_threshold,
-            return_train_score=return_train_score,
-            **kwargs,
-        )
+        if engine is not None:
+            # Save current engines, then set to user specified options
+            initial_default_model_engines = self.exp_model_engines.copy()
+            self._set_engine(estimator=estimator, engine=engine, severity="error")
+
+        try:
+            return_values = super().create_model(
+                estimator=estimator,
+                fold=fold,
+                round=round,
+                cross_validation=cross_validation,
+                fit_kwargs=fit_kwargs,
+                groups=groups,
+                verbose=verbose,
+                experiment_custom_tags=experiment_custom_tags,
+                probability_threshold=probability_threshold,
+                return_train_score=return_train_score,
+                **kwargs,
+            )
+        finally:
+            if engine is not None:
+                # Reset the models back to the default engines
+                self._set_exp_model_engines(
+                    container_default_engines=get_container_default_engines(),
+                    engines=initial_default_model_engines,
+                )
+
+        return return_values
+
 
     def tune_model(
         self,
