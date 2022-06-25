@@ -11,7 +11,8 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
-from plotly_resampler import FigureWidgetResampler, FigureResampler
+from IPython.display import display as ipython_display
+from plotly_resampler import FigureResampler, FigureWidgetResampler
 from sklearn.base import clone
 from sktime.forecasting.base import BaseForecaster, ForecastingHorizon
 from sktime.forecasting.compose import ForecastingPipeline, TransformedTargetForecaster
@@ -3058,7 +3059,12 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
     @staticmethod
     def plot_model_check_display_format_(display_format: Optional[str]):
-        """Checks if the display format is in the allowed list"""
+        """Checks if the display format is in the allowed list.
+
+        display_format: Optional[str], default = None
+            The to-be-used displaying method
+
+        """
         # Note that we need to override this method from the `_TabularExperiment` class
         # As we have way more display formats available for time-series data
         plot_formats = [None, "streamlit", "plotly-dash", "plotly-widget"]
@@ -3076,7 +3082,6 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         display_format: Optional[str] = None,
         data_kwargs: Optional[Dict] = None,
         fig_kwargs: Optional[Dict] = None,
-        display_kwargs: Optional[Dict] = None,
         system: bool = True,
         save: Union[str, bool] = False,
     ) -> Optional[Tuple[str, Any]]:
@@ -3101,16 +3106,13 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         if display_format == "streamlit":
             _check_soft_dependencies("streamlit", extra=None, severity="error")
             import streamlit as st
-        elif display_format == "plotly-widget":
-            _check_soft_dependencies("IPython", extra=None, severity="error")
-            from IPython.display import display as ipython_display
 
         # Add sp value (used in decomp plots)
         data_kwargs = data_kwargs or {}
         data_kwargs.setdefault("seasonal_period", self.primary_sp_to_use)
 
         fig_kwargs = fig_kwargs or {}
-        display_kwargs = display_kwargs or {}
+        display_kwargs = fig_kwargs.get("display_kwargs", {})
         show_dash_kwargs = display_kwargs.pop("show_dash", {})
 
         return_pred_int = False
@@ -3389,8 +3391,8 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                             "Alternately:\n"
                             "Option 1: "
                             "Users can increase the scalability of the visualization "
-                            "tool by eiter using the plotly-resampler functionality to "
-                            "render the data, this can be achieved by setting the "
+                            "tool by either using the plotly-resampler functionality "
+                            "to render the data, this can be achieved by setting the "
                             "`display_format` argument of the `plot_model` method to "
                             "either 'plotly-widget' or 'plotly-dash'. For more info, "
                             "see the display format docs of this method."
@@ -3431,7 +3433,6 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         display_format: Optional[str] = None,
         data_kwargs: Optional[Dict] = None,
         fig_kwargs: Optional[Dict] = None,
-        display_kwargs: Optional[Dict] = None,
         save: Union[str, bool] = False,
     ) -> Optional[Tuple[str, list]]:
 
@@ -3499,22 +3500,22 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
 
         display_format: str, default = None
-            Display format of the plot. Must be one of  [None, 'streamlit', 
-            'plotly-dash', 'plotly-widget'], if None, it will render the plot as a plain 
+            Display format of the plot. Must be one of  [None, 'streamlit',
+            'plotly-dash', 'plotly-widget'], if None, it will render the plot as a plain
             plotly figure.
 
-            The 'plotly-dash' and 'plotly-widget' formats will render the figure via 
-            plotly-resampler (https://github.com/predict-idlab/plotly-resampler) 
-            figures. These plots perform dynamic aggregation of the data based on the 
-            front-end graph view. This approach is especially useful when dealing with 
+            The 'plotly-dash' and 'plotly-widget' formats will render the figure via
+            plotly-resampler (https://github.com/predict-idlab/plotly-resampler)
+            figures. These plots perform dynamic aggregation of the data based on the
+            front-end graph view. This approach is especially useful when dealing with
             large data, as it will retain snappy, interactive performance.
-            * 'plotly-dash' uses a dash-app to realize this dynamic aggregation. The 
-               dash app requires a network port, and can be configured with various 
-               modes more information can be found at the show_dash documentation. 
+            * 'plotly-dash' uses a dash-app to realize this dynamic aggregation. The
+               dash app requires a network port, and can be configured with various
+               modes more information can be found at the show_dash documentation.
                (https://predict-idlab.github.io/plotly-resampler/figure_resampler.html#plotly_resampler.figure_resampler.FigureResampler.show_dash)
-            * 'plotly-widget' uses a plotly FigureWidget to realize this dynamic 
+            * 'plotly-widget' uses a plotly FigureWidget to realize this dynamic
               aggregation, and should work in IPython based environments (given that the
-              external widgets are supported and the jupyterlab-plotly extension is 
+              external widgets are supported and the jupyterlab-plotly extension is
               installed).
 
             To display plots in Streamlit (https://www.streamlit.io/), set this to
@@ -3644,21 +3645,25 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             passed during setup. Pass these as key-value pairs. For available
             keys, refer to the `setup` documentation.
 
-        display_kwargs: dict, default = {} (empty dict)
-            Additional keyword arguments that are fed to the display function.
-            This is mainly used for configuring `plotly-resampler` visualizations (e.g.)
-            which downsampler will be used; how many datapoints are shown in the
-            front-end.
+            Time-series plots support more display_formats, as a result the fig-kwargs
+            can also contain the `display_kwarg` key and its corresponding dict.
+            These are additional keyword arguments that are fed to the display function.
+            This is mainly used for configuring `plotly-resampler` visualizations 
+            (i.e., `display_format` "plotly-dash" or "plotly-widget") which downsampler
+            will be used; how many datapoints are shown in the front-end.
 
             When the plotly-resampler figure is renderd via Dash (by setting the
-            ``display_format`` to "plotly-dash"), one can also use the
-            ``show_dash`` key within this dictionary to configure the show_dash args.
+            `display_format` to "plotly-dash"), one can also use the
+            "show_dash" key within this dictionary to configure the show_dash args.
 
             example::
 
-                display_kwargs ={
-                    'default_n_shown_samples': 1000,
-                    show_dash: {'mode': 'inline', 'port': '9012}
+                fig_kwargs = {
+                    "width": None,
+                    "display_kwargs":  {
+                        "default_n_shown_samples": 1000,
+                        "show_dash": {"mode": "inline", "port": 9012}
+                    }
                 }
 
 
@@ -3684,7 +3689,6 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             display_format=display_format,
             data_kwargs=data_kwargs,
             fig_kwargs=fig_kwargs,
-            display_kwargs=display_kwargs,
             save=save,
             system=system,
         )

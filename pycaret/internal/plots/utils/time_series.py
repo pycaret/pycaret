@@ -695,7 +695,7 @@ def frequency_components_subplot(
             + freq_data_str["Freq"]
             + "<br>Ampl: "
             + freq_data_str["Amplitude"]
-            + "<br>Time periode: "
+            + "<br>Time period: "
             + freq_data_str["Time Period"]
         )
 
