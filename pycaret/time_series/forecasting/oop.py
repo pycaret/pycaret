@@ -1544,13 +1544,13 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                 certain plots can be disabled and/or renderer switched to a static
                 renderer. This is useful when the time series being modeled has a lot
                 of data which can make notebooks slow to render. Also note that setting
-                the `display_format` to a plotly-resampler figure ("plotly-dash" or 
+                the `display_format` to a plotly-resampler figure ("plotly-dash" or
                 "plotly-widget") can circumvent these problems by performing dynamic
                 data aggregation.
 
             display_kwargs: The keyword arguments that are fed to the display function.
                 This is mainly used for configuring `plotly-resampler` visualizations
-                (i.e., `display_format` "plotly-dash" or "plotly-widget") which 
+                (i.e., `display_format` "plotly-dash" or "plotly-widget") which
                 downsampler will be used; how many datapoints are shown in the front-end.
                 When the plotly-resampler figure is renderd via Dash (by setting the
                 `display_format` to "plotly-dash"), one can also use the "show_dash" key
@@ -3669,7 +3669,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             Time-series plots support more display_formats, as a result the fig-kwargs
             can also contain the `display_kwarg` key and its corresponding dict.
             These are additional keyword arguments that are fed to the display function.
-            This is mainly used for configuring `plotly-resampler` visualizations 
+            This is mainly used for configuring `plotly-resampler` visualizations
             (i.e., `display_format` "plotly-dash" or "plotly-widget") which downsampler
             will be used; how many datapoints are shown in the front-end.
 

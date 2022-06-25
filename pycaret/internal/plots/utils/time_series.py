@@ -687,7 +687,7 @@ def frequency_components_subplot(
     # If you add hoverinfo = "text", you must also add the hovertemplate, else no hoverinfo
     # gets displayed. OR alternately, leave it out and it gets plotted by default.
     if hoverinfo == "text":
-        # We convert this to hovertext so plotly-resampler can effectively deal with 
+        # We convert this to hovertext so plotly-resampler can effectively deal with
         # this data modality
         freq_data_str = freq_data.round(4).astype("str")
         hf_hovertext = (
