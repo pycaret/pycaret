@@ -796,7 +796,6 @@ def get_engine(estimator: str) -> Optional[str]:
     return _CURRENT_EXPERIMENT.get_engine(estimator=estimator)
 
 
-
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
 def create_model(
     estimator: Union[str, Any],

@@ -35,7 +35,7 @@ ALL_ALLOWED_ENGINES: Dict[str, List[str]] = {
     "ridge": ["sklearn", "sklearnex"],
     "en": ["sklearn", "sklearnex"],
     "knn": ["sklearn", "sklearnex"],
-    "svm": ["sklearn", "sklearnex"]
+    "svm": ["sklearn", "sklearnex"],
 }
 
 

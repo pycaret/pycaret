@@ -655,7 +655,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
 
         # Configuration
         sklearn.set_config(print_changed_only=False)
-        
+
         self.all_allowed_engines = ALL_ALLOWED_ENGINES
 
         # Define parameter attrs
@@ -717,8 +717,8 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         )
 
         self._set_exp_model_engines(
-                container_default_engines=get_container_default_engines(),
-                engines=engines,
+            container_default_engines=get_container_default_engines(),
+            engines=engines,
         )
 
         # Preprocessing ============================================ >>
@@ -1135,7 +1135,6 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
 
         return return_values
 
-
     def create_model(
         self,
         estimator: Union[str, Any],
@@ -1294,7 +1293,6 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
                 )
 
         return return_values
-
 
     def tune_model(
         self,

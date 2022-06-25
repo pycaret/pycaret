@@ -81,7 +81,7 @@ def test_create_model_engines_local_args():
         html=False,
         session_id=123,
         n_jobs=1,
-        experiment_name=uuid.uuid4().hex
+        experiment_name=uuid.uuid4().hex,
     )
 
     #### Default Model Engine ----
@@ -90,9 +90,7 @@ def test_create_model_engines_local_args():
     assert isinstance(model, sklearn.linear_model._base.LinearRegression)
 
     #### Override model engine locally ----
-    model = exp.create_model(
-        "lr", engine="sklearnex"
-    )
+    model = exp.create_model("lr", engine="sklearnex")
     assert isinstance(model, daal4py.sklearn.linear_model._linear.LinearRegression)
     # Original engine should remain the same
     assert exp.get_engine("lr") == "sklearn"
@@ -113,7 +111,7 @@ def test_compare_models_engines_local_args():
         html=False,
         session_id=123,
         n_jobs=1,
-        experiment_name=uuid.uuid4().hex
+        experiment_name=uuid.uuid4().hex,
     )
 
     #### Default Model Engine ----
@@ -125,9 +123,7 @@ def test_compare_models_engines_local_args():
     assert exp.get_engine("lr") == "sklearn"
 
     #### Override model engine locally ----
-    model = exp.compare_models(
-        include=["lr"], engines={"lr": "sklearnex"}
-    )
+    model = exp.compare_models(include=["lr"], engines={"lr": "sklearnex"})
     assert isinstance(model, daal4py.sklearn.linear_model._linear.LinearRegression)
     # Original engine should remain the same
     assert exp.get_engine("lr") == "sklearn"
@@ -139,9 +135,7 @@ def test_all_sklearnex_models():
     boston_dataframe = pycaret.datasets.get_data("boston")
     exp = pycaret.regression.RegressionExperiment()
 
-    ALGORITHMS_LIST = [
-        "lr", "lasso", "ridge", "en", "knn", "svm"
-    ]
+    ALGORITHMS_LIST = ["lr", "lasso", "ridge", "en", "knn", "svm"]
 
     exp.setup(
         data=boston_dataframe,
@@ -152,7 +146,7 @@ def test_all_sklearnex_models():
         html=False,
         session_id=123,
         n_jobs=1,
-        experiment_name=uuid.uuid4().hex
+        experiment_name=uuid.uuid4().hex,
     )
 
     for algo in ALGORITHMS_LIST:

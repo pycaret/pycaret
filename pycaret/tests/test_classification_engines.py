@@ -34,7 +34,9 @@ def test_engines_setup_global_args():
     assert exp.get_engine("lr") == "sklearnex"
     model = exp.create_model("lr")
     print(type(model))
-    assert isinstance(model, daal4py.sklearn.linear_model.logistic_path.LogisticRegression)
+    assert isinstance(
+        model, daal4py.sklearn.linear_model.logistic_path.LogisticRegression
+    )
 
 
 def test_engines_global_methods():
@@ -55,7 +57,6 @@ def test_engines_global_methods():
         n_jobs=1,
         engines={"lr": "sklearnex"},
     )
-
 
     assert exp.get_engine("lr") == "sklearnex"
 
@@ -90,10 +91,10 @@ def test_create_model_engines_local_args():
     assert isinstance(model, sklearn.linear_model._logistic.LogisticRegression)
 
     #### Override model engine locally ----
-    model = exp.create_model(
-        "lr", engine="sklearnex"
+    model = exp.create_model("lr", engine="sklearnex")
+    assert isinstance(
+        model, daal4py.sklearn.linear_model.logistic_path.LogisticRegression
     )
-    assert isinstance(model, daal4py.sklearn.linear_model.logistic_path.LogisticRegression)
     # Original engine should remain the same
     assert exp.get_engine("lr") == "sklearn"
 
@@ -125,10 +126,10 @@ def test_compare_models_engines_local_args():
     assert exp.get_engine("lr") == "sklearn"
 
     #### Override model engine locally ----
-    model = exp.compare_models(
-        include=["lr"], engines={"lr": "sklearnex"}
+    model = exp.compare_models(include=["lr"], engines={"lr": "sklearnex"})
+    assert isinstance(
+        model, daal4py.sklearn.linear_model.logistic_path.LogisticRegression
     )
-    assert isinstance(model, daal4py.sklearn.linear_model.logistic_path.LogisticRegression)
     # Original engine should remain the same
     assert exp.get_engine("lr") == "sklearn"
     model = exp.compare_models(include=["lr"])
@@ -137,9 +138,7 @@ def test_compare_models_engines_local_args():
 
 def test_all_sklearnex_models():
 
-    ALGORITHMS_LIST = [
-        "lr", "knn", "rbfsvm"
-    ]
+    ALGORITHMS_LIST = ["lr", "knn", "rbfsvm"]
 
     juice_dataframe = pycaret.datasets.get_data("juice")
     exp = pycaret.classification.ClassificationExperiment()
