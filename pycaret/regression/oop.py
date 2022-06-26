@@ -12,6 +12,10 @@ import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
 import pycaret.internal.persistence
 import pycaret.internal.preprocess
+from pycaret.containers.models.regression import (
+    ALL_ALLOWED_ENGINES,
+    get_container_default_engines,
+)
 from pycaret.internal.display import CommonDisplay
 from pycaret.internal.logging import get_logger
 from pycaret.internal.parallel.parallel_backend import ParallelBackend
@@ -25,10 +29,6 @@ from pycaret.internal.pycaret_experiment.supervised_experiment import (
 from pycaret.internal.pycaret_experiment.utils import MLUsecase, highlight_setup
 from pycaret.internal.utils import DATAFRAME_LIKE, TARGET_LIKE
 from pycaret.loggers.base_logger import BaseLogger
-from pycaret.containers.models.regression import (
-    ALL_ALLOWED_ENGINES,
-    get_container_default_engines,
-)
 
 LOGGER = get_logger()
 

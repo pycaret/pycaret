@@ -3,12 +3,12 @@ import sys
 
 sys.path.insert(0, os.path.abspath(".."))
 
+import daal4py
 import pandas as pd
 import sklearn
-import daal4py
 
-import pycaret.datasets
 import pycaret.classification
+import pycaret.datasets
 
 
 def test_engines_setup_global_args():

@@ -16,6 +16,10 @@ import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
 import pycaret.internal.persistence
 import pycaret.internal.preprocess
+from pycaret.containers.models.classification import (
+    ALL_ALLOWED_ENGINES,
+    get_container_default_engines,
+)
 from pycaret.internal.display import CommonDisplay
 from pycaret.internal.logging import get_logger
 from pycaret.internal.meta_estimators import (
@@ -37,10 +41,6 @@ from pycaret.internal.utils import (
 )
 from pycaret.internal.validation import is_sklearn_cv_generator
 from pycaret.loggers.base_logger import BaseLogger
-from pycaret.containers.models.classification import (
-    ALL_ALLOWED_ENGINES,
-    get_container_default_engines,
-)
 
 LOGGER = get_logger()
 

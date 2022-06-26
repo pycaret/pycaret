@@ -27,7 +27,6 @@ from pycaret.internal.distributions import (
 from pycaret.internal.utils import get_logger, np_list_arange, param_grid_to_lists
 from pycaret.utils._dependencies import _check_soft_dependencies
 
-
 # First one in the list is the default ----
 ALL_ALLOWED_ENGINES: Dict[str, List[str]] = {
     "lr": ["sklearn", "sklearnex"],

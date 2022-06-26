@@ -4,8 +4,8 @@ import uuid
 
 sys.path.insert(0, os.path.abspath(".."))
 
-import sklearn
 import daal4py
+import sklearn
 
 import pycaret.datasets
 import pycaret.regression

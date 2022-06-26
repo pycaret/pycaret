@@ -34,7 +34,6 @@ from pycaret.internal.utils import (
 )
 from pycaret.utils._dependencies import _check_soft_dependencies
 
-
 # First one in the list is the default ----
 ALL_ALLOWED_ENGINES: Dict[str, List[str]] = {
     "lr": ["sklearn", "sklearnex"],
