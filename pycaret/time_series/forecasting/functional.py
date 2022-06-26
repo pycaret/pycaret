@@ -361,19 +361,19 @@ def setup(
             "plotly-widget") can circumvent these problems by performing dynamic data
             aggregation.
 
-        display_kwargs: The keyword arguments that are fed to the display function.
-            This is mainly used for configuring `plotly-resampler` visualizations
-            (i.e., `display_format` "plotly-dash" or "plotly-widget") which downsampler
-            will be used; how many datapoints are shown in the front-end.
-            When the plotly-resampler figure is renderd via Dash (by setting the
-            `display_format` to "plotly-dash"), one can also use the "show_dash" key
-            within this dictionary to configure the show_dash method its args.
+        resampler_kwargs: The keyword arguments that are fed to configure the
+            `plotly-resampler` visualizations (i.e., `display_format` "plotly-dash" or
+            "plotly-widget") which downsampler will be used; how many datapoints are
+            shown in the front-end. When the plotly-resampler figure is renderd via Dash
+            (by setting the `display_format` to "plotly-dash"), one can also use the
+            "show_dash" key within this dictionary to configure the show_dash method its
+            args.
 
             example::
 
                 fig_kwargs = {
                     ...,
-                    "display_kwargs":  {
+                    "resampler_kwargs":  {
                         "default_n_shown_samples": 1000,
                         "show_dash": {"mode": "inline", "port": 9012}
                     }

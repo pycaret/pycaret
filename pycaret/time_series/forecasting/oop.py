@@ -1548,23 +1548,23 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                 "plotly-widget") can circumvent these problems by performing dynamic
                 data aggregation.
 
-            display_kwargs: The keyword arguments that are fed to the display function.
-                This is mainly used for configuring `plotly-resampler` visualizations
-                (i.e., `display_format` "plotly-dash" or "plotly-widget") which
-                downsampler will be used; how many datapoints are shown in the front-end.
-                When the plotly-resampler figure is renderd via Dash (by setting the
-                `display_format` to "plotly-dash"), one can also use the "show_dash" key
-                within this dictionary to configure the show_dash method its args.
+            resampler_kwargs: The keyword arguments that are fed to configure the
+                `plotly-resampler` visualizations (i.e., `display_format` "plotly-dash"
+                or "plotly-widget") which downsampler will be used; how many datapoints
+                are shown in the front-end. When the plotly-resampler figure is renderd
+                via Dash (by setting the `display_format` to "plotly-dash"), one can
+                also use the "show_dash" key within this dictionary to configure the
+                show_dash method its args.
 
-                example::
+            example::
 
-                    fig_kwargs = {
-                        ...,
-                        "display_kwargs":  {
-                            "default_n_shown_samples": 1000,
-                            "show_dash": {"mode": "inline", "port": 9012}
-                        }
+                fig_kwargs = {
+                    ...,
+                    "resampler_kwargs":  {
+                        "default_n_shown_samples": 1000,
+                        "show_dash": {"mode": "inline", "port": 9012}
                     }
+                }
 
         Returns:
             Global variables that can be changed using the ``set_config`` function.
@@ -3133,8 +3133,8 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         data_kwargs.setdefault("seasonal_period", self.primary_sp_to_use)
 
         fig_kwargs = fig_kwargs or {}
-        display_kwargs = fig_kwargs.get("display_kwargs", {})
-        show_dash_kwargs = display_kwargs.pop("show_dash", {})
+        resampler_kwargs = fig_kwargs.get("resampler_kwargs", {})
+        show_dash_kwargs = resampler_kwargs.pop("show_dash", {})
 
         return_pred_int = False
         return_obj = []
@@ -3371,7 +3371,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                     ipython_display(
                         FigureWidgetResampler(
                             fig,
-                            **display_kwargs,
+                            **resampler_kwargs,
                             convert_traces_kwargs=dict(limit_to_views=True),
                         )
                     )
@@ -3379,7 +3379,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                     fig.update_layout(autosize=True)
                     FigureResampler(
                         fig,
-                        **display_kwargs,
+                        **resampler_kwargs,
                         convert_traces_kwargs=dict(limit_to_views=True),
                     ).show_dash(**show_dash_kwargs)
                 else:  # just a plain plotly-figure
@@ -3667,7 +3667,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             keys, refer to the `setup` documentation.
 
             Time-series plots support more display_formats, as a result the fig-kwargs
-            can also contain the `display_kwarg` key and its corresponding dict.
+            can also contain the `resampler_kwargs` key and its corresponding dict.
             These are additional keyword arguments that are fed to the display function.
             This is mainly used for configuring `plotly-resampler` visualizations
             (i.e., `display_format` "plotly-dash" or "plotly-widget") which downsampler
@@ -3681,7 +3681,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
                 fig_kwargs = {
                     "width": None,
-                    "display_kwargs":  {
+                    "resampler_kwargs":  {
                         "default_n_shown_samples": 1000,
                         "show_dash": {"mode": "inline", "port": 9012}
                     }
