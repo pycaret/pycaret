@@ -22,7 +22,7 @@
 
 </p>
 
-[![Python](https://img.shields.io/badge/Python-3.6%20%7C%203.7%20%7C%203.8%20%7C%203.9-blue)](https://badge.fury.io/py/pycaret) 
+[![Python](https://img.shields.io/badge/Python-3.7%20%7C%203.8%20%7C%203.9-blue)](https://badge.fury.io/py/pycaret) 
 ![pytest on push](https://github.com/pycaret/pycaret/workflows/pytest%20on%20push/badge.svg) 
 [![Documentation Status](https://readthedocs.org/projects/pip/badge/?version=stable)](http://pip.pypa.io/en/stable/?badge=stable) 
 [![PyPI version](https://badge.fury.io/py/pycaret.svg)](https://badge.fury.io/py/pycaret) 
@@ -76,12 +76,6 @@ To install the full version:
 pip install pycaret[full]
 ```
 
-## **Try PyCaret 3.0-rc**
-
-```python
-pip install --pre pycaret
-```
-  
 <div align="center">
 
 ## Supervised Workflow
@@ -97,6 +91,24 @@ pip install --pre pycaret
 ![](docs/images/pycaret_clustering.png)  |  ![](docs/images/pycaret_anomaly.png)  
   
 <div align="left">
+
+## ⚡ PyCaret Time Series Module (beta)
+  
+PyCaret new time series module is now available in beta. Staying true to simplicity of PyCaret, it is consistent with our existing API and fully loaded with functionalities. Statistical testing, model training and selection (30+ algorithms), model analysis, automated hyperparameter tuning, experiment logging, deployment on cloud, and more. All of this with only few lines of code (just like the other modules of pycaret). If you would like to give it a try, checkout our official [quick start](https://nbviewer.org/github/pycaret/pycaret/blob/time_series_beta/time_series_101.ipynb) notebook.
+  
+:books: [Time Series Docs](https://pycaret.readthedocs.io/en/time_series/api/time_series.html)
+  
+:question: [Time Series FAQs](https://github.com/pycaret/pycaret/discussions/categories/faqs?discussions_q=category%3AFAQs+label%3Atime_series)
+  
+:rocket: [Features and Roadmap](https://github.com/pycaret/pycaret/issues/1648)
+  
+The module is still in beta. We are adding new functionalities every day and doing weekly pip releases. Please ensure to create a separate python environment to avoid dependency conflicts with main pycaret. The final release of this module will be merged with the main pycaret in next major release.
+  
+ ```
+ pip install pycaret-ts-alpha
+ ```  
+
+![alt text](docs/images/pycaret_ts_quickdemo.gif)  
 
 ## Who should use PyCaret?
 PyCaret is an open source library that anybody can use. In our view the ideal target audience of PyCaret is: <br />
