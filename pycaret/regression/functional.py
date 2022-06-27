@@ -711,9 +711,10 @@ def compare_models(
 
 
     engines: Optional[Dict[str, str]] = None
-        The engine to use for the models, e.g. for lr, users can
+        The execution engines to use for the models in the form of a dict
+        of `model_id: engine` - e.g. for Linear Regression ("lr", users can
         switch between "sklearn" and "sklearnex" by specifying
-        engines={"lr": "sklearnex"}
+        `engines={"lr": "sklearnex"}`
 
 
     verbose: bool, default = True
@@ -894,9 +895,9 @@ def create_model(
 
 
     engine: Optional[str] = None
-        The engine to use for the model, e.g. for lr, users can
+        The execution engine to use for the model, e.g. for Linear Regression ("lr"), users can
         switch between "sklearn" and "sklearnex" by specifying
-        engine="sklearnex".
+        `engine="sklearnex"`.
 
 
     verbose: bool, default = True
