@@ -26,6 +26,6 @@ schemdraw>=0.14
 
 # Time-series
 statsmodels>=0.12.1
-sktime>=0.11.4
+sktime~=0.11.4
 tbats>=1.1.0
 pmdarima>=1.8.0
