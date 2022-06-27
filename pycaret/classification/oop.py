@@ -3309,7 +3309,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
 
         le = get_label_encoder(self.pipeline)
         if le:
-            labels_ = le.classes_
+            labels_ = list(le.classes_)
         else:
             labels_ = None
 
