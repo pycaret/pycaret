@@ -248,7 +248,7 @@ class Preprocessor:
 
         if isinstance(fold_groups, str):
             if fold_groups in self.X.columns:
-                if pd.isna(fold_groups).any():
+                if pd.isna(self.X[fold_groups]).any():
                     raise ValueError(f"The 'fold_groups' column cannot contain NaNs.")
                 else:
                     self.fold_groups_param = self.X[fold_groups]
@@ -817,7 +817,7 @@ class Preprocessor:
             raise ValueError(
                 "Invalid value for the feature_selection_method parameter, "
                 f"got {feature_selection_method}. Possible values are: "
-                "'classic' or 'boruta'."
+                "'classic', 'univariate' or 'sequential'."
             )
 
         self.pipeline.steps.append(("feature_selection", feature_selector))

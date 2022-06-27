@@ -638,9 +638,6 @@ class ArimaContainer(TimeSeriesContainer):
             "with_intercept": CategoricalDistribution(values=[True, False]),
         }
 
-        if not self.gpu_imported:
-            args["n_jobs"] = experiment.n_jobs_param
-
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
         super().__init__(

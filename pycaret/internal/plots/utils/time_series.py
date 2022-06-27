@@ -18,6 +18,7 @@ from statsmodels.tsa.stattools import acf, ccf, pacf
 
 from pycaret.internal.logging import get_logger
 from pycaret.utils import _resolve_dict_keys
+from pycaret.utils.time_series import TSAllowedPlotDataTypes
 
 logger = get_logger()
 
@@ -27,22 +28,79 @@ PlotReturnType = Tuple[Optional[go.Figure], Optional[Dict[str, Any]]]
 #### Data Types allowed for each plot type ----
 # First one in the list is the default (if requested is None)
 ALLOWED_PLOT_DATA_TYPES = {
-    "pipeline": ["original", "imputed", "transformed"],
-    "ts": ["original", "imputed", "transformed"],
-    "train_test_split": ["original", "imputed", "transformed"],
-    "cv": ["original"],
-    "acf": ["transformed", "imputed", "original"],
-    "pacf": ["transformed", "imputed", "original"],
-    "decomp": ["transformed", "imputed", "original"],
-    "decomp_stl": ["transformed", "imputed", "original"],
-    "diagnostics": ["transformed", "imputed", "original"],
-    "diff": ["transformed", "imputed", "original"],
-    "forecast": ["original", "imputed"],
-    "insample": ["original", "imputed"],
-    "residuals": ["original", "imputed"],
-    "periodogram": ["transformed", "imputed", "original"],
-    "fft": ["transformed", "imputed", "original"],
-    "ccf": ["transformed", "imputed", "original"],
+    "pipeline": [
+        TSAllowedPlotDataTypes.ORIGINAL.value,
+        TSAllowedPlotDataTypes.IMPUTED.value,
+        TSAllowedPlotDataTypes.TRANSFORMED.value,
+    ],
+    "ts": [
+        TSAllowedPlotDataTypes.ORIGINAL.value,
+        TSAllowedPlotDataTypes.IMPUTED.value,
+        TSAllowedPlotDataTypes.TRANSFORMED.value,
+    ],
+    "train_test_split": [
+        TSAllowedPlotDataTypes.ORIGINAL.value,
+        TSAllowedPlotDataTypes.IMPUTED.value,
+        TSAllowedPlotDataTypes.TRANSFORMED.value,
+    ],
+    "cv": [TSAllowedPlotDataTypes.ORIGINAL.value],
+    "acf": [
+        TSAllowedPlotDataTypes.TRANSFORMED.value,
+        TSAllowedPlotDataTypes.IMPUTED.value,
+        TSAllowedPlotDataTypes.ORIGINAL.value,
+    ],
+    "pacf": [
+        TSAllowedPlotDataTypes.TRANSFORMED.value,
+        TSAllowedPlotDataTypes.IMPUTED.value,
+        TSAllowedPlotDataTypes.ORIGINAL.value,
+    ],
+    "decomp": [
+        TSAllowedPlotDataTypes.TRANSFORMED.value,
+        TSAllowedPlotDataTypes.IMPUTED.value,
+        TSAllowedPlotDataTypes.ORIGINAL.value,
+    ],
+    "decomp_stl": [
+        TSAllowedPlotDataTypes.TRANSFORMED.value,
+        TSAllowedPlotDataTypes.IMPUTED.value,
+        TSAllowedPlotDataTypes.ORIGINAL.value,
+    ],
+    "diagnostics": [
+        TSAllowedPlotDataTypes.TRANSFORMED.value,
+        TSAllowedPlotDataTypes.IMPUTED.value,
+        TSAllowedPlotDataTypes.ORIGINAL.value,
+    ],
+    "diff": [
+        TSAllowedPlotDataTypes.TRANSFORMED.value,
+        TSAllowedPlotDataTypes.IMPUTED.value,
+        TSAllowedPlotDataTypes.ORIGINAL.value,
+    ],
+    "forecast": [
+        TSAllowedPlotDataTypes.ORIGINAL.value,
+        TSAllowedPlotDataTypes.IMPUTED.value,
+    ],
+    "insample": [
+        TSAllowedPlotDataTypes.ORIGINAL.value,
+        TSAllowedPlotDataTypes.IMPUTED.value,
+    ],
+    "residuals": [
+        TSAllowedPlotDataTypes.ORIGINAL.value,
+        TSAllowedPlotDataTypes.IMPUTED.value,
+    ],
+    "periodogram": [
+        TSAllowedPlotDataTypes.TRANSFORMED.value,
+        TSAllowedPlotDataTypes.IMPUTED.value,
+        TSAllowedPlotDataTypes.ORIGINAL.value,
+    ],
+    "fft": [
+        TSAllowedPlotDataTypes.TRANSFORMED.value,
+        TSAllowedPlotDataTypes.IMPUTED.value,
+        TSAllowedPlotDataTypes.ORIGINAL.value,
+    ],
+    "ccf": [
+        TSAllowedPlotDataTypes.TRANSFORMED.value,
+        TSAllowedPlotDataTypes.IMPUTED.value,
+        TSAllowedPlotDataTypes.ORIGINAL.value,
+    ],
 }
 
 #### Are multiple plot types allowed at once ----
@@ -1001,8 +1059,12 @@ def _get_data_types_to_plot(
         data_types_requested = [data_types_requested]
 
     #### Is the data type allowed for the requested plot?
+    all_plot_data_types = [member.value for member in TSAllowedPlotDataTypes]
     data_types_allowed = [
-        True if data_type_requested in ALLOWED_PLOT_DATA_TYPES.get(plot) else False
+        True
+        if data_type_requested in ALLOWED_PLOT_DATA_TYPES.get(plot)
+        and data_type_requested in all_plot_data_types
+        else False
         for data_type_requested in data_types_requested
     ]
 
