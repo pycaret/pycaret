@@ -82,6 +82,6 @@ def _check_soft_dependencies(
 
     if package_available:
         ver = _get_module_version(sys.modules[package])
-        logger.info("Sof dependency imported: {k}: {stat}".format(k=package, stat=ver))
+        logger.info("Soft dependency imported: {k}: {stat}".format(k=package, stat=ver))
 
     return package_available
