@@ -3970,7 +3970,12 @@ class _SupervisedExperiment(_TabularExperiment):
 
         # checking interpret-community is available
         if plot == "pfi":
-            _check_soft_dependencies("interpret", extra="analysis", severity="error")
+            _check_soft_dependencies(
+                "interpret_community",
+                extra=None,
+                severity="error",
+                install_name="interpret-community",
+            )
             from interpret.ext.blackbox import PFIExplainer
 
         import matplotlib.pyplot as plt
