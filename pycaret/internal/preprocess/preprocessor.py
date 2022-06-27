@@ -817,7 +817,7 @@ class Preprocessor:
             raise ValueError(
                 "Invalid value for the feature_selection_method parameter, "
                 f"got {feature_selection_method}. Possible values are: "
-                "'classic' or 'boruta'."
+                "'classic', 'univariate' or 'sequential'."
             )
 
         self.pipeline.steps.append(("feature_selection", feature_selector))

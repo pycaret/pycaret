@@ -402,7 +402,14 @@ class IterativeImputer(SklearnIterativeImputer):
     def transform(self, X):
         check_is_fitted(self)
         if self.mappings_:
-            X = X.astype({col: "category" for col in self.mappings_})
+            X = X.astype(
+                {
+                    col: pd.CategoricalDtype(
+                        categories=list(self.mappings_[col].keys())
+                    )
+                    for col in self.mappings_
+                }
+            )
             for col in X.select_dtypes("category").columns:
                 X[col] = X[col].cat.rename_categories(self.mappings_[col])
         Xt = super().transform(X)

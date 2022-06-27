@@ -201,12 +201,6 @@ class _SupervisedExperiment(_TabularExperiment):
             if not metric.greater_is_better:
                 result *= -1
             if best_result is None or best_result < result:
-                msg = (
-                    "Original model was better than the tuned model, hence it will be returned. "
-                    "NOTE: The display metrics are for the tuned model (not the original one)."
-                )
-                print(msg)
-                self.logger.info(msg)
                 best_result = result
                 best_model = model
 
@@ -2561,7 +2555,7 @@ class _SupervisedExperiment(_TabularExperiment):
                             refit=True,
                             verbose=tuner_verbose,
                             pipeline_auto_early_stop=True,
-                            **search_kwargs,
+                            search_kwargs=search_kwargs,
                         )
 
             elif search_library == "scikit-optimize":
@@ -2690,7 +2684,7 @@ class _SupervisedExperiment(_TabularExperiment):
         )
 
         if choose_better:
-            best_model = self._choose_better(
+            new_best_model = self._choose_better(
                 [estimator, (best_model, model_results)],
                 compare_dimension,
                 fold,
@@ -2698,6 +2692,14 @@ class _SupervisedExperiment(_TabularExperiment):
                 fit_kwargs=fit_kwargs,
                 display=display,
             )
+            if new_best_model is not best_model:
+                msg = (
+                    "Original model was better than the tuned model, hence it will be returned. "
+                    "NOTE: The display metrics are for the tuned model (not the original one)."
+                )
+                print(msg)
+                self.logger.info(msg)
+            best_model = new_best_model
 
         # end runtime
         runtime_end = time.time()
@@ -3079,7 +3081,7 @@ class _SupervisedExperiment(_TabularExperiment):
             )
 
         if choose_better:
-            model = self._choose_better(
+            new_model = self._choose_better(
                 [_estimator_, (best_model, model_results)],
                 compare_dimension,
                 fold,
@@ -3087,6 +3089,14 @@ class _SupervisedExperiment(_TabularExperiment):
                 fit_kwargs=fit_kwargs,
                 display=display,
             )
+            if new_model is not best_model:
+                msg = (
+                    "Original model was better than the ensembled model, hence it will be returned. "
+                    "NOTE: The display metrics are for the ensembled model (not the original one)."
+                )
+                print(msg)
+                self.logger.info(msg)
+            model = new_model
 
         model_results = self._highlight_and_round_model_results(
             model_results, return_train_score, round
@@ -3457,7 +3467,7 @@ class _SupervisedExperiment(_TabularExperiment):
             )
 
         if choose_better:
-            model = self._choose_better(
+            new_model = self._choose_better(
                 [(model, model_results)] + estimator_list,
                 compare_dimension,
                 fold,
@@ -3465,6 +3475,14 @@ class _SupervisedExperiment(_TabularExperiment):
                 fit_kwargs=fit_kwargs,
                 display=display,
             )
+            if new_model is not model:
+                msg = (
+                    "Original model was better than the blended model, hence it will be returned. "
+                    "NOTE: The display metrics are for the blended model (not the original one)."
+                )
+                print(msg)
+                self.logger.info(msg)
+            model = new_model
 
         model_results = self._highlight_and_round_model_results(
             model_results, return_train_score, round
@@ -3828,7 +3846,7 @@ class _SupervisedExperiment(_TabularExperiment):
             )
 
         if choose_better:
-            model = self._choose_better(
+            new_model = self._choose_better(
                 [(model, model_results)] + estimator_list,
                 compare_dimension,
                 fold,
@@ -3837,6 +3855,14 @@ class _SupervisedExperiment(_TabularExperiment):
                 fit_kwargs=fit_kwargs,
                 display=display,
             )
+            if new_model is not model:
+                msg = (
+                    "Original model was better than the stacked model, hence it will be returned. "
+                    "NOTE: The display metrics are for the stacked model (not the original one)."
+                )
+                print(msg)
+                self.logger.info(msg)
+            model = new_model
 
         model_results = self._highlight_and_round_model_results(
             model_results, return_train_score, round
@@ -3976,7 +4002,12 @@ class _SupervisedExperiment(_TabularExperiment):
 
         # checking interpret-community is available
         if plot == "pfi":
-            _check_soft_dependencies("interpret", extra="analysis", severity="error")
+            _check_soft_dependencies(
+                "interpret_community",
+                extra=None,
+                severity="error",
+                install_name="interpret-community",
+            )
             from interpret.ext.blackbox import PFIExplainer
 
         import matplotlib.pyplot as plt
