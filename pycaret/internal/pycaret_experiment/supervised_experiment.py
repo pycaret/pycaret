@@ -2555,7 +2555,7 @@ class _SupervisedExperiment(_TabularExperiment):
                             refit=True,
                             verbose=tuner_verbose,
                             pipeline_auto_early_stop=True,
-                            **search_kwargs,
+                            search_kwargs=search_kwargs,
                         )
 
             elif search_library == "scikit-optimize":
