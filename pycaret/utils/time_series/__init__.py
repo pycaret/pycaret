@@ -297,3 +297,9 @@ class TSExogenousPresent(Enum):
 class TSApproachTypes(Enum):
     UNI = "Univariate"
     MULTI = "Multivariate"
+
+
+class TSAllowedPlotDataTypes(Enum):
+    ORIGINAL = "original"
+    TRANSFORMED = "transformed"
+    IMPUTED = "imputed"

@@ -394,9 +394,10 @@ def load_model(
         import joblib
 
         model_name = f"{model_name}.pkl"
+        model = joblib.load(model_name)
         if verbose:
             print("Transformation Pipeline and Model Successfully Loaded")
-        return joblib.load(model_name)
+        return model
 
     # cloud providers
     elif platform == "aws":
