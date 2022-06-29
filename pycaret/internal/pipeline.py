@@ -83,6 +83,10 @@ class Pipeline(imblearn.pipeline.Pipeline):
         self._memory_fit = memory.cache(_fit_transform_one)
         self._memory_transform = memory.cache(_transform_one)
 
+    def __getattr__(self, name: str):
+        # override getattr to allow grabbing of final estimator attrs
+        return getattr(self._final_estimator, name)
+
     @property
     def feature_names_in_(self):
         return self._feature_names_in
@@ -217,10 +221,6 @@ class Pipeline(imblearn.pipeline.Pipeline):
             X, y = self._memory_transform(transformer, X, y)
 
         return self.steps[-1][-1].score(X, y, sample_weight=sample_weight)
-
-    def __getattr__(self, name: str):
-        # override getattr to allow grabbing of final estimator attrs
-        return getattr(self._final_estimator, name)
 
     def _clear_final_estimator_fit_vars(self, all: bool = False):
         vars_to_remove = []

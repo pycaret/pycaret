@@ -3,7 +3,7 @@ import pytest
 from pycaret.time_series import TSForecastingExperiment
 from pycaret.utils.time_series.exceptions import MissingDataError
 
-from .time_series_test_utils import (
+from time_series_test_utils import (
     _ALL_DATA_TYPES,
     _ALL_STATS_TESTS,
     _ALL_STATS_TESTS_MISSING_DATA,

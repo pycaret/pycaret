@@ -2,16 +2,22 @@ import numpy as np  # type: ignore
 import pandas as pd  # type: ignore
 import pytest
 
+from mlflow.tracking.client import MlflowClient
 from pycaret.containers.models.time_series import get_all_model_containers
 from pycaret.datasets import get_data
 from pycaret.time_series import TSForecastingExperiment
 from pycaret.utils.time_series import TSExogenousPresent
 
-from .time_series_test_utils import _BLEND_TEST_MODELS
+from time_series_test_utils import _BLEND_TEST_MODELS
 
 #############################
 #### Fixtures Start Here ####
 #############################
+
+
+@pytest.fixture(name="change_test_dir", autouse=True)
+def change_test_dir(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
 
 
 @pytest.fixture(scope="session", name="load_pos_data")
@@ -118,7 +124,7 @@ def load_ts_models(load_setup):
     exp = load_setup
     model_containers = get_all_model_containers(exp)
 
-    from .time_series_test_utils import (  # TODO Put it back once preprocessing supports series as X
+    from time_series_test_utils import (  # TODO Put it back once preprocessing supports series as X
         _BLEND_TEST_MODELS,
     )
 

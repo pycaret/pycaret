@@ -4727,7 +4727,7 @@ class _SupervisedExperiment(_TabularExperiment):
 
         if model_only:
             if self._ml_usecase != MLUsecase.TIME_SERIES:
-                return pipeline_final.steps[-1][1]
+                return pipeline_final._final_estimator
             else:
                 return self._get_final_model_from_pipeline(pipeline_final)
 

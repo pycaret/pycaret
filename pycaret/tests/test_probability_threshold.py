@@ -117,13 +117,15 @@ def test_probability_threshold():
 
     # finalize model
     final_best = pycaret.classification.finalize_model(best)
-    assert final_best.probability_threshold == probability_threshold
+    assert isinstance(final_best._final_estimator, CustomProbabilityThresholdClassifier)
+    assert final_best._final_estimator.probability_threshold == probability_threshold
 
     # save model
     pycaret.classification.save_model(best, "best_model_23122019")
 
     # load model
     saved_best = pycaret.classification.load_model("best_model_23122019")
+    assert isinstance(saved_best._final_estimator, CustomProbabilityThresholdClassifier)
     assert saved_best._final_estimator.probability_threshold == probability_threshold
 
     assert 1 == 1

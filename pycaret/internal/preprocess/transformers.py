@@ -169,10 +169,13 @@ class TransformerWrapper(BaseEstimator):
 
     def fit(self, X=None, y=None, **fit_params):
         # Save the incoming feature names
+        feature_names_in = []
         if hasattr(X, "columns"):
-            self._feature_names_in = list(X.columns) + (
-                [y.name] if hasattr(y, "name") else []
-            )
+            feature_names_in += list(X.columns)
+        if hasattr(y, "name"):
+            feature_names_in += [y.name]
+        if feature_names_in:
+            self._feature_names_in = feature_names_in
 
         args = []
         transformer_params = signature(self.transformer.fit).parameters

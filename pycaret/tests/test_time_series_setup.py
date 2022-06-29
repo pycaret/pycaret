@@ -9,7 +9,7 @@ import pytest
 from pycaret.datasets import get_data
 from pycaret.time_series import TSForecastingExperiment
 
-from .time_series_test_utils import (
+from time_series_test_utils import (
     _get_seasonal_values,
     _get_seasonal_values_alphanumeric,
     _return_setup_args_raises,

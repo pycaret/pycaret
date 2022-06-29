@@ -8,7 +8,7 @@ from sktime.forecasting.compose import ForecastingPipeline, TransformedTargetFor
 
 from pycaret.time_series import TSForecastingExperiment
 
-from .time_series_test_utils import (
+from time_series_test_utils import (
     _IMPUTE_METHODS_STR,
     _SCALE_METHODS,
     _TRANSFORMATION_METHODS,

@@ -10,7 +10,7 @@ import pytest
 from pycaret.internal.ensemble import _ENSEMBLE_METHODS
 from pycaret.time_series import TSForecastingExperiment
 
-from .time_series_test_utils import (
+from time_series_test_utils import (
     _ALL_PLOTS_DATA,
     _ALL_PLOTS_ESTIMATOR,
     _ALL_PLOTS_ESTIMATOR_NOT_DATA,

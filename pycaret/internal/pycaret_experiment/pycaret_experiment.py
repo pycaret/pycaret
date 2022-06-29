@@ -232,7 +232,8 @@ class _PyCaretExperiment:
             experiment = client.get_experiment(exp_id)
             if experiment is None:
                 raise ValueError(
-                    "No active run found. Check logging parameter in setup or to get logs for inactive run pass experiment_name."
+                    "No active run found. Check logging parameter in setup "
+                    "or to get logs for inactive run pass experiment_name."
                 )
 
             exp_name_log_ = experiment.name
@@ -241,7 +242,8 @@ class _PyCaretExperiment:
             experiment = client.get_experiment_by_name(exp_name_log_)
             if experiment is None:
                 raise ValueError(
-                    "No active run found. Check logging parameter in setup or to get logs for inactive run pass experiment_name."
+                    "No active run found. Check logging parameter in setup "
+                    "or to get logs for inactive run pass experiment_name."
                 )
 
             exp_id = client.get_experiment_by_name(exp_name_log_).experiment_id

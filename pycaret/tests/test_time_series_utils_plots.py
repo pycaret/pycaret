@@ -12,7 +12,7 @@ from pycaret.internal.plots.utils.time_series import (
     _reformat_dataframes_for_plots,
 )
 
-from .time_series_test_utils import _ALL_PLOTS
+from time_series_test_utils import _ALL_PLOTS
 
 pytestmark = pytest.mark.filterwarnings("ignore::UserWarning")
 
