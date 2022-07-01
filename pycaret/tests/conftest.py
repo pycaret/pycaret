@@ -23,8 +23,9 @@ def change_test_dir(tmp_path, monkeypatch):
 
 @pytest.fixture(name="disable_logging_info", autouse=True)
 def disable_logging_info(tmp_path, monkeypatch):
-    logger = logging.getLogger()
-    logger.setLevel(logging.WARNING)
+    loggers = [logging.getLogger(name) for name in logging.root.manager.loggerDict]
+    for logger in loggers:
+        logger.setLevel(logging.WARNING)
 
 
 @pytest.fixture(scope="session", name="load_pos_data")
