@@ -2575,8 +2575,6 @@ class _TabularExperiment(_PyCaretExperiment):
         This function takes an input ``estimator`` and creates a POST API for
         inference. It only creates the API and doesn't run it automatically.
         To run the API, you must run the Python file using ``!python``.
-
-
         Example
         -------
         >>> from pycaret.datasets import get_data
@@ -2586,24 +2584,14 @@ class _TabularExperiment(_PyCaretExperiment):
         >>> lr = create_model('lr')
         >>> create_api(lr, 'lr_api'
         >>> !python lr_api.py
-
-
         estimator: scikit-learn compatible object
             Trained model object
-
-
         api_name: scikit-learn compatible object
             Trained model object
-
-
         host: str, default = '127.0.0.1'
             API host address.
-
-
         port: int, default = 8000
             port for API.
-
-
         Returns:
             None
         """
@@ -2614,44 +2602,42 @@ class _TabularExperiment(_PyCaretExperiment):
         _check_soft_dependencies("uvicorn", extra="mlops", severity="error")
         import uvicorn
 
-        MODULE = self._ml_usecase
-        INPUT_COLS = list(self.X.columns)
-        INPUT_COLS_WITHOUT_SPACES = [i.replace(" ", "_") for i in INPUT_COLS]
-        INPUT_COLS_WITHOUT_SPACES = [
-            i.replace("-", "_") for i in INPUT_COLS_WITHOUT_SPACES
-        ]
-        INPUT_COLS_WITHOUT_SPACES_FORMATTED = ", ".join(
-            tuple(INPUT_COLS_WITHOUT_SPACES)
-        ).replace("'", "")
+        _check_soft_dependencies("pydantic", extra="mlops", severity="error")
+        import pydantic
+        
+        MODULE = self._ml_usecase.name.lower()
         API_NAME = api_name
         HOST = host
-
+        
         self.save_model(estimator, model_name=api_name, verbose=False)
-
+        targetname=self.target_param+'_'+'prediction'
         query = """
-    import pandas as pd
-    from pycaret.{MODULE_NAME} import load_model, predict_model
-    from fastapi import FastAPI
-    import uvicorn
-    # Create the app
-    app = FastAPI()
-    # Load trained Pipeline
-    model = load_model('{API_NAME}')
-    # Define predict function
-    @app.post('/predict')
-    def predict({INPUT_COLS}):
-        data = pd.DataFrame([[{DATAFRAME}]])
-        data.columns = {COLUMNS}
-        predictions = predict_model(model, data=data)
-        return {D1}'prediction': list(predictions['Label']){D2}
-    if __name__ == '__main__':
-        uvicorn.run(app, host='{HOST}', port={PORT})""".format(
+import pandas as pd
+from pycaret.{MODULE_NAME} import load_model, predict_model
+from fastapi import FastAPI
+import uvicorn
+from pydantic import create_model
+# Create the app
+app = FastAPI()
+# Load trained Pipeline
+model = load_model('{API_NAME}')
+# Create input/output pydantic models
+pydanticinputmodel=create_model('{API_NAME}_input',**{inputDataframeschema})
+pydanticoutputmodel=create_model('{API_NAME}_output',**{outputDataframeschema})
+# Define predict function
+@app.post('/predict',response_model=pydanticoutputmodel)
+def predict(datainput:pydanticinputmodel):
+    data = pd.DataFrame([datainput.dict()])
+    predictions = predict_model(model, data=data)
+    return {D1}'{tarname}': predictions['Label'][0]{D2}
+if __name__ == '__main__':
+    uvicorn.run(app, host='{HOST}', port={PORT})""".format(
             MODULE_NAME=MODULE,
             API_NAME=API_NAME,
-            INPUT_COLS=INPUT_COLS_WITHOUT_SPACES_FORMATTED,
-            DATAFRAME=INPUT_COLS_WITHOUT_SPACES_FORMATTED,
-            COLUMNS=INPUT_COLS,
+            inputDataframeschema=self.X.iloc[0].to_dict(),
+            outputDataframeschema={targetname:self.y.iloc[0]},
             D1="{",
+            tarname=targetname,
             D2="}",
             HOST=HOST,
             PORT=port,
