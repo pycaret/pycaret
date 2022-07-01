@@ -9,7 +9,7 @@
 # to complete the process. Refer to the existing classes for examples.
 
 import logging
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
 from packaging import version
@@ -26,6 +26,30 @@ from pycaret.internal.distributions import (
 )
 from pycaret.internal.utils import get_logger, np_list_arange, param_grid_to_lists
 from pycaret.utils._dependencies import _check_soft_dependencies
+
+# First one in the list is the default ----
+ALL_ALLOWED_ENGINES: Dict[str, List[str]] = {
+    "lr": ["sklearn", "sklearnex"],
+    "lasso": ["sklearn", "sklearnex"],
+    "ridge": ["sklearn", "sklearnex"],
+    "en": ["sklearn", "sklearnex"],
+    "knn": ["sklearn", "sklearnex"],
+    "svm": ["sklearn", "sklearnex"],
+}
+
+
+def get_container_default_engines() -> Dict[str, str]:
+    """Get the default engines from all models
+    Returns
+    -------
+    Dict[str, str]
+        Default engines for all containers. If unspecified, it is not included
+        in the return dictionary.
+    """
+    default_engines = {}
+    for id, all_engines in ALL_ALLOWED_ENGINES.items():
+        default_engines[id] = all_engines[0]
+    return default_engines
 
 
 class RegressorContainer(ModelContainer):
@@ -202,7 +226,18 @@ class LinearRegressionContainer(RegressorContainer):
         np.random.seed(experiment.seed)
         gpu_imported = False
 
-        from sklearn.linear_model import LinearRegression
+        id = "lr"
+        self._set_engine_related_vars(
+            id=id, all_allowed_engines=ALL_ALLOWED_ENGINES, experiment=experiment
+        )
+
+        if self.engine == "sklearn":
+            from sklearn.linear_model import LinearRegression
+        elif self.engine == "sklearnex":
+            if _check_soft_dependencies("sklearnex", extra=None, severity="warning"):
+                from sklearnex.linear_model import LinearRegression
+            else:
+                from sklearn.linear_model import LinearRegression
 
         if experiment.gpu_param == "force":
             from cuml.linear_model import LinearRegression
@@ -227,7 +262,7 @@ class LinearRegressionContainer(RegressorContainer):
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
         super().__init__(
-            id="lr",
+            id=id,
             name="Linear Regression",
             class_def=LinearRegression,
             args=args,
@@ -245,7 +280,18 @@ class LassoRegressionContainer(RegressorContainer):
         np.random.seed(experiment.seed)
         gpu_imported = False
 
-        from sklearn.linear_model import Lasso
+        id = "lasso"
+        self._set_engine_related_vars(
+            id=id, all_allowed_engines=ALL_ALLOWED_ENGINES, experiment=experiment
+        )
+
+        if self.engine == "sklearn":
+            from sklearn.linear_model import Lasso
+        elif self.engine == "sklearnex":
+            if _check_soft_dependencies("sklearnex", extra=None, severity="warning"):
+                from sklearnex.linear_model import Lasso
+            else:
+                from sklearn.linear_model import Lasso
 
         if experiment.gpu_param == "force":
             from cuml.linear_model import Lasso
@@ -274,7 +320,7 @@ class LassoRegressionContainer(RegressorContainer):
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
         super().__init__(
-            id="lasso",
+            id=id,
             name="Lasso Regression",
             class_def=Lasso,
             args=args,
@@ -292,7 +338,18 @@ class RidgeRegressionContainer(RegressorContainer):
         np.random.seed(experiment.seed)
         gpu_imported = False
 
-        from sklearn.linear_model import Ridge
+        id = "ridge"
+        self._set_engine_related_vars(
+            id=id, all_allowed_engines=ALL_ALLOWED_ENGINES, experiment=experiment
+        )
+
+        if self.engine == "sklearn":
+            from sklearn.linear_model import Ridge
+        elif self.engine == "sklearnex":
+            if _check_soft_dependencies("sklearnex", extra=None, severity="warning"):
+                from sklearnex.linear_model import Ridge
+            else:
+                from sklearn.linear_model import Ridge
 
         if experiment.gpu_param == "force":
             from cuml.linear_model import Ridge
@@ -321,7 +378,7 @@ class RidgeRegressionContainer(RegressorContainer):
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
         super().__init__(
-            id="ridge",
+            id=id,
             name="Ridge Regression",
             class_def=Ridge,
             args=args,
@@ -339,7 +396,18 @@ class ElasticNetContainer(RegressorContainer):
         np.random.seed(experiment.seed)
         gpu_imported = False
 
-        from sklearn.linear_model import ElasticNet
+        id = "en"
+        self._set_engine_related_vars(
+            id=id, all_allowed_engines=ALL_ALLOWED_ENGINES, experiment=experiment
+        )
+
+        if self.engine == "sklearn":
+            from sklearn.linear_model import ElasticNet
+        elif self.engine == "sklearnex":
+            if _check_soft_dependencies("sklearnex", extra=None, severity="warning"):
+                from sklearnex.linear_model import ElasticNet
+            else:
+                from sklearn.linear_model import ElasticNet
 
         if experiment.gpu_param == "force":
             from cuml.linear_model import ElasticNet
@@ -372,7 +440,7 @@ class ElasticNetContainer(RegressorContainer):
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
         super().__init__(
-            id="en",
+            id=id,
             name="Elastic Net",
             class_def=ElasticNet,
             args=args,
@@ -935,7 +1003,18 @@ class SVRContainer(RegressorContainer):
         np.random.seed(experiment.seed)
         gpu_imported = False
 
-        from sklearn.svm import SVR
+        id = "svm"
+        self._set_engine_related_vars(
+            id=id, all_allowed_engines=ALL_ALLOWED_ENGINES, experiment=experiment
+        )
+
+        if self.engine == "sklearn":
+            from sklearn.svm import SVR
+        elif self.engine == "sklearnex":
+            if _check_soft_dependencies("sklearnex", extra=None, severity="warning"):
+                from sklearnex.svm import SVR
+            else:
+                from sklearn.svm import SVR
 
         if experiment.gpu_param == "force":
             from cuml.svm import SVR
@@ -966,7 +1045,7 @@ class SVRContainer(RegressorContainer):
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
         super().__init__(
-            id="svm",
+            id=id,
             name="Support Vector Regression",
             class_def=SVR,
             args=args,
@@ -985,7 +1064,18 @@ class KNeighborsRegressorContainer(RegressorContainer):
         np.random.seed(experiment.seed)
         gpu_imported = False
 
-        from sklearn.neighbors import KNeighborsRegressor
+        id = "knn"
+        self._set_engine_related_vars(
+            id=id, all_allowed_engines=ALL_ALLOWED_ENGINES, experiment=experiment
+        )
+
+        if self.engine == "sklearn":
+            from sklearn.neighbors import KNeighborsRegressor
+        elif self.engine == "sklearnex":
+            if _check_soft_dependencies("sklearnex", extra=None, severity="warning"):
+                from sklearnex.neighbors import KNeighborsRegressor
+            else:
+                from sklearn.neighbors import KNeighborsRegressor
 
         if experiment.gpu_param == "force":
             from cuml.neighbors import KNeighborsRegressor
@@ -1018,7 +1108,7 @@ class KNeighborsRegressorContainer(RegressorContainer):
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
         super().__init__(
-            id="knn",
+            id=id,
             name="K Neighbors Regressor",
             class_def=KNeighborsRegressor,
             args=args,

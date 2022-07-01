@@ -12,6 +12,10 @@ import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
 import pycaret.internal.persistence
 import pycaret.internal.preprocess
+from pycaret.containers.models.regression import (
+    ALL_ALLOWED_ENGINES,
+    get_container_default_engines,
+)
 from pycaret.internal.display import CommonDisplay
 from pycaret.internal.logging import get_logger
 from pycaret.internal.parallel.parallel_backend import ParallelBackend
@@ -145,6 +149,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
         log_plots: Union[bool, list] = False,
         log_profile: bool = False,
         log_data: bool = False,
+        engines: Optional[Dict[str, str]] = None,
         verbose: bool = True,
         memory: Union[bool, str, Memory] = True,
         profile: bool = False,
@@ -567,6 +572,13 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             Ignored when ``log_experiment`` is False.
 
 
+        engines: Optional[Dict[str, str]] = None
+            The execution engines to use for the models in the form of a dict
+            of `model_id: engine` - e.g. for Linear Regression ("lr", users can
+            switch between "sklearn" and "sklearnex" by specifying
+            `engines={"lr": "sklearnex"}`
+
+
         verbose: bool, default = True
             When set to False, Information grid is not printed.
 
@@ -605,6 +617,8 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
 
         if data_func is not None:
             data = data_func()
+
+        self.all_allowed_engines = ALL_ALLOWED_ENGINES
 
         # Define parameter attrs
         self.fold_shuffle_param = fold_shuffle
@@ -670,6 +684,11 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             text_features=text_features,
             ignore_features=ignore_features,
             keep_features=keep_features,
+        )
+
+        self._set_exp_model_engines(
+            container_default_engines=get_container_default_engines(),
+            engines=engines,
         )
 
         # Preprocessing ============================================ >>
@@ -910,6 +929,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
         fit_kwargs: Optional[dict] = None,
         groups: Optional[Union[str, Any]] = None,
         experiment_custom_tags: Optional[Dict[str, Any]] = None,
+        engines: Optional[Dict[str, str]] = None,
         verbose: bool = True,
         parallel: Optional[ParallelBackend] = None,
     ):
@@ -995,6 +1015,13 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             as the column name in the dataset containing group labels.
 
 
+        engines: Optional[Dict[str, str]] = None
+            The execution engines to use for the models in the form of a dict
+            of `model_id: engine` - e.g. for Linear Regression ("lr", users can
+            switch between "sklearn" and "sklearnex" by specifying
+            `engines={"lr": "sklearnex"}`
+
+
         verbose: bool, default = True
             Score grid is not printed when verbose is set to False.
 
@@ -1021,26 +1048,41 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
 
         caller_params = dict(locals())
 
-        # No extra code above this line
+        if engines is not None:
+            # Save current engines, then set to user specified options
+            initial_model_engines = self.exp_model_engines.copy()
+            for estimator, engine in engines.items():
+                self._set_engine(estimator=estimator, engine=engine, severity="error")
 
-        return super().compare_models(
-            include=include,
-            exclude=exclude,
-            fold=fold,
-            round=round,
-            cross_validation=cross_validation,
-            sort=sort,
-            n_select=n_select,
-            budget_time=budget_time,
-            turbo=turbo,
-            errors=errors,
-            fit_kwargs=fit_kwargs,
-            groups=groups,
-            experiment_custom_tags=experiment_custom_tags,
-            verbose=verbose,
-            parallel=parallel,
-            caller_params=caller_params,
-        )
+        try:
+            return_values = super().compare_models(
+                include=include,
+                exclude=exclude,
+                fold=fold,
+                round=round,
+                cross_validation=cross_validation,
+                sort=sort,
+                n_select=n_select,
+                budget_time=budget_time,
+                turbo=turbo,
+                errors=errors,
+                fit_kwargs=fit_kwargs,
+                groups=groups,
+                experiment_custom_tags=experiment_custom_tags,
+                verbose=verbose,
+                parallel=parallel,
+                caller_params=caller_params,
+            )
+
+        finally:
+            if engines is not None:
+                # Reset the models back to the default engines
+                self._set_exp_model_engines(
+                    container_default_engines=get_container_default_engines(),
+                    engines=initial_model_engines,
+                )
+
+        return return_values
 
     def create_model(
         self,
@@ -1051,6 +1093,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
         fit_kwargs: Optional[dict] = None,
         groups: Optional[Union[str, Any]] = None,
         experiment_custom_tags: Optional[Dict[str, Any]] = None,
+        engine: Optional[str] = None,
         verbose: bool = True,
         return_train_score: bool = False,
         **kwargs,
@@ -1138,6 +1181,12 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             if not) passed to the mlflow.set_tags to add new custom tags for the experiment.
 
 
+        engine: Optional[str] = None
+            The execution engine to use for the model, e.g. for Linear Regression ("lr"), users can
+            switch between "sklearn" and "sklearnex" by specifying
+            `engine="sklearnex"`.
+
+
         verbose: bool, default = True
             Score grid is not printed when verbose is set to False.
 
@@ -1164,18 +1213,33 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
 
         """
 
-        return super().create_model(
-            estimator=estimator,
-            fold=fold,
-            round=round,
-            cross_validation=cross_validation,
-            fit_kwargs=fit_kwargs,
-            groups=groups,
-            experiment_custom_tags=experiment_custom_tags,
-            verbose=verbose,
-            return_train_score=return_train_score,
-            **kwargs,
-        )
+        if engine is not None:
+            # Save current engines, then set to user specified options
+            initial_default_model_engines = self.exp_model_engines.copy()
+            self._set_engine(estimator=estimator, engine=engine, severity="error")
+
+        try:
+            return_values = super().create_model(
+                estimator=estimator,
+                fold=fold,
+                round=round,
+                cross_validation=cross_validation,
+                fit_kwargs=fit_kwargs,
+                groups=groups,
+                experiment_custom_tags=experiment_custom_tags,
+                verbose=verbose,
+                return_train_score=return_train_score,
+                **kwargs,
+            )
+        finally:
+            if engine is not None:
+                # Reset the models back to the default engines
+                self._set_exp_model_engines(
+                    container_default_engines=get_container_default_engines(),
+                    engines=initial_default_model_engines,
+                )
+
+        return return_values
 
     def tune_model(
         self,

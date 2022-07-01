@@ -16,7 +16,9 @@ from pycaret.regression.functional import (
     ensemble_model,
     evaluate_model,
     finalize_model,
+    get_allowed_engines,
     get_config,
+    get_engine,
     get_leaderboard,
     get_logs,
     get_metrics,
@@ -76,4 +78,6 @@ __all__ = [
     "create_api",
     "create_docker",
     "create_app",
+    "get_allowed_engines",
+    "get_engine",
 ]
