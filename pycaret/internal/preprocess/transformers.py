@@ -162,7 +162,7 @@ class TransformerWrapper(BaseEstimator):
             if hasattr(self.transformer, "get_feature_names_out"):
                 columns = self.transformer.get_feature_names_out()
             else:
-                columns = self._name_cols(out, X, use_cols)
+                columns = self._name_cols(out, X)
 
             out = to_df(out, index=X.index, columns=columns)
 
