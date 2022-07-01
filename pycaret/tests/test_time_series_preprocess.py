@@ -5,9 +5,6 @@ import os
 import numpy as np
 import pytest
 from sktime.forecasting.compose import ForecastingPipeline, TransformedTargetForecaster
-
-from pycaret.time_series import TSForecastingExperiment
-
 from time_series_test_utils import (
     _IMPUTE_METHODS_STR,
     _SCALE_METHODS,
@@ -15,6 +12,8 @@ from time_series_test_utils import (
     _TRANSFORMATION_METHODS_NO_NEG,
     _return_model_names_for_missing_data,
 )
+
+from pycaret.time_series import TSForecastingExperiment
 
 pytestmark = pytest.mark.filterwarnings("ignore::UserWarning")
 os.environ["PYCARET_TESTING"] = "1"

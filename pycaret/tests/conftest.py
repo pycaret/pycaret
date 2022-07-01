@@ -1,14 +1,13 @@
 import numpy as np  # type: ignore
 import pandas as pd  # type: ignore
 import pytest
-
 from mlflow.tracking.client import MlflowClient
+from time_series_test_utils import _BLEND_TEST_MODELS
+
 from pycaret.containers.models.time_series import get_all_model_containers
 from pycaret.datasets import get_data
 from pycaret.time_series import TSForecastingExperiment
 from pycaret.utils.time_series import TSExogenousPresent
-
-from time_series_test_utils import _BLEND_TEST_MODELS
 
 #############################
 #### Fixtures Start Here ####

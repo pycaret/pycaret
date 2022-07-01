@@ -4,10 +4,10 @@ import sys
 sys.path.insert(0, os.path.abspath(".."))
 
 import uuid
-from mlflow.tracking import MlflowClient
 
 import pandas as pd
 import pytest
+from mlflow.tracking import MlflowClient
 
 import pycaret.datasets
 import pycaret.nlp

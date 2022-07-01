@@ -123,7 +123,7 @@ class Pipeline(imblearn.pipeline.Pipeline):
                     continue
 
             if hasattr(transformer, "transform"):
-                if getattr(self._memory_fit, "location", "") is None:
+                if self._memory_fit.__class__.__name__ == "NotMemorizedFunc":
                     # Don't clone when caching is disabled to
                     # preserve backward compatibility
                     cloned = transformer

@@ -5,10 +5,9 @@ import pandas as pd
 import pytest
 from pandas.testing import assert_frame_equal
 from sktime.forecasting.compose import ForecastingPipeline
+from time_series_test_utils import _return_compare_model_args, _return_model_parameters
 
 from pycaret.time_series import TSForecastingExperiment
-
-from time_series_test_utils import _return_compare_model_args, _return_model_parameters
 
 pytestmark = pytest.mark.filterwarnings("ignore::UserWarning")
 
@@ -99,10 +98,10 @@ def test_create_predict_finalize_model(name, fh, load_pos_and_neg_data):
     ## Test Finalize Model ##
     #########################
 
-    final_model = exp.finalize_model(model)
-    assert not isinstance(final_model, ForecastingPipeline)
+    final_pipeline = exp.finalize_model(model)
+    assert isinstance(final_pipeline, ForecastingPipeline)
 
-    y_pred = exp.predict_model(final_model)
+    y_pred = exp.predict_model(final_pipeline)
     assert np.all(y_pred.index == final_expected_period_index)
 
 

@@ -4686,8 +4686,11 @@ class _SupervisedExperiment(_TabularExperiment):
             return_train_score=False,
         )
 
-        # Predictions need to be done on the non-transformed test set
-        self.predict_model(pipeline_final, self.test, verbose=False)
+        if self._ml_usecase != MLUsecase.TIME_SERIES:
+            self.predict_model(pipeline_final, data=self.test, verbose=False)
+        else:
+            self.predict_model(pipeline_final, X=self.X_test, verbose=False)
+
         model_results = self.pull(pop=True).drop("Model", axis=1)
         model_results.index = ["Mean"]
 
