@@ -2575,6 +2575,8 @@ class _TabularExperiment(_PyCaretExperiment):
         This function takes an input ``estimator`` and creates a POST API for
         inference. It only creates the API and doesn't run it automatically.
         To run the API, you must run the Python file using ``!python``.
+
+
         Example
         -------
         >>> from pycaret.datasets import get_data
@@ -2584,14 +2586,24 @@ class _TabularExperiment(_PyCaretExperiment):
         >>> lr = create_model('lr')
         >>> create_api(lr, 'lr_api'
         >>> !python lr_api.py
+
+
         estimator: scikit-learn compatible object
             Trained model object
+
+
         api_name: scikit-learn compatible object
             Trained model object
+
+
         host: str, default = '127.0.0.1'
             API host address.
+
+
         port: int, default = 8000
             port for API.
+
+
         Returns:
             None
         """
@@ -2604,13 +2616,14 @@ class _TabularExperiment(_PyCaretExperiment):
 
         _check_soft_dependencies("pydantic", extra="mlops", severity="error")
         import pydantic
-        
-        MODULE = self._ml_usecase.name.lower()
+
+        MODULE = self._ml_usecase.name.lower() ## added .name.lower() as output changed from main branch
         API_NAME = api_name
         HOST = host
-        
+
         self.save_model(estimator, model_name=api_name, verbose=False)
-        targetname=self.target_param+'_'+'prediction'
+        targetname = self.target_param + "_" + "prediction"
+        ## Removed tabs from query as that was causing the original file to have indentation errors.
         query = """
 import pandas as pd
 from pycaret.{MODULE_NAME} import load_model, predict_model
@@ -2635,7 +2648,7 @@ if __name__ == '__main__':
             MODULE_NAME=MODULE,
             API_NAME=API_NAME,
             inputDataframeschema=self.X.iloc[0].to_dict(),
-            outputDataframeschema={targetname:self.y.iloc[0]},
+            outputDataframeschema={targetname: self.y.iloc[0]},
             D1="{",
             tarname=targetname,
             D2="}",
