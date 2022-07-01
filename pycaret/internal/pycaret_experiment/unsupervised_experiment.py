@@ -133,7 +133,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
         verbose: bool = True,
         memory: Union[bool, str, Memory] = True,
         profile: bool = False,
-        profile_kwargs: Dict[str, Any] = None,
+        profile_kwargs: Optional[Dict[str, Any]] = None,
     ):
         """
 

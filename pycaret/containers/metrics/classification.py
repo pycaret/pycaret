@@ -94,7 +94,7 @@ class ClassificationMetricContainer(MetricContainer):
         score_func: type,
         scorer: Optional[Union[str, _BaseScorer]] = None,
         target: str = "pred",
-        args: Dict[str, Any] = None,
+        args: Optional[Dict[str, Any]] = None,
         display_name: Optional[str] = None,
         greater_is_better: bool = True,
         is_multiclass: bool = True,
