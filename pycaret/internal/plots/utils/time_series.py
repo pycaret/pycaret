@@ -165,7 +165,7 @@ def time_series_subplot(
         if hoverinfo == "text":
             # Not specifying the hoverinfo will show it by default
             fig.add_trace(
-                go.Scatter(
+                go.Scattergl(
                     x=x,
                     y=data[col_name].values,
                     name=col_name,
@@ -179,7 +179,7 @@ def time_series_subplot(
         else:
             # Disable hoverinfo
             fig.add_trace(
-                go.Scatter(
+                go.Scattergl(
                     x=x,
                     y=data[col_name].values,
                     name=col_name,
@@ -550,7 +550,7 @@ def decomp_subplot(
     #### Plot Original data ----
     row = 1
     fig.add_trace(
-        go.Scatter(
+        go.Scattergl(
             x=x,
             y=data_,
             line=dict(color=DEFAULT_PLOTLY_COLORS[row - 1], width=2),
@@ -578,7 +578,7 @@ def decomp_subplot(
 
     row = 2
     fig.add_trace(
-        go.Scatter(
+        go.Scattergl(
             x=x,
             y=decomp_result.seasonal,
             line=dict(color=DEFAULT_PLOTLY_COLORS[row - 1], width=2),
@@ -592,7 +592,7 @@ def decomp_subplot(
 
     row = 3
     fig.add_trace(
-        go.Scatter(
+        go.Scattergl(
             x=x,
             y=decomp_result.trend,
             line=dict(color=DEFAULT_PLOTLY_COLORS[row - 1], width=2),
@@ -606,7 +606,7 @@ def decomp_subplot(
 
     row = 4
     fig.add_trace(
-        go.Scatter(
+        go.Scattergl(
             x=x,
             y=decomp_result.resid,
             line=dict(color=DEFAULT_PLOTLY_COLORS[row - 1], width=2),
@@ -745,14 +745,24 @@ def frequency_components_subplot(
     # If you add hoverinfo = "text", you must also add the hovertemplate, else no hoverinfo
     # gets displayed. OR alternately, leave it out and it gets plotted by default.
     if hoverinfo == "text":
-        hovertemplate = "Freq:%{customdata[0]:.4f} <br>Ampl:%{customdata[1]:.4f}<br>Time Period: %{customdata[2]:.4f]}"
+        # We convert this to hovertext so plotly-resampler can effectively deal with
+        # this data modality
+        freq_data_str = freq_data.round(4).astype("str")
+        hf_hovertext = (
+            "Freq: "
+            + freq_data_str["Freq"]
+            + "<br>Ampl: "
+            + freq_data_str["Amplitude"]
+            + "<br>Time period: "
+            + freq_data_str["Time Period"]
+        )
+
         fig.add_trace(
             go.Scattergl(
                 name=name,
                 x=freq_data["Freq"],
                 y=freq_data["Amplitude"],
-                customdata=freq_data.to_numpy(),
-                hovertemplate=hovertemplate,
+                hovertext=hf_hovertext,
                 mode="lines+markers",
                 line=dict(color="#1f77b4", width=2),
                 marker=dict(size=5),

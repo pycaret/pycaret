@@ -356,7 +356,29 @@ def setup(
         big_data_threshold: The number of data points above which hovering over
             certain plots can be disabled and/or renderer switched to a static
             renderer. This is useful when the time series being modeled has a lot
-            of data which can make notebooks slow to render.
+            of data which can make notebooks slow to render. Also note that setting
+            the `display_format` to a plotly-resampler figure ("plotly-dash" or
+            "plotly-widget") can circumvent these problems by performing dynamic data
+            aggregation.
+
+        resampler_kwargs: The keyword arguments that are fed to configure the
+            `plotly-resampler` visualizations (i.e., `display_format` "plotly-dash" or
+            "plotly-widget") which downsampler will be used; how many datapoints are
+            shown in the front-end. When the plotly-resampler figure is renderd via Dash
+            (by setting the `display_format` to "plotly-dash"), one can also use the
+            "show_dash" key within this dictionary to configure the show_dash method its
+            args.
+
+            example::
+
+                fig_kwargs = {
+                    ...,
+                    "resampler_kwargs":  {
+                        "default_n_shown_samples": 1000,
+                        "show_dash": {"mode": "inline", "port": 9012}
+                    }
+                }
+
 
     Returns:
         Global variables that can be changed using the ``set_config`` function.
