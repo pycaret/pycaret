@@ -1,3 +1,5 @@
+import logging
+
 import numpy as np  # type: ignore
 import pandas as pd  # type: ignore
 import pytest
@@ -17,6 +19,12 @@ from pycaret.utils.time_series import TSExogenousPresent
 @pytest.fixture(name="change_test_dir", autouse=True)
 def change_test_dir(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
+
+
+@pytest.fixture(name="disable_logging_info", autouse=True)
+def disable_logging_info(tmp_path, monkeypatch):
+    logger = logging.getLogger()
+    logger.setLevel(logging.WARNING)
 
 
 @pytest.fixture(scope="session", name="load_pos_data")
