@@ -412,6 +412,8 @@ def setup(
         * 'timeseries'
         * a custom CV generator object compatible with scikit-learn.
 
+        For ``groupkfold``, column name must be passed in ``fold_groups`` parameter.
+        Example: ``setup(fold_strategy="groupkfold", fold_groups="COLUMN_NAME")``
 
     fold: int, default = 10
         Number of folds to be used in cross validation. Must be at least 2. This is
