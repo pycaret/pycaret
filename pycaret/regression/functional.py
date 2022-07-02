@@ -90,7 +90,7 @@ def setup(
     verbose: bool = True,
     memory: Union[bool, str, Memory] = True,
     profile: bool = False,
-    profile_kwargs: Dict[str, Any] = None,
+    profile_kwargs: Optional[Dict[str, Any]] = None,
 ):
     """
     This function initializes the training environment and creates the transformation
@@ -619,6 +619,7 @@ def compare_models(
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
     experiment_custom_tags: Optional[Dict[str, Any]] = None,
+    engines: Optional[Dict[str, str]] = None,
     verbose: bool = True,
     parallel: Optional[ParallelBackend] = None,
 ):
@@ -709,6 +710,13 @@ def compare_models(
         if not) passed to the mlflow.set_tags to add new custom tags for the experiment.
 
 
+    engines: Optional[Dict[str, str]] = None
+        The execution engines to use for the models in the form of a dict
+        of `model_id: engine` - e.g. for Linear Regression ("lr", users can
+        switch between "sklearn" and "sklearnex" by specifying
+        `engines={"lr": "sklearnex"}`
+
+
     verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
 
@@ -746,9 +754,47 @@ def compare_models(
         fit_kwargs=fit_kwargs,
         groups=groups,
         experiment_custom_tags=experiment_custom_tags,
+        engines=engines,
         verbose=verbose,
         parallel=parallel,
     )
+
+
+@check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
+def get_allowed_engines(estimator: str) -> Optional[str]:
+    """Get all the allowed engines for the specified model
+    Parameters
+    ----------
+    estimator : str
+        Identifier for the model for which the engines should be retrieved,
+        e.g. "auto_arima"
+    Returns
+    -------
+    Optional[str]
+        The allowed engines for the model. If the model only supports the
+        default sktime engine, then it return `None`.
+    """
+
+    return _CURRENT_EXPERIMENT.get_allowed_engines(estimator=estimator)
+
+
+@check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
+def get_engine(estimator: str) -> Optional[str]:
+    """Gets the model engine currently set in the experiment for the specified
+    model.
+    Parameters
+    ----------
+    estimator : str
+        Identifier for the model for which the engine should be retrieved,
+        e.g. "auto_arima"
+    Returns
+    -------
+    Optional[str]
+        The engine for the model. If the model only supports the default sktime
+        engine, then it return `None`.
+    """
+
+    return _CURRENT_EXPERIMENT.get_engine(estimator=estimator)
 
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)
@@ -760,6 +806,7 @@ def create_model(
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
     experiment_custom_tags: Optional[Dict[str, Any]] = None,
+    engine: Optional[str] = None,
     verbose: bool = True,
     return_train_score: bool = False,
     **kwargs,
@@ -847,6 +894,12 @@ def create_model(
         if not) passed to the mlflow.set_tags to add new custom tags for the experiment.
 
 
+    engine: Optional[str] = None
+        The execution engine to use for the model, e.g. for Linear Regression ("lr"), users can
+        switch between "sklearn" and "sklearnex" by specifying
+        `engine="sklearnex"`.
+
+
     verbose: bool, default = True
         Score grid is not printed when verbose is set to False.
 
@@ -881,6 +934,7 @@ def create_model(
         fit_kwargs=fit_kwargs,
         groups=groups,
         experiment_custom_tags=experiment_custom_tags,
+        engine=engine,
         verbose=verbose,
         return_train_score=return_train_score,
         **kwargs,
@@ -2026,7 +2080,7 @@ def save_model(
 
 # not using check_if_global_is_not_none on purpose
 def load_model(
-    model_name,
+    model_name: str,
     platform: Optional[str] = None,
     authentication: Optional[Dict[str, str]] = None,
     verbose: bool = True,

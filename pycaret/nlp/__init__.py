@@ -4338,7 +4338,7 @@ def evaluate_model(model):
     )
 
 
-def save_model(model, model_name, verbose=True, **kwargs):
+def save_model(model, model_name: str, verbose: bool = True, **kwargs):
 
     """
     This function saves the trained model object into the current active
@@ -4420,7 +4420,7 @@ def save_model(model, model_name, verbose=True, **kwargs):
     return (model, model_name)
 
 
-def load_model(model_name, verbose=True):
+def load_model(model_name: str, verbose: bool = True):
 
     """
     This function loads a previously saved model.

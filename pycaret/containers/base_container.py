@@ -3,7 +3,7 @@
 # License: MIT
 
 import inspect
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 import pycaret.internal.utils
 
@@ -46,7 +46,7 @@ class BaseContainer:
         id: str,
         name: str,
         class_def: type,
-        args: Dict[str, Any] = None,
+        args: Optional[Dict[str, Any]] = None,
     ) -> None:
         if not args:
             args = {}

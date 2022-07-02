@@ -2430,7 +2430,7 @@ class _TabularExperiment(_PyCaretExperiment):
 
     def load_model(
         self,
-        model_name,
+        model_name: str,
         platform: Optional[str] = None,
         authentication: Optional[Dict[str, str]] = None,
         verbose: bool = True,
