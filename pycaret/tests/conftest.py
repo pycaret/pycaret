@@ -21,11 +21,9 @@ def change_test_dir(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
 
 
-@pytest.fixture(name="disable_logging_info", autouse=True)
+@pytest.fixture(caplog, name="disable_logging_info", autouse=True)
 def disable_logging_info(tmp_path, monkeypatch):
-    loggers = [logging.getLogger(name) for name in logging.root.manager.loggerDict]
-    for logger in loggers:
-        logger.setLevel(logging.WARNING)
+    caplog.setLevel(logging.ERROR)
 
 
 @pytest.fixture(scope="session", name="load_pos_data")
