@@ -9,7 +9,7 @@
 # to complete the process. Refer to the existing classes for examples.
 
 import logging
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 from packaging import version
@@ -33,6 +33,27 @@ from pycaret.internal.utils import (
     param_grid_to_lists,
 )
 from pycaret.utils._dependencies import _check_soft_dependencies
+
+# First one in the list is the default ----
+ALL_ALLOWED_ENGINES: Dict[str, List[str]] = {
+    "lr": ["sklearn", "sklearnex"],
+    "knn": ["sklearn", "sklearnex"],
+    "rbfsvm": ["sklearn", "sklearnex"],
+}
+
+
+def get_container_default_engines() -> Dict[str, str]:
+    """Get the default engines from all models
+    Returns
+    -------
+    Dict[str, str]
+        Default engines for all containers. If unspecified, it is not included
+        in the return dictionary.
+    """
+    default_engines = {}
+    for id, all_engines in ALL_ALLOWED_ENGINES.items():
+        default_engines[id] = all_engines[0]
+    return default_engines
 
 
 class ClassifierContainer(ModelContainer):
@@ -235,7 +256,18 @@ class LogisticRegressionClassifierContainer(ClassifierContainer):
         np.random.seed(experiment.seed)
         gpu_imported = False
 
-        from sklearn.linear_model import LogisticRegression
+        id = "lr"
+        self._set_engine_related_vars(
+            id=id, all_allowed_engines=ALL_ALLOWED_ENGINES, experiment=experiment
+        )
+
+        if self.engine == "sklearn":
+            from sklearn.linear_model import LogisticRegression
+        elif self.engine == "sklearnex":
+            if _check_soft_dependencies("sklearnex", extra=None, severity="warning"):
+                from sklearnex.linear_model import LogisticRegression
+            else:
+                from sklearn.linear_model import LogisticRegression
 
         if experiment.gpu_param == "force":
             from cuml.linear_model import LogisticRegression
@@ -268,7 +300,7 @@ class LogisticRegressionClassifierContainer(ClassifierContainer):
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
         super().__init__(
-            id="lr",
+            id=id,
             name="Logistic Regression",
             class_def=LogisticRegression,
             args=args,
@@ -285,7 +317,18 @@ class KNeighborsClassifierContainer(ClassifierContainer):
         np.random.seed(experiment.seed)
         gpu_imported = False
 
-        from sklearn.neighbors import KNeighborsClassifier
+        id = "knn"
+        self._set_engine_related_vars(
+            id=id, all_allowed_engines=ALL_ALLOWED_ENGINES, experiment=experiment
+        )
+
+        if self.engine == "sklearn":
+            from sklearn.neighbors import KNeighborsClassifier
+        elif self.engine == "sklearnex":
+            if _check_soft_dependencies("sklearnex", extra=None, severity="warning"):
+                from sklearnex.neighbors import KNeighborsClassifier
+            else:
+                from sklearn.neighbors import KNeighborsClassifier
 
         if experiment.gpu_param == "force":
             from cuml.neighbors import KNeighborsClassifier
@@ -317,7 +360,7 @@ class KNeighborsClassifierContainer(ClassifierContainer):
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
 
         super().__init__(
-            id="knn",
+            id=id,
             name="K Neighbors Classifier",
             class_def=KNeighborsClassifier,
             args=args,
@@ -530,7 +573,18 @@ class SVCClassifierContainer(ClassifierContainer):
         np.random.seed(experiment.seed)
         gpu_imported = False
 
-        from sklearn.svm import SVC
+        id = "rbfsvm"
+        self._set_engine_related_vars(
+            id=id, all_allowed_engines=ALL_ALLOWED_ENGINES, experiment=experiment
+        )
+
+        if self.engine == "sklearn":
+            from sklearn.svm import SVC
+        elif self.engine == "sklearnex":
+            if _check_soft_dependencies("sklearnex", extra=None, severity="warning"):
+                from sklearnex.svm import SVC
+            else:
+                from sklearn.svm import SVC
 
         if experiment.gpu_param == "force":
             from cuml.svm import SVC
@@ -566,7 +620,7 @@ class SVCClassifierContainer(ClassifierContainer):
             SVC = get_svc_classifier()
 
         super().__init__(
-            id="rbfsvm",
+            id=id,
             name="SVM - Radial Kernel",
             class_def=SVC,
             args=args,

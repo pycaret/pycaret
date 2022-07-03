@@ -11,6 +11,8 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
+from IPython.display import display as ipython_display
+from plotly_resampler import FigureResampler, FigureWidgetResampler
 from sklearn.base import clone
 from sktime.forecasting.base import BaseForecaster, ForecastingHorizon
 from sktime.forecasting.compose import ForecastingPipeline, TransformedTargetForecaster
@@ -1541,7 +1543,28 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             big_data_threshold: The number of data points above which hovering over
                 certain plots can be disabled and/or renderer switched to a static
                 renderer. This is useful when the time series being modeled has a lot
-                of data which can make notebooks slow to render.
+                of data which can make notebooks slow to render. Also note that setting
+                the `display_format` to a plotly-resampler figure ("plotly-dash" or
+                "plotly-widget") can circumvent these problems by performing dynamic
+                data aggregation.
+
+            resampler_kwargs: The keyword arguments that are fed to configure the
+                `plotly-resampler` visualizations (i.e., `display_format` "plotly-dash"
+                or "plotly-widget") which downsampler will be used; how many datapoints
+                are shown in the front-end. When the plotly-resampler figure is renderd
+                via Dash (by setting the `display_format` to "plotly-dash"), one can
+                also use the "show_dash" key within this dictionary to configure the
+                show_dash method its args.
+
+            example::
+
+                fig_kwargs = {
+                    ...,
+                    "resampler_kwargs":  {
+                        "default_n_shown_samples": 1000,
+                        "show_dash": {"mode": "inline", "port": 9012}
+                    }
+                }
 
         Returns:
             Global variables that can be changed using the ``set_config`` function.
@@ -3059,6 +3082,21 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         return data, data_label
 
+    @staticmethod
+    def plot_model_check_display_format_(display_format: Optional[str]):
+        """Checks if the display format is in the allowed list.
+
+        display_format: Optional[str], default = None
+            The to-be-used displaying method
+
+        """
+        # Note that we need to override this method from the `_TabularExperiment` class
+        # As we have way more display formats available for time-series data
+        plot_formats = [None, "streamlit", "plotly-dash", "plotly-widget"]
+
+        if display_format not in plot_formats:
+            raise ValueError(f"display_format can only be one of {plot_formats}.")
+
     def _plot_model(
         self,
         estimator: Optional[Any] = None,
@@ -3099,6 +3137,8 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         data_kwargs.setdefault("seasonal_period", self.primary_sp_to_use)
 
         fig_kwargs = fig_kwargs or {}
+        resampler_kwargs = fig_kwargs.get("resampler_kwargs", {})
+        show_dash_kwargs = resampler_kwargs.pop("show_dash", {})
 
         return_pred_int = False
         return_obj = []
@@ -3330,7 +3370,23 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             elif system:
                 if display_format == "streamlit":
                     st.write(fig)
-                else:
+                elif display_format == "plotly-widget":
+                    fig.update_layout(autosize=True)
+                    ipython_display(
+                        FigureWidgetResampler(
+                            fig,
+                            **resampler_kwargs,
+                            convert_traces_kwargs=dict(limit_to_views=True),
+                        )
+                    )
+                elif display_format == "plotly-dash":
+                    fig.update_layout(autosize=True)
+                    FigureResampler(
+                        fig,
+                        **resampler_kwargs,
+                        convert_traces_kwargs=dict(limit_to_views=True),
+                    ).show_dash(**show_dash_kwargs)
+                else:  # just a plain plotly-figure
                     try:
                         big_data_threshold = _resolve_dict_keys(
                             dict_=fig_kwargs,
@@ -3359,11 +3415,18 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                             "This renderer may need to be installed manually by users.\n"
                             "Alternately:\n"
                             "Option 1: "
+                            "Users can increase the scalability of the visualization "
+                            "tool by either using the plotly-resampler functionality "
+                            "to render the data, this can be achieved by setting the "
+                            "`display_format` argument of the `plot_model` method to "
+                            "either 'plotly-widget' or 'plotly-dash'. For more info, "
+                            "see the display format docs of this method."
+                            "Option 2: "
                             "Users can increase `big_data_threshold` in either `setup` "
                             "(globally) or `plot_model` (plot specific). Examples.\n"
                             "\t>>> setup(..., fig_kwargs={'big_data_threshold': 1000})\n"
                             "\t>>> plot_model(..., fig_kwargs={'big_data_threshold': 1000})\n"
-                            "Option 2: "
+                            "Option 3: "
                             "Users can specify any plotly renderer directly in either `setup` "
                             "(globally) or `plot_model` (plot specific). Examples.\n"
                             "\t>>> setup(..., fig_kwargs={'renderer': 'notebook'})\n"
@@ -3462,9 +3525,26 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
 
         display_format: str, default = None
-            To display plots in Streamlit (https://www.streamlit.io/), set this to 'streamlit'.
-            Currently, not all plots are supported.
+            Display format of the plot. Must be one of  [None, 'streamlit',
+            'plotly-dash', 'plotly-widget'], if None, it will render the plot as a plain
+            plotly figure.
 
+            The 'plotly-dash' and 'plotly-widget' formats will render the figure via
+            plotly-resampler (https://github.com/predict-idlab/plotly-resampler)
+            figures. These plots perform dynamic aggregation of the data based on the
+            front-end graph view. This approach is especially useful when dealing with
+            large data, as it will retain snappy, interactive performance.
+            * 'plotly-dash' uses a dash-app to realize this dynamic aggregation. The
+               dash app requires a network port, and can be configured with various
+               modes more information can be found at the show_dash documentation.
+               (https://predict-idlab.github.io/plotly-resampler/figure_resampler.html#plotly_resampler.figure_resampler.FigureResampler.show_dash)
+            * 'plotly-widget' uses a plotly FigureWidget to realize this dynamic
+              aggregation, and should work in IPython based environments (given that the
+              external widgets are supported and the jupyterlab-plotly extension is
+              installed).
+
+            To display plots in Streamlit (https://www.streamlit.io/), set this to
+            'streamlit'.
 
         data_kwargs: dict, default = None
             Dictionary of arguments passed to the data for plotting.
@@ -3589,6 +3669,27 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             The setting to be used for the plot. Overrides any global setting
             passed during setup. Pass these as key-value pairs. For available
             keys, refer to the `setup` documentation.
+
+            Time-series plots support more display_formats, as a result the fig-kwargs
+            can also contain the `resampler_kwargs` key and its corresponding dict.
+            These are additional keyword arguments that are fed to the display function.
+            This is mainly used for configuring `plotly-resampler` visualizations
+            (i.e., `display_format` "plotly-dash" or "plotly-widget") which downsampler
+            will be used; how many datapoints are shown in the front-end.
+
+            When the plotly-resampler figure is renderd via Dash (by setting the
+            `display_format` to "plotly-dash"), one can also use the
+            "show_dash" key within this dictionary to configure the show_dash args.
+
+            example::
+
+                fig_kwargs = {
+                    "width": None,
+                    "resampler_kwargs":  {
+                        "default_n_shown_samples": 1000,
+                        "show_dash": {"mode": "inline", "port": 9012}
+                    }
+                }
 
 
         save: string or bool, default = False
@@ -4194,7 +4295,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
     def load_model(
         self,
-        model_name,
+        model_name: str,
         platform: Optional[str] = None,
         authentication: Optional[Dict[str, str]] = None,
         verbose: bool = True,

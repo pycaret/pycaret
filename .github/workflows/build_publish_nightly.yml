@@ -20,7 +20,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        python -m pip install --user --upgrade setuptools wheel requests
+        python -m pip install --user --upgrade setuptools wheel requests numpy
     - name: Get check_latest_commit_for_nightly.py
       run: |
         curl "https://raw.githubusercontent.com/$GITHUB_REPOSITORY/${GITHUB_REF##*/}/.github/CI/check_latest_commit_for_nightly.py" --output check_latest_commit_for_nightly.py --silent

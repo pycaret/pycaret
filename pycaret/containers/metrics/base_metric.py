@@ -61,7 +61,7 @@ class MetricContainer(BaseContainer):
         name: str,
         score_func: type,
         scorer: Optional[Union[str, _BaseScorer]] = None,
-        args: Dict[str, Any] = None,
+        args: Optional[Dict[str, Any]] = None,
         display_name: Optional[str] = None,
         greater_is_better: bool = True,
         is_custom: bool = False,

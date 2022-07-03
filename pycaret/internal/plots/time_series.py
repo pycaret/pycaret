@@ -342,36 +342,42 @@ def plot_cv(
 
             y_axis_label = str(num_window)
             [
-                fig.add_scattergl(
-                    x=(time_stamps[i], time_stamps[i + 1]),
-                    y=(y_axis_label, y_axis_label),
-                    mode="lines+markers",
-                    line_color="#C0C0C0",
-                    name="Unchanged",
-                    hoverinfo="skip",
+                fig.add_trace(
+                    go.Scattergl(
+                        x=(time_stamps[i], time_stamps[i + 1]),
+                        y=(y_axis_label, y_axis_label),
+                        mode="lines+markers",
+                        line_color="#C0C0C0",
+                        name="Unchanged",
+                        hoverinfo="skip",
+                    ),
                 )
                 for i in range(len(data) - 1)
             ]
             [
-                fig.add_scattergl(
-                    x=(time_stamps[i], time_stamps[i + 1]),
-                    y=(y_axis_label, y_axis_label),
-                    mode="lines+markers",
-                    line_color="#1f77b4",
-                    name="Train",
-                    showlegend=False,
-                    hoverinfo="skip",
+                fig.add_trace(
+                    go.Scattergl(
+                        x=(time_stamps[i], time_stamps[i + 1]),
+                        y=(y_axis_label, y_axis_label),
+                        mode="lines+markers",
+                        line_color="#1f77b4",
+                        name="Train",
+                        showlegend=False,
+                        hoverinfo="skip",
+                    ),
                 )
                 for i in train_windows[num_window][:-1]
             ]
             [
-                fig.add_scattergl(
-                    x=(time_stamps[i], time_stamps[i + 1]),
-                    y=(y_axis_label, y_axis_label),
-                    mode="lines+markers",
-                    line_color="#DE970B",
-                    name="ForecastHorizon",
-                    hoverinfo="skip",
+                fig.add_trace(
+                    go.Scattergl(
+                        x=(time_stamps[i], time_stamps[i + 1]),
+                        y=(y_axis_label, y_axis_label),
+                        mode="lines+markers",
+                        line_color="#DE970B",
+                        name="ForecastHorizon",
+                        hoverinfo="skip",
+                    ),
                 )
                 for i in test_windows[num_window][:-1]
             ]
@@ -761,7 +767,7 @@ def plot_predictions_with_confidence(
         if isinstance(upper_interval.index, pd.PeriodIndex)
         else upper_interval.index
     )
-    upper_bound = go.Scatter(
+    upper_bound = go.Scattergl(
         name=f"Prediction Interval | {model_label}",  # Changed since we use only 1 legend
         x=x,
         y=upper_interval,
@@ -778,7 +784,7 @@ def plot_predictions_with_confidence(
         if isinstance(preds.index, pd.PeriodIndex)
         else preds.index
     )
-    mean = go.Scatter(
+    mean = go.Scattergl(
         name=f"Forecast | {model_label}",
         x=x,
         y=preds,
@@ -793,7 +799,7 @@ def plot_predictions_with_confidence(
         if isinstance(data.index, pd.PeriodIndex)
         else data.index
     )
-    original = go.Scatter(
+    original = go.Scattergl(
         name="Original",
         x=x,
         y=data,
@@ -807,7 +813,7 @@ def plot_predictions_with_confidence(
         if isinstance(lower_interval.index, pd.PeriodIndex)
         else lower_interval.index
     )
-    lower_bound = go.Scatter(
+    lower_bound = go.Scattergl(
         name="Lower Interval",
         x=x,
         y=lower_interval,
