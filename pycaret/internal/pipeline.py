@@ -22,6 +22,7 @@ from sklearn.utils.metaestimators import if_delegate_has_method
 from sklearn.utils.validation import check_memory
 
 from pycaret.internal.utils import get_all_object_vars_and_properties, variable_return
+from pycaret.utils import __version__
 
 
 def _fit_one(transformer, X=None, y=None, message=None, **fit_params):
@@ -86,6 +87,53 @@ class Pipeline(imblearn.pipeline.Pipeline):
     def __getattr__(self, name: str):
         # override getattr to allow grabbing of final estimator attrs
         return getattr(self._final_estimator, name)
+
+    def __getstate__(self):
+        try:
+            state = super().__getstate__()
+            state.update(self.__dict__)
+        except AttributeError:
+            state = self.__dict__.copy()
+
+        return dict(state.items(), _pycaret_versions=self._pycaret_versions)
+
+    def __setstate__(self, state):
+        pickle_versions = state.get("_pycaret_versions", {})
+        if pickle_versions != self._pycaret_versions:
+            import warnings
+
+            warnings.warn(
+                "Version mismatch:\ncurrent: {}\npickle: {}".format(
+                    self._pycaret_versions, pickle_versions
+                )
+            )
+        try:
+            super().__setstate__(state)
+        except AttributeError:
+            pass
+
+        self.__dict__.update(state)
+
+    @property
+    def _pycaret_versions(self):
+        from importlib import import_module
+
+        versions = {"pycaret": __version__}
+        ml_modules = [
+            ("sklearn", "sklearn"),
+            ("imblearn", "imblearn"),
+            ("pyod", "pyod.version"),
+            ("category-encoders", "category_encoders"),
+            ("lightgbm", "lightgbm"),
+        ]
+        for name, import_name in ml_modules:
+            try:
+                module = import_module(import_name)
+                versions[name] = module.__version__
+            except (AttributeError, ImportError, OSError):
+                pass
+
+        return versions
 
     @property
     def feature_names_in_(self):
