@@ -22,7 +22,7 @@ def change_test_dir(tmp_path, monkeypatch):
 
 @pytest.fixture(name="disable_logging_info", autouse=True)
 def disable_logging_info(caplog):
-    caplog.setLevel(logging.ERROR)
+    caplog.set_level(logging.ERROR)
 
 
 @pytest.fixture(scope="session", name="load_pos_data")
