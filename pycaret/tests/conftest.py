@@ -3,7 +3,6 @@ import logging
 import numpy as np  # type: ignore
 import pandas as pd  # type: ignore
 import pytest
-from mlflow.tracking.client import MlflowClient
 from time_series_test_utils import _BLEND_TEST_MODELS
 
 from pycaret.containers.models.time_series import get_all_model_containers
@@ -22,7 +21,7 @@ def change_test_dir(tmp_path, monkeypatch):
 
 
 @pytest.fixture(caplog, name="disable_logging_info", autouse=True)
-def disable_logging_info(tmp_path, monkeypatch):
+def disable_logging_info(caplog):
     caplog.setLevel(logging.ERROR)
 
 
