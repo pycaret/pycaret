@@ -159,7 +159,18 @@ class TransformerWrapper(BaseEstimator):
         """Convert to df and set correct column names and order."""
         # Convert to pandas and assign proper column names
         if not isinstance(out, pd.DataFrame):
-            out = to_df(out, index=X.index, columns=self._name_cols(out, X))
+            if hasattr(self.transformer, "get_feature_names"):
+                columns = self.transformer.get_feature_names()
+            elif hasattr(self.transformer, "get_feature_names_out"):
+                try:  # Fails for some estimators in Python 3.7
+                    # TODO: Remove try after dropping support of Python 3.7
+                    columns = self.transformer.get_feature_names_out()
+                except AttributeError:
+                    columns = self._name_cols(out, X)
+            else:
+                columns = self._name_cols(out, X)
+
+            out = to_df(out, index=X.index, columns=columns)
 
         # Reorder columns if only a subset was used
         if len(self._include) != X.shape[1]:
@@ -168,9 +179,14 @@ class TransformerWrapper(BaseEstimator):
             return out
 
     def fit(self, X=None, y=None, **fit_params):
-        # Save the incoming feature names (if pandas objects)
-        if hasattr(X, "columns") and hasattr(y, "name"):
-            self._feature_names_in = list(X.columns) + [y.name]
+        # Save the incoming feature names
+        feature_names_in = []
+        if hasattr(X, "columns"):
+            feature_names_in += list(X.columns)
+        if hasattr(y, "name"):
+            feature_names_in += [y.name]
+        if feature_names_in:
+            self._feature_names_in = feature_names_in
 
         args = []
         transformer_params = signature(self.transformer.fit).parameters
@@ -283,7 +299,7 @@ class DropImputer(BaseEstimator):
         if y is not None:
             y = y[y.index.isin(X.index)]
 
-        return X, y
+        return variable_return(X, y)
 
 
 class EmbedTextFeatures(BaseEstimator):

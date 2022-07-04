@@ -4,6 +4,7 @@ from typing import List
 
 import pandas as pd  # type: ignore
 import pytest
+from time_series_test_utils import _ALL_PLOTS
 
 from pycaret.internal.plots.utils.time_series import (
     ALLOWED_PLOT_DATA_TYPES,
@@ -11,8 +12,6 @@ from pycaret.internal.plots.utils.time_series import (
     _get_data_types_to_plot,
     _reformat_dataframes_for_plots,
 )
-
-from .time_series_test_utils import _ALL_PLOTS
 
 pytestmark = pytest.mark.filterwarnings("ignore::UserWarning")
 

@@ -5,10 +5,9 @@ import numpy as np
 import pandas as pd
 import pytest
 from sktime.forecasting.compose import ForecastingPipeline
+from time_series_test_utils import _ALL_METRICS
 
 from pycaret.time_series import TSForecastingExperiment
-
-from .time_series_test_utils import _ALL_METRICS
 
 ##########################
 #### Tests Start Here ####

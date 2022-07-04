@@ -19,12 +19,6 @@ def juice_dataframe():
     return pycaret.datasets.get_data("juice")
 
 
-@pytest.fixture(scope="module")
-def tracking_api():
-    client = MlflowClient()
-    return client
-
-
 @pytest.mark.parametrize("return_train_score", [True, False])
 def test_classification(juice_dataframe, return_train_score):
 
@@ -192,9 +186,7 @@ class TestClassificationExperimentCustomTags:
                 experiment_custom_tags=custom_tag,
             )
 
-    def test_classification_models_with_experiment_custom_tags(
-        self, juice_dataframe, tracking_api
-    ):
+    def test_classification_models_with_experiment_custom_tags(self, juice_dataframe):
         # init setup
         experiment_name = uuid.uuid4().hex
         _ = pycaret.classification.setup(
@@ -213,7 +205,9 @@ class TestClassificationExperimentCustomTags:
         _ = pycaret.classification.compare_models(
             errors="raise", n_select=100, experiment_custom_tags={"pytest": "testing"}
         )[:3]
+
         # get experiment data
+        tracking_api = MlflowClient()
         experiment = [
             e for e in tracking_api.list_experiments() if e.name == experiment_name
         ][0]

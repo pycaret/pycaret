@@ -232,7 +232,8 @@ class _PyCaretExperiment:
             experiment = client.get_experiment(exp_id)
             if experiment is None:
                 raise ValueError(
-                    "No active run found. Check logging parameter in setup or to get logs for inactive run pass experiment_name."
+                    "No active run found. Check logging parameter in setup "
+                    "or to get logs for inactive run pass experiment_name."
                 )
 
             exp_name_log_ = experiment.name
@@ -241,7 +242,8 @@ class _PyCaretExperiment:
             experiment = client.get_experiment_by_name(exp_name_log_)
             if experiment is None:
                 raise ValueError(
-                    "No active run found. Check logging parameter in setup or to get logs for inactive run pass experiment_name."
+                    "No active run found. Check logging parameter in setup "
+                    "or to get logs for inactive run pass experiment_name."
                 )
 
             exp_id = client.get_experiment_by_name(exp_name_log_).experiment_id
@@ -623,10 +625,7 @@ class _PyCaretExperiment:
     def X_test_transformed(self):
         """Transformed feature set of the test set."""
         if self._ml_usecase != MLUsecase.TIME_SERIES:
-            if self.target_param:
-                return self.pipeline.transform(self.X_test, self.y_test)[0]
-            else:
-                return self.pipeline.transform(self.X_test)
+            return self.pipeline.transform(self.X_test)
         else:
             # In time series, the order of arguments and returns may be reversed.
             # When transforming the test set, we can and should use all data before that
@@ -656,7 +655,7 @@ class _PyCaretExperiment:
     def y_test_transformed(self):
         """Transformed target column of the test set."""
         if self._ml_usecase != MLUsecase.TIME_SERIES:
-            return self.pipeline.transform(self.X_test, self.y_test)[1]
+            return self.pipeline.transform(y=self.y_test)
         else:
             # In time series, the order of arguments and returns may be reversed.
             # When transforming the test set, we can and should use all data before that

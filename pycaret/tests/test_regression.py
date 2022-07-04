@@ -6,7 +6,7 @@ sys.path.insert(0, os.path.abspath(".."))
 
 import pandas as pd
 import pytest
-from mlflow.tracking.client import MlflowClient
+from mlflow.tracking import MlflowClient
 
 import pycaret.datasets
 import pycaret.regression
@@ -15,12 +15,6 @@ import pycaret.regression
 @pytest.fixture(scope="module")
 def boston_dataframe():
     return pycaret.datasets.get_data("boston")
-
-
-@pytest.fixture(scope="module")
-def tracking_api():
-    client = MlflowClient()
-    return client
 
 
 @pytest.mark.parametrize("return_train_score", [True, False])
@@ -186,9 +180,7 @@ class TestRegressionExperimentCustomTags:
                 experiment_custom_tags=custom_tag,
             )
 
-    def test_regression_models_with_experiment_custom_tags(
-        self, boston_dataframe, tracking_api
-    ):
+    def test_regression_models_with_experiment_custom_tags(self, boston_dataframe):
         # init setup
         experiment_name = uuid.uuid4().hex
         _ = pycaret.regression.setup(
@@ -203,7 +195,9 @@ class TestRegressionExperimentCustomTags:
         _ = pycaret.regression.compare_models(
             n_select=100, experiment_custom_tags={"pytest": "testing"}
         )[:2]
+
         # get experiment data
+        tracking_api = MlflowClient()
         experiment = [
             e for e in tracking_api.list_experiments() if e.name == experiment_name
         ][0]

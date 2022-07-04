@@ -6,11 +6,7 @@ from random import uniform
 import numpy as np  # type: ignore
 import pandas as pd  # type: ignore
 import pytest
-
-from pycaret.internal.ensemble import _ENSEMBLE_METHODS
-from pycaret.time_series import TSForecastingExperiment
-
-from .time_series_test_utils import (
+from time_series_test_utils import (
     _ALL_PLOTS_DATA,
     _ALL_PLOTS_ESTIMATOR,
     _ALL_PLOTS_ESTIMATOR_NOT_DATA,
@@ -18,6 +14,9 @@ from .time_series_test_utils import (
     _return_data_with_without_period_index,
     _return_model_names_for_plots_stats,
 )
+
+from pycaret.internal.ensemble import _ENSEMBLE_METHODS
+from pycaret.time_series import TSForecastingExperiment
 
 pytestmark = pytest.mark.filterwarnings("ignore::UserWarning")
 os.environ["PYCARET_TESTING"] = "1"

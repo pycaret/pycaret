@@ -2770,7 +2770,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         estimator,
         fit_kwargs: Optional[dict] = None,
         groups: Optional[Union[str, Any]] = None,
-        model_only: bool = True,
+        model_only: bool = False,
         experiment_custom_tags: Optional[Dict[str, Any]] = None,
     ) -> Any:
 
@@ -2804,9 +2804,8 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             the column name in the dataset containing group labels.
 
 
-        model_only: bool, default = True
-            When set to False, only model object is re-trained and all the
-            transformations in Pipeline are ignored.
+        model_only : bool, default = False
+            Whether to return the complete fitted pipeline or only the fitted model.
 
 
         experiment_custom_tags: dict, default = None
@@ -2815,7 +2814,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
 
 
         Returns:
-            Trained Model
+            Trained pipeline or model object fitted on complete dataset.
 
         """
 

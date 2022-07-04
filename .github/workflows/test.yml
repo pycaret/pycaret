@@ -70,8 +70,7 @@ jobs:
           rm pycaret/tests/test_time_series_plots.py
           rm pycaret/tests/test_time_series_utils_plots.py
       - name: Test with pytest
-        run: |
-          pytest --durations=0 -o log_cli=true
+        run: pytest
 
   test_windows:
     runs-on: windows-latest
@@ -206,8 +205,7 @@ jobs:
         run: |
           find pycaret/tests -type f -not -name '__init__.py' -not -name 'test_classification_plots.py' -not -name 'test_regression_plots.py' -not -name 'conftest.py' -not -name 'time_series_test_utils.py' -not -name 'test_time_series_plots.py' -not -name 'test_time_series_utils_plots.py' -delete
       - name: Test with pytest
-        run: |
-          pytest --durations=0 -o log_cli=true
+        run: pytest
 
   test_ts_tune_random:
     runs-on: ubuntu-latest
@@ -276,5 +274,4 @@ jobs:
         run: |
           find pycaret/tests -type f -not -name '__init__.py' -not -name 'conftest.py' -not -name 'time_series_test_utils.py' -not -name 'test_time_series_tune_grid.py' -delete
       - name: Test with pytest
-        run: |
-          pytest --durations=0 -o log_cli=true
+        run: pytest

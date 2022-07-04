@@ -83,6 +83,10 @@ class Pipeline(imblearn.pipeline.Pipeline):
         self._memory_fit = memory.cache(_fit_transform_one)
         self._memory_transform = memory.cache(_transform_one)
 
+    def __getattr__(self, name: str):
+        # override getattr to allow grabbing of final estimator attrs
+        return getattr(self._final_estimator, name)
+
     @property
     def feature_names_in_(self):
         return self._feature_names_in
@@ -119,7 +123,7 @@ class Pipeline(imblearn.pipeline.Pipeline):
                     continue
 
             if hasattr(transformer, "transform"):
-                if getattr(self._memory_fit, "location", "") is None:
+                if self._memory_fit.__class__.__name__ == "NotMemorizedFunc":
                     # Don't clone when caching is disabled to
                     # preserve backward compatibility
                     cloned = transformer
@@ -147,6 +151,7 @@ class Pipeline(imblearn.pipeline.Pipeline):
     def fit(self, X=None, y=None, **fit_params):
         fit_params_steps = self._check_fit_params(**fit_params)
         X, y, _ = self._fit(X, y, **fit_params_steps)
+
         with _print_elapsed_time("Pipeline", self._log_message(len(self.steps) - 1)):
             if self._final_estimator != "passthrough":
                 fit_params_last_step = fit_params_steps[self.steps[-1][0]]
@@ -216,10 +221,6 @@ class Pipeline(imblearn.pipeline.Pipeline):
             X, y = self._memory_transform(transformer, X, y)
 
         return self.steps[-1][-1].score(X, y, sample_weight=sample_weight)
-
-    def __getattr__(self, name: str):
-        # override getattr to allow grabbing of final estimator attrs
-        return getattr(self._final_estimator, name)
 
     def _clear_final_estimator_fit_vars(self, all: bool = False):
         vars_to_remove = []

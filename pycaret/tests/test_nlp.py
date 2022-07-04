@@ -7,7 +7,7 @@ import uuid
 
 import pandas as pd
 import pytest
-from mlflow.tracking.client import MlflowClient
+from mlflow.tracking import MlflowClient
 
 import pycaret.datasets
 import pycaret.nlp
@@ -20,12 +20,6 @@ def kiva_dataframe():
     data = data.head(1000)
     assert isinstance(data, pd.DataFrame)
     return pycaret.datasets.get_data("kiva")
-
-
-@pytest.fixture(scope="module")
-def tracking_api():
-    client = MlflowClient()
-    return client
 
 
 def test_nlp(kiva_dataframe):
@@ -126,7 +120,7 @@ class TestNLPExperimentCustomTags:
                 experiment_custom_tags=custom_tag,
             )
 
-    def test_nlp_setup_with_experiment_custom_tags(self, kiva_dataframe, tracking_api):
+    def test_nlp_setup_with_experiment_custom_tags(self, kiva_dataframe):
         experiment_name = uuid.uuid4().hex
         # init setup
         _ = pycaret.nlp.setup(
@@ -138,7 +132,9 @@ class TestNLPExperimentCustomTags:
             experiment_name=experiment_name,
             experiment_custom_tags={"pytest": "testing"},
         )
+
         # get experiment data
+        tracking_api = MlflowClient()
         experiment = [
             e for e in tracking_api.list_experiments() if e.name == experiment_name
         ][0]
@@ -154,9 +150,7 @@ class TestNLPExperimentCustomTags:
             "pytest"
         )
 
-    def test_nlp_create_models_with_experiment_custom_tags(
-        self, kiva_dataframe, tracking_api
-    ):
+    def test_nlp_create_models_with_experiment_custom_tags(self, kiva_dataframe):
         experiment_name = uuid.uuid4().hex
         # init setup
         _ = pycaret.nlp.setup(
@@ -170,7 +164,9 @@ class TestNLPExperimentCustomTags:
         _ = pycaret.nlp.create_model(
             "lda", experiment_custom_tags={"pytest": "testing"}
         )
+
         # get experiment data
+        tracking_api = MlflowClient()
         experiment = [
             e for e in tracking_api.list_experiments() if e.name == experiment_name
         ][0]

@@ -1,15 +1,14 @@
 import pytest
-
-from pycaret.time_series import TSForecastingExperiment
-from pycaret.utils.time_series.exceptions import MissingDataError
-
-from .time_series_test_utils import (
+from time_series_test_utils import (
     _ALL_DATA_TYPES,
     _ALL_STATS_TESTS,
     _ALL_STATS_TESTS_MISSING_DATA,
     _return_data_big_small,
     _return_model_names_for_plots_stats,
 )
+
+from pycaret.time_series import TSForecastingExperiment
+from pycaret.utils.time_series.exceptions import MissingDataError
 
 ##############################
 #### Functions Start Here ####

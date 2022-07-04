@@ -15,7 +15,8 @@ import pandas as pd  # type ignore
 import pandas.io.formats.style
 from sklearn.base import clone  # type: ignore
 from sklearn.compose import TransformedTargetRegressor  # type: ignore
-from sklearn.pipeline import Pipeline
+from sklearn.pipeline import Pipeline as skPipeline
+from sklearn.utils.validation import check_is_fitted as check_fitted
 
 import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
@@ -41,6 +42,7 @@ from pycaret.internal.meta_estimators import (
 )
 from pycaret.internal.parallel.parallel_backend import ParallelBackend
 from pycaret.internal.pipeline import (
+    Pipeline,
     estimator_pipeline,
     get_pipeline_estimator_label,
     get_pipeline_fit_kwargs,
@@ -129,6 +131,34 @@ class _SupervisedExperiment(_TabularExperiment):
 
     def _is_unsupervised(self) -> bool:
         return False
+
+    def _get_final_model_from_pipeline(
+        self,
+        pipeline: Pipeline,
+        check_is_fitted: bool = False,
+    ) -> Any:
+        """Extracts and returns the final model from the pipeline.
+
+        Parameters
+        ----------
+        pipeline : Pipeline
+            The pipeline with a final model
+
+        check_is_fitted : bool, default=False
+            If True, will check if final model is fitted and raise an exception
+            if it is not, by default False.
+
+        Returns
+        -------
+        Model
+            The final model in the pipeline.
+
+        """
+        model = pipeline_final._final_estimator
+        if check_is_fitted:
+            check_fitted(model)
+
+        return model
 
     def _choose_better(
         self,
@@ -980,6 +1010,7 @@ class _SupervisedExperiment(_TabularExperiment):
         predict,
         system,
         display: CommonDisplay,
+        model_only: bool = True,
         return_train_score: bool = False,
     ):
         with estimator_pipeline(self.pipeline, model) as pipeline_with_model:
@@ -1025,6 +1056,9 @@ class _SupervisedExperiment(_TabularExperiment):
                     display.display(model_results)
 
                 self.logger.info(f"display_container: {len(self.display_container)}")
+
+            if not model_only:
+                return pipeline_with_model, model_fit_time
 
         return model, model_fit_time
 
@@ -1241,6 +1275,7 @@ class _SupervisedExperiment(_TabularExperiment):
         y_train_data: Optional[pd.DataFrame] = None,  # added in pycaret==2.2.0
         metrics=None,
         display: Optional[CommonDisplay] = None,  # added in pycaret==2.2.0
+        model_only: bool = True,
         return_train_score: bool = False,
         **kwargs,
     ) -> Any:
@@ -1382,14 +1417,14 @@ class _SupervisedExperiment(_TabularExperiment):
         # cross validation setup starts here
         if self._ml_usecase == MLUsecase.TIME_SERIES:
             cv = self.get_fold_generator(fold=fold)
-        else:
-            cv = self._get_cv_splitter(fold)
 
-        if self._ml_usecase == MLUsecase.TIME_SERIES:
-            # Add forecast horizon if use case is Time Series
+            # Add forecast horizon
             fit_kwargs = self.update_fit_kwargs_with_fh_from_cv(
                 fit_kwargs=fit_kwargs, cv=cv
             )
+
+        else:
+            cv = self._get_cv_splitter(fold)
 
         self.logger.info("Declaring metric variables")
 
@@ -1460,6 +1495,7 @@ class _SupervisedExperiment(_TabularExperiment):
                 predict,
                 system,
                 display,
+                model_only=model_only,
                 return_train_score=return_train_score,
             )
 
@@ -4594,14 +4630,15 @@ class _SupervisedExperiment(_TabularExperiment):
         estimator,
         fit_kwargs: Optional[dict] = None,
         groups: Optional[Union[str, Any]] = None,
-        model_only: bool = True,
+        model_only: bool = False,
         experiment_custom_tags: Optional[Dict[str, Any]] = None,
     ) -> Any:  # added in pycaret==2.2.0
 
         """
-        This function fits the estimator onto the complete dataset passed during the
-        setup() stage. The purpose of this function is to prepare for final model
-        deployment after experimentation.
+        This function fits the complete pipeline with the estimator on the
+        complete dataset passed during the setup() stage. The purpose of
+        this function is to prepare for final model deployment after
+        experimentation.
 
         Example
         -------
@@ -4627,15 +4664,16 @@ class _SupervisedExperiment(_TabularExperiment):
             Only used if a group based cross-validation generator is used (eg. GroupKFold).
             If None, will use the value set in fold_groups parameter in setup().
 
-        model_only : bool, default = True
-            When set to True, only trained model object is saved and all the
-            transformations are ignored.
+        model_only : bool, default = False
+            Whether to return the complete fitted pipeline or only the fitted model.
 
+        experiment_custom_tags: dict, default = None
+            Dictionary of tag_name: String -> value: (String, but will be string-ified if
+            not) passed to the mlflow.set_tags to add new custom tags for the experiment.
 
         Returns
         -------
-        model
-            Trained model object fitted on complete dataset.
+            Trained pipeline or model object fitted on complete dataset.
 
         Warnings
         --------
@@ -4645,7 +4683,6 @@ class _SupervisedExperiment(_TabularExperiment):
         Once finalize_model() is used, the model is considered ready for deployment and
         should be used on new unseen dataset only.
 
-
         """
         self._check_setup_ran()
 
@@ -4654,58 +4691,55 @@ class _SupervisedExperiment(_TabularExperiment):
         self.logger.info("Initializing finalize_model()")
         self.logger.info(f"finalize_model({function_params_str})")
 
-        # run_time
         runtime_start = time.time()
-
-        if not fit_kwargs:
-            fit_kwargs = {}
-
-        groups = self._get_groups(groups, data=self.X)
 
         display = CommonDisplay(
             verbose=False,
             html_param=self.html_param,
         )
-        return_train_score = False
 
         np.random.seed(self.seed)
 
         self.logger.info(f"Finalizing {estimator}")
-        model_final, model_fit_time = self._create_model(
+        pipeline_final, model_fit_time = self._create_model(
             estimator=estimator,
+            cross_validation=False,
             verbose=False,
             system=False,
             X_train_data=self.X,
             y_train_data=self.y,
-            fit_kwargs=fit_kwargs,
-            groups=groups,
+            fit_kwargs=fit_kwargs or {},
+            predict=False,
+            groups=self._get_groups(groups, data=self.X),
             add_to_model_list=False,
-            return_train_score=return_train_score,
-            # TODO fix this, finalize should work without CV
-            cross_validation=True,
+            model_only=False,
         )
-        model_results = self.pull(pop=True)
 
-        # end runtime
-        runtime_end = time.time()
-        runtime = np.array(runtime_end - runtime_start).round(2)
+        if self._ml_usecase != MLUsecase.TIME_SERIES:
+            self.predict_model(pipeline_final, data=self.test, verbose=False)
+        else:
+            self.predict_model(pipeline_final, X=self.X_test, verbose=False)
+
+        model_results = self.pull(pop=True).drop("Model", axis=1)
+        model_results.index = ["Mean"]
+
+        self.display_container.append(model_results)
+        self.logger.info(f"display_container: {len(self.display_container)}")
 
         # dashboard logging
         if self.logging_param:
-            indices = self._get_return_train_score_indices_for_logging(
-                return_train_score=return_train_score
-            )
+            indices = self._get_return_train_score_indices_for_logging(False)
             avgs_dict_log = {k: v for k, v in model_results.loc[indices].items()}
             self.logging_param.log_model_comparison(
-                model_results, f"finalize_model_{self._get_model_name(model_final)}"
+                model_results, f"finalize_model_{self._get_model_name(pipeline_final)}"
             )
 
             self._log_model(
-                model=model_final,
+                model=pipeline_final,
                 model_results=model_results,
                 score_dict=avgs_dict_log,
                 source="finalize_model",
-                runtime=runtime,
+                runtime=np.array(time.time() - runtime_start).round(2),
                 model_fit_time=model_fit_time,
                 pipeline=self.pipeline,
                 log_plots=self.log_plots_param,
@@ -4716,18 +4750,17 @@ class _SupervisedExperiment(_TabularExperiment):
         self.logger.info(f"master_model_container: {len(self.master_model_container)}")
         self.logger.info(f"display_container: {len(self.display_container)}")
 
-        self.logger.info(str(model_final))
+        self.logger.info(str(pipeline_final))
         self.logger.info(
             "finalize_model() successfully completed......................................"
         )
 
         gc.collect()
-        if not model_only:
-            pipeline_final = deepcopy(self.pipeline)
-            pipeline_final.steps.append(["trained_model", model_final])
-            return pipeline_final
 
-        return model_final
+        if model_only:
+            return self._get_final_model_from_pipeline(pipeline_final)
+
+        return pipeline_final
 
     def predict_model(
         self,
@@ -4867,12 +4900,12 @@ class _SupervisedExperiment(_TabularExperiment):
                 html_param=False,
             )
 
-        if isinstance(estimator, Pipeline):
+        if isinstance(estimator, skPipeline):
             if not hasattr(estimator, "feature_names_in_"):
                 raise ValueError(
                     "If estimator is a Pipeline, it must implement `feature_names_in_`."
                 )
-            pipeline = estimator
+            pipeline = deepcopy(estimator)
             # Temporarily remove final estimator so it's not used for transform
             final_step = pipeline.steps[-1]
             estimator = final_step[-1]
