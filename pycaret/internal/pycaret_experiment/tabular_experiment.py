@@ -2617,7 +2617,9 @@ class _TabularExperiment(_PyCaretExperiment):
         _check_soft_dependencies("pydantic", extra="mlops", severity="error")
         import pydantic
 
-        MODULE = self._ml_usecase.name.lower() ## added .name.lower() as output changed from main branch
+        MODULE = (
+            self._ml_usecase.name.lower()
+        )  ## added .name.lower() as output changed from main branch
         API_NAME = api_name
         HOST = host
 
