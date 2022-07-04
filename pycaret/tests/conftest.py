@@ -20,11 +20,6 @@ def change_test_dir(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
 
 
-@pytest.fixture(name="disable_logging_info", autouse=True)
-def disable_logging_info(caplog):
-    caplog.set_level(logging.ERROR)
-
-
 @pytest.fixture(scope="session", name="load_pos_data")
 def load_pos_data():
     """Load Pycaret Airline dataset."""
