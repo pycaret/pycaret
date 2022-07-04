@@ -246,7 +246,7 @@ class Preprocessor:
             if fold_shuffle:
                 raise ValueError(
                     "Invalid value for the fold_strategy parameter. 'timeseries' "
-                    "requires 'data_split_shuffle' to be 'False' as it can lead to unexpected data split."
+                    "requires 'data_split_shuffle' to be False as it can lead to unexpected data split."
                 )
         elif fold_strategy not in allowed_fold_strategy:
             raise ValueError(
