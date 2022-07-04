@@ -15,7 +15,8 @@ import pandas as pd  # type ignore
 import pandas.io.formats.style
 from sklearn.base import clone  # type: ignore
 from sklearn.compose import TransformedTargetRegressor  # type: ignore
-from sklearn.pipeline import Pipeline
+from sklearn.pipeline import Pipeline as skPipeline
+from sklearn.utils.validation import check_is_fitted as check_fitted
 
 import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
@@ -41,6 +42,7 @@ from pycaret.internal.meta_estimators import (
 )
 from pycaret.internal.parallel.parallel_backend import ParallelBackend
 from pycaret.internal.pipeline import (
+    Pipeline,
     estimator_pipeline,
     get_pipeline_estimator_label,
     get_pipeline_fit_kwargs,
@@ -129,6 +131,34 @@ class _SupervisedExperiment(_TabularExperiment):
 
     def _is_unsupervised(self) -> bool:
         return False
+
+    def _get_final_model_from_pipeline(
+        self,
+        pipeline: Pipeline,
+        check_is_fitted: bool = False,
+    ) -> BaseForecaster:
+        """Extracts and returns the final model from the pipeline.
+
+        Parameters
+        ----------
+        pipeline : Pipeline
+            The pipeline with a final model
+
+        check_is_fitted : bool, default=False
+            If True, will check if final model is fitted and raise an exception
+            if it is not, by default False.
+
+        Returns
+        -------
+        Model
+            The final model in the pipeline.
+
+        """
+        model = pipeline_final._final_estimator
+        if check_is_fitted:
+            check_fitted(model)
+
+        return model
 
     def _choose_better(
         self,
@@ -4683,7 +4713,6 @@ class _SupervisedExperiment(_TabularExperiment):
             groups=self._get_groups(groups, data=self.X),
             add_to_model_list=False,
             model_only=False,
-            return_train_score=False,
         )
 
         if self._ml_usecase != MLUsecase.TIME_SERIES:
@@ -4729,10 +4758,7 @@ class _SupervisedExperiment(_TabularExperiment):
         gc.collect()
 
         if model_only:
-            if self._ml_usecase != MLUsecase.TIME_SERIES:
-                return pipeline_final._final_estimator
-            else:
-                return self._get_final_model_from_pipeline(pipeline_final)
+            return self._get_final_model_from_pipeline(pipeline_final)
 
         return pipeline_final
 
@@ -4874,7 +4900,7 @@ class _SupervisedExperiment(_TabularExperiment):
                 html_param=False,
             )
 
-        if isinstance(estimator, Pipeline):
+        if isinstance(estimator, skPipeline):
             if not hasattr(estimator, "feature_names_in_"):
                 raise ValueError(
                     "If estimator is a Pipeline, it must implement `feature_names_in_`."
