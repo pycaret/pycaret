@@ -2519,6 +2519,7 @@ class _SupervisedExperiment(_TabularExperiment):
                 groups=groups,
                 fit_kwargs=fit_kwargs,
                 display=display,
+                verbose=verbose,
             )
 
         # end runtime
@@ -2913,6 +2914,7 @@ class _SupervisedExperiment(_TabularExperiment):
                 groups=groups,
                 fit_kwargs=fit_kwargs,
                 display=display,
+                verbose=verbose,
             )
 
         model_results = color_df(model_results, "yellow", ["Mean"], axis=1)
