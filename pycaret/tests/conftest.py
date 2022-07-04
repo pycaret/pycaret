@@ -20,7 +20,7 @@ def change_test_dir(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
 
 
-@pytest.fixture(caplog, name="disable_logging_info", autouse=True)
+@pytest.fixture(name="disable_logging_info", autouse=True)
 def disable_logging_info(caplog):
     caplog.setLevel(logging.ERROR)
 
