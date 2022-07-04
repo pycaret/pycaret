@@ -136,7 +136,7 @@ class _SupervisedExperiment(_TabularExperiment):
         self,
         pipeline: Pipeline,
         check_is_fitted: bool = False,
-    ) -> BaseForecaster:
+    ) -> Any:
         """Extracts and returns the final model from the pipeline.
 
         Parameters
