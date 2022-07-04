@@ -128,6 +128,7 @@ class _SupervisedExperiment(_TabularExperiment):
         fit_kwargs: Optional[dict] = None,
         groups: Optional[Union[str, Any]] = None,
         display: Optional[Display] = None,
+        verbose: bool = True,
     ):
         """
         When choose_better is set to True, optimize metric in scoregrid is
@@ -183,7 +184,8 @@ class _SupervisedExperiment(_TabularExperiment):
                     "Original model was better than the tuned model, hence it will be returned. "
                     "NOTE: The display metrics are for the tuned model (not the original one)."
                 )
-                print(msg)
+                if verbose:
+                    print(msg)
                 self.logger.info(msg)
                 best_result = result
                 best_model = model
@@ -4709,7 +4711,8 @@ class _SupervisedExperiment(_TabularExperiment):
             dashboard.calculate(self.train, self.test, column_mapping=column_mapping)
             report_name = f"{self._get_model_name(estimator)}_Drift_Report.html"
             dashboard.save(report_name)
-            print(f"{report_name} saved successfully.")
+            if verbose:
+                print(f"{report_name} saved successfully.")
 
         # prediction starts here
         if isinstance(estimator, CustomProbabilityThresholdClassifier):

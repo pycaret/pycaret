@@ -2467,6 +2467,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                 fold,
                 fit_kwargs=fit_kwargs,
                 display=display,
+                verbose=verbose,
             )
 
         # end runtime
