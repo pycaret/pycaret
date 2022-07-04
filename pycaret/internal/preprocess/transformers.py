@@ -162,7 +162,11 @@ class TransformerWrapper(BaseEstimator):
             if hasattr(self.transformer, "get_feature_names"):
                 columns = self.transformer.get_feature_names()
             elif hasattr(self.transformer, "get_feature_names_out"):
-                columns = self.transformer.get_feature_names_out()
+                try:  # Fails for some estimators in Python 3.7
+                    # TODO: Remove try after dropping support of Python 3.7
+                    columns = self.transformer.get_feature_names_out()
+                except AttributeError:
+                    columns = self._name_cols(out, X)
             else:
                 columns = self._name_cols(out, X)
 
