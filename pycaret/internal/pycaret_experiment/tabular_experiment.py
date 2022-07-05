@@ -2624,7 +2624,7 @@ class _TabularExperiment(_PyCaretExperiment):
         HOST = host
 
         self.save_model(estimator, model_name=api_name, verbose=False)
-        targetname = self.target_param + "_" + "prediction"
+        targetname = f"{self.target_param}_prediction"
         ## Removed tabs from query as that was causing the original file to have indentation errors.
         query = """
 import pandas as pd
