@@ -2635,18 +2635,18 @@ from pydantic import create_model
 # Create the app
 app = FastAPI()
 # Load trained Pipeline
-model = load_model('{API_NAME}')
+model = load_model("{API_NAME}")
 # Create input/output pydantic models
-pydanticinputmodel=create_model('{API_NAME}_input',**{inputDataframeschema})
-pydanticoutputmodel=create_model('{API_NAME}_output',**{outputDataframeschema})
+pydanticinputmodel=create_model("{API_NAME}_input", **{inputDataframeschema})
+pydanticoutputmodel=create_model("{API_NAME}_output", **{outputDataframeschema})
 # Define predict function
-@app.post('/predict',response_model=pydanticoutputmodel)
+@app.post("/predict", response_model=pydanticoutputmodel)
 def predict(datainput:pydanticinputmodel):
     data = pd.DataFrame([datainput.dict()])
     predictions = predict_model(model, data=data)
-    return {D1}'{tarname}': predictions['Label'][0]{D2}
-if __name__ == '__main__':
-    uvicorn.run(app, host='{HOST}', port={PORT})""".format(
+    return {D1}"{tarname}": predictions["Label"][0]{D2}
+if __name__ == "__main__":
+    uvicorn.run(app, host="{HOST}", port={PORT})""".format(
             MODULE_NAME=MODULE,
             API_NAME=API_NAME,
             inputDataframeschema=self.X.iloc[0].to_dict(),
