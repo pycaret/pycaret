@@ -193,15 +193,15 @@ def setup(
 
 
     remove_multicollinearity: bool, default = False
-        When set to True, features with the inter-correlations higher than the defined
-        threshold are removed. When two features are highly correlated with each other,
-        the feature that is less correlated with the target variable is removed. Only
-        considers numeric features.
+        When set to True, features with the inter-correlations higher than
+        the defined threshold are removed. For each group, it removes all
+        except the first feature.
 
 
     multicollinearity_threshold: float, default = 0.9
-        Threshold for correlated features. Ignored when ``remove_multicollinearity``
-        is not True.
+        Minimum absolute Pearson correlation to identify correlated
+        features. The default value removes equal columns. Ignored when
+        ``remove_multicollinearity`` is not True.
 
 
     bin_numeric_features: list of str, default = None

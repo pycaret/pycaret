@@ -347,18 +347,33 @@ class RemoveMulticollinearity(BaseEstimator):
         self._drop = None
 
     def fit(self, X, y=None):
-        mtx = X.corr()  # Pearson correlation coefficient matrix
+        # Get the Pearson correlation coefficient matrix
+        if y is None:
+            corr_X = X.corr()
+        else:
+            data = X.merge(y.to_frame(), left_index=True, right_index=True)
+            corr_matrix = data.corr()
+            corr_X, corr_y = corr_matrix.iloc[:-1, :-1], corr_matrix.iloc[:-1, -1]
 
-        # Extract the upper triangle of the correlation matrix
-        upper = mtx.where(np.triu(np.ones(mtx.shape).astype(bool), k=1))
+        self._drop = []
+        for col in corr_X:
+            # Select columns that are corr
+            corr = corr_X[col][corr_X[col] >= self.threshold]
 
-        # Select the features with correlations above the threshold
-        self._drop = [i for i in upper.columns if any(abs(upper[i] >= self.threshold))]
+            # Always finds himself with correlation 1
+            if len(corr) > 1:
+                if y is None:
+                    # Drop all but the first one
+                    self._drop.extend(list(corr[1:].index))
+                else:
+                    # Keep feature with the highest correlation with y
+                    keep = corr_y[corr.index].idxmax()
+                    self._drop.extend(list(corr.index.drop(keep)))
 
         return self
 
-    def transform(self, X, y=None):
-        return X.drop(self._drop, axis=1)
+    def transform(self, X):
+        return X.drop(set(self._drop), axis=1)
 
 
 class RemoveOutliers(BaseEstimator):

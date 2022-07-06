@@ -59,7 +59,11 @@ def test_input_is_array():
 
 def test_input_is_sparse():
     """Assert that the input can be a scipy sparse matrix."""
-    pc = pycaret.classification.setup(csr_matrix((300, 4)), target=[1, 0, 1] * 100)
+    pc = pycaret.classification.setup(
+        data=csr_matrix((300, 4)),
+        target=[1, 0, 1] * 100,
+        preprocess=False,
+    )
     assert isinstance(pc.dataset, pd.DataFrame)
     assert pc.target_param == "target"
 
@@ -259,6 +263,7 @@ def test_remove_outliers(outliers_method):
     data = pycaret.datasets.get_data("juice")
     pc = pycaret.classification.setup(
         data=data,
+        low_variance_threshold=None,
         remove_outliers=True,
         outliers_method=outliers_method,
         outliers_threshold=0.2,
@@ -284,6 +289,7 @@ def test_fix_imbalance(fix_imbalance_method):
     data = pycaret.datasets.get_data("juice")
     pc = pycaret.classification.setup(
         data=data,
+        low_variance_threshold=None,
         fix_imbalance=True,
         fix_imbalance_method=fix_imbalance_method,
     )
