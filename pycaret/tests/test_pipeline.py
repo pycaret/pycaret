@@ -24,12 +24,6 @@ def pipeline():
         data=dataset,
         polynomial_features=True,
         polynomial_degree=2,
-        # remove_multicollinearity=True,
-        # multicollinearity_threshold=0.8,
-        # fix_imbalance=True,
-        # normalize=True,
-        # pca=True,
-        # pca_components=8,
         verbose=False,
     )
 

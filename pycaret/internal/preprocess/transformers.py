@@ -252,8 +252,9 @@ class TransformerWrapper(BaseEstimator):
 
     def inverse_transform(self, y):
         # Only implemented for y
+        y = to_series(y, index=getattr(y, "index", None))
         output = self.transformer.inverse_transform(y)
-        return to_series(output, getattr(y, "index", None), getattr(y, "name", None))
+        return to_series(output, index=y.index, name=y.name)
 
 
 class ExtractDateTimeFeatures(BaseEstimator):
