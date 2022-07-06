@@ -48,7 +48,7 @@ def setup(
     encoding_method: Optional[Any] = None,
     polynomial_features: bool = False,
     polynomial_degree: int = 2,
-    low_variance_threshold: float = 0,
+    low_variance_threshold: Optional[float] = 0,
     remove_multicollinearity: bool = False,
     multicollinearity_threshold: float = 0.9,
     bin_numeric_features: Optional[List[str]] = None,
@@ -69,6 +69,7 @@ def setup(
     feature_selection_estimator: Union[str, Any] = "lightgbm",
     n_features_to_select: int = 10,
     custom_pipeline: Optional[Any] = None,
+    custom_pipeline_position: int = -1,
     data_split_shuffle: bool = True,
     data_split_stratify: Union[bool, List[str]] = True,
     fold_strategy: Union[str, Any] = "stratifiedkfold",
@@ -261,7 +262,7 @@ def setup(
         Remove features with a training-set variance lower than the provided
         threshold. The default is to keep all features with non-zero variance,
         i.e. remove the features that have the same value in all samples. If
-        None, skip this treansformation step.
+        None, skip this transformation step.
 
 
     remove_multicollinearity: bool, default = False
@@ -391,6 +392,11 @@ def setup(
     custom_pipeline: list of (str, transformer), dict or Pipeline, default = None
         Addidiotnal custom transformers. If passed, they are applied to the
         pipeline last, after all the build-in transformers.
+
+
+    custom_pipeline_position: int, default = -1
+        Position of the custom pipeline in the overal preprocessing pipeline.
+        The default value adds the custom pipeline last.
 
 
     data_split_shuffle: bool, default = True
@@ -531,7 +537,7 @@ def setup(
 
 
     Returns:
-        Global variables that can be changed using the ``set_config`` function.
+        ClassificationExperiment object.
 
     """
 
@@ -583,6 +589,7 @@ def setup(
         feature_selection_estimator=feature_selection_estimator,
         n_features_to_select=n_features_to_select,
         custom_pipeline=custom_pipeline,
+        custom_pipeline_position=custom_pipeline_position,
         data_split_shuffle=data_split_shuffle,
         data_split_stratify=data_split_stratify,
         fold_strategy=fold_strategy,

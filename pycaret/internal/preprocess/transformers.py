@@ -250,13 +250,10 @@ class TransformerWrapper(BaseEstimator):
     def fit_transform(self, *args, **kwargs):
         return self.fit(*args, **kwargs).transform(*args, **kwargs)
 
-
-class TransformerWrapperWithInverse(TransformerWrapper):
     def inverse_transform(self, y):
-        y = to_series(y, index=getattr(y, "index", None))
+        # Only implemented for y
         output = self.transformer.inverse_transform(y)
-        new_y = to_series(output, index=y.index, name=y.name)
-        return variable_return(None, new_y)
+        return to_series(output, getattr(y, "index", None), getattr(y, "name", None))
 
 
 class ExtractDateTimeFeatures(BaseEstimator):

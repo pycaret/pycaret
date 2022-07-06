@@ -224,7 +224,7 @@ def test_low_variance_threshold():
     pc = pycaret.classification.setup(
         data=data,
         target="STORE",
-        low_variance_threshold=1.0,
+        low_variance_threshold=0,
     )
     X, _ = pc.pipeline.transform(pc.X, pc.y)
     assert "feature" not in X
@@ -333,7 +333,7 @@ def test_feature_selection(fs_method):
 
 
 def test_custom_pipeline_is_list():
-    """Assert that a custom pipeline can be provided."""
+    """Assert that a custom pipeline can be provided as list."""
     data = pycaret.datasets.get_data("juice")
     pc = pycaret.classification.setup(
         data=data,
@@ -344,7 +344,7 @@ def test_custom_pipeline_is_list():
 
 
 def test_custom_pipeline_is_pipeline():
-    """Assert that a custom pipeline can be provided."""
+    """Assert that a custom pipeline can be provided as a Pipeline object."""
     data = pycaret.datasets.get_data("juice")
     pc = pycaret.classification.setup(
         data=data,
@@ -354,3 +354,17 @@ def test_custom_pipeline_is_pipeline():
     )
     X, _ = pc.pipeline.transform(pc.X, pc.y)
     assert X.shape[1] == 5
+
+
+@pytest.mark.parametrize("pos", [-1, 0, 1])
+def test_custom_pipeline_positions(pos):
+    """Assert that a custom pipeline can be provided at a specific position."""
+    data = pycaret.datasets.get_data("cancer")
+    pc = pycaret.classification.setup(
+        data=data,
+        remove_outliers=True,
+        remove_multicollinearity=True,
+        custom_pipeline=[("scaler", StandardScaler())],
+        custom_pipeline_position=pos,
+    )
+    assert pc.pipeline.steps[pos][0] == "scaler"

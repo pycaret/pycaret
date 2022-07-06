@@ -54,7 +54,6 @@ from pycaret.internal.preprocess.transformers import (
     RemoveOutliers,
     TargetTransformer,
     TransformerWrapper,
-    TransformerWrapperWithInverse,
 )
 from pycaret.internal.pycaret_experiment.utils import MLUsecase
 from pycaret.internal.utils import (
@@ -289,7 +288,7 @@ class Preprocessor:
         """Add LabelEncoder to the pipeline."""
         self.logger.info("Set up label encoding.")
         self.pipeline.steps.append(
-            ("label_encoding", TransformerWrapperWithInverse(LabelEncoder()))
+            ("label_encoding", TransformerWrapper(LabelEncoder()))
         )
 
     def _target_transformation(self, transformation_method):
@@ -315,9 +314,7 @@ class Preprocessor:
         self.pipeline.steps.append(
             (
                 "target_transformation",
-                TransformerWrapperWithInverse(
-                    TargetTransformer(transformation_estimator)
-                ),
+                TransformerWrapper(TargetTransformer(transformation_estimator)),
             )
         )
 
@@ -830,8 +827,18 @@ class Preprocessor:
 
         self.pipeline.steps.append(("feature_selection", feature_selector))
 
-    def _add_custom_pipeline(self, custom_pipeline):
+    def _add_custom_pipeline(self, custom_pipeline, custom_pipeline_position):
         """Add custom transformers to the pipeline."""
         self.logger.info("Set up custom pipeline.")
+
+        # Determine position to insert
+        if custom_pipeline_position < 0:
+            # -1 becomes last, etc...
+            pos = len(self.pipeline.steps) + custom_pipeline_position + 1
+        else:
+            # +1 because of the placeholder
+            pos = custom_pipeline_position + 1
+
         for name, estimator in normalize_custom_transformers(custom_pipeline):
-            self.pipeline.steps.append((name, TransformerWrapper(estimator)))
+            self.pipeline.steps.insert(pos, (name, TransformerWrapper(estimator)))
+            pos += 1

@@ -2833,8 +2833,8 @@ CMD ["python", "{API_NAME}.py"]
         Returns
         -------
         Optional[str]
-            The engine for the model. If the model only supports the default sktime
-            engine, then it return `None`.
+            The engine for the model. If the model only supports the default
+            engine, then it returns `None`.
         """
         engine = self.exp_model_engines.get(estimator, None)
         if engine is None:
@@ -2843,7 +2843,7 @@ CMD ["python", "{API_NAME}.py"]
                 "hence returning None."
             )
             self.logger.info(msg)
-            print(msg)
+
         return engine
 
     def _set_engine(self, estimator: str, engine: str, severity: str = "error"):

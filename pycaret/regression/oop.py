@@ -109,7 +109,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
         encoding_method: Optional[Any] = None,
         polynomial_features: bool = False,
         polynomial_degree: int = 2,
-        low_variance_threshold: float = 0,
+        low_variance_threshold: Optional[float] = 0,
         remove_multicollinearity: bool = False,
         multicollinearity_threshold: float = 0.9,
         bin_numeric_features: Optional[List[str]] = None,
@@ -130,6 +130,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
         transform_target: bool = False,
         transform_target_method: str = "yeo-johnson",
         custom_pipeline: Optional[Any] = None,
+        custom_pipeline_position: int = -1,
         data_split_shuffle: bool = True,
         data_split_stratify: Union[bool, List[str]] = False,
         fold_strategy: Union[str, Any] = "kfold",
@@ -325,7 +326,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             Remove features with a training-set variance lower than the provided
             threshold. The default is to keep all features with non-zero variance,
             i.e. remove the features that have the same value in all samples. If
-            None, skip this treansformation step.
+            None, skip this transformation step.
 
 
         remove_multicollinearity: bool, default = False
@@ -455,6 +456,11 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
         custom_pipeline: list of (str, transformer), dict or Pipeline, default = None
             Addidiotnal custom transformers. If passed, they are applied to the
             pipeline last, after all the build-in transformers.
+
+
+        custom_pipeline_position: int, default = -1
+            Position of the custom pipeline in the overal preprocessing pipeline.
+            The default value adds the custom pipeline last.
 
 
         data_split_shuffle: bool, default = True
@@ -744,7 +750,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
                 self._polynomial_features(polynomial_degree)
 
             # Drop features with too low variance
-            if low_variance_threshold:
+            if low_variance_threshold is not None:
                 self._low_variance(low_variance_threshold)
 
             # Drop features that are collinear with other features
@@ -781,11 +787,11 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
 
         # Add custom transformers to the pipeline
         if custom_pipeline:
-            self._add_custom_pipeline(custom_pipeline)
+            self._add_custom_pipeline(custom_pipeline, custom_pipeline_position)
 
-        # Remove placeholder step
-        if len(self.pipeline) > 1:
-            self.pipeline.steps.pop(0)
+            # Remove placeholder step
+        if ("placeholder", None) in self.pipeline.steps and len(self.pipeline) > 1:
+            self.pipeline.steps.remove(("placeholder", None))
 
         self.pipeline.fit(self.X_train, self.y_train)
 
@@ -841,7 +847,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             if polynomial_features:
                 container.append(["Polynomial features", polynomial_features])
                 container.append(["Polynomial degree", polynomial_degree])
-            if low_variance_threshold:
+            if low_variance_threshold is not None:
                 container.append(["Low variance threshold", low_variance_threshold])
             if remove_multicollinearity:
                 container.append(["Remove multicollinearity", remove_multicollinearity])
