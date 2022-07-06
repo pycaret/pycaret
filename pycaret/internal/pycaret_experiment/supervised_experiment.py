@@ -2727,7 +2727,8 @@ class _SupervisedExperiment(_TabularExperiment):
                     "Original model was better than the tuned model, hence it will be returned. "
                     "NOTE: The display metrics are for the tuned model (not the original one)."
                 )
-                print(msg)
+                if verbose:
+                    print(msg)
                 self.logger.info(msg)
             best_model = new_best_model
 
@@ -3124,7 +3125,8 @@ class _SupervisedExperiment(_TabularExperiment):
                     "Original model was better than the ensembled model, hence it will be returned. "
                     "NOTE: The display metrics are for the ensembled model (not the original one)."
                 )
-                print(msg)
+                if verbose:
+                    print(msg)
                 self.logger.info(msg)
             model = new_model
 
@@ -3510,7 +3512,8 @@ class _SupervisedExperiment(_TabularExperiment):
                     "Original model was better than the blended model, hence it will be returned. "
                     "NOTE: The display metrics are for the blended model (not the original one)."
                 )
-                print(msg)
+                if verbose:
+                    print(msg)
                 self.logger.info(msg)
             model = new_model
 
@@ -3890,7 +3893,8 @@ class _SupervisedExperiment(_TabularExperiment):
                     "Original model was better than the stacked model, hence it will be returned. "
                     "NOTE: The display metrics are for the stacked model (not the original one)."
                 )
-                print(msg)
+                if verbose:
+                    print(msg)
                 self.logger.info(msg)
             model = new_model
 
@@ -4975,7 +4979,8 @@ class _SupervisedExperiment(_TabularExperiment):
             dashboard.calculate(self.train, drift_data, column_mapping=column_mapping)
             report_name = f"{self._get_model_name(estimator)}_Drift_Report.html"
             dashboard.save(report_name)
-            print(f"{report_name} saved successfully.")
+            if verbose:
+                print(f"{report_name} saved successfully.")
 
         # prediction starts here
         if isinstance(estimator, CustomProbabilityThresholdClassifier):
