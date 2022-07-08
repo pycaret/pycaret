@@ -1,0 +1,25 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+pandas = "==1.4.3"
+dvc = "==2.12.1"
+pytest = "==7.1.2"
+numpy = "==1.19.5"
+jupyter = "==1.0.0"
+matplotlib = "==3.5.2"
+holidays = "==0.14.2"
+bentoml = "==1.0.0rc3"
+pycaret = "==2.3.10"
+xgboost = "==1.6.1"
+strictyaml = "*"
+
+[dev-packages]
+
+[requires]
+python_version = "3.8"
+
+[pipenv]
+allow_prereleases = true

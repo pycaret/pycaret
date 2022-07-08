@@ -1,0 +1,70 @@
+raw:
+  dir: data/raw
+  name: uber-drive-fare-data.csv
+  path: ${raw.dir}/${raw.name}
+processed:
+  dir: data/processed
+  name: processed_uber_trip_tax_data.csv
+  path: ${processed.dir}/${processed.name}
+finalized:
+  dir: data/finalized
+  name: train.csv
+  path: ${finalized.dir}/${finalized.name}
+features:
+- pickup_year
+- pickup_month
+- pickup_dayofyear
+- pickup_dayofweek
+- pickup_hour
+- is_holiday
+- passenger_count
+- pickup_latitude
+- pickup_longitude
+- dropoff_latitude
+- dropoff_longitude
+- trip_distance_km
+target: fare_amount
+categorical_features:
+- pickup_year
+- pickup_dayofweek
+- is_holiday
+numeric_features:
+- pickup_month
+- pickup_dayofyear
+- pickup_hour
+- passenger_count
+- pickup_latitude
+- pickup_longitude
+- dropoff_latitude
+- dropoff_longitude
+- trip_distance_km
+train_size: 0.8
+normalize: true
+ignore_low_variance: true
+use_gpu: false
+algorithm: xgboost
+objective: reg:squarederror
+base_score: 0.5
+booster: gbtree
+colsample_bylevel: 1
+colsample_bynode: 1
+colsample_bytree: 1
+enable_categorical: false
+gamma: 0
+gpu_id: 0
+learning_rate: 0.300000012
+max_delta_step: 0
+max_depth: 6
+min_child_weight: 1
+n_estimators: 100
+n_jobs: -1
+num_parallel_tree: 1
+predictor: auto
+random_state: 5356
+reg_alpha: 0
+reg_lambda: 1
+scale_pos_weight: 1
+subsample: 1
+tree_method: auto
+validate_parameters: 1
+verbosity: 0

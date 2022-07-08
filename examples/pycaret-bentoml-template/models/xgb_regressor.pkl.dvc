@@ -1,0 +1,4 @@
+outs:
+- md5: 7323650c30038fae43bb26ca7add80df
+  size: 9089663
+  path: xgb_regressor.pkl
