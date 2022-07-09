@@ -50,6 +50,8 @@ def setup(
     polynomial_features: bool = False,
     polynomial_degree: int = 2,
     low_variance_threshold: Optional[float] = 0,
+    group_features: Optional[list] = None,
+    group_names: Optional[Union[str, list]] = None,
     remove_multicollinearity: bool = False,
     multicollinearity_threshold: float = 0.9,
     bin_numeric_features: Optional[List[str]] = None,
@@ -263,6 +265,21 @@ def setup(
         threshold. The default is to keep all features with non-zero variance,
         i.e. remove the features that have the same value in all samples. If
         None, skip this transformation step.
+
+
+    group_features: list, list of lists or None, default = None
+        When the dataset contains features with related characteristics,
+        replace those fetaures with the following statistical properties
+        of that group: min, max, mean, std, median and mode. The parameter
+        takes a list of feature names or a list of lists of feature names
+        to specify multiple groups.
+
+
+    group_names: str, list, or None, default = None
+        Group names to be used when naming the new features. The length
+        should match with the number of groups specified in ``group_features``.
+        If None, new features are named using the default form, e.g. group_1,
+        group_2, etc... Ignored when ``group_features`` is None.
 
 
     remove_multicollinearity: bool, default = False
@@ -568,6 +585,8 @@ def setup(
         polynomial_features=polynomial_features,
         polynomial_degree=polynomial_degree,
         low_variance_threshold=low_variance_threshold,
+        group_features=group_features,
+        group_names=group_names,
         remove_multicollinearity=remove_multicollinearity,
         multicollinearity_threshold=multicollinearity_threshold,
         bin_numeric_features=bin_numeric_features,

@@ -234,6 +234,20 @@ def test_low_variance_threshold():
     assert "feature" not in X
 
 
+def test_feature_grouping():
+    """Assert that feature groups are replaced for stats."""
+    data = pycaret.datasets.get_data("juice")
+    pc = pycaret.classification.setup(
+        data=data,
+        target="STORE",
+        group_features=[list(data.columns[:2]), list(data.columns[3:5])],
+        group_names=["gr1", "gr2"],
+    )
+    X, _ = pc.pipeline.transform(pc.X, pc.y)
+    assert "Id" not in X
+    assert "mean(gr1)" in X and "median(gr2)" in X
+
+
 def test_remove_multicollinearity():
     """Assert that one of two collinear features are dropped."""
     data = pycaret.datasets.get_data("juice")
