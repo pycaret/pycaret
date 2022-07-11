@@ -248,8 +248,9 @@ class TransformerWrapper(BaseEstimator, TransformerMixin):
 
         return variable_return(new_X, new_y)
 
+
+class TransformerWrapperWithInverse(TransformerWrapper):
     def inverse_transform(self, y):
-        # Only implemented for y
         y = to_series(y, index=getattr(y, "index", None))
         output = self.transformer.inverse_transform(y)
         return to_series(output, index=y.index, name=y.name)

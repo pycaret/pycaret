@@ -149,6 +149,7 @@ class Pipeline(imblearn.pipeline.Pipeline):
         return X, y, fit_params_steps.get(self.steps[-1][0], {})
 
     def fit(self, X=None, y=None, **fit_params):
+        print(self.steps)
         fit_params_steps = self._check_fit_params(**fit_params)
         X, y, _ = self._fit(X, y, **fit_params_steps)
 

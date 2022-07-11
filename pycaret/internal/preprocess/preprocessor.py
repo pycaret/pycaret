@@ -55,6 +55,7 @@ from pycaret.internal.preprocess.transformers import (
     RemoveOutliers,
     TargetTransformer,
     TransformerWrapper,
+    TransformerWrapperWithInverse,
 )
 from pycaret.internal.pycaret_experiment.utils import MLUsecase
 from pycaret.internal.utils import (
@@ -289,7 +290,7 @@ class Preprocessor:
         """Add LabelEncoder to the pipeline."""
         self.logger.info("Set up label encoding.")
         self.pipeline.steps.append(
-            ("label_encoding", TransformerWrapper(LabelEncoder()))
+            ("label_encoding", TransformerWrapperWithInverse(LabelEncoder()))
         )
 
     def _target_transformation(self, transformation_method):
@@ -315,7 +316,9 @@ class Preprocessor:
         self.pipeline.steps.append(
             (
                 "target_transformation",
-                TransformerWrapper(TargetTransformer(transformation_estimator)),
+                TransformerWrapperWithInverse(
+                    TargetTransformer(transformation_estimator)
+                )
             )
         )
 
