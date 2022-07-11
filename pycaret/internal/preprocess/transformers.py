@@ -6,7 +6,8 @@ from inspect import signature
 
 import numpy as np
 import pandas as pd
-from sklearn.base import BaseEstimator, clone
+from scipy import stats
+from sklearn.base import BaseEstimator, TransformerMixin, clone
 from sklearn.covariance import EllipticEnvelope
 from sklearn.ensemble import IsolationForest
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
@@ -16,7 +17,7 @@ from sklearn.utils.metaestimators import if_delegate_has_method
 from ..utils import to_df, to_series, variable_return
 
 
-class TransformerWrapper(BaseEstimator):
+class TransformerWrapper(BaseEstimator, TransformerMixin):
     """Meta-estimator for transformers.
 
     Wrapper for all transformers in preprocess to return a pandas
@@ -247,19 +248,15 @@ class TransformerWrapper(BaseEstimator):
 
         return variable_return(new_X, new_y)
 
-    def fit_transform(self, *args, **kwargs):
-        return self.fit(*args, **kwargs).transform(*args, **kwargs)
-
 
 class TransformerWrapperWithInverse(TransformerWrapper):
     def inverse_transform(self, y):
         y = to_series(y, index=getattr(y, "index", None))
         output = self.transformer.inverse_transform(y)
-        new_y = to_series(output, index=y.index, name=y.name)
-        return variable_return(None, new_y)
+        return to_series(output, index=y.index, name=y.name)
 
 
-class ExtractDateTimeFeatures(BaseEstimator):
+class ExtractDateTimeFeatures(BaseEstimator, TransformerMixin):
     """Extract features from datetime columns."""
 
     def __init__(self, features=["day", "month", "year"]):
@@ -285,7 +282,7 @@ class ExtractDateTimeFeatures(BaseEstimator):
         return X
 
 
-class DropImputer(BaseEstimator):
+class DropImputer(BaseEstimator, TransformerMixin):
     """Drop rows with missing values."""
 
     def __init__(self, columns):
@@ -302,7 +299,7 @@ class DropImputer(BaseEstimator):
         return variable_return(X, y)
 
 
-class EmbedTextFeatures(BaseEstimator):
+class EmbedTextFeatures(BaseEstimator, TransformerMixin):
     """Embed text features to an array representation."""
 
     def __init__(self, method="tf-idf", **kwargs):
@@ -342,7 +339,42 @@ class EmbedTextFeatures(BaseEstimator):
         return X
 
 
-class RemoveMulticollinearity(BaseEstimator):
+class GroupFeatures(BaseEstimator, TransformerMixin):
+    """Get statistical properties of similar features.
+
+    Replace a group of features for columns with statistical
+    properties of that group.
+
+    """
+
+    def __init__(self, group_features, group_names=None):
+        self.group_features = group_features
+        self.group_names = group_names
+
+    def fit(self, X, y=None):
+        return self
+
+    def transform(self, X, y=None):
+        if not self.group_names:
+            self.group_names = [f"group_{i}" for i in self.group_features]
+
+        for name, group in zip(self.group_names, self.group_features):
+            # Drop columns that are not in the dataframe (can be excluded)
+            group = [g for g in group if g in X]
+
+            group_df = X[group]
+            X[f"min({name})"] = group_df.apply(np.min, axis=1)
+            X[f"max({name})"] = group_df.apply(np.max, axis=1)
+            X[f"mean({name})"] = group_df.apply(np.mean, axis=1)
+            X[f"std({name})"] = group_df.apply(np.std, axis=1)
+            X[f"median({name})"] = group_df.apply(np.median, axis=1)
+            X[f"mode({name})"] = stats.mode(group_df, axis=1)[0]
+            X = X.drop(group, axis=1)
+
+        return X
+
+
+class RemoveMulticollinearity(BaseEstimator, TransformerMixin):
     """Drop multicollinear features."""
 
     def __init__(self, threshold=1):
@@ -350,21 +382,36 @@ class RemoveMulticollinearity(BaseEstimator):
         self._drop = None
 
     def fit(self, X, y=None):
-        mtx = X.corr()  # Pearson correlation coefficient matrix
+        # Get the Pearson correlation coefficient matrix
+        if y is None:
+            corr_X = X.corr()
+        else:
+            data = X.merge(y.to_frame(), left_index=True, right_index=True)
+            corr_matrix = data.corr()
+            corr_X, corr_y = corr_matrix.iloc[:-1, :-1], corr_matrix.iloc[:-1, -1]
 
-        # Extract the upper triangle of the correlation matrix
-        upper = mtx.where(np.triu(np.ones(mtx.shape).astype(bool), k=1))
+        self._drop = []
+        for col in corr_X:
+            # Select columns that are corr
+            corr = corr_X[col][corr_X[col] >= self.threshold]
 
-        # Select the features with correlations above the threshold
-        self._drop = [i for i in upper.columns if any(abs(upper[i] >= self.threshold))]
+            # Always finds himself with correlation 1
+            if len(corr) > 1:
+                if y is None:
+                    # Drop all but the first one
+                    self._drop.extend(list(corr[1:].index))
+                else:
+                    # Keep feature with the highest correlation with y
+                    keep = corr_y[corr.index].idxmax()
+                    self._drop.extend(list(corr.index.drop(keep)))
 
         return self
 
-    def transform(self, X, y=None):
-        return X.drop(self._drop, axis=1)
+    def transform(self, X):
+        return X.drop(set(self._drop), axis=1)
 
 
-class RemoveOutliers(BaseEstimator):
+class RemoveOutliers(BaseEstimator, TransformerMixin):
     """Transformer to drop outliers from a dataset."""
 
     def __init__(self, method="iforest", threshold=0.05, n_jobs=1, random_state=None):
@@ -405,7 +452,7 @@ class RemoveOutliers(BaseEstimator):
             return X[mask], y[mask]
 
 
-class FixImbalancer(BaseEstimator):
+class FixImbalancer(BaseEstimator, TransformerMixin):
     """Wrapper for a balancer with a fit_resample method.
 
     Balancing classes should only be used on the training set,

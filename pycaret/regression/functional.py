@@ -49,7 +49,9 @@ def setup(
     encoding_method: Optional[Any] = None,
     polynomial_features: bool = False,
     polynomial_degree: int = 2,
-    low_variance_threshold: float = 0,
+    low_variance_threshold: Optional[float] = 0,
+    group_features: Optional[list] = None,
+    group_names: Optional[Union[str, list]] = None,
     remove_multicollinearity: bool = False,
     multicollinearity_threshold: float = 0.9,
     bin_numeric_features: Optional[List[str]] = None,
@@ -70,6 +72,7 @@ def setup(
     transform_target: bool = False,
     transform_target_method: str = "yeo-johnson",
     custom_pipeline: Optional[Any] = None,
+    custom_pipeline_position: int = -1,
     data_split_shuffle: bool = True,
     data_split_stratify: Union[bool, List[str]] = False,
     fold_strategy: Union[str, Any] = "kfold",
@@ -261,19 +264,34 @@ def setup(
         Remove features with a training-set variance lower than the provided
         threshold. The default is to keep all features with non-zero variance,
         i.e. remove the features that have the same value in all samples. If
-        None, skip this treansformation step.
+        None, skip this transformation step.
+
+
+    group_features: list, list of lists or None, default = None
+        When the dataset contains features with related characteristics,
+        replace those fetaures with the following statistical properties
+        of that group: min, max, mean, std, median and mode. The parameter
+        takes a list of feature names or a list of lists of feature names
+        to specify multiple groups.
+
+
+    group_names: str, list, or None, default = None
+        Group names to be used when naming the new features. The length
+        should match with the number of groups specified in ``group_features``.
+        If None, new features are named using the default form, e.g. group_1,
+        group_2, etc... Ignored when ``group_features`` is None.
 
 
     remove_multicollinearity: bool, default = False
-        When set to True, features with the inter-correlations higher than the defined
-        threshold are removed. When two features are highly correlated with each other,
-        the feature that is less correlated with the target variable is removed. Only
-        considers numeric features.
+        When set to True, features with the inter-correlations higher than
+        the defined threshold are removed. For each group, it removes all
+        except the feature with the highest correlation to `y`.
 
 
     multicollinearity_threshold: float, default = 0.9
-        Threshold for correlated features. Ignored when ``remove_multicollinearity``
-        is not True.
+        Minimum absolute Pearson correlation to identify correlated
+        features. The default value removes equal columns. Ignored when
+        ``remove_multicollinearity`` is not True.
 
 
     bin_numeric_features: list of str, default = None
@@ -392,6 +410,11 @@ def setup(
     custom_pipeline: list of (str, transformer), dict or Pipeline, default = None
         Addidiotnal custom transformers. If passed, they are applied to the
         pipeline last, after all the build-in transformers.
+
+
+    custom_pipeline_position: int, default = -1
+        Position of the custom pipeline in the overal preprocessing pipeline.
+        The default value adds the custom pipeline last.
 
 
     data_split_shuffle: bool, default = True
@@ -562,6 +585,8 @@ def setup(
         polynomial_features=polynomial_features,
         polynomial_degree=polynomial_degree,
         low_variance_threshold=low_variance_threshold,
+        group_features=group_features,
+        group_names=group_names,
         remove_multicollinearity=remove_multicollinearity,
         multicollinearity_threshold=multicollinearity_threshold,
         bin_numeric_features=bin_numeric_features,
@@ -582,6 +607,7 @@ def setup(
         transform_target=transform_target,
         transform_target_method=transform_target_method,
         custom_pipeline=custom_pipeline,
+        custom_pipeline_position=custom_pipeline_position,
         data_split_shuffle=data_split_shuffle,
         data_split_stratify=data_split_stratify,
         fold_strategy=fold_strategy,

@@ -103,8 +103,7 @@ jobs:
         run: |
           remove-item pycaret/tests/* -Include @('test_classification_tuning.py','test_classification_plots.py','test_regression_plots.py', 'test_regression_tuning.py', 'test_time_series_tune_grid.py', 'test_time_series_tune_random.py', 'test_create_api.py', 'test_create_docker.py', 'test_drift_report.py', 'test_eda.py', 'test_time_series_plots.py', 'test_time_series_utils_plots.py')
       - name: Test with pytest
-        run: |
-          pytest --durations=0 -o log_cli=true
+        run: pytest
 
   # test_tuning:
 
@@ -128,8 +127,7 @@ jobs:
   #     run: |
   #       find pycaret/tests -type f -not -name '__init__.py' -not -name 'test_classification_tuning.py' -not -name 'test_regression_tuning.py' -delete
   #   - name: Test with pytest
-  #     run: |
-  #       pytest --durations=0 -o log_cli=true
+  #     run: pytest
 
   # test_tuning_clf_windows:
 
@@ -152,8 +150,7 @@ jobs:
   #     run: |
   #       remove-item pycaret/tests/* -Exclude @('__init__.py','test_classification_tuning.py')
   #   - name: Test with pytest
-  #     run: |
-  #       pytest --durations=0 -o log_cli=true
+  #     run: pytest
 
   # test_tuning_reg_windows:
 
@@ -176,8 +173,7 @@ jobs:
   #     run: |
   #       remove-item pycaret/tests/* -Exclude @('__init__.py','test_regression_tuning.py')
   #   - name: Test with pytest
-  #     run: |
-  #       pytest --durations=0 -o log_cli=true
+  #     run: pytest
 
   test_plots:
     runs-on: ubuntu-latest
@@ -239,8 +235,7 @@ jobs:
         run: |
           find pycaret/tests -type f -not -name '__init__.py' -not -name 'conftest.py' -not -name 'time_series_test_utils.py' -not -name 'test_time_series_tune_random.py' -delete
       - name: Test with pytest
-        run: |
-          pytest --durations=0 -o log_cli=true
+        run: pytest
 
   test_ts_tune_grid:
     runs-on: ubuntu-latest

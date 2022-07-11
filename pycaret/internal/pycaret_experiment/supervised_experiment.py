@@ -1160,7 +1160,16 @@ class _SupervisedExperiment(_TabularExperiment):
 
             self.logger.info("Creating metrics dataframe")
 
-            fold = cv.n_splits
+            if hasattr(cv, "n_splits"):
+                fold = cv.n_splits
+            elif hasattr(cv, "get_n_splits"):
+                fold = cv.get_n_splits()
+            else:
+                raise ValueError(
+                    "The cross validation class should implement a n_splits "
+                    f"attribute or a get_n_splits method. {cv.__class__.__name__} "
+                    "has neither."
+                )
 
             if return_train_score:
                 model_results = pd.DataFrame(

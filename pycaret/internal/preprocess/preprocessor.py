@@ -50,6 +50,7 @@ from pycaret.internal.preprocess.transformers import (
     EmbedTextFeatures,
     ExtractDateTimeFeatures,
     FixImbalancer,
+    GroupFeatures,
     RemoveMulticollinearity,
     RemoveOutliers,
     TargetTransformer,
@@ -615,6 +616,32 @@ class Preprocessor:
 
         self.pipeline.steps.append(("low_variance", variance_estimator))
 
+    def _group_features(self, group_features, group_names):
+        """Get statistical properties of a group of features."""
+        self.logger.info("Set up feature grouping.")
+
+        # Convert a single group to sequence
+        if np.array(group_features).ndim == 1:
+            group_features = [group_features]
+
+        if group_names:
+            if isinstance(group_names, str):
+                group_names = [group_names]
+
+            if len(group_names) != len(group_features):
+                raise ValueError(
+                    "Invalid value for the group_names parameter. Length "
+                    f"({len(group_names)}) does not match with length of "
+                    f"group_features ({len(group_features)})."
+                )
+
+        grouping_estimator = TransformerWrapper(
+            transformer=GroupFeatures(group_features, group_names),
+            exclude=self._fxs["Keep"],
+        )
+
+        self.pipeline.steps.append(("group_features", grouping_estimator))
+
     def _remove_multicollinearity(self, multicollinearity_threshold):
         """Drop features that are collinear with other features."""
         self.logger.info("Set up removing multicollinearity.")
@@ -830,8 +857,18 @@ class Preprocessor:
 
         self.pipeline.steps.append(("feature_selection", feature_selector))
 
-    def _add_custom_pipeline(self, custom_pipeline):
+    def _add_custom_pipeline(self, custom_pipeline, custom_pipeline_position):
         """Add custom transformers to the pipeline."""
         self.logger.info("Set up custom pipeline.")
+
+        # Determine position to insert
+        if custom_pipeline_position < 0:
+            # -1 becomes last, etc...
+            pos = len(self.pipeline.steps) + custom_pipeline_position + 1
+        else:
+            # +1 because of the placeholder
+            pos = custom_pipeline_position + 1
+
         for name, estimator in normalize_custom_transformers(custom_pipeline):
-            self.pipeline.steps.append((name, TransformerWrapper(estimator)))
+            self.pipeline.steps.insert(pos, (name, TransformerWrapper(estimator)))
+            pos += 1

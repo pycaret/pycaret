@@ -33,7 +33,6 @@ def test_engines_setup_global_args():
     #### Default Model Engine ----
     assert exp.get_engine("lr") == "sklearnex"
     model = exp.create_model("lr")
-    print(type(model))
     assert isinstance(
         model, daal4py.sklearn.linear_model.logistic_path.LogisticRegression
     )

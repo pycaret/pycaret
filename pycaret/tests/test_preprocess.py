@@ -59,7 +59,11 @@ def test_input_is_array():
 
 def test_input_is_sparse():
     """Assert that the input can be a scipy sparse matrix."""
-    pc = pycaret.classification.setup(csr_matrix((300, 4)), target=[1, 0, 1] * 100)
+    pc = pycaret.classification.setup(
+        data=csr_matrix((300, 4)),
+        target=[1, 0, 1] * 100,
+        preprocess=False,
+    )
     assert isinstance(pc.dataset, pd.DataFrame)
     assert pc.target_param == "target"
 
@@ -224,10 +228,24 @@ def test_low_variance_threshold():
     pc = pycaret.classification.setup(
         data=data,
         target="STORE",
-        low_variance_threshold=1.0,
+        low_variance_threshold=0,
     )
     X, _ = pc.pipeline.transform(pc.X, pc.y)
     assert "feature" not in X
+
+
+def test_feature_grouping():
+    """Assert that feature groups are replaced for stats."""
+    data = pycaret.datasets.get_data("juice")
+    pc = pycaret.classification.setup(
+        data=data,
+        target="STORE",
+        group_features=[list(data.columns[:2]), list(data.columns[3:5])],
+        group_names=["gr1", "gr2"],
+    )
+    X, _ = pc.pipeline.transform(pc.X, pc.y)
+    assert "Id" not in X
+    assert "mean(gr1)" in X and "median(gr2)" in X
 
 
 def test_remove_multicollinearity():
@@ -259,6 +277,7 @@ def test_remove_outliers(outliers_method):
     data = pycaret.datasets.get_data("juice")
     pc = pycaret.classification.setup(
         data=data,
+        low_variance_threshold=None,
         remove_outliers=True,
         outliers_method=outliers_method,
         outliers_threshold=0.2,
@@ -284,6 +303,7 @@ def test_fix_imbalance(fix_imbalance_method):
     data = pycaret.datasets.get_data("juice")
     pc = pycaret.classification.setup(
         data=data,
+        low_variance_threshold=None,
         fix_imbalance=True,
         fix_imbalance_method=fix_imbalance_method,
     )
@@ -333,7 +353,7 @@ def test_feature_selection(fs_method):
 
 
 def test_custom_pipeline_is_list():
-    """Assert that a custom pipeline can be provided."""
+    """Assert that a custom pipeline can be provided as list."""
     data = pycaret.datasets.get_data("juice")
     pc = pycaret.classification.setup(
         data=data,
@@ -344,7 +364,7 @@ def test_custom_pipeline_is_list():
 
 
 def test_custom_pipeline_is_pipeline():
-    """Assert that a custom pipeline can be provided."""
+    """Assert that a custom pipeline can be provided as a Pipeline object."""
     data = pycaret.datasets.get_data("juice")
     pc = pycaret.classification.setup(
         data=data,
@@ -354,3 +374,17 @@ def test_custom_pipeline_is_pipeline():
     )
     X, _ = pc.pipeline.transform(pc.X, pc.y)
     assert X.shape[1] == 5
+
+
+@pytest.mark.parametrize("pos", [-1, 0, 1])
+def test_custom_pipeline_positions(pos):
+    """Assert that a custom pipeline can be provided at a specific position."""
+    data = pycaret.datasets.get_data("cancer")
+    pc = pycaret.classification.setup(
+        data=data,
+        remove_outliers=True,
+        remove_multicollinearity=True,
+        custom_pipeline=[("scaler", StandardScaler())],
+        custom_pipeline_position=pos,
+    )
+    assert pc.pipeline.steps[pos][0] == "scaler"
