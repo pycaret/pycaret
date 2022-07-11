@@ -318,7 +318,7 @@ class Preprocessor:
                 "target_transformation",
                 TransformerWrapperWithInverse(
                     TargetTransformer(transformation_estimator)
-                )
+                ),
             )
         )
 
