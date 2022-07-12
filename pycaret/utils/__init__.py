@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 from sklearn.metrics._scorer import _PredictScorer, get_scorer  # type: ignore
 
-version_ = "3.0.0.rc2"
+version_ = "3.0.0.rc3"
 nightly_version_ = "3.0.0"
 
 __version__ = version_

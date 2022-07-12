@@ -39,7 +39,7 @@ extras_require["full"] = (
 
 setup(
     name="pycaret",
-    version="3.0.0.rc2",
+    version="3.0.0.rc3",
     description="PyCaret - An open source, low-code machine learning library in Python.",
     long_description=readme(),
     long_description_content_type="text/markdown",
