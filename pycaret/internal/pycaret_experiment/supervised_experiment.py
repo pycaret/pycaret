@@ -3892,7 +3892,6 @@ class _SupervisedExperiment(_TabularExperiment):
                 [(model, model_results)] + estimator_list,
                 compare_dimension,
                 fold,
-                return_train_score,
                 groups=groups,
                 fit_kwargs=fit_kwargs,
                 display=display,
