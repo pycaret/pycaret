@@ -107,6 +107,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
         text_features_method: str = "tf-idf",
         max_encoding_ohe: int = 5,
         encoding_method: Optional[Any] = None,
+        frac_to_other: Optional[float] = None,
         polynomial_features: bool = False,
         polynomial_degree: int = 2,
         low_variance_threshold: Optional[float] = 0,
@@ -312,6 +313,13 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             A `category-encoders` estimator to encode the categorical columns
             with more than `max_encoding_ohe` unique values. If None,
             `category_encoders.leave_one_out.LeaveOneOutEncoder` is used.
+
+
+        frac_to_other: float or None, default=None
+            Minimum fraction of category occurrences in a categorical column.
+            If a category is less frequent than `frac_to_other * len(X)`, it is
+            replaced with the string `other`. Use this parameter to group rare
+            categories before encoding the column. If None, ignores this step.
 
 
         polynomial_features: bool, default = False
@@ -759,7 +767,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
 
             # Encode non-numerical features
             if self._fxs["Ordinal"] or self._fxs["Categorical"]:
-                self._encoding(max_encoding_ohe, encoding_method)
+                self._encoding(max_encoding_ohe, encoding_method, frac_to_other)
 
             # Create polynomial features from the existing ones
             if polynomial_features:

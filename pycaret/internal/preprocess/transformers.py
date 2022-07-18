@@ -3,6 +3,7 @@
 
 
 from inspect import signature
+from collections import defaultdict
 
 import numpy as np
 import pandas as pd
@@ -341,6 +342,30 @@ class EmbedTextFeatures(BaseEstimator, TransformerMixin):
 
             # Drop original text column
             X = X.drop(col, axis=1)
+
+        return X
+
+
+class RareCategoryGrouping(BaseEstimator, TransformerMixin):
+    """Replace rare categories with the string `other`."""
+
+    def __init__(self, frac_to_other, value="other"):
+        self.frac_to_other = frac_to_other
+        self.value = value
+        self._to_other = defaultdict(list)
+
+    def fit(self, X, y=None):
+        for name, column in X.items():
+            for category, count in column.value_counts().items():
+                if count < self.frac_to_other * len(X):
+                    self._to_other[name].append(category)
+
+        return self
+
+    def transform(self, X, y=None):
+        for name, column in X.items():
+            if self._to_other[name]:
+                X[name] = column.replace(self._to_other[name], self.value)
 
         return X
 

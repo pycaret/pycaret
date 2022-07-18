@@ -50,6 +50,7 @@ from pycaret.internal.preprocess.transformers import (
     EmbedTextFeatures,
     ExtractDateTimeFeatures,
     FixImbalancer,
+    RareCategoryGrouping,
     GroupFeatures,
     RemoveMulticollinearity,
     RemoveOutliers,
@@ -508,18 +509,40 @@ class Preprocessor:
 
         self.pipeline.steps.append(("text_embedding", embed_estimator))
 
-    def _encoding(self, max_encoding_ohe, encoding_method):
+    def _encoding(self, max_encoding_ohe, encoding_method, frac_to_other):
         """Encode categorical columns."""
+        if frac_to_other:
+            self.logger.info("Set up grouping of rare categories.")
+
+            if frac_to_other < 0 or frac_to_other >= 1:
+                raise ValueError(
+                    "Invalid value for the frac_to_other parameter. "
+                    f"The value must lie between 0 and 1, got {frac_to_other}."
+                )
+
+            rare_estimator = TransformerWrapper(
+                transformer=RareCategoryGrouping(frac_to_other),
+                include=self._fxs["Categorical"],
+            )
+
+            self.pipeline.steps.append(("rare_category_grouping", rare_estimator))
+
+            # To select the encoding type for every column,
+            # we first need to run the grouping
+            X_transformed = rare_estimator.fit_transform(self.X_train)
+        else:
+            X_transformed = self.X_train
+
         # Select columns for different encoding types
         one_hot_cols, rest_cols = [], []
-        for col in self._fxs["Categorical"]:
-            n_unique = self.X[col].nunique(dropna=False)
+        for name, column in X_transformed.items():
+            n_unique = column.nunique()
             if n_unique == 2:
-                self._fxs["Ordinal"][col] = list(sorted(self.X[col].unique()))
+                self._fxs["Ordinal"][name] = list(sorted(column.dropna().unique()))
             elif max_encoding_ohe < 0 or n_unique <= max_encoding_ohe:
-                one_hot_cols.append(col)
+                one_hot_cols.append(name)
             else:
-                rest_cols.append(col)
+                rest_cols.append(name)
 
         if self._fxs["Ordinal"]:
             self.logger.info("Set up encoding of ordinal features.")
@@ -532,14 +555,9 @@ class Preprocessor:
                         "The levels passed to the ordinal_features parameter "
                         "doesn't match with the levels in the dataset."
                     )
-                for elem in value:
-                    if elem not in self.X[key].unique():
-                        raise ValueError(
-                            f"Feature {key} doesn't contain the {elem} element."
-                        )
-                mapping[key] = {v: i for i, v in enumerate(value)}
 
                 # Encoder always needs mapping of NaN value
+                mapping[key] = {v: i for i, v in enumerate(value)}
                 mapping[key].setdefault(np.NaN, -1)
 
             ord_estimator = TransformerWrapper(
