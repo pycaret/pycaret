@@ -5,8 +5,9 @@ import collections
 import sys
 from distutils.version import LooseVersion
 from importlib import import_module
-from importlib_metadata import distributions
 from typing import Dict, Optional, Union
+
+from importlib_metadata import distributions
 
 from pycaret.internal.logging import get_logger, redirect_output
 
