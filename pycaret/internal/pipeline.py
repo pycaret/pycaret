@@ -9,7 +9,9 @@
 # This pipeline is only to be used internally.
 
 import tempfile
+import warnings
 from copy import deepcopy
+from importlib import import_module
 from inspect import signature
 from typing import Union
 
@@ -100,8 +102,6 @@ class Pipeline(imblearn.pipeline.Pipeline):
     def __setstate__(self, state):
         pickle_versions = state.get("_pycaret_versions", {})
         if pickle_versions != self._pycaret_versions:
-            import warnings
-
             warnings.warn(
                 "Version mismatch:\ncurrent: {}\npickle: {}".format(
                     self._pycaret_versions, pickle_versions
@@ -116,8 +116,6 @@ class Pipeline(imblearn.pipeline.Pipeline):
 
     @property
     def _pycaret_versions(self):
-        from importlib import import_module
-
         versions = {"pycaret": __version__}
         ml_modules = [
             ("sklearn", "sklearn"),
