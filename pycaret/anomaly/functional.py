@@ -52,7 +52,7 @@ def setup(
     normalize_method: str = "zscore",
     pca: bool = False,
     pca_method: str = "linear",
-    pca_components: Union[int, float] = 1.0,
+    pca_components: Optional[Union[int, float, str]] = None,
     custom_pipeline: Optional[Any] = None,
     custom_pipeline_position: int = -1,
     n_jobs: Optional[int] = -1,
@@ -293,15 +293,18 @@ def setup(
     pca_method: str, default = 'linear'
         Method with which to apply PCA. Possible values are:
             - 'linear': Uses Singular Value  Decomposition.
-            - kernel: Dimensionality reduction through the use of RBF kernel.
-            - incremental: Similar to 'linear', but more efficient for large datasets.
+            - 'kernel': Dimensionality reduction through the use of RBF kernel.
+            - 'incremental': Similar to 'linear', but more efficient for large datasets.
 
 
-    pca_components: int or float, default = 1.0
-        Number of components to keep. If >1, it selects that number of
-        components. If <= 1, it selects that fraction of components from
-        the original features. The value must be smaller than the number
-        of original features. This parameter is ignored when `pca=False`.
+    pca_components: int, float, str or None, default = None
+        Number of components to keep. This parameter is ignored when `pca=False`.
+            - If None: All components are kept.
+            - If int: Absolute number of components.
+            - If float: Such an amount that the variance that needs to be explained
+                        is greater than the percentage specified by `n_components`.
+                        Value should lie between 0 and 1 (ony for pca_method='linear').
+            - If "mle": Minka’s MLE is used to guess the dimension (ony for pca_method='linear').
 
 
     custom_pipeline: list of (str, transformer), dict or Pipeline, default = None

@@ -776,22 +776,6 @@ class Preprocessor:
         """Apply Principal Component Analysis."""
         self.logger.info("Set up PCA.")
 
-        if pca_components <= 0:
-            raise ValueError(
-                "Invalid value for the pca_components parameter. "
-                f"The value should be >0, got {pca_components}."
-            )
-        elif pca_components <= 1:
-            pca_components = int(pca_components * self.X.shape[1])
-        elif pca_components <= self.X.shape[1]:
-            pca_components = int(pca_components)
-        else:
-            raise ValueError(
-                "Invalid value for the pca_components parameter. "
-                "The value should be smaller than the number of "
-                f"features, got {pca_components}."
-            )
-
         pca_dict = {
             "linear": PCA(n_components=pca_components),
             "kernel": KernelPCA(n_components=pca_components, kernel="rbf"),
