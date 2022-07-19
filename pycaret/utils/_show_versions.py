@@ -6,13 +6,12 @@ adapted from :func:`sklearn.show_versions`
 __author__ = ["Nikhil Gupta"]
 __all__ = ["show_versions"]
 
-import importlib
 import logging
 import platform
 import sys
 from typing import Optional
 
-from pycaret.internal.logging import redirect_output
+from pycaret.utils._dependencies import get_module_version
 
 required_deps = [
     "pip",
@@ -100,14 +99,6 @@ def _get_sys_info():
     return dict(blob)
 
 
-def _get_module_version(module) -> str:
-    try:
-        return module.__version__
-    except AttributeError:
-        #### Version could not be obtained
-        return "Installed but version unavailable"
-
-
 def _get_deps_info(optional: bool = False, logger: Optional[logging.Logger] = None):
     """
     Overview of the installed version of dependencies.
@@ -133,23 +124,17 @@ def _get_deps_info(optional: bool = False, logger: Optional[logging.Logger] = No
 
     for modname in deps:
         try:
-            if modname in sys.modules:
-                mod = sys.modules[modname]
-            else:
-                if logger:
-                    with redirect_output(logger):
-                        mod = importlib.import_module(modname)
-                else:
-                    mod = importlib.import_module(modname)
-            ver = _get_module_version(mod)
-            deps_info[modname] = ver
-        except ImportError:
-            deps_info[modname] = "Not installed"
+            ver = get_module_version(modname)
+            if not ver:
+                ver = "Installed but version unavailable"
+        except ValueError:
+            ver = "Not installed"
+        deps_info[modname] = str(ver)
 
     return deps_info
 
 
-def show_versions(optional: bool = False, logger: Optional[logging.Logger] = None):
+def show_versions(optional: bool = True, logger: Optional[logging.Logger] = None):
     """Print useful debugging information (e.g. versions).
 
     Parameters
