@@ -16,6 +16,7 @@ numba~=0.55.0
 requests>=2.27.1  # Required by pycaret.datasets
 psutil>=5.9.0
 markupsafe>=2.0.1  # Fixes Google Colab issue
+importlib_metadata
 
 # Plotting
 matplotlib>=3.3.0
