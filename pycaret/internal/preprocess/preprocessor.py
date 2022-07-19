@@ -236,25 +236,26 @@ class Preprocessor:
         self.logger.info("Set up folding strategy.")
         allowed_fold_strategy = ["kfold", "stratifiedkfold", "groupkfold", "timeseries"]
 
-        if fold_strategy == "groupkfold":
-            if fold_groups is None or len(fold_groups) == 0:
+        if isinstance(fold_strategy, str):
+            if fold_strategy == "groupkfold":
+                if fold_groups is None or len(fold_groups) == 0:
+                    raise ValueError(
+                        "Invalid value for the fold_strategy parameter. 'groupkfold' "
+                        "requires 'fold_groups' to be a non-empty array-like object."
+                    )
+            elif fold_strategy not in allowed_fold_strategy:
                 raise ValueError(
-                    "Invalid value for the fold_strategy parameter. 'groupkfold' "
-                    "requires 'fold_groups' to be a non-empty array-like object."
+                    "Invalid value for the fold_strategy parameter. "
+                    f"Choose from: {', '.join(allowed_fold_strategy)}."
                 )
-        elif fold_strategy == "timeseries" or isinstance(
-            fold_strategy, TimeSeriesSplit
-        ):
+
+        if fold_strategy == "timeseries" or isinstance(fold_strategy, TimeSeriesSplit):
             if fold_shuffle:
                 raise ValueError(
                     "Invalid value for the fold_strategy parameter. 'timeseries' "
-                    "requires 'data_split_shuffle' to be False as it can lead to unexpected data split."
+                    "requires 'data_split_shuffle' to be False as it can lead to "
+                    "unexpected data split."
                 )
-        elif fold_strategy not in allowed_fold_strategy:
-            raise ValueError(
-                "Invalid value for the fold_strategy parameter. "
-                f"Choose from: {', '.join(allowed_fold_strategy)}."
-            )
 
         if isinstance(fold_groups, str):
             if fold_groups in self.X.columns:
