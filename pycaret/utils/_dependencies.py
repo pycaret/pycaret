@@ -13,7 +13,7 @@ from pycaret.internal.logging import get_logger, redirect_output
 
 logger = get_logger()
 
-INSTALLED_PACKAGES = None
+INSTALLED_MODULES = None
 
 
 def _try_import_and_get_module_version(
@@ -41,12 +41,20 @@ def _try_import_and_get_module_version(
     return ver
 
 
-def get_installed_packages() -> Dict[str, Optional[LooseVersion]]:
-    global INSTALLED_PACKAGES
-    if not INSTALLED_PACKAGES:
+# Based on packages_distributions() from importlib_metadata
+def get_installed_modules() -> Dict[str, Optional[LooseVersion]]:
+    """
+    Get installed modules and their versions from pip metadata.
+    """
+    global INSTALLED_MODULES
+    if not INSTALLED_MODULES:
         # Get all installed modules and their versions without
         # needing to import them.
         module_versions = {}
+        # top_level.txt contains information about modules
+        # in the package. It is not always present, in which case
+        # the assumption is that the package name is the module name.
+        # https://setuptools.pypa.io/en/latest/deprecated/python_eggs.html
         for dist in distributions():
             for pkg in (dist.read_text("top_level.txt") or "").split():
                 try:
@@ -54,17 +62,19 @@ def get_installed_packages() -> Dict[str, Optional[LooseVersion]]:
                 except Exception:
                     ver = None
                 module_versions[pkg] = ver
-        INSTALLED_PACKAGES = module_versions
-    return INSTALLED_PACKAGES
+        INSTALLED_MODULES = module_versions
+    return INSTALLED_MODULES
 
 
 def _get_module_version(modname: str) -> Optional[Union[LooseVersion, bool]]:
-    """Will cache the version in INSTALLED_PACKAGES"""
-    installed_packages = get_installed_packages()
-    if modname not in installed_packages:
+    """Will cache the version in INSTALLED_MODULES
+    
+    Returns False if module is not installed."""
+    installed_modules = get_installed_modules()
+    if modname not in installed_modules:
         # Fallback. This should never happen unless module is not present
-        installed_packages[modname] = _try_import_and_get_module_version(modname)
-    return installed_packages[modname]
+        installed_modules[modname] = _try_import_and_get_module_version(modname)
+    return installed_modules[modname]
 
 
 def get_module_version(modname: str) -> Optional[LooseVersion]:
