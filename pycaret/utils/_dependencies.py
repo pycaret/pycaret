@@ -68,7 +68,7 @@ def get_installed_modules() -> Dict[str, Optional[LooseVersion]]:
 
 def _get_module_version(modname: str) -> Optional[Union[LooseVersion, bool]]:
     """Will cache the version in INSTALLED_MODULES
-    
+
     Returns False if module is not installed."""
     installed_modules = get_installed_modules()
     if modname not in installed_modules:
