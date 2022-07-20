@@ -172,7 +172,7 @@ def test_text_embedding(embedding_method):
     assert X.shape[1] > 50  # Text column is now embedding
 
 
-def test_ordinal_features():
+def test_encoding_ordinal_features():
     """Assert that ordinal features are encoded correctly."""
     data = pycaret.datasets.get_data("employee")
     pc = pycaret.classification.setup(
@@ -187,7 +187,15 @@ def test_ordinal_features():
     assert mapping[0]["mapping"]["high"] == 2
 
 
-def test_categorical_features():
+def test_encoding_grouping_rare_categories():
+    """Assert that rare categories are grouped before encoding."""
+    data = pycaret.datasets.get_data("juice")
+    pc = pycaret.classification.setup(data, rare_to_value=0.5)
+    X, _ = pc.pipeline.transform(pc.X, pc.y)
+    assert "rare" in pc.pipeline.steps[-4][1].transformer.mapping[0]["mapping"]
+
+
+def test_encoding_categorical_features():
     """Assert that categorical features are encoded correctly."""
     data = pycaret.datasets.get_data("juice")
     pc = pycaret.classification.setup(data)
@@ -282,7 +290,7 @@ def test_remove_outliers(outliers_method):
         outliers_method=outliers_method,
         outliers_threshold=0.2,
     )
-    assert pc.pipeline.steps[3][0] == "remove_outliers"
+    assert pc.pipeline.steps[-1][0] == "remove_outliers"
 
 
 def test_polynomial_features():
@@ -307,7 +315,7 @@ def test_fix_imbalance(fix_imbalance_method):
         fix_imbalance=True,
         fix_imbalance_method=fix_imbalance_method,
     )
-    assert pc.pipeline.steps[3][0] == "balance"  # Rows are over-sampled
+    assert pc.pipeline.steps[-1][0] == "balance"  # Rows are over-sampled
 
 
 @pytest.mark.parametrize("pca_method", ["linear", "kernel", "incremental"])

@@ -51,6 +51,7 @@ from pycaret.internal.preprocess.transformers import (
     ExtractDateTimeFeatures,
     FixImbalancer,
     GroupFeatures,
+    RareCategoryGrouping,
     RemoveMulticollinearity,
     RemoveOutliers,
     TargetTransformer,
@@ -235,25 +236,26 @@ class Preprocessor:
         self.logger.info("Set up folding strategy.")
         allowed_fold_strategy = ["kfold", "stratifiedkfold", "groupkfold", "timeseries"]
 
-        if fold_strategy == "groupkfold":
-            if fold_groups is None or len(fold_groups) == 0:
+        if isinstance(fold_strategy, str):
+            if fold_strategy == "groupkfold":
+                if fold_groups is None or len(fold_groups) == 0:
+                    raise ValueError(
+                        "Invalid value for the fold_strategy parameter. 'groupkfold' "
+                        "requires 'fold_groups' to be a non-empty array-like object."
+                    )
+            elif fold_strategy not in allowed_fold_strategy:
                 raise ValueError(
-                    "Invalid value for the fold_strategy parameter. 'groupkfold' "
-                    "requires 'fold_groups' to be a non-empty array-like object."
+                    "Invalid value for the fold_strategy parameter. "
+                    f"Choose from: {', '.join(allowed_fold_strategy)}."
                 )
-        elif fold_strategy == "timeseries" or isinstance(
-            fold_strategy, TimeSeriesSplit
-        ):
+
+        if fold_strategy == "timeseries" or isinstance(fold_strategy, TimeSeriesSplit):
             if fold_shuffle:
                 raise ValueError(
                     "Invalid value for the fold_strategy parameter. 'timeseries' "
-                    "requires 'data_split_shuffle' to be False as it can lead to unexpected data split."
+                    "requires 'data_split_shuffle' to be False as it can lead to "
+                    "unexpected data split."
                 )
-        elif fold_strategy not in allowed_fold_strategy:
-            raise ValueError(
-                "Invalid value for the fold_strategy parameter. "
-                f"Choose from: {', '.join(allowed_fold_strategy)}."
-            )
 
         if isinstance(fold_groups, str):
             if fold_groups in self.X.columns:
@@ -508,18 +510,40 @@ class Preprocessor:
 
         self.pipeline.steps.append(("text_embedding", embed_estimator))
 
-    def _encoding(self, max_encoding_ohe, encoding_method):
+    def _encoding(self, max_encoding_ohe, encoding_method, rare_to_value, rare_value):
         """Encode categorical columns."""
+        if rare_to_value:
+            self.logger.info("Set up grouping of rare categories.")
+
+            if rare_to_value < 0 or rare_to_value >= 1:
+                raise ValueError(
+                    "Invalid value for the rare_to_value parameter. "
+                    f"The value must lie between 0 and 1, got {rare_to_value}."
+                )
+
+            rare_estimator = TransformerWrapper(
+                transformer=RareCategoryGrouping(rare_to_value, rare_value),
+                include=self._fxs["Categorical"],
+            )
+
+            self.pipeline.steps.append(("rare_category_grouping", rare_estimator))
+
+            # To select the encoding type for every column,
+            # we first need to run the grouping
+            X_transformed = rare_estimator.fit_transform(self.X_train)
+        else:
+            X_transformed = self.X_train
+
         # Select columns for different encoding types
         one_hot_cols, rest_cols = [], []
-        for col in self._fxs["Categorical"]:
-            n_unique = self.X[col].nunique(dropna=False)
+        for name, column in X_transformed.items():
+            n_unique = column.nunique()
             if n_unique == 2:
-                self._fxs["Ordinal"][col] = list(sorted(self.X[col].unique()))
+                self._fxs["Ordinal"][name] = list(sorted(column.dropna().unique()))
             elif max_encoding_ohe < 0 or n_unique <= max_encoding_ohe:
-                one_hot_cols.append(col)
+                one_hot_cols.append(name)
             else:
-                rest_cols.append(col)
+                rest_cols.append(name)
 
         if self._fxs["Ordinal"]:
             self.logger.info("Set up encoding of ordinal features.")
@@ -532,14 +556,9 @@ class Preprocessor:
                         "The levels passed to the ordinal_features parameter "
                         "doesn't match with the levels in the dataset."
                     )
-                for elem in value:
-                    if elem not in self.X[key].unique():
-                        raise ValueError(
-                            f"Feature {key} doesn't contain the {elem} element."
-                        )
-                mapping[key] = {v: i for i, v in enumerate(value)}
 
                 # Encoder always needs mapping of NaN value
+                mapping[key] = {v: i for i, v in enumerate(value)}
                 mapping[key].setdefault(np.NaN, -1)
 
             ord_estimator = TransformerWrapper(
@@ -757,22 +776,6 @@ class Preprocessor:
     def _pca(self, pca_method, pca_components):
         """Apply Principal Component Analysis."""
         self.logger.info("Set up PCA.")
-
-        if pca_components <= 0:
-            raise ValueError(
-                "Invalid value for the pca_components parameter. "
-                f"The value should be >0, got {pca_components}."
-            )
-        elif pca_components <= 1:
-            pca_components = int(pca_components * self.X.shape[1])
-        elif pca_components <= self.X.shape[1]:
-            pca_components = int(pca_components)
-        else:
-            raise ValueError(
-                "Invalid value for the pca_components parameter. "
-                "The value should be smaller than the number of "
-                f"features, got {pca_components}."
-            )
 
         pca_dict = {
             "linear": PCA(n_components=pca_components),
