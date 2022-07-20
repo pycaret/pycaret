@@ -46,15 +46,15 @@ def get_installed_packages() -> Dict[str, Optional[LooseVersion]]:
     if not INSTALLED_PACKAGES:
         # Get all installed modules and their versions without
         # needing to import them.
-        pkg_to_dist = collections.defaultdict(list)
+        module_versions = {}
         for dist in distributions():
             for pkg in (dist.read_text("top_level.txt") or "").split():
                 try:
                     ver = LooseVersion(dist.metadata["Version"])
                 except Exception:
                     ver = None
-                pkg_to_dist[pkg] = ver
-        INSTALLED_PACKAGES = dict(pkg_to_dist)
+                module_versions[pkg] = ver
+        INSTALLED_PACKAGES = module_versions
     return INSTALLED_PACKAGES
 
 
@@ -62,7 +62,7 @@ def _get_module_version(modname: str) -> Optional[Union[LooseVersion, bool]]:
     """Will cache the version in INSTALLED_PACKAGES"""
     installed_packages = get_installed_packages()
     if modname not in installed_packages:
-        # Fallback. This should never happen.
+        # Fallback. This should never happen unless module is not present
         installed_packages[modname] = _try_import_and_get_module_version(modname)
     return installed_packages[modname]
 
