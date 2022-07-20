@@ -140,7 +140,7 @@ def show_versions(optional: bool = True, logger: Optional[logging.Logger] = None
     Parameters
     ----------
     optional : bool, optional
-        Should optional dependencies be documented, by default False
+        Should optional dependencies be documented, by default True
     logger : Optional[logging.Logger], optional
         The logger to use. If None, then uses print() command to display results,
         by default None
