@@ -510,19 +510,19 @@ class Preprocessor:
 
         self.pipeline.steps.append(("text_embedding", embed_estimator))
 
-    def _encoding(self, max_encoding_ohe, encoding_method, frac_to_other):
+    def _encoding(self, max_encoding_ohe, encoding_method, rare_to_value, rare_value):
         """Encode categorical columns."""
-        if frac_to_other:
+        if rare_to_value:
             self.logger.info("Set up grouping of rare categories.")
 
-            if frac_to_other < 0 or frac_to_other >= 1:
+            if rare_to_value < 0 or rare_to_value >= 1:
                 raise ValueError(
-                    "Invalid value for the frac_to_other parameter. "
-                    f"The value must lie between 0 and 1, got {frac_to_other}."
+                    "Invalid value for the rare_to_value parameter. "
+                    f"The value must lie between 0 and 1, got {rare_to_value}."
                 )
 
             rare_estimator = TransformerWrapper(
-                transformer=RareCategoryGrouping(frac_to_other),
+                transformer=RareCategoryGrouping(rare_to_value, rare_value),
                 include=self._fxs["Categorical"],
             )
 

@@ -107,7 +107,8 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
         text_features_method: str = "tf-idf",
         max_encoding_ohe: int = 5,
         encoding_method: Optional[Any] = None,
-        frac_to_other: Optional[float] = None,
+        rare_to_value: Optional[float] = None,
+        rare_value: str = "rare",
         polynomial_features: bool = False,
         polynomial_degree: int = 2,
         low_variance_threshold: Optional[float] = 0,
@@ -315,11 +316,16 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             `category_encoders.leave_one_out.LeaveOneOutEncoder` is used.
 
 
-        frac_to_other: float or None, default=None
+        rare_to_value: float or None, default=None
             Minimum fraction of category occurrences in a categorical column.
-            If a category is less frequent than `frac_to_other * len(X)`, it is
-            replaced with the string `other`. Use this parameter to group rare
-            categories before encoding the column. If None, ignores this step.
+            If a category is less frequent than `rare_to_value * len(X)`, it is
+            replaced with the string in `rare_value`. Use this parameter to group
+            rare categories before encoding the column. If None, ignores this step.
+
+
+        rare_value: str, default="rare"
+            Value with which to replace rare categories. Ignored when
+            ``rare_to_value`` is None.
 
 
         polynomial_features: bool, default = False
@@ -770,7 +776,12 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
 
             # Encode non-numerical features
             if self._fxs["Ordinal"] or self._fxs["Categorical"]:
-                self._encoding(max_encoding_ohe, encoding_method, frac_to_other)
+                self._encoding(
+                    max_encoding_ohe=max_encoding_ohe,
+                    encoding_method=encoding_method,
+                    rare_to_value=rare_to_value,
+                    rare_value=rare_value,
+                )
 
             # Create polynomial features from the existing ones
             if polynomial_features:

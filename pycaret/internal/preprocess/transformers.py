@@ -349,15 +349,15 @@ class EmbedTextFeatures(BaseEstimator, TransformerMixin):
 class RareCategoryGrouping(BaseEstimator, TransformerMixin):
     """Replace rare categories with the string `other`."""
 
-    def __init__(self, frac_to_other, value="other"):
-        self.frac_to_other = frac_to_other
+    def __init__(self, rare_to_value, value="rare"):
+        self.rare_to_value = rare_to_value
         self.value = value
         self._to_other = defaultdict(list)
 
     def fit(self, X, y=None):
         for name, column in X.items():
             for category, count in column.value_counts().items():
-                if count < self.frac_to_other * len(X):
+                if count < self.rare_to_value * len(X):
                     self._to_other[name].append(category)
 
         return self
