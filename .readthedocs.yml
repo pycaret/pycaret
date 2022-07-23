@@ -22,4 +22,4 @@ python:
   install:
     - requirements: docs/source/requirements.txt
     - requirements: requirements.txt
-    - requirements: requirements-ts.txt
+    - requirements: requirements-optional.txt
