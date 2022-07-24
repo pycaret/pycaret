@@ -8,10 +8,10 @@
 
 # This pipeline is only to be used internally.
 
+import platform
 import tempfile
 import warnings
 from copy import deepcopy
-from importlib import import_module
 from inspect import signature
 from typing import Union
 
@@ -24,7 +24,7 @@ from sklearn.utils.metaestimators import if_delegate_has_method
 from sklearn.utils.validation import check_memory
 
 from pycaret.internal.utils import get_all_object_vars_and_properties, variable_return
-from pycaret.utils import __version__
+from pycaret.utils._show_versions import _get_deps_info
 
 
 def _fit_one(transformer, X=None, y=None, message=None, **fit_params):
@@ -116,22 +116,13 @@ class Pipeline(imblearn.pipeline.Pipeline):
 
     @property
     def _pycaret_versions(self):
-        versions = {"pycaret": __version__}
-        ml_modules = [
-            ("sklearn", "sklearn"),
-            ("imblearn", "imblearn"),
-            ("pyod", "pyod.version"),
-            ("category-encoders", "category_encoders"),
-            ("lightgbm", "lightgbm"),
-        ]
-        for name, import_name in ml_modules:
-            try:
-                module = import_module(import_name)
-                versions[name] = module.__version__
-            except (AttributeError, ImportError, OSError):
-                pass
-
-        return versions
+        return {
+            "deps_info": _get_deps_info(optional=False),
+            "python": {
+                "version": platform.python_version(),
+                "machine": platform.machine(),
+            },
+        }
 
     @property
     def feature_names_in_(self):
