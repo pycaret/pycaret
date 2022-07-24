@@ -2,6 +2,7 @@
 # License: MIT
 
 
+from collections import defaultdict
 from inspect import signature
 
 import numpy as np
@@ -139,7 +140,13 @@ class TransformerWrapper(BaseEstimator, TransformerMixin):
 
             # Add all derivative columns: cols that originate from another
             # and start with its progenitor name, e.g. one-hot encoded columns
-            columns.extend(list(df.columns[df.columns.str.startswith(f"{col}_")]))
+            columns.extend(
+                [
+                    c
+                    for c in df.columns
+                    if c.startswith(f"{col}_") and c not in original_df
+                ]
+            )
 
         # Add remaining new columns (non-derivatives)
         columns.extend([col for col in df if col not in columns])
@@ -335,6 +342,30 @@ class EmbedTextFeatures(BaseEstimator, TransformerMixin):
 
             # Drop original text column
             X = X.drop(col, axis=1)
+
+        return X
+
+
+class RareCategoryGrouping(BaseEstimator, TransformerMixin):
+    """Replace rare categories with the string `other`."""
+
+    def __init__(self, rare_to_value, value="rare"):
+        self.rare_to_value = rare_to_value
+        self.value = value
+        self._to_other = defaultdict(list)
+
+    def fit(self, X, y=None):
+        for name, column in X.items():
+            for category, count in column.value_counts().items():
+                if count < self.rare_to_value * len(X):
+                    self._to_other[name].append(category)
+
+        return self
+
+    def transform(self, X, y=None):
+        for name, column in X.items():
+            if self._to_other[name]:
+                X[name] = column.replace(self._to_other[name], self.value)
 
         return X
 
