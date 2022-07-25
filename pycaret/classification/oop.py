@@ -172,7 +172,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         custom_pipeline: Optional[Any] = None,
         custom_pipeline_position: int = -1,
         data_split_shuffle: bool = True,
-        data_split_stratify: Union[bool, List[str]] = False,
+        data_split_stratify: Union[bool, List[str]] = True,
         fold_strategy: Union[str, Any] = "stratifiedkfold",
         fold: int = 10,
         fold_shuffle: bool = False,
@@ -546,7 +546,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             When set to False, prevents shuffling of rows during 'train_test_split'.
 
 
-        data_split_stratify: bool or list, default = False
+        data_split_stratify: bool or list, default = True
             Controls stratification during 'train_test_split'. When set to True, will
             stratify by target column. To stratify on any other columns, pass a list of
             column names. Ignored when ``data_split_shuffle`` is False.
