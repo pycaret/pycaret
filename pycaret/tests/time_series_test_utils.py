@@ -316,7 +316,7 @@ def _return_data_big_small():
     """Returns one dataset with 144 data points and one with < 12 data points"""
     data = get_data("airline")
     data = data - 400
-    data_small = data[:12]  # 11 data points
+    data_small = data[:11]  # 11 data points
     datasets = [data, data_small]
 
     return datasets

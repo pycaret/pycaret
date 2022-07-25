@@ -72,8 +72,12 @@ def _get_diffs(data: pd.Series, lags_list: List[Any]) -> List[pd.Series]:
     List[pd.Series]
         List of differences per the lags_list
     """
-
-    diffs = [Differencer(lags=lags).fit_transform(data) for lags in lags_list]
+    # Default na_handling changed in sktime 0.13.0 (compared to 0.11.x).
+    # https://www.sktime.org/en/latest/changelog.html#id3. Hence hard coding.
+    diffs = [
+        Differencer(lags=lags, na_handling="drop_na").fit_transform(data)
+        for lags in lags_list
+    ]
     return diffs
 
 
