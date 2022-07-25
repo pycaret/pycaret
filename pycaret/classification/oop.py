@@ -133,6 +133,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         ignore_features: Optional[List[str]] = None,
         keep_features: Optional[List[str]] = None,
         preprocess: bool = True,
+        create_date_columns: List[str] = ["day", "month", "year"],
         imputation_type: Optional[str] = "simple",
         numeric_imputation: str = "mean",
         categorical_imputation: str = "constant",
@@ -171,7 +172,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         custom_pipeline: Optional[Any] = None,
         custom_pipeline_position: int = -1,
         data_split_shuffle: bool = True,
-        data_split_stratify: Union[bool, List[str]] = True,
+        data_split_stratify: Union[bool, List[str]] = False,
         fold_strategy: Union[str, Any] = "stratifiedkfold",
         fold: int = 10,
         fold_shuffle: bool = False,
@@ -290,6 +291,14 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             and custom transformations passed in ``custom_pipeline`` param. Data must be
             ready for modeling (no missing values, no dates, categorical data encoding),
             when preprocess is set to False.
+
+
+        create_date_columns: list of str, default=["day", "month", "year"]
+            Columns to create from the date features. Note that created features
+            with zero variance (e.g. the feature hour in a column that only contains
+            dates) are ignored. Allowed values are datetime attributes from
+            `pandas.Series.dt`. The datetime format of the feature is inferred
+            automatically from the first non NaN value.
 
 
         imputation_type: str or None, default = 'simple'
@@ -783,7 +792,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
 
             # Convert date feature to numerical values
             if self._fxs["Date"]:
-                self._date_feature_engineering()
+                self._date_feature_engineering(create_date_columns)
 
             # Impute missing values
             if imputation_type == "simple":

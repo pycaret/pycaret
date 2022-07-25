@@ -153,6 +153,10 @@ class Preprocessor:
         self.logger.info("Set up train/test split.")
 
         if test_data is None:
+            print(data_split_stratify)
+            print(
+                "sii", get_columns_to_stratify_by(self.X, self.y, data_split_stratify)
+            )
             # self.data is already prepared here
             train, test = train_test_split(
                 self.data,
@@ -324,12 +328,13 @@ class Preprocessor:
             )
         )
 
-    def _date_feature_engineering(self):
+    def _date_feature_engineering(self, create_date_columns):
         """Convert date features to numerical values."""
         self.logger.info("Set up date feature engineering.")
         # TODO: Could be improved allowing the user to choose which features to add
         date_estimator = TransformerWrapper(
-            transformer=ExtractDateTimeFeatures(), include=self._fxs["Date"]
+            transformer=ExtractDateTimeFeatures(create_date_columns),
+            include=self._fxs["Date"],
         )
         self.pipeline.steps.append(
             ("date_feature_extractor", date_estimator),

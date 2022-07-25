@@ -4836,8 +4836,8 @@ class _SupervisedExperiment(_TabularExperiment):
         Returns
         -------
         Predictions
-            Predictions (Label and Score) column attached to the original dataset
-            and returned as pandas dataframe.
+            Predictions (prediction_label and prediction_score) columns are
+            attached to the original dataset and returned as pandas dataframe.
 
         score_grid
             A table containing the scoring metrics on hold-out / test set.
@@ -5029,15 +5029,17 @@ class _SupervisedExperiment(_TabularExperiment):
             df_score = df_score.round(round)
             display.display(df_score.style.format(precision=round))
 
-        label = pd.DataFrame(pred, columns=["Label"], index=X_test_.index)
+        label = pd.DataFrame(pred, columns=["prediction_label"], index=X_test_.index)
         if ml_usecase == MLUsecase.CLASSIFICATION:
             try:
-                label["Label"] = label["Label"].astype(int)
+                label["prediction_label"] = label["prediction_label"].astype(int)
             except:
                 pass
 
         if not encoded_labels:
-            label["Label"] = replace_labels_in_column(pipeline, label["Label"])
+            label["prediction_label"] = replace_labels_in_column(
+                pipeline, label["prediction_label"]
+            )
             if y_test_ is not None:
                 y_test_ = replace_labels_in_column(pipeline, y_test_)
         old_index = X_test_.index
@@ -5058,9 +5060,9 @@ class _SupervisedExperiment(_TabularExperiment):
                         score_columns = replace_labels_in_column(
                             pipeline, score_columns
                         )
-                    score.columns = [f"Score_{label}" for label in score_columns]
+                    score.columns = [f"prediction_score_{l}" for l in score_columns]
                 else:
-                    score.columns = ["Score"]
+                    score.columns = ["prediction_score"]
                 score = score.round(round)
                 old_index = X_test_.index
                 X_test_ = pd.concat((X_test_, score), axis=1)
