@@ -43,7 +43,7 @@ def test_utils():
         final_model, data=test.drop("Purchase", axis=1), encoded_labels=True
     )
     actual = clf1.pipeline.transform(y=test["Purchase"])
-    prediction = result["Label"]
+    prediction = result["prediction_label"]
 
     # provisional support
     actual = actual.dropna(axis=0, how="any")
@@ -51,7 +51,7 @@ def test_utils():
     actual = actual["Purchase"].astype(np.int64)
     prediction = prediction.dropna(axis=0, how="any")
     prediction = prediction.reset_index()
-    prediction = prediction["Label"].astype(np.int64)
+    prediction = prediction["prediction_label"].astype(np.int64)
 
     # check metric(classification)
     accuracy = pycaret.utils.check_metric(actual, prediction, "Accuracy")
@@ -101,7 +101,7 @@ def test_utils():
         final_model, data=test.drop("medv", axis=1)
     )
     actual = test["medv"]
-    prediction = result["Label"]
+    prediction = result["prediction_label"]
 
     # provisional support
     actual = actual.dropna(axis=0, how="any")

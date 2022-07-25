@@ -5222,7 +5222,7 @@ class _SupervisedExperiment(_TabularExperiment):
         if self._ml_usecase == MLUsecase.CLASSIFICATION:
             metric_dict["Selection Rate"] = selection_rate
 
-        y_pred = self.predict_model(estimator)["Label"]
+        y_pred = self.predict_model(estimator)["prediction_label"]
         y_true = self.y_test
 
         try:
