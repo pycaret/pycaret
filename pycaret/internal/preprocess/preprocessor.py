@@ -153,10 +153,6 @@ class Preprocessor:
         self.logger.info("Set up train/test split.")
 
         if test_data is None:
-            print(data_split_stratify)
-            print(
-                "sii", get_columns_to_stratify_by(self.X, self.y, data_split_stratify)
-            )
             # self.data is already prepared here
             train, test = train_test_split(
                 self.data,
