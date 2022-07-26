@@ -60,6 +60,7 @@ from pycaret.internal.utils import (
 )
 from pycaret.internal.validation import is_fitted, is_sklearn_cv_generator
 from pycaret.utils._dependencies import _check_soft_dependencies
+from pycaret.utils.constants import LABEL_COLUMN, SCORE_COLUMN
 
 LOGGER = get_logger()
 
@@ -4836,8 +4837,8 @@ class _SupervisedExperiment(_TabularExperiment):
         Returns
         -------
         Predictions
-            Predictions (prediction_label and prediction_score) columns are
-            attached to the original dataset and returned as pandas dataframe.
+            Predictions (label and score) columns are attached to the original
+            dataset and returned as pandas dataframe.
 
         score_grid
             A table containing the scoring metrics on hold-out / test set.
@@ -5029,16 +5030,16 @@ class _SupervisedExperiment(_TabularExperiment):
             df_score = df_score.round(round)
             display.display(df_score.style.format(precision=round))
 
-        label = pd.DataFrame(pred, columns=["prediction_label"], index=X_test_.index)
+        label = pd.DataFrame(pred, columns=[LABEL_COLUMN], index=X_test_.index)
         if ml_usecase == MLUsecase.CLASSIFICATION:
             try:
-                label["prediction_label"] = label["prediction_label"].astype(int)
+                label[LABEL_COLUMN] = label[LABEL_COLUMN].astype(int)
             except:
                 pass
 
         if not encoded_labels:
-            label["prediction_label"] = replace_labels_in_column(
-                pipeline, label["prediction_label"]
+            label[LABEL_COLUMN] = replace_labels_in_column(
+                pipeline, label[LABEL_COLUMN]
             )
             if y_test_ is not None:
                 y_test_ = replace_labels_in_column(pipeline, y_test_)
@@ -5060,9 +5061,9 @@ class _SupervisedExperiment(_TabularExperiment):
                         score_columns = replace_labels_in_column(
                             pipeline, score_columns
                         )
-                    score.columns = [f"prediction_score_{l}" for l in score_columns]
+                    score.columns = [f"{SCORE_COLUMN}_{l}" for l in score_columns]
                 else:
-                    score.columns = ["prediction_score"]
+                    score.columns = [SCORE_COLUMN]
                 score = score.round(round)
                 old_index = X_test_.index
                 X_test_ = pd.concat((X_test_, score), axis=1)
@@ -5222,7 +5223,7 @@ class _SupervisedExperiment(_TabularExperiment):
         if self._ml_usecase == MLUsecase.CLASSIFICATION:
             metric_dict["Selection Rate"] = selection_rate
 
-        y_pred = self.predict_model(estimator)["prediction_label"]
+        y_pred = self.predict_model(estimator)[LABEL_COLUMN]
         y_true = self.y_test
 
         try:
