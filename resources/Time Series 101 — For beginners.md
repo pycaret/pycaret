@@ -138,7 +138,7 @@ MAE on the test set is 12% higher than the cross-validated MAE. Not so good, but
     predictions['Date'] = pd.date_range(start='1949-01-01', end = '1960-12-01', freq = 'MS')
 
     **# line plot**
-    fig = px.line(predictions, x='Date', y=["Passengers", "Label"], template = 'plotly_dark')
+    fig = px.line(predictions, x='Date', y=["Passengers", "prediction_label"], template = 'plotly_dark')
 
     **# add a vertical rectange for test-set separation**
     fig.add_vrect(x0="1960-01-01", x1="1960-12-01", fillcolor="grey", opacity=0.25, line_width=0)fig.show()
@@ -176,7 +176,7 @@ Now, let’s use the future_df to score and generate predictions.
     concat_df_i = pd.date_range(start='1949-01-01', end = '1965-01-01', freq = 'MS')
     concat_df.set_index(concat_df_i, inplace=True)fig = 
 
-    px.line(concat_df, x=concat_df.index, y=["Passengers", "Label"], template = 'plotly_dark')
+    px.line(concat_df, x=concat_df.index, y=["Passengers", "prediction_label"], template = 'plotly_dark')
     fig.show()
 
 ![Actual (1949–1960) and Predicted (1961–1964) US airline passengers](https://cdn-images-1.medium.com/max/2614/0*x8TJJUO--Unxheeg.png)

@@ -101,6 +101,20 @@ def test_date_features():
     assert all([f"date_{attr}" in X for attr in ("day", "month", "year")])
 
 
+def test_custom_date_features():
+    """Assert that features are extracted from date features."""
+    data = pycaret.datasets.get_data("juice")
+    data["date"] = pd.date_range(start="1/1/2018", periods=len(data))
+    pc = pycaret.classification.setup(
+        data,
+        target=-2,
+        date_features=["date"],
+        create_date_columns=["quarter"],
+    )
+    X, _ = pc.pipeline.transform(pc.X, pc.y)
+    assert "date_quarter" in X and "day" not in X
+
+
 @pytest.mark.parametrize(
     "imputation_method", [0, "drop", "mean", "median", "mode", "knn"]
 )

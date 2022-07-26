@@ -28,6 +28,7 @@ def setup(
     ignore_features: Optional[List[str]] = None,
     keep_features: Optional[List[str]] = None,
     preprocess: bool = True,
+    create_date_columns: List[str] = ["day", "month", "year"],
     imputation_type: Optional[str] = "simple",
     numeric_imputation: str = "mean",
     categorical_imputation: str = "constant",
@@ -140,6 +141,14 @@ def setup(
         and custom transformations passed in ``custom_pipeline`` param. Data must be
         ready for modeling (no missing values, no dates, categorical data encoding),
         when preprocess is set to False.
+
+
+    create_date_columns: list of str, default=["day", "month", "year"]
+        Columns to create from the date features. Note that created features
+        with zero variance (e.g. the feature hour in a column that only contains
+        dates) are ignored. Allowed values are datetime attributes from
+        `pandas.Series.dt`. The datetime format of the feature is inferred
+        automatically from the first non NaN value.
 
 
     imputation_type: str or None, default = 'simple'
@@ -411,6 +420,7 @@ def setup(
         ignore_features=ignore_features,
         keep_features=keep_features,
         preprocess=preprocess,
+        create_date_columns=create_date_columns,
         imputation_type=imputation_type,
         numeric_imputation=numeric_imputation,
         categorical_imputation=categorical_imputation,

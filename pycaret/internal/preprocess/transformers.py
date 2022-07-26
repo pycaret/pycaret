@@ -280,8 +280,8 @@ class ExtractDateTimeFeatures(BaseEstimator, TransformerMixin):
             for fx in self.features:
                 values = getattr(X[col].dt, fx)
 
-                # Only create feature if values contains less than 30% NaTs
-                if values.isna().sum() <= 0.3 * len(values):
+                # Only create feature if values contains less than 10% NaTs
+                if values.isna().sum() <= 0.1 * len(values):
                     X.insert(X.columns.get_loc(col) + 1, f"{col}_{fx}", values)
 
             X = X.drop(col, axis=1)  # Drop the original datetime column
