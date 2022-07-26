@@ -159,6 +159,9 @@ def _get_imputed_data(
     Tuple[pd.Series, Optional[pd.DataFrame]]
         Imputed y and X values respectively
     """
+    # Since we are fitting (fit_transform) with new data, need to make sure
+    # we do not have side effects on pipeline
+    pipeline_ = deepcopy(pipeline)
 
     if X is None:
         # No exogenous variables
@@ -168,16 +171,16 @@ def _get_imputed_data(
         # Exogenous variables present
         X_imputed = X.copy()
 
-        if _transformations_present_X(pipeline):
-            transformer_pipeline_X = pipeline.steps_[0][1]
+        if _transformations_present_X(pipeline_):
+            transformer_pipeline_X = pipeline_.steps_[0][1]
             for _, transformer_X in transformer_pipeline_X.steps_:
                 if isinstance(transformer_X, Imputer):
                     X_imputed = transformer_X.fit_transform(X, y)
                     continue
 
     y_imputed = y.copy()
-    if _transformations_present_y(pipeline):
-        transformer_pipeline_y = pipeline.steps_[-1][1].steps_[0][1]
+    if _transformations_present_y(pipeline_):
+        transformer_pipeline_y = pipeline_.steps_[-1][1].steps_[0][1]
         for _, transformer_y in transformer_pipeline_y.steps_:
             if isinstance(transformer_y, Imputer):
                 y_imputed = transformer_y.fit_transform(y)
