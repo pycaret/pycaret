@@ -133,6 +133,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         ignore_features: Optional[List[str]] = None,
         keep_features: Optional[List[str]] = None,
         preprocess: bool = True,
+        create_date_columns: List[str] = ["day", "month", "year"],
         imputation_type: Optional[str] = "simple",
         numeric_imputation: str = "mean",
         categorical_imputation: str = "constant",
@@ -290,6 +291,14 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             and custom transformations passed in ``custom_pipeline`` param. Data must be
             ready for modeling (no missing values, no dates, categorical data encoding),
             when preprocess is set to False.
+
+
+        create_date_columns: list of str, default=["day", "month", "year"]
+            Columns to create from the date features. Note that created features
+            with zero variance (e.g. the feature hour in a column that only contains
+            dates) are ignored. Allowed values are datetime attributes from
+            `pandas.Series.dt`. The datetime format of the feature is inferred
+            automatically from the first non NaN value.
 
 
         imputation_type: str or None, default = 'simple'
@@ -537,7 +546,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             When set to False, prevents shuffling of rows during 'train_test_split'.
 
 
-        data_split_stratify: bool or list, default = False
+        data_split_stratify: bool or list, default = True
             Controls stratification during 'train_test_split'. When set to True, will
             stratify by target column. To stratify on any other columns, pass a list of
             column names. Ignored when ``data_split_shuffle`` is False.
@@ -783,7 +792,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
 
             # Convert date feature to numerical values
             if self._fxs["Date"]:
-                self._date_feature_engineering()
+                self._date_feature_engineering(create_date_columns)
 
             # Impute missing values
             if imputation_type == "simple":

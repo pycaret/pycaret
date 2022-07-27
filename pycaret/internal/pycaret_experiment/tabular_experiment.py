@@ -2644,7 +2644,7 @@ pydanticoutputmodel=create_model("{API_NAME}_output", **{outputDataframeschema})
 def predict(datainput:pydanticinputmodel):
     data = pd.DataFrame([datainput.dict()])
     predictions = predict_model(model, data=data)
-    return {D1}"{tarname}": predictions["Label"][0]{D2}
+    return {D1}"{tarname}": predictions["prediction_label"][0]{D2}
 if __name__ == "__main__":
     uvicorn.run(app, host="{HOST}", port={PORT})""".format(
             MODULE_NAME=MODULE,
