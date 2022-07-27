@@ -4,7 +4,7 @@ import os
 import time
 import traceback
 import warnings
-from collections import Iterable
+
 from copy import deepcopy
 from functools import partial
 from typing import Any, Dict, List, Optional, Set, Tuple, Union
@@ -60,6 +60,11 @@ from pycaret.internal.utils import (
 )
 from pycaret.internal.validation import is_fitted, is_sklearn_cv_generator
 from pycaret.utils._dependencies import _check_soft_dependencies
+
+try:
+    from collections.abc import Iterable
+except:
+    from collections import Iterable
 
 LOGGER = get_logger()
 
