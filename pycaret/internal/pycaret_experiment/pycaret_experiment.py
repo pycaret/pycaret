@@ -536,8 +536,13 @@ class _PyCaretExperiment:
             else:
                 return self.train_transformed
         else:
+            # Use fully trained pipeline to get the requested data
             return pd.concat(
-                [*_pipeline_transform(pipeline=self.pipeline, y=self.y, X=self.X)],
+                [
+                    *_pipeline_transform(
+                        pipeline=self.pipeline_fully_trained, y=self.y, X=self.X
+                    )
+                ],
                 axis=1,
             )
 
@@ -553,6 +558,7 @@ class _PyCaretExperiment:
             else:
                 return self.X_train_transformed
         else:
+            # Use pipeline trained on training data only to get the requested data
             # In time series, the order of arguments and returns may be reversed.
             return pd.concat(
                 [
@@ -572,15 +578,19 @@ class _PyCaretExperiment:
                 axis=1,
             )
         else:
+            # When transforming the test set, we can and should use all data before that
             # In time series, the order of arguments and returns may be reversed.
-            return pd.concat(
+            all_data = pd.concat(
                 [
                     *_pipeline_transform(
-                        pipeline=self.pipeline, y=self.y_test, X=self.X_test
+                        pipeline=self.pipeline_fully_trained,
+                        y=self.y,
+                        X=self.X,
                     )
                 ],
                 axis=1,
             )
+            return all_data.loc[self.y_test.index]
 
     @property
     def X_transformed(self):
@@ -591,8 +601,11 @@ class _PyCaretExperiment:
             else:
                 return self.X_train_transformed
         else:
+            # Use fully trained pipeline to get the requested data
             # In time series, the order of arguments and returns may be reversed.
-            return _pipeline_transform(pipeline=self.pipeline, y=self.y, X=self.X)[1]
+            return _pipeline_transform(
+                pipeline=self.pipeline_fully_trained, y=self.y, X=self.X
+            )[1]
 
     @property
     def y_transformed(self):
@@ -600,8 +613,11 @@ class _PyCaretExperiment:
         if self._ml_usecase != MLUsecase.TIME_SERIES:
             return pd.concat([self.y_train_transformed, self.y_test_transformed])
         else:
+            # Use fully trained pipeline to get the requested data
             # In time series, the order of arguments and returns may be reversed.
-            return _pipeline_transform(pipeline=self.pipeline, y=self.y, X=self.X)[0]
+            return _pipeline_transform(
+                pipeline=self.pipeline_fully_trained, y=self.y, X=self.X
+            )[0]
 
     @property
     def X_train_transformed(self):
@@ -616,6 +632,7 @@ class _PyCaretExperiment:
             else:
                 return self.pipeline.transform(self.X_train, filter_train_only=False)
         else:
+            # Use pipeline trained on training data only to get the requested data
             # In time series, the order of arguments and returns may be reversed.
             return _pipeline_transform(
                 pipeline=self.pipeline, y=self.y_train, X=self.X_train
@@ -629,7 +646,9 @@ class _PyCaretExperiment:
         else:
             # In time series, the order of arguments and returns may be reversed.
             # When transforming the test set, we can and should use all data before that
-            _, X = _pipeline_transform(pipeline=self.pipeline, y=self.y, X=self.X)
+            _, X = _pipeline_transform(
+                pipeline=self.pipeline_fully_trained, y=self.y, X=self.X
+            )
 
             if X is None:
                 return None
@@ -646,6 +665,7 @@ class _PyCaretExperiment:
                 filter_train_only=False,
             )[1]
         else:
+            # Use pipeline trained on training data only to get the requested data
             # In time series, the order of arguments and returns may be reversed.
             return _pipeline_transform(
                 pipeline=self.pipeline, y=self.y_train, X=self.X_train
@@ -659,5 +679,7 @@ class _PyCaretExperiment:
         else:
             # In time series, the order of arguments and returns may be reversed.
             # When transforming the test set, we can and should use all data before that
-            y, _ = _pipeline_transform(pipeline=self.pipeline, y=self.y, X=self.X)
+            y, _ = _pipeline_transform(
+                pipeline=self.pipeline_fully_trained, y=self.y, X=self.X
+            )
             return y.loc[self.y_test.index]

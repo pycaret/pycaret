@@ -2,6 +2,7 @@
 # License: MIT
 
 
+from collections import defaultdict
 from inspect import signature
 
 import numpy as np
@@ -279,8 +280,8 @@ class ExtractDateTimeFeatures(BaseEstimator, TransformerMixin):
             for fx in self.features:
                 values = getattr(X[col].dt, fx)
 
-                # Only create feature if values contains less than 30% NaTs
-                if values.isna().sum() <= 0.3 * len(values):
+                # Only create feature if values contains less than 10% NaTs
+                if values.isna().sum() <= 0.1 * len(values):
                     X.insert(X.columns.get_loc(col) + 1, f"{col}_{fx}", values)
 
             X = X.drop(col, axis=1)  # Drop the original datetime column
@@ -341,6 +342,30 @@ class EmbedTextFeatures(BaseEstimator, TransformerMixin):
 
             # Drop original text column
             X = X.drop(col, axis=1)
+
+        return X
+
+
+class RareCategoryGrouping(BaseEstimator, TransformerMixin):
+    """Replace rare categories with the string `other`."""
+
+    def __init__(self, rare_to_value, value="rare"):
+        self.rare_to_value = rare_to_value
+        self.value = value
+        self._to_other = defaultdict(list)
+
+    def fit(self, X, y=None):
+        for name, column in X.items():
+            for category, count in column.value_counts().items():
+                if count < self.rare_to_value * len(X):
+                    self._to_other[name].append(category)
+
+        return self
+
+    def transform(self, X, y=None):
+        for name, column in X.items():
+            if self._to_other[name]:
+                X[name] = column.replace(self._to_other[name], self.value)
 
         return X
 

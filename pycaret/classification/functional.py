@@ -37,6 +37,7 @@ def setup(
     ignore_features: Optional[List[str]] = None,
     keep_features: Optional[List[str]] = None,
     preprocess: bool = True,
+    create_date_columns: List[str] = ["day", "month", "year"],
     imputation_type: Optional[str] = "simple",
     numeric_imputation: Union[int, float, str] = "mean",
     categorical_imputation: str = "constant",
@@ -46,6 +47,8 @@ def setup(
     text_features_method: str = "tf-idf",
     max_encoding_ohe: int = 5,
     encoding_method: Optional[Any] = None,
+    rare_to_value: Optional[float] = None,
+    rare_value: str = "rare",
     polynomial_features: bool = False,
     polynomial_degree: int = 2,
     low_variance_threshold: Optional[float] = 0,
@@ -65,7 +68,7 @@ def setup(
     normalize_method: str = "zscore",
     pca: bool = False,
     pca_method: str = "linear",
-    pca_components: Union[int, float] = 1.0,
+    pca_components: Optional[Union[int, float, str]] = None,
     feature_selection: bool = False,
     feature_selection_method: str = "classic",
     feature_selection_estimator: Union[str, Any] = "lightgbm",
@@ -191,6 +194,14 @@ def setup(
         when preprocess is set to False.
 
 
+    create_date_columns: list of str, default=["day", "month", "year"]
+        Columns to create from the date features. Note that created features
+        with zero variance (e.g. the feature hour in a column that only contains
+        dates) are ignored. Allowed values are datetime attributes from
+        `pandas.Series.dt`. The datetime format of the feature is inferred
+        automatically from the first non NaN value.
+
+
     imputation_type: str or None, default = 'simple'
         The type of imputation to use. Can be either 'simple' or 'iterative'.
         If None, no imputation of missing values is performed.
@@ -248,6 +259,18 @@ def setup(
         A `category-encoders` estimator to encode the categorical columns
         with more than `max_encoding_ohe` unique values. If None,
         `category_encoders.leave_one_out.LeaveOneOutEncoder` is used.
+
+
+    rare_to_value: float or None, default=None
+        Minimum fraction of category occurrences in a categorical column.
+        If a category is less frequent than `rare_to_value * len(X)`, it is
+        replaced with the string in `rare_value`. Use this parameter to group
+        rare categories before encoding the column. If None, ignores this step.
+
+
+    rare_value: str, default="rare"
+        Value with which to replace rare categories. Ignored when
+        ``rare_to_value`` is None.
 
 
     polynomial_features: bool, default = False
@@ -371,15 +394,18 @@ def setup(
     pca_method: str, default = 'linear'
         Method with which to apply PCA. Possible values are:
             - 'linear': Uses Singular Value  Decomposition.
-            - kernel: Dimensionality reduction through the use of RBF kernel.
-            - incremental: Similar to 'linear', but more efficient for large datasets.
+            - 'kernel': Dimensionality reduction through the use of RBF kernel.
+            - 'incremental': Similar to 'linear', but more efficient for large datasets.
 
 
-    pca_components: int or float, default = 1.0
-        Number of components to keep. If >1, it selects that number of
-        components. If <= 1, it selects that fraction of components from
-        the original features. The value must be smaller than the number
-        of original features. This parameter is ignored when `pca=False`.
+    pca_components: int, float, str or None, default = None
+        Number of components to keep. This parameter is ignored when `pca=False`.
+            - If None: All components are kept.
+            - If int: Absolute number of components.
+            - If float: Such an amount that the variance that needs to be explained
+                        is greater than the percentage specified by `n_components`.
+                        Value should lie between 0 and 1 (ony for pca_method='linear').
+            - If "mle": Minka’s MLE is used to guess the dimension (ony for pca_method='linear').
 
 
     feature_selection: bool, default = False
@@ -421,7 +447,7 @@ def setup(
         When set to False, prevents shuffling of rows during 'train_test_split'.
 
 
-    data_split_stratify: bool or list, default = False
+    data_split_stratify: bool or list, default = True
         Controls stratification during 'train_test_split'. When set to True, will
         stratify by target column. To stratify on any other columns, pass a list of
         column names. Ignored when ``data_split_shuffle`` is False.
@@ -575,6 +601,7 @@ def setup(
         ignore_features=ignore_features,
         keep_features=keep_features,
         preprocess=preprocess,
+        create_date_columns=create_date_columns,
         imputation_type=imputation_type,
         numeric_imputation=numeric_imputation,
         categorical_imputation=categorical_imputation,
@@ -584,6 +611,8 @@ def setup(
         text_features_method=text_features_method,
         max_encoding_ohe=max_encoding_ohe,
         encoding_method=encoding_method,
+        rare_to_value=rare_to_value,
+        rare_value=rare_value,
         polynomial_features=polynomial_features,
         polynomial_degree=polynomial_degree,
         low_variance_threshold=low_variance_threshold,

@@ -101,6 +101,20 @@ def test_date_features():
     assert all([f"date_{attr}" in X for attr in ("day", "month", "year")])
 
 
+def test_custom_date_features():
+    """Assert that features are extracted from date features."""
+    data = pycaret.datasets.get_data("juice")
+    data["date"] = pd.date_range(start="1/1/2018", periods=len(data))
+    pc = pycaret.classification.setup(
+        data,
+        target=-2,
+        date_features=["date"],
+        create_date_columns=["quarter"],
+    )
+    X, _ = pc.pipeline.transform(pc.X, pc.y)
+    assert "date_quarter" in X and "day" not in X
+
+
 @pytest.mark.parametrize(
     "imputation_method", [0, "drop", "mean", "median", "mode", "knn"]
 )
@@ -172,7 +186,7 @@ def test_text_embedding(embedding_method):
     assert X.shape[1] > 50  # Text column is now embedding
 
 
-def test_ordinal_features():
+def test_encoding_ordinal_features():
     """Assert that ordinal features are encoded correctly."""
     data = pycaret.datasets.get_data("employee")
     pc = pycaret.classification.setup(
@@ -187,7 +201,15 @@ def test_ordinal_features():
     assert mapping[0]["mapping"]["high"] == 2
 
 
-def test_categorical_features():
+def test_encoding_grouping_rare_categories():
+    """Assert that rare categories are grouped before encoding."""
+    data = pycaret.datasets.get_data("juice")
+    pc = pycaret.classification.setup(data, rare_to_value=0.5)
+    X, _ = pc.pipeline.transform(pc.X, pc.y)
+    assert "rare" in pc.pipeline.steps[-4][1].transformer.mapping[0]["mapping"]
+
+
+def test_encoding_categorical_features():
     """Assert that categorical features are encoded correctly."""
     data = pycaret.datasets.get_data("juice")
     pc = pycaret.classification.setup(data)
@@ -282,7 +304,7 @@ def test_remove_outliers(outliers_method):
         outliers_method=outliers_method,
         outliers_threshold=0.2,
     )
-    assert pc.pipeline.steps[3][0] == "remove_outliers"
+    assert pc.pipeline.steps[-1][0] == "remove_outliers"
 
 
 def test_polynomial_features():
@@ -307,7 +329,7 @@ def test_fix_imbalance(fix_imbalance_method):
         fix_imbalance=True,
         fix_imbalance_method=fix_imbalance_method,
     )
-    assert pc.pipeline.steps[3][0] == "balance"  # Rows are over-sampled
+    assert pc.pipeline.steps[-1][0] == "balance"  # Rows are over-sampled
 
 
 @pytest.mark.parametrize("pca_method", ["linear", "kernel", "incremental"])

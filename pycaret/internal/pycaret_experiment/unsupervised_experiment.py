@@ -94,12 +94,15 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
         ignore_features: Optional[List[str]] = None,
         keep_features: Optional[List[str]] = None,
         preprocess: bool = True,
+        create_date_columns: List[str] = ["day", "month", "year"],
         imputation_type: Optional[str] = "simple",
         numeric_imputation: str = "mean",
         categorical_imputation: str = "constant",
         text_features_method: str = "tf-idf",
         max_encoding_ohe: int = -1,
         encoding_method: Optional[Any] = None,
+        rare_to_value: Optional[float] = None,
+        rare_value: str = "rare",
         polynomial_features: bool = False,
         polynomial_degree: int = 2,
         low_variance_threshold: Optional[float] = 0,
@@ -117,7 +120,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
         normalize_method: str = "zscore",
         pca: bool = False,
         pca_method: str = "linear",
-        pca_components: Union[int, float] = 1.0,
+        pca_components: Optional[Union[int, float, str]] = None,
         custom_pipeline: Optional[Any] = None,
         custom_pipeline_position: int = -1,
         n_jobs: Optional[int] = -1,
@@ -209,6 +212,14 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
             when preprocess is set to False.
 
 
+        create_date_columns: list of str, default=["day", "month", "year"]
+            Columns to create from the date features. Note that created features
+            with zero variance (e.g. the feature hour in a column that only contains
+            dates) are ignored. Allowed values are datetime attributes from
+            `pandas.Series.dt`. The datetime format of the feature is inferred
+            automatically from the first non NaN value.
+
+
         imputation_type: str or None, default = 'simple'
             The type of imputation to use. Can be either 'simple' or 'iterative'.
             If None, no imputation of missing values is performed.
@@ -243,6 +254,18 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
             A `category-encoders` estimator to encode the categorical columns
             with more than `max_encoding_ohe` unique values. If None,
             `category_encoders.leave_one_out.LeaveOneOutEncoder` is used.
+
+
+        rare_to_value: float or None, default=None
+            Minimum fraction of category occurrences in a categorical column.
+            If a category is less frequent than `rare_to_value * len(X)`, it is
+            replaced with the string in `rare_value`. Use this parameter to group
+            rare categories before encoding the column. If None, ignores this step.
+
+
+        rare_value: str, default="rare"
+            Value with which to replace rare categories. Ignored when
+            ``rare_to_value`` is None.
 
 
         polynomial_features: bool, default = False
@@ -353,15 +376,18 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
         pca_method: str, default = 'linear'
             Method with which to apply PCA. Possible values are:
                 - 'linear': Uses Singular Value  Decomposition.
-                - kernel: Dimensionality reduction through the use of RBF kernel.
-                - incremental: Similar to 'linear', but more efficient for large datasets.
+                - 'kernel': Dimensionality reduction through the use of RBF kernel.
+                - 'incremental': Similar to 'linear', but more efficient for large datasets.
 
 
-        pca_components: int or float, default = 1.0
-            Number of components to keep. If >1, it selects that number of
-            components. If <= 1, it selects that fraction of components from
-            the original features. The value must be smaller than the number
-            of original features. This parameter is ignored when `pca=False`.
+        pca_components: int, float, str or None, default = None
+            Number of components to keep. This parameter is ignored when `pca=False`.
+                - If None: All components are kept.
+                - If int: Absolute number of components.
+                - If float: Such an amount that the variance that needs to be explained
+                            is greater than the percentage specified by `n_components`.
+                            Value should lie between 0 and 1 (ony for pca_method='linear').
+                - If "mle": Minka’s MLE is used to guess the dimension (ony for pca_method='linear').
 
 
         custom_pipeline: list of (str, transformer), dict or Pipeline, default = None
@@ -525,7 +551,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
 
             # Convert date feature to numerical values
             if self._fxs["Date"]:
-                self._date_feature_engineering()
+                self._date_feature_engineering(create_date_columns)
 
             # Impute missing values
             if imputation_type == "simple":
@@ -542,7 +568,12 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
 
             # Encode non-numerical features
             if self._fxs["Ordinal"] or self._fxs["Categorical"]:
-                self._encoding(max_encoding_ohe, encoding_method)
+                self._encoding(
+                    max_encoding_ohe=max_encoding_ohe,
+                    encoding_method=encoding_method,
+                    rare_to_value=rare_to_value,
+                    rare_value=rare_value,
+                )
 
             # Create polynomial features from the existing ones
             if polynomial_features:
