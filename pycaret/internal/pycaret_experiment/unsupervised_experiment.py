@@ -221,8 +221,9 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
 
 
         imputation_type: str or None, default = 'simple'
-            The type of imputation to use. Can be either 'simple' or 'iterative'.
-            If None, no imputation of missing values is performed.
+            The type of imputation to use. Unsupervised learning only supports
+            'imputation_type=simple'. If None, no imputation of missing values
+            is performed.
 
 
         numeric_imputation: str, default = 'mean'
@@ -559,7 +560,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
             elif imputation_type is not None:
                 raise ValueError(
                     "Invalid value for the imputation_type parameter, got "
-                    f"{imputation_type}. Possible values are: simple, iterative."
+                    f"{imputation_type}. Possible values are: simple."
                 )
 
             # Convert text features to meaningful vectors

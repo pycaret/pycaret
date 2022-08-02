@@ -152,8 +152,9 @@ def setup(
 
 
     imputation_type: str or None, default = 'simple'
-        The type of imputation to use. Can be either 'simple' or 'iterative'.
-        If None, no imputation of missing values is performed.
+        The type of imputation to use. Unsupervised learning only supports
+        'imputation_type=simple'. If None, no imputation of missing values
+        is performed.
 
 
     numeric_imputation: str, default = 'mean'
