@@ -875,7 +875,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         # internally based on these indices and self.data
         # Different from non-time series, we save X_test index here as well to
         # handle FH with gaps. In such cases, y_test will have gaps, but full
-        # X_test is needed for some forecasters. 
+        # X_test is needed for some forecasters.
         # Refer:
         # https://github.com/alan-turing-institute/sktime/issues/2598#issuecomment-1203308542
         # https://github.com/alan-turing-institute/sktime/blob/4164639e1c521b112711c045d0f7e63013c1e4eb/sktime/forecasting/model_evaluation/_functions.py#L196
