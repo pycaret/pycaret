@@ -459,7 +459,15 @@ class _PyCaretExperiment:
     @property
     def test(self):
         """Test set."""
-        return self.dataset.loc[self.idx[1], :]
+        if self._ml_usecase != MLUsecase.TIME_SERIES:
+            return self.dataset.loc[self.idx[1], :]
+        else:
+            # Return the X_test indices not y_test indices since X_test indices
+            # are the expanded indices for handling FH with gaps.
+            # Refer:
+            # https://github.com/alan-turing-institute/sktime/issues/2598#issuecomment-1203308542
+            # https://github.com/alan-turing-institute/sktime/blob/4164639e1c521b112711c045d0f7e63013c1e4eb/sktime/forecasting/model_evaluation/_functions.py#L196
+            return self.dataset.loc[self.idx[2], :]
 
     @property
     def X(self):
@@ -502,11 +510,17 @@ class _PyCaretExperiment:
     @property
     def X_test(self):
         """Feature set of the test set."""
-        if self.target_param is not None:
-            X_test = self.test.drop(self.target_param, axis=1)
+        if self._ml_usecase != MLUsecase.TIME_SERIES:
+            if self.target_param is not None:
+                X_test = self.test.drop(self.target_param, axis=1)
+            else:
+                # Unsupervised Learning
+                X_test = self.test
         else:
-            # Unsupervised Learning
-            X_test = self.test
+            # Use index for y_test (idx 2) to get the data
+            test = self.dataset.loc[self.idx[2], :]
+            X_test = test.drop(self.target_param, axis=1)
+
         if self._ml_usecase != MLUsecase.TIME_SERIES:
             return X_test
         else:
@@ -524,8 +538,14 @@ class _PyCaretExperiment:
     @property
     def y_test(self):
         """Target column of the test set."""
-        if self.target_param:
-            return self.test[self.target_param]
+        if self._ml_usecase != MLUsecase.TIME_SERIES:
+            if self.target_param:
+                return self.test[self.target_param]
+        else:
+            if self.target_param:
+                # Use index for y_test (idx 1) to get the data
+                test = self.dataset.loc[self.idx[1], :]
+                return test[self.target_param]
 
     @property
     def dataset_transformed(self):
@@ -590,7 +610,12 @@ class _PyCaretExperiment:
                 ],
                 axis=1,
             )
-            return all_data.loc[self.y_test.index]
+            # Return the X_test indices not y_test indices since X_test indices
+            # are the expanded indices for handling FH with gaps.
+            # Refer:
+            # https://github.com/alan-turing-institute/sktime/issues/2598#issuecomment-1203308542
+            # https://github.com/alan-turing-institute/sktime/blob/4164639e1c521b112711c045d0f7e63013c1e4eb/sktime/forecasting/model_evaluation/_functions.py#L196
+            return all_data.loc[self.idx[2]]
 
     @property
     def X_transformed(self):
@@ -653,7 +678,7 @@ class _PyCaretExperiment:
             if X is None:
                 return None
             else:
-                return X.loc[self.X_test.index]
+                return X.loc[self.idx[2]]
 
     @property
     def y_train_transformed(self):
@@ -682,4 +707,4 @@ class _PyCaretExperiment:
             y, _ = _pipeline_transform(
                 pipeline=self.pipeline_fully_trained, y=self.y, X=self.X
             )
-            return y.loc[self.y_test.index]
+            return y.loc[self.idx[1]]
