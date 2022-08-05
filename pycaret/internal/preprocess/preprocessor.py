@@ -171,7 +171,7 @@ class Preprocessor:
 
         target = df.columns[-1]
 
-        if self.index is True:  # True gets caught by isinstance(int)
+        if getattr(self, "index", True) is True:  # True gets caught by isinstance(int)
             return df
         elif self.index is False:
             df = df.reset_index(drop=True)
