@@ -6,8 +6,8 @@ from joblib.memory import Memory
 
 from pycaret.clustering.oop import ClusteringExperiment
 from pycaret.internal.utils import check_if_global_is_not_none
-from pycaret.utils.constants import SEQUENCE_LIKE, DATAFRAME_LIKE
 from pycaret.loggers.base_logger import BaseLogger
+from pycaret.utils.constants import DATAFRAME_LIKE, SEQUENCE_LIKE
 
 _EXPERIMENT_CLASS = ClusteringExperiment
 _CURRENT_EXPERIMENT: Optional[ClusteringExperiment] = None

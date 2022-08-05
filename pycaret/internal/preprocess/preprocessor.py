@@ -8,7 +8,29 @@ import pandas as pd
 from category_encoders.leave_one_out import LeaveOneOutEncoder
 from category_encoders.one_hot import OneHotEncoder
 from category_encoders.ordinal import OrdinalEncoder
-from imblearn.over_sampling import SMOTE
+from imblearn.combine import SMOTEENN, SMOTETomek
+from imblearn.over_sampling import (
+    ADASYN,
+    SMOTE,
+    SMOTEN,
+    SMOTENC,
+    SVMSMOTE,
+    BorderlineSMOTE,
+    KMeansSMOTE,
+    RandomOverSampler,
+)
+from imblearn.under_sampling import (
+    AllKNN,
+    CondensedNearestNeighbour,
+    EditedNearestNeighbours,
+    InstanceHardnessThreshold,
+    NearMiss,
+    NeighbourhoodCleaningRule,
+    OneSidedSelection,
+    RandomUnderSampler,
+    RepeatedEditedNearestNeighbours,
+    TomekLinks,
+)
 from sklearn.decomposition import PCA, IncrementalPCA, KernelPCA
 from sklearn.feature_selection import (
     SelectFromModel,
@@ -25,18 +47,6 @@ from sklearn.model_selection import (
     StratifiedKFold,
     TimeSeriesSplit,
     train_test_split,
-)
-from pycaret.utils.constants import SEQUENCE
-from imblearn.combine import SMOTEENN, SMOTETomek
-from imblearn.over_sampling import (
-    ADASYN, SMOTE, SMOTEN, SMOTENC, SVMSMOTE, BorderlineSMOTE, KMeansSMOTE,
-    RandomOverSampler,
-)
-from imblearn.under_sampling import (
-    AllKNN, CondensedNearestNeighbour, EditedNearestNeighbours,
-    InstanceHardnessThreshold, NearMiss, NeighbourhoodCleaningRule,
-    OneSidedSelection, RandomUnderSampler, RepeatedEditedNearestNeighbours,
-    TomekLinks,
 )
 from sklearn.preprocessing import (
     KBinsDiscretizer,
@@ -79,6 +89,7 @@ from pycaret.internal.utils import (
     to_df,
     to_series,
 )
+from pycaret.utils.constants import SEQUENCE
 
 
 class Preprocessor:
@@ -232,8 +243,8 @@ class Preprocessor:
                         f"index ({len(self.index)}) doesn't match that of "
                         f"the data sets ({len(self.data) + len(test_data)})."
                     )
-                self.data.index = self.index[:len(self.data)]
-                test_data.index = self.index[-len(test_data):]
+                self.data.index = self.index[: len(self.data)]
+                test_data.index = self.index[-len(test_data) :]
 
             self.data = self._set_index(pd.concat([self.data, test_data]))
             self.idx = [

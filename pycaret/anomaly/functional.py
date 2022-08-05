@@ -6,8 +6,8 @@ from joblib.memory import Memory
 
 from pycaret.anomaly.oop import AnomalyExperiment
 from pycaret.internal.utils import check_if_global_is_not_none
-from pycaret.utils.constants import SEQUENCE_LIKE, DATAFRAME_LIKE
 from pycaret.loggers.base_logger import BaseLogger
+from pycaret.utils.constants import DATAFRAME_LIKE, SEQUENCE_LIKE
 
 _EXPERIMENT_CLASS = AnomalyExperiment
 _CURRENT_EXPERIMENT: Optional[AnomalyExperiment] = None

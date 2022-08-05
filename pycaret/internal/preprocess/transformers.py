@@ -553,9 +553,9 @@ class FixImbalancer(BaseEstimator, TransformerMixin):
                 ]
 
             # Select the new samples and assign the new indices
-            X_new = X_new.iloc[-len(X_new) + len(old_samples):, :]
+            X_new = X_new.iloc[-len(X_new) + len(old_samples) :, :]
             X_new.index = new_index
-            y_new = y_new.iloc[-len(y_new) + len(old_samples):]
+            y_new = y_new.iloc[-len(y_new) + len(old_samples) :]
             y_new.index = new_index
 
             # Add the new samples to the old dataframe

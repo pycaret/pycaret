@@ -13,7 +13,6 @@ import numpy as np
 import pandas as pd
 from scipy import sparse
 
-
 # Group of variable types for isinstance
 SEQUENCE = (list, tuple, np.ndarray, pd.Series)
 
