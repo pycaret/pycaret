@@ -1404,9 +1404,6 @@ class _SupervisedExperiment(_TabularExperiment):
         if self._ml_usecase != MLUsecase.TIME_SERIES:
             data_X = self.X_train if X_train_data is None else X_train_data.copy()
             data_y = self.y_train if y_train_data is None else y_train_data.copy()
-
-            data_X.reset_index(drop=True, inplace=True)
-            data_y.reset_index(drop=True, inplace=True)
         else:
             if X_train_data is not None:
                 data_X = X_train_data.copy()
@@ -2226,10 +2223,6 @@ class _SupervisedExperiment(_TabularExperiment):
         # Storing X_train and y_train in data_X and data_y parameter
         data_X = self.X_train
         data_y = self.y_train
-
-        # reset index
-        data_X.reset_index(drop=True, inplace=True)
-        data_y.reset_index(drop=True, inplace=True)
 
         display.move_progress()
 
@@ -4938,11 +4931,11 @@ class _SupervisedExperiment(_TabularExperiment):
             X_test_, y_test_ = self.X_test_transformed, self.y_test_transformed
         else:
             if y_name in data.columns:
-                data = self._prepare_dataset(data, y_name)
+                data = self._set_index(self._prepare_dataset(data, y_name))
                 target = data[y_name]
                 data = data.drop(y_name, axis=1)
             else:
-                data = self._prepare_dataset(data)
+                data = self._set_index(self._prepare_dataset(data))
                 target = None
             data = data[X_columns]  # Ignore all columns but the originals
             if preprocess:

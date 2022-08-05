@@ -24,7 +24,8 @@ from pycaret.internal.pipeline import estimator_pipeline, get_pipeline_fit_kwarg
 from pycaret.internal.preprocess.preprocessor import Preprocessor
 from pycaret.internal.pycaret_experiment.tabular_experiment import _TabularExperiment
 from pycaret.internal.pycaret_experiment.utils import MLUsecase, highlight_setup
-from pycaret.internal.utils import DATAFRAME_LIKE, infer_ml_usecase, to_df
+from pycaret.internal.utils import infer_ml_usecase, to_df
+from pycaret.utils.constants import SEQUENCE_LIKE, DATAFRAME_LIKE
 from pycaret.internal.validation import is_sklearn_pipeline
 from pycaret.loggers.base_logger import BaseLogger
 
@@ -86,6 +87,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
     def setup(
         self,
         data: DATAFRAME_LIKE,
+        index: Union[bool, int, str, SEQUENCE_LIKE] = False,
         ordinal_features: Optional[Dict[str, list]] = None,
         numeric_features: Optional[List[str]] = None,
         categorical_features: Optional[List[str]] = None,
@@ -161,6 +163,14 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
             number of samples and n_features is the number of features. If data
             is not a pandas dataframe, it's converted to one using default column
             names.
+
+
+        index: bool, int, str or sequence, default=False
+            - If False: Reset to RangeIndex.
+            - If True: Use the current index.
+            - If int: Index of the column to use as index.
+            - If str: Name of the column to use as index.
+            - If sequence: Index column with shape=(n_samples,).
 
 
         ordinal_features: dict, default = None
@@ -524,7 +534,8 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
 
         # Set up data ============================================== >>
 
-        self.data = self._prepare_dataset(data)
+        self.index = index
+        self.data = self._set_index(self._prepare_dataset(data))
 
         # Train and Test indices
         self.idx = [self.data.index, None]

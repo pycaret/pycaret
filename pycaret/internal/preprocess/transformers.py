@@ -33,12 +33,12 @@ class TransformerWrapper(BaseEstimator, TransformerMixin):
         Transformer to wrap. Should implement a `fit` and/or `transform`
         method.
 
-    include: list or None
+    include: list or None, default=None
         Columns to apply on the transformer. If specified, only these
         columns are used and the rest ignored. If None, all columns
         are used.
 
-    exclude: list or None
+    exclude: list or None, default=None
         Columns to NOT apply on the transformer. If None, no columns
         are excluded.
 
@@ -486,6 +486,11 @@ class RemoveOutliers(BaseEstimator, TransformerMixin):
 class FixImbalancer(BaseEstimator, TransformerMixin):
     """Wrapper for a balancer with a fit_resample method.
 
+    When oversampling, the newly created samples have an increasing
+    integer index for numerical indices, and an index of the form
+    [estimator]_N for non-numerical indices, where N stands for the
+    N-th sample in the data set.
+
     Balancing classes should only be used on the training set,
     therefore this estimator is skipped by the pipeline when
     making new predictions (only used to fit).
@@ -500,7 +505,63 @@ class FixImbalancer(BaseEstimator, TransformerMixin):
         return self
 
     def transform(self, X, y):
-        return self.estimator.fit_resample(X, y)
+        if "over_sampling" in self.estimator.__module__:
+            index = X.index  # Save indices for later reassignment
+            X, y = self.estimator.fit_resample(X, y)
+
+            # Create indices for the new samples
+            if index.dtype.kind in "ifu":
+                new_index = range(max(index) + 1, max(index) + len(X) - len(index) + 1)
+            else:
+                new_index = [
+                    f"{self.estimator.__class__.__name__.lower()}_{i}"
+                    for i in range(1, len(X) - len(index) + 1)
+                ]
+
+            # Assign the old + new indices
+            X.index = list(index) + list(new_index)
+            y.index = list(index) + list(new_index)
+
+        elif "under_sampling" in self.estimator.__module__:
+            self.estimator.fit_resample(X, y)
+
+            # Select chosen rows (imblearn doesn't return them in order)
+            samples = sorted(self.estimator.sample_indices_)
+            X, y = X.iloc[samples, :], y.iloc[samples]
+
+        elif "combine" in self.estimator.__module__:
+            index = X.index
+            X_new, y_new = self.estimator.fit_resample(X, y)
+
+            # Select rows that were kept by the undersampler
+            if self.estimator.__class__.__name__ == "SMOTEENN":
+                samples = sorted(self.estimator.enn_.sample_indices_)
+            elif self.estimator.__class__.__name__ == "SMOTETomek":
+                samples = sorted(self.estimator.tomek_.sample_indices_)
+
+            # Select the remaining samples from the old dataframe
+            old_samples = [s for s in samples if s < len(X)]
+            X, y = X.iloc[old_samples, :], y.iloc[old_samples]
+
+            # Create indices for the new samples
+            if index.dtype.kind in "ifu":
+                new_index = range(max(index) + 1, max(index) + len(X_new) - len(X) + 1)
+            else:
+                new_index = [
+                    f"{self.estimator.__class__.__name__.lower()}_{i}"
+                    for i in range(1, len(X_new) - len(X) + 1)
+                ]
+
+            # Select the new samples and assign the new indices
+            X_new = X_new.iloc[-len(X_new) + len(old_samples):, :]
+            X_new.index = new_index
+            y_new = y_new.iloc[-len(y_new) + len(old_samples):]
+            y_new.index = new_index
+
+            # Add the new samples to the old dataframe
+            X, y = X.append(X_new), y.append(y_new)
+
+        return X, y
 
 
 class TargetTransformer(BaseEstimator):

@@ -68,6 +68,41 @@ def test_input_is_sparse():
     assert pc.target_param == "target"
 
 
+def test_assign_index_is_false():
+    """Assert that the index is reset when index=False."""
+    data = pycaret.datasets.get_data("juice")
+    data.index = list(range(100, len(data) + 100))
+    pc = pycaret.classification.setup(data, index=False)
+    assert pc.dataset.index[0] == 0
+
+
+def test_assign_index_is_true():
+    """Assert that the index remains unchanged when index=True."""
+    data = pycaret.datasets.get_data("juice")
+    data.index = list(range(100, len(data) + 100))
+    pc = pycaret.classification.setup(
+        data=data,
+        index=True,
+        data_split_shuffle=False,
+        data_split_stratify=False,
+    )
+    assert pc.dataset.index[0] == 100
+
+
+@pytest.mark.parametrize("index", [1, "WeekofPurchase", list(range(2, 1072))])
+def test_assign_index(index):
+    """Assert that the index can be assigned."""
+    data = pycaret.datasets.get_data("juice")
+    pc = pycaret.classification.setup(
+        data=data,
+        index=index,
+        data_split_shuffle=False,
+        data_split_stratify=False,
+        preprocess=False,
+    )
+    assert pc.dataset.index[0] != 0
+
+
 def test_preprocess_is_False():
     """Assert that preprocessing is skipped when preprocess=False."""
     data = pycaret.datasets.get_data("juice")
@@ -319,7 +354,9 @@ def test_polynomial_features():
     assert X.shape[1] > data.shape[1]  # Extra features were created
 
 
-@pytest.mark.parametrize("fix_imbalance_method", [None, ADASYN()])
+@pytest.mark.parametrize(
+    "fix_imbalance_method", ["smote", "nearmiss", "SMOTEENN", ADASYN()]
+)
 def test_fix_imbalance(fix_imbalance_method):
     """Assert that the classes can be balanced."""
     data = pycaret.datasets.get_data("juice")
@@ -329,7 +366,7 @@ def test_fix_imbalance(fix_imbalance_method):
         fix_imbalance=True,
         fix_imbalance_method=fix_imbalance_method,
     )
-    assert pc.pipeline.steps[-1][0] == "balance"  # Rows are over-sampled
+    assert pc.pipeline.steps[-1][0] == "balance"  # Rows are sampled
 
 
 @pytest.mark.parametrize("pca_method", ["linear", "kernel", "incremental"])

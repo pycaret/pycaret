@@ -7,10 +7,9 @@ from joblib.memory import Memory
 from pycaret.classification.oop import ClassificationExperiment
 from pycaret.internal.parallel.parallel_backend import ParallelBackend
 from pycaret.internal.utils import (
-    DATAFRAME_LIKE,
-    TARGET_LIKE,
     check_if_global_is_not_none,
 )
+from pycaret.utils.constants import SEQUENCE_LIKE, DATAFRAME_LIKE, TARGET_LIKE
 from pycaret.loggers.base_logger import BaseLogger
 
 _EXPERIMENT_CLASS = ClassificationExperiment
@@ -27,6 +26,7 @@ def setup(
     data: Optional[DATAFRAME_LIKE] = None,
     data_func: Optional[Callable[[], DATAFRAME_LIKE]] = None,
     target: TARGET_LIKE = -1,
+    index: Union[bool, int, str, SEQUENCE_LIKE] = False,
     train_size: float = 0.7,
     test_data: Optional[DATAFRAME_LIKE] = None,
     ordinal_features: Optional[Dict[str, list]] = None,
@@ -61,7 +61,7 @@ def setup(
     outliers_method: str = "iforest",
     outliers_threshold: float = 0.05,
     fix_imbalance: bool = False,
-    fix_imbalance_method: Optional[Any] = None,
+    fix_imbalance_method: Union[str, Any] = "SMOTE",
     transformation: bool = False,
     transformation_method: str = "yeo-johnson",
     normalize: bool = False,
@@ -134,6 +134,14 @@ def setup(
         multiclass.
 
 
+    index: bool, int, str or sequence, default=False
+        - If False: Reset to RangeIndex.
+        - If True: Use the current index.
+        - If int: Index of the column to use as index.
+        - If str: Name of the column to use as index.
+        - If sequence: Index column with shape=(n_samples,).
+
+
     train_size: float, default = 0.7
         Proportion of the dataset to be used for training and validation. Should be
         between 0.0 and 1.0.
@@ -141,8 +149,7 @@ def setup(
 
     test_data: dataframe-like or None, default = None
         If not None, test_data is used as a hold-out set and `train_size` parameter
-        is ignored. The columns of data and test_data must match. If it's a pandas
-        dataframe, the indices must match as well.
+        is ignored. The columns of data and test_data must match.
 
 
     ordinal_features: dict, default = None
@@ -349,10 +356,10 @@ def setup(
         Technique) is applied by default to create synthetic datapoints for minority class.
 
 
-    fix_imbalance_method: imblearn estimator, default = None
-        When ``fix_imbalance`` is True, `imblearn` compatible estimator with a
-        `fit_resample` method can be passed. If None, `imblearn.over_sampling.SMOTE`
-        is used.
+    fix_imbalance_method: str or imblearn estimator, default = "SMOTE"
+        Estimator with which to perform class balancing. Choose from the name
+        of an `imblearn` estimator, or a custom instance of such. Ignored when
+        `fix_imbalance=False`.
 
 
     transformation: bool, default = False
@@ -591,6 +598,7 @@ def setup(
         data=data,
         data_func=data_func,
         target=target,
+        index=index,
         train_size=train_size,
         test_data=test_data,
         ordinal_features=ordinal_features,

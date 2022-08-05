@@ -5,7 +5,8 @@ import pandas as pd
 from joblib.memory import Memory
 
 from pycaret.clustering.oop import ClusteringExperiment
-from pycaret.internal.utils import DATAFRAME_LIKE, check_if_global_is_not_none
+from pycaret.internal.utils import check_if_global_is_not_none
+from pycaret.utils.constants import SEQUENCE_LIKE, DATAFRAME_LIKE
 from pycaret.loggers.base_logger import BaseLogger
 
 _EXPERIMENT_CLASS = ClusteringExperiment
@@ -20,6 +21,7 @@ _CURRENT_EXPERIMENT_DECORATOR_DICT = {
 
 def setup(
     data: DATAFRAME_LIKE,
+    index: Union[bool, int, str, SEQUENCE_LIKE] = False,
     ordinal_features: Optional[Dict[str, list]] = None,
     numeric_features: Optional[List[str]] = None,
     categorical_features: Optional[List[str]] = None,
@@ -92,6 +94,14 @@ def setup(
         number of samples and n_features is the number of features. If data
         is not a pandas dataframe, it's converted to one using default column
         names.
+
+
+    index: bool, int, str or sequence, default=False
+        - If False: Reset to RangeIndex.
+        - If True: Use the current index.
+        - If int: Index of the column to use as index.
+        - If str: Name of the column to use as index.
+        - If sequence: Index column with shape=(n_samples,).
 
 
     ordinal_features: dict, default = None
@@ -413,6 +423,7 @@ def setup(
     set_current_experiment(exp)
     return exp.setup(
         data=data,
+        index=index,
         ordinal_features=ordinal_features,
         numeric_features=numeric_features,
         categorical_features=categorical_features,
