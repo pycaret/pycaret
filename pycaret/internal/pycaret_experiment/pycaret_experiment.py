@@ -462,12 +462,16 @@ class _PyCaretExperiment:
         if self._ml_usecase != MLUsecase.TIME_SERIES:
             return self.dataset.loc[self.idx[1], :]
         else:
-            # Return the X_test indices not y_test indices since X_test indices
-            # are the expanded indices for handling FH with gaps.
+            # Return the y_test indices not X_test indices.
+            # X_test indices are expanded indices for handling FH with gaps.
+            # But if we return X_test indices, then we will get expanded test
+            # indices even for univariate time series without exogenous variables
+            # which would be confusing. Hence, we return y_test indices here and if
+            # we want to get X_test indices, then we use self.X_test directly.
             # Refer:
             # https://github.com/alan-turing-institute/sktime/issues/2598#issuecomment-1203308542
             # https://github.com/alan-turing-institute/sktime/blob/4164639e1c521b112711c045d0f7e63013c1e4eb/sktime/forecasting/model_evaluation/_functions.py#L196
-            return self.dataset.loc[self.idx[2], :]
+            return self.dataset.loc[self.idx[1], :]
 
     @property
     def X(self):
@@ -610,12 +614,16 @@ class _PyCaretExperiment:
                 ],
                 axis=1,
             )
-            # Return the X_test indices not y_test indices since X_test indices
-            # are the expanded indices for handling FH with gaps.
+            # Return the y_test indices not X_test indices.
+            # X_test indices are expanded indices for handling FH with gaps.
+            # But if we return X_test indices, then we will get expanded test
+            # indices even for univariate time series without exogenous variables
+            # which would be confusing. Hence, we return y_test indices here and if
+            # we want to get X_test indices, then we use self.X_test directly.
             # Refer:
             # https://github.com/alan-turing-institute/sktime/issues/2598#issuecomment-1203308542
             # https://github.com/alan-turing-institute/sktime/blob/4164639e1c521b112711c045d0f7e63013c1e4eb/sktime/forecasting/model_evaluation/_functions.py#L196
-            return all_data.loc[self.idx[2]]
+            return all_data.loc[self.idx[1]]
 
     @property
     def X_transformed(self):
