@@ -299,8 +299,8 @@ def test_setup_seasonal_period_alphanumeric(
     assert exp.seasonal_period == expected_seasonal_value
 
 
-def test_train_test_split(load_pos_and_neg_data):
-    """Tests the enforcement of prediction interval"""
+def test_train_test_split_uni_no_exo(load_pos_and_neg_data):
+    """Tests the train-test splits for univariate time series without exogenous variables"""
     data = load_pos_and_neg_data
 
     ####################################
@@ -311,22 +311,78 @@ def test_train_test_split(load_pos_and_neg_data):
     exp = TSForecastingExperiment()
     fh = 12
     exp.setup(data=data, fh=fh, session_id=42)
-    y_test = exp.get_config("y_test")
-    assert len(y_test) == fh
+    assert np.all(exp.dataset.index == data.index)
+    assert np.all(exp.train.index == data.iloc[: (len(data) - fh)].index)
+    assert np.all(exp.test.index == data.iloc[-fh:].index)
+    assert exp.X is None
+    assert np.all(exp.y.index == data.index)
+    assert exp.X_train is None
+    assert exp.X_test is None
+    assert np.all(exp.y_train.index == data.iloc[: (len(data) - fh)].index)
+    assert np.all(exp.y_test.index == data.iloc[-fh:].index)
+    assert np.all(exp.dataset_transformed.index == data.index)
+    assert np.all(exp.train_transformed.index == data.iloc[: (len(data) - fh)].index)
+    assert np.all(exp.test_transformed.index == data.iloc[-fh:].index)
+    assert exp.X_transformed is None
+    assert np.all(exp.y_transformed.index == data.index)
+    assert exp.X_train_transformed is None
+    assert exp.X_test_transformed is None
+    assert np.all(exp.y_train_transformed.index == data.iloc[: (len(data) - fh)].index)
+    assert np.all(exp.y_test_transformed.index == data.iloc[-fh:].index)
 
     #### Numpy fh ----
     exp = TSForecastingExperiment()
     fh = np.arange(1, 10)  # 9 values
     exp.setup(data=data, fh=fh, session_id=42)
-    y_test = exp.get_config("y_test")
-    assert len(y_test) == len(fh)
+    assert np.all(exp.dataset.index == data.index)
+    assert np.all(exp.train.index == data.iloc[: (len(data) - max(fh))].index)
+    assert np.all(exp.test.index == data.iloc[-len(fh) :].index)
+    assert exp.X is None
+    assert np.all(exp.y.index == data.index)
+    assert exp.X_train is None
+    assert exp.X_test is None
+    assert np.all(exp.y_train.index == data.iloc[: (len(data) - max(fh))].index)
+    assert np.all(exp.y_test.index == data.iloc[-len(fh) :].index)
+    assert np.all(exp.dataset_transformed.index == data.index)
+    assert np.all(
+        exp.train_transformed.index == data.iloc[: (len(data) - max(fh))].index
+    )
+    assert np.all(exp.test_transformed.index == data.iloc[-len(fh) :].index)
+    assert exp.X_transformed is None
+    assert np.all(exp.y_transformed.index == data.index)
+    assert exp.X_train_transformed is None
+    assert exp.X_test_transformed is None
+    assert np.all(
+        exp.y_train_transformed.index == data.iloc[: (len(data) - max(fh))].index
+    )
+    assert np.all(exp.y_test_transformed.index == data.iloc[-len(fh) :].index)
 
     #### List fh ----
     exp = TSForecastingExperiment()
     fh = [1, 2, 3, 4, 5, 6]
     exp.setup(data=data, fh=fh, session_id=42)
-    y_test = exp.get_config("y_test")
-    assert len(y_test) == len(fh)
+    assert np.all(exp.dataset.index == data.index)
+    assert np.all(exp.train.index == data.iloc[: (len(data) - max(fh))].index)
+    assert np.all(exp.test.index == data.iloc[-len(fh) :].index)
+    assert exp.X is None
+    assert np.all(exp.y.index == data.index)
+    assert exp.X_train is None
+    assert exp.X_test is None
+    assert np.all(exp.y_train.index == data.iloc[: (len(data) - max(fh))].index)
+    assert np.all(exp.y_test.index == data.iloc[-len(fh) :].index)
+    assert np.all(exp.dataset_transformed.index == data.index)
+    assert np.all(
+        exp.train_transformed.index == data.iloc[: (len(data) - max(fh))].index
+    )
+    assert np.all(exp.test_transformed.index == data.iloc[-len(fh) :].index)
+    assert exp.X_transformed is None
+    assert np.all(exp.y_transformed.index == data.index)
+    assert exp.X_train_transformed is None
+    assert exp.X_test_transformed is None
+    assert np.all(
+        exp.y_train_transformed.index == data.iloc[: (len(data) - max(fh))].index
+    )
+    assert np.all(exp.y_test_transformed.index == data.iloc[-len(fh) :].index)
 
     #################################
     #### Continuous fh with Gaps ####
@@ -336,15 +392,55 @@ def test_train_test_split(load_pos_and_neg_data):
     exp = TSForecastingExperiment()
     fh = np.arange(7, 13)  # 6 values
     exp.setup(data=data, fh=fh, session_id=42)
-    y_test = exp.get_config("y_test")
-    assert len(y_test) == len(fh)
+    assert np.all(exp.dataset.index == data.index)
+    assert np.all(exp.train.index == data.iloc[: (len(data) - max(fh))].index)
+    assert len(exp.test) == len(fh)
+    assert exp.X is None
+    assert np.all(exp.y.index == data.index)
+    assert exp.X_train is None
+    assert exp.X_test is None
+    assert np.all(exp.y_train.index == data.iloc[: (len(data) - max(fh))].index)
+    assert len(exp.y_test) == len(fh)
+    assert np.all(exp.dataset_transformed.index == data.index)
+    assert np.all(
+        exp.train_transformed.index == data.iloc[: (len(data) - max(fh))].index
+    )
+    assert len(exp.test_transformed) == len(fh)
+    assert exp.X_transformed is None
+    assert np.all(exp.y_transformed.index == data.index)
+    assert exp.X_train_transformed is None
+    assert exp.X_test_transformed is None
+    assert np.all(
+        exp.y_train_transformed.index == data.iloc[: (len(data) - max(fh))].index
+    )
+    assert len(exp.y_test_transformed) == len(fh)
 
     #### List fh ----
     exp = TSForecastingExperiment()
     fh = [4, 5, 6]
     exp.setup(data=data, fh=fh, session_id=42)
-    y_test = exp.get_config("y_test")
-    assert len(y_test) == len(fh)
+    assert np.all(exp.dataset.index == data.index)
+    assert np.all(exp.train.index == data.iloc[: (len(data) - max(fh))].index)
+    assert len(exp.test) == len(fh)
+    assert exp.X is None
+    assert np.all(exp.y.index == data.index)
+    assert exp.X_train is None
+    assert exp.X_test is None
+    assert np.all(exp.y_train.index == data.iloc[: (len(data) - max(fh))].index)
+    assert len(exp.y_test) == len(fh)
+    assert np.all(exp.dataset_transformed.index == data.index)
+    assert np.all(
+        exp.train_transformed.index == data.iloc[: (len(data) - max(fh))].index
+    )
+    assert len(exp.test_transformed) == len(fh)
+    assert exp.X_transformed is None
+    assert np.all(exp.y_transformed.index == data.index)
+    assert exp.X_train_transformed is None
+    assert exp.X_test_transformed is None
+    assert np.all(
+        exp.y_train_transformed.index == data.iloc[: (len(data) - max(fh))].index
+    )
+    assert len(exp.y_test_transformed) == len(fh)
 
     ####################################
     #### Discontinuous fh with Gaps ####
@@ -354,15 +450,263 @@ def test_train_test_split(load_pos_and_neg_data):
     exp = TSForecastingExperiment()
     fh = np.array([4, 5, 6, 10, 11, 12])  # 6 values
     exp.setup(data=data, fh=fh, session_id=42)
-    y_test = exp.get_config("y_test")
-    assert len(y_test) == len(fh)
+    assert np.all(exp.dataset.index == data.index)
+    assert np.all(exp.train.index == data.iloc[: (len(data) - max(fh))].index)
+    assert len(exp.test) == len(fh)
+    assert exp.X is None
+    assert np.all(exp.y.index == data.index)
+    assert exp.X_train is None
+    assert exp.X_test is None
+    assert np.all(exp.y_train.index == data.iloc[: (len(data) - max(fh))].index)
+    assert len(exp.y_test) == len(fh)
+    assert np.all(exp.dataset_transformed.index == data.index)
+    assert np.all(
+        exp.train_transformed.index == data.iloc[: (len(data) - max(fh))].index
+    )
+    assert len(exp.test_transformed) == len(fh)
+    assert exp.X_transformed is None
+    assert np.all(exp.y_transformed.index == data.index)
+    assert exp.X_train_transformed is None
+    assert exp.X_test_transformed is None
+    assert np.all(
+        exp.y_train_transformed.index == data.iloc[: (len(data) - max(fh))].index
+    )
+    assert len(exp.y_test_transformed) == len(fh)
 
     #### List fh ----
     exp = TSForecastingExperiment()
     fh = [4, 5, 6, 10, 11, 12]
     exp.setup(data=data, fh=fh, session_id=42)
-    y_test = exp.get_config("y_test")
-    assert len(y_test) == len(fh)
+    assert np.all(exp.dataset.index == data.index)
+    assert np.all(exp.train.index == data.iloc[: (len(data) - max(fh))].index)
+    assert len(exp.test) == len(fh)
+    assert exp.X is None
+    assert np.all(exp.y.index == data.index)
+    assert exp.X_train is None
+    assert exp.X_test is None
+    assert np.all(exp.y_train.index == data.iloc[: (len(data) - max(fh))].index)
+    assert len(exp.y_test) == len(fh)
+    assert np.all(exp.dataset_transformed.index == data.index)
+    assert np.all(
+        exp.train_transformed.index == data.iloc[: (len(data) - max(fh))].index
+    )
+    assert len(exp.test_transformed) == len(fh)
+    assert exp.X_transformed is None
+    assert np.all(exp.y_transformed.index == data.index)
+    assert exp.X_train_transformed is None
+    assert exp.X_test_transformed is None
+    assert np.all(
+        exp.y_train_transformed.index == data.iloc[: (len(data) - max(fh))].index
+    )
+    assert len(exp.y_test_transformed) == len(fh)
+
+
+def test_train_test_split_uni_exo(load_uni_exo_data_target):
+    """Tests the train-test splits for univariate time series with exogenous variables"""
+    data, target = load_uni_exo_data_target
+
+    ####################################
+    #### Continuous fh without Gaps ####
+    ####################################
+
+    #### Integer fh ----
+    exp = TSForecastingExperiment()
+    fh = 12
+    exp.setup(data=data, target=target, fh=fh, seasonal_period=4, session_id=42)
+    assert np.all(exp.dataset.index == data.index)
+    assert np.all(exp.train.index == data.iloc[: (len(data) - fh)].index)
+    assert np.all(exp.test.index == data.iloc[-fh:].index)
+    assert np.all(exp.X.index == data.index)
+    assert np.all(exp.y.index == data.index)
+    assert np.all(exp.X_train.index == data.iloc[: (len(data) - fh)].index)
+    assert np.all(exp.X_test.index == data.iloc[-fh:].index)
+    assert np.all(exp.y_train.index == data.iloc[: (len(data) - fh)].index)
+    assert np.all(exp.y_test.index == data.iloc[-fh:].index)
+    assert np.all(exp.dataset_transformed.index == data.index)
+    assert np.all(exp.train_transformed.index == data.iloc[: (len(data) - fh)].index)
+    assert np.all(exp.test_transformed.index == data.iloc[-fh:].index)
+    assert np.all(exp.X_transformed.index == data.index)
+    assert np.all(exp.y_transformed.index == data.index)
+    assert np.all(exp.X_train_transformed.index == data.iloc[: (len(data) - fh)].index)
+    assert np.all(exp.X_test_transformed.index == data.iloc[-fh:].index)
+    assert np.all(exp.y_train_transformed.index == data.iloc[: (len(data) - fh)].index)
+    assert np.all(exp.y_test_transformed.index == data.iloc[-fh:].index)
+
+    #### Numpy fh ----
+    exp = TSForecastingExperiment()
+    fh = np.arange(1, 10)  # 9 values
+    exp.setup(data=data, target=target, fh=fh, seasonal_period=4, session_id=42)
+    assert np.all(exp.dataset.index == data.index)
+    assert np.all(exp.train.index == data.iloc[: (len(data) - max(fh))].index)
+    assert np.all(exp.test.index == data.iloc[-len(fh) :].index)
+    assert np.all(exp.X.index == data.index)
+    assert np.all(exp.y.index == data.index)
+    assert np.all(exp.X_train.index == data.iloc[: (len(data) - max(fh))].index)
+    assert np.all(exp.X_test.index == data.iloc[-len(fh) :].index)
+    assert np.all(exp.y_train.index == data.iloc[: (len(data) - max(fh))].index)
+    assert np.all(exp.y_test.index == data.iloc[-len(fh) :].index)
+    assert np.all(exp.dataset_transformed.index == data.index)
+    assert np.all(
+        exp.train_transformed.index == data.iloc[: (len(data) - max(fh))].index
+    )
+    assert np.all(exp.test_transformed.index == data.iloc[-len(fh) :].index)
+    assert np.all(exp.X_transformed.index == data.index)
+    assert np.all(exp.y_transformed.index == data.index)
+    assert np.all(
+        exp.X_train_transformed.index == data.iloc[: (len(data) - max(fh))].index
+    )
+    assert np.all(exp.X_test_transformed.index == data.iloc[-len(fh) :].index)
+    assert np.all(
+        exp.y_train_transformed.index == data.iloc[: (len(data) - max(fh))].index
+    )
+    assert np.all(exp.y_test_transformed.index == data.iloc[-len(fh) :].index)
+
+    #### List fh ----
+    exp = TSForecastingExperiment()
+    fh = [1, 2, 3, 4, 5, 6]
+    exp.setup(data=data, target=target, fh=fh, seasonal_period=4, session_id=42)
+    assert np.all(exp.dataset.index == data.index)
+    assert np.all(exp.train.index == data.iloc[: (len(data) - max(fh))].index)
+    assert np.all(exp.test.index == data.iloc[-len(fh) :].index)
+    assert np.all(exp.X.index == data.index)
+    assert np.all(exp.y.index == data.index)
+    assert np.all(exp.X_train.index == data.iloc[: (len(data) - max(fh))].index)
+    assert np.all(exp.X_test.index == data.iloc[-len(fh) :].index)
+    assert np.all(exp.y_train.index == data.iloc[: (len(data) - max(fh))].index)
+    assert np.all(exp.y_test.index == data.iloc[-len(fh) :].index)
+    assert np.all(exp.dataset_transformed.index == data.index)
+    assert np.all(
+        exp.train_transformed.index == data.iloc[: (len(data) - max(fh))].index
+    )
+    assert np.all(exp.test_transformed.index == data.iloc[-len(fh) :].index)
+    assert np.all(exp.X_transformed.index == data.index)
+    assert np.all(exp.y_transformed.index == data.index)
+    assert np.all(
+        exp.X_train_transformed.index == data.iloc[: (len(data) - max(fh))].index
+    )
+    assert np.all(exp.X_test_transformed.index == data.iloc[-len(fh) :].index)
+    assert np.all(
+        exp.y_train_transformed.index == data.iloc[: (len(data) - max(fh))].index
+    )
+    assert np.all(exp.y_test_transformed.index == data.iloc[-len(fh) :].index)
+
+    #################################
+    #### Continuous fh with Gaps ####
+    #################################
+
+    #### Numpy fh ----
+    exp = TSForecastingExperiment()
+    fh = np.arange(7, 13)  # 6 values
+    exp.setup(data=data, target=target, fh=fh, seasonal_period=4, session_id=42)
+    assert np.all(exp.dataset.index == data.index)
+    assert np.all(exp.train.index == data.iloc[: (len(data) - max(fh))].index)
+    # `test`` call still refers to y_test indices and not X_test indices
+    assert len(exp.test) == len(fh)
+    assert np.all(exp.X.index == data.index)
+    assert np.all(exp.y.index == data.index)
+    assert np.all(exp.X_train.index == data.iloc[: (len(data) - max(fh))].index)
+    # Exogenous variables will not have any gaps (only target has gaps)
+    assert np.all(exp.X_test.index == data.iloc[-max(fh) :].index)
+    assert np.all(exp.y_train.index == data.iloc[: (len(data) - max(fh))].index)
+    assert len(exp.y_test) == len(fh)
+    assert np.all(exp.dataset_transformed.index == data.index)
+    assert np.all(
+        exp.train_transformed.index == data.iloc[: (len(data) - max(fh))].index
+    )
+    assert len(exp.test_transformed) == len(fh)
+    assert np.all(exp.X_transformed.index == data.index)
+    assert np.all(exp.y_transformed.index == data.index)
+
+    #### List fh ----
+    exp = TSForecastingExperiment()
+    fh = [4, 5, 6]
+    exp.setup(data=data, target=target, fh=fh, seasonal_period=4, session_id=42)
+    assert np.all(exp.dataset.index == data.index)
+    assert np.all(exp.train.index == data.iloc[: (len(data) - max(fh))].index)
+    # `test`` call still refers to y_test indices and not X_test indices
+    assert len(exp.test) == len(fh)
+    assert np.all(exp.X.index == data.index)
+    assert np.all(exp.y.index == data.index)
+    assert np.all(exp.X_train.index == data.iloc[: (len(data) - max(fh))].index)
+    # Exogenous variables will not have any gaps (only target has gaps)
+    assert np.all(exp.X_test.index == data.iloc[-max(fh) :].index)
+    assert np.all(exp.y_train.index == data.iloc[: (len(data) - max(fh))].index)
+    assert len(exp.y_test) == len(fh)
+    assert np.all(exp.dataset_transformed.index == data.index)
+    assert np.all(
+        exp.train_transformed.index == data.iloc[: (len(data) - max(fh))].index
+    )
+    assert len(exp.test_transformed) == len(fh)
+    assert np.all(exp.X_transformed.index == data.index)
+    assert np.all(exp.y_transformed.index == data.index)
+
+    ####################################
+    #### Discontinuous fh with Gaps ####
+    ####################################
+
+    #### Numpy fh ----
+    exp = TSForecastingExperiment()
+    fh = np.array([4, 5, 6, 10, 11, 12])  # 6 values
+    exp.setup(data=data, target=target, fh=fh, seasonal_period=4, session_id=42)
+    assert np.all(exp.dataset.index == data.index)
+    assert np.all(exp.train.index == data.iloc[: (len(data) - max(fh))].index)
+    # `test`` call still refers to y_test indices and not X_test indices
+    assert len(exp.test) == len(fh)
+    assert np.all(exp.X.index == data.index)
+    assert np.all(exp.y.index == data.index)
+    assert np.all(exp.X_train.index == data.iloc[: (len(data) - max(fh))].index)
+    # Exogenous variables will not have any gaps (only target has gaps)
+    assert np.all(exp.X_test.index == data.iloc[-max(fh) :].index)
+    assert np.all(exp.y_train.index == data.iloc[: (len(data) - max(fh))].index)
+    assert len(exp.y_test) == len(fh)
+    assert np.all(exp.dataset_transformed.index == data.index)
+    assert np.all(
+        exp.train_transformed.index == data.iloc[: (len(data) - max(fh))].index
+    )
+    assert len(exp.test_transformed) == len(fh)
+    assert np.all(exp.X_transformed.index == data.index)
+    assert np.all(exp.y_transformed.index == data.index)
+    assert np.all(
+        exp.X_train_transformed.index == data.iloc[: (len(data) - max(fh))].index
+    )
+    # Exogenous variables will not have any gaps (only target has gaps)
+    assert np.all(exp.X_test_transformed.index == data.iloc[-max(fh) :].index)
+    assert np.all(
+        exp.y_train_transformed.index == data.iloc[: (len(data) - max(fh))].index
+    )
+    assert len(exp.y_test_transformed) == len(fh)
+
+    #### List fh ----
+    exp = TSForecastingExperiment()
+    fh = [4, 5, 6, 10, 11, 12]
+    exp.setup(data=data, target=target, fh=fh, seasonal_period=4, session_id=42)
+    assert np.all(exp.dataset.index == data.index)
+    assert np.all(exp.train.index == data.iloc[: (len(data) - max(fh))].index)
+    # `test`` call still refers to y_test indices and not X_test indices
+    assert len(exp.test) == len(fh)
+    assert np.all(exp.X.index == data.index)
+    assert np.all(exp.y.index == data.index)
+    assert np.all(exp.X_train.index == data.iloc[: (len(data) - max(fh))].index)
+    # Exogenous variables will not have any gaps (only target has gaps)
+    assert np.all(exp.X_test.index == data.iloc[-max(fh) :].index)
+    assert np.all(exp.y_train.index == data.iloc[: (len(data) - max(fh))].index)
+    assert len(exp.y_test) == len(fh)
+    assert np.all(exp.dataset_transformed.index == data.index)
+    assert np.all(
+        exp.train_transformed.index == data.iloc[: (len(data) - max(fh))].index
+    )
+    assert len(exp.test_transformed) == len(fh)
+    assert np.all(exp.X_transformed.index == data.index)
+    assert np.all(exp.y_transformed.index == data.index)
+    assert np.all(
+        exp.X_train_transformed.index == data.iloc[: (len(data) - max(fh))].index
+    )
+    # Exogenous variables will not have any gaps (only target has gaps)
+    assert np.all(exp.X_test_transformed.index == data.iloc[-max(fh) :].index)
+    assert np.all(
+        exp.y_train_transformed.index == data.iloc[: (len(data) - max(fh))].index
+    )
+    assert len(exp.y_test_transformed) == len(fh)
 
 
 def test_missing_indices():

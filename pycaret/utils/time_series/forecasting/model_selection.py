@@ -128,10 +128,19 @@ def _fit_and_score(
 
     y_imputed, _ = _get_imputed_data(pipeline=pipeline, y=y, X=X)
 
+    # We need to expand test indices to a full range, since some forecasters
+    # require the full range of exogenous values. This comes into picture when
+    # FH has gaps (e.g. [2, 3]). In that case, some forecasters still need the
+    # exogenous variable values at FH = 1
+    # Refer:
+    # https://github.com/alan-turing-institute/sktime/issues/2598#issuecomment-1203308542
+    # https://github.com/alan-turing-institute/sktime/blob/4164639e1c521b112711c045d0f7e63013c1e4eb/sktime/forecasting/model_evaluation/_functions.py#L196
+    test_expanded = np.arange(train[-1], test[-1]) + 1
+
     # y_train, X_train, X_test can have missing values since pipeline will impute them
     y_train = y[train]
     X_train = None if X is None else X.iloc[train]
-    X_test = None if X is None else X.iloc[test]
+    X_test = None if X is None else X.iloc[test_expanded]
 
     # y_test is "y_true" and used for metrics, hence it can not have missing values
     # Hence using y_imputed
