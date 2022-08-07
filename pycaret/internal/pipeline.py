@@ -101,7 +101,7 @@ class Pipeline(imblearn.pipeline.Pipeline):
 
     def __setstate__(self, state):
         pickle_versions = state.get("_pycaret_versions", {})
-        if pickle_versions != self._pycaret_versions:
+        if pickle_versions.get("deps_info") != self._pycaret_versions["deps_info"]:
             warnings.warn(
                 "Version mismatch:\ncurrent: {}\npickle: {}".format(
                     self._pycaret_versions, pickle_versions
