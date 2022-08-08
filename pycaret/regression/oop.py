@@ -199,12 +199,13 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             multiclass.
 
 
-        index: bool, int, str or sequence, default=False
-            - If False: Reset to RangeIndex.
-            - If True: Use the current index.
-            - If int: Index of the column to use as index.
-            - If str: Name of the column to use as index.
-            - If sequence: Index column with shape=(n_samples,).
+        index: bool, int, str or sequence, default = False
+            Handle indices in the `data` dataframe.
+                - If False: Reset to RangeIndex.
+                - If True: Keep the provided index.
+                - If int: Position of the column to use as index.
+                - If str: Name of the column to use as index.
+                - If sequence: Array with shape=(n_samples,) to use as index.
 
 
         train_size: float, default = 0.7
@@ -266,7 +267,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             when preprocess is set to False.
 
 
-        create_date_columns: list of str, default=["day", "month", "year"]
+        create_date_columns: list of str, default = ["day", "month", "year"]
             Columns to create from the date features. Note that created features
             with zero variance (e.g. the feature hour in a column that only contains
             dates) are ignored. Allowed values are datetime attributes from
