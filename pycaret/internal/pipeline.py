@@ -8,7 +8,9 @@
 
 # This pipeline is only to be used internally.
 
+import platform
 import tempfile
+import warnings
 from copy import deepcopy
 from inspect import signature
 from typing import Union
@@ -22,6 +24,7 @@ from sklearn.utils.metaestimators import if_delegate_has_method
 from sklearn.utils.validation import check_memory
 
 from pycaret.internal.utils import get_all_object_vars_and_properties, variable_return
+from pycaret.utils._show_versions import _get_deps_info
 
 
 def _fit_one(transformer, X=None, y=None, message=None, **fit_params):
@@ -86,6 +89,40 @@ class Pipeline(imblearn.pipeline.Pipeline):
     def __getattr__(self, name: str):
         # override getattr to allow grabbing of final estimator attrs
         return getattr(self._final_estimator, name)
+
+    def __getstate__(self):
+        try:
+            state = super().__getstate__()
+            state.update(self.__dict__)
+        except AttributeError:
+            state = self.__dict__.copy()
+
+        return dict(state.items(), _pycaret_versions=self._pycaret_versions)
+
+    def __setstate__(self, state):
+        pickle_versions = state.get("_pycaret_versions", {})
+        if pickle_versions.get("deps_info") != self._pycaret_versions["deps_info"]:
+            warnings.warn(
+                "Version mismatch:\ncurrent: {}\npickle: {}".format(
+                    self._pycaret_versions, pickle_versions
+                )
+            )
+        try:
+            super().__setstate__(state)
+        except AttributeError:
+            pass
+
+        self.__dict__.update(state)
+
+    @property
+    def _pycaret_versions(self):
+        return {
+            "deps_info": _get_deps_info(optional=False),
+            "python": {
+                "version": platform.python_version(),
+                "machine": platform.machine(),
+            },
+        }
 
     @property
     def feature_names_in_(self):
