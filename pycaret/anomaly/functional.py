@@ -5,8 +5,9 @@ import pandas as pd
 from joblib.memory import Memory
 
 from pycaret.anomaly.oop import AnomalyExperiment
-from pycaret.internal.utils import DATAFRAME_LIKE, check_if_global_is_not_none
+from pycaret.internal.utils import check_if_global_is_not_none
 from pycaret.loggers.base_logger import BaseLogger
+from pycaret.utils.constants import DATAFRAME_LIKE, SEQUENCE_LIKE
 
 _EXPERIMENT_CLASS = AnomalyExperiment
 _CURRENT_EXPERIMENT: Optional[AnomalyExperiment] = None
@@ -20,6 +21,7 @@ _CURRENT_EXPERIMENT_DECORATOR_DICT = {
 
 def setup(
     data: DATAFRAME_LIKE,
+    index: Union[bool, int, str, SEQUENCE_LIKE] = False,
     ordinal_features: Optional[Dict[str, list]] = None,
     numeric_features: Optional[List[str]] = None,
     categorical_features: Optional[List[str]] = None,
@@ -95,6 +97,15 @@ def setup(
         names.
 
 
+    index: bool, int, str or sequence, default = False
+        Handle indices in the `data` dataframe.
+            - If False: Reset to RangeIndex.
+            - If True: Keep the provided index.
+            - If int: Position of the column to use as index.
+            - If str: Name of the column to use as index.
+            - If sequence: Array with shape=(n_samples,) to use as index.
+
+
     ordinal_features: dict, default = None
         Categorical features to be encoded ordinally. For example, a categorical
         feature with 'low', 'medium', 'high' values where low < medium < high can
@@ -144,7 +155,7 @@ def setup(
         when preprocess is set to False.
 
 
-    create_date_columns: list of str, default=["day", "month", "year"]
+    create_date_columns: list of str, default = ["day", "month", "year"]
         Columns to create from the date features. Note that created features
         with zero variance (e.g. the feature hour in a column that only contains
         dates) are ignored. Allowed values are datetime attributes from
@@ -423,6 +434,7 @@ def setup(
     set_current_experiment(exp)
     return exp.setup(
         data=data,
+        index=index,
         ordinal_features=ordinal_features,
         numeric_features=numeric_features,
         categorical_features=categorical_features,

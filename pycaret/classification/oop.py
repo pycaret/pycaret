@@ -33,14 +33,10 @@ from pycaret.internal.pycaret_experiment.supervised_experiment import (
     _SupervisedExperiment,
 )
 from pycaret.internal.pycaret_experiment.utils import MLUsecase, highlight_setup
-from pycaret.internal.utils import (
-    DATAFRAME_LIKE,
-    TARGET_LIKE,
-    get_classification_task,
-    get_label_encoder,
-)
+from pycaret.internal.utils import get_classification_task, get_label_encoder
 from pycaret.internal.validation import is_sklearn_cv_generator
 from pycaret.loggers.base_logger import BaseLogger
+from pycaret.utils.constants import DATAFRAME_LIKE, SEQUENCE_LIKE, TARGET_LIKE
 
 LOGGER = get_logger()
 
@@ -123,6 +119,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         data: Optional[DATAFRAME_LIKE] = None,
         data_func: Optional[Callable[[], DATAFRAME_LIKE]] = None,
         target: TARGET_LIKE = -1,
+        index: Union[bool, int, str, SEQUENCE_LIKE] = False,
         train_size: float = 0.7,
         test_data: Optional[DATAFRAME_LIKE] = None,
         ordinal_features: Optional[Dict[str, list]] = None,
@@ -157,7 +154,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         outliers_method: str = "iforest",
         outliers_threshold: float = 0.05,
         fix_imbalance: bool = False,
-        fix_imbalance_method: Optional[Any] = None,
+        fix_imbalance_method: Union[str, Any] = "SMOTE",
         transformation: bool = False,
         transformation_method: str = "yeo-johnson",
         normalize: bool = False,
@@ -233,6 +230,15 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             multiclass.
 
 
+        index: bool, int, str or sequence, default = False
+            Handle indices in the `data` dataframe.
+                - If False: Reset to RangeIndex.
+                - If True: Keep the provided index.
+                - If int: Position of the column to use as index.
+                - If str: Name of the column to use as index.
+                - If sequence: Array with shape=(n_samples,) to use as index.
+
+
         train_size: float, default = 0.7
             Proportion of the dataset to be used for training and validation. Should be
             between 0.0 and 1.0.
@@ -240,8 +246,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
 
         test_data: dataframe-like or None, default = None
             If not None, test_data is used as a hold-out set and `train_size` parameter
-            is ignored. The columns of data and test_data must match. If it's a pandas
-            dataframe, the indices must match as well.
+            is ignored. The columns of data and test_data must match.
 
 
         ordinal_features: dict, default = None
@@ -293,7 +298,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             when preprocess is set to False.
 
 
-        create_date_columns: list of str, default=["day", "month", "year"]
+        create_date_columns: list of str, default = ["day", "month", "year"]
             Columns to create from the date features. Note that created features
             with zero variance (e.g. the feature hour in a column that only contains
             dates) are ignored. Allowed values are datetime attributes from
@@ -448,10 +453,10 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             Technique) is applied by default to create synthetic datapoints for minority class.
 
 
-        fix_imbalance_method: imblearn estimator, default = None
-            When ``fix_imbalance`` is True, `imblearn` compatible estimator with a
-            `fit_resample` method can be passed. If None, `imblearn.over_sampling.SMOTE`
-            is used.
+        fix_imbalance_method: str or imblearn estimator, default = "SMOTE"
+            Estimator with which to perform class balancing. Choose from the name
+            of an `imblearn` estimator, or a custom instance of such. Ignored when
+            `fix_imbalance=False`.
 
 
         transformation: bool, default = False
@@ -744,6 +749,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
 
         self.data = self._prepare_dataset(data, target)
         self.target_param = self.data.columns[-1]
+        self.index = index
 
         self._prepare_train_test(
             train_size=train_size,

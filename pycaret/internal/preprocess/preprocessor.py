@@ -8,7 +8,29 @@ import pandas as pd
 from category_encoders.leave_one_out import LeaveOneOutEncoder
 from category_encoders.one_hot import OneHotEncoder
 from category_encoders.ordinal import OrdinalEncoder
-from imblearn.over_sampling import SMOTE
+from imblearn.combine import SMOTEENN, SMOTETomek
+from imblearn.over_sampling import (
+    ADASYN,
+    SMOTE,
+    SMOTEN,
+    SMOTENC,
+    SVMSMOTE,
+    BorderlineSMOTE,
+    KMeansSMOTE,
+    RandomOverSampler,
+)
+from imblearn.under_sampling import (
+    AllKNN,
+    CondensedNearestNeighbour,
+    EditedNearestNeighbours,
+    InstanceHardnessThreshold,
+    NearMiss,
+    NeighbourhoodCleaningRule,
+    OneSidedSelection,
+    RandomUnderSampler,
+    RepeatedEditedNearestNeighbours,
+    TomekLinks,
+)
 from sklearn.decomposition import PCA, IncrementalPCA, KernelPCA
 from sklearn.feature_selection import (
     SelectFromModel,
@@ -67,6 +89,7 @@ from pycaret.internal.utils import (
     to_df,
     to_series,
 )
+from pycaret.utils.constants import SEQUENCE
 
 
 class Preprocessor:
@@ -142,6 +165,41 @@ class Preprocessor:
             X.merge(y.to_frame(), left_index=True, right_index=True)
         )
 
+    def _set_index(self, df):
+        """Assign an index to the dataframe."""
+        self.logger.info("Set up index.")
+
+        target = df.columns[-1]
+
+        if getattr(self, "index", True) is True:  # True gets caught by isinstance(int)
+            return df
+        elif self.index is False:
+            df = df.reset_index(drop=True)
+        elif isinstance(self.index, int):
+            if -df.shape[1] <= self.index <= df.shape[1]:
+                df = df.set_index(df.columns[self.index], drop=True)
+            else:
+                raise ValueError(
+                    f"Invalid value for the index parameter. Value {self.index} "
+                    f"is out of range for a dataset with {df.shape[1]} columns."
+                )
+        elif isinstance(self.index, str):
+            if self.index in df:
+                df = df.set_index(self.index, drop=True)
+            else:
+                raise ValueError(
+                    "Invalid value for the index parameter. "
+                    f"Column {self.index} not found in the dataset."
+                )
+
+        if df.index.name == target:
+            raise ValueError(
+                "Invalid value for the index parameter. The index column "
+                f"can not be the same as the target column, got {target}."
+            )
+
+        return df
+
     def _prepare_train_test(
         self,
         train_size,
@@ -153,6 +211,15 @@ class Preprocessor:
         self.logger.info("Set up train/test split.")
 
         if test_data is None:
+            if isinstance(self.index, SEQUENCE):
+                if len(self.index) != len(self.data):
+                    raise ValueError(
+                        "Invalid value for the index parameter. Length of "
+                        f"index ({len(self.index)}) doesn't match that of "
+                        f"the dataset ({len(self.data)})."
+                    )
+                self.data.index = self.index
+
             # self.data is already prepared here
             train, test = train_test_split(
                 self.data,
@@ -163,12 +230,23 @@ class Preprocessor:
                 random_state=self.seed,
                 shuffle=data_split_shuffle,
             )
-            self.data = pd.concat([train, test]).reset_index(drop=True)
+            self.data = self._set_index(pd.concat([train, test]))
             self.idx = [self.data.index[: len(train)], self.data.index[-len(test) :]]
 
         else:  # test_data is provided
             test_data = self._prepare_dataset(test_data, self.target_param)
-            self.data = pd.concat([self.data, test_data]).reset_index(drop=True)
+
+            if isinstance(self.index, SEQUENCE):
+                if len(self.index) != len(self.data) + len(test_data):
+                    raise ValueError(
+                        "Invalid value for the index parameter. Length of "
+                        f"index ({len(self.index)}) doesn't match that of "
+                        f"the data sets ({len(self.data) + len(test_data)})."
+                    )
+                self.data.index = self.index[: len(self.data)]
+                test_data.index = self.index[-len(test_data) :]
+
+            self.data = self._set_index(pd.concat([self.data, test_data]))
             self.idx = [
                 self.data.index[: -len(test_data)],
                 self.data.index[-len(test_data) :],
@@ -716,10 +794,40 @@ class Preprocessor:
         """Balance the classes in the target column."""
         self.logger.info("Set up imbalanced handling.")
 
-        if fix_imbalance_method is None:
-            balance_estimator = FixImbalancer(SMOTE())
+        strategies = dict(
+            # clustercentroids=ClusterCentroids,  # Has no sample_indices_
+            condensednearestneighbour=CondensedNearestNeighbour,
+            editednearestneighborus=EditedNearestNeighbours,
+            repeatededitednearestneighbours=RepeatedEditedNearestNeighbours,
+            allknn=AllKNN,
+            instancehardnessthreshold=InstanceHardnessThreshold,
+            nearmiss=NearMiss,
+            neighbourhoodcleaningrule=NeighbourhoodCleaningRule,
+            onesidedselection=OneSidedSelection,
+            randomundersampler=RandomUnderSampler,
+            tomeklinks=TomekLinks,
+            randomoversampler=RandomOverSampler,
+            smote=SMOTE,
+            smotenc=SMOTENC,
+            smoten=SMOTEN,
+            adasyn=ADASYN,
+            borderlinesmote=BorderlineSMOTE,
+            kmeanssmote=KMeansSMOTE,
+            svmsmote=SVMSMOTE,
+            smoteenn=SMOTEENN,
+            smotetomek=SMOTETomek,
+        )
+
+        if isinstance(fix_imbalance_method, str):
+            fix_imbalance_method = fix_imbalance_method.lower()
+            if fix_imbalance_method not in strategies:
+                raise ValueError(
+                    "Invalid value for the strategy parameter, got "
+                    f"{fix_imbalance_method}. Choose from: {', '.join(strategies)}."
+                )
+            balance_estimator = FixImbalancer(strategies[fix_imbalance_method]())
         elif not hasattr(fix_imbalance_method, "fit_resample"):
-            raise ValueError(
+            raise TypeError(
                 "Invalid value for the fix_imbalance_method parameter. "
                 "The provided value must be a imblearn estimator, got "
                 f"{fix_imbalance_method.__class__.__name_}."
@@ -727,8 +835,7 @@ class Preprocessor:
         else:
             balance_estimator = FixImbalancer(fix_imbalance_method)
 
-        balance_estimator = TransformerWrapper(balance_estimator)
-        self.pipeline.steps.append(("balance", balance_estimator))
+        self.pipeline.steps.append(("balance", TransformerWrapper(balance_estimator)))
 
     def _transformation(self, transformation_method):
         """Power transform the data to be more Gaussian-like."""

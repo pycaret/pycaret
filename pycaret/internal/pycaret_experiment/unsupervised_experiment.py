@@ -24,9 +24,10 @@ from pycaret.internal.pipeline import estimator_pipeline, get_pipeline_fit_kwarg
 from pycaret.internal.preprocess.preprocessor import Preprocessor
 from pycaret.internal.pycaret_experiment.tabular_experiment import _TabularExperiment
 from pycaret.internal.pycaret_experiment.utils import MLUsecase, highlight_setup
-from pycaret.internal.utils import DATAFRAME_LIKE, infer_ml_usecase, to_df
+from pycaret.internal.utils import infer_ml_usecase, to_df
 from pycaret.internal.validation import is_sklearn_pipeline
 from pycaret.loggers.base_logger import BaseLogger
+from pycaret.utils.constants import DATAFRAME_LIKE, SEQUENCE_LIKE
 
 LOGGER = get_logger()
 
@@ -86,6 +87,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
     def setup(
         self,
         data: DATAFRAME_LIKE,
+        index: Union[bool, int, str, SEQUENCE_LIKE] = False,
         ordinal_features: Optional[Dict[str, list]] = None,
         numeric_features: Optional[List[str]] = None,
         categorical_features: Optional[List[str]] = None,
@@ -163,6 +165,15 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
             names.
 
 
+        index: bool, int, str or sequence, default = False
+            Handle indices in the `data` dataframe.
+                - If False: Reset to RangeIndex.
+                - If True: Keep the provided index.
+                - If int: Position of the column to use as index.
+                - If str: Name of the column to use as index.
+                - If sequence: Array with shape=(n_samples,) to use as index.
+
+
         ordinal_features: dict, default = None
             Categorical features to be encoded ordinally. For example, a categorical
             feature with 'low', 'medium', 'high' values where low < medium < high can
@@ -212,7 +223,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
             when preprocess is set to False.
 
 
-        create_date_columns: list of str, default=["day", "month", "year"]
+        create_date_columns: list of str, default = ["day", "month", "year"]
             Columns to create from the date features. Note that created features
             with zero variance (e.g. the feature hour in a column that only contains
             dates) are ignored. Allowed values are datetime attributes from
@@ -524,7 +535,8 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
 
         # Set up data ============================================== >>
 
-        self.data = self._prepare_dataset(data)
+        self.index = index
+        self.data = self._set_index(self._prepare_dataset(data))
 
         # Train and Test indices
         self.idx = [self.data.index, None]
