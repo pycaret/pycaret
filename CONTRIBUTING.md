@@ -19,7 +19,7 @@ If you are interested or have already written Medium story covering `PyCaret`. Y
 If you are willing to make major contribution you can always look out for the active sprint under `Projects` and discuss the proposal with sprint leader. Current active sprint is `2.2 - major refactoring`. This sprint is led by `Yard1`.
 
 ## What we currently need help on?
-- Improving unit-test cases https://github.com/pycaret/pycaret/tree/master/pycaret/tests
+- Improving unit-test cases https://github.com/pycaret/pycaret/tree/master/tests
 - Major refactoring in `preprocess.py` to accommodate distributed processing
 - Example Notebooks required. Send PR to https://github.com/pycaret/pycaret/tree/master/examples
 
