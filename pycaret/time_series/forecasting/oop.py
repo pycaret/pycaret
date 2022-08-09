@@ -52,7 +52,6 @@ from pycaret.internal.preprocess.time_series.forecasting.preprocessor import (
 from pycaret.internal.pycaret_experiment.supervised_experiment import (
     _SupervisedExperiment,
 )
-from pycaret.internal.pycaret_experiment.utils import MLUsecase, highlight_setup
 from pycaret.internal.tests.time_series import (
     recommend_lowercase_d,
     recommend_uppercase_d,
@@ -61,7 +60,11 @@ from pycaret.internal.tests.time_series import (
 from pycaret.internal.tunable import TunableMixin
 from pycaret.internal.validation import is_sklearn_cv_generator
 from pycaret.loggers.base_logger import BaseLogger
-from pycaret.utils import _coerce_empty_dataframe_to_none, _resolve_dict_keys
+from pycaret.utils import (
+    _coerce_empty_dataframe_to_none,
+    _resolve_dict_keys,
+    highlight_setup,
+)
 from pycaret.utils._dependencies import _check_soft_dependencies
 from pycaret.utils.datetime import coerce_datetime_to_period_index
 from pycaret.utils.time_series import (
@@ -87,6 +90,7 @@ from pycaret.utils.time_series.forecasting.pipeline import (
     _get_imputed_data,
     _get_pipeline_estimator_label,
 )
+from pycaret.utils.utils import MLUsecase
 
 LOGGER = get_logger()
 

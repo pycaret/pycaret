@@ -9,7 +9,7 @@
 # to complete the process. Refer to the existing classes for examples.
 
 import logging
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
 from packaging import version
@@ -26,13 +26,13 @@ from pycaret.internal.distributions import (
     IntUniformDistribution,
     UniformDistribution,
 )
-from pycaret.internal.utils import (
+from pycaret.utils._dependencies import _check_soft_dependencies
+from pycaret.utils.utils import (
     get_class_name,
     get_logger,
     np_list_arange,
     param_grid_to_lists,
 )
-from pycaret.utils._dependencies import _check_soft_dependencies
 
 # First one in the list is the default ----
 ALL_ALLOWED_ENGINES: Dict[str, List[str]] = {

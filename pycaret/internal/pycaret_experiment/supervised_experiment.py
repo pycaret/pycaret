@@ -37,7 +37,6 @@ from pycaret.internal.distributions import (
 from pycaret.internal.logging import get_logger, redirect_output
 from pycaret.internal.meta_estimators import (
     CustomProbabilityThresholdClassifier,
-    PowerTransformedTargetRegressor,
     get_estimator_from_meta_estimator,
 )
 from pycaret.internal.parallel.parallel_backend import ParallelBackend
@@ -48,19 +47,20 @@ from pycaret.internal.pipeline import (
     get_pipeline_fit_kwargs,
 )
 from pycaret.internal.pycaret_experiment.tabular_experiment import _TabularExperiment
-from pycaret.internal.pycaret_experiment.utils import MLUsecase, get_ml_task
 from pycaret.internal.tunable import TunableMixin
-from pycaret.internal.utils import (
+from pycaret.internal.validation import is_fitted, is_sklearn_cv_generator
+from pycaret.utils._dependencies import _check_soft_dependencies
+from pycaret.utils.constants import LABEL_COLUMN, SCORE_COLUMN
+from pycaret.utils.utils import (
+    MLUsecase,
     can_early_stop,
     color_df,
     get_label_encoder,
+    get_ml_task,
     id_or_display_name,
     nullcontext,
     true_warm_start,
 )
-from pycaret.internal.validation import is_fitted, is_sklearn_cv_generator
-from pycaret.utils._dependencies import _check_soft_dependencies
-from pycaret.utils.constants import LABEL_COLUMN, SCORE_COLUMN
 
 LOGGER = get_logger()
 
@@ -97,7 +97,7 @@ class _SupervisedExperiment(_TabularExperiment):
         """
         Calculate all metrics in _all_metrics.
         """
-        from pycaret.internal.utils import calculate_metrics
+        from pycaret.utils.utils import calculate_metrics
 
         with redirect_output(self.logger):
             try:
@@ -241,9 +241,9 @@ class _SupervisedExperiment(_TabularExperiment):
         return best_model
 
     def _get_cv_n_folds(self, fold, X, y=None, groups=None):
-        import pycaret.internal.utils
+        import pycaret.utils.utils
 
-        return pycaret.internal.utils.get_cv_n_folds(
+        return pycaret.utils.utils.get_cv_n_folds(
             fold, default=self.fold_generator, X=X, y=y, groups=groups
         )
 
@@ -2061,7 +2061,6 @@ class _SupervisedExperiment(_TabularExperiment):
                 severity="error",
                 install_name="tune-sklearn ray[tune]",
             )
-            import tune_sklearn
 
             if not search_algorithm:
                 search_algorithm = "random"
@@ -2085,18 +2084,12 @@ class _SupervisedExperiment(_TabularExperiment):
                 _check_soft_dependencies(
                     "ray", extra="tuners", severity="error", install_name="ray[tune]"
                 )
-                import ConfigSpace as CS
-                import hpbandster
-                from ray.tune.schedulers import HyperBandForBOHB
-                from ray.tune.suggest.bohb import TuneBOHB
 
             elif search_algorithm == "hyperopt":
                 _check_soft_dependencies("hyperopt", extra="tuners", severity="error")
                 _check_soft_dependencies(
                     "ray", extra="tuners", severity="error", install_name="ray[tune]"
                 )
-                from hyperopt import hp
-                from ray.tune.suggest.hyperopt import HyperOptSearch
 
             elif search_algorithm == "bayesian":
                 _check_soft_dependencies(

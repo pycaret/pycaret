@@ -6,10 +6,9 @@ from typing import Dict, Optional
 
 from sklearn.pipeline import Pipeline
 
-from pycaret.internal.pycaret_experiment.utils import MLUsecase
-from pycaret.internal.utils import get_logger
 from pycaret.utils._dependencies import _check_soft_dependencies
 from pycaret.utils.time_series.forecasting.pipeline import _add_model_to_pipeline
+from pycaret.utils.utils import MLUsecase, get_logger
 
 
 def deploy_model(
@@ -216,7 +215,6 @@ def deploy_model(
         _check_soft_dependencies(
             "azure", extra=None, severity="error", install_name="azure-storage-blob"
         )
-        import azure.storage.blob
 
         # initialize deployment
         filename = f"{model_name}.pkl"

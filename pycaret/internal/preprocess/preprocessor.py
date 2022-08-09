@@ -80,8 +80,9 @@ from pycaret.internal.preprocess.transformers import (
     TransformerWrapper,
     TransformerWrapperWithInverse,
 )
-from pycaret.internal.pycaret_experiment.utils import MLUsecase
-from pycaret.internal.utils import (
+from pycaret.utils.constants import SEQUENCE
+from pycaret.utils.utils import (
+    MLUsecase,
     check_features_exist,
     df_shrink_dtypes,
     get_columns_to_stratify_by,
@@ -89,7 +90,6 @@ from pycaret.internal.utils import (
     to_df,
     to_series,
 )
-from pycaret.utils.constants import SEQUENCE
 
 
 class Preprocessor:
@@ -644,7 +644,9 @@ class Preprocessor:
             ord_estimator = TransformerWrapper(
                 transformer=OrdinalEncoder(
                     mapping=[{"col": k, "mapping": val} for k, val in mapping.items()],
-                    cols=list(self._fxs["Ordinal"].keys()),  # Specify to not skip bool columns
+                    cols=list(
+                        self._fxs["Ordinal"].keys()
+                    ),  # Specify to not skip bool columns
                     handle_missing="return_nan",
                     handle_unknown="value",
                 ),

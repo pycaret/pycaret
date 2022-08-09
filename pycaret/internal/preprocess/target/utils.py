@@ -1,4 +1,4 @@
-from pycaret.internal.utils import get_all_object_vars_and_properties, is_fit_var
+from pycaret.utils.utils import get_all_object_vars_and_properties, is_fit_var
 
 
 class TargetTransformerMixin:

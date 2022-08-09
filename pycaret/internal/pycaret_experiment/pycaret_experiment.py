@@ -9,9 +9,9 @@ import pycaret.internal.patches.yellowbrick
 import pycaret.internal.persistence
 from pycaret import show_versions
 from pycaret.internal.logging import get_logger
-from pycaret.internal.pycaret_experiment.utils import MLUsecase
 from pycaret.utils._dependencies import _check_soft_dependencies
 from pycaret.utils.time_series.forecasting.pipeline import _pipeline_transform
+from pycaret.utils.utils import MLUsecase
 
 LOGGER = get_logger()
 

@@ -23,11 +23,11 @@ jobs:
       - name: Run black
         uses: psf/black@stable
         with:
-          src: pycaret
+          src: pycaret tests
       - name: Check imports
         uses: jamescurtin/isort-action@master
         with:
-          sortPaths: pycaret
+          sortPaths: pycaret tests
 
   # JOBS MUST START WITH test !!!!
   test:
