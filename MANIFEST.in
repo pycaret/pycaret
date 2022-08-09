@@ -1,1 +1,2 @@
 include README.md LICENSE requirements.txt requirements-optional.txt requirements-test.txt
+recursive-include tests *.py

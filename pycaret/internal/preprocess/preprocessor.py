@@ -631,9 +631,10 @@ class Preprocessor:
             mapping = {}
             for key, value in self._fxs["Ordinal"].items():
                 if self.X[key].nunique() != len(value):
-                    raise ValueError(
-                        "The levels passed to the ordinal_features parameter "
-                        "doesn't match with the levels in the dataset."
+                    self.logger.warning(
+                        f"The number of classes passed to feature {key} in the "
+                        f"ordinal_features parameter ({len(value)}) don't match "
+                        f"with the number of classes in the data ({self.X[key].nunique()})."
                     )
 
                 # Encoder always needs mapping of NaN value
@@ -643,6 +644,7 @@ class Preprocessor:
             ord_estimator = TransformerWrapper(
                 transformer=OrdinalEncoder(
                     mapping=[{"col": k, "mapping": val} for k, val in mapping.items()],
+                    cols=list(self._fxs["Ordinal"].keys()),  # Specify to not skip bool columns
                     handle_missing="return_nan",
                     handle_unknown="value",
                 ),
