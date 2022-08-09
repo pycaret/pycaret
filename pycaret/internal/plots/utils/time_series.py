@@ -17,8 +17,8 @@ from statsmodels.tsa.seasonal import STL, seasonal_decompose
 from statsmodels.tsa.stattools import acf, ccf, pacf
 
 from pycaret.internal.logging import get_logger
-from pycaret.utils import _resolve_dict_keys
 from pycaret.utils.time_series import TSAllowedPlotDataTypes
+from pycaret.utils.utils import _resolve_dict_keys
 
 logger = get_logger()
 

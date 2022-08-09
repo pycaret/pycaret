@@ -25,9 +25,8 @@ from pycaret.internal.preprocess.preprocessor import Preprocessor
 from pycaret.internal.pycaret_experiment.tabular_experiment import _TabularExperiment
 from pycaret.internal.validation import is_sklearn_pipeline
 from pycaret.loggers.base_logger import BaseLogger
-from pycaret.utils import highlight_setup
 from pycaret.utils.constants import DATAFRAME_LIKE, SEQUENCE_LIKE
-from pycaret.utils.utils import MLUsecase, infer_ml_usecase
+from pycaret.utils.utils import MLUsecase, highlight_setup, infer_ml_usecase
 
 LOGGER = get_logger()
 

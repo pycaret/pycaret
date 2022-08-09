@@ -35,9 +35,13 @@ from pycaret.internal.validation import is_sklearn_cv_generator
 from pycaret.loggers.base_logger import BaseLogger
 from pycaret.loggers.mlflow_logger import MlflowLogger
 from pycaret.loggers.wandb_logger import WandbLogger
-from pycaret.utils import get_allowed_engines
 from pycaret.utils._dependencies import _check_soft_dependencies
-from pycaret.utils.utils import MLUsecase, get_label_encoder, get_model_name
+from pycaret.utils.utils import (
+    MLUsecase,
+    get_allowed_engines,
+    get_label_encoder,
+    get_model_name,
+)
 
 LOGGER = get_logger()
 

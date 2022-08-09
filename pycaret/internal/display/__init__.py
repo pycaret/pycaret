@@ -1,5 +1,4 @@
-from pycaret.utils import enable_colab  # Imported in other modules - do not remove
-
+from ...utils.utils import enable_colab
 from .display import CommonDisplay, DummyDisplay
 
-__all__ = ["CommonDisplay", "DummyDisplay", "enable_colab"]
+__all__ = ["CommonDisplay", "DummyDisplay"]

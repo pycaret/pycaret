@@ -24,13 +24,12 @@ from sktime.forecasting.model_selection import (
 from sktime.utils.validation.forecasting import check_y_X  # type: ignore
 
 from pycaret.internal.logging import get_logger
-from pycaret.utils import _get_metrics_dict
 from pycaret.utils.time_series.forecasting import (
     get_predictions_with_intervals,
     update_additional_scorer_kwargs,
 )
 from pycaret.utils.time_series.forecasting.pipeline import _get_imputed_data
-from pycaret.utils.utils import get_function_params
+from pycaret.utils.utils import _get_metrics_dict, get_function_params
 
 logger = get_logger()
 
