@@ -1,4 +1,4 @@
-from typing import Any, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np  # type: ignore
 import pandas as pd  # type ignore
@@ -9,6 +9,10 @@ import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
 import pycaret.internal.persistence
 import pycaret.internal.preprocess
+from pycaret.containers.models.clustering import (
+    ALL_ALLOWED_ENGINES,
+    get_container_default_engines,
+)
 from pycaret.internal.logging import get_logger
 from pycaret.internal.pycaret_experiment.unsupervised_experiment import (
     _UnsupervisedExperiment,
@@ -55,6 +59,157 @@ class ClusteringExperiment(_UnsupervisedExperiment):
 
     def _get_default_plots_to_log(self) -> List[str]:
         return ["cluster", "distribution", "elbow"]
+
+    def create_model(
+        self,
+        estimator: Union[str, Any],
+        fold: Optional[Union[int, Any]] = None,
+        round: int = 4,
+        cross_validation: bool = True,
+        fit_kwargs: Optional[dict] = None,
+        groups: Optional[Union[str, Any]] = None,
+        experiment_custom_tags: Optional[Dict[str, Any]] = None,
+        engine: Optional[str] = None,
+        verbose: bool = True,
+        return_train_score: bool = False,
+        **kwargs,
+    ) -> Any:
+
+        """
+        This function trains and evaluates the performance of a given estimator
+        using cross validation. The output of this function is a score grid with
+        CV scores by fold. Metrics evaluated during CV can be accessed using the
+        ``get_metrics`` function. Custom metrics can be added or removed using
+        ``add_metric`` and ``remove_metric`` function. All the available models
+        can be accessed using the ``models`` function.
+
+        Example
+        -------
+        >>> from pycaret.datasets import get_data
+        >>> juice = get_data('juice')
+        >>> from pycaret.classification import *
+        >>> exp_name = setup(data = juice,  target = 'Purchase')
+        >>> lr = create_model('lr')
+
+
+        estimator: str or scikit-learn compatible object
+            ID of an estimator available in model library or pass an untrained
+            model object consistent with scikit-learn API. Estimators available
+            in the model library (ID - Name):
+
+            * 'lr' - Logistic Regression
+            * 'knn' - K Neighbors Classifier
+            * 'nb' - Naive Bayes
+            * 'dt' - Decision Tree Classifier
+            * 'svm' - SVM - Linear Kernel
+            * 'rbfsvm' - SVM - Radial Kernel
+            * 'gpc' - Gaussian Process Classifier
+            * 'mlp' - MLP Classifier
+            * 'ridge' - Ridge Classifier
+            * 'rf' - Random Forest Classifier
+            * 'qda' - Quadratic Discriminant Analysis
+            * 'ada' - Ada Boost Classifier
+            * 'gbc' - Gradient Boosting Classifier
+            * 'lda' - Linear Discriminant Analysis
+            * 'et' - Extra Trees Classifier
+            * 'xgboost' - Extreme Gradient Boosting
+            * 'lightgbm' - Light Gradient Boosting Machine
+            * 'catboost' - CatBoost Classifier
+
+
+        fold: int or scikit-learn compatible CV generator, default = None
+            Controls cross-validation. If None, the CV generator in the ``fold_strategy``
+            parameter of the ``setup`` function is used. When an integer is passed,
+            it is interpreted as the 'n_splits' parameter of the CV generator in the
+            ``setup`` function.
+
+
+        round: int, default = 4
+            Number of decimal places the metrics in the score grid will be rounded to.
+
+
+        cross_validation: bool, default = True
+            When set to False, metrics are evaluated on holdout set. ``fold`` param
+            is ignored when cross_validation is set to False.
+
+
+        fit_kwargs: dict, default = {} (empty dict)
+            Dictionary of arguments passed to the fit method of the model.
+
+
+        groups: str or array-like, with shape (n_samples,), default = None
+            Optional group labels when GroupKFold is used for the cross validation.
+            It takes an array with shape (n_samples, ) where n_samples is the number
+            of rows in training dataset. When string is passed, it is interpreted as
+            the column name in the dataset containing group labels.
+
+
+        experiment_custom_tags: dict, default = None
+            Dictionary of tag_name: String -> value: (String, but will be string-ified
+            if not) passed to the mlflow.set_tags to add new custom tags for the experiment.
+
+
+        engine: Optional[str] = None
+            The execution engine to use for the model, e.g. for K-Means Clustering ("kmeans"), users can
+            switch between "sklearn" and "sklearnex" by specifying
+            `engine="sklearnex"`.
+
+
+        verbose: bool, default = True
+            Score grid is not printed when verbose is set to False.
+
+
+        return_train_score: bool, default = False
+            If False, returns the CV Validation scores only.
+            If True, returns the CV training scores along with the CV validation scores.
+            This is useful when the user wants to do bias-variance tradeoff. A high CV
+            training score with a low corresponding CV validation score indicates overfitting.
+
+
+        **kwargs:
+            Additional keyword arguments to pass to the estimator.
+
+
+        Returns:
+            Trained Model
+
+
+        Warnings
+        --------
+        - AUC for estimators that does not support 'predict_proba' is shown as 0.0000.
+
+        - Models are not logged on the ``MLFlow`` server when ``cross_validation`` param
+        is set to False.
+
+        """
+
+        if engine is not None:
+            # Save current engines, then set to user specified options
+            initial_default_model_engines = self.exp_model_engines.copy()
+            self._set_engine(estimator=estimator, engine=engine, severity="error")
+
+        try:
+            return_values = super().create_model(
+                estimator=estimator,
+                fold=fold,
+                round=round,
+                cross_validation=cross_validation,
+                fit_kwargs=fit_kwargs,
+                groups=groups,
+                verbose=verbose,
+                experiment_custom_tags=experiment_custom_tags,
+                return_train_score=return_train_score,
+                **kwargs,
+            )
+        finally:
+            if engine is not None:
+                # Reset the models back to the default engines
+                self._set_exp_model_engines(
+                    container_default_engines=get_container_default_engines(),
+                    engines=initial_default_model_engines,
+                )
+
+        return return_values
 
     def predict_model(
         self, estimator, data: pd.DataFrame, ml_usecase: Optional[MLUsecase] = None
