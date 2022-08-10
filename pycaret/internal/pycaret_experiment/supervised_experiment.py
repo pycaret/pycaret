@@ -5,7 +5,7 @@ import time
 import traceback
 import warnings
 from collections import Iterable
-from copy import deepcopy
+from copy import copy
 from functools import partial
 from typing import Any, Dict, List, Optional, Set, Tuple, Union
 from unittest.mock import patch
@@ -4911,7 +4911,10 @@ class _SupervisedExperiment(_TabularExperiment):
                 raise ValueError(
                     "If estimator is a Pipeline, it must implement `feature_names_in_`."
                 )
-            pipeline = deepcopy(estimator)
+            # Using deepcopy fails for catboost. Using shallow copy is
+            # fine since underlying estimators are only used for transform
+            pipeline = copy(estimator)
+
             # Temporarily remove final estimator so it's not used for transform
             final_step = pipeline.steps[-1]
             estimator = final_step[-1]

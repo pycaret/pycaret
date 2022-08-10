@@ -317,7 +317,7 @@ def save_model(
             )
         else:
             model_ = deepcopy(prep_pipe_)
-            model_.steps.append(["trained_model", model])
+            model_.steps.append(("trained_model", model))
 
     import joblib
 
