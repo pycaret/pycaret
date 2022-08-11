@@ -1153,35 +1153,11 @@ def _get_metrics_dict(
 
 
 def enable_colab():
-    import IPython
-    from IPython.display import display
-
-    """
-    Function to render plotly visuals in colab.
-    """
-
-    def configure_plotly_browser_state():
-
-        import IPython
-
-        display(
-            IPython.core.display.HTML(
-                """
-            <script src="/static/components/requirejs/require.js"></script>
-            <script>
-              requirejs.config({
-                paths: {
-                  base: '/static/base',
-                  plotly: 'https://cdn.plot.ly/plotly-latest.min.js?noext',
-                },
-              });
-            </script>
-            """
-            )
-        )
-
-    IPython.get_ipython().events.register(
-        "pre_run_cell", configure_plotly_browser_state
+    # TODO: Remove with pycaret v3.2.0
+    warnings.warn(
+        "This function is no longer necessary in pycaret>=3.0 "
+        "and will be removed with release 3.2.0",
+        DeprecationWarning
     )
 
 
