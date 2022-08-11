@@ -1157,7 +1157,7 @@ def enable_colab():
     warnings.warn(
         "This function is no longer necessary in pycaret>=3.0 "
         "and will be removed with release 3.2.0",
-        DeprecationWarning
+        DeprecationWarning,
     )
 
 
