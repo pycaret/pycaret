@@ -44,9 +44,9 @@ from pycaret.utils.datetime import (
     coerce_datetime_to_period_index,
     coerce_period_to_datetime_index,
 )
+from pycaret.utils.generic import get_logger, np_list_arange, param_grid_to_lists
 from pycaret.utils.time_series import TSModelTypes
 from pycaret.utils.time_series.forecasting.models import _check_enforcements
-from pycaret.utils.utils import get_logger, np_list_arange, param_grid_to_lists
 
 # First one in the list is the default ----
 ALL_ALLOWED_ENGINES: Dict[str, List[str]] = {

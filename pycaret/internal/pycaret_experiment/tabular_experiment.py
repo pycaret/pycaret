@@ -36,7 +36,7 @@ from pycaret.loggers.base_logger import BaseLogger
 from pycaret.loggers.mlflow_logger import MlflowLogger
 from pycaret.loggers.wandb_logger import WandbLogger
 from pycaret.utils._dependencies import _check_soft_dependencies
-from pycaret.utils.utils import (
+from pycaret.utils.generic import (
     MLUsecase,
     get_allowed_engines,
     get_label_encoder,
@@ -99,7 +99,7 @@ class _TabularExperiment(_PyCaretExperiment):
         data: Optional[pd.DataFrame] = None,
         fold_groups=None,
     ):
-        import pycaret.utils.utils
+        import pycaret.utils.generic
 
         data = data if data is not None else self.X_train
         fold_groups = fold_groups if fold_groups is not None else self.fold_groups_param
@@ -112,7 +112,7 @@ class _TabularExperiment(_PyCaretExperiment):
         if not ml_usecase:
             ml_usecase = self._ml_usecase
 
-        import pycaret.utils.utils
+        import pycaret.utils.generic
 
         return pycaret.utils.utils.get_cv_splitter(
             fold,

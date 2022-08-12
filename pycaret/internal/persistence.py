@@ -7,8 +7,8 @@ from typing import Dict, Optional
 from sklearn.pipeline import Pipeline
 
 from pycaret.utils._dependencies import _check_soft_dependencies
+from pycaret.utils.generic import MLUsecase, get_logger
 from pycaret.utils.time_series.forecasting.pipeline import _add_model_to_pipeline
-from pycaret.utils.utils import MLUsecase, get_logger
 
 
 def deploy_model(

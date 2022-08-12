@@ -26,7 +26,7 @@ from pycaret.internal.pycaret_experiment.tabular_experiment import _TabularExper
 from pycaret.internal.validation import is_sklearn_pipeline
 from pycaret.loggers.base_logger import BaseLogger
 from pycaret.utils.constants import DATAFRAME_LIKE, SEQUENCE_LIKE
-from pycaret.utils.utils import MLUsecase, highlight_setup, infer_ml_usecase
+from pycaret.utils.generic import MLUsecase, highlight_setup, infer_ml_usecase
 
 LOGGER = get_logger()
 
@@ -41,7 +41,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
         """
         Calculate all metrics in _all_metrics.
         """
-        from pycaret.utils.utils import calculate_unsupervised_metrics
+        from pycaret.utils.generic import calculate_unsupervised_metrics
 
         if ml_usecase is None:
             ml_usecase = self._ml_usecase

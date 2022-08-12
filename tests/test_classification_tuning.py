@@ -10,7 +10,7 @@ import pytest
 
 import pycaret.classification
 import pycaret.datasets
-from pycaret.utils.utils import can_early_stop
+from pycaret.utils.generic import can_early_stop
 
 
 @pytest.mark.skip(reason="no way of currently testing this")

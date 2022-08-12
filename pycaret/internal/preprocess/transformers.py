@@ -15,7 +15,7 @@ from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 from sklearn.neighbors import LocalOutlierFactor
 from sklearn.utils.metaestimators import if_delegate_has_method
 
-from pycaret.utils.utils import to_df, to_series, variable_return
+from pycaret.utils.generic import to_df, to_series, variable_return
 
 
 class TransformerWrapper(BaseEstimator, TransformerMixin):

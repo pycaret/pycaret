@@ -1,7 +1,7 @@
 import os
 import sys
 
-import pycaret.utils.utils
+import pycaret.utils.generic
 
 sys.path.insert(0, os.path.abspath(".."))
 

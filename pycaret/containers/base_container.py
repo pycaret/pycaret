@@ -5,7 +5,7 @@
 import inspect
 from typing import Any, Dict, Optional
 
-import pycaret.utils.utils
+import pycaret.utils.generic
 
 
 class BaseContainer:

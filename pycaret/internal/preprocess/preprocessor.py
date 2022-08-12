@@ -81,7 +81,7 @@ from pycaret.internal.preprocess.transformers import (
     TransformerWrapperWithInverse,
 )
 from pycaret.utils.constants import SEQUENCE
-from pycaret.utils.utils import (
+from pycaret.utils.generic import (
     MLUsecase,
     check_features_exist,
     df_shrink_dtypes,

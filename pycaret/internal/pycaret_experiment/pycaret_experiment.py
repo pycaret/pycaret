@@ -10,8 +10,8 @@ import pycaret.internal.persistence
 from pycaret import show_versions
 from pycaret.internal.logging import get_logger
 from pycaret.utils._dependencies import _check_soft_dependencies
+from pycaret.utils.generic import MLUsecase
 from pycaret.utils.time_series.forecasting.pipeline import _pipeline_transform
-from pycaret.utils.utils import MLUsecase
 
 LOGGER = get_logger()
 

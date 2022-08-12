@@ -9,7 +9,7 @@ import pandas as pd
 
 from pycaret.internal.parallel.parallel_backend import ParallelBackend
 from pycaret.time_series.forecasting.oop import TSForecastingExperiment
-from pycaret.utils.utils import check_if_global_is_not_none
+from pycaret.utils.generic import check_if_global_is_not_none
 
 if TYPE_CHECKING:
     from sktime.forecasting.base import ForecastingHorizon

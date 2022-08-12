@@ -27,7 +27,7 @@ from pycaret.internal.distributions import (
     UniformDistribution,
 )
 from pycaret.utils._dependencies import _check_soft_dependencies
-from pycaret.utils.utils import (
+from pycaret.utils.generic import (
     get_class_name,
     get_logger,
     np_list_arange,

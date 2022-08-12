@@ -4,7 +4,7 @@ from copy import deepcopy
 import pycaret
 from pycaret.loggers.base_logger import BaseLogger
 from pycaret.utils import __version__
-from pycaret.utils.utils import mlflow_remove_bad_chars
+from pycaret.utils.generic import mlflow_remove_bad_chars
 
 try:
     import mlflow

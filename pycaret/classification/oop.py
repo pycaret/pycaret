@@ -35,7 +35,7 @@ from pycaret.internal.pycaret_experiment.supervised_experiment import (
 from pycaret.internal.validation import is_sklearn_cv_generator
 from pycaret.loggers.base_logger import BaseLogger
 from pycaret.utils.constants import DATAFRAME_LIKE, SEQUENCE_LIKE, TARGET_LIKE
-from pycaret.utils.utils import (
+from pycaret.utils.generic import (
     MLUsecase,
     get_classification_task,
     get_label_encoder,

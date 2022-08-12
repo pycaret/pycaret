@@ -51,7 +51,7 @@ from pycaret.internal.tunable import TunableMixin
 from pycaret.internal.validation import is_fitted, is_sklearn_cv_generator
 from pycaret.utils._dependencies import _check_soft_dependencies
 from pycaret.utils.constants import LABEL_COLUMN, SCORE_COLUMN
-from pycaret.utils.utils import (
+from pycaret.utils.generic import (
     MLUsecase,
     can_early_stop,
     color_df,
@@ -97,7 +97,7 @@ class _SupervisedExperiment(_TabularExperiment):
         """
         Calculate all metrics in _all_metrics.
         """
-        from pycaret.utils.utils import calculate_metrics
+        from pycaret.utils.generic import calculate_metrics
 
         with redirect_output(self.logger):
             try:
@@ -241,7 +241,7 @@ class _SupervisedExperiment(_TabularExperiment):
         return best_model
 
     def _get_cv_n_folds(self, fold, X, y=None, groups=None):
-        import pycaret.utils.utils
+        import pycaret.utils.generic
 
         return pycaret.utils.utils.get_cv_n_folds(
             fold, default=self.fold_generator, X=X, y=y, groups=groups

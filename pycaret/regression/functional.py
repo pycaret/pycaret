@@ -8,7 +8,7 @@ from pycaret.internal.parallel.parallel_backend import ParallelBackend
 from pycaret.loggers.base_logger import BaseLogger
 from pycaret.regression.oop import RegressionExperiment
 from pycaret.utils.constants import DATAFRAME_LIKE, SEQUENCE_LIKE, TARGET_LIKE
-from pycaret.utils.utils import check_if_global_is_not_none
+from pycaret.utils.generic import check_if_global_is_not_none
 
 _EXPERIMENT_CLASS = RegressionExperiment
 _CURRENT_EXPERIMENT: Optional[RegressionExperiment] = None
