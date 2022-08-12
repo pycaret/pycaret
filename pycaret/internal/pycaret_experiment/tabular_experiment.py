@@ -103,7 +103,7 @@ class _TabularExperiment(_PyCaretExperiment):
 
         data = data if data is not None else self.X_train
         fold_groups = fold_groups if fold_groups is not None else self.fold_groups_param
-        return pycaret.utils.utils.get_groups(groups, data, fold_groups)
+        return pycaret.utils.generic.get_groups(groups, data, fold_groups)
 
     def _get_cv_splitter(
         self, fold, ml_usecase: Optional[MLUsecase] = None
@@ -114,7 +114,7 @@ class _TabularExperiment(_PyCaretExperiment):
 
         import pycaret.utils.generic
 
-        return pycaret.utils.utils.get_cv_splitter(
+        return pycaret.utils.generic.get_cv_splitter(
             fold,
             default=self.fold_generator,
             seed=self.seed,
@@ -134,7 +134,7 @@ class _TabularExperiment(_PyCaretExperiment):
         if models is None:
             models = self._all_models_internal
 
-        return pycaret.utils.utils.get_model_id(e, models)
+        return pycaret.utils.generic.get_model_id(e, models)
 
     def _get_metric_by_name_or_id(self, name_or_id: str, metrics: Optional[Any] = None):
         """

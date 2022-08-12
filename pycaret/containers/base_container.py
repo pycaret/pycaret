@@ -61,10 +61,10 @@ class BaseContainer:
         self.active = True
 
     def get_class_name(self):
-        return pycaret.utils.utils.get_class_name(self.class_def)
+        return pycaret.utils.generic.get_class_name(self.class_def)
 
     def get_package_name(self):
-        return pycaret.utils.utils.get_package_name(self.class_def)
+        return pycaret.utils.generic.get_package_name(self.class_def)
 
     def get_dict(self, internal: bool = True) -> Dict[str, Any]:
         """

@@ -243,7 +243,7 @@ class _SupervisedExperiment(_TabularExperiment):
     def _get_cv_n_folds(self, fold, X, y=None, groups=None):
         import pycaret.utils.generic
 
-        return pycaret.utils.utils.get_cv_n_folds(
+        return pycaret.utils.generic.get_cv_n_folds(
             fold, default=self.fold_generator, X=X, y=y, groups=groups
         )
 
