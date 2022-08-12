@@ -12,7 +12,7 @@ from pycaret.internal.logging import get_logger
 from pycaret.internal.pycaret_experiment.unsupervised_experiment import (
     _UnsupervisedExperiment,
 )
-from pycaret.internal.pycaret_experiment.utils import MLUsecase
+from pycaret.utils.generic import MLUsecase
 
 LOGGER = get_logger()
 

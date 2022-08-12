@@ -17,8 +17,8 @@ import pycaret.internal.cuml_wrappers
 from pycaret.containers.models.base_model import ModelContainer
 from pycaret.internal.cuml_wrappers import get_dbscan, get_kmeans
 from pycaret.internal.distributions import Distribution
-from pycaret.internal.utils import get_logger, param_grid_to_lists
 from pycaret.utils._dependencies import _check_soft_dependencies
+from pycaret.utils.generic import get_logger, param_grid_to_lists
 
 _DEFAULT_N_CLUSTERS = 4
 

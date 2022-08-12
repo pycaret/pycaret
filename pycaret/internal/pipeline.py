@@ -23,8 +23,8 @@ from sklearn.utils import _print_elapsed_time
 from sklearn.utils.metaestimators import if_delegate_has_method
 from sklearn.utils.validation import check_memory
 
-from pycaret.internal.utils import get_all_object_vars_and_properties, variable_return
 from pycaret.utils._show_versions import _get_deps_info
+from pycaret.utils.generic import get_all_object_vars_and_properties, variable_return
 
 
 def _fit_one(transformer, X=None, y=None, message=None, **fit_params):
