@@ -387,7 +387,7 @@ class GroupFeatures(BaseEstimator, TransformerMixin):
 
     def transform(self, X, y=None):
         if not self.group_names:
-            self.group_names = [f"group_{i}" for i in self.group_features]
+            self.group_names = [f"group_{i}" for i in range(len(self.group_features))]
 
         for name, group in zip(self.group_names, self.group_features):
             # Drop columns that are not in the dataframe (can be excluded)
