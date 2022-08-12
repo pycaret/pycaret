@@ -17,6 +17,10 @@ import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
 import pycaret.internal.persistence
 import pycaret.internal.preprocess
+from pycaret.containers.models.clustering import (
+    ALL_ALLOWED_ENGINES,
+    get_container_default_engines,
+)
 from pycaret.internal.display import CommonDisplay
 from pycaret.internal.logging import get_logger, redirect_output
 from pycaret.internal.pipeline import Pipeline as InternalPipeline
@@ -142,6 +146,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
         memory: Union[bool, str, Memory] = True,
         profile: bool = False,
         profile_kwargs: Optional[Dict[str, Any]] = None,
+        engines: Optional[Dict[str, str]] = None,
     ):
         """
 
@@ -508,6 +513,8 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
 
         runtime_start = time.time()
 
+        self.all_allowed_engines = ALL_ALLOWED_ENGINES
+
         self._initialize_setup(
             n_jobs=n_jobs,
             use_gpu=use_gpu,
@@ -549,6 +556,11 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
             text_features=text_features,
             ignore_features=ignore_features,
             keep_features=keep_features,
+        )
+
+        self._set_exp_model_engines(
+            container_default_engines=get_container_default_engines(),
+            engines=engines,
         )
 
         # Preprocessing ============================================ >>

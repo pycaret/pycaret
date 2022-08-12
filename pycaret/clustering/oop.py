@@ -9,10 +9,7 @@ import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
 import pycaret.internal.persistence
 import pycaret.internal.preprocess
-from pycaret.containers.models.clustering import (
-    ALL_ALLOWED_ENGINES,
-    get_container_default_engines,
-)
+from pycaret.containers.models.clustering import get_container_default_engines
 from pycaret.internal.logging import get_logger
 from pycaret.internal.pycaret_experiment.unsupervised_experiment import (
     _UnsupervisedExperiment,
@@ -62,16 +59,15 @@ class ClusteringExperiment(_UnsupervisedExperiment):
 
     def create_model(
         self,
-        estimator: Union[str, Any],
-        fold: Optional[Union[int, Any]] = None,
+        estimator,
+        num_clusters: int = 4,
+        fraction: float = 0.05,
+        ground_truth: Optional[str] = None,
         round: int = 4,
-        cross_validation: bool = True,
         fit_kwargs: Optional[dict] = None,
-        groups: Optional[Union[str, Any]] = None,
         experiment_custom_tags: Optional[Dict[str, Any]] = None,
         engine: Optional[str] = None,
         verbose: bool = True,
-        return_train_score: bool = False,
         **kwargs,
     ) -> Any:
 
@@ -191,14 +187,13 @@ class ClusteringExperiment(_UnsupervisedExperiment):
         try:
             return_values = super().create_model(
                 estimator=estimator,
-                fold=fold,
+                num_clusters=num_clusters,
+                fraction=fraction,
+                ground_truth=ground_truth,
                 round=round,
-                cross_validation=cross_validation,
                 fit_kwargs=fit_kwargs,
-                groups=groups,
-                verbose=verbose,
                 experiment_custom_tags=experiment_custom_tags,
-                return_train_score=return_train_score,
+                verbose=verbose,
                 **kwargs,
             )
         finally:

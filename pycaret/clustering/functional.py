@@ -587,7 +587,7 @@ def create_model(
         Dictionary of tag_name: String -> value: (String, but will be string-ified
         if not) passed to the mlflow.set_tags to add new custom tags for the experiment.
 
-    
+
     engine: Optional[str] = None
         The execution engine to use for the model, e.g. for K-Means Clustering ("kmeans"), users can
         switch between "sklearn" and "sklearnex" by specifying
