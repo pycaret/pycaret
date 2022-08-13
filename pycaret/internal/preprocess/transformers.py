@@ -15,7 +15,7 @@ from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 from sklearn.neighbors import LocalOutlierFactor
 from sklearn.utils.metaestimators import if_delegate_has_method
 
-from ..utils import to_df, to_series, variable_return
+from pycaret.utils.generic import to_df, to_series, variable_return
 
 
 class TransformerWrapper(BaseEstimator, TransformerMixin):
@@ -387,7 +387,7 @@ class GroupFeatures(BaseEstimator, TransformerMixin):
 
     def transform(self, X, y=None):
         if not self.group_names:
-            self.group_names = [f"group_{i}" for i in self.group_features]
+            self.group_names = [f"group_{i}" for i in range(len(self.group_features))]
 
         for name, group in zip(self.group_names, self.group_features):
             # Drop columns that are not in the dataframe (can be excluded)

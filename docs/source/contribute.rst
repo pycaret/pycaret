@@ -49,7 +49,7 @@ sprint leader.
 What we currently need help on?
 -------------------------------
 -  Improving unit-test cases and test coverage
-   https://github.com/pycaret/pycaret/tree/master/pycaret/tests
+   https://github.com/pycaret/pycaret/tree/master/tests
 -  Refactor preprocessing pipeline to support GPU
 -  Dask Integration
 

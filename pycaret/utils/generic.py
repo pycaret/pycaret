@@ -1,15 +1,19 @@
 import functools
 import inspect
 from copy import deepcopy
+from enum import Enum, auto
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Union
 
 import numpy as np
 import pandas as pd
 import pandas.io.formats.style
 from scipy import sparse
+from sklearn.metrics import get_scorer
+from sklearn.metrics._scorer import _PredictScorer
 from sklearn.model_selection import BaseCrossValidator, KFold, StratifiedKFold
 from sklearn.model_selection._split import _BaseKFold
 
+import pycaret.containers
 from pycaret.internal.logging import get_logger
 from pycaret.internal.validation import (
     is_sklearn_cv_generator,
@@ -17,6 +21,32 @@ from pycaret.internal.validation import (
     supports_partial_fit,
 )
 from pycaret.utils._dependencies import _check_soft_dependencies
+
+
+class MLUsecase(Enum):
+    CLASSIFICATION = auto()
+    REGRESSION = auto()
+    CLUSTERING = auto()
+    ANOMALY = auto()
+    TIME_SERIES = auto()
+
+
+def get_ml_task(y):
+    c1 = y.dtype == "int64"
+    c2 = y.nunique() <= 20
+    c3 = y.dtype.name in ["object", "bool", "category"]
+    if (c1 & c2) | c3:
+        ml_usecase = MLUsecase.CLASSIFICATION
+    else:
+        ml_usecase = MLUsecase.REGRESSION
+    return ml_usecase
+
+
+def highlight_setup(column):
+    return [
+        "background-color: lightgreen" if v is True or v == "Yes" else ""
+        for v in column
+    ]
 
 
 def get_classification_task(y):
@@ -1016,3 +1046,210 @@ def deep_clone(estimator: Any) -> Any:
     """
     estimator_ = deepcopy(estimator)
     return estimator_
+
+
+def check_metric(
+    actual: pd.Series,
+    prediction: pd.Series,
+    metric: str,
+    round: int = 4,
+    train: Optional[pd.Series] = None,
+):
+
+    """
+    Function to evaluate classification, regression and timeseries metrics.
+
+
+    actual : pandas.Series
+        Actual values of the target variable.
+
+
+    prediction : pandas.Series
+        Predicted values of the target variable.
+
+
+    train: pandas.Series
+        Train values of the target variable.
+
+
+    metric : str
+        Metric to use.
+
+
+    round: integer, default = 4
+        Number of decimal places the metrics will be rounded to.
+
+
+    Returns:
+        float
+
+    """
+
+    # general dependencies
+    import pycaret.containers.metrics.classification
+    import pycaret.containers.metrics.regression
+    import pycaret.containers.metrics.time_series
+
+    globals_dict = {"y": prediction}
+    metric_containers = {
+        **pycaret.containers.metrics.classification.get_all_metric_containers(
+            globals_dict
+        ),
+        **pycaret.containers.metrics.regression.get_all_metric_containers(globals_dict),
+        **pycaret.containers.metrics.time_series.get_all_metric_containers(
+            globals_dict
+        ),
+    }
+    metrics = {
+        v.name: functools.partial(v.score_func, **(v.args or {}))
+        for k, v in metric_containers.items()
+    }
+
+    if isinstance(train, pd.Series):
+        input_params = [actual, prediction, train]
+    else:
+        input_params = [actual, prediction]
+
+    # metric calculation starts here
+
+    if metric in metrics:
+        try:
+            result = metrics[metric](*input_params)
+        except:
+            from sklearn.preprocessing import LabelEncoder
+
+            le = LabelEncoder()
+            actual = le.fit_transform(actual)
+            prediction = le.transform(prediction)
+            result = metrics[metric](actual, prediction)
+        result = np.around(result, round)
+        return float(result)
+    else:
+        raise ValueError(
+            f"Couldn't find metric '{metric}' Possible metrics are: {', '.join(metrics.keys())}."
+        )
+
+
+def _get_metrics_dict(
+    metrics_dict: Dict[str, Union[str, _PredictScorer]]
+) -> Dict[str, _PredictScorer]:
+    """Returns a metrics dictionary in which all values are callables
+    of type _PredictScorer
+
+    Parameters
+    ----------
+    metrics_dict : A metrics dictionary in which some values can be strings.
+        If the value is a string, the corresponding callable metric is returned
+        e.g. Dictionary Value of 'neg_mean_absolute_error' will return
+        make_scorer(mean_absolute_error, greater_is_better=False)
+    """
+    return_metrics_dict = {}
+    for k, v in metrics_dict.items():
+        if isinstance(v, str):
+            return_metrics_dict[k] = get_scorer(v)
+        else:
+            return_metrics_dict[k] = v
+    return return_metrics_dict
+
+
+def enable_colab():
+    # TODO: Remove with pycaret v3.2.0
+    warnings.warn(
+        "This function is no longer necessary in pycaret>=3.0 "
+        "and will be removed with release 3.2.0",
+        DeprecationWarning,
+    )
+
+
+def get_system_logs():
+
+    """
+    Read and print 'logs.log' file from current active directory
+    """
+
+    with open("logs.log", "r") as file:
+        lines = file.read().splitlines()
+
+    for line in lines:
+        if not line:
+            continue
+
+        columns = [col.strip() for col in line.split(":") if col]
+        print(columns)
+
+
+def _coerce_empty_dataframe_to_none(
+    data: Optional[pd.DataFrame],
+) -> Optional[pd.DataFrame]:
+    """Returns None if the data is an empty dataframe or None,
+    else return the dataframe as is.
+
+    Parameters
+    ----------
+    data : Optional[pd.DataFrame]
+        Dataframe to be checked or None
+
+    Returns
+    -------
+    Optional[pd.DataFrame]
+        Returned Dataframe OR None (if dataframe is empty or None)
+    """
+    if isinstance(data, pd.DataFrame) and data.empty:
+        return None
+    else:
+        return data
+
+
+def _resolve_dict_keys(
+    dict_: Dict[str, Any], key: str, defaults: Dict[str, Any]
+) -> Any:
+    """Returns the value of "key" from `dict`. If key is not present, then the
+    value is picked from the `defaults` dictionary. Note that `defaults` must
+    contain the `key` else this will give an error.
+
+    Parameters
+    ----------
+    dict : Dict[str, Any]
+        The dictionary from which the "key"'s value must be obtained
+    key : str
+        The "key" whose value must be obtained
+    defaults : Dict[str, Any]
+        The dictionary containing the default value of the "key"
+
+    Returns
+    -------
+    Any
+        The value of the "key"
+
+    Raises
+    ------
+    KeyError
+        If the `defaults` dictionary does not contain the `key`
+    """
+    if key not in defaults:
+        raise KeyError(f"Key '{key}' not present in Defaults dictionary.")
+    return dict_.get(key, defaults[key])
+
+
+def get_allowed_engines(
+    estimator: str, all_allowed_engines: Dict[str, List[str]]
+) -> Optional[str]:
+    """Get all the allowed engines for the specified estimator
+
+    Parameters
+    ----------
+    estimator : str
+        Identifier for the model for which the engines should be retrieved,
+        e.g. "auto_arima"
+    all_allowed_engines : Dict[str, List[str]]
+        All allowed engines for models of this experiment class to which the
+        model belongs
+
+    Returns
+    -------
+    Optional[str]
+        The allowed engines for the model. If the model only supports the
+        default sktime engine, then it return `None`.
+    """
+    allowed_engines = all_allowed_engines.get(estimator, None)
+    return allowed_engines
