@@ -4840,11 +4840,13 @@ class _SupervisedExperiment(_TabularExperiment):
 
         def replace_labels_in_column(pipeline, labels: pd.Series) -> pd.Series:
             # Check if there is a LabelEncoder in the pipeline
-            name = labels.name
-            index = labels.index
             le = get_label_encoder(pipeline)
             if le:
-                return pd.Series(le.inverse_transform(labels), name=name, index=index)
+                return pd.Series(
+                    data=le.inverse_transform(labels),
+                    name=labels.name,
+                    index=labels.index,
+                )
             else:
                 return labels
 
@@ -5039,27 +5041,31 @@ class _SupervisedExperiment(_TabularExperiment):
 
         if score is not None:
             pred = pred.astype(int)
+
             if not raw_score:
-                score = [s[pred[i]] for i, s in enumerate(score)]
-            try:
-                score = pd.DataFrame(score, index=X_test_.index)
-                if raw_score:
-                    score_columns = pd.Series(
-                        range(score.shape[1]), index=X_test_.index
-                    )
-                    if not encoded_labels:
-                        score_columns = replace_labels_in_column(
-                            pipeline, score_columns
-                        )
-                    score.columns = [f"{SCORE_COLUMN}_{l}" for l in score_columns]
+                score = pd.DataFrame(
+                    data=[s[pred[i]] for i, s in enumerate(score)],
+                    index=X_test_.index,
+                    columns=[SCORE_COLUMN],
+                )
+            else:
+                if not encoded_labels:
+                    le = get_label_encoder(pipeline)
+                    if le:
+                        columns = le.classes_
+                    else:
+                        columns = range(score.shape[1])
                 else:
-                    score.columns = [SCORE_COLUMN]
-                score = score.round(round)
-                old_index = X_test_.index
-                X_test_ = pd.concat((X_test_, score), axis=1)
-                X_test_.index = old_index
-            except:
-                pass
+                    columns = range(score.shape[1])
+
+                score = pd.DataFrame(
+                    data=score,
+                    index=X_test_.index,
+                    columns=[f"{SCORE_COLUMN}_{l}" for l in columns],
+                )
+
+            score = score.round(round)
+            X_test_ = pd.concat((X_test_, score), axis=1)
 
         # store predictions on hold-out in display_container
         if df_score is not None:
@@ -5431,12 +5437,10 @@ class _SupervisedExperiment(_TabularExperiment):
         all_inputs = []
         app_kwargs = app_kwargs or {}
 
-        data_without_target = self.X[list(self.X_train_transformed.columns)]
-
-        for i in data_without_target.columns:
+        for i in self.X.columns:
             if i in self._fxs["Categorical"] or i in self._fxs["Ordinal"]:
                 all_inputs.append(
-                    gr.inputs.Dropdown(list(data_without_target[i].unique()), label=i)
+                    gr.inputs.Dropdown(list(self.X[i].unique()), label=i)
                 )
             else:
                 all_inputs.append(gr.inputs.Textbox(label=i))
@@ -5444,7 +5448,7 @@ class _SupervisedExperiment(_TabularExperiment):
         def predict(*dict_input):
 
             input_df = pd.DataFrame.from_dict([dict_input])
-            input_df.columns = list(data_without_target.columns)
+            input_df.columns = list(self.X.columns)
             return (
                 self.predict_model(
                     estimator, data=input_df, **self._create_app_predict_kwargs
