@@ -6,9 +6,9 @@ from joblib.memory import Memory
 
 from pycaret.classification.oop import ClassificationExperiment
 from pycaret.internal.parallel.parallel_backend import ParallelBackend
-from pycaret.internal.utils import check_if_global_is_not_none
 from pycaret.loggers.base_logger import BaseLogger
 from pycaret.utils.constants import DATAFRAME_LIKE, SEQUENCE_LIKE, TARGET_LIKE
+from pycaret.utils.generic import check_if_global_is_not_none
 
 _EXPERIMENT_CLASS = ClassificationExperiment
 _CURRENT_EXPERIMENT: Optional[ClassificationExperiment] = None

@@ -5,9 +5,9 @@ import pandas as pd
 from joblib.memory import Memory
 
 from pycaret.anomaly.oop import AnomalyExperiment
-from pycaret.internal.utils import check_if_global_is_not_none
 from pycaret.loggers.base_logger import BaseLogger
 from pycaret.utils.constants import DATAFRAME_LIKE, SEQUENCE_LIKE
+from pycaret.utils.generic import check_if_global_is_not_none
 
 _EXPERIMENT_CLASS = AnomalyExperiment
 _CURRENT_EXPERIMENT: Optional[AnomalyExperiment] = None
