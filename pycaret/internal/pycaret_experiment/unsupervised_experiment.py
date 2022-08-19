@@ -1687,6 +1687,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
         round: int = 4,
         fit_kwargs: Optional[dict] = None,
         experiment_custom_tags: Optional[Dict[str, Any]] = None,
+        engine: Optional[str] = None,
         verbose: bool = True,
         **kwargs,
     ) -> Any:
@@ -1746,6 +1747,12 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
             Status update is not printed when verbose is set to False.
 
 
+        engine: Optional[str] = None
+            The execution engine to use for the model, e.g. for K-Means Clustering ("kmeans"), users can
+            switch between "sklearn" and "sklearnex" by specifying
+            `engine="sklearnex"`.
+
+
         experiment_custom_tags: dict, default = None
             Dictionary of tag_name: String -> value: (String, but will be string-ified
             if not) passed to the mlflow.set_tags to add new custom tags for the experiment.
@@ -1790,17 +1797,43 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
             for x in kwargs
         )
 
-        return self._create_model(
-            estimator=estimator,
-            num_clusters=num_clusters,
-            fraction=fraction,
-            ground_truth=ground_truth,
-            round=round,
-            fit_kwargs=fit_kwargs,
-            experiment_custom_tags=experiment_custom_tags,
-            verbose=verbose,
-            **kwargs,
-        )
+        # return self._create_model(
+        #     estimator=estimator,
+        #     num_clusters=num_clusters,
+        #     fraction=fraction,
+        #     ground_truth=ground_truth,
+        #     round=round,
+        #     fit_kwargs=fit_kwargs,
+        #     experiment_custom_tags=experiment_custom_tags,
+        #     verbose=verbose,
+        #     **kwargs,
+        # )
+        if engine is not None:
+            # Save current engines, then set to user specified options
+            initial_default_model_engines = self.exp_model_engines.copy()
+            self._set_engine(estimator=estimator, engine=engine, severity="error")
+
+        try:
+            return_values = self._create_model(
+                estimator=estimator,
+                num_clusters=num_clusters,
+                fraction=fraction,
+                ground_truth=ground_truth,
+                round=round,
+                fit_kwargs=fit_kwargs,
+                experiment_custom_tags=experiment_custom_tags,
+                verbose=verbose,
+                **kwargs,
+            )
+        finally:
+            if engine is not None:
+                # Reset the models back to the default engines
+                self._set_exp_model_engines(
+                    container_default_engines=get_container_default_engines(),
+                    engines=initial_default_model_engines,
+                )
+
+        return return_values
 
     def evaluate_model(
         self,

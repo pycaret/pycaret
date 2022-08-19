@@ -32,9 +32,7 @@ def test_engines_setup_global_args():
     #### Default Model Engine ----
     assert exp.get_engine("kmeans") == "sklearnex"
     model = exp.create_model("kmeans")
-    assert isinstance(
-        model, daal4py.sklearn.cluster.KMeans
-    )
+    assert isinstance(model, daal4py.sklearn.cluster.KMeans)
 
 
 def test_engines_global_methods():
@@ -90,9 +88,7 @@ def test_create_model_engines_local_args():
 
     #### Override model engine locally ----
     model = exp.create_model("kmeans", engine="sklearnex")
-    assert isinstance(
-        model, daal4py.sklearn.cluster.KMeans
-    )
+    assert isinstance(model, daal4py.sklearn.cluster.KMeans)
     # Original engine should remain the same
     assert exp.get_engine("kmeans") == "sklearn"
 
