@@ -2410,7 +2410,7 @@ class CatBoostCdsDtContainer(CdsDtContainer):
         logging.getLogger("catboost").setLevel(logging.ERROR)
 
         self.use_gpu = experiment.gpu_param == "force" or (
-            experiment.gpu_param and len(experiment.X_train) >= 50000
+            experiment.gpu_param and len(experiment.y_train) >= 50000
         )
 
         super().__init__(experiment=experiment)
