@@ -1,5 +1,10 @@
 """Module to test setting of engines in time series
 """
+
+from daal4py.sklearn.linear_model._linear import (
+    LinearRegression as SklearnexLinearRegression,
+)
+from sklearn.linear_model import LinearRegression as SklearnLinearRegression
 from sktime.forecasting.arima import AutoARIMA as PmdAutoARIMA
 from sktime.forecasting.statsforecast import StatsForecastAutoARIMA
 
@@ -26,7 +31,9 @@ from pycaret.time_series import TSForecastingExperiment
 
 
 def test_engines_setup_global_args(load_pos_and_neg_data):
-    """Tests the setting of engines using global arguments in setup."""
+    """Tests the setting of engines using global arguments in setup.
+    We test for both statistical models and regression models.
+    """
 
     exp = TSForecastingExperiment()
     data = load_pos_and_neg_data
@@ -37,19 +44,29 @@ def test_engines_setup_global_args(load_pos_and_neg_data):
         fh=12,
         fold_strategy="sliding",
         verbose=False,
-        engines={"auto_arima": "statsforecast"},
+        engines={"auto_arima": "statsforecast", "lr_cds_dt": "sklearnex"},
     )
 
     #### Default Model Engine ----
+    ## A. Statistical Models
     assert exp.get_engine("auto_arima") == "statsforecast"
     model = exp.create_model("auto_arima", cross_validation=False)
     assert isinstance(model, StatsForecastAutoARIMA)
     # Original engine should remain the same
     assert exp.get_engine("auto_arima") == "statsforecast"
 
+    ## B. Regression Models
+    assert exp.get_engine("lr_cds_dt") == "sklearnex"
+    model = exp.create_model("lr_cds_dt", cross_validation=False)
+    assert isinstance(model.regressor, SklearnexLinearRegression)
+    # Original engine should remain the same
+    assert exp.get_engine("lr_cds_dt") == "sklearnex"
+
 
 def test_engines_global_methods(load_pos_and_neg_data):
-    """Tests the setting of engines using methods like set_engine (global changes)."""
+    """Tests the setting of engines using methods like set_engine (global changes).
+    We test for both statistical models and regression models.
+    """
 
     exp = TSForecastingExperiment()
     data = load_pos_and_neg_data
@@ -60,19 +77,29 @@ def test_engines_global_methods(load_pos_and_neg_data):
         fh=12,
         fold_strategy="sliding",
         verbose=False,
-        engines={"auto_arima": "statsforecast"},
+        engines={"auto_arima": "statsforecast", "lr_cds_dt": "sklearnex"},
     )
-    assert exp.get_engine("auto_arima") == "statsforecast"
 
     #### Globally reset engine ----
+    ## A. Statistical Models
+    assert exp.get_engine("auto_arima") == "statsforecast"
     exp._set_engine("auto_arima", "pmdarima")
     assert exp.get_engine("auto_arima") == "pmdarima"
     model = exp.create_model("auto_arima", cross_validation=False)
     assert isinstance(model, PmdAutoARIMA)
 
+    ## B. Regression Models
+    assert exp.get_engine("lr_cds_dt") == "sklearnex"
+    exp._set_engine("lr_cds_dt", "sklearn")
+    assert exp.get_engine("lr_cds_dt") == "sklearn"
+    model = exp.create_model("lr_cds_dt", cross_validation=False)
+    assert isinstance(model.regressor, SklearnLinearRegression)
+
 
 def test_create_model_engines_local_args(load_pos_and_neg_data):
-    """Tests the setting of engines for create_model using local args."""
+    """Tests the setting of engines for create_model using local args.
+    We test for both statistical models and regression models.
+    """
 
     exp = TSForecastingExperiment()
     data = load_pos_and_neg_data
@@ -86,13 +113,22 @@ def test_create_model_engines_local_args(load_pos_and_neg_data):
     )
 
     #### Default Model Engine ----
+    ## A. Statistical Models
     assert exp.get_engine("auto_arima") == "pmdarima"
     model = exp.create_model("auto_arima", cross_validation=False)
     assert isinstance(model, PmdAutoARIMA)
     # Original engine should remain the same
     assert exp.get_engine("auto_arima") == "pmdarima"
 
+    ## B. Regression Models
+    assert exp.get_engine("lr_cds_dt") == "sklearn"
+    model = exp.create_model("lr_cds_dt", cross_validation=False)
+    assert isinstance(model.regressor, SklearnLinearRegression)
+    # Original engine should remain the same
+    assert exp.get_engine("lr_cds_dt") == "sklearn"
+
     #### Override model engine locally ----
+    ## A. Statistical Models
     model = exp.create_model(
         "auto_arima", engine="statsforecast", cross_validation=False
     )
@@ -102,9 +138,19 @@ def test_create_model_engines_local_args(load_pos_and_neg_data):
     model = exp.create_model("auto_arima")
     assert isinstance(model, PmdAutoARIMA)
 
+    ## B. Regression Models
+    model = exp.create_model("lr_cds_dt", engine="sklearnex", cross_validation=False)
+    assert isinstance(model.regressor, SklearnexLinearRegression)
+    # Original engine should remain the same
+    assert exp.get_engine("lr_cds_dt") == "sklearn"
+    model = exp.create_model("lr_cds_dt")
+    assert isinstance(model.regressor, SklearnLinearRegression)
+
 
 def test_compare_models_engines_local_args(load_pos_and_neg_data):
-    """Tests the setting of engines for compare_models using local args."""
+    """Tests the setting of engines for compare_models using local args.
+    We test for both statistical models and regression models.
+    """
 
     exp = TSForecastingExperiment()
     data = load_pos_and_neg_data
@@ -118,13 +164,22 @@ def test_compare_models_engines_local_args(load_pos_and_neg_data):
     )
 
     #### Default Model Engine ----
+    ## A. Statistical Models
     assert exp.get_engine("auto_arima") == "pmdarima"
     model = exp.compare_models(include=["auto_arima"])
     assert isinstance(model, PmdAutoARIMA)
     # Original engine should remain the same
     assert exp.get_engine("auto_arima") == "pmdarima"
 
+    ## B. Regression Models
+    assert exp.get_engine("lr_cds_dt") == "sklearn"
+    model = exp.compare_models(include=["lr_cds_dt"])
+    assert isinstance(model.regressor, SklearnLinearRegression)
+    # Original engine should remain the same
+    assert exp.get_engine("lr_cds_dt") == "sklearn"
+
     #### Override model engine locally ----
+    ## A. Statistical Models
     model = exp.compare_models(
         include=["auto_arima"], engines={"auto_arima": "statsforecast"}
     )
@@ -133,3 +188,13 @@ def test_compare_models_engines_local_args(load_pos_and_neg_data):
     assert exp.get_engine("auto_arima") == "pmdarima"
     model = exp.compare_models(include=["auto_arima"])
     assert isinstance(model, PmdAutoARIMA)
+
+    ## B. Regression Models
+    model = exp.compare_models(
+        include=["lr_cds_dt"], engines={"lr_cds_dt": "sklearnex"}
+    )
+    assert isinstance(model.regressor, SklearnexLinearRegression)
+    # Original engine should remain the same
+    assert exp.get_engine("lr_cds_dt") == "sklearn"
+    model = exp.compare_models(include=["lr_cds_dt"])
+    assert isinstance(model.regressor, SklearnLinearRegression)

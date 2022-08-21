@@ -1494,7 +1494,12 @@ class ElasticNetCdsDtContainer(CdsDtContainer):
     model_type = TSModelTypes.LINEAR
 
     def return_regressor_class(self):
-        from sklearn.linear_model import ElasticNet
+
+        if self.engine == "sklearn":
+            from sklearn.linear_model import ElasticNet
+        elif self.engine == "sklearnex":
+            _check_soft_dependencies("sklearnex", extra=None, severity="error")
+            from sklearnex.linear_model import ElasticNet
 
         if self.gpu_param == "force":
             from cuml.linear_model import ElasticNet  # type: ignore
@@ -1550,7 +1555,12 @@ class RidgeCdsDtContainer(CdsDtContainer):
     model_type = TSModelTypes.LINEAR
 
     def return_regressor_class(self):
-        from sklearn.linear_model import Ridge
+
+        if self.engine == "sklearn":
+            from sklearn.linear_model import Ridge
+        elif self.engine == "sklearnex":
+            _check_soft_dependencies("sklearnex", extra=None, severity="error")
+            from sklearnex.linear_model import Ridge
 
         if self.gpu_param == "force":
             from cuml.linear_model import Ridge  # type: ignore
@@ -1606,7 +1616,12 @@ class LassoCdsDtContainer(CdsDtContainer):
     model_type = TSModelTypes.LINEAR
 
     def return_regressor_class(self):
-        from sklearn.linear_model import Lasso
+
+        if self.engine == "sklearn":
+            from sklearn.linear_model import Lasso
+        elif self.engine == "sklearnex":
+            _check_soft_dependencies("sklearnex", extra=None, severity="error")
+            from sklearnex.linear_model import Lasso
 
         if self.gpu_param == "force":
             from cuml.linear_model import Lasso  # type: ignore
@@ -1967,7 +1982,11 @@ class KNeighborsCdsDtContainer(CdsDtContainer):
         super().__init__(experiment=experiment)
 
     def return_regressor_class(self):
-        from sklearn.neighbors import KNeighborsRegressor
+        if self.engine == "sklearn":
+            from sklearn.neighbors import KNeighborsRegressor
+        elif self.engine == "sklearnex":
+            _check_soft_dependencies("sklearnex", extra=None, severity="error")
+            from sklearnex.neighbors import KNeighborsRegressor
 
         if self.gpu_param == "force":
             from cuml.neighbors import KNeighborsRegressor  # type: ignore
