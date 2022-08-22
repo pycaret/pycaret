@@ -26,20 +26,22 @@ import pycaret.internal.preprocess
 import pycaret.loggers
 from pycaret.internal.display import CommonDisplay
 from pycaret.internal.logging import create_logger, get_logger, redirect_output
-from pycaret.internal.meta_estimators import get_estimator_from_meta_estimator
 from pycaret.internal.pipeline import Pipeline as InternalPipeline
 from pycaret.internal.pipeline import get_memory
 from pycaret.internal.plots.helper import MatplotlibDefaultDPI
 from pycaret.internal.plots.yellowbrick import show_yellowbrick_plot
 from pycaret.internal.pycaret_experiment.pycaret_experiment import _PyCaretExperiment
-from pycaret.internal.pycaret_experiment.utils import MLUsecase
-from pycaret.internal.utils import get_label_encoder, get_model_name
 from pycaret.internal.validation import is_sklearn_cv_generator
 from pycaret.loggers.base_logger import BaseLogger
 from pycaret.loggers.mlflow_logger import MlflowLogger
 from pycaret.loggers.wandb_logger import WandbLogger
-from pycaret.utils import get_allowed_engines
 from pycaret.utils._dependencies import _check_soft_dependencies
+from pycaret.utils.generic import (
+    MLUsecase,
+    get_allowed_engines,
+    get_label_encoder,
+    get_model_name,
+)
 
 LOGGER = get_logger()
 
@@ -97,11 +99,11 @@ class _TabularExperiment(_PyCaretExperiment):
         data: Optional[pd.DataFrame] = None,
         fold_groups=None,
     ):
-        import pycaret.internal.utils
+        import pycaret.utils.generic
 
         data = data if data is not None else self.X_train
         fold_groups = fold_groups if fold_groups is not None else self.fold_groups_param
-        return pycaret.internal.utils.get_groups(groups, data, fold_groups)
+        return pycaret.utils.generic.get_groups(groups, data, fold_groups)
 
     def _get_cv_splitter(
         self, fold, ml_usecase: Optional[MLUsecase] = None
@@ -110,9 +112,9 @@ class _TabularExperiment(_PyCaretExperiment):
         if not ml_usecase:
             ml_usecase = self._ml_usecase
 
-        import pycaret.internal.utils
+        import pycaret.utils.generic
 
-        return pycaret.internal.utils.get_cv_splitter(
+        return pycaret.utils.generic.get_cv_splitter(
             fold,
             default=self.fold_generator,
             seed=self.seed,
@@ -132,7 +134,7 @@ class _TabularExperiment(_PyCaretExperiment):
         if models is None:
             models = self._all_models_internal
 
-        return pycaret.internal.utils.get_model_id(e, models)
+        return pycaret.utils.generic.get_model_id(e, models)
 
     def _get_metric_by_name_or_id(self, name_or_id: str, metrics: Optional[Any] = None):
         """
@@ -529,8 +531,6 @@ class _TabularExperiment(_PyCaretExperiment):
         plot_name = self._available_plots[plot]
 
         # yellowbrick workaround start
-        import yellowbrick.utils.helpers
-        import yellowbrick.utils.types
 
         # yellowbrick workaround end
 
@@ -2609,13 +2609,10 @@ class _TabularExperiment(_PyCaretExperiment):
         """
 
         _check_soft_dependencies("fastapi", extra="mlops", severity="error")
-        import fastapi
 
         _check_soft_dependencies("uvicorn", extra="mlops", severity="error")
-        import uvicorn
 
         _check_soft_dependencies("pydantic", extra="mlops", severity="error")
-        import pydantic
 
         MODULE = (
             self._ml_usecase.name.lower()
