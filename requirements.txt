@@ -29,6 +29,6 @@ plotly-resampler>=0.7.2.2
 
 # Time-series
 statsmodels>=0.12.1
-sktime~=0.13.1
+sktime~=0.13.2
 tbats>=1.1.0
 pmdarima>=1.8.0,!=1.8.1,<2.0.0 # Matches sktime
