@@ -99,7 +99,7 @@ jobs:
           pip list
       - name: Remove tests
         run: |
-          remove-item tests/* -Include @('test_classification_tuning.py','test_classification_plots.py','test_regression_plots.py', 'test_regression_tuning.py', 'test_time_series_tune_grid.py', 'test_time_series_tune_random.py', 'test_create_api.py', 'test_create_docker.py', 'test_drift_report.py', 'test_eda.py', 'test_time_series_plots.py', 'test_time_series_utils_plots.py')
+          remove-item tests/* -Include @('tests\test_clustering.py', 'test_classification_tuning.py','test_classification_plots.py','test_regression_plots.py', 'test_regression_tuning.py', 'test_time_series_tune_grid.py', 'test_time_series_tune_random.py', 'test_create_api.py', 'test_create_docker.py', 'test_drift_report.py', 'test_eda.py', 'test_time_series_plots.py', 'test_time_series_utils_plots.py')
       - name: Test with pytest
         run: pytest
 
