@@ -9,8 +9,8 @@ import pycaret.internal.patches.yellowbrick
 import pycaret.internal.persistence
 from pycaret import show_versions
 from pycaret.internal.logging import get_logger
-from pycaret.internal.pycaret_experiment.utils import MLUsecase
 from pycaret.utils._dependencies import _check_soft_dependencies
+from pycaret.utils.generic import MLUsecase
 from pycaret.utils.time_series.forecasting.pipeline import _pipeline_transform
 
 LOGGER = get_logger()
@@ -459,7 +459,19 @@ class _PyCaretExperiment:
     @property
     def test(self):
         """Test set."""
-        return self.dataset.loc[self.idx[1], :]
+        if self._ml_usecase != MLUsecase.TIME_SERIES:
+            return self.dataset.loc[self.idx[1], :]
+        else:
+            # Return the y_test indices not X_test indices.
+            # X_test indices are expanded indices for handling FH with gaps.
+            # But if we return X_test indices, then we will get expanded test
+            # indices even for univariate time series without exogenous variables
+            # which would be confusing. Hence, we return y_test indices here and if
+            # we want to get X_test indices, then we use self.X_test directly.
+            # Refer:
+            # https://github.com/alan-turing-institute/sktime/issues/2598#issuecomment-1203308542
+            # https://github.com/alan-turing-institute/sktime/blob/4164639e1c521b112711c045d0f7e63013c1e4eb/sktime/forecasting/model_evaluation/_functions.py#L196
+            return self.dataset.loc[self.idx[1], :]
 
     @property
     def X(self):
@@ -502,11 +514,17 @@ class _PyCaretExperiment:
     @property
     def X_test(self):
         """Feature set of the test set."""
-        if self.target_param is not None:
-            X_test = self.test.drop(self.target_param, axis=1)
+        if self._ml_usecase != MLUsecase.TIME_SERIES:
+            if self.target_param is not None:
+                X_test = self.test.drop(self.target_param, axis=1)
+            else:
+                # Unsupervised Learning
+                X_test = self.test
         else:
-            # Unsupervised Learning
-            X_test = self.test
+            # Use index for y_test (idx 2) to get the data
+            test = self.dataset.loc[self.idx[2], :]
+            X_test = test.drop(self.target_param, axis=1)
+
         if self._ml_usecase != MLUsecase.TIME_SERIES:
             return X_test
         else:
@@ -524,8 +542,14 @@ class _PyCaretExperiment:
     @property
     def y_test(self):
         """Target column of the test set."""
-        if self.target_param:
-            return self.test[self.target_param]
+        if self._ml_usecase != MLUsecase.TIME_SERIES:
+            if self.target_param:
+                return self.test[self.target_param]
+        else:
+            if self.target_param:
+                # Use index for y_test (idx 1) to get the data
+                test = self.dataset.loc[self.idx[1], :]
+                return test[self.target_param]
 
     @property
     def dataset_transformed(self):
@@ -590,7 +614,16 @@ class _PyCaretExperiment:
                 ],
                 axis=1,
             )
-            return all_data.loc[self.y_test.index]
+            # Return the y_test indices not X_test indices.
+            # X_test indices are expanded indices for handling FH with gaps.
+            # But if we return X_test indices, then we will get expanded test
+            # indices even for univariate time series without exogenous variables
+            # which would be confusing. Hence, we return y_test indices here and if
+            # we want to get X_test indices, then we use self.X_test directly.
+            # Refer:
+            # https://github.com/alan-turing-institute/sktime/issues/2598#issuecomment-1203308542
+            # https://github.com/alan-turing-institute/sktime/blob/4164639e1c521b112711c045d0f7e63013c1e4eb/sktime/forecasting/model_evaluation/_functions.py#L196
+            return all_data.loc[self.idx[1]]
 
     @property
     def X_transformed(self):
@@ -653,7 +686,7 @@ class _PyCaretExperiment:
             if X is None:
                 return None
             else:
-                return X.loc[self.X_test.index]
+                return X.loc[self.idx[2]]
 
     @property
     def y_train_transformed(self):
@@ -682,4 +715,4 @@ class _PyCaretExperiment:
             y, _ = _pipeline_transform(
                 pipeline=self.pipeline_fully_trained, y=self.y, X=self.X
             )
-            return y.loc[self.y_test.index]
+            return y.loc[self.idx[1]]

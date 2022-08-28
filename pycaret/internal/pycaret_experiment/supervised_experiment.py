@@ -4,7 +4,8 @@ import os
 import time
 import traceback
 import warnings
-from copy import deepcopy
+from collections import Iterable
+from copy import copy
 from functools import partial
 from typing import Any, Dict, List, Optional, Set, Tuple, Union
 from unittest.mock import patch
@@ -36,7 +37,6 @@ from pycaret.internal.distributions import (
 from pycaret.internal.logging import get_logger, redirect_output
 from pycaret.internal.meta_estimators import (
     CustomProbabilityThresholdClassifier,
-    PowerTransformedTargetRegressor,
     get_estimator_from_meta_estimator,
 )
 from pycaret.internal.parallel.parallel_backend import ParallelBackend
@@ -47,19 +47,20 @@ from pycaret.internal.pipeline import (
     get_pipeline_fit_kwargs,
 )
 from pycaret.internal.pycaret_experiment.tabular_experiment import _TabularExperiment
-from pycaret.internal.pycaret_experiment.utils import MLUsecase, get_ml_task
 from pycaret.internal.tunable import TunableMixin
-from pycaret.internal.utils import (
+from pycaret.internal.validation import is_fitted, is_sklearn_cv_generator
+from pycaret.utils._dependencies import _check_soft_dependencies
+from pycaret.utils.constants import LABEL_COLUMN, SCORE_COLUMN
+from pycaret.utils.generic import (
+    MLUsecase,
     can_early_stop,
     color_df,
     get_label_encoder,
+    get_ml_task,
     id_or_display_name,
     nullcontext,
     true_warm_start,
 )
-from pycaret.internal.validation import is_fitted, is_sklearn_cv_generator
-from pycaret.utils._dependencies import _check_soft_dependencies
-from pycaret.utils.constants import LABEL_COLUMN, SCORE_COLUMN
 
 try:
     from collections.abc import Iterable
@@ -101,7 +102,7 @@ class _SupervisedExperiment(_TabularExperiment):
         """
         Calculate all metrics in _all_metrics.
         """
-        from pycaret.internal.utils import calculate_metrics
+        from pycaret.utils.generic import calculate_metrics
 
         with redirect_output(self.logger):
             try:
@@ -245,9 +246,9 @@ class _SupervisedExperiment(_TabularExperiment):
         return best_model
 
     def _get_cv_n_folds(self, fold, X, y=None, groups=None):
-        import pycaret.internal.utils
+        import pycaret.utils.generic
 
-        return pycaret.internal.utils.get_cv_n_folds(
+        return pycaret.utils.generic.get_cv_n_folds(
             fold, default=self.fold_generator, X=X, y=y, groups=groups
         )
 
@@ -1408,9 +1409,6 @@ class _SupervisedExperiment(_TabularExperiment):
         if self._ml_usecase != MLUsecase.TIME_SERIES:
             data_X = self.X_train if X_train_data is None else X_train_data.copy()
             data_y = self.y_train if y_train_data is None else y_train_data.copy()
-
-            data_X.reset_index(drop=True, inplace=True)
-            data_y.reset_index(drop=True, inplace=True)
         else:
             if X_train_data is not None:
                 data_X = X_train_data.copy()
@@ -2068,7 +2066,6 @@ class _SupervisedExperiment(_TabularExperiment):
                 severity="error",
                 install_name="tune-sklearn ray[tune]",
             )
-            import tune_sklearn
 
             if not search_algorithm:
                 search_algorithm = "random"
@@ -2092,18 +2089,12 @@ class _SupervisedExperiment(_TabularExperiment):
                 _check_soft_dependencies(
                     "ray", extra="tuners", severity="error", install_name="ray[tune]"
                 )
-                import ConfigSpace as CS
-                import hpbandster
-                from ray.tune.schedulers import HyperBandForBOHB
-                from ray.tune.suggest.bohb import TuneBOHB
 
             elif search_algorithm == "hyperopt":
                 _check_soft_dependencies("hyperopt", extra="tuners", severity="error")
                 _check_soft_dependencies(
                     "ray", extra="tuners", severity="error", install_name="ray[tune]"
                 )
-                from hyperopt import hp
-                from ray.tune.suggest.hyperopt import HyperOptSearch
 
             elif search_algorithm == "bayesian":
                 _check_soft_dependencies(
@@ -2230,10 +2221,6 @@ class _SupervisedExperiment(_TabularExperiment):
         # Storing X_train and y_train in data_X and data_y parameter
         data_X = self.X_train
         data_y = self.y_train
-
-        # reset index
-        data_X.reset_index(drop=True, inplace=True)
-        data_y.reset_index(drop=True, inplace=True)
 
         display.move_progress()
 
@@ -4922,7 +4909,11 @@ class _SupervisedExperiment(_TabularExperiment):
                 raise ValueError(
                     "If estimator is a Pipeline, it must implement `feature_names_in_`."
                 )
-            pipeline = deepcopy(estimator)
+            # We use copy instead of deepcopy because of https://github.com/pycaret/pycaret/issues/2769
+            # Catboost behaves strange when deep copied. Using copy is fine
+            # since the underlying estimators are only used for transform
+            pipeline = copy(estimator)
+
             # Temporarily remove final estimator so it's not used for transform
             final_step = pipeline.steps[-1]
             estimator = final_step[-1]
@@ -4942,11 +4933,11 @@ class _SupervisedExperiment(_TabularExperiment):
             X_test_, y_test_ = self.X_test_transformed, self.y_test_transformed
         else:
             if y_name in data.columns:
-                data = self._prepare_dataset(data, y_name)
+                data = self._set_index(self._prepare_dataset(data, y_name))
                 target = data[y_name]
                 data = data.drop(y_name, axis=1)
             else:
-                data = self._prepare_dataset(data)
+                data = self._set_index(self._prepare_dataset(data))
                 target = None
             data = data[X_columns]  # Ignore all columns but the originals
             if preprocess:

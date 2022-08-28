@@ -16,7 +16,7 @@ import pycaret.containers.base_container
 import pycaret.internal.cuml_wrappers
 from pycaret.containers.models.base_model import ModelContainer
 from pycaret.internal.distributions import Distribution
-from pycaret.internal.utils import get_logger, param_grid_to_lists
+from pycaret.utils.generic import get_logger, param_grid_to_lists
 
 _DEFAULT_N_ANOMALYS = 4
 

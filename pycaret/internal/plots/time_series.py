@@ -23,7 +23,7 @@ from pycaret.internal.plots.utils.time_series import (
     qq_subplot,
     time_series_subplot,
 )
-from pycaret.utils import _resolve_dict_keys
+from pycaret.utils.generic import _resolve_dict_keys
 from pycaret.utils.time_series import get_diffs
 
 __author__ = ["satya-pattnaik", "ngupta23"]

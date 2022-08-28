@@ -52,7 +52,6 @@ from pycaret.internal.preprocess.time_series.forecasting.preprocessor import (
 from pycaret.internal.pycaret_experiment.supervised_experiment import (
     _SupervisedExperiment,
 )
-from pycaret.internal.pycaret_experiment.utils import MLUsecase, highlight_setup
 from pycaret.internal.tests.time_series import (
     recommend_lowercase_d,
     recommend_uppercase_d,
@@ -61,9 +60,14 @@ from pycaret.internal.tests.time_series import (
 from pycaret.internal.tunable import TunableMixin
 from pycaret.internal.validation import is_sklearn_cv_generator
 from pycaret.loggers.base_logger import BaseLogger
-from pycaret.utils import _coerce_empty_dataframe_to_none, _resolve_dict_keys
 from pycaret.utils._dependencies import _check_soft_dependencies
 from pycaret.utils.datetime import coerce_datetime_to_period_index
+from pycaret.utils.generic import (
+    MLUsecase,
+    _coerce_empty_dataframe_to_none,
+    _resolve_dict_keys,
+    highlight_setup,
+)
 from pycaret.utils.time_series import (
     TSApproachTypes,
     TSExogenousPresent,
@@ -871,9 +875,15 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         )
 
         # idx contains train, test indices.
-        # Setting of self.y_train, self.y_test, self.X_train and self.X_test
-        # will be handled internally based on these indices and self.data
-        self.idx = [y_train.index, y_test.index]
+        # Setting of self.y_train, self.y_test, self.X_train will be handled
+        # internally based on these indices and self.data
+        # Different from non-time series, we save X_test index here as well to
+        # handle FH with gaps. In such cases, y_test will have gaps, but full
+        # X_test is needed for some forecasters.
+        # Refer:
+        # https://github.com/alan-turing-institute/sktime/issues/2598#issuecomment-1203308542
+        # https://github.com/alan-turing-institute/sktime/blob/4164639e1c521b112711c045d0f7e63013c1e4eb/sktime/forecasting/model_evaluation/_functions.py#L196
+        self.idx = [y_train.index, y_test.index, X_test.index]
 
         return self
 

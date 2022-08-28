@@ -23,11 +23,11 @@ jobs:
       - name: Run black
         uses: psf/black@stable
         with:
-          src: pycaret
+          src: pycaret tests
       - name: Check imports
         uses: jamescurtin/isort-action@master
         with:
-          sortPaths: pycaret
+          sortPaths: pycaret tests
 
   # JOBS MUST START WITH test !!!!
   test:
@@ -59,14 +59,14 @@ jobs:
           pip list
       - name: Remove tests
         run: |
-          rm pycaret/tests/test_classification_tuning.py
-          rm pycaret/tests/test_classification_plots.py
-          rm pycaret/tests/test_regression_plots.py
-          rm pycaret/tests/test_regression_tuning.py
-          rm pycaret/tests/test_time_series_tune_grid.py
-          rm pycaret/tests/test_time_series_tune_random.py
-          rm pycaret/tests/test_time_series_plots.py
-          rm pycaret/tests/test_time_series_utils_plots.py
+          rm tests/test_classification_tuning.py
+          rm tests/test_classification_plots.py
+          rm tests/test_regression_plots.py
+          rm tests/test_regression_tuning.py
+          rm tests/test_time_series_tune_grid.py
+          rm tests/test_time_series_tune_random.py
+          rm tests/test_time_series_plots.py
+          rm tests/test_time_series_utils_plots.py
       - name: Test with pytest
         run: pytest
 
@@ -99,7 +99,7 @@ jobs:
           pip list
       - name: Remove tests
         run: |
-          remove-item pycaret/tests/* -Include @('test_classification_tuning.py','test_classification_plots.py','test_regression_plots.py', 'test_regression_tuning.py', 'test_time_series_tune_grid.py', 'test_time_series_tune_random.py', 'test_create_api.py', 'test_create_docker.py', 'test_drift_report.py', 'test_eda.py', 'test_time_series_plots.py', 'test_time_series_utils_plots.py')
+          remove-item tests/* -Include @('test_clustering.py', 'test_classification_tuning.py','test_classification_plots.py','test_regression_plots.py', 'test_regression_tuning.py', 'test_time_series_tune_grid.py', 'test_time_series_tune_random.py', 'test_create_api.py', 'test_create_docker.py', 'test_drift_report.py', 'test_eda.py', 'test_time_series_plots.py', 'test_time_series_utils_plots.py')
       - name: Test with pytest
         run: pytest
 
@@ -123,7 +123,7 @@ jobs:
   #       python -m spacy download en
   #   - name: Remove tests
   #     run: |
-  #       find pycaret/tests -type f -not -name '__init__.py' -not -name 'test_classification_tuning.py' -not -name 'test_regression_tuning.py' -delete
+  #       find tests -type f -not -name '__init__.py' -not -name 'test_classification_tuning.py' -not -name 'test_regression_tuning.py' -delete
   #   - name: Test with pytest
   #     run: pytest
 
@@ -146,7 +146,7 @@ jobs:
   #       python -m spacy download en
   #   - name: Remove tests
   #     run: |
-  #       remove-item pycaret/tests/* -Exclude @('__init__.py','test_classification_tuning.py')
+  #       remove-item tests/* -Exclude @('__init__.py','test_classification_tuning.py')
   #   - name: Test with pytest
   #     run: pytest
 
@@ -169,7 +169,7 @@ jobs:
   #       python -m spacy download en
   #   - name: Remove tests
   #     run: |
-  #       remove-item pycaret/tests/* -Exclude @('__init__.py','test_regression_tuning.py')
+  #       remove-item tests/* -Exclude @('__init__.py','test_regression_tuning.py')
   #   - name: Test with pytest
   #     run: pytest
 
@@ -197,7 +197,7 @@ jobs:
           pip list
       - name: Remove tests
         run: |
-          find pycaret/tests -type f -not -name '__init__.py' -not -name 'test_classification_plots.py' -not -name 'test_regression_plots.py' -not -name 'conftest.py' -not -name 'time_series_test_utils.py' -not -name 'test_time_series_plots.py' -not -name 'test_time_series_utils_plots.py' -delete
+          find tests -type f -not -name '__init__.py' -not -name 'test_classification_plots.py' -not -name 'test_regression_plots.py' -not -name 'conftest.py' -not -name 'time_series_test_utils.py' -not -name 'test_time_series_plots.py' -not -name 'test_time_series_utils_plots.py' -delete
       - name: Test with pytest
         run: pytest
 
@@ -231,7 +231,7 @@ jobs:
           pip list
       - name: Remove tests
         run: |
-          find pycaret/tests -type f -not -name '__init__.py' -not -name 'conftest.py' -not -name 'time_series_test_utils.py' -not -name 'test_time_series_tune_random.py' -delete
+          find tests -type f -not -name '__init__.py' -not -name 'conftest.py' -not -name 'time_series_test_utils.py' -not -name 'test_time_series_tune_random.py' -delete
       - name: Test with pytest
         run: pytest
 
@@ -265,6 +265,6 @@ jobs:
           pip list
       - name: Remove tests
         run: |
-          find pycaret/tests -type f -not -name '__init__.py' -not -name 'conftest.py' -not -name 'time_series_test_utils.py' -not -name 'test_time_series_tune_grid.py' -delete
+          find tests -type f -not -name '__init__.py' -not -name 'conftest.py' -not -name 'time_series_test_utils.py' -not -name 'test_time_series_tune_grid.py' -delete
       - name: Test with pytest
         run: pytest

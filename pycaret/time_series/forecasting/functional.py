@@ -2,15 +2,14 @@
 """
 
 import logging
-import os
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
 
 from pycaret.internal.parallel.parallel_backend import ParallelBackend
-from pycaret.internal.utils import check_if_global_is_not_none
 from pycaret.time_series.forecasting.oop import TSForecastingExperiment
+from pycaret.utils.generic import check_if_global_is_not_none
 
 if TYPE_CHECKING:
     from sktime.forecasting.base import ForecastingHorizon
