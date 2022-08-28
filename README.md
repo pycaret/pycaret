@@ -94,9 +94,9 @@ pip install pycaret[full]
 
 ## ⚡ PyCaret Time Series Module (beta)
   
-PyCaret new time series module is now available in beta. Staying true to simplicity of PyCaret, it is consistent with our existing API and fully loaded with functionalities. Statistical testing, model training and selection (30+ algorithms), model analysis, automated hyperparameter tuning, experiment logging, deployment on cloud, and more. All of this with only few lines of code (just like the other modules of pycaret). If you would like to give it a try, checkout our official [quick start](https://nbviewer.org/github/pycaret/pycaret/blob/time_series_beta/time_series_101.ipynb) notebook.
+PyCaret new time series module is now available in beta. Staying true to simplicity of PyCaret, it is consistent with our existing API and fully loaded with functionalities. Statistical testing, model training and selection (30+ algorithms), model analysis, automated hyperparameter tuning, experiment logging, deployment on cloud, and more. All of this with only few lines of code (just like the other modules of pycaret). If you would like to give it a try, checkout our official [quick start](https://nbviewer.org/github/pycaret/pycaret/blob/master/examples/time_series/forecasting/time_series_101.ipynb) notebook.
   
-:books: [Time Series Docs](https://pycaret.readthedocs.io/en/time_series/api/time_series.html)
+:books: [Time Series Docs](https://pycaret.readthedocs.io/en/latest/api/time_series.html)
   
 :question: [Time Series FAQs](https://github.com/pycaret/pycaret/discussions/categories/faqs?discussions_q=category%3AFAQs+label%3Atime_series)
   
