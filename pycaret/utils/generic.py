@@ -1233,7 +1233,7 @@ def _resolve_dict_keys(
 
 def get_allowed_engines(
     estimator: str, all_allowed_engines: Dict[str, List[str]]
-) -> Optional[str]:
+) -> Optional[List[str]]:
     """Get all the allowed engines for the specified estimator
 
     Parameters
@@ -1247,7 +1247,7 @@ def get_allowed_engines(
 
     Returns
     -------
-    Optional[str]
+    Optional[List[str]]
         The allowed engines for the model. If the model only supports the
         default sktime engine, then it return `None`.
     """

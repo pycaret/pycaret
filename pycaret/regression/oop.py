@@ -477,7 +477,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             Algorithm for feature selection. Choose from:
                 - 'univariate': Uses sklearn's SelectKBest.
                 - 'classic': Uses sklearn's SelectFromModel.
-                - 'sequential': Uses sklearn's SequtnailFeatureSelector.
+                - 'sequential': Uses sklearn's SequentialFeatureSelector.
 
 
         feature_selection_estimator: str or sklearn estimator, default = 'lightgbm'
