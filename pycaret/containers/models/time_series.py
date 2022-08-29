@@ -50,7 +50,27 @@ from pycaret.utils.time_series.forecasting.models import _check_enforcements
 
 # First one in the list is the default ----
 ALL_ALLOWED_ENGINES: Dict[str, List[str]] = {
-    "auto_arima": ["pmdarima", "statsforecast"]
+    "auto_arima": ["pmdarima", "statsforecast"],
+    "lr_cds_dt": ["sklearn", "sklearnex"],
+    "en_cds_dt": ["sklearn", "sklearnex"],
+    "ridge_cds_dt": ["sklearn", "sklearnex"],
+    "lasso_cds_dt": ["sklearn", "sklearnex"],
+    "lar_cds_dt": ["sklearn"],
+    "llar_cds_dt": ["sklearn"],
+    "br_cds_dt": ["sklearn"],
+    "huber_cds_dt": ["sklearn"],
+    "par_cds_dt": ["sklearn"],
+    "omp_cds_dt": ["sklearn"],
+    "knn_cds_dt": ["sklearn", "sklearnex"],
+    "dt_cds_dt": ["sklearn"],
+    "rf_cds_dt": ["sklearn"],
+    "et_cds_dt": ["sklearn"],
+    "gbr_cds_dt": ["sklearn"],
+    "ada_cds_dt": ["sklearn"],
+    "xgboost_cds_dt": ["sklearn"],
+    "lightgbm_cds_dt": ["sklearn"],
+    "catboost_cds_dt": ["sklearn"],
+    # "svm_cds_dt": ["sklearn", "sklearnex"],
 }
 
 
@@ -1302,6 +1322,10 @@ class CdsDtContainer(TimeSeriesContainer):
         self.gpu_param = experiment.gpu_param
         self.n_jobs_param = experiment.n_jobs_param
 
+        self._set_engine_related_vars(
+            id=self.id, all_allowed_engines=ALL_ALLOWED_ENGINES, experiment=experiment
+        )
+
         regressor_class = self.return_regressor_class()  # e.g. LinearRegression
         regressor_args = self._set_regressor_args
         if regressor_class is not None:
@@ -1413,7 +1437,12 @@ class LinearCdsDtContainer(CdsDtContainer):
     model_type = TSModelTypes.LINEAR
 
     def return_regressor_class(self):
-        from sklearn.linear_model import LinearRegression
+
+        if self.engine == "sklearn":
+            from sklearn.linear_model import LinearRegression
+        elif self.engine == "sklearnex":
+            _check_soft_dependencies("sklearnex", extra=None, severity="error")
+            from sklearnex.linear_model import LinearRegression
 
         if self.gpu_param == "force":
             from cuml.linear_model import LinearRegression  # type: ignore
@@ -1465,7 +1494,12 @@ class ElasticNetCdsDtContainer(CdsDtContainer):
     model_type = TSModelTypes.LINEAR
 
     def return_regressor_class(self):
-        from sklearn.linear_model import ElasticNet
+
+        if self.engine == "sklearn":
+            from sklearn.linear_model import ElasticNet
+        elif self.engine == "sklearnex":
+            _check_soft_dependencies("sklearnex", extra=None, severity="error")
+            from sklearnex.linear_model import ElasticNet
 
         if self.gpu_param == "force":
             from cuml.linear_model import ElasticNet  # type: ignore
@@ -1521,7 +1555,12 @@ class RidgeCdsDtContainer(CdsDtContainer):
     model_type = TSModelTypes.LINEAR
 
     def return_regressor_class(self):
-        from sklearn.linear_model import Ridge
+
+        if self.engine == "sklearn":
+            from sklearn.linear_model import Ridge
+        elif self.engine == "sklearnex":
+            _check_soft_dependencies("sklearnex", extra=None, severity="error")
+            from sklearnex.linear_model import Ridge
 
         if self.gpu_param == "force":
             from cuml.linear_model import Ridge  # type: ignore
@@ -1577,7 +1616,12 @@ class LassoCdsDtContainer(CdsDtContainer):
     model_type = TSModelTypes.LINEAR
 
     def return_regressor_class(self):
-        from sklearn.linear_model import Lasso
+
+        if self.engine == "sklearn":
+            from sklearn.linear_model import Lasso
+        elif self.engine == "sklearnex":
+            _check_soft_dependencies("sklearnex", extra=None, severity="error")
+            from sklearnex.linear_model import Lasso
 
         if self.gpu_param == "force":
             from cuml.linear_model import Lasso  # type: ignore
@@ -1938,7 +1982,11 @@ class KNeighborsCdsDtContainer(CdsDtContainer):
         super().__init__(experiment=experiment)
 
     def return_regressor_class(self):
-        from sklearn.neighbors import KNeighborsRegressor
+        if self.engine == "sklearn":
+            from sklearn.neighbors import KNeighborsRegressor
+        elif self.engine == "sklearnex":
+            _check_soft_dependencies("sklearnex", extra=None, severity="error")
+            from sklearnex.neighbors import KNeighborsRegressor
 
         if self.gpu_param == "force":
             from cuml.neighbors import KNeighborsRegressor  # type: ignore
@@ -2410,7 +2458,7 @@ class CatBoostCdsDtContainer(CdsDtContainer):
         logging.getLogger("catboost").setLevel(logging.ERROR)
 
         self.use_gpu = experiment.gpu_param == "force" or (
-            experiment.gpu_param and len(experiment.X_train) >= 50000
+            experiment.gpu_param and len(experiment.y_train) >= 50000
         )
 
         super().__init__(experiment=experiment)
