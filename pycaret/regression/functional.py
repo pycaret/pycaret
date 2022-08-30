@@ -835,7 +835,7 @@ def get_allowed_engines(estimator: str) -> Optional[str]:
     -------
     Optional[str]
         The allowed engines for the model. If the model only supports the
-        default sktime engine, then it return `None`.
+        default engine, then it return `None`.
     """
 
     return _CURRENT_EXPERIMENT.get_allowed_engines(estimator=estimator)

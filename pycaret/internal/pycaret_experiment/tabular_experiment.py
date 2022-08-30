@@ -2798,7 +2798,7 @@ CMD ["python", "{API_NAME}.py"]
         -------
         Optional[List[str]]
             The allowed engines for the model. If the model only supports the
-            default sktime engine, then it return `None`.
+            default engine, then it return `None`.
         """
         allowed_engines = get_allowed_engines(
             estimator=estimator, all_allowed_engines=self.all_allowed_engines

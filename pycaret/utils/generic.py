@@ -1249,7 +1249,7 @@ def get_allowed_engines(
     -------
     Optional[List[str]]
         The allowed engines for the model. If the model only supports the
-        default sktime engine, then it return `None`.
+        default engine, then it return `None`.
     """
     allowed_engines = all_allowed_engines.get(estimator, None)
     return allowed_engines
