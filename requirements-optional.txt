@@ -6,6 +6,7 @@ pandas-profiling>=3.1.0
 explainerdashboard>=0.3.8  # For dashboard method
 autoviz>=0.1.36  # For EDA method
 fairlearn>=0.7.0  # For check_fairness method
+# deepchecks>=0.8.2  # For deep_check method  TODO: Add when compatible with plotly
 
 # Models
 xgboost>=1.1.0
@@ -26,6 +27,7 @@ scikit-optimize>=0.9.0
 # MLOps
 mlflow>=1.24.0
 gradio>=2.8.10
+boto3>=1.24.56  # For deploy_model method
 fastapi>=0.75.0  # For web api
 uvicorn>=0.17.6  # For web api
 m2cgen>=0.9.0  # For model conversion

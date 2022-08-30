@@ -615,7 +615,7 @@ class Preprocessor:
 
         # Select columns for different encoding types
         one_hot_cols, rest_cols = [], []
-        for name, column in X_transformed.items():
+        for name, column in X_transformed[self._fxs["Categorical"]].items():
             n_unique = column.nunique()
             if n_unique == 2:
                 self._fxs["Ordinal"][name] = list(sorted(column.dropna().unique()))
