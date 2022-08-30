@@ -923,7 +923,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             if imputation_type == "simple":
                 container.append(["Numeric imputation", numeric_imputation])
                 container.append(["Categorical imputation", categorical_imputation])
-            else:
+            elif imputation_type == "iterative":
                 if isinstance(numeric_iterative_imputer, str):
                     num_imputer = numeric_iterative_imputer
                 else:

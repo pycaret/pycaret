@@ -117,7 +117,7 @@ class TransformerWrapper(BaseEstimator, TransformerMixin):
         for col in df:
             if col in original_df and col not in self._include:
                 raise ValueError(
-                    f"Column '{col}' returned by the transformer "
+                    f"Column '{col}' returned by transformer {self.transformer} "
                     "already exists in the original dataset."
                 )
 
@@ -387,7 +387,9 @@ class GroupFeatures(BaseEstimator, TransformerMixin):
 
     def transform(self, X, y=None):
         if not self.group_names:
-            self.group_names = [f"group_{i}" for i in range(len(self.group_features))]
+            self.group_names = [
+                f"group_{i}" for i in range(1, len(self.group_features) + 1)
+            ]
 
         for name, group in zip(self.group_names, self.group_features):
             # Drop columns that are not in the dataframe (can be excluded)
