@@ -410,7 +410,7 @@ def setup(
         Algorithm for feature selection. Choose from:
             - 'univariate': Uses sklearn's SelectKBest.
             - 'classic': Uses sklearn's SelectFromModel.
-            - 'sequential': Uses sklearn's SequtnailFeatureSelector.
+            - 'sequential': Uses sklearn's SequentialFeatureSelector.
 
 
     feature_selection_estimator: str or sklearn estimator, default = 'lightgbm'
@@ -835,7 +835,7 @@ def get_allowed_engines(estimator: str) -> Optional[str]:
     -------
     Optional[str]
         The allowed engines for the model. If the model only supports the
-        default sktime engine, then it return `None`.
+        default engine, then it return `None`.
     """
 
     return _CURRENT_EXPERIMENT.get_allowed_engines(estimator=estimator)

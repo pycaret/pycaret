@@ -2584,7 +2584,7 @@ class _TabularExperiment(_PyCaretExperiment):
         >>> from pycaret.classification import *
         >>> exp_name = setup(data = juice,  target = 'Purchase')
         >>> lr = create_model('lr')
-        >>> create_api(lr, 'lr_api'
+        >>> create_api(lr, 'lr_api')
         >>> !python lr_api.py
 
 
@@ -2592,8 +2592,8 @@ class _TabularExperiment(_PyCaretExperiment):
             Trained model object
 
 
-        api_name: scikit-learn compatible object
-            Trained model object
+        api_name: str
+            Name of the model.
 
 
         host: str, default = '127.0.0.1'
@@ -2607,53 +2607,43 @@ class _TabularExperiment(_PyCaretExperiment):
         Returns:
             None
         """
-
         _check_soft_dependencies("fastapi", extra="mlops", severity="error")
-
         _check_soft_dependencies("uvicorn", extra="mlops", severity="error")
-
         _check_soft_dependencies("pydantic", extra="mlops", severity="error")
-
-        MODULE = (
-            self._ml_usecase.name.lower()
-        )  ## added .name.lower() as output changed from main branch
-        API_NAME = api_name
-        HOST = host
 
         self.save_model(estimator, model_name=api_name, verbose=False)
         targetname = f"{self.target_param}_prediction"
-        ## Removed tabs from query as that was causing the original file to have indentation errors.
-        query = """
+
+        query = f"""# -*- coding: utf-8 -*-
+
 import pandas as pd
-from pycaret.{MODULE_NAME} import load_model, predict_model
+from pycaret.{self._ml_usecase.name.lower()} import load_model, predict_model
 from fastapi import FastAPI
 import uvicorn
 from pydantic import create_model
+
 # Create the app
 app = FastAPI()
+
 # Load trained Pipeline
-model = load_model("{API_NAME}")
+model = load_model("{api_name}")
+
 # Create input/output pydantic models
-pydanticinputmodel=create_model("{API_NAME}_input", **{inputDataframeschema})
-pydanticoutputmodel=create_model("{API_NAME}_output", **{outputDataframeschema})
+pydanticinputmodel=create_model("{api_name}_input", **{self.X.iloc[0].to_dict()})
+pydanticoutputmodel=create_model("{api_name}_output", **{{targetname: self.y.iloc[0]}})
+
+
 # Define predict function
 @app.post("/predict", response_model=pydanticoutputmodel)
 def predict(datainput:pydanticinputmodel):
     data = pd.DataFrame([datainput.dict()])
     predictions = predict_model(model, data=data)
-    return {D1}"{tarname}": predictions["prediction_label"][0]{D2}
+    return {{"{targetname}": predictions["prediction_label"][0]}}
+
+
 if __name__ == "__main__":
-    uvicorn.run(app, host="{HOST}", port={PORT})""".format(
-            MODULE_NAME=MODULE,
-            API_NAME=API_NAME,
-            inputDataframeschema=self.X.iloc[0].to_dict(),
-            outputDataframeschema={targetname: self.y.iloc[0]},
-            D1="{",
-            tarname=targetname,
-            D2="}",
-            HOST=HOST,
-            PORT=port,
-        )
+    uvicorn.run(app, host="{host}", port={port})
+"""
 
         file_name = str(api_name) + ".py"
 
@@ -2661,14 +2651,11 @@ if __name__ == "__main__":
         f.write(query)
         f.close()
 
-        message = """
-    API sucessfully created. This function only creates a POST API, it doesn't run it automatically.
-    To run your API, please run this command --> !python {API_NAME}.py
-        """.format(
-            API_NAME=API_NAME
+        print(
+            "API successfully created. This function only creates a POST API, "
+            "it doesn't run it automatically. To run your API, please run this "
+            f"command --> !python {api_name}.py"
         )
-
-        print(message)
 
     def eda(self, display_format: str = "bokeh", **kwargs):
         """
@@ -2798,7 +2785,7 @@ CMD ["python", "{API_NAME}.py"]
         self._all_models, self._all_models_internal = self._get_models()
         return self
 
-    def get_allowed_engines(self, estimator: str) -> Optional[str]:
+    def get_allowed_engines(self, estimator: str) -> Optional[List[str]]:
         """Get all the allowed engines for the specified estimator
 
         Parameters
@@ -2809,9 +2796,9 @@ CMD ["python", "{API_NAME}.py"]
 
         Returns
         -------
-        Optional[str]
+        Optional[List[str]]
             The allowed engines for the model. If the model only supports the
-            default sktime engine, then it return `None`.
+            default engine, then it return `None`.
         """
         allowed_engines = get_allowed_engines(
             estimator=estimator, all_allowed_engines=self.all_allowed_engines
@@ -2867,6 +2854,12 @@ CMD ["python", "{API_NAME}.py"]
                 severity is set to "error"
             (2) If the value of "severity" is not one of the allowed values
         """
+        if severity not in ("error", "warning"):
+            raise ValueError(
+                "Error in calling set_engine, severity "
+                f'argument must be "error" or "warning", got "{severity}".'
+            )
+
         allowed_engines = self.get_allowed_engines(estimator=estimator)
         if allowed_engines is None:
             msg = (
@@ -2879,11 +2872,19 @@ CMD ["python", "{API_NAME}.py"]
             elif severity == "warning":
                 self.logger.warning(msg)
                 print(msg)
-            else:
-                raise ValueError(
-                    "Error in calling set_engine, severity "
-                    f'argument must be "error" or "warning", got "{severity}".'
-                )
+
+        elif engine not in allowed_engines:
+            msg = (
+                f"Engine '{engine}' for estimator '{estimator}' is not allowed."
+                f" Allowed values are: {', '.join(allowed_engines)}."
+            )
+
+            if severity == "error":
+                raise ValueError(msg)
+            elif severity == "warning":
+                self.logger.warning(msg)
+                print(msg)
+
         else:
             self.exp_model_engines[estimator] = engine
             self.logger.info(
