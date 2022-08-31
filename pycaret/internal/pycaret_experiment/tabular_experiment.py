@@ -2897,14 +2897,14 @@ CMD ["python", "{API_NAME}.py"]
     def _set_exp_model_engines(
         self,
         container_default_engines: Dict[str, str],
-        engines: Optional[Dict[str, str]] = None,
+        engine: Optional[Dict[str, str]] = None,
     ) -> "_TabularExperiment":
         """Set all the model engines for the experiment.
 
         container_default_model_engines : Dict[str, str]
             Default engines obtained from the model containers
 
-        engines: Optional[Dict[str, str]] = None
+        engine: Optional[Dict[str, str]] = None
             The engine to use for the models, e.g. for auto_arima, users can
             switch between "pmdarima" and "statsforecast" by specifying
             engine={"auto_arima": "statsforecast"}
@@ -2924,11 +2924,11 @@ CMD ["python", "{API_NAME}.py"]
         self.exp_model_engines = {}
 
         # If user provides their own value, override the container defaults
-        engines = engines or {}
+        engine = engine or {}
         for key in container_default_engines:
             # If provided by user, then use that, else get from the defaults
-            engine = engines.get(key, container_default_engines.get(key))
-            self._set_engine(estimator=key, engine=engine, severity="error")
+            eng = engine.get(key, container_default_engines.get(key))
+            self._set_engine(estimator=key, engine=eng, severity="error")
 
         return self
 

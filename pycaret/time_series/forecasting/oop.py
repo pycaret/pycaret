@@ -1245,7 +1245,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         log_plots: Union[bool, list] = False,
         log_profile: bool = False,
         log_data: bool = False,
-        engines: Optional[Dict[str, str]] = None,
+        engine: Optional[Dict[str, str]] = None,
         verbose: bool = True,
         profile: bool = False,
         profile_kwargs: Optional[Dict[str, Any]] = None,
@@ -1495,7 +1495,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             Ignored when ``log_experiment`` is not True.
 
 
-        engines: Optional[Dict[str, str]] = None
+        engine: Optional[Dict[str, str]] = None
             The engine to use for the models, e.g. for auto_arima, users can
             switch between "pmdarima" and "statsforecast" by specifying
             engine={"auto_arima": "statsforecast"}
@@ -1667,7 +1667,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             ._profile(profile, profile_kwargs)
             ._set_exp_model_engines(
                 container_default_engines=get_container_default_engines(),
-                engines=engines,
+                engine=engine,
             )
             ._set_all_models()
             ._set_all_metrics()
@@ -1864,7 +1864,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                 # Reset the models back to the default engines
                 self._set_exp_model_engines(
                     container_default_engines=get_container_default_engines(),
-                    engines=initial_model_engines,
+                    engine=initial_model_engines,
                 )
 
         return return_values
@@ -2008,7 +2008,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                 # Reset the models back to the default engines
                 self._set_exp_model_engines(
                     container_default_engines=get_container_default_engines(),
-                    engines=initial_default_model_engines,
+                    engine=initial_default_model_engines,
                 )
 
         return return_values

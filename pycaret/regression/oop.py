@@ -156,7 +156,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
         log_plots: Union[bool, list] = False,
         log_profile: bool = False,
         log_data: bool = False,
-        engines: Optional[Dict[str, str]] = None,
+        engine: Optional[Dict[str, str]] = None,
         verbose: bool = True,
         memory: Union[bool, str, Memory] = True,
         profile: bool = False,
@@ -631,7 +631,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             Ignored when ``log_experiment`` is False.
 
 
-        engines: Optional[Dict[str, str]] = None
+        engine: Optional[Dict[str, str]] = None
             The execution engines to use for the models in the form of a dict
             of `model_id: engine` - e.g. for Linear Regression ("lr", users can
             switch between "sklearn" and "sklearnex" by specifying
@@ -748,7 +748,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
 
         self._set_exp_model_engines(
             container_default_engines=get_container_default_engines(),
-            engines=engines,
+            engine=engine,
         )
 
         # Preprocessing ============================================ >>
@@ -1148,7 +1148,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
                 # Reset the models back to the default engines
                 self._set_exp_model_engines(
                     container_default_engines=get_container_default_engines(),
-                    engines=initial_model_engines,
+                    engine=initial_model_engines,
                 )
 
         return return_values
@@ -1305,7 +1305,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
                 # Reset the models back to the default engines
                 self._set_exp_model_engines(
                     container_default_engines=get_container_default_engines(),
-                    engines=initial_default_model_engines,
+                    engine=initial_default_model_engines,
                 )
 
         return return_values
