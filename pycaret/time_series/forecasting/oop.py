@@ -1498,7 +1498,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         engines: Optional[Dict[str, str]] = None
             The engine to use for the models, e.g. for auto_arima, users can
             switch between "pmdarima" and "statsforecast" by specifying
-            engines={"auto_arima": "statsforecast"}
+            engine={"auto_arima": "statsforecast"}
 
 
         verbose: bool, default = True
@@ -1723,7 +1723,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         errors: str = "ignore",
         fit_kwargs: Optional[dict] = None,
         experiment_custom_tags: Optional[Dict[str, Any]] = None,
-        engines: Optional[Dict[str, str]] = None,
+        engine: Optional[Dict[str, str]] = None,
         verbose: bool = True,
         parallel: Optional[ParallelBackend] = None,
     ):
@@ -1802,10 +1802,10 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             Dictionary of arguments passed to the fit method of the model.
 
 
-        engines: Optional[Dict[str, str]] = None
+        engine: Optional[Dict[str, str]] = None
             The engine to use for the models, e.g. for auto_arima, users can
             switch between "pmdarima" and "statsforecast" by specifying
-            engines={"auto_arima": "statsforecast"}
+            engine={"auto_arima": "statsforecast"}
 
 
         verbose: bool, default = True
@@ -1835,11 +1835,11 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         # No extra code above this line
 
-        if engines is not None:
+        if engine is not None:
             # Save current engines, then set to user specified options
             initial_model_engines = self.exp_model_engines.copy()
-            for estimator, engine in engines.items():
-                self._set_engine(estimator=estimator, engine=engine, severity="error")
+            for estimator, eng in engine.items():
+                self._set_engine(estimator=estimator, engine=eng, severity="error")
 
         try:
             return_values = super().compare_models(
@@ -1860,7 +1860,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                 caller_params=caller_params,
             )
         finally:
-            if engines is not None:
+            if engine is not None:
                 # Reset the models back to the default engines
                 self._set_exp_model_engines(
                     container_default_engines=get_container_default_engines(),

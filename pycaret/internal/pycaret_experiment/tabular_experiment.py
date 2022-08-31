@@ -2612,7 +2612,7 @@ class _TabularExperiment(_PyCaretExperiment):
         _check_soft_dependencies("pydantic", extra="mlops", severity="error")
 
         self.save_model(estimator, model_name=api_name, verbose=False)
-        targetname = f"{self.target_param}_prediction"
+        target = f"{self.target_param}_prediction"
 
         query = f"""# -*- coding: utf-8 -*-
 
@@ -2629,16 +2629,16 @@ app = FastAPI()
 model = load_model("{api_name}")
 
 # Create input/output pydantic models
-pydanticinputmodel=create_model("{api_name}_input", **{self.X.iloc[0].to_dict()})
-pydanticoutputmodel=create_model("{api_name}_output", **{{targetname: self.y.iloc[0]}})
+input_model = create_model("{api_name}_input", **{self.X.iloc[0].to_dict()})
+output_model = create_model("{api_name}_output", {target}={self.y_transformed[0]})
 
 
 # Define predict function
-@app.post("/predict", response_model=pydanticoutputmodel)
-def predict(datainput:pydanticinputmodel):
-    data = pd.DataFrame([datainput.dict()])
+@app.post("/predict", response_model=output_model)
+def predict(data: input_model):
+    data = pd.DataFrame([data.dict()])
     predictions = predict_model(model, data=data)
-    return {{"{targetname}": predictions["prediction_label"][0]}}
+    return {{"{target}": predictions["prediction_label"][0]}}
 
 
 if __name__ == "__main__":
@@ -2907,7 +2907,7 @@ CMD ["python", "{API_NAME}.py"]
         engines: Optional[Dict[str, str]] = None
             The engine to use for the models, e.g. for auto_arima, users can
             switch between "pmdarima" and "statsforecast" by specifying
-            engines={"auto_arima": "statsforecast"}
+            engine={"auto_arima": "statsforecast"}
 
             If model ID is not present in key, default value will be obtained
             from the model container (i.e. container_default_model_engines).

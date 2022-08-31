@@ -686,7 +686,7 @@ def compare_models(
     groups: Optional[Union[str, Any]] = None,
     experiment_custom_tags: Optional[Dict[str, Any]] = None,
     probability_threshold: Optional[float] = None,
-    engines: Optional[Dict[str, str]] = None,
+    engine: Optional[Dict[str, str]] = None,
     verbose: bool = True,
     parallel: Optional[ParallelBackend] = None,
 ) -> Union[Any, List[Any]]:
@@ -782,11 +782,11 @@ def compare_models(
         in this parameter. Only applicable for binary classification.
 
 
-    engines: Optional[Dict[str, str]] = None
+    engine: Optional[Dict[str, str]] = None
         The execution engines to use for the models in the form of a dict
         of `model_id: engine` - e.g. for Logistic Regression ("lr", users can
         switch between "sklearn" and "sklearnex" by specifying
-        `engines={"lr": "sklearnex"}`
+        `engine={"lr": "sklearnex"}`
 
 
     verbose: bool, default = True
@@ -828,7 +828,7 @@ def compare_models(
         groups=groups,
         experiment_custom_tags=experiment_custom_tags,
         probability_threshold=probability_threshold,
-        engines=engines,
+        engine=engine,
         verbose=verbose,
         parallel=parallel,
     )

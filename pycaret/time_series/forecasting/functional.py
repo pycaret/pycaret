@@ -436,7 +436,7 @@ def compare_models(
     turbo: bool = True,
     errors: str = "ignore",
     fit_kwargs: Optional[dict] = None,
-    engines: Optional[Dict[str, str]] = None,
+    engine: Optional[Dict[str, str]] = None,
     verbose: bool = True,
     parallel: Optional[ParallelBackend] = None,
 ):
@@ -515,10 +515,10 @@ def compare_models(
         Dictionary of arguments passed to the fit method of the model.
 
 
-    engines: Optional[Dict[str, str]] = None
+    engine: Optional[Dict[str, str]] = None
         The engine to use for the models, e.g. for auto_arima, users can
         switch between "pmdarima" and "statsforecast" by specifying
-        engines={"auto_arima": "statsforecast"}
+        engine={"auto_arima": "statsforecast"}
 
 
     verbose: bool, default = True
@@ -556,7 +556,7 @@ def compare_models(
         turbo=turbo,
         errors=errors,
         fit_kwargs=fit_kwargs,
-        engines=engines,
+        engine=engine,
         verbose=verbose,
         parallel=parallel,
     )

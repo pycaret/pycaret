@@ -635,7 +635,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             The execution engines to use for the models in the form of a dict
             of `model_id: engine` - e.g. for Linear Regression ("lr", users can
             switch between "sklearn" and "sklearnex" by specifying
-            `engines={"lr": "sklearnex"}`
+            `engine={"lr": "sklearnex"}`
 
 
         verbose: bool, default = True
@@ -998,7 +998,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
         fit_kwargs: Optional[dict] = None,
         groups: Optional[Union[str, Any]] = None,
         experiment_custom_tags: Optional[Dict[str, Any]] = None,
-        engines: Optional[Dict[str, str]] = None,
+        engine: Optional[Dict[str, str]] = None,
         verbose: bool = True,
         parallel: Optional[ParallelBackend] = None,
     ):
@@ -1084,11 +1084,11 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             as the column name in the dataset containing group labels.
 
 
-        engines: Optional[Dict[str, str]] = None
+        engine: Optional[Dict[str, str]] = None
             The execution engines to use for the models in the form of a dict
             of `model_id: engine` - e.g. for Linear Regression ("lr", users can
             switch between "sklearn" and "sklearnex" by specifying
-            `engines={"lr": "sklearnex"}`
+            `engine={"lr": "sklearnex"}`
 
 
         verbose: bool, default = True
@@ -1117,11 +1117,11 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
 
         caller_params = dict(locals())
 
-        if engines is not None:
+        if engine is not None:
             # Save current engines, then set to user specified options
             initial_model_engines = self.exp_model_engines.copy()
-            for estimator, engine in engines.items():
-                self._set_engine(estimator=estimator, engine=engine, severity="error")
+            for estimator, eng in engine.items():
+                self._set_engine(estimator=estimator, engine=eng, severity="error")
 
         try:
             return_values = super().compare_models(
@@ -1144,7 +1144,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             )
 
         finally:
-            if engines is not None:
+            if engine is not None:
                 # Reset the models back to the default engines
                 self._set_exp_model_engines(
                     container_default_engines=get_container_default_engines(),
