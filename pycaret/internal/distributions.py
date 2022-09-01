@@ -76,9 +76,11 @@ class UniformDistribution(Distribution):
         import optuna
 
         if self.log:
-            return optuna.distributions.LogUniformDistribution(self.lower, self.upper)
+            return optuna.distributions.FloatDistribution(
+                self.lower, self.upper, log=True
+            )
         else:
-            return optuna.distributions.UniformDistribution(self.lower, self.upper)
+            return optuna.distributions.FloatDistribution(self.lower, self.upper)
 
     def get_hyperopt(self, label):
         from hyperopt import hp
@@ -146,11 +148,9 @@ class IntUniformDistribution(Distribution):
         import optuna
 
         if self.log:
-            return optuna.distributions.IntLogUniformDistribution(
-                self.lower, self.upper
-            )
+            return optuna.distributions.IntDistribution(self.lower, self.upper, log=True)
         else:
-            return optuna.distributions.IntUniformDistribution(self.lower, self.upper)
+            return optuna.distributions.IntDistribution(self.lower, self.upper)
 
     def get_hyperopt(self, label):
         from hyperopt import hp
@@ -256,8 +256,8 @@ class DiscreteUniformDistribution(Distribution):
     def get_optuna(self):
         import optuna
 
-        return optuna.distributions.DiscreteUniformDistribution(
-            self.lower, self.upper, self.q
+        return optuna.distributions.FloatDistribution(
+            self.lower, self.upper, step=self.q
         )
 
     def get_hyperopt(self, label):
