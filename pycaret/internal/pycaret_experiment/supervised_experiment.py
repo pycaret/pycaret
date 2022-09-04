@@ -4,7 +4,6 @@ import os
 import time
 import traceback
 import warnings
-from collections import Iterable
 from copy import copy
 from functools import partial
 from typing import Any, Dict, List, Optional, Set, Tuple, Union
@@ -61,6 +60,11 @@ from pycaret.utils.generic import (
     nullcontext,
     true_warm_start,
 )
+
+try:
+    from collections.abc import Iterable
+except:
+    from collections import Iterable
 
 LOGGER = get_logger()
 

@@ -17,9 +17,9 @@ statsforecast>=0.5.5
 scikit-learn-intelex>=2021.6.3
 
 # Tuners
-tune-sklearn>=0.2.1
-protobuf<4.0.0  # broken in Ray <1.13
-ray[tune]>=1.0.0
+tune-sklearn>=0.2.1; python_version < '3.10' or platform_system != 'Windows'
+protobuf<4.0.0; python_version < '3.10' or platform_system != 'Windows'  # broken in Ray <1.13
+ray[tune]>=1.0.0; python_version < '3.10' or platform_system != 'Windows'
 hyperopt>=0.2.7
 optuna>=2.2.0
 scikit-optimize>=0.9.0
