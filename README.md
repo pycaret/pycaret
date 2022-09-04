@@ -92,20 +92,30 @@ pip install pycaret[full]
   
 <div align="left">
 
-## ⚡ PyCaret Time Series Module (beta)
+## ⚡ PyCaret Time Series Module
   
-PyCaret new time series module is now available in beta. Staying true to simplicity of PyCaret, it is consistent with our existing API and fully loaded with functionalities. Statistical testing, model training and selection (30+ algorithms), model analysis, automated hyperparameter tuning, experiment logging, deployment on cloud, and more. All of this with only few lines of code (just like the other modules of pycaret). If you would like to give it a try, checkout our official [quick start](https://nbviewer.org/github/pycaret/pycaret/blob/master/examples/time_series/forecasting/time_series_101.ipynb) notebook.
+PyCaret time series module is now available with the main pycaret installation. Staying true to simplicity of PyCaret, it is consistent with our existing API and fully loaded with functionalities. Statistical testing, model training and selection (30+ algorithms), model analysis, automated hyperparameter tuning, experiment logging, deployment on cloud, and more. All of this with only few lines of code (just like the other modules of pycaret). 
   
-:books: [Time Series Docs](https://pycaret.readthedocs.io/en/latest/api/time_series.html)
+| Important Links              |                                                                |
+| -------------------------- | -------------------------------------------------------------- |
+| :star: **[Time Series Quickstart]**        | Get started with Time Series Analysis         |
+| :books: **[Time Series Notebooks]**        | New to Time Series? Checkout our official (detailed) notebooks!            |
+| :tv: **[Time Series Video Tutorials]**            | Our video tutorial from various events.             |
+| :question: **[Time Series FAQs]**        |   Have questions? Queck out the FAQ's     |
+| :hammer_and_wrench: **[Time Series API Interface]**        |   The detailed API interface for the Time Series Module          |
+| :deciduous_tree: **[Time Series Features and Roadmap]**          | PyCaret's software and community development plan.|
+
+[Time Series Quickstart]: https://pycaret.gitbook.io/docs/get-started/quickstart#time-series
+[Time Series Notebooks]: https://pycaret.gitbook.io/docs/get-started/tutorials
+[Time Series Video Tutorials]: https://pycaret.gitbook.io/docs/learn-pycaret/videos#pycaret-time-series-module
+[Time Series FAQs]: https://github.com/pycaret/pycaret/discussions/categories/faqs?discussions_q=category%3AFAQs+label%3Atime_series
+[Time Series API Interface]: https://pycaret.readthedocs.io/en/latest/api/time_series.html
+[Time Series Features and Roadmap]: https://github.com/pycaret/pycaret/issues/1648
   
-:question: [Time Series FAQs](https://github.com/pycaret/pycaret/discussions/categories/faqs?discussions_q=category%3AFAQs+label%3Atime_series)
-  
-:rocket: [Features and Roadmap](https://github.com/pycaret/pycaret/issues/1648)
-  
-The module is still in beta. We are adding new functionalities every day and doing weekly pip releases. Please ensure to create a separate python environment to avoid dependency conflicts with main pycaret. The final release of this module will be merged with the main pycaret in next major release.
+### Installation
   
  ```
- pip install pycaret-ts-alpha
+ pip install --pre pycaret
  ```  
 
 ![alt text](docs/images/pycaret_ts_quickdemo.gif)  
