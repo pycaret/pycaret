@@ -4,7 +4,6 @@ import os
 import time
 import traceback
 import warnings
-from collections import Iterable
 from copy import copy
 from functools import partial
 from typing import Any, Dict, List, Optional, Set, Tuple, Union
