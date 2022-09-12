@@ -111,6 +111,8 @@ def create_logger(
     logger = logging.getLogger("logs")
     level = os.getenv("PYCARET_CUSTOM_LOGGING_LEVEL", "DEBUG")
     logger.setLevel(level)
+    # Do not propagate to the root logger in Jupyter
+    logger.propagate = False
 
     # create console handler and set level to debug
     if logger.hasHandlers():
@@ -119,9 +121,10 @@ def create_logger(
     path = "logs.log" if isinstance(log, bool) else log
     try:
         ch = logging.FileHandler(path)
-    except:
+    except Exception:
         warnings.warn(
-            f"Could not attach a FileHandler to the logger at path {path}! No logs will be saved."
+            f"Could not attach a FileHandler to the logger at path {path}! "
+            "No logs will be saved."
         )
         traceback.print_exc()
         ch = logging.NullHandler()
