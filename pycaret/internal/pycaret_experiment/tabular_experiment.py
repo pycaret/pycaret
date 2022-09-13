@@ -2630,7 +2630,7 @@ model = load_model("{api_name}")
 
 # Create input/output pydantic models
 input_model = create_model("{api_name}_input", **{self.X.iloc[0].to_dict()})
-output_model = create_model("{api_name}_output", {target}={self.y_transformed[0]})
+output_model = create_model("{api_name}_output", {target}={repr(self.y[0])})
 
 
 # Define predict function
@@ -2638,7 +2638,7 @@ output_model = create_model("{api_name}_output", {target}={self.y_transformed[0]
 def predict(data: input_model):
     data = pd.DataFrame([data.dict()])
     predictions = predict_model(model, data=data)
-    return {{"{target}": predictions["prediction_label"][0]}}
+    return {{"{target}": predictions["prediction_label"].iloc[0]}}
 
 
 if __name__ == "__main__":

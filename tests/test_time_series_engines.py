@@ -190,9 +190,7 @@ def test_compare_models_engines_local_args(load_pos_and_neg_data):
     assert isinstance(model, PmdAutoARIMA)
 
     ## B. Regression Models
-    model = exp.compare_models(
-        include=["lr_cds_dt"], engine={"lr_cds_dt": "sklearnex"}
-    )
+    model = exp.compare_models(include=["lr_cds_dt"], engine={"lr_cds_dt": "sklearnex"})
     assert isinstance(model.regressor, SklearnexLinearRegression)
     # Original engine should remain the same
     assert exp.get_engine("lr_cds_dt") == "sklearn"
