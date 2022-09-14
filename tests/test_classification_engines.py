@@ -27,7 +27,7 @@ def test_engines_setup_global_args():
         html=False,
         session_id=123,
         n_jobs=1,
-        engines={"lr": "sklearnex"},
+        engine={"lr": "sklearnex"},
     )
 
     #### Default Model Engine ----
@@ -54,7 +54,7 @@ def test_engines_global_methods():
         html=False,
         session_id=123,
         n_jobs=1,
-        engines={"lr": "sklearnex"},
+        engine={"lr": "sklearnex"},
     )
 
     assert exp.get_engine("lr") == "sklearnex"
@@ -125,7 +125,7 @@ def test_compare_models_engines_local_args():
     assert exp.get_engine("lr") == "sklearn"
 
     #### Override model engine locally ----
-    model = exp.compare_models(include=["lr"], engines={"lr": "sklearnex"})
+    model = exp.compare_models(include=["lr"], engine={"lr": "sklearnex"})
     assert isinstance(
         model, daal4py.sklearn.linear_model.logistic_path.LogisticRegression
     )

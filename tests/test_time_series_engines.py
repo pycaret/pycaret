@@ -44,7 +44,7 @@ def test_engines_setup_global_args(load_pos_and_neg_data):
         fh=12,
         fold_strategy="sliding",
         verbose=False,
-        engines={"auto_arima": "statsforecast", "lr_cds_dt": "sklearnex"},
+        engine={"auto_arima": "statsforecast", "lr_cds_dt": "sklearnex"},
     )
 
     #### Default Model Engine ----
@@ -77,7 +77,7 @@ def test_engines_global_methods(load_pos_and_neg_data):
         fh=12,
         fold_strategy="sliding",
         verbose=False,
-        engines={"auto_arima": "statsforecast", "lr_cds_dt": "sklearnex"},
+        engine={"auto_arima": "statsforecast", "lr_cds_dt": "sklearnex"},
     )
 
     #### Globally reset engine ----
@@ -181,7 +181,7 @@ def test_compare_models_engines_local_args(load_pos_and_neg_data):
     #### Override model engine locally ----
     ## A. Statistical Models
     model = exp.compare_models(
-        include=["auto_arima"], engines={"auto_arima": "statsforecast"}
+        include=["auto_arima"], engine={"auto_arima": "statsforecast"}
     )
     assert isinstance(model, StatsForecastAutoARIMA)
     # Original engine should remain the same
@@ -190,9 +190,7 @@ def test_compare_models_engines_local_args(load_pos_and_neg_data):
     assert isinstance(model, PmdAutoARIMA)
 
     ## B. Regression Models
-    model = exp.compare_models(
-        include=["lr_cds_dt"], engines={"lr_cds_dt": "sklearnex"}
-    )
+    model = exp.compare_models(include=["lr_cds_dt"], engine={"lr_cds_dt": "sklearnex"})
     assert isinstance(model.regressor, SklearnexLinearRegression)
     # Original engine should remain the same
     assert exp.get_engine("lr_cds_dt") == "sklearn"

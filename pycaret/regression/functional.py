@@ -682,7 +682,7 @@ def compare_models(
     fit_kwargs: Optional[dict] = None,
     groups: Optional[Union[str, Any]] = None,
     experiment_custom_tags: Optional[Dict[str, Any]] = None,
-    engines: Optional[Dict[str, str]] = None,
+    engine: Optional[Dict[str, str]] = None,
     verbose: bool = True,
     parallel: Optional[ParallelBackend] = None,
 ):
@@ -773,11 +773,11 @@ def compare_models(
         if not) passed to the mlflow.set_tags to add new custom tags for the experiment.
 
 
-    engines: Optional[Dict[str, str]] = None
+    engine: Optional[Dict[str, str]] = None
         The execution engines to use for the models in the form of a dict
         of `model_id: engine` - e.g. for Linear Regression ("lr", users can
         switch between "sklearn" and "sklearnex" by specifying
-        `engines={"lr": "sklearnex"}`
+        `engine={"lr": "sklearnex"}`
 
 
     verbose: bool, default = True
@@ -817,7 +817,7 @@ def compare_models(
         fit_kwargs=fit_kwargs,
         groups=groups,
         experiment_custom_tags=experiment_custom_tags,
-        engines=engines,
+        engine=engine,
         verbose=verbose,
         parallel=parallel,
     )
