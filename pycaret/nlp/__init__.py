@@ -1889,9 +1889,6 @@ def plot_model(
         )
     )
 
-    # ignore warnings
-    import warnings
-
     warnings.filterwarnings("ignore")
 
     # setting default of topic_num
@@ -1904,7 +1901,6 @@ def plot_model(
     """
 
     # determine model type
-
     if model is not None:
 
         mod = str(type(model))
