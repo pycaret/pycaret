@@ -124,13 +124,6 @@ def test_tune_model_raises(load_pos_and_neg_data):
     )
 
     model = exp.create_model("naive")
-    with pytest.raises(ValueError) as errmsg:
+    with pytest.raises(ValueError, match=".*`search_algorithm` must be one of.*"):
         search_algorithm = "wrong_algorithm"
-        _ = exp.tune_model(model, search_algorithm=search_algorithm)
-
-    exceptionmsg = errmsg.value.args[0]
-
-    assert (
-        exceptionmsg
-        == "`search_algorithm` must be one of 'None, random, grid'. You passed '{search_algorithm}'."
-    )
+        exp.tune_model(model, search_algorithm=search_algorithm)

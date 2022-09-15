@@ -373,7 +373,7 @@ def test_add_model_to_pipeline_exo(load_uni_exo_data_target):
 
     # Check that the steps for X in the Forecasting Pipeline have not changed ----
     for i in np.arange(len(exp.pipeline.steps_)):
-        assert isinstance(exp.pipeline.steps_[i][1], pipeline.steps_[i][1])
+        assert exp.pipeline.steps_[i][1].__class__ is pipeline.steps_[i][1].__class__
 
     # Check that the steps for y in the Forecasting Pipeline have not changed ----
     tgt_fcst_org = exp.pipeline.steps_[-1][1]
@@ -402,11 +402,13 @@ def test_add_model_to_pipeline_exo(load_uni_exo_data_target):
 
     # Check that the steps for X in the Forecasting Pipeline have not changed ----
     for i in np.arange(len(exp.pipeline.steps_)):
-        assert isinstance(exp.pipeline.steps_[i][1], pipeline.steps_[i][1])
+        assert exp.pipeline.steps_[i][1].__class__ is pipeline.steps_[i][1].__class__
 
     # Check that the steps for y in the Forecasting Pipeline have not changed ----
     tgt_fcst_org = exp.pipeline.steps_[-1][1]
     tgt_fcst_new = pipeline.steps_[-1][1]
     # Check except last step which has been checked above (Dummy vs Naive)
     for i in np.arange(len(tgt_fcst_org.steps_) - 1):
-        assert isinstance(tgt_fcst_org.steps_[i][1], tgt_fcst_new.steps_[i][1])
+        assert (
+            tgt_fcst_org.steps_[i][1].__class__ is tgt_fcst_new.steps_[i][1].__class__
+        )
