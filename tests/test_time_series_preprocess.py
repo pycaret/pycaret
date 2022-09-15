@@ -19,11 +19,11 @@ pytestmark = pytest.mark.filterwarnings("ignore::UserWarning")
 os.environ["PYCARET_TESTING"] = "1"
 
 ########################################################
-##### TODO: Test compare_models with missing values ####
+# TODO: Test compare_models with missing values ####
 ########################################################
 
 ##############################
-#### Functions Start Here ####
+# Functions Start Here ####
 ##############################
 
 # NOTE: Fixtures can not be used to parameterize tests
@@ -34,12 +34,12 @@ os.environ["PYCARET_TESTING"] = "1"
 _model_names_for_missing_data = _return_model_names_for_missing_data()
 
 ############################
-#### Functions End Here ####
+# Functions End Here ####
 ############################
 
 
 ##########################
-#### Tests Start Here ####
+# Tests Start Here ####
 ##########################
 
 
@@ -49,7 +49,7 @@ def test_pipeline_no_exo_but_exo_steps(load_pos_and_neg_data):
 
     exp = TSForecastingExperiment()
 
-    #### Make sure that no exogenous steps are added to the pipeline when
+    # Make sure that no exogenous steps are added to the pipeline when
     # there is no exogenous data
     exp.setup(data=data, numeric_imputation_exogenous=True)
     assert len(exp.pipeline.steps) == 1
@@ -75,22 +75,22 @@ def test_pipeline_types_no_exo(load_pos_and_neg_data):
 
     exp = TSForecastingExperiment()
 
-    #### Default
+    # Default
     exp.setup(data=data)
     assert isinstance(exp.pipeline, ForecastingPipeline)
     assert isinstance(exp.pipeline.steps[-1][1], TransformedTargetForecaster)
 
-    #### Transform Target only
+    # Transform Target only
     exp.setup(data=data, numeric_imputation_target=True)
     assert isinstance(exp.pipeline, ForecastingPipeline)
     assert isinstance(exp.pipeline.steps[-1][1], TransformedTargetForecaster)
 
-    #### Transform Exogenous only (but no exogenous present)
+    # Transform Exogenous only (but no exogenous present)
     exp.setup(data=data, numeric_imputation_exogenous=True)
     assert isinstance(exp.pipeline, ForecastingPipeline)
     assert isinstance(exp.pipeline.steps[-1][1], TransformedTargetForecaster)
 
-    #### Transform Exogenous & Target (but no exogenous present)
+    # Transform Exogenous & Target (but no exogenous present)
     exp.setup(
         data=data,
         numeric_imputation_target=True,
@@ -112,12 +112,12 @@ def test_pipeline_types_exo(load_uni_exo_data_target):
 
     exp = TSForecastingExperiment()
 
-    #### Default
+    # Default
     exp.setup(data=data, target=target, seasonal_period=4)
     assert isinstance(exp.pipeline, ForecastingPipeline)
     assert isinstance(exp.pipeline.steps[-1][1], TransformedTargetForecaster)
 
-    #### Transform Target only
+    # Transform Target only
     exp.setup(
         data=data,
         target=target,
@@ -127,7 +127,7 @@ def test_pipeline_types_exo(load_uni_exo_data_target):
     assert isinstance(exp.pipeline, ForecastingPipeline)
     assert isinstance(exp.pipeline.steps[-1][1], TransformedTargetForecaster)
 
-    #### Transform Exogenous only
+    # Transform Exogenous only
     exp.setup(
         data=data,
         target=target,
@@ -137,7 +137,7 @@ def test_pipeline_types_exo(load_uni_exo_data_target):
     assert isinstance(exp.pipeline, ForecastingPipeline)
     assert isinstance(exp.pipeline.steps[-1][1], TransformedTargetForecaster)
 
-    #### Transform Exogenous & Target
+    # Transform Exogenous & Target
     exp.setup(
         data=data,
         target=target,
@@ -618,7 +618,7 @@ def test_no_transform_noexo(load_pos_and_neg_data_missing):
     FH = 12
     exp.setup(data=data, fh=FH, numeric_imputation_target="mean")
 
-    #### Tests 1A, 2A, and 3A ----
+    # Tests 1A, 2A, and 3A ----
     y_train_imputed = exp._get_y_data(split="train", data_type="imputed")
     y_test_imputed = exp._get_y_data(split="test", data_type="imputed")
     y_imputed = exp._get_y_data(split="all", data_type="imputed")
@@ -626,7 +626,7 @@ def test_no_transform_noexo(load_pos_and_neg_data_missing):
     assert np.array_equal(y_test_imputed, exp.y_test_transformed)
     assert np.array_equal(y_imputed, exp.y_transformed)
 
-    #### Tests 1B, 2B, and 3B ----
+    # Tests 1B, 2B, and 3B ----
     X_train_imputed = exp._get_X_data(split="train", data_type="imputed")
     X_test_imputed = exp._get_X_data(split="test", data_type="imputed")
     X_imputed = exp._get_X_data(split="all", data_type="imputed")
@@ -637,7 +637,7 @@ def test_no_transform_noexo(load_pos_and_neg_data_missing):
     assert X_imputed is None
     assert exp.X_transformed is None
 
-    #### Tests 4, and 5 ----
+    # Tests 4, and 5 ----
     missing_index_train = exp.y_train.index[exp.y_train.isna()]
     missing_index_test = exp.y_test.index[exp.y_test.isna()]
 
@@ -686,7 +686,7 @@ def test_no_transform_exo(load_uni_exo_data_target_missing):
         numeric_imputation_exogenous="mean",
     )
 
-    #### Tests 1A, 2A, and 3A ----
+    # Tests 1A, 2A, and 3A ----
     y_train_imputed = exp._get_y_data(split="train", data_type="imputed")
     y_test_imputed = exp._get_y_data(split="test", data_type="imputed")
     y_imputed = exp._get_y_data(split="all", data_type="imputed")
@@ -694,7 +694,7 @@ def test_no_transform_exo(load_uni_exo_data_target_missing):
     assert np.array_equal(y_test_imputed, exp.y_test_transformed)
     assert np.array_equal(y_imputed, exp.y_transformed)
 
-    #### Tests 1B, 2B, and 3B ----
+    # Tests 1B, 2B, and 3B ----
     X_train_imputed = exp._get_X_data(split="train", data_type="imputed")
     X_test_imputed = exp._get_X_data(split="test", data_type="imputed")
     X_imputed = exp._get_X_data(split="all", data_type="imputed")
@@ -704,7 +704,7 @@ def test_no_transform_exo(load_uni_exo_data_target_missing):
     assert exp.X_transformed.equals(X_imputed)
 
     ################################
-    #### Tests 4, and 5 (for y) ----
+    # Tests 4, and 5 (for y) ----
     ################################
     missing_index_train = exp.y_train.index[exp.y_train.isna()]
     missing_index_test = exp.y_test.index[exp.y_test.isna()]
@@ -721,7 +721,7 @@ def test_no_transform_exo(load_uni_exo_data_target_missing):
     assert missing_imputed_data_test.iloc[0] == missing_imputed_data_all_train.iloc[0]
 
     ################################
-    #### Tests 4, and 5 (for X) ----
+    # Tests 4, and 5 (for X) ----
     ################################
     # Input is created such that all values in row will be nan
     missing_index_train = exp.X_train.index[exp.X_train.isna().all(axis=1)]

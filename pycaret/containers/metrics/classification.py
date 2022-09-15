@@ -102,7 +102,7 @@ class ClassificationMetricContainer(MetricContainer):
     ) -> None:
 
         allowed_targets = ["pred", "pred_proba", "threshold"]
-        if not target in allowed_targets:
+        if target not in allowed_targets:
             raise ValueError(f"Target must be one of {', '.join(allowed_targets)}.")
 
         if not args:

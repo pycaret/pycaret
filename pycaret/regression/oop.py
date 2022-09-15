@@ -6,12 +6,8 @@ import numpy as np  # type: ignore
 import pandas as pd
 from joblib.memory import Memory
 
-import pycaret.containers.metrics.regression
-import pycaret.containers.models.regression
-import pycaret.internal.patches.sklearn
-import pycaret.internal.patches.yellowbrick
-import pycaret.internal.persistence
-import pycaret.internal.preprocess
+from pycaret.containers.metrics import get_all_reg_metric_containers
+from pycaret.containers.models import get_all_reg_model_containers
 from pycaret.containers.models.regression import (
     ALL_ALLOWED_ENGINES,
     get_container_default_engines,
@@ -63,22 +59,18 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
     def _get_models(self, raise_errors: bool = True) -> Tuple[dict, dict]:
         all_models = {
             k: v
-            for k, v in pycaret.containers.models.regression.get_all_model_containers(
+            for k, v in get_all_reg_model_containers(
                 self, raise_errors=raise_errors
             ).items()
             if not v.is_special
         }
-        all_models_internal = (
-            pycaret.containers.models.regression.get_all_model_containers(
-                self, raise_errors=raise_errors
-            )
+        all_models_internal = get_all_reg_model_containers(
+            self, raise_errors=raise_errors
         )
         return all_models, all_models_internal
 
     def _get_metrics(self, raise_errors: bool = True) -> dict:
-        return pycaret.containers.metrics.regression.get_all_metric_containers(
-            self.variables, raise_errors=raise_errors
-        )
+        return get_all_reg_metric_containers(self.variables, raise_errors=raise_errors)
 
     def _get_default_plots_to_log(self) -> List[str]:
         return ["residuals", "error", "feature"]
@@ -856,7 +848,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
 
         self.pipeline.fit(self.X_train, self.y_train)
 
-        self.logger.info(f"Finished creating preprocessing pipeline.")
+        self.logger.info("Finished creating preprocessing pipeline.")
         self.logger.info(f"Pipeline: {self.pipeline}")
 
         # Final display ============================================ >>

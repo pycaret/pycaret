@@ -11,17 +11,17 @@ pytestmark = pytest.mark.filterwarnings("ignore::UserWarning")
 
 
 ##############################
-#### Functions Start Here ####
+# Functions Start Here ####
 ##############################
 
 
 ############################
-#### Functions End Here ####
+# Functions End Here ####
 ############################
 
 
 ##########################
-#### Tests Start Here ####
+# Tests Start Here ####
 ##########################
 
 
@@ -42,18 +42,18 @@ def test_create_tune_predict_finalize_model(load_uni_exo_data_target):
     )
 
     #######################
-    ## Test Create Model ##
+    # Test Create Model ##
     #######################
     model = exp.create_model("arima")
 
     #########################
-    #### Expected Values ####
+    # Expected Values ####
     #########################
     expected_period_index = data_for_modeling.iloc[-fh:].index
     final_expected_period_index = future_exog.index
 
     ########################
-    ## Test Predict Model ##
+    # Test Predict Model ##
     ########################
     # Default prediction
     y_pred = exp.predict_model(model)
@@ -61,12 +61,12 @@ def test_create_tune_predict_finalize_model(load_uni_exo_data_target):
     assert np.all(y_pred.index == expected_period_index)
 
     #####################
-    ## Test Tune Model ##
+    # Test Tune Model ##
     #####################
     tuned_model = exp.tune_model(model)
 
     ########################
-    ## Test Predict Model ##
+    # Test Predict Model ##
     ########################
     # Default prediction
     y_pred = exp.predict_model(tuned_model)
@@ -74,7 +74,7 @@ def test_create_tune_predict_finalize_model(load_uni_exo_data_target):
     assert np.all(y_pred.index == expected_period_index)
 
     #########################
-    ## Test Finalize Model ##
+    # Test Finalize Model ##
     #########################
 
     final_model = exp.finalize_model(tuned_model)
@@ -98,7 +98,7 @@ def test_blend_models(load_uni_exo_data_target, load_models_uni_mix_exo_noexo):
     future_exog = future_data.drop(columns=target)
 
     #########################
-    #### Expected Values ####
+    # Expected Values ####
     #########################
     expected_period_index = data_for_modeling.iloc[-fh:].index
     final_expected_period_index = future_exog.index
@@ -122,7 +122,7 @@ def test_blend_models(load_uni_exo_data_target, load_models_uni_mix_exo_noexo):
     assert np.all(y_pred.index == expected_period_index)
 
     #########################
-    ## Test Finalize Model ##
+    # Test Finalize Model ##
     #########################
 
     final_model = exp.finalize_model(blender)
@@ -143,26 +143,26 @@ def test_setup():
     exp = TSForecastingExperiment()
 
     ######################################
-    #### Univariate without exogenous ####
+    # Univariate without exogenous ####
     ######################################
     approach_type = TSApproachTypes.UNI
     exogenous_present = TSExogenousPresent.NO
 
-    #### Case 1: pd.Series ----
+    # Case 1: pd.Series ----
     exp.setup(data=data[target], seasonal_period=1)
     assert exp.approach_type == approach_type
     assert exp.exogenous_present == exogenous_present
     assert exp.target_param == target
     assert exp.exogenous_variables == []
 
-    #### Case 2: pd.DataFrame with 1 column ----
+    # Case 2: pd.DataFrame with 1 column ----
     exp.setup(data=pd.DataFrame(data[target]), seasonal_period=1)
     assert exp.approach_type == approach_type
     assert exp.exogenous_present == exogenous_present
     assert exp.target_param == target
     assert exp.exogenous_variables == []
 
-    #### Case 3: # Target specified & correct ----
+    # Case 3: # Target specified & correct ----
     exp.setup(data=data[target], target=target, seasonal_period=1)
     assert exp.approach_type == approach_type
     assert exp.exogenous_present == exogenous_present
@@ -170,19 +170,19 @@ def test_setup():
     assert exp.exogenous_variables == []
 
     ###################################
-    #### Univariate with exogenous ####
+    # Univariate with exogenous ####
     ###################################
     approach_type = TSApproachTypes.UNI
     exogenous_present = TSExogenousPresent.YES
 
-    #### Case 1: `target` provided, `index` not provided, `ignore_features` not provided ----
+    # Case 1: `target` provided, `index` not provided, `ignore_features` not provided ----
     exp.setup(data=data, target=target, seasonal_period=1)
     assert exp.approach_type == approach_type
     assert exp.exogenous_present == exogenous_present
     assert exp.target_param == target
     assert exp.exogenous_variables == ["B", "C", "D", "E", "F", "G"]
 
-    #### Case 2: `target` provided, `index` provided, `ignore_features` not provided ----
+    # Case 2: `target` provided, `index` provided, `ignore_features` not provided ----
     exp.setup(data=data, target=target, index=index)
     assert exp.approach_type == approach_type
     assert exp.exogenous_present == exogenous_present
@@ -190,7 +190,7 @@ def test_setup():
     assert exp.exogenous_variables == ["C", "D", "E", "F", "G"]
     # TODO: Add check for index values
 
-    #### Case 3: `target` provided, `index` provided, `ignore_features` provided ----
+    # Case 3: `target` provided, `index` provided, `ignore_features` provided ----
     exp.setup(data=data, target=target, index=index, ignore_features=["C", "E"])
     assert exp.approach_type == approach_type
     assert exp.exogenous_present == exogenous_present
@@ -198,7 +198,7 @@ def test_setup():
     assert exp.exogenous_variables == ["D", "F", "G"]
     # TODO: Add check for index values
 
-    #### Case 4: `target` provided, `index` not provided, `ignore_features` provided ----
+    # Case 4: `target` provided, `index` not provided, `ignore_features` provided ----
     exp.setup(data=data, target=target, ignore_features=["C", "E"], seasonal_period=1)
     assert exp.approach_type == approach_type
     assert exp.exogenous_present == exogenous_present
@@ -215,7 +215,7 @@ def test_setup_raises():
     exp = TSForecastingExperiment()
 
     ##############################
-    #### Target Not Specified ####
+    # Target Not Specified ####
     ##############################
     with pytest.raises(ValueError) as errmsg:
         exp.setup(data=data, seasonal_period=1)
@@ -228,12 +228,12 @@ def test_setup_raises():
     )
 
     ################################
-    #### Wrong Target Specified ####
+    # Wrong Target Specified ####
     ################################
 
     target = "WRONG"
 
-    #### Case 1: Without exogenous ----
+    # Case 1: Without exogenous ----
     column = "A"
     with pytest.raises(ValueError) as errmsg:
         exp.setup(data=data[column], target=target, seasonal_period=1)
@@ -246,7 +246,7 @@ def test_setup_raises():
         "to setup, you can leave `target=None`"
     )
 
-    #### Case 2: With exogenous ----
+    # Case 2: With exogenous ----
     with pytest.raises(ValueError) as errmsg:
         exp.setup(data=data, target=target, seasonal_period=1)
 

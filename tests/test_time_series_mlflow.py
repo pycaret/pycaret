@@ -1,12 +1,10 @@
 """Module to test time_series "MLflow" functionality
 """
 
-import pytest
-
 from pycaret.time_series import TSForecastingExperiment
 
 ##########################
-#### Tests Start Here ####
+# Tests Start Here ####
 ##########################
 
 
@@ -33,10 +31,7 @@ def test_mlflow_logging(load_pos_and_neg_data):
     # When running locally, there can be multiple experiments with the same name
     # Just get he last one so that the asserts work (otherwise, the count of the
     # various function calls will not match)
-    last_start = mlflow_logs["start_time"].max()
-    last_experiment_usi = mlflow_logs.query("start_time == @last_start")[
-        "tags.USI"
-    ].unique()[0]
+    mlflow_logs["start_time"].max()
 
     num_create_models = len(
         mlflow_logs.query(

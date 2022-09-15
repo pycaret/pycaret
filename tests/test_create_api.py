@@ -1,12 +1,3 @@
-import os
-import sys
-
-sys.path.insert(0, os.path.abspath(".."))
-
-import numpy as np
-import pandas as pd
-import pytest
-
 import pycaret.classification
 import pycaret.datasets
 import pycaret.regression
@@ -18,7 +9,7 @@ def test_classification_create_api():
     data = pycaret.datasets.get_data("blood")
 
     # initialize setup
-    clf1 = pycaret.classification.setup(
+    pycaret.classification.setup(
         data,
         target="Class",
         html=False,
@@ -39,7 +30,7 @@ def test_regression_create_api():
     data = pycaret.datasets.get_data("boston")
 
     # initialize setup
-    reg1 = pycaret.regression.setup(
+    pycaret.regression.setup(
         data,
         target="medv",
         html=False,

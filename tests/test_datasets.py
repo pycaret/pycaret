@@ -1,5 +1,3 @@
-import os
-
 import pandas as pd
 import pytest
 
@@ -8,7 +6,7 @@ from pycaret.datasets import get_data
 
 def test_datasets():
     #########################
-    #### Load Local File ####
+    # Load Local File ####
     #########################
 
     # # loading dataset
@@ -20,7 +18,7 @@ def test_datasets():
     # assert cols >= 1
 
     ##############################
-    #### GitHub Common folder ####
+    # GitHub Common folder ####
     ##############################
 
     # loading list of datasets
@@ -39,7 +37,7 @@ def test_datasets():
     assert data.size == 576000
 
     ################################
-    #### GitHub Specific folder ####
+    # GitHub Specific folder ####
     ################################
 
     folder = "time_series/seasonal"
@@ -58,7 +56,7 @@ def test_datasets():
     assert cols >= 1
 
     ###########################
-    #### `sktime` datasets ####
+    # `sktime` datasets ####
     ###########################
 
     # loading dataset
@@ -68,14 +66,14 @@ def test_datasets():
     assert rows >= 1
 
     ###########################
-    #### Incorrect dataset ####
+    # Incorrect dataset ####
     ###########################
 
     with pytest.raises(ValueError) as errmsg:
         _ = get_data("wrong")
 
     exceptionmsg = errmsg.value.args[0]
-    assert exceptionmsg == f"Data could not be read. Please check your inputs..."
+    assert exceptionmsg == "Data could not be read. Please check your inputs..."
 
 
 if __name__ == "__main__":

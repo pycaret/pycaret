@@ -290,9 +290,9 @@ class Pipeline(imblearn.pipeline.Pipeline):
                 try:
                     delattr(self, var)
                     self._fit_vars.remove(var)
-                except:
+                except Exception:
                     pass
-        except:
+        except Exception:
             pass
 
     def get_sklearn_pipeline(self) -> sklearn.pipeline.Pipeline:
@@ -313,7 +313,7 @@ class Pipeline(imblearn.pipeline.Pipeline):
     def set_params(self, **kwargs):
         try:
             result = super().set_params(**kwargs)
-        except:
+        except Exception:
             result = self._final_estimator.set_params(**kwargs)
 
         return result
@@ -348,7 +348,7 @@ class Pipeline(imblearn.pipeline.Pipeline):
         """
         try:
             self.Xt_
-        except:
+        except Exception:
             self.Xt_ = None
             self.yt_ = None
         if self.Xt_ is None or self.yt_ is None:
@@ -487,7 +487,7 @@ def add_estimator_to_pipeline(pipeline: Pipeline, estimator, name="actual_estima
     try:
         assert hasattr(pipeline._final_estimator, "predict")
         pipeline.replace_final_estimator(estimator, name=name)
-    except:
+    except Exception:
         pipeline.steps.append((name, estimator))
 
 
@@ -498,7 +498,7 @@ def merge_pipelines(pipeline_to_merge_to: Pipeline, pipeline_to_be_merged: Pipel
 def get_pipeline_estimator_label(pipeline: Pipeline) -> str:
     try:
         model_step = pipeline.steps[-1]
-    except:
+    except Exception:
         return ""
 
     return model_step[0]
@@ -507,7 +507,7 @@ def get_pipeline_estimator_label(pipeline: Pipeline) -> str:
 def get_pipeline_fit_kwargs(pipeline: Pipeline, fit_kwargs: dict) -> dict:
     try:
         model_step = pipeline.steps[-1]
-    except:
+    except Exception:
         return fit_kwargs
 
     if any(k.startswith(f"{model_step[0]}__") for k in fit_kwargs.keys()):

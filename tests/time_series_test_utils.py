@@ -5,7 +5,7 @@ import random
 import numpy as np
 from sktime.forecasting.base import ForecastingHorizon
 
-from pycaret.containers.models.time_series import get_all_model_containers
+from pycaret.containers.models import get_all_ts_model_containers
 from pycaret.datasets import get_data
 from pycaret.time_series import TSForecastingExperiment
 from pycaret.utils.time_series import SeasonalPeriod
@@ -149,7 +149,7 @@ def _return_model_names():
         seasonal_period=2,
         session_id=42,
     )
-    model_containers = get_all_model_containers(exp)
+    model_containers = get_all_ts_model_containers(exp)
 
     models_to_ignore = (
         ["prophet", "ensemble_forecaster"]
@@ -197,11 +197,11 @@ def _return_model_parameters():
 def _return_splitter_args():
     """fold, fh, fold_strategy"""
     parametrize_list = [
-        ## fh: Integer
+        # fh: Integer
         (random.randint(2, 5), random.randint(5, 10), "expanding"),
         (random.randint(2, 5), random.randint(5, 10), "rolling"),
         (random.randint(2, 5), random.randint(5, 10), "sliding"),
-        ## fh: Continuous np.array
+        # fh: Continuous np.array
         (random.randint(2, 5), np.arange(1, random.randint(5, 10)), "expanding"),
         (random.randint(2, 5), np.arange(1, random.randint(5, 10)), "rolling"),
         (random.randint(2, 5), np.arange(1, random.randint(5, 10)), "sliding"),

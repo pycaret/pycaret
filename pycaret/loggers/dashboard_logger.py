@@ -114,7 +114,7 @@ class DashboardLogger:
                     model_results.data.to_html(
                         results_path, col_space=65, justify="left"
                     )
-                except:
+                except Exception:
                     model_results.to_html(results_path, col_space=65, justify="left")
                 [
                     logger.log_artifact(results_path, "Results")

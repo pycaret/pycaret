@@ -1,7 +1,7 @@
 
-## Topic Modeling in Power BI using PyCaret
+# Topic Modeling in Power BI using PyCaret
 
-### by Moez Ali
+# by Moez Ali
 
 ![NLP Dashboard in Power BI](https://cdn-images-1.medium.com/max/2624/1*SyZczsDz5Pf-4Srfj_p8vQ.png)
 
@@ -9,7 +9,7 @@ In our [last post](https://towardsdatascience.com/how-to-implement-clustering-in
 
 In this post, we will see how we can implement topic modeling in Power BI using PyCaret. If you haven’t heard about PyCaret before, please read this [announcement](https://towardsdatascience.com/announcing-pycaret-an-open-source-low-code-machine-learning-library-in-python-4a1f1aad8d46) to learn more.
 
-## Learning Goals of this Tutorial
+# Learning Goals of this Tutorial
 
 * What is Natural Language Processing?
 
@@ -19,13 +19,13 @@ In this post, we will see how we can implement topic modeling in Power BI using 
 
 * Analyze results and visualize information in a dashboard.
 
-## Before we start
+# Before we start
 
 If you have used Python before, it is likely that you already have Anaconda Distribution installed on your computer. If not, [click here](https://www.anaconda.com/distribution/) to download Anaconda Distribution with Python 3.7 or greater.
 
 ![[https://www.anaconda.com/products/individual](https://www.anaconda.com/products/individual)](https://cdn-images-1.medium.com/max/2612/1*sMceDxpwFVHDtdFi528jEg.png)
 
-## Setting up the Environment
+# Setting up the Environment
 
 Before we start using PyCaret’s machine learning capabilities in Power BI we have to create a virtual environment and install pycaret. It’s a four-step process:
 
@@ -70,7 +70,7 @@ Download English Language Model:
 
 ![python -m textblob.download_corpora](https://cdn-images-1.medium.com/max/3838/1*NYaSehQvRp9ANsEpC_GPQw.png)
 
-## What is Natural Language Processing?
+# What is Natural Language Processing?
 
 Natural language processing (NLP) is a subfield of computer science and artificial intelligence that is concerned with the interactions between computers and human languages. In particular, NLP covers broad range of techniques on how to program computers to process and analyze large amounts of natural language data.
 
@@ -90,7 +90,7 @@ NLP-powered software helps us in our daily lives in various ways and it is likel
 
 Topic Modeling is a type of statistical model used for discovering abstract topics in text data. It is one of many practical applications within NLP.
 
-## What is Topic Modeling?
+# What is Topic Modeling?
 
 A topic model is a type of statistical model that falls under unsupervised machine learning and is used for discovering abstract topics in text data. The goal of topic modeling is to automatically find the topics / themes in a set of documents.
 
@@ -108,13 +108,13 @@ If you are interested in learning the technical details of the LDA algorithm, yo
 
 ![Source : [https://springerplus.springeropen.com/articles/10.1186/s40064-016-3252-8](https://springerplus.springeropen.com/articles/10.1186/s40064-016-3252-8)](https://cdn-images-1.medium.com/max/2000/1*DYbV9YMI94QsUeRiiJyrSg.png)
 
-## **Text preprocessing for Topic Modeling**
+# **Text preprocessing for Topic Modeling**
 
 In order to get meaningful results from topic modeling text data must be processed before feeding it to the algorithm. This is common with almost all NLP tasks. The preprocessing of text is different from the classical preprocessing techniques often used in machine learning when dealing with structured data (data in rows and columns).
 
 PyCaret automatically preprocess text data by applying over 15 techniques such as **stop word removal**, **tokenization**, **lemmatization**, **bi-gram/tri-gram extraction etc**. If you would like to learn more about all the text preprocessing features available in PyCaret, [click here](https://www.pycaret.org/nlp).
 
-## Setting the Business Context
+# Setting the Business Context
 
 Kiva is an international non-profit founded in 2005 in San Francisco. Its mission is to expand financial access to underserved communities in order to help them thrive.
 
@@ -126,11 +126,11 @@ In this tutorial we will use the open dataset from Kiva which contains loan info
 
 Our objective is to analyze the text data in the ‘*en*’ column to find abstract topics and then use them to evaluate the effect of certain topics (or certain types of loans) on the default rate.
 
-## 👉 Let’s get started
+# 👉 Let’s get started
 
 Now that you have set up the Anaconda Environment, understand topic modeling and have the business context for this tutorial, let’s get started.
 
-## 1. Get Data
+# 1. Get Data
 
 The first step is importing the dataset into Power BI Desktop. You can load the data using a web connector. (Power BI Desktop → Get Data → From Web).
 
@@ -139,7 +139,7 @@ The first step is importing the dataset into Power BI Desktop. You can load the 
 Link to csv file:
 [https://raw.githubusercontent.com/pycaret/pycaret/master/datasets/kiva.csv](https://raw.githubusercontent.com/pycaret/pycaret/master/datasets/kiva.csv)
 
-## 2. Model Training
+# 2. Model Training
 
 To train a topic model in Power BI we will have to execute a Python script in Power Query Editor (Power Query Editor → Transform → Run python script). Run the following code as a Python script:
 
@@ -173,7 +173,7 @@ New columns containing topic weights are attached to the original dataset. Here�
 
 ![Results in Power BI Desktop (after applying query)](https://cdn-images-1.medium.com/max/3844/1*btTSFxgmmEV8e7-Nw133mw.png)
 
-## 3. Dashboard
+# 3. Dashboard
 
 Once you have topic weights in Power BI, here’s an example of how you can visualize it in dashboard to generate insights:
 
@@ -191,7 +191,7 @@ If you are Interested in learning more about Topic Modeling, you can also checko
 
 Follow our [LinkedIn](https://www.linkedin.com/company/pycaret/) and subscribe to our [Youtube](https://www.youtube.com/channel/UCxA1YTYJ9BEeo50lxyI_B3g) channel to learn more about PyCaret.
 
-## Important Links
+# Important Links
 
 [User Guide / Documentation](https://www.pycaret.org/guide)
 [GitHub Repository
@@ -199,7 +199,7 @@ Follow our [LinkedIn](https://www.linkedin.com/company/pycaret/) and subscribe t
 [Notebook Tutorials](https://www.pycaret.org/tutorial)
 [Contribute in PyCaret](https://www.pycaret.org/contribute)
 
-## Want to learn about a specific module?
+# Want to learn about a specific module?
 
 As of the first release 1.0.0, PyCaret has the following modules available for use. Click on the links below to see the documentation and working examples in Python.
 
@@ -210,7 +210,7 @@ As of the first release 1.0.0, PyCaret has the following modules available for u
 ](https://www.pycaret.org/anomaly-detection)[Natural Language Processing](https://www.pycaret.org/nlp)
 [Association Rule Mining](https://www.pycaret.org/association-rules)
 
-## Also see:
+# Also see:
 
 PyCaret getting started tutorials in Notebook:
 
@@ -221,7 +221,7 @@ PyCaret getting started tutorials in Notebook:
 [Regression](https://www.pycaret.org/reg101)
 [Classification](https://www.pycaret.org/clf101)
 
-## Would you like to contribute?
+# Would you like to contribute?
 
 PyCaret is an open source project. Everybody is welcome to contribute. If you would like to contribute, please feel free to work on [open issues](https://github.com/pycaret/pycaret/issues). Pull requests are accepted with unit tests on dev-1.0.1 branch.
 

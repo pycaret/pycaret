@@ -12,7 +12,7 @@ pytestmark = pytest.mark.filterwarnings("ignore::UserWarning")
 
 
 ##########################
-#### Tests Start Here ####
+# Tests Start Here ####
 ##########################
 
 
@@ -20,7 +20,7 @@ def test_cov_prob_loss():
     """Tests inpi_loss"""
 
     ##############################
-    #### Regular Calculations ####
+    # Regular Calculations ####
     ##############################
     y_pred = None
     lower = pd.Series([0.5, 1.5, 2.5, 3.5])
@@ -47,7 +47,7 @@ def test_cov_prob_loss():
     assert loss == 0.50
 
     ##################################
-    #### Check for NANs in limits ####
+    # Check for NANs in limits ####
     ##################################
     lower = pd.Series([np.nan] * 4)
     upper = pd.Series([np.nan] * 4)
@@ -56,7 +56,7 @@ def test_cov_prob_loss():
     assert loss is np.nan
 
     ##################################
-    #### Check for NANs in y_true ####
+    # Check for NANs in y_true ####
     ##################################
     lower = pd.Series([0.5, 1.5, 2.5, 3.5])
     upper = pd.Series([1.5, 2.5, 3.5, 4.5])
@@ -65,7 +65,7 @@ def test_cov_prob_loss():
     assert loss is np.nan
 
     ######################################
-    #### Check for mismatched indices ####
+    # Check for mismatched indices ####
     ######################################
     lower = pd.Series([0.5, 1.5, 2.5, 3.5], index=[0, 1, 2, 3])
     upper = pd.Series([1.5, 2.5, 3.5, 4.5], index=[0, 1, 2, 3])
@@ -80,7 +80,7 @@ def test_metrics_with_missing_values_noexo():
     i.e. the metrics are computed using the imputed values.
     """
 
-    #### Load data and simulate missing values ----
+    # Load data and simulate missing values ----
     data = get_data("airline")
     remove_n = int(0.4 * len(data))
     np.random.seed(42)
@@ -93,7 +93,7 @@ def test_metrics_with_missing_values_noexo():
     # Check that here are missing values in test split
     assert data[-FH:].isna().sum() > 0
 
-    #### Setup Forecasting Experiment (enable imputation) ----
+    # Setup Forecasting Experiment (enable imputation) ----
     exp = TSForecastingExperiment()
     exp.setup(
         data=data,
@@ -103,10 +103,10 @@ def test_metrics_with_missing_values_noexo():
     )
 
     ##################################
-    #### 1: With Cross-Validation ####
+    # 1: With Cross-Validation ####
     ##################################
 
-    #### Create a model ----
+    # Create a model ----
     model = exp.create_model("exp_smooth", cross_validation=True)
     cv_results = exp.pull()
     assert cv_results.drop(columns="cutoff").isna().sum().sum() == 0
@@ -115,7 +115,7 @@ def test_metrics_with_missing_values_noexo():
     assert test_results.isna().sum().sum() == 0
 
     #####################################
-    #### 1: Without Cross-Validation ####
+    # 1: Without Cross-Validation ####
     #####################################
 
     model = exp.create_model("exp_smooth", cross_validation=False)
@@ -132,7 +132,7 @@ def test_metrics_with_missing_values_exo():
     i.e. the metrics are computed using the imputed values.
     """
 
-    #### Load data and simulate missing values ----
+    # Load data and simulate missing values ----
     data = get_data("uschange")
     target = "Consumption"
 
@@ -147,7 +147,7 @@ def test_metrics_with_missing_values_exo():
     # Check that here are missing values in test split
     assert data[-FH:].isna().sum().sum() > 0
 
-    #### Setup Forecasting Experiment (enable imputation) ----
+    # Setup Forecasting Experiment (enable imputation) ----
     exp = TSForecastingExperiment()
     exp.setup(
         data=data,
@@ -160,10 +160,10 @@ def test_metrics_with_missing_values_exo():
     )
 
     ##################################
-    #### 1: With Cross-Validation ####
+    # 1: With Cross-Validation ####
     ##################################
 
-    #### Create a model ----
+    # Create a model ----
     model = exp.create_model("lr_cds_dt", cross_validation=True)
     cv_results = exp.pull()
     assert cv_results.drop(columns="cutoff").isna().sum().sum() == 0
@@ -172,7 +172,7 @@ def test_metrics_with_missing_values_exo():
     assert test_results.isna().sum().sum() == 0
 
     #####################################
-    #### 2: Without Cross-Validation ####
+    # 2: Without Cross-Validation ####
     #####################################
 
     model = exp.create_model("lr_cds_dt", cross_validation=False)

@@ -13,10 +13,15 @@ from sklearn.base import clone  # type: ignore
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import LabelEncoder
 
-import pycaret.internal.patches.sklearn
-import pycaret.internal.patches.yellowbrick
-import pycaret.internal.persistence
-import pycaret.internal.preprocess
+from pycaret.containers.metrics import (
+    get_all_class_metric_containers,
+    get_all_reg_metric_containers,
+)
+from pycaret.containers.models import (
+    get_all_class_model_containers,
+    get_all_clust_model_containers,
+    get_all_reg_model_containers,
+)
 from pycaret.internal.display import CommonDisplay
 from pycaret.internal.logging import get_logger, redirect_output
 from pycaret.internal.pipeline import Pipeline as InternalPipeline
@@ -52,11 +57,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
             )
         except Exception:
             if ml_usecase == MLUsecase.CLUSTERING:
-                metrics = (
-                    pycaret.containers.metrics.clustering.get_all_metric_containers(
-                        self.variables, True
-                    )
-                )
+                metrics = get_all_clust__metric_containers(self.variables, True)
             return calculate_unsupervised_metrics(
                 metrics=metrics,  # type: ignore
                 X=X,
@@ -633,7 +634,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
 
         self.pipeline.fit(self.X)
 
-        self.logger.info(f"Finished creating preprocessing pipeline.")
+        self.logger.info("Finished creating preprocessing pipeline.")
         self.logger.info(f"Pipeline: {self.pipeline}")
 
         # Final display ============================================ >>
@@ -900,26 +901,14 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
             self.logger.info(f"supervised_type inferred as {supervised_type}")
 
         if supervised_type == "classification":
-            metrics = (
-                pycaret.containers.metrics.classification.get_all_metric_containers(
-                    self, raise_errors=True
-                )
-            )
-            available_estimators = (
-                pycaret.containers.models.classification.get_all_model_containers(
-                    self, raise_errors=True
-                )
+            metrics = get_all_class_metric_containers(self, raise_errors=True)
+            available_estimators = get_all_class_model_containers(
+                self, raise_errors=True
             )
             ml_usecase = MLUsecase.CLASSIFICATION
         elif supervised_type == "regression":
-            metrics = pycaret.containers.metrics.regression.get_all_metric_containers(
-                self, raise_errors=True
-            )
-            available_estimators = (
-                pycaret.containers.models.regression.get_all_model_containers(
-                    self, raise_errors=True
-                )
-            )
+            metrics = get_all_reg_metric_containers(self, raise_errors=True)
+            available_estimators = get_all_reg_model_containers(self, raise_errors=True)
             ml_usecase = MLUsecase.REGRESSION
         else:
             raise ValueError(
@@ -1207,7 +1196,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
 
         self.logger.info(str(best_model))
         self.logger.info(
-            "tune_model() succesfully completed......................................"
+            "tune_model() successfully completed......................................"
         )
 
         gc.collect()
@@ -1308,7 +1297,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
 
         self.logger.info(data.shape)
         self.logger.info(
-            "assign_model() succesfully completed......................................"
+            "assign_model() successfully completed......................................"
         )
 
         return data
@@ -1483,10 +1472,6 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
                 monitor_rows=monitor_rows,
             )
 
-        self.logger.info("Importing libraries")
-
-        # general dependencies
-
         np.random.seed(self.seed)
 
         # Storing X_train and y_train in data_X and data_y parameter
@@ -1544,17 +1529,19 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
             )
             self.logger.warning(traceback.format_exc())
 
-        self.logger.info(f"{full_name} Imported succesfully")
+        self.logger.info(f"{full_name} Imported successfully")
 
         display.move_progress()
 
         """
         MONITOR UPDATE STARTS
         """
+
         if self._ml_usecase == MLUsecase.CLUSTERING:
             display.update_monitor(1, f"Fitting {num_clusters} Clusters")
         else:
             display.update_monitor(1, f"Fitting {fraction} Fraction")
+
         """
         MONITOR UPDATE ENDS
         """
@@ -1605,7 +1592,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
 
         self.logger.info(str(model))
         self.logger.info(
-            "create_models() succesfully completed......................................"
+            "create_models() successfully completed......................................"
         )
 
         runtime = time.time() - runtime_start
@@ -1656,7 +1643,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
 
         self.logger.info(str(model))
         self.logger.info(
-            "create_model() succesfully completed......................................"
+            "create_model() successfully completed......................................"
         )
         gc.collect()
 

@@ -93,7 +93,7 @@ class TimeSeriesMetricContainer(MetricContainer):
     ) -> None:
 
         allowed_targets = ["pred"]
-        if not target in allowed_targets:
+        if target not in allowed_targets:
             raise ValueError(f"Target must be one of {', '.join(allowed_targets)}.")
 
         if not args:
@@ -216,7 +216,7 @@ def coverage(y_true, y_pred, lower: pd.Series, upper: pd.Series):
     combined.columns = ["y_true", "lower", "upper"]
     combined.dropna(subset=["y_true"], inplace=True)
 
-    ## Override lower and upper to only those indices that match y_true indices
+    # Override lower and upper to only those indices that match y_true indices
     lower = combined["lower"]
     upper = combined["upper"]
 
@@ -229,7 +229,7 @@ def coverage(y_true, y_pred, lower: pd.Series, upper: pd.Series):
 
 def _check_series(y):
     """
-    Check whether or not y is pandas.Series. Pycaret Experiment
+    Check whether y is pandas.Series. Pycaret Experiment
     internally converts data to pandas.DataFrame.
     """
     if isinstance(y, pd.Series):

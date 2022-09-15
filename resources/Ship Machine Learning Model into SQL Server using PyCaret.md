@@ -1,9 +1,9 @@
 
-## Ship Machine Learning Model to Data Using PyCaret — Part II
+# Ship Machine Learning Model to Data Using PyCaret — Part II
 
-### Binary Classification
+# Binary Classification
 
-### by Umar Farooque
+# by Umar Farooque
 
 ![Photo by [Joshua Sortino](https://unsplash.com/@sortino?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)](https://cdn-images-1.medium.com/max/8390/0*3n2RWRuMocf7X67I)
 
@@ -17,7 +17,7 @@ My previous post [**Machine Learning in SQL using PyCaret 1.0](https://towardsda
 
 3. How to make model predictions using the saved model and store results in the table
 
-## **I. Import/Load Data**
+# **I. Import/Load Data**
 
 You will now have to import CSV file into a database using SQL Server Management Studio.
 
@@ -47,7 +47,7 @@ Check Run immediately and click the **Next **button
 
 Click the Finish button to run the package
 
-## **II. Create ML Model & Save in Database Table**
+# **II. Create ML Model & Save in Database Table**
 
 **Classification **is a type of supervised machine learning to predict the categorical class **labels** which are discrete and unordered. The module available in the [**PyCaret](https://pycaret.org/)** package can be used for **binary** or **multiclass** problems.
 
@@ -143,7 +143,7 @@ The view of table results after saving model
 
 ![SQL Server Table Results](https://cdn-images-1.medium.com/max/2000/1*8DcdhzXZupB_fqiO6SofhQ.png)
 
-## **III. Running Predictions**
+# **III. Running Predictions**
 
 The next step is to run the prediction for the test dataset based on the saved model. This is again a multi-step process. Let’s go through all the steps again.
 
@@ -265,7 +265,7 @@ iv. Execute the SQL below to view the result of the prediction
 
 ![Predictions Result](https://cdn-images-1.medium.com/max/2000/1*kboWnjA4K41DV6a__l79wA.png)
 
-## IV. Conclusion
+# IV. Conclusion
 
 In this post, we learnt how to build a classification model using a PyCaret in SQL Server. Similarly, you can build and run other types of supervised and unsupervised ML models depending on the need of your business problem.
 
@@ -275,7 +275,7 @@ You can further check out the [**PyCaret](http://pycaret.org/)** website for doc
 
 My future posts will be tutorials on exploring other supervised & unsupervised learning techniques using Python and **PyCaret** within a S**QL Server**.
 
-## V. Important Links
+# V. Important Links
 
 [PyCaret](https://pycaret.org/)
 

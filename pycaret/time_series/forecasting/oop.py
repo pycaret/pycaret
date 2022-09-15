@@ -24,11 +24,8 @@ from sktime.forecasting.model_selection import (
 from sktime.transformations.compose import TransformerPipeline
 from sktime.transformations.series.impute import Imputer
 
-import pycaret.containers.metrics.time_series
-import pycaret.containers.models.time_series
-import pycaret.internal.patches.sklearn
-import pycaret.internal.persistence
-import pycaret.internal.preprocess
+from pycaret.containers.metrics import get_all_ts_metric_containers
+from pycaret.containers.models import get_all_ts_model_containers
 from pycaret.containers.models.time_series import (
     ALL_ALLOWED_ENGINES,
     get_container_default_engines,
@@ -240,15 +237,13 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
     def _get_models(self, raise_errors: bool = True) -> Tuple[dict, dict]:
         all_models = {
             k: v
-            for k, v in pycaret.containers.models.time_series.get_all_model_containers(
+            for k, v in get_all_ts_model_containers(
                 self, raise_errors=raise_errors
             ).items()
             if not v.is_special
         }
-        all_models_internal = (
-            pycaret.containers.models.time_series.get_all_model_containers(
-                self, raise_errors=raise_errors
-            )
+        all_models_internal = get_all_ts_model_containers(
+            self, raise_errors=raise_errors
         )
         return all_models, all_models_internal
 
@@ -265,9 +260,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         dict
             [description]
         """
-        return pycaret.containers.metrics.time_series.get_all_metric_containers(
-            self.variables, raise_errors=raise_errors
-        )
+        return get_all_ts_metric_containers(self.variables, raise_errors=raise_errors)
 
     def _get_default_plots_to_log(self) -> List[str]:
         return ["forecast", "residuals", "diagnostics"]
@@ -340,7 +333,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                 f"Data must be a pandas Series or DataFrame, got object of {type(data)} type!"
             )
 
-        ## Make a local copy (to perfrom inplace operation on the original dataset)
+        # Make a local copy (to perfrom inplace operation on the original dataset)
         data_ = data.copy()
 
         if isinstance(data_, pd.Series):
@@ -348,7 +341,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             data_.name = data_.name if data.name is not None else "Time Series"
             data_ = pd.DataFrame(data_)  # Force convertion to DataFrame
 
-        #### Clean column names ----
+        # Clean column names ----
         data_.columns = [str(x) for x in data_.columns]
 
         self.data = data_
@@ -379,13 +372,13 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         cols = self.data.shape[1]
 
-        #### target can not be None if there are multiple columns ----
+        # target can not be None if there are multiple columns ----
         if cols > 1 and target is None:
             raise ValueError(
                 f"Data has {cols} columns, but the target has not been specified."
             )
 
-        #### Set target if there is only 1 column ----
+        # Set target if there is only 1 column ----
         if cols == 1:
             if target is not None and target != self.data.columns[0]:
                 raise ValueError(
@@ -425,7 +418,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             If the target(s) are not of numeric type
         """
 
-        #### Get Target Name ----
+        # Get Target Name ----
         target = self._return_target_names(target=target)
 
         if isinstance(target, list) and len(target) == 1:
@@ -434,7 +427,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         if target not in self.data.columns.to_list():
             raise ValueError(f"Target Column '{target}' is not present in the data.")
 
-        #### Check type of target values - must be numeric ----
+        # Check type of target values - must be numeric ----
         if not np.issubdtype(self.data[target].dtype, np.number):
             raise TypeError(
                 f"Data must be of 'numpy.number' subtype, got {self.data[target].dtype}!"
@@ -481,7 +474,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             (3) Index is not one of the allowed types and seasonal period is not provided
         """
 
-        #### Set Index if necessary ----
+        # Set Index if necessary ----
         if index is not None:
             if index in self.data.columns.to_list():
                 unique_index_before = len(self.data[index]) == len(
@@ -500,13 +493,13 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                     f"Index '{index}' is not a column in the data provided."
                 )
 
-        #### Data must not have duplicate indices ----
+        # Data must not have duplicate indices ----
         if len(self.data.index) != len(set(self.data.index)):
             raise ValueError(
                 "Index may not have duplicate values! Please check and correct before passing to pycaret"
             )
 
-        #### Check Index Type ----
+        # Check Index Type ----
         allowed_freq_index_types = (pd.PeriodIndex, pd.DatetimeIndex)
         if (
             not isinstance(self.data.index, allowed_freq_index_types)
@@ -520,13 +513,13 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                 "then 'seasonal_period' must be provided. Refer to docstring for options."
             )
 
-        #### Convert DateTimeIndex index to PeriodIndex ----
+        # Convert DateTimeIndex index to PeriodIndex ----
         # We use PeriodIndex in PyCaret since it seems to be more robust per `sktime``
         # Ref: https://github.com/alan-turing-institute/sktime/blob/v0.10.0/sktime/forecasting/base/_fh.py#L524
         if isinstance(self.data.index, pd.DatetimeIndex):
             self.data.index = self.data.index.to_period()
 
-        #### Data must not have missing indices ----
+        # Data must not have missing indices ----
         if isinstance(self.data.index, pd.PeriodIndex):
             expected_idx = pd.period_range(
                 min(self.data.index), max(self.data.index), freq=self.data.index.freq
@@ -548,7 +541,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                     "\n>>> data = data.reindex(idx, fill_value=np.nan)"
                 )
 
-        #### Save index type so that we can disable certain models ----
+        # Save index type so that we can disable certain models ----
         # E.g. Prophet when index if of type RangeIndex
         self.index_type = type(self.data.index)
 
@@ -582,7 +575,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         self.logger.info("Set Forecast Horizon.")
 
-        #### Forecast Horizon Checks ----
+        # Forecast Horizon Checks ----
         if fh is None:
             if isinstance(self.fold_strategy, str):
                 raise ValueError(
@@ -595,7 +588,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                 f"Provided values is {type(fh)}"
             )
 
-        #### Check Fold Strategy ----
+        # Check Fold Strategy ----
         if not isinstance(self.fold_strategy, str):
             self.logger.info(
                 f"fh parameter {fh} will be ignored since fold_strategy has been provided. "
@@ -769,14 +762,14 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         ValueError
             If Forecasting type is unsupported (e.g. Multivariate Forecasting)
         """
-        #### Univariate or Multivariate ----
+        # Univariate or Multivariate ----
         if isinstance(self.target_param, str):
             self.approach_type = TSApproachTypes.UNI
         elif isinstance(self.target_param, list):
             self.approach_type = TSApproachTypes.MULTI
             raise ValueError("Multivariate forecasting is currently not supported")
 
-        #### Data has exogenous variables or not ----
+        # Data has exogenous variables or not ----
         if len(self.exogenous_variables) > 0:
             self.exogenous_present = TSExogenousPresent.YES
         else:
@@ -901,7 +894,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             When the fold_strategy passed by the user is not one of the allowed types
         """
         possible_time_series_fold_strategies = ["expanding", "sliding", "rolling"]
-        #### TODO: Change is_sklearn_cv_generator to check for sktime instead
+        # TODO: Change is_sklearn_cv_generator to check for sktime instead
         if not (
             self.fold_strategy in possible_time_series_fold_strategies
             or is_sklearn_cv_generator(self.fold_strategy)
@@ -1010,21 +1003,21 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         if self.preprocess:
             self.logger.info("Preparing preprocessing pipeline...")
 
-            #### Impute missing values ----
+            # Impute missing values ----
             self._imputation(
                 numeric_imputation_target=self.numeric_imputation_target,
                 numeric_imputation_exogenous=self.numeric_imputation_exogenous,
                 exogenous_present=self.exogenous_present,
             )
 
-            #### Transformations (preferably based on residual analysis) ----
+            # Transformations (preferably based on residual analysis) ----
             self._transformation(
                 transform_target=self.transform_target,
                 transform_exogenous=self.transform_exogenous,
                 exogenous_present=self.exogenous_present,
             )
 
-            #### Scaling ----
+            # Scaling ----
             self._scaling(
                 scale_target=self.scale_target,
                 scale_exogenous=self.scale_exogenous,
@@ -1194,16 +1187,16 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         TSForecastingExperiment
             The experiment object to allow chaining of methods
         """
-        ## NOTE: This must be run after _setup_ran has been set, else metrics can
+        # NOTE: This must be run after _setup_ran has been set, else metrics can
         # not be retrieved.
 
-        #### Disable R2 when fh = 1 ----
+        # Disable R2 when fh = 1 ----
         if len(self.fh) == 1 and "r2" in self._get_metrics():
             # disable R2 metric if it exists in the metrics since R2 needs
             # at least 2 values
             self.remove_metric("R2")
 
-        #### Remove COVERAGE when enforce_pi is False ----
+        # Remove COVERAGE when enforce_pi is False ----
         # User can add it manually if they want when enforce_pi is set to False.
         # Refer: https://github.com/pycaret/pycaret/issues/1900
         if not self.enforce_pi and "coverage" in self._get_metrics():
@@ -1591,7 +1584,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         # No extra code above this line
         ##############################
-        #### Setup initialization ####
+        # Setup initialization ####
         ##############################
 
         runtime_start = time.time()
@@ -1599,7 +1592,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         if data_func is not None:
             data = data_func()
 
-        #### Define parameter attrs ----
+        # Define parameter attrs ----
         self.all_allowed_engines = ALL_ALLOWED_ENGINES
 
         self.fig_kwargs = fig_kwargs or {}
@@ -1656,9 +1649,9 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             ._set_missingness()
             ._initialize_pipeline()
             ##################################################################
-            #### Do these after the preprocessing pipeline has been setup.
-            #### Since the model will see transformed data, these parameters
-            #### should also be derived from the transformed data.
+            # Do these after the preprocessing pipeline has been setup.
+            # Since the model will see transformed data, these parameters
+            # should also be derived from the transformed data.
             ##################################################################
             ._check_and_set_seasonal_period(seasonal_period=seasonal_period)
             ._set_multiplicative_components()
@@ -2082,7 +2075,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         model_fit_start = time.time()
 
         ###############################################
-        #### Add the correct model to the pipeline ####
+        # Add the correct model to the pipeline ####
         ###############################################
         # Since we are always fitting the model here, we can just append the pipeline
         # irrespective of whether the data is the training data (y_train, X_train), or
@@ -2114,7 +2107,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
             self.logger.info(f"display_container: {len(self.display_container)}")
 
-        #### Return the final model only. Rest of the pipeline will be added during finalize.
+        # Return the final model only. Rest of the pipeline will be added during finalize.
         final_model = self._get_final_model_from_pipeline(
             pipeline=pipeline_with_model, check_is_fitted=True
         )
@@ -2165,7 +2158,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         additional_scorer_kwargs = self.get_additional_scorer_kwargs()
 
         ###############################################
-        #### Add the correct model to the pipeline ####
+        # Add the correct model to the pipeline ####
         ###############################################
         # Since we are always fitting the model here, we can just append the pipeline
         # irrespective of whether the data is the training data (y_train, X_train), or
@@ -2241,7 +2234,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         else:
             model_fit_time /= cv.get_n_splits(data_y)
 
-        #### Return the final model only. Rest of the pipeline will be added during finalize.
+        # Return the final model only. Rest of the pipeline will be added during finalize.
         final_model = self._get_final_model_from_pipeline(
             pipeline=pipeline_with_model, check_is_fitted=refit
         )
@@ -2581,7 +2574,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             search_algorithm = "random"  # Defaults to Random
 
         ###########################
-        #### Define Param Grid ----
+        # Define Param Grid ----
         ###########################
         param_grid = None
         if custom_grid is not None:
@@ -2614,7 +2607,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         if True:
 
             ###############################################
-            #### Add the correct model to the pipeline ####
+            # Add the correct model to the pipeline ####
             ###############################################
             # Since we are always fitting the model here, we can just append the pipeline
             # irrespective of whether the data is the training data (y_train, X_train), or
@@ -2627,14 +2620,14 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                 fit_kwargs=fit_kwargs, cv=cv
             )
 
-            #### START: Update the param_grid to take the pipeline into account correctly ----
+            # START: Update the param_grid to take the pipeline into account correctly ----
             actual_estimator_label = _get_pipeline_estimator_label(
                 pipeline=pipeline_with_model
             )
             suffixes.append(actual_estimator_label)
             suffixes = "__".join(reversed(suffixes))
             param_grid = {f"{suffixes}__{k}": v for k, v in param_grid.items()}
-            #### END: param_grid updated to take the pipeline into account.
+            # END: param_grid updated to take the pipeline into account.
 
             if estimator_definition is not None:
                 search_kwargs = {**estimator_definition.tune_args, **kwargs}
@@ -2653,7 +2646,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                 if search_algorithm == "random":
                     try:
                         param_grid = get_base_distributions(param_grid)
-                    except:
+                    except Exception:
                         self.logger.warning(
                             "Couldn't convert param_grid to specific library distributions. Exception:"
                         )
@@ -2711,7 +2704,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             self.logger.info(f"best_params: {best_params}")
             best_params = {**best_params}
 
-            #### START: Strip out the pipeline step names from best parameters and
+            # START: Strip out the pipeline step names from best parameters and
             # only keep final model params. e.g. if one of the best params is
             # `forecaster__model__sp: 12`, this will make it `sp: 12`
             if actual_estimator_label:
@@ -2719,11 +2712,11 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                     k.replace(f"{actual_estimator_label}__", ""): v
                     for k, v in best_params.items()
                 }
-            #### END Stripping of the pipeline step names.
+            # END Stripping of the pipeline step names.
             cv_results = None
             try:
                 cv_results = model_grid.cv_results_
-            except:
+            except Exception:
                 self.logger.warning(
                     "Couldn't get cv_results from model_grid. Exception:"
                 )
@@ -2808,7 +2801,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         self.logger.info(str(best_model))
         self.logger.info(
-            "tune_model() succesfully completed......................................"
+            "tune_model() successfully completed......................................"
         )
 
         gc.collect()
@@ -2939,7 +2932,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             When the number of labels is not equal to the number of estimators
         """
 
-        #### Get Default Model Names ----
+        # Get Default Model Names ----
         if hasattr(self, "_get_model_name") and hasattr(self, "_all_models_internal"):
             model_names = [self._get_model_name(estimator) for estimator in estimators]
         else:
@@ -2947,7 +2940,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             # it will not have self._get_model_name
             model_names = [estimator.__class__.__name__ for estimator in estimators]
 
-        #### If user has provided labels, use as is, else use the default models names ----
+        # If user has provided labels, use as is, else use the default models names ----
         model_names = data_kwargs.setdefault("labels", model_names)
 
         n_models = len(estimators)
@@ -2958,7 +2951,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                 "\nPlease provide a label corresponding to each model to proceed."
             )
 
-        #### Make sure column names are unique. If not, make them unique by appending numbers ----
+        # Make sure column names are unique. If not, make them unique by appending numbers ----
         # Model names may not be unique for example when user passes basline and tuned model.
         if len(set(model_names)) != len(model_names):
             name_counts = defaultdict(int)
@@ -2992,7 +2985,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             A single data frame with columns for the target series for the
             data types requested. Also returns the name of the target series.
         """
-        #### Get y data (all requested types) ----
+        # Get y data (all requested types) ----
         ys = [
             self._get_y_data(split="all", data_type=data_type_to_plot)
             for data_type_to_plot in data_types_to_plot
@@ -3029,7 +3022,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             A single data frame with columns for the target series for the
             data types requested. Also returns the name of the target series.
         """
-        #### Get X data (all requested types) ----
+        # Get X data (all requested types) ----
         X, X_labels = None, None
         if self.exogenous_present == TSExogenousPresent.YES:
             Xs = [
@@ -3066,7 +3059,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             A single data frame with columns for the train test splits for the
             data types requested. Also returns the name of the target series.
         """
-        #### Step 1: Get train data (all requested types) ----
+        # Step 1: Get train data (all requested types) ----
         trains = [
             self._get_y_data(split="train", data_type=data_type_to_plot)
             for data_type_to_plot in data_types_to_plot
@@ -3077,7 +3070,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         )[0]
         train.columns = [col.replace(data_label, "Train") for col in train.columns]
 
-        #### Step 2: Get test data (all requested types) ----
+        # Step 2: Get test data (all requested types) ----
         tests = [
             self._get_y_data(split="test", data_type=data_type_to_plot)
             for data_type_to_plot in data_types_to_plot
@@ -3087,7 +3080,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         )[0]
         test.columns = [col.replace(data_label, "Test") for col in test.columns]
 
-        #### Step 3: Combine train and test data into a single frame ----
+        # Step 3: Combine train and test data into a single frame ----
         data = pd.concat([train, test], axis=1)
 
         return data, data_label
@@ -3135,7 +3128,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             warnings.warn(msg, DeprecationWarning)
             if verbose:
                 print(msg)
-            #### Reset to "decomp"
+            # Reset to "decomp"
             plot = "decomp"
 
         # Import required libraries ----
@@ -3376,7 +3369,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                 self.logger.info(f"Saving '{plot_filename}'")
                 fig.write_html(plot_filename)
 
-                ### Add file name to return object ----
+                # Add file name to return object ----
                 return_obj.append(plot_filename)
 
             elif system:
@@ -3447,13 +3440,13 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                                 "Refer to the docstring in `setup` for more details."
                             )
 
-        ### Add figure and data to return object if required ----
+        # Add figure and data to return object if required ----
         if return_fig:
             return_obj.append(fig)
         if return_data:
             return_obj.append(plot_data)
 
-        #### Return None if empty, return as list if more than one object,
+        # Return None if empty, return as list if more than one object,
         # else return object directly ----
         if not return_obj:
             return_obj = None
@@ -3870,7 +3863,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                         "variables to make predictions."
                     )
 
-        #### Convert to None if empty dataframe ----
+        # Convert to None if empty dataframe ----
         # Some predict methods in sktime expect None (not an empty dataframe as
         # returned by pycaret). Hence converting to None.
         X = _coerce_empty_dataframe_to_none(data=X)
@@ -4097,15 +4090,15 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         y_pred = pd.DataFrame(result["y_pred"])
 
         #################
-        #### Metrics ####
+        # Metrics ####
         #################
         if self._setup_ran:
-            #### Get Metrics ----
+            # Get Metrics ----
             metrics = self._predict_model_get_test_metrics(
                 pipeline=pipeline_with_model, estimator=estimator_, result=result
             )
 
-            #### Display metrics ----
+            # Display metrics ----
             full_name = self._get_model_name(estimator_)
             df_score = pd.DataFrame(metrics, index=[0])
             df_score.insert(0, "Model", full_name)
@@ -4391,7 +4384,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             A Time Series Forecasting Pipeline.
         """
 
-        #### Set the pipeline from model
+        # Set the pipeline from model
 
         # Add forecaster (model) to end of target steps ----
         steps_target = []
@@ -4813,7 +4806,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         pd.DataFrame
             Dataframe with the test results
         """
-        #### Step 1: Get the data to be tested ----
+        # Step 1: Get the data to be tested ----
         if estimator is None:
             data = self._get_y_data(split=split, data_type=data_type)
             data_name = data_type.capitalize()
@@ -4823,7 +4816,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                 return
             data_name = "Residual"
 
-        #### Step 2: Test ----
+        # Step 2: Test ----
         results = run_test(
             data=data,
             test=test,

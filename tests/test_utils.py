@@ -1,10 +1,3 @@
-import os
-import sys
-
-import pycaret.utils.generic
-
-sys.path.insert(0, os.path.abspath(".."))
-
 import numpy as np
 import numpy.testing as npt
 import pandas as pd
@@ -17,6 +10,7 @@ import pycaret.datasets
 import pycaret.regression
 import pycaret.utils
 from pycaret.utils.constants import LABEL_COLUMN
+from pycaret.utils.generic import check_metric
 
 
 def test_utils():
@@ -57,31 +51,31 @@ def test_utils():
     prediction = prediction[LABEL_COLUMN].astype(np.int64)
 
     # check metric(classification)
-    accuracy = pycaret.utils.generic.check_metric(actual, prediction, "Accuracy")
+    accuracy = check_metric(actual, prediction, "Accuracy")
     assert isinstance(accuracy, float)
     assert accuracy >= 0
     assert accuracy <= 1
-    recall = pycaret.utils.generic.check_metric(actual, prediction, "Recall")
+    recall = check_metric(actual, prediction, "Recall")
     assert isinstance(recall, float)
     assert recall >= 0
     assert recall <= 1
-    precision = pycaret.utils.generic.check_metric(actual, prediction, "Precision")
+    precision = check_metric(actual, prediction, "Precision")
     assert isinstance(precision, float)
     assert precision >= 0
     assert precision <= 1
-    f1 = pycaret.utils.generic.check_metric(actual, prediction, "F1")
+    f1 = check_metric(actual, prediction, "F1")
     assert isinstance(f1, float)
     assert f1 >= 0
     assert f1 <= 1
-    kappa = pycaret.utils.generic.check_metric(actual, prediction, "Kappa")
+    kappa = check_metric(actual, prediction, "Kappa")
     assert isinstance(kappa, float)
     assert kappa >= -1
     assert kappa <= 1
-    auc = pycaret.utils.generic.check_metric(actual, prediction, "AUC")
+    auc = check_metric(actual, prediction, "AUC")
     assert isinstance(auc, float)
     assert auc >= 0
     assert auc <= 1
-    mcc = pycaret.utils.generic.check_metric(actual, prediction, "MCC")
+    mcc = check_metric(actual, prediction, "MCC")
     assert isinstance(mcc, float)
     assert mcc >= -1
     assert mcc <= 1
@@ -91,7 +85,7 @@ def test_utils():
     train, test = sklearn.model_selection.train_test_split(
         data, train_size=0.8, random_state=1
     )
-    reg1 = pycaret.regression.setup(
+    pycaret.regression.setup(
         data,
         target="medv",
         html=False,
@@ -115,31 +109,31 @@ def test_utils():
     prediction = prediction.drop("index", axis=1)
 
     # check metric(regression)
-    mae = pycaret.utils.generic.check_metric(actual, prediction, "MAE")
+    mae = check_metric(actual, prediction, "MAE")
     assert isinstance(mae, float)
     assert mae >= 0
-    mse = pycaret.utils.generic.check_metric(actual, prediction, "MSE")
+    mse = check_metric(actual, prediction, "MSE")
     assert isinstance(mse, float)
     assert mse >= 0
-    rmse = pycaret.utils.generic.check_metric(actual, prediction, "RMSE")
+    rmse = check_metric(actual, prediction, "RMSE")
     assert isinstance(rmse, float)
     assert rmse >= 0
-    r2 = pycaret.utils.generic.check_metric(actual, prediction, "R2")
+    r2 = check_metric(actual, prediction, "R2")
     assert isinstance(r2, float)
     assert r2 <= 1
-    rmsle = pycaret.utils.generic.check_metric(actual, prediction, "RMSLE")
+    rmsle = check_metric(actual, prediction, "RMSLE")
     assert isinstance(rmsle, float)
     assert rmsle >= 0
-    mape = pycaret.utils.generic.check_metric(actual, prediction, "MAPE")
+    mape = check_metric(actual, prediction, "MAPE")
     assert isinstance(mape, float)
     assert mape >= 0
 
     # Ensure metric is rounded to 2 decimals
-    mape = pycaret.utils.generic.check_metric(actual, prediction, "MAPE", 2)
+    mape = check_metric(actual, prediction, "MAPE", 2)
     npt.assert_almost_equal(mape, 0.05, decimal=2)
 
     # Ensure metric is rounded to default value
-    mape = pycaret.utils.generic.check_metric(actual, prediction, "MAPE")
+    mape = check_metric(actual, prediction, "MAPE")
     npt.assert_almost_equal(mape, 0.045, decimal=2)
 
     # preparation (timeseries)
@@ -152,33 +146,33 @@ def test_utils():
     actual = test
 
     # check metric(timeseries)
-    smape = pycaret.utils.generic.check_metric(actual, prediction, "SMAPE")
+    smape = check_metric(actual, prediction, "SMAPE")
     assert isinstance(smape, float)
     assert smape >= 0
-    mape = pycaret.utils.generic.check_metric(actual, prediction, "MAPE")
+    mape = check_metric(actual, prediction, "MAPE")
     assert isinstance(mape, float)
     assert mape >= 0
     # mase = pycaret.utils.check_metric(test, prediction, "MASE", train=train)
     # assert isinstance(mase, float)
     # assert mase >= 0
-    mae = pycaret.utils.generic.check_metric(actual, prediction, "MAE")
+    mae = check_metric(actual, prediction, "MAE")
     assert isinstance(mae, float)
     assert mae >= 0
-    rmse = pycaret.utils.generic.check_metric(actual, prediction, "RMSE")
+    rmse = check_metric(actual, prediction, "RMSE")
     assert isinstance(rmse, float)
     assert rmse >= 0
 
     # Ensure metric is rounded to 2 decimals
-    smape = pycaret.utils.generic.check_metric(actual, prediction, "SMAPE", 2)
+    smape = check_metric(actual, prediction, "SMAPE", 2)
     npt.assert_almost_equal(smape, 1.24, decimal=2)
 
     # Ensure metric is rounded to default value
-    smape = pycaret.utils.generic.check_metric(actual, prediction, "SMAPE")
+    smape = check_metric(actual, prediction, "SMAPE")
     npt.assert_almost_equal(smape, 1.2448, decimal=4)
 
     # Metric does not exist
     with pytest.raises(ValueError, match="Couldn't find metric"):
-        pycaret.utils.generic.check_metric(actual, prediction, "INEXISTENTMETRIC")
+        check_metric(actual, prediction, "INEXISTENTMETRIC")
 
     assert 1 == 1
 

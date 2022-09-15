@@ -4,7 +4,7 @@ from typing import Any, Optional, Union
 
 import pandas as pd
 
-if not "get_ipython" in globals():
+if "get_ipython" not in globals():
     from IPython import get_ipython
 
 from IPython.display import HTML, DisplayHandle, clear_output

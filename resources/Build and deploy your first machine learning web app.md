@@ -1,8 +1,8 @@
-## Build and deploy your first machine learning web app
+# Build and deploy your first machine learning web app
 
-### A beginner’s guide to train and deploy machine learning pipelines in Python using PyCaret
+# A beginner’s guide to train and deploy machine learning pipelines in Python using PyCaret
 
-### by Moez Ali
+# by Moez Ali
 
 ![](https://cdn-images-1.medium.com/max/2000/1*NWklye0cNThqH_cTImozlA.png)
 
@@ -11,7 +11,7 @@ In our [last post](https://towardsdatascience.com/machine-learning-in-power-bi-u
 
 In this tutorial we will use PyCaret to develop a **machine learning pipeline,** that will include preprocessing transformations and a regression model to predict patient hospitalization charges based on demographic and basic patient health risk metrics such as age, BMI, smoking status etc.
 
-## 👉 What you will learn in this tutorial
+# 👉 What you will learn in this tutorial
 
 * What is a deployment and why do we deploy machine learning models.
 
@@ -21,9 +21,9 @@ In this tutorial we will use PyCaret to develop a **machine learning pipeline,**
 
 * Deploy a web app on ‘Heroku’ and see your model in action.
 
-## 💻 What tools we will use in this tutorial?
+# 💻 What tools we will use in this tutorial?
 
-## PyCaret
+# PyCaret
 
 [PyCaret](https://www.pycaret.org/) is an open source, low-code machine learning library in Python to train and deploy machine learning pipelines and models in production. PyCaret can be installed easily using pip.
 
@@ -33,30 +33,30 @@ In this tutorial we will use PyCaret to develop a **machine learning pipeline,**
     # for azure notebooks and google colab
     !pip install **pycaret**
 
-## Flask
+# Flask
 
 [Flask](https://flask.palletsprojects.com/en/1.1.x/) is a framework that allows you to build web applications. A web application can be a commercial website, a blog, e-commerce system, or an application that generates predictions from data provided in real-time using trained models. If you don’t have Flask installed, you can use pip to install it.
 
     # install flask
     pip install **Flask**
 
-## GitHub
+# GitHub
 
 [GitHub](https://www.github.com/) is a cloud-based service that is used to host, manage and control code. Imagine you are working in a large team where multiple people (sometime hundreds of them) are making changes. PyCaret is itself an example of an open-source project where hundreds of community developers are continuously contributing to source code. If you haven’t used GitHub before, you can [sign up](https://github.com/join) for a free account.
 
-## Heroku
+# Heroku
 
 [Heroku](https://www.heroku.com/) is a platform as a service (PaaS) that enables the deployment of web apps based on a managed container system, with integrated data services and a powerful ecosystem. In simple words, this will allow you to take the application from your local machine to the cloud so that anybody can access it using a Web URL. In this tutorial we have chosen Heroku for deployment as it provides free resource hours when you [sign up](https://signup.heroku.com/) for new account.
 
 ![Machine Learning Workflow (from Training to Deployment on PaaS)](https://cdn-images-1.medium.com/max/2000/1*GCRVoOwIKL_AhmrwOtQwaA.png)
 
-## Why Deploy Machine Learning Models?
+# Why Deploy Machine Learning Models?
 
 The deployment of machine learning models is the process of making models available in production where web applications, enterprise software and APIs can consume the trained model by providing new data points and generating predictions.
 
 Normally machine learning models are built so that they can be used to predict an outcome (binary value i.e. 1 or 0 for [Classification](https://www.pycaret.org/classification), continuous values for [Regression](https://www.pycaret.org/regression), labels for [Clustering](https://www.pycaret.org/clustering) etc. There are two broad ways of generating predictions (i) predict by batch; and (ii) predict in real-time. In our [last tutorial](https://towardsdatascience.com/machine-learning-in-power-bi-using-pycaret-34307f09394a) we demonstrated how to deploy machine learning model in Power BI and predict by batch. In this tutorial we will see how to deploy a machine learning model to predict in real-time.
 
-## Business Problem
+# Business Problem
 
 An insurance company wants to improve its cash flow forecasting by better predicting patient charges using demographic and basic patient health risk metrics at the time of hospitalization.
 
@@ -64,11 +64,11 @@ An insurance company wants to improve its cash flow forecasting by better predic
 
 *([data source](https://www.kaggle.com/mirichoi0218/insurance#insurance.csv))*
 
-## Objective
+# Objective
 
 To build a web application where demographic and health information of a patient is entered in a web form to predict charges.
 
-## Tasks
+# Tasks
 
 * Train and validate models and develop a machine learning pipeline for deployment.
 
@@ -78,7 +78,7 @@ To build a web application where demographic and health information of a patient
 
 * Deploy the web app on Heroku. Once deployed, it will become publicly available and can be accessed via Web URL.
 
-## 👉 Task 1 — Model Training and Validation
+# 👉 Task 1 — Model Training and Validation
 
 Training and model validation are performed in Integrated Development Environment (IDE) or Notebook either on your local machine or on cloud. In this tutorial we will use PyCaret in Jupyter Notebook to develop machine learning pipeline and train regression models. If you haven’t used PyCaret before, [click here](https://towardsdatascience.com/announcing-pycaret-an-open-source-low-code-machine-learning-library-in-python-4a1f1aad8d46) to learn more about PyCaret or see [Getting Started Tutorials](https://www.pycaret.org/tutorial) on our [website](https://www.pycaret.org/).
 
@@ -127,7 +127,7 @@ When you save a model in PyCaret, the entire transformation pipeline based on th
 
 We have finished our first task of training and selecting a model for deployment. The final machine learning pipeline and linear regression model is now saved as a file in the local drive under the location defined in the **save_model() **function. (In this example: c:/*username*/ins/deployment_28042020.pkl).
 
-## 👉 Task 2 — Building Web Application
+# 👉 Task 2 — Building Web Application
 
 Now that our machine learning pipeline and model are ready we will start building a web application that can connect to them and generate predictions on new data in real-time. There are two parts of this application:
 
@@ -135,7 +135,7 @@ Now that our machine learning pipeline and model are ready we will start buildin
 
 * Back-end (developed using Flask in Python)
 
-## Front-end of Web Application
+# Front-end of Web Application
 
 Generally, the front-end of web applications are built using HTML which is not the focus of this article. We have used a simple HTML template and a CSS style sheet to design an input form. Here’s the HTML snippet of the front-end page of our web application.
 
@@ -148,7 +148,7 @@ You don’t need to be an expert in HTML to build simple applications. There are
 
 ![Code snippet from home.html file](https://cdn-images-1.medium.com/max/2392/1*2CecMn4-O-slFc6Tf1BK1w.png)
 
-## Back-end of Web Application
+# Back-end of Web Application
 
 The back-end of a web application is developed using a Flask framework. For beginner’s it is intuitive to consider Flask as a library that you can import just like any other library in Python. See the sample code snippet of our back-end written using a Flask framework in Python.
 
@@ -174,7 +174,7 @@ Once executed, copy the URL into a browser and it should open a web application 
 
 Congratulations! you have now built your first machine learning app. Now it’s time to take this application from your local machine into the cloud so other people can use it with a Web URL.
 
-## 👉 Task 3 — Deploy the Web App on Heroku
+# 👉 Task 3 — Deploy the Web App on Heroku
 
 Now that the model is trained, the machine learning pipeline is ready, and the application is tested on our local machine, we are ready to start our deployment on Heroku. There are couple of ways to upload your application source code onto Heroku. The simplest way is to link a GitHub repository to your Heroku account.
 
@@ -230,13 +230,13 @@ Here’s how you can use this web service in Python using the requests library:
 
 ![Make a request to a published web service to generate predictions in a Notebook](https://cdn-images-1.medium.com/max/2474/0*a9T8yMRXwymlccdr.png)
 
-## Next Tutorial
+# Next Tutorial
 
 In the next tutorial for deploying machine learning pipelines, we will dive deeper into deploying machine learning pipelines using docker containers. We will demonstrate how to easily deploy and run containerized machine learning applications on Linux.
 
 Follow our [LinkedIn](https://www.linkedin.com/company/pycaret/) and subscribe to our [Youtube](https://www.youtube.com/channel/UCxA1YTYJ9BEeo50lxyI_B3g) channel to learn more about PyCaret.
 
-## Important Links
+# Important Links
 
 [User Guide / Documentation](https://www.pycaret.org/guide)
 [GitHub Repository
@@ -244,7 +244,7 @@ Follow our [LinkedIn](https://www.linkedin.com/company/pycaret/) and subscribe t
 [Notebook Tutorials](https://www.pycaret.org/tutorial)
 [Contribute in PyCaret](https://www.pycaret.org/contribute)
 
-## Want to learn about a specific module?
+# Want to learn about a specific module?
 
 As of the first release 1.0.0, PyCaret has the following modules available for use. Click on the links below to see the documentation and working examples in Python.
 
@@ -255,7 +255,7 @@ As of the first release 1.0.0, PyCaret has the following modules available for u
 ](https://www.pycaret.org/anomaly-detection)[Natural Language Processing](https://www.pycaret.org/nlp)
 [Association Rule Mining](https://www.pycaret.org/association-rules)
 
-## Also see:
+# Also see:
 
 PyCaret getting started tutorials in Notebook:
 
@@ -266,11 +266,11 @@ PyCaret getting started tutorials in Notebook:
 [Regression](https://www.pycaret.org/reg101)
 [Classification](https://www.pycaret.org/clf101)
 
-## What’s in the development pipeline?
+# What’s in the development pipeline?
 
 We are actively working on improving PyCaret. Our future development pipeline includes a new **Time Series Forecasting **module, integration with **TensorFlow, **and major improvements on the scalability of PyCaret. If you would like to share your feedback and help us improve further, you may [fill this form](https://www.pycaret.org/feedback) on the website or leave a comment on our [GitHub ](https://www.github.com/pycaret/)or [LinkedIn](https://www.linkedin.com/company/pycaret/) page.
 
-## Would you like to contribute?
+# Would you like to contribute?
 
 PyCaret is an open source project. Everybody is welcome to contribute. If you would like contribute, please feel free to work on [open issues](https://github.com/pycaret/pycaret/issues). Pull requests are accepted with unit tests on dev-1.0.1 branch.
 

@@ -1,11 +1,11 @@
 
-## Build your own AutoML in Power BI using PyCaret 2.0
+# Build your own AutoML in Power BI using PyCaret 2.0
 
-### by Moez Ali
+# by Moez Ali
 
 ![PyCaret — An open source, low-code machine learning library in Python](https://cdn-images-1.medium.com/max/2664/1*Kx9YUt0hWPhU_a6h2vM5qA.png)
 
-## **PyCaret 2.0**
+# **PyCaret 2.0**
 
 Last week we have announced [PyCaret 2.0](https://towardsdatascience.com/announcing-pycaret-2-0-39c11014540e), an open source, **low-code** machine learning library in Python that automates machine learning workflow. It is an end-to-end machine learning and model management tool that speeds up machine learning experiment cycle and helps data scientists become more efficient and productive.
 
@@ -21,17 +21,17 @@ By the end of this article you will learn how to implement the following in Powe
 
 * Productionalize / deploy your AutoML solution in Power BI.
 
-## Microsoft Power BI
+# Microsoft Power BI
 
 Power BI is a business analytics solution that lets you visualize your data and share insights across your organization, or embed them in your app or website. In this tutorial, we will use [Power BI Desktop](https://powerbi.microsoft.com/en-us/downloads/) for machine learning by importing the PyCaret library into Power BI.
 
-## What is Automated Machine Learning?
+# What is Automated Machine Learning?
 
 Automated machine learning (AutoML) is the process of automating the time consuming, iterative tasks of machine learning. It allows data scientists and analysts to build machine learning models with efficiency while sustaining the model quality. The final goal of any AutoML solution is to finalize the best model based on some performance criteria.
 
 Traditional machine learning model development process is resource-intensive, requiring significant domain knowledge and time to produce and compare dozens of models. With automated machine learning, you’ll accelerate the time it takes to get production-ready ML models with great ease and efficiency.
 
-## **How Does PyCaret works?**
+# **How Does PyCaret works?**
 
 PyCaret is a workflow automation tool for supervised and unsupervised machine learning. It is organized into six modules and each module has a set of functions available to perform some specific action. Each function takes an input and returns an output, which in most cases is a trained machine learning model. Modules available as of the second release are:
 
@@ -56,13 +56,13 @@ To learn more about PyCaret, [click here](https://towardsdatascience.com/announc
 If you want to get started in Python, [click here](https://github.com/pycaret/pycaret/tree/master/examples) to see a gallery of example notebooks to get started.
 > # “PyCaret is democratizing machine learning and the use of advanced analytics by providing free, open source, and low-code machine learning solution for business analysts, domain experts, citizen data scientists, and experienced data scientists”.
 
-## Before we start
+# Before we start
 
 If you are using Python for the first time, installing Anaconda Distribution is the easiest way to get started. [Click here](https://www.anaconda.com/distribution/) to download Anaconda Distribution with Python 3.7 or greater.
 
 ![[https://www.anaconda.com/products/individual](https://www.anaconda.com/products/individual)](https://cdn-images-1.medium.com/max/2612/1*sMceDxpwFVHDtdFi528jEg.png)
 
-### Setting up the Environment
+# Setting up the Environment
 
 Before we start using PyCaret’s machine learning capabilities in Power BI we need to create a virtual environment and install pycaret. This is a three-step process:
 
@@ -90,9 +90,9 @@ C:\Users\***username***\AppData\Local\Continuum\anaconda3\envs\myenv
 
 ![File → Options → Global → Python scripting](https://cdn-images-1.medium.com/max/2000/1*zQMKuyEk8LGrOPE-NByjrg.png)
 
-## **👉 Lets get started**
+# **👉 Lets get started**
 
-## Setting the Business Context
+# Setting the Business Context
 
 An insurance company wants to improve its cash flow forecasting by better predicting the patient charges using the demographic and basic patient health risk metrics at the time of hospitalization.
 
@@ -100,11 +100,11 @@ An insurance company wants to improve its cash flow forecasting by better predic
 
 *([data source](https://www.kaggle.com/mirichoi0218/insurance#insurance.csv))*
 
-## Objective
+# Objective
 
 To train and select the best performing regression model that predicts patient charges based on the other variables in the dataset i.e. age, sex, bmi, children, smoker, and region.
 
-## 👉 Step 1 — Load the dataset
+# 👉 Step 1 — Load the dataset
 
 You can load dataset directly from out GitHub by going to Power BI Desktop → Get Data → Web
 
@@ -116,7 +116,7 @@ Create a duplicate dataset in Power Query:
 
 ![Power Query → Create a duplicate dataset](https://cdn-images-1.medium.com/max/3436/1*mU8tl4P89WKMC__k6rM-Vw.png)
 
-## 👉 Step 2— Run AutoML as Python Script
+# 👉 Step 2— Run AutoML as Python Script
 
 Run the following code in Power Query (Transform → Run Python script):
 
@@ -182,17 +182,17 @@ PyCaret works on the idea of modular automation. As such if you have more resour
 
 We have now returned top 5 models instead of the one highest performing model. We have then created a list comprehension (loop) to tune hyperparameters of top candidate models and then finally **automl function **selects the single best performing model which is then saved as a pickle file (Note that we didn’t use **finalize_model **this time because automl function returns the finalized model).
 
-## **Sample Dashboard**
+# **Sample Dashboard**
 
 Sample dashboard is created. PBIX file is [uploaded here](https://github.com/pycaret/pycaret-powerbi-automl).
 
 ![Dashboard created using PyCaret AutoML results](https://cdn-images-1.medium.com/max/2664/1*Kx9YUt0hWPhU_a6h2vM5qA.png)
 
-## 👉 Step 3 — Deploy Model to generate predictions
+# 👉 Step 3 — Deploy Model to generate predictions
 
 Once we have a final model saved as a pickle file we can use it to predict charges on the new dataset.
 
-## **Loading new dataset**
+# **Loading new dataset**
 
 For demonstration purposes, we will load the same dataset again and remove the ‘charges’ column from the dataset. Execute the following code as a Python script in Power Query to get the predictions:
 
@@ -209,7 +209,7 @@ Output :
 
 ![predict_model function output in Power Query](https://cdn-images-1.medium.com/max/3840/1*ZYWjwtu4njS7f7XMp90ofg.png)
 
-## **Deploy on Power BI Service**
+# **Deploy on Power BI Service**
 
 When you publish a Power BI report with Python scripts to the service, these scripts will also be executed when your data is refreshed through the on-premises data gateway.
 
@@ -225,14 +225,14 @@ There is no limit to what you can achieve using this light-weight workflow autom
 
 To hear more about PyCaret follow us on [LinkedIn](https://www.linkedin.com/company/pycaret/) and [Youtube](https://www.youtube.com/channel/UCxA1YTYJ9BEeo50lxyI_B3g).
 
-## **You may also be interested it:**
+# **You may also be interested it:**
 
 [Machine Learning in Power BI using PyCaret](https://towardsdatascience.com/machine-learning-in-power-bi-using-pycaret-34307f09394a)
 [Build your first Anomaly Detector in Power BI using PyCaret](https://towardsdatascience.com/build-your-first-anomaly-detector-in-power-bi-using-pycaret-2b41b363244e)
 [How to implement Clustering in Power BI using PyCaret](https://towardsdatascience.com/how-to-implement-clustering-in-power-bi-using-pycaret-4b5e34b1405b)
 [Topic Modeling in Power BI using PyCaret](https://towardsdatascience.com/topic-modeling-in-power-bi-using-pycaret-54422b4e36d6)
 
-## Important Links
+# Important Links
 
 [Blog](https://medium.com/@moez_62905)
 [Release Notes for PyCaret 2.0](https://github.com/pycaret/pycaret/releases/tag/2.0)
@@ -243,7 +243,7 @@ To hear more about PyCaret follow us on [LinkedIn](https://www.linkedin.com/comp
 [Notebook Tutorials](https://www.pycaret.org/tutorial)
 [Contribute in PyCaret](https://www.pycaret.org/contribute)
 
-## Want to learn about a specific module?
+# Want to learn about a specific module?
 
 Click on the links below to see the documentation and working examples.
 

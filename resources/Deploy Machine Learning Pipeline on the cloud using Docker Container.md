@@ -1,11 +1,11 @@
 
-## Deploy Machine Learning Pipeline on the cloud using Docker Container
+# Deploy Machine Learning Pipeline on the cloud using Docker Container
 
-### by Moez Ali
+# by Moez Ali
 
 ![](https://cdn-images-1.medium.com/max/2000/1*N3IRs4nRw4vcMt_AHmbkPA.png)
 
-## **RECAP**
+# **RECAP**
 
 In our [last post](https://towardsdatascience.com/build-and-deploy-your-first-machine-learning-web-app-e020db344a99), we demonstrated how to develop a machine learning pipeline and deploy it as a web app using PyCaret and Flask framework in Python. If you haven’t heard about PyCaret before, please read this [announcement](https://towardsdatascience.com/announcing-pycaret-an-open-source-low-code-machine-learning-library-in-python-4a1f1aad8d46) to learn more.
 
@@ -13,7 +13,7 @@ In this tutorial, we will use the same machine learning pipeline and Flask app t
 
 In order to deploy a machine learning pipeline on Microsoft Azure, we will have to containerize our pipeline in a software called **“Docker”**. If you don’t know what does containerize means, *no problem* — this tutorial is all about that.
 
-## 👉 Learning Goals of this Tutorial
+# 👉 Learning Goals of this Tutorial
 
 * What is a container? What is Docker? and why do we need it?
 
@@ -29,29 +29,29 @@ This tutorial will cover the entire workflow of building a container locally to 
 
 ![WORKFLOW: Create an image → Build container locally → Push to ACR → Deploy app on cloud](https://cdn-images-1.medium.com/max/2512/1*4McqTG9jDQvl_t-omPkEuA.png)
 
-## 💻 Toolbox for this tutorial
+# 💻 Toolbox for this tutorial
 
-## PyCaret
+# PyCaret
 
 [PyCaret](https://www.pycaret.org/) is an open source, low-code machine learning library in Python that is used to train and deploy machine learning pipelines and models into production. PyCaret can be installed easily using pip.
 
     pip install **pycaret**
 
-## Flask
+# Flask
 
 [Flask](https://flask.palletsprojects.com/en/1.1.x/) is a framework that allows you to build web applications. A web application can be a commercial website, blog, e-commerce system, or an application that generates predictions from data provided in real-time using trained models. If you don’t have Flask installed, you can use pip to install it.
 
-## **Docker**
+# **Docker**
 
 [Docker](https://www.docker.com/)** **is a tool designed to make it easier to create, deploy, and run applications by using containers. Containers are used to package up an application with all of its necessary components, such as libraries and other dependencies, and ship it all out as one package. If you haven’t used docker before, this tutorial also covers the installation of docker on Windows 10.
 
-## **Microsoft Azure**
+# **Microsoft Azure**
 
 [Microsoft Azure](https://azure.microsoft.com/en-ca/overview/what-is-azure/) is a set of cloud services that is used to build, manage and deploy applications on a massive and global network. Other cloud services that are often used for deploying ML pipelines are [Amazon Web Services (AWS)](https://aws.amazon.com/), [Google Cloud](https://cloud.google.com), [IBM Cloud](https://www.ibm.com/cloud) and [Alibaba Cloud](https://www.alibabacloud.com/). We will cover most of them in our future tutorials.
 
 If you haven’t used Microsoft Azure before you can [sign up](https://azure.microsoft.com/en-ca/free/search/?&ef_id=EAIaIQobChMIm8Onqp6i6QIViY7ICh2QVA2jEAAYASAAEgK9FvD_BwE:G:s&OCID=AID2000061_SEM_EAIaIQobChMIm8Onqp6i6QIViY7ICh2QVA2jEAAYASAAEgK9FvD_BwE:G:s&dclid=CK6R8aueoukCFVbJyAoduGYLcQ) for a free account here. When you sign up for the first time you get a free credit for the first 30 days. You can utilize that credit in building your own web app by following this tutorial.
 
-## What is a Container and why do we need it?
+# What is a Container and why do we need it?
 
 Have you ever had the problem where your python code (*or any other code*) works fine on your computer but when your friend tries to run the exact same code, it doesn’t work? If your friend is repeating the exact same steps, they should get the same results right? The one-word answer to this is ***the environment*. **Your friend’s Python environment is different than yours.
 
@@ -76,7 +76,7 @@ Another alternate for creating an isolated environment are **virtual machines. *
 
 Can you spot the difference between Virtual Machines and Containers? When you use containers, you do not require guest operating systems. Imagine 10 applications running on a virtual machine. This would require 10 guest operating systems compared to none required when you use containers.
 
-### I understand containers but what is Docker?
+# I understand containers but what is Docker?
 
 Docker is a company that provides software (also called Docker) that allows users to build, run and manage containers. While Docker’s container are the most common, there are other less famous *alternatives* such as [LXD](https://linuxcontainers.org/lxd/introduction/) and [LXC](https://linuxcontainers.org/) that provides container solution.
 
@@ -84,13 +84,13 @@ In this tutorial, we will use **Docker Desktop for Windows **to create a contain
 
 ![](https://cdn-images-1.medium.com/max/2000/1*EJx9QN4ENSPKZuz51rC39w.png)
 
-### Docker Image vs. Docker Container
+# Docker Image vs. Docker Container
 
 What is the difference between a docker image and a docker container? This is by far the most common question asked so let’s clear this right away. There are many technical definitions available, however, it is intuitive to think about a docker image as a mold based on which container is created. An image is essentially a snapshot of container.
 
 If you prefer a slightly more technical definition then consider this: Docker images become containers at runtime when they run on a Docker Engine.
 
-### **Breaking the hype:**
+# **Breaking the hype:**
 
 At the end of the day, docker is just a file with a few lines of instructions that are saved under your project folder with the name ***“Dockerfile”***.
 
@@ -98,7 +98,7 @@ Another way to think about docker file is that they are like recipes you have in
 
 Now that you understand containers, docker and why we should use them, let’s quickly set the business context.
 
-## Setting the Business Context
+# Setting the Business Context
 
 An insurance company wants to improve its cash flow forecasting by better predicting patient charges using demographic and basic patient health risk metrics at the time of hospitalization.
 
@@ -106,11 +106,11 @@ An insurance company wants to improve its cash flow forecasting by better predic
 
 *([data source](https://www.kaggle.com/mirichoi0218/insurance#insurance.csv))*
 
-## Objective
+# Objective
 
 To build and deploy a web application where the demographic and health information of a patient is entered into a web-based form which then outputs a predicted charge amount.
 
-## Tasks
+# Tasks
 
 * Train and develop a machine learning pipeline for deployment.
 
@@ -124,7 +124,7 @@ To build and deploy a web application where the demographic and health informati
 
 Since we have already covered the first two tasks in our last tutorial, we will quickly recap them and focus on the remaining tasks in the list above. If you are interested in learning more about developing machine learning pipeline in Python using PyCaret and building a web app using Flask framework, you can read our [last tutorial](https://towardsdatascience.com/build-and-deploy-your-first-machine-learning-web-app-e020db344a99).
 
-## 👉 Develop Machine Learning Pipeline
+# 👉 Develop Machine Learning Pipeline
 
 We are using PyCaret in Python for training and developing a machine learning pipeline which will be used as part of our web app. The Machine Learning Pipeline can be developed in an Integrated Development Environment (IDE) or Notebook. We have used a notebook to run the below code:
 
@@ -134,7 +134,7 @@ When you save a model in PyCaret, the entire transformation pipeline based on th
 
 ![Machine Learning Pipeline created using PyCaret](https://cdn-images-1.medium.com/max/2000/1*NWoHVWJzO7i7gIvrlBnIiQ.png)
 
-## 👉 Build Web Application
+# 👉 Build Web Application
 
 This tutorial is not focused on building a Flask application. It is only discussed here for completeness. Now that our machine learning pipeline is ready we need a web application that can connect to our trained pipeline to generate predictions on new data points in real-time. We have created the web application using Flask framework in Python. There are two parts of this application:
 
@@ -154,9 +154,9 @@ If you haven’t followed along, no problem. You can simply fork this [repositor
 
 Now that we have a fully functional web application, we can start the process of containerizing the app using Docker.
 
-## 10-steps to deploy a ML pipeline in docker container:
+# 10-steps to deploy a ML pipeline in docker container:
 
-### 👉 **Step 1 — Install Docker Desktop for Windows**
+# 👉 **Step 1 — Install Docker Desktop for Windows**
 
 You can use Docker Desktop on Mac as well as Windows. Depending on your operating system, you can download the Docker Desktop from [this link](https://docs.docker.com/docker-for-windows/install/). We will be using Docker Desktop for Windows in this tutorial.
 
@@ -166,7 +166,7 @@ The easiest way to check if the installation was successful is by opening the co
 
 ![Command prompt](https://cdn-images-1.medium.com/max/2200/1*5XYrNYDi6XlLrmIO4ZNHdQ.png)
 
-### 👉 **Step 2 — Install Kitematic**
+# 👉 **Step 2 — Install Kitematic**
 
 Kitematic is an intuitive graphical user interface (GUI) for running Docker containers on Windows or Mac. You can download Kitematic from [Docker’s GitHub repository](https://github.com/docker/kitematic/releases).
 
@@ -174,7 +174,7 @@ Kitematic is an intuitive graphical user interface (GUI) for running Docker cont
 
 Once downloaded, simply unzip the file into the desired location.
 
-### 👉 Step 3 — Create a Dockerfile
+# 👉 Step 3 — Create a Dockerfile
 
 The first step of creating a Docker image is to create a Dockerfile. A Dockerfile is just a file with a set of instructions. The Dockerfile for this project looks like this:
 
@@ -182,7 +182,7 @@ The first step of creating a Docker image is to create a Dockerfile. A Dockerfil
 
 Dockerfile is case-sensitive and must be in the project folder with the other project files. A Dockerfile has no extension and can be created using any editor. We have used [Visual Studio Code](https://code.visualstudio.com/) to create it.
 
-### 👉 Step 4— Create Azure Container Registry
+# 👉 Step 4— Create Azure Container Registry
 
 If you don’t have a Microsoft Azure account or haven’t used it before, you can [sign up](https://azure.microsoft.com/en-ca/free/search/?&ef_id=EAIaIQobChMIm8Onqp6i6QIViY7ICh2QVA2jEAAYASAAEgK9FvD_BwE:G:s&OCID=AID2000061_SEM_EAIaIQobChMIm8Onqp6i6QIViY7ICh2QVA2jEAAYASAAEgK9FvD_BwE:G:s&dclid=CK6R8aueoukCFVbJyAoduGYLcQ) for free. When you sign up for the first time you get a free credit for the first 30 days. You can utilize that credit to build and deploy a web app on Azure. Once you sign up, follow these steps:
 
@@ -196,7 +196,7 @@ If you don’t have a Microsoft Azure account or haven’t used it before, you c
 
 ![[https://portal.azure.com](https://portal.azure.com) → Sign in → Create a Resource → Container Registry](https://cdn-images-1.medium.com/max/2560/1*InmsXcD7yfbeaMMzobwIJQ.png)
 
-### 👉 Step 5— Build Docker Image
+# 👉 Step 5— Build Docker Image
 
 Once a registry is created in Azure portal, the first step is to build a docker image using command line. Navigate to the project folder and execute the following code.
 
@@ -208,7 +208,7 @@ Once a registry is created in Azure portal, the first step is to build a docker 
 
 * **pycaret-insurance** is the name of the image and **latest **is the tag. This can be anything you want.
 
-### 👉 Step 6— Run container from docker image
+# 👉 Step 6— Run container from docker image
 
 Now that the image is created we will run a container locally and test the application before we push it to Azure Container Registry. To run the container locally execute the following code:
 
@@ -218,7 +218,7 @@ Once this command is successfully executed it will return an ID of the container
 
 ![Running docker container locally](https://cdn-images-1.medium.com/max/2566/1*9g7OQNUA_8zLekDdWa3LHQ.png)
 
-### 👉 Step 7 — Test container on your local machine
+# 👉 Step 7 — Test container on your local machine
 
 Open Kitematic and you should be able to see an application up and running.
 
@@ -230,7 +230,7 @@ You can see the app in action by going to localhost:5000 in your internet browse
 
 Make sure that once you are done with this, you stop the app using Kitematic, otherwise, it will continue to utilize resources on your computer.
 
-### 👉 Step 8— Authenticate Azure Credentials
+# 👉 Step 8— Authenticate Azure Credentials
 
 One final step before you can upload the container onto ACR is to authenticate azure credentials on your local machine. Execute the following code in the command line to do that:
 
@@ -240,7 +240,7 @@ You will be prompted for a Username and password. The username is the name of yo
 
 ![portal.azure.com → Azure Container Registry → Access keys](https://cdn-images-1.medium.com/max/3792/1*5pEA3466EIedSiPhe9CGcQ.png)
 
-### 👉 Step 9— Push Container onto Azure Container Registry
+# 👉 Step 9— Push Container onto Azure Container Registry
 
 Now that you have authenticated to ACR, you can push the container you have created to ACR by executing the following code:
 
@@ -248,7 +248,7 @@ Now that you have authenticated to ACR, you can push the container you have crea
 
 Depending on the size of the container, the push command may take some time to transfer the container to the cloud.
 
-### 👉 Step 10— Create a Azure Web App and see your model in action
+# 👉 Step 10— Create a Azure Web App and see your model in action
 
 To create a web app on Azure, follow these steps:
 
@@ -274,13 +274,13 @@ To create a web app on Azure, follow these steps:
 
 [**Link to GitHub Repository for Heroku Deployment.](https://www.github.com/pycaret/deployment-heroku) *(without docker)***
 
-## Next Tutorial
+# Next Tutorial
 
 In the next tutorial for deploying machine learning pipelines, we will dive deeper into deploying machine learning pipelines using the Kubernetes Service on Google Cloud and Microsoft Azure.
 
 Follow our [LinkedIn](https://www.linkedin.com/company/pycaret/) and subscribe to our [Youtube](https://www.youtube.com/channel/UCxA1YTYJ9BEeo50lxyI_B3g) channel to learn more about PyCaret.
 
-## Important Links
+# Important Links
 
 [User Guide / Documentation](https://www.pycaret.org/guide)
 [GitHub Repository
@@ -288,11 +288,11 @@ Follow our [LinkedIn](https://www.linkedin.com/company/pycaret/) and subscribe t
 [Notebook Tutorials](https://www.pycaret.org/tutorial)
 [Contribute in PyCaret](https://www.pycaret.org/contribute)
 
-## PyCaret 1.0.1 is coming!
+# PyCaret 1.0.1 is coming!
 
 We have received overwhelming support and feedback from the community. We are actively working on improving PyCaret and preparing for our next release. **PyCaret 1.0.1 will be bigger and better**. If you would like to share your feedback and help us improve further, you may [fill this form](https://www.pycaret.org/feedback) on the website or leave a comment on our [GitHub ](https://www.github.com/pycaret/)or [LinkedIn](https://www.linkedin.com/company/pycaret/) page.
 
-## Want to learn about a specific module?
+# Want to learn about a specific module?
 
 As of the first release 1.0.0, PyCaret has the following modules available for use. Click on the links below to see the documentation and working examples in Python.
 
@@ -303,7 +303,7 @@ As of the first release 1.0.0, PyCaret has the following modules available for u
 ](https://www.pycaret.org/anomaly-detection)[Natural Language Processing](https://www.pycaret.org/nlp)
 [Association Rule Mining](https://www.pycaret.org/association-rules)
 
-## Also see:
+# Also see:
 
 PyCaret getting started tutorials in Notebook:
 
@@ -314,7 +314,7 @@ PyCaret getting started tutorials in Notebook:
 [Regression](https://www.pycaret.org/reg101)
 [Classification](https://www.pycaret.org/clf101)
 
-## Would you like to contribute?
+# Would you like to contribute?
 
 PyCaret is an open source project. Everybody is welcome to contribute. If you would like contribute, please feel free to work on [open issues](https://github.com/pycaret/pycaret/issues). Pull requests are accepted with unit tests on dev-1.0.1 branch.
 

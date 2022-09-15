@@ -3,7 +3,7 @@ from typing import Optional, Tuple
 
 import pandas as pd
 from sktime.forecasting.base import BaseForecaster
-from sktime.forecasting.compose import ForecastingPipeline, TransformedTargetForecaster
+from sktime.forecasting.compose import ForecastingPipeline
 from sktime.transformations.compose import TransformerPipeline
 from sktime.transformations.series.impute import Imputer
 

@@ -2,7 +2,7 @@
 All notable changes to this project will be documented in this file.
 <br/><br/>
 
-#### Release: PyCaret 2.3.10 | Release Date: April 10th, 2022 (BUG FIXES)
+# Release: PyCaret 2.3.10 | Release Date: April 10th, 2022 (BUG FIXES)
 - Fixed `predict_model` throwing an exception with loaded pipelines (https://github.com/pycaret/pycaret/pull/2349)
 - Fixed potential parameter leaking for `ParallelBackend` - thanks to @goodwanghan (https://github.com/pycaret/pycaret/pull/2339)
 - Refactored a piece of logic in arules - thanks to @daikikatsuragawa (https://github.com/pycaret/pycaret/pull/2316)
@@ -11,16 +11,16 @@ All notable changes to this project will be documented in this file.
 - Added new tutorials in Chinese - thanks to @ryanxjhan (https://github.com/pycaret/pycaret/pull/2375)
 <br/><br/><br/>
 
-#### Release: PyCaret 2.3.9 | Release Date: March 27th, 2022 (BUG FIXES)
+# Release: PyCaret 2.3.9 | Release Date: March 27th, 2022 (BUG FIXES)
 - Made `log_experiment` more configurable (https://github.com/pycaret/pycaret/pull/2334, https://github.com/pycaret/pycaret/pull/2335)
 - Made `return_train_score=False` use the old output format (https://github.com/pycaret/pycaret/pull/2333)
 <br/><br/><br/>
 
-#### Release: PyCaret 2.3.8 | Release Date: March 21st, 2022 (BUG FIXES)
+# Release: PyCaret 2.3.8 | Release Date: March 21st, 2022 (BUG FIXES)
 - Fixed `dashboard_logger` key error during `setup` (https://github.com/pycaret/pycaret/pull/2311)
 <br/><br/><br/>
 
-#### Release: PyCaret 2.3.7 | Release Date: March 20th, 2022 (NEW FEATURES, BUG FIXES)
+# Release: PyCaret 2.3.7 | Release Date: March 20th, 2022 (NEW FEATURES, BUG FIXES)
 - Fugue integration - thanks to @goodwanghan (https://github.com/pycaret/pycaret/pull/2035)
 - Added W&B experiment logger - thanks to @AyushExel (https://github.com/pycaret/pycaret/pull/2231)
 - Fixed `check_fairness` exception when index is not and ordinal number - thanks to @reza1615 (https://github.com/pycaret/pycaret/pull/2055)
@@ -38,7 +38,7 @@ All notable changes to this project will be documented in this file.
 - Pinned `numba<0.55` (https://github.com/pycaret/pycaret/pull/2056)
 <br/><br/><br/>
 
-#### Release: PyCaret 2.3.6 | Release Date: January 12th, 2022 (NEW FEATURES, BUG FIXES)
+# Release: PyCaret 2.3.6 | Release Date: January 12th, 2022 (NEW FEATURES, BUG FIXES)
 - Added new function `create_app` (https://github.com/pycaret/pycaret/pull/2044)
 - Refactored `optimize_threshold` function (https://github.com/pycaret/pycaret/pull/2041)
 - Added new function `create_docker` (https://github.com/pycaret/pycaret/pull/2005)
@@ -61,7 +61,7 @@ All notable changes to this project will be documented in this file.
 - Pinned `pyyaml<6.0.0` to fix issues with Google Colab
 <br/><br/><br/>
 
-#### Release: PyCaret 2.3.5 | Release Date: November 19th, 2021 (NEW FEATURES, BUG FIXES)
+# Release: PyCaret 2.3.5 | Release Date: November 19th, 2021 (NEW FEATURES, BUG FIXES)
 - Fixed an issue where `Fix_multicollinearity` would fail if the target was a float (https://github.com/pycaret/pycaret/pull/1640)
 - MLFlow runs are now nested - thanks to @jfagn (https://github.com/pycaret/pycaret/pull/1660)
 - Fixed a typo in REG102 tutorial - thanks to @bobo-jamson (https://github.com/pycaret/pycaret/pull/1684)
@@ -76,7 +76,7 @@ All notable changes to this project will be documented in this file.
 - Unpinned `numba` (https://github.com/pycaret/pycaret/pull/1735)
 <br/><br/><br/>
 
-#### Release: PyCaret 2.3.4 | Release Date: September 23rd, 2021 (NEW FEATURES, BUG FIXES)
+# Release: PyCaret 2.3.4 | Release Date: September 23rd, 2021 (NEW FEATURES, BUG FIXES)
 - Added `get_leaderboard` function for classification and regression modules
 - It is now possible to specify the plot save path with the save argument of `plot_model` and `interpret_model` - thanks to @bhanuteja2001 (https://github.com/pycaret/pycaret/pull/1537)
 - Fixed `interpret_model` affecting `plot_model` behavior - thanks to @naujgf (https://github.com/pycaret/pycaret/pull/1600)
@@ -89,13 +89,13 @@ All notable changes to this project will be documented in this file.
 - Pinned `numba<0.54` (https://github.com/pycaret/pycaret/pull/1530)
 <br/><br/><br/>
 
-#### Release: PyCaret 2.3.3 | Release Date: July 24th, 2021 (NEW FEATURES, BUG FIXES)
+# Release: PyCaret 2.3.3 | Release Date: July 24th, 2021 (NEW FEATURES, BUG FIXES)
 - Fixed issues with `[full]` install by pinning `interpret<=0.2.4`
 - Added support for S3 folder path in `deploy_model()` with AWS
 - Enabled experimental Optuna `TPESampler` options to improve convergence (in `tune_model()`)
 <br/><br/><br/>
 
-#### Release: PyCaret 2.3.2 | Release Date: July 7th, 2021 (NEW FEATURES, BUG FIXES)
+# Release: PyCaret 2.3.2 | Release Date: July 7th, 2021 (NEW FEATURES, BUG FIXES)
 - Implemented PDP, MSA and PFI plots in `interpret_model` - thanks to @IncubatorShokuhou (https://github.com/pycaret/pycaret/pull/1415)
 - Implemented  Kolmogorov-Smirnov (KS) plot in `plot_model` under `pycaret.classification` module
 - Fixed a typo "RVF" to "RBF" - thanks to @baturayo (https://github.com/pycaret/pycaret/pull/1220)
@@ -114,7 +114,7 @@ All notable changes to this project will be documented in this file.
 - Exposed `address` in `get_data` for alternative data sources - thanks to @IncubatorShokuhou (https://github.com/pycaret/pycaret/pull/1416)
 <br/><br/><br/>
 
-#### Release: PyCaret 2.3.1 | Release Date: April 28, 2021 (SEVERAL BUGS FIXED)
+# Release: PyCaret 2.3.1 | Release Date: April 28, 2021 (SEVERAL BUGS FIXED)
  
 - Fixed an exception with missing variables (display_container etc.) during load_config()
 - Fixed exceptions when using Ridge and RF estimators with cuML (GPU mode)
@@ -132,11 +132,11 @@ All notable changes to this project will be documented in this file.
 - Pinned `mlxtend>=0.17.0`, `imbalanced-learn==0.7.0`, and `gensim<4.0.0`
 <br/><br/><br/>
 
-### Release: PyCaret 2.3.0 | Release Date: February 21, 2021
+# Release: PyCaret 2.3.0 | Release Date: February 21, 2021
 
 - **Modules Impacted:** `pycaret.classification` `pycaret.regression` `pycaret.clustering` `pycaret.anomaly` `pycaret.arules`
 
-## Summary of Changes
+# Summary of Changes
 
 - Added new interactive residual plots in `pycaret.regression` module. You can now generate interactive residual plots by using `residuals_interactive` in the `plot_model` function.
 - Added plot rendering support for streamlit applications. A new parameter `display_format` is added in the `plot_model` function. To render plot in streamlit app, set this to `streamlit`. 
@@ -160,7 +160,7 @@ All notable changes to this project will be documented in this file.
 - Fixed an exception with KFold when fold_shuffle=False.
 <br/><br/><br/>
 
-#### Release: PyCaret 2.2.3 | Release Date: December 22, 2020 (SEVERAL BUGS FIX | CRITICAL COMPATIBILITY FIX)
+# Release: PyCaret 2.2.3 | Release Date: December 22, 2020 (SEVERAL BUGS FIX | CRITICAL COMPATIBILITY FIX)
 
 - Fixed exceptions with the `predict_model` function when data columns had non-string characters.
 - Fixed a rare exception with the `remove_multicollinearity` parameter in the `setup` function`. 
@@ -173,7 +173,7 @@ All notable changes to this project will be documented in this file.
 - **| CRITICAL |** Compatibility broke for catboost, pyod (other impacts unknown as of now) with sklearn=0.24 (released on Dec 22, 2020). A temporary fix is requiring 0.23.2 specifically in the `requirements.txt`.
 <br/><br/><br/>
 
-#### Release: PyCaret 2.2.2 | Release Date: November 25, 2020 (SEVERAL BUGS FIX)
+# Release: PyCaret 2.2.2 | Release Date: November 25, 2020 (SEVERAL BUGS FIX)
 - Fixed an issue with the `optimize_threshold` function the `pycaret.classification` module. It now returns a float instead of an array.
 - Fixed issue with the `predict_model` function. It now uses original data frame to append the predictions. As such any extra columns given at the time of inference are not removed when returning the predictions. Instead they are internally ignored at the time of predictions.
 - Fixed edge case exceptions for the `create_model` function in `pycaret.clustering`.
@@ -182,7 +182,7 @@ All notable changes to this project will be documented in this file.
 - Fixed an exception in the `models` function if the `type` parameter is specified. 
 <br/><br/><br/>
 
-#### Release: PyCaret 2.2.1 | Release Date: November 09, 2020 (SEVERAL BUGS FIX)
+# Release: PyCaret 2.2.1 | Release Date: November 09, 2020 (SEVERAL BUGS FIX)
 Post-release `2.2`, the following issues have been fixed:
 - Fixed `plot_model = 'tree'` exceptions.
 - Fixed issue with `predict_model` causing errors with non-contiguous indices. 
@@ -197,9 +197,9 @@ Post-release `2.2`, the following issues have been fixed:
 - `plot_model`, `interpret_model`, and `evaluate_model` now accepts a new parameter `use_train_data` which when set to True, generates plot on train data instead of test data. 
 <br/><br/><br/>
 
-### Release: PyCaret 2.2 | Release Date: October 28, 2020
+# Release: PyCaret 2.2 | Release Date: October 28, 2020
 
-## Summary of Changes
+# Summary of Changes
 
 - **Modules Impacted:** `pycaret.classification` `pycaret.regression` `pycaret.clustering` `pycaret.anomaly` 
 
@@ -290,9 +290,9 @@ Post-release `2.2`, the following issues have been fixed:
 
 - **Documentation:** All Modules documentation on the website is now retired. Updated documentation is available here: https://pycaret.readthedocs.io/en/latest/
 
-## Function Level Changes
+# Function Level Changes
 
-### New Functions Introduced in PyCaret 2.2
+# New Functions Introduced in PyCaret 2.2
 
 - **get_metrics:** Returns table of available metrics used for CV. 
 `pycaret.classification` `pycaret.regression` `pycaret.clustering`
@@ -309,7 +309,7 @@ Post-release `2.2`, the following issues have been fixed:
 - **load_config:** Load global variables from pickle file into Python environment.
 `pycaret.classification` `pycaret.regression` `pycaret.clustering` `pycaret.anomaly`
 
-### setup
+# setup
 `pycaret.classification` `pycaret.regression` `pycaret.clustering` `pycaret.anomaly`
 
 Following new parameters have been added:
@@ -358,7 +358,7 @@ When set to 'force', will try to use GPU with all algorithms that support it, an
 - *custom_pipeline: transformer or list of transformers or tuple, default = None**
 When passed, will append the custom transformers in the preprocessing pipeline and are applied on each CV fold separately and on the final fit. All the custom transformations are applied after 'train_test_split' and before pycaret's internal transformations. 
 
-### compare_models 
+# compare_models 
 `pycaret.classification` `pycaret.regression`
 
 Following new parameters have been added:
@@ -375,7 +375,7 @@ Dictionary of arguments passed to the fit method of the model.
 - **groups: Optional[Union[str, Any]] = None**
 Optional group labels when 'GroupKFold' is used for the cross-validation. It takes an array with shape (n_samples, ) where n_samples is the number of rows in the training dataset. When a string is passed, it is interpreted as the column name in the dataset containing group labels.
 
-### create_model
+# create_model
 `pycaret.classification` `pycaret.regression`
 
 Following new parameters have been added:
@@ -395,7 +395,7 @@ Following parameters have been removed:
 - **method** - Deprecated - use `ensemble_model` function directly.
 - **system** - Moved to private API.
 
-### tune_model
+# tune_model
 `pycaret.classification` `pycaret.regression`
 
 Following new parameters have been added:
@@ -459,7 +459,7 @@ When set to True, will return a tuple of (model, tuner_object).
 - **tuner_verbose: bool or in, default = True**
 If True or above 0, will print messages from the tuner. Higher values print more messages. Ignored when ``verbose`` param is False.
 
-### ensemble_model
+# ensemble_model
 `pycaret.classification` `pycaret.regression`
 
 Following new parameters have been added:
@@ -470,7 +470,7 @@ Dictionary of arguments passed to the fit method of the model.
 - **groups: Optional[Union[str, Any]] = None**
 Optional group labels when 'GroupKFold' is used for the cross-validation. It takes an array with shape (n_samples, ) where n_samples is the number of rows in the training dataset. When a string is passed, it is interpreted as the column name in the dataset containing group labels.
 
-## blend_models
+# blend_models
 `pycaret.classification` `pycaret.regression`
 
 Following new parameters have been added:
@@ -486,7 +486,7 @@ Sequence of weights (float or int) to weight the occurrences of predicted class 
 
 - The default value for the `method` parameter has been changed from `hard` to `auto`.
 
-## stack_models
+# stack_models
 `pycaret.classification` `pycaret.regression`
 
 Following new parameters have been added:
@@ -497,7 +497,7 @@ Dictionary of arguments passed to the fit method of the model.
 - **groups: Optional[Union[str, Any]] = None**
 Optional group labels when 'GroupKFold' is used for the cross-validation. It takes an array with shape (n_samples, ) where n_samples is the number of rows in the training dataset. When a string is passed, it is interpreted as the column name in the dataset containing group labels.
 
-## calibrate_model
+# calibrate_model
 `pycaret.classification`
 
 Following new parameters have been added:
@@ -508,7 +508,7 @@ Dictionary of arguments passed to the fit method of the model.
 - **groups: Optional[Union[str, Any]] = None**
 Optional group labels when 'GroupKFold' is used for the cross-validation. It takes an array with shape (n_samples, ) where n_samples is the number of rows in the training dataset. When a string is passed, it is interpreted as the column name in the dataset containing group labels.
 
-## plot_model
+# plot_model
 `pycaret.classification` `pycaret.regression`
 
 Following new parameters have been added:
@@ -522,7 +522,7 @@ Dictionary of arguments passed to the fit method of the model.
 - **groups: Optional[Union[str, Any]] = None**
 Optional group labels when 'GroupKFold' is used for the cross-validation. It takes an array with shape (n_samples, ) where n_samples is the number of rows in the training dataset. When a string is passed, it is interpreted as the column name in the dataset containing group labels.
 
-## evaluate_model
+# evaluate_model
 `pycaret.classification` `pycaret.regression`
 
 Following new parameters have been added:
@@ -536,7 +536,7 @@ Dictionary of arguments passed to the fit method of the model.
 - **groups: Optional[Union[str, Any]] = None**
 Optional group labels when 'GroupKFold' is used for the cross-validation. It takes an array with shape (n_samples, ) where n_samples is the number of rows in the training dataset. When a string is passed, it is interpreted as the column name in the dataset containing group labels.
 
-## finalize_model
+# finalize_model
 `pycaret.classification` `pycaret.regression`
 
 Following new parameters have been added:
@@ -550,7 +550,7 @@ Optional group labels when 'GroupKFold' is used for the cross-validation. It tak
 - **model_only: bool, default = True**
 When set to False, only the model object is re-trained and all the transformations in Pipeline are ignored.
 
-## models
+# models
 `pycaret.classification` `pycaret.regression` `pycaret.clustering` `pycaret.anomaly`
 
 Following new parameters have been added:
@@ -562,16 +562,16 @@ When True, will return extra columns and rows used internally.
 When False, will suppress all exceptions, ignoring models that couldn't be created.
 <br/><br/><br/>
 
-#### Release: PyCaret 2.1.2 | Release Date: August 31, 2020 (BUG FIX)
+# Release: PyCaret 2.1.2 | Release Date: August 31, 2020 (BUG FIX)
 - Post-release `2.1` a bug has been reported preventing `predict_model` function to work in `regression` module in a new notebook session, when `transform_target` was set to `False` during model training. This issue has been fixed in PyCaret release `2.1.2`. To learn more about the issue: https://github.com/pycaret/pycaret/issues/525
 <br/><br/><br/>
 
-#### Release: PyCaret 2.1.1 | Release Date: August 30, 2020 (BUG FIX)
+# Release: PyCaret 2.1.1 | Release Date: August 30, 2020 (BUG FIX)
 - Post-release `2.1` a bug has been identified in MLFlow back-end. The error is only caused when `log_experiment` in the `setup` function is set to True and is applicable to all the modules. The cause of the error has been identified and an issue is opened with `MLFlow`. The error is caused by `infer_signature` function in `mlflow.sklearn.log_model` and is only raised when there are missing values in the dataset. This issue has been fixed in PyCaret release `2.1.1` by skipping the signature in cases where `MLFlow` raises exception.
 <br/><br/><br/>
 
-#### Release: PyCaret 2.1 | Release Date: August 28, 2020
-### Summary of Changes
+# Release: PyCaret 2.1 | Release Date: August 28, 2020
+# Summary of Changes
 
 - **Model Deployment** Model deployment support for `gcp` and `azure` has been added in `deploy_model` function for all modules. See `documentation` for details.
 - **Compare Models Budget Time** new parameter `budget_time` added in `compare_models` function. To set the upper limit on `compare_models` training time, `budget_time` parameter can be used.
@@ -599,9 +599,9 @@ When False, will suppress all exceptions, ignoring models that couldn't be creat
 <br/><br/><br/>
 
 
-#### Release: PyCaret 2.0 | Release Date: July 31, 2020
+# Release: PyCaret 2.0 | Release Date: July 31, 2020
 
-### Summary of Changes
+# Summary of Changes
 - **Experiment Logging** MLFlow logging backend added. New parameters `log_experiment` `experiment_name` `log_profile`  `log_data` added in `setup`. Available in `pycaret.classification` `pycaret.regression` `pycaret.clustering` `pycaret.anomaly` `pycaret.nlp`<br/> 
 - **Save / Load Experiment** `save_experiment` and `load_experiment` function from `pycaret.classification` `pycaret.regression` `pycaret.clustering` `pycaret.anomaly` `pycaret.nlp` is removed in PyCaret 2.0<br/>
 - **System Logging** System log files now generated when `setup` is executed. `logs.log` file is saved in current working directory. Function `get_system_logs` can be used to access log file in notebook. <br/>
@@ -735,7 +735,7 @@ Must remain True all times. Only to be changed by internal functions.
 **`pycaret.classification` `pycaret.regression`** <br/>
 
 - This function returns the best model out of all models created in current active environment based on metric defined in optimize parameter.
-### Parameters: <br/>
+# Parameters: <br/>
 - **`optimize`** string, default = 'Accuracy' for `pycaret.classification` and 'R2' for `pycaret.regression` <br/>
 Other values you can pass in optimize param are 'AUC', 'Recall', 'Precision', 'F1', 'Kappa', and 'MCC' for `pycaret.classification` and 'MAE', 'MSE', 'RMSE', 'R2', 'RMSLE', and 'MAPE' for `pycaret.regression` <br/><br/>
 - **`use_holdout`** bool, default = False <br/>
@@ -751,7 +751,7 @@ When set to True, metrics are evaluated on holdout set instead of CV.
 
 - This function Returns the table of models available in model library.
 
-### Parameters: 
+# Parameters: 
 - **`type`** string, default = None <br/>
 linear : filters and only return linear models <br/>
 tree : filters and only return tree based models <br/>
@@ -764,7 +764,7 @@ ensemble : filters and only return ensemble models <br/>
 
 - This function returns a table with experiment logs consisting run details, parameter, metrics and tags. 
 
-### Parameters: 
+# Parameters: 
 - **`experiment_name`** string, default = None <br/>
 When set to None current active run is used. <br/><br/>
 

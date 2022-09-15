@@ -1,9 +1,9 @@
 
-## Time Series Forecasting with PyCaret Regression Module
+# Time Series Forecasting with PyCaret Regression Module
 
 ![Photo by [Lukas Blazek](https://unsplash.com/@goumbik?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)](https://cdn-images-1.medium.com/max/12288/0*6t7FzC-AdfDlA9LI)
 
-## PyCaret
+# PyCaret
 
 PyCaret is an open-source, low-code machine learning library and end-to-end model management tool built-in Python for automating machine learning workflows. It is incredibly popular for its ease of use, simplicity, and ability to build and deploy end-to-end ML prototypes quickly and efficiently.
 
@@ -21,7 +21,7 @@ This tutorial assumes that you have some prior knowledge and experience with PyC
 
 * [Five things you don’t know about PyCaret](https://towardsdatascience.com/5-things-you-dont-know-about-pycaret-528db0436eec)
 
-## Installing PyCaret
+# Installing PyCaret
 
 Installing PyCaret is very easy and takes only a few minutes. We strongly recommend using a virtual environment to avoid potential conflicts with other libraries.
 
@@ -35,13 +35,13 @@ PyCaret’s default installation is a slim version of pycaret which only install
 
 When you install the full version of pycaret, all the optional dependencies as [listed here](https://github.com/pycaret/pycaret/blob/master/requirements-optional.txt) are also installed.
 
-## 👉 PyCaret Regression Module
+# 👉 PyCaret Regression Module
 
 PyCaret **Regression Module** is a supervised machine learning module used for estimating the relationships between a **dependent variable** (often called the ‘outcome variable’, or ‘target’) and one or more **independent variables** (often called ‘features’, or ‘predictors’).
 
 The objective of regression is to predict continuous values such as sales amount, quantity, temperature, number of customers, etc. All modules in PyCaret provide many [pre-processing](https://www.pycaret.org/preprocessing) features to prepare the data for modeling through the [setup ](https://www.pycaret.org/setup)function. It has over 25 ready-to-use algorithms and [several plots](https://www.pycaret.org/plot-model) to analyze the performance of trained models.
 
-## 👉 Time Series with PyCaret Regression Module
+# 👉 Time Series with PyCaret Regression Module
 
 Time series forecasting can broadly be categorized into the following categories:
 
@@ -61,7 +61,7 @@ Time-series data also requires a different kind of cross-validation since it nee
 
 The following section in this tutorial will demonstrate how you can change default settings in PyCaret Regression Module easily to make it work for time series data.
 
-## 👉 Dataset
+# 👉 Dataset
 
 For the purpose of this tutorial, I have used the US airline passengers dataset. You can download the dataset from [Kaggle](https://www.kaggle.com/chirag19/air-passengers).
 
@@ -111,7 +111,7 @@ Since algorithms cannot directly deal with dates, let’s extract some simple fe
 
 I have manually split the dataset before initializing the setup . An alternate would be to pass the entire dataset to PyCaret and let it handle the split, in which case you will have to pass data_split_shuffle = False in the setup function to avoid shuffling the dataset before the split.
 
-## 👉 **Initialize Setup**
+# 👉 **Initialize Setup**
 
 Now it’s time to initialize the setup function, where we will explicitly pass the training data, test data, and cross-validation strategy using the fold_strategy parameter.
 
@@ -121,7 +121,7 @@ Now it’s time to initialize the setup function, where we will explicitly pass 
     **# initialize setup**
     s = setup(data = train, test_data = test, target = 'Passengers', fold_strategy = 'timeseries', numeric_features = ['Year', 'Series'], fold = 3, transform_target = True, session_id = 123)
 
-## 👉 **Train and Evaluate all Models**
+# 👉 **Train and Evaluate all Models**
 
     best = compare_models(sort = 'MAE')
 
@@ -155,7 +155,7 @@ The grey backdrop towards the end is the test period (i.e. 1960). Now let’s fi
 
     final_best = finalize_model(best)
 
-## 👉 Create a future scoring dataset
+# 👉 Create a future scoring dataset
 
 Now that we have trained our model on the entire dataset (1949 to 1960), let’s predict five years out in the future through 1964. To use our final model to generate future predictions, we first need to create a dataset consisting of the Month, Year, Series column on the future dates.
 
@@ -197,7 +197,7 @@ To hear more about PyCaret follow us on [LinkedIn](https://www.linkedin.com/comp
 
 Join us on our slack channel. Invite link [here](https://join.slack.com/t/pycaret/shared_invite/zt-p7aaexnl-EqdTfZ9U~mF0CwNcltffHg).
 
-## You may also be interested in:
+# You may also be interested in:
 
 [Build your own AutoML in Power BI using PyCaret 2.0](https://towardsdatascience.com/build-your-own-automl-in-power-bi-using-pycaret-8291b64181d)
 [Deploy Machine Learning Pipeline on Azure using Docker](https://towardsdatascience.com/deploy-machine-learning-pipeline-on-cloud-using-docker-container-bec64458dc01)
@@ -208,7 +208,7 @@ Join us on our slack channel. Invite link [here](https://join.slack.com/t/pycare
 [Build and deploy machine learning web app using PyCaret and Streamlit](https://towardsdatascience.com/build-and-deploy-machine-learning-web-app-using-pycaret-and-streamlit-28883a569104)
 [Deploy Machine Learning App built using Streamlit and PyCaret on GKE](https://towardsdatascience.com/deploy-machine-learning-app-built-using-streamlit-and-pycaret-on-google-kubernetes-engine-fd7e393d99cb)
 
-## Important Links
+# Important Links
 
 [Documentation](https://pycaret.readthedocs.io/en/latest/installation.html)
 [Blog](https://medium.com/@moez_62905)
@@ -218,7 +218,7 @@ Join us on our slack channel. Invite link [here](https://join.slack.com/t/pycare
 ](https://pycaret.readthedocs.io/en/latest/installation.html)[Notebook Tutorials
 ](https://pycaret.readthedocs.io/en/latest/tutorials.html)[Contribute in PyCaret](https://pycaret.readthedocs.io/en/latest/contribute.html)
 
-## Want to learn about a specific module?
+# Want to learn about a specific module?
 
 Click on the links below to see the documentation and working examples.
 

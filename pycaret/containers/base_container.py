@@ -126,7 +126,7 @@ def get_all_containers(
                 instance = obj(experiment)
                 if instance.active:
                     model_containers.append(instance)
-            except:
+            except Exception:
                 pass
 
     return {container.id: container for container in model_containers}

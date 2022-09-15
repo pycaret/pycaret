@@ -9,7 +9,7 @@ Description: Unit tests for pipeline.py
 
 import pandas as pd
 import pytest
-from sklearn.preprocessing import LabelEncoder, StandardScaler
+from sklearn.preprocessing import LabelEncoder
 
 import pycaret.classification
 import pycaret.regression

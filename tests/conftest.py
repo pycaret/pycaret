@@ -1,17 +1,12 @@
-import logging
-
-import numpy as np  # type: ignore
-import pandas as pd  # type: ignore
+import numpy as np
 import pytest
-from time_series_test_utils import _BLEND_TEST_MODELS
 
-from pycaret.containers.models.time_series import get_all_model_containers
+from pycaret.containers.models import get_all_ts_model_containers
 from pycaret.datasets import get_data
 from pycaret.time_series import TSForecastingExperiment
-from pycaret.utils.time_series import TSExogenousPresent
 
 #############################
-#### Fixtures Start Here ####
+# Fixtures Start Here ####
 #############################
 
 
@@ -122,7 +117,7 @@ def load_setup(load_pos_and_neg_data):
 def load_ts_models(load_setup):
     """Load all time series module models"""
     exp = load_setup
-    model_containers = get_all_model_containers(exp)
+    model_containers = get_all_ts_model_containers(exp)
 
     from time_series_test_utils import (  # TODO Put it back once preprocessing supports series as X
         _BLEND_TEST_MODELS,
@@ -138,5 +133,5 @@ def load_ts_models(load_setup):
 
 
 ###########################
-#### Fixtures End Here ####
+# Fixtures End Here ####
 ###########################

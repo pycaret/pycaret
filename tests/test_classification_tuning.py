@@ -1,9 +1,4 @@
 import os
-import sys
-
-sys.path.insert(0, os.path.abspath(".."))
-os.environ["TUNE_DISABLE_AUTO_CALLBACK_LOGGERS"] = "1"
-os.environ["TUNE_MAX_LEN_IDENTIFIER"] = "1"
 
 import pandas as pd
 import pytest
@@ -11,6 +6,9 @@ import pytest
 import pycaret.classification
 import pycaret.datasets
 from pycaret.utils.generic import can_early_stop
+
+os.environ["TUNE_DISABLE_AUTO_CALLBACK_LOGGERS"] = "1"
+os.environ["TUNE_MAX_LEN_IDENTIFIER"] = "1"
 
 
 @pytest.mark.skip(reason="no way of currently testing this")
@@ -20,7 +18,7 @@ def test_classification_tuning():
     assert isinstance(data, pd.DataFrame)
 
     # init setup
-    clf1 = pycaret.classification.setup(
+    pycaret.classification.setup(
         data,
         target="Purchase",
         train_size=0.7,

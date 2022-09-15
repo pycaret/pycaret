@@ -2,6 +2,7 @@
 # Author: Moez Ali <moez.ali@queensu.ca> and Antoni Baum (Yard1) <antoni.baum@protonmail.com>
 # License: MIT
 import gc
+import os
 from typing import Dict, Optional
 
 from sklearn.pipeline import Pipeline
@@ -180,7 +181,6 @@ def deploy_model(
         _check_soft_dependencies(
             "google", extra=None, severity="error", install_name="google-cloud-storage"
         )
-        import google.cloud
 
         # initialize deployment
         filename = f"{model_name}.pkl"
@@ -201,7 +201,7 @@ def deploy_model(
         try:
             _create_bucket_gcp(project_name, bucket_name)
             _upload_blob_gcp(project_name, bucket_name, filename, key)
-        except:
+        except Exception:
             _upload_blob_gcp(project_name, bucket_name, filename, key)
         os.remove(filename)
         print("Model Successfully Deployed on GCP")
@@ -230,10 +230,10 @@ def deploy_model(
             )
 
         try:
-            container_client = _create_container_azure(container_name)
+            _create_container_azure(container_name)
             _upload_blob_azure(container_name, filename, key)
             del container_client
-        except:
+        except Exception:
             _upload_blob_azure(container_name, filename, key)
 
         os.remove(filename)
@@ -458,9 +458,7 @@ def load_model(
 
         filename = f"{model_name}.pkl"
 
-        model_downloaded = _download_blob_gcp(
-            project_name, bucket_name, filename, filename
-        )
+        _download_blob_gcp(project_name, bucket_name, filename, filename)
 
         model = load_model(model_name, verbose=False)
 
@@ -482,7 +480,7 @@ def load_model(
 
         filename = f"{model_name}.pkl"
 
-        model_downloaded = _download_blob_azure(container_name, filename, filename)
+        _download_blob_azure(container_name, filename, filename)
 
         model = load_model(model_name, verbose=False)
 
@@ -733,8 +731,6 @@ def _upload_blob_azure(
     """
 
     logger = get_logger()
-
-    import os
 
     from azure.storage.blob import BlobServiceClient
 

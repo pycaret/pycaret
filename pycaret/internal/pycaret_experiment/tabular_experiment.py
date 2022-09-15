@@ -52,6 +52,7 @@ class _TabularExperiment(_PyCaretExperiment):
         self.all_allowed_engines = None
         self.fold_shuffle_param = False
         self.fold_groups_param = None
+        self.exp_model_engines = {}
         self.variable_keys = self.variable_keys.union(
             {
                 "_ml_usecase",
@@ -259,7 +260,6 @@ class _TabularExperiment(_PyCaretExperiment):
                 return WandbLogger()
 
         if log_experiment:
-            loggers_list = []
             if log_experiment is True:
                 loggers_list = [MlflowLogger()]
             else:
@@ -1072,7 +1072,7 @@ class _TabularExperiment(_PyCaretExperiment):
                             display_format=display_format,
                         )
 
-                    except:
+                    except Exception:
                         self.logger.error("Elbow plot failed. Exception:")
                         self.logger.error(traceback.format_exc())
                         raise TypeError("Plot Type not supported for this model.")
@@ -1098,7 +1098,7 @@ class _TabularExperiment(_PyCaretExperiment):
                             groups=groups,
                             display_format=display_format,
                         )
-                    except:
+                    except Exception:
                         self.logger.error("Silhouette plot failed. Exception:")
                         self.logger.error(traceback.format_exc())
                         raise TypeError("Plot Type not supported for this model.")
@@ -1122,7 +1122,7 @@ class _TabularExperiment(_PyCaretExperiment):
                             groups=groups,
                             display_format=display_format,
                         )
-                    except:
+                    except Exception:
                         self.logger.error("Distance plot failed. Exception:")
                         self.logger.error(traceback.format_exc())
                         raise TypeError("Plot Type not supported for this model.")
@@ -1648,9 +1648,9 @@ class _TabularExperiment(_PyCaretExperiment):
                         try:
                             # catboost special case
                             model_params = estimator.get_all_params()
-                        except:
+                        except Exception:
                             model_params = estimator.get_params()
-                    except:
+                    except Exception:
                         # display.clear_output()
                         self.logger.error("VC plot failed. Exception:")
                         self.logger.error(traceback.format_exc())
@@ -1868,7 +1868,7 @@ class _TabularExperiment(_PyCaretExperiment):
                             if len(coef) > len(self.X_train_transformed.columns):
                                 coef = coef[: len(self.X_train_transformed.columns)]
                             variables = abs(coef)
-                        except:
+                        except Exception:
                             pass
                     if variables is None:
                         self.logger.warning(
@@ -1919,7 +1919,7 @@ class _TabularExperiment(_PyCaretExperiment):
 
                     try:
                         params = estimator.get_all_params()
-                    except:
+                    except Exception:
                         params = estimator.get_params(deep=False)
 
                     param_df = pd.DataFrame.from_dict(
@@ -1937,7 +1937,7 @@ class _TabularExperiment(_PyCaretExperiment):
                     predict_proba__ = estimator.predict_proba(self.X_train_transformed)
                     # display.clear_output()
                     with MatplotlibDefaultDPI(base_dpi=_base_dpi, scale_to_set=scale):
-                        fig = skplt.metrics.plot_ks_statistic(
+                        skplt.metrics.plot_ks_statistic(
                             self.y_train_transformed, predict_proba__, figsize=(10, 6)
                         )
                         plot_filename = None
@@ -1965,7 +1965,7 @@ class _TabularExperiment(_PyCaretExperiment):
 
                 try:
                     plt.close()
-                except:
+                except Exception:
                     pass
 
         gc.collect()
@@ -2921,8 +2921,6 @@ CMD ["python", "{API_NAME}.py"]
         _TabularExperiment
             The experiment object to allow chaining of methods
         """
-        self.exp_model_engines = {}
-
         # If user provides their own value, override the container defaults
         engine = engine or {}
         for key in container_default_engines:

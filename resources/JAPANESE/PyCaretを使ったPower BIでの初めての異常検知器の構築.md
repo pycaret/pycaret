@@ -1,9 +1,9 @@
 
 # PyCaretを使ったPower BIでのはじめての異常検知器の構築
 
-## Power BIに異常検知機能を実装するためのステップバイステップのチュートリアル
+# Power BIに異常検知機能を実装するためのステップバイステップのチュートリアル
 
-### by Moez Ali
+# by Moez Ali
 
 ![Anomaly Detection Dashboard in Power BI](https://cdn-images-1.medium.com/max/2000/1*sh9LrK5WiF1pBDDR1PCK0g.png)
 
@@ -11,7 +11,7 @@
 
 この記事では、PyCaretを使ってPower BIに異常検知器を実装する方法を紹介します。まだPyCaretを知らない方は、こちらの[お知らせ](https://towardsdatascience.com/announcing-pycaret-an-open-source-low-code-machine-learning-library-in-python-4a1f1aad8d46)をご覧ください。
 
-## このチュートリアルの学習目標
+# このチュートリアルの学習目標
 
 * 異常検知とは何か？異常検知の種類は？
 
@@ -21,13 +21,13 @@
 
 * Power BIの本番環境に異常検知器を導入するには？
 
-## 始める前に
+# 始める前に
 
 Pythonを使ったことがある方は、すでにAnaconda Distributionがインストールされていると思います。もしそうでなければ、[ここをクリック](https://www.anaconda.com/distribution/)して、Python 3.7以上のAnaconda Distributionをダウンロードしてください。
 
 ![[https://www.anaconda.com/products/individual](https://www.anaconda.com/products/individual)](https://cdn-images-1.medium.com/max/2612/1*sMceDxpwFVHDtdFi528jEg.png)
 
-## 環境のセットアップ
+# 環境のセットアップ
 
 Power BIでPyCaretの機械学習機能を使い始める前に、仮想環境を作成し、pycaretをインストールする必要があります。これは3つのステップで行います。
 
@@ -53,7 +53,7 @@ C:Users%%***username%%***AppData%%Local%%Continuum%%anaconda3%%envs%%myenv
 
 ![File → Options → Global → Python scripting](https://cdn-images-1.medium.com/max/2000/1*zQMKuyEk8LGrOPE-NByjrg.png)
 
-## Anomaly Detection とは？
+# Anomaly Detection とは？
 
 異常検知 **** は、大部分のデータとは大きく異なることで疑念を抱かせる**希少なアイテム**、**イベント**、**観察**を特定するために使用される機械学習の手法です。
 
@@ -69,7 +69,7 @@ C:Users%%***username%%***AppData%%Local%%Continuum%%anaconda3%%envs%%myenv
 
 ![Goldstein M, Uchida S (2016) A Comparative Evaluation of Unsupervised Anomaly Detection Algorithms for Multivariate Data. PLo](https://cdn-images-1.medium.com/max/2800/1*-Cnyg6-F-Qd4r1Ptcf6nNw.png)
 
-## ビジネスコンテクストの設定
+# ビジネスコンテクストの設定
 
 多くの企業では、業務上の購買を効率的に管理するために、従業員に法人向けのクレジットカード（※パーチェスカードまたは※Pカードとも呼ばれる）を発行しています。通常は、従業員が請求書を電子的に提出するプロセスがあります。収集されるデータは、通常、取引日、ベンダー名、支出の種類、加盟店、金額などの取引に関するものです。
 
@@ -79,11 +79,11 @@ C:Users%%***username%%***AppData%%Local%%Continuum%%anaconda3%%envs%%myenv
 
 **免責事項：** *このチュートリアルでは、Power BIでPyCaretを使用して異常検知器を構築する方法を説明します。このチュートリアルで構築されるサンプルダッシュボードは、決して実際の異常を反映したものではなく、また異常を特定するためのものでもありません。
 
-## 👉 始めよう
+# 👉 始めよう
 
 Anaconda 環境のセットアップ、PyCaret のインストール、異常検知の基本的な理解、このチュートリアルのビジネスコンテキストの理解ができたところで、始めましょう。
 
-## 1. データの取得
+# 1. データの取得
 
 最初のステップは、Power BI Desktopにデータセットをインポートすることです。データの読み込みには、Webコネクタを使用します。(Power BI Desktop → Get Data → From Web)を実行します。
 
@@ -91,7 +91,7 @@ Anaconda 環境のセットアップ、PyCaret のインストール、異常検
 
 **csvファイルへのリンクです。[**https://raw.githubusercontent.com/pycaret/pycaret/master/datasets/delaware_anomaly.csv](https://raw.githubusercontent.com/pycaret/pycaret/master/datasets/delaware_anomaly.csv)
 
-## 2. モデルの学習
+# 2. モデルの学習
 
 Power BIで異常検知器を学習するには、Power Query EditorでPythonスクリプトを実行する必要があります（Power Query Editor → Transform → Run python script）。以下のコードをPythonスクリプトとして実行します。
 
@@ -129,7 +129,7 @@ PyCaretには10以上のすぐに使える異常検知アルゴリズムがあ�
 
 ![Power BI Desktopでの結果（クエリ適用後）](https://cdn-images-1.medium.com/max/2894/1*QFJ2DJX_bGSxutOdxNmwEg.png)
 
-## 3. ダッシュボード
+# 3. ダッシュボード
 
 Power BIで外れ値のラベルができたら、ダッシュボードで可視化する例を紹介します。
 
@@ -139,7 +139,7 @@ Power BIで外れ値のラベルができたら、ダッシュボードで可視
 
 PBIXファイルとデータセットは、弊社の[GitHub](https://github.com/pycaret/powerbi-anomaly-detection)からダウンロードできます。
 
-## 👉 本番での異常検知の実装
+# 👉 本番での異常検知の実装
 
 以上、Power BIに異常検知を実装する簡単な方法をご紹介しました。しかし、注意しなければならないのは、上記の方法ではPower BIのデータセットが更新されるたびに異常検知器がトレーニングされることです。これが問題になる理由は2つあります。
 
@@ -149,7 +149,7 @@ PBIXファイルとデータセットは、弊社の[GitHub](https://github.com/
 
 本番環境での使用を想定した場合、Power BIに異常検知を実装する別の方法として、Power BI自体でモデルをトレーニングするのではなく、事前にトレーニングしたモデルをPower BIに渡してラベル付けを行う方法があります。
 
-## **モデルを事前にトレーニングする**。
+# **モデルを事前にトレーニングする**。
 
 機械学習モデルのトレーニングには、統合開発環境（IDE）やノートブックを使用することができます。この例では、Visual Studio Codeを使用して、異常検知モデルをトレーニングしています。
 
@@ -163,7 +163,7 @@ PyCaretを使ったJupyter notebookへのAnomaly Detectionの実装について�
 
  <iframe src="https://medium.com/media/6905eb28ff917a759fe2bed97292795b" frameborder=0></iframe>
 
-## 事前学習したモデルの利用
+# 事前学習したモデルの利用
 
 以下のコードをPythonスクリプトとして実行すると、事前に学習されたモデルからラベルが生成されます。
 
@@ -176,7 +176,7 @@ PyCaretを使ったJupyter notebookへのAnomaly Detectionの実装について�
 
 ![最終出力（表をクリックした後）](https://cdn-images-1.medium.com/max/2280/1*dZbf7VmCxkPUcX_p7kKJ4w.png)
 
-## **Power BI Serviceで動作させる**。
+# **Power BI Serviceで動作させる**。
 
 .pbixファイルをPower BIサービスにアップロードした後、機械学習パイプラインをデータパイプラインにシームレスに統合するために、さらにいくつかのステップが必要です。具体的には以下の通りです。
 
@@ -186,13 +186,13 @@ PyCaretを使ったJupyter notebookへのAnomaly Detectionの実装について�
 
 Anomaly Detection についてもっと知りたい方は、[Notebook Tutorial](https://pycaret.org/ano101/)をご覧ください。
 
-## PyCaret 1.0.1 がリリースされます!
+# PyCaret 1.0.1 がリリースされます!
 
 PyCaret 1.0.1 がリリースされます！ コミュニティからの圧倒的なサポートとフィードバックを受けています。私たちは、PyCaretの改善と次のリリースに向けて積極的に取り組んでいます。**PyCaret 1.0.1はより大きく、より良くなります**。もし、あなたがフィードバックを共有し、私たちのさらなる改善に役立てたいとお考えでしたら、ウェブサイト上の [fill this form](https://www.pycaret.org/feedback) や、私たちの [GitHub ](https://www.github.com/pycaret/)や [LinkedIn](https://www.linkedin.com/company/pycaret/) ページにコメントを残してください。
 
 LinkedIn](https://www.linkedin.com/company/pycaret/)をフォローしたり、[Youtube](https://www.youtube.com/channel/UCxA1YTYJ9BEeo50lxyI_B3g)のチャンネルを購読したりして、PyCaretについてもっと知ってください。
 
-## 重要なリンク
+# 重要なリンク
 
 [ユーザーガイド / ドキュメント](https://www.pycaret.org/guide)
 [GitHub リポジトリ
@@ -200,7 +200,7 @@ LinkedIn](https://www.linkedin.com/company/pycaret/)をフォローしたり、[
 [ノートブックチュートリアル](https://www.pycaret.org/tutorial)
 [PyCaretに貢献する](https://www.pycaret.org/contribute)
 
-## 特定のモジュールについて学びたい？
+# 特定のモジュールについて学びたい？
 
 最初のリリース1.0.0の時点で、PyCaretは以下のモジュールを利用することができます。以下のリンクをクリックすると、Pythonでのドキュメントや動作例を見ることができます。
 
@@ -211,7 +211,7 @@ LinkedIn](https://www.linkedin.com/company/pycaret/)をフォローしたり、[
 ](https://www.pycaret.org/anomaly-detection)[自然言語処理](https://www.pycaret.org/nlp)
 [アソシエーション・ルール・マイニング](https://www.pycaret.org/association-rules)
 
-## こちらもご覧ください。
+# こちらもご覧ください。
 
 PyCaret getting started tutorials in Notebook:
 
@@ -222,7 +222,7 @@ PyCaret getting started tutorials in Notebook:
 [回帰](https://www.pycaret.org/reg101)
 [分類](https://www.pycaret.org/clf101)
 
-## Would you like to contribute?
+# Would you like to contribute?
 
 PyCaretはオープンソースのプロジェクトです。誰でも貢献することができます。貢献したい方は、[オープンイシュー](https://github.com/pycaret/pycaret/issues)にお気軽にご参加ください。Pull Request は dev-1.0.1 ブランチのユニットテスト付きで受け付けています。
 

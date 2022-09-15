@@ -21,7 +21,7 @@ def is_fitted(estimator) -> bool:
     try:
         check_is_fitted(estimator)
         return True
-    except:
+    except Exception:
         return False
 
 
@@ -45,7 +45,7 @@ class fit_if_not_fitted(object):
                 logger.info(f"fit_if_not_fitted: {estimator} is not fitted, fitting")
                 try:
                     self.estimator.fit(X_train, y_train, groups=groups, **fit_kwargs)
-                except:
+                except Exception:
                     self.estimator.fit(X_train, y_train, **fit_kwargs)
 
     def __enter__(self):
@@ -65,7 +65,7 @@ def supports_partial_fit(estimator, params: dict = None) -> bool:
                 params and "solver" in params and "lbfgs" in list(params["solver"])
             ) or estimator.solver == "lbfgs":
                 return False
-        except:
+        except Exception:
             return False
 
     if isinstance(estimator, Pipeline):

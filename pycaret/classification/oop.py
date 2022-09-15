@@ -10,12 +10,8 @@ import plotly.express as px
 import sklearn
 from joblib.memory import Memory
 
-import pycaret.containers.metrics.classification
-import pycaret.containers.models.classification
-import pycaret.internal.patches.sklearn
-import pycaret.internal.patches.yellowbrick
-import pycaret.internal.persistence
-import pycaret.internal.preprocess
+from pycaret.containers.metrics import get_all_class_metric_containers
+from pycaret.containers.models import get_all_class_model_containers
 from pycaret.containers.models.classification import (
     ALL_ALLOWED_ENGINES,
     get_container_default_engines,
@@ -82,20 +78,18 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
     def _get_models(self, raise_errors: bool = True) -> Tuple[dict, dict]:
         all_models = {
             k: v
-            for k, v in pycaret.containers.models.classification.get_all_model_containers(
+            for k, v in get_all_class_model_containers(
                 self, raise_errors=raise_errors
             ).items()
             if not v.is_special
         }
-        all_models_internal = (
-            pycaret.containers.models.classification.get_all_model_containers(
-                self, raise_errors=raise_errors
-            )
+        all_models_internal = get_all_class_model_containers(
+            self, raise_errors=raise_errors
         )
         return all_models, all_models_internal
 
     def _get_metrics(self, raise_errors: bool = True) -> dict:
-        return pycaret.containers.metrics.classification.get_all_metric_containers(
+        return get_all_class_metric_containers(
             self.variables, raise_errors=raise_errors
         )
 
@@ -2553,7 +2547,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
 
         self.logger.info(str(model))
         self.logger.info(
-            "calibrate_model() succesfully completed......................................"
+            "calibrate_model() successfully completed......................................"
         )
 
         gc.collect()
@@ -2684,7 +2678,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             )
             try:
                 models_by_threshold.append(model[0])
-            except:
+            except Exception:
                 models_by_threshold.append(model)
             model_results = (
                 self.pull(pop=True)
@@ -2735,12 +2729,12 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         if return_data:
             self.logger.info("also returning data as return_data = True")
             self.logger.info(
-                "optimize_threshold() succesfully completed......................................"
+                "optimize_threshold() successfully completed......................................"
             )
             return (results_concat_melted, best_model_by_metric)
         else:
             self.logger.info(
-                "optimize_threshold() succesfully completed......................................"
+                "optimize_threshold() successfully completed......................................"
             )
             return best_model_by_metric
 

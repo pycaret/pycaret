@@ -1,7 +1,7 @@
 
-## Announcing PyCaret 2.0
+# Announcing PyCaret 2.0
 
-### by Moez Ali
+# by Moez Ali
 
 ![https://www.pycaret.org](https://cdn-images-1.medium.com/max/2126/1*oT-VYfpNDeKJ1L9vkpESdw.png)
 
@@ -13,11 +13,11 @@ In comparison with the other open source machine learning libraries, PyCaret is 
 
 See detailed [release notes](https://github.com/pycaret/pycaret/releases/tag/2.0) for PyCaret 2.0.
 
-## **Why use PyCaret?**
+# **Why use PyCaret?**
 
 ![PyCaret 2.0 Features](https://cdn-images-1.medium.com/max/2066/1*wT0m1kx8WjY_P7hrM6KDbA.png)
 
-## Installing PyCaret 2.0
+# Installing PyCaret 2.0
 
 Installing PyCaret is very easy and takes only a few minutes. We strongly recommend using virtual environment to avoid potential conflict with other libraries. See the following example code to create a ***conda*** ***environment ***and install pycaret within that conda environment:
 
@@ -38,7 +38,7 @@ If you are using Azure notebooks or Google Colab, run the following code to inst
 
 All hard dependencies are automatically installed when you install PyCaret using pip. [Click here](https://github.com/pycaret/pycaret/blob/master/requirements.txt) to see the complete list of dependencies.
 
-## 👉 Getting Started with PyCaret 2.0
+# 👉 Getting Started with PyCaret 2.0
 
 The first step of any machine learning experiment in PyCaret is to set up an environment by importing the relevant module and initialize the **setup function **by passing dataframe and name of the target variable. See example code:
 
@@ -52,7 +52,7 @@ All the preprocessing transformations are applied within **setup function. **PyC
 
 ![https://www.pycaret.org/preprocessing](https://cdn-images-1.medium.com/max/2000/1*EcfstE4cOIhazduR4iUX0w.png)
 
-## 👉 **Compare Models**
+# 👉 **Compare Models**
 
 This is the first step we recommend in any supervised machine learning task. This function trains all the models in the model library using default hyperparameters and evaluates performance metrics using cross validation. It returns the trained model object class. The evaluation metrics used are:
 
@@ -68,7 +68,7 @@ Here are few ways you can use **compare_models** function:
 
 ![Sample output from compare_models function](https://cdn-images-1.medium.com/max/2000/1*gUjKx0cQbpaWl226CzAdyw.png)
 
-## 👉 **Create Model**
+# 👉 **Create Model**
 
 Create Model function trains a model using default hyperparameters and evaluates performance metrics using cross validation. This function is base to almost all other functions in PyCaret. It returns the trained model object class. Here are few ways you can use this function:
 
@@ -80,7 +80,7 @@ Create Model function trains a model using default hyperparameters and evaluates
 
 To learn more about **create model** function, [click here](https://www.pycaret.org/create-model).
 
-## 👉 Tune Model
+# 👉 Tune Model
 
 Tune Model function tunes the hyperparameter of the model passed as an estimator. It uses Random grid search with pre-defined tuning grids that are fully customizable. Here are few ways you can use this function:
 
@@ -88,7 +88,7 @@ Tune Model function tunes the hyperparameter of the model passed as an estimator
 
 To learn more about **tune model** function, [click here](https://www.pycaret.org/tune-model).
 
-## 👉 Ensemble Model
+# 👉 Ensemble Model
 
 There are few functions available to ensemble base learners. **ensemble_model**, **blend_models **and **stack_models **are three of them. Here are few ways you can use this function:
 
@@ -96,13 +96,13 @@ There are few functions available to ensemble base learners. **ensemble_model**,
 
 To learn more about ensemble models in PyCaret, [click here](https://www.pycaret.org/ensemble-model).
 
-## 👉 Predict Model
+# 👉 Predict Model
 
 As the name suggests, this function is used for inference / prediction. Here is how you can use it:
 
  <iframe src="https://medium.com/media/57c73e65c64b95d8decf64566a5d9d5d" frameborder=0></iframe>
 
-## 👉 Plot Model
+# 👉 Plot Model
 
 Plot Model function is used to evaluate performance of the trained machine learning model. Here is an example:
 
@@ -116,7 +116,7 @@ Alternatively, you can use **evaluate_model **function to see plots *via *the us
 
 ![evaluate_model function in PyCaret](https://cdn-images-1.medium.com/max/2560/1*AGsJlbX6bhCOG2r_uhvkKg.gif)
 
-## 👉 Util functions
+# 👉 Util functions
 
 PyCaret 2.0 includes several new util functions that comes handy when managing your machine learning experiments with PyCaret. Some of them are shown below:
 
@@ -124,7 +124,7 @@ PyCaret 2.0 includes several new util functions that comes handy when managing y
 
 To see all new functions implemented in PyCaret 2.0, See [release notes](https://github.com/pycaret/pycaret/releases/tag/2.0).
 
-## 👉 Experiment Logging
+# 👉 Experiment Logging
 
 PyCaret 2.0 embeds MLflow tracking component as a backend API and UI for logging parameters, code versions, metrics, and output files when running your machine learning code and for later visualizing the results. Here is how you can log your experiment in PyCaret.
 
@@ -134,7 +134,7 @@ PyCaret 2.0 embeds MLflow tracking component as a backend API and UI for logging
 
 ![https://localhost:5000](https://cdn-images-1.medium.com/max/3788/1*Z_08utFByIK_9nsps3rctA.png)
 
-## 👉 Putting it all together — Create your own AutoML software
+# 👉 Putting it all together — Create your own AutoML software
 
 Using all the functions, let’s create a simple command line software that will train multiple models with default parameters, tune hyperparameters of top candidate models, try different ensembling techniques and returns / saves the best model. Here is the command line script:
 
@@ -146,7 +146,7 @@ There is no limit to what you can achieve using the light weight workflow automa
 
 To hear more about PyCaret follow us on [LinkedIn](https://www.linkedin.com/company/pycaret/) and [Youtube](https://www.youtube.com/channel/UCxA1YTYJ9BEeo50lxyI_B3g).
 
-## Important Links
+# Important Links
 
 [Release Notes for PyCaret 2.0](https://github.com/pycaret/pycaret/releases/tag/2.0)
 [User Guide / Documentation](https://www.pycaret.org/guide)[
@@ -155,7 +155,7 @@ To hear more about PyCaret follow us on [LinkedIn](https://www.linkedin.com/comp
 [Notebook Tutorials](https://www.pycaret.org/tutorial)
 [Contribute in PyCaret](https://www.pycaret.org/contribute)
 
-## Want to learn about a specific module?
+# Want to learn about a specific module?
 
 Click on the links below to see the documentation and working examples.
 

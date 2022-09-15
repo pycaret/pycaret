@@ -1,8 +1,3 @@
-import os
-import sys
-
-sys.path.insert(0, os.path.abspath(".."))
-
 import pandas as pd
 
 import pycaret.datasets
@@ -15,7 +10,7 @@ def test_plot():
     assert isinstance(data, pd.DataFrame)
 
     # init setup
-    reg1 = pycaret.regression.setup(
+    pycaret.regression.setup(
         data,
         target="medv",
         log_experiment=True,

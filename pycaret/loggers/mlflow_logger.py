@@ -27,10 +27,10 @@ class MlflowLogger(BaseLogger):
         USI = None
         try:
             USI = pycaret.internal.tabular.USI
-        except:
+        except Exception:
             try:
                 USI = pycaret.nlp.USI
-            except:
+            except Exception:
                 pass
         full_name = full_name or f"Session Initialized {USI}"
         mlflow.set_experiment(exp_name_log)
@@ -56,7 +56,7 @@ class MlflowLogger(BaseLogger):
         if not USI:
             try:
                 USI = pycaret.nlp.USI
-            except:
+            except Exception:
                 pass
 
         # Get active run to log as tag
@@ -103,7 +103,7 @@ class MlflowLogger(BaseLogger):
         #     signature = infer_signature(
         #         data_before_preprocess.drop([target_param], axis=1)
         #     )
-        # except:
+        # except Exception:
         #     logger.warning("Couldn't infer MLFlow signature.")
         #     signature = None
         # if not _is_unsupervised(_ml_usecase):

@@ -4,16 +4,16 @@ import os
 import time
 import traceback
 import warnings
-from copy import copy
+from copy import copy, deepcopy
 from functools import partial
 from typing import Any, Dict, List, Optional, Set, Tuple, Union
 from unittest.mock import patch
 
+import matplotlib.pyplot as plt
 import numpy as np  # type: ignore
 import pandas as pd  # type ignore
 import pandas.io.formats.style
 from sklearn.base import clone  # type: ignore
-from sklearn.compose import TransformedTargetRegressor  # type: ignore
 from sklearn.pipeline import Pipeline as skPipeline
 from sklearn.utils.validation import check_is_fitted as check_fitted
 
@@ -21,6 +21,10 @@ import pycaret.internal.patches.sklearn
 import pycaret.internal.patches.yellowbrick
 import pycaret.internal.persistence
 import pycaret.internal.preprocess
+from pycaret.containers.metrics import (
+    get_all_class_metric_containers,
+    get_all_reg_metric_containers,
+)
 from pycaret.internal.display import CommonDisplay, DummyDisplay
 from pycaret.internal.distributions import (
     CategoricalDistribution,
@@ -63,7 +67,7 @@ from pycaret.utils.generic import (
 
 try:
     from collections.abc import Iterable
-except:
+except Exception:
     from collections import Iterable
 
 LOGGER = get_logger()
@@ -116,15 +120,9 @@ class _SupervisedExperiment(_TabularExperiment):
             except Exception:
                 ml_usecase = get_ml_task(y_test)
                 if ml_usecase == MLUsecase.CLASSIFICATION:
-                    metrics = pycaret.containers.metrics.classification.get_all_metric_containers(
-                        self.variables, True
-                    )
+                    metrics = get_all_class_metric_containers(self.variables, True)
                 elif ml_usecase == MLUsecase.REGRESSION:
-                    metrics = (
-                        pycaret.containers.metrics.regression.get_all_metric_containers(
-                            self.variables, True
-                        )
-                    )
+                    metrics = get_all_reg_metric_containers(self.variables, True)
                 return calculate_metrics(
                     metrics=metrics,  # type: ignore
                     y_test=y_test,
@@ -159,7 +157,7 @@ class _SupervisedExperiment(_TabularExperiment):
             The final model in the pipeline.
 
         """
-        model = pipeline_final._final_estimator
+        model = pipeline._final_estimator
         if check_is_fitted:
             check_fitted(model)
 
@@ -672,8 +670,6 @@ class _SupervisedExperiment(_TabularExperiment):
 
         input_ml_usecase = self._ml_usecase
         target_ml_usecase = MLUsecase.TIME_SERIES
-
-        greater_is_worse_columns = self._get_greater_is_worse_columns()
 
         np.random.seed(self.seed)
 
@@ -2432,7 +2428,7 @@ class _SupervisedExperiment(_TabularExperiment):
 
                 try:
                     param_grid = get_optuna_distributions(param_grid)
-                except:
+                except Exception:
                     self.logger.warning(
                         "Couldn't convert param_grid to specific library distributions. Exception:"
                     )
@@ -2531,7 +2527,7 @@ class _SupervisedExperiment(_TabularExperiment):
                         if search_algorithm == "hyperopt":
                             try:
                                 param_grid = get_hyperopt_distributions(param_grid)
-                            except:
+                            except Exception:
                                 self.logger.warning(
                                     "Couldn't convert param_grid to specific library distributions. Exception:"
                                 )
@@ -2539,7 +2535,7 @@ class _SupervisedExperiment(_TabularExperiment):
                         elif search_algorithm == "bayesian":
                             try:
                                 param_grid = get_skopt_distributions(param_grid)
-                            except:
+                            except Exception:
                                 self.logger.warning(
                                     "Couldn't convert param_grid to specific library distributions. Exception:"
                                 )
@@ -2547,7 +2543,7 @@ class _SupervisedExperiment(_TabularExperiment):
                         elif search_algorithm == "bohb":
                             try:
                                 param_grid = get_CS_distributions(param_grid)
-                            except:
+                            except Exception:
                                 self.logger.warning(
                                     "Couldn't convert param_grid to specific library distributions. Exception:"
                                 )
@@ -2555,7 +2551,7 @@ class _SupervisedExperiment(_TabularExperiment):
                         elif search_algorithm != "random":
                             try:
                                 param_grid = get_tune_distributions(param_grid)
-                            except:
+                            except Exception:
                                 self.logger.warning(
                                     "Couldn't convert param_grid to specific library distributions. Exception:"
                                 )
@@ -2565,7 +2561,7 @@ class _SupervisedExperiment(_TabularExperiment):
                         )
                         if (
                             search_algorithm == "optuna"
-                            and not "sampler" in search_kwargs
+                            and "sampler" not in search_kwargs
                         ):
                             import optuna
 
@@ -2589,11 +2585,9 @@ class _SupervisedExperiment(_TabularExperiment):
                         )
 
             elif search_library == "scikit-optimize":
-                import skopt
-
                 try:
                     param_grid = get_skopt_distributions(param_grid)
-                except:
+                except Exception:
                     self.logger.warning(
                         "Couldn't convert param_grid to specific library distributions. Exception:"
                     )
@@ -2618,7 +2612,7 @@ class _SupervisedExperiment(_TabularExperiment):
 
                 try:
                     param_grid = get_base_distributions(param_grid)
-                except:
+                except Exception:
                     self.logger.warning(
                         "Couldn't convert param_grid to specific library distributions. Exception:"
                     )
@@ -2675,7 +2669,7 @@ class _SupervisedExperiment(_TabularExperiment):
             cv_results = None
             try:
                 cv_results = model_grid.cv_results_
-            except:
+            except Exception:
                 self.logger.warning(
                     "Couldn't get cv_results from model_grid. Exception:"
                 )
@@ -2924,7 +2918,7 @@ class _SupervisedExperiment(_TabularExperiment):
                 )
                 with redirect_output(self.logger):
                     check_model.fit(self.X_train_transformed, self.y_train_transformed)
-            except:
+            except Exception:
                 raise TypeError(
                     "Estimator not supported for the Boosting method. Change the estimator or method to 'Bagging'."
                 )
@@ -2955,14 +2949,14 @@ class _SupervisedExperiment(_TabularExperiment):
         optimize = self._get_metric_by_name_or_id(optimize)
         if optimize is None:
             raise ValueError(
-                f"Optimize method not supported. See docstring for list of available parameters."
+                "Optimize method not supported. See docstring for list of available parameters."
             )
 
         # checking optimize parameter for multiclass
         if self._is_multiclass:
             if not optimize.is_multiclass:
                 raise TypeError(
-                    f"Optimization metric not supported for multiclass problems. See docstring for list of other optimization parameters."
+                    "Optimization metric not supported for multiclass problems. See docstring for list of other optimization parameters."
                 )
 
         # checking return_train_score parameter
@@ -3140,7 +3134,7 @@ class _SupervisedExperiment(_TabularExperiment):
 
         self.logger.info(str(model))
         self.logger.info(
-            "ensemble_model() succesfully completed......................................"
+            "ensemble_model() successfully completed......................................"
         )
 
         gc.collect()
@@ -3341,14 +3335,14 @@ class _SupervisedExperiment(_TabularExperiment):
         optimize = self._get_metric_by_name_or_id(optimize)
         if optimize is None:
             raise ValueError(
-                f"Optimize method not supported. See docstring for list of available parameters."
+                "Optimize method not supported. See docstring for list of available parameters."
             )
 
         # checking optimize parameter for multiclass
         if self._is_multiclass:
             if not optimize.is_multiclass:
                 raise TypeError(
-                    f"Optimization metric not supported for multiclass problems. See docstring for list of other optimization parameters."
+                    "Optimization metric not supported for multiclass problems. See docstring for list of other optimization parameters."
                 )
 
         # checking return_train_score parameter
@@ -3527,7 +3521,7 @@ class _SupervisedExperiment(_TabularExperiment):
 
         self.logger.info(str(model))
         self.logger.info(
-            "blend_models() succesfully completed......................................"
+            "blend_models() successfully completed......................................"
         )
 
         gc.collect()
@@ -3721,14 +3715,14 @@ class _SupervisedExperiment(_TabularExperiment):
         optimize = self._get_metric_by_name_or_id(optimize)
         if optimize is None:
             raise ValueError(
-                f"Optimize method not supported. See docstring for list of available parameters."
+                "Optimize method not supported. See docstring for list of available parameters."
             )
 
         # checking optimize parameter for multiclass
         if self._is_multiclass:
             if not optimize.is_multiclass:
                 raise TypeError(
-                    f"Optimization metric not supported for multiclass problems. See docstring for list of other optimization parameters."
+                    "Optimization metric not supported for multiclass problems. See docstring for list of other optimization parameters."
                 )
 
         # checking return_train_score parameter
@@ -3748,7 +3742,7 @@ class _SupervisedExperiment(_TabularExperiment):
         groups = self._get_groups(groups)
 
         self.logger.info("Defining meta model")
-        if meta_model == None:
+        if meta_model is None:
             estimator = "lr"
             meta_model_definition = self._all_models_internal[estimator]
             meta_model_args = meta_model_definition.args
@@ -3907,7 +3901,7 @@ class _SupervisedExperiment(_TabularExperiment):
 
         self.logger.info(str(model))
         self.logger.info(
-            "stack_models() succesfully completed......................................"
+            "stack_models() successfully completed......................................"
         )
 
         gc.collect()
@@ -4026,12 +4020,10 @@ class _SupervisedExperiment(_TabularExperiment):
         # checking if pdpbox is available
         if plot == "pdp":
             _check_soft_dependencies("interpret", extra="analysis", severity="error")
-            from interpret.blackbox import PartialDependence
 
         # checking interpret is available
         if plot == "msa":
             _check_soft_dependencies("interpret", extra="analysis", severity="error")
-            from interpret.blackbox import MorrisSensitivity
 
         # checking interpret-community is available
         if plot == "pfi":
@@ -4041,9 +4033,6 @@ class _SupervisedExperiment(_TabularExperiment):
                 severity="error",
                 install_name="interpret-community",
             )
-            from interpret.ext.blackbox import PFIExplainer
-
-        import matplotlib.pyplot as plt
 
         # get estimator from meta estimator
         estimator = get_estimator_from_meta_estimator(estimator)
@@ -4132,7 +4121,7 @@ class _SupervisedExperiment(_TabularExperiment):
 
         def correlation(show: bool = True):
 
-            if feature == None:
+            if feature is None:
 
                 self.logger.warning(
                     f"No feature passed. Default value of feature used for correlation plot: {test_X.columns[0]}"
@@ -4260,10 +4249,10 @@ class _SupervisedExperiment(_TabularExperiment):
                 shap.save_html(plot_filename, shap_plot)
             return shap_plot
 
-        def pdp(show: bool = True):
+        def pdp():
 
             self.logger.info("Checking feature parameter passed")
-            if feature == None:
+            if feature is None:
 
                 self.logger.warning(
                     f"No feature passed. Default value of feature used for pdp : {test_X.columns[0]}"
@@ -4300,7 +4289,7 @@ class _SupervisedExperiment(_TabularExperiment):
                 pio.write_html(pdp_plot, plot_filename)
             return pdp_plot
 
-        def msa(show: bool = True):
+        def msa():
             from interpret.blackbox import MorrisSensitivity
 
             try:
@@ -4323,7 +4312,7 @@ class _SupervisedExperiment(_TabularExperiment):
                 pio.write_html(msa_plot, plot_filename)
             return msa_plot
 
-        def pfi(show: bool = True):
+        def pfi():
             from interpret.ext.blackbox import PFIExplainer
 
             pfi = PFIExplainer(model)
@@ -4344,7 +4333,7 @@ class _SupervisedExperiment(_TabularExperiment):
         self.logger.info("Visual Rendered Successfully")
 
         self.logger.info(
-            "interpret_model() succesfully completed......................................"
+            "interpret_model() successfully completed......................................"
         )
 
         gc.collect()
@@ -4612,7 +4601,7 @@ class _SupervisedExperiment(_TabularExperiment):
         try:
             self._all_metrics.pop(name_or_id)
             return
-        except:
+        except Exception:
             pass
 
         try:
@@ -4621,7 +4610,7 @@ class _SupervisedExperiment(_TabularExperiment):
             )
             self._all_metrics.pop(k_to_remove)
             return
-        except:
+        except Exception:
             pass
 
         raise ValueError(
@@ -4899,7 +4888,7 @@ class _SupervisedExperiment(_TabularExperiment):
                 verbose=verbose,
                 html_param=self.html_param,
             )
-        except:
+        except Exception:
             display = CommonDisplay(
                 verbose=False,
                 html_param=False,
@@ -4974,7 +4963,7 @@ class _SupervisedExperiment(_TabularExperiment):
 
             drift_data = data if data is not None else self.test
 
-            if not y_name in drift_data.columns:
+            if y_name not in drift_data.columns:
                 raise ValueError(
                     f"The dataset must contain a label column {y_name} "
                     "in order to create a drift report."
@@ -5003,14 +4992,14 @@ class _SupervisedExperiment(_TabularExperiment):
             else:
                 pred_prob = score
 
-        except:
+        except Exception:
             score = None
             pred_prob = None
 
         if probability_threshold is not None and pred_prob is not None:
             try:
                 pred = (pred_prob >= probability_threshold).astype(int)
-            except:
+            except Exception:
                 pass
 
         if pred_prob is None:
@@ -5030,7 +5019,7 @@ class _SupervisedExperiment(_TabularExperiment):
         if ml_usecase == MLUsecase.CLASSIFICATION:
             try:
                 label[LABEL_COLUMN] = label[LABEL_COLUMN].astype(int)
-            except:
+            except Exception:
                 pass
 
         if not encoded_labels:
@@ -5065,7 +5054,7 @@ class _SupervisedExperiment(_TabularExperiment):
                 score = pd.DataFrame(
                     data=score,
                     index=X_test_.index,
-                    columns=[f"{SCORE_COLUMN}_{l}" for l in columns],
+                    columns=[f"{SCORE_COLUMN}_{col}" for col in columns],
                 )
 
             score = score.round(round)
@@ -5300,14 +5289,14 @@ class _SupervisedExperiment(_TabularExperiment):
         optimize = self._get_metric_by_name_or_id(optimize)
         if optimize is None:
             raise ValueError(
-                f"Optimize method not supported. See docstring for list of available parameters."
+                "Optimize method not supported. See docstring for list of available parameters."
             )
 
         # checking optimize parameter for multiclass
         if self._is_multiclass:
             if not optimize.is_multiclass:
                 raise TypeError(
-                    f"Optimization metric not supported for multiclass problems. See docstring for list of other optimization parameters."
+                    "Optimization metric not supported for multiclass problems. See docstring for list of other optimization parameters."
                 )
 
         # checking return_train_score parameter
@@ -5338,7 +5327,7 @@ class _SupervisedExperiment(_TabularExperiment):
                 model = i["model"]
                 try:
                     self.predict_model(model, verbose=False)  # type: ignore
-                except:
+                except Exception:
                     self.logger.warning(
                         f"Model {model} is not fitted, running create_model"
                     )

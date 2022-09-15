@@ -16,7 +16,7 @@ from pycaret.datasets import get_data
 from pycaret.time_series import TSForecastingExperiment
 
 ##############################
-#### Functions Start Here ####
+# Functions Start Here ####
 ##############################
 
 # NOTE: Fixtures can not be used to parameterize tests
@@ -29,12 +29,12 @@ _setup_args_raises = _return_setup_args_raises()
 
 
 ############################
-#### Functions End Here ####
+# Functions End Here ####
 ############################
 
 
 ##########################
-#### Tests Start Here ####
+# Tests Start Here ####
 ##########################
 
 
@@ -304,10 +304,10 @@ def test_train_test_split_uni_no_exo(load_pos_and_neg_data):
     data = load_pos_and_neg_data
 
     ####################################
-    #### Continuous fh without Gaps ####
+    # Continuous fh without Gaps ####
     ####################################
 
-    #### Integer fh ----
+    # Integer fh ----
     exp = TSForecastingExperiment()
     fh = 12
     exp.setup(data=data, fh=fh, session_id=42)
@@ -330,7 +330,7 @@ def test_train_test_split_uni_no_exo(load_pos_and_neg_data):
     assert np.all(exp.y_train_transformed.index == data.iloc[: (len(data) - fh)].index)
     assert np.all(exp.y_test_transformed.index == data.iloc[-fh:].index)
 
-    #### Numpy fh ----
+    # Numpy fh ----
     exp = TSForecastingExperiment()
     fh = np.arange(1, 10)  # 9 values
     exp.setup(data=data, fh=fh, session_id=42)
@@ -357,7 +357,7 @@ def test_train_test_split_uni_no_exo(load_pos_and_neg_data):
     )
     assert np.all(exp.y_test_transformed.index == data.iloc[-len(fh) :].index)
 
-    #### List fh ----
+    # List fh ----
     exp = TSForecastingExperiment()
     fh = [1, 2, 3, 4, 5, 6]
     exp.setup(data=data, fh=fh, session_id=42)
@@ -385,10 +385,10 @@ def test_train_test_split_uni_no_exo(load_pos_and_neg_data):
     assert np.all(exp.y_test_transformed.index == data.iloc[-len(fh) :].index)
 
     #################################
-    #### Continuous fh with Gaps ####
+    # Continuous fh with Gaps ####
     #################################
 
-    #### Numpy fh ----
+    # Numpy fh ----
     exp = TSForecastingExperiment()
     fh = np.arange(7, 13)  # 6 values
     exp.setup(data=data, fh=fh, session_id=42)
@@ -415,7 +415,7 @@ def test_train_test_split_uni_no_exo(load_pos_and_neg_data):
     )
     assert len(exp.y_test_transformed) == len(fh)
 
-    #### List fh ----
+    # List fh ----
     exp = TSForecastingExperiment()
     fh = [4, 5, 6]
     exp.setup(data=data, fh=fh, session_id=42)
@@ -443,10 +443,10 @@ def test_train_test_split_uni_no_exo(load_pos_and_neg_data):
     assert len(exp.y_test_transformed) == len(fh)
 
     ####################################
-    #### Discontinuous fh with Gaps ####
+    # Discontinuous fh with Gaps ####
     ####################################
 
-    #### Numpy fh ----
+    # Numpy fh ----
     exp = TSForecastingExperiment()
     fh = np.array([4, 5, 6, 10, 11, 12])  # 6 values
     exp.setup(data=data, fh=fh, session_id=42)
@@ -473,7 +473,7 @@ def test_train_test_split_uni_no_exo(load_pos_and_neg_data):
     )
     assert len(exp.y_test_transformed) == len(fh)
 
-    #### List fh ----
+    # List fh ----
     exp = TSForecastingExperiment()
     fh = [4, 5, 6, 10, 11, 12]
     exp.setup(data=data, fh=fh, session_id=42)
@@ -506,10 +506,10 @@ def test_train_test_split_uni_exo(load_uni_exo_data_target):
     data, target = load_uni_exo_data_target
 
     ####################################
-    #### Continuous fh without Gaps ####
+    # Continuous fh without Gaps ####
     ####################################
 
-    #### Integer fh ----
+    # Integer fh ----
     exp = TSForecastingExperiment()
     fh = 12
     exp.setup(data=data, target=target, fh=fh, seasonal_period=4, session_id=42)
@@ -532,7 +532,7 @@ def test_train_test_split_uni_exo(load_uni_exo_data_target):
     assert np.all(exp.y_train_transformed.index == data.iloc[: (len(data) - fh)].index)
     assert np.all(exp.y_test_transformed.index == data.iloc[-fh:].index)
 
-    #### Numpy fh ----
+    # Numpy fh ----
     exp = TSForecastingExperiment()
     fh = np.arange(1, 10)  # 9 values
     exp.setup(data=data, target=target, fh=fh, seasonal_period=4, session_id=42)
@@ -561,7 +561,7 @@ def test_train_test_split_uni_exo(load_uni_exo_data_target):
     )
     assert np.all(exp.y_test_transformed.index == data.iloc[-len(fh) :].index)
 
-    #### List fh ----
+    # List fh ----
     exp = TSForecastingExperiment()
     fh = [1, 2, 3, 4, 5, 6]
     exp.setup(data=data, target=target, fh=fh, seasonal_period=4, session_id=42)
@@ -591,10 +591,10 @@ def test_train_test_split_uni_exo(load_uni_exo_data_target):
     assert np.all(exp.y_test_transformed.index == data.iloc[-len(fh) :].index)
 
     #################################
-    #### Continuous fh with Gaps ####
+    # Continuous fh with Gaps ####
     #################################
 
-    #### Numpy fh ----
+    # Numpy fh ----
     exp = TSForecastingExperiment()
     fh = np.arange(7, 13)  # 6 values
     exp.setup(data=data, target=target, fh=fh, seasonal_period=4, session_id=42)
@@ -617,7 +617,7 @@ def test_train_test_split_uni_exo(load_uni_exo_data_target):
     assert np.all(exp.X_transformed.index == data.index)
     assert np.all(exp.y_transformed.index == data.index)
 
-    #### List fh ----
+    # List fh ----
     exp = TSForecastingExperiment()
     fh = [4, 5, 6]
     exp.setup(data=data, target=target, fh=fh, seasonal_period=4, session_id=42)
@@ -641,10 +641,10 @@ def test_train_test_split_uni_exo(load_uni_exo_data_target):
     assert np.all(exp.y_transformed.index == data.index)
 
     ####################################
-    #### Discontinuous fh with Gaps ####
+    # Discontinuous fh with Gaps ####
     ####################################
 
-    #### Numpy fh ----
+    # Numpy fh ----
     exp = TSForecastingExperiment()
     fh = np.array([4, 5, 6, 10, 11, 12])  # 6 values
     exp.setup(data=data, target=target, fh=fh, seasonal_period=4, session_id=42)
@@ -676,7 +676,7 @@ def test_train_test_split_uni_exo(load_uni_exo_data_target):
     )
     assert len(exp.y_test_transformed) == len(fh)
 
-    #### List fh ----
+    # List fh ----
     exp = TSForecastingExperiment()
     fh = [4, 5, 6, 10, 11, 12]
     exp.setup(data=data, target=target, fh=fh, seasonal_period=4, session_id=42)

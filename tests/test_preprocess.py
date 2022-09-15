@@ -266,7 +266,7 @@ def test_transformation(transformation_method):
 
 
 @pytest.mark.parametrize("normalize_method", ["zscore", "minmax", "maxabs", "robust"])
-def test_transformation(normalize_method):
+def test_normalize(normalize_method):
     """Assert that features can be normalized."""
     data = pycaret.datasets.get_data("juice")
     pc = pycaret.classification.setup(

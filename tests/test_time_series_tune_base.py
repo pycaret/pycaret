@@ -10,7 +10,7 @@ from time_series_test_utils import _ALL_METRICS
 from pycaret.time_series import TSForecastingExperiment
 
 ##########################
-#### Tests Start Here ####
+# Tests Start Here ####
 ##########################
 
 
@@ -72,7 +72,7 @@ def test_tune_model_custom_folds(load_pos_and_neg_data):
     )
 
     #######################################
-    ## Test Tune Model with custom folds ##
+    # Test Tune Model with custom folds ##
     #######################################
     model = exp.create_model("naive")
     _ = exp.tune_model(model)
@@ -132,5 +132,5 @@ def test_tune_model_raises(load_pos_and_neg_data):
 
     assert (
         exceptionmsg
-        == f"`search_algorithm` must be one of 'None, random, grid'. You passed '{search_algorithm}'."
+        == "`search_algorithm` must be one of 'None, random, grid'. You passed '{search_algorithm}'."
     )
