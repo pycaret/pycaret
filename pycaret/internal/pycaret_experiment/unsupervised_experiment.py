@@ -15,11 +15,11 @@ from sklearn.preprocessing import LabelEncoder
 
 from pycaret.containers.metrics import (
     get_all_class_metric_containers,
+    get_all_clust_metric_containers,
     get_all_reg_metric_containers,
 )
 from pycaret.containers.models import (
     get_all_class_model_containers,
-    get_all_clust_model_containers,
     get_all_reg_model_containers,
 )
 from pycaret.internal.display import CommonDisplay
@@ -57,7 +57,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
             )
         except Exception:
             if ml_usecase == MLUsecase.CLUSTERING:
-                metrics = get_all_clust__metric_containers(self.variables, True)
+                metrics = get_all_clust_metric_containers(self.variables, True)
             return calculate_unsupervised_metrics(
                 metrics=metrics,  # type: ignore
                 X=X,
