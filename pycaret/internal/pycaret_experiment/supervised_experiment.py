@@ -4249,7 +4249,7 @@ class _SupervisedExperiment(_TabularExperiment):
                 shap.save_html(plot_filename, shap_plot)
             return shap_plot
 
-        def pdp():
+        def pdp(show: bool = True):
 
             self.logger.info("Checking feature parameter passed")
             if feature is None:
@@ -4289,7 +4289,7 @@ class _SupervisedExperiment(_TabularExperiment):
                 pio.write_html(pdp_plot, plot_filename)
             return pdp_plot
 
-        def msa():
+        def msa(show: bool = True):
             from interpret.blackbox import MorrisSensitivity
 
             try:
@@ -4312,7 +4312,7 @@ class _SupervisedExperiment(_TabularExperiment):
                 pio.write_html(msa_plot, plot_filename)
             return msa_plot
 
-        def pfi():
+        def pfi(show: bool = True):
             from interpret.ext.blackbox import PFIExplainer
 
             pfi = PFIExplainer(model)
