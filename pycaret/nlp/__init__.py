@@ -1501,32 +1501,7 @@ def assign_model(model, verbose=True):
         pandas.DataFrame
 
     """
-
-    # exception checking
-    import logging
-    import sys
-
-    try:
-        hasattr(get_logger(), "name")
-    except Exception:
-        logger = logging.getLogger("logs")
-        logger.setLevel(logging.DEBUG)
-
-        # create console handler and set level to debug
-        if logger.hasHandlers():
-            logger.handlers.clear()
-
-        ch = logging.FileHandler("logs.log")
-        ch.setLevel(logging.DEBUG)
-
-        # create formatter
-        formatter = logging.Formatter("%(asctime)s:%(levelname)s:%(message)s")
-
-        # add formatter to ch
-        ch.setFormatter(formatter)
-
-        # add ch to logger
-        logger.addHandler(ch)
+    logger = get_logger()
 
     logger.info("Initializing assign_model()")
     logger.info(
@@ -1905,27 +1880,7 @@ def plot_model(
 
 
     """
-    try:
-        hasattr(get_logger(), "name")
-    except Exception:
-        logger = logging.getLogger("logs")
-        logger.setLevel(logging.DEBUG)
-
-        # create console handler and set level to debug
-        if logger.hasHandlers():
-            logger.handlers.clear()
-
-        ch = logging.FileHandler("logs.log")
-        ch.setLevel(logging.DEBUG)
-
-        # create formatter
-        formatter = logging.Formatter("%(asctime)s:%(levelname)s:%(message)s")
-
-        # add formatter to ch
-        ch.setFormatter(formatter)
-
-        # add ch to logger
-        logger.addHandler(ch)
+    logger = get_logger()
 
     logger.info("Initializing plot_model()")
     logger.info(
