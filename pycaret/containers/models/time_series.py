@@ -1313,7 +1313,7 @@ class CdsDtContainer(TimeSeriesContainer):
     model_type = None
 
     def __init__(self, experiment) -> None:
-        self.get_logger()
+        get_logger()
         self.seed = experiment.seed
         np.random.seed(self.seed)
 
