@@ -96,11 +96,6 @@ class Pipeline(imblearn.pipeline.Pipeline):
         self._fit_vars = set()
         self._feature_names_in = None
 
-        # Set up cache memory objects
-        memory = check_memory(self.memory)
-        self._memory_fit = memory.cache(_fit_transform_one)
-        self._memory_transform = memory.cache(_transform_one)
-
     def __getattr__(self, name: str):
         # override getattr to allow grabbing of final estimator attrs
         return getattr(self._final_estimator, name)
@@ -142,6 +137,17 @@ class Pipeline(imblearn.pipeline.Pipeline):
     @property
     def feature_names_in_(self):
         return self._feature_names_in
+
+    @property
+    def memory(self):
+        return self._memory
+
+    @memory.setter
+    def memory(self, value):
+        """Set up cache memory objects."""
+        self._memory = check_memory(value)
+        self._memory_fit = self._memory.cache(_fit_transform_one)
+        self._memory_transform = self._memory.cache(_transform_one)
 
     def _iter(self, with_final=True, filter_passthrough=True, filter_train_only=True):
         """Generate (idx, name, trans) tuples from self.steps.
