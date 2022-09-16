@@ -322,7 +322,9 @@ def test_add_model_to_pipeline_noexo(load_pos_and_neg_data):
     tgt_fcst_new = pipeline.steps_[-1][1]
     # Check except last step which has been checked above (Dummy vs Naive)
     for i in np.arange(len(tgt_fcst_org.steps_) - 1):
-        assert tgt_fcst_org.steps_[i][1].__class__ is tgt_fcst_new.steps_[i][1].__class__
+        assert (
+            tgt_fcst_org.steps_[i][1].__class__ is tgt_fcst_new.steps_[i][1].__class__
+        )
 
     ###############################
     # 2: Not Empty Pipeline ####
@@ -344,7 +346,9 @@ def test_add_model_to_pipeline_noexo(load_pos_and_neg_data):
     tgt_fcst_new = pipeline.steps_[-1][1]
     # Check except last step which has been checked above (Dummy vs Naive)
     for i in np.arange(len(tgt_fcst_org.steps_) - 1):
-        assert tgt_fcst_org.steps_[i][1].__class__ is tgt_fcst_new.steps_[i][1].__class__
+        assert (
+            tgt_fcst_org.steps_[i][1].__class__ is tgt_fcst_new.steps_[i][1].__class__
+        )
 
 
 def test_add_model_to_pipeline_exo(load_uni_exo_data_target):
