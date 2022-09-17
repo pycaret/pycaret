@@ -1,10 +1,4 @@
-import os
-import sys
-
-sys.path.insert(0, os.path.abspath(".."))
-
 import daal4py
-import pandas as pd
 import sklearn
 
 import pycaret.classification
@@ -30,7 +24,7 @@ def test_engines_setup_global_args():
         engine={"lr": "sklearnex"},
     )
 
-    #### Default Model Engine ----
+    # Default Model Engine ----
     assert exp.get_engine("lr") == "sklearnex"
     model = exp.create_model("lr")
     assert isinstance(
@@ -59,7 +53,7 @@ def test_engines_global_methods():
 
     assert exp.get_engine("lr") == "sklearnex"
 
-    #### Globally reset engine ----
+    # Globally reset engine ----
     exp._set_engine("lr", "sklearn")
     assert exp.get_engine("lr") == "sklearn"
     model = exp.create_model("lr")
@@ -84,12 +78,12 @@ def test_create_model_engines_local_args():
         n_jobs=1,
     )
 
-    #### Default Model Engine ----
+    # Default Model Engine ----
     assert exp.get_engine("lr") == "sklearn"
     model = exp.create_model("lr")
     assert isinstance(model, sklearn.linear_model._logistic.LogisticRegression)
 
-    #### Override model engine locally ----
+    # Override model engine locally ----
     model = exp.create_model("lr", engine="sklearnex")
     assert isinstance(
         model, daal4py.sklearn.linear_model.logistic_path.LogisticRegression
@@ -116,7 +110,7 @@ def test_compare_models_engines_local_args():
         n_jobs=1,
     )
 
-    #### Default Model Engine ----
+    # Default Model Engine ----
     assert exp.get_engine("lr") == "sklearn"
     model = exp.compare_models(include=["lr"])
 
@@ -124,7 +118,7 @@ def test_compare_models_engines_local_args():
     # Original engine should remain the same
     assert exp.get_engine("lr") == "sklearn"
 
-    #### Override model engine locally ----
+    # Override model engine locally ----
     model = exp.compare_models(include=["lr"], engine={"lr": "sklearnex"})
     assert isinstance(
         model, daal4py.sklearn.linear_model.logistic_path.LogisticRegression
@@ -157,12 +151,12 @@ def test_all_sklearnex_models():
     for algo in ALGORITHMS_LIST:
         model = exp.create_model(algo)
         parent_library = model.__module__
-        assert parent_library.startswith("sklearn") == True
+        assert parent_library.startswith("sklearn")
 
     for algo in ALGORITHMS_LIST:
         model = exp.create_model(algo, engine="sklearnex")
         parent_library = model.__module__
         if algo == "rbfsvm" or algo == "knn":
-            assert parent_library.startswith("sklearnex") == True
+            assert parent_library.startswith("sklearnex")
         else:
-            assert parent_library.startswith("daal4py") == True
+            assert parent_library.startswith("daal4py")

@@ -1,17 +1,17 @@
 
-## Supercharge Your Machine Learning Experiments with PyCaret and Gradio
+# Supercharge Your Machine Learning Experiments with PyCaret and Gradio
 
-### A step-by-step tutorial to develop and interact with machine learning pipelines rapidly
+# A step-by-step tutorial to develop and interact with machine learning pipelines rapidly
 
 ![Photo by [Hunter Harritt](https://unsplash.com/@hharritt?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)](https://cdn-images-1.medium.com/max/10944/0*izwo6BPsV7Ru4b6r)
 
-## 👉 Introduction
+# 👉 Introduction
 
 This tutorial is a step-by-step, beginner-friendly explanation of how you can integrate [PyCaret](https://www.pycaret.org) and [Gradio](https://www.gradio.app/), the two powerful open-source libraries in Python, and supercharge your machine learning experimentation within minutes.
 
 This tutorial is a “hello world” example, I have used [Iris Dataset](https://archive.ics.uci.edu/ml/datasets/iris) from UCI, which is a multiclassification problem where the goal is to predict the class of iris plants. The code given in this example can be reproduced on any other dataset, without any major modifications.
 
-## 👉 PyCaret
+# 👉 PyCaret
 
 PyCaret is an open-source, low-code machine learning library and end-to-end model management tool built-in Python for automating machine learning workflows. It is incredibly popular for its ease of use, simplicity, and ability to build and deploy end-to-end ML prototypes quickly and efficiently.
 
@@ -21,7 +21,7 @@ PyCaret is **simple and** **easy to use**. All the operations performed in PyCar
 
 To learn more about PyCaret, check out their [GitHub](https://www.github.com/pycaret/pycaret).
 
-## 👉 Gradio
+# 👉 Gradio
 
 Gradio is an open-source Python library for creating customizable UI components around your machine learning models. Gradio makes it easy for you to “play around” with your model in your browser by dragging and dropping in your own images, pasting your own text, recording your own voice, etc., and seeing what the model outputs.
 
@@ -37,7 +37,7 @@ To learn more about Gradio, check out their [GitHub](https://github.com/gradio-a
 
 ![The workflow for PyCaret and Gradio](https://cdn-images-1.medium.com/max/2000/1*CLPbvtAvxkI5MbnPFE59sQ.png)
 
-## 👉 Installing PyCaret
+# 👉 Installing PyCaret
 
 Installing PyCaret is very easy and takes only a few minutes. We strongly recommend using a virtual environment to avoid potential conflicts with other libraries.
 
@@ -51,13 +51,13 @@ PyCaret’s default installation is a slim version of pycaret which only install
 
 When you install the full version of pycaret, all the optional dependencies as [listed here](https://github.com/pycaret/pycaret/blob/master/requirements-optional.txt) are also installed.
 
-## 👉 Installing Gradio
+# 👉 Installing Gradio
 
 You can install gradio from pip.
 
     pip install gradio
 
-## 👉 Let’s get started
+# 👉 Let’s get started
 
     **# load the iris dataset from pycaret repo**
     from pycaret.datasets import get_data
@@ -65,7 +65,7 @@ You can install gradio from pip.
 
 ![Sample rows from iris dataset](https://cdn-images-1.medium.com/max/2000/1*qttXFQnZ3atRv_qb9FtVTw.png)
 
-## 👉 Initialize Setup
+# 👉 Initialize Setup
 
     **# initialize setup**
     from pycaret.classification import *
@@ -81,7 +81,7 @@ Common to all modules in PyCaret, the setup function is the first and the only m
 
 ![[https://pycaret.org/preprocessing/](https://pycaret.org/preprocessing/)](https://cdn-images-1.medium.com/max/2242/1*7AOrLPzJWLFH90asByQqsg.png)
 
-## 👉 Compare Models
+# 👉 Compare Models
 
 This is the first step we recommend in the workflow of *any* supervised experiment in PyCaret. This function trains all the available models in the model library using default hyperparameters and evaluates performance metrics using cross-validation.
 
@@ -101,17 +101,17 @@ n_select parameter in the setup function controls the return of trained models. 
 
 ![Output from print(best[:5])](https://cdn-images-1.medium.com/max/2000/1*_H72UEY5AQlYnQswyZ0xhQ.png)
 
-## 👉 Gradio
+# 👉 Gradio
 
 Now that we are done with the modeling process, let’s create a simple UI using Gradio to interact with our models. I will do it in two parts, first I will create a function that will use PyCaret’s predict_model functionality to generate and return predictions and the second part will be feeding that function into Gradio and designing a simple input form for interactivity.
 
-## **Part I — Creating an internal function**
+# **Part I — Creating an internal function**
 
 The first two lines of the code take the input features and convert them into pandas DataFrame. Line 7 is creating a unique list of model names displayed in the compare_models output (this will be used as a dropdown in the UI). Line 8 selects the best model based on the index value of the list (which will be passed in through UI) and Line 9 uses the predict_model functionality of PyCaret to score the dataset.
 
  <iframe src="https://medium.com/media/1e071798476a9bdc5bb029813507a225" frameborder=0></iframe>
 
-## Part II — Creating a UI with Gradio
+# Part II — Creating a UI with Gradio
 
 Line 3 in the code below creates a dropdown for model names, Line 4–7 creates a slider for each of the input features and I have set the default value to the mean of each feature. Line 9 initiates a UI (in the notebook as well as on your local host so you can view it in the browser).
 
@@ -125,7 +125,7 @@ You can see this quick video here to see how easy it is to interact with your pi
 
 I hope that you will appreciate the ease of use and simplicity in PyCaret and Gradio. In less than 25 lines of code and few minutes of experimentation, I have trained and evaluated multiple models using PyCaret and developed a lightweight UI to interact with models in the Notebook.
 
-## Coming Soon!
+# Coming Soon!
 
 Next week I will be writing a tutorial on unsupervised anomaly detection on time-series data using [PyCaret Anomaly Detection Module](https://pycaret.readthedocs.io/en/latest/api/anomaly.html). Please follow me on [Medium](https://medium.com/@moez-62905), [LinkedIn](https://www.linkedin.com/in/profile-moez/), and [Twitter](https://twitter.com/moezpycaretorg1) to get more updates.
 
@@ -135,7 +135,7 @@ To hear more about PyCaret follow us on [LinkedIn](https://www.linkedin.com/comp
 
 Join us on our slack channel. Invite link [here](https://join.slack.com/t/pycaret/shared_invite/zt-p7aaexnl-EqdTfZ9U~mF0CwNcltffHg).
 
-## You may also be interested in:
+# You may also be interested in:
 
 [Build your own AutoML in Power BI using PyCaret 2.0](https://towardsdatascience.com/build-your-own-automl-in-power-bi-using-pycaret-8291b64181d)
 [Deploy Machine Learning Pipeline on Azure using Docker](https://towardsdatascience.com/deploy-machine-learning-pipeline-on-cloud-using-docker-container-bec64458dc01)
@@ -146,7 +146,7 @@ Join us on our slack channel. Invite link [here](https://join.slack.com/t/pycare
 [Build and deploy machine learning web app using PyCaret and Streamlit](https://towardsdatascience.com/build-and-deploy-machine-learning-web-app-using-pycaret-and-streamlit-28883a569104)
 [Deploy Machine Learning App built using Streamlit and PyCaret on GKE](https://towardsdatascience.com/deploy-machine-learning-app-built-using-streamlit-and-pycaret-on-google-kubernetes-engine-fd7e393d99cb)
 
-## Important Links
+# Important Links
 
 [Documentation](https://pycaret.readthedocs.io/en/latest/installation.html)
 [Blog](https://medium.com/@moez_62905)
@@ -156,7 +156,7 @@ Join us on our slack channel. Invite link [here](https://join.slack.com/t/pycare
 ](https://pycaret.readthedocs.io/en/latest/installation.html)[Notebook Tutorials
 ](https://pycaret.readthedocs.io/en/latest/tutorials.html)[Contribute in PyCaret](https://pycaret.readthedocs.io/en/latest/contribute.html)
 
-## Want to learn about a specific module?
+# Want to learn about a specific module?
 
 Click on the links below to see the documentation and working examples.
 

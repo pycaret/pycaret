@@ -1,8 +1,3 @@
-import os
-import sys
-
-sys.path.insert(0, os.path.abspath(".."))
-
 import pandas as pd
 
 import pycaret.classification
@@ -15,7 +10,7 @@ def test_plot():
     assert isinstance(data, pd.DataFrame)
 
     # init setup
-    clf1 = pycaret.classification.setup(
+    pycaret.classification.setup(
         data,
         target="Purchase",
         log_experiment=True,

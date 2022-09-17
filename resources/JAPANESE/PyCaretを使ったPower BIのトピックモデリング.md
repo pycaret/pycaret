@@ -1,7 +1,7 @@
 
-## PyCaretを使ったPower BIのトピックモデリング
+# PyCaretを使ったPower BIのトピックモデリング
 
-### by Moez Ali
+# by Moez Ali
 
 ![Power BIのNLPダッシュボード](https://cdn-images-1.medium.com/max/2624/1*SyZczsDz5Pf-4Srfj_p8vQ.png)
 
@@ -9,7 +9,7 @@
 
 今回の記事では、PyCaretを使ってPower BIにトピックモデリングを実装する方法をご紹介します。まだPyCaretを知らない方は、こちらの[お知らせ](https://towardsdatascience.com/announcing-pycaret-an-open-source-low-code-machine-learning-library-in-python-4a1f1aad8d46)を読んで詳細を確認してください。
 
-## このチュートリアルの学習目標
+# このチュートリアルの学習目標
 
 * 自然言語処理とは？
 
@@ -19,13 +19,13 @@
 
 * 結果を分析し、ダッシュボードで情報を可視化する。
 
-## ♪ ♪ Before we start
+# ♪ ♪ Before we start
 
 Pythonを使ったことがある方は、すでにAnaconda Distributionがインストールされていると思います。もしそうでなければ、[ここをクリック](https://www.anaconda.com/distribution/)して、Python 3.7以上のAnaconda Distributionをダウンロードしてください。
 
 ![[https://www.anaconda.com/products/individual](https://www.anaconda.com/products/individual)](https://cdn-images-1.medium.com/max/2612/1*sMceDxpwFVHDtdFi528jEg.png)
 
-## 環境のセットアップ
+# 環境のセットアップ
 
 Power BIでPyCaretの機械学習機能を使い始める前に、仮想環境を作成し、pycaretをインストールする必要があります。それは4つのステップで行われます。
 
@@ -70,7 +70,7 @@ NLPタスクを実行するためには、Anaconda Promptで以下のコード�
 
 ![python -m textblob.download_corpora](https://cdn-images-1.medium.com/max/3838/1*NYaSehQvRp9ANsEpC_GPQw.png)
 
-## 自然言語処理とは？
+# 自然言語処理とは？
 
 自然言語処理（NLP）は、コンピュータと人間の言語との相互作用を扱う、コンピュータサイエンスと人工知能のサブフィールドです。特にNLPでは、大量の自然言語データを処理・分析するためにコンピュータをプログラムする方法について、幅広い技術を扱っています。
 
@@ -90,7 +90,7 @@ NLPを搭載したソフトウェアは、私たちの日常生活にさまざ�
 
 トピックモデリングは、テキストデータから抽象的なトピックを発見するために使用される統計モデルの一種です。NLPにおける多くの実用的なアプリケーションの1つです。
 
-## トピックモデリングとは？
+# トピックモデリングとは？
 
 トピックモデルとは、教師なし機械学習に属する統計モデルの一種であり、テキストデータの中から抽象的なトピックを発見するために使用されます。トピックモデリングの目的は、一連の文書の中からトピックやテーマを自動的に見つけることです。
 
@@ -108,13 +108,13 @@ LDAアルゴリズムの技術的な詳細を知りたい方は、[この論文]
 
 ![出典：[https://springerplus.springeropen.com/articles/10.1186/s40064-016-3252-8](https://springerplus.springeropen.com/articles/10.1186/s40064-016-3252-8)](https://cdn-images-1.medium.com/max/2000/1*DYbV9YMI94QsUeRiiJyrSg.png)
 
-## **トピックモデリングのためのテキスト前処理**
+# **トピックモデリングのためのテキスト前処理**
 
 トピックモデリングから意味のある結果を得るためには、テキストデータをアルゴリズムに与えるまえに処理する必要があります。これは、ほとんどすべてのNLPタスクに共通しています。テキストの前処理は、構造化されたデータ(行と列のデータ)を扱うときに機械学習でよく使われる古典的な前処理技術とは異なります。
 
 PyCaretは、**ストップワードの除去**、**トークン化**、**レンマタイズ**、バイグラム/トライグラムの抽出など、15種類以上の技術を適用してテキストデータを自動的に前処理します。PyCaretで利用できるテキスト前処理機能の詳細については、[こちら](https://www.pycaret.org/nlp)を参照してください。
 
-## ビジネス・コンテクストの設定
+# ビジネス・コンテクストの設定
 
 Kivaは、2005年にサンフランシスコで設立された国際的な非営利団体です。Kivaは、2005年にサンフランシスコで設立された国際的な非営利団体です。
 
@@ -126,11 +126,11 @@ Kivaは、2005年にサンフランシスコで設立された国際的な非営
 
 私たちの目的は、「*en*」列のテキストデータを分析して抽象的なトピックを見つけ、それを使って特定のトピック（または特定の種類のローン）がデフォルト率に与える影響を評価することです。
 
-## 👉始めよう
+# 👉始めよう
 
 Anaconda環境のセットアップ、トピックモデリングの理解、そしてこのチュートリアルのビジネスコンテキストを理解したところで、早速始めましょう。
 
-## 1. データの取得
+# 1. データの取得
 
 最初のステップは、Power BI Desktopにデータセットを読み込むことです。データの読み込みには、Webコネクタを使用します。(Power BI Desktop → Get Data → From Web)を実行します。
 
@@ -139,7 +139,7 @@ Anaconda環境のセットアップ、トピックモデリングの理解、そ
 csvファイルへのリンクです。
 [https://raw.githubusercontent.com/pycaret/pycaret/master/datasets/kiva.csv](https://raw.githubusercontent.com/pycaret/pycaret/master/datasets/kiva.csv)
 
-## 2. モデルのトレーニング
+# 2. モデルのトレーニング
 
 Power BIでトピックモデルを学習するには、Power Query EditorでPythonスクリプトを実行する必要があります（Power Query Editor → Transform → Run python script）。以下のコードをPythonスクリプトとして実行します。
 
@@ -173,7 +173,7 @@ dataset = **get_topics**(Dataset, text='en', model='nmf', num_topics=6)
 
 ![Results in Power BI Desktop (after applying query)](https://cdn-images-1.medium.com/max/3844/1*btTSFxgmmEV8e7-Nw133mw.png)
 
-## 3. ダッシュボード
+# 3. ダッシュボード
 
 Power BIでトピック・ウェイトを取得したら、それをダッシュボードで可視化してインサイトを生成する例を紹介します。
 
@@ -191,7 +191,7 @@ PyCaretを使ったJupyter notebookでのトピックモデリングの実装に
 
 [LinkedIn](https://www.linkedin.com/company/pycaret/)をフォローしたり、[Youtube](https://www.youtube.com/channel/UCxA1YTYJ9BEeo50lxyI_B3g)のチャンネルを購読したりして、PyCaretについてもっと学びましょう。
 
-## 重要なリンク
+# 重要なリンク
 
 [ユーザーガイド / ドキュメント](https://www.pycaret.org/guide)
 [GitHub リポジトリ
@@ -199,7 +199,7 @@ PyCaretを使ったJupyter notebookでのトピックモデリングの実装に
 [ノートブックチュートリアル](https://www.pycaret.org/tutorial)
 [PyCaretに貢献する](https://www.pycaret.org/contribute)
 
-## 特定のモジュールについて学びたい？
+# 特定のモジュールについて学びたい？
 
 最初のリリース1.0.0の時点で、PyCaretは以下のモジュールを利用することができます。以下のリンクをクリックすると、Pythonでのドキュメントや動作例を見ることができます。
 
@@ -210,7 +210,7 @@ PyCaretを使ったJupyter notebookでのトピックモデリングの実装に
 ](https://www.pycaret.org/anomaly-detection)[自然言語処理](https://www.pycaret.org/nlp)
 [アソシエーション・ルール・マイニング](https://www.pycaret.org/association-rules)
 
-## こちらもご覧ください。
+# こちらもご覧ください。
 
 PyCaret getting started tutorials in Notebook:
 
@@ -221,7 +221,7 @@ PyCaret getting started tutorials in Notebook:
 [回帰](https://www.pycaret.org/reg101)
 [分類](https://www.pycaret.org/clf101)
 
-## Would you like to contribute?
+# Would you like to contribute?
 
 PyCaretはオープンソースのプロジェクトです。誰でも貢献することができます。貢献したい方は、[オープンイシュー](https://github.com/pycaret/pycaret/issues)にお気軽に取り組んでください。Pull Request は dev-1.0.1 ブランチのユニットテスト付きで受け付けています。
 

@@ -1,7 +1,6 @@
 """Module to test time_series plotting functionality
 """
 import os
-from random import uniform
 
 import numpy as np  # type: ignore
 import pandas as pd  # type: ignore
@@ -15,7 +14,6 @@ from time_series_test_utils import (
     _return_model_names_for_plots_stats,
 )
 
-from pycaret.internal.ensemble import _ENSEMBLE_METHODS
 from pycaret.time_series import TSForecastingExperiment
 
 pytestmark = pytest.mark.filterwarnings("ignore::UserWarning")
@@ -23,7 +21,7 @@ os.environ["PYCARET_TESTING"] = "1"
 
 
 ##############################
-#### Functions Start Here ####
+# Functions Start Here ####
 ##############################
 
 # NOTE: Fixtures can not be used to parameterize tests
@@ -38,12 +36,12 @@ _all_plots_estimator_ts_results = _return_all_plots_estimator_ts_results()
 
 
 ############################
-#### Functions End Here ####
+# Functions End Here ####
 ############################
 
 
 ##########################
-#### Tests Start Here ####
+# Tests Start Here ####
 ##########################
 
 
@@ -59,7 +57,7 @@ def testplot_model_data(data, plot):
     sp = 1 if isinstance(data.index, pd.RangeIndex) else None
 
     ######################
-    #### OOP Approach ####
+    # OOP Approach ####
     ######################
 
     exp.setup(
@@ -75,7 +73,7 @@ def testplot_model_data(data, plot):
     exp.plot_model(plot=plot)
 
     ########################
-    #### Functional API ####
+    # Functional API ####
     ########################
     from pycaret.time_series import plot_model, setup
 
@@ -106,7 +104,7 @@ def testplot_model_estimator(model_name, data, plot):
     sp = 1 if isinstance(data.index, pd.RangeIndex) else None
 
     ######################
-    #### OOP Approach ####
+    # OOP Approach ####
     ######################
 
     exp.setup(
@@ -123,7 +121,7 @@ def testplot_model_estimator(model_name, data, plot):
     exp.plot_model(estimator=model, plot=plot)
 
     ########################
-    #### Functional API ####
+    # Functional API ####
     ########################
     from pycaret.time_series import create_model, plot_model, setup
 
@@ -150,7 +148,7 @@ def testplot_model_data_raises(load_pos_and_neg_data, plot):
     fold = 2
 
     ######################
-    #### OOP Approach ####
+    # OOP Approach ####
     ######################
 
     exp.setup(
@@ -201,7 +199,7 @@ def testplot_model_customization(data):
     model = exp.create_model("naive")
 
     #######################
-    #### Customization ####
+    # Customization ####
     #######################
 
     print("\n\n==== Testing Customization ON DATA ====")
@@ -304,12 +302,12 @@ def test_plot_multiple_model_overlays(
     # Model that produces insample predictions
     m1 = exp.create_model("exp_smooth")
 
-    #### Check 1: Even if same model type is passed, the plot should make overlays ----
+    # Check 1: Even if same model type is passed, the plot should make overlays ----
     models = [m1, m1]
     fig_data = exp.plot_model(models, plot=plot, return_data=True)
     assert fig_data.get("overlay_data").shape[1] == len(models)
 
-    #### Check 2: User specified labels are used in plots
+    # Check 2: User specified labels are used in plots
     labels = ["Model 1", "Model 2"]
     fig_data = exp.plot_model(
         models,
@@ -324,12 +322,12 @@ def test_plot_multiple_model_overlays(
         # Model that does not produce insample predictions
         m2 = exp.create_model("lr_cds_dt")
 
-        #### Check 3: If Model does not produce insample predictions, it should be excluded
+        # Check 3: If Model does not produce insample predictions, it should be excluded
         models = [m1, m2, m1]
         fig_data = exp.plot_model(models, plot=plot, return_data=True)
         assert fig_data.get("overlay_data").shape[1] == len(models) - 1
 
-        #### Check 4: If Model does not produce insample predictions, custom labels should exclude it.
+        # Check 4: If Model does not produce insample predictions, custom labels should exclude it.
         labels = ["Model 1", "Model 2", "Model 3"]
         fig_data = exp.plot_model(
             models,

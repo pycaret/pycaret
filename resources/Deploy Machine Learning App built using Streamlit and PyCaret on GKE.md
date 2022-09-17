@@ -1,13 +1,13 @@
 
-## Deploy Machine Learning App built using Streamlit and PyCaret on Google Kubernetes Engine
+# Deploy Machine Learning App built using Streamlit and PyCaret on Google Kubernetes Engine
 
-### A step-by-step beginner’s guide to containerize and deploy a Streamlit app on Google Kubernetes Engine
+# A step-by-step beginner’s guide to containerize and deploy a Streamlit app on Google Kubernetes Engine
 
-### by Moez Ali
+# by Moez Ali
 
 ![A step-by-step beginner’s guide to containerize and deploy a streamlit app on Google Kubernetes Engine](https://cdn-images-1.medium.com/max/2000/1*q-xQMoYByRdI7OOfM1qFXg.png)
 
-## RECAP
+# RECAP
 
 In our [last post](https://towardsdatascience.com/build-and-deploy-machine-learning-web-app-using-pycaret-and-streamlit-28883a569104) on deploying a machine learning pipeline in the cloud, we demonstrated how to develop a machine learning pipeline in PyCaret and deploy a trained model on Heroku PaaS as a web application built using a Streamlit open-source framework. If you haven’t heard about PyCaret before, you can read this [announcement](https://towardsdatascience.com/announcing-pycaret-an-open-source-low-code-machine-learning-library-in-python-4a1f1aad8d46) to learn more.
 
@@ -17,7 +17,7 @@ By the end of this tutorial, you will be able to build and host a fully function
 
 ![Final App (Page 1 of 2)](https://cdn-images-1.medium.com/max/3832/1*GxVKpxijk0tlqk-bO5Q3JQ.png)
 
-## 👉 What you will learn in this tutorial
+# 👉 What you will learn in this tutorial
 
 * What is a Container, what is Docker, what is Kubernetes, and what is Google Kubernetes Engine?
 
@@ -39,25 +39,25 @@ In the past, we have covered containerization using docker and deployment on clo
 
 * [Build and deploy your first machine learning web app on Heroku PaaS](https://towardsdatascience.com/build-and-deploy-your-first-machine-learning-web-app-e020db344a99)
 
-## 💻 Toolbox for this tutorial
+# 💻 Toolbox for this tutorial
 
-## PyCaret
+# PyCaret
 
 [PyCaret](https://www.pycaret.org/) is an open source, low-code machine learning library in Python that is used to train and deploy machine learning pipelines and models into production. PyCaret can be installed easily using pip.
 
     pip install **pycaret**
 
-## Streamlit
+# Streamlit
 
 [Streamlit](https://www.streamlit.io/) is an open-source Python library that makes it easy to build beautiful custom web-apps for machine learning and data science. Streamlit can be installed easily using pip.
 
     pip install **streamlit**
 
-## Google Cloud Platform
+# Google Cloud Platform
 
 Google Cloud Platform (GCP), offered by Google, is a suite of cloud computing services that runs on the same infrastructure that Google uses internally for its end-user products, such as Google Search, Gmail and YouTube. If you do not have an account with GCP, you can sign-up [here](https://console.cloud.google.com/getting-started). If you are signing up for the first time you will get free credits for 1 year.
 
-## Let’s get started.
+# Let’s get started.
 
 Before we get into Kubernetes, let’s understand what a container is and why we would need one?
 
@@ -76,13 +76,13 @@ If we can create an environment that we can transfer to other machines (for exam
 
 Now that you understand containers and docker specifically, let’s understand what Kubernetes is all about.
 
-## What is Kubernetes?
+# What is Kubernetes?
 
 Kubernetes is a powerful open-source system developed by Google back in 2014, for managing containerized applications. In simple words, Kubernetes ****is a system for running and coordinating containerized applications across a cluster of machines. It is a platform designed to completely manage the life cycle of containerized applications.
 
 ![Photo by [chuttersnap](https://unsplash.com/@chuttersnap?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)](https://cdn-images-1.medium.com/max/14720/0*49CVX837ZpkbRblC)
 
-## Features
+# Features
 
 ✔️ **Load Balancing: **Automatically distributes the load between containers.
 
@@ -94,19 +94,19 @@ Kubernetes is a powerful open-source system developed by Google back in 2014, fo
 
 ✔️ **Automated Rollouts **you can automate Kubernetes to create new containers for your deployment, remove existing containers and adopt all of their resources to the new container.
 
-## Why do you need Kubernetes if you have Docker?
+# Why do you need Kubernetes if you have Docker?
 
 Imagine a scenario where you have to run multiple docker containers on multiple machines to support an enterprise level ML application with varied workloads during day and night. As simple as it may sound, it is a lot of work to do manually.
 
 You need to start the right containers at the right time, figure out how they can talk to each other, handle storage considerations, and deal with failed containers or hardware. This is the problem Kubernetes is solving by allowing large numbers of containers to work together in harmony, reducing the operational burden.
 
-## What is Google Kubernetes Engine?
+# What is Google Kubernetes Engine?
 
 Google Kubernetes Engine is an implementation of *Google’s open source Kubernetes* on Google Cloud Platform. Simple!
 
 Other popular alternatives to GKE are [Amazon ECS](https://aws.amazon.com/ecs/) and [Microsoft Azure Kubernetes Service](https://azure.microsoft.com/en-us/services/kubernetes-service/).
 
-## One final time, do you understand this?
+# One final time, do you understand this?
 
 * **A Container **is a type of software that packages up an application and all its dependencies so the application runs reliably from one computing environment to another.
 
@@ -118,7 +118,7 @@ Other popular alternatives to GKE are [Amazon ECS](https://aws.amazon.com/ecs/) 
 
 In this tutorial, we will use Google Kubernetes Engine. In order to follow along, you must have a Google Cloud Platform account. [Click here](https://console.cloud.google.com/getting-started) to sign-up for free.
 
-## Setting the Business Context
+# Setting the Business Context
 
 An insurance company wants to improve its cash flow forecasting by better predicting patient charges using demographic and basic patient health risk metrics at the time of hospitalization.
 
@@ -126,11 +126,11 @@ An insurance company wants to improve its cash flow forecasting by better predic
 
 *([data source](https://www.kaggle.com/mirichoi0218/insurance#insurance.csv))*
 
-## Objective
+# Objective
 
 To build a web application that supports online (one-by-one) as well as batch prediction using trained machine learning model and pipeline.
 
-## Tasks
+# Tasks
 
 * Train, validate and develop a machine learning pipeline using PyCaret.
 
@@ -140,7 +140,7 @@ To build a web application that supports online (one-by-one) as well as batch pr
 
 * Deploy the web app on Google Kubernetes Engine. Once deployed, it will become publicly available and can be accessed via Web URL.
 
-## 👉 Task 1 — Model Training and Validation
+# 👉 Task 1 — Model Training and Validation
 
 Training and model validation are performed in an Integrated Development Environment (IDE) or Notebook either on your local machine or on cloud. If you haven’t used PyCaret before, [click here](https://towardsdatascience.com/announcing-pycaret-an-open-source-low-code-machine-learning-library-in-python-4a1f1aad8d46) to learn more about PyCaret or see [Getting Started Tutorials](https://www.pycaret.org/tutorial) on our [website](https://www.pycaret.org/).
 
@@ -189,23 +189,23 @@ When you save a model in PyCaret, the entire transformation pipeline based on th
 
 We have finished training and model selection. The final machine learning pipeline and linear regression model is now saved as a pickle file (deployment_28042020.pkl) that will be used in a web application to generate predictions on new datapoints.
 
-## 👉 Task 2 — Build a front-end web application
+# 👉 Task 2 — Build a front-end web application
 
 Now that our machine learning pipeline and model are ready to start building a front-end web application that can generate predictions on new datapoints. This application will support ‘Online’ as well as ‘Batch’ predictions through a csv file upload. Let’s breakdown the application code into three main parts:
 
-## Header / Layout
+# Header / Layout
 
 This section imports libraries, loads the trained model and creates a basic layout with a logo on top, a jpg image and a dropdown menu on the sidebar to toggle between ‘Online’ and ‘Batch’ prediction.
 
 ![app.py — code snippet part 1](https://cdn-images-1.medium.com/max/2268/1*xAnCZ1N_BNoPW7FoA-NXrA.png)
 
-## Online Predictions
+# Online Predictions
 
 This section deals with the initial app function, Online one-by-one predictions. We are using streamlit widgets such as *number input, text input, drop down menu and checkbox* to collect the datapoints used to train the model such as Age, Sex, BMI, Children, Smoker, Region.
 
 ![app.py — code snippet part 2](https://cdn-images-1.medium.com/max/2408/1*eFeq1wINsUUnvLJfuL-GOA.png)
 
-## Batch Predictions
+# Batch Predictions
 
 Predictions by batch is the second layer of the app’s functionality. The **file_uploader** widget in streamlit is used to upload a csv file and then called the native **predict_model() **function from PyCaret to generate predictions that are displayed using streamlit’s write() function.
 
@@ -226,7 +226,7 @@ How do we transform these 6 features of a new data points into the 62 used to tr
 
 Now that we have a fully functional web application, we can start the process of containerizing and deploying the app on Google Kubernetes Engine.
 
-## 👉 Task 3 — Create a Dockerfile
+# 👉 Task 3 — Create a Dockerfile
 
 To containerize our application for deployment we need a docker image that becomes a container at runtime. A docker image is created using a Dockerfile. A Dockerfile is just a file with a set of instructions. The Dockerfile for this project looks like this:
 
@@ -234,7 +234,7 @@ To containerize our application for deployment we need a docker image that becom
 
 The last part of this Dockerfile (starting at line 23) is Streamlit specific and not needed generally. Dockerfile is case-sensitive and must be in the project folder with the other project files.
 
-## 👉 Task 4 — Deploy a ML pipeline on GKE:
+# 👉 Task 4 — Deploy a ML pipeline on GKE:
 
 If you would like to follow along you will have to fork this [repository](https://github.com/pycaret/pycaret-streamlit-google) from GitHub.
 
@@ -242,7 +242,7 @@ If you would like to follow along you will have to fork this [repository](https:
 
 Follow through these simple 10 steps to deploy app on GKE Cluster.
 
-### Step 1 — Create a new project in GCP Console
+# Step 1 — Create a new project in GCP Console
 
 Sign-in to your GCP console and go to Manage Resources
 
@@ -252,7 +252,7 @@ Click on **Create New Project**
 
 ![Google Cloud Platform Console → Manage Resources → Create New Project](https://cdn-images-1.medium.com/max/3814/1*mI3sxfCPrUbt8OtLpa6ViQ.png)
 
-### Step 2 — Import Project Code
+# Step 2 — Import Project Code
 
 Click the **Activate Cloud Shell **button at the top right of the console window to open the Cloud Shell.
 
@@ -262,7 +262,7 @@ Execute the following code in Cloud Shell to clone the GitHub repository used in
 
     git clone [https://github.com/pycaret/pycaret-streamlit-google.git](https://github.com/pycaret/pycaret-streamlit-google.git)
 
-### Step 3 — Set Project ID Environment Variable
+# Step 3 — Set Project ID Environment Variable
 
 Execute the following code to set the PROJECT_ID environment variable.
 
@@ -270,7 +270,7 @@ Execute the following code to set the PROJECT_ID environment variable.
 
 *pycaret-streamlit-gcp* is the name of the project we chose in step 1 above.
 
-### Step 4 — Build the docker image
+# Step 4 — Build the docker image
 
 Build the docker image of the application and tag it for uploading by executing the following code:
 
@@ -282,7 +282,7 @@ You can check the available images by running the following code:
 
     **docker **images
 
-### Step 5 — Upload the container image
+# Step 5 — Upload the container image
 
  1. Authenticate to [Container Registry](https://cloud.google.com/container-registry) (you need to run this only once):
 
@@ -292,7 +292,7 @@ You can check the available images by running the following code:
 
     docker push gcr.io/${PROJECT_ID}/insurance-streamlit:v1
 
-### Step 6 — Create Cluster
+# Step 6 — Create Cluster
 
 Now that the container is uploaded, you need a cluster to run the container. A cluster consists of a pool of Compute Engine VM instances, running Kubernetes.
 
@@ -307,25 +307,25 @@ Now that the container is uploaded, you need a cluster to run the container. A c
 
 ![Google Cloud Platform → Kubernetes Engine → Clusters](https://cdn-images-1.medium.com/max/3832/1*hNX145tbVPjtTFOSLvjXnw.png)
 
-### Step 7 — Deploy Application
+# Step 7 — Deploy Application
 
 To deploy and manage applications on a GKE cluster, you must communicate with the Kubernetes cluster management system. Execute the following command to deploy the application:
 
     kubectl create deployment insurance-streamlit --image=gcr.io/${PROJECT_ID}/insurance-streamlit:v1
 
-### Step 8 — Expose your application to the internet
+# Step 8 — Expose your application to the internet
 
 By default, the containers you run on GKE are not accessible from the internet because they do not have external IP addresses. Execute the following code to expose the application to the internet:
 
     kubectl expose deployment insurance-streamlit --type=LoadBalancer --port 80 --target-port **8501**
 
-### Step 9 — Check Service
+# Step 9 — Check Service
 
 Execute the following code to get the status of the service. **EXTERNAL-IP** is the web address you can use in browser to view the published app.
 
     kubectl get service
 
-### Step 10 — See the app in action on web address
+# Step 10 — See the app in action on web address
 
 ![App Published on [https://34.70.49.248](https://34.70.49.248) — Page 1](https://cdn-images-1.medium.com/max/3834/1*zHRwykiazKdjL32SE_Uj8g.png)
 
@@ -339,13 +339,13 @@ Execute the following code to get the status of the service. **EXTERNAL-IP** is 
 
 [Link to GitHub Repository for Heroku Deployment](https://www.github.com/pycaret/deployment-heroku)
 
-## PyCaret 2.0.0 is coming!
+# PyCaret 2.0.0 is coming!
 
 We have received overwhelming support and feedback from the community. We are actively working on improving PyCaret and preparing for our next release. **PyCaret 2.0.0 will be bigger and better**. If you would like to share your feedback and help us improve further, you may [fill this form](https://www.pycaret.org/feedback) on the website or leave a comment on our [GitHub ](https://www.github.com/pycaret/)or [LinkedIn](https://www.linkedin.com/company/pycaret/) page.
 
 Follow our [LinkedIn](https://www.linkedin.com/company/pycaret/) and subscribe to our [YouTube](https://www.youtube.com/channel/UCxA1YTYJ9BEeo50lxyI_B3g) channel to learn more about PyCaret.
 
-## Want to learn about a specific module?
+# Want to learn about a specific module?
 
 As of the first release 1.0.0, PyCaret has the following modules available for use. Click on the links below to see the documentation and working examples in Python.
 
@@ -356,7 +356,7 @@ As of the first release 1.0.0, PyCaret has the following modules available for u
 ](https://www.pycaret.org/anomaly-detection)[Natural Language Processing](https://www.pycaret.org/nlp)
 [Association Rule Mining](https://www.pycaret.org/association-rules)
 
-## Also see:
+# Also see:
 
 PyCaret getting started tutorials in Notebook:
 
@@ -367,7 +367,7 @@ PyCaret getting started tutorials in Notebook:
 [Natural Language Processing](https://www.pycaret.org/nlp101)
 [Association Rule Mining](https://www.pycaret.org/arul101)
 
-## Would you like to contribute?
+# Would you like to contribute?
 
 PyCaret is an open source project. Everybody is welcome to contribute. If you would like to contribute, please feel free to work on [open issues](https://github.com/pycaret/pycaret/issues). Pull requests are accepted with unit tests on dev-1.0.1 branch.
 

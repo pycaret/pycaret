@@ -84,12 +84,12 @@ def _check_enforcements(forecaster, experiment) -> bool:
 
     active = True
 
-    #### Pred Interval Enforcement ----
+    # Pred Interval Enforcement ----
     disable_pred_int = _disable_pred_int_enforcement(
         forecaster=forecaster, enforce_pi=experiment.enforce_pi
     )
 
-    #### Exogenous variable support Enforcement ----
+    # Exogenous variable support Enforcement ----
     disable_exog_enforcement = _disable_exogenous_enforcement(
         forecaster=forecaster,
         enforce_exogenous=experiment.enforce_exogenous,

@@ -1,11 +1,11 @@
 
-## NLP Text-Classification in Python: PyCaret Approach Vs The Traditional Approach
+# NLP Text-Classification in Python: PyCaret Approach Vs The Traditional Approach
 
-### A comparative analysis between The Traditional Approach and PyCaret Approach
+# A comparative analysis between The Traditional Approach and PyCaret Approach
 
-### by Prateek Baghel
+# by Prateek Baghel
 
-## I. Introduction
+# I. Introduction
 
 In this post we’ll see a demonstration of an NLP-Classification problem with 2 different approaches in python:
 
@@ -25,7 +25,7 @@ To give you an idea about the difference between the two approaches, please take
 
 You can see that PyCaret approach provides many more solutions and functionalities, all in less time and effort!
 
-## II. The NLP-Classification Problem
+# II. The NLP-Classification Problem
 
 Here the task at hand is to identify whether a given SMS is a Spam or a Ham. Here is a glimpse of the raw data and you can find the raw data from this [*Link](https://github.com/prateek025/SMS_Spam_Ham/blob/master/SMS_Spam_Ham_Raw.csv).* The data set has 5574 SMS to be classified.
 
@@ -35,9 +35,9 @@ As you may have figured it out that this problem is two-staged: NLP on the raw t
 
 Let’s now begin and see the 2 approaches! I’ll share a link of my code on Github at the bottom of this post.
 
-## III. Traditional Approach
+# III. Traditional Approach
 
-### Stage 1. Data Setup and Preprocessing on the text data
+# Stage 1. Data Setup and Preprocessing on the text data
 
 Before preprocessing, we’ll convert the *Flag *column from categorical data type to numeric data type. The resultant dataset looks like this:
 
@@ -62,7 +62,7 @@ Before we begin with embedding, a quick exploratory analysis of most common word
 
 Generally, such exploratory analysis helps us in identifying and removing words that may have very less predictive power(because such words appear in abundance) or that they may have induced noise in the model(because such words appear so rarely). However, I have not dropped any more words from the processed text data and have moved to the embedding stage.
 
-### Stage 2. Embedding on the processed text data
+# Stage 2. Embedding on the processed text data
 
 I have used two embedding techniques here.
 a. *Bag of Words* method: This method creates a term document matrix, wherein every unique word/term becomes a column. In Python, we use *CountVectorizer() *function for *BoW embedding*.
@@ -73,7 +73,7 @@ b. *Term Frequency-Inverse Document Frequency* method: This method creates a ter
 
 ![**Transformed dataset with TF-IDF embedding**](https://cdn-images-1.medium.com/max/2566/1*5UHgqdqV2zc0qRRL-rOLvQ.png)
 
-### Stage 3. Model Building
+# Stage 3. Model Building
 
 Before deciding what models to build, I have split the data with 85% of the data(4737 rows) in the *Training data set*, and the remainder 15%(837 rows) in the *Test data set*.
 The testing dataset allows us to asses the model performance on the unseen data
@@ -96,7 +96,7 @@ The testing dataset allows us to asses the model performance on the unseen data
 
 ![**4. Results for Naive-Bayes Classifier**](https://cdn-images-1.medium.com/max/3102/1*AxWAiD277nuYuIiRLQwvxw.png)
 
-### Stage 4. Hyperparameter Tuning
+# Stage 4. Hyperparameter Tuning
 
 For convenience, I have done hyper-parameter tuning for models built on the dataset with *BoW embedding*. Doing same for the models on *TF-IDF *embedded dataset will require repeating and adding around 30–40 **lines of code.
 
@@ -117,11 +117,11 @@ Comparing the two tuned models, *AdaBoost Classifier* performs better on *Cross 
 
 Now let's explore the PyCaret method..!
 
-## IV. PyCaret Approach
+# IV. PyCaret Approach
 
 We’ll repeat all the steps carried out under the traditional approach, but you’ll notice how quick and easy this approach is.
 
-### Stage 1. Data Setup and Preprocessing on the text data
+# Stage 1. Data Setup and Preprocessing on the text data
 
 Before performing any ML experiment in PyCaret, you have to set up a PyCaret module environment. This allows for the reproducibility, scalability, and deployment of an ML experiment conducted for more than one time. You can see that it takes only 2 lines of command to do so.
 
@@ -129,7 +129,7 @@ Before performing any ML experiment in PyCaret, you have to set up a PyCaret mod
 
 What is great about this function is that it automatically performs all the NLP pre-processing operations(lowering case, removing all the punctuations and stopwords, stemming, lemmatization, and other operations) on your raw text data. This entire step got completed in 21 seconds!
 
-### Stage 2. Embedding on the processed text data
+# Stage 2. Embedding on the processed text data
 
 PyCaret currently supports Topic Modelling embedding techniques only. In this example, we will use the *Latent Dirichlet Allocation(LDA)* technique and the *Non-Negative Matrix Factorization(NMF) *technique for embedding. Therefore, it won’t be an apple to apple comparison because we used *BoW embedding and TF-IDF embedding* in the Traditional Method
 
@@ -143,7 +143,7 @@ In addition, PyCaret also provides options wiith multiple graphs for exploratory
 
 ![**Output of *evaluate_model() command. *Click on any of the 5 tabs and select any one of the 4 Topics from the drop-down menu for additional exploratory analysis and insights.**](https://cdn-images-1.medium.com/max/2014/1*O5Q_rG8NFRULGi55k4BYCQ.png)
 
-### Stage 3. Model Building
+# Stage 3. Model Building
 
 After NLP, the second part of the overall problem is classification. Therefore, we need a different setup environment to perform the classification experiments.
 
@@ -168,7 +168,7 @@ All of that done by just 1 command and results were up there in around 1 minute!
 
 We see *Random Forest Classifier model* performs the best in *Accuracy. *Let's tune *Random Forest Classifier model.*
 
-### Stage 4. Hyperparameter Tuning
+# Stage 4. Hyperparameter Tuning
 
 This is a 3 step process in PyCaret: Create a model, Tune it, Evaluate its performance.
 Each of the steps requires just 1 line of code!
@@ -197,7 +197,7 @@ This time I decided to optimize the *AUC value *instead of the *Accuracy score* 
 
 ![**Creating, tuning, and evaluating an Extra-Tress Classifier model on NMF-embedded data**](https://cdn-images-1.medium.com/max/3400/1*sLiMNkki4J4uGkkFWEq1mQ.png)
 
-## V. Comparison of two methods
+# V. Comparison of two methods
 
 It can be seen that PyCaret provides solutions, with more options and functionalities, in much fewer lines of code, and even lesser execution time when compared with the traditional method.
 
@@ -209,7 +209,7 @@ Here is the rough comparison table to highlight the key differences between the 
 
 ![](https://cdn-images-1.medium.com/max/2000/1*ivuj02wvmHjBQ8prmQrirA.png)
 
-## VI. Important Links
+# VI. Important Links
 
 * [Complete code repository for this comparison](https://github.com/prateek025/SMS_Spam_Ham/blob/master/Spam-Ham.ipynb)
 

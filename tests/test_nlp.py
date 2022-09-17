@@ -1,8 +1,3 @@
-import os
-import sys
-
-sys.path.insert(0, os.path.abspath(".."))
-
 import uuid
 
 import pandas as pd
@@ -59,7 +54,7 @@ def test_nlp(kiva_dataframe):
     pycaret.nlp.save_model(lda, "lda_model_23122019")
 
     # load model
-    saved_lda = pycaret.nlp.load_model("lda_model_23122019")
+    pycaret.nlp.load_model("lda_model_23122019")
 
     # returns table of models
     all_models = pycaret.nlp.models()

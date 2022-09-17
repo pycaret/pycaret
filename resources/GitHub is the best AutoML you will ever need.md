@@ -1,7 +1,7 @@
 
-## GitHub is the best AutoML you will ever need
+# GitHub is the best AutoML you will ever need
 
-### by Moez Ali
+# by Moez Ali
 
 ![PyCaret — An open source, low-code machine learning library in Python!](https://cdn-images-1.medium.com/max/2000/1*Qe1H5nFp506CKQJto0XU9A.png)
 
@@ -9,7 +9,7 @@ You may be wondering since when did GitHub get into the business of Automated Ma
 
 We will use PyCaret 2.0, an open source, low-code machine learning library in Python to develop a simple AutoML solution and deploy it as a Docker container using GitHub actions. If you haven’t heard about PyCaret before, you can read official announcement for PyCaret 2.0 [here](https://towardsdatascience.com/announcing-pycaret-2-0-39c11014540e) or check the detailed release notes [here](https://github.com/pycaret/pycaret/releases/tag/2.0).
 
-## 👉 Learning Goals of this Tutorial
+# 👉 Learning Goals of this Tutorial
 
 * Understanding what Automated Machine Learning is and how to build a simple AutoML software using PyCaret 2.0.
 
@@ -17,7 +17,7 @@ We will use PyCaret 2.0, an open source, low-code machine learning library in Py
 
 * What are GitHub actions and how can you use them to test your AutoML.
 
-## What is Automated Machine Learning?
+# What is Automated Machine Learning?
 
 Automated machine learning (AutoML) is a process of automating the time consuming, iterative tasks of machine learning. It allows data scientists and analysts to build machine learning models with efficiency while sustaining the model quality. The final goal of any AutoML software is to finalize the best model based on some performance criteria.
 
@@ -29,7 +29,7 @@ Paid AutoML software as a service are very expensive and financially infeasible 
 
 Among many other open source AutoML libraries, PyCaret is relatively a new library and has a unique low-code approach to machine learning. The design and functionality of PyCaret is simple, human friendly, and intuitive. In short amount of time, PyCaret was adopted by over 100,000 data scientists globally and we are a growing community of developers.
 
-## How Does PyCaret works?
+# How Does PyCaret works?
 
 PyCaret is a workflow automation tool for supervised and unsupervised machine learning. It is organized into six modules and each module has a set of functions available to perform some specific action. Each function takes an input and returns an output, which in most cases is a trained machine learning model. Modules available as of the second release are:
 
@@ -53,33 +53,33 @@ To learn more about PyCaret, [click here](https://towardsdatascience.com/announc
 
 If you want to get started in Python, [click here](https://github.com/pycaret/pycaret/tree/master/examples) to see a gallery of example notebooks to get started.
 
-## 👉 Before we start
+# 👉 Before we start
 
 Let’s understand the following terminologies before starting to build an AutoML software. At this point all you need is some basic theoretical knowledge of these tools / terms that we are using in this tutorial. If you would like to go in more details, there are links at the end of this tutorial for you to explore later.
 
-## **Container**
+# **Container**
 
 **Containers** provide a portable and consistent environment that can be deployed rapidly in different environments to maximize the accuracy, performance, and efficiency of **machine learning** applications. Environment contains run-time language (for e.g. Python), all the libraries, and the dependencies of your application.
 
-## **Docker**
+# **Docker**
 
 Docker is a company that provides software (also called Docker) that allows users to build, run, and manage containers. While Docker’s container are the most common, there are other less famous *alternatives* such as [LXD](https://linuxcontainers.org/lxd/introduction/) and [LXC](https://linuxcontainers.org/) that also provide container solution.
 
-## GitHub
+# GitHub
 
 [GitHub](https://www.github.com/) is a cloud-based service that is used to host, manage and control code. Imagine you are working in a large team where multiple people (sometime in hundreds) are making changes on the same code base. PyCaret is itself an example of an open-source project where hundreds of community developers are continuously contributing to source code. If you haven’t used GitHub before, you can [sign up](https://github.com/join) for a free account.
 
-## **GitHub Actions**
+# **GitHub Actions**
 
 GitHub Actions help you automate your software development workflows in the same place you store code and collaborate on pull requests and issues. You can write individual tasks, called actions, and combine them to create a custom workflow. Workflows are custom automated processes that you can set up in your repository to build, test, package, release, or deploy any code project on GitHub.
 
-## 👉 Let’s get started
+# 👉 Let’s get started
 
-## Objective
+# Objective
 
 To train and select the best performing regression model that predicts patient charges based on the other variables in the dataset i.e. age, sex, bmi, children, smoker, and region.
 
-## 👉 **Step 1 — Develop app.py**
+# 👉 **Step 1 — Develop app.py**
 
 This is the main file for AutoML, which is also an entry point for Dockerfile (see below in step 2). If you have used PyCaret before then this code must be self-explanatory to you.
 
@@ -87,7 +87,7 @@ This is the main file for AutoML, which is also an entry point for Dockerfile (s
 
 First five lines are about importing libraries and variables from the environment. Next three lines are for reading data as *pandas* dataframe. Line 12 to Line 15 is to import the relevant module based on environment variable and Line 17 onwards is about PyCaret’s functions to initialize the environment, compare base models and to save the best performing model on your device. The last line downloads the experiment logs as a csv file.
 
-## 👉 Step 2— Create Dockerfile
+# 👉 Step 2— Create Dockerfile
 
 Dockerfile is just a file with a few lines of instructions that are saved in your project folder with name “Dockerfile” (case-sensitive and no extension).
 
@@ -99,7 +99,7 @@ This Docker file for this project is simple and consist of 6 lines only. See bel
 
 The first line in the Dockerfile imports the python:3.7-slim image. Next four lines create an app folder, update **libgomp1 **library, and install all the requirements from the **requirements.txt **file which in this case only requires pycaret. Finally, the last two lines define the entry point of your application; this means that when the container starts, it will execute the **app.py** file that we earlier saw above in step 1.
 
-## 👉 Step 3 — Create action.yml
+# 👉 Step 3 — Create action.yml
 
 Docker actions require a metadata file. The metadata filename must be either action.yml or action.yaml. The data in the metadata file defines the inputs, outputs and main entrypoint for your action. Action file uses YAML syntax.
 
@@ -107,7 +107,7 @@ Docker actions require a metadata file. The metadata filename must be either act
 
 Environment variable dataset, target, and usecase are all declared in line 6, 9, and 14 respectively. See line 4–6 of app.py to understand how we have used these environment variables in our app.py file.
 
-## 👉 Step 4 — Publish action on GitHub
+# 👉 Step 4 — Publish action on GitHub
 
 At this point your project folder should look like this:
 
@@ -137,7 +137,7 @@ Save this information, this is the installation details of your software. This i
 
 ![GitHub Action — installation](https://cdn-images-1.medium.com/max/2000/1*UihPzGDhm2smpqOS2YW4Yg.png)
 
-## 👉 Step 5— Install software on GitHub repository
+# 👉 Step 5— Install software on GitHub repository
 
 To install and test the software we just created, we have created a new repository [**pycaret-automl-test](https://github.com/pycaret/pycaret-automl-test) **and uploaded a few sample datasets for classification and regression.
 
@@ -165,23 +165,23 @@ This is where you can monitor the logs of your build as its building and once th
 
 You can download the files and unzip it on your device.
 
-## **File: model**
+# **File: model**
 
 This is a .pkl file for the final model along with the entire transformation pipeline. You can use this file to generate predictions on new dataset using predict_model function. To learn more about it, [click here](https://www.pycaret.org/predict-model).
 
-## File: experiment-logs
+# File: experiment-logs
 
 This is a .csv file that has all the details you will ever need for your model. It contains all the models that were trained in app.py script, their performance metrics, hyperparameters and other important meta data.
 
 ![experiment log file](https://cdn-images-1.medium.com/max/3830/1*i4fvedl-mtKMtOtWl2pfUQ.png)
 
-## File: system-logs
+# File: system-logs
 
 This is a system logs file that PyCaret has generated. This can be used for auditing the process. It contains important meta deta information and is very useful for troubleshooting errors in your software.
 
 ![System logs file generated by PyCaret](https://cdn-images-1.medium.com/max/3838/1*QQ4Um9aRxLhyyLwW-oD4fg.png)
 
-## **Disclosure**
+# **Disclosure**
 
 GitHub Actions enables you to create custom software development lifecycle workflows directly in your GitHub repository. Each Account comes with included compute and storage quantities for use with Actions, depending on your Account plan, which can be found in the [Actions documentation](https://docs.github.com/en/github/automating-your-workflow-with-github-actions/about-github-actions#about-github-actions).
 
@@ -199,7 +199,7 @@ Actions and any elements of the Action service may not be used in violation of t
 
 In order to prevent violations of these limitations and abuse of GitHub Actions, GitHub may monitor your use of GitHub Actions. Misuse of GitHub Actions may result in termination of jobs, or restrictions in your ability to use GitHub Actions.
 
-## **Repositories used in this tutorial:**
+# **Repositories used in this tutorial:**
 [**pycaret/pycaret-git-actions**
 *pycaret-git-actions. Contribute to pycaret/pycaret-git-actions development by creating an account on GitHub.*github.com](https://github.com/pycaret/pycaret-git-actions)
 [**pycaret/pycaret-automl-test**
@@ -211,7 +211,7 @@ To hear more about PyCaret follow us on [LinkedIn](https://www.linkedin.com/comp
 
 If you would like to learn more about PyCaret 2.0, read this [announcement](https://towardsdatascience.com/announcing-pycaret-2-0-39c11014540e). If you have used PyCaret before, you might be interested in [release notes](https://github.com/pycaret/pycaret/releases/tag/2.0) for current release.
 
-## You may also be interested it:
+# You may also be interested it:
 
 [Build your own AutoML in Power BI using PyCaret 2.0](https://towardsdatascience.com/build-your-own-automl-in-power-bi-using-pycaret-8291b64181d)
 [Deploy Machine Learning Pipeline on Azure using Docker](https://towardsdatascience.com/deploy-machine-learning-pipeline-on-cloud-using-docker-container-bec64458dc01)
@@ -222,7 +222,7 @@ If you would like to learn more about PyCaret 2.0, read this [announcement](http
 [Build and deploy machine learning web app using PyCaret and Streamlit](https://towardsdatascience.com/build-and-deploy-machine-learning-web-app-using-pycaret-and-streamlit-28883a569104)
 [Deploy Machine Learning App built using Streamlit and PyCaret on GKE](https://towardsdatascience.com/deploy-machine-learning-app-built-using-streamlit-and-pycaret-on-google-kubernetes-engine-fd7e393d99cb)
 
-## Important Links
+# Important Links
 
 [Blog](https://medium.com/@moez_62905)
 [Release Notes for PyCaret 2.0](https://github.com/pycaret/pycaret/releases/tag/2.0)
@@ -233,7 +233,7 @@ If you would like to learn more about PyCaret 2.0, read this [announcement](http
 [Notebook Tutorials](https://www.pycaret.org/tutorial)
 [Contribute in PyCaret](https://www.pycaret.org/contribute)
 
-## Want to learn about a specific module?
+# Want to learn about a specific module?
 
 Click on the links below to see the documentation and working examples.
 

@@ -202,7 +202,7 @@ class KMeansClusterContainer(ClusterContainer):
 
 class AffinityPropagationClusterContainer(ClusterContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
         from sklearn.cluster import AffinityPropagation
 
@@ -224,7 +224,7 @@ class AffinityPropagationClusterContainer(ClusterContainer):
 
 class MeanShiftClusterContainer(ClusterContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
         from sklearn.cluster import MeanShift
 
@@ -248,7 +248,7 @@ class MeanShiftClusterContainer(ClusterContainer):
 
 class SpectralClusteringClusterContainer(ClusterContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
         from sklearn.cluster import SpectralClustering
 
@@ -274,7 +274,7 @@ class SpectralClusteringClusterContainer(ClusterContainer):
 
 class AgglomerativeClusteringClusterContainer(ClusterContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
         from sklearn.cluster import AgglomerativeClustering
 
@@ -339,7 +339,7 @@ class DBSCANClusterContainer(ClusterContainer):
 
 class OPTICSClusterContainer(ClusterContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
         from sklearn.cluster import OPTICS
 
@@ -361,7 +361,7 @@ class OPTICSClusterContainer(ClusterContainer):
 
 class BirchClusterContainer(ClusterContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
         from sklearn.cluster import Birch
 
@@ -383,7 +383,7 @@ class BirchClusterContainer(ClusterContainer):
 
 class KModesClusterContainer(ClusterContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
 
         if not _check_soft_dependencies("kmodes", extra="models", severity="warning"):

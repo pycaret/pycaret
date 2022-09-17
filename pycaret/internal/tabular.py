@@ -3,7 +3,6 @@ from typing import Any, Optional
 
 import pandas as pd
 
-# Onw modules
 from pycaret.internal.display import CommonDisplay
 
 
@@ -16,7 +15,6 @@ def _create_display(progress: int, verbose: bool, monitor_rows: Any) -> CommonDi
     progress_args = {"max": progress}
     return CommonDisplay(
         verbose=verbose,
-        html_param=html_param,
         progress_args=progress_args,
         monitor_rows=monitor_rows,
     )

@@ -7,7 +7,6 @@ import os
 import traceback
 import warnings
 from contextlib import redirect_stderr, redirect_stdout
-from functools import partial
 from typing import Callable, Optional, Union
 
 
@@ -85,7 +84,7 @@ def get_logger() -> logging.Logger:
     try:
         assert bool(LOGGER)
         return LOGGER
-    except:
+    except Exception:
         return create_logger(True)
 
 

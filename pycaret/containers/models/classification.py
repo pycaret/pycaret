@@ -194,7 +194,7 @@ class ClassifierContainer(ModelContainer):
             )
 
             del model_instance
-        except:
+        except Exception:
             self.is_boosting_supported = False
             self.is_soft_voting_supported = False
         finally:
@@ -373,7 +373,7 @@ class KNeighborsClassifierContainer(ClassifierContainer):
 
 class GaussianNBClassifierContainer(ClassifierContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
         from sklearn.naive_bayes import GaussianNB
 
@@ -429,7 +429,7 @@ class GaussianNBClassifierContainer(ClassifierContainer):
 
 class DecisionTreeClassifierContainer(ClassifierContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
         from sklearn.tree import DecisionTreeClassifier
 
@@ -634,7 +634,7 @@ class SVCClassifierContainer(ClassifierContainer):
 
 class GaussianProcessClassifierContainer(ClassifierContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
         from sklearn.gaussian_process import GaussianProcessClassifier
 
@@ -664,7 +664,7 @@ class GaussianProcessClassifierContainer(ClassifierContainer):
 
 class MLPClassifierContainer(ClassifierContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
         from sklearn.neural_network import MLPClassifier
 
@@ -811,7 +811,7 @@ class RandomForestClassifierContainer(ClassifierContainer):
             if version.parse(cuml.__version__) >= version.parse("0.19"):
                 args = {"random_state": experiment.seed}
             else:
-                args = {"seed": experiemnt.seed}
+                args = {"seed": experiment.seed}
 
         tune_args = {}
         tune_grid = {
@@ -873,7 +873,7 @@ class RandomForestClassifierContainer(ClassifierContainer):
 
 class QuadraticDiscriminantAnalysisContainer(ClassifierContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
         from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
 
@@ -898,7 +898,7 @@ class QuadraticDiscriminantAnalysisContainer(ClassifierContainer):
 
 class AdaBoostClassifierContainer(ClassifierContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
         from sklearn.ensemble import AdaBoostClassifier
 
@@ -945,7 +945,7 @@ class AdaBoostClassifierContainer(ClassifierContainer):
 
 class GradientBoostingClassifierContainer(ClassifierContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
         from sklearn.ensemble import GradientBoostingClassifier
 
@@ -1019,7 +1019,7 @@ class GradientBoostingClassifierContainer(ClassifierContainer):
 
 class LinearDiscriminantAnalysisContainer(ClassifierContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
         from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 
@@ -1068,7 +1068,7 @@ class LinearDiscriminantAnalysisContainer(ClassifierContainer):
 
 class ExtraTreesClassifierContainer(ClassifierContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
         from sklearn.ensemble import ExtraTreesClassifier
 
@@ -1253,7 +1253,7 @@ class XGBClassifierContainer(ClassifierContainer):
 
 class LGBMClassifierContainer(ClassifierContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
         from lightgbm import LGBMClassifier
         from lightgbm.basic import LightGBMError
@@ -1374,7 +1374,7 @@ class LGBMClassifierContainer(ClassifierContainer):
                 lgb.fit(np.zeros((2, 2)), [0, 1])
                 is_gpu_enabled = "gpu"
                 del lgb
-            except:
+            except Exception:
                 try:
                     lgb = LGBMClassifier(device="cuda")
                     lgb.fit(np.zeros((2, 2)), [0, 1])
@@ -1384,7 +1384,7 @@ class LGBMClassifierContainer(ClassifierContainer):
                     is_gpu_enabled = False
                     if experiment.gpu_param == "force":
                         raise RuntimeError(
-                            f"LightGBM GPU mode not available. Consult https://lightgbm.readthedocs.io/en/latest/GPU-Tutorial.html."
+                            "LightGBM GPU mode not available. Consult https://lightgbm.readthedocs.io/en/latest/GPU-Tutorial.html."
                         )
 
         if is_gpu_enabled == "gpu":
@@ -1490,7 +1490,7 @@ class CatBoostClassifierContainer(ClassifierContainer):
 
 class DummyClassifierContainer(ClassifierContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
         from sklearn.dummy import DummyClassifier
 
@@ -1515,7 +1515,7 @@ class DummyClassifierContainer(ClassifierContainer):
 
 class BaggingClassifierContainer(ClassifierContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
         from sklearn.ensemble import BaggingClassifier
 
@@ -1553,7 +1553,7 @@ class BaggingClassifierContainer(ClassifierContainer):
 
 class StackingClassifierContainer(ClassifierContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
         from sklearn.ensemble import StackingClassifier
 
@@ -1580,7 +1580,7 @@ class StackingClassifierContainer(ClassifierContainer):
 
 class VotingClassifierContainer(ClassifierContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
         from sklearn.ensemble import VotingClassifier
 
@@ -1613,7 +1613,7 @@ class VotingClassifierContainer(ClassifierContainer):
 
 class CalibratedClassifierCVContainer(ClassifierContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
         from sklearn.calibration import CalibratedClassifierCV
 

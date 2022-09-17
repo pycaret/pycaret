@@ -1,11 +1,11 @@
 
-## Machine Learning in Alteryx with PyCaret
+# Machine Learning in Alteryx with PyCaret
 
-### A step-by-step tutorial on training and deploying machine learning models in Alteryx Designer using PyCaret
+# A step-by-step tutorial on training and deploying machine learning models in Alteryx Designer using PyCaret
 
 ![](https://cdn-images-1.medium.com/max/2000/1*T6OjmWCOMcsm8wi0xQcjeQ.jpeg)
 
-## Introduction
+# Introduction
 
 In this tutorial, I will show you how you can train and deploy machine learning pipelines in a very popular ETL tool [Alteryx](https://www.alteryx.com) using [PyCaret](https://www.pycaret.org) — an open-source, low-code machine learning library in Python. The Learning Goals of this tutorial are:
 
@@ -17,21 +17,21 @@ In this tutorial, I will show you how you can train and deploy machine learning 
 
 👉 Deploy trained pipeline and generate inference during ETL.
 
-## PyCaret
+# PyCaret
 
 [PyCaret](https://www.pycaret.org/) is an open-source, low-code machine learning library and end-to-end model management tool built-in Python for automating machine learning workflows. PyCaret is known for its ease of use, simplicity, and ability to quickly and efficiently build and deploy end-to-end machine learning pipelines. To learn more about PyCaret, check out their [GitHub](https://www.github.com/pycaret/pycaret).
 
-## Alteryx Designer
+# Alteryx Designer
 
 [Alteryx Designer](https://www.alteryx.com/products/alteryx-platform/alteryx-designer) is a proprietary tool developed by [**Alteryx](https://www.alteryx.com)** and is used for automating every step of analytics, including data preparation, blending, reporting, predictive analytics, and data science. You can access any data source, file, application, or data type, and experience the simplicity and power of a self-service platform with 260+ drag-and-drop building blocks. You can download the one-month free trial version of Alteryx Designer from [here](https://www.alteryx.com/designer-trial/alteryx-free-trial).
 
 ![[https://www.alteryx.com](https://www.alteryx.com)](https://cdn-images-1.medium.com/max/3648/1*OeDHEH-vFx2u3nF69Wu3DQ.png)
 
-## Tutorial Pre-Requisites:
+# Tutorial Pre-Requisites:
 
 For this tutorial, you will need two things. The first one being the Alteryx Designer which is a desktop software that you can download from [here](https://www.alteryx.com/designer-trial/alteryx-free-trial). Second, you need Python. The easiest way to get Python is to download Anaconda Distribution. To download that, [click here](https://www.anaconda.com/distribution/).
 
-## 👉We are ready now
+# 👉We are ready now
 
 Open Alteryx Designer and click on File → New Workflow
 
@@ -39,7 +39,7 @@ Open Alteryx Designer and click on File → New Workflow
 
 On the top, there are tools that you can drag and drop on the canvas and execute the workflow by connecting each component to one another.
 
-## Dataset
+# Dataset
 
 For this tutorial, I am using a regression dataset from PyCaret’s repository called ***insurance***. You can download the data from [here](https://github.com/pycaret/pycaret/blob/master/datasets/insurance.csv).
 
@@ -47,7 +47,7 @@ For this tutorial, I am using a regression dataset from PyCaret’s repository c
 
 I will create two separate Alteryx workflows. First one for **model training and selection** and the second one for **scoring the new data** using the trained pipeline.
 
-## 👉 Model Training & Selection
+# 👉 Model Training & Selection
 
 Let’s first read the CSV file from the **Input Data **tool followed by a **Python Script. **Inside the Python script execute the following code:
 
@@ -93,7 +93,7 @@ This is what results.csv contains:
 
 These are the cross-validated metrics for all the models. The best model, in this case, is ***Gradient Boosting Regressor***.
 
-## 👉 Model Scoring
+# 👉 Model Scoring
 
 We can now use our pipeline.pkl to score on the new dataset. Since I do not have a separate dataset for ***insurance.csv ***without the label***, ***what I will do is drop the target column i.e. ***charges**,* and then generate predictions using the trained pipeline.
 
@@ -120,7 +120,7 @@ When you successfully execute this workflow, it will generate predictions.csv.
 
 ![predictions.csv](https://cdn-images-1.medium.com/max/2000/0*v6pthOCcVwNMww9S.png)
 
-## Coming Soon!
+# Coming Soon!
 
 Next week I will take a deep dive and focus on more advanced functionalities of PyCaret that you can use within Alteryx to enhance your machine learning workflows. If you would like to be notified automatically, you can follow me on [Medium](https://medium.com/@moez-62905), [LinkedIn](https://www.linkedin.com/in/profile-moez/), and [Twitter](https://twitter.com/moezpycaretorg1).
 
@@ -134,7 +134,7 @@ To hear more about PyCaret follow us on [LinkedIn](https://www.linkedin.com/comp
 
 Join us on our slack channel. Invite link [here](https://join.slack.com/t/pycaret/shared_invite/zt-p7aaexnl-EqdTfZ9U~mF0CwNcltffHg).
 
-## Important Links
+# Important Links
 
 [Documentation](https://pycaret.readthedocs.io/en/latest/installation.html)
 [Blog](https://medium.com/@moez_62905)
@@ -144,7 +144,7 @@ Join us on our slack channel. Invite link [here](https://join.slack.com/t/pycare
 ](https://pycaret.readthedocs.io/en/latest/installation.html)[Notebook Tutorials
 ](https://pycaret.readthedocs.io/en/latest/tutorials.html)[Contribute in PyCaret](https://pycaret.readthedocs.io/en/latest/contribute.html)
 
-## More PyCaret related tutorials:
+# More PyCaret related tutorials:
 [**Machine Learning in KNIME with PyCaret**
 *A step-by-step guide on training and deploying end-to-end machine learning pipelines in KNIME using PyCaret*towardsdatascience.com](https://towardsdatascience.com/machine-learning-in-knime-with-pycaret-420346e133e2)
 [**Easy MLOps with PyCaret + MLflow**

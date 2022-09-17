@@ -11,7 +11,7 @@ from pycaret.time_series import TSForecastingExperiment
 from pycaret.utils.time_series.exceptions import MissingDataError
 
 ##############################
-#### Functions Start Here ####
+# Functions Start Here ####
 ##############################
 
 # NOTE: Fixtures can not be used to parameterize tests
@@ -24,12 +24,12 @@ _data_big_small = _return_data_big_small()
 _model_names_for_stats = _return_model_names_for_plots_stats()
 
 ############################
-#### Functions End Here ####
+# Functions End Here ####
 ############################
 
 
 ##########################
-#### Tests Start Here ####
+# Tests Start Here ####
 ##########################
 
 
@@ -64,7 +64,7 @@ def test_check_stats_data(data, test, data_type):
     ]
 
     ##############################################
-    #### Individual Tests (with all defaults) ####
+    # Individual Tests (with all defaults) ####
     ##############################################
     # Column Order ----
     results = exp.check_stats(test=test)
@@ -80,7 +80,7 @@ def test_check_stats_data(data, test, data_type):
         assert data_names[i] in expected_data_names
 
     ######################################################
-    #### Individual Default with different Data Types ####
+    # Individual Default with different Data Types ####
     ######################################################
     results = exp.check_stats(test=test, data_type=data_type)
     column_names = list(results.columns)
@@ -94,7 +94,7 @@ def test_check_stats_data(data, test, data_type):
         assert data_names[i] in expected_data_names
 
     ###################################################
-    #### Individual Tests with "order" differences ####
+    # Individual Tests with "order" differences ####
     ###################################################
     # Column Order ----
     results = exp.check_stats(
@@ -111,7 +111,7 @@ def test_check_stats_data(data, test, data_type):
         assert data_names[i] in expected_data_names
 
     ##################################################
-    #### Individual Tests with "lags" differences ####
+    # Individual Tests with "lags" differences ####
     ##################################################
     # Column Order ----
     results = exp.check_stats(
@@ -160,7 +160,7 @@ def test_check_stats_estimator(model_name, data, test):
     ]
 
     ##########################
-    #### Individual Tests ####
+    # Individual Tests ####
     ##########################
     # Column Order ----
     results = exp.check_stats(model, test=test)
@@ -177,7 +177,7 @@ def test_check_stats_estimator(model_name, data, test):
             assert data_names[i] in expected_data_names
 
     ###################################################
-    #### Individual Tests with "order" differences ####
+    # Individual Tests with "order" differences ####
     ###################################################
     # Column Order ----
     results = exp.check_stats(model, test=test, data_kwargs={"order_list": [1, 2]})
@@ -194,7 +194,7 @@ def test_check_stats_estimator(model_name, data, test):
             assert data_names[i] in expected_data_names
 
     ##################################################
-    #### Individual Tests with "lags" differences ####
+    # Individual Tests with "lags" differences ####
     ##################################################
     # Column Order ----
     results = exp.check_stats(model, test=test, data_kwargs={"lags_list": [1, [1, 12]]})

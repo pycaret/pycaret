@@ -28,6 +28,11 @@ jobs:
         uses: jamescurtin/isort-action@master
         with:
           sortPaths: pycaret tests
+      - name: Run flake8
+        uses: py-actions/flake8@v2
+        with:
+          path: pycaret tests
+
 
   # JOBS MUST START WITH test !!!!
   test:

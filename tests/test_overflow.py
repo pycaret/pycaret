@@ -10,7 +10,7 @@ def test_overflow():
     data = get_data("boston")
     from pycaret.regression import create_model, setup, tune_model
 
-    s = setup(
+    setup(
         data,
         target="medv",
         html=False,
@@ -18,9 +18,9 @@ def test_overflow():
         n_jobs=1,
     )
     gbr = create_model("gbr")
-    tuned_gbr = tune_model(gbr)
+    tune_model(gbr)
     xgboost = create_model("xgboost")
-    tuned_xgboost = tune_model(xgboost)
+    tune_model(xgboost)
     lightgbm = create_model("lightgbm")
-    tuned_lightgbm = tune_model(lightgbm)
+    tune_model(lightgbm)
     assert 1 == 1

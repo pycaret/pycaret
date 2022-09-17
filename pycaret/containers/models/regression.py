@@ -454,7 +454,7 @@ class ElasticNetContainer(RegressorContainer):
 
 class LarsContainer(RegressorContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
 
         from sklearn.linear_model import Lars
@@ -498,7 +498,7 @@ class LarsContainer(RegressorContainer):
 
 class LassoLarsContainer(RegressorContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
 
         from sklearn.linear_model import LassoLars
@@ -561,7 +561,7 @@ class LassoLarsContainer(RegressorContainer):
 
 class OrthogonalMatchingPursuitContainer(RegressorContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
 
         from sklearn.linear_model import OrthogonalMatchingPursuit
@@ -595,7 +595,7 @@ class OrthogonalMatchingPursuitContainer(RegressorContainer):
 
 class BayesianRidgeContainer(RegressorContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
 
         from sklearn.linear_model import BayesianRidge
@@ -686,7 +686,7 @@ class BayesianRidgeContainer(RegressorContainer):
 
 class AutomaticRelevanceDeterminationContainer(RegressorContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
 
         from sklearn.linear_model import ARDRegression
@@ -793,7 +793,7 @@ class AutomaticRelevanceDeterminationContainer(RegressorContainer):
 
 class PassiveAggressiveRegressorContainer(RegressorContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
 
         from sklearn.linear_model import PassiveAggressiveRegressor
@@ -828,7 +828,7 @@ class PassiveAggressiveRegressorContainer(RegressorContainer):
 
 class RANSACRegressorContainer(RegressorContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
 
         from sklearn.linear_model import RANSACRegressor
@@ -868,7 +868,7 @@ class RANSACRegressorContainer(RegressorContainer):
 
 class TheilSenRegressorContainer(RegressorContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
 
         from sklearn.linear_model import TheilSenRegressor
@@ -901,7 +901,7 @@ class TheilSenRegressorContainer(RegressorContainer):
 
 class HuberRegressorContainer(RegressorContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
 
         from sklearn.linear_model import HuberRegressor
@@ -951,7 +951,7 @@ class HuberRegressorContainer(RegressorContainer):
 
 class KernelRidgeContainer(RegressorContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
 
         from sklearn.kernel_ridge import KernelRidge
@@ -1122,7 +1122,7 @@ class KNeighborsRegressorContainer(RegressorContainer):
 
 class DecisionTreeRegressorContainer(RegressorContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
 
         from sklearn.tree import DecisionTreeRegressor
@@ -1270,9 +1270,8 @@ class RandomForestRegressorContainer(RegressorContainer):
 
 class ExtraTreesRegressorContainer(RegressorContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
-        gpu_imported = False
 
         from sklearn.ensemble import ExtraTreesRegressor
 
@@ -1332,7 +1331,7 @@ class ExtraTreesRegressorContainer(RegressorContainer):
 
 class AdaBoostRegressorContainer(RegressorContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
         from sklearn.ensemble import AdaBoostRegressor
 
@@ -1379,7 +1378,7 @@ class AdaBoostRegressorContainer(RegressorContainer):
 
 class GradientBoostingRegressorContainer(RegressorContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
 
         from sklearn.ensemble import GradientBoostingRegressor
@@ -1454,7 +1453,7 @@ class GradientBoostingRegressorContainer(RegressorContainer):
 
 class MLPRegressorContainer(RegressorContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
 
         from sklearn.neural_network import MLPRegressor
@@ -1637,7 +1636,7 @@ class XGBRegressorContainer(RegressorContainer):
 
 class LGBMRegressorContainer(RegressorContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
         from lightgbm import LGBMRegressor
         from lightgbm.basic import LightGBMError
@@ -1758,7 +1757,7 @@ class LGBMRegressorContainer(RegressorContainer):
                 lgb.fit(np.zeros((2, 2)), [0, 1])
                 is_gpu_enabled = "gpu"
                 del lgb
-            except:
+            except Exception:
                 try:
                     lgb = LGBMRegressor(device="cuda")
                     lgb.fit(np.zeros((2, 2)), [0, 1])
@@ -1768,7 +1767,7 @@ class LGBMRegressorContainer(RegressorContainer):
                     is_gpu_enabled = False
                     if experiment.gpu_param == "force":
                         raise RuntimeError(
-                            f"LightGBM GPU mode not available. Consult https://lightgbm.readthedocs.io/en/latest/GPU-Tutorial.html."
+                            "LightGBM GPU mode not available. Consult https://lightgbm.readthedocs.io/en/latest/GPU-Tutorial.html."
                         )
 
         if is_gpu_enabled == "gpu":
@@ -1874,7 +1873,7 @@ class CatBoostRegressorContainer(RegressorContainer):
 
 class DummyRegressorContainer(RegressorContainer):
     def __init__(self, experiment) -> None:
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
         from sklearn.dummy import DummyRegressor
 
@@ -1899,7 +1898,7 @@ class DummyRegressorContainer(RegressorContainer):
 
 class BaggingRegressorContainer(RegressorContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
         from sklearn.ensemble import BaggingRegressor
 
@@ -1937,7 +1936,7 @@ class BaggingRegressorContainer(RegressorContainer):
 
 class StackingRegressorContainer(RegressorContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
         from sklearn.ensemble import StackingRegressor
 
@@ -1964,7 +1963,7 @@ class StackingRegressorContainer(RegressorContainer):
 
 class VotingRegressorContainer(RegressorContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
         from sklearn.ensemble import VotingRegressor
 

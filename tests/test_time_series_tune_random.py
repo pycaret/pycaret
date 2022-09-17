@@ -11,7 +11,7 @@ pytestmark = pytest.mark.filterwarnings("ignore::UserWarning")
 
 
 ##############################
-#### Functions Start Here ####
+# Functions Start Here ####
 ##############################
 
 # NOTE: Fixtures can not be used to parameterize tests
@@ -23,12 +23,12 @@ _model_names = _return_model_names()
 
 
 ############################
-#### Functions End Here ####
+# Functions End Here ####
 ############################
 
 
 ##########################
-#### Tests Start Here ####
+# Tests Start Here ####
 ##########################
 
 

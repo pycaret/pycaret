@@ -1,11 +1,11 @@
 
-## Time Series 101 — For beginners
+# Time Series 101 — For beginners
 
-### A beginner-friendly introduction to Time Series Forecasting
+# A beginner-friendly introduction to Time Series Forecasting
 
 ![Photo by [Chris Liverani](https://unsplash.com/@chrisliverani?utm_source=medium&utm_medium=referral) on [Unsplash](https://unsplash.com?utm_source=medium&utm_medium=referral)](https://cdn-images-1.medium.com/max/7262/0*AfqHPFyS5tc-9Amn)
 
-## 👉 What is Time Series Data?
+# 👉 What is Time Series Data?
 
 Time series data is data collected on the same subject at different points in time, such as **GDP of a country by year, a stock price of a particular company over a period of time, or your own heartbeat recorded at each second**, as a matter of fact, anything that you can capture continuously at different time-intervals is a time series data.
 
@@ -25,7 +25,7 @@ However, a typical real-world dataset is likely to be a hybrid. Imagine a retail
 
 Precisely, the objective of the analysis for time-series and cross-sectional data is different and a real-world dataset is likely to be a hybrid of both time-series as well as cross-sectional data.
 
-## 👉 What is Time Series Forecasting?
+# 👉 What is Time Series Forecasting?
 
 Time series forecasting is exactly what it sounds like i.e. predicting the future unknown values. However, unlike sci-fi movies, it’s a little less thrilling in the real world. It involves the collection of historical data, preparing it for algorithms to consume (the algorithm is simply put the maths that goes behind the scene), and then predict the future values based on patterns learned from the historical data.
 
@@ -39,7 +39,7 @@ Can you think of a reason why would companies or anybody be interested in foreca
 
 * The health department may be interested in predicting the cumulative COVID vaccination administered so that it can know the point of consolidation where herd immunity is expected to kick in.
 
-## 👉 Time Series Forecasting Methods
+# 👉 Time Series Forecasting Methods
 
 Time series forecasting can broadly be categorized into the following categories:
 
@@ -51,13 +51,13 @@ Time series forecasting can broadly be categorized into the following categories
 
 This tutorial is focused on forecasting time series using ***Machine Learning***. For this tutorial, I will use the Regression Module of an open-source, low-code machine library in Python called [PyCaret](https://www.pycaret.org). If you haven’t used PyCaret before, you can get quickly started [here](https://www.pycaret.org/guide). Although, you don’t require any prior knowledge of PyCaret to follow along with this tutorial.
 
-## 👉 PyCaret Regression Module
+# 👉 PyCaret Regression Module
 
 PyCaret **Regression Module** is a supervised machine learning module used for estimating the relationships between a **dependent variable** (often called the ‘outcome variable’, or ‘target’) and one or more **independent variables** (often called ‘features’, or ‘predictors’).
 
 The objective of regression is to predict continuous values such as sales amount, quantity, temperature, number of customers, etc. All modules in PyCaret provide many [pre-processing](https://www.pycaret.org/preprocessing) features to prepare the data for modeling through the [setup ](https://www.pycaret.org/setup)function. It has over 25 ready-to-use algorithms and [several plots](https://www.pycaret.org/plot-model) to analyze the performance of trained models.
 
-## 👉 Dataset
+# 👉 Dataset
 
 For this tutorial, I have used the US airline passengers dataset. You can download the dataset from [Kaggle](https://www.kaggle.com/chirag19/air-passengers). This dataset provides monthly totals of US airline passengers from 1949 to 1960.
 
@@ -107,7 +107,7 @@ Since machine learning algorithms cannot directly deal with dates, let’s extra
 
 I have manually split the dataset before initializing the setup . An alternate would be to pass the entire dataset to PyCaret and let it handle the split, in which case you will have to pass data_split_shuffle = False in the setup function to avoid shuffling the dataset before the split.
 
-## 👉 Initialize Setup
+# 👉 Initialize Setup
 
 Now it’s time to initialize the setup function, where we will explicitly pass the training data, test data, and cross-validation strategy using the fold_strategy parameter.
 
@@ -117,7 +117,7 @@ Now it’s time to initialize the setup function, where we will explicitly pass 
     **# initialize setup**
     s = setup(data = train, test_data = test, target = 'Passengers', fold_strategy = 'timeseries', numeric_features = ['Year', 'Series'], fold = 3, transform_target = True, session_id = 123)
 
-## 👉 Train and Evaluate all Models
+# 👉 Train and Evaluate all Models
 
     best = compare_models(sort = 'MAE')
 
@@ -149,7 +149,7 @@ The grey backdrop towards the end is the test period (i.e. 1960). Now let’s fi
 
     final_best = finalize_model(best)
 
-## 👉 Create a future scoring dataset
+# 👉 Create a future scoring dataset
 
 Now that we have trained our model on the entire dataset (1949 to 1960), let’s predict five years out in the future through 1964. To use our final model to generate future predictions, we first need to create a dataset consisting of the Month, Year, Series column on the future dates.
 
@@ -170,7 +170,7 @@ Now, let’s use the future_df to score and generate predictions.
 
 ![Sample rows from predictions_future](https://cdn-images-1.medium.com/max/2000/0*c97sliOBqExx6Hs_.png)
 
-## **👉 Plot the actual data and predictions**
+# **👉 Plot the actual data and predictions**
 
     concat_df = pd.concat([data,predictions_future], axis=0)
     concat_df_i = pd.date_range(start='1949-01-01', end = '1965-01-01', freq = 'MS')
@@ -183,7 +183,7 @@ Now, let’s use the future_df to score and generate predictions.
 
 I hope you find this tutorial easy. If you think you are ready for the next level, you can check out my advanced time-series tutorial on [Multiple Time Series Forecasting with PyCaret](https://towardsdatascience.com/multiple-time-series-forecasting-with-pycaret-bc0a779a22fe).
 
-## Coming Soon!
+# Coming Soon!
 
 I will soon be writing a tutorial on unsupervised anomaly detection on time-series data using [PyCaret Anomaly Detection Module](https://pycaret.readthedocs.io/en/latest/api/anomaly.html). If you would like to get more updates, you can follow me on [Medium](https://medium.com/@moez-62905), [LinkedIn](https://www.linkedin.com/in/profile-moez/), and [Twitter](https://twitter.com/moezpycaretorg1).
 
@@ -193,7 +193,7 @@ To learn more about PyCaret follow us on [LinkedIn](https://www.linkedin.com/com
 
 Join us on our slack channel. Invite link [here](https://join.slack.com/t/pycaret/shared_invite/zt-p7aaexnl-EqdTfZ9U~mF0CwNcltffHg).
 
-## You may also be interested in:
+# You may also be interested in:
 
 [Build your own AutoML in Power BI using PyCaret 2.0](https://towardsdatascience.com/build-your-own-automl-in-power-bi-using-pycaret-8291b64181d)
 [Deploy Machine Learning Pipeline on Azure using Docker](https://towardsdatascience.com/deploy-machine-learning-pipeline-on-cloud-using-docker-container-bec64458dc01)
@@ -204,7 +204,7 @@ Join us on our slack channel. Invite link [here](https://join.slack.com/t/pycare
 [Build and deploy machine learning web app using PyCaret and Streamlit](https://towardsdatascience.com/build-and-deploy-machine-learning-web-app-using-pycaret-and-streamlit-28883a569104)
 [Deploy Machine Learning App built using Streamlit and PyCaret on GKE](https://towardsdatascience.com/deploy-machine-learning-app-built-using-streamlit-and-pycaret-on-google-kubernetes-engine-fd7e393d99cb)
 
-## Important Links
+# Important Links
 
 [Documentation](https://pycaret.readthedocs.io/en/latest/installation.html)
 [Blog](https://medium.com/@moez_62905)
@@ -214,7 +214,7 @@ Join us on our slack channel. Invite link [here](https://join.slack.com/t/pycare
 ](https://pycaret.readthedocs.io/en/latest/installation.html)[Notebook Tutorials
 ](https://pycaret.readthedocs.io/en/latest/tutorials.html)[Contribute in PyCaret](https://pycaret.readthedocs.io/en/latest/contribute.html)
 
-## Want to learn about a specific module?
+# Want to learn about a specific module?
 
 Click on the links below to see the documentation and working examples.
 

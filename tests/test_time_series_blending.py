@@ -9,7 +9,7 @@ from pycaret.internal.ensemble import _ENSEMBLE_METHODS
 from pycaret.time_series import TSForecastingExperiment
 
 ##########################
-#### Tests Start Here ####
+# Tests Start Here ####
 ##########################
 
 
@@ -79,7 +79,7 @@ def test_blend_model_custom_folds(load_pos_and_neg_data):
     )
 
     #######################################
-    ## Test Tune Model with custom folds ##
+    # Test Tune Model with custom folds ##
     #######################################
     model = exp.create_model("naive")
     _ = exp.blend_models([model, model, model])

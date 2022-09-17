@@ -1,5 +1,6 @@
 import functools
 import inspect
+import warnings
 from copy import deepcopy
 from enum import Enum, auto
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Union
@@ -216,7 +217,7 @@ def get_config(variable: str, globals_d: dict):
     logger.info("Initializing get_config()")
     logger.info(f"get_config({function_params_str})")
 
-    if not variable in globals_d["pycaret_globals"]:
+    if variable not in globals_d["pycaret_globals"]:
         raise ValueError(
             f"Variable {variable} not found. Possible variables are: {globals_d['pycaret_globals']}"
         )
@@ -225,7 +226,7 @@ def get_config(variable: str, globals_d: dict):
 
     logger.info(f"Global variable: {variable} returned as {global_var}")
     logger.info(
-        "get_config() succesfully completed......................................"
+        "get_config() successfully completed......................................"
     )
 
     return global_var
@@ -256,7 +257,7 @@ def set_config(variable: str, value, globals_d: dict):
     if variable.startswith("_"):
         raise ValueError(f"Variable {variable} is read only ('_' prefix).")
 
-    if not variable in globals_d["pycaret_globals"] or variable == "pycaret_globals":
+    if variable not in globals_d["pycaret_globals"] or variable == "pycaret_globals":
         raise ValueError(
             f"Variable {variable} not found. Possible variables are: {globals_d['pycaret_globals']}"
         )
@@ -269,7 +270,7 @@ def set_config(variable: str, value, globals_d: dict):
 
     logger.info(f"Global variable: {variable} updated to {value}")
     logger.info(
-        "set_config() succesfully completed......................................"
+        "set_config() successfully completed......................................"
     )
 
 
@@ -315,7 +316,7 @@ def save_config(file_name: str, globals_d: dict):
 
     logger.info(f"Global variables dumped to {file_name}")
     logger.info(
-        "save_config() succesfully completed......................................"
+        "save_config() successfully completed......................................"
     )
 
 
@@ -356,7 +357,7 @@ def load_config(file_name: str, globals_d: dict):
     logger.info(f"Global variables set to match those in {file_name}")
 
     logger.info(
-        "load_config() succesfully completed......................................"
+        "load_config() successfully completed......................................"
     )
 
 
@@ -370,7 +371,7 @@ def color_df(
 
 
 def get_model_id(
-    e, all_models: Dict[str, "pycaret.containers.models.base_model.ModelContainer"]
+    e, all_models: Dict[str, "pycaret.containers.models.ModelContainer"]
 ) -> str:
     from pycaret.internal.meta_estimators import get_estimator_from_meta_estimator
 
@@ -386,7 +387,7 @@ def get_model_id(
 
 def get_model_name(
     e,
-    all_models: Dict[str, "pycaret.containers.models.base_model.ModelContainer"],
+    all_models: Dict[str, "pycaret.containers.models.ModelContainer"],
     deep: bool = True,
 ) -> str:
     all_models = all_models or {}
@@ -417,18 +418,18 @@ def get_model_name(
     else:
         try:
             name = type(e).__name__
-        except:
+        except Exception:
             name = str(e).split("(")[0]
 
     return name
 
 
 def is_special_model(
-    e, all_models: Dict[str, "pycaret.containers.models.base_model.ModelContainer"]
+    e, all_models: Dict[str, "pycaret.containers.models.ModelContainer"]
 ) -> bool:
     try:
         return all_models[get_model_id(e, all_models)].is_special
-    except:
+    except Exception:
         return False
 
 
@@ -483,7 +484,7 @@ def np_list_arange(
 
 
 def calculate_unsupervised_metrics(
-    metrics: Dict[str, "pycaret.containers.metrics.base_metric.MetricContainer"],
+    metrics: Dict[str, "pycaret.containers.metrics.MetricContainer"],
     X,
     labels,
     ground_truth: Optional[Any] = None,
@@ -530,7 +531,7 @@ def get_function_params(function: Callable) -> Set[str]:
 
 
 def calculate_metrics(
-    metrics: Dict[str, "pycaret.containers.metrics.base_metric.MetricContainer"],
+    metrics: Dict[str, "pycaret.containers.metrics.MetricContainer"],
     y_test,
     pred,
     pred_proba: Optional[float] = None,
@@ -573,10 +574,10 @@ def _calculate_metric(
     target = pred_proba if container.target == "pred_proba" else pred_
     try:
         calculated_metric = score_func(y_test, target, sample_weight=weights, **kwargs)
-    except:
+    except Exception:
         try:
             calculated_metric = score_func(y_test, target, **kwargs)
-        except:
+        except Exception:
             calculated_metric = 0
 
     return display_name, calculated_metric
@@ -680,7 +681,7 @@ def get_cv_splitter(
                 default_copy = deepcopy(default)
                 default_copy.n_splits = fold
                 return default_copy
-            except:
+            except Exception:
                 raise ValueError(f"Couldn't set 'n_splits' to {fold} for {default}.")
         else:
             fold_seed = seed if shuffle else None
@@ -743,7 +744,7 @@ class set_n_jobs(object):
                 for k, v in self.model.get_params().items()
                 if k.endswith("n_jobs") or k.endswith("thread_count")
             }
-        except:
+        except Exception:
             pass
 
     def __enter__(self):
@@ -769,7 +770,7 @@ class true_warm_start(object):
                 for k, v in self.model.get_params().items()
                 if k.endswith("warm_start")
             }
-        except:
+        except Exception:
             pass
 
     def __enter__(self):
@@ -830,7 +831,7 @@ def get_all_object_vars_and_properties(object):
         try:
             if k[:2] != "__" and type(getattr(object, k, "")).__name__ != "method":
                 d[k] = getattr(object, k, "")
-        except:
+        except Exception:
             pass
     return d
 
@@ -869,7 +870,7 @@ def can_early_stop(
 
     try:
         base_estimator = estimator.steps[-1][1]
-    except:
+    except Exception:
         base_estimator = estimator
 
     if consider_partial_fit:
@@ -1084,21 +1085,17 @@ def check_metric(
         float
 
     """
-
-    # general dependencies
-    import pycaret.containers.metrics.classification
-    import pycaret.containers.metrics.regression
-    import pycaret.containers.metrics.time_series
+    from pycaret.containers.metrics import (
+        get_all_class_metric_containers,
+        get_all_reg_metric_containers,
+        get_all_ts_metric_containers,
+    )
 
     globals_dict = {"y": prediction}
     metric_containers = {
-        **pycaret.containers.metrics.classification.get_all_metric_containers(
-            globals_dict
-        ),
-        **pycaret.containers.metrics.regression.get_all_metric_containers(globals_dict),
-        **pycaret.containers.metrics.time_series.get_all_metric_containers(
-            globals_dict
-        ),
+        **get_all_class_metric_containers(globals_dict),
+        **get_all_reg_metric_containers(globals_dict),
+        **get_all_ts_metric_containers(globals_dict),
     }
     metrics = {
         v.name: functools.partial(v.score_func, **(v.args or {}))
@@ -1115,7 +1112,7 @@ def check_metric(
     if metric in metrics:
         try:
             result = metrics[metric](*input_params)
-        except:
+        except Exception:
             from sklearn.preprocessing import LabelEncoder
 
             le = LabelEncoder()

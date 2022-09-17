@@ -6,7 +6,7 @@ import pytest
 from pycaret.time_series import TSForecastingExperiment
 
 ##########################
-#### Tests Start Here ####
+# Tests Start Here ####
 ##########################
 
 
@@ -16,15 +16,15 @@ def test_naive_models(load_pos_and_neg_data):
     exp = TSForecastingExperiment()
     data = load_pos_and_neg_data
 
-    #### Seasonal Period != 1 ----
-    #### All naive models should be enabled here
+    # Seasonal Period != 1 ----
+    # All naive models should be enabled here
     exp.setup(data=data, verbose=False)
     expected = ["naive", "grand_means", "snaive"]
     for model in expected:
         assert model in exp.models().index
 
-    #### Seasonal Period == 1 ----
-    #### snaive should be disabled here
+    # Seasonal Period == 1 ----
+    # snaive should be disabled here
     exp.setup(data=data, seasonal_period=1, verbose=False)
     expected = ["naive", "grand_means"]
     for model in expected:
@@ -46,7 +46,7 @@ def test_custom_models(load_pos_data):
         session_id=42,
     )
 
-    #### Create a sktime pipeline with preprocessing ----
+    # Create a sktime pipeline with preprocessing ----
     from sktime.forecasting.arima import ARIMA
     from sktime.forecasting.compose import TransformedTargetForecaster
     from sktime.transformations.series.boxcox import LogTransformer
@@ -61,13 +61,13 @@ def test_custom_models(load_pos_data):
     )
 
     ##################################
-    #### Test Create Custom Model ----
+    # Test Create Custom Model ----
     ##################################
     my_custom_model = exp.create_model(forecaster)
     assert type(my_custom_model) == type(forecaster)
 
     ################################
-    #### Test Tune Custom Model ----
+    # Test Tune Custom Model ----
     ################################
     impute_values = ["drift", "bfill", "ffill"]
     my_grid = {"impute__method": impute_values}
@@ -84,7 +84,7 @@ def test_custom_models(load_pos_data):
         assert method == impute_values[index]
 
     ############################
-    #### Test Tuning raises ----
+    # Test Tuning raises ----
     ############################
     # No custom grid passed when tuning custom model
     with pytest.raises(ValueError) as errmsg:
@@ -95,6 +95,6 @@ def test_custom_models(load_pos_data):
 
     # Check exact error received
     assert (
-        f"When passing a model not in PyCaret's model library, the custom_grid parameter must be provided."
+        "When passing a model not in PyCaret's model library, the custom_grid parameter must be provided."
         in exceptionmsg
     )

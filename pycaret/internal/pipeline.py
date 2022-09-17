@@ -96,11 +96,6 @@ class Pipeline(imblearn.pipeline.Pipeline):
         self._fit_vars = set()
         self._feature_names_in = None
 
-        # Set up cache memory objects
-        memory = check_memory(self.memory)
-        self._memory_fit = memory.cache(_fit_transform_one)
-        self._memory_transform = memory.cache(_transform_one)
-
     def __getattr__(self, name: str):
         # override getattr to allow grabbing of final estimator attrs
         return getattr(self._final_estimator, name)
@@ -142,6 +137,17 @@ class Pipeline(imblearn.pipeline.Pipeline):
     @property
     def feature_names_in_(self):
         return self._feature_names_in
+
+    @property
+    def memory(self):
+        return self._memory
+
+    @memory.setter
+    def memory(self, value):
+        """Set up cache memory objects."""
+        self._memory = check_memory(value)
+        self._memory_fit = self._memory.cache(_fit_transform_one)
+        self._memory_transform = self._memory.cache(_transform_one)
 
     def _iter(self, with_final=True, filter_passthrough=True, filter_train_only=True):
         """Generate (idx, name, trans) tuples from self.steps.
@@ -290,9 +296,9 @@ class Pipeline(imblearn.pipeline.Pipeline):
                 try:
                     delattr(self, var)
                     self._fit_vars.remove(var)
-                except:
+                except Exception:
                     pass
-        except:
+        except Exception:
             pass
 
     def get_sklearn_pipeline(self) -> sklearn.pipeline.Pipeline:
@@ -313,7 +319,7 @@ class Pipeline(imblearn.pipeline.Pipeline):
     def set_params(self, **kwargs):
         try:
             result = super().set_params(**kwargs)
-        except:
+        except Exception:
             result = self._final_estimator.set_params(**kwargs)
 
         return result
@@ -348,7 +354,7 @@ class Pipeline(imblearn.pipeline.Pipeline):
         """
         try:
             self.Xt_
-        except:
+        except Exception:
             self.Xt_ = None
             self.yt_ = None
         if self.Xt_ is None or self.yt_ is None:
@@ -487,7 +493,7 @@ def add_estimator_to_pipeline(pipeline: Pipeline, estimator, name="actual_estima
     try:
         assert hasattr(pipeline._final_estimator, "predict")
         pipeline.replace_final_estimator(estimator, name=name)
-    except:
+    except Exception:
         pipeline.steps.append((name, estimator))
 
 
@@ -498,7 +504,7 @@ def merge_pipelines(pipeline_to_merge_to: Pipeline, pipeline_to_be_merged: Pipel
 def get_pipeline_estimator_label(pipeline: Pipeline) -> str:
     try:
         model_step = pipeline.steps[-1]
-    except:
+    except Exception:
         return ""
 
     return model_step[0]
@@ -507,7 +513,7 @@ def get_pipeline_estimator_label(pipeline: Pipeline) -> str:
 def get_pipeline_fit_kwargs(pipeline: Pipeline, fit_kwargs: dict) -> dict:
     try:
         model_step = pipeline.steps[-1]
-    except:
+    except Exception:
         return fit_kwargs
 
     if any(k.startswith(f"{model_step[0]}__") for k in fit_kwargs.keys()):
