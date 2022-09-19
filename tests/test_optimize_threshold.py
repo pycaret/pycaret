@@ -1,11 +1,4 @@
-import os
-import sys
-
-sys.path.insert(0, os.path.abspath(".."))
-
-import numpy as np
 import pandas as pd
-import pytest
 
 import pycaret.classification
 import pycaret.datasets
@@ -18,7 +11,7 @@ def test_optimize_threshold():
     data = pycaret.datasets.get_data("blood")
 
     # initialize setup
-    clf1 = pycaret.classification.setup(
+    pycaret.classification.setup(
         data,
         target="Class",
         html=False,

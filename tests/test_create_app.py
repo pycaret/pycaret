@@ -1,12 +1,3 @@
-import os
-import sys
-
-sys.path.insert(0, os.path.abspath(".."))
-
-import numpy as np
-import pandas as pd
-import pytest
-
 import pycaret.classification
 import pycaret.datasets
 import pycaret.regression
@@ -18,7 +9,7 @@ def test_classification_create_app():
     data = pycaret.datasets.get_data("blood")
 
     # initialize setup
-    clf1 = pycaret.classification.setup(
+    pycaret.classification.setup(
         data,
         target="Class",
         html=False,
@@ -26,7 +17,7 @@ def test_classification_create_app():
     )
 
     # train model
-    lr = pycaret.classification.create_model("lr")
+    pycaret.classification.create_model("lr")
 
     # create app
     # pycaret.classification.create_app(lr) #disabling test because it get stucked on git
@@ -39,7 +30,7 @@ def test_regression_create_app():
     data = pycaret.datasets.get_data("boston")
 
     # initialize setup
-    reg1 = pycaret.regression.setup(
+    pycaret.regression.setup(
         data,
         target="medv",
         html=False,
@@ -47,7 +38,7 @@ def test_regression_create_app():
     )
 
     # train model
-    lr = pycaret.regression.create_model("lr")
+    pycaret.regression.create_model("lr")
 
     # create app
     # pycaret.regression.create_app(lr) #disabling test because it get stucked on git

@@ -20,11 +20,26 @@ import sklearn.pipeline
 from joblib.memory import Memory
 from sklearn.base import clone
 from sklearn.utils import _print_elapsed_time
-from sklearn.utils.metaestimators import if_delegate_has_method
+from sklearn.utils.metaestimators import available_if
 from sklearn.utils.validation import check_memory
 
 from pycaret.utils._show_versions import _get_deps_info
 from pycaret.utils.generic import get_all_object_vars_and_properties, variable_return
+
+
+def _final_estimator_has(attr):
+    """Check that final_estimator has attribute `attr`.
+
+    Used together with `available_if` in Pipeline.
+
+    """
+
+    def check(self):
+        # Raise original `AttributeError` if `attr` does not exist
+        getattr(self._final_estimator, attr)
+        return True
+
+    return check
 
 
 def _fit_one(transformer, X=None, y=None, message=None, **fit_params):
@@ -81,11 +96,6 @@ class Pipeline(imblearn.pipeline.Pipeline):
         self._fit_vars = set()
         self._feature_names_in = None
 
-        # Set up cache memory objects
-        memory = check_memory(self.memory)
-        self._memory_fit = memory.cache(_fit_transform_one)
-        self._memory_transform = memory.cache(_transform_one)
-
     def __getattr__(self, name: str):
         # override getattr to allow grabbing of final estimator attrs
         return getattr(self._final_estimator, name)
@@ -127,6 +137,17 @@ class Pipeline(imblearn.pipeline.Pipeline):
     @property
     def feature_names_in_(self):
         return self._feature_names_in
+
+    @property
+    def memory(self):
+        return self._memory
+
+    @memory.setter
+    def memory(self, value):
+        """Set up cache memory objects."""
+        self._memory = check_memory(value)
+        self._memory_fit = self._memory.cache(_fit_transform_one)
+        self._memory_transform = self._memory.cache(_transform_one)
 
     def _iter(self, with_final=True, filter_passthrough=True, filter_train_only=True):
         """Generate (idx, name, trans) tuples from self.steps.
@@ -219,7 +240,7 @@ class Pipeline(imblearn.pipeline.Pipeline):
 
         return variable_return(X, y)
 
-    @if_delegate_has_method(delegate="_final_estimator")
+    @available_if(_final_estimator_has("predict"))
     def predict(self, X, **predict_params):
         for _, name, transformer in self._iter(with_final=False):
             X, _ = self._memory_transform(transformer, X)
@@ -231,28 +252,28 @@ class Pipeline(imblearn.pipeline.Pipeline):
 
         return y
 
-    @if_delegate_has_method(delegate="_final_estimator")
+    @available_if(_final_estimator_has("predict_proba"))
     def predict_proba(self, X):
         for _, _, transformer in self._iter(with_final=False):
             X, _ = self._memory_transform(transformer, X)
 
         return self.steps[-1][-1].predict_proba(X)
 
-    @if_delegate_has_method(delegate="_final_estimator")
+    @available_if(_final_estimator_has("predict_log_proba"))
     def predict_log_proba(self, X):
         for _, _, transformer in self._iter(with_final=False):
             X, _ = self._memory_transform(transformer, X)
 
         return self.steps[-1][-1].predict_log_proba(X)
 
-    @if_delegate_has_method(delegate="_final_estimator")
+    @available_if(_final_estimator_has("decision_function"))
     def decision_function(self, X):
         for _, _, transformer in self._iter(with_final=False):
             X, _ = self._memory_transform(transformer, X)
 
         return self.steps[-1][-1].decision_function(X)
 
-    @if_delegate_has_method(delegate="_final_estimator")
+    @available_if(_final_estimator_has("score"))
     def score(self, X, y, sample_weight=None):
         for _, _, transformer in self._iter(with_final=False):
             X, y = self._memory_transform(transformer, X, y)
@@ -275,9 +296,9 @@ class Pipeline(imblearn.pipeline.Pipeline):
                 try:
                     delattr(self, var)
                     self._fit_vars.remove(var)
-                except:
+                except Exception:
                     pass
-        except:
+        except Exception:
             pass
 
     def get_sklearn_pipeline(self) -> sklearn.pipeline.Pipeline:
@@ -298,12 +319,12 @@ class Pipeline(imblearn.pipeline.Pipeline):
     def set_params(self, **kwargs):
         try:
             result = super().set_params(**kwargs)
-        except:
+        except Exception:
             result = self._final_estimator.set_params(**kwargs)
 
         return result
 
-    @if_delegate_has_method(delegate="_final_estimator")
+    @available_if(_final_estimator_has("partial_fit"))
     def partial_fit(self, X, y=None, classes=None, **fit_params):
         """Fit the model.
 
@@ -333,7 +354,7 @@ class Pipeline(imblearn.pipeline.Pipeline):
         """
         try:
             self.Xt_
-        except:
+        except Exception:
             self.Xt_ = None
             self.yt_ = None
         if self.Xt_ is None or self.yt_ is None:
@@ -371,7 +392,7 @@ class TimeSeriesPipeline(Pipeline):
             fit_params_steps[step][param] = pval
         return X, y, fit_params_steps[self.steps[-1][0]]
 
-    @if_delegate_has_method(delegate="_final_estimator")
+    @available_if(_final_estimator_has("score"))
     def score(self, X=None, y=None, **score_params):
         Xt = X
         for _, name, transform in self._iter(with_final=False):
@@ -396,7 +417,7 @@ class TimeSeriesPipeline(Pipeline):
                 self._final_estimator.fit(y=yt, X=Xt, **fit_params)
         return self
 
-    @if_delegate_has_method(delegate="_final_estimator")
+    @available_if(_final_estimator_has("fit_predict"))
     def fit_predict(self, X=None, y=None, **fit_params):
         if X is not None:
             Xt, yt, fit_params = self._fit(X, y, **fit_params)
@@ -472,7 +493,7 @@ def add_estimator_to_pipeline(pipeline: Pipeline, estimator, name="actual_estima
     try:
         assert hasattr(pipeline._final_estimator, "predict")
         pipeline.replace_final_estimator(estimator, name=name)
-    except:
+    except Exception:
         pipeline.steps.append((name, estimator))
 
 
@@ -483,7 +504,7 @@ def merge_pipelines(pipeline_to_merge_to: Pipeline, pipeline_to_be_merged: Pipel
 def get_pipeline_estimator_label(pipeline: Pipeline) -> str:
     try:
         model_step = pipeline.steps[-1]
-    except:
+    except Exception:
         return ""
 
     return model_step[0]
@@ -492,7 +513,7 @@ def get_pipeline_estimator_label(pipeline: Pipeline) -> str:
 def get_pipeline_fit_kwargs(pipeline: Pipeline, fit_kwargs: dict) -> dict:
     try:
         model_step = pipeline.steps[-1]
-    except:
+    except Exception:
         return fit_kwargs
 
     if any(k.startswith(f"{model_step[0]}__") for k in fit_kwargs.keys()):

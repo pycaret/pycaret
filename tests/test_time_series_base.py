@@ -13,7 +13,7 @@ pytestmark = pytest.mark.filterwarnings("ignore::UserWarning")
 
 
 ##############################
-#### Functions Start Here ####
+# Functions Start Here ####
 ##############################
 
 # NOTE: Fixtures can not be used to parameterize tests
@@ -25,12 +25,12 @@ _model_parameters = _return_model_parameters()
 _compare_model_args = _return_compare_model_args()
 
 ############################
-#### Functions End Here ####
+# Functions End Here ####
 ############################
 
 
 ##########################
-#### Tests Start Here ####
+# Tests Start Here ####
 ##########################
 
 
@@ -50,13 +50,13 @@ def test_create_predict_finalize_model(name, fh, load_pos_and_neg_data):
         verbose=False,
     )
     #######################
-    ## Test Create Model ##
+    # Test Create Model ##
     #######################
     model = exp.create_model(name)
     assert not isinstance(model, ForecastingPipeline)
 
     #########################
-    #### Expected Values ####
+    # Expected Values ####
     #########################
     # Only forcasted values
     fh_index = fh if isinstance(fh, int) else len(fh)
@@ -67,7 +67,7 @@ def test_create_predict_finalize_model(name, fh, load_pos_and_neg_data):
     final_expected_period_index = expected_period_index.shift(fh_max_window)
 
     ########################
-    ## Test Predict Model ##
+    # Test Predict Model ##
     ########################
     # Default prediction
     y_pred = exp.predict_model(model)
@@ -95,7 +95,7 @@ def test_create_predict_finalize_model(name, fh, load_pos_and_neg_data):
     assert len(y_pred) == 24
 
     #########################
-    ## Test Finalize Model ##
+    # Test Finalize Model ##
     #########################
 
     final_pipeline = exp.finalize_model(model)
@@ -121,19 +121,19 @@ def test_predict_model_metrics_displayed(load_pos_and_neg_data):
     model = exp.create_model("naive")
 
     ######################################
-    #### Test before finalizing model ####
+    # Test before finalizing model ####
     ######################################
     # Default (Correct comparison to test set)
     _ = exp.predict_model(model)
     expected = exp.pull()
 
-    #### Metrics are returned ----
+    # Metrics are returned ----
     # (1) User provides fh resulting in prediction whose indices are same as y_test
     _ = exp.predict_model(model, fh=FH)
     metrics = exp.pull()
     assert metrics.equals(expected)
 
-    #### No metrics returned ----
+    # No metrics returned ----
     # All values are 0
     expected.iloc[0, 1:] = 0
     cols = expected.select_dtypes(include=["float"])
@@ -164,7 +164,7 @@ def test_create_model_custom_folds(load_pos_and_neg_data):
     )
 
     #########################################
-    ## Test Create Model with custom folds ##
+    # Test Create Model with custom folds ##
     #########################################
     _ = exp.create_model("naive")
     metrics1 = exp.pull()
@@ -188,7 +188,7 @@ def test_create_model_no_cv(load_pos_and_neg_data):
     )
 
     ##################################
-    ## Test Create Model without cv ##
+    # Test Create Model without cv ##
     ##################################
     model = exp.create_model("naive", cross_validation=False)
     assert not isinstance(model, ForecastingPipeline)
@@ -261,7 +261,7 @@ def test_save_load_model_no_setup(load_pos_and_neg_data):
     data = load_pos_and_neg_data
 
     ######################
-    #### OOP Approach ####
+    # OOP Approach ####
     ######################
     exp = TSForecastingExperiment()
     exp.setup(
@@ -285,7 +285,7 @@ def test_save_load_model_no_setup(load_pos_and_neg_data):
     assert np.all(loaded_predictions == expected_predictions)
 
     ########################
-    #### Functional API ####
+    # Functional API ####
     ########################
     from pycaret.time_series import (
         create_model,
@@ -320,7 +320,7 @@ def test_save_load_model_setup(load_pos_and_neg_data):
     data = load_pos_and_neg_data
 
     ######################
-    #### OOP Approach ####
+    # OOP Approach ####
     ######################
     exp = TSForecastingExperiment()
     exp.setup(
@@ -352,7 +352,7 @@ def test_save_load_model_setup(load_pos_and_neg_data):
     assert np.all(loaded_predictions == expected_predictions)
 
     ########################
-    #### Functional API ####
+    # Functional API ####
     ########################
     from pycaret.time_series import (
         create_model,
@@ -410,7 +410,7 @@ def test_save_load_raises(load_pos_and_neg_data):
     exp_loaded = TSForecastingExperiment()
     loaded_model = exp_loaded.load_model("model_unit_test_oop_raises")
 
-    #### Setup not run and only passing a estimator without pipeline ----
+    # Setup not run and only passing a estimator without pipeline ----
     with pytest.raises(ValueError) as errmsg:
         _ = exp_loaded.predict_model(loaded_model)
     exceptionmsg = errmsg.value.args[0]

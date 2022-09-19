@@ -25,13 +25,13 @@ class TSForecastingPreprocessor:
         numeric_imputation_exogenous: Optional[Union[str, int, float]],
         exogenous_present: bool,
     ):
-        #### Impute target ----
+        # Impute target ----
         if numeric_imputation_target is not None:
             self._add_imputation_steps(
                 numeric_imputation=numeric_imputation_target, target=True
             )
 
-        #### Impute Exogenous ----
+        # Impute Exogenous ----
         # Only add exogenous pipeline steps if exogenous variables are present.
         if (
             exogenous_present == TSExogenousPresent.YES
@@ -107,11 +107,11 @@ class TSForecastingPreprocessor:
         transform_exogenous: Optional[Union[str, int, float]],
         exogenous_present: bool,
     ):
-        #### Impute target ----
+        # Impute target ----
         if transform_target is not None:
             self._add_transformation_steps(transform=transform_target, target=True)
 
-        #### Impute Exogenous ----
+        # Impute Exogenous ----
         # Only add exogenous pipeline steps if exogenous variables are present.
         if (
             exogenous_present == TSExogenousPresent.YES
@@ -178,11 +178,11 @@ class TSForecastingPreprocessor:
         scale_exogenous: Optional[Union[str, int, float]],
         exogenous_present: bool,
     ):
-        #### Scale target ----
+        # Scale target ----
         if scale_target:
             self._add_scaling_steps(scale=scale_target, target=True)
 
-        #### Scale Exogenous ----
+        # Scale Exogenous ----
         # Only add exogenous pipeline steps if exogenous variables are present.
         if exogenous_present == TSExogenousPresent.YES and scale_exogenous is not None:
             self._add_scaling_steps(scale=scale_exogenous, target=False)

@@ -1,8 +1,3 @@
-import os
-import sys
-
-sys.path.insert(0, os.path.abspath(".."))
-
 import pandas as pd
 import pytest
 
@@ -18,7 +13,7 @@ def test_regression_tuning():
     assert isinstance(data, pd.DataFrame)
 
     # init setup
-    reg = pycaret.regression.setup(
+    pycaret.regression.setup(
         data,
         target="medv",
         train_size=0.99,

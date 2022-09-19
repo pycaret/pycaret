@@ -1,9 +1,9 @@
 
-## Machine Learning in SQL using PyCaret
+# Machine Learning in SQL using PyCaret
 
-### Ship your ML code to data by integrating PyCaret in SQL Server
+# Ship your ML code to data by integrating PyCaret in SQL Server
 
-### by Umar Farooque
+# by Umar Farooque
 
 ![](https://cdn-images-1.medium.com/max/8064/1*CxB6I95fPzYv_z9C6RRzVg.png)
 
@@ -19,7 +19,7 @@ This post is a **step-by-step tutorial** on how to train and deploy an Unsupervi
 
 4. How to train a clustering algorithm in order to assign cluster labels to each observation in the dataset
 
-## **I. Bringing Code to Data — The case for using Database for ML**
+# **I. Bringing Code to Data — The case for using Database for ML**
 
 The go-to tools/ environments for performing ML experiments are Command-Line, IDEs, or Notebooks. However, such tools/environments may pose limitations when the data size gets very large, or when the ML model is required to be put in production. There has been a dire need to have the ability to programme and train models where data reside. MS SQL Server introduced this capability in their SQL Server version 2019. The distinct advantages of using SQL Server for Machine Learning are:
 
@@ -29,21 +29,21 @@ ii. ML experiments are executed mostly in computer/cpu memory. Most of the machi
 
 iii. It is easy to integrate and deploy ML Pipelines along with other ETL processes
 
-## **II. SQL Server**
+# **II. SQL Server**
 
 SQL Server is a Microsoft relational database management system. As a database server, it performs the primary function of storing and retrieving data as requested by different applications. In this tutorial, we will use [**SQL Server 2019 ****Developer](https://www.microsoft.com/en-ca/sql-server/sql-server-downloads)** for machine learning by importing PyCaret library into SQL Server.
 
-## **III. Download Software**
+# **III. Download Software**
 
 If you have used SQL Server before, it is likely that you have it installed and have access to the database. If not, [**click here](https://www.microsoft.com/en-ca/sql-server/sql-server-downloads)** to download SQL Server 2019 Developer or other edition.
 
 ![](https://cdn-images-1.medium.com/max/2000/1*lt9GPAvrhixDQAP6iatTIQ.png)
 
-## **IV. Setting up the Environment**
+# **IV. Setting up the Environment**
 
 Before using PyCaret functionality into SQL Server, you’ll need to install SQL Server and PyCaret. This is a multi-step process:
 
-### Step 1 — Install SQL Server
+# Step 1 — Install SQL Server
 
 Download the SQL Server 2019 Developer Edition file “**SQL2019-SSEI-Dev.exe**”
 
@@ -67,7 +67,7 @@ Click “**Accept**” to provide consent to install Python
 
 Installation may take 15–20 minutes
 
-### Step 2 — Install Microsoft SQL Server Management Studio (SSMS)
+# Step 2 — Install Microsoft SQL Server Management Studio (SSMS)
 
 [**Click here](https://docs.microsoft.com/en-us/sql/ssms/download-sql-server-management-studio-ssms?redirectedfrom=MSDN&view=sql-server-ver15)** or Open SQL Server Installation Center to download “SQL Server Management Tools” file “**SSMS-Setup-ENU.exe**”
 
@@ -79,7 +79,7 @@ Open “**SSMS-Setup-ENU.exe**” file to start the installation
 
 Installation may take 5–10 minutes
 
-### Step 3 — Create a database for Machine Learning
+# Step 3 — Create a database for Machine Learning
 
 Once you have everything installed, you will need to start an instance of the server. To do so, start SSMS. At the login stage, you’ll be asked to the name of the SQL Server that you can choose from the drop-down menu. Once a connection is established, you can see all the objects from the server. If you have downloaded SQL Server for the first time and you do not have a database to work with, you will need to create a new database first.
 
@@ -91,7 +91,7 @@ Enter the database name and other information
 
 The setup may take 2–3 minutes including creating a database, user and setting ownership
 
-### Step 4 — Import CSV File
+# Step 4 — Import CSV File
 
 You will now have to import a CSV file into a database using SQL Server Management Studio.
 
@@ -123,7 +123,7 @@ Click the Finish button to run the package
 
 ![Data Loading Result](https://cdn-images-1.medium.com/max/2000/1*jBBq5kfftYJNR2DKWYmRuQ.png)
 
-### Step 5 — Enable SQL Server for Python Scripts
+# Step 5 — Enable SQL Server for Python Scripts
 
 We will run Python “inside” the SQL Server by using the **sp_execute_external_script **system stored procedure. To begin, you need to open a ‘**New Query**’. Execute the following query in your instance to enable the use of the procedure for remote script execution:
 
@@ -169,7 +169,7 @@ List Installed Packages:
 
 ![Script Execution Result](https://cdn-images-1.medium.com/max/2000/1*1bSpU8-L-KYpzR_dDPaTPQ.png)
 
-### Step 6 — Adding PyCaret Python Package to SQL Server
+# Step 6 — Adding PyCaret Python Package to SQL Server
 
 To install PyCaret package, open a command prompt and browse to the location of Python packages where SQL Server is installed. The default location is:
 
@@ -217,7 +217,7 @@ Execute the following SQL to verify the PyCaret installation from SQL Server:
 
 ![Script Execution Result](https://cdn-images-1.medium.com/max/2000/1*evwN5FoXycMQJETJcjawgA.png)
 
-## V. ML Experiment Example — Clustering in SQL Server
+# V. ML Experiment Example — Clustering in SQL Server
 
 Clustering is a machine learning technique that groups data points with similar characteristics. These groupings are useful for exploring data, identifying patterns, and analyzing a subset of data. Some common business use cases for clustering are:
 
@@ -231,7 +231,7 @@ In this tutorial, we will use the ‘**jewellery.csv’ **file that is available
 
 ![Sample Data points from jewellery dataset](https://cdn-images-1.medium.com/max/2000/1*itUa7b3dSjnzKFaaTJOkMg.png)
 
-### 1. K-Means Clustering
+# 1. K-Means Clustering
 
 Run the following SQL code in SQL Server:
 
@@ -251,7 +251,7 @@ Run the following SQL code in SQL Server:
 
     WITH RESULT SETS(([Age] INT, [Income] INT, [SpendingScore] FLOAT, [Savings] FLOAT, [Cluster] varchar(15)));
 
-### 2. Output
+# 2. Output
 
 ![SQL Statement Result](https://cdn-images-1.medium.com/max/2000/1*AwXT-NmfgHJ9LDU6IWrPpA.png)
 
@@ -263,7 +263,7 @@ To change the number of clusters you can use **num_clusters** parameter within *
 
 To change model type use **model** parameter within **get_clusters( ).**
 
-### **3. K-Modes**
+# **3. K-Modes**
 
 See the following code for training **K-Modes** model with **6 clusters**:
 
@@ -285,7 +285,7 @@ See the following code for training **K-Modes** model with **6 clusters**:
 
 Following these steps, you can assign cluster value to every observation point in the jewellery dataset. You can use similar steps on other datasets too, to perform clustering on them.
 
-## VI. Conclusion
+# VI. Conclusion
 
 In this post, we learnt how to build a clustering model using running a Python library (PyCaret) in SQL Server. Similarly, you can build and run other types of supervised and unsupervised ML models depending on the need of the business problem.
 
@@ -293,7 +293,7 @@ You can further check out the [PyCaret](http://pycaret.org/) website for documen
 
 My future posts will be tutorials on exploring supervised learning techniques (regression/classification) using Python and Pycaret within a SQL Server.
 
-## VII. Important Links
+# VII. Important Links
 
 [PyCaret](https://pycaret.org/)
 

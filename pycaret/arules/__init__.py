@@ -392,7 +392,7 @@ def get_rules(
     Magic function to get Association Rules in Power Query / Power BI.
     """
 
-    s = setup(
+    setup(
         data=data,
         transaction_id=transaction_id,
         item_id=item_id,

@@ -158,7 +158,7 @@ class AnomalyContainer(ModelContainer):
 
 class ABODAnomalyContainer(AnomalyContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
         from pyod.models.abod import ABOD
 
@@ -180,7 +180,7 @@ class ABODAnomalyContainer(AnomalyContainer):
 
 class CBLOFAnomalyContainer(AnomalyContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
         from pyod.models.cblof import CBLOF
 
@@ -205,7 +205,7 @@ class CBLOFAnomalyContainer(AnomalyContainer):
 
 class COFAnomalyContainer(AnomalyContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
         from pyod.models.cof import COF
 
@@ -227,7 +227,7 @@ class COFAnomalyContainer(AnomalyContainer):
 
 class IForestAnomalyContainer(AnomalyContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
         from pyod.models.iforest import IForest
 
@@ -253,7 +253,7 @@ class IForestAnomalyContainer(AnomalyContainer):
 
 class HBOSAnomalyContainer(AnomalyContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
         from pyod.models.hbos import HBOS
 
@@ -275,7 +275,7 @@ class HBOSAnomalyContainer(AnomalyContainer):
 
 class KNNAnomalyContainer(AnomalyContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
         from pyod.models.knn import KNN
 
@@ -299,7 +299,7 @@ class KNNAnomalyContainer(AnomalyContainer):
 
 class LOFAnomalyContainer(AnomalyContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
         from pyod.models.lof import LOF
 
@@ -323,7 +323,7 @@ class LOFAnomalyContainer(AnomalyContainer):
 
 class OCSVMAnomalyContainer(AnomalyContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
         from pyod.models.ocsvm import OCSVM
 
@@ -345,7 +345,7 @@ class OCSVMAnomalyContainer(AnomalyContainer):
 
 class PCAAnomalyContainer(AnomalyContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
         from pyod.models.pca import PCA
 
@@ -369,7 +369,7 @@ class PCAAnomalyContainer(AnomalyContainer):
 
 class MCDAnomalyContainer(AnomalyContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
         from pyod.models.mcd import MCD
 
@@ -393,7 +393,7 @@ class MCDAnomalyContainer(AnomalyContainer):
 
 class SODAnomalyContainer(AnomalyContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
         from pyod.models.sod import SOD
 
@@ -415,7 +415,7 @@ class SODAnomalyContainer(AnomalyContainer):
 
 class SOSAnomalyContainer(AnomalyContainer):
     def __init__(self, experiment):
-        logger = get_logger()
+        get_logger()
         np.random.seed(experiment.seed)
         from pyod.models.sos import SOS
 

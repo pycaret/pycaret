@@ -1,9 +1,9 @@
 
-## Build your first Anomaly Detector in Power BI using PyCaret
+# Build your first Anomaly Detector in Power BI using PyCaret
 
-### A step-by-step tutorial for implementing anomaly detection in Power BI
+# A step-by-step tutorial for implementing anomaly detection in Power BI
 
-### by Moez Ali
+# by Moez Ali
 
 ![Anomaly Detection Dashboard in Power BI](https://cdn-images-1.medium.com/max/2000/1*sh9LrK5WiF1pBDDR1PCK0g.png)
 
@@ -11,7 +11,7 @@ In our last post, [Machine Learning in Power BI using PyCaret](https://towardsda
 
 In this post, we will dive deeper and implement an Anomaly Detector in Power BI using PyCaret. If you haven’t heard about PyCaret before, please read this [announcement](https://towardsdatascience.com/announcing-pycaret-an-open-source-low-code-machine-learning-library-in-python-4a1f1aad8d46) to learn more.
 
-## Learning Goals of this Tutorial
+# Learning Goals of this Tutorial
 
 * What is Anomaly Detection? Types of Anomaly Detection?
 
@@ -21,13 +21,13 @@ In this post, we will dive deeper and implement an Anomaly Detector in Power BI 
 
 * How to deploy the anomaly detector in Power BI production?
 
-## Before we start
+# Before we start
 
 If you have used Python before, it is likely that you already have Anaconda Distribution installed on your computer. If not, [click here](https://www.anaconda.com/distribution/) to download Anaconda Distribution with Python 3.7 or greater.
 
 ![[https://www.anaconda.com/products/individual](https://www.anaconda.com/products/individual)](https://cdn-images-1.medium.com/max/2612/1*sMceDxpwFVHDtdFi528jEg.png)
 
-## Setting up the Environment
+# Setting up the Environment
 
 Before we start using PyCaret’s machine learning capabilities in Power BI we have to create a virtual environment and install pycaret. It’s a three-step process:
 
@@ -53,7 +53,7 @@ C:\Users\***username***\AppData\Local\Continuum\anaconda3\envs\myenv
 
 ![File → Options → Global → Python scripting](https://cdn-images-1.medium.com/max/2000/1*zQMKuyEk8LGrOPE-NByjrg.png)
 
-## What is Anomaly Detection?
+# What is Anomaly Detection?
 
 Anomaly Detection ****is a technique in machine learning used for identifying **rare items**, **events** or **observations** which raise suspicions by differing significantly from the majority of the data.
 
@@ -69,7 +69,7 @@ This tutorial is about implementing unsupervised anomaly detection in Power BI u
 
 ![Goldstein M, Uchida S (2016) A Comparative Evaluation of Unsupervised Anomaly Detection Algorithms for Multivariate Data. PLo](https://cdn-images-1.medium.com/max/2800/1*-Cnyg6-F-Qd4r1Ptcf6nNw.png)
 
-## Setting the Business Context
+# Setting the Business Context
 
 Many companies issue corporate credit cards (*also known as purchase cards or* *p-cards*) to employees for effectively managing operational purchasing. Normally there is a process in place for employees to submit those claims electronically. The data collected is typically transactional and likely to include date of transaction, vendor name, type of expense, merchant and amount.
 
@@ -79,11 +79,11 @@ In this tutorial we will use State Employees Credit Card Transactions from 2014�
 
 **Disclaimer:** *This tutorial demonstrates the use of PyCaret in Power BI to build an anomaly detector. The sample dashboard that is built in this tutorial by no means reflects actual anomalies or is meant to identify anomalies.*
 
-## 👉 Let’s get started
+# 👉 Let’s get started
 
 Now that you have setup the Anaconda Environment, installed PyCaret, understand the basics of Anomaly Detection and have the business context for this tutorial, let’s get started.
 
-## 1. Get Data
+# 1. Get Data
 
 The first step is importing the dataset into Power BI Desktop. You can load the data using a web connector. (Power BI Desktop → Get Data → From Web).
 
@@ -91,7 +91,7 @@ The first step is importing the dataset into Power BI Desktop. You can load the 
 
 **Link to csv file: [**https://raw.githubusercontent.com/pycaret/pycaret/master/datasets/delaware_anomaly.csv](https://raw.githubusercontent.com/pycaret/pycaret/master/datasets/delaware_anomaly.csv)
 
-## 2. Model Training
+# 2. Model Training
 
 To train an anomaly detector in Power BI we will have to execute a Python script in Power Query Editor (Power Query Editor → Transform → Run python script). Run the following code as a Python script:
 
@@ -129,7 +129,7 @@ Two new columns are attached to the original table. Label (1 = outlier, 0 = inli
 
 ![Results in Power BI Desktop (after applying query)](https://cdn-images-1.medium.com/max/2894/1*QFJ2DJX_bGSxutOdxNmwEg.png)
 
-## 3. Dashboard
+# 3. Dashboard
 
 Once you have Outlier labels in Power BI, here’s an example of how you can visualize it in dashboard:
 
@@ -139,7 +139,7 @@ Once you have Outlier labels in Power BI, here’s an example of how you can vis
 
 You can download the PBIX file and the data set from our [GitHub](https://github.com/pycaret/powerbi-anomaly-detection).
 
-## 👉 Implementing Anomaly Detection in Production
+# 👉 Implementing Anomaly Detection in Production
 
 What has been demonstrated above was one simple way to implement Anomaly Detection in Power BI. However, it is important to note that the method shown above train the anomaly detector every time the Power BI dataset is refreshed. This may be a problem for two reasons:
 
@@ -149,7 +149,7 @@ What has been demonstrated above was one simple way to implement Anomaly Detecti
 
 An alternative way to implement anomaly detection in Power BI when it is intended to be used in production is to pass the pre-trained model to Power BI for labeling instead of training the model in Power BI itself.
 
-## **Training Model before-hand**
+# **Training Model before-hand**
 
 You can use any Integrated Development Environment (IDE)or Notebook for training machine learning models. In this example, we have used Visual Studio Code to train an anomaly detection model.
 
@@ -163,7 +163,7 @@ If you would like to learn more about implementing Anomaly Detection in Jupyter 
 
  <iframe src="https://medium.com/media/6905eb28ff917a759fe2bed97292795b" frameborder=0></iframe>
 
-## Using the pre-trained model
+# Using the pre-trained model
 
 Execute the below code as a Python script to generate labels from the pre-trained model.
 
@@ -176,7 +176,7 @@ The output of this will be the same as the one we saw above. However, the differ
 
 ![Final Output (after clicking on Table)](https://cdn-images-1.medium.com/max/2280/1*dZbf7VmCxkPUcX_p7kKJ4w.png)
 
-## **Making it work on Power BI Service**
+# **Making it work on Power BI Service**
 
 Once you’ve uploaded the .pbix file to the Power BI service, a couple more steps are necessary to enable seamless integration of the machine learning pipeline into your data pipeline. These include:
 
@@ -186,13 +186,13 @@ Once you’ve uploaded the .pbix file to the Power BI service, a couple more ste
 
 If you are Interested in learning more about Anomaly Detection, checkout our [Notebook Tutorial.](https://pycaret.org/ano101/)
 
-## PyCaret 1.0.1 is coming!
+# PyCaret 1.0.1 is coming!
 
 We have received overwhelming support and feedback from the community. We are actively working on improving PyCaret and preparing for our next release. **PyCaret 1.0.1 will be bigger and better**. If you would like to share your feedback and help us improve further, you may [fill this form](https://www.pycaret.org/feedback) on the website or leave a comment on our [GitHub ](https://www.github.com/pycaret/)or [LinkedIn](https://www.linkedin.com/company/pycaret/) page.
 
 Follow our [LinkedIn](https://www.linkedin.com/company/pycaret/) and subscribe to our [Youtube](https://www.youtube.com/channel/UCxA1YTYJ9BEeo50lxyI_B3g) channel to learn more about PyCaret.
 
-## Important Links
+# Important Links
 
 [User Guide / Documentation](https://www.pycaret.org/guide)
 [GitHub Repository
@@ -200,7 +200,7 @@ Follow our [LinkedIn](https://www.linkedin.com/company/pycaret/) and subscribe t
 [Notebook Tutorials](https://www.pycaret.org/tutorial)
 [Contribute in PyCaret](https://www.pycaret.org/contribute)
 
-## Want to learn about a specific module?
+# Want to learn about a specific module?
 
 As of the first release 1.0.0, PyCaret has the following modules available for use. Click on the links below to see the documentation and working examples in Python.
 
@@ -211,7 +211,7 @@ As of the first release 1.0.0, PyCaret has the following modules available for u
 ](https://www.pycaret.org/anomaly-detection)[Natural Language Processing](https://www.pycaret.org/nlp)
 [Association Rule Mining](https://www.pycaret.org/association-rules)
 
-## Also see:
+# Also see:
 
 PyCaret getting started tutorials in Notebook:
 
@@ -222,7 +222,7 @@ PyCaret getting started tutorials in Notebook:
 [Regression](https://www.pycaret.org/reg101)
 [Classification](https://www.pycaret.org/clf101)
 
-## Would you like to contribute?
+# Would you like to contribute?
 
 PyCaret is an open source project. Everybody is welcome to contribute. If you would like contribute, please feel free to work on [open issues](https://github.com/pycaret/pycaret/issues). Pull requests are accepted with unit tests on dev-1.0.1 branch.
 

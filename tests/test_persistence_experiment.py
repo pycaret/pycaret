@@ -1,10 +1,4 @@
 import os
-import sys
-
-sys.path.insert(0, os.path.abspath(".."))
-
-import pandas as pd
-import pytest
 
 import pycaret.anomaly
 import pycaret.classification
@@ -12,12 +6,17 @@ import pycaret.clustering
 import pycaret.datasets
 import pycaret.regression
 import pycaret.time_series
+from pycaret.anomaly import AnomalyExperiment
+from pycaret.classification import ClassificationExperiment
+from pycaret.clustering import ClusteringExperiment
+from pycaret.regression import RegressionExperiment
+from pycaret.time_series import TSForecastingExperiment
 
 
 def test_anomaly_persistence(tmpdir):
-    cls = pycaret.anomaly.AnomalyExperiment
     data = pycaret.datasets.get_data("anomaly")
-    exp = cls().setup(
+    exp = AnomalyExperiment()
+    exp.setup(
         data,
         normalize=True,
         html=False,
@@ -26,7 +25,9 @@ def test_anomaly_persistence(tmpdir):
     )
     exp_path = os.path.join(tmpdir, "exp.pkl")
     exp.save_config(exp_path)
-    new_exp = cls().setup(
+
+    new_exp = AnomalyExperiment()
+    new_exp.setup(
         data,
         html=False,
         normalize=False,
@@ -39,9 +40,9 @@ def test_anomaly_persistence(tmpdir):
 
 
 def test_clustering_persistence(tmpdir):
-    cls = pycaret.clustering.ClusteringExperiment
     data = pycaret.datasets.get_data("jewellery")
-    exp = cls().setup(
+    exp = ClusteringExperiment()
+    exp.setup(
         data,
         normalize=True,
         html=False,
@@ -50,7 +51,9 @@ def test_clustering_persistence(tmpdir):
     )
     exp_path = os.path.join(tmpdir, "exp.pkl")
     exp.save_config(exp_path)
-    new_exp = cls().setup(
+
+    new_exp = ClusteringExperiment()
+    new_exp.setup(
         data,
         normalize=False,
         html=False,
@@ -63,9 +66,9 @@ def test_clustering_persistence(tmpdir):
 
 
 def test_classification_persistence(tmpdir):
-    cls = pycaret.classification.ClassificationExperiment
     data = pycaret.datasets.get_data("juice")
-    exp = cls().setup(
+    exp = ClassificationExperiment()
+    exp.setup(
         data,
         target="Purchase",
         normalize=True,
@@ -75,7 +78,9 @@ def test_classification_persistence(tmpdir):
     )
     exp_path = os.path.join(tmpdir, "exp.pkl")
     exp.save_config(exp_path)
-    new_exp = cls().setup(
+
+    new_exp = ClassificationExperiment()
+    new_exp.setup(
         data,
         target="Purchase",
         normalize=False,
@@ -89,9 +94,9 @@ def test_classification_persistence(tmpdir):
 
 
 def test_regression_persistence(tmpdir):
-    cls = pycaret.regression.RegressionExperiment
     data = pycaret.datasets.get_data("boston")
-    exp = cls().setup(
+    exp = RegressionExperiment()
+    exp.setup(
         data,
         target="medv",
         normalize=True,
@@ -101,7 +106,9 @@ def test_regression_persistence(tmpdir):
     )
     exp_path = os.path.join(tmpdir, "exp.pkl")
     exp.save_config(exp_path)
-    new_exp = cls().setup(
+
+    new_exp = RegressionExperiment()
+    new_exp.setup(
         data,
         target="medv",
         normalize=False,
@@ -115,9 +122,9 @@ def test_regression_persistence(tmpdir):
 
 
 def test_time_series_persistence(tmpdir, load_pos_and_neg_data):
-    cls = pycaret.time_series.TSForecastingExperiment
     data = load_pos_and_neg_data
-    exp = cls().setup(
+    exp = TSForecastingExperiment()
+    exp.setup(
         data,
         transform_target="sqrt",
         html=False,
@@ -126,7 +133,9 @@ def test_time_series_persistence(tmpdir, load_pos_and_neg_data):
     )
     exp_path = os.path.join(tmpdir, "exp.pkl")
     exp.save_config(exp_path)
-    new_exp = cls().setup(
+
+    new_exp = TSForecastingExperiment()
+    new_exp.setup(
         data,
         html=False,
         session_id=123,

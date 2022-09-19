@@ -11,7 +11,7 @@ from sktime.forecasting.statsforecast import StatsForecastAutoARIMA
 from pycaret.time_series import TSForecastingExperiment
 
 ##############################
-#### Functions Start Here ####
+# Functions Start Here ####
 ##############################
 
 # NOTE: Fixtures can not be used to parameterize tests
@@ -21,12 +21,12 @@ from pycaret.time_series import TSForecastingExperiment
 
 
 ############################
-#### Functions End Here ####
+# Functions End Here ####
 ############################
 
 
 ##########################
-#### Tests Start Here ####
+# Tests Start Here ####
 ##########################
 
 
@@ -44,18 +44,18 @@ def test_engines_setup_global_args(load_pos_and_neg_data):
         fh=12,
         fold_strategy="sliding",
         verbose=False,
-        engines={"auto_arima": "statsforecast", "lr_cds_dt": "sklearnex"},
+        engine={"auto_arima": "statsforecast", "lr_cds_dt": "sklearnex"},
     )
 
-    #### Default Model Engine ----
-    ## A. Statistical Models
+    # Default Model Engine ----
+    # A. Statistical Models
     assert exp.get_engine("auto_arima") == "statsforecast"
     model = exp.create_model("auto_arima", cross_validation=False)
     assert isinstance(model, StatsForecastAutoARIMA)
     # Original engine should remain the same
     assert exp.get_engine("auto_arima") == "statsforecast"
 
-    ## B. Regression Models
+    # B. Regression Models
     assert exp.get_engine("lr_cds_dt") == "sklearnex"
     model = exp.create_model("lr_cds_dt", cross_validation=False)
     assert isinstance(model.regressor, SklearnexLinearRegression)
@@ -77,18 +77,18 @@ def test_engines_global_methods(load_pos_and_neg_data):
         fh=12,
         fold_strategy="sliding",
         verbose=False,
-        engines={"auto_arima": "statsforecast", "lr_cds_dt": "sklearnex"},
+        engine={"auto_arima": "statsforecast", "lr_cds_dt": "sklearnex"},
     )
 
-    #### Globally reset engine ----
-    ## A. Statistical Models
+    # Globally reset engine ----
+    # A. Statistical Models
     assert exp.get_engine("auto_arima") == "statsforecast"
     exp._set_engine("auto_arima", "pmdarima")
     assert exp.get_engine("auto_arima") == "pmdarima"
     model = exp.create_model("auto_arima", cross_validation=False)
     assert isinstance(model, PmdAutoARIMA)
 
-    ## B. Regression Models
+    # B. Regression Models
     assert exp.get_engine("lr_cds_dt") == "sklearnex"
     exp._set_engine("lr_cds_dt", "sklearn")
     assert exp.get_engine("lr_cds_dt") == "sklearn"
@@ -112,23 +112,23 @@ def test_create_model_engines_local_args(load_pos_and_neg_data):
         verbose=False,
     )
 
-    #### Default Model Engine ----
-    ## A. Statistical Models
+    # Default Model Engine ----
+    # A. Statistical Models
     assert exp.get_engine("auto_arima") == "pmdarima"
     model = exp.create_model("auto_arima", cross_validation=False)
     assert isinstance(model, PmdAutoARIMA)
     # Original engine should remain the same
     assert exp.get_engine("auto_arima") == "pmdarima"
 
-    ## B. Regression Models
+    # B. Regression Models
     assert exp.get_engine("lr_cds_dt") == "sklearn"
     model = exp.create_model("lr_cds_dt", cross_validation=False)
     assert isinstance(model.regressor, SklearnLinearRegression)
     # Original engine should remain the same
     assert exp.get_engine("lr_cds_dt") == "sklearn"
 
-    #### Override model engine locally ----
-    ## A. Statistical Models
+    # Override model engine locally ----
+    # A. Statistical Models
     model = exp.create_model(
         "auto_arima", engine="statsforecast", cross_validation=False
     )
@@ -138,7 +138,7 @@ def test_create_model_engines_local_args(load_pos_and_neg_data):
     model = exp.create_model("auto_arima")
     assert isinstance(model, PmdAutoARIMA)
 
-    ## B. Regression Models
+    # B. Regression Models
     model = exp.create_model("lr_cds_dt", engine="sklearnex", cross_validation=False)
     assert isinstance(model.regressor, SklearnexLinearRegression)
     # Original engine should remain the same
@@ -163,25 +163,25 @@ def test_compare_models_engines_local_args(load_pos_and_neg_data):
         verbose=False,
     )
 
-    #### Default Model Engine ----
-    ## A. Statistical Models
+    # Default Model Engine ----
+    # A. Statistical Models
     assert exp.get_engine("auto_arima") == "pmdarima"
     model = exp.compare_models(include=["auto_arima"])
     assert isinstance(model, PmdAutoARIMA)
     # Original engine should remain the same
     assert exp.get_engine("auto_arima") == "pmdarima"
 
-    ## B. Regression Models
+    # B. Regression Models
     assert exp.get_engine("lr_cds_dt") == "sklearn"
     model = exp.compare_models(include=["lr_cds_dt"])
     assert isinstance(model.regressor, SklearnLinearRegression)
     # Original engine should remain the same
     assert exp.get_engine("lr_cds_dt") == "sklearn"
 
-    #### Override model engine locally ----
-    ## A. Statistical Models
+    # Override model engine locally ----
+    # A. Statistical Models
     model = exp.compare_models(
-        include=["auto_arima"], engines={"auto_arima": "statsforecast"}
+        include=["auto_arima"], engine={"auto_arima": "statsforecast"}
     )
     assert isinstance(model, StatsForecastAutoARIMA)
     # Original engine should remain the same
@@ -189,10 +189,8 @@ def test_compare_models_engines_local_args(load_pos_and_neg_data):
     model = exp.compare_models(include=["auto_arima"])
     assert isinstance(model, PmdAutoARIMA)
 
-    ## B. Regression Models
-    model = exp.compare_models(
-        include=["lr_cds_dt"], engines={"lr_cds_dt": "sklearnex"}
-    )
+    # B. Regression Models
+    model = exp.compare_models(include=["lr_cds_dt"], engine={"lr_cds_dt": "sklearnex"})
     assert isinstance(model.regressor, SklearnexLinearRegression)
     # Original engine should remain the same
     assert exp.get_engine("lr_cds_dt") == "sklearn"

@@ -25,7 +25,7 @@ logger = get_logger()
 PlotReturnType = Tuple[Optional[go.Figure], Optional[Dict[str, Any]]]
 
 
-#### Data Types allowed for each plot type ----
+# Data Types allowed for each plot type ----
 # First one in the list is the default (if requested is None)
 ALLOWED_PLOT_DATA_TYPES = {
     "pipeline": [
@@ -103,7 +103,7 @@ ALLOWED_PLOT_DATA_TYPES = {
     ],
 }
 
-#### Are multiple plot types allowed at once ----
+# Are multiple plot types allowed at once ----
 MULTIPLE_PLOT_TYPES_ALLOWED_AT_ONCE = {
     "ts": True,
     "train_test_split": True,
@@ -280,7 +280,7 @@ def corr_subplot(
     lags = np.arange(len(corr_values))
     name = name or default_name
 
-    #### Add the correlation plot ----
+    # Add the correlation plot ----
     fig = _add_corr_stems_subplot(
         fig=fig, corr_values=corr_values, lags=lags, name=name, row=row, col=col
     )
@@ -330,7 +330,7 @@ def _add_corr_stems_subplot(
     go.Figure
         Returns back the plotly figure with stems inserted
     """
-    #### Add corr plot stem lines ----
+    # Add corr plot stem lines ----
     [
         fig.add_scattergl(
             x=(lag, lag),
@@ -344,7 +344,7 @@ def _add_corr_stems_subplot(
         for lag in lags
     ]
 
-    #### Add corr plot stem endpoints ----
+    # Add corr plot stem endpoints ----
     fig.add_scattergl(
         x=lags,
         y=corr_values,
@@ -385,7 +385,7 @@ def _add_corr_bounds_subplot(
     # For some reason scattergl does not work here. Hence switching to scatter.
     # (refer: https://github.com/pycaret/pycaret/issues/2211).
 
-    #### Add the Upper Confidence Interval ----
+    # Add the Upper Confidence Interval ----
     fig.add_scatter(
         x=np.arange(len(upper)),
         y=upper,
@@ -396,7 +396,7 @@ def _add_corr_bounds_subplot(
         name="UC",
     )
 
-    #### Add the Lower Confidence Interval ----
+    # Add the Lower Confidence Interval ----
     fig.add_scatter(
         x=np.arange(len(lower)),
         y=lower,
@@ -547,7 +547,7 @@ def decomp_subplot(
         else data.index
     )
 
-    #### Plot Original data ----
+    # Plot Original data ----
     row = 1
     fig.add_trace(
         go.Scattergl(
@@ -1059,16 +1059,16 @@ def _get_data_types_to_plot(
         If none of the requested data types are supported by the plot
     """
 
-    #### Get default if not provided ----
+    # Get default if not provided ----
     if data_types_requested is None:
         # First one is the default
         data_types_requested = [ALLOWED_PLOT_DATA_TYPES.get(plot)[0]]
 
-    #### Convert string to list ----
+    # Convert string to list ----
     if isinstance(data_types_requested, str):
         data_types_requested = [data_types_requested]
 
-    #### Is the data type allowed for the requested plot?
+    # Is the data type allowed for the requested plot?
     all_plot_data_types = [member.value for member in TSAllowedPlotDataTypes]
     data_types_allowed = [
         True

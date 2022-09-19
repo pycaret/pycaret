@@ -52,6 +52,7 @@ class _TabularExperiment(_PyCaretExperiment):
         self.all_allowed_engines = None
         self.fold_shuffle_param = False
         self.fold_groups_param = None
+        self.exp_model_engines = {}
         self.variable_keys = self.variable_keys.union(
             {
                 "_ml_usecase",
@@ -259,7 +260,6 @@ class _TabularExperiment(_PyCaretExperiment):
                 return WandbLogger()
 
         if log_experiment:
-            loggers_list = []
             if log_experiment is True:
                 loggers_list = [MlflowLogger()]
             else:
@@ -1072,7 +1072,7 @@ class _TabularExperiment(_PyCaretExperiment):
                             display_format=display_format,
                         )
 
-                    except:
+                    except Exception:
                         self.logger.error("Elbow plot failed. Exception:")
                         self.logger.error(traceback.format_exc())
                         raise TypeError("Plot Type not supported for this model.")
@@ -1098,7 +1098,7 @@ class _TabularExperiment(_PyCaretExperiment):
                             groups=groups,
                             display_format=display_format,
                         )
-                    except:
+                    except Exception:
                         self.logger.error("Silhouette plot failed. Exception:")
                         self.logger.error(traceback.format_exc())
                         raise TypeError("Plot Type not supported for this model.")
@@ -1122,7 +1122,7 @@ class _TabularExperiment(_PyCaretExperiment):
                             groups=groups,
                             display_format=display_format,
                         )
-                    except:
+                    except Exception:
                         self.logger.error("Distance plot failed. Exception:")
                         self.logger.error(traceback.format_exc())
                         raise TypeError("Plot Type not supported for this model.")
@@ -1648,9 +1648,9 @@ class _TabularExperiment(_PyCaretExperiment):
                         try:
                             # catboost special case
                             model_params = estimator.get_all_params()
-                        except:
+                        except Exception:
                             model_params = estimator.get_params()
-                    except:
+                    except Exception:
                         # display.clear_output()
                         self.logger.error("VC plot failed. Exception:")
                         self.logger.error(traceback.format_exc())
@@ -1868,7 +1868,7 @@ class _TabularExperiment(_PyCaretExperiment):
                             if len(coef) > len(self.X_train_transformed.columns):
                                 coef = coef[: len(self.X_train_transformed.columns)]
                             variables = abs(coef)
-                        except:
+                        except Exception:
                             pass
                     if variables is None:
                         self.logger.warning(
@@ -1919,7 +1919,7 @@ class _TabularExperiment(_PyCaretExperiment):
 
                     try:
                         params = estimator.get_all_params()
-                    except:
+                    except Exception:
                         params = estimator.get_params(deep=False)
 
                     param_df = pd.DataFrame.from_dict(
@@ -1937,7 +1937,7 @@ class _TabularExperiment(_PyCaretExperiment):
                     predict_proba__ = estimator.predict_proba(self.X_train_transformed)
                     # display.clear_output()
                     with MatplotlibDefaultDPI(base_dpi=_base_dpi, scale_to_set=scale):
-                        fig = skplt.metrics.plot_ks_statistic(
+                        skplt.metrics.plot_ks_statistic(
                             self.y_train_transformed, predict_proba__, figsize=(10, 6)
                         )
                         plot_filename = None
@@ -1965,7 +1965,7 @@ class _TabularExperiment(_PyCaretExperiment):
 
                 try:
                     plt.close()
-                except:
+                except Exception:
                     pass
 
         gc.collect()
@@ -2612,7 +2612,7 @@ class _TabularExperiment(_PyCaretExperiment):
         _check_soft_dependencies("pydantic", extra="mlops", severity="error")
 
         self.save_model(estimator, model_name=api_name, verbose=False)
-        targetname = f"{self.target_param}_prediction"
+        target = f"{self.target_param}_prediction"
 
         query = f"""# -*- coding: utf-8 -*-
 
@@ -2629,16 +2629,16 @@ app = FastAPI()
 model = load_model("{api_name}")
 
 # Create input/output pydantic models
-pydanticinputmodel=create_model("{api_name}_input", **{self.X.iloc[0].to_dict()})
-pydanticoutputmodel=create_model("{api_name}_output", **{{targetname: self.y.iloc[0]}})
+input_model = create_model("{api_name}_input", **{self.X.iloc[0].to_dict()})
+output_model = create_model("{api_name}_output", {target}={repr(self.y[0])})
 
 
 # Define predict function
-@app.post("/predict", response_model=pydanticoutputmodel)
-def predict(datainput:pydanticinputmodel):
-    data = pd.DataFrame([datainput.dict()])
+@app.post("/predict", response_model=output_model)
+def predict(data: input_model):
+    data = pd.DataFrame([data.dict()])
     predictions = predict_model(model, data=data)
-    return {{"{targetname}": predictions["prediction_label"][0]}}
+    return {{"{target}": predictions["prediction_label"].iloc[0]}}
 
 
 if __name__ == "__main__":
@@ -2897,17 +2897,17 @@ CMD ["python", "{API_NAME}.py"]
     def _set_exp_model_engines(
         self,
         container_default_engines: Dict[str, str],
-        engines: Optional[Dict[str, str]] = None,
+        engine: Optional[Dict[str, str]] = None,
     ) -> "_TabularExperiment":
         """Set all the model engines for the experiment.
 
         container_default_model_engines : Dict[str, str]
             Default engines obtained from the model containers
 
-        engines: Optional[Dict[str, str]] = None
+        engine: Optional[Dict[str, str]] = None
             The engine to use for the models, e.g. for auto_arima, users can
             switch between "pmdarima" and "statsforecast" by specifying
-            engines={"auto_arima": "statsforecast"}
+            engine={"auto_arima": "statsforecast"}
 
             If model ID is not present in key, default value will be obtained
             from the model container (i.e. container_default_model_engines).
@@ -2921,14 +2921,12 @@ CMD ["python", "{API_NAME}.py"]
         _TabularExperiment
             The experiment object to allow chaining of methods
         """
-        self.exp_model_engines = {}
-
         # If user provides their own value, override the container defaults
-        engines = engines or {}
+        engine = engine or {}
         for key in container_default_engines:
             # If provided by user, then use that, else get from the defaults
-            engine = engines.get(key, container_default_engines.get(key))
-            self._set_engine(estimator=key, engine=engine, severity="error")
+            eng = engine.get(key, container_default_engines.get(key))
+            self._set_engine(estimator=key, engine=eng, severity="error")
 
         return self
 

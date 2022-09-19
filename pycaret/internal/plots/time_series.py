@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
 import pandas as pd
@@ -692,7 +692,7 @@ def plot_diagnostics(
         fig=fig, fig_kwargs=fig_kwargs, fig_defaults=fig_defaults
     )
 
-    #### Add diagnostic plots ----
+    # Add diagnostic plots ----
 
     # ROW 1
     fig = time_series_subplot(fig=fig, data=data, row=1, col=1, hoverinfo=hoverinfo)
@@ -915,7 +915,7 @@ def plot_time_series_decomposition(
     data_kwargs = data_kwargs or {}
     period = data_kwargs.get("seasonal_period", None)
 
-    #### Check period ----
+    # Check period ----
     if period is None:
         raise ValueError(
             "Decomposition plot needed seasonal period to be passed through "
@@ -1114,7 +1114,7 @@ def plot_time_series_differences(
 
     for i, subplot_data in enumerate(diff_list):
 
-        #### Add difference data ----
+        # Add difference data ----
 
         ts_to_plot = pd.DataFrame(subplot_data)
         ts_to_plot.columns = [name_list[i]]
@@ -1126,7 +1126,7 @@ def plot_time_series_differences(
             hoverinfo=hoverinfo,
         )
 
-        #### Add diagnostics if requested ----
+        # Add diagnostics if requested ----
         if plot_acf:
             fig, acf_data = corr_subplot(
                 fig=fig,
@@ -1401,7 +1401,7 @@ def plot_ccf(
     for i, col_name in enumerate(plot_data.columns):
         row = int(i / cols) + 1
         col = i % cols + 1
-        #### Add CCF plot ----
+        # Add CCF plot ----
         fig, ccf_data = corr_subplot(
             fig=fig,
             data=[y_series, plot_data[col_name]],

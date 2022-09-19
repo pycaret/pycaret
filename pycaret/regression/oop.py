@@ -6,12 +6,8 @@ import numpy as np  # type: ignore
 import pandas as pd
 from joblib.memory import Memory
 
-import pycaret.containers.metrics.regression
-import pycaret.containers.models.regression
-import pycaret.internal.patches.sklearn
-import pycaret.internal.patches.yellowbrick
-import pycaret.internal.persistence
-import pycaret.internal.preprocess
+from pycaret.containers.metrics import get_all_reg_metric_containers
+from pycaret.containers.models import get_all_reg_model_containers
 from pycaret.containers.models.regression import (
     ALL_ALLOWED_ENGINES,
     get_container_default_engines,
@@ -63,22 +59,18 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
     def _get_models(self, raise_errors: bool = True) -> Tuple[dict, dict]:
         all_models = {
             k: v
-            for k, v in pycaret.containers.models.regression.get_all_model_containers(
+            for k, v in get_all_reg_model_containers(
                 self, raise_errors=raise_errors
             ).items()
             if not v.is_special
         }
-        all_models_internal = (
-            pycaret.containers.models.regression.get_all_model_containers(
-                self, raise_errors=raise_errors
-            )
+        all_models_internal = get_all_reg_model_containers(
+            self, raise_errors=raise_errors
         )
         return all_models, all_models_internal
 
     def _get_metrics(self, raise_errors: bool = True) -> dict:
-        return pycaret.containers.metrics.regression.get_all_metric_containers(
-            self.variables, raise_errors=raise_errors
-        )
+        return get_all_reg_metric_containers(self.variables, raise_errors=raise_errors)
 
     def _get_default_plots_to_log(self) -> List[str]:
         return ["residuals", "error", "feature"]
@@ -156,7 +148,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
         log_plots: Union[bool, list] = False,
         log_profile: bool = False,
         log_data: bool = False,
-        engines: Optional[Dict[str, str]] = None,
+        engine: Optional[Dict[str, str]] = None,
         verbose: bool = True,
         memory: Union[bool, str, Memory] = True,
         profile: bool = False,
@@ -631,11 +623,11 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             Ignored when ``log_experiment`` is False.
 
 
-        engines: Optional[Dict[str, str]] = None
+        engine: Optional[Dict[str, str]] = None
             The execution engines to use for the models in the form of a dict
             of `model_id: engine` - e.g. for Linear Regression ("lr", users can
             switch between "sklearn" and "sklearnex" by specifying
-            `engines={"lr": "sklearnex"}`
+            `engine={"lr": "sklearnex"}`
 
 
         verbose: bool, default = True
@@ -748,7 +740,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
 
         self._set_exp_model_engines(
             container_default_engines=get_container_default_engines(),
-            engines=engines,
+            engine=engine,
         )
 
         # Preprocessing ============================================ >>
@@ -856,7 +848,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
 
         self.pipeline.fit(self.X_train, self.y_train)
 
-        self.logger.info(f"Finished creating preprocessing pipeline.")
+        self.logger.info("Finished creating preprocessing pipeline.")
         self.logger.info(f"Pipeline: {self.pipeline}")
 
         # Final display ============================================ >>
@@ -998,7 +990,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
         fit_kwargs: Optional[dict] = None,
         groups: Optional[Union[str, Any]] = None,
         experiment_custom_tags: Optional[Dict[str, Any]] = None,
-        engines: Optional[Dict[str, str]] = None,
+        engine: Optional[Dict[str, str]] = None,
         verbose: bool = True,
         parallel: Optional[ParallelBackend] = None,
     ):
@@ -1084,11 +1076,11 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             as the column name in the dataset containing group labels.
 
 
-        engines: Optional[Dict[str, str]] = None
+        engine: Optional[Dict[str, str]] = None
             The execution engines to use for the models in the form of a dict
             of `model_id: engine` - e.g. for Linear Regression ("lr", users can
             switch between "sklearn" and "sklearnex" by specifying
-            `engines={"lr": "sklearnex"}`
+            `engine={"lr": "sklearnex"}`
 
 
         verbose: bool, default = True
@@ -1117,11 +1109,11 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
 
         caller_params = dict(locals())
 
-        if engines is not None:
+        if engine is not None:
             # Save current engines, then set to user specified options
             initial_model_engines = self.exp_model_engines.copy()
-            for estimator, engine in engines.items():
-                self._set_engine(estimator=estimator, engine=engine, severity="error")
+            for estimator, eng in engine.items():
+                self._set_engine(estimator=estimator, engine=eng, severity="error")
 
         try:
             return_values = super().compare_models(
@@ -1144,11 +1136,11 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             )
 
         finally:
-            if engines is not None:
+            if engine is not None:
                 # Reset the models back to the default engines
                 self._set_exp_model_engines(
                     container_default_engines=get_container_default_engines(),
-                    engines=initial_model_engines,
+                    engine=initial_model_engines,
                 )
 
         return return_values
@@ -1305,7 +1297,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
                 # Reset the models back to the default engines
                 self._set_exp_model_engines(
                     container_default_engines=get_container_default_engines(),
-                    engines=initial_default_model_engines,
+                    engine=initial_default_model_engines,
                 )
 
         return return_values

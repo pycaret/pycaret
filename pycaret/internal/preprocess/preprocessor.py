@@ -60,11 +60,9 @@ from sklearn.preprocessing import (
     StandardScaler,
 )
 
-from pycaret.containers.models.classification import (
-    get_all_model_containers as get_classifiers,
-)
-from pycaret.containers.models.regression import (
-    get_all_model_containers as get_regressors,
+from pycaret.containers.models import (
+    get_all_class_model_containers,
+    get_all_reg_model_containers,
 )
 from pycaret.internal.preprocess.iterative_imputer import IterativeImputer
 from pycaret.internal.preprocess.transformers import (
@@ -338,7 +336,7 @@ class Preprocessor:
         if isinstance(fold_groups, str):
             if fold_groups in self.X.columns:
                 if pd.isna(self.X[fold_groups]).any():
-                    raise ValueError(f"The 'fold_groups' column cannot contain NaNs.")
+                    raise ValueError("The 'fold_groups' column cannot contain NaNs.")
                 else:
                     self.fold_groups_param = self.X[fold_groups]
             else:
@@ -478,10 +476,16 @@ class Preprocessor:
         self.logger.info("Set up iterative imputation.")
 
         # Dict of all regressor models available
-        regressors = {k: v for k, v in get_regressors(self).items() if not v.is_special}
+        regressors = {
+            k: v
+            for k, v in get_all_reg_model_containers(self).items()
+            if not v.is_special
+        }
         # Dict of all classifier models available
         classifiers = {
-            k: v for k, v in get_classifiers(self).items() if not v.is_special
+            k: v
+            for k, v in get_all_class_model_containers(self).items()
+            if not v.is_special
         }
 
         if isinstance(numeric_iterative_imputer, str):
@@ -917,9 +921,9 @@ class Preprocessor:
         self.logger.info("Set up feature selection.")
 
         if self._ml_usecase == MLUsecase.CLASSIFICATION:
-            func = get_classifiers
+            func = get_all_class_model_containers
         else:
-            func = get_regressors
+            func = get_all_reg_model_containers
 
         models = {k: v for k, v in func(self).items() if not v.is_special}
         if isinstance(feature_selection_estimator, str):

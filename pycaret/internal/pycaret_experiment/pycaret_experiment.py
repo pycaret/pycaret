@@ -9,7 +9,6 @@ import pycaret.internal.patches.yellowbrick
 import pycaret.internal.persistence
 from pycaret import show_versions
 from pycaret.internal.logging import get_logger
-from pycaret.utils._dependencies import _check_soft_dependencies
 from pycaret.utils.generic import MLUsecase
 from pycaret.utils.time_series.forecasting.pipeline import _pipeline_transform
 
@@ -334,7 +333,7 @@ class _PyCaretExperiment:
             setattr(self, k, v)
             self.logger.info(f"Global variable: {k} updated to {v}")
         self.logger.info(
-            "set_config() succesfully completed......................................"
+            "set_config() successfully completed......................................"
         )
         return
 
@@ -384,7 +383,7 @@ class _PyCaretExperiment:
 
         self.logger.info(f"Global variables dumped to {file_name}")
         self.logger.info(
-            "save_config() succesfully completed......................................"
+            "save_config() successfully completed......................................"
         )
         return
 
@@ -424,7 +423,7 @@ class _PyCaretExperiment:
         self.logger.info(f"Global variables set to match those in {file_name}")
 
         self.logger.info(
-            "load_config() succesfully completed......................................"
+            "load_config() successfully completed......................................"
         )
         return
 

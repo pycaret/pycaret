@@ -1,11 +1,4 @@
-import os
-import sys
-
-sys.path.insert(0, os.path.abspath(".."))
-
-import numpy as np
 import pandas as pd
-import pytest
 
 import pycaret.classification
 import pycaret.datasets
@@ -18,7 +11,7 @@ def test_check_fairness_binary_classification():
     data = pycaret.datasets.get_data("income")
 
     # initialize setup
-    clf1 = pycaret.classification.setup(
+    pycaret.classification.setup(
         data,
         target="income >50K",
         html=False,
@@ -39,7 +32,7 @@ def test_check_fairness_multiclass_classification():
     data = pycaret.datasets.get_data("iris")
 
     # initialize setup
-    clf1 = pycaret.classification.setup(
+    pycaret.classification.setup(
         data,
         target="species",
         html=False,
@@ -63,7 +56,7 @@ def test_check_fairness_regression():
     data = pycaret.datasets.get_data("boston")
 
     # initialize setup
-    reg1 = pycaret.regression.setup(
+    pycaret.regression.setup(
         data,
         target="medv",
         html=False,

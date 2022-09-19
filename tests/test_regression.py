@@ -1,8 +1,4 @@
-import os
-import sys
 import uuid
-
-sys.path.insert(0, os.path.abspath(".."))
 
 import pandas as pd
 import pytest
@@ -23,7 +19,7 @@ def test_regression(boston_dataframe, return_train_score):
     assert isinstance(boston_dataframe, pd.DataFrame)
 
     # init setup
-    reg1 = pycaret.regression.setup(
+    pycaret.regression.setup(
         boston_dataframe,
         target="medv",
         remove_multicollinearity=True,
@@ -64,12 +60,10 @@ def test_regression(boston_dataframe, return_train_score):
     assert isinstance(bagged_top3, list)
 
     # blend models
-    blender = pycaret.regression.blend_models(
-        top3, return_train_score=return_train_score
-    )
+    pycaret.regression.blend_models(top3, return_train_score=return_train_score)
 
     # stack models
-    stacker = pycaret.regression.stack_models(
+    pycaret.regression.stack_models(
         estimator_list=top3[1:],
         meta_model=top3[0],
         return_train_score=return_train_score,
@@ -93,13 +87,13 @@ def test_regression(boston_dataframe, return_train_score):
     assert isinstance(predict_holdout, pd.DataFrame)
 
     # finalize model
-    final_best = pycaret.regression.finalize_model(best)
+    pycaret.regression.finalize_model(best)
 
     # save model
     pycaret.regression.save_model(best, "best_model_23122019")
 
     # load model
-    saved_best = pycaret.regression.load_model("best_model_23122019")
+    pycaret.regression.load_model("best_model_23122019")
 
     # returns table of models
     all_models = pycaret.regression.models()

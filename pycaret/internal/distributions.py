@@ -2,13 +2,13 @@
 # Author: Antoni Baum (Yard1) <antoni.baum@protonmail.com>
 # License: MIT
 
-from typing import Dict, Hashable, Optional
+from typing import Dict, Optional
 
 from scipy.stats import loguniform, randint, uniform
 
 try:
     from collections.abc import Hashable
-except:
+except Exception:
     from collections import Hashable
 
 from copy import copy

@@ -154,7 +154,7 @@ def _fit_and_score(
             "\nhttps://github.com/pycaret/pycaret/issues/new/choose"
         )
 
-    #### Fit the forecaster ----
+    # Fit the forecaster ----
     start = time.time()
     try:
         pipeline.fit(y_train, X_train, **fit_params)
@@ -167,11 +167,11 @@ def _fit_and_score(
 
     fit_time = time.time() - start
 
-    #### Determine Cutoff ----
+    # Determine Cutoff ----
     # NOTE: Cutoff is available irrespective of whether fit passed or failed
     cutoff = pipeline.cutoff
 
-    #### Score the model ----
+    # Score the model ----
     lower = pd.Series(dtype="float64")
     upper = pd.Series(dtype="float64")
     if pipeline.is_fitted:
@@ -217,7 +217,7 @@ def _fit_and_score(
                 metric = scorer._score_func(
                     y_true=y_test_imputed, y_pred=y_pred, **kwargs
                 )
-            except:
+            except Exception:
                 # Missing values in y_train will cause MASE to fail.
                 metric = np.nan
         else:

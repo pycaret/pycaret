@@ -130,7 +130,7 @@ def get_data(
             X = data[1]
             data = pd.concat([y, X], axis=1)
     else:
-        raise ValueError(f"Data could not be read. Please check your inputs...")
+        raise ValueError("Data could not be read. Please check your inputs...")
 
     # create a copy for pandas profiler
     data_for_profiling = data.copy()

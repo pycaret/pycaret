@@ -28,13 +28,18 @@ jobs:
         uses: jamescurtin/isort-action@master
         with:
           sortPaths: pycaret tests
+      - name: Run flake8
+        uses: py-actions/flake8@v2
+        with:
+          path: pycaret tests
+
 
   # JOBS MUST START WITH test !!!!
   test:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.7, 3.8, 3.9]
+        python-version: [3.7, 3.8, 3.9, '3.10']
 
     steps:
       - uses: actions/checkout@v2
@@ -74,7 +79,7 @@ jobs:
     runs-on: windows-latest
     strategy:
       matrix:
-        python-version: [3.7, 3.8, 3.9]
+        python-version: [3.7, 3.8, 3.9, '3.10']
 
     steps:
       - uses: actions/checkout@v2

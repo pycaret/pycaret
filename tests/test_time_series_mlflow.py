@@ -1,12 +1,10 @@
 """Module to test time_series "MLflow" functionality
 """
 
-import pytest
-
 from pycaret.time_series import TSForecastingExperiment
 
 ##########################
-#### Tests Start Here ####
+# Tests Start Here ####
 ##########################
 
 

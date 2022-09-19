@@ -1,10 +1,10 @@
-## Build and deploy machine learning web app using PyCaret and Streamlit
-### A beginner’s guide to deploying a machine learning app on Heroku PaaS
-### by Moez Ali
+# Build and deploy machine learning web app using PyCaret and Streamlit
+# A beginner’s guide to deploying a machine learning app on Heroku PaaS
+# by Moez Ali
 
 ![](https://cdn-images-1.medium.com/max/2000/1*HuGxT33q9tj7FQikC3EB_Q.png)
 
-## RECAP
+# RECAP
 
 In our [last post](https://towardsdatascience.com/deploy-machine-learning-pipeline-on-aws-fargate-eb6e1c50507) on deploying a machine learning pipeline in the cloud, we demonstrated how to develop a machine learning pipeline in PyCaret, containerize Flask app with Docker and deploy serverless using AWS Fargate. If you haven’t heard about PyCaret before, you can read this [announcement](https://towardsdatascience.com/announcing-pycaret-an-open-source-low-code-machine-learning-library-in-python-4a1f1aad8d46) to learn more.
 
@@ -14,7 +14,7 @@ By the end of this tutorial, you will be able to build a fully functional web ap
 
 ![[https://pycaret-streamlit.herokuapp.com](https://pycaret-streamlit.herokuapp.com)](https://cdn-images-1.medium.com/max/3826/1*-scVDUhBbOIWievCj0DYjw.png)
 
-## 👉 What you will learn in this tutorial
+# 👉 What you will learn in this tutorial
 
 * What is a deployment and why do we deploy machine learning models?
 
@@ -36,48 +36,48 @@ In the past, we have covered containerization using docker and deployment on clo
 
 * [Build and deploy your first machine learning web app on Heroku PaaS](https://towardsdatascience.com/build-and-deploy-your-first-machine-learning-web-app-e020db344a99)
 
-## 💻 Toolbox for this tutorial
+# 💻 Toolbox for this tutorial
 
-## PyCaret
+# PyCaret
 
 [PyCaret](https://www.pycaret.org/) is an open source, low-code machine learning library in Python that is used to train and deploy machine learning pipelines and models into production. PyCaret can be installed easily using pip.
 
     pip install **pycaret**
 
-## Streamlit
+# Streamlit
 
 [Streamlit](https://www.streamlit.io/) is an open-source Python library that makes it easy to build beautiful custom web-apps for machine learning and data science. Streamlit can be installed easily using pip.
 
     pip install **streamlit**
 
-## GitHub
+# GitHub
 
 [GitHub](https://www.github.com/) is a cloud-based service that is used to host, manage and control code. Imagine you are working in a large team where multiple people (sometimes hundreds of them) are making changes. PyCaret is itself an example of an open-source project where hundreds of community developers are continuously contributing to source code. If you haven’t used GitHub before, you can [sign up](https://github.com/join) for a free account.
 
-## Heroku
+# Heroku
 
 [Heroku](https://www.heroku.com/) is a platform as a service (PaaS) that enables the deployment of web apps based on a managed container system, with integrated data services and a powerful ecosystem. In simple words, this will allow you to take the application from your local machine to the cloud so that anybody can access it using a Web URL. In this tutorial, we have chosen Heroku for deployment as it provides free resource hours when you [sign up](https://signup.heroku.com/) for a new account.
 
 ![Machine Learning Workflow (from Training to Deployment on PaaS)](https://cdn-images-1.medium.com/max/2000/1*XTizEjPOR4UKJphNsjbhBw.png)
 
-## ✔️Let’s get started…..
+# ✔️Let’s get started…..
 
-## Why Deploy Machine Learning Models?
+# Why Deploy Machine Learning Models?
 
 Deployment of machine learning models is the process of putting models into production so that web applications, enterprise software and APIs can consume a trained model and generate predictions with new data points.
 
 Normally machine learning models are built so that they can be used to predict an outcome (binary value i.e. 1 or 0 for [Classification](https://www.pycaret.org/classification), continuous values for [Regression](https://www.pycaret.org/regression), labels for [Clustering](https://www.pycaret.org/clustering) etc. There are two broad ways to predict new data points:
 
-## 👉 **Online Predictions**
+# 👉 **Online Predictions**
 
 Online prediction scenarios are for cases where you want to generate predictions on a one-by-one basis for each datapoint. For example, you could use predictions to make immediate decisions about whether a particular transaction is likely to be fraudulent.
 
-## 👉 **Batch Predictions**
+# 👉 **Batch Predictions**
 
 Batch prediction is useful when you want to generate predictions for a set of observations all at once. For example, if you want to decide which customers to target as part of an advertisement campaign for a product you would get prediction scores for all customers, sort these to identify which customers are most likely to purchase, and then target maybe the top 5% customers that are most likely to purchase.
 > # In this tutorial we will build an app that can do both; online prediction as well as batch prediction by uploading a csv file containing new data points.
 
-## Setting the Business Context
+# Setting the Business Context
 
 An insurance company wants to improve its cash flow forecasting by better predicting patient charges using demographic and basic patient health risk metrics at the time of hospitalization.
 
@@ -85,11 +85,11 @@ An insurance company wants to improve its cash flow forecasting by better predic
 
 *([data source](https://www.kaggle.com/mirichoi0218/insurance#insurance.csv))*
 
-## Objective
+# Objective
 
 To build a web application that supports online (one-by-one) as well as batch prediction using trained machine learning model and pipeline.
 
-## Tasks
+# Tasks
 
 * Train, validate and develop a machine learning pipeline using PyCaret.
 
@@ -97,7 +97,7 @@ To build a web application that supports online (one-by-one) as well as batch pr
 
 * Deploy the web app on Heroku. Once deployed, it will become publicly available and can be accessed via Web URL.
 
-## 👉 Task 1 — Model Training and Validation
+# 👉 Task 1 — Model Training and Validation
 
 Training and model validation are performed in an Integrated Development Environment (IDE) or Notebook either on your local machine or on cloud. If you haven’t used PyCaret before, [click here](https://towardsdatascience.com/announcing-pycaret-an-open-source-low-code-machine-learning-library-in-python-4a1f1aad8d46) to learn more about PyCaret or see [Getting Started Tutorials](https://www.pycaret.org/tutorial) on our [website](https://www.pycaret.org/).
 
@@ -146,23 +146,23 @@ When you save a model in PyCaret, the entire transformation pipeline based on th
 
 We have finished training and model selection. The final machine learning pipeline and linear regression model is now saved as a pickle file (deployment_28042020.pkl) that will be used in a web application to generate predictions on new datapoints.
 
-## 👉 Task 2 — Building Web Application
+# 👉 Task 2 — Building Web Application
 
 Now that our machine learning pipeline and model are ready we will start building a front-end web application that can generate predictions on new datapoints. This application will support ‘Online’ as well as ‘Batch’ predictions through a csv file upload. Let’s breakdown the application code into three main parts:
 
-## **Header / Layout**
+# **Header / Layout**
 
 This section imports libraries, loads the trained model and creates a basic layout with a logo on top, a jpg image and a dropdown menu on the sidebar to toggle between ‘Online’ and ‘Batch’ prediction.
 
 ![app.py — code snippet part 1](https://cdn-images-1.medium.com/max/2268/1*xAnCZ1N_BNoPW7FoA-NXrA.png)
 
-## **Online Predictions**
+# **Online Predictions**
 
 This section deals with the first functionality of the app i.e. Online (one-by-one) prediction. We are using streamlit widgets such as *number input, text input, drop down menu and checkbox* to collect the datapoints used to train the model such as Age, Sex, BMI, Children, Smoker, Region.
 
 ![app.py — code snippet part 2](https://cdn-images-1.medium.com/max/2408/1*eFeq1wINsUUnvLJfuL-GOA.png)
 
-## **Batch Predictions**
+# **Batch Predictions**
 
 This part deals with the second functionality i.e. prediction by batch. We have used the **file_uploader** widget of streamlit to upload a csv file and then called the native **predict_model() **function from PyCaret to generate predictions that are displayed used streamlit’s write() function.
 
@@ -181,7 +181,7 @@ How do we transform the 6 features of a new data point into 62 used to train the
 
 ![Streamlit application testing — Batch Prediction](https://cdn-images-1.medium.com/max/3836/1*P5tit2pMf5qiQqU_wjQMVg.png)
 
-## 👉 Task 3 — Deploy the Web App on Heroku
+# 👉 Task 3 — Deploy the Web App on Heroku
 
 Now that the model is trained, the machine learning pipeline is ready, and the application is tested on our local machine, we are ready to start our deployment on Heroku. There are a couple of ways to upload your application source code onto Heroku. The simplest way is to link a GitHub repository to your Heroku account.
 
@@ -191,19 +191,19 @@ If you would like to follow along you can fork this [repository](https://www.git
 
 By now you are familiar with all of the files in the repository except for three files: ‘requirements.txt’ , ‘setup.sh’ and ‘Procfile’. Let’s see what those are:
 
-## requirements.txt
+# requirements.txt
 
 **requirements.txt **file is a text file containing the names of the python packages required to execute the application. If these packages are not installed in the environment where the application is running, it will fail.
 
 ![requirements.txt](https://cdn-images-1.medium.com/max/2222/1*BB7NOG_3GI4ue1J_TdtgYQ.png)
 
-## setup.sh
+# setup.sh
 
 setup.sh is a script programmed for bash. It contains instructions written in the Bash language and like requirements.txt, **it is used for creating the necessary environment for our streamlit app to run on the cloud.
 
 ![setup.sh](https://cdn-images-1.medium.com/max/2226/1*Con6kr4kh0Ss_puX7l32_w.png)
 
-## **Procfile**
+# **Procfile**
 
 Procfile is simply one line of code that provides startup instructions to the web server that indicate which file should be executed when an application is triggered. In this example, ‘Procfile’ is used for executing **setup.sh **which will create the necessary environment for the streamlit app and the second part “streamlit run app.py” is to execute the application (this is similar to how you would execute a streamlit application on your local computer).
 
@@ -233,13 +233,13 @@ App is published to URL: [https://pycaret-streamlit.herokuapp.com/](https://pyca
 
 ![[https://pycaret-streamlit.herokuapp.com/](https://pycaret-streamlit.herokuapp.com/)](https://cdn-images-1.medium.com/max/3826/1*-scVDUhBbOIWievCj0DYjw.png)
 
-## PyCaret 2.0.0 is coming!
+# PyCaret 2.0.0 is coming!
 
 We have received overwhelming support and feedback from the community. We are actively working on improving PyCaret and preparing for our next release. **PyCaret 2.0.0 will be bigger and better**. If you would like to share your feedback and help us improve further, you may [fill this form](https://www.pycaret.org/feedback) on the website or leave a comment on our [GitHub ](https://www.github.com/pycaret/)or [LinkedIn](https://www.linkedin.com/company/pycaret/) page.
 
 Follow our [LinkedIn](https://www.linkedin.com/company/pycaret/) and subscribe to our [YouTube](https://www.youtube.com/channel/UCxA1YTYJ9BEeo50lxyI_B3g) channel to learn more about PyCaret.
 
-## Want to learn about a specific module?
+# Want to learn about a specific module?
 
 As of the first release 1.0.0, PyCaret has the following modules available for use. Click on the links below to see the documentation and working examples in Python.
 
@@ -250,7 +250,7 @@ As of the first release 1.0.0, PyCaret has the following modules available for u
 ](https://www.pycaret.org/anomaly-detection)[Natural Language Processing](https://www.pycaret.org/nlp)
 [Association Rule Mining](https://www.pycaret.org/association-rules)
 
-## Also see:
+# Also see:
 
 PyCaret getting started tutorials in Notebook:
 
@@ -261,7 +261,7 @@ PyCaret getting started tutorials in Notebook:
 [Regression](https://www.pycaret.org/reg101)
 [Classification](https://www.pycaret.org/clf101)
 
-## Would you like to contribute?
+# Would you like to contribute?
 
 PyCaret is an open source project. Everybody is welcome to contribute. If you would like to contribute, please feel free to work on [open issues](https://github.com/pycaret/pycaret/issues). Pull requests are accepted with unit tests on dev-1.0.1 branch.
 

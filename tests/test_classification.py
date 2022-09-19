@@ -1,8 +1,3 @@
-import os
-import sys
-
-sys.path.insert(0, os.path.abspath(".."))
-
 import uuid
 
 import pandas as pd
@@ -25,7 +20,7 @@ def test_classification(juice_dataframe, return_train_score):
     assert isinstance(juice_dataframe, pd.core.frame.DataFrame)
 
     # init setup
-    clf1 = pycaret.classification.setup(
+    pycaret.classification.setup(
         juice_dataframe,
         target="Purchase",
         remove_multicollinearity=True,
@@ -61,15 +56,13 @@ def test_classification(juice_dataframe, return_train_score):
     assert isinstance(bagged_top3, list)
 
     # blend models
-    blender = pycaret.classification.blend_models(
-        top3, return_train_score=return_train_score
-    )
+    pycaret.classification.blend_models(top3, return_train_score=return_train_score)
 
     # stack models
     stacker = pycaret.classification.stack_models(
         estimator_list=top3, return_train_score=return_train_score
     )
-    predict_holdout = pycaret.classification.predict_model(stacker)
+    pycaret.classification.predict_model(stacker)
 
     # plot model
     lr = pycaret.classification.create_model(
@@ -89,18 +82,16 @@ def test_classification(juice_dataframe, return_train_score):
     assert isinstance(predict_holdout, pd.DataFrame)
 
     # calibrate model
-    calibrated_best = pycaret.classification.calibrate_model(
-        best, return_train_score=return_train_score
-    )
+    pycaret.classification.calibrate_model(best, return_train_score=return_train_score)
 
     # finalize model
-    final_best = pycaret.classification.finalize_model(best)
+    pycaret.classification.finalize_model(best)
 
     # save model
     pycaret.classification.save_model(best, "best_model_23122019")
 
     # load model
-    saved_best = pycaret.classification.load_model("best_model_23122019")
+    pycaret.classification.load_model("best_model_23122019")
 
     # returns table of models
     all_models = pycaret.classification.models()
