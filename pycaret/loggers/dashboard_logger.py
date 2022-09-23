@@ -27,7 +27,6 @@ class DashboardLogger:
         return ", ".join([str(logger) for logger in self.loggers])
 
     def init_loggers(self, exp_name_log, full_name=None):
-        print("init_loggers")
         for logger in self.loggers:
             logger.init_experiment(exp_name_log, full_name)
 
@@ -205,7 +204,6 @@ class DashboardLogger:
         k.set_index("Description", drop=True, inplace=True)
         kdict = k.to_dict()
         params = kdict.get("Value")
-        print("log_experiment")
         for logger in self.loggers:
             logger.init_experiment(
                 experiment.exp_name_log, f"{SETUP_TAG} {experiment.USI}"
