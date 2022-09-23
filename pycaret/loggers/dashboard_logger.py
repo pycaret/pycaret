@@ -11,7 +11,7 @@ import pandas as pd
 from pycaret.internal.meta_estimators import get_estimator_from_meta_estimator
 from pycaret.internal.pipeline import get_pipeline_estimator_label
 
-from .base_logger import BaseLogger
+from .base_logger import SETUP_TAG, BaseLogger
 
 if TYPE_CHECKING:
     from pycaret.internal.pycaret_experiment.tabular_experiment import (
@@ -27,6 +27,7 @@ class DashboardLogger:
         return ", ".join([str(logger) for logger in self.loggers])
 
     def init_loggers(self, exp_name_log, full_name=None):
+        print("init_loggers")
         for logger in self.loggers:
             logger.init_experiment(exp_name_log, full_name)
 
@@ -204,8 +205,11 @@ class DashboardLogger:
         k.set_index("Description", drop=True, inplace=True)
         kdict = k.to_dict()
         params = kdict.get("Value")
+        print("log_experiment")
         for logger in self.loggers:
-            logger.init_experiment(experiment.exp_name_log)
+            logger.init_experiment(
+                experiment.exp_name_log, f"{SETUP_TAG} {experiment.USI}"
+            )
             logger.log_params(params, "setup")
             logger.set_tags("setup", experiment_custom_tags, runtime)
 
