@@ -751,11 +751,12 @@ class RidgeClassifierContainer(ClassifierContainer):
             args = {"random_state": experiment.seed}
 
         tune_grid = {
+            "fit_intercept": [True, False],
             "normalize": [True, False],
+            "positive": [True, False],
         }
 
         tune_grid["alpha"] = np_list_arange(0.01, 10, 0.01, inclusive=False)
-        tune_grid["fit_intercept"] = [True, False]
         tune_distributions["alpha"] = UniformDistribution(0.001, 10)
 
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
