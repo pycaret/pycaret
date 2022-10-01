@@ -4,12 +4,14 @@ from typing import List
 
 import pandas as pd  # type: ignore
 import pytest
+from plotly.subplots import make_subplots
 from time_series_test_utils import _ALL_PLOTS
 
 from pycaret.internal.plots.utils.time_series import (
     ALLOWED_PLOT_DATA_TYPES,
     MULTIPLE_PLOT_TYPES_ALLOWED_AT_ONCE,
     _get_data_types_to_plot,
+    _plot_fig_update,
     _reformat_dataframes_for_plots,
 )
 
@@ -100,3 +102,25 @@ def test_reformat_dataframes_for_plots():
 
     # Check exact error received
     assert "does not match the number of input dataframes" in exceptionmsg
+
+
+def test_update_plot_config():
+    title = "main-title"
+    subplot_title = "subplot-title"
+    fig_defaults = {"template": "plotly", "width": 10, "height": 15}
+    fig_kwargs = {}
+    fig = make_subplots(
+        rows=1,
+        cols=1,
+        row_heights=[0.33],
+        subplot_titles=[subplot_title],
+    )
+    fig = _plot_fig_update(fig, title, fig_defaults, fig_kwargs)
+    assert fig.layout.annotations[0]["text"] == "subplot-title"
+    assert fig.layout.title.text == "main-title"
+    assert not fig.layout.showlegend
+    assert fig.layout.width == 10
+    assert fig.layout.height == 15
+
+    fig = _plot_fig_update(fig, title, fig_defaults, fig_kwargs, show_legend=True)
+    assert fig.layout.showlegend
