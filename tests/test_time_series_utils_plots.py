@@ -105,6 +105,7 @@ def test_reformat_dataframes_for_plots():
 
 
 def test_update_plot_config():
+    """Tests for _plot_fig_update"""
     title = "main-title"
     subplot_title = "subplot-title"
     fig_defaults = {"template": "plotly", "width": 10, "height": 15}
