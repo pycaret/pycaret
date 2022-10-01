@@ -1204,6 +1204,33 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         return self
 
+    def _mlflow_log_setup(self, plots=["diagnostics", "decomp", "diff"]):
+        self.logger.info("Creating MLFlow EDA plots")
+
+        import mlflow
+        import os
+
+        mlflow.set_experiment(self.exp_name_log)
+
+        with mlflow.start_run(nested=True):
+            self.logger.info(
+                "Begin logging diagnostics, decomp, and diff plots ================"
+            )
+
+        def _log_plot(plot):
+            try:
+                plot_filename = self._plot_model(verbose=False, save=True, system=False)
+                mlflow.log_artifact(plot_filename)
+                os.remove(plot_filename)
+            except Exception as e:
+                self.logger.warning(e)
+
+        for plot in plots:
+            _log_plot(plot)
+        self.logger.info(
+            "Logging diagnostics, decomp, and diff plots ended ================"
+        )
+
     def setup(
         self,
         data: Union[pd.Series, pd.DataFrame] = None,
@@ -1679,6 +1706,15 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         self._disable_metrics()
 
         self.logger.info(f"setup() successfully completed in {runtime}s...............")
+        # mlflow logging
+        if self.logging_param:
+            try:
+                self._mlflow_log_setup()
+            except Exception:
+                self.logger.error(
+                    f"_mlflow_log_setup() for logging EDA plots raised an exception:\n"
+                    f"{traceback.format_exc()}"
+                )
 
         return self
 
