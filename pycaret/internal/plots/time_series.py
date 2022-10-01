@@ -271,15 +271,7 @@ def plot_series(
             hoverinfo=hoverinfo,
         )
 
-    with fig.batch_update():
-        template = _resolve_dict_keys(
-            dict_=fig_kwargs, key="template", defaults=fig_defaults
-        )
-        fig.update_layout(title=title, showlegend=True, template=template)
-
-        fig = _update_fig_dimensions(
-            fig=fig, fig_kwargs=fig_kwargs, fig_defaults=fig_defaults
-        )
+    fig = _plot_fig_update(fig, fig_defaults, fig_kwargs, title)
 
     return_data_dict = {
         "data": plot_data,
@@ -962,15 +954,7 @@ def plot_time_series_decomposition(
         )
         all_plot_data.update({col_name: plot_data})
 
-    with fig.batch_update():
-        template = _resolve_dict_keys(
-            dict_=fig_kwargs, key="template", defaults=fig_defaults
-        )
-        fig.update_layout(title=title, showlegend=False, template=template)
-
-        fig = _update_fig_dimensions(
-            fig=fig, fig_kwargs=fig_kwargs, fig_defaults=fig_defaults
-        )
+    fig = _plot_fig_update(fig, fig_defaults, fig_kwargs, title)
 
     return_data_dict = {"data": data, plot: all_plot_data}
 
@@ -1163,15 +1147,7 @@ def plot_time_series_differences(
                 plot="fft",
             )
 
-    with fig.batch_update():
-        template = _resolve_dict_keys(
-            dict_=fig_kwargs, key="template", defaults=fig_defaults
-        )
-        fig.update_layout(title=title, showlegend=False, template=template)
-
-        fig = _update_fig_dimensions(
-            fig=fig, fig_kwargs=fig_kwargs, fig_defaults=fig_defaults
-        )
+    fig = _plot_fig_update(fig, fig_defaults, fig_kwargs, title)
 
     return_data_dict = {
         "data": data_series,
@@ -1405,15 +1381,7 @@ def plot_ccf(
         )
         all_ccf_data.update({col_name: ccf_data})
 
-    with fig.batch_update():
-        template = _resolve_dict_keys(
-            dict_=fig_kwargs, key="template", defaults=fig_defaults
-        )
-        fig.update_layout(title=title, showlegend=False, template=template)
-
-        fig = _update_fig_dimensions(
-            fig=fig, fig_kwargs=fig_kwargs, fig_defaults=fig_defaults
-        )
+    fig = _plot_fig_update(fig, fig_defaults, fig_kwargs, title)
 
     return_data_dict = {"ccf": all_ccf_data}
 
