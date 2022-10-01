@@ -706,7 +706,7 @@ def plot_diagnostics(
     fig, acf_data = corr_subplot(fig=fig, data=data_series, row=3, col=1, plot="acf")
     fig, pacf_data = corr_subplot(fig=fig, data=data_series, row=3, col=2, plot="pacf")
 
-    fig = _plot_fig_update(fig, fig_defaults, fig_kwargs, title)
+    fig = _plot_fig_update(fig, title, fig_defaults, fig_kwargs)
 
     return_data_dict = {
         "data": data,
@@ -817,15 +817,7 @@ def plot_predictions_with_confidence(
 
     fig = go.Figure(data=data, layout=layout)
 
-    template = _resolve_dict_keys(
-        dict_=fig_kwargs, key="template", defaults=fig_defaults
-    )
-    fig.update_layout(template=template)
-    fig.update_layout(showlegend=True)
-
-    fig = _update_fig_dimensions(
-        fig=fig, fig_kwargs=fig_kwargs, fig_defaults=fig_defaults
-    )
+    fig = _plot_fig_update(fig, title, fig_defaults, fig_kwargs, show_legend=True)
 
     return_data_dict = {
         "data": data,
@@ -954,7 +946,7 @@ def plot_time_series_decomposition(
         )
         all_plot_data.update({col_name: plot_data})
 
-    fig = _plot_fig_update(fig, fig_defaults, fig_kwargs, title)
+    fig = _plot_fig_update(fig, title, fig_defaults, fig_kwargs)
 
     return_data_dict = {"data": data, plot: all_plot_data}
 
@@ -1147,7 +1139,7 @@ def plot_time_series_differences(
                 plot="fft",
             )
 
-    fig = _plot_fig_update(fig, fig_defaults, fig_kwargs, title)
+    fig = _plot_fig_update(fig, title, fig_defaults, fig_kwargs)
 
     return_data_dict = {
         "data": data_series,
@@ -1381,7 +1373,7 @@ def plot_ccf(
         )
         all_ccf_data.update({col_name: ccf_data})
 
-    fig = _plot_fig_update(fig, fig_defaults, fig_kwargs, title)
+    fig = _plot_fig_update(fig, title, fig_defaults, fig_kwargs)
 
     return_data_dict = {"ccf": all_ccf_data}
 

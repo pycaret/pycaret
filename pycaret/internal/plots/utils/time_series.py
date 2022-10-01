@@ -1219,6 +1219,7 @@ def _plot_fig_update(
     title: str,
     fig_defaults: Dict[str, Any],
     fig_kwargs: Optional[Dict] = None,
+    show_legend: bool = False,
 ) -> go.Figure:
     """Customises the template layout and dimension of plots
 
@@ -1234,6 +1235,8 @@ def _plot_fig_update(
     fig_kwargs : Optional[Dict], optional
         Specific overrides by the user for the plotly figure settings,
         by default None. Can contain keys for "width", "height" and/or "template".
+    show_legend: bool, default=False
+        If True, displays the legend in the plot when layout is updated.
 
     Returns
     -------
@@ -1244,7 +1247,7 @@ def _plot_fig_update(
         template = _resolve_dict_keys(
             dict_=fig_kwargs, key="template", defaults=fig_defaults
         )
-        fig.update_layout(title=title, showlegend=False, template=template)
+        fig.update_layout(title=title, showlegend=show_legend, template=template)
         fig = _update_fig_dimensions(
             fig=fig, fig_kwargs=fig_kwargs, fig_defaults=fig_defaults
         )
