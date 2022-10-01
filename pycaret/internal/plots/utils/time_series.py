@@ -1212,3 +1212,15 @@ def _clean_model_results_labels(
     ]
 
     return model_results, model_labels
+
+
+def _plot_fig_update(fig, fig_defaults, fig_kwargs, title):
+    with fig.batch_update():
+        template = _resolve_dict_keys(
+            dict_=fig_kwargs, key="template", defaults=fig_defaults
+        )
+        fig.update_layout(title=title, showlegend=False, template=template)
+        fig = _update_fig_dimensions(
+            fig=fig, fig_kwargs=fig_kwargs, fig_defaults=fig_defaults
+        )
+    return fig

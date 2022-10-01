@@ -13,6 +13,7 @@ from pycaret.internal.plots.utils.time_series import (
     PlotReturnType,
     _clean_model_results_labels,
     _get_subplot_rows_cols,
+    _plot_fig_update,
     _resolve_hoverinfo,
     _update_fig_dimensions,
     corr_subplot,
@@ -713,14 +714,7 @@ def plot_diagnostics(
     fig, acf_data = corr_subplot(fig=fig, data=data_series, row=3, col=1, plot="acf")
     fig, pacf_data = corr_subplot(fig=fig, data=data_series, row=3, col=2, plot="pacf")
 
-    with fig.batch_update():
-        template = _resolve_dict_keys(
-            dict_=fig_kwargs, key="template", defaults=fig_defaults
-        )
-        fig.update_layout(title=title, showlegend=False, template=template)
-        fig = _update_fig_dimensions(
-            fig=fig, fig_kwargs=fig_kwargs, fig_defaults=fig_defaults
-        )
+    fig = _plot_fig_update(fig, fig_defaults, fig_kwargs, title)
 
     return_data_dict = {
         "data": data,
