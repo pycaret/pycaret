@@ -1204,13 +1204,16 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         return self
 
-    def _mlflow_log_setup(self, plots=["diagnostics", "decomp", "diff"]):
+    def _mlflow_log_setup(self):
+        """Logs 'diagnostics', 'decomp' and 'diff' plots during setup"""
         self.logger.info("Creating MLFlow EDA plots")
 
         import mlflow
         import os
 
         mlflow.set_experiment(self.exp_name_log)
+
+        plots = ["diagnostics", "decomp", "diff"]
 
         with mlflow.start_run(nested=True):
             self.logger.info(
