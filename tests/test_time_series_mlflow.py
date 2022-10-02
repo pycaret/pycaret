@@ -55,3 +55,22 @@ def test_mlflow_logging(load_pos_and_neg_data):
     assert num_create_models == 1
     assert num_tune_models == 1
     assert num_compare_models == 2
+
+
+def test_mlflow_log_setup(load_pos_and_neg_data):
+    """Tests the logging of MLFlow for plots during setup"""
+
+    data = load_pos_and_neg_data
+
+    exp = TSForecastingExperiment()
+    exp.setup(
+        data=data,
+        fh=12,
+        session_id=42,
+        log_experiment=True,
+        experiment_name="ts_unit_test",
+        log_plots=True,
+    )
+    mlflow_logs = exp.get_logs()
+    num_setup = len(mlflow_logs.query("`tags.Source` == 'setup'"))
+    assert num_setup == 1
