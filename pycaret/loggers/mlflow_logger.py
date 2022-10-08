@@ -2,7 +2,7 @@ import secrets
 from copy import deepcopy
 
 import pycaret
-from pycaret.loggers.base_logger import BaseLogger
+from pycaret.loggers.base_logger import SETUP_TAG, BaseLogger
 from pycaret.utils import __version__
 from pycaret.utils.generic import mlflow_remove_bad_chars
 
@@ -32,7 +32,7 @@ class MlflowLogger(BaseLogger):
                 USI = pycaret.nlp.USI
             except Exception:
                 pass
-        full_name = full_name or f"Session Initialized {USI}"
+        full_name = full_name or f"{SETUP_TAG} {USI}"
         mlflow.set_experiment(exp_name_log)
         self.run = mlflow.start_run(run_name=full_name, nested=True)
 
