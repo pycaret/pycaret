@@ -767,7 +767,7 @@ def plot_predictions_with_confidence(
         if isinstance(upper_interval.index, pd.PeriodIndex)
         else upper_interval.index
     )
-    upper_bound = go.Scattergl(
+    upper_bound = go.Scatter(
         name=f"Prediction Interval | {model_label}",  # Changed since we use only 1 legend
         x=x,
         y=upper_interval,
@@ -784,7 +784,7 @@ def plot_predictions_with_confidence(
         if isinstance(preds.index, pd.PeriodIndex)
         else preds.index
     )
-    mean = go.Scattergl(
+    mean = go.Scatter(
         name=f"Forecast | {model_label}",
         x=x,
         y=preds,
@@ -799,7 +799,7 @@ def plot_predictions_with_confidence(
         if isinstance(data.index, pd.PeriodIndex)
         else data.index
     )
-    original = go.Scattergl(
+    original = go.Scatter(
         name="Original",
         x=x,
         y=data,
@@ -813,7 +813,7 @@ def plot_predictions_with_confidence(
         if isinstance(lower_interval.index, pd.PeriodIndex)
         else lower_interval.index
     )
-    lower_bound = go.Scattergl(
+    lower_bound = go.Scatter(
         name="Lower Interval",
         x=x,
         y=lower_interval,
