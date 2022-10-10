@@ -31,4 +31,4 @@ plotly-resampler>=0.7.2.2
 statsmodels>=0.12.1
 sktime==0.13.2  # https://github.com/sktime/sktime/issues/3547
 tbats>=1.1.0
-pmdarima>=1.8.0,!=1.8.1,<3.0.0 # Matches sktime
+pmdarima>=1.8.0,!=1.8.1,<2.0.0 # Matches sktime
