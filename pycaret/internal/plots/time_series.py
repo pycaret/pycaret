@@ -271,7 +271,7 @@ def plot_series(
             hoverinfo=hoverinfo,
         )
 
-    fig = _plot_fig_update(fig, title, fig_defaults, fig_kwargs)
+    fig = _plot_fig_update(fig, title, fig_defaults, fig_kwargs, show_legend=True)
 
     return_data_dict = {
         "data": plot_data,
