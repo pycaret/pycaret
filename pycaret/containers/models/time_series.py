@@ -284,7 +284,7 @@ class NaiveContainer(TimeSeriesContainer):
         `sp` is hard coded to 1 irrespective of the `sp` value or whether
         seasonality is detected or not.
         """
-        get_logger()
+        self.logger = get_logger()
         np.random.seed(experiment.seed)
         self.gpu_imported = False
 
@@ -345,7 +345,7 @@ class GrandMeansContainer(TimeSeriesContainer):
         `sp` is hard coded to 1 irrespective of the `sp` value or whether
         seasonality is detected or not.
         """
-        get_logger()
+        self.logger = get_logger()
         np.random.seed(experiment.seed)
         self.gpu_imported = False
 
@@ -406,7 +406,7 @@ class SeasonalNaiveContainer(TimeSeriesContainer):
         If sp = 1, this model is disabled.
         If sp != 1, model is enabled even when seasonality is not detected.
         """
-        get_logger()
+        self.logger = get_logger()
         np.random.seed(experiment.seed)
         self.gpu_imported = False
 
@@ -466,7 +466,7 @@ class PolyTrendContainer(TimeSeriesContainer):
     model_type = TSModelTypes.BASELINE
 
     def __init__(self, experiment) -> None:
-        get_logger()
+        self.logger = get_logger()
         np.random.seed(experiment.seed)
         self.gpu_imported = False
 
@@ -518,7 +518,7 @@ class ArimaContainer(TimeSeriesContainer):
     model_type = TSModelTypes.CLASSICAL
 
     def __init__(self, experiment) -> None:
-        get_logger()
+        self.logger = get_logger()
         random.seed(experiment.seed)
         np.random.seed(experiment.seed)
         self.gpu_imported = False
@@ -759,7 +759,7 @@ class ExponentialSmoothingContainer(TimeSeriesContainer):
     model_type = TSModelTypes.CLASSICAL
 
     def __init__(self, experiment) -> None:
-        get_logger()
+        self.logger = get_logger()
         np.random.seed(experiment.seed)
         self.gpu_imported = False
 
@@ -892,7 +892,7 @@ class CrostonContainer(TimeSeriesContainer):
     model_type = TSModelTypes.CLASSICAL
 
     def __init__(self, experiment) -> None:
-        get_logger()
+        self.logger = get_logger()
         np.random.seed(experiment.seed)
         self.gpu_imported = False
 
@@ -937,7 +937,7 @@ class ETSContainer(TimeSeriesContainer):
     model_type = TSModelTypes.CLASSICAL
 
     def __init__(self, experiment) -> None:
-        get_logger()
+        self.logger = get_logger()
         np.random.seed(experiment.seed)
         self.gpu_imported = False
 
@@ -1013,7 +1013,7 @@ class ThetaContainer(TimeSeriesContainer):
     model_type = TSModelTypes.CLASSICAL
 
     def __init__(self, experiment) -> None:
-        get_logger()
+        self.logger = get_logger()
         np.random.seed(experiment.seed)
         self.gpu_imported = False
 
@@ -1100,7 +1100,7 @@ class TBATSContainer(TimeSeriesContainer):
     model_type = TSModelTypes.CLASSICAL
 
     def __init__(self, experiment) -> None:
-        get_logger()
+        self.logger = get_logger()
         np.random.seed(experiment.seed)
         self.gpu_imported = False
 
@@ -1163,7 +1163,7 @@ class BATSContainer(TimeSeriesContainer):
     model_type = TSModelTypes.CLASSICAL
 
     def __init__(self, experiment) -> None:
-        get_logger()
+        self.logger = get_logger()
         np.random.seed(experiment.seed)
         self.gpu_imported = False
 
@@ -1225,7 +1225,7 @@ class ProphetContainer(TimeSeriesContainer):
     model_type = TSModelTypes.LINEAR
 
     def __init__(self, experiment) -> None:
-        get_logger()
+        self.logger = get_logger()
         np.random.seed(experiment.seed)
         self.gpu_imported = False
 
@@ -1313,7 +1313,7 @@ class CdsDtContainer(TimeSeriesContainer):
     model_type = None
 
     def __init__(self, experiment) -> None:
-        get_logger()
+        self.logger = get_logger()
         self.seed = experiment.seed
         np.random.seed(self.seed)
 
@@ -2749,7 +2749,7 @@ class EnsembleTimeSeriesContainer(TimeSeriesContainer):
     model_type = "ensemble"
 
     def __init__(self, experiment) -> None:
-        get_logger()
+        self.logger = get_logger()
         np.random.seed(experiment.seed)
         self.gpu_imported = False
 

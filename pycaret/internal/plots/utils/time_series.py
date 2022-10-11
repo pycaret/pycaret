@@ -1212,3 +1212,43 @@ def _clean_model_results_labels(
     ]
 
     return model_results, model_labels
+
+
+def _plot_fig_update(
+    fig: go.Figure,
+    title: str,
+    fig_defaults: Dict[str, Any],
+    fig_kwargs: Optional[Dict] = None,
+    show_legend: bool = False,
+) -> go.Figure:
+    """Customises the template layout and dimension of plots
+
+    Parameters
+    ----------
+    fig: go.Figure
+        Plotly figure which needs to be customised
+    title: str
+        Title of the plot
+    fig_defaults : Dict[str, Any]
+        The default settings for the plotly plot. Must contain keys for "width",
+        "height", and "template".
+    fig_kwargs : Optional[Dict], optional
+        Specific overrides by the user for the plotly figure settings,
+        by default None. Can contain keys for "width", "height" and/or "template".
+    show_legend: bool, default=False
+        If True, displays the legend in the plot when layout is updated.
+
+    Returns
+    -------
+    go.Figure
+        The Plotly figure with updated dimnensions and template layout.
+    """
+    with fig.batch_update():
+        template = _resolve_dict_keys(
+            dict_=fig_kwargs, key="template", defaults=fig_defaults
+        )
+        fig.update_layout(title=title, showlegend=show_legend, template=template)
+        fig = _update_fig_dimensions(
+            fig=fig, fig_kwargs=fig_kwargs, fig_defaults=fig_defaults
+        )
+    return fig
