@@ -33,7 +33,7 @@ def setup(
     create_date_columns: List[str] = ["day", "month", "year"],
     imputation_type: Optional[str] = "simple",
     numeric_imputation: str = "mean",
-    categorical_imputation: str = "constant",
+    categorical_imputation: str = "mode",
     text_features_method: str = "tf-idf",
     max_encoding_ohe: int = -1,
     encoding_method: Optional[Any] = None,

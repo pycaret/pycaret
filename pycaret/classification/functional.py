@@ -38,7 +38,7 @@ def setup(
     create_date_columns: List[str] = ["day", "month", "year"],
     imputation_type: Optional[str] = "simple",
     numeric_imputation: Union[int, float, str] = "mean",
-    categorical_imputation: str = "constant",
+    categorical_imputation: str = "mode",
     iterative_imputation_iters: int = 5,
     numeric_iterative_imputer: Union[str, Any] = "lightgbm",
     categorical_iterative_imputer: Union[str, Any] = "lightgbm",
