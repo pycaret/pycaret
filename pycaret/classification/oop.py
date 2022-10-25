@@ -142,7 +142,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         rare_value: str = "rare",
         polynomial_features: bool = False,
         polynomial_degree: int = 2,
-        low_variance_threshold: Optional[float] = 0,
+        low_variance_threshold: Optional[float] = None,
         group_features: Optional[list] = None,
         group_names: Optional[Union[str, list]] = None,
         remove_multicollinearity: bool = False,
