@@ -241,7 +241,7 @@ def test_encoding_grouping_rare_categories():
     data = pycaret.datasets.get_data("juice")
     pc = pycaret.classification.setup(data, rare_to_value=0.5)
     X, _ = pc.pipeline.transform(pc.X, pc.y)
-    assert "rare" in pc.pipeline.steps[-2][1].transformer.mapping[0]["mapping"]
+    assert "rare" in pc.pipeline.steps[-1][1].transformer.mapping[0]["mapping"]
 
 
 def test_encoding_categorical_features():
