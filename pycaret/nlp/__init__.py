@@ -1888,6 +1888,9 @@ def plot_model(
         )
     )
 
+    # ignore warnings
+    import warnings
+
     warnings.filterwarnings("ignore")
 
     # setting default of topic_num
