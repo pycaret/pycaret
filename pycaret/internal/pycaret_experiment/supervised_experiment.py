@@ -1367,8 +1367,6 @@ class _SupervisedExperiment(_TabularExperiment):
 
         """
 
-        groups = self._get_groups(groups, data=X_train_data)
-
         if not display:
             progress_args = {"max": 4}
             timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
@@ -1413,6 +1411,8 @@ class _SupervisedExperiment(_TabularExperiment):
                 else:
                     data_X = self.X_train
             data_y = self.y_train if y_train_data is None else y_train_data.copy()
+
+        groups = self._get_groups(groups, data=data_X)
 
         if metrics is None:
             metrics = self._all_metrics
