@@ -221,7 +221,7 @@ class Preprocessor:
             # self.data is already prepared here
             train, test = train_test_split(
                 self.data,
-                test_size=1 - train_size,
+                train_size=train_size,
                 stratify=get_columns_to_stratify_by(
                     self.X, self.y, data_split_stratify
                 ),

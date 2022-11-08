@@ -794,11 +794,17 @@ class nullcontext(object):
 
 
 def get_groups(
-    groups: Union[str, pd.DataFrame], X_train: pd.DataFrame, default: pd.DataFrame
-):
+    groups: Union[str, pd.DataFrame],
+    X_train: pd.DataFrame,
+    default: Optional[pd.DataFrame],
+) -> Optional[pd.DataFrame]:
     if groups is None:
-        return default
-    if isinstance(groups, str):
+        if default is None:
+            return default
+        else:
+            # Select rows from X_train that match the index from default (all rows)
+            return default.loc[default.index.isin(X_train.index)]
+    elif isinstance(groups, str):
         if groups not in X_train.columns:
             raise ValueError(
                 f"Column {groups} used for groups is not present in the dataset."
@@ -809,6 +815,7 @@ def get_groups(
             raise ValueError(
                 f"groups has length {groups.shape[0]} which doesn't match X_train length of {len(X_train)}."
             )
+
     return groups
 
 
