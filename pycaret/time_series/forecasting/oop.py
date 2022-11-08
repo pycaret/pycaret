@@ -515,7 +515,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         # Convert DateTimeIndex index to PeriodIndex ----
         # We use PeriodIndex in PyCaret since it seems to be more robust per `sktime``
-        # Ref: https://github.com/alan-turing-institute/sktime/blob/v0.10.0/sktime/forecasting/base/_fh.py#L524
+        # Ref: https://github.com/sktime/sktime/blob/v0.10.0/sktime/forecasting/base/_fh.py#L524
         if isinstance(self.data.index, pd.DatetimeIndex):
             self.data.index = self.data.index.to_period()
 
@@ -874,8 +874,8 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         # handle FH with gaps. In such cases, y_test will have gaps, but full
         # X_test is needed for some forecasters.
         # Refer:
-        # https://github.com/alan-turing-institute/sktime/issues/2598#issuecomment-1203308542
-        # https://github.com/alan-turing-institute/sktime/blob/4164639e1c521b112711c045d0f7e63013c1e4eb/sktime/forecasting/model_evaluation/_functions.py#L196
+        # https://github.com/sktime/sktime/issues/2598#issuecomment-1203308542
+        # https://github.com/sktime/sktime/blob/4164639e1c521b112711c045d0f7e63013c1e4eb/sktime/forecasting/model_evaluation/_functions.py#L196
         self.idx = [y_train.index, y_test.index, X_test.index]
 
         return self
@@ -5098,7 +5098,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         References
         ----------
-        https://github.com/alan-turing-institute/sktime/issues/1105#issuecomment-932216820
+        https://github.com/sktime/sktime/issues/1105#issuecomment-932216820
         """
 
         resid = None
@@ -5139,8 +5139,8 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         References
         ----------
-        # https://github.com/alan-turing-institute/sktime/issues/1105#issuecomment-932216820
-        # https://github.com/alan-turing-institute/sktime/blob/87bdf36dbc0990f29942eb6f7fa56a8e6c5fa7b7/sktime/forecasting/base/_base.py#L699
+        # https://github.com/sktime/sktime/issues/1105#issuecomment-932216820
+        # https://github.com/sktime/sktime/blob/87bdf36dbc0990f29942eb6f7fa56a8e6c5fa7b7/sktime/forecasting/base/_base.py#L699
         """
         insample_predictions = None
 
