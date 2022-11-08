@@ -1494,9 +1494,16 @@ class DummyClassifierContainer(ClassifierContainer):
         np.random.seed(experiment.seed)
         from sklearn.dummy import DummyClassifier
 
-        args = {"strategy": "prior", "random_state": experiment.seed}
+        args = {
+            "strategy": "prior",
+            "random_state": experiment.seed
+        }
+        
         tune_args = {}
-        tune_grid = {}
+        tune_grid = {
+            "strategy": ['most_frequent', 'prior', 'stratified', 'uniform', 'constant']
+        }
+        
         tune_distributions = {}
 
         leftover_parameters_to_categorical_distributions(tune_grid, tune_distributions)
