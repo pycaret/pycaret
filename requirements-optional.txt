@@ -5,8 +5,8 @@ umap-learn>=0.5.2
 pandas-profiling>=3.1.0
 explainerdashboard>=0.3.8  # For dashboard method
 autoviz>=0.1.36  # For EDA method
-fairlearn>=0.7.0  # For check_fairness method
-# deepchecks>=0.8.2  # For deep_check method  TODO: Add when compatible with plotly
+fairlearn==0.7.0  # For check_fairness method
+deepchecks>=0.9.2  # For deep_check method
 
 # Models
 xgboost>=1.1.0

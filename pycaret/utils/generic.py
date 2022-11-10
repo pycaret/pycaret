@@ -803,7 +803,7 @@ def get_groups(
             return default
         else:
             # Select rows from X_train that match the index from default (all rows)
-            return default.loc[default.index.isin(X_train.index)]
+            return default.loc[X_train.index]
     elif isinstance(groups, str):
         if groups not in X_train.columns:
             raise ValueError(
@@ -811,9 +811,11 @@ def get_groups(
             )
         groups = X_train[groups]
     else:
+        groups = groups.loc[X_train.index]
         if groups.shape[0] != X_train.shape[0]:
             raise ValueError(
-                f"groups has length {groups.shape[0]} which doesn't match X_train length of {len(X_train)}."
+                f"groups has length {groups.shape[0]} which doesn't match X_train "
+                f"length of {len(X_train)}."
             )
 
     return groups
