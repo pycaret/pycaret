@@ -349,7 +349,7 @@ class KNeighborsClassifierContainer(ClassifierContainer):
 
         # common
         tune_grid["n_neighbors"] = range(1, 51)
-        tune_grid["weights"] = ["uniform", "distance"]
+        tune_grid["weights"] = ["uniform"]
         tune_grid["metric"] = ["minkowski", "euclidean", "manhattan"]
 
         if not gpu_imported:
