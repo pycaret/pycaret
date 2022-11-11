@@ -722,12 +722,14 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             data_split_stratify=data_split_stratify,
             data_split_shuffle=data_split_shuffle,
         )
+
         self._prepare_folds(
             fold_strategy=fold_strategy,
             fold=fold,
             fold_shuffle=fold_shuffle,
             fold_groups=fold_groups,
         )
+
         self._prepare_column_types(
             ordinal_features=ordinal_features,
             numeric_features=numeric_features,

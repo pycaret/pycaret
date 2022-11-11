@@ -756,6 +756,13 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             data_split_shuffle=data_split_shuffle,
         )
 
+        self._prepare_folds(
+            fold_strategy=fold_strategy,
+            fold=fold,
+            fold_shuffle=fold_shuffle,
+            fold_groups=fold_groups,
+        )
+
         self._prepare_column_types(
             ordinal_features=ordinal_features,
             numeric_features=numeric_features,
@@ -764,13 +771,6 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             text_features=text_features,
             ignore_features=ignore_features,
             keep_features=keep_features,
-        )
-
-        self._prepare_folds(
-            fold_strategy=fold_strategy,
-            fold=fold,
-            fold_shuffle=fold_shuffle,
-            fold_groups=fold_groups,
         )
 
         self._set_exp_model_engines(
