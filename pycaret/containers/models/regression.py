@@ -1906,7 +1906,9 @@ class BaggingRegressorContainer(RegressorContainer):
             "random_state": experiment.seed,
             "n_jobs": 1 if experiment.gpu_param else None,
         }
-        tune_args = {}
+        tune_args = {
+            "strategy": ["most_frequent", "prior", "stratified", "uniform", "constant"]
+        }
         tune_grid = {
             "bootstrap": [True, False],
             "bootstrap_features": [True, False],
