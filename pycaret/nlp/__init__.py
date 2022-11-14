@@ -1978,11 +1978,6 @@ def plot_model(
 
     logger.info("Importing libraries")
 
-    import cufflinks as cf
-
-    cf.go_offline()
-    cf.set_config_file(offline=False, world_readable=True)
-
     # save parameter
 
     if save:
@@ -3233,16 +3228,11 @@ def tune_model(
     logger.info("Importing libraries")
 
     # General Dependencies
-    # setting up cufflinks
-    import cufflinks as cf
     import numpy as np
     import plotly.express as px
     from sklearn import metrics
     from sklearn.linear_model import LogisticRegression
     from sklearn.model_selection import cross_val_predict
-
-    cf.go_offline()
-    cf.set_config_file(offline=False, world_readable=True)
 
     progress.value += 1
 

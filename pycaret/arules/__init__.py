@@ -312,14 +312,10 @@ def plot_model(model, plot="2d", scale=1, display_format=None):
     error handling ends here
     """
 
-    import cufflinks as cf
     import numpy as np
     import pandas as pd
     import plotly.express as px
     from IPython.display import HTML, clear_output, display, update_display
-
-    cf.go_offline()
-    cf.set_config_file(offline=False, world_readable=True)
 
     # copy dataframe
     data_ = model.copy()
