@@ -1497,9 +1497,7 @@ class DummyClassifierContainer(ClassifierContainer):
         args = {"strategy": "prior", "random_state": experiment.seed}
 
         tune_args = {}
-        tune_grid = {
-            "strategy": ["most_frequent", "prior", "stratified", "uniform"]
-        }
+        tune_grid = {"strategy": ["most_frequent", "prior", "stratified", "uniform"]}
 
         tune_distributions = {}
 
