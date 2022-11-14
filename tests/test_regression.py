@@ -76,6 +76,7 @@ def test_regression(boston_dataframe, return_train_score):
     )  # scale removed because build failed due to large image size
 
     # select best model
+    pycaret.regression.automl(optimize="MAPE", use_holdout=True)
     best = pycaret.regression.automl(optimize="MAPE")
 
     # hold out predictions

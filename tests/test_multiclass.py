@@ -60,6 +60,7 @@ def test_multiclass(iris_dataframe, return_train_score):
     pycaret.classification.plot_model(lr, save=True, scale=5)
 
     # select best model
+    pycaret.classification.automl(optimize="MCC", use_holdout=True)
     best = pycaret.classification.automl(optimize="MCC")
 
     # hold out predictions
