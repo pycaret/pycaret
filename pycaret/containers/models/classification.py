@@ -1498,7 +1498,7 @@ class DummyClassifierContainer(ClassifierContainer):
 
         tune_args = {}
         tune_grid = {
-            "strategy": ["most_frequent", "prior", "stratified", "uniform", "constant"]
+            "strategy": ["most_frequent", "prior", "stratified", "uniform"]
         }
 
         tune_distributions = {}
