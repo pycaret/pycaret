@@ -5340,7 +5340,6 @@ class _SupervisedExperiment(_TabularExperiment):
                         groups=self.fold_groups_param,
                         return_train_score=return_train_score,
                     )
-                    self.pull(pop=True)
                     self.predict_model(model, verbose=False)  # type: ignore
 
                 p = self.pull(pop=True)
