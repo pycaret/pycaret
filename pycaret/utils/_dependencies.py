@@ -1,5 +1,5 @@
 # Adapted from
-# https://github.com/alan-turing-institute/sktime/blob/v0.11.0/sktime/utils/validation/_dependencies.py
+# https://github.com/sktime/sktime/blob/v0.11.0/sktime/utils/validation/_dependencies.py
 
 import sys
 from distutils.version import LooseVersion
