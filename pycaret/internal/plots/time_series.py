@@ -313,7 +313,7 @@ def plot_cv(
     def get_windows(y, cv):
         """
         Generate windows
-        Inspired from `https://github.com/alan-turing-institute/sktime`
+        Inspired from `https://github.com/sktime/sktime`
         """
         train_windows = []
         test_windows = []

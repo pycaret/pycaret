@@ -1051,7 +1051,7 @@ class ThetaContainer(TimeSeriesContainer):
 
     @property
     def _set_args(self) -> Dict[str, Any]:
-        # https://github.com/alan-turing-institute/sktime/issues/940
+        # https://github.com/sktime/sktime/issues/940
         if self.strictly_positive:
             deseasonalize = True
         else:
@@ -1064,7 +1064,7 @@ class ThetaContainer(TimeSeriesContainer):
     @property
     def _set_tune_grid(self) -> Dict[str, List[Any]]:
         # TODO; Update after Bug is fixed in sktime
-        # https://github.com/alan-turing-institute/sktime/issues/692
+        # https://github.com/sktime/sktime/issues/692
         # ThetaForecaster does not work with "initial_level" different from None
         if self.seasonality_present:
             tune_grid = {
@@ -1083,7 +1083,7 @@ class ThetaContainer(TimeSeriesContainer):
     @property
     def _set_tune_distributions(self) -> Dict[str, List[Any]]:
         # TODO; Update after Bug is fixed in sktime
-        # https://github.com/alan-turing-institute/sktime/issues/692
+        # https://github.com/sktime/sktime/issues/692
         # ThetaForecaster does not work with "initial_level" different from None
         if self.seasonality_present:
             tune_distributions = {
@@ -2545,7 +2545,7 @@ class CatBoostCdsDtContainer(CdsDtContainer):
 
 
 class BaseCdsDtForecaster(BaseForecaster):
-    # https://github.com/alan-turing-institute/sktime/blob/v0.8.0/extension_templates/forecasting.py
+    # https://github.com/sktime/sktime/blob/v0.8.0/extension_templates/forecasting.py
     model_type = None
 
     _tags = {
@@ -2677,7 +2677,7 @@ if _check_soft_dependencies("prophet", extra=None, severity="warning"):
             # TODO: Disable Prophet when Index is of any type other than DatetimeIndex or PeriodIndex
             # In that case, pycaret will always pass PeriodIndex from outside
             # since Datetime index are converted to PeriodIndex in pycaret
-            # Ref: https://github.com/alan-turing-institute/sktime/blob/v0.10.0/sktime/forecasting/base/_fh.py#L524
+            # Ref: https://github.com/sktime/sktime/blob/v0.10.0/sktime/forecasting/base/_fh.py#L524
             # But sktime Prophet only supports DatetimeIndex
             # Hence coerce the index internally if it is not DatetimeIndex
             X = coerce_period_to_datetime_index(X)
@@ -2729,7 +2729,7 @@ if _check_soft_dependencies("prophet", extra=None, severity="warning"):
             # TODO: Disable Prophet when Index is of any type other than DatetimeIndex or PeriodIndex
             # In that case, pycaret will always pass PeriodIndex from outside
             # since Datetime index are converted to PeriodIndex in pycaret
-            # Ref: https://github.com/alan-turing-institute/sktime/blob/v0.10.0/sktime/forecasting/base/_fh.py#L524
+            # Ref: https://github.com/sktime/sktime/blob/v0.10.0/sktime/forecasting/base/_fh.py#L524
             # But sktime Prophet only supports DatetimeIndex
             # Hence coerce the index internally if it is not DatetimeIndex
             X = coerce_period_to_datetime_index(X)
