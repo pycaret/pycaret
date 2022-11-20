@@ -468,8 +468,8 @@ class _PyCaretExperiment:
             # which would be confusing. Hence, we return y_test indices here and if
             # we want to get X_test indices, then we use self.X_test directly.
             # Refer:
-            # https://github.com/alan-turing-institute/sktime/issues/2598#issuecomment-1203308542
-            # https://github.com/alan-turing-institute/sktime/blob/4164639e1c521b112711c045d0f7e63013c1e4eb/sktime/forecasting/model_evaluation/_functions.py#L196
+            # https://github.com/sktime/sktime/issues/2598#issuecomment-1203308542
+            # https://github.com/sktime/sktime/blob/4164639e1c521b112711c045d0f7e63013c1e4eb/sktime/forecasting/model_evaluation/_functions.py#L196
             return self.dataset.loc[self.idx[1], :]
 
     @property
@@ -620,8 +620,8 @@ class _PyCaretExperiment:
             # which would be confusing. Hence, we return y_test indices here and if
             # we want to get X_test indices, then we use self.X_test directly.
             # Refer:
-            # https://github.com/alan-turing-institute/sktime/issues/2598#issuecomment-1203308542
-            # https://github.com/alan-turing-institute/sktime/blob/4164639e1c521b112711c045d0f7e63013c1e4eb/sktime/forecasting/model_evaluation/_functions.py#L196
+            # https://github.com/sktime/sktime/issues/2598#issuecomment-1203308542
+            # https://github.com/sktime/sktime/blob/4164639e1c521b112711c045d0f7e63013c1e4eb/sktime/forecasting/model_evaluation/_functions.py#L196
             return all_data.loc[self.idx[1]]
 
     @property

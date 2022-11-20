@@ -435,12 +435,6 @@ class _TabularExperiment(_PyCaretExperiment):
                 "AUC plot not available for estimators with no predict_proba attribute."
             )
 
-        # checking for auc plot
-        if not hasattr(estimator, "predict_proba") and plot == "auc":
-            raise TypeError(
-                "AUC plot not available for estimators with no predict_proba attribute."
-            )
-
         # checking for calibration plot
         if not hasattr(estimator, "predict_proba") and plot == "calibration":
             raise TypeError(

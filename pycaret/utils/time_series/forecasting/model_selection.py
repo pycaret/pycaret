@@ -38,7 +38,7 @@ def get_folds(cv, y) -> Generator[Tuple[pd.Series, pd.Series], None, None]:
     """
     Returns the train and test indices for the time series data
     """
-    # https://github.com/alan-turing-institute/sktime/blob/main/examples/window_splitters.ipynb
+    # https://github.com/sktime/sktime/blob/main/examples/window_splitters.ipynb
     for train_indices, test_indices in cv.split(y):
         # print(f"Train Indices: {train_indices}, Test Indices: {test_indices}")
         yield train_indices, test_indices
@@ -64,7 +64,7 @@ def _fit_and_score(
     Difference is that [1] operates on a single fold only, whereas [2] operates on all cv folds.
     Ref:
     [1] https://github.com/scikit-learn/scikit-learn/blob/0.24.1/sklearn/model_selection/_validation.py#L449
-    [2] https://github.com/alan-turing-institute/sktime/blob/v0.5.3/sktime/forecasting/model_selection/_tune.py#L95
+    [2] https://github.com/sktime/sktime/blob/v0.5.3/sktime/forecasting/model_selection/_tune.py#L95
 
     Parameters
     ----------
@@ -131,8 +131,8 @@ def _fit_and_score(
     # FH has gaps (e.g. [2, 3]). In that case, some forecasters still need the
     # exogenous variable values at FH = 1
     # Refer:
-    # https://github.com/alan-turing-institute/sktime/issues/2598#issuecomment-1203308542
-    # https://github.com/alan-turing-institute/sktime/blob/4164639e1c521b112711c045d0f7e63013c1e4eb/sktime/forecasting/model_evaluation/_functions.py#L196
+    # https://github.com/sktime/sktime/issues/2598#issuecomment-1203308542
+    # https://github.com/sktime/sktime/blob/4164639e1c521b112711c045d0f7e63013c1e4eb/sktime/forecasting/model_evaluation/_functions.py#L196
     test_expanded = np.arange(train[-1], test[-1]) + 1
 
     # y_train, X_train, X_test can have missing values since pipeline will impute them
