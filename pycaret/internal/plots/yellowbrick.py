@@ -3,7 +3,7 @@
 # License: MIT
 
 import os
-from typing import Any, Optional
+from typing import Optional
 
 import matplotlib.pyplot as plt
 
