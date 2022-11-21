@@ -346,13 +346,10 @@ class _TabularExperiment(_PyCaretExperiment):
                 cuml_version = __version__
                 self.logger.info(f"cuml=={cuml_version}")
 
-                cuml_version = cuml_version.split(".")
-                cuml_version = (int(cuml_version[0]), int(cuml_version[1]))
-
             if cuml_version is None or not version.parse(cuml_version) >= version.parse(
-                "0.15"
+                "22.10"
             ):
-                message = f"cuML is outdated or not found. Required version is >=0.15, got {__version__}"
+                message = f"cuML is outdated or not found. Required version is >=22.10, got {__version__}"
                 if use_gpu == "force":
                     raise ImportError(message)
                 else:
