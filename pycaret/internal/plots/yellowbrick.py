@@ -65,7 +65,6 @@ def show_yellowbrick_plot(
     scale: float = 1,
     save: bool = False,
     fit_kwargs: Optional[dict] = None,
-    groups: Optional[Any] = None,
     display_format: Optional[str] = None,
     **kwargs,
 ):

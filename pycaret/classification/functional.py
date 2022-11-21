@@ -70,7 +70,7 @@ def setup(
     feature_selection: bool = False,
     feature_selection_method: str = "classic",
     feature_selection_estimator: Union[str, Any] = "lightgbm",
-    n_features_to_select: int = 10,
+    n_features_to_select: Union[int, float] = 0.2,
     custom_pipeline: Optional[Any] = None,
     custom_pipeline_position: int = -1,
     data_split_shuffle: bool = True,
@@ -433,8 +433,9 @@ def setup(
         parameter is ignored when `feature_selection_method=univariate`.
 
 
-    n_features_to_select: int, default = 10
-        The number of features to select. Note that this parameter doesn't
+    n_features_to_select: int, default = 0.2
+        The maximum number of features to select with feature_selection. If <1,
+        it's the fraction of starting features. Note that this parameter doesn't
         take features in ``ignore_features`` or ``keep_features`` into account
         when counting.
 
