@@ -1021,12 +1021,6 @@ def _resolve_renderer(
             renderer = "png"
     # if renderer is not None, then use as is.
 
-    if renderer not in pio.renderers:
-        raise ValueError(
-            f"Renderer '{renderer}' is not a valid Plotly renderer. "
-            f"Valid renderers are:\n {pio.renderers}"
-        )
-
     return renderer
 
 
