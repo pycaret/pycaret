@@ -43,7 +43,7 @@ def setup(
     numeric_iterative_imputer: Union[str, Any] = "lightgbm",
     categorical_iterative_imputer: Union[str, Any] = "lightgbm",
     text_features_method: str = "tf-idf",
-    max_encoding_ohe: int = 5,
+    max_encoding_ohe: int = 10,
     encoding_method: Optional[Any] = None,
     rare_to_value: Optional[float] = None,
     rare_value: str = "rare",
@@ -253,7 +253,7 @@ def setup(
         text embeddings.
 
 
-    max_encoding_ohe: int, default = 5
+    max_encoding_ohe: int, default = 10
         Categorical columns with `max_encoding_ohe` or less unique values are
         encoded using OneHotEncoding. If more, the `encoding_method` estimator
         is used. Note that columns with exactly two classes are always encoded
