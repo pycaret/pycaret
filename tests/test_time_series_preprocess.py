@@ -239,7 +239,7 @@ def test_preprocess_setup_raises_negative_exo(load_uni_exo_data_target, method):
 
     exp = TSForecastingExperiment()
 
-    #### Transform Target
+    # Transform Target ----
     with pytest.raises(ValueError) as errmsg:
         exp.setup(
             data=data,
@@ -260,7 +260,7 @@ def test_preprocess_setup_raises_negative_exo(load_uni_exo_data_target, method):
         in exceptionmsg
     )
 
-    #### Transform Exogenous
+    # Transform Exogenous ----
     with pytest.raises(ValueError) as errmsg:
         exp.setup(
             data=data,
