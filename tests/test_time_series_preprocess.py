@@ -218,8 +218,15 @@ def test_preprocess_setup_raises_negative_no_exo(load_pos_and_neg_data, method):
     with pytest.raises(ValueError) as errmsg:
         exp.setup(data=data, transform_target=method)
     exceptionmsg = errmsg.value.args[0]
+    # The first message is given when then the transformation produced NA values
+    # and the underlying model can handle missing data (in this case, the sktime
+    # checks pass but pycaret checks fail)
+    # The second message is given the transformation produces NA values and the
+    # underlying model can not handle missing data (in this case, the sktime checks
+    # fail and the pycaret checks are not reached.)
     assert (
         "This can happen when you have negative and/or zero values in the data"
+        or "DummyForecaster cannot handle missing data (nans), but y passed contained missing data"
         in exceptionmsg
     )
 
@@ -227,11 +234,12 @@ def test_preprocess_setup_raises_negative_no_exo(load_pos_and_neg_data, method):
 @pytest.mark.parametrize("method", _TRANSFORMATION_METHODS_NO_NEG)
 def test_preprocess_setup_raises_negative_exo(load_uni_exo_data_target, method):
     """Tests setup conditions that raise errors due to negative values before
-    transformatons. Univariate with exogenous variables"""
+    transformations. Univariate with exogenous variables"""
     data, target = load_uni_exo_data_target
 
     exp = TSForecastingExperiment()
 
+    # Transform Target ----
     with pytest.raises(ValueError) as errmsg:
         exp.setup(
             data=data,
@@ -240,11 +248,19 @@ def test_preprocess_setup_raises_negative_exo(load_uni_exo_data_target, method):
             transform_target=method,
         )
     exceptionmsg = errmsg.value.args[0]
+    # The first message is given when then the transformation produced NA values
+    # and the underlying model can handle missing data (in this case, the sktime
+    # checks pass but pycaret checks fail)
+    # The second message is given the transformation produces NA values and the
+    # underlying model can not handle missing data (in this case, the sktime checks
+    # fail and the pycaret checks are not reached.)
     assert (
         "This can happen when you have negative and/or zero values in the data"
+        or "DummyForecaster cannot handle missing data (nans), but y passed contained missing data"
         in exceptionmsg
     )
 
+    # Transform Exogenous ----
     with pytest.raises(ValueError) as errmsg:
         exp.setup(
             data=data,
@@ -253,8 +269,15 @@ def test_preprocess_setup_raises_negative_exo(load_uni_exo_data_target, method):
             transform_exogenous=method,
         )
     exceptionmsg = errmsg.value.args[0]
+    # The first message is given when then the transformation produced NA values
+    # and the underlying model can handle missing data (in this case, the sktime
+    # checks pass but pycaret checks fail)
+    # The second message is given the transformation produces NA values and the
+    # underlying model can not handle missing data (in this case, the sktime checks
+    # fail and the pycaret checks are not reached.)
     assert (
         "This can happen when you have negative and/or zero values in the data"
+        or "DummyForecaster cannot handle missing data (nans), but y passed contained missing data"
         in exceptionmsg
     )
 
