@@ -1315,51 +1315,37 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
         self.logger.info("Initializing predict_model()")
         self.logger.info(f"predict_model({function_params_str})")
 
-        if isinstance(estimator, Pipeline):
-            if not hasattr(estimator, "feature_names_in_"):
-                raise ValueError(
-                    "If estimator is a Pipeline, it must implement `feature_names_in_`."
-                )
-            pipeline = estimator
-            # Temporarily remove final estimator so it's not used for transform
-            final_step = pipeline.steps[-1]
-            estimator = final_step[-1]
-            pipeline.steps = pipeline.steps[:-1]
-        elif not self._setup_ran:
-            raise ValueError(
-                "If estimator is not a Pipeline, you must run setup() first."
-            )
-        else:
-            pipeline = self.pipeline
-            final_step = None
-
         if ml_usecase is None:
             ml_usecase = self._ml_usecase
 
-        X_columns = pipeline.feature_names_in_
         if data is None:
-            data_transformed = self.X_transformed
+            # Can be any Pipeline (pycaret, sklearn, imblearn, etc...)
+            if estimator.__class__.__name__ == "Pipeline":
+                data = self.X
+            else:
+                data = self.X_transformed
         else:
-            data = self._prepare_dataset(data)[X_columns]
-            data_transformed = pipeline.transform(data)
-            if final_step:
-                pipeline.steps.append(final_step)
+            data = self._prepare_dataset(data)
 
-        # exception checking for predict param
+        # Select features to use
+        if hasattr(estimator, "feature_names_in_"):
+            data = data[list(estimator.feature_names_in_)]
+
+        # exception checking for predict method
         if hasattr(estimator, "predict"):
             pass
         else:
-            raise TypeError("Model doesn't support predict parameter.")
+            raise TypeError("Model doesn't have the predict method.")
 
-        pred = estimator.predict(data_transformed)
+        output = data.copy()
+        pred = estimator.predict(data)
         if ml_usecase == MLUsecase.CLUSTERING:
-            data_transformed["Cluster"] = [f"Cluster {i}" for i in pred]
+            output["Cluster"] = [f"Cluster {i}" for i in pred]
         else:
-            pred_score = estimator.decision_function(data_transformed)
-            data_transformed["Anomaly"] = pred
-            data_transformed["Anomaly_Score"] = pred_score
+            output["Anomaly"] = pred
+            output["Anomaly_Score"] = estimator.decision_function(data)
 
-        return data_transformed
+        return output
 
     def _create_model(
         self,
