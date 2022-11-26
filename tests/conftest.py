@@ -82,7 +82,7 @@ def load_uni_exo_data_target_missing():
 def load_models_uni_exo():
     """Load models that support univariate date with exogenous variables."""
     # TODO: Later, get this dynamically from sktime
-    models = ["arima", "auto_arima"]
+    models = ["arima", "lr_cds_dt"]
     return models
 
 
@@ -91,7 +91,7 @@ def load_models_uni_mix_exo_noexo():
     """Load a sample mix of models that support univariate date with
     exogenous variables and those that do not."""
     # TODO: Later, get this dynamically from sktime
-    models = ["naive", "ets", "arima"]
+    models = ["naive", "ets", "arima", "lr_cds_dt"]
     return models
 
 
