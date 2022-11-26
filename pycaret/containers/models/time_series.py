@@ -27,6 +27,7 @@ from sktime.transformations.series.detrend import (  # type: ignore
     ConditionalDeseasonalizer,
     Detrender,
 )
+from sktime.transformations.series.summarize import WindowSummarizer
 
 import pycaret.containers.base_container
 from pycaret.containers.models.base_model import (
@@ -2561,15 +2562,21 @@ class BaseCdsDtForecaster(BaseForecaster):
     }
 
     def __init__(
-        self, regressor, sp=1, deseasonal_model="additive", degree=1, window_length=10
+        self,
+        regressor: Any,
+        sp: int = 1,
+        deseasonal_model: str = "additive",
+        degree: int = 1,
+        window_length: int = 10,
+        target_feature_transformer: Optional[list] = None,
     ):
         """Base Class for time series using scikit models which includes
         Conditional Deseasonalizing and Detrending
 
         Parameters
         ----------
-        regressor : [type]
-            [description]
+        regressor : Any
+            The regressor to be used for the reduced regression model
         sp : int, optional
             Seasonality period used to deseasonalize, by default 1
         deseasonal_model : str, optional
@@ -2577,13 +2584,33 @@ class BaseCdsDtForecaster(BaseForecaster):
         degree : int, optional
             degree of detrender, by default 1
         window_length : int, optional
-            Window Length used for the Reduced Forecaster, by default 10
+            Window Length used for the Reduced Forecaster, by default 10.
+            If target_feature_transformer is provided, window_length is ignored.
+        target_feature_transformer : Optional[list], optional
+            Custom transformations used to extract features from the target (useful
+            for extracting lagged features), by default None which takes the lags
+            based on a window_length parameter. If provided, window_length is ignored.
         """
         self.regressor = regressor
         self.sp = sp
         self.deseasonal_model = deseasonal_model
         self.degree = degree
         self.window_length = window_length
+
+        if target_feature_transformer is None:
+            # All target lags as features.
+            # NOTE: Previously, this forecaster class used the `window_length` argument
+            # in make_reduction. Now we have moved to using the `transformers` argument.
+            # The order of columns matter for some models like tree based models
+            # Hence we start with the furthest away lag and end with the most recent lag.
+            # This behavior matches the behavior of the `window_length`` argument in
+            # make_reduction which is used in this forecaster class.
+            kwargs = {
+                "lag_feature": {"lag": list(np.arange(self.window_length, 0, -1))}
+            }
+            self.target_feature_transformer = [WindowSummarizer(**kwargs, n_jobs=1)]
+        else:
+            self.target_feature_transformer = target_feature_transformer
 
         super(BaseCdsDtForecaster, self).__init__()
 
@@ -2603,8 +2630,10 @@ class BaseCdsDtForecaster(BaseForecaster):
                     make_reduction(
                         estimator=self.regressor,
                         scitype="tabular-regressor",
-                        window_length=self.window_length,
+                        transformers=self.target_feature_transformer,
+                        window_length=None,
                         strategy="recursive",
+                        pooling="global",
                     ),
                 ),
             ]
