@@ -13,7 +13,6 @@ from sklearn.covariance import EllipticEnvelope
 from sklearn.ensemble import IsolationForest
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 from sklearn.neighbors import LocalOutlierFactor
-from sklearn.utils.metaestimators import available_if
 
 from pycaret.utils.generic import to_df, to_series, variable_return
 
@@ -591,7 +590,6 @@ class TargetTransformer(BaseEstimator):
         output = self.estimator.transform(y)
         return to_series(output, index=index, name=name)
 
-    @available_if("estimator")
     def inverse_transform(self, y: pd.Series):
         y, index, name = self._enforce_2d_on_y(y)
         output = self.estimator.inverse_transform(y)

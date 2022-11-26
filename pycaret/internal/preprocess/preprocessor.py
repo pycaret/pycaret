@@ -939,6 +939,14 @@ class Preprocessor:
                 "The provided estimator does not adhere to sklearn's API."
             )
 
+        if 0 < n_features_to_select < 1:
+            n_features_to_select = int(n_features_to_select * self.X.shape[1])
+        elif n_features_to_select > self.X.shape[1]:
+            raise ValueError(
+                "Invalid value for the n_features_to_select parameter. The number of "
+                "feature to select should be less than the starting number of features."
+            )
+
         if feature_selection_method.lower() == "univariate":
             if self._ml_usecase == MLUsecase.CLASSIFICATION:
                 func = f_classif
