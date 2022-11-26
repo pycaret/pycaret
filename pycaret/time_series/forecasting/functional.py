@@ -34,6 +34,8 @@ def setup(
     numeric_imputation_exogenous: Optional[Union[int, float, str]] = None,
     transform_target: Optional[str] = None,
     transform_exogenous: Optional[str] = None,
+    fe_target: Optional[list] = None,
+    fe_exogenous: Optional[list] = None,
     scale_target: Optional[str] = None,
     scale_exogenous: Optional[str] = None,
     fold_strategy: Union[str, Any] = "expanding",
@@ -146,6 +148,91 @@ def setup(
         Indicates how the exogenous variables should be scaled.
         If None, no scaling is performed. Allowed values are
             "zscore", "minmax", "maxabs", "robust"
+
+
+    fe_target: Optional[list], default = None
+        The transformers to be applied to the target variable in order to
+        extract useful features. By default, None which means that the
+        provided target variable are used "as is".
+
+        NOTE: Most statistical and baseline models already use features (lags)
+        for target variables implicitly. The only place where target features
+        have to be created explicitly is in reduced regression models. Hence,
+        this feature extraction is only applied to reduced regression models.
+
+        Example
+        -------
+
+        >>> import numpy as np
+        >>> from pycaret.datasets import get_data
+        >>> from sktime.transformations.series.summarize import WindowSummarizer
+
+        >>> data = get_data("airline")
+
+        >>> kwargs = {"lag_feature": {"lag": [36, 24, 13, 12, 11, 9, 6, 3, 2, 1]}}
+        >>> fe_target = [WindowSummarizer(n_jobs=1, truncate="bfill", **kwargs)]
+
+        >>> # Baseline
+        >>> exp = TSForecastingExperiment()
+        >>> exp.setup(data=data, fh=12, fold=3, session_id=42)
+        >>> model1 = exp.create_model("lr_cds_dt")
+
+        >>> # With Feature Engineering
+        >>> exp = TSForecastingExperiment()
+        >>> exp.setup(
+        >>>     data=data, fh=12, fold=3, fe_target=fe_target, session_id=42
+        >>> )
+        >>> model2 = exp.create_model("lr_cds_dt")
+
+        >>> exp.plot_model([model1, model2], data_kwargs={"labels": ["Baseline", "With FE"]})
+
+    fe_exogenous : Optional[list] = None
+        The transformations to be applied to the exogenous variables. These
+        transformations are used for all models that accept exogenous variables.
+        By default, None which means that the provided exogenous variables are
+        used "as is".
+
+        Example
+        -------
+
+        >>> import numpy as np
+        >>> from sktime.transformations.series.summarize import WindowSummarizer
+
+        >>> # Example: function num_above_thresh to count how many observations lie above
+        >>> # the threshold within a window of length 2, lagged by 0 periods.
+        >>> def num_above_thresh(x):
+        >>>     '''Count how many observations lie above threshold.'''
+        >>>     return np.sum((x > 0.7)[::-1])
+
+        >>> kwargs1 = {"lag_feature": {"lag": [0, 1], "mean": [[0, 4]]}}
+        >>> kwargs2 = {
+        >>>     "lag_feature": {
+        >>>         "lag": [0, 1], num_above_thresh: [[0, 2]],
+        >>>         "mean": [[0, 4]], "std": [[0, 4]]
+        >>>     }
+        >>> }
+
+        >>> fe_exogenous = [
+        >>>     (
+                    "a", WindowSummarizer(
+        >>>             n_jobs=1, target_cols=["Income"], truncate="bfill", **kwargs1
+        >>>         )
+        >>>     ),
+        >>>     (
+        >>>         "b", WindowSummarizer(
+        >>>             n_jobs=1, target_cols=["Unemployment", "Production"], truncate="bfill", **kwargs2
+        >>>         )
+        >>>     ),
+        >>> ]
+
+        >>> data = get_data("uschange")
+        >>> exp = TSForecastingExperiment()
+        >>> exp.setup(
+        >>>     data=data, target="Consumption", fh=12, seasonal_period=4,
+        >>>     fe_exogenous=fe_exogenous, session_id=42
+        >>> )
+        >>> print(f"Feature Columns: {exp.get_config('X_transformed').columns}")
+        >>> model = exp.create_model("lr_cds_dt")
 
 
     fold_strategy: str or sklearn CV generator object, default = 'expanding'
@@ -398,6 +485,8 @@ def setup(
         transform_exogenous=transform_exogenous,
         scale_target=scale_target,
         scale_exogenous=scale_exogenous,
+        fe_target=fe_target,
+        fe_exogenous=fe_exogenous,
         fold_strategy=fold_strategy,
         fold=fold,
         fh=fh,

@@ -3,6 +3,7 @@
 import random
 
 import numpy as np
+from pandas.testing import assert_frame_equal
 from sktime.forecasting.base import ForecastingHorizon
 
 from pycaret.containers.models import get_all_ts_model_containers
@@ -310,6 +311,18 @@ def _return_model_names_for_missing_data():
     """Returns models that do not support missing data"""
     model_names = ["ets", "theta", "lr_cds_dt"]
     return model_names
+
+
+def assert_frame_not_equal(*args, **kwargs):
+    """https://stackoverflow.com/a/38778401/8925915"""
+    try:
+        assert_frame_equal(*args, **kwargs)
+    except AssertionError:
+        # frames are not equal
+        pass
+    else:
+        # frames are equal
+        raise AssertionError("Frames are equal, but should not be.")
 
 
 def _return_data_big_small():
