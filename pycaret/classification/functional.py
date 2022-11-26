@@ -433,7 +433,7 @@ def setup(
         parameter is ignored when `feature_selection_method=univariate`.
 
 
-    n_features_to_select: int, default = 0.2
+    n_features_to_select: int or float, default = 0.2
         The maximum number of features to select with feature_selection. If <1,
         it's the fraction of starting features. Note that this parameter doesn't
         take features in ``ignore_features`` or ``keep_features`` into account
