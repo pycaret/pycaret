@@ -10,7 +10,6 @@ import pandas as pd
 import plotly.graph_objects as go  # type: ignore
 from joblib.memory import Memory
 from sklearn.base import clone  # type: ignore
-from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import LabelEncoder
 
 from pycaret.containers.metrics import (
