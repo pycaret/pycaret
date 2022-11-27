@@ -61,7 +61,6 @@ from pycaret.utils._dependencies import _check_soft_dependencies
 from pycaret.utils.datetime import coerce_datetime_to_period_index
 from pycaret.utils.generic import (
     MLUsecase,
-    _coerce_empty_dataframe_to_none,
     _resolve_dict_keys,
     highlight_setup,
 )
