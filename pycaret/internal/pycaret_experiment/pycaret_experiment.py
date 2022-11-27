@@ -482,9 +482,12 @@ class _PyCaretExperiment:
                 return self.dataset  # For unsupervised: dataset == X
         else:
             X = self.dataset.drop(self.target_param, axis=1)
-            if X.empty:
+            if X.empty and self.fe_exogenous is None:
                 return None
             else:
+                # If X is not empty or empty but self.fe_exogenous is provided
+                # Return X instead of None, since the index can be used to
+                # generate features using self.fe_exogenous
                 return X
 
     @property
@@ -505,9 +508,12 @@ class _PyCaretExperiment:
         if self._ml_usecase != MLUsecase.TIME_SERIES:
             return X_train
         else:
-            if X_train.empty:
+            if X_train.empty and self.fe_exogenous is None:
                 return None
             else:
+                # If X_train is not empty or empty but self.fe_exogenous is provided
+                # Return X_train instead of None, since the index can be used to
+                # generate features using self.fe_exogenous
                 return X_train
 
     @property
@@ -527,9 +533,12 @@ class _PyCaretExperiment:
         if self._ml_usecase != MLUsecase.TIME_SERIES:
             return X_test
         else:
-            if X_test.empty:
+            if X_test.empty and self.fe_exogenous is None:
                 return None
             else:
+                # If X_test is not empty or empty but self.fe_exogenous is provided
+                # Return X_test instead of None, since the index can be used to
+                # generate features using self.fe_exogenous
                 return X_test
 
     @property

@@ -255,8 +255,12 @@ class TSForecastingPreprocessor:
             only added if this is set to TSExogenousPresent.YES.
         """
         # Transform exogenous variables ----
-        # Only add exogenous pipeline steps if exogenous variables are present.
-        if exogenous_present == TSExogenousPresent.YES and fe_exogenous is not None:
+        # Only add exogenous pipeline steps if exogenous variables are present,
+        # but this is an exception. We may not have exogenous variables, but
+        # these could be created using fe_exogenous, so we do not explicitly check
+        # for the presence of exogenous variables to add this to the pipeline.
+        # if exogenous_present == TSExogenousPresent.YES and fe_exogenous is not None:
+        if fe_exogenous is not None:
             self._add_feat_eng_steps(
                 fe_exogenous=fe_exogenous,
                 target=False,

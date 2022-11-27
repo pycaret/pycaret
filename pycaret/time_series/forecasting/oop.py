@@ -219,10 +219,18 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                         ],
                         ["Transformation (Exogenous)", self.transform_exogenous],
                         ["Scaling (Exogenous)", self.scale_exogenous],
+                    ]
+                )
+            if self.fe_exogenous:
+                # This is added even if there are no explicit exogenous variables
+                # since exogenous variables can be created from the Index (e.g.
+                # DateTimeFeatures) using self.fe_exogenous
+                display_container.extend(
+                    [
                         [
                             "Custom Feature Engineering (Exogenous)",
                             True if self.fe_exogenous else False,
-                        ],
+                        ]
                     ]
                 )
 
@@ -933,18 +941,27 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             The experiment object to allow chaining of methods
         """
         if (
-            # Target transformations ----
-            self.numeric_imputation_target is not None
-            or self.transform_target is not None
-            or self.scale_target is not None
-        ) or (
-            # Exogenous Transformations ----
-            (self.exogenous_present == TSExogenousPresent.YES)
-            and (
-                self.numeric_imputation_exogenous is not None
-                or self.transform_exogenous is not None
-                or self.scale_exogenous is not None
-                or self.fe_exogenous is not None
+            (
+                # Target transformations ----
+                self.numeric_imputation_target is not None
+                or self.transform_target is not None
+                or self.scale_target is not None
+            )
+            or (
+                # Exogenous Transformations ----
+                (self.exogenous_present == TSExogenousPresent.YES)
+                and (
+                    self.numeric_imputation_exogenous is not None
+                    or self.transform_exogenous is not None
+                    or self.scale_exogenous is not None
+                )
+            )
+            or (
+                # Even if there are no explicit exogenous variables, we can create
+                # them using index. Hence, we do not include the exogenous_present
+                # check here.
+                self.fe_exogenous
+                is not None
             )
         ):
             self.preprocess = True
@@ -4014,7 +4031,10 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         # Convert to None if empty dataframe ----
         # Some predict methods in sktime expect None (not an empty dataframe as
         # returned by pycaret). Hence converting to None.
-        X = _coerce_empty_dataframe_to_none(data=X)
+        # NOTE 2022/11/27: Removed this since we need to return empty dataframe
+        # with indices for cases when we have no exogenous variables, but these
+        # features can be generated using fe_exogenous.
+        # X = _coerce_empty_dataframe_to_none(data=X)
         return X
 
     def _predict_model_resolve_verbose(
