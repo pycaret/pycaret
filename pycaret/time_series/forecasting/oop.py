@@ -59,11 +59,7 @@ from pycaret.internal.validation import is_sklearn_cv_generator
 from pycaret.loggers.base_logger import BaseLogger
 from pycaret.utils._dependencies import _check_soft_dependencies
 from pycaret.utils.datetime import coerce_datetime_to_period_index
-from pycaret.utils.generic import (
-    MLUsecase,
-    _resolve_dict_keys,
-    highlight_setup,
-)
+from pycaret.utils.generic import MLUsecase, _resolve_dict_keys, highlight_setup
 from pycaret.utils.time_series import (
     TSApproachTypes,
     TSExogenousPresent,
