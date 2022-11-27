@@ -1,13 +1,12 @@
 """Module to test time_series functionality
 """
 import numpy as np
+import pytest
 from pandas.testing import assert_frame_equal
 from sktime.transformations.series.summarize import WindowSummarizer
-
-import pytest
+from time_series_test_utils import assert_frame_not_equal
 
 from pycaret.time_series import TSForecastingExperiment
-from time_series_test_utils import assert_frame_not_equal
 
 pytestmark = pytest.mark.filterwarnings("ignore::UserWarning")
 
