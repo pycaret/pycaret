@@ -34,6 +34,8 @@ def setup(
     numeric_imputation_exogenous: Optional[Union[int, float, str]] = None,
     transform_target: Optional[str] = None,
     transform_exogenous: Optional[str] = None,
+    fe_target: Optional[list] = None,
+    fe_exogenous: Optional[list] = None,
     scale_target: Optional[str] = None,
     scale_exogenous: Optional[str] = None,
     fold_strategy: Union[str, Any] = "expanding",
@@ -146,6 +148,91 @@ def setup(
         Indicates how the exogenous variables should be scaled.
         If None, no scaling is performed. Allowed values are
             "zscore", "minmax", "maxabs", "robust"
+
+
+    fe_target: Optional[list], default = None
+        The transformers to be applied to the target variable in order to
+        extract useful features. By default, None which means that the
+        provided target variable are used "as is".
+
+        NOTE: Most statistical and baseline models already use features (lags)
+        for target variables implicitly. The only place where target features
+        have to be created explicitly is in reduced regression models. Hence,
+        this feature extraction is only applied to reduced regression models.
+
+        Example
+        -------
+
+        >>> import numpy as np
+        >>> from pycaret.datasets import get_data
+        >>> from sktime.transformations.series.summarize import WindowSummarizer
+
+        >>> data = get_data("airline")
+
+        >>> kwargs = {"lag_feature": {"lag": [36, 24, 13, 12, 11, 9, 6, 3, 2, 1]}}
+        >>> fe_target = [WindowSummarizer(n_jobs=1, truncate="bfill", **kwargs)]
+
+        >>> # Baseline
+        >>> exp = TSForecastingExperiment()
+        >>> exp.setup(data=data, fh=12, fold=3, session_id=42)
+        >>> model1 = exp.create_model("lr_cds_dt")
+
+        >>> # With Feature Engineering
+        >>> exp = TSForecastingExperiment()
+        >>> exp.setup(
+        >>>     data=data, fh=12, fold=3, fe_target=fe_target, session_id=42
+        >>> )
+        >>> model2 = exp.create_model("lr_cds_dt")
+
+        >>> exp.plot_model([model1, model2], data_kwargs={"labels": ["Baseline", "With FE"]})
+
+    fe_exogenous : Optional[list] = None
+        The transformations to be applied to the exogenous variables. These
+        transformations are used for all models that accept exogenous variables.
+        By default, None which means that the provided exogenous variables are
+        used "as is".
+
+        Example
+        -------
+
+        >>> import numpy as np
+        >>> from sktime.transformations.series.summarize import WindowSummarizer
+
+        >>> # Example: function num_above_thresh to count how many observations lie above
+        >>> # the threshold within a window of length 2, lagged by 0 periods.
+        >>> def num_above_thresh(x):
+        >>>     '''Count how many observations lie above threshold.'''
+        >>>     return np.sum((x > 0.7)[::-1])
+
+        >>> kwargs1 = {"lag_feature": {"lag": [0, 1], "mean": [[0, 4]]}}
+        >>> kwargs2 = {
+        >>>     "lag_feature": {
+        >>>         "lag": [0, 1], num_above_thresh: [[0, 2]],
+        >>>         "mean": [[0, 4]], "std": [[0, 4]]
+        >>>     }
+        >>> }
+
+        >>> fe_exogenous = [
+        >>>     (
+                    "a", WindowSummarizer(
+        >>>             n_jobs=1, target_cols=["Income"], truncate="bfill", **kwargs1
+        >>>         )
+        >>>     ),
+        >>>     (
+        >>>         "b", WindowSummarizer(
+        >>>             n_jobs=1, target_cols=["Unemployment", "Production"], truncate="bfill", **kwargs2
+        >>>         )
+        >>>     ),
+        >>> ]
+
+        >>> data = get_data("uschange")
+        >>> exp = TSForecastingExperiment()
+        >>> exp.setup(
+        >>>     data=data, target="Consumption", fh=12, seasonal_period=4,
+        >>>     fe_exogenous=fe_exogenous, session_id=42
+        >>> )
+        >>> print(f"Feature Columns: {exp.get_config('X_transformed').columns}")
+        >>> model = exp.create_model("lr_cds_dt")
 
 
     fold_strategy: str or sklearn CV generator object, default = 'expanding'
@@ -398,6 +485,8 @@ def setup(
         transform_exogenous=transform_exogenous,
         scale_target=scale_target,
         scale_exogenous=scale_exogenous,
+        fe_target=fe_target,
+        fe_exogenous=fe_exogenous,
         fold_strategy=fold_strategy,
         fold=fold,
         fh=fh,
@@ -1116,7 +1205,7 @@ def plot_model(
             NOTE:
             (1) If no imputation is specified, then plotting the "imputed"
                 data type will produce the same results as the "original" data type.
-            (2) If no transforations are specified, then plotting the "transformed"
+            (2) If no transformations are specified, then plotting the "transformed"
                 data type will produce the same results as the "imputed" data type.
 
             Allowed values are (if not specified, defaults to the first one in the list):
@@ -1161,6 +1250,27 @@ def plot_model(
         The setting to be used for the plot. Overrides any global setting
         passed during setup. Pass these as key-value pairs. For available
         keys, refer to the `setup` documentation.
+
+        Time-series plots support more display_formats, as a result the fig-kwargs
+        can also contain the `resampler_kwargs` key and its corresponding dict.
+        These are additional keyword arguments that are fed to the display function.
+        This is mainly used for configuring `plotly-resampler` visualizations
+        (i.e., `display_format` "plotly-dash" or "plotly-widget") which down sampler
+        will be used; how many data points are shown in the front-end.
+
+        When the plotly-resampler figure is rendered via Dash (by setting the
+        `display_format` to "plotly-dash"), one can also use the
+        "show_dash" key within this dictionary to configure the show_dash args.
+
+        example::
+
+            fig_kwargs = {
+                "width": None,
+                "resampler_kwargs":  {
+                    "default_n_shown_samples": 1000,
+                    "show_dash": {"mode": "inline", "port": 9012}
+                }
+            }
 
 
     save: string or bool, default = False

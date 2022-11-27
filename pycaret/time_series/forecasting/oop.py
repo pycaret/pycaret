@@ -59,12 +59,7 @@ from pycaret.internal.validation import is_sklearn_cv_generator
 from pycaret.loggers.base_logger import BaseLogger
 from pycaret.utils._dependencies import _check_soft_dependencies
 from pycaret.utils.datetime import coerce_datetime_to_period_index
-from pycaret.utils.generic import (
-    MLUsecase,
-    _coerce_empty_dataframe_to_none,
-    _resolve_dict_keys,
-    highlight_setup,
-)
+from pycaret.utils.generic import MLUsecase, _resolve_dict_keys, highlight_setup
 from pycaret.utils.time_series import (
     TSApproachTypes,
     TSExogenousPresent,
@@ -203,6 +198,10 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                     ["Numerical Imputation (Target)", self.numeric_imputation_target],
                     ["Transformation (Target)", self.transform_target],
                     ["Scaling (Target)", self.scale_target],
+                    [
+                        "Custom Feature Engineering (Target)",
+                        True if self.fe_target else False,
+                    ],
                 ]
             )
 
@@ -215,6 +214,18 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                         ],
                         ["Transformation (Exogenous)", self.transform_exogenous],
                         ["Scaling (Exogenous)", self.scale_exogenous],
+                    ]
+                )
+            if self.fe_exogenous:
+                # This is added even if there are no explicit exogenous variables
+                # since exogenous variables can be created from the Index (e.g.
+                # DateTimeFeatures) using self.fe_exogenous
+                display_container.extend(
+                    [
+                        [
+                            "Custom Feature Engineering (Exogenous)",
+                            True if self.fe_exogenous else False,
+                        ]
                     ]
                 )
 
@@ -925,17 +936,27 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             The experiment object to allow chaining of methods
         """
         if (
-            # Target transformations ----
-            self.numeric_imputation_target is not None
-            or self.transform_target is not None
-            or self.scale_target is not None
-        ) or (
-            # Exogenous Transformations ----
-            (self.exogenous_present == TSExogenousPresent.YES)
-            and (
-                self.numeric_imputation_exogenous is not None
-                or self.transform_exogenous is not None
-                or self.scale_exogenous is not None
+            (
+                # Target transformations ----
+                self.numeric_imputation_target is not None
+                or self.transform_target is not None
+                or self.scale_target is not None
+            )
+            or (
+                # Exogenous Transformations ----
+                (self.exogenous_present == TSExogenousPresent.YES)
+                and (
+                    self.numeric_imputation_exogenous is not None
+                    or self.transform_exogenous is not None
+                    or self.scale_exogenous is not None
+                )
+            )
+            or (
+                # Even if there are no explicit exogenous variables, we can create
+                # them using index. Hence, we do not include the exogenous_present
+                # check here.
+                self.fe_exogenous
+                is not None
             )
         ):
             self.preprocess = True
@@ -1021,6 +1042,12 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             self._scaling(
                 scale_target=self.scale_target,
                 scale_exogenous=self.scale_exogenous,
+                exogenous_present=self.exogenous_present,
+            )
+
+            # Feature Engineering ----
+            self._feature_engineering(
+                fe_exogenous=self.fe_exogenous,
                 exogenous_present=self.exogenous_present,
             )
 
@@ -1252,6 +1279,8 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         transform_exogenous: Optional[str] = None,
         scale_target: Optional[str] = None,
         scale_exogenous: Optional[str] = None,
+        fe_target: Optional[list] = None,
+        fe_exogenous: Optional[list] = None,
         fold_strategy: Union[str, Any] = "expanding",
         fold: int = 3,
         fh: Optional[Union[List[int], int, np.ndarray, ForecastingHorizon]] = 1,
@@ -1366,6 +1395,91 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             Indicates how the exogenous variables should be scaled.
             If None, no scaling is performed. Allowed values are
                 "zscore", "minmax", "maxabs", "robust"
+
+
+        fe_target: Optional[list], default = None
+            The transformers to be applied to the target variable in order to
+            extract useful features. By default, None which means that the
+            provided target variable are used "as is".
+
+            NOTE: Most statistical and baseline models already use features (lags)
+            for target variables implicitly. The only place where target features
+            have to be created explicitly is in reduced regression models. Hence,
+            this feature extraction is only applied to reduced regression models.
+
+            Example
+            -------
+
+            >>> import numpy as np
+            >>> from pycaret.datasets import get_data
+            >>> from sktime.transformations.series.summarize import WindowSummarizer
+
+            >>> data = get_data("airline")
+
+            >>> kwargs = {"lag_feature": {"lag": [36, 24, 13, 12, 11, 9, 6, 3, 2, 1]}}
+            >>> fe_target = [WindowSummarizer(n_jobs=1, truncate="bfill", **kwargs)]
+
+            >>> # Baseline
+            >>> exp = TSForecastingExperiment()
+            >>> exp.setup(data=data, fh=12, fold=3, session_id=42)
+            >>> model1 = exp.create_model("lr_cds_dt")
+
+            >>> # With Feature Engineering
+            >>> exp = TSForecastingExperiment()
+            >>> exp.setup(
+            >>>     data=data, fh=12, fold=3, fe_target=fe_target, session_id=42
+            >>> )
+            >>> model2 = exp.create_model("lr_cds_dt")
+
+            >>> exp.plot_model([model1, model2], data_kwargs={"labels": ["Baseline", "With FE"]})
+
+        fe_exogenous : Optional[list] = None
+            The transformations to be applied to the exogenous variables. These
+            transformations are used for all models that accept exogenous variables.
+            By default, None which means that the provided exogenous variables are
+            used "as is".
+
+            Example
+            -------
+
+            >>> import numpy as np
+            >>> from sktime.transformations.series.summarize import WindowSummarizer
+
+            >>> # Example: function num_above_thresh to count how many observations lie above
+            >>> # the threshold within a window of length 2, lagged by 0 periods.
+            >>> def num_above_thresh(x):
+            >>>     '''Count how many observations lie above threshold.'''
+            >>>     return np.sum((x > 0.7)[::-1])
+
+            >>> kwargs1 = {"lag_feature": {"lag": [0, 1], "mean": [[0, 4]]}}
+            >>> kwargs2 = {
+            >>>     "lag_feature": {
+            >>>         "lag": [0, 1], num_above_thresh: [[0, 2]],
+            >>>         "mean": [[0, 4]], "std": [[0, 4]]
+            >>>     }
+            >>> }
+
+            >>> fe_exogenous = [
+            >>>     (
+                        "a", WindowSummarizer(
+            >>>             n_jobs=1, target_cols=["Income"], truncate="bfill", **kwargs1
+            >>>         )
+            >>>     ),
+            >>>     (
+            >>>         "b", WindowSummarizer(
+            >>>             n_jobs=1, target_cols=["Unemployment", "Production"], truncate="bfill", **kwargs2
+            >>>         )
+            >>>     ),
+            >>> ]
+
+            >>> data = get_data("uschange")
+            >>> exp = TSForecastingExperiment()
+            >>> exp.setup(
+            >>>     data=data, target="Consumption", fh=12, seasonal_period=4,
+            >>>     fe_exogenous=fe_exogenous, session_id=42
+            >>> )
+            >>> print(f"Feature Columns: {exp.get_config('X_transformed').columns}")
+            >>> model = exp.create_model("lr_cds_dt")
 
 
         fold_strategy: str or sklearn CV generator object, default = 'expanding'
@@ -1640,6 +1754,8 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         self.transform_exogenous = transform_exogenous
         self.scale_target = scale_target
         self.scale_exogenous = scale_exogenous
+        self.fe_target = fe_target
+        self.fe_exogenous = fe_exogenous
 
         self.fold_strategy = fold_strategy
         self.fold = fold
@@ -3674,7 +3790,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                 NOTE:
                 (1) If no imputation is specified, then plotting the "imputed"
                     data type will produce the same results as the "original" data type.
-                (2) If no transforations are specified, then plotting the "transformed"
+                (2) If no transformations are specified, then plotting the "transformed"
                     data type will produce the same results as the "imputed" data type.
 
                 Allowed values are (if not specified, defaults to the first one in the list):
@@ -3724,10 +3840,10 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             can also contain the `resampler_kwargs` key and its corresponding dict.
             These are additional keyword arguments that are fed to the display function.
             This is mainly used for configuring `plotly-resampler` visualizations
-            (i.e., `display_format` "plotly-dash" or "plotly-widget") which downsampler
-            will be used; how many datapoints are shown in the front-end.
+            (i.e., `display_format` "plotly-dash" or "plotly-widget") which down sampler
+            will be used; how many data points are shown in the front-end.
 
-            When the plotly-resampler figure is renderd via Dash (by setting the
+            When the plotly-resampler figure is rendered via Dash (by setting the
             `display_format` to "plotly-dash"), one can also use the
             "show_dash" key within this dictionary to configure the show_dash args.
 
@@ -3892,7 +4008,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         ------
         ValueError
             If model is finalized and was trained using exogenous variables and
-            user does not provide exogenous variabled for predictions.
+            user does not provide exogenous variables for predictions.
         """
         if self._setup_ran:
             estimator_y, _ = self._get_cleaned_estimator_y_X(estimator=estimator)
@@ -3910,7 +4026,10 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         # Convert to None if empty dataframe ----
         # Some predict methods in sktime expect None (not an empty dataframe as
         # returned by pycaret). Hence converting to None.
-        X = _coerce_empty_dataframe_to_none(data=X)
+        # NOTE 2022/11/27: Removed this since we need to return empty dataframe
+        # with indices for cases when we have no exogenous variables, but these
+        # features can be generated using fe_exogenous.
+        # X = _coerce_empty_dataframe_to_none(data=X)
         return X
 
     def _predict_model_resolve_verbose(

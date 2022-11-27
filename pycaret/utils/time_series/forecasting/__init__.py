@@ -113,7 +113,7 @@ def get_predictions_with_intervals(
         y_pred = forecaster.predict_quantiles(fh=fh, X=X, alpha=alpha)
         if y_pred.shape[1] != 1:
             raise ValueError(
-                "Something wrong happended during point prediction; received values "
+                "Something wrong happened during point prediction; received values "
                 "This should not have happened. Please report on GitHub."
             )
         y_pred = pd.DataFrame({"y_pred": y_pred.iloc[:, 0]})
