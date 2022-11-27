@@ -43,7 +43,7 @@ def setup(
     numeric_iterative_imputer: Union[str, Any] = "lightgbm",
     categorical_iterative_imputer: Union[str, Any] = "lightgbm",
     text_features_method: str = "tf-idf",
-    max_encoding_ohe: int = 5,
+    max_encoding_ohe: int = 25,
     encoding_method: Optional[Any] = None,
     rare_to_value: Optional[float] = None,
     rare_value: str = "rare",
@@ -68,7 +68,7 @@ def setup(
     feature_selection: bool = False,
     feature_selection_method: str = "classic",
     feature_selection_estimator: Union[str, Any] = "lightgbm",
-    n_features_to_select: int = 10,
+    n_features_to_select: Union[int, float] = 0.2,
     transform_target: bool = False,
     transform_target_method: str = "yeo-johnson",
     custom_pipeline: Optional[Any] = None,
@@ -253,7 +253,7 @@ def setup(
         text embeddings.
 
 
-    max_encoding_ohe: int, default = 5
+    max_encoding_ohe: int, default = 25
         Categorical columns with `max_encoding_ohe` or less unique values are
         encoded using OneHotEncoding. If more, the `encoding_method` estimator
         is used. Note that columns with exactly two classes are always encoded
@@ -420,8 +420,9 @@ def setup(
         parameter is ignored when `feature_selection_method=univariate`.
 
 
-    n_features_to_select: int, default = 10
-        The number of features to select. Note that this parameter doesn't
+    n_features_to_select: int or float, default = 0.2
+        The maximum number of features to select with feature_selection. If <1,
+        it's the fraction of starting features. Note that this parameter doesn't
         take features in ``ignore_features`` or ``keep_features`` into account
         when counting.
 

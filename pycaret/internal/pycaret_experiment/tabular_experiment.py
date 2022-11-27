@@ -1059,7 +1059,6 @@ class _TabularExperiment(_PyCaretExperiment):
                             scale=scale,
                             save=save,
                             fit_kwargs=fit_kwargs,
-                            groups=groups,
                             display_format=display_format,
                         )
 
@@ -1086,7 +1085,6 @@ class _TabularExperiment(_PyCaretExperiment):
                             scale=scale,
                             save=save,
                             fit_kwargs=fit_kwargs,
-                            groups=groups,
                             display_format=display_format,
                         )
                     except Exception:
@@ -1110,7 +1108,6 @@ class _TabularExperiment(_PyCaretExperiment):
                             scale=scale,
                             save=save,
                             fit_kwargs=fit_kwargs,
-                            groups=groups,
                             display_format=display_format,
                         )
                     except Exception:
@@ -1133,7 +1130,6 @@ class _TabularExperiment(_PyCaretExperiment):
                         scale=scale,
                         save=save,
                         fit_kwargs=fit_kwargs,
-                        groups=groups,
                         display_format=display_format,
                     )
 
@@ -1152,7 +1148,6 @@ class _TabularExperiment(_PyCaretExperiment):
                         scale=scale,
                         save=save,
                         fit_kwargs=fit_kwargs,
-                        groups=groups,
                         display_format=display_format,
                     )
 
@@ -1173,7 +1168,6 @@ class _TabularExperiment(_PyCaretExperiment):
                         scale=scale,
                         save=save,
                         fit_kwargs=fit_kwargs,
-                        groups=groups,
                         display_format=display_format,
                     )
 
@@ -1194,7 +1188,6 @@ class _TabularExperiment(_PyCaretExperiment):
                         scale=scale,
                         save=save,
                         fit_kwargs=fit_kwargs,
-                        groups=groups,
                         display_format=display_format,
                     )
 
@@ -1218,7 +1211,6 @@ class _TabularExperiment(_PyCaretExperiment):
                         scale=scale,
                         save=save,
                         fit_kwargs=fit_kwargs,
-                        groups=groups,
                         display_format=display_format,
                     )
 
@@ -1248,7 +1240,6 @@ class _TabularExperiment(_PyCaretExperiment):
                         scale=scale,
                         save=save,
                         fit_kwargs=fit_kwargs,
-                        groups=groups,
                         display_format=display_format,
                     )
 
@@ -1268,7 +1259,6 @@ class _TabularExperiment(_PyCaretExperiment):
                         save=save,
                         fit_kwargs=fit_kwargs,
                         handle_test="",
-                        groups=groups,
                         display_format=display_format,
                     )
 
@@ -1289,7 +1279,6 @@ class _TabularExperiment(_PyCaretExperiment):
                         scale=scale,
                         save=save,
                         fit_kwargs=fit_kwargs,
-                        groups=groups,
                         display_format=display_format,
                     )
 
@@ -1329,7 +1318,6 @@ class _TabularExperiment(_PyCaretExperiment):
                         handle_test="draw",
                         save=save,
                         fit_kwargs=fit_kwargs,
-                        groups=groups,
                         features=["Feature One", "Feature Two"],
                         classes=["A", "B"],
                         display_format=display_format,
@@ -1339,7 +1327,7 @@ class _TabularExperiment(_PyCaretExperiment):
 
                     from yellowbrick.model_selection import RFECV
 
-                    visualizer = RFECV(estimator, cv=cv, **plot_kwargs)
+                    visualizer = RFECV(estimator, cv=cv, groups=groups, **plot_kwargs)
                     return show_yellowbrick_plot(
                         visualizer=visualizer,
                         X_train=self.X_train_transformed,
@@ -1351,7 +1339,6 @@ class _TabularExperiment(_PyCaretExperiment):
                         scale=scale,
                         save=save,
                         fit_kwargs=fit_kwargs,
-                        groups=groups,
                         display_format=display_format,
                     )
 
@@ -1364,6 +1351,7 @@ class _TabularExperiment(_PyCaretExperiment):
                         estimator,
                         cv=cv,
                         train_sizes=sizes,
+                        groups=groups,
                         n_jobs=self._gpu_n_jobs_param,
                         random_state=self.seed,
                     )
@@ -1378,7 +1366,6 @@ class _TabularExperiment(_PyCaretExperiment):
                         scale=scale,
                         save=save,
                         fit_kwargs=fit_kwargs,
-                        groups=groups,
                         display_format=display_format,
                     )
 
@@ -1454,7 +1441,6 @@ class _TabularExperiment(_PyCaretExperiment):
                         scale=scale,
                         save=save,
                         fit_kwargs=fit_kwargs,
-                        groups=groups,
                         display_format=display_format,
                     )
 
@@ -1782,6 +1768,7 @@ class _TabularExperiment(_PyCaretExperiment):
                         param_name=param_name,
                         param_range=param_range,
                         cv=cv,
+                        groups=groups,
                         random_state=self.seed,
                         n_jobs=self._gpu_n_jobs_param,
                     )
@@ -1797,7 +1784,6 @@ class _TabularExperiment(_PyCaretExperiment):
                         scale=scale,
                         save=save,
                         fit_kwargs=fit_kwargs,
-                        groups=groups,
                         display_format=display_format,
                     )
 
@@ -1838,7 +1824,6 @@ class _TabularExperiment(_PyCaretExperiment):
                         scale=scale,
                         save=save,
                         fit_kwargs=fit_kwargs,
-                        groups=groups,
                         display_format=display_format,
                     )
 
