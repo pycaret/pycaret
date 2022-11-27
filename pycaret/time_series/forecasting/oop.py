@@ -3795,7 +3795,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                 NOTE:
                 (1) If no imputation is specified, then plotting the "imputed"
                     data type will produce the same results as the "original" data type.
-                (2) If no transforations are specified, then plotting the "transformed"
+                (2) If no transformations are specified, then plotting the "transformed"
                     data type will produce the same results as the "imputed" data type.
 
                 Allowed values are (if not specified, defaults to the first one in the list):
@@ -3845,10 +3845,10 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             can also contain the `resampler_kwargs` key and its corresponding dict.
             These are additional keyword arguments that are fed to the display function.
             This is mainly used for configuring `plotly-resampler` visualizations
-            (i.e., `display_format` "plotly-dash" or "plotly-widget") which downsampler
-            will be used; how many datapoints are shown in the front-end.
+            (i.e., `display_format` "plotly-dash" or "plotly-widget") which down sampler
+            will be used; how many data points are shown in the front-end.
 
-            When the plotly-resampler figure is renderd via Dash (by setting the
+            When the plotly-resampler figure is rendered via Dash (by setting the
             `display_format` to "plotly-dash"), one can also use the
             "show_dash" key within this dictionary to configure the show_dash args.
 
@@ -4013,7 +4013,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         ------
         ValueError
             If model is finalized and was trained using exogenous variables and
-            user does not provide exogenous variabled for predictions.
+            user does not provide exogenous variables for predictions.
         """
         if self._setup_ran:
             estimator_y, _ = self._get_cleaned_estimator_y_X(estimator=estimator)

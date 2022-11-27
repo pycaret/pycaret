@@ -1205,7 +1205,7 @@ def plot_model(
             NOTE:
             (1) If no imputation is specified, then plotting the "imputed"
                 data type will produce the same results as the "original" data type.
-            (2) If no transforations are specified, then plotting the "transformed"
+            (2) If no transformations are specified, then plotting the "transformed"
                 data type will produce the same results as the "imputed" data type.
 
             Allowed values are (if not specified, defaults to the first one in the list):
@@ -1250,6 +1250,27 @@ def plot_model(
         The setting to be used for the plot. Overrides any global setting
         passed during setup. Pass these as key-value pairs. For available
         keys, refer to the `setup` documentation.
+
+        Time-series plots support more display_formats, as a result the fig-kwargs
+        can also contain the `resampler_kwargs` key and its corresponding dict.
+        These are additional keyword arguments that are fed to the display function.
+        This is mainly used for configuring `plotly-resampler` visualizations
+        (i.e., `display_format` "plotly-dash" or "plotly-widget") which down sampler
+        will be used; how many data points are shown in the front-end.
+
+        When the plotly-resampler figure is rendered via Dash (by setting the
+        `display_format` to "plotly-dash"), one can also use the
+        "show_dash" key within this dictionary to configure the show_dash args.
+
+        example::
+
+            fig_kwargs = {
+                "width": None,
+                "resampler_kwargs":  {
+                    "default_n_shown_samples": 1000,
+                    "show_dash": {"mode": "inline", "port": 9012}
+                }
+            }
 
 
     save: string or bool, default = False
