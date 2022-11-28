@@ -1324,7 +1324,10 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
             else:
                 data = self.X_transformed
         else:
-            data = self._prepare_dataset(data)
+            if estimator.__class__.__name__ == "Pipeline":
+                data = self._prepare_dataset(data)
+            else:
+                data = self.pipeline.transform(data)
 
         # Select features to use
         if hasattr(estimator, "feature_names_in_"):
