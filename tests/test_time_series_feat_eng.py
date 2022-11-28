@@ -39,7 +39,7 @@ def test_fe_target(load_pos_and_neg_data):
     data = load_pos_and_neg_data
 
     kwargs = {"lag_feature": {"lag": [36, 24, 13, 12, 11, 9, 6, 3, 2, 1]}}
-    fe_target = [WindowSummarizer(n_jobs=1, truncate="bfill", **kwargs)]
+    fe_target_rr = [WindowSummarizer(n_jobs=1, truncate="bfill", **kwargs)]
 
     # Baseline
     exp = TSForecastingExperiment()
@@ -49,7 +49,7 @@ def test_fe_target(load_pos_and_neg_data):
 
     # With Feature Engineering
     exp = TSForecastingExperiment()
-    exp.setup(data=data, fh=12, fold=3, fe_target=fe_target, session_id=42)
+    exp.setup(data=data, fh=12, fold=3, fe_target_rr=fe_target_rr, session_id=42)
     exp.create_model("lr_cds_dt")
     metrics2 = exp.pull()
 
@@ -131,7 +131,7 @@ def test_fe_exog_data_no_exo(load_pos_and_neg_data):
     """
     data = load_pos_and_neg_data
     kwargs = {"lag_feature": {"lag": [12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1]}}
-    fe_target = [WindowSummarizer(n_jobs=1, truncate="bfill", **kwargs)]
+    fe_target_rr = [WindowSummarizer(n_jobs=1, truncate="bfill", **kwargs)]
 
     # Baseline
     exp = TSForecastingExperiment()
@@ -141,15 +141,15 @@ def test_fe_exog_data_no_exo(load_pos_and_neg_data):
 
     # With Feature Engineering (1) - replicate the default
     exp = TSForecastingExperiment()
-    exp.setup(data=data, fh=12, fe_target=fe_target, session_id=42)
+    exp.setup(data=data, fh=12, fe_target_rr=fe_target_rr, session_id=42)
     _ = exp.create_model("lr_cds_dt")
     metrics2 = exp.pull()
     assert_frame_equal(metrics1, metrics2)
 
     # With Feature Engineering (2) - Date Time features created in y
-    fe_target2 = fe_target + [DateTimeFeatures(ts_freq="M")]
+    fe_target2 = fe_target_rr + [DateTimeFeatures(ts_freq="M")]
     exp = TSForecastingExperiment()
-    exp.setup(data=data, fh=12, fe_target=fe_target2, session_id=42)
+    exp.setup(data=data, fh=12, fe_target_rr=fe_target2, session_id=42)
     _ = exp.create_model("lr_cds_dt")
     metrics3 = exp.pull()
     assert_frame_not_equal(metrics1, metrics3)
@@ -158,7 +158,11 @@ def test_fe_exog_data_no_exo(load_pos_and_neg_data):
     fe_exogenous = [DateTimeFeatures(ts_freq="M")]
     exp = TSForecastingExperiment()
     exp.setup(
-        data=data, fh=12, fe_target=fe_target, fe_exogenous=fe_exogenous, session_id=42
+        data=data,
+        fh=12,
+        fe_target_rr=fe_target_rr,
+        fe_exogenous=fe_exogenous,
+        session_id=42,
     )
     _ = exp.create_model("lr_cds_dt")
     metrics4 = exp.pull()
