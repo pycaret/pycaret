@@ -1,3 +1,4 @@
+import warnings
 from collections import defaultdict
 from typing import Any, Dict, Optional
 
@@ -283,7 +284,13 @@ class _PyCaretExperiment:
             )
 
         if any(variable.endswith(attr) for attr in ("train", "test", "dataset")):
-            variable += "_transformed"
+            msg = (
+                f"Variable: '{variable}' used to return the transformed values in pycaret 2.x. "
+                "From pycaret 3.x, this will return the raw values. "
+                f"If you need the transformed values, call get_config with '{variable}_transformed' instead."
+            )
+            self.logger.info(msg)
+            warnings.warn(msg)  # print on screen
 
         var = getattr(self, variable)
 
