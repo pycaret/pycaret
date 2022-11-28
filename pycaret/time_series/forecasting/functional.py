@@ -34,7 +34,7 @@ def setup(
     numeric_imputation_exogenous: Optional[Union[int, float, str]] = None,
     transform_target: Optional[str] = None,
     transform_exogenous: Optional[str] = None,
-    fe_target: Optional[list] = None,
+    fe_target_rr: Optional[list] = None,
     fe_exogenous: Optional[list] = None,
     scale_target: Optional[str] = None,
     scale_exogenous: Optional[str] = None,
@@ -150,7 +150,7 @@ def setup(
             "zscore", "minmax", "maxabs", "robust"
 
 
-    fe_target: Optional[list], default = None
+    fe_target_rr: Optional[list], default = None
         The transformers to be applied to the target variable in order to
         extract useful features. By default, None which means that the
         provided target variable are used "as is".
@@ -170,7 +170,7 @@ def setup(
         >>> data = get_data("airline")
 
         >>> kwargs = {"lag_feature": {"lag": [36, 24, 13, 12, 11, 9, 6, 3, 2, 1]}}
-        >>> fe_target = [WindowSummarizer(n_jobs=1, truncate="bfill", **kwargs)]
+        >>> fe_target_rr = [WindowSummarizer(n_jobs=1, truncate="bfill", **kwargs)]
 
         >>> # Baseline
         >>> exp = TSForecastingExperiment()
@@ -180,7 +180,7 @@ def setup(
         >>> # With Feature Engineering
         >>> exp = TSForecastingExperiment()
         >>> exp.setup(
-        >>>     data=data, fh=12, fold=3, fe_target=fe_target, session_id=42
+        >>>     data=data, fh=12, fold=3, fe_target_rr=fe_target_rr, session_id=42
         >>> )
         >>> model2 = exp.create_model("lr_cds_dt")
 
@@ -485,7 +485,7 @@ def setup(
         transform_exogenous=transform_exogenous,
         scale_target=scale_target,
         scale_exogenous=scale_exogenous,
-        fe_target=fe_target,
+        fe_target_rr=fe_target_rr,
         fe_exogenous=fe_exogenous,
         fold_strategy=fold_strategy,
         fold=fold,
