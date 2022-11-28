@@ -1,3 +1,4 @@
+import warnings
 from collections import defaultdict
 from typing import Any, Dict, Optional
 
@@ -289,7 +290,7 @@ class _PyCaretExperiment:
                 f"If you need the transformed values, call get_config with '{variable}_transformed' instead."
             )
             self.logger.info(msg)
-            print(msg)
+            warnings.warn(msg)  # print on screen
 
         var = getattr(self, variable)
 
