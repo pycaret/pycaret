@@ -1316,7 +1316,7 @@ class CdsDtContainer(TimeSeriesContainer):
     def __init__(self, experiment) -> None:
         self.logger = get_logger()
         self.seed = experiment.seed
-        self.fe_target = experiment.fe_target
+        self.fe_target_rr = experiment.fe_target_rr
         np.random.seed(self.seed)
 
         # Import the right regressor
@@ -1423,7 +1423,7 @@ class CdsDtContainer(TimeSeriesContainer):
             "regressor": self.regressor,
             "sp": self.sp,
             "window_length": self.sp,
-            "fe_target": self.fe_target,
+            "fe_target_rr": self.fe_target_rr,
         }
         return args
 
@@ -2570,7 +2570,7 @@ class BaseCdsDtForecaster(BaseForecaster):
         deseasonal_model: str = "additive",
         degree: int = 1,
         window_length: int = 10,
-        fe_target: Optional[list] = None,
+        fe_target_rr: Optional[list] = None,
     ):
         """Base Class for time series using scikit models which includes
         Conditional Deseasonalizing and Detrending
@@ -2587,8 +2587,8 @@ class BaseCdsDtForecaster(BaseForecaster):
             degree of detrender, by default 1
         window_length : int, optional
             Window Length used for the Reduced Forecaster, by default 10.
-            If fe_target is provided, window_length is ignored.
-        fe_target : Optional[list], optional
+            If fe_target_rr is provided, window_length is ignored.
+        fe_target_rr : Optional[list], optional
             Custom transformations used to extract features from the target (useful
             for extracting lagged features), by default None which takes the lags
             based on a window_length parameter. If provided, window_length is ignored.
@@ -2599,7 +2599,7 @@ class BaseCdsDtForecaster(BaseForecaster):
         self.degree = degree
         self.window_length = window_length
 
-        if fe_target is None:
+        if fe_target_rr is None:
             # All target lags as features.
             # NOTE: Previously, this forecaster class used the `window_length` argument
             # in make_reduction. Now we have moved to using the `transformers` argument.
@@ -2610,9 +2610,9 @@ class BaseCdsDtForecaster(BaseForecaster):
             kwargs = {
                 "lag_feature": {"lag": list(np.arange(self.window_length, 0, -1))}
             }
-            self.fe_target = [WindowSummarizer(**kwargs, n_jobs=1)]
+            self.fe_target_rr = [WindowSummarizer(**kwargs, n_jobs=1)]
         else:
-            self.fe_target = fe_target
+            self.fe_target_rr = fe_target_rr
 
         super(BaseCdsDtForecaster, self).__init__()
 
@@ -2632,7 +2632,7 @@ class BaseCdsDtForecaster(BaseForecaster):
                     make_reduction(
                         estimator=self.regressor,
                         scitype="tabular-regressor",
-                        transformers=self.fe_target,
+                        transformers=self.fe_target_rr,
                         window_length=None,
                         strategy="recursive",
                         pooling="global",

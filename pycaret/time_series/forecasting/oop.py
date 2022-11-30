@@ -199,8 +199,8 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                     ["Transformation (Target)", self.transform_target],
                     ["Scaling (Target)", self.scale_target],
                     [
-                        "Custom Feature Engineering (Target)",
-                        True if self.fe_target else False,
+                        "Feature Engineering (Target) - Reduced Regression",
+                        True if self.fe_target_rr else False,
                     ],
                 ]
             )
@@ -223,7 +223,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                 display_container.extend(
                     [
                         [
-                            "Custom Feature Engineering (Exogenous)",
+                            "Feature Engineering (Exogenous)",
                             True if self.fe_exogenous else False,
                         ]
                     ]
@@ -1031,6 +1031,12 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                 exogenous_present=self.exogenous_present,
             )
 
+            # Feature Engineering ----
+            self._feature_engineering(
+                fe_exogenous=self.fe_exogenous,
+                exogenous_present=self.exogenous_present,
+            )
+
             # Transformations (preferably based on residual analysis) ----
             self._transformation(
                 transform_target=self.transform_target,
@@ -1042,12 +1048,6 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             self._scaling(
                 scale_target=self.scale_target,
                 scale_exogenous=self.scale_exogenous,
-                exogenous_present=self.exogenous_present,
-            )
-
-            # Feature Engineering ----
-            self._feature_engineering(
-                fe_exogenous=self.fe_exogenous,
                 exogenous_present=self.exogenous_present,
             )
 
@@ -1279,7 +1279,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         transform_exogenous: Optional[str] = None,
         scale_target: Optional[str] = None,
         scale_exogenous: Optional[str] = None,
-        fe_target: Optional[list] = None,
+        fe_target_rr: Optional[list] = None,
         fe_exogenous: Optional[list] = None,
         fold_strategy: Union[str, Any] = "expanding",
         fold: int = 3,
@@ -1397,7 +1397,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                 "zscore", "minmax", "maxabs", "robust"
 
 
-        fe_target: Optional[list], default = None
+        fe_target_rr: Optional[list], default = None
             The transformers to be applied to the target variable in order to
             extract useful features. By default, None which means that the
             provided target variable are used "as is".
@@ -1417,7 +1417,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             >>> data = get_data("airline")
 
             >>> kwargs = {"lag_feature": {"lag": [36, 24, 13, 12, 11, 9, 6, 3, 2, 1]}}
-            >>> fe_target = [WindowSummarizer(n_jobs=1, truncate="bfill", **kwargs)]
+            >>> fe_target_rr = [WindowSummarizer(n_jobs=1, truncate="bfill", **kwargs)]
 
             >>> # Baseline
             >>> exp = TSForecastingExperiment()
@@ -1427,7 +1427,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             >>> # With Feature Engineering
             >>> exp = TSForecastingExperiment()
             >>> exp.setup(
-            >>>     data=data, fh=12, fold=3, fe_target=fe_target, session_id=42
+            >>>     data=data, fh=12, fold=3, fe_target_rr=fe_target_rr, session_id=42
             >>> )
             >>> model2 = exp.create_model("lr_cds_dt")
 
@@ -1754,7 +1754,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         self.transform_exogenous = transform_exogenous
         self.scale_target = scale_target
         self.scale_exogenous = scale_exogenous
-        self.fe_target = fe_target
+        self.fe_target_rr = fe_target_rr
         self.fe_exogenous = fe_exogenous
 
         self.fold_strategy = fold_strategy
