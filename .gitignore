@@ -35,3 +35,4 @@ dask*/
 /.venv
 /.devcontainer
 tmp/
+nbtest1.ipynb
