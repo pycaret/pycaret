@@ -1,15 +1,20 @@
 import warnings
 
+import deprecation
+
+from pycaret.utils import __version__
 from pycaret.utils._dependencies import _check_soft_dependencies
 
-warnings.warn(
-    "PyCaret ARules module is deprecated and not representative "
-    "of the current state of the library. "
-    "It may be removed and/or reworked in a future update.",
-    DeprecationWarning,
+deprecated_in = "3.0.0rc5"
+deprecation_msg = " If you want to use the `arules` module, please install `pycaret` version 3.0.0 (preferred) or lower."
+
+
+@deprecation.deprecated(
+    deprecated_in=deprecated_in,
+    removed_in="3.1.0",
+    current_version=__version__,
+    details=deprecation_msg,
 )
-
-
 def setup(data, transaction_id, item_id, ignore_items=None, session_id=None):
 
     """
@@ -66,8 +71,6 @@ def setup(data, transaction_id, item_id, ignore_items=None, session_id=None):
         sys.exit("(Type Error): data passed must be of type pandas.DataFrame")
 
     # ignore warnings
-    import warnings
-
     warnings.filterwarnings("ignore")
 
     # load dependencies
