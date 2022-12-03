@@ -34,10 +34,9 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
         super().__init__()
         self._ml_usecase = MLUsecase.REGRESSION
         self.exp_name_log = "reg-default-name"
-        self.variable_keys = self.variable_keys.union(
+        self._variable_keys = self._variable_keys.union(
             {
                 "transform_target_param",
-                "transform_target_method_param",
             }
         )
         self._available_plots = {
@@ -943,17 +942,17 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
             container.append(["Experiment Name", self.exp_name_log])
             container.append(["USI", self.USI])
 
-        self.display_container = [
+        self._display_container = [
             pd.DataFrame(container, columns=["Description", "Value"])
         ]
-        self.logger.info(f"Setup display_container: {self.display_container[0]}")
+        self.logger.info(f"Setup _display_container: {self._display_container[0]}")
         display = CommonDisplay(
             verbose=self.verbose,
             html_param=self.html_param,
         )
         if self.verbose:
             pd.set_option("display.max_rows", 100)
-            display.display(self.display_container[0].style.apply(highlight_setup))
+            display.display(self._display_container[0].style.apply(highlight_setup))
             pd.reset_option("display.max_rows")  # Reset option
 
         # Wrap-up ================================================== >>

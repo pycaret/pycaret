@@ -93,15 +93,15 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         self._ml_usecase = MLUsecase.TIME_SERIES
         self.exp_name_log = "ts-default-name"
 
-        # Values in variable_keys are accessible in globals
-        self.variable_keys = self.variable_keys.difference(
+        # Values in _variable_keys are accessible in globals
+        self._variable_keys = self._variable_keys.difference(
             {
                 "target_param",
                 "fold_shuffle_param",
                 "fold_groups_param",
             }
         )
-        self.variable_keys = self.variable_keys.union(
+        self._variable_keys = self._variable_keys.union(
             {
                 "fh",
                 "seasonal_period",
@@ -168,7 +168,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         """Returns the dataframe to be displayed at the end of setup"""
         n_nans = 100 * self.data.isna().any(axis=1).sum() / len(self.data)
 
-        display_container = [
+        _display_container = [
             ["session_id", self.seed],
             ["Target", self.target_param],
             ["Approach", self.approach_type.value],
@@ -193,7 +193,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         ]
 
         if self.preprocess:
-            display_container.extend(
+            _display_container.extend(
                 [
                     ["Numerical Imputation (Target)", self.numeric_imputation_target],
                     ["Transformation (Target)", self.transform_target],
@@ -206,7 +206,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             )
 
             if self.exogenous_present == TSExogenousPresent.YES:
-                display_container.extend(
+                _display_container.extend(
                     [
                         [
                             "Numerical Imputation (Exogenous)",
@@ -220,7 +220,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                 # This is added even if there are no explicit exogenous variables
                 # since exogenous variables can be created from the Index (e.g.
                 # DateTimeFeatures) using self.fe_exogenous
-                display_container.extend(
+                _display_container.extend(
                     [
                         [
                             "Feature Engineering (Exogenous)",
@@ -229,7 +229,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                     ]
                 )
 
-        display_container.extend(
+        _display_container.extend(
             [
                 ["CPU Jobs", self.n_jobs_param],
                 ["Use GPU", self.gpu_param],
@@ -239,11 +239,11 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             ]
         )
 
-        display_container = pd.DataFrame(
-            display_container, columns=["Description", "Value"]
+        _display_container = pd.DataFrame(
+            _display_container, columns=["Description", "Value"]
         )
 
-        return display_container
+        return _display_container
 
     def _get_models(self, raise_errors: bool = True) -> Tuple[dict, dict]:
         all_models = {
@@ -1181,7 +1181,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         self._set_uppercase_d()
         return self
 
-    def _setup_display_container(self) -> "TSForecastingExperiment":
+    def _setup__display_container(self) -> "TSForecastingExperiment":
         """Prepare the display container for setup
 
         Returns
@@ -1190,15 +1190,15 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             The experiment object to allow chaining of methods
         """
         self.logger.info("Creating final display dataframe.")
-        self.display_container = [self._get_setup_display()]
-        self.logger.info(f"Setup Display Container: {self.display_container[0]}")
+        self._display_container = [self._get_setup_display()]
+        self.logger.info(f"Setup Display Container: {self._display_container[0]}")
         display = CommonDisplay(
             verbose=self.verbose,
             html_param=self.html_param,
         )
         if self.verbose:
             pd.set_option("display.max_rows", 100)
-            display.display(self.display_container[0].style.apply(highlight_setup))
+            display.display(self._display_container[0].style.apply(highlight_setup))
             pd.reset_option("display.max_rows")  # Reset option
 
         return self
@@ -1807,7 +1807,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             ._check_and_set_seasonal_period(seasonal_period=seasonal_period)
             ._set_multiplicative_components()
             ._perform_setup_eda()
-            ._setup_display_container()
+            ._setup__display_container()
             ._profile(profile, profile_kwargs)
             ._set_exp_model_engines(
                 container_default_engines=get_container_default_engines(),
@@ -2258,14 +2258,14 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             model_results = self.pull(pop=True).drop("Model", axis=1)
             model_results.index = ["Test"]
 
-            self.display_container.append(model_results)
+            self._display_container.append(model_results)
 
             if system:
                 display.display(
                     model_results.style.format(precision=round),
                 )
 
-            self.logger.info(f"display_container: {len(self.display_container)}")
+            self.logger.info(f"_display_container: {len(self._display_container)}")
 
         # Return the final model only. Rest of the pipeline will be added during finalize.
         final_model = self._get_final_model_from_pipeline(
@@ -2304,7 +2304,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         self.logger.info("Starting cross validation")
 
-        n_jobs = self._gpu_n_jobs_param
+        n_jobs = self.gpu_n_jobs_param
 
         self.logger.info(f"Cross validating with {cv}, n_jobs={n_jobs}")
 
@@ -2792,7 +2792,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             if estimator_definition is not None:
                 search_kwargs = {**estimator_definition.tune_args, **kwargs}
                 n_jobs = (
-                    self._gpu_n_jobs_param
+                    self.gpu_n_jobs_param
                     if estimator_definition.is_gpu_enabled
                     else self.n_jobs_param
                 )
@@ -2956,8 +2956,10 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         )
         display.display(model_results, clear=True)
 
-        self.logger.info(f"master_model_container: {len(self.master_model_container)}")
-        self.logger.info(f"display_container: {len(self.display_container)}")
+        self.logger.info(
+            f"_master_model_container: {len(self._master_model_container)}"
+        )
+        self.logger.info(f"_display_container: {len(self._display_container)}")
 
         self.logger.info(str(best_model))
         self.logger.info(
@@ -4270,7 +4272,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                 verbose=verbose, y_pred=y_pred
             )
             display.display(df_score.style.format(precision=round), clear=False)
-            self.display_container.append(df_score)
+            self._display_container.append(df_score)
 
         gc.collect()
 

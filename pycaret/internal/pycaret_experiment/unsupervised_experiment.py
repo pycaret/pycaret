@@ -38,7 +38,7 @@ LOGGER = get_logger()
 class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
     def __init__(self) -> None:
         super().__init__()
-        self.variable_keys = self.variable_keys.union({"X"})
+        self._variable_keys = self._variable_keys.union({"X"})
         return
 
     def _calculate_metrics(self, X, labels, ground_truth=None, ml_usecase=None) -> dict:
@@ -694,17 +694,17 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
             container.append(["Experiment Name", self.exp_name_log])
             container.append(["USI", self.USI])
 
-        self.display_container = [
+        self._display_container = [
             pd.DataFrame(container, columns=["Description", "Value"])
         ]
-        self.logger.info(f"Setup display_container: {self.display_container[0]}")
+        self.logger.info(f"Setup _display_container: {self._display_container[0]}")
         display = CommonDisplay(
             verbose=self.verbose,
             html_param=self.html_param,
         )
         if self.verbose:
             pd.set_option("display.max_rows", 100)
-            display.display(self.display_container[0].style.apply(highlight_setup))
+            display.display(self._display_container[0].style.apply(highlight_setup))
             pd.reset_option("display.max_rows")  # Reset option
 
         # Wrap-up ================================================== >>
@@ -1143,7 +1143,7 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
                 display=display,
             )
 
-        self.display_container.append(results)
+        self._display_container.append(results)
 
         results = results.style.apply(
             highlight_max,
@@ -1190,8 +1190,10 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
             fig.show()
             self.logger.info("Visual Rendered Successfully")
 
-        self.logger.info(f"master_model_container: {len(self.master_model_container)}")
-        self.logger.info(f"display_container: {len(self.display_container)}")
+        self.logger.info(
+            f"_master_model_container: {len(self._master_model_container)}"
+        )
+        self.logger.info(f"_display_container: {len(self._display_container)}")
 
         self.logger.info(str(best_model))
         self.logger.info(
@@ -1610,14 +1612,14 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
         if metrics:
             model_results = pd.DataFrame(metrics, index=[0])
             model_results = model_results.round(round)
-            self.display_container.append(model_results)
+            self._display_container.append(model_results)
         else:
             model_results = None
 
         if add_to_model_list:
-            # storing results in master_model_container
+            # storing results in _master_model_container
             self.logger.info("Uploading model into container now")
-            self.master_model_container.append(
+            self._master_model_container.append(
                 {"model": model, "scores": model_results, "cv": None}
             )
 
@@ -1626,8 +1628,10 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
         else:
             display.close()
 
-        self.logger.info(f"master_model_container: {len(self.master_model_container)}")
-        self.logger.info(f"display_container: {len(self.display_container)}")
+        self.logger.info(
+            f"_master_model_container: {len(self._master_model_container)}"
+        )
+        self.logger.info(f"_display_container: {len(self._display_container)}")
 
         self.logger.info(str(model))
         self.logger.info(

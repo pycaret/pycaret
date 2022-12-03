@@ -79,7 +79,7 @@ class _SupervisedExperiment(_TabularExperiment):
     def __init__(self) -> None:
         super().__init__()
         self.transform_target_param = False  # Default False for both class/reg
-        self.variable_keys = self.variable_keys.union(
+        self._variable_keys = self._variable_keys.union(
             {
                 "X",
                 "y",
@@ -602,7 +602,7 @@ class _SupervisedExperiment(_TabularExperiment):
             )
 
         # checking optimize parameter for multiclass
-        if self._is_multiclass:
+        if self.is_multiclass:
             if not sort.is_multiclass:
                 raise TypeError(
                     f"{sort} metric not supported for multiclass problems. See docstring for list of other optimization parameters."
@@ -989,10 +989,12 @@ class _SupervisedExperiment(_TabularExperiment):
         pd.reset_option("display.max_columns")
 
         # store in display container
-        self.display_container.append(compare_models_.data)
+        self._display_container.append(compare_models_.data)
 
-        self.logger.info(f"master_model_container: {len(self.master_model_container)}")
-        self.logger.info(f"display_container: {len(self.display_container)}")
+        self.logger.info(
+            f"_master_model_container: {len(self._master_model_container)}"
+        )
+        self.logger.info(f"_display_container: {len(self._display_container)}")
 
         self.logger.info(str(sorted_models))
         self.logger.info(
@@ -1049,14 +1051,14 @@ class _SupervisedExperiment(_TabularExperiment):
                 if train_results is not None:
                     model_results = pd.concat([model_results, train_results])
 
-                self.display_container.append(model_results)
+                self._display_container.append(model_results)
 
                 model_results = model_results.style.format(precision=round)
 
                 if system:
                     display.display(model_results)
 
-                self.logger.info(f"display_container: {len(self.display_container)}")
+                self.logger.info(f"_display_container: {len(self._display_container)}")
 
             if not model_only:
                 return pipeline_with_model, model_fit_time
@@ -1095,7 +1097,7 @@ class _SupervisedExperiment(_TabularExperiment):
 
         self.logger.info("Starting cross validation")
 
-        n_jobs = self._gpu_n_jobs_param
+        n_jobs = self.gpu_n_jobs_param
         from sklearn.gaussian_process import (
             GaussianProcessClassifier,
             GaussianProcessRegressor,
@@ -1467,7 +1469,7 @@ class _SupervisedExperiment(_TabularExperiment):
         if (
             probability_threshold
             and self._ml_usecase == MLUsecase.CLASSIFICATION
-            and not self._is_multiclass
+            and not self.is_multiclass
         ):
             if not isinstance(model, CustomProbabilityThresholdClassifier):
                 model = CustomProbabilityThresholdClassifier(
@@ -1565,12 +1567,12 @@ class _SupervisedExperiment(_TabularExperiment):
         if not self._ml_usecase == MLUsecase.TIME_SERIES:
             model_results.drop("cutoff", axis=1, inplace=True, errors="ignore")
 
-        self.display_container.append(model_results)
+        self._display_container.append(model_results)
 
-        # storing results in master_model_container
+        # storing results in _master_model_container
         if add_to_model_list:
             self.logger.info("Uploading model into container now")
-            self.master_model_container.append(
+            self._master_model_container.append(
                 {"model": model, "scores": model_results, "cv": cv}
             )
 
@@ -1581,8 +1583,10 @@ class _SupervisedExperiment(_TabularExperiment):
         if system:
             display.display(model_results)
 
-        self.logger.info(f"master_model_container: {len(self.master_model_container)}")
-        self.logger.info(f"display_container: {len(self.display_container)}")
+        self.logger.info(
+            f"_master_model_container: {len(self._master_model_container)}"
+        )
+        self.logger.info(f"_display_container: {len(self._display_container)}")
 
         self.logger.info(str(model))
         self.logger.info(
@@ -1692,7 +1696,7 @@ class _SupervisedExperiment(_TabularExperiment):
             If False, method will return a tuple of model and the model fit time.
 
         add_to_model_list: bool, default = True
-            Whether to save model and results in master_model_container.
+            Whether to save model and results in _master_model_container.
 
         X_train_data: pandas.DataFrame, default = None
             If not None, will use this dataframe as training features.
@@ -2143,7 +2147,7 @@ class _SupervisedExperiment(_TabularExperiment):
                 )
 
             # checking optimize parameter for multiclass
-            if self._is_multiclass:
+            if self.is_multiclass:
                 if not optimize.is_multiclass:
                     raise TypeError(
                         "Optimization metric not supported for multiclass problems. See docstring for list of other optimization parameters."
@@ -2374,7 +2378,7 @@ class _SupervisedExperiment(_TabularExperiment):
             if estimator_definition is not None:
                 search_kwargs = {**estimator_definition.tune_args, **kwargs}
                 n_jobs = (
-                    self._gpu_n_jobs_param
+                    self.gpu_n_jobs_param
                     if estimator_definition.is_gpu_enabled
                     else self.n_jobs_param
                 )
@@ -2756,8 +2760,10 @@ class _SupervisedExperiment(_TabularExperiment):
         )
         display.display(model_results)
 
-        self.logger.info(f"master_model_container: {len(self.master_model_container)}")
-        self.logger.info(f"display_container: {len(self.display_container)}")
+        self.logger.info(
+            f"_master_model_container: {len(self._master_model_container)}"
+        )
+        self.logger.info(f"_display_container: {len(self._display_container)}")
 
         self.logger.info(str(best_model))
         self.logger.info(
@@ -2953,7 +2959,7 @@ class _SupervisedExperiment(_TabularExperiment):
             )
 
         # checking optimize parameter for multiclass
-        if self._is_multiclass:
+        if self.is_multiclass:
             if not optimize.is_multiclass:
                 raise TypeError(
                     "Optimization metric not supported for multiclass problems. See docstring for list of other optimization parameters."
@@ -3129,8 +3135,10 @@ class _SupervisedExperiment(_TabularExperiment):
         )
         display.display(model_results)
 
-        self.logger.info(f"master_model_container: {len(self.master_model_container)}")
-        self.logger.info(f"display_container: {len(self.display_container)}")
+        self.logger.info(
+            f"_master_model_container: {len(self._master_model_container)}"
+        )
+        self.logger.info(f"_display_container: {len(self._display_container)}")
 
         self.logger.info(str(model))
         self.logger.info(
@@ -3339,7 +3347,7 @@ class _SupervisedExperiment(_TabularExperiment):
             )
 
         # checking optimize parameter for multiclass
-        if self._is_multiclass:
+        if self.is_multiclass:
             if not optimize.is_multiclass:
                 raise TypeError(
                     "Optimization metric not supported for multiclass problems. See docstring for list of other optimization parameters."
@@ -3430,18 +3438,18 @@ class _SupervisedExperiment(_TabularExperiment):
 
         if self._ml_usecase == MLUsecase.CLASSIFICATION:
             model = voting_model_definition.class_def(
-                estimators=estimator_list, voting=method, n_jobs=self._gpu_n_jobs_param
+                estimators=estimator_list, voting=method, n_jobs=self.gpu_n_jobs_param
             )
         elif self._ml_usecase == MLUsecase.TIME_SERIES:
             model = voting_model_definition.class_def(
                 forecasters=estimator_list,
                 method=method,
                 weights=weights,
-                n_jobs=self._gpu_n_jobs_param,
+                n_jobs=self.gpu_n_jobs_param,
             )
         else:
             model = voting_model_definition.class_def(
-                estimators=estimator_list, n_jobs=self._gpu_n_jobs_param
+                estimators=estimator_list, n_jobs=self.gpu_n_jobs_param
             )
 
         display.update_monitor(2, voting_model_definition.name)
@@ -3516,8 +3524,10 @@ class _SupervisedExperiment(_TabularExperiment):
         )
         display.display(model_results)
 
-        self.logger.info(f"master_model_container: {len(self.master_model_container)}")
-        self.logger.info(f"display_container: {len(self.display_container)}")
+        self.logger.info(
+            f"_master_model_container: {len(self._master_model_container)}"
+        )
+        self.logger.info(f"_display_container: {len(self._display_container)}")
 
         self.logger.info(str(model))
         self.logger.info(
@@ -3719,7 +3729,7 @@ class _SupervisedExperiment(_TabularExperiment):
             )
 
         # checking optimize parameter for multiclass
-        if self._is_multiclass:
+        if self.is_multiclass:
             if not optimize.is_multiclass:
                 raise TypeError(
                     "Optimization metric not supported for multiclass problems. See docstring for list of other optimization parameters."
@@ -3813,7 +3823,7 @@ class _SupervisedExperiment(_TabularExperiment):
                 final_estimator=meta_model,
                 cv=meta_model_fold,
                 stack_method=method,
-                n_jobs=self._gpu_n_jobs_param,
+                n_jobs=self.gpu_n_jobs_param,
                 passthrough=restack,
             )
         else:
@@ -3821,7 +3831,7 @@ class _SupervisedExperiment(_TabularExperiment):
                 estimators=estimator_list,
                 final_estimator=meta_model,
                 cv=meta_model_fold,
-                n_jobs=self._gpu_n_jobs_param,
+                n_jobs=self.gpu_n_jobs_param,
                 passthrough=restack,
             )
 
@@ -3896,8 +3906,10 @@ class _SupervisedExperiment(_TabularExperiment):
         )
         display.display(model_results)
 
-        self.logger.info(f"master_model_container: {len(self.master_model_container)}")
-        self.logger.info(f"display_container: {len(self.display_container)}")
+        self.logger.info(
+            f"_master_model_container: {len(self._master_model_container)}"
+        )
+        self.logger.info(f"_display_container: {len(self._display_container)}")
 
         self.logger.info(str(model))
         self.logger.info(
@@ -4715,8 +4727,8 @@ class _SupervisedExperiment(_TabularExperiment):
         model_results = self.pull(pop=True).drop("Model", axis=1)
         model_results.index = ["Mean"]
 
-        self.display_container.append(model_results)
-        self.logger.info(f"display_container: {len(self.display_container)}")
+        self._display_container.append(model_results)
+        self.logger.info(f"_display_container: {len(self._display_container)}")
 
         # dashboard logging
         if self.logging_param:
@@ -4739,8 +4751,10 @@ class _SupervisedExperiment(_TabularExperiment):
                 display=display,
             )
 
-        self.logger.info(f"master_model_container: {len(self.master_model_container)}")
-        self.logger.info(f"display_container: {len(self.display_container)}")
+        self.logger.info(
+            f"_master_model_container: {len(self._master_model_container)}"
+        )
+        self.logger.info(f"_display_container: {len(self._display_container)}")
 
         self.logger.info(str(pipeline_final))
         self.logger.info(
@@ -5060,9 +5074,9 @@ class _SupervisedExperiment(_TabularExperiment):
             score = score.round(round)
             X_test_ = pd.concat((X_test_, score), axis=1)
 
-        # store predictions on hold-out in display_container
+        # store predictions on hold-out in _display_container
         if df_score is not None:
-            self.display_container.append(df_score)
+            self._display_container.append(df_score)
 
         gc.collect()
         return X_test_
@@ -5078,7 +5092,7 @@ class _SupervisedExperiment(_TabularExperiment):
         """
         generates leaderboard for all models run in current run.
         """
-        model_container = self.master_model_container
+        model_container = self._master_model_container
 
         progress_args = {"max": len(model_container) + 1}
         timestampStr = datetime.datetime.now().strftime("%H:%M:%S")
@@ -5293,7 +5307,7 @@ class _SupervisedExperiment(_TabularExperiment):
             )
 
         # checking optimize parameter for multiclass
-        if self._is_multiclass:
+        if self.is_multiclass:
             if not optimize.is_multiclass:
                 raise TypeError(
                     "Optimization metric not supported for multiclass problems. See docstring for list of other optimization parameters."
@@ -5322,7 +5336,7 @@ class _SupervisedExperiment(_TabularExperiment):
 
         if use_holdout:
             self.logger.info("Model Selection Basis : Holdout set")
-            for i in self.master_model_container:
+            for i in self._master_model_container:
                 self.logger.info(f"Checking model {i}")
                 model = i["model"]
                 try:
@@ -5350,8 +5364,8 @@ class _SupervisedExperiment(_TabularExperiment):
 
         else:
             self.logger.info("Model Selection Basis : CV Results on Training set")
-            for i in range(len(self.master_model_container)):
-                model = self.master_model_container[i]
+            for i in range(len(self._master_model_container)):
+                model = self._master_model_container[i]
                 scores = None
                 if model["cv"] is not self.fold_generator:
                     if turbo or self._is_unsupervised():
@@ -5366,7 +5380,7 @@ class _SupervisedExperiment(_TabularExperiment):
                         return_train_score=return_train_score,
                     )
                     scores = self.pull(pop=True)
-                    self.master_model_container.pop()
+                    self._master_model_container.pop()
                 self.logger.info(f"Checking model {i}")
                 if scores is None:
                     scores = model["scores"]

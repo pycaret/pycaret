@@ -200,7 +200,7 @@ class DashboardLogger:
         console = experiment.logger
         console.info("Logging experiment in loggers")
 
-        k = experiment.display_container[0].copy()
+        k = experiment._display_container[0].copy()
         k.set_index("Description", drop=True, inplace=True)
         kdict = k.to_dict()
         params = kdict.get("Value")

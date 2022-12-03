@@ -1859,8 +1859,8 @@ def get_config(variable: str):
     - prep_pipe: Transformation pipeline
     - n_jobs_param: n_jobs parameter used in model training
     - html_param: html_param configured through setup
-    - master_model_container: model storage container
-    - display_container: results display container
+    - _master_model_container: model storage container
+    - _display_container: results display container
     - exp_name_log: Name of experiment
     - logging_param: log_experiment param
     - log_plots_param: log_plots param
@@ -1910,8 +1910,8 @@ def set_config(variable: str, value):
     - prep_pipe: Transformation pipeline
     - n_jobs_param: n_jobs parameter used in model training
     - html_param: html_param configured through setup
-    - master_model_container: model storage container
-    - display_container: results display container
+    - _master_model_container: model storage container
+    - _display_container: results display container
     - exp_name_log: Name of experiment
     - logging_param: log_experiment param
     - log_plots_param: log_plots param

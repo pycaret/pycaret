@@ -53,19 +53,16 @@ class _TabularExperiment(_PyCaretExperiment):
         self.fold_shuffle_param = False
         self.fold_groups_param = None
         self.exp_model_engines = {}
-        self.variable_keys = self.variable_keys.union(
+        self._variable_keys = self._variable_keys.union(
             {
                 "_ml_usecase",
                 "_available_plots",
-                "variable_keys",
                 "USI",
                 "html_param",
                 "seed",
                 "pipeline",
                 "n_jobs_param",
-                "_gpu_n_jobs_param",
-                "master_model_container",
-                "display_container",
+                "gpu_n_jobs_param",
                 "exp_name_log",
                 "exp_id",
                 "logging_param",
@@ -73,9 +70,6 @@ class _TabularExperiment(_PyCaretExperiment):
                 "data",
                 "idx",
                 "gpu_param",
-                "_all_models",
-                "_all_models_internal",
-                "_all_metrics",
                 "memory",
             }
         )
@@ -324,7 +318,7 @@ class _TabularExperiment(_PyCaretExperiment):
         self.logger.info("Initializing setup()")
         self.logger.info(f"self.USI: {self.USI}")
 
-        self.logger.info(f"self.variable_keys: {self.variable_keys}")
+        self.logger.info(f"self._variable_keys: {self._variable_keys}")
 
         self._check_environment()
 
@@ -417,7 +411,7 @@ class _TabularExperiment(_PyCaretExperiment):
 
         # multiclass plot exceptions:
         multiclass_not_available = ["calibration", "threshold", "manifold", "rfe"]
-        if self._is_multiclass:
+        if self.is_multiclass:
             if plot in multiclass_not_available:
                 raise ValueError(
                     "Plot Not Available for multiclass problems. Please see docstring for list of available Plots."
@@ -1352,7 +1346,7 @@ class _TabularExperiment(_PyCaretExperiment):
                         cv=cv,
                         train_sizes=sizes,
                         groups=groups,
-                        n_jobs=self._gpu_n_jobs_param,
+                        n_jobs=self.gpu_n_jobs_param,
                         random_state=self.seed,
                     )
                     return show_yellowbrick_plot(
@@ -1770,7 +1764,7 @@ class _TabularExperiment(_PyCaretExperiment):
                         cv=cv,
                         groups=groups,
                         random_state=self.seed,
-                        n_jobs=self._gpu_n_jobs_param,
+                        n_jobs=self.gpu_n_jobs_param,
                     )
                     return show_yellowbrick_plot(
                         visualizer=viz,

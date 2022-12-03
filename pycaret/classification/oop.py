@@ -48,8 +48,8 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         super().__init__()
         self._ml_usecase = MLUsecase.CLASSIFICATION
         self.exp_name_log = "clf-default-name"
-        self.variable_keys = self.variable_keys.union(
-            {"fix_imbalance", "_is_multiclass"}
+        self._variable_keys = self._variable_keys.union(
+            {"fix_imbalance", "is_multiclass"}
         )
         self._available_plots = {
             "pipeline": "Pipeline Plot",
@@ -94,20 +94,20 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         )
 
     @property
-    def _is_multiclass(self) -> bool:
+    def is_multiclass(self) -> bool:
         """
         Method to check if the problem is multiclass.
         """
         # Cache the result to avoid calculating it every time
-        if hasattr(self, "__is_multiclass"):
-            return self.__is_multiclass
+        if hasattr(self, "_is_multiclass"):
+            return self._is_multiclass
         if getattr(self, "y", None) is None:
             return False
         try:
-            self.__is_multiclass = self.y.value_counts().count() > 2
+            self._is_multiclass = self.y.value_counts().count() > 2
         except Exception:
-            self.__is_multiclass = False
-        return self.__is_multiclass
+            self._is_multiclass = False
+        return self._is_multiclass
 
     def _get_default_plots_to_log(self) -> List[str]:
         return ["auc", "confusion_matrix", "feature"]
@@ -984,17 +984,17 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
             container.append(["Experiment Name", self.exp_name_log])
             container.append(["USI", self.USI])
 
-        self.display_container = [
+        self._display_container = [
             pd.DataFrame(container, columns=["Description", "Value"])
         ]
-        self.logger.info(f"Setup display_container: {self.display_container[0]}")
+        self.logger.info(f"Setup _display_container: {self._display_container[0]}")
         display = CommonDisplay(
             verbose=self.verbose,
             html_param=self.html_param,
         )
         if self.verbose:
             pd.set_option("display.max_rows", 100)
-            display.display(self.display_container[0].style.apply(highlight_setup))
+            display.display(self._display_container[0].style.apply(highlight_setup))
             pd.reset_option("display.max_rows")  # Reset option
 
         # Wrap-up ================================================== >>
@@ -2543,8 +2543,10 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         )
         display.display(model_results)
 
-        self.logger.info(f"master_model_container: {len(self.master_model_container)}")
-        self.logger.info(f"display_container: {len(self.display_container)}")
+        self.logger.info(
+            f"_master_model_container: {len(self._master_model_container)}"
+        )
+        self.logger.info(f"_display_container: {len(self._display_container)}")
 
         self.logger.info(str(model))
         self.logger.info(
@@ -2630,7 +2632,7 @@ class ClassificationExperiment(_SupervisedExperiment, Preprocessor):
         self.logger.info("Checking exceptions")
 
         # exception 1 for multi-class
-        if self._is_multiclass:
+        if self.is_multiclass:
             raise TypeError(
                 "optimize_threshold() cannot be used when target is multi-class."
             )

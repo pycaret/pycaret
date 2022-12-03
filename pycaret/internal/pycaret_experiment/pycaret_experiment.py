@@ -10,7 +10,7 @@ import pycaret.internal.patches.yellowbrick
 import pycaret.internal.persistence
 from pycaret import show_versions
 from pycaret.internal.logging import get_logger
-from pycaret.utils.generic import MLUsecase
+from pycaret.utils.generic import LazyReadOnlyMapping, MLUsecase
 from pycaret.utils.time_series.forecasting.pipeline import _pipeline_transform
 
 LOGGER = get_logger()
@@ -20,12 +20,12 @@ class _PyCaretExperiment:
     def __init__(self) -> None:
         self._ml_usecase = None
         self._available_plots = {}
-        self.variable_keys = set()
+        self._variable_keys = set()
         self.exp_id = None
         self.gpu_param = False
         self.n_jobs_param = -1
         self.logger = LOGGER
-        self.master_model_container = []
+        self._master_model_container = []
 
         # Data attrs
         self.data = None
@@ -35,7 +35,7 @@ class _PyCaretExperiment:
         # Setup attrs
         self.fold_generator = None
         self.pipeline = None
-        self.display_container = None
+        self._display_container = None
         self._fxs = defaultdict(list)
         self._setup_ran = False
         self._setup_params = None
@@ -67,15 +67,24 @@ class _PyCaretExperiment:
         }
 
     @property
-    def _gpu_n_jobs_param(self) -> int:
+    def _property_keys(self) -> set:
+        return {
+            n
+            for n in dir(self)
+            if not n.startswith("_")
+            and isinstance(getattr(self.__class__, n, None), property)
+        }
+
+    @property
+    def gpu_n_jobs_param(self) -> int:
         return self.n_jobs_param if not self.gpu_param else 1
 
     @property
     def variables(self) -> dict:
-        return {k: getattr(self, k, None) for k in self.variable_keys}
+        return LazyReadOnlyMapping(self)
 
     @property
-    def _is_multiclass(self) -> bool:
+    def is_multiclass(self) -> bool:
         """
         Method to check if the problem is multiclass.
         """
@@ -264,7 +273,7 @@ class _PyCaretExperiment:
         -------
         >>> X_train = get_config('X_train')
 
-        This will return X_train transformed dataset.
+        This will return training features.
 
         Returns
         -------
@@ -278,15 +287,17 @@ class _PyCaretExperiment:
         self.logger.info("Initializing get_config()")
         self.logger.info(f"get_config({function_params_str})")
 
-        if variable not in self.variables:
+        variable_and_property_keys = self._variable_keys.union(self._property_keys)
+
+        if variable not in variable_and_property_keys:
             raise ValueError(
-                f"Variable {variable} not found. Possible variables are: {list(self.variables)}"
+                f"Variable '{variable}' not found. Possible variables are: {list(variable_and_property_keys)}"
             )
 
         if any(variable.endswith(attr) for attr in ("train", "test", "dataset")):
             msg = (
-                f"Variable: '{variable}' used to return the transformed values in pycaret 2.x. "
-                "From pycaret 3.x, this will return the raw values. "
+                f"Variable: '{variable}' used to return the transformed values in PyCaret 2.x. "
+                "From PyCaret 3.x, this will return the raw values. "
                 f"If you need the transformed values, call get_config with '{variable}_transformed' instead."
             )
             self.logger.info(msg)
@@ -332,9 +343,14 @@ class _PyCaretExperiment:
             if k.startswith("_"):
                 raise ValueError(f"Variable {k} is read only ('_' prefix).")
 
-            if k not in self.variables:
+            writeable_keys = [
+                x
+                for x in self._variable_keys.difference(self._property_keys)
+                if not x.startswith("_")
+            ]
+            if k not in writeable_keys:
                 raise ValueError(
-                    f"Variable {k} not found. Possible variables are: {list(self.variables)}"
+                    f"Variable {k} not found or is not writeable. Possible writeable variables are: {writeable_keys}"
                 )
 
             setattr(self, k, v)
@@ -374,8 +390,8 @@ class _PyCaretExperiment:
             "_all_models",
             "_all_models_internal",
             "_all_metrics",
-            "master_model_container",
-            "display_container",
+            "_master_model_container",
+            "_display_container",
         }
 
         globals_to_dump = {
@@ -447,10 +463,9 @@ class _PyCaretExperiment:
         Returns
         -------
         pandas.DataFrame
-            Equivalent to get_config('display_container')[-1]
 
         """
-        return self.display_container.pop(-1) if pop else self.display_container[-1]
+        return self._display_container.pop(-1) if pop else self._display_container[-1]
 
     @property
     def dataset(self):

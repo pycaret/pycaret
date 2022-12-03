@@ -1,9 +1,10 @@
 import functools
 import inspect
 import warnings
+from collections import Mapping
 from copy import deepcopy
 from enum import Enum, auto
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Union
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Set, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -22,6 +23,11 @@ from pycaret.internal.validation import (
     supports_partial_fit,
 )
 from pycaret.utils._dependencies import _check_soft_dependencies
+
+if TYPE_CHECKING:
+    from pycaret.internal.pycaret_experiment.pycaret_experiment import (
+        _PyCaretExperiment,
+    )
 
 
 class MLUsecase(Enum):
@@ -200,7 +206,7 @@ def get_config(variable: str, globals_d: dict):
     -------
     >>> X_train = get_config('X_train')
 
-    This will return X_train transformed dataset.
+    This will return training features.
 
     Returns
     -------
@@ -266,7 +272,7 @@ def set_config(variable: str, value, globals_d: dict):
 
     # special case
     if not globals_d["gpu_param"] and variable == "n_jobs_param":
-        globals_d["_gpu_n_jobs_param"] = value
+        globals_d["gpu_n_jobs_param"] = value
 
     logger.info(f"Global variable: {variable} updated to {value}")
     logger.info(
@@ -300,8 +306,8 @@ def save_config(file_name: str, globals_d: dict):
         "_all_models",
         "_all_models_internal",
         "_all_metrics",
-        "master_model_container",
-        "display_container",
+        "_master_model_container",
+        "_display_container",
     }
 
     globals_to_dump = {
@@ -1259,3 +1265,34 @@ def get_allowed_engines(
     """
     allowed_engines = all_allowed_engines.get(estimator, None)
     return allowed_engines
+
+
+class LazyReadOnlyMapping(Mapping):
+    """
+    This class provides a dict-like interface while calling properties lazily.
+
+    This improves performance if those properties are not accessed.
+    """
+
+    def __init__(self, experiment: "_PyCaretExperiment"):
+        self._experiment = experiment
+        self._keys = self._experiment._variable_keys.union(
+            self._experiment._property_keys
+        )
+        self._cache = {}
+
+    def __getitem__(self, key):
+        if key in self._cache:
+            return self._cache[key]
+        if key in self._keys:
+            item = getattr(self._experiment, key, None)
+            self._cache[key] = item
+            return item
+        else:
+            raise KeyError(key)
+
+    def __len__(self):
+        return len(self._keys)
+
+    def __iter__(self):
+        return iter(self._keys)

@@ -2280,7 +2280,6 @@ def pull(pop: bool = False) -> pd.DataFrame:
     Returns
     -------
     pandas.DataFrame
-        Equivalent to get_config('display_container')[-1]
 
     """
     return _CURRENT_EXPERIMENT.pull(pop=pop)
@@ -2500,7 +2499,7 @@ def get_config(variable: str):
     -------
     >>> X_train = get_config('X_train')
 
-    This will return X_train transformed dataset.
+    This will return training features.
 
     Returns
     -------
