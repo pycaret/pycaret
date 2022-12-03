@@ -1,5 +1,3 @@
-import pytest
-
 import pycaret.datasets
 from pycaret.anomaly import AnomalyExperiment
 from pycaret.classification import ClassificationExperiment
