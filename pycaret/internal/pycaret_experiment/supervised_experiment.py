@@ -4683,13 +4683,6 @@ class _SupervisedExperiment(_TabularExperiment):
         self.logger.info("Initializing finalize_model()")
         self.logger.info(f"finalize_model({function_params_str})")
 
-        runtime_start = time.time()
-
-        display = CommonDisplay(
-            verbose=False,
-            html_param=self.html_param,
-        )
-
         np.random.seed(self.seed)
 
         self.logger.info(f"Finalizing {estimator}")
