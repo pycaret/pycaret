@@ -4707,9 +4707,6 @@ class _SupervisedExperiment(_TabularExperiment):
             model_only=False,
         )
 
-        self.logger.info(f"master_model_container: {len(self.master_model_container)}")
-        self.logger.info(f"display_container: {len(self.display_container)}")
-
         # dashboard logging
         if self.logging_param:
             self._log_model(
@@ -4724,6 +4721,9 @@ class _SupervisedExperiment(_TabularExperiment):
                 experiment_custom_tags=experiment_custom_tags,
                 display=display,
             )
+
+        self.logger.info(f"master_model_container: {len(self.master_model_container)}")
+        self.logger.info(f"display_container: {len(self.display_container)}")
 
         self.logger.info(str(pipeline_final))
         self.logger.info(
