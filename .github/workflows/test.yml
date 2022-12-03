@@ -33,13 +33,12 @@ jobs:
         with:
           path: pycaret tests
 
-
   # JOBS MUST START WITH test !!!!
   test:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.7, 3.8, 3.9, '3.10']
+        python-version: [3.7, 3.8, 3.9, "3.10"]
 
     steps:
       - uses: actions/checkout@v2
@@ -76,13 +75,13 @@ jobs:
           rm tests/test_time_series_plots.py
           rm tests/test_time_series_utils_plots.py
       - name: Test with pytest
-        run: pytest
+        run: pytest --durations=0
 
   test_windows:
     runs-on: windows-latest
     strategy:
       matrix:
-        python-version: [3.7, 3.8, 3.9, '3.10']
+        python-version: [3.7, 3.8, 3.9, "3.10"]
 
     steps:
       - uses: actions/checkout@v2
@@ -112,7 +111,7 @@ jobs:
         run: |
           remove-item tests/* -Include @('test_clustering.py', 'test_classification_tuning.py','test_classification_plots.py','test_regression_plots.py', 'test_regression_tuning.py', 'test_time_series_tune_grid.py', 'test_time_series_tune_random.py', 'test_create_api.py', 'test_create_docker.py', 'test_drift_report.py', 'test_eda.py', 'test_time_series_plots.py', 'test_time_series_utils_plots.py')
       - name: Test with pytest
-        run: pytest
+        run: pytest --durations=0
 
   # test_tuning:
 
@@ -136,7 +135,7 @@ jobs:
   #     run: |
   #       find tests -type f -not -name '__init__.py' -not -name 'test_classification_tuning.py' -not -name 'test_regression_tuning.py' -delete
   #   - name: Test with pytest
-  #     run: pytest
+  #     run: pytest --durations=0
 
   # test_tuning_clf_windows:
 
@@ -159,7 +158,7 @@ jobs:
   #     run: |
   #       remove-item tests/* -Exclude @('__init__.py','test_classification_tuning.py')
   #   - name: Test with pytest
-  #     run: pytest
+  #     run: pytest --durations=0
 
   # test_tuning_reg_windows:
 
@@ -182,7 +181,7 @@ jobs:
   #     run: |
   #       remove-item tests/* -Exclude @('__init__.py','test_regression_tuning.py')
   #   - name: Test with pytest
-  #     run: pytest
+  #     run: pytest --durations=0
 
   test_plots:
     runs-on: ubuntu-latest
@@ -213,7 +212,7 @@ jobs:
         run: |
           find tests -type f -not -name '__init__.py' -not -name 'test_classification_plots.py' -not -name 'test_regression_plots.py' -not -name 'conftest.py' -not -name 'time_series_test_utils.py' -not -name 'test_time_series_plots.py' -not -name 'test_time_series_utils_plots.py' -delete
       - name: Test with pytest
-        run: pytest
+        run: pytest --durations=0
 
   test_ts_tune_random:
     runs-on: ubuntu-latest
@@ -250,7 +249,7 @@ jobs:
         run: |
           find tests -type f -not -name '__init__.py' -not -name 'conftest.py' -not -name 'time_series_test_utils.py' -not -name 'test_time_series_tune_random.py' -delete
       - name: Test with pytest
-        run: pytest
+        run: pytest --durations=0
 
   test_ts_tune_grid:
     runs-on: ubuntu-latest
@@ -287,4 +286,4 @@ jobs:
         run: |
           find tests -type f -not -name '__init__.py' -not -name 'conftest.py' -not -name 'time_series_test_utils.py' -not -name 'test_time_series_tune_grid.py' -delete
       - name: Test with pytest
-        run: pytest
+        run: pytest --durations=0
