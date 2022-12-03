@@ -4683,6 +4683,13 @@ class _SupervisedExperiment(_TabularExperiment):
         self.logger.info("Initializing finalize_model()")
         self.logger.info(f"finalize_model({function_params_str})")
 
+        runtime_start = time.time()
+
+        display = CommonDisplay(
+            verbose=False,
+            html_param=self.html_param,
+        )
+
         np.random.seed(self.seed)
 
         self.logger.info(f"Finalizing {estimator}")
@@ -4702,6 +4709,21 @@ class _SupervisedExperiment(_TabularExperiment):
 
         self.logger.info(f"master_model_container: {len(self.master_model_container)}")
         self.logger.info(f"display_container: {len(self.display_container)}")
+
+        # dashboard logging
+        if self.logging_param:
+            self._log_model(
+                model=pipeline_final,
+                model_results=None,
+                score_dict={},
+                source="finalize_model",
+                runtime=np.array(time.time() - runtime_start).round(2),
+                model_fit_time=model_fit_time,
+                pipeline=self.pipeline,
+                log_plots=self.log_plots_param,
+                experiment_custom_tags=experiment_custom_tags,
+                display=display,
+            )
 
         self.logger.info(str(pipeline_final))
         self.logger.info(
