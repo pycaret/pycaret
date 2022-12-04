@@ -99,7 +99,7 @@ def test_fe_exogenous(load_uni_exo_data_target, model, expected_equal):
 
     # Baseline
     exp = TSForecastingExperiment()
-    exp.setup(data=data, target=target, fh=fh, seasonal_period=4, session_id=42)
+    exp.setup(data=data, target=target, fh=fh, session_id=42)
     features1 = exp.get_config("X_transformed").columns
     _ = exp.create_model(model)
     metrics1 = exp.pull()
@@ -110,7 +110,6 @@ def test_fe_exogenous(load_uni_exo_data_target, model, expected_equal):
         data=data,
         target=target,
         fh=fh,
-        seasonal_period=4,
         fe_exogenous=fe_exogenous,
         session_id=42,
     )

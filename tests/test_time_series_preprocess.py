@@ -113,7 +113,7 @@ def test_pipeline_types_exo(load_uni_exo_data_target):
     exp = TSForecastingExperiment()
 
     # Default
-    exp.setup(data=data, target=target, seasonal_period=4)
+    exp.setup(data=data, target=target)
     assert isinstance(exp.pipeline, ForecastingPipeline)
     assert isinstance(exp.pipeline.steps[-1][1], TransformedTargetForecaster)
 
@@ -121,7 +121,6 @@ def test_pipeline_types_exo(load_uni_exo_data_target):
     exp.setup(
         data=data,
         target=target,
-        seasonal_period=4,
         numeric_imputation_target=True,
     )
     assert isinstance(exp.pipeline, ForecastingPipeline)
@@ -131,7 +130,6 @@ def test_pipeline_types_exo(load_uni_exo_data_target):
     exp.setup(
         data=data,
         target=target,
-        seasonal_period=4,
         numeric_imputation_exogenous=True,
     )
     assert isinstance(exp.pipeline, ForecastingPipeline)
@@ -141,7 +139,6 @@ def test_pipeline_types_exo(load_uni_exo_data_target):
     exp.setup(
         data=data,
         target=target,
-        seasonal_period=4,
         numeric_imputation_target=True,
         numeric_imputation_exogenous=True,
     )
@@ -149,7 +146,7 @@ def test_pipeline_types_exo(load_uni_exo_data_target):
     assert isinstance(exp.pipeline.steps[-1][1], TransformedTargetForecaster)
 
     # No preprocessing (still sets empty pipeline internally)
-    exp.setup(data=data, target=target, seasonal_period=4)
+    exp.setup(data=data, target=target)
     assert isinstance(exp.pipeline, ForecastingPipeline)
     assert isinstance(exp.pipeline.steps[-1][1], TransformedTargetForecaster)
 
@@ -180,7 +177,7 @@ def test_preprocess_setup_raises_missing_exo(load_uni_exo_data_target_missing):
 
     exp = TSForecastingExperiment()
     with pytest.raises(ValueError) as errmsg:
-        exp.setup(data=data, target=target, seasonal_period=4)
+        exp.setup(data=data, target=target)
     exceptionmsg = errmsg.value.args[0]
     assert "Please enable imputation to proceed" in exceptionmsg
 
@@ -189,7 +186,6 @@ def test_preprocess_setup_raises_missing_exo(load_uni_exo_data_target_missing):
         exp.setup(
             data=data,
             target=target,
-            seasonal_period=4,
             numeric_imputation_target=None,
         )
     exceptionmsg = errmsg.value.args[0]
@@ -200,7 +196,6 @@ def test_preprocess_setup_raises_missing_exo(load_uni_exo_data_target_missing):
         exp.setup(
             data=data,
             target=target,
-            seasonal_period=4,
             numeric_imputation_exogenous=None,
         )
     exceptionmsg = errmsg.value.args[0]
@@ -244,7 +239,6 @@ def test_preprocess_setup_raises_negative_exo(load_uni_exo_data_target, method):
         exp.setup(
             data=data,
             target=target,
-            seasonal_period=4,
             transform_target=method,
         )
     exceptionmsg = errmsg.value.args[0]
@@ -265,7 +259,6 @@ def test_preprocess_setup_raises_negative_exo(load_uni_exo_data_target, method):
         exp.setup(
             data=data,
             target=target,
-            seasonal_period=4,
             transform_exogenous=method,
         )
     exceptionmsg = errmsg.value.args[0]
@@ -326,7 +319,6 @@ def test_pipeline_works_exo(load_uni_exo_data_target_missing, model_name):
         data=data,
         target=target,
         fh=FH,
-        seasonal_period=4,
         numeric_imputation_target="drift",
         numeric_imputation_exogenous="drift",
         enforce_exogenous=False,
@@ -473,7 +465,6 @@ def test_impute_str_exo(load_uni_exo_data_target_missing, method):
         data=data,
         target=target,
         fh=FH,
-        seasonal_period=4,
         numeric_imputation_target=method,
         numeric_imputation_exogenous=method,
     )
@@ -501,7 +492,6 @@ def test_impute_num_exo(load_uni_exo_data_target_missing):
         data=data,
         target=target,
         fh=FH,
-        seasonal_period=4,
         numeric_imputation_target=impute_val,
         numeric_imputation_exogenous=impute_val,
     )
@@ -546,7 +536,6 @@ def test_transform_exo(load_uni_exo_data_target_positive, method):
         data=data,
         target=target,
         fh=FH,
-        seasonal_period=4,
         transform_target=method,
         transform_exogenous=method,
     )
@@ -573,7 +562,6 @@ def test_scale_exo(load_uni_exo_data_target, method):
         data=data,
         target=target,
         fh=FH,
-        seasonal_period=4,
         scale_target=method,
         scale_exogenous=method,
     )
@@ -704,7 +692,6 @@ def test_no_transform_exo(load_uni_exo_data_target_missing):
         data=data,
         target=target,
         fh=FH,
-        seasonal_period=4,
         numeric_imputation_target="mean",
         numeric_imputation_exogenous="mean",
     )

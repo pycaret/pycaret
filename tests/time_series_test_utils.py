@@ -145,11 +145,7 @@ def _return_model_names():
     """Return all model names."""
     data = get_data("airline")
     exp = TSForecastingExperiment()
-    exp.setup(
-        data=data,
-        seasonal_period=2,
-        session_id=42,
-    )
+    exp.setup(data=data, session_id=42)
     model_containers = get_all_ts_model_containers(exp)
 
     models_to_ignore = (

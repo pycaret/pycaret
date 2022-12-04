@@ -153,7 +153,6 @@ def test_metrics_with_missing_values_exo():
         data=data,
         target=target,
         fh=FH,
-        seasonal_period=4,
         session_id=42,
         numeric_imputation_target="drift",
         numeric_imputation_exogenous="drift",
