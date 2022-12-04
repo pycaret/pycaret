@@ -3,7 +3,6 @@
 import os
 
 import numpy as np  # type: ignore
-import pandas as pd  # type: ignore
 import pytest
 from time_series_test_utils import (
     _ALL_PLOTS_DATA,
