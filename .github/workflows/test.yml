@@ -256,7 +256,7 @@ jobs:
           pip list
       - name: Remove tests
         run: |
-          find tests -type f -not -name '__init__.py' -not -name 'conftest.py' -not -name 'time_series_test_utils.py' -not -name 'benchmarks/*.py' -delete
+          find tests -type f -not -name '__init__.py' -not -name 'conftest.py' -not -name 'time_series_test_utils.py' -not -name 'test_time_series_sp_detection.py' -delete
       - name: Run benchmarks
         run: pytest --durations=0
 
