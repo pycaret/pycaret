@@ -42,6 +42,8 @@ def setup(
     fold: int = 3,
     fh: Optional[Union[List[int], int, np.ndarray, "ForecastingHorizon"]] = 1,
     seasonal_period: Optional[Union[List[Union[int, str]], int, str]] = None,
+    sp_detection: str = "auto",
+    multiple_sp_to_use: int = 1,
     point_alpha: Optional[float] = None,
     coverage: Union[float, List[float]] = 0.9,
     enforce_exogenous: bool = True,
@@ -228,7 +230,7 @@ def setup(
         >>> data = get_data("uschange")
         >>> exp = TSForecastingExperiment()
         >>> exp.setup(
-        >>>     data=data, target="Consumption", fh=12, seasonal_period=4,
+        >>>     data=data, target="Consumption", fh=12,
         >>>     fe_exogenous=fe_exogenous, session_id=42
         >>> )
         >>> print(f"Feature Columns: {exp.get_config('X_transformed').columns}")
@@ -271,26 +273,45 @@ def setup(
 
 
     seasonal_period: list or int or str, default = None
-        Seasonal period in timeseries data. If not provided the frequency of the data
-        index is mapped to a seasonal period as follows:
+        Periods to check when performing seasonality checks. If not provided,
+        then seasonal periods are detected per the sp_detection setting.
 
-        * B, C = 5
-        * D = 7
-        * W = 52
-        * M, BM, CBM, MS, BMS, CBMS = 12
-        * SM, SMS = 24
-        * Q, BQ, QS, BQS = 4
-        * A, Y, BA, BY, AS, YS, BAS, BYS = 1
-        * H = 24
-        * T, min = 60
-        * S = 60
+        Users can provide `seasonal_period` by passing it as an integer or a
+        string corresponding to the keys below (e.g. 'W' for weekly data,
+        'M' for monthly data, etc.).
+            * B, C = 5
+            * D = 7
+            * W = 52
+            * M, BM, CBM, MS, BMS, CBMS = 12
+            * SM, SMS = 24
+            * Q, BQ, QS, BQS = 4
+            * A, Y, BA, BY, AS, YS, BAS, BYS = 1
+            * H = 24
+            * T, min = 60
+            * S = 60
 
-        Alternatively you can provide a custom `seasonal_period` by passing
-        it as an integer or a string corresponding to the keys above (e.g.
-        'W' for weekly data, 'M' for monthly data, etc.). You can also provide
-        a list of such values to use in models that accept multiple seasonal values
-        (currently TBATS). For models that don't accept multiple seasonal values, the
-        first value of the list will be used as the seasonal period.
+        Users can also provide a list of such values to use in models that
+        accept multiple seasonal values (currently TBATS). For models that
+        don't accept multiple seasonal values, the first value of the list
+        will be used as the seasonal period.
+
+
+    sp_detection: str = "auto"
+        If seasonal_period is None, then this parameter determines the algorithm
+        to use to detect the seasonal periods to use in the models.
+
+        Allowed values are ["auto" or "index"].
+
+        If "auto", then seasonal periods are detected using statistical tests.
+        If "index", then the frequency of the data index is mapped to a seasonal
+        period as shown in seasonal_period.
+
+
+    multiple_sp_to_use: int = 1
+        Applicable only when sp_detection is set to "auto". It determines how
+        many seasonal periods to use in the models. If a model only allows one
+        seasonal period and multiple_sp_to_use > 1, then the most dominant
+        (primary) seasonal that is detected is used.
 
 
     point_alpha: Optional[float], default = None
@@ -491,6 +512,8 @@ def setup(
         fold=fold,
         fh=fh,
         seasonal_period=seasonal_period,
+        sp_detection=sp_detection,
+        multiple_sp_to_use=multiple_sp_to_use,
         point_alpha=point_alpha,
         coverage=coverage,
         enforce_exogenous=enforce_exogenous,

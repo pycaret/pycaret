@@ -6,8 +6,12 @@ import warnings
 from enum import Enum, IntEnum
 from typing import Any, Dict, List, Optional, Tuple
 
+import numpy as np
 import pandas as pd
+from pmdarima.arima.utils import ndiffs
+from sktime.param_est.seasonality import SeasonalityACF
 from sktime.transformations.series.difference import Differencer
+from sktime.utils.plotting import plot_series
 
 
 def _reconcile_order_and_lags(
@@ -213,6 +217,64 @@ def get_sp_from_str(str_freq: str) -> int:
                 f"Unsupported Period frequency: {str_freq}, valid Period frequency "
                 f"suffixes are: {', '.join(SeasonalPeriod.__members__.keys())}"
             )
+
+
+def auto_detect_sp(
+    y: pd.Series, verbose: bool = False, plot: bool = False
+) -> Tuple[int, list, int]:
+    """Automatically detects the seasonal period of the time series.
+    The time series is internally differenced before the seasonality is detected
+    using ACF.
+
+    Parameters
+    ----------
+    y : pd.Series
+        Time series whose seasonal period has to be detected
+    verbose : bool, optional
+        Whether to print intermediate values , by default False
+    plot : bool, optional
+        Whether to plot original and differenced data, by default False
+
+    Returns
+    -------
+    Tuple[int, list, int]
+        (1) Primary Seasonal Period
+        (2) List of all significant seasonal periods
+        (3) The number of lags used to detected seasonality
+    """
+
+    yt = y.copy()
+    for i in np.arange(ndiffs(y)):
+        if verbose:
+            print(f"Differencing: {i+1}")
+        differencer = Differencer()
+        yt = differencer.fit_transform(yt)
+
+    if plot:
+        _ = plot_series(y, yt, labels=["original", "differenced"])
+
+    nobs = len(yt)
+    # Increasing lags otherwise high sp values are not detected since they are
+    # limited by internal nlags calculation in SeasonalityACF
+    # lags_to_use = min(10 * np.log10(nobs), nobs - 1)
+    # lags_to_use = max(lags_to_use, nobs/3)
+    lags_to_use = nobs - 1
+    lags_to_use = int(lags_to_use)
+
+    sp_est = SeasonalityACF(nlags=lags_to_use)
+    sp_est.fit(yt)
+
+    primary_sp = sp_est.get_fitted_params().get("sp")
+    significant_sps = sp_est.get_fitted_params().get("sp_significant")
+    if isinstance(significant_sps, np.ndarray):
+        significant_sps = significant_sps.tolist()
+
+    if verbose:
+        print(f"\tLags used for seasonal detection: {lags_to_use}")
+        print(f"\tDetected Significant SP: {significant_sps}")
+        print(f"\tDetected Primary SP: {primary_sp}")
+
+    return primary_sp, significant_sps, lags_to_use
 
 
 class SeasonalPeriod(IntEnum):
