@@ -34,7 +34,7 @@ jobs:
           path: pycaret tests
 
   # JOBS MUST START WITH test !!!!
-  test:
+  test_linux:
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -74,6 +74,7 @@ jobs:
           rm tests/test_time_series_tune_random.py
           rm tests/test_time_series_plots.py
           rm tests/test_time_series_utils_plots.py
+          rm tests/benchmarks/*.py
       - name: Test with pytest
         run: pytest --durations=0
 
@@ -110,7 +111,156 @@ jobs:
       - name: Remove tests
         run: |
           remove-item tests/* -Include @('test_clustering.py', 'test_classification_tuning.py','test_classification_plots.py','test_regression_plots.py', 'test_regression_tuning.py', 'test_time_series_tune_grid.py', 'test_time_series_tune_random.py', 'test_create_api.py', 'test_create_docker.py', 'test_drift_report.py', 'test_eda.py', 'test_time_series_plots.py', 'test_time_series_utils_plots.py')
+          remove-item tests/benchmarks/*
       - name: Test with pytest
+        run: pytest --durations=0
+
+  test_plots:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10"]
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        # SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL required due to
+        # pyLDAvis 3.3.1 having an "sklearn" dependency
+        run: |
+          export SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL=True
+          python -m pip install --upgrade pip
+          python -m pip install -U pytest codecov numpy
+          pip install -e ".[full, nlp]"
+          if [ -f requirements-test.txt ]; then pip install -r requirements-test.txt; fi
+          python -m spacy download en_core_web_sm
+      - name: Python version and dependency list
+        run: |
+          echo "Python version expected: ${{ matrix.python-version }}"
+          python --version
+          which python
+          pip list
+      - name: Remove tests
+        run: |
+          find tests -type f -not -name '__init__.py' -not -name 'test_classification_plots.py' -not -name 'test_regression_plots.py' -not -name 'conftest.py' -not -name 'time_series_test_utils.py' -not -name 'test_time_series_plots.py' -not -name 'test_time_series_utils_plots.py' -delete
+          rm tests/benchmarks/*.py
+      - name: Test with pytest
+        run: pytest --durations=0
+
+  test_ts_tune_random:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10"]
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        # SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL required due to
+        # pyLDAvis 3.3.1 having an "sklearn" dependency
+        run: |
+          export SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL=True
+          python -m pip install -U pip
+          python -m pip install -U pytest codecov numpy
+
+          pip install -e ".[full, nlp]"
+          if [ -f requirements-prophet.txt ]; then pip install -r requirements-prophet.txt; fi
+          if [ -f requirements-test.txt ]; then pip install -r requirements-test.txt; fi
+
+          python -m spacy download en_core_web_sm
+      - name: Python version and dependency list
+        run: |
+          echo "Python version expected: ${{ matrix.python-version }}"
+          python --version
+          which python
+          pip list
+      - name: Remove tests
+        run: |
+          find tests -type f -not -name '__init__.py' -not -name 'conftest.py' -not -name 'time_series_test_utils.py' -not -name 'test_time_series_tune_random.py' -delete
+          rm tests/benchmarks/*.py
+      - name: Test with pytest
+        run: pytest --durations=0
+
+  test_ts_tune_grid:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10"]
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        # SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL required due to
+        # pyLDAvis 3.3.1 having an "sklearn" dependency
+        run: |
+          export SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL=True
+          python -m pip install -U pip
+          python -m pip install -U pytest codecov numpy
+
+          pip install -e ".[full, nlp]"
+          if [ -f requirements-prophet.txt ]; then pip install -r requirements-prophet.txt; fi
+          if [ -f requirements-test.txt ]; then pip install -r requirements-test.txt; fi
+
+          python -m spacy download en_core_web_sm
+      - name: Python version and dependency list
+        run: |
+          echo "Python version expected: ${{ matrix.python-version }}"
+          python --version
+          which python
+          pip list
+      - name: Remove tests
+        run: |
+          find tests -type f -not -name '__init__.py' -not -name 'conftest.py' -not -name 'time_series_test_utils.py' -not -name 'test_time_series_tune_grid.py' -delete
+          rm tests/benchmarks/*.py
+      - name: Test with pytest
+        run: pytest --durations=0
+
+  test_benchmarks:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10"]
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        # SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL required due to
+        # pyLDAvis 3.3.1 having an "sklearn" dependency
+        run: |
+          export SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL=True
+          python -m pip install -U pip
+          python -m pip install -U pytest codecov numpy
+
+          pip install -e ".[full, nlp]"
+          if [ -f requirements-prophet.txt ]; then pip install -r requirements-prophet.txt; fi
+          if [ -f requirements-test.txt ]; then pip install -r requirements-test.txt; fi
+
+          python -m spacy download en_core_web_sm
+      - name: Python version and dependency list
+        run: |
+          echo "Python version expected: ${{ matrix.python-version }}"
+          python --version
+          which python
+          pip list
+      - name: Remove tests
+        run: |
+          find tests -type f -not -name '__init__.py' -not -name 'conftest.py' -not -name 'time_series_test_utils.py' -delete
+      - name: Run benchmarks
         run: pytest --durations=0
 
   # test_tuning:
@@ -182,108 +332,3 @@ jobs:
   #       remove-item tests/* -Exclude @('__init__.py','test_regression_tuning.py')
   #   - name: Test with pytest
   #     run: pytest --durations=0
-
-  test_plots:
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v2
-      - name: Set up Python 3.8
-        uses: actions/setup-python@v2
-        with:
-          python-version: 3.8
-      - name: Install dependencies
-        # SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL required due to
-        # pyLDAvis 3.3.1 having an "sklearn" dependency
-        run: |
-          export SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL=True
-          python -m pip install --upgrade pip
-          python -m pip install -U pytest codecov numpy
-          pip install -e ".[full, nlp]"
-          if [ -f requirements-test.txt ]; then pip install -r requirements-test.txt; fi
-          python -m spacy download en_core_web_sm
-      - name: Python version and dependency list
-        run: |
-          echo "Python version expected: ${{ matrix.python-version }}"
-          python --version
-          which python
-          pip list
-      - name: Remove tests
-        run: |
-          find tests -type f -not -name '__init__.py' -not -name 'test_classification_plots.py' -not -name 'test_regression_plots.py' -not -name 'conftest.py' -not -name 'time_series_test_utils.py' -not -name 'test_time_series_plots.py' -not -name 'test_time_series_utils_plots.py' -delete
-      - name: Test with pytest
-        run: pytest --durations=0
-
-  test_ts_tune_random:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: [3.8]
-
-    steps:
-      - uses: actions/checkout@v2
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
-        with:
-          python-version: ${{ matrix.python-version }}
-      - name: Install dependencies
-        # SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL required due to
-        # pyLDAvis 3.3.1 having an "sklearn" dependency
-        run: |
-          export SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL=True
-          python -m pip install -U pip
-          python -m pip install -U pytest codecov numpy
-
-          pip install -e ".[full, nlp]"
-          if [ -f requirements-prophet.txt ]; then pip install -r requirements-prophet.txt; fi
-          if [ -f requirements-test.txt ]; then pip install -r requirements-test.txt; fi
-
-          python -m spacy download en_core_web_sm
-      - name: Python version and dependency list
-        run: |
-          echo "Python version expected: ${{ matrix.python-version }}"
-          python --version
-          which python
-          pip list
-      - name: Remove tests
-        run: |
-          find tests -type f -not -name '__init__.py' -not -name 'conftest.py' -not -name 'time_series_test_utils.py' -not -name 'test_time_series_tune_random.py' -delete
-      - name: Test with pytest
-        run: pytest --durations=0
-
-  test_ts_tune_grid:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: [3.8]
-
-    steps:
-      - uses: actions/checkout@v2
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
-        with:
-          python-version: ${{ matrix.python-version }}
-      - name: Install dependencies
-        # SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL required due to
-        # pyLDAvis 3.3.1 having an "sklearn" dependency
-        run: |
-          export SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL=True
-          python -m pip install -U pip
-          python -m pip install -U pytest codecov numpy
-
-          pip install -e ".[full, nlp]"
-          if [ -f requirements-prophet.txt ]; then pip install -r requirements-prophet.txt; fi
-          if [ -f requirements-test.txt ]; then pip install -r requirements-test.txt; fi
-
-          python -m spacy download en_core_web_sm
-      - name: Python version and dependency list
-        run: |
-          echo "Python version expected: ${{ matrix.python-version }}"
-          python --version
-          which python
-          pip list
-      - name: Remove tests
-        run: |
-          find tests -type f -not -name '__init__.py' -not -name 'conftest.py' -not -name 'time_series_test_utils.py' -not -name 'test_time_series_tune_grid.py' -delete
-      - name: Test with pytest
-        run: pytest --durations=0
