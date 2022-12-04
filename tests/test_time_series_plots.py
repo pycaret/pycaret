@@ -47,14 +47,13 @@ _all_plots_estimator_ts_results = _return_all_plots_estimator_ts_results()
 
 @pytest.mark.parametrize("data", _data_with_without_period_index)
 @pytest.mark.parametrize("plot", _ALL_PLOTS_DATA)
-def testplot_model_data(data, plot):
+def test_plot_model_data(data, plot):
     """Tests the plot_model functionality on original dataset
     NOTE: Want to show multiplicative plot here so can not take data with negative values
     """
     exp = TSForecastingExperiment()
     fh = np.arange(1, 13)
     fold = 2
-    sp = 1 if isinstance(data.index, pd.RangeIndex) else None
 
     ######################
     # OOP Approach ####
@@ -67,7 +66,6 @@ def testplot_model_data(data, plot):
         fold_strategy="sliding",
         verbose=False,
         session_id=42,
-        seasonal_period=sp,
     )
 
     exp.plot_model(plot=plot)
@@ -84,7 +82,6 @@ def testplot_model_data(data, plot):
         fold_strategy="expanding",
         session_id=42,
         n_jobs=-1,
-        seasonal_period=sp,
     )
     plot_model(plot=plot)
 
@@ -92,7 +89,7 @@ def testplot_model_data(data, plot):
 @pytest.mark.parametrize("model_name", _model_names_for_plots)
 @pytest.mark.parametrize("data", _data_with_without_period_index)
 @pytest.mark.parametrize("plot", _ALL_PLOTS_ESTIMATOR)
-def testplot_model_estimator(model_name, data, plot):
+def test_plot_model_estimator(model_name, data, plot):
     """Tests the plot_model functionality on estimators
     NOTE: Want to show multiplicative plot here so can not take data with negative values
     """
@@ -100,8 +97,6 @@ def testplot_model_estimator(model_name, data, plot):
 
     fh = np.arange(1, 13)
     fold = 2
-
-    sp = 1 if isinstance(data.index, pd.RangeIndex) else None
 
     ######################
     # OOP Approach ####
@@ -114,7 +109,6 @@ def testplot_model_estimator(model_name, data, plot):
         fold_strategy="sliding",
         verbose=False,
         session_id=42,
-        seasonal_period=sp,
     )
 
     model = exp.create_model(model_name)
@@ -132,14 +126,13 @@ def testplot_model_estimator(model_name, data, plot):
         fold_strategy="expanding",
         session_id=42,
         n_jobs=-1,
-        seasonal_period=sp,
     )
     model = create_model(model_name)
     plot_model(estimator=model, plot=plot)
 
 
 @pytest.mark.parametrize("plot", _ALL_PLOTS_ESTIMATOR_NOT_DATA)
-def testplot_model_data_raises(load_pos_and_neg_data, plot):
+def test_plot_model_data_raises(load_pos_and_neg_data, plot):
     """Tests the plot_model functionality when it raises an exception
     on data plots (i.e. estimator is not passed)
     """
@@ -175,7 +168,7 @@ def testplot_model_data_raises(load_pos_and_neg_data, plot):
 
 
 @pytest.mark.parametrize("data", _data_with_without_period_index)
-def testplot_model_customization(data):
+def test_plot_model_customization(data):
     """Tests the customization of plot_model
     NOTE: Want to show multiplicative plot here so can not take data with negative values
     """
@@ -184,8 +177,6 @@ def testplot_model_customization(data):
     fh = np.arange(1, 13)
     fold = 2
 
-    sp = 1 if isinstance(data.index, pd.RangeIndex) else None
-
     exp.setup(
         data=data,
         fh=fh,
@@ -193,7 +184,6 @@ def testplot_model_customization(data):
         fold_strategy="sliding",
         verbose=False,
         session_id=42,
-        seasonal_period=sp,
     )
 
     model = exp.create_model("naive")
@@ -218,7 +208,7 @@ def testplot_model_customization(data):
 
 @pytest.mark.parametrize("data", _data_with_without_period_index)
 @pytest.mark.parametrize("plot", _ALL_PLOTS_DATA)
-def testplot_model_return_data_original_data(data, plot):
+def test_plot_model_return_data_original_data(data, plot):
     """Tests whether the return_data parameter of the plot_model function works
     properly or not for the original data
     """
@@ -227,8 +217,6 @@ def testplot_model_return_data_original_data(data, plot):
     fh = np.arange(1, 13)
     fold = 2
 
-    sp = 1 if isinstance(data.index, pd.RangeIndex) else None
-
     exp.setup(
         data=data,
         fh=fh,
@@ -236,7 +224,6 @@ def testplot_model_return_data_original_data(data, plot):
         fold_strategy="sliding",
         verbose=False,
         session_id=42,
-        seasonal_period=sp,
     )
 
     plot_data = exp.plot_model(plot=plot, return_data=True)
@@ -248,7 +235,7 @@ def testplot_model_return_data_original_data(data, plot):
 @pytest.mark.parametrize("data", _data_with_without_period_index)
 @pytest.mark.parametrize("model_name", _model_names_for_plots)
 @pytest.mark.parametrize("plot", _ALL_PLOTS_ESTIMATOR)
-def testplot_model_return_data_estimator(data, model_name, plot):
+def test_plot_model_return_data_estimator(data, model_name, plot):
     """Tests whether the return_data parameter of the plot_model function works
     properly or not for the estimator
     """
@@ -257,8 +244,6 @@ def testplot_model_return_data_estimator(data, model_name, plot):
     fh = np.arange(1, 13)
     fold = 2
 
-    sp = 1 if isinstance(data.index, pd.RangeIndex) else None
-
     exp.setup(
         data=data,
         fh=fh,
@@ -266,7 +251,6 @@ def testplot_model_return_data_estimator(data, model_name, plot):
         fold_strategy="sliding",
         verbose=False,
         session_id=42,
-        seasonal_period=sp,
     )
 
     model = exp.create_model(model_name)
