@@ -256,7 +256,7 @@ def test_sp_to_use_using_auto():
         session_id=42,
     )
     assert exp.seasonal_period == [12, 24, 36, 11, 48]
-    assert exp.all_sp_values == [12, 11]
+    assert exp.all_sp_values == [12, 24]
     assert exp.primary_sp_to_use == 12
 
     # 1.2.2 Multiple Seasonalities > tested and detected ----
@@ -268,7 +268,7 @@ def test_sp_to_use_using_auto():
         session_id=42,
     )
     assert exp.seasonal_period == [12, 24, 36, 11, 48]
-    assert exp.all_sp_values == [12, 11]
+    assert exp.all_sp_values == [12, 24, 36, 11, 48]
     assert exp.primary_sp_to_use == 12
 
 

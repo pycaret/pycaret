@@ -679,10 +679,14 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         """
         self.logger.info("Set up Seasonal Period.")
 
+        skip_autocorrelation_test = False
+
         # Set the seasonal periods if not provided ----
         if seasonal_period is None:
             if self.sp_detection == "auto":
                 _, seasonal_period, _ = auto_detect_sp(y=self.y_transformed)
+                # Test is already done in detection process so we should skip further tests
+                skip_autocorrelation_test = True
             elif self.sp_detection == "index":
                 seasonal_period = self.data.index.freqstr
 
@@ -696,10 +700,13 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         #     will not be detected properly).
         # (2) The actual forecaster will see transformed values of y for training.
         #     Hence, these transformed values should be used to determine seasonality.
-        seasonality_test_results = [
-            autocorrelation_seasonality_test(self.y_transformed, sp)
-            for sp in seasonal_period
-        ]
+        if skip_autocorrelation_test:
+            seasonality_test_results = [True for sp in seasonal_period]
+        else:
+            seasonality_test_results = [
+                autocorrelation_seasonality_test(self.y_transformed, sp)
+                for sp in seasonal_period
+            ]
         self.seasonality_present = any(seasonality_test_results)
         sp_values_and_test_result = zip(seasonal_period, seasonality_test_results)
 
