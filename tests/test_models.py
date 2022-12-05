@@ -1,9 +1,20 @@
+import numba
+import pytest
+
 import pycaret.datasets
 from pycaret.anomaly import AnomalyExperiment
 from pycaret.classification import ClassificationExperiment
 from pycaret.clustering import ClusteringExperiment
 from pycaret.regression import RegressionExperiment
 from pycaret.time_series import TSForecastingExperiment
+
+
+@pytest.fixture
+def disable_numba():
+    old = numba.config.DISABLE_JIT
+    numba.config.DISABLE_JIT = True
+    yield
+    numba.config.DISABLE_JIT = old
 
 
 def check_exp(exp, **kwargs):
@@ -56,7 +67,7 @@ def test_model_equality_clustering():
     check_exp(exp)
 
 
-def test_model_equality_anomaly():
+def test_model_equality_anomaly(disable_numba):
     exp = AnomalyExperiment()
     exp.setup(
         pycaret.datasets.get_data("anomaly"),
