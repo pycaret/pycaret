@@ -14,7 +14,12 @@ from pycaret.time_series import TSForecastingExperiment
 
 @pytest.fixture
 def disable_numba():
-    """Forces numba to use the original python functions."""
+    """
+    Forces numba to use the original python functions.
+
+    This is required as numba code in pyod (anomaly) seems to not work
+    correctly leading to exceptions if ran from within pytest.
+    """
     old = numba.config.DISABLE_JIT
     # This will not affect already compiled functions...
     numba.config.DISABLE_JIT = True
