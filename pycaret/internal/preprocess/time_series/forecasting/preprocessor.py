@@ -6,9 +6,9 @@ from sklearn.preprocessing import (
     RobustScaler,
     StandardScaler,
 )
+from sktime.transformations.compose import ColumnwiseTransformer
 from sktime.transformations.series.adapt import TabularToSeriesAdaptor
 from sktime.transformations.series.boxcox import BoxCoxTransformer, LogTransformer
-from sktime.transformations.series.compose import ColumnwiseTransformer
 from sktime.transformations.series.cos import CosineTransformer
 from sktime.transformations.series.exponent import ExponentTransformer, SqrtTransformer
 from sktime.transformations.series.impute import Imputer
