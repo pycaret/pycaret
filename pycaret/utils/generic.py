@@ -1,7 +1,7 @@
 import functools
 import inspect
 import warnings
-from collections import Mapping
+from collections.abc import Mapping
 from copy import deepcopy
 from enum import Enum, auto
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Set, Tuple, Union
@@ -1279,6 +1279,7 @@ class LazyReadOnlyMapping(Mapping):
         self._keys = self._experiment._variable_keys.union(
             self._experiment._property_keys
         )
+        self._keys.difference_update({"variables"})
         self._cache = {}
 
     def __getitem__(self, key):

@@ -21,6 +21,7 @@ LOGGER = get_logger()
 
 
 class _PyCaretExperiment:
+    # Will not include those attributes in the pickle file
     _attributes_to_not_save = ["data", "test_data", "data_func"]
 
     def __init__(self) -> None:
@@ -382,6 +383,7 @@ class _PyCaretExperiment:
         cls,
         path_or_file: Union[os.PathLike, Path, BinaryIO],
         cloudpickle_kwargs=None,
+        preprocess_data: bool = True,
         **kwargs,
     ):
         cloudpickle_kwargs = cloudpickle_kwargs or {}
@@ -406,9 +408,16 @@ class _PyCaretExperiment:
             }
         )
 
-        loaded_exp.setup(
-            **setup_params,
-        )
+        if preprocess_data:
+            print(setup_params)
+            loaded_exp.setup(
+                **setup_params,
+            )
+        else:
+            for key, value in new_params.items():
+                setattr(loaded_exp, key, value)
+            original_state["_setup_params"] = setup_params
+
         loaded_exp.__dict__.update(original_state)
         return loaded_exp
 
@@ -418,11 +427,13 @@ class _PyCaretExperiment:
         path_or_file: Union[os.PathLike, Path, BinaryIO],
         data: Optional[DATAFRAME_LIKE] = None,
         data_func: Optional[Callable[[], DATAFRAME_LIKE]] = None,
+        preprocess_data: bool = True,
         **cloudpickle_kwargs,
     ) -> "_PyCaretExperiment":
         return cls._load_experiment(
             path_or_file,
             cloudpickle_kwargs=cloudpickle_kwargs,
+            preprocess_data=preprocess_data,
             data=data,
             data_func=data_func,
         )
@@ -459,276 +470,36 @@ class _PyCaretExperiment:
         return self.data[[c for c in self.data.columns if c not in self._fxs["Ignore"]]]
 
     @property
-    def train(self):
-        """Training set."""
-        return self.dataset.loc[self.idx[0], :]
-
-    @property
-    def test(self):
-        """Test set."""
-        if self._ml_usecase != MLUsecase.TIME_SERIES:
-            return self.dataset.loc[self.idx[1], :]
-        else:
-            # Return the y_test indices not X_test indices.
-            # X_test indices are expanded indices for handling FH with gaps.
-            # But if we return X_test indices, then we will get expanded test
-            # indices even for univariate time series without exogenous variables
-            # which would be confusing. Hence, we return y_test indices here and if
-            # we want to get X_test indices, then we use self.X_test directly.
-            # Refer:
-            # https://github.com/sktime/sktime/issues/2598#issuecomment-1203308542
-            # https://github.com/sktime/sktime/blob/4164639e1c521b112711c045d0f7e63013c1e4eb/sktime/forecasting/model_evaluation/_functions.py#L196
-            return self.dataset.loc[self.idx[1], :]
-
-    @property
     def X(self):
         """Feature set."""
-        if self._ml_usecase != MLUsecase.TIME_SERIES:
-            if self.target_param:
-                return self.dataset.drop(self.target_param, axis=1)
-            else:
-                return self.dataset  # For unsupervised: dataset == X
-        else:
-            X = self.dataset.drop(self.target_param, axis=1)
-            if X.empty and self.fe_exogenous is None:
-                return None
-            else:
-                # If X is not empty or empty but self.fe_exogenous is provided
-                # Return X instead of None, since the index can be used to
-                # generate features using self.fe_exogenous
-                return X
-
-    @property
-    def y(self):
-        """Target column."""
-        if self.target_param:
-            return self.dataset[self.target_param]
-
-    @property
-    def X_train(self):
-        """Feature set of the training set."""
-        if self.target_param is not None:
-            # Supervised Learning
-            X_train = self.train.drop(self.target_param, axis=1)
-        else:
-            # Unsupervised Learning
-            X_train = self.train
-        if self._ml_usecase != MLUsecase.TIME_SERIES:
-            return X_train
-        else:
-            if X_train.empty and self.fe_exogenous is None:
-                return None
-            else:
-                # If X_train is not empty or empty but self.fe_exogenous is provided
-                # Return X_train instead of None, since the index can be used to
-                # generate features using self.fe_exogenous
-                return X_train
-
-    @property
-    def X_test(self):
-        """Feature set of the test set."""
-        if self._ml_usecase != MLUsecase.TIME_SERIES:
-            if self.target_param is not None:
-                X_test = self.test.drop(self.target_param, axis=1)
-            else:
-                # Unsupervised Learning
-                X_test = self.test
-        else:
-            # Use index for y_test (idx 2) to get the data
-            test = self.dataset.loc[self.idx[2], :]
-            X_test = test.drop(self.target_param, axis=1)
-
-        if self._ml_usecase != MLUsecase.TIME_SERIES:
-            return X_test
-        else:
-            if X_test.empty and self.fe_exogenous is None:
-                return None
-            else:
-                # If X_test is not empty or empty but self.fe_exogenous is provided
-                # Return X_test instead of None, since the index can be used to
-                # generate features using self.fe_exogenous
-                return X_test
-
-    @property
-    def y_train(self):
-        """Target column of the training set."""
-        if self.target_param:
-            return self.train[self.target_param]
-
-    @property
-    def y_test(self):
-        """Target column of the test set."""
-        if self._ml_usecase != MLUsecase.TIME_SERIES:
-            if self.target_param:
-                return self.test[self.target_param]
-        else:
-            if self.target_param:
-                # Use index for y_test (idx 1) to get the data
-                test = self.dataset.loc[self.idx[1], :]
-                return test[self.target_param]
+        return self.dataset
 
     @property
     def dataset_transformed(self):
         """Transformed dataset."""
-        if self._ml_usecase != MLUsecase.TIME_SERIES:
-            if self.target_param:
-                return pd.concat([self.train_transformed, self.test_transformed])
-            else:
-                return self.train_transformed
-        else:
-            # Use fully trained pipeline to get the requested data
-            return pd.concat(
-                [
-                    *_pipeline_transform(
-                        pipeline=self.pipeline_fully_trained, y=self.y, X=self.X
-                    )
-                ],
-                axis=1,
-            )
+        return self.train_transformed
 
     @property
-    def train_transformed(self):
-        """Transformed training set."""
-        if self._ml_usecase != MLUsecase.TIME_SERIES:
-            if self.target_param:
-                return pd.concat(
-                    [self.X_train_transformed, self.y_train_transformed],
-                    axis=1,
-                )
-            else:
-                return self.X_train_transformed
-        else:
-            # Use pipeline trained on training data only to get the requested data
-            # In time series, the order of arguments and returns may be reversed.
-            return pd.concat(
-                [
-                    *_pipeline_transform(
-                        pipeline=self.pipeline, y=self.y_train, X=self.X_train
-                    )
-                ],
-                axis=1,
-            )
+    def X_train(self):
+        """Feature set of the training set."""
+        return self.train
 
     @property
-    def test_transformed(self):
-        """Transformed test set."""
-        if self._ml_usecase != MLUsecase.TIME_SERIES:
-            return pd.concat(
-                [self.X_test_transformed, self.y_test_transformed],
-                axis=1,
-            )
-        else:
-            # When transforming the test set, we can and should use all data before that
-            # In time series, the order of arguments and returns may be reversed.
-            all_data = pd.concat(
-                [
-                    *_pipeline_transform(
-                        pipeline=self.pipeline_fully_trained,
-                        y=self.y,
-                        X=self.X,
-                    )
-                ],
-                axis=1,
-            )
-            # Return the y_test indices not X_test indices.
-            # X_test indices are expanded indices for handling FH with gaps.
-            # But if we return X_test indices, then we will get expanded test
-            # indices even for univariate time series without exogenous variables
-            # which would be confusing. Hence, we return y_test indices here and if
-            # we want to get X_test indices, then we use self.X_test directly.
-            # Refer:
-            # https://github.com/sktime/sktime/issues/2598#issuecomment-1203308542
-            # https://github.com/sktime/sktime/blob/4164639e1c521b112711c045d0f7e63013c1e4eb/sktime/forecasting/model_evaluation/_functions.py#L196
-            return all_data.loc[self.idx[1]]
-
-    @property
-    def X_transformed(self):
-        """Transformed feature set."""
-        if self._ml_usecase != MLUsecase.TIME_SERIES:
-            if self.target_param:
-                return pd.concat([self.X_train_transformed, self.X_test_transformed])
-            else:
-                return self.X_train_transformed
-        else:
-            # Use fully trained pipeline to get the requested data
-            # In time series, the order of arguments and returns may be reversed.
-            return _pipeline_transform(
-                pipeline=self.pipeline_fully_trained, y=self.y, X=self.X
-            )[1]
-
-    @property
-    def y_transformed(self):
-        """Transformed target column."""
-        if self._ml_usecase != MLUsecase.TIME_SERIES:
-            return pd.concat([self.y_train_transformed, self.y_test_transformed])
-        else:
-            # Use fully trained pipeline to get the requested data
-            # In time series, the order of arguments and returns may be reversed.
-            return _pipeline_transform(
-                pipeline=self.pipeline_fully_trained, y=self.y, X=self.X
-            )[0]
+    def train(self):
+        """Training set."""
+        return self.dataset
 
     @property
     def X_train_transformed(self):
         """Transformed feature set of the training set."""
-        if self._ml_usecase != MLUsecase.TIME_SERIES:
-            if self.target_param:
-                return self.pipeline.transform(
-                    X=self.X_train,
-                    y=self.y_train,
-                    filter_train_only=False,
-                )[0]
-            else:
-                return self.pipeline.transform(self.X_train, filter_train_only=False)
-        else:
-            # Use pipeline trained on training data only to get the requested data
-            # In time series, the order of arguments and returns may be reversed.
-            return _pipeline_transform(
-                pipeline=self.pipeline, y=self.y_train, X=self.X_train
-            )[1]
+        return self.pipeline.transform(self.X_train, filter_train_only=False)
 
     @property
-    def X_test_transformed(self):
-        """Transformed feature set of the test set."""
-        if self._ml_usecase != MLUsecase.TIME_SERIES:
-            return self.pipeline.transform(self.X_test)
-        else:
-            # In time series, the order of arguments and returns may be reversed.
-            # When transforming the test set, we can and should use all data before that
-            _, X = _pipeline_transform(
-                pipeline=self.pipeline_fully_trained, y=self.y, X=self.X
-            )
-
-            if X is None:
-                return None
-            else:
-                return X.loc[self.idx[2]]
+    def train_transformed(self):
+        """Transformed training set."""
+        return self.X_train_transformed
 
     @property
-    def y_train_transformed(self):
-        """Transformed target column of the training set."""
-        if self._ml_usecase != MLUsecase.TIME_SERIES:
-            return self.pipeline.transform(
-                X=self.X_train,
-                y=self.y_train,
-                filter_train_only=False,
-            )[1]
-        else:
-            # Use pipeline trained on training data only to get the requested data
-            # In time series, the order of arguments and returns may be reversed.
-            return _pipeline_transform(
-                pipeline=self.pipeline, y=self.y_train, X=self.X_train
-            )[0]
-
-    @property
-    def y_test_transformed(self):
-        """Transformed target column of the test set."""
-        if self._ml_usecase != MLUsecase.TIME_SERIES:
-            return self.pipeline.transform(y=self.y_test)
-        else:
-            # In time series, the order of arguments and returns may be reversed.
-            # When transforming the test set, we can and should use all data before that
-            y, _ = _pipeline_transform(
-                pipeline=self.pipeline_fully_trained, y=self.y, X=self.X
-            )
-            return y.loc[self.idx[1]]
+    def X_transformed(self):
+        """Transformed feature set."""
+        return self.X_train_transformed

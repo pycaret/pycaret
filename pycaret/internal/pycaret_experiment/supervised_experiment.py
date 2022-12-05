@@ -5580,12 +5580,113 @@ class _SupervisedExperiment(_TabularExperiment):
         data: Optional[DATAFRAME_LIKE] = None,
         data_func: Optional[Callable[[], DATAFRAME_LIKE]] = None,
         test_data: Optional[DATAFRAME_LIKE] = None,
+        preprocess_data: bool = True,
         **cloudpickle_kwargs,
     ) -> "_SupervisedExperiment":
         return cls._load_experiment(
             path_or_file,
             cloudpickle_kwargs=cloudpickle_kwargs,
+            preprocess_data=preprocess_data,
             data=data,
             data_func=data_func,
             test_data=test_data,
         )
+
+    @property
+    def X(self):
+        """Feature set."""
+        return self.dataset.drop(self.target_param, axis=1)
+
+    @property
+    def dataset_transformed(self):
+        """Transformed dataset."""
+        return pd.concat([self.train_transformed, self.test_transformed])
+
+    @property
+    def X_train_transformed(self):
+        """Transformed feature set of the training set."""
+        return self.pipeline.transform(
+            X=self.X_train,
+            y=self.y_train,
+            filter_train_only=False,
+        )[0]
+
+    @property
+    def train_transformed(self):
+        """Transformed training set."""
+        return pd.concat(
+            [self.X_train_transformed, self.y_train_transformed],
+            axis=1,
+        )
+
+    @property
+    def X_transformed(self):
+        """Transformed feature set."""
+        return pd.concat([self.X_train_transformed, self.X_test_transformed])
+
+    @property
+    def y(self):
+        """Target column."""
+        return self.dataset[self.target_param]
+
+    @property
+    def X_train(self):
+        """Feature set of the training set."""
+        return self.train.drop(self.target_param, axis=1)
+
+    @property
+    def X_test(self):
+        """Feature set of the test set."""
+        return self.test.drop(self.target_param, axis=1)
+
+    @property
+    def train(self):
+        """Training set."""
+        return self.dataset.loc[self.idx[0], :]
+
+    @property
+    def test(self):
+        """Test set."""
+        return self.dataset.loc[self.idx[1], :]
+
+    @property
+    def y_train(self):
+        """Target column of the training set."""
+        return self.train[self.target_param]
+
+    @property
+    def y_test(self):
+        """Target column of the test set."""
+        return self.test[self.target_param]
+
+    @property
+    def test_transformed(self):
+        """Transformed test set."""
+        return pd.concat(
+            [self.X_test_transformed, self.y_test_transformed],
+            axis=1,
+        )
+
+    @property
+    def y_transformed(self):
+        """Transformed target column."""
+        return pd.concat([self.y_train_transformed, self.y_test_transformed])
+
+    @property
+    def X_test_transformed(self):
+        """Transformed feature set of the test set."""
+        return self.pipeline.transform(self.X_test)
+
+    @property
+    def y_train_transformed(self):
+        """Transformed target column of the training set."""
+        return self.pipeline.transform(
+            X=self.X_train,
+            y=self.y_train,
+            filter_train_only=False,
+        )[1]
+
+    @property
+    def y_test_transformed(self):
+        """Transformed target column of the test set."""
+        return self.pipeline.transform(y=self.y_test)
