@@ -3,7 +3,7 @@ import gc
 import logging
 import time
 import traceback
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, List, Optional, Union
 
 import numpy as np  # type: ignore
 import pandas as pd
@@ -85,7 +85,8 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
 
     def setup(
         self,
-        data: DATAFRAME_LIKE,
+        data: Optional[DATAFRAME_LIKE] = None,
+        data_func: Optional[Callable[[], Union[pd.Series, pd.DataFrame]]] = None,
         index: Union[bool, int, str, SEQUENCE_LIKE] = False,
         ordinal_features: Optional[Dict[str, list]] = None,
         numeric_features: Optional[List[str]] = None,
@@ -163,6 +164,13 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
             is not a pandas dataframe, it's converted to one using default column
             names.
 
+
+        data_func: Callable[[], DATAFRAME_LIKE] = None
+            The function that generate ``data`` (the dataframe-like input). This
+            is useful when the dataset is large, and you need parallel operations
+            such as ``compare_models``. It can avoid broadcasting large dataset
+            from driver to workers. Notice one and only one of ``data`` and
+            ``data_func`` must be set.
 
         index: bool, int, str or sequence, default = False
             Handle indices in the `data` dataframe.
@@ -503,6 +511,13 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
 
         """
 
+        self._register_setup_params(dict(locals()))
+
+        if (data is None and data_func is None) or (
+            data is not None and data_func is not None
+        ):
+            raise ValueError("One and only one of data and data_func must be set")
+
         # Setup initialization ===================================== >>
 
         runtime_start = time.time()
@@ -533,6 +548,8 @@ class _UnsupervisedExperiment(_TabularExperiment, Preprocessor):
                     )
 
         # Set up data ============================================== >>
+        if data_func is not None:
+            data = data_func()
 
         self.index = index
         self.data = self._set_index(self._prepare_dataset(data))

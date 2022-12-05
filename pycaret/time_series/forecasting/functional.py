@@ -81,7 +81,7 @@ def setup(
     data_func: Callable[[], Union[pd.Series, pd.DataFrame]] = None
             The function that generate ``data`` (the dataframe-like input). This
             is useful when the dataset is large, and you need parallel operations
-            such as ``compare_models``. It can avoid boradcasting large dataset
+            such as ``compare_models``. It can avoid broadcasting large dataset
             from driver to workers. Notice one and only one of ``data`` and
             ``data_func`` must be set.
 
@@ -2005,6 +2005,16 @@ def set_current_experiment(experiment: TSForecastingExperiment):
             f"experiment must be a PyCaret TSForecastingExperiment object, got {type(experiment)}."
         )
     _CURRENT_EXPERIMENT = experiment
+
+
+def get_current_experiment() -> TSForecastingExperiment:
+    """
+    Obtain the current experiment object.
+
+    Returns:
+        Current TSForecastingExperiment
+    """
+    return _CURRENT_EXPERIMENT
 
 
 @check_if_global_is_not_none(globals(), _CURRENT_EXPERIMENT_DECORATOR_DICT)

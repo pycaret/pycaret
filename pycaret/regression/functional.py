@@ -119,7 +119,7 @@ def setup(
     data_func: Callable[[], DATAFRAME_LIKE] = None
         The function that generate ``data`` (the dataframe-like input). This
         is useful when the dataset is large, and you need parallel operations
-        such as ``compare_models``. It can avoid boradcasting large dataset
+        such as ``compare_models``. It can avoid broadcasting large dataset
         from driver to workers. Notice one and only one of ``data`` and
         ``data_func`` must be set.
 
@@ -2993,3 +2993,13 @@ def set_current_experiment(experiment: RegressionExperiment):
             f"experiment must be a PyCaret RegressionExperiment object, got {type(experiment)}."
         )
     _CURRENT_EXPERIMENT = experiment
+
+
+def get_current_experiment() -> RegressionExperiment:
+    """
+    Obtain the current experiment object.
+
+    Returns:
+        Current RegressionExperiment
+    """
+    return _CURRENT_EXPERIMENT

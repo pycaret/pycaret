@@ -4,6 +4,7 @@ from pycaret.anomaly.functional import (
     deploy_model,
     evaluate_model,
     get_config,
+    get_current_experiment,
     get_logs,
     load_config,
     load_model,
@@ -40,4 +41,5 @@ __all__ = [
     "save_config",
     "load_config",
     "set_current_experiment",
+    "get_current_experiment",
 ]

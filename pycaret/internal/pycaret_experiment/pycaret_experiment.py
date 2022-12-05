@@ -1,8 +1,11 @@
+import inspect
+import os
 import warnings
 from collections import defaultdict
-from typing import Any, Dict, Optional
+from pathlib import Path
+from typing import Any, BinaryIO, Callable, Dict, Optional, Union
 
-import joblib
+import cloudpickle
 import pandas as pd
 
 import pycaret.internal.patches.sklearn
@@ -10,6 +13,7 @@ import pycaret.internal.patches.yellowbrick
 import pycaret.internal.persistence
 from pycaret import show_versions
 from pycaret.internal.logging import get_logger
+from pycaret.utils.constants import DATAFRAME_LIKE
 from pycaret.utils.generic import LazyReadOnlyMapping, MLUsecase
 from pycaret.utils.time_series.forecasting.pipeline import _pipeline_transform
 
@@ -17,6 +21,8 @@ LOGGER = get_logger()
 
 
 class _PyCaretExperiment:
+    _attributes_to_not_save = ["data", "test_data", "data_func"]
+
     def __init__(self) -> None:
         self._ml_usecase = None
         self._available_plots = {}
@@ -360,95 +366,75 @@ class _PyCaretExperiment:
         )
         return
 
-    def save_config(self, file_name: str) -> None:
-        """
-        This function save all global variables to a pickle file, allowing to
-        later resume without rerunning the ``setup``.
+    def __getstate__(self) -> dict:
+        state = self.__dict__.copy()
 
+        for key in self._attributes_to_not_save:
+            state.pop(key, None)
+        if state["_setup_params"]:
+            state["_setup_params"] = state["_setup_params"].copy()
+            for key in self._attributes_to_not_save:
+                state["_setup_params"].pop(key, None)
+        return state
 
-        Example
-        -------
-        >>> from pycaret.datasets import get_data
-        >>> juice = get_data('juice')
-        >>> from pycaret.classification import *
-        >>> exp_name = setup(data = juice,  target = 'Purchase')
-        >>> save_config('myvars.pkl')
-
-
-        Returns:
-            None
-
-        """
-        function_params_str = ", ".join(
-            [f"{k}={v}" for k, v in locals().items() if not k == "globals_d"]
+    @classmethod
+    def _load_experiment(
+        cls,
+        path_or_file: Union[os.PathLike, Path, BinaryIO],
+        cloudpickle_kwargs=None,
+        **kwargs,
+    ):
+        cloudpickle_kwargs = cloudpickle_kwargs or {}
+        try:
+            loaded_exp: _PyCaretExperiment = cloudpickle.load(
+                path_or_file, **cloudpickle_kwargs
+            )
+        except TypeError:
+            with open(path_or_file, mode="rb") as f:
+                loaded_exp: _PyCaretExperiment = cloudpickle.load(
+                    f, **cloudpickle_kwargs
+                )
+        original_state = loaded_exp.__dict__.copy()
+        new_params = kwargs
+        setup_params = loaded_exp._setup_params or {}
+        setup_params = setup_params.copy()
+        setup_params.update(
+            {
+                k: v
+                for k, v in new_params.items()
+                if k in inspect.signature(cls.setup).parameters
+            }
         )
 
-        self.logger.info("Initializing save_config()")
-        self.logger.info(f"save_config({function_params_str})")
-
-        globals_to_ignore = {
-            "_all_models",
-            "_all_models_internal",
-            "_all_metrics",
-            "_master_model_container",
-            "_display_container",
-        }
-
-        globals_to_dump = {
-            k: v
-            for k, v in self.variables.items()
-            if k not in globals_to_ignore
-            and not isinstance(getattr(self.__class__, k, None), property)
-            and not k.startswith("_")
-        }
-
-        joblib.dump(globals_to_dump, file_name)
-
-        self.logger.info(f"Global variables dumped to {file_name}")
-        self.logger.info(
-            "save_config() successfully completed......................................"
+        loaded_exp.setup(
+            **setup_params,
         )
-        return
+        loaded_exp.__dict__.update(original_state)
+        return loaded_exp
 
-    def load_config(self, file_name: str) -> None:
-        """
-        This function loads global variables from a pickle file into Python
-        environment.
-
-
-        Example
-        -------
-        >>> from pycaret.classification import load_config
-        >>> load_config('myvars.pkl')
-
-
-        Returns:
-            Global variables
-
-        """
-        self._check_setup_ran()
-
-        function_params_str = ", ".join(
-            [f"{k}={v}" for k, v in locals().items() if not k == "globals_d"]
+    @classmethod
+    def load_experiment(
+        cls,
+        path_or_file: Union[os.PathLike, Path, BinaryIO],
+        data: Optional[DATAFRAME_LIKE] = None,
+        data_func: Optional[Callable[[], DATAFRAME_LIKE]] = None,
+        **cloudpickle_kwargs,
+    ) -> "_PyCaretExperiment":
+        return cls._load_experiment(
+            path_or_file,
+            cloudpickle_kwargs=cloudpickle_kwargs,
+            data=data,
+            data_func=data_func,
         )
 
-        self.logger.info("Initializing load_config()")
-        self.logger.info(f"load_config({function_params_str})")
-
-        loaded_globals = joblib.load(file_name)
-
-        self.logger.info(f"Global variables loaded from {file_name}")
-
-        for k, v in loaded_globals.items():
-            self.set_config(k, v)
-            self.logger.info(f"Global variable: {k} updated to {v}")
-
-        self.logger.info(f"Global variables set to match those in {file_name}")
-
-        self.logger.info(
-            "load_config() successfully completed......................................"
-        )
-        return
+    def save_experiment(
+        self, path_or_file: Union[os.PathLike, Path, BinaryIO], **cloudpickle_kwargs
+    ):
+        try:
+            cloudpickle.dump(self, path_or_file, **cloudpickle_kwargs)
+        except TypeError:
+            with open(path_or_file, mode="wb") as f:
+                cloudpickle.dump(self, f, **cloudpickle_kwargs)
 
     def pull(self, pop=False) -> pd.DataFrame:  # added in pycaret==2.2.0
         """

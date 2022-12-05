@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, List, Optional, Union
 
 import pandas as pd
 from joblib.memory import Memory
@@ -20,7 +20,8 @@ _CURRENT_EXPERIMENT_DECORATOR_DICT = {
 
 
 def setup(
-    data: DATAFRAME_LIKE,
+    data: Optional[DATAFRAME_LIKE] = None,
+    data_func: Optional[Callable[[], DATAFRAME_LIKE]] = None,
     index: Union[bool, int, str, SEQUENCE_LIKE] = False,
     ordinal_features: Optional[Dict[str, list]] = None,
     numeric_features: Optional[List[str]] = None,
@@ -95,6 +96,14 @@ def setup(
         number of samples and n_features is the number of features. If data
         is not a pandas dataframe, it's converted to one using default column
         names.
+
+
+    data_func: Callable[[], DATAFRAME_LIKE] = None
+        The function that generate ``data`` (the dataframe-like input). This
+        is useful when the dataset is large, and you need parallel operations
+        such as ``compare_models``. It can avoid broadcasting large dataset
+        from driver to workers. Notice one and only one of ``data`` and
+        ``data_func`` must be set.
 
 
     index: bool, int, str or sequence, default = False
@@ -434,6 +443,7 @@ def setup(
     set_current_experiment(exp)
     return exp.setup(
         data=data,
+        data_func=data_func,
         index=index,
         ordinal_features=ordinal_features,
         numeric_features=numeric_features,
@@ -1341,3 +1351,13 @@ def set_current_experiment(experiment: AnomalyExperiment):
             f"experiment must be a PyCaret AnomalyExperiment object, got {type(experiment)}."
         )
     _CURRENT_EXPERIMENT = experiment
+
+
+def get_current_experiment() -> AnomalyExperiment:
+    """
+    Obtain the current experiment object.
+
+    Returns:
+        Current AnomalyExperiment
+    """
+    return _CURRENT_EXPERIMENT

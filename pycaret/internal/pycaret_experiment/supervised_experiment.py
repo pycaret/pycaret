@@ -6,7 +6,8 @@ import traceback
 import warnings
 from copy import copy, deepcopy
 from functools import partial
-from typing import Any, Dict, List, Optional, Set, Tuple, Union
+from pathlib import Path
+from typing import Any, BinaryIO, Callable, Dict, List, Optional, Set, Tuple, Union
 from unittest.mock import patch
 
 import matplotlib.pyplot as plt
@@ -53,7 +54,7 @@ from pycaret.internal.pycaret_experiment.tabular_experiment import _TabularExper
 from pycaret.internal.tunable import TunableMixin
 from pycaret.internal.validation import is_fitted, is_sklearn_cv_generator
 from pycaret.utils._dependencies import _check_soft_dependencies
-from pycaret.utils.constants import LABEL_COLUMN, SCORE_COLUMN
+from pycaret.utils.constants import DATAFRAME_LIKE, LABEL_COLUMN, SCORE_COLUMN
 from pycaret.utils.generic import (
     MLUsecase,
     can_early_stop,
@@ -5571,3 +5572,20 @@ class _SupervisedExperiment(_TabularExperiment):
 
         suite = full_suite(**check_kwargs)
         return suite.run(train_dataset=ds_train, test_dataset=ds_test, model=estimator)
+
+    @classmethod
+    def load_experiment(
+        cls,
+        path_or_file: Union[os.PathLike, Path, BinaryIO],
+        data: Optional[DATAFRAME_LIKE] = None,
+        data_func: Optional[Callable[[], DATAFRAME_LIKE]] = None,
+        test_data: Optional[DATAFRAME_LIKE] = None,
+        **cloudpickle_kwargs,
+    ) -> "_SupervisedExperiment":
+        return cls._load_experiment(
+            path_or_file,
+            cloudpickle_kwargs=cloudpickle_kwargs,
+            data=data,
+            data_func=data_func,
+            test_data=test_data,
+        )

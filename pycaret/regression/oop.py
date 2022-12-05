@@ -178,7 +178,7 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
         data_func: Callable[[], DATAFRAME_LIKE] = None
             The function that generate ``data`` (the dataframe-like input). This
             is useful when the dataset is large, and you need parallel operations
-            such as ``compare_models``. It can avoid boradcasting large dataset
+            such as ``compare_models``. It can avoid broadcasting large dataset
             from driver to workers. Notice one and only one of ``data`` and
             ``data_func`` must be set.
 
@@ -666,9 +666,6 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
 
         runtime_start = time.time()
 
-        if data_func is not None:
-            data = data_func()
-
         self.all_allowed_engines = ALL_ALLOWED_ENGINES
 
         # Define parameter attrs
@@ -712,9 +709,14 @@ class RegressionExperiment(_SupervisedExperiment, Preprocessor):
 
         # Set up data ============================================== >>
 
+        if data_func is not None:
+            data = data_func()
+
         self.data = self._prepare_dataset(data, target)
         self.target_param = self.data.columns[-1]
         self.index = index
+        self.data_split_stratify = data_split_stratify
+        self.data_split_shuffle = data_split_shuffle
 
         self._prepare_train_test(
             train_size=train_size,
