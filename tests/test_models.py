@@ -1,5 +1,8 @@
+from unittest.mock import patch
+
 import numba
 import pytest
+from numba.core.dispatcher import Dispatcher
 
 import pycaret.datasets
 from pycaret.anomaly import AnomalyExperiment
@@ -11,9 +14,19 @@ from pycaret.time_series import TSForecastingExperiment
 
 @pytest.fixture
 def disable_numba():
+    """Forces numba to use the original python functions."""
     old = numba.config.DISABLE_JIT
+    # This will not affect already compiled functions...
     numba.config.DISABLE_JIT = True
-    yield
+
+    # ...which is why we force the Numba dispatcher to simply
+    # call the underlying python function for already compiled
+    # ones
+    def pyfunc_call(self, *args, **kwargs):
+        return self.py_func(*args, **kwargs)
+
+    with patch.object(Dispatcher, "__call__", pyfunc_call):
+        yield
     numba.config.DISABLE_JIT = old
 
 
