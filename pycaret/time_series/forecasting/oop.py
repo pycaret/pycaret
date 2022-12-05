@@ -5457,18 +5457,6 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         return pipeline_to_use
 
 
-class TimeSeriesExperiment(TSForecastingExperiment):
-    def __init__(self) -> None:
-        msg = (
-            "DeprecationWarning: TimeSeriesExperiment class will be removed in "
-            "a future release. Please import the following instead. \n"
-            ">>> from pycaret.time_series import TSForecastingExperiment"
-        )
-        warnings.warn(msg, DeprecationWarning)
-        print(msg)
-        super().__init__()
-
-
 def _validate_split_requested(split: str):
     """Checks that the spilt of data requested is one of the allowed types
     Allowed values are: ["all", "train", "test"]
