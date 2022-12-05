@@ -156,26 +156,26 @@ class AnomalyContainer(ModelContainer):
         return dict(d)
 
 
-# class ABODAnomalyContainer(AnomalyContainer):
-#     def __init__(self, experiment):
-#         get_logger()
-#         np.random.seed(experiment.seed)
-#         from pyod.models.abod import ABOD
+class ABODAnomalyContainer(AnomalyContainer):
+    def __init__(self, experiment):
+        get_logger()
+        np.random.seed(experiment.seed)
+        from pyod.models.abod import ABOD
 
-#         args = {}
-#         tune_args = {}
-#         tune_grid = {}
-#         tune_distributions = {}
+        args = {}
+        tune_args = {}
+        tune_grid = {}
+        tune_distributions = {}
 
-#         super().__init__(
-#             id="abod",
-#             name="Angle-base Outlier Detection",
-#             class_def=ABOD,
-#             args=args,
-#             tune_grid=tune_grid,
-#             tune_distribution=tune_distributions,
-#             tune_args=tune_args,
-#         )
+        super().__init__(
+            id="abod",
+            name="Angle-base Outlier Detection",
+            class_def=ABOD,
+            args=args,
+            tune_grid=tune_grid,
+            tune_distribution=tune_distributions,
+            tune_args=tune_args,
+        )
 
 
 class CBLOFAnomalyContainer(AnomalyContainer):
@@ -391,26 +391,26 @@ class MCDAnomalyContainer(AnomalyContainer):
         )
 
 
-# class SODAnomalyContainer(AnomalyContainer):
-#     def __init__(self, experiment):
-#         get_logger()
-#         np.random.seed(experiment.seed)
-#         from pyod.models.sod import SOD
+class SODAnomalyContainer(AnomalyContainer):
+    def __init__(self, experiment):
+        get_logger()
+        np.random.seed(experiment.seed)
+        from pyod.models.sod import SOD
 
-#         args = {}
-#         tune_args = {}
-#         tune_grid = {}
-#         tune_distributions = {}
+        args = {}
+        tune_args = {}
+        tune_grid = {}
+        tune_distributions = {}
 
-#         super().__init__(
-#             id="sod",
-#             name="Subspace Outlier Detection",
-#             class_def=SOD,
-#             args=args,
-#             tune_grid=tune_grid,
-#             tune_distribution=tune_distributions,
-#             tune_args=tune_args,
-#         )
+        super().__init__(
+            id="sod",
+            name="Subspace Outlier Detection",
+            class_def=SOD,
+            args=args,
+            tune_grid=tune_grid,
+            tune_distribution=tune_distributions,
+            tune_args=tune_args,
+        )
 
 
 class SOSAnomalyContainer(AnomalyContainer):
