@@ -1,4 +1,5 @@
 import os
+import uuid
 from copy import deepcopy
 from pathlib import Path
 
@@ -46,7 +47,7 @@ class WandbLogger(BaseLogger):
     def log_artifact(self, file, type=None):
         file_name, extension = None, ""
         file_pathlib = Path(file)
-        file_name = file_pathlib.stem.replace(" ", "_")
+        file_name = file_pathlib.stem.replace(" ", "_") + str(uuid.uuid1())[:8]
         extension = file_pathlib.suffix
         art = wandb.Artifact(name=file_name, type=type or "exp_data")
         art.add_file(file)
