@@ -1,5 +1,6 @@
 import os
 from copy import deepcopy
+from pathlib import Path
 
 import pandas as pd
 
@@ -44,11 +45,10 @@ class WandbLogger(BaseLogger):
 
     def log_artifact(self, file, type=None):
         file_name, extension = None, ""
-        if file.find(".") != -1:
-            file_name, extension = file.split(".")[-2:]
-        else:
-            file_name = file
-        art = wandb.Artifact(name=file_name.replace(" ", "_"), type=type or "exp_data")
+        file_pathlib = Path(file)
+        file_name = file_pathlib.stem.replace(" ", "_")
+        extension = file_pathlib.suffix
+        art = wandb.Artifact(name=file_name, type=type or "exp_data")
         art.add_file(file)
         self.run.log_artifact(art)
 
