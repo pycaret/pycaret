@@ -117,7 +117,6 @@ def test_get_imputed_data_exo(load_uni_exo_data_target_missing):
         data=data,
         target=target,
         fh=FH,
-        seasonal_period=4,
         numeric_imputation_target="drift",
         numeric_imputation_exogenous="drift",
     )
@@ -131,7 +130,6 @@ def test_get_imputed_data_exo(load_uni_exo_data_target_missing):
         data=data,
         target=target,
         fh=FH,
-        seasonal_period=4,
         numeric_imputation_target="drift",
         numeric_imputation_exogenous="drift",
         transform_target="exp",
@@ -153,7 +151,7 @@ def test_get_imputed_data_exo(load_uni_exo_data_target_missing):
     X_no_miss = data_no_miss.drop(columns=target)
 
     # 2A: Missing Values not Present: No imputation step in Pipeline ----
-    exp.setup(data=data_no_miss, target=target, fh=FH, seasonal_period=4)
+    exp.setup(data=data_no_miss, target=target, fh=FH)
     y_imputed, X_imputed = _get_imputed_data(
         pipeline=exp.pipeline, y=y_no_miss, X=X_no_miss
     )
@@ -165,7 +163,6 @@ def test_get_imputed_data_exo(load_uni_exo_data_target_missing):
         data=data_no_miss,
         target=target,
         fh=FH,
-        seasonal_period=4,
         numeric_imputation_target="drift",
         numeric_imputation_exogenous="drift",
     )
@@ -180,7 +177,6 @@ def test_get_imputed_data_exo(load_uni_exo_data_target_missing):
         data=data_no_miss,
         target=target,
         fh=FH,
-        seasonal_period=4,
         numeric_imputation_target="drift",
         numeric_imputation_exogenous="drift",
         transform_target="exp",
@@ -249,7 +245,6 @@ def test_are_pipeline_tansformations_empty_exo(load_uni_exo_data_target_missing)
         data=data,
         target=target,
         fh=FH,
-        seasonal_period=4,
         numeric_imputation_target="drift",
         numeric_imputation_exogenous="drift",
     )
@@ -263,7 +258,6 @@ def test_are_pipeline_tansformations_empty_exo(load_uni_exo_data_target_missing)
         data=data_no_miss,
         target=target,
         fh=FH,
-        seasonal_period=4,
         numeric_imputation_target="drift",
     )
     assert not _transformations_present_X(pipeline=exp.pipeline)
@@ -276,7 +270,6 @@ def test_are_pipeline_tansformations_empty_exo(load_uni_exo_data_target_missing)
         data=data_no_miss,
         target=target,
         fh=FH,
-        seasonal_period=4,
         numeric_imputation_exogenous="drift",
     )
     assert _transformations_present_X(pipeline=exp.pipeline)
@@ -288,7 +281,7 @@ def test_are_pipeline_tansformations_empty_exo(load_uni_exo_data_target_missing)
     ###########################
 
     # 2A: No Imputation in Pipeline ----
-    exp.setup(data=data_no_miss, target=target, fh=FH, seasonal_period=4)
+    exp.setup(data=data_no_miss, target=target, fh=FH)
     assert not _transformations_present_X(pipeline=exp.pipeline)
     assert not _transformations_present_y(pipeline=exp.pipeline)
     assert _are_pipeline_tansformations_empty(pipeline=exp.pipeline)
@@ -363,12 +356,7 @@ def test_add_model_to_pipeline_exo(load_uni_exo_data_target):
     # 1: Empty Pipeline ####
     ###########################
 
-    exp.setup(
-        data=data,
-        target=target,
-        fh=FH,
-        seasonal_period=4,
-    )
+    exp.setup(data=data, target=target, fh=FH)
 
     # Check that the final model has changed ----
     assert isinstance(exp.pipeline.steps[-1][1].steps[-1][1], DummyForecaster)
@@ -394,7 +382,6 @@ def test_add_model_to_pipeline_exo(load_uni_exo_data_target):
         data=data,
         target=target,
         fh=FH,
-        seasonal_period=4,
         numeric_imputation_target="drift",
         numeric_imputation_exogenous="drift",
     )

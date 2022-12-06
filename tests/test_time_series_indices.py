@@ -54,7 +54,7 @@ def test_time_series_indices():
     exp = TSForecastingExperiment()
     data = get_data("airline")
     data.reset_index(drop=True, inplace=True)
-    exp.setup(data=data, fh=12, fold=2, seasonal_period=12, session_id=42)
+    exp.setup(data=data, fh=12, fold=2, session_id=42)
     create_models(exp)
 
     #######################
@@ -100,7 +100,6 @@ def test_time_series_indices():
         data=data,
         target="gdp_change",
         ignore_features=["date"],
-        seasonal_period=4,
         fh=2,
         fold=2,
         session_id=42,

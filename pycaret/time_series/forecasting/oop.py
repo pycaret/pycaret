@@ -23,6 +23,7 @@ from sktime.forecasting.model_selection import (
 )
 from sktime.transformations.compose import TransformerPipeline
 from sktime.transformations.series.impute import Imputer
+from sktime.utils.seasonality import autocorrelation_seasonality_test
 
 from pycaret.containers.metrics import get_all_ts_metric_containers
 from pycaret.containers.models import get_all_ts_model_containers
@@ -64,6 +65,7 @@ from pycaret.utils.time_series import (
     TSApproachTypes,
     TSExogenousPresent,
     TSModelTypes,
+    auto_detect_sp,
     get_sp_from_str,
 )
 from pycaret.utils.time_series.forecasting import (
@@ -181,6 +183,8 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             ["Fold Generator", type(self.fold_generator).__name__],
             ["Fold Number", self.fold_param],
             ["Enforce Prediction Interval", self.enforce_pi],
+            ["Seasonality Detection Algo", self.sp_detection],
+            ["Num Seasonalities to Use", self.multiple_sp_to_use],
             ["Seasonal Period(s) Tested", self.seasonal_period],
             ["Seasonality Present", self.seasonality_present],
             ["Seasonalities Detected", self.all_sp_values],
@@ -454,12 +458,15 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         seasonal_period: Optional[Union[List[Union[int, str]], int, str]] = None,
     ) -> "TSForecastingExperiment":
         """
-        Checks if the index is one of the allowed types (pd.PeriodIndex,
-        pd.DatetimeIndex). If it is not one of the allowed types, then seasonal
-        period must be provided. This check is also performed. Finally, index is
-        coerced into period index which is used in subsequent steps and the
-        appropriate class for data index is set so that it can be used to disable
-        certain models which do not support that type of index.
+        Checks the following
+        (1) Index has duplicate values.
+        (2) Data has missing index values.
+        (3) If sp_detection == "index" and the index is not one of the allowed type
+        (pd.PeriodIndex, pd.DatetimeIndex), then seasonal period must be provided.
+
+        Finally, index is coerced into period index which is used in subsequent
+        steps and the appropriate class for data index is set so that it can be
+        used to disable certain models which do not support that type of index.
 
         Parameters
         ----------
@@ -479,10 +486,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         Raises
         ------
         ValueError
-            Raised when
-            (1) Index has duplicate values.
-            (2) Data has missing index values.
-            (3) Index is not one of the allowed types and seasonal period is not provided
+            Raised when any of the checks fail
         """
 
         # Set Index if necessary ----
@@ -495,7 +499,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
                 unique_index_after = len(self.data[index]) == len(set(self.data[index]))
                 if unique_index_before and not unique_index_after:
                     raise ValueError(
-                        f"Coresion of Index column '{index}' to datetime led to duplicates!"
+                        f"Coercion of Index column '{index}' to datetime led to duplicates!"
                         " Consider setting the data index outside pycaret before passing to setup()."
                     )
                 self.data.set_index(index, inplace=True)
@@ -513,7 +517,8 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         # Check Index Type ----
         allowed_freq_index_types = (pd.PeriodIndex, pd.DatetimeIndex)
         if (
-            not isinstance(self.data.index, allowed_freq_index_types)
+            self.sp_detection == "index"
+            and not isinstance(self.data.index, allowed_freq_index_types)
             and seasonal_period is None
         ):
             # https://stackoverflow.com/questions/3590165/join-a-list-of-items-with-different-types-as-string-in-python
@@ -674,11 +679,16 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         """
         self.logger.info("Set up Seasonal Period.")
 
-        # sktime is an optional dependency
-        from sktime.utils.seasonality import autocorrelation_seasonality_test
+        skip_autocorrelation_test = False
 
+        # Set the seasonal periods if not provided ----
         if seasonal_period is None:
-            seasonal_period = self.data.index.freqstr
+            if self.sp_detection == "auto":
+                _, seasonal_period, _ = auto_detect_sp(y=self.y_transformed)
+                # Test is already done in detection process so we should skip further tests
+                skip_autocorrelation_test = True
+            elif self.sp_detection == "index":
+                seasonal_period = self.data.index.freqstr
 
         if not isinstance(seasonal_period, list):
             seasonal_period = [seasonal_period]
@@ -690,10 +700,13 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         #     will not be detected properly).
         # (2) The actual forecaster will see transformed values of y for training.
         #     Hence, these transformed values should be used to determine seasonality.
-        seasonality_test_results = [
-            autocorrelation_seasonality_test(self.y_transformed, sp)
-            for sp in seasonal_period
-        ]
+        if skip_autocorrelation_test:
+            seasonality_test_results = [True for sp in seasonal_period]
+        else:
+            seasonality_test_results = [
+                autocorrelation_seasonality_test(self.y_transformed, sp)
+                for sp in seasonal_period
+            ]
         self.seasonality_present = any(seasonality_test_results)
         sp_values_and_test_result = zip(seasonal_period, seasonality_test_results)
 
@@ -703,6 +716,13 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             for sp, seasonality_present in sp_values_and_test_result
             if seasonality_present
         ] or [1]
+
+        if self.sp_detection == "auto":
+            # If the number of seasonalities detected is > the number of
+            # seasonalities allowed by user, then limit it.
+            if len(self.all_sp_values) > self.multiple_sp_to_use:
+                self.all_sp_values = self.all_sp_values[0 : self.multiple_sp_to_use]
+
         self.primary_sp_to_use = self.all_sp_values[0]
         self.seasonal_period = (
             seasonal_period[0] if len(seasonal_period) == 1 else seasonal_period
@@ -1285,6 +1305,8 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         fold: int = 3,
         fh: Optional[Union[List[int], int, np.ndarray, ForecastingHorizon]] = 1,
         seasonal_period: Optional[Union[List[Union[int, str]], int, str]] = None,
+        sp_detection: str = "auto",
+        multiple_sp_to_use: int = 1,
         point_alpha: Optional[float] = None,
         coverage: Union[float, List[float]] = 0.9,
         enforce_exogenous: bool = True,
@@ -1475,7 +1497,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             >>> data = get_data("uschange")
             >>> exp = TSForecastingExperiment()
             >>> exp.setup(
-            >>>     data=data, target="Consumption", fh=12, seasonal_period=4,
+            >>>     data=data, target="Consumption", fh=12,
             >>>     fe_exogenous=fe_exogenous, session_id=42
             >>> )
             >>> print(f"Feature Columns: {exp.get_config('X_transformed').columns}")
@@ -1518,26 +1540,45 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
 
         seasonal_period: list or int or str, default = None
-            Seasonal period in timeseries data. If not provided the frequency of the data
-            index is mapped to a seasonal period as follows:
+            Periods to check when performing seasonality checks. If not provided,
+            then seasonal periods are detected per the sp_detection setting.
 
-            * B, C = 5
-            * D = 7
-            * W = 52
-            * M, BM, CBM, MS, BMS, CBMS = 12
-            * SM, SMS = 24
-            * Q, BQ, QS, BQS = 4
-            * A, Y, BA, BY, AS, YS, BAS, BYS = 1
-            * H = 24
-            * T, min = 60
-            * S = 60
+            Users can provide `seasonal_period` by passing it as an integer or a
+            string corresponding to the keys below (e.g. 'W' for weekly data,
+            'M' for monthly data, etc.).
+                * B, C = 5
+                * D = 7
+                * W = 52
+                * M, BM, CBM, MS, BMS, CBMS = 12
+                * SM, SMS = 24
+                * Q, BQ, QS, BQS = 4
+                * A, Y, BA, BY, AS, YS, BAS, BYS = 1
+                * H = 24
+                * T, min = 60
+                * S = 60
 
-            Alternatively you can provide a custom `seasonal_period` by passing
-            it as an integer or a string corresponding to the keys above (e.g.
-            'W' for weekly data, 'M' for monthly data, etc.). You can also provide
-            a list of such values to use in models that accept multiple seasonal values
-            (currently TBATS). For models that don't accept multiple seasonal values, the
-            first value of the list will be used as the seasonal period.
+            Users can also provide a list of such values to use in models that
+            accept multiple seasonal values (currently TBATS). For models that
+            don't accept multiple seasonal values, the first value of the list
+            will be used as the seasonal period.
+
+
+        sp_detection: str = "auto"
+            If seasonal_period is None, then this parameter determines the algorithm
+            to use to detect the seasonal periods to use in the models.
+
+            Allowed values are ["auto" or "index"].
+
+            If "auto", then seasonal periods are detected using statistical tests.
+            If "index", then the frequency of the data index is mapped to a seasonal
+            period as shown in seasonal_period.
+
+
+        multiple_sp_to_use: int = 1
+            Applicable only when sp_detection is set to "auto". It determines how
+            many seasonal periods to use in the models. If a model only allows one
+            seasonal period and multiple_sp_to_use > 1, then the most dominant
+            (primary) seasonal that is detected is used.
 
 
         point_alpha: Optional[float], default = None
@@ -1759,6 +1800,14 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         self.fold_strategy = fold_strategy
         self.fold = fold
+
+        if sp_detection not in ["auto", "index"]:
+            raise ValueError(
+                "sp_detection must be either 'auto' or 'index'. "
+                f"You provided {sp_detection}."
+            )
+        self.sp_detection = sp_detection
+        self.multiple_sp_to_use = multiple_sp_to_use
 
         self.log_plots_param = log_plots
         if self.log_plots_param is True:
