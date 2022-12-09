@@ -221,11 +221,11 @@ def setup(
         [1, a, b, a^2, ab, b^2]. Ignored when ``polynomial_features`` is not True.
 
 
-    low_variance_threshold: float or None, default = 0
+    low_variance_threshold: float or None, default = None
         Remove features with a training-set variance lower than the provided
-        threshold. The default is to keep all features with non-zero variance,
-        i.e. remove the features that have the same value in all samples. If
-        None, skip this transformation step.
+        threshold. If 0, keep all features with non-zero variance, i.e. remove
+        the features that have the same value in all samples. If None, skip
+        this transformation step.
 
 
     remove_multicollinearity: bool, default = False
