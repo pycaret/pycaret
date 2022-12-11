@@ -308,7 +308,8 @@ def remove_harmonics_from_sp(significant_sps: list) -> list:
                     break
 
     # Convert frequency back to period
-    filtered_sps = [1 / freq for freq in significant_freqs]
+    # Rounding, else there is precision issues
+    filtered_sps = [round(1 / freq, 4) for freq in significant_freqs]
     # Keep order of significance
     significant_sps = [sp for sp in significant_sps if sp in filtered_sps]
     return significant_sps

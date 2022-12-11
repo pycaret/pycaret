@@ -75,5 +75,5 @@ def test_benchmark_sp_to_use_using_auto():
     ) / len(properties)
 
     # Current benchmark to beat ----
-    assert per_correct_no_harmonics > 0.1192
-    assert per_correct_multiple_no_harmonics > 0.8153
+    assert per_correct_no_harmonics > 0.1230  # 0.1192
+    assert per_correct_multiple_no_harmonics > 0.8365  # 0.8153
