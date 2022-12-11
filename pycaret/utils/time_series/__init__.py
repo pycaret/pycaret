@@ -277,6 +277,43 @@ def auto_detect_sp(
     return primary_sp, significant_sps, lags_to_use
 
 
+def remove_harmonics_from_sp(significant_sps: list) -> list:
+    """Remove harmonics from the list provided. Similar to Kats - Ref:
+    https://github.com/facebookresearch/Kats/blob/v0.2.0/kats/detectors/seasonality.py#L311-L321
+
+    Parameters
+    ----------
+    significant_sps : list
+        The list of significant seasonal periods (ordered by significance)
+
+    Returns
+    -------
+    list
+        The list of significant seasonal periods with harmonics removed
+        (ordered by significance)
+    """
+    # Convert period to frequency for harmonic removal
+    significant_freqs = [1 / sp for sp in significant_sps]
+
+    if len(significant_freqs) > 1:
+        # Sort from lowest freq to highest
+        significant_freqs = sorted(significant_freqs)
+        # Start from highest freq and remove it if it is a multiple of a lower freq
+        # i.e if it is a harmonic of a lower frequency
+        for i in range(len(significant_freqs) - 1, 0, -1):
+            for j in range(i - 1, -1, -1):
+                fraction = (significant_freqs[i] / significant_freqs[j]) % 1
+                if fraction < 0.01 or fraction > 0.99:
+                    significant_freqs.pop(i)
+                    break
+
+    # Convert frequency back to period
+    filtered_sps = [1 / freq for freq in significant_freqs]
+    # Keep order of significance
+    significant_sps = [sp for sp in significant_sps if sp in filtered_sps]
+    return significant_sps
+
+
 class SeasonalPeriod(IntEnum):
     """ENUM corresponding to Seasonal Periods
 

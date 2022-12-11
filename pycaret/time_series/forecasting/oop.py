@@ -66,6 +66,7 @@ from pycaret.utils.time_series import (
     TSExogenousPresent,
     TSModelTypes,
     auto_detect_sp,
+    remove_harmonics_from_sp,
     get_sp_from_str,
 )
 from pycaret.utils.time_series.forecasting import (
@@ -106,10 +107,12 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         self.variable_keys = self.variable_keys.union(
             {
                 "fh",
-                "seasonal_period",
                 "seasonality_present",
+                "candidate_sps",
+                "significant_sps",
+                "significant_sps_no_harmonics",
+                "all_sps_to_use",
                 "primary_sp_to_use",
-                "all_sp_values",
                 "strictly_positive",
                 "enforce_pi",
                 "enforce_exogenous",
@@ -184,11 +187,17 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             ["Fold Number", self.fold_param],
             ["Enforce Prediction Interval", self.enforce_pi],
             ["Seasonality Detection Algo", self.sp_detection],
-            ["Num Seasonalities to Use", self.multiple_sp_to_use],
-            ["Seasonal Period(s) Tested", self.seasonal_period],
-            ["Seasonality Present", self.seasonality_present],
-            ["Seasonalities Detected", self.all_sp_values],
+            ["Seasonal Period(s) Tested", self.candidate_sps],
+            ["Significant Seasonal Period(s)", self.significant_sps],
+            [
+                "Significant Seasonal Period(s) without Harmonics",
+                self.significant_sps_no_harmonics,
+            ],
+            ["Remove Harmonics", self.remove_harmonics],
+            ["Max Seasonalities to Use", self.max_sps_to_use],
+            ["All Seasonalities to Use", self.all_sps_to_use],
             ["Primary Seasonality", self.primary_sp_to_use],
+            ["Seasonality Present", self.seasonality_present],
             ["Target Strictly Positive", self.strictly_positive],
             ["Target White Noise", self.white_noise],
             ["Recommended d", self.lowercase_d],
@@ -647,25 +656,22 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         return self
 
-    def _check_and_set_seasonal_period(
-        self,
-        seasonal_period: Optional[Union[List[Union[int, str]], int, str]],
-    ) -> "TSForecastingExperiment":
-        """Derived the seasonal periods by either
-        (1) Extracting it from data's index (if seasonal period is not provided), or
-        for each value of seasonal_period:
-            (2) Extracting it from the value if it is of type string, or
-            (3) Using the value as is if it is of type int.
+    def _check_and_set_seasonal_period(self) -> "TSForecastingExperiment":
+        """
+        Derive the seasonal periods to use per teh following algorithm
+        (1) Get the candidate seasonal periods
+        (2) Perform seasonal checks to remove periods that do not indicate seasonality
+        (3) Remove harmonics based on user settings
+        (4) Limit max number of seasonal periods to use based on user settings
+        (5) Set the primary seasonal period & other seasonality related class attributes
 
-        After deriving the seasonal periods, a seasonality test is performed for each
-        value of seasonal_period. Final seasonal period class attribute value is set equal to
-        (1) 1 if seasonality is not detected at any of the derived seasonal periods, or
-        (2) the derived seasonal periods for which seasonality is detected.
+        Getting candidate seasonal periods is performed in the following order
+            (1) Use seasonal_period provided by user (str or int)
+            (2) Based on sp_detection
+                (A) If sp_detection = "auto", extracting it using ACF
+                (B) If sp_detection = "index", extracting it from data's index
 
-        Parameters
-        ----------
-        seasonal_period : Optional[Union[List[Union[int, str]], int, str]]
-            Seasonal Period specified by user
+        NOTE: If no seasonality is detected, seasonal period is set to 1
 
         Returns
         -------
@@ -681,52 +687,62 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
         skip_autocorrelation_test = False
 
-        # Set the seasonal periods if not provided ----
-        if seasonal_period is None:
-            if self.sp_detection == "auto":
-                _, seasonal_period, _ = auto_detect_sp(y=self.y_transformed)
-                # Test is already done in detection process so we should skip further tests
-                skip_autocorrelation_test = True
-            elif self.sp_detection == "index":
-                seasonal_period = self.data.index.freqstr
-
-        if not isinstance(seasonal_period, list):
-            seasonal_period = [seasonal_period]
-        seasonal_period = [self._convert_sp_to_int(sp) for sp in seasonal_period]
-
-        # check valid seasonal parameter
         # We use y_transformed here instead of y for 2 reasons:
         # (1) Missing values in y will cause issues with this test (seasonality
         #     will not be detected properly).
         # (2) The actual forecaster will see transformed values of y for training.
         #     Hence, these transformed values should be used to determine seasonality.
+
+        # 1.0 Set the candidate seasonal periods based on inputs and settings ----
+        candidate_sps = self.seasonal_period
+        if candidate_sps is None:
+            if self.sp_detection == "auto":
+                _, candidate_sps, _ = auto_detect_sp(y=self.y_transformed)
+                # Test is already done in detection process so we should skip further tests
+                skip_autocorrelation_test = True
+            elif self.sp_detection == "index":
+                candidate_sps = self.data.index.freqstr
+
+        if not isinstance(candidate_sps, list):
+            candidate_sps = [candidate_sps]
+        candidate_sps = [self._convert_sp_to_int(sp) for sp in candidate_sps]
+
+        # 2.0 Filter candidates based on seasonality check if needed (find significant sp values) ----
         if skip_autocorrelation_test:
-            seasonality_test_results = [True for sp in seasonal_period]
+            seasonality_test_results = [True for sp in candidate_sps]
         else:
             seasonality_test_results = [
                 autocorrelation_seasonality_test(self.y_transformed, sp)
-                for sp in seasonal_period
+                for sp in candidate_sps
             ]
         self.seasonality_present = any(seasonality_test_results)
-        sp_values_and_test_result = zip(seasonal_period, seasonality_test_results)
+        sp_values_and_test_result = zip(candidate_sps, seasonality_test_results)
 
-        # What seasonal period should be used for modeling?
-        self.all_sp_values = [
+        significant_sps = [
             sp
             for sp, seasonality_present in sp_values_and_test_result
             if seasonality_present
         ] or [1]
 
-        if self.sp_detection == "auto":
+        # 3.0 Remove harmonics based on settings ----
+        significant_sps_no_harmonics = remove_harmonics_from_sp(significant_sps)
+
+        # 4.0 Limit seasonal periods to use based on settings ----
+        if self.remove_harmonics:
+            all_sps_to_use = significant_sps_no_harmonics.copy()
+        else:
+            all_sps_to_use = significant_sps.copy()
+        if self.max_sps_to_use > 0:
             # If the number of seasonalities detected is > the number of
             # seasonalities allowed by user, then limit it.
-            if len(self.all_sp_values) > self.multiple_sp_to_use:
-                self.all_sp_values = self.all_sp_values[0 : self.multiple_sp_to_use]
+            if len(all_sps_to_use) > self.max_sps_to_use:
+                all_sps_to_use = all_sps_to_use[0 : self.max_sps_to_use]
 
-        self.primary_sp_to_use = self.all_sp_values[0]
-        self.seasonal_period = (
-            seasonal_period[0] if len(seasonal_period) == 1 else seasonal_period
-        )
+        self.candidate_sps = candidate_sps
+        self.significant_sps = significant_sps
+        self.significant_sps_no_harmonics = significant_sps_no_harmonics
+        self.all_sps_to_use = all_sps_to_use
+        self.primary_sp_to_use = self.all_sps_to_use[0]
 
         return self
 
@@ -1306,7 +1322,8 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         fh: Optional[Union[List[int], int, np.ndarray, ForecastingHorizon]] = 1,
         seasonal_period: Optional[Union[List[Union[int, str]], int, str]] = None,
         sp_detection: str = "auto",
-        multiple_sp_to_use: int = 1,
+        remove_harmonics: bool = False,
+        max_sps_to_use: int = 1,
         point_alpha: Optional[float] = None,
         coverage: Union[float, List[float]] = 0.9,
         enforce_exogenous: bool = True,
@@ -1350,7 +1367,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         data_func: Callable[[], Union[pd.Series, pd.DataFrame]] = None
             The function that generate ``data`` (the dataframe-like input). This
             is useful when the dataset is large, and you need parallel operations
-            such as ``compare_models``. It can avoid boradcasting large dataset
+            such as ``compare_models``. It can avoid broadcasting large dataset
             from driver to workers. Notice one and only one of ``data`` and
             ``data_func`` must be set.
 
@@ -1540,8 +1557,8 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
 
         seasonal_period: list or int or str, default = None
-            Periods to check when performing seasonality checks. If not provided,
-            then seasonal periods are detected per the sp_detection setting.
+            Seasonal periods to check when performing seasonality checks (i.e. candidates).
+            If not provided, then candidates are detected per the sp_detection setting.
 
             Users can provide `seasonal_period` by passing it as an integer or a
             string corresponding to the keys below (e.g. 'W' for weekly data,
@@ -1563,7 +1580,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             will be used as the seasonal period.
 
 
-        sp_detection: str = "auto"
+        sp_detection: str, default = "auto"
             If seasonal_period is None, then this parameter determines the algorithm
             to use to detect the seasonal periods to use in the models.
 
@@ -1574,11 +1591,17 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             period as shown in seasonal_period.
 
 
-        multiple_sp_to_use: int = 1
-            Applicable only when sp_detection is set to "auto". It determines how
-            many seasonal periods to use in the models. If a model only allows one
-            seasonal period and multiple_sp_to_use > 1, then the most dominant
-            (primary) seasonal that is detected is used.
+        remove_harmonics: bool, default = False
+            Should harmonics be removed when considering what seasonal periods to
+            use for modeling.
+
+
+        max_sps_to_use: int, default = 1
+            It determines the maximum number of seasonal periods to use in the models.
+            Set to -1 to use all detected seasonal periods (in models that allow
+            multiple seasonalities). If a model only allows one seasonal period
+            and max_sps_to_use > 1, then the most dominant (primary) seasonal
+            that is detected is used.
 
 
         point_alpha: Optional[float], default = None
@@ -1801,13 +1824,16 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
         self.fold_strategy = fold_strategy
         self.fold = fold
 
+        # Variables related to seasonal period and detection ----
+        self.seasonal_period = seasonal_period
         if sp_detection not in ["auto", "index"]:
             raise ValueError(
                 "sp_detection must be either 'auto' or 'index'. "
                 f"You provided {sp_detection}."
             )
         self.sp_detection = sp_detection
-        self.multiple_sp_to_use = multiple_sp_to_use
+        self.remove_harmonics = remove_harmonics
+        self.max_sps_to_use = max_sps_to_use
 
         self.log_plots_param = log_plots
         if self.log_plots_param is True:
@@ -1853,7 +1879,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
             # Since the model will see transformed data, these parameters
             # should also be derived from the transformed data.
             ##################################################################
-            ._check_and_set_seasonal_period(seasonal_period=seasonal_period)
+            ._check_and_set_seasonal_period()
             ._set_multiplicative_components()
             ._perform_setup_eda()
             ._setup_display_container()
