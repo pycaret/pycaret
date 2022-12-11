@@ -66,8 +66,8 @@ from pycaret.utils.time_series import (
     TSExogenousPresent,
     TSModelTypes,
     auto_detect_sp,
-    remove_harmonics_from_sp,
     get_sp_from_str,
+    remove_harmonics_from_sp,
 )
 from pycaret.utils.time_series.forecasting import (
     PyCaretForecastingHorizonTypes,
