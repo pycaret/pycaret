@@ -320,7 +320,7 @@ def remove_harmonics_from_sp(
         for i in range(len(significant_freqs) - 1, 0, -1):
             for j in range(i - 1, -1, -1):
                 fraction = (significant_freqs[i] / significant_freqs[j]) % 1
-                if fraction < 0.01 or fraction > 0.99:
+                if fraction < 0.001 or fraction > 0.999:
                     significant_freqs.pop(i)
                     break
 

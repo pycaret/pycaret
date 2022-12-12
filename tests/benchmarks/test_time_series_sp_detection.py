@@ -1,15 +1,32 @@
 """Module to benchmark auto detection of time series seasonal period
 """
+import pytest
 from pycaret.datasets import get_data
 from pycaret.time_series import TSForecastingExperiment
 
+params = [
+    ("raw_strength", 0.9211, 0.9307, 0.1230, 0.8365),
+    ("harmonic_max", 0.9211, 0.9307, 0.1211, 0.9538),
+    ("harmonic_strength", 0.9211, 0.9307, 0.1230, 0.9480),
+]
 
-def test_benchmark_sp_to_use_using_auto():
+
+@pytest.mark.parametrize(
+    "harmonic_order_method, expected_per_correct, expected_per_correct_multiple, expected_per_correct_harmonics, expected_per_correct_multiple_no_harmonics",
+    params,
+)
+def test_benchmark_sp_to_use_using_auto(
+    harmonic_order_method,
+    expected_per_correct,
+    expected_per_correct_multiple,
+    expected_per_correct_harmonics,
+    expected_per_correct_multiple_no_harmonics,
+):
     """Benchmark auto detection of seasonal periods. Any future changes must
     beat this benchmark."""
 
     properties = get_data("index", folder="time_series/seasonal", verbose=False)
-    properties[["index", "s"]]
+
     candidate_sps = []
 
     sig_sps = []
@@ -23,7 +40,7 @@ def test_benchmark_sp_to_use_using_auto():
     exp = TSForecastingExperiment()
     for _, (index, _) in enumerate(properties[["index", "s"]].values):
         y = get_data(index, folder="time_series/seasonal", verbose=False)
-        exp.setup(data=y, session_id=index)
+        exp.setup(data=y, harmonic_order_method=harmonic_order_method, session_id=index)
         candidate_sps.append(exp.candidate_sps)
 
         sig_sps.append(exp.significant_sps)
@@ -51,8 +68,8 @@ def test_benchmark_sp_to_use_using_auto():
     per_correct_multiple = len(properties.query("multiple == True")) / len(properties)
 
     # Current benchmark to beat ----
-    assert per_correct > 0.9211
-    assert per_correct_multiple > 0.9307
+    assert per_correct > expected_per_correct
+    assert per_correct_multiple > expected_per_correct_multiple
 
     # 2.0 Test with harmonics excluded ----
 
@@ -75,5 +92,7 @@ def test_benchmark_sp_to_use_using_auto():
     ) / len(properties)
 
     # Current benchmark to beat ----
-    assert per_correct_no_harmonics > 0.1230  # 0.1192
-    assert per_correct_multiple_no_harmonics > 0.8365  # 0.8153
+    assert per_correct_no_harmonics > expected_per_correct_harmonics
+    assert (
+        per_correct_multiple_no_harmonics > expected_per_correct_multiple_no_harmonics
+    )
