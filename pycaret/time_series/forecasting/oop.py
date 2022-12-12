@@ -3583,7 +3583,7 @@ class TSForecastingExperiment(_SupervisedExperiment, TSForecastingPreprocessor):
 
             elif system:
                 if display_format == "streamlit":
-                    st.write(fig)
+                    return fig
                 elif display_format == "plotly-widget":
                     fig.update_layout(autosize=True)
                     ipython_display(
